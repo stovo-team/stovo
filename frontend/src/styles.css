@@ -51,9 +51,10 @@
   --outline-soft: var(--outline-soft-light);
   --accent-ring: var(--accent-ring-light);
   --danger: #ef4444;
-  --danger-soft: #fef2f2;
+  --danger-soft: #ca2727;
+  --danger-text: #ffffff;
   --success: #22c55e;
-  --success-soft: #ecfdf5;
+  --success-soft: #13ea84;
   --warning: #f59e0b;
   --shadow: 0 18px 44px rgba(15, 23, 42, 0.1);
   --shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.12);
@@ -2881,6 +2882,32 @@ h2 {
 .network-check.error {
   background: var(--danger-soft);
   border-color: #fecaca;
+}
+
+.public-access-link-button {
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 8px;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  text-decoration: none;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.public-access-link-button:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border-soft);
 }
 
 .inline-toggle {

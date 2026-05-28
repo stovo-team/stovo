@@ -191,6 +191,7 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request, user 
 		s.detail(w, http.StatusForbidden, "Admin access required")
 		return
 	}
+
 	provider := strings.TrimSpace(r.URL.Query().Get("provider"))
 	if provider == "" {
 		provider = "cloudflare"
@@ -199,19 +200,27 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request, user 
 		s.detail(w, http.StatusUnprocessableEntity, "Unsupported tunnel provider")
 		return
 	}
+
 	autoRestart := true
 	if raw := strings.TrimSpace(r.URL.Query().Get("autoRestart")); raw != "" {
 		autoRestart = raw != "false" && raw != "0"
 	}
 
-	snapshot := s.tunnel.Start(s.cfg.PublicTunnelOrigin, provider, autoRestart)
+	snapshot := s.tunnel.Start(s.backendTunnelOrigin(), provider, autoRestart)
 	if snapshot.URL != nil {
 		publicURL := strings.TrimRight(*snapshot.URL, "/")
-		if err := s.validatePublicBackendURL(publicURL); err != nil {
-			_ = s.tunnel.Stop()
-			s.detail(w, http.StatusBadGateway, "Tunnel started but backend is not reachable through it: "+err.Error())
-			return
+
+		// LocalTunnel is frequently affected by its public warning/verification page,
+		// so keep strict backend validation for it. Cloudflare DNS can take a few
+		// seconds to resolve from Docker's internal DNS, so do not hard-fail it here.
+		if provider == "localtunnel" {
+			if err := s.validatePublicBackendURL(publicURL); err != nil {
+				_ = s.tunnel.Stop()
+				s.detail(w, http.StatusBadGateway, "LocalTunnel started but backend is not reachable through it: "+err.Error())
+				return
+			}
 		}
+
 		if err := s.saveFamilyPublicURLs(r.Context(), user.FamilyID, publicURL, publicURL); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Could not save public tunnel URL")
 			return
@@ -223,6 +232,7 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request, user 
 		s.detail(w, http.StatusInternalServerError, "Could not load public access")
 		return
 	}
+
 	s.json(w, http.StatusOK, s.snapshotToTunnelStatus(snapshot, family))
 }
 
@@ -383,7 +393,7 @@ func (s *Server) handleQuickStartPublicAccess(w http.ResponseWriter, r *http.Req
 	}
 
 	provider := "cloudflare"
-	snapshot := s.tunnel.Start(s.cfg.PublicTunnelOrigin, provider, true)
+	snapshot := s.tunnel.Start(s.backendTunnelOrigin(), provider, true)
 	if snapshot.URL == nil {
 		message := "Could not create public tunnel"
 		if snapshot.Message != nil && strings.TrimSpace(*snapshot.Message) != "" {
@@ -394,9 +404,9 @@ func (s *Server) handleQuickStartPublicAccess(w http.ResponseWriter, r *http.Req
 	}
 
 	publicURL := strings.TrimRight(*snapshot.URL, "/")
-	if err := s.validatePublicBackendURL(publicURL); err != nil {
+	if err := s.waitForPublicBackendURL(publicURL, 60*time.Second); err != nil {
 		_ = s.tunnel.Stop()
-		s.detail(w, http.StatusBadGateway, "Public tunnel is not usable: "+err.Error())
+		s.detail(w, http.StatusBadGateway, "Cloudflare tunnel could not become reachable. Try again. "+err.Error())
 		return
 	}
 
@@ -410,11 +420,13 @@ func (s *Server) handleQuickStartPublicAccess(w http.ResponseWriter, r *http.Req
 		s.detail(w, http.StatusInternalServerError, "Could not load family")
 		return
 	}
+
 	inviteLinks, err := s.createPublicInviteLinks(r.Context(), user, family)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create invite links")
 		return
 	}
+
 	settings := publicAccessSettingsForFamily(family, s.cfg.AppURL, s.cfg.APIURL)
 
 	s.json(w, http.StatusOK, quickStartPublicAccessResponse{
@@ -422,7 +434,7 @@ func (s *Server) handleQuickStartPublicAccess(w http.ResponseWriter, r *http.Req
 		Provider:     provider,
 		PublicURL:    publicURL,
 		Origin:       snapshot.Origin,
-		Message:      snapshot.Message,
+		Message:      strPtr("Cloudflare Tunnel is ready."),
 		PublicAccess: settings,
 		InviteLinks:  inviteLinks,
 	})
@@ -436,11 +448,60 @@ func (s *Server) handlePublicIPQuickStart(w http.ResponseWriter, r *http.Request
 
 	publicIP, err := detectPublicIPv4()
 	if err != nil {
-		s.detail(w, http.StatusBadGateway, "Could not detect public IP")
+		s.json(w, http.StatusOK, publicIPQuickStartResponse{
+			Status: "blocked",
+			Problems: []string{
+				"Could not detect your public IP address.",
+			},
+			RecommendedActions: []string{
+				"Use Cloudflare Tunnel for one-click access.",
+			},
+			CanUseCloudflareTunnel: true,
+		})
 		return
 	}
 
 	publicURL := "http://" + publicIP + ":8000"
+
+	if !s.checkLocalBackendHealth() {
+		s.json(w, http.StatusOK, publicIPQuickStartResponse{
+			Status:    "blocked",
+			PublicIP:  publicIP,
+			PublicURL: publicURL,
+			Problems: []string{
+				"Backend is not reachable locally on TCP port 8000.",
+			},
+			RecommendedActions: []string{
+				"Make sure the backend is running.",
+				"Make sure Docker exposes port 8000.",
+				"Then try Public IP again.",
+			},
+			CanUseCloudflareTunnel: true,
+		})
+		return
+	}
+
+	externalOK, externalDetail := s.checkPublicURLFromOutside(publicURL + "/api/health")
+	if !externalOK {
+		s.json(w, http.StatusOK, publicIPQuickStartResponse{
+			Status:    "blocked",
+			PublicIP:  publicIP,
+			PublicURL: publicURL,
+			Problems: []string{
+				"Your public IP is not reachable from the internet on TCP port 8000.",
+				externalDetail,
+			},
+			RecommendedActions: []string{
+				"Use Cloudflare Tunnel for one-click access.",
+				"Or forward TCP port 8000 on your router to this computer.",
+				"Allow TCP port 8000 in Windows Firewall.",
+				"If your ISP uses CGNAT, ask for a real public/static IP or use Cloudflare Tunnel.",
+			},
+			CanUseCloudflareTunnel: true,
+		})
+		return
+	}
+
 	if err := s.saveFamilyPublicURLs(r.Context(), user.FamilyID, publicURL, publicURL); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not save public IP access")
 		return
@@ -451,24 +512,40 @@ func (s *Server) handlePublicIPQuickStart(w http.ResponseWriter, r *http.Request
 		s.detail(w, http.StatusInternalServerError, "Could not load family")
 		return
 	}
+
 	inviteLinks, err := s.createPublicInviteLinks(r.Context(), user, family)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create invite links")
 		return
 	}
+
 	settings := publicAccessSettingsForFamily(family, s.cfg.AppURL, s.cfg.APIURL)
 
 	s.json(w, http.StatusOK, publicIPQuickStartResponse{
-		PublicIP:     publicIP,
-		PublicURL:    publicURL,
-		PublicAccess: settings,
-		InviteLinks:  inviteLinks,
+		Status:                 "ready",
+		PublicIP:               publicIP,
+		PublicURL:              publicURL,
+		PublicAccess:           &settings,
+		InviteLinks:            inviteLinks,
+		Problems:               []string{},
+		RecommendedActions:     []string{},
+		CanUseCloudflareTunnel: true,
 	})
+}
+
+func (s *Server) backendTunnelOrigin() string {
+	origin := strings.TrimSpace(s.cfg.PublicTunnelOrigin)
+	parsed, err := url.Parse(origin)
+	if err == nil && parsed.Port() == strconv.Itoa(s.cfg.Port) {
+		return strings.TrimRight(origin, "/")
+	}
+	return fmt.Sprintf("http://127.0.0.1:%d", s.cfg.Port)
 }
 
 func (s *Server) saveFamilyPublicURLs(ctx context.Context, familyID string, appURL string, apiURL string) error {
 	appURL = strings.TrimRight(strings.TrimSpace(appURL), "/")
 	apiURL = strings.TrimRight(strings.TrimSpace(apiURL), "/")
+
 	return s.withTx(ctx, func(tx *sql.Tx) error {
 		_, err := s.txExec(tx, `
 			UPDATE families
@@ -481,10 +558,12 @@ func (s *Server) saveFamilyPublicURLs(ctx context.Context, familyID string, appU
 
 func (s *Server) validatePublicBackendURL(publicURL string) error {
 	healthURL := strings.TrimRight(publicURL, "/") + "/api/health"
+
 	req, err := http.NewRequest(http.MethodGet, healthURL, nil)
 	if err != nil {
 		return err
 	}
+
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("bypass-tunnel-reminder", "1")
 	req.Header.Set("abypass-tunnel-reminder", "1")
@@ -499,11 +578,87 @@ func (s *Server) validatePublicBackendURL(publicURL string) error {
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return fmt.Errorf("health returned status %d", res.StatusCode)
 	}
+
 	var payload map[string]any
 	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
 		return errors.New("health endpoint did not return backend JSON")
 	}
+
 	return nil
+}
+
+func (s *Server) waitForPublicBackendURL(publicURL string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	backoff := 2 * time.Second
+	var lastErr error
+
+	for {
+		if err := s.validatePublicBackendURL(publicURL); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+
+		if time.Now().After(deadline) {
+			if lastErr == nil {
+				return errors.New("timed out waiting for public health check")
+			}
+			return fmt.Errorf("timed out waiting for public health check: %w", lastErr)
+		}
+
+		time.Sleep(backoff)
+		if backoff < 5*time.Second {
+			backoff++
+		}
+	}
+}
+
+func (s *Server) checkLocalBackendHealth() bool {
+	healthURL := fmt.Sprintf("http://127.0.0.1:%d/api/health", s.cfg.Port)
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	res, err := client.Get(healthURL)
+	if err != nil {
+		return false
+	}
+	defer res.Body.Close()
+
+	return res.StatusCode >= 200 && res.StatusCode < 300
+}
+
+func (s *Server) checkPublicURLFromOutside(targetURL string) (bool, string) {
+	checkerURL := strings.TrimSpace(s.cfg.PublicReachabilityCheckerURL)
+	if checkerURL == "" {
+		return false, "External reachability checker is not configured, so Public IP access cannot be safely verified."
+	}
+
+	requestURL := strings.TrimRight(checkerURL, "?") + "?url=" + url.QueryEscape(targetURL)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	res, err := client.Get(requestURL)
+	if err != nil {
+		return false, err.Error()
+	}
+	defer res.Body.Close()
+
+	var payload struct {
+		OK         bool   `json:"ok"`
+		StatusCode int    `json:"statusCode"`
+		Detail     string `json:"detail"`
+	}
+
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		return false, "Invalid reachability checker response."
+	}
+
+	if !payload.OK {
+		if payload.Detail != "" {
+			return false, payload.Detail
+		}
+		return false, fmt.Sprintf("External checker returned status %d.", payload.StatusCode)
+	}
+
+	return true, "reachable"
 }
 
 func (s *Server) createPublicInviteLinks(ctx context.Context, user userPublic, family familyPublic) ([]publicInviteLink, error) {
