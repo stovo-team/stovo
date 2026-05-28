@@ -11,40 +11,41 @@ import (
 )
 
 type Config struct {
-	AppName             string
-	AppVersion          string
-	AppEnv              string
-	Host                string
-	Port                int
-	AppURL              string
-	APIURL              string
-	FrontendOrigin      string
-	PublicTunnelOrigin  string
-	DatabaseURL         string
-	PostgresHost        string
-	PostgresPort        int
-	PostgresUser        string
-	PostgresPassword    string
-	PostgresDB          string
-	RedisURL            string
-	RedisHost           string
-	RedisPort           int
-	RedisPassword       string
-	JWTSecret           string
-	RefreshTokenSecret  string
-	InviteTokenSecret   string
-	RefreshCookieName   string
-	AccessTokenTTL      time.Duration
-	RefreshTokenTTL     time.Duration
-	MaxUploadSizeBytes  int64
-	LocalStoragePath    string
-	LogFilePath         string
-	LogBufferMaxRecords int
-	TurnEnabled         bool
-	TurnHost            string
-	TurnPort            int
-	TurnUsername        string
-	TurnPassword        string
+	AppName                      string
+	AppVersion                   string
+	AppEnv                       string
+	Host                         string
+	Port                         int
+	AppURL                       string
+	APIURL                       string
+	FrontendOrigin               string
+	PublicTunnelOrigin           string
+	PublicReachabilityCheckerURL string
+	DatabaseURL                  string
+	PostgresHost                 string
+	PostgresPort                 int
+	PostgresUser                 string
+	PostgresPassword             string
+	PostgresDB                   string
+	RedisURL                     string
+	RedisHost                    string
+	RedisPort                    int
+	RedisPassword                string
+	JWTSecret                    string
+	RefreshTokenSecret           string
+	InviteTokenSecret            string
+	RefreshCookieName            string
+	AccessTokenTTL               time.Duration
+	RefreshTokenTTL              time.Duration
+	MaxUploadSizeBytes           int64
+	LocalStoragePath             string
+	LogFilePath                  string
+	LogBufferMaxRecords          int
+	TurnEnabled                  bool
+	TurnHost                     string
+	TurnPort                     int
+	TurnUsername                 string
+	TurnPassword                 string
 }
 
 func Load() (Config, error) {
@@ -87,40 +88,41 @@ func Load() (Config, error) {
 	logPath := filepath.Clean(getenv("LOG_FILE_PATH", filepath.Join(".", "logs", "backend.log")))
 
 	cfg := Config{
-		AppName:             getenv("APP_NAME", "family-messenger-backend"),
-		AppVersion:          getenv("APP_VERSION", "0.1.0"),
-		AppEnv:              getenv("APP_ENV", "development"),
-		Host:                getenv("HOST", "0.0.0.0"),
-		Port:                port,
-		AppURL:              trimTrailingSlash(getenv("APP_URL", "http://localhost:8000")),
-		APIURL:              trimTrailingSlash(getenv("API_URL", "http://localhost:8000")),
-		FrontendOrigin:      trimTrailingSlash(getenv("FRONTEND_ORIGIN", "http://frontend:5173")),
-		PublicTunnelOrigin:  trimTrailingSlash(getenv("PUBLIC_TUNNEL_ORIGIN", "http://127.0.0.1:8000")),
-		DatabaseURL:         strings.TrimSpace(os.Getenv("DATABASE_URL")),
-		PostgresHost:        getenv("POSTGRES_HOST", "localhost"),
-		PostgresPort:        postgresPort,
-		PostgresUser:        getenv("POSTGRES_USER", "family_user"),
-		PostgresPassword:    getenv("POSTGRES_PASSWORD", "family_password"),
-		PostgresDB:          getenv("POSTGRES_DB", "family_messenger"),
-		RedisURL:            strings.TrimSpace(os.Getenv("REDIS_URL")),
-		RedisHost:           getenv("REDIS_HOST", "localhost"),
-		RedisPort:           redisPort,
-		RedisPassword:       strings.TrimSpace(os.Getenv("REDIS_PASSWORD")),
-		JWTSecret:           getenv("JWT_SECRET", "change_me"),
-		RefreshTokenSecret:  getenv("REFRESH_TOKEN_SECRET", "change_me_too"),
-		InviteTokenSecret:   getenv("INVITE_TOKEN_SECRET", "change_me_invites"),
-		RefreshCookieName:   getenv("REFRESH_COOKIE_NAME", "family_refresh_token"),
-		AccessTokenTTL:      accessTTL,
-		RefreshTokenTTL:     refreshTTL,
-		MaxUploadSizeBytes:  int64(maxUploadMB) * 1024 * 1024,
-		LocalStoragePath:    storagePath,
-		LogFilePath:         logPath,
-		LogBufferMaxRecords: bufferSize,
-		TurnEnabled:         envBool("TURN_ENABLED", true),
-		TurnHost:            envString("TURN_HOST", ""),
-		TurnPort:            envInt("TURN_PORT", 3478),
-		TurnUsername:        envString("TURN_USERNAME", "family"),
-		TurnPassword:        envString("TURN_PASSWORD", "change_me"),
+		AppName:                      getenv("APP_NAME", "family-messenger-backend"),
+		AppVersion:                   getenv("APP_VERSION", "0.1.0"),
+		AppEnv:                       getenv("APP_ENV", "development"),
+		Host:                         getenv("HOST", "0.0.0.0"),
+		Port:                         port,
+		AppURL:                       trimTrailingSlash(getenv("APP_URL", "http://localhost:8000")),
+		APIURL:                       trimTrailingSlash(getenv("API_URL", "http://localhost:8000")),
+		FrontendOrigin:               trimTrailingSlash(getenv("FRONTEND_ORIGIN", "http://frontend:5173")),
+		PublicTunnelOrigin:           trimTrailingSlash(getenv("PUBLIC_TUNNEL_ORIGIN", "http://127.0.0.1:8000")),
+		PublicReachabilityCheckerURL: strings.TrimSpace(os.Getenv("PUBLIC_REACHABILITY_CHECKER_URL")),
+		DatabaseURL:                  strings.TrimSpace(os.Getenv("DATABASE_URL")),
+		PostgresHost:                 getenv("POSTGRES_HOST", "localhost"),
+		PostgresPort:                 postgresPort,
+		PostgresUser:                 getenv("POSTGRES_USER", "family_user"),
+		PostgresPassword:             getenv("POSTGRES_PASSWORD", "family_password"),
+		PostgresDB:                   getenv("POSTGRES_DB", "family_messenger"),
+		RedisURL:                     strings.TrimSpace(os.Getenv("REDIS_URL")),
+		RedisHost:                    getenv("REDIS_HOST", "localhost"),
+		RedisPort:                    redisPort,
+		RedisPassword:                strings.TrimSpace(os.Getenv("REDIS_PASSWORD")),
+		JWTSecret:                    getenv("JWT_SECRET", "change_me"),
+		RefreshTokenSecret:           getenv("REFRESH_TOKEN_SECRET", "change_me_too"),
+		InviteTokenSecret:            getenv("INVITE_TOKEN_SECRET", "change_me_invites"),
+		RefreshCookieName:            getenv("REFRESH_COOKIE_NAME", "family_refresh_token"),
+		AccessTokenTTL:               accessTTL,
+		RefreshTokenTTL:              refreshTTL,
+		MaxUploadSizeBytes:           int64(maxUploadMB) * 1024 * 1024,
+		LocalStoragePath:             storagePath,
+		LogFilePath:                  logPath,
+		LogBufferMaxRecords:          bufferSize,
+		TurnEnabled:                  envBool("TURN_ENABLED", true),
+		TurnHost:                     envString("TURN_HOST", ""),
+		TurnPort:                     envInt("TURN_PORT", 3478),
+		TurnUsername:                 envString("TURN_USERNAME", "family"),
+		TurnPassword:                 envString("TURN_PASSWORD", "change_me"),
 	}
 
 	return cfg, nil
