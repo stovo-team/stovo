@@ -85,24 +85,11 @@ export interface PublicTunnelStatus {
 }
 
 
-export interface PublicInviteLink {
-  id: string;
-  role: string;
-  url: string;
-  expiresAt: string;
-  maxUses: number;
-  usedCount: number;
-}
 
-export interface QuickStartPublicAccessResponse {
-  status: "stopped" | "starting" | "running" | "error";
-  provider: "cloudflare" | "localtunnel" | string;
-  publicUrl: string;
-  origin: string | null;
-  message: string | null;
-  publicAccess: PublicAccessSettings;
-  inviteLinks: PublicInviteLink[];
-}
+
+
+
+
 
 export interface PublicInviteLink {
   id: string;
@@ -124,10 +111,14 @@ export interface QuickStartPublicAccessResponse {
 }
 
 export interface PublicIPQuickStartResponse {
+  status: "ready" | "blocked";
   publicIp: string;
   publicUrl: string;
-  publicAccess: PublicAccessSettings;
+  publicAccess: PublicAccessSettings | null;
   inviteLinks: PublicInviteLink[];
+  problems: string[];
+  recommendedActions: string[];
+  canUseCloudflareTunnel: boolean;
 }
 
 export interface DomainDnsRecord {

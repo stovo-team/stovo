@@ -219,7 +219,6 @@ func (s *Server) Routes() http.Handler {
 	router.Post("/api/admin/public-access/quick-start", s.authenticated(s.handleQuickStartPublicAccess))
 	router.Post("/api/admin/public-access/tunnel/start", s.authenticated(s.handleTunnelStart))
 	router.Post("/api/admin/public-access/tunnel/stop", s.authenticated(s.handleTunnelStop))
-	router.Post("/api/admin/public-access/quick-start", s.authenticated(s.handleQuickStartPublicAccess))
 	router.Post("/api/admin/public-access/public-ip/quick-start", s.authenticated(s.handlePublicIPQuickStart))
 	router.Post("/api/admin/public-access/domain-link", s.authenticated(s.handleDomainLink))
 	router.Get("/api/admin/encryption-settings", s.authenticated(s.handleGetEncryptionSettings))
