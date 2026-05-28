@@ -1,9 +1,11 @@
 package app
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/netip"
@@ -15,6 +17,8 @@ import (
 	"time"
 
 	"family-messenger/backend/internal/tunnel"
+
+	"github.com/google/uuid"
 )
 
 func (s *Server) handleAdminLogs(w http.ResponseWriter, r *http.Request, user userPublic) {
@@ -199,20 +203,26 @@ func (s *Server) handleTunnelStart(w http.ResponseWriter, r *http.Request, user 
 	if raw := strings.TrimSpace(r.URL.Query().Get("autoRestart")); raw != "" {
 		autoRestart = raw != "false" && raw != "0"
 	}
+
 	snapshot := s.tunnel.Start(s.cfg.PublicTunnelOrigin, provider, autoRestart)
 	if snapshot.URL != nil {
-		publicURL := *snapshot.URL
-
-		_ = s.withTx(r.Context(), func(tx *sql.Tx) error {
-			_, err := s.txExec(tx, `
-            UPDATE families
-            SET public_app_url = ?, public_api_url = ?, updated_at = ?
-            WHERE id = ?
-        `, publicURL, publicURL, nowString(), user.FamilyID)
-			return err
-		})
+		publicURL := strings.TrimRight(*snapshot.URL, "/")
+		if err := s.validatePublicBackendURL(publicURL); err != nil {
+			_ = s.tunnel.Stop()
+			s.detail(w, http.StatusBadGateway, "Tunnel started but backend is not reachable through it: "+err.Error())
+			return
+		}
+		if err := s.saveFamilyPublicURLs(r.Context(), user.FamilyID, publicURL, publicURL); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not save public tunnel URL")
+			return
+		}
 	}
-	family, _ := s.getFamily(user.FamilyID)
+
+	family, err := s.getFamily(user.FamilyID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load public access")
+		return
+	}
 	s.json(w, http.StatusOK, s.snapshotToTunnelStatus(snapshot, family))
 }
 
@@ -364,6 +374,168 @@ func (s *Server) handleUpdateEncryptionSettings(w http.ResponseWriter, r *http.R
 			"Existing plaintext messages remain readable as legacy history.",
 		},
 	})
+}
+
+func (s *Server) handleQuickStartPublicAccess(w http.ResponseWriter, r *http.Request, user userPublic) {
+	if err := s.requireAdmin(user); err != nil {
+		s.detail(w, http.StatusForbidden, "Admin access required")
+		return
+	}
+
+	provider := "cloudflare"
+	snapshot := s.tunnel.Start(s.cfg.PublicTunnelOrigin, provider, true)
+	if snapshot.URL == nil {
+		message := "Could not create public tunnel"
+		if snapshot.Message != nil && strings.TrimSpace(*snapshot.Message) != "" {
+			message = *snapshot.Message
+		}
+		s.detail(w, http.StatusBadGateway, message)
+		return
+	}
+
+	publicURL := strings.TrimRight(*snapshot.URL, "/")
+	if err := s.validatePublicBackendURL(publicURL); err != nil {
+		_ = s.tunnel.Stop()
+		s.detail(w, http.StatusBadGateway, "Public tunnel is not usable: "+err.Error())
+		return
+	}
+
+	if err := s.saveFamilyPublicURLs(r.Context(), user.FamilyID, publicURL, publicURL); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not save public access")
+		return
+	}
+
+	family, err := s.getFamily(user.FamilyID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load family")
+		return
+	}
+	inviteLinks, err := s.createPublicInviteLinks(r.Context(), user, family)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not create invite links")
+		return
+	}
+	settings := publicAccessSettingsForFamily(family, s.cfg.AppURL, s.cfg.APIURL)
+
+	s.json(w, http.StatusOK, quickStartPublicAccessResponse{
+		Status:       snapshot.State,
+		Provider:     provider,
+		PublicURL:    publicURL,
+		Origin:       snapshot.Origin,
+		Message:      snapshot.Message,
+		PublicAccess: settings,
+		InviteLinks:  inviteLinks,
+	})
+}
+
+func (s *Server) handlePublicIPQuickStart(w http.ResponseWriter, r *http.Request, user userPublic) {
+	if err := s.requireAdmin(user); err != nil {
+		s.detail(w, http.StatusForbidden, "Admin access required")
+		return
+	}
+
+	publicIP, err := detectPublicIPv4()
+	if err != nil {
+		s.detail(w, http.StatusBadGateway, "Could not detect public IP")
+		return
+	}
+
+	publicURL := "http://" + publicIP + ":8000"
+	if err := s.saveFamilyPublicURLs(r.Context(), user.FamilyID, publicURL, publicURL); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not save public IP access")
+		return
+	}
+
+	family, err := s.getFamily(user.FamilyID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load family")
+		return
+	}
+	inviteLinks, err := s.createPublicInviteLinks(r.Context(), user, family)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not create invite links")
+		return
+	}
+	settings := publicAccessSettingsForFamily(family, s.cfg.AppURL, s.cfg.APIURL)
+
+	s.json(w, http.StatusOK, publicIPQuickStartResponse{
+		PublicIP:     publicIP,
+		PublicURL:    publicURL,
+		PublicAccess: settings,
+		InviteLinks:  inviteLinks,
+	})
+}
+
+func (s *Server) saveFamilyPublicURLs(ctx context.Context, familyID string, appURL string, apiURL string) error {
+	appURL = strings.TrimRight(strings.TrimSpace(appURL), "/")
+	apiURL = strings.TrimRight(strings.TrimSpace(apiURL), "/")
+	return s.withTx(ctx, func(tx *sql.Tx) error {
+		_, err := s.txExec(tx, `
+			UPDATE families
+			SET public_app_url = ?, public_api_url = ?, updated_at = ?
+			WHERE id = ?
+		`, appURL, apiURL, nowString(), familyID)
+		return err
+	})
+}
+
+func (s *Server) validatePublicBackendURL(publicURL string) error {
+	healthURL := strings.TrimRight(publicURL, "/") + "/api/health"
+	req, err := http.NewRequest(http.MethodGet, healthURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("bypass-tunnel-reminder", "1")
+	req.Header.Set("abypass-tunnel-reminder", "1")
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
+		return fmt.Errorf("health returned status %d", res.StatusCode)
+	}
+	var payload map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
+		return errors.New("health endpoint did not return backend JSON")
+	}
+	return nil
+}
+
+func (s *Server) createPublicInviteLinks(ctx context.Context, user userPublic, family familyPublic) ([]publicInviteLink, error) {
+	rawToken, err := randomToken()
+	if err != nil {
+		return nil, err
+	}
+
+	inviteID := uuid.NewString()
+	expiresAt := time.Now().Add(7 * 24 * time.Hour).UTC()
+	maxUses := 10
+	role := memberRole
+
+	err = s.withTx(ctx, func(tx *sql.Tx) error {
+		_, err := s.txExec(tx, `
+			INSERT INTO invites (id, family_id, token_hash, role, expires_at, max_uses, used_count, created_by, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+		`, inviteID, user.FamilyID, tokenHash(s.cfg.InviteTokenSecret, rawToken), role, expiresAt.Format(time.RFC3339Nano), maxUses, user.ID, nowString())
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return []publicInviteLink{{
+		ID:        inviteID,
+		Role:      role,
+		URL:       buildInviteURL(family, s.cfg.AppURL, s.cfg.APIURL, rawToken),
+		ExpiresAt: expiresAt,
+		MaxUses:   maxUses,
+		UsedCount: 0,
+	}}, nil
 }
 
 func (s *Server) snapshotToTunnelStatus(snapshot tunnel.Snapshot, family familyPublic) publicTunnelStatus {

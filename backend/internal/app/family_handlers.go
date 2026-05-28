@@ -453,39 +453,45 @@ func scanInvite(row *sql.Row) (invitePublic, error) {
 }
 
 func buildInviteURL(family familyPublic, defaultAppURL, defaultAPIURL, rawToken string) string {
-	appURL := defaultAppURL
-	if family.PublicAppURL != nil {
-		appURL = *family.PublicAppURL
+	appURL := strings.TrimRight(strings.TrimSpace(defaultAppURL), "/")
+	apiURL := strings.TrimRight(strings.TrimSpace(defaultAPIURL), "/")
+
+	hasPublicAppURL := family.PublicAppURL != nil && strings.TrimSpace(*family.PublicAppURL) != ""
+	hasPublicAPIURL := family.PublicAPIURL != nil && strings.TrimSpace(*family.PublicAPIURL) != ""
+
+	if hasPublicAppURL {
+		appURL = strings.TrimRight(strings.TrimSpace(*family.PublicAppURL), "/")
 	}
-	apiURL := defaultAPIURL
-	if family.PublicAPIURL != nil {
-		apiURL = *family.PublicAPIURL
+	if hasPublicAPIURL {
+		apiURL = strings.TrimRight(strings.TrimSpace(*family.PublicAPIURL), "/")
 	}
 
 	baseURL := appURL
-	// If app and API public URLs diverge, prefer API as invite base since the backend
-	// can proxy frontend routes and is typically the reachable public edge.
-	if family.PublicAppURL != nil && family.PublicAPIURL != nil &&
-		strings.TrimRight(appURL, "/") != strings.TrimRight(apiURL, "/") {
+	if !hasPublicAppURL && hasPublicAPIURL {
+		baseURL = apiURL
+	}
+	if hasPublicAppURL && hasPublicAPIURL && appURL != apiURL {
 		baseURL = apiURL
 	}
 
-	inviteURL := fmt.Sprintf("%s/invite/%s", strings.TrimRight(baseURL, "/"), rawToken)
-	if family.PublicAPIURL != nil {
+	inviteURL := fmt.Sprintf("%s/invite/%s", baseURL, url.PathEscape(rawToken))
+	if appURL != apiURL {
 		return inviteURL + "?apiUrl=" + url.QueryEscape(apiURL)
 	}
 	return inviteURL
 }
 
 func publicAccessSettingsForFamily(family familyPublic, cfgAppURL, cfgAPIURL string) publicAccessSettings {
-	appURL := cfgAppURL
-	if family.PublicAppURL != nil {
-		appURL = *family.PublicAppURL
+	appURL := strings.TrimRight(strings.TrimSpace(cfgAppURL), "/")
+	apiURL := strings.TrimRight(strings.TrimSpace(cfgAPIURL), "/")
+
+	if family.PublicAppURL != nil && strings.TrimSpace(*family.PublicAppURL) != "" {
+		appURL = strings.TrimRight(strings.TrimSpace(*family.PublicAppURL), "/")
 	}
-	apiURL := cfgAPIURL
-	if family.PublicAPIURL != nil {
-		apiURL = *family.PublicAPIURL
+	if family.PublicAPIURL != nil && strings.TrimSpace(*family.PublicAPIURL) != "" {
+		apiURL = strings.TrimRight(strings.TrimSpace(*family.PublicAPIURL), "/")
 	}
+
 	return publicAccessSettings{
 		AppURL:                  appURL,
 		APIURL:                  apiURL,
@@ -493,7 +499,7 @@ func publicAccessSettingsForFamily(family familyPublic, cfgAppURL, cfgAPIURL str
 		ConfiguredAPIURL:        family.PublicAPIURL,
 		EnvironmentAppURL:       cfgAppURL,
 		EnvironmentAPIURL:       cfgAPIURL,
-		InviteURLIncludesAPIURL: family.PublicAPIURL != nil,
+		InviteURLIncludesAPIURL: appURL != apiURL,
 	}
 }
 
