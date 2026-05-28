@@ -638,11 +638,11 @@ func deriveMessagePreview(content sql.NullString, messageType string, attachment
 func (s *Server) defaultMessageEncryptionProtocol(familyID string) string {
 	family, err := s.getFamily(familyID)
 	if err != nil {
-		return encryptionProtocolEndToEnd
+		return encryptionProtocolServerAtRest
 	}
 	protocol, err := normalizeEncryptionProtocol(family.DefaultMessageEncryptionProtocol)
 	if err != nil {
-		return encryptionProtocolEndToEnd
+		return encryptionProtocolServerAtRest
 	}
 	return protocol
 }

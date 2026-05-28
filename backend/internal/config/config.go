@@ -92,7 +92,7 @@ func Load() (Config, error) {
 		AppEnv:              getenv("APP_ENV", "development"),
 		Host:                getenv("HOST", "0.0.0.0"),
 		Port:                port,
-		AppURL:              trimTrailingSlash(getenv("APP_URL", "http://localhost:5173")),
+		AppURL:              trimTrailingSlash(getenv("APP_URL", "http://localhost:8000")),
 		APIURL:              trimTrailingSlash(getenv("API_URL", "http://localhost:8000")),
 		FrontendOrigin:      trimTrailingSlash(getenv("FRONTEND_ORIGIN", "http://frontend:5173")),
 		PublicTunnelOrigin:  trimTrailingSlash(getenv("PUBLIC_TUNNEL_ORIGIN", "http://127.0.0.1:8000")),
