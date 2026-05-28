@@ -216,12 +216,14 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/admin/public-access/suggestions", s.authenticated(s.handlePublicAccessSuggestions))
 	router.Get("/api/admin/public-access/check", s.authenticated(s.handlePublicAccessCheck))
 	router.Get("/api/admin/public-access/tunnel", s.authenticated(s.handleTunnelStatus))
+	router.Post("/api/admin/public-access/quick-start", s.authenticated(s.handleQuickStartPublicAccess))
 	router.Post("/api/admin/public-access/tunnel/start", s.authenticated(s.handleTunnelStart))
 	router.Post("/api/admin/public-access/tunnel/stop", s.authenticated(s.handleTunnelStop))
+	router.Post("/api/admin/public-access/quick-start", s.authenticated(s.handleQuickStartPublicAccess))
+	router.Post("/api/admin/public-access/public-ip/quick-start", s.authenticated(s.handlePublicIPQuickStart))
 	router.Post("/api/admin/public-access/domain-link", s.authenticated(s.handleDomainLink))
 	router.Get("/api/admin/encryption-settings", s.authenticated(s.handleGetEncryptionSettings))
 	router.Put("/api/admin/encryption-settings", s.authenticated(s.handleUpdateEncryptionSettings))
-	router.Post("/api/admin/public-access/quick-start", s.authenticated(s.handleQuickStartPublicAccess))
 
 	router.MethodFunc(http.MethodGet, "/*", s.handleFrontendProxy)
 	router.MethodFunc(http.MethodHead, "/*", s.handleFrontendProxy)
@@ -305,7 +307,7 @@ func (s *Server) initSchema() error {
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			storage_limit_mb INTEGER,
-			default_message_encryption_protocol TEXT NOT NULL DEFAULT 'end_to_end',
+			default_message_encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest',
 			public_app_url TEXT,
 			public_api_url TEXT,
 			created_at TEXT NOT NULL,
@@ -359,7 +361,7 @@ func (s *Server) initSchema() error {
 			chat_photo_file_id TEXT,
 			media_visibility TEXT NOT NULL,
 			comments_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-			encryption_protocol TEXT NOT NULL DEFAULT 'end_to_end',
+			encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest',
 			created_at TEXT NOT NULL,
 			updated_at TEXT NOT NULL,
 			FOREIGN KEY (family_id) REFERENCES families(id)
@@ -476,8 +478,8 @@ func (s *Server) initSchema() error {
 		);`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_message_id TEXT;`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_chat_id TEXT;`,
-		`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_message_encryption_protocol TEXT NOT NULL DEFAULT 'end_to_end';`,
-		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS encryption_protocol TEXT NOT NULL DEFAULT 'end_to_end';`,
+		`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_message_encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest';`,
+		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest';`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS encryption_protocol TEXT NOT NULL DEFAULT 'legacy_plaintext';`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS ciphertext TEXT;`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS nonce TEXT;`,
@@ -489,8 +491,10 @@ func (s *Server) initSchema() error {
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo_file_id TEXT;`,
 		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS chat_photo_file_id TEXT;`,
 		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS comments_enabled BOOLEAN NOT NULL DEFAULT TRUE;`,
-		`UPDATE families SET default_message_encryption_protocol = 'end_to_end' WHERE default_message_encryption_protocol IS NULL OR default_message_encryption_protocol = '';`,
-		`UPDATE chats SET encryption_protocol = 'end_to_end' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
+		`UPDATE families SET default_message_encryption_protocol = 'server_at_rest' WHERE default_message_encryption_protocol IS NULL OR default_message_encryption_protocol = '';`,
+		`UPDATE families SET default_message_encryption_protocol = 'server_at_rest' WHERE default_message_encryption_protocol = 'end_to_end';`,
+		`UPDATE chats SET encryption_protocol = 'server_at_rest' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
+		`UPDATE chats SET encryption_protocol = 'server_at_rest' WHERE encryption_protocol = 'end_to_end';`,
 		`UPDATE messages SET encryption_protocol = 'legacy_plaintext' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
 	}
@@ -767,7 +771,7 @@ func (s *Server) getFamily(familyID string) (familyPublic, error) {
 		return familyPublic{}, err
 	}
 	if family.DefaultMessageEncryptionProtocol == "" {
-		family.DefaultMessageEncryptionProtocol = encryptionProtocolEndToEnd
+		family.DefaultMessageEncryptionProtocol = encryptionProtocolServerAtRest
 	}
 	if storageLimit.Valid {
 		family.StorageLimitMB = &storageLimit.Int64

@@ -508,7 +508,7 @@ func (s *Server) validateReplyTarget(chatID, replyToMessageID string) error {
 func (s *Server) prepareMessageEncryption(chat chatPublic, content *string, payload sendMessageRequest) (string, *string, *string, *int, *string, error) {
 	protocol, err := normalizeEncryptionProtocol(chat.EncryptionProtocol)
 	if err != nil {
-		protocol = encryptionProtocolEndToEnd
+		protocol = encryptionProtocolServerAtRest
 	}
 	if payload.EncryptionProtocol != nil && strings.TrimSpace(*payload.EncryptionProtocol) != "" {
 		requested, err := normalizeEncryptionProtocol(*payload.EncryptionProtocol)

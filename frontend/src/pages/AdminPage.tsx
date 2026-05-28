@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent,useCallback,useEffect,useState } from "react";
 
 import {
   AdminMessageEncryptionProtocol,
@@ -13,17 +13,20 @@ import {
   PublicAccessCheckResponse,
   PublicAccessSettings,
   PublicAccessSuggestions,
-  PublicTunnelStatus
+  PublicInviteLink,
+  PublicIPQuickStartResponse,
+  PublicTunnelStatus,
+  QuickStartPublicAccessResponse
 } from "../api/admin";
-import { ApiError, getApiUrl } from "../api/client";
+import { ApiError,getApiUrl } from "../api/client";
 import { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 
-const LOG_LEVELS: Array<LogLevel | ""> = ["", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"];
+const LOG_LEVELS: Array<LogLevel | ""> = ["","DEBUG","INFO","WARNING","ERROR","CRITICAL"];
 type TunnelProvider = "cloudflare" | "localtunnel";
 type MediaType = MediaQualityRule["mediaType"];
-const MEDIA_TYPES: MediaType[] = ["image", "video", "audio"];
+const MEDIA_TYPES: MediaType[] = ["image","video","audio"];
 
 function isLoopbackHost(hostname: string) {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
@@ -37,34 +40,17 @@ function formatTimestamp(value: string) {
   return new Date(value).toLocaleString();
 }
 
-function logsPath({
-  level,
-  loggerName,
-  search,
-  limit
-}: {
-  level: LogLevel | "";
-  loggerName: string;
-  search: string;
-  limit: number;
-}) {
+function logsPath({ level,loggerName,search,limit }: { level: LogLevel | ""; loggerName: string; search: string; limit: number }) {
   const params = new URLSearchParams();
-  if (level) {
-    params.set("level", level);
-  }
-  if (loggerName.trim()) {
-    params.set("logger", loggerName.trim());
-  }
-  if (search.trim()) {
-    params.set("search", search.trim());
-  }
-  params.set("limit", String(limit));
+  if (level) params.set("level",level);
+  if (loggerName.trim()) params.set("logger",loggerName.trim());
+  if (search.trim()) params.set("search",search.trim());
+  params.set("limit",String(limit));
   return `/api/admin/logs?${params.toString()}`;
 }
 
-
 function LogRow({ entry }: { entry: LogEntry }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded,setExpanded] = useState(false);
 
   return (
     <article className="log-row">
@@ -76,9 +62,7 @@ function LogRow({ entry }: { entry: LogEntry }) {
       </button>
       {expanded && (
         <div className="log-row-details">
-          <code>
-            {entry.module}.{entry.functionName}:{entry.lineNo}
-          </code>
+          <code>{entry.module}.{entry.functionName}:{entry.lineNo}</code>
           {entry.exception && <pre>{entry.exception}</pre>}
         </div>
       )}
@@ -87,37 +71,40 @@ function LogRow({ entry }: { entry: LogEntry }) {
 }
 
 export default function AdminPage() {
-  const { accessToken, authRequest, currentUser } = useAuth();
-  const [family, setFamily] = useState<Family | null>(null);
-  const [logs, setLogs] = useState<LogsResponse | null>(null);
-  const [publicAccess, setPublicAccess] = useState<PublicAccessSettings | null>(null);
-  const [mediaQualityRules, setMediaQualityRules] = useState<MediaQualityRule[]>([]);
-  const [publicAccessForm, setPublicAccessForm] = useState({ appUrl: "", apiUrl: "" });
-  const [publicAccessSuggestions, setPublicAccessSuggestions] = useState<PublicAccessCandidate[]>([]);
-  const [publicAccessCheck, setPublicAccessCheck] = useState<PublicAccessCheckResponse | null>(null);
-  const [publicTunnel, setPublicTunnel] = useState<PublicTunnelStatus | null>(null);
-  const [domainLinkForm, setDomainLinkForm] = useState({ domain: "", apiDomain: "" });
-  const [lastDomainLink, setLastDomainLink] = useState<DomainLinkResponse | null>(null);
-  const [encryptionSettings, setEncryptionSettings] = useState<EncryptionSettings | null>(null);
-  const [encryptionProtocolDraft, setEncryptionProtocolDraft] =
-    useState<AdminMessageEncryptionProtocol>("end_to_end");
-  const [level, setLevel] = useState<LogLevel | "">("");
-  const [loggerName, setLoggerName] = useState("");
-  const [search, setSearch] = useState("");
-  const [limit, setLimit] = useState(200);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSavingPublicAccess, setIsSavingPublicAccess] = useState(false);
-  const [isSavingMediaQuality, setIsSavingMediaQuality] = useState(false);
-  const [isCheckingPublicAccess, setIsCheckingPublicAccess] = useState(false);
-  const [startingTunnelProvider, setStartingTunnelProvider] = useState<TunnelProvider | null>(null);
-  const [isStoppingTunnel, setIsStoppingTunnel] = useState(false);
-  const [isLinkingDomain, setIsLinkingDomain] = useState(false);
-  const [isSavingEncryption, setIsSavingEncryption] = useState(false);
+  const { accessToken,authRequest,currentUser } = useAuth();
+  const [family,setFamily] = useState<Family | null>(null);
+  const [logs,setLogs] = useState<LogsResponse | null>(null);
+  const [publicAccess,setPublicAccess] = useState<PublicAccessSettings | null>(null);
+  const [mediaQualityRules,setMediaQualityRules] = useState<MediaQualityRule[]>([]);
+  const [publicAccessForm,setPublicAccessForm] = useState({ appUrl: "",apiUrl: "" });
+  const [publicAccessSuggestions,setPublicAccessSuggestions] = useState<PublicAccessCandidate[]>([]);
+  const [publicAccessCheck,setPublicAccessCheck] = useState<PublicAccessCheckResponse | null>(null);
+  const [publicTunnel,setPublicTunnel] = useState<PublicTunnelStatus | null>(null);
+  const [domainLinkForm,setDomainLinkForm] = useState({ domain: "",apiDomain: "" });
+  const [lastDomainLink,setLastDomainLink] = useState<DomainLinkResponse | null>(null);
+  const [encryptionSettings,setEncryptionSettings] = useState<EncryptionSettings | null>(null);
+  const [encryptionProtocolDraft,setEncryptionProtocolDraft] = useState<AdminMessageEncryptionProtocol>("server_at_rest");
+  const [level,setLevel] = useState<LogLevel | "">("");
+  const [loggerName,setLoggerName] = useState("");
+  const [search,setSearch] = useState("");
+  const [limit,setLimit] = useState(200);
+  const [autoRefresh,setAutoRefresh] = useState(true);
+  const [error,setError] = useState<string | null>(null);
+  const [notice,setNotice] = useState<string | null>(null);
+  const [isLoading,setIsLoading] = useState(true);
+  const [isSavingPublicAccess,setIsSavingPublicAccess] = useState(false);
+  const [isStartingPublicAccess,setIsStartingPublicAccess] = useState(false);
+  const [isStartingPublicIPAccess,setIsStartingPublicIPAccess] = useState(false);
+  const [inviteLinks,setInviteLinks] = useState<PublicInviteLink[]>([]);
+  const [isSavingMediaQuality,setIsSavingMediaQuality] = useState(false);
+  const [isCheckingPublicAccess,setIsCheckingPublicAccess] = useState(false);
+  const [startingTunnelProvider,setStartingTunnelProvider] = useState<TunnelProvider | null>(null);
+  const [isStoppingTunnel,setIsStoppingTunnel] = useState(false);
+  const [isLinkingDomain,setIsLinkingDomain] = useState(false);
+  const [isSavingEncryption,setIsSavingEncryption] = useState(false);
 
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const publicAccessReady = Boolean(publicAccess?.configuredAppUrl || publicAccess?.configuredApiUrl || publicTunnel?.url);
 
   const load = useCallback(async () => {
     if (!accessToken || !canViewAdmin) {
@@ -127,22 +114,9 @@ export default function AdminPage() {
 
     setError(null);
     try {
-      const [
-        familyResult,
-        logsResult,
-        publicAccessResult,
-        mediaQualityResult,
-        suggestionsResult,
-        tunnelResult,
-        encryptionResult
-      ] = await Promise.all([
+      const [familyResult,logsResult,publicAccessResult,mediaQualityResult,suggestionsResult,tunnelResult,encryptionResult] = await Promise.all([
         authRequest<Family>("/api/family"),
-        authRequest<LogsResponse>(logsPath({
-          level,
-          loggerName,
-          search,
-          limit
-        })),
+        authRequest<LogsResponse>(logsPath({ level,loggerName,search,limit })),
         authRequest<PublicAccessSettings>("/api/admin/public-access"),
         authRequest<MediaQualitySettings>("/api/admin/media-quality"),
         authRequest<PublicAccessSuggestions>("/api/admin/public-access/suggestions"),
@@ -157,51 +131,34 @@ export default function AdminPage() {
       setPublicTunnel(tunnelResult);
       setEncryptionSettings(encryptionResult);
       setEncryptionProtocolDraft(encryptionResult.defaultMessageEncryptionProtocol);
-      setPublicAccessForm({
-        appUrl: publicAccessResult.appUrl,
-        apiUrl: publicAccessResult.apiUrl
-      });
+      setPublicAccessForm({ appUrl: publicAccessResult.appUrl,apiUrl: publicAccessResult.apiUrl });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not load admin data");
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, authRequest, canViewAdmin, level, limit, loggerName, search]);
+  },[accessToken,authRequest,canViewAdmin,level,limit,loggerName,search]);
 
   const loadLogs = useCallback(async () => {
-    if (!accessToken || !canViewAdmin) {
-      return;
-    }
-
+    if (!accessToken || !canViewAdmin) return;
     setError(null);
     try {
-      const logsResult = await authRequest<LogsResponse>(logsPath({
-        level,
-        loggerName,
-        search,
-        limit
-      }));
+      const logsResult = await authRequest<LogsResponse>(logsPath({ level,loggerName,search,limit }));
       setLogs(logsResult);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not load logs");
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, authRequest, canViewAdmin, level, limit, loggerName, search]);
+  },[accessToken,authRequest,canViewAdmin,level,limit,loggerName,search]);
+
+  useEffect(() => { void load(); },[load]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  useEffect(() => {
-    if (!autoRefresh || !canViewAdmin) {
-      return undefined;
-    }
-    const intervalId = window.setInterval(() => {
-      void loadLogs();
-    }, 5000);
+    if (!autoRefresh || !canViewAdmin) return undefined;
+    const intervalId = window.setInterval(() => { void loadLogs(); },5000);
     return () => window.clearInterval(intervalId);
-  }, [autoRefresh, canViewAdmin, loadLogs]);
+  },[autoRefresh,canViewAdmin,loadLogs]);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -211,22 +168,17 @@ export default function AdminPage() {
 
   async function savePublicAccess(event: FormEvent) {
     event.preventDefault();
-    if (!accessToken) {
-      return;
-    }
+    if (!accessToken) return;
     setError(null);
     setNotice(null);
     setIsSavingPublicAccess(true);
     try {
-      const updated = await authRequest<PublicAccessSettings>("/api/admin/public-access", {
+      const updated = await authRequest<PublicAccessSettings>("/api/admin/public-access",{
         method: "PUT",
-        body: {
-          appUrl: publicAccessForm.appUrl.trim() || null,
-          apiUrl: publicAccessForm.apiUrl.trim() || null
-        }
+        body: { appUrl: publicAccessForm.appUrl.trim() || null,apiUrl: publicAccessForm.apiUrl.trim() || null }
       });
       setPublicAccess(updated);
-      setPublicAccessForm({ appUrl: updated.appUrl, apiUrl: updated.apiUrl });
+      setPublicAccessForm({ appUrl: updated.appUrl,apiUrl: updated.apiUrl });
       setPublicAccessCheck(null);
       setNotice("Public access saved");
     } catch (err) {
@@ -237,23 +189,19 @@ export default function AdminPage() {
   }
 
   async function clearPublicAccess() {
-    if (!accessToken) {
-      return;
-    }
+    if (!accessToken) return;
     setError(null);
     setNotice(null);
     setIsSavingPublicAccess(true);
     try {
-      const updated = await authRequest<PublicAccessSettings>("/api/admin/public-access", {
+      const updated = await authRequest<PublicAccessSettings>("/api/admin/public-access",{
         method: "PUT",
-        body: {
-          appUrl: null,
-          apiUrl: null
-        }
+        body: { appUrl: null,apiUrl: null }
       });
       setPublicAccess(updated);
-      setPublicAccessForm({ appUrl: updated.appUrl, apiUrl: updated.apiUrl });
+      setPublicAccessForm({ appUrl: updated.appUrl,apiUrl: updated.apiUrl });
       setPublicAccessCheck(null);
+      setInviteLinks([]);
       setNotice("Public access reset");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not reset public access");
@@ -262,45 +210,77 @@ export default function AdminPage() {
     }
   }
 
-  function updateMediaQualityRule(index: number, patch: Partial<MediaQualityRule>) {
-    setMediaQualityRules((current) =>
-      current.map((rule, ruleIndex) => (ruleIndex === index ? { ...rule, ...patch } : rule))
-    );
+  async function quickStartPublicAccess() {
+    if (!accessToken) return;
+    setError(null);
+    setNotice(null);
+    setIsStartingPublicAccess(true);
+    try {
+      const result = await authRequest<QuickStartPublicAccessResponse>("/api/admin/public-access/quick-start",{ method: "POST" });
+      setPublicAccess(result.publicAccess);
+      setPublicAccessForm({ appUrl: result.publicAccess.appUrl,apiUrl: result.publicAccess.apiUrl });
+      setPublicTunnel({
+        state: result.status,
+        provider: result.provider,
+        url: result.publicUrl,
+        origin: result.origin,
+        message: result.message ?? "Public access is ready",
+        logs: [],
+        autoRestart: true,
+        restarts: 0,
+        publicAccess: result.publicAccess
+      });
+      setInviteLinks(result.inviteLinks);
+      setPublicAccessCheck(null);
+      setNotice("Messenger is public. Invite links are ready to copy.");
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not start public access");
+    } finally {
+      setIsStartingPublicAccess(false);
+    }
+  }
+
+  async function quickStartPublicIPAccess() {
+    if (!accessToken) return;
+    setError(null);
+    setNotice(null);
+    setIsStartingPublicIPAccess(true);
+    try {
+      const result = await authRequest<PublicIPQuickStartResponse>("/api/admin/public-access/public-ip/quick-start",{ method: "POST" });
+      setPublicAccess(result.publicAccess);
+      setPublicAccessForm({ appUrl: result.publicAccess.appUrl,apiUrl: result.publicAccess.apiUrl });
+      setInviteLinks(result.inviteLinks);
+      setPublicAccessCheck(null);
+      setNotice("Public IP link is ready. Make sure TCP port 8000 is forwarded to this computer.");
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not prepare public IP access");
+    } finally {
+      setIsStartingPublicIPAccess(false);
+    }
+  }
+
+  function updateMediaQualityRule(index: number,patch: Partial<MediaQualityRule>) {
+    setMediaQualityRules((current) => current.map((rule,ruleIndex) => ruleIndex === index ? { ...rule,...patch } : rule));
   }
 
   function addMediaQualityRule() {
-    setMediaQualityRules((current) => [
-      ...current,
-      {
-        mediaType: "image",
-        extension: ".jpg",
-        qualityPercent: 85
-      }
-    ]);
+    setMediaQualityRules((current) => [...current,{ mediaType: "image",extension: ".jpg",qualityPercent: 85 }]);
   }
 
   function removeMediaQualityRule(index: number) {
-    setMediaQualityRules((current) => current.filter((_, ruleIndex) => ruleIndex !== index));
+    setMediaQualityRules((current) => current.filter((_,ruleIndex) => ruleIndex !== index));
   }
 
   async function saveMediaQuality(event: FormEvent) {
     event.preventDefault();
-    if (!accessToken) {
-      return;
-    }
+    if (!accessToken) return;
     setError(null);
     setNotice(null);
     setIsSavingMediaQuality(true);
     try {
-      const updated = await authRequest<MediaQualitySettings>("/api/admin/media-quality", {
+      const updated = await authRequest<MediaQualitySettings>("/api/admin/media-quality",{
         method: "PUT",
-        body: {
-          rules: mediaQualityRules.map((rule) => ({
-            mediaType: rule.mediaType,
-            extension: rule.extension.trim(),
-            qualityPercent: Number(rule.qualityPercent)
-          }))
-        }
+        body: { rules: mediaQualityRules.map((rule) => ({ mediaType: rule.mediaType,extension: rule.extension.trim(),qualityPercent: Number(rule.qualityPercent) })) }
       });
       setMediaQualityRules(updated.rules);
       setNotice("Media quality saved");
@@ -313,18 +293,14 @@ export default function AdminPage() {
 
   async function saveEncryptionSettings(event: FormEvent) {
     event.preventDefault();
-    if (!accessToken) {
-      return;
-    }
+    if (!accessToken) return;
     setError(null);
     setNotice(null);
     setIsSavingEncryption(true);
     try {
-      const updated = await authRequest<EncryptionSettings>("/api/admin/encryption-settings", {
+      const updated = await authRequest<EncryptionSettings>("/api/admin/encryption-settings",{
         method: "PUT",
-        body: {
-          defaultMessageEncryptionProtocol: encryptionProtocolDraft
-        }
+        body: { defaultMessageEncryptionProtocol: encryptionProtocolDraft }
       });
       setEncryptionSettings(updated);
       setEncryptionProtocolDraft(updated.defaultMessageEncryptionProtocol);
@@ -337,10 +313,7 @@ export default function AdminPage() {
   }
 
   function useBrowserUrls() {
-    setPublicAccessForm({
-      appUrl: window.location.origin,
-      apiUrl: getApiUrl()
-    });
+    setPublicAccessForm({ appUrl: window.location.origin,apiUrl: getApiUrl() });
     setPublicAccessCheck(null);
     setNotice(null);
   }
@@ -350,27 +323,20 @@ export default function AdminPage() {
       setNotice("Open the admin page with the LAN address, then press this again");
       return;
     }
-    setPublicAccessForm({
-      appUrl: `${window.location.protocol}//${window.location.hostname}:5173`,
-      apiUrl: `${window.location.protocol}//${window.location.hostname}:8000`
-    });
+    const publicUrl = `${window.location.protocol}//${window.location.hostname}:8000`;
+    setPublicAccessForm({ appUrl: publicUrl,apiUrl: publicUrl });
     setPublicAccessCheck(null);
     setNotice(null);
   }
 
   function useCandidate(candidate: PublicAccessCandidate) {
-    setPublicAccessForm({
-      appUrl: candidate.appUrl,
-      apiUrl: candidate.apiUrl
-    });
+    setPublicAccessForm({ appUrl: candidate.appUrl,apiUrl: candidate.apiUrl });
     setPublicAccessCheck(null);
     setNotice(null);
   }
 
   async function checkSavedPublicAccess() {
-    if (!accessToken) {
-      return;
-    }
+    if (!accessToken) return;
     setError(null);
     setNotice(null);
     setIsCheckingPublicAccess(true);
@@ -389,25 +355,18 @@ export default function AdminPage() {
     setPublicTunnel(result);
     if (result.publicAccess) {
       setPublicAccess(result.publicAccess);
-      setPublicAccessForm({
-        appUrl: result.publicAccess.appUrl,
-        apiUrl: result.publicAccess.apiUrl
-      });
+      setPublicAccessForm({ appUrl: result.publicAccess.appUrl,apiUrl: result.publicAccess.apiUrl });
       setPublicAccessCheck(null);
     }
   }
 
   async function startTunnel(provider: TunnelProvider) {
-    if (!accessToken) {
-      return;
-    }
+    if (!accessToken) return;
     setError(null);
     setNotice(null);
     setStartingTunnelProvider(provider);
     try {
-      const result = await authRequest<PublicTunnelStatus>(`/api/admin/public-access/tunnel/start?provider=${provider}`, {
-        method: "POST"
-      });
+      const result = await authRequest<PublicTunnelStatus>(`/api/admin/public-access/tunnel/start?provider=${provider}`,{ method: "POST" });
       applyTunnelResult(result);
       setNotice(result.url ? "Public tunnel started" : result.message ?? "Could not start public tunnel");
     } catch (err) {
@@ -426,20 +385,14 @@ export default function AdminPage() {
     setNotice(null);
     setIsLinkingDomain(true);
     try {
-      const result = await authRequest<DomainLinkResponse>("/api/admin/public-access/domain-link", {
+      const result = await authRequest<DomainLinkResponse>("/api/admin/public-access/domain-link",{
         method: "POST",
-        body: {
-          domain: domainLinkForm.domain.trim(),
-          apiDomain: domainLinkForm.apiDomain.trim() || null
-        }
+        body: { domain: domainLinkForm.domain.trim(),apiDomain: domainLinkForm.apiDomain.trim() || null }
       });
       setLastDomainLink(result);
       if (result.publicAccess) {
         setPublicAccess(result.publicAccess);
-        setPublicAccessForm({
-          appUrl: result.publicAccess.appUrl,
-          apiUrl: result.publicAccess.apiUrl
-        });
+        setPublicAccessForm({ appUrl: result.publicAccess.appUrl,apiUrl: result.publicAccess.apiUrl });
       }
       setNotice("Domain URLs linked. Add DNS records shown below.");
     } catch (err) {
@@ -450,16 +403,12 @@ export default function AdminPage() {
   }
 
   async function stopTunnel() {
-    if (!accessToken) {
-      return;
-    }
+    if (!accessToken) return;
     setError(null);
     setNotice(null);
     setIsStoppingTunnel(true);
     try {
-      const result = await authRequest<PublicTunnelStatus>("/api/admin/public-access/tunnel/stop", {
-        method: "POST"
-      });
+      const result = await authRequest<PublicTunnelStatus>("/api/admin/public-access/tunnel/stop",{ method: "POST" });
       applyTunnelResult(result);
       setNotice("Public tunnel stopped");
     } catch (err) {
@@ -489,199 +438,173 @@ export default function AdminPage() {
             <section className="public-access-panel">
               <div className="public-access-header">
                 <h2>Public access</h2>
-                <strong>{publicAccess?.inviteUrlIncludesApiUrl ? "API included" : "API derived"}</strong>
+                <strong>{publicAccessReady ? "Ready" : "Private"}</strong>
               </div>
+
+              <div className="tunnel-panel">
+                <div>
+                  <span className="summary-label">One-click setup</span>
+                  <strong>Make this messenger available outside your network</strong>
+                  <span>Cloudflare is the recommended one-click option. Public IP requires router forwarding for TCP port 8000.</span>
+                </div>
+                <div className="public-access-actions">
+                  <button type="button" disabled={isStartingPublicAccess} onClick={() => void quickStartPublicAccess()}>
+                    {isStartingPublicAccess ? "Starting tunnel..." : "Make messenger public"}
+                  </button>
+                  <button type="button" disabled={isStartingPublicIPAccess} onClick={() => void quickStartPublicIPAccess()}>
+                    {isStartingPublicIPAccess ? "Preparing public IP..." : "Use public IP"}
+                  </button>
+                </div>
+              </div>
+
               <div className="public-access-current">
                 <div>
-                  <span className="summary-label">App URL</span>
-                  <code>{publicAccess?.appUrl ?? "Loading"}</code>
+                  <span className="summary-label">Public link</span>
+                  <code>{publicAccess?.appUrl ?? publicTunnel?.url ?? "Not configured"}</code>
                 </div>
-                <div>
-                  <span className="summary-label">API URL</span>
-                  <code>{publicAccess?.apiUrl ?? "Loading"}</code>
-                </div>
+                <button type="button" disabled={!publicAccess?.appUrl && !publicTunnel?.url} onClick={() => void navigator.clipboard.writeText(publicAccess?.appUrl ?? publicTunnel?.url ?? "")}>
+                  Copy public link
+                </button>
               </div>
-              <div className="tunnel-panel">
-                <div>
-                  <span className="summary-label">Public tunnel</span>
-                  <strong>
-                    {publicTunnel?.provider ? `${publicTunnel.provider} / ` : ""}
-                    {publicTunnel?.state ?? "stopped"}
-                  </strong>
-                  {publicTunnel?.url && <code>{publicTunnel.url}</code>}
-                  {publicTunnel?.message && <span>{publicTunnel.message}</span>}
-                  <span>Auto-restart: {publicTunnel?.autoRestart ? "on" : "off"}</span>
-                  <span>Restarts: {publicTunnel?.restarts ?? 0}</span>
-                </div>
-                <div className="public-access-actions">
-                  <button
-                    type="button"
-                    disabled={startingTunnelProvider !== null || publicTunnel?.state === "running"}
-                    onClick={() => void startTunnel("cloudflare")}
-                  >
-                    {startingTunnelProvider === "cloudflare" ? "Starting" : "Start Cloudflare"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={startingTunnelProvider !== null || publicTunnel?.state === "running"}
-                    onClick={() => void startTunnel("localtunnel")}
-                  >
-                    {startingTunnelProvider === "localtunnel" ? "Starting" : "Start LocalTunnel"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isStoppingTunnel || publicTunnel?.state !== "running"}
-                    onClick={() => void stopTunnel()}
-                  >
-                    {isStoppingTunnel ? "Stopping" : "Stop tunnel"}
-                  </button>
-                </div>
-              </div>
-              <div className="tunnel-panel">
-                <div>
-                  <span className="summary-label">Domain to Public IP</span>
-                  <strong>One-click URL setup</strong>
-                  {lastDomainLink?.publicIp && <code>Detected public IP: {lastDomainLink.publicIp}</code>}
-                </div>
-                <div className="public-access-actions">
-                  <input
-                    placeholder="yourdomain.com"
-                    value={domainLinkForm.domain}
-                    onChange={(event) => setDomainLinkForm({ ...domainLinkForm, domain: event.target.value })}
-                  />
-                  <input
-                    placeholder="api.yourdomain.com (optional)"
-                    value={domainLinkForm.apiDomain}
-                    onChange={(event) => setDomainLinkForm({ ...domainLinkForm, apiDomain: event.target.value })}
-                  />
-                  <button type="button" disabled={isLinkingDomain} onClick={() => void linkDomainToPublicIp()}>
-                    {isLinkingDomain ? "Linking" : "Link Domain"}
-                  </button>
-                </div>
-                {lastDomainLink?.records?.length ? (
-                  <div className="network-checks">
-                    {lastDomainLink.records.map((record) => (
-                      <article className="network-check ok" key={`${record.type}-${record.name}-${record.value}`}>
-                        <strong>{record.type}</strong>
-                        <code>{record.name}</code>
-                        <span>{record.value}</span>
-                      </article>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <form className="public-access-form" onSubmit={savePublicAccess}>
-                <label>
-                  App URL
-                  <input
-                    placeholder="https://messenger.example.com"
-                    value={publicAccessForm.appUrl}
-                    onChange={(event) =>
-                      setPublicAccessForm({ ...publicAccessForm, appUrl: event.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  API URL
-                  <input
-                    placeholder="https://api.example.com"
-                    value={publicAccessForm.apiUrl}
-                    onChange={(event) =>
-                      setPublicAccessForm({ ...publicAccessForm, apiUrl: event.target.value })
-                    }
-                  />
-                </label>
-                <div className="public-access-actions">
-                  <button type="button" onClick={useCurrentNetworkUrls}>
-                    Use LAN host
-                  </button>
-                  <button type="button" onClick={useBrowserUrls}>
-                    Use browser URLs
-                  </button>
-                  <button type="submit" disabled={isSavingPublicAccess}>
-                    {isSavingPublicAccess ? "Saving" : "Save"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isCheckingPublicAccess}
-                    onClick={() => void checkSavedPublicAccess()}
-                  >
-                    {isCheckingPublicAccess ? "Checking" : "Check saved URLs"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isSavingPublicAccess}
-                    onClick={() => void clearPublicAccess()}
-                  >
-                    Clear
-                  </button>
-                </div>
-              </form>
-              {publicAccessSuggestions.length > 0 && (
-                <div className="candidate-list">
-                  {publicAccessSuggestions.map((candidate) => (
-                    <button
-                      type="button"
-                      key={`${candidate.appUrl}-${candidate.apiUrl}`}
-                      onClick={() => useCandidate(candidate)}
-                    >
-                      {candidate.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {publicAccessCheck && (
-                <div className="network-checks">
-                  {publicAccessCheck.targets.map((target) => (
-                    <article className={target.ok ? "network-check ok" : "network-check error"} key={target.name}>
-                      <strong>{target.name}</strong>
-                      <code>{target.url}</code>
-                      <span>{target.statusCode ? `${target.statusCode} ${target.detail}` : target.detail}</span>
+
+              {inviteLinks.length > 0 && (
+                <div className="invite-links">
+                  <h3>Invite links</h3>
+                  {inviteLinks.map((invite) => (
+                    <article key={invite.id} className="invite-link-card">
+                      <div>
+                        <strong>{invite.role}</strong>
+                        <code>{invite.url}</code>
+                      </div>
+                      <button type="button" onClick={() => void navigator.clipboard.writeText(invite.url)}>Copy</button>
                     </article>
                   ))}
                 </div>
               )}
+
+              <details className="advanced-public-access">
+                <summary>Advanced public access settings</summary>
+
+                <div className="public-access-current">
+                  <div>
+                    <span className="summary-label">App URL</span>
+                    <code>{publicAccess?.appUrl ?? "Loading"}</code>
+                  </div>
+                  <div>
+                    <span className="summary-label">API URL</span>
+                    <code>{publicAccess?.apiUrl ?? "Loading"}</code>
+                  </div>
+                </div>
+
+                <div className="tunnel-panel">
+                  <div>
+                    <span className="summary-label">Public tunnel</span>
+                    <strong>{publicTunnel?.provider ? `${publicTunnel.provider} / ` : ""}{publicTunnel?.state ?? "stopped"}</strong>
+                    {publicTunnel?.url && <code>{publicTunnel.url}</code>}
+                    {publicTunnel?.message && <span>{publicTunnel.message}</span>}
+                    <span>Auto-restart: {publicTunnel?.autoRestart ? "on" : "off"}</span>
+                    <span>Restarts: {publicTunnel?.restarts ?? 0}</span>
+                  </div>
+                  <div className="public-access-actions">
+                    <button type="button" disabled={startingTunnelProvider !== null || publicTunnel?.state === "running"} onClick={() => void startTunnel("cloudflare")}>
+                      {startingTunnelProvider === "cloudflare" ? "Starting" : "Start Cloudflare"}
+                    </button>
+                    <button type="button" disabled={startingTunnelProvider !== null || publicTunnel?.state === "running"} onClick={() => void startTunnel("localtunnel")}>
+                      {startingTunnelProvider === "localtunnel" ? "Starting" : "Start LocalTunnel"}
+                    </button>
+                    <button type="button" disabled={isStoppingTunnel || publicTunnel?.state !== "running"} onClick={() => void stopTunnel()}>
+                      {isStoppingTunnel ? "Stopping" : "Stop tunnel"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="tunnel-panel">
+                  <div>
+                    <span className="summary-label">Domain to Public IP</span>
+                    <strong>One-click URL setup</strong>
+                    {lastDomainLink?.publicIp && <code>Detected public IP: {lastDomainLink.publicIp}</code>}
+                  </div>
+                  <div className="public-access-actions">
+                    <input placeholder="yourdomain.com" value={domainLinkForm.domain} onChange={(event) => setDomainLinkForm({ ...domainLinkForm,domain: event.target.value })} />
+                    <input placeholder="api.yourdomain.com (optional)" value={domainLinkForm.apiDomain} onChange={(event) => setDomainLinkForm({ ...domainLinkForm,apiDomain: event.target.value })} />
+                    <button type="button" disabled={isLinkingDomain} onClick={() => void linkDomainToPublicIp()}>
+                      {isLinkingDomain ? "Linking" : "Link Domain"}
+                    </button>
+                  </div>
+                  {lastDomainLink?.records?.length ? (
+                    <div className="network-checks">
+                      {lastDomainLink.records.map((record) => (
+                        <article className="network-check ok" key={`${record.type}-${record.name}-${record.value}`}>
+                          <strong>{record.type}</strong>
+                          <code>{record.name}</code>
+                          <span>{record.value}</span>
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <form className="public-access-form" onSubmit={savePublicAccess}>
+                  <label>
+                    App URL
+                    <input placeholder="https://messenger.example.com" value={publicAccessForm.appUrl} onChange={(event) => setPublicAccessForm({ ...publicAccessForm,appUrl: event.target.value })} />
+                  </label>
+                  <label>
+                    API URL
+                    <input placeholder="https://api.example.com" value={publicAccessForm.apiUrl} onChange={(event) => setPublicAccessForm({ ...publicAccessForm,apiUrl: event.target.value })} />
+                  </label>
+                  <div className="public-access-actions">
+                    <button type="button" onClick={useCurrentNetworkUrls}>Use LAN host</button>
+                    <button type="button" onClick={useBrowserUrls}>Use browser URLs</button>
+                    <button type="submit" disabled={isSavingPublicAccess}>{isSavingPublicAccess ? "Saving" : "Save"}</button>
+                    <button type="button" disabled={isCheckingPublicAccess} onClick={() => void checkSavedPublicAccess()}>{isCheckingPublicAccess ? "Checking" : "Check saved URLs"}</button>
+                    <button type="button" disabled={isSavingPublicAccess} onClick={() => void clearPublicAccess()}>Clear</button>
+                  </div>
+                </form>
+
+                {publicAccessSuggestions.length > 0 && (
+                  <div className="candidate-list">
+                    {publicAccessSuggestions.map((candidate) => (
+                      <button type="button" key={`${candidate.appUrl}-${candidate.apiUrl}`} onClick={() => useCandidate(candidate)}>{candidate.label}</button>
+                    ))}
+                  </div>
+                )}
+
+                {publicAccessCheck && (
+                  <div className="network-checks">
+                    {publicAccessCheck.targets.map((target) => (
+                      <article className={target.ok ? "network-check ok" : "network-check error"} key={target.name}>
+                        <strong>{target.name}</strong>
+                        <code>{target.url}</code>
+                        <span>{target.statusCode ? `${target.statusCode} ${target.detail}` : target.detail}</span>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </details>
             </section>
 
             <section className="encryption-settings-panel">
               <div className="public-access-header">
                 <h2>Message encryption</h2>
-                <strong>
-                  {encryptionSettings?.supportedProtocols.find(
-                    (protocol) => protocol.value === encryptionProtocolDraft
-                  )?.label ?? "End-to-end"}
-                </strong>
+                <strong>{encryptionSettings?.supportedProtocols.find((protocol) => protocol.value === encryptionProtocolDraft)?.label ?? "Server-side"}</strong>
               </div>
               <form className="encryption-settings-form" onSubmit={saveEncryptionSettings}>
                 <label>
                   Default for new chats
-                  <select
-                    value={encryptionProtocolDraft}
-                    onChange={(event) =>
-                      setEncryptionProtocolDraft(event.target.value as AdminMessageEncryptionProtocol)
-                    }
-                  >
-                    {(encryptionSettings?.supportedProtocols ?? []).map((protocol) => (
-                      <option key={protocol.value} value={protocol.value}>
-                        {protocol.label}
-                      </option>
-                    ))}
+                  <select value={encryptionProtocolDraft} onChange={(event) => setEncryptionProtocolDraft(event.target.value as AdminMessageEncryptionProtocol)}>
+                    {(encryptionSettings?.supportedProtocols ?? []).map((protocol) => <option key={protocol.value} value={protocol.value}>{protocol.label}</option>)}
                   </select>
                 </label>
                 <div className="encryption-protocol-list">
                   {(encryptionSettings?.supportedProtocols ?? []).map((protocol) => (
-                    <article
-                      className={protocol.value === encryptionProtocolDraft ? "active" : ""}
-                      key={protocol.value}
-                    >
+                    <article className={protocol.value === encryptionProtocolDraft ? "active" : ""} key={protocol.value}>
                       <strong>{protocol.label}</strong>
                       <span>{protocol.description}</span>
                     </article>
                   ))}
                 </div>
-                <button type="submit" disabled={isSavingEncryption}>
-                  {isSavingEncryption ? "Saving" : "Save encryption"}
-                </button>
+                <button type="submit" disabled={isSavingEncryption}>{isSavingEncryption ? "Saving" : "Save encryption"}</button>
               </form>
             </section>
 
@@ -692,110 +615,54 @@ export default function AdminPage() {
               </div>
               <form className="media-quality-form" onSubmit={saveMediaQuality}>
                 <div className="media-quality-grid">
-                  {mediaQualityRules.map((rule, index) => {
+                  {mediaQualityRules.map((rule,index) => {
                     const isDefaultRule = rule.extension === "";
                     return (
                       <article className="media-quality-row" key={`${rule.mediaType}-${rule.extension}-${index}`}>
                         <label>
                           Type
-                          <select
-                            value={rule.mediaType}
-                            disabled={isDefaultRule}
-                            onChange={(event) =>
-                              updateMediaQualityRule(index, { mediaType: event.target.value as MediaType })
-                            }
-                          >
-                            {MEDIA_TYPES.map((mediaType) => (
-                              <option value={mediaType} key={mediaType}>
-                                {mediaType}
-                              </option>
-                            ))}
+                          <select value={rule.mediaType} disabled={isDefaultRule} onChange={(event) => updateMediaQualityRule(index,{ mediaType: event.target.value as MediaType })}>
+                            {MEDIA_TYPES.map((mediaType) => <option value={mediaType} key={mediaType}>{mediaType}</option>)}
                           </select>
                         </label>
                         <label>
                           Extension
-                          <input
-                            placeholder={isDefaultRule ? "Default" : ".jpg"}
-                            value={rule.extension}
-                            disabled={isDefaultRule}
-                            onChange={(event) => updateMediaQualityRule(index, { extension: event.target.value })}
-                          />
+                          <input placeholder={isDefaultRule ? "Default" : ".jpg"} value={rule.extension} disabled={isDefaultRule} onChange={(event) => updateMediaQualityRule(index,{ extension: event.target.value })} />
                         </label>
                         <label>
                           Quality
                           <span className="quality-control">
-                            <input
-                              min={1}
-                              max={100}
-                              type="range"
-                              value={rule.qualityPercent}
-                              onChange={(event) =>
-                                updateMediaQualityRule(index, { qualityPercent: Number(event.target.value) })
-                              }
-                            />
-                            <input
-                              min={1}
-                              max={100}
-                              type="number"
-                              value={rule.qualityPercent}
-                              onChange={(event) =>
-                                updateMediaQualityRule(index, { qualityPercent: Number(event.target.value) })
-                              }
-                            />
+                            <input min={1} max={100} type="range" value={rule.qualityPercent} onChange={(event) => updateMediaQualityRule(index,{ qualityPercent: Number(event.target.value) })} />
+                            <input min={1} max={100} type="number" value={rule.qualityPercent} onChange={(event) => updateMediaQualityRule(index,{ qualityPercent: Number(event.target.value) })} />
                             <span>%</span>
                           </span>
                         </label>
-                        <button type="button" disabled={isDefaultRule} onClick={() => removeMediaQualityRule(index)}>
-                          Remove
-                        </button>
+                        <button type="button" disabled={isDefaultRule} onClick={() => removeMediaQualityRule(index)}>Remove</button>
                       </article>
                     );
                   })}
                 </div>
                 <div className="public-access-actions">
-                  <button type="button" onClick={addMediaQualityRule}>
-                    Add extension
-                  </button>
-                  <button type="submit" disabled={isSavingMediaQuality}>
-                    {isSavingMediaQuality ? "Saving" : "Save quality"}
-                  </button>
+                  <button type="button" onClick={addMediaQualityRule}>Add extension</button>
+                  <button type="submit" disabled={isSavingMediaQuality}>{isSavingMediaQuality ? "Saving" : "Save quality"}</button>
                 </div>
               </form>
             </section>
 
             <div className="summary-band compact">
-              <div>
-                <span className="summary-label">Visible</span>
-                <strong>{logs?.records.length ?? 0}</strong>
-              </div>
-              <div>
-                <span className="summary-label">Matched</span>
-                <strong>{logs?.total ?? 0}</strong>
-              </div>
-              <div>
-                <span className="summary-label">Buffer</span>
-                <strong>{logs?.bufferSize ?? 0}</strong>
-              </div>
+              <div><span className="summary-label">Visible</span><strong>{logs?.records.length ?? 0}</strong></div>
+              <div><span className="summary-label">Matched</span><strong>{logs?.total ?? 0}</strong></div>
+              <div><span className="summary-label">Buffer</span><strong>{logs?.bufferSize ?? 0}</strong></div>
             </div>
 
             <form className="log-toolbar" onSubmit={handleSubmit}>
               <label>
                 Level
-                <select value={level} onChange={(event) => setLevel(event.target.value as LogLevel | "")}>
-                  {LOG_LEVELS.map((item) => (
-                    <option key={item || "ALL"} value={item}>
-                      {item || "ALL"}
-                    </option>
-                  ))}
-                </select>
+                <select value={level} onChange={(event) => setLevel(event.target.value as LogLevel | "")}>{LOG_LEVELS.map((item) => <option key={item || "ALL"} value={item}>{item || "ALL"}</option>)}</select>
               </label>
               <label>
                 Logger
-                <input
-                  placeholder="app.modules.realtime"
-                  value={loggerName}
-                  onChange={(event) => setLoggerName(event.target.value)}
-                />
+                <input placeholder="app.modules.realtime" value={loggerName} onChange={(event) => setLoggerName(event.target.value)} />
               </label>
               <label>
                 Search
@@ -803,34 +670,17 @@ export default function AdminPage() {
               </label>
               <label>
                 Limit
-                <input
-                  min={1}
-                  max={1000}
-                  type="number"
-                  value={limit}
-                  onChange={(event) => setLimit(Number(event.target.value))}
-                />
+                <input min={1} max={1000} type="number" value={limit} onChange={(event) => setLimit(Number(event.target.value))} />
               </label>
               <label className="inline-toggle">
-                <input
-                  checked={autoRefresh}
-                  type="checkbox"
-                  onChange={(event) => setAutoRefresh(event.target.checked)}
-                />
+                <input checked={autoRefresh} type="checkbox" onChange={(event) => setAutoRefresh(event.target.checked)} />
                 Auto
               </label>
-              <button type="submit" disabled={isLoading}>
-                Refresh
-              </button>
+              <button type="submit" disabled={isLoading}>Refresh</button>
             </form>
 
             <section className="log-panel" aria-busy={isLoading}>
-              {logs?.records.length ? (
-                logs.records
-                  .slice()
-                  .reverse()
-                  .map((entry) => <LogRow entry={entry} key={entry.id} />)
-              ) : (
+              {logs?.records.length ? logs.records.slice().reverse().map((entry) => <LogRow entry={entry} key={entry.id} />) : (
                 <div className="phase-empty-state">
                   <strong>{isLoading ? "Loading logs" : "No logs found"}</strong>
                   <p>Adjust filters or wait for new backend activity.</p>

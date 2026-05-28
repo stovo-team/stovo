@@ -84,6 +84,52 @@ export interface PublicTunnelStatus {
   publicAccess: PublicAccessSettings | null;
 }
 
+
+export interface PublicInviteLink {
+  id: string;
+  role: string;
+  url: string;
+  expiresAt: string;
+  maxUses: number;
+  usedCount: number;
+}
+
+export interface QuickStartPublicAccessResponse {
+  status: "stopped" | "starting" | "running" | "error";
+  provider: "cloudflare" | "localtunnel" | string;
+  publicUrl: string;
+  origin: string | null;
+  message: string | null;
+  publicAccess: PublicAccessSettings;
+  inviteLinks: PublicInviteLink[];
+}
+
+export interface PublicInviteLink {
+  id: string;
+  role: string;
+  url: string;
+  expiresAt: string;
+  maxUses: number;
+  usedCount: number;
+}
+
+export interface QuickStartPublicAccessResponse {
+  status: "stopped" | "starting" | "running" | "error";
+  provider: "cloudflare" | "localtunnel";
+  publicUrl: string;
+  origin: string | null;
+  message: string | null;
+  publicAccess: PublicAccessSettings;
+  inviteLinks: PublicInviteLink[];
+}
+
+export interface PublicIPQuickStartResponse {
+  publicIp: string;
+  publicUrl: string;
+  publicAccess: PublicAccessSettings;
+  inviteLinks: PublicInviteLink[];
+}
+
 export interface DomainDnsRecord {
   type: string;
   name: string;
@@ -168,6 +214,14 @@ export function getPublicTunnelStatus(accessToken: string) {
 
 export function startPublicTunnel(accessToken: string, provider: "cloudflare" | "localtunnel" = "cloudflare") {
   return apiRequest<PublicTunnelStatus>(`/api/admin/public-access/tunnel/start?provider=${provider}`, {
+    method: "POST",
+    accessToken
+  });
+}
+
+
+export function quickStartPublicAccess(accessToken: string) {
+  return apiRequest<QuickStartPublicAccessResponse>("/api/admin/public-access/quick-start", {
     method: "POST",
     accessToken
   });
