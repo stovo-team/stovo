@@ -1,0 +1,88 @@
+import { User, UserRole } from "./auth";
+import { apiRequest } from "./client";
+
+export interface Family {
+  id: string;
+  name: string;
+  storageLimitMb?: number | null;
+}
+
+export interface InvitePreview {
+  familyName: string;
+  role: UserRole;
+  expiresAt: string;
+  usesRemaining: number;
+}
+
+export interface InviteResponse {
+  inviteUrl: string;
+  invite: {
+    id: string;
+    familyId: string;
+    role: UserRole;
+    expiresAt: string;
+    maxUses: number;
+    usedCount: number;
+    createdBy: string;
+    createdAt: string;
+    revokedAt?: string | null;
+  };
+}
+
+export interface AcceptInvitePayload {
+  nickname: string;
+  password: string;
+}
+
+export function getFamily(accessToken: string) {
+  return apiRequest<Family>("/api/family", { accessToken });
+}
+
+export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number }) {
+  return apiRequest<Family>("/api/family", {
+    method: "PATCH",
+    accessToken,
+    body: payload
+  });
+}
+
+export function getMembers(accessToken: string) {
+  return apiRequest<User[]>("/api/family/members", { accessToken });
+}
+
+export function changeMemberRole(accessToken: string, userId: string, role: UserRole) {
+  return apiRequest<User>(`/api/family/members/${userId}/role`, {
+    method: "PATCH",
+    accessToken,
+    body: { role }
+  });
+}
+
+export function removeMember(accessToken: string, userId: string) {
+  return apiRequest<void>(`/api/family/members/${userId}`, {
+    method: "DELETE",
+    accessToken
+  });
+}
+
+export function createInvite(
+  accessToken: string,
+  payload: { role: UserRole; expiresInHours: number; maxUses: number }
+) {
+  return apiRequest<InviteResponse>("/api/invites", {
+    method: "POST",
+    accessToken,
+    body: payload
+  });
+}
+
+export function previewInvite(token: string) {
+  return apiRequest<InvitePreview>(`/api/invites/${token}`);
+}
+
+export function acceptInvite(token: string, payload: AcceptInvitePayload) {
+  return apiRequest<import("./auth").AuthResponse>(`/api/invites/${token}/accept`, {
+    method: "POST",
+    body: payload
+  });
+}
