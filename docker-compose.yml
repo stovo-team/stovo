@@ -29,10 +29,11 @@ services:
       context: ./backend
     environment:
       APP_ENV: ${APP_ENV:-development}
-      APP_URL: ${APP_URL:-http://localhost:5173}
+      APP_URL: ${APP_URL:-http://localhost:8000}
       API_URL: ${API_URL:-http://localhost:8000}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:5173}
       PUBLIC_TUNNEL_ORIGIN: ${PUBLIC_TUNNEL_ORIGIN:-http://127.0.0.1:8000}
+      PUBLIC_REACHABILITY_CHECKER_URL: ${PUBLIC_REACHABILITY_CHECKER_URL:-}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-family_user}

@@ -62,10 +62,14 @@ type quickStartPublicAccessResponse struct {
 }
 
 type publicIPQuickStartResponse struct {
-	PublicIP     string               `json:"publicIp"`
-	PublicURL    string               `json:"publicUrl"`
-	PublicAccess publicAccessSettings `json:"publicAccess"`
-	InviteLinks  []publicInviteLink   `json:"inviteLinks"`
+	Status                 string                `json:"status"`
+	PublicIP               string                `json:"publicIp"`
+	PublicURL              string                `json:"publicUrl"`
+	PublicAccess           *publicAccessSettings `json:"publicAccess"`
+	InviteLinks            []publicInviteLink    `json:"inviteLinks"`
+	Problems               []string              `json:"problems"`
+	RecommendedActions     []string              `json:"recommendedActions"`
+	CanUseCloudflareTunnel bool                  `json:"canUseCloudflareTunnel"`
 }
 
 type invitePreviewResponse struct {

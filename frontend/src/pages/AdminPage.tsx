@@ -1,4 +1,4 @@
-import { FormEvent,useCallback,useEffect,useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import {
   AdminMessageEncryptionProtocol,
@@ -13,12 +13,12 @@ import {
   PublicAccessCheckResponse,
   PublicAccessSettings,
   PublicAccessSuggestions,
+  PublicTunnelStatus,
   PublicInviteLink,
   PublicIPQuickStartResponse,
-  PublicTunnelStatus,
   QuickStartPublicAccessResponse
 } from "../api/admin";
-import { ApiError,getApiUrl } from "../api/client";
+import { ApiError, getApiUrl } from "../api/client";
 import { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
@@ -93,15 +93,16 @@ export default function AdminPage() {
   const [notice,setNotice] = useState<string | null>(null);
   const [isLoading,setIsLoading] = useState(true);
   const [isSavingPublicAccess,setIsSavingPublicAccess] = useState(false);
-  const [isStartingPublicAccess,setIsStartingPublicAccess] = useState(false);
-  const [isStartingPublicIPAccess,setIsStartingPublicIPAccess] = useState(false);
-  const [inviteLinks,setInviteLinks] = useState<PublicInviteLink[]>([]);
   const [isSavingMediaQuality,setIsSavingMediaQuality] = useState(false);
   const [isCheckingPublicAccess,setIsCheckingPublicAccess] = useState(false);
   const [startingTunnelProvider,setStartingTunnelProvider] = useState<TunnelProvider | null>(null);
   const [isStoppingTunnel,setIsStoppingTunnel] = useState(false);
   const [isLinkingDomain,setIsLinkingDomain] = useState(false);
   const [isSavingEncryption,setIsSavingEncryption] = useState(false);
+  const [isStartingPublicAccess, setIsStartingPublicAccess] = useState(false);
+  const [isStartingPublicIPAccess, setIsStartingPublicIPAccess] = useState(false);
+  const [inviteLinks, setInviteLinks] = useState<PublicInviteLink[]>([]);
+  const [publicIpResult, setPublicIpResult] = useState<PublicIPQuickStartResponse | null>(null);
 
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
   const publicAccessReady = Boolean(publicAccess?.configuredAppUrl || publicAccess?.configuredApiUrl || publicTunnel?.url);
@@ -211,14 +212,26 @@ export default function AdminPage() {
   }
 
   async function quickStartPublicAccess() {
-    if (!accessToken) return;
+    if (!accessToken) {
+      return;
+    }
+
     setError(null);
     setNotice(null);
+    setPublicIpResult(null);
     setIsStartingPublicAccess(true);
+
     try {
-      const result = await authRequest<QuickStartPublicAccessResponse>("/api/admin/public-access/quick-start",{ method: "POST" });
+      const result = await authRequest<QuickStartPublicAccessResponse>(
+        "/api/admin/public-access/quick-start",
+        { method: "POST" }
+      );
+
       setPublicAccess(result.publicAccess);
-      setPublicAccessForm({ appUrl: result.publicAccess.appUrl,apiUrl: result.publicAccess.apiUrl });
+      setPublicAccessForm({
+        appUrl: result.publicAccess.appUrl,
+        apiUrl: result.publicAccess.apiUrl
+      });
       setPublicTunnel({
         state: result.status,
         provider: result.provider,
@@ -232,33 +245,54 @@ export default function AdminPage() {
       });
       setInviteLinks(result.inviteLinks);
       setPublicAccessCheck(null);
-      setNotice("Messenger is public. Invite links are ready to copy.");
+      setNotice(result.message ?? "Cloudflare Tunnel is ready. Invite links are ready to copy.");
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Could not start public access");
+      setError(err instanceof ApiError ? String(err.message) : "Could not start Cloudflare Tunnel");
     } finally {
       setIsStartingPublicAccess(false);
     }
   }
 
   async function quickStartPublicIPAccess() {
-    if (!accessToken) return;
+    if (!accessToken) {
+      return;
+    }
+
     setError(null);
     setNotice(null);
+    setPublicIpResult(null);
     setIsStartingPublicIPAccess(true);
+
     try {
-      const result = await authRequest<PublicIPQuickStartResponse>("/api/admin/public-access/public-ip/quick-start",{ method: "POST" });
-      setPublicAccess(result.publicAccess);
-      setPublicAccessForm({ appUrl: result.publicAccess.appUrl,apiUrl: result.publicAccess.apiUrl });
-      setInviteLinks(result.inviteLinks);
-      setPublicAccessCheck(null);
-      setNotice("Public IP link is ready. Make sure TCP port 8000 is forwarded to this computer.");
+      const result = await authRequest<PublicIPQuickStartResponse>(
+        "/api/admin/public-access/public-ip/quick-start",
+        { method: "POST" }
+      );
+
+      setPublicIpResult(result);
+
+      if (result.status === "ready" && result.publicAccess !== null) {
+        const publicAccessResult = result.publicAccess;
+
+        setPublicAccess(publicAccessResult);
+        setPublicAccessForm({
+          appUrl: publicAccessResult.appUrl,
+          apiUrl: publicAccessResult.apiUrl
+        });
+        setInviteLinks(result.inviteLinks);
+        setPublicAccessCheck(null);
+        setNotice("Public IP access is ready. Invite links are ready to copy.");
+        return;
+      }
+
+      setInviteLinks([]);
+      setNotice("Public IP is not reachable. Use Cloudflare Tunnel or fix router/firewall settings.");
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Could not prepare public IP access");
+      setError(err instanceof ApiError ? String(err.message) : "Could not check Public IP access");
     } finally {
       setIsStartingPublicIPAccess(false);
     }
   }
-
   function updateMediaQualityRule(index: number,patch: Partial<MediaQualityRule>) {
     setMediaQualityRules((current) => current.map((rule,ruleIndex) => ruleIndex === index ? { ...rule,...patch } : rule));
   }
@@ -443,29 +477,93 @@ export default function AdminPage() {
 
               <div className="tunnel-panel">
                 <div>
-                  <span className="summary-label">One-click setup</span>
-                  <strong>Make this messenger available outside your network</strong>
-                  <span>Cloudflare is the recommended one-click option. Public IP requires router forwarding for TCP port 8000.</span>
+                  <span className="summary-label">Recommended</span>
+                  <strong>Cloudflare Tunnel</strong>
+                  <span>Best one-click option. Works even when router, firewall, or ISP blocks direct Public IP access.</span>
                 </div>
                 <div className="public-access-actions">
-                  <button type="button" disabled={isStartingPublicAccess} onClick={() => void quickStartPublicAccess()}>
-                    {isStartingPublicAccess ? "Starting tunnel..." : "Make messenger public"}
-                  </button>
-                  <button type="button" disabled={isStartingPublicIPAccess} onClick={() => void quickStartPublicIPAccess()}>
-                    {isStartingPublicIPAccess ? "Preparing public IP..." : "Use public IP"}
+                  <button
+                    type="button"
+                    disabled={isStartingPublicAccess}
+                    onClick={() => void quickStartPublicAccess()}
+                  >
+                    {isStartingPublicAccess ? "Starting..." : "Start Cloudflare Tunnel"}
                   </button>
                 </div>
               </div>
 
-              <div className="public-access-current">
+              <div className="tunnel-panel">
                 <div>
-                  <span className="summary-label">Public link</span>
-                  <code>{publicAccess?.appUrl ?? publicTunnel?.url ?? "Not configured"}</code>
+                  <span className="summary-label">Advanced</span>
+                  <strong>Public IP</strong>
+                  <span>Works only if TCP port 8000 is reachable from the internet.</span>
                 </div>
-                <button type="button" disabled={!publicAccess?.appUrl && !publicTunnel?.url} onClick={() => void navigator.clipboard.writeText(publicAccess?.appUrl ?? publicTunnel?.url ?? "")}>
-                  Copy public link
-                </button>
+                <div className="public-access-actions">
+                  <button
+                    type="button"
+                    disabled={isStartingPublicIPAccess}
+                    onClick={() => void quickStartPublicIPAccess()}
+                  >
+                    {isStartingPublicIPAccess ? "Checking..." : "Try Public IP"}
+                  </button>
+                </div>
               </div>
+
+              {publicIpResult?.status === "blocked" && (
+                <div className="network-checks">
+                  <article className="network-check error">
+                    <strong>Public IP is not reachable</strong>
+                    {publicIpResult.publicUrl && <code>{publicIpResult.publicUrl}</code>}
+                    <span>Your router, firewall, or ISP blocks incoming access to TCP port 8000.</span>
+                  </article>
+                  {publicIpResult.problems.map((problem: string) => (
+                    <article className="network-check error" key={problem}>
+                      <strong>Problem</strong>
+                      <span>{problem}</span>
+                    </article>
+                  ))}
+                  {publicIpResult.recommendedActions.map((action: string) => (
+                    <article className="network-check ok" key={action}>
+                      <strong>Recommended action</strong>
+                      <span>{action}</span>
+                    </article>
+                  ))}
+                  <div className="public-access-actions">
+                    <a
+                      className="public-access-link-button"
+                      href="/scripts/windows-public-ip-fix.ps1"
+                      download
+                    >
+                      Download Windows fix script
+                    </a>
+                  </div>
+                  <article className="network-check ok">
+                    <strong>Run as Administrator</strong>
+                    <span>Open PowerShell as Administrator, then run:</span>
+                    <code>cd $env:USERPROFILE\Downloads; powershell -ExecutionPolicy Bypass -File .\windows-public-ip-fix.ps1</code>
+                  </article>
+                  <div className="public-access-actions">
+                    <button type="button" onClick={() => void quickStartPublicAccess()}>
+                      Start Cloudflare Tunnel instead
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {publicAccessReady && (
+                <div className="public-access-current">
+                  <div>
+                    <span className="summary-label">Public link</span>
+                    <code>{publicAccess?.appUrl ?? publicTunnel?.url ?? "Loading"}</code>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void navigator.clipboard.writeText(publicAccess?.appUrl ?? publicTunnel?.url ?? "")}
+                  >
+                    Copy public link
+                  </button>
+                </div>
+              )}
 
               {inviteLinks.length > 0 && (
                 <div className="invite-links">
@@ -476,14 +574,16 @@ export default function AdminPage() {
                         <strong>{invite.role}</strong>
                         <code>{invite.url}</code>
                       </div>
-                      <button type="button" onClick={() => void navigator.clipboard.writeText(invite.url)}>Copy</button>
+                      <button type="button" onClick={() => void navigator.clipboard.writeText(invite.url)}>
+                        Copy
+                      </button>
                     </article>
                   ))}
                 </div>
               )}
 
               <details className="advanced-public-access">
-                <summary>Advanced public access settings</summary>
+                <summary>Advanced manual settings</summary>
 
                 <div className="public-access-current">
                   <div>
@@ -499,20 +599,35 @@ export default function AdminPage() {
                 <div className="tunnel-panel">
                   <div>
                     <span className="summary-label">Public tunnel</span>
-                    <strong>{publicTunnel?.provider ? `${publicTunnel.provider} / ` : ""}{publicTunnel?.state ?? "stopped"}</strong>
+                    <strong>
+                      {publicTunnel?.provider ? `${publicTunnel.provider} / ` : ""}
+                      {publicTunnel?.state ?? "stopped"}
+                    </strong>
                     {publicTunnel?.url && <code>{publicTunnel.url}</code>}
                     {publicTunnel?.message && <span>{publicTunnel.message}</span>}
                     <span>Auto-restart: {publicTunnel?.autoRestart ? "on" : "off"}</span>
                     <span>Restarts: {publicTunnel?.restarts ?? 0}</span>
                   </div>
                   <div className="public-access-actions">
-                    <button type="button" disabled={startingTunnelProvider !== null || publicTunnel?.state === "running"} onClick={() => void startTunnel("cloudflare")}>
+                    <button
+                      type="button"
+                      disabled={startingTunnelProvider !== null || publicTunnel?.state === "running"}
+                      onClick={() => void startTunnel("cloudflare")}
+                    >
                       {startingTunnelProvider === "cloudflare" ? "Starting" : "Start Cloudflare"}
                     </button>
-                    <button type="button" disabled={startingTunnelProvider !== null || publicTunnel?.state === "running"} onClick={() => void startTunnel("localtunnel")}>
+                    <button
+                      type="button"
+                      disabled={startingTunnelProvider !== null || publicTunnel?.state === "running"}
+                      onClick={() => void startTunnel("localtunnel")}
+                    >
                       {startingTunnelProvider === "localtunnel" ? "Starting" : "Start LocalTunnel"}
                     </button>
-                    <button type="button" disabled={isStoppingTunnel || publicTunnel?.state !== "running"} onClick={() => void stopTunnel()}>
+                    <button
+                      type="button"
+                      disabled={isStoppingTunnel || publicTunnel?.state !== "running"}
+                      onClick={() => void stopTunnel()}
+                    >
                       {isStoppingTunnel ? "Stopping" : "Stop tunnel"}
                     </button>
                   </div>
@@ -521,12 +636,20 @@ export default function AdminPage() {
                 <div className="tunnel-panel">
                   <div>
                     <span className="summary-label">Domain to Public IP</span>
-                    <strong>One-click URL setup</strong>
+                    <strong>Manual DNS setup</strong>
                     {lastDomainLink?.publicIp && <code>Detected public IP: {lastDomainLink.publicIp}</code>}
                   </div>
                   <div className="public-access-actions">
-                    <input placeholder="yourdomain.com" value={domainLinkForm.domain} onChange={(event) => setDomainLinkForm({ ...domainLinkForm,domain: event.target.value })} />
-                    <input placeholder="api.yourdomain.com (optional)" value={domainLinkForm.apiDomain} onChange={(event) => setDomainLinkForm({ ...domainLinkForm,apiDomain: event.target.value })} />
+                    <input
+                      placeholder="yourdomain.com"
+                      value={domainLinkForm.domain}
+                      onChange={(event) => setDomainLinkForm({ ...domainLinkForm, domain: event.target.value })}
+                    />
+                    <input
+                      placeholder="api.yourdomain.com (optional)"
+                      value={domainLinkForm.apiDomain}
+                      onChange={(event) => setDomainLinkForm({ ...domainLinkForm, apiDomain: event.target.value })}
+                    />
                     <button type="button" disabled={isLinkingDomain} onClick={() => void linkDomainToPublicIp()}>
                       {isLinkingDomain ? "Linking" : "Link Domain"}
                     </button>
@@ -547,25 +670,61 @@ export default function AdminPage() {
                 <form className="public-access-form" onSubmit={savePublicAccess}>
                   <label>
                     App URL
-                    <input placeholder="https://messenger.example.com" value={publicAccessForm.appUrl} onChange={(event) => setPublicAccessForm({ ...publicAccessForm,appUrl: event.target.value })} />
+                    <input
+                      placeholder="https://messenger.example.com"
+                      value={publicAccessForm.appUrl}
+                      onChange={(event) =>
+                        setPublicAccessForm({ ...publicAccessForm, appUrl: event.target.value })
+                      }
+                    />
                   </label>
                   <label>
                     API URL
-                    <input placeholder="https://api.example.com" value={publicAccessForm.apiUrl} onChange={(event) => setPublicAccessForm({ ...publicAccessForm,apiUrl: event.target.value })} />
+                    <input
+                      placeholder="https://api.example.com"
+                      value={publicAccessForm.apiUrl}
+                      onChange={(event) =>
+                        setPublicAccessForm({ ...publicAccessForm, apiUrl: event.target.value })
+                      }
+                    />
                   </label>
                   <div className="public-access-actions">
-                    <button type="button" onClick={useCurrentNetworkUrls}>Use LAN host</button>
-                    <button type="button" onClick={useBrowserUrls}>Use browser URLs</button>
-                    <button type="submit" disabled={isSavingPublicAccess}>{isSavingPublicAccess ? "Saving" : "Save"}</button>
-                    <button type="button" disabled={isCheckingPublicAccess} onClick={() => void checkSavedPublicAccess()}>{isCheckingPublicAccess ? "Checking" : "Check saved URLs"}</button>
-                    <button type="button" disabled={isSavingPublicAccess} onClick={() => void clearPublicAccess()}>Clear</button>
+                    <button type="button" onClick={useCurrentNetworkUrls}>
+                      Use LAN host
+                    </button>
+                    <button type="button" onClick={useBrowserUrls}>
+                      Use browser URLs
+                    </button>
+                    <button type="submit" disabled={isSavingPublicAccess}>
+                      {isSavingPublicAccess ? "Saving" : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isCheckingPublicAccess}
+                      onClick={() => void checkSavedPublicAccess()}
+                    >
+                      {isCheckingPublicAccess ? "Checking" : "Check saved URLs"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isSavingPublicAccess}
+                      onClick={() => void clearPublicAccess()}
+                    >
+                      Clear
+                    </button>
                   </div>
                 </form>
 
                 {publicAccessSuggestions.length > 0 && (
                   <div className="candidate-list">
                     {publicAccessSuggestions.map((candidate) => (
-                      <button type="button" key={`${candidate.appUrl}-${candidate.apiUrl}`} onClick={() => useCandidate(candidate)}>{candidate.label}</button>
+                      <button
+                        type="button"
+                        key={`${candidate.appUrl}-${candidate.apiUrl}`}
+                        onClick={() => useCandidate(candidate)}
+                      >
+                        {candidate.label}
+                      </button>
                     ))}
                   </div>
                 )}
