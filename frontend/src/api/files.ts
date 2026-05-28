@@ -1,0 +1,112 @@
+import { ApiError, apiRequest, getApiUrl } from "./client";
+
+export interface FamilyFile {
+  id: string;
+  familyId: string;
+  uploadedBy: string;
+  chatId: string | null;
+  chatTitle: string | null;
+  chatType: "family" | "direct" | "group" | "channel" | null;
+  accessScope: "family" | "chat";
+  storageProvider: "local" | string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksum: string | null;
+  createdAt: string;
+  deletedAt: string | null;
+  isFavorite: boolean;
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(response.status, payload?.detail ?? response.statusText);
+  }
+  return payload as T;
+}
+
+export async function uploadFile(accessToken: string, file: File, chatId?: string | null) {
+  const body = new FormData();
+  body.append("file", file);
+  if (chatId) {
+    body.append("chatId", chatId);
+  }
+
+  const response = await fetch(`${getApiUrl()}/api/files/upload`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`
+    },
+    body,
+    credentials: "include"
+  });
+
+  return parseResponse<FamilyFile>(response);
+}
+
+export function getFiles(accessToken: string) {
+  return apiRequest<FamilyFile[]>("/api/files", { accessToken });
+}
+
+export function getFile(accessToken: string, fileId: string) {
+  return apiRequest<FamilyFile>(`/api/files/${fileId}`, { accessToken });
+}
+
+export function deleteFile(accessToken: string, fileId: string) {
+  return apiRequest<void>(`/api/files/${fileId}`, {
+    method: "DELETE",
+    accessToken
+  });
+}
+
+export function updateFilePreferences(
+  accessToken: string,
+  fileId: string,
+  payload: { isFavorite?: boolean }
+) {
+  return apiRequest<FamilyFile>(`/api/files/${fileId}/preferences`, {
+    method: "PATCH",
+    accessToken,
+    body: payload
+  });
+}
+
+export async function downloadFileBlob(accessToken: string, fileId: string) {
+  const response = await fetch(`${getApiUrl()}/api/files/${fileId}/download`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    },
+    credentials: "include"
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new ApiError(response.status, payload?.detail ?? response.statusText);
+  }
+
+  return response.blob();
+}
+
+export async function saveFileToDisk(accessToken: string, file: FamilyFile) {
+  const blob = await downloadFileBlob(accessToken, file.id);
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = file.originalName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+export function formatFileSize(sizeBytes: number) {
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}

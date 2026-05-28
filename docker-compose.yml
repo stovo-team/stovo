@@ -1,0 +1,104 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-family_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
+      POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      APP_URL: ${APP_URL:-http://localhost:5173}
+      API_URL: ${API_URL:-http://localhost:8000}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:5173}
+      PUBLIC_TUNNEL_ORIGIN: ${PUBLIC_TUNNEL_ORIGIN:-http://127.0.0.1:8000}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-family_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
+      POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET:-change_me}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-change_me_too}
+      INVITE_TOKEN_SECRET: ${INVITE_TOKEN_SECRET:-change_me_invites}
+      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-family_refresh_token}
+      MESSAGE_ENCRYPTION_KEY: ${MESSAGE_ENCRYPTION_KEY:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      LOCAL_STORAGE_PATH: /app/uploads
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-100}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FILE_PATH: /app/logs/backend.log
+      LOG_BUFFER_MAX_RECORDS: ${LOG_BUFFER_MAX_RECORDS:-2000}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+      VITE_DISABLE_HMR: ${VITE_DISABLE_HMR:-true}
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+  coturn:
+    image: coturn/coturn:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TURN_ENABLED: true
+      TURN_PORT: 3478
+      TURN_REALM: family-messenger
+      TURN_USERNAME: family
+      TURN_PASSWORD: change_me
+      TURN_MIN_PORT: 49160
+      TURN_MAX_PORT: 49200
+    command:
+      - -n
+      - --log-file=stdout
+      - --lt-cred-mech
+      - --user=${TURN_USERNAME}:${TURN_PASSWORD}
+      - --realm=${TURN_REALM}
+      - --listening-port=3478
+      - --min-port=49160
+      - --max-port=49200
+      - --external-ip=${PUBLIC_IP}
+
+volumes:
+  postgres-data:
+  redis-data:
