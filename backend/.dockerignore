@@ -1,0 +1,8 @@
+bin/
+dist/
+node_modules/
+server.exe
+*.db
+*.sqlite
+*.sqlite3
+*.log
