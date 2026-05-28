@@ -35,10 +35,10 @@ func supportedEncryptionProtocols() []encryptionProtocolPublic {
 
 func normalizeEncryptionProtocol(value string) (string, error) {
 	switch strings.TrimSpace(value) {
-	case "", encryptionProtocolEndToEnd:
-		return encryptionProtocolEndToEnd, nil
-	case encryptionProtocolServerAtRest:
+	case "", encryptionProtocolServerAtRest:
 		return encryptionProtocolServerAtRest, nil
+	case encryptionProtocolEndToEnd:
+		return encryptionProtocolEndToEnd, nil
 	default:
 		return "", fmt.Errorf("unsupported encryption protocol")
 	}

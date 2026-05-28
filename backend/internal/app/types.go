@@ -42,6 +42,32 @@ type createInviteResponse struct {
 	Invite    invitePublic `json:"invite"`
 }
 
+type publicInviteLink struct {
+	ID        string    `json:"id"`
+	Role      string    `json:"role"`
+	URL       string    `json:"url"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	MaxUses   int       `json:"maxUses"`
+	UsedCount int       `json:"usedCount"`
+}
+
+type quickStartPublicAccessResponse struct {
+	Status       string               `json:"status"`
+	Provider     string               `json:"provider"`
+	PublicURL    string               `json:"publicUrl"`
+	Origin       *string              `json:"origin"`
+	Message      *string              `json:"message"`
+	PublicAccess publicAccessSettings `json:"publicAccess"`
+	InviteLinks  []publicInviteLink   `json:"inviteLinks"`
+}
+
+type publicIPQuickStartResponse struct {
+	PublicIP     string               `json:"publicIp"`
+	PublicURL    string               `json:"publicUrl"`
+	PublicAccess publicAccessSettings `json:"publicAccess"`
+	InviteLinks  []publicInviteLink   `json:"inviteLinks"`
+}
+
 type invitePreviewResponse struct {
 	FamilyName    string    `json:"familyName"`
 	Role          string    `json:"role"`
