@@ -191,7 +191,7 @@ export default function MembersPage() {
       return;
     }
     if (navigator.share) {
-      await navigator.share({ title: family?.name ?? "Velo", url: link }).catch(() => undefined);
+      await navigator.share({ title: family?.name ?? "Stovo", url: link }).catch(() => undefined);
       setNotice("Invite share opened");
     } else {
       await navigator.clipboard?.writeText(link).catch(() => undefined);
@@ -232,7 +232,7 @@ export default function MembersPage() {
       <section className="page-surface contacts-layout">
         <header className="section-header">
           <div>
-            <p className="eyebrow">{family?.name ?? "Velo"}</p>
+            <p className="eyebrow">{family?.name ?? "Stovo"}</p>
             <h1>Contacts</h1>
           </div>
           <div className="menu-anchor" ref={contactMenuRef}>

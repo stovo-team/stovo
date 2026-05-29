@@ -81,6 +81,12 @@ export interface PublicTunnelStatus {
   logs: string[];
   autoRestart: boolean;
   restarts: number;
+  lastRestartReason: string | null;
+  healthStatus: "unknown" | "checking" | "healthy" | "degraded";
+  lastHealthCheckAt: string | null;
+  lastHealthError: string | null;
+  healthFailureStreak: number;
+  healthFailureThreshold: number;
   publicAccess: PublicAccessSettings | null;
 }
 

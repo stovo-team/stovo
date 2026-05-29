@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: Stovo
+  labels:
+    app: Stovo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: Stovo
+  template:
+    metadata:
+      name: Stovo
+      labels:
+        app: Stovo
+    spec:
+      containers:
+        - name: stovo-go-api
+          image: ghcr.io/left-try/stovo-go-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+        - name: stovo-web-app
+          image: ghcr.io/left-try/stovo-web-app:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5173
+              protocol: TCP
+        - name: stovo-postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+        - name: stovo-redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - redis-server --appendonly yes
+          vo
+        - name: stovo-turn
+          image: coturn/coturn:latest
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+      

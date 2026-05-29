@@ -20,37 +20,66 @@ func ExtractURL(line string) string {
 }
 
 type Snapshot struct {
-	State       string   `json:"state"`
-	Provider    *string  `json:"provider"`
-	URL         *string  `json:"url"`
-	Origin      *string  `json:"origin"`
-	Message     *string  `json:"message"`
-	Logs        []string `json:"logs"`
-	AutoRestart bool     `json:"autoRestart"`
-	Restarts    int      `json:"restarts"`
+	State                  string     `json:"state"`
+	Provider               *string    `json:"provider"`
+	URL                    *string    `json:"url"`
+	Origin                 *string    `json:"origin"`
+	Message                *string    `json:"message"`
+	Logs                   []string   `json:"logs"`
+	AutoRestart            bool       `json:"autoRestart"`
+	Restarts               int        `json:"restarts"`
+	LastRestartReason      *string    `json:"lastRestartReason"`
+	HealthStatus           string     `json:"healthStatus"`
+	LastHealthCheckAt      *time.Time `json:"lastHealthCheckAt"`
+	LastHealthError        *string    `json:"lastHealthError"`
+	HealthFailureStreak    int        `json:"healthFailureStreak"`
+	HealthFailureThreshold int        `json:"healthFailureThreshold"`
 }
 
 type Manager struct {
-	mu               sync.Mutex
-	cmd              *exec.Cmd
-	cancel           context.CancelFunc
-	provider         *string
-	url              *string
-	origin           *string
-	message          *string
-	logs             []string
-	done             chan struct{}
-	restarts         int
-	autoRestart      bool
-	desiredRunning   bool
-	runGeneration    int64
-	waitingForTunnel bool
+	mu                     sync.Mutex
+	cmd                    *exec.Cmd
+	cancel                 context.CancelFunc
+	provider               *string
+	url                    *string
+	origin                 *string
+	message                *string
+	logs                   []string
+	done                   chan struct{}
+	restarts               int
+	autoRestart            bool
+	desiredRunning         bool
+	runGeneration          int64
+	waitingForTunnel       bool
+	lastRestartReason      *string
+	healthStatus           string
+	lastHealthCheckAt      *time.Time
+	lastHealthError        *string
+	healthFailureStreak    int
+	healthCheckFn          func(string) error
+	healthCheckInterval    time.Duration
+	healthFailureThreshold int
 }
 
 func NewManager() *Manager {
 	return &Manager{
-		logs: make([]string, 0, 32),
-		done: make(chan struct{}),
+		logs:                   make([]string, 0, 32),
+		done:                   make(chan struct{}),
+		healthStatus:           "unknown",
+		healthCheckInterval:    5 * time.Second,
+		healthFailureThreshold: 3,
+	}
+}
+
+func (m *Manager) ConfigureLocalTunnelHealth(checkFn func(string) error, interval time.Duration, failureThreshold int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.healthCheckFn = checkFn
+	if interval > 0 {
+		m.healthCheckInterval = interval
+	}
+	if failureThreshold > 0 {
+		m.healthFailureThreshold = failureThreshold
 	}
 }
 
@@ -74,14 +103,20 @@ func (m *Manager) Status() Snapshot {
 	logs := make([]string, len(m.logs))
 	copy(logs, m.logs)
 	return Snapshot{
-		State:       state,
-		Provider:    clonePtr(m.provider),
-		URL:         clonePtr(m.url),
-		Origin:      clonePtr(m.origin),
-		Message:     clonePtr(m.message),
-		Logs:        logs,
-		AutoRestart: m.autoRestart,
-		Restarts:    m.restarts,
+		State:                  state,
+		Provider:               clonePtr(m.provider),
+		URL:                    clonePtr(m.url),
+		Origin:                 clonePtr(m.origin),
+		Message:                clonePtr(m.message),
+		Logs:                   logs,
+		AutoRestart:            m.autoRestart,
+		Restarts:               m.restarts,
+		LastRestartReason:      clonePtr(m.lastRestartReason),
+		HealthStatus:           m.healthStatus,
+		LastHealthCheckAt:      cloneTimePtr(m.lastHealthCheckAt),
+		LastHealthError:        clonePtr(m.lastHealthError),
+		HealthFailureStreak:    m.healthFailureStreak,
+		HealthFailureThreshold: m.healthFailureThreshold,
 	}
 }
 
@@ -123,6 +158,7 @@ func (m *Manager) Start(origin, provider string, autoRestart bool) Snapshot {
 	m.origin = &origin
 	m.url = nil
 	m.restarts = 0
+	m.lastRestartReason = nil
 	m.autoRestart = autoRestart
 	m.desiredRunning = true
 	m.runGeneration++
@@ -132,6 +168,10 @@ func (m *Manager) Start(origin, provider string, autoRestart bool) Snapshot {
 	m.done = make(chan struct{})
 	done := m.done
 	m.waitingForTunnel = true
+	m.healthStatus = "checking"
+	m.lastHealthCheckAt = nil
+	m.lastHealthError = nil
+	m.healthFailureStreak = 0
 	m.mu.Unlock()
 
 	go m.runManagedTunnel(generation, origin, provider, autoRestart, done)
@@ -180,6 +220,11 @@ func (m *Manager) Stop() Snapshot {
 	m.cancel = nil
 	m.url = url
 	m.autoRestart = false
+	m.lastRestartReason = nil
+	m.healthStatus = "unknown"
+	m.lastHealthCheckAt = nil
+	m.lastHealthError = nil
+	m.healthFailureStreak = 0
 	if m.provider == nil {
 		m.logs = nil
 	}
@@ -191,7 +236,7 @@ func (m *Manager) runManagedTunnel(generation int64, origin, provider string, au
 	defer close(done)
 	backoff := 2 * time.Second
 	for {
-		keepGoing, hadURL := m.runTunnelOnce(generation, origin, provider)
+		keepGoing, hadURL, restartReason := m.runTunnelOnce(generation, origin, provider)
 		if !keepGoing {
 			return
 		}
@@ -199,10 +244,18 @@ func (m *Manager) runManagedTunnel(generation int64, origin, provider string, au
 		if m.restarts < 1000000 {
 			m.restarts++
 		}
+		if restartReason != "" {
+			m.lastRestartReason = &restartReason
+		}
 		message := fmt.Sprintf("%s tunnel disconnected, restarting (attempt %d)", providerLabel(provider), m.restarts)
+		if restartReason != "" {
+			message = fmt.Sprintf("%s tunnel restarting after %s (attempt %d)", providerLabel(provider), restartReason, m.restarts)
+		}
 		m.message = &message
 		m.waitingForTunnel = true
 		m.url = nil
+		m.healthStatus = "checking"
+		m.healthFailureStreak = 0
 		m.mu.Unlock()
 		if !autoRestart {
 			return
@@ -216,7 +269,7 @@ func (m *Manager) runManagedTunnel(generation int64, origin, provider string, au
 	}
 }
 
-func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool, bool) {
+func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool, bool, string) {
 	command, err := tunnelCommand(provider, origin)
 	if err != nil {
 		msg := err.Error()
@@ -226,7 +279,7 @@ func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool
 		m.cancel = nil
 		m.waitingForTunnel = false
 		m.mu.Unlock()
-		return false, false
+		return false, false, ""
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -241,7 +294,7 @@ func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool
 		m.cancel = nil
 		m.waitingForTunnel = false
 		m.mu.Unlock()
-		return false, false
+		return false, false, ""
 	}
 	cmd.Stderr = cmd.Stdout
 	if err := cmd.Start(); err != nil {
@@ -253,7 +306,7 @@ func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool
 		m.cancel = nil
 		m.waitingForTunnel = false
 		m.mu.Unlock()
-		return false, false
+		return false, false, ""
 	}
 
 	m.mu.Lock()
@@ -261,13 +314,15 @@ func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool
 		m.mu.Unlock()
 		cancel()
 		_ = cmd.Wait()
-		return false, false
+		return false, false, ""
 	}
 	m.cmd = cmd
 	m.cancel = cancel
 	m.mu.Unlock()
 
 	hadURL := false
+	restartReason := ""
+	var healthCancel context.CancelFunc
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -281,10 +336,23 @@ func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool
 				message := providerLabel(provider) + " tunnel is running"
 				m.message = &message
 				m.waitingForTunnel = false
+				m.healthStatus = "checking"
+				m.lastHealthError = nil
+				m.healthFailureStreak = 0
 				hadURL = true
+				if provider == "localtunnel" && m.healthCheckFn != nil {
+					healthCtx, cancelHealth := context.WithCancel(ctx)
+					healthCancel = cancelHealth
+					go m.monitorLocalTunnelHealth(healthCtx, tunnelURL, cancel, &restartReason)
+				} else {
+					m.healthStatus = "healthy"
+				}
 			}
 			m.mu.Unlock()
 		}
+	}
+	if healthCancel != nil {
+		healthCancel()
 	}
 	_ = cmd.Wait()
 
@@ -294,7 +362,7 @@ func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool
 		m.cmd = nil
 		m.cancel = nil
 		m.waitingForTunnel = false
-		return false, hadURL
+		return false, hadURL, restartReason
 	}
 	m.cmd = nil
 	m.cancel = nil
@@ -304,9 +372,58 @@ func (m *Manager) runTunnelOnce(generation int64, origin, provider string) (bool
 			message := providerLabel(provider) + " exited before returning a tunnel URL"
 			m.message = &message
 		}
-		return false, hadURL
+		return false, hadURL, restartReason
 	}
-	return true, hadURL
+	return true, hadURL, restartReason
+}
+
+func (m *Manager) monitorLocalTunnelHealth(ctx context.Context, publicURL string, stopTunnel context.CancelFunc, restartReason *string) {
+	if m.healthCheckFn == nil {
+		return
+	}
+	ticker := time.NewTicker(m.healthCheckInterval)
+	defer ticker.Stop()
+
+	runCheck := func() bool {
+		err := m.healthCheckFn(publicURL)
+		now := time.Now().UTC()
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		m.lastHealthCheckAt = &now
+		if err == nil {
+			m.healthStatus = "healthy"
+			m.lastHealthError = nil
+			m.healthFailureStreak = 0
+			return false
+		}
+		msg := err.Error()
+		m.lastHealthError = &msg
+		m.healthFailureStreak++
+		m.healthStatus = "degraded"
+		if m.healthFailureStreak >= m.healthFailureThreshold {
+			reason := fmt.Sprintf("health check failure (%d/%d): %s", m.healthFailureStreak, m.healthFailureThreshold, msg)
+			m.message = &reason
+			*restartReason = "repeated health check failures"
+			return true
+		}
+		return false
+	}
+
+	if runCheck() {
+		stopTunnel()
+		return
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if runCheck() {
+				stopTunnel()
+				return
+			}
+		}
+	}
 }
 
 func (m *Manager) appendLog(line string) {
@@ -368,6 +485,14 @@ func providerLabel(provider string) string {
 }
 
 func clonePtr(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
+
+func cloneTimePtr(value *time.Time) *time.Time {
 	if value == nil {
 		return nil
 	}
