@@ -33,7 +33,7 @@ import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 
 function initials(name: string | undefined) {
-  return (name ?? "Velo")
+  return (name ?? "Stovo")
     .split(" ")
     .filter(Boolean)
     .slice(0, 2)
@@ -218,7 +218,7 @@ export default function SettingsPage() {
       <section className="page-surface settings-layout" aria-busy={isLoading}>
         <header className="section-header">
           <div>
-            <p className="eyebrow">{family?.name ?? "Velo"}</p>
+            <p className="eyebrow">{family?.name ?? "Stovo"}</p>
             <h1>Settings</h1>
           </div>
         </header>
@@ -528,7 +528,7 @@ export default function SettingsPage() {
               </p>
             ) : (
               <p className="muted-copy">
-                This area is ready for Velo controls as they are added.
+                This area is ready for Stovo controls as they are added.
               </p>
             )}
             <button

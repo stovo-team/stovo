@@ -182,6 +182,8 @@ func (s *Server) handleTunnelStatus(w http.ResponseWriter, _ *http.Request, user
 		return
 	}
 	snapshot := s.tunnel.Status()
+	s.syncFamilyPublicURLsFromTunnelSnapshot(context.Background(), user.FamilyID, snapshot, family)
+	family, _ = s.getFamily(user.FamilyID)
 	status := s.snapshotToTunnelStatus(snapshot, family)
 	s.json(w, http.StatusOK, status)
 }
@@ -404,10 +406,10 @@ func (s *Server) handleQuickStartPublicAccess(w http.ResponseWriter, r *http.Req
 	}
 
 	publicURL := strings.TrimRight(*snapshot.URL, "/")
-	if err := s.waitForPublicBackendURL(publicURL, 60*time.Second); err != nil {
-		_ = s.tunnel.Stop()
-		s.detail(w, http.StatusBadGateway, "Cloudflare tunnel could not become reachable. Try again. "+err.Error())
-		return
+	validationMessage := snapshot.Message
+	if err := s.validatePublicBackendURL(publicURL); err != nil {
+		message := "Public tunnel started. The public DNS/edge may need a few seconds before health check succeeds: " + err.Error()
+		validationMessage = &message
 	}
 
 	if err := s.saveFamilyPublicURLs(r.Context(), user.FamilyID, publicURL, publicURL); err != nil {
@@ -434,10 +436,14 @@ func (s *Server) handleQuickStartPublicAccess(w http.ResponseWriter, r *http.Req
 		Provider:     provider,
 		PublicURL:    publicURL,
 		Origin:       snapshot.Origin,
-		Message:      strPtr("Cloudflare Tunnel is ready."),
+		Message:      validationMessage,
 		PublicAccess: settings,
 		InviteLinks:  inviteLinks,
 	})
+}
+
+func strPtr(s string) *string {
+	return &s
 }
 
 func (s *Server) handlePublicIPQuickStart(w http.ResponseWriter, r *http.Request, user userPublic) {
@@ -587,32 +593,6 @@ func (s *Server) validatePublicBackendURL(publicURL string) error {
 	return nil
 }
 
-func (s *Server) waitForPublicBackendURL(publicURL string, timeout time.Duration) error {
-	deadline := time.Now().Add(timeout)
-	backoff := 2 * time.Second
-	var lastErr error
-
-	for {
-		if err := s.validatePublicBackendURL(publicURL); err == nil {
-			return nil
-		} else {
-			lastErr = err
-		}
-
-		if time.Now().After(deadline) {
-			if lastErr == nil {
-				return errors.New("timed out waiting for public health check")
-			}
-			return fmt.Errorf("timed out waiting for public health check: %w", lastErr)
-		}
-
-		time.Sleep(backoff)
-		if backoff < 5*time.Second {
-			backoff++
-		}
-	}
-}
-
 func (s *Server) checkLocalBackendHealth() bool {
 	healthURL := fmt.Sprintf("http://127.0.0.1:%d/api/health", s.cfg.Port)
 
@@ -696,16 +676,38 @@ func (s *Server) createPublicInviteLinks(ctx context.Context, user userPublic, f
 func (s *Server) snapshotToTunnelStatus(snapshot tunnel.Snapshot, family familyPublic) publicTunnelStatus {
 	settings := publicAccessSettingsForFamily(family, s.cfg.AppURL, s.cfg.APIURL)
 	return publicTunnelStatus{
-		State:        snapshot.State,
-		Provider:     snapshot.Provider,
-		URL:          snapshot.URL,
-		Origin:       snapshot.Origin,
-		Message:      snapshot.Message,
-		Logs:         snapshot.Logs,
-		AutoRestart:  snapshot.AutoRestart,
-		Restarts:     snapshot.Restarts,
-		PublicAccess: &settings,
+		State:                  snapshot.State,
+		Provider:               snapshot.Provider,
+		URL:                    snapshot.URL,
+		Origin:                 snapshot.Origin,
+		Message:                snapshot.Message,
+		Logs:                   snapshot.Logs,
+		AutoRestart:            snapshot.AutoRestart,
+		Restarts:               snapshot.Restarts,
+		LastRestartReason:      snapshot.LastRestartReason,
+		HealthStatus:           snapshot.HealthStatus,
+		LastHealthCheckAt:      snapshot.LastHealthCheckAt,
+		LastHealthError:        snapshot.LastHealthError,
+		HealthFailureStreak:    snapshot.HealthFailureStreak,
+		HealthFailureThreshold: snapshot.HealthFailureThreshold,
+		PublicAccess:           &settings,
 	}
+}
+
+func (s *Server) syncFamilyPublicURLsFromTunnelSnapshot(ctx context.Context, familyID string, snapshot tunnel.Snapshot, family familyPublic) {
+	if snapshot.State != "running" || snapshot.URL == nil || snapshot.Provider == nil {
+		return
+	}
+	publicURL := strings.TrimRight(strings.TrimSpace(*snapshot.URL), "/")
+	if publicURL == "" {
+		return
+	}
+	needsUpdate := family.PublicAppURL == nil || family.PublicAPIURL == nil ||
+		*family.PublicAppURL != publicURL || *family.PublicAPIURL != publicURL
+	if !needsUpdate {
+		return
+	}
+	_ = s.saveFamilyPublicURLs(ctx, familyID, publicURL, publicURL)
 }
 
 var domainPattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]$`)

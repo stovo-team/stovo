@@ -137,6 +137,7 @@ func New(cfg config.Config) (*Server, error) {
 	}
 
 	app.configureSockets()
+	app.tunnel.ConfigureLocalTunnelHealth(app.validatePublicBackendURL, 5*time.Second, 3)
 	app.startBrokerConsumers()
 	return app, nil
 }

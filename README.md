@@ -122,7 +122,7 @@ What happens on startup:
 
 - PostgreSQL and Redis start first.
 - The backend container runs `alembic upgrade head` automatically before starting Uvicorn.
-- The frontend container starts the Vite dev server on port `5173`.
+- The frontend container builds once and serves the Vite preview build on port `5173`.
 
 Open the app:
 
@@ -200,13 +200,19 @@ App URL: http://192.168.1.25:5173
 API URL: http://192.168.1.25:8000
 ```
 
-For tunnel-based testing, paste the public tunnel URL for each service. New invite links
-will use the saved App URL and include the saved API URL so invited devices can connect.
+For tunnel-based testing, use a single backend-edge public URL (`:8000`) for both App URL and API URL.
+New invite links will use the saved App URL and include the saved API URL so invited devices can connect.
 The Admin page also includes buttons to fill URLs from the current LAN host, apply
 detected address candidates, and check whether the saved frontend/API URLs respond.
 For easiest public sharing, use **Start public tunnel**. The backend starts a
 Cloudflare Quick Tunnel, saves the generated HTTPS URL for both the app and API,
 and new invite links become reachable from outside the local network.
+
+LocalTunnel notes:
+
+- Use LocalTunnel only through backend-edge routing (`loca.lt` URL points to backend `:8000`).
+- If LocalTunnel starts returning repeated `502` errors, the backend now marks tunnel health as degraded and auto-restarts LocalTunnel.
+- Quick diagnostic: open `<public-url>/assets/<bundle>.js` and verify it returns JavaScript (not an HTML warning/interstitial page).
 
 ## Health Endpoints
 

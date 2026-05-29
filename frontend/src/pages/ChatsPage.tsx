@@ -28,6 +28,9 @@ import {
   Pin,
   Plus,
   Reply,
+  SlidersHorizontal,
+  Volume1,
+  Volume2,
   Search,
   Send,
   ShieldCheck,
@@ -58,7 +61,7 @@ import {
   updateChatPreferences
 } from "../api/chats";
 import { Family } from "../api/family";
-import { ApiError, getApiUrl } from "../api/client";
+import { ApiError, getApiUrl, isTunnelHost } from "../api/client";
 import {
   decryptMessage,
   decryptMessages,
@@ -76,9 +79,25 @@ import { useAuth } from "../auth/AuthContext";
 import ImageLightbox from "../components/ImageLightbox";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
-import AudioCallController from "../realtime/AudioCallController";
+import AudioCallController, {
+  CallAudioCapabilities,
+  CallAudioDevice,
+  CallAudioSettings
+} from "../realtime/AudioCallController";
 
 type CallPhase = "idle" | "outgoing" | "incoming" | "connecting" | "in-call";
+
+const DEFAULT_CALL_AUDIO_SETTINGS: CallAudioSettings = {
+  micMuted: false,
+  soundDisabled: false,
+  speakerMode: "large",
+  inputDeviceId: "",
+  outputDeviceId: "",
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  voiceEnhancement: false
+};
 
 function displayChatName(chat: Chat, currentUserId: string | undefined) {
   if (chat.type === "family" || chat.type === "group" || chat.type === "channel") {
@@ -354,7 +373,12 @@ function mergeIncomingMessage(current: Message[], incoming: Message) {
       (existing) => existing.clientMessageId === clientMessageId
     );
     if (pendingIndex !== -1) {
-      return current.map((existing, index) => (index === pendingIndex ? message : existing));
+      const replaced = current.map((existing, index) => (index === pendingIndex ? message : existing));
+      const deduped = new Map<string, Message>();
+      for (const item of replaced) {
+        deduped.set(item.id, item);
+      }
+      return Array.from(deduped.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     }
   }
   if (current.some((existing) => existing.id === message.id)) {
@@ -714,6 +738,53 @@ function RealAvatar({
   );
 }
 
+const SOCKET_POLLING_OVERRIDE_STORAGE_KEY = "familyMessenger.socket.forcePollingFirst";
+
+function readSocketForcePollingOverride() {
+  const envValue = import.meta.env.VITE_SOCKET_FORCE_POLLING_FIRST;
+  if (typeof envValue === "string") {
+    const normalized = envValue.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
+      return true;
+    }
+    if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off") {
+      return false;
+    }
+  }
+
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const storedValue = window.localStorage.getItem(SOCKET_POLLING_OVERRIDE_STORAGE_KEY);
+  if (storedValue === null) {
+    return null;
+  }
+  const normalized = storedValue.trim().toLowerCase();
+  if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off") {
+    return false;
+  }
+  return null;
+}
+
+function preferPollingFirst(hostname: string) {
+  const override = readSocketForcePollingOverride();
+  if (override !== null) {
+    return override;
+  }
+  const normalized = hostname.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  if (normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1") {
+    return false;
+  }
+  return true;
+}
+
 export default function ChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
@@ -759,11 +830,27 @@ export default function ChatsPage() {
   const [activeCallChatId, setActiveCallChatId] = useState<string | null>(null);
   const [callPeerUserId, setCallPeerUserId] = useState<string | null>(null);
   const [callNotice, setCallNotice] = useState<string | null>(null);
-  const [isMicMuted, setIsMicMuted] = useState(false);
-  const [isSpeakerEnabled, setIsSpeakerEnabled] = useState(true);
+  const [callAudioSettings, setCallAudioSettings] = useState<CallAudioSettings>(
+    DEFAULT_CALL_AUDIO_SETTINGS
+  );
+  const [isCallAudioSettingsOpen, setIsCallAudioSettingsOpen] = useState(false);
+  const [callAudioDevices, setCallAudioDevices] = useState<CallAudioDevice[]>([]);
+  const [callAudioCapabilities, setCallAudioCapabilities] = useState<CallAudioCapabilities>({
+    canSelectInputDevice: false,
+    canSelectOutputDevice: false,
+    canUseNoiseSuppression: false,
+    canUseEchoCancellation: false,
+    canUseAutoGainControl: false,
+    canUseVoiceEnhancement: false
+  });
+  const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)").matches : false
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine
   );
@@ -787,6 +874,7 @@ export default function ChatsPage() {
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
+  const sendInFlightRef = useRef(false);
   const unreadTotal = useMemo(
     () => chats.reduce((total, chat) => total + chat.unreadCount, 0),
     [chats]
@@ -857,6 +945,9 @@ export default function ChatsPage() {
   }, []);
 
   const startIncomingRingtone = useCallback(() => {
+    if (callAudioSettings.soundDisabled) {
+      return;
+    }
     if (ringtoneTimerRef.current !== null) {
       return;
     }
@@ -864,7 +955,47 @@ export default function ChatsPage() {
     ringtoneTimerRef.current = window.setInterval(() => {
       void playIncomingRingtoneBurst().catch(() => undefined);
     }, 1800);
-  }, [playIncomingRingtoneBurst]);
+  }, [callAudioSettings.soundDisabled, playIncomingRingtoneBurst]);
+
+  const refreshCallAudioDevices = useCallback(async () => {
+    const controller = audioCallRef.current;
+    if (!controller) {
+      return;
+    }
+    const devices = await controller.getAvailableDevices();
+    setCallAudioDevices(devices);
+  }, []);
+
+  const applyCallAudioPatch = useCallback(async (patch: Partial<CallAudioSettings>) => {
+    const controller = audioCallRef.current;
+    setCallAudioWarning(null);
+    setCallAudioSettings((current) => ({ ...current, ...patch }));
+    if (!controller) {
+      return;
+    }
+    try {
+      await controller.applyAudioSettings(patch);
+    } catch (err) {
+      setCallAudioWarning(
+        err instanceof Error ? err.message : "Could not apply audio setting. Check permissions."
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const media = window.matchMedia("(max-width: 768px)");
+    const onChange = (event: MediaQueryListEvent) => {
+      setIsMobileViewport(event.matches);
+    };
+    setIsMobileViewport(media.matches);
+    media.addEventListener("change", onChange);
+    return () => {
+      media.removeEventListener("change", onChange);
+    };
+  }, []);
 
   const directTargets = useMemo(
     () => members.filter((member) => member.id !== currentUser?.id),
@@ -1284,11 +1415,11 @@ export default function ChatsPage() {
   }, [activeCallChatId]);
 
   useEffect(() => {
-    if (isLoading || chatId || chats.length === 0) {
+    if (isLoading || chatId || chats.length === 0 || isMobileViewport) {
       return;
     }
     openChat(chats[0]);
-  }, [chatId, chats, isLoading]);
+  }, [chatId, chats, isLoading, isMobileViewport]);
 
   useLayoutEffect(() => {
     if (!selectedChat || messages.length === 0 || messageSearch.trim()) {
@@ -1374,15 +1505,24 @@ export default function ChatsPage() {
       return;
     }
 
+    const transports: Array<"polling" | "websocket"> = preferPollingFirst(window.location.hostname)
+      ? ["polling", "websocket"]
+      : ["websocket", "polling"];
+
     const socket = io(getApiUrl(), {
       path: "/socket.io",
       auth: { token: accessToken },
       query: { token: accessToken },
-      transports: ["polling", "websocket"]
+      transports,
+      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity
     });
     socketRef.current = socket;
-    const audioController = new AudioCallController(socket);
+    const audioController = new AudioCallController(socket, accessToken);
     audioController.attachRemoteAudioElement(remoteAudioRef.current);
+    setCallAudioCapabilities(audioController.getCapabilities());
+    setCallAudioSettings(audioController.getAudioSettings());
     audioCallRef.current = audioController;
 
     const syncAfterSocketResume = () => {
@@ -1589,14 +1729,38 @@ export default function ChatsPage() {
     };
   }, [accessToken, applyMessagesForChat, currentUser?.id, startIncomingRingtone, stopIncomingRingtone]);
 
+  useEffect(() => {
+    if (!isCallAudioSettingsOpen) {
+      return;
+    }
+    void refreshCallAudioDevices().catch(() => undefined);
+    if (!navigator.mediaDevices?.addEventListener) {
+      return;
+    }
+    const onDeviceChange = () => {
+      void refreshCallAudioDevices().catch(() => undefined);
+    };
+    navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);
+    return () => {
+      navigator.mediaDevices.removeEventListener("devicechange", onDeviceChange);
+    };
+  }, [isCallAudioSettingsOpen, refreshCallAudioDevices]);
+
+  useEffect(() => {
+    if (callAudioSettings.soundDisabled) {
+      stopIncomingRingtone();
+    }
+  }, [callAudioSettings.soundDisabled, stopIncomingRingtone]);
+
   async function resetCallState(notice?: string) {
     stopIncomingRingtone();
     await audioCallRef.current?.cleanup();
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
-    setIsMicMuted(false);
-    setIsSpeakerEnabled(true);
+    setCallAudioSettings(DEFAULT_CALL_AUDIO_SETTINGS);
+    setIsCallAudioSettingsOpen(false);
+    setCallAudioWarning(null);
     setCallNotice(notice ?? null);
   }
 
@@ -1663,8 +1827,9 @@ export default function ChatsPage() {
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
-    setIsMicMuted(false);
-    setIsSpeakerEnabled(true);
+    setCallAudioSettings(DEFAULT_CALL_AUDIO_SETTINGS);
+    setIsCallAudioSettingsOpen(false);
+    setCallAudioWarning(null);
     setCallNotice("Call ended");
     if (selectedChat?.id === endingChatId && selectedChat.type === "direct") {
       window.setTimeout(() => {
@@ -2073,6 +2238,9 @@ export default function ChatsPage() {
 
   async function handleSendMessage(event: FormEvent) {
     event.preventDefault();
+    if (sendInFlightRef.current) {
+      return;
+    }
     const content = composer.trim();
     if (!accessToken || !selectedChat || (!content && pendingAttachments.length === 0)) {
       return;
@@ -2138,6 +2306,8 @@ export default function ChatsPage() {
     socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
 
     try {
+      sendInFlightRef.current = true;
+      setIsSendingMessage(true);
       const encrypted = await encryptMessageContent(selectedChat, content || null, currentUser.id);
       const message = await sendMessage(
         accessToken,
@@ -2164,6 +2334,9 @@ export default function ChatsPage() {
         )
       );
       setError(err instanceof ApiError ? String(err.message) : "Message failed");
+    } finally {
+      sendInFlightRef.current = false;
+      setIsSendingMessage(false);
     }
   }
 
@@ -2217,9 +2390,9 @@ export default function ChatsPage() {
           <aside className="chat-sidebar">
             <div className="chat-sidebar-header">
               <div className="sidebar-title-row">
-                <span className="avatar app-avatar">{chatInitials(family?.name ?? "Velo")}</span>
+                <span className="avatar app-avatar">{chatInitials(family?.name ?? "Stovo")}</span>
                 <div>
-                  <p className="eyebrow">{family?.name ?? "Velo"}</p>
+                  <p className="eyebrow">{family?.name ?? "Stovo"}</p>
                   <h1>Chats</h1>
                 </div>
                 <div className="sidebar-actions">
@@ -2351,7 +2524,11 @@ export default function ChatsPage() {
                     type="button"
                     className="mobile-back-button"
                     aria-label="Back to chats"
-                    onClick={() => navigate("/app/chats")}
+                    onClick={() => {
+                      setIsDetailsOpen(false);
+                      setSelectedChat(null);
+                      navigate("/app/chats");
+                    }}
                   >
                     <ChevronLeft aria-hidden="true" size={18} />
                     Chats
@@ -2784,23 +2961,52 @@ export default function ChatsPage() {
                         <>
                           <button
                             type="button"
-                            onClick={() => {
-                              const next = !isMicMuted;
-                              setIsMicMuted(next);
-                              audioCallRef.current?.setMuted(next);
-                            }}
+                            onClick={() =>
+                              void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })
+                            }
                           >
-                            {isMicMuted ? "Unmute" : "Mute"}
+                            {callAudioSettings.micMuted ? "Unmute" : "Mute"}
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              const next = !isSpeakerEnabled;
-                              setIsSpeakerEnabled(next);
-                              audioCallRef.current?.setSpeakerEnabled(next);
-                            }}
+                            onClick={() =>
+                              void applyCallAudioPatch({
+                                soundDisabled: !callAudioSettings.soundDisabled
+                              })
+                            }
                           >
-                            {isSpeakerEnabled ? "Speaker On" : "Speaker Off"}
+                            {callAudioSettings.soundDisabled ? "Sound Off" : "Sound On"}
+                          </button>
+                          {isMobileViewport && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void applyCallAudioPatch({
+                                  speakerMode:
+                                    callAudioSettings.speakerMode === "small" ? "large" : "small"
+                                })
+                              }
+                            >
+                              {callAudioSettings.speakerMode === "small" ? (
+                                <>
+                                  <Volume1 aria-hidden="true" size={15} />
+                                  Small speaker
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 aria-hidden="true" size={15} />
+                                  Loud speaker
+                                </>
+                              )}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setIsCallAudioSettingsOpen((current) => !current)}
+                            aria-pressed={isCallAudioSettingsOpen}
+                          >
+                            <SlidersHorizontal aria-hidden="true" size={15} />
+                            Audio settings
                           </button>
                           <button type="button" className="danger" onClick={() => void endActiveCall()}>
                             <PhoneOff aria-hidden="true" size={16} />
@@ -2809,6 +3015,128 @@ export default function ChatsPage() {
                         </>
                       )}
                     </div>
+                    {isCallAudioSettingsOpen && (
+                      <div className="call-audio-settings-panel">
+                        {callAudioWarning && <p className="muted-copy">{callAudioWarning}</p>}
+                        <label>
+                          Microphone
+                          <select
+                            value={callAudioSettings.inputDeviceId}
+                            disabled={!callAudioCapabilities.canSelectInputDevice}
+                            onChange={(event) =>
+                              void applyCallAudioPatch({ inputDeviceId: event.target.value })
+                            }
+                          >
+                            <option value="">System default</option>
+                            {callAudioDevices
+                              .filter((device) => device.kind === "audioinput")
+                              .map((device) => (
+                                <option key={device.deviceId} value={device.deviceId}>
+                                  {device.label}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                        <label>
+                          Speaker output
+                          <select
+                            value={callAudioSettings.outputDeviceId}
+                            disabled={!callAudioCapabilities.canSelectOutputDevice}
+                            onChange={(event) =>
+                              void applyCallAudioPatch({ outputDeviceId: event.target.value })
+                            }
+                          >
+                            <option value="">System default</option>
+                            {callAudioDevices
+                              .filter((device) => device.kind === "audiooutput")
+                              .map((device) => (
+                                <option key={device.deviceId} value={device.deviceId}>
+                                  {device.label}
+                                </option>
+                              ))}
+                          </select>
+                        </label>
+                        {!callAudioCapabilities.canSelectOutputDevice && (
+                          <p className="muted-copy">
+                            This browser uses default output only.
+                          </p>
+                        )}
+                        <label className="inline-toggle">
+                          <input
+                            type="checkbox"
+                            checked={callAudioSettings.echoCancellation}
+                            disabled={!callAudioCapabilities.canUseEchoCancellation}
+                            onChange={(event) =>
+                              void applyCallAudioPatch({
+                                echoCancellation: event.target.checked
+                              })
+                            }
+                          />
+                          <span>Echo cancellation</span>
+                        </label>
+                        <label className="inline-toggle">
+                          <input
+                            type="checkbox"
+                            checked={callAudioSettings.noiseSuppression}
+                            disabled={!callAudioCapabilities.canUseNoiseSuppression}
+                            onChange={(event) =>
+                              void applyCallAudioPatch({
+                                noiseSuppression: event.target.checked
+                              })
+                            }
+                          />
+                          <span>Noise suppression</span>
+                        </label>
+                        <label className="inline-toggle">
+                          <input
+                            type="checkbox"
+                            checked={callAudioSettings.autoGainControl}
+                            disabled={!callAudioCapabilities.canUseAutoGainControl}
+                            onChange={(event) =>
+                              void applyCallAudioPatch({
+                                autoGainControl: event.target.checked
+                              })
+                            }
+                          />
+                          <span>Auto gain control</span>
+                        </label>
+                        <label className="inline-toggle">
+                          <input
+                            type="checkbox"
+                            checked={callAudioSettings.voiceEnhancement}
+                            disabled={!callAudioCapabilities.canUseVoiceEnhancement}
+                            onChange={(event) =>
+                              void applyCallAudioPatch({
+                                voiceEnhancement: event.target.checked
+                              })
+                            }
+                          />
+                          <span>Voice enhancement</span>
+                        </label>
+                        {isMobileViewport && (
+                          <div className="call-speaker-mode-row" role="group" aria-label="Speaker mode">
+                            <button
+                              type="button"
+                              className={callAudioSettings.speakerMode === "small" ? "active" : ""}
+                              aria-pressed={callAudioSettings.speakerMode === "small"}
+                              onClick={() => void applyCallAudioPatch({ speakerMode: "small" })}
+                            >
+                              <Volume1 aria-hidden="true" size={15} />
+                              Small speaker
+                            </button>
+                            <button
+                              type="button"
+                              className={callAudioSettings.speakerMode === "large" ? "active" : ""}
+                              aria-pressed={callAudioSettings.speakerMode === "large"}
+                              onClick={() => void applyCallAudioPatch({ speakerMode: "large" })}
+                            >
+                              <Volume2 aria-hidden="true" size={15} />
+                              Loud speaker
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </section>
                 )}
                 <form className="message-composer" onSubmit={handleSendMessage}>
@@ -2922,6 +3250,7 @@ export default function ChatsPage() {
                       aria-label="Send message"
                       disabled={
                         isUploading ||
+                        isSendingMessage ||
                         channelCommentsDisabledForViewer ||
                         missingCommentThread ||
                         (!composer.trim() && pendingAttachments.length === 0)
@@ -2929,6 +3258,8 @@ export default function ChatsPage() {
                     >
                       {isUploading ? (
                         "Uploading"
+                      ) : isSendingMessage ? (
+                        "Sending"
                       ) : (
                         <>
                           <Send aria-hidden="true" size={18} />

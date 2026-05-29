@@ -241,6 +241,12 @@ export default function AdminPage() {
         logs: [],
         autoRestart: true,
         restarts: 0,
+        lastRestartReason: null,
+        healthStatus: "healthy",
+        lastHealthCheckAt: null,
+        lastHealthError: null,
+        healthFailureStreak: 0,
+        healthFailureThreshold: 3,
         publicAccess: result.publicAccess
       });
       setInviteLinks(result.inviteLinks);
@@ -458,7 +464,7 @@ export default function AdminPage() {
       <section className="page-surface">
         <div className="masthead">
           <div>
-            <p className="eyebrow">{family?.name ?? "Velo"}</p>
+            <p className="eyebrow">{family?.name ?? "Stovo"}</p>
             <h1>Admin</h1>
           </div>
         </div>
@@ -607,6 +613,14 @@ export default function AdminPage() {
                     {publicTunnel?.message && <span>{publicTunnel.message}</span>}
                     <span>Auto-restart: {publicTunnel?.autoRestart ? "on" : "off"}</span>
                     <span>Restarts: {publicTunnel?.restarts ?? 0}</span>
+                    <span>Tunnel health: {publicTunnel?.healthStatus ?? "unknown"}</span>
+                    {publicTunnel?.lastRestartReason && <span>Last restart reason: {publicTunnel.lastRestartReason}</span>}
+                    {publicTunnel?.lastHealthError && <span>Last health error: {publicTunnel.lastHealthError}</span>}
+                    {publicTunnel?.healthStatus === "degraded" && (
+                      <span>
+                        LocalTunnel is degraded ({publicTunnel.healthFailureStreak}/{publicTunnel.healthFailureThreshold} failed checks). Auto-restart will try to recover.
+                      </span>
+                    )}
                   </div>
                   <div className="public-access-actions">
                     <button
