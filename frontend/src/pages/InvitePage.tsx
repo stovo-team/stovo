@@ -55,8 +55,8 @@ export default function InvitePage() {
     <main className="app-shell">
       <section className="auth-panel">
         <p className="eyebrow">Invitation</p>
-        <VeloLogo className="app-brand-logo" title="Velo" />
-        <h1>{preview ? preview.familyName : "Velo"}</h1>
+        <VeloLogo className="app-brand-logo" title="Stovo" />
+        <h1>{preview ? preview.familyName : "Stovo"}</h1>
         {preview && (
           <div className="summary-band compact">
             <div>

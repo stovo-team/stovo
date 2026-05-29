@@ -35,8 +35,8 @@ export default function LoginPage() {
     <main className="app-shell">
       <section className="auth-panel">
         <p className="eyebrow">Private family space</p>
-        <VeloLogo className="app-brand-logo" title="Velo" />
-        <h1>Velo</h1>
+        <VeloLogo className="app-brand-logo" title="Stovo" />
+        <h1>Stovo</h1>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             Nickname

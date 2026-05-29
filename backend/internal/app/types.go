@@ -343,15 +343,21 @@ type mediaQualitySettings struct {
 }
 
 type publicTunnelStatus struct {
-	State        string                `json:"state"`
-	Provider     *string               `json:"provider"`
-	URL          *string               `json:"url"`
-	Origin       *string               `json:"origin"`
-	Message      *string               `json:"message"`
-	Logs         []string              `json:"logs"`
-	AutoRestart  bool                  `json:"autoRestart"`
-	Restarts     int                   `json:"restarts"`
-	PublicAccess *publicAccessSettings `json:"publicAccess"`
+	State                  string                `json:"state"`
+	Provider               *string               `json:"provider"`
+	URL                    *string               `json:"url"`
+	Origin                 *string               `json:"origin"`
+	Message                *string               `json:"message"`
+	Logs                   []string              `json:"logs"`
+	AutoRestart            bool                  `json:"autoRestart"`
+	Restarts               int                   `json:"restarts"`
+	LastRestartReason      *string               `json:"lastRestartReason"`
+	HealthStatus           string                `json:"healthStatus"`
+	LastHealthCheckAt      *time.Time            `json:"lastHealthCheckAt"`
+	LastHealthError        *string               `json:"lastHealthError"`
+	HealthFailureStreak    int                   `json:"healthFailureStreak"`
+	HealthFailureThreshold int                   `json:"healthFailureThreshold"`
+	PublicAccess           *publicAccessSettings `json:"publicAccess"`
 }
 
 type domainLinkRequest struct {

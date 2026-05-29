@@ -303,7 +303,7 @@ export default function FilesPage() {
         <div className="storage-main">
           <header className="section-header">
             <div>
-              <p className="eyebrow">{family?.name ?? "Velo"}</p>
+              <p className="eyebrow">{family?.name ?? "Stovo"}</p>
               <h1>Storage</h1>
             </div>
             <div className="section-actions">

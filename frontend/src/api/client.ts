@@ -1,5 +1,10 @@
 const DEFAULT_API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const API_URL_STORAGE_KEY = "familyMessenger.apiUrl";
+const KNOWN_TUNNEL_HOST_SUFFIXES = [
+  ".trycloudflare.com",
+  ".loca.lt",
+  ".localtunnel.me"
+];
 
 function normalizeApiUrl(value: string | null | undefined): string | null {
   if (!value?.trim()) {
@@ -88,10 +93,17 @@ export function setApiUrlOverride(apiUrl: string | null) {
   window.localStorage.removeItem(API_URL_STORAGE_KEY);
 }
 
-function isLocalTunnelApiUrl(apiUrl: string) {
+export function isTunnelHost(hostname: string) {
+  const lowerHost = hostname.trim().toLowerCase();
+  if (!lowerHost) {
+    return false;
+  }
+  return KNOWN_TUNNEL_HOST_SUFFIXES.some((suffix) => lowerHost.endsWith(suffix));
+}
+
+function isTunnelApiUrl(apiUrl: string) {
   try {
-    const hostname = new URL(apiUrl).hostname.toLowerCase();
-    return hostname.endsWith(".loca.lt") || hostname.endsWith(".localtunnel.me");
+    return isTunnelHost(new URL(apiUrl).hostname);
   } catch {
     return false;
   }
@@ -117,7 +129,7 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
   const apiUrl = getApiUrl();
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json");
-  if (isLocalTunnelApiUrl(apiUrl)) {
+  if (isTunnelApiUrl(apiUrl)) {
     headers.set("bypass-tunnel-reminder", "1");
     headers.set("abypass-tunnel-reminder", "1");
   }
