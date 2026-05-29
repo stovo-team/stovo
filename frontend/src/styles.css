@@ -96,8 +96,8 @@
 
 .call-banner {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 12px;
   padding: 10px 12px;
   border: 1px solid var(--border-default);
@@ -118,6 +118,7 @@
 .call-banner-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -134,6 +135,38 @@
   display: grid;
   gap: 12px;
   max-width: 420px;
+}
+
+.call-audio-settings-panel {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-default);
+  background: var(--surface-raised);
+}
+
+.call-audio-settings-panel label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.call-speaker-mode-row {
+  display: flex;
+  gap: 8px;
+}
+
+.call-speaker-mode-row > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.call-speaker-mode-row > button.active {
+  border-color: var(--accent-primary);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
 }
 
 :root[data-accent="purple"] {

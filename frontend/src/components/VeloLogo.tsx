@@ -3,7 +3,7 @@ type VeloLogoProps = {
   title?: string;
 };
 
-export default function VeloLogo({ className, title = "Velo logo" }: VeloLogoProps) {
+export default function VeloLogo({ className, title = "Stovo logo" }: VeloLogoProps) {
   return (
     <svg
       className={className}

@@ -41,12 +41,12 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
 
   return (
     <nav className="app-nav" aria-label="Application navigation">
-      <div className="app-brand" aria-label="Velo">
+      <div className="app-brand" aria-label="Stovo">
         <span className="app-brand-mark">
-          <VeloLogo className="app-brand-logo" title="Velo" />
+          <VeloLogo className="app-brand-logo" title="Stovo" />
         </span>
         <span>
-          <strong>Velo</strong>
+          <strong>Stovo</strong>
           <small>Private space</small>
         </span>
       </div>
