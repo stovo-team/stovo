@@ -70,12 +70,24 @@ services:
     build:
       context: ./frontend
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+      VITE_API_URL: ${VITE_API_URL:-http://localhost}
       VITE_DISABLE_HMR: ${VITE_DISABLE_HMR:-true}
     ports:
       - "5173:5173"
     depends_on:
       - backend
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      - frontend
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
 
   coturn:
     image: coturn/coturn:latest
@@ -103,3 +115,5 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  caddy-data:
+  caddy-config:

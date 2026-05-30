@@ -1,0 +1,106 @@
+--- frontend/src/pages/AdminPage.tsx
++++ frontend/src/pages/AdminPage.tsx
+@@ -15,7 +15,10 @@ import {
+   PublicAccessCheckResponse,
+   PublicAccessSettings,
+   PublicAccessSuggestions,
+-  PublicTunnelStatus
++  PublicInviteLink,
++  PublicIPQuickStartResponse,
++  PublicTunnelStatus,
++  QuickStartPublicAccessResponse
+ } from "../api/admin";
+ import { ApiError, getApiUrl } from "../api/client";
+ import { Family } from "../api/family";
+@@ -115,12 +118,16 @@ export default function AdminPage() {
+   const [isSavingPublicAccess, setIsSavingPublicAccess] = useState(false);
+   const [isSavingMediaQuality, setIsSavingMediaQuality] = useState(false);
+   const [isCheckingPublicAccess, setIsCheckingPublicAccess] = useState(false);
++  const [isStartingPublicAccess, setIsStartingPublicAccess] = useState(false);
++  const [isStartingPublicIPAccess, setIsStartingPublicIPAccess] = useState(false);
+   const [startingTunnelProvider, setStartingTunnelProvider] = useState<TunnelProvider | null>(null);
+   const [isStoppingTunnel, setIsStoppingTunnel] = useState(false);
+   const [isLinkingDomain, setIsLinkingDomain] = useState(false);
+   const [isSavingEncryption, setIsSavingEncryption] = useState(false);
++  const [inviteLinks, setInviteLinks] = useState<PublicInviteLink[]>([]);
+ 
+   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
++  const publicAccessReady = Boolean(publicAccess?.configuredAppUrl || publicAccess?.configuredApiUrl || publicTunnel?.url);
+ 
+   const load = useCallback(async () => {
+     if (!accessToken || !canViewAdmin) {
+@@ -419,9 +499,10 @@ export default function AdminPage() {
+       setNotice("Open the admin page with the LAN address, then press this again");
+       return;
+     }
++    const publicUrl = `${window.location.protocol}//${window.location.hostname}:8000`;
+     setPublicAccessForm({
+-      appUrl: `${window.location.protocol}//${window.location.hostname}:5173`,
+-      apiUrl: `${window.location.protocol}//${window.location.hostname}:8000`
++      appUrl: publicUrl,
++      apiUrl: publicUrl
+     });
+     setPublicAccessCheck(null);
+     setNotice(null);
+@@ -564,6 +645,61 @@ export default function AdminPage() {
+                 <h2>Public access</h2>
+                 <strong>{publicAccess?.inviteUrlIncludesApiUrl ? "API included" : "API derived"}</strong>
+               </div>
++              <div className="tunnel-panel">
++                <div>
++                  <span className="summary-label">One-click setup</span>
++                  <strong>{publicAccessReady ? "Public access is configured" : "Private by default"}</strong>
++                  <span>
++                    Start a public tunnel or prepare a public IP link. Invite links are generated automatically.
++                  </span>
++                </div>
++                <div className="public-access-actions">
++                  <button
++                    type="button"
++                    disabled={isStartingPublicAccess}
++                    onClick={() => void quickStartPublicAccess()}
++                  >
++                    {isStartingPublicAccess ? "Starting tunnel" : "Make messenger public"}
++                  </button>
++                  <button
++                    type="button"
++                    disabled={isStartingPublicIPAccess}
++                    onClick={() => void quickStartPublicIPAccess()}
++                  >
++                    {isStartingPublicIPAccess ? "Preparing public IP" : "Use public IP"}
++                  </button>
++                </div>
++              </div>
++              {publicAccessReady && (
++                <div className="public-access-current">
++                  <div>
++                    <span className="summary-label">Public link</span>
++                    <code>{publicAccess?.appUrl ?? publicTunnel?.url ?? "Loading"}</code>
++                  </div>
++                  <button
++                    type="button"
++                    onClick={() => void navigator.clipboard.writeText(publicAccess?.appUrl ?? publicTunnel?.url ?? "")}
++                  >
++                    Copy public link
++                  </button>
++                </div>
++              )}
++              {inviteLinks.length > 0 && (
++                <div className="invite-links">
++                  <h3>Invite links</h3>
++                  {inviteLinks.map((invite) => (
++                    <article key={invite.id} className="invite-link-card">
++                      <div>
++                        <strong>{invite.role}</strong>
++                        <code>{invite.url}</code>
++                      </div>
++                      <button type="button" onClick={() => void navigator.clipboard.writeText(invite.url)}>
++                        Copy
++                      </button>
++                    </article>
++                  ))}
++                </div>
++              )}
+               <div className="public-access-current">
+                 <div>
+                   <span className="summary-label">App URL</span>
