@@ -127,21 +127,28 @@ What happens on startup:
 Open the app:
 
 ```text
-http://localhost:5173
+http://localhost
 ```
 
 The backend API is available at:
 
 ```text
+http://localhost/api
+```
+
+Direct container ports are still exposed for debugging:
+
+```text
+http://localhost:5173
 http://localhost:8000
 ```
 
 Quick verification endpoints:
 
 ```text
-http://localhost:8000/api/health
-http://localhost:8000/api/health/db
-http://localhost:8000/api/health/redis
+http://localhost/api/health
+http://localhost/api/health/db
+http://localhost/api/health/redis
 ```
 
 To stop the stack:

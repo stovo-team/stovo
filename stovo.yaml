@@ -36,7 +36,6 @@ spec:
           imagePullPolicy: IfNotPresent
           command:
             - redis-server --appendonly yes
-          vo
         - name: stovo-turn
           image: coturn/coturn:latest
           imagePullPolicy: IfNotPresent
