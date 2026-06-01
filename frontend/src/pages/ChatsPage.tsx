@@ -694,17 +694,11 @@ async function ensureSocketConnected(socket: Socket, timeoutMs = 4000) {
       cleanup();
       resolve(true);
     };
-    const onError = () => {
-      cleanup();
-      resolve(false);
-    };
     const cleanup = () => {
       window.clearTimeout(timer);
       socket.off("connect", onConnect);
-      socket.off("connect_error", onError);
     };
     socket.on("connect", onConnect);
-    socket.on("connect_error", onError);
   });
 }
 
