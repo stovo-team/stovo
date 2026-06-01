@@ -1,12 +1,6 @@
 {$APP_DOMAIN} {
-    # Exclude socket.io from gzip — compressing long-poll streaming responses
-    # delays event delivery and can break real-time signaling (calls, typing, etc.).
-    encode {
-        match {
-            not path /socket.io/*
-        }
-        gzip
-    }
+    @notsocketio not path /socket.io/*
+    encode @notsocketio gzip
 
     handle /api/* {
         reverse_proxy backend:8000
