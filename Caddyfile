@@ -1,9 +1,5 @@
 {$APP_DOMAIN} {
-    @socketio path /socket.io*
-    encode {
-        not @socketio
-        gzip
-    }
+    encode gzip
 
     handle /api/* {
         reverse_proxy backend:8000
