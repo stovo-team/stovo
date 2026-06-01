@@ -1499,7 +1499,9 @@ export default function ChatsPage() {
       return;
     }
 
-    const transports: Array<"polling" | "websocket"> = ["websocket", "polling"];
+    const transports: Array<"polling" | "websocket"> = preferPollingFirst(window.location.hostname)
+      ? ["polling"]
+      : ["websocket", "polling"];
 
     const socket = io(getApiUrl(), {
       path: "/socket.io",
