@@ -770,19 +770,14 @@ function readSocketForcePollingOverride() {
   return null;
 }
 
-function preferPollingFirst(hostname: string) {
+function preferPollingFirst(_hostname: string) {
   const override = readSocketForcePollingOverride();
   if (override !== null) {
     return override;
   }
-  const normalized = hostname.trim().toLowerCase();
-  if (!normalized) {
-    return false;
-  }
-  if (normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1") {
-    return false;
-  }
-  return true;
+  // Always prefer WebSocket first. Polling-first causes real-time call events
+  // (call:ringing etc.) to be dropped between poll cycles through a reverse proxy.
+  return false;
 }
 
 export default function ChatsPage() {
