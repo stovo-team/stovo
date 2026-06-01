@@ -1,12 +1,15 @@
 {$APP_DOMAIN} {
-    @notsocketio not path /socket.io/*
-    encode @notsocketio gzip
+    @socketio path /socket.io*
+    encode {
+        not @socketio
+        gzip
+    }
 
     handle /api/* {
         reverse_proxy backend:8000
     }
 
-    handle /socket.io/* {
+    handle /socket.io* {
         reverse_proxy backend:8000
     }
 
