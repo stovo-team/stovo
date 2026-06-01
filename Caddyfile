@@ -1,11 +1,18 @@
-stovo-local.stovo.ru {
-    encode gzip
+{$APP_DOMAIN} {
+    # Exclude socket.io from gzip — compressing long-poll streaming responses
+    # delays event delivery and can break real-time signaling (calls, typing, etc.).
+    encode {
+        match {
+            not path /socket.io/*
+        }
+        gzip
+    }
 
     handle /api/* {
         reverse_proxy backend:8000
     }
 
-    handle /ws {
+    handle /socket.io/* {
         reverse_proxy backend:8000
     }
 

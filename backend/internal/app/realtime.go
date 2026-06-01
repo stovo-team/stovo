@@ -726,6 +726,11 @@ func (s *Server) handleGetIceServers(w http.ResponseWriter, r *http.Request, use
 }
 
 func (s *Server) resolveTurnHost(user userPublic) string {
+	// Explicit config takes priority — fastest and most reliable path.
+	if s.cfg.TurnHost != "" {
+		return s.cfg.TurnHost
+	}
+
 	family, err := s.getFamily(user.FamilyID)
 	if err == nil && family.PublicAPIURL != nil {
 		if parsed, parseErr := url.Parse(*family.PublicAPIURL); parseErr == nil {
