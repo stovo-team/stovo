@@ -96,7 +96,7 @@ export default function InvitePage() {
             />
           </label>
           {error && <p className="error-text">{error}</p>}
-          <button type="submit" disabled={!preview || isSubmitting}>
+          <button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Joining" : "Join family"}
           </button>
         </form>
