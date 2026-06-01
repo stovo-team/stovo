@@ -1500,7 +1500,7 @@ export default function ChatsPage() {
     }
 
     const transports: Array<"polling" | "websocket"> = preferPollingFirst(window.location.hostname)
-      ? ["polling"]
+      ? ["polling", "websocket"]
       : ["websocket", "polling"];
 
     const socket = io(getApiUrl(), {
