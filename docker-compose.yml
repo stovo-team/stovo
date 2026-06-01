@@ -84,6 +84,7 @@ services:
       - backend
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -92,11 +93,10 @@ services:
   coturn:
     image: coturn/coturn:latest
     restart: unless-stopped
-    network_mode: host
     environment:
       TURN_ENABLED: true
       TURN_PORT: 3478
-      TURN_REALM: family-messenger
+      TURN_REALM: stovo-local.stovo.ru
       TURN_USERNAME: family
       TURN_PASSWORD: change_me
       TURN_MIN_PORT: 49160
@@ -111,6 +111,10 @@ services:
       - --min-port=49160
       - --max-port=49200
       - --external-ip=${PUBLIC_IP}
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "49160-49200:49160-49200/udp"
 
 volumes:
   postgres-data:
