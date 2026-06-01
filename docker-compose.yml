@@ -28,7 +28,7 @@ services:
     build:
       context: ./backend
     environment:
-      APP_ENV: ${APP_ENV:-development}
+      APP_ENV: ${APP_ENV:-production}
       APP_URL: ${APP_URL:-http://localhost:8000}
       API_URL: ${API_URL:-http://localhost:8000}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:5173}
@@ -55,8 +55,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FILE_PATH: /app/logs/backend.log
       LOG_BUFFER_MAX_RECORDS: ${LOG_BUFFER_MAX_RECORDS:-2000}
-    ports:
-      - "8000:8000"
+      TURN_ENABLED: ${TURN_ENABLED:-true}
+      TURN_HOST: ${TURN_HOST:-}
+      TURN_PORT: ${TURN_PORT:-3478}
+      TURN_REALM: ${TURN_REALM:-family-messenger}
+      TURN_USERNAME: ${TURN_USERNAME:-family}
+      TURN_PASSWORD: ${TURN_PASSWORD:-change_me}
+    expose:
+      - "8000"
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
@@ -70,21 +76,23 @@ services:
     build:
       context: ./frontend
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://localhost}
       VITE_DISABLE_HMR: ${VITE_DISABLE_HMR:-true}
-    ports:
-      - "5173:5173"
+    expose:
+      - "5173"
     depends_on:
       - backend
 
   caddy:
     image: caddy:2-alpine
+    restart: unless-stopped
     depends_on:
       - frontend
       - backend
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -93,28 +101,27 @@ services:
   coturn:
     image: coturn/coturn:latest
     restart: unless-stopped
+    # Host networking is required on Linux so coturn sees real client IPs
+    # and UDP relay works without Docker NAT interfering.
+    # On macOS/Windows for local dev this is ignored — coturn won't relay
+    # but that's fine since both WebRTC peers are on localhost anyway.
+    network_mode: host
     environment:
-      TURN_ENABLED: true
-      TURN_PORT: 3478
-      TURN_REALM: stovo-local.stovo.ru
-      TURN_USERNAME: family
-      TURN_PASSWORD: change_me
-      TURN_MIN_PORT: 49160
-      TURN_MAX_PORT: 49200
+      TURN_USERNAME: ${TURN_USERNAME:-family}
+      TURN_PASSWORD: ${TURN_PASSWORD:-change_me}
+      TURN_REALM: ${TURN_REALM:-family-messenger}
+      PUBLIC_IP: ${PUBLIC_IP:-}
     command:
       - -n
       - --log-file=stdout
       - --lt-cred-mech
-      - --user=${TURN_USERNAME}:${TURN_PASSWORD}
-      - --realm=${TURN_REALM}
+      - --fingerprint
+      - --user=${TURN_USERNAME:-family}:${TURN_PASSWORD:-change_me}
+      - --realm=${TURN_REALM:-family-messenger}
       - --listening-port=3478
       - --min-port=49160
       - --max-port=49200
       - --external-ip=${PUBLIC_IP}
-    ports:
-      - "3478:3478/tcp"
-      - "3478:3478/udp"
-      - "49160-49200:49160-49200/udp"
 
 volumes:
   postgres-data:
