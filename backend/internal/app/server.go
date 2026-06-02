@@ -497,6 +497,7 @@ func (s *Server) initSchema() error {
 		`UPDATE chats SET encryption_protocol = 'server_at_rest' WHERE encryption_protocol = 'end_to_end';`,
 		`UPDATE messages SET encryption_protocol = 'legacy_plaintext' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS audio_call_settings TEXT;`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.Exec(statement); err != nil {
