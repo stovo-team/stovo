@@ -871,6 +871,9 @@ export default function ChatsPage() {
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const sendInFlightRef = useRef(false);
   const saveAudioSettingsTimerRef = useRef<number | null>(null);
+  const callSettingsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const callSettingsMenuRef = useRef<HTMLDivElement | null>(null);
+  const callAudioPopupRef = useRef<HTMLDivElement | null>(null);
   const unreadTotal = useMemo(
     () => chats.reduce((total, chat) => total + chat.unreadCount, 0),
     [chats]
@@ -1482,6 +1485,18 @@ export default function ChatsPage() {
         setIsEmojiPickerOpen(false);
       }
       setMessageContextMenu(null);
+      if (
+        !callSettingsMenuRef.current?.contains(event.target as Node) &&
+        !callSettingsButtonRef.current?.contains(event.target as Node)
+      ) {
+        setIsCallSettingsMenuOpen(false);
+      }
+      if (
+        !callAudioPopupRef.current?.contains(event.target as Node) &&
+        !callSettingsButtonRef.current?.contains(event.target as Node)
+      ) {
+        setIsCallAudioPopupOpen(false);
+      }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -3026,12 +3041,21 @@ export default function ChatsPage() {
                             </button>
                           )}
                           <button
+                            ref={callSettingsButtonRef}
                             type="button"
-                            onClick={() => setIsCallAudioPopupOpen((current) => !current)}
-                            aria-pressed={isCallAudioPopupOpen}
+                            className={`call-settings-icon-btn${isCallSettingsMenuOpen || isCallAudioPopupOpen ? " active" : ""}`}
+                            aria-label="Audio settings"
+                            title="Audio settings"
+                            onClick={() => {
+                              if (isCallAudioPopupOpen) {
+                                setIsCallAudioPopupOpen(false);
+                                setIsCallSettingsMenuOpen(false);
+                              } else {
+                                setIsCallSettingsMenuOpen((v) => !v);
+                              }
+                            }}
                           >
                             <SlidersHorizontal aria-hidden="true" size={15} />
-                            Audio settings
                           </button>
                           <button type="button" className="danger" onClick={() => void endActiveCall()}>
                             <PhoneOff aria-hidden="true" size={16} />
@@ -3040,128 +3064,6 @@ export default function ChatsPage() {
                         </>
                       )}
                     </div>
-                    {isCallAudioPopupOpen && (
-                      <div className="call-audio-settings-panel">
-                        {callAudioWarning && <p className="muted-copy">{callAudioWarning}</p>}
-                        <label>
-                          Microphone
-                          <select
-                            value={callAudioSettings.inputDeviceId}
-                            disabled={!callAudioCapabilities.canSelectInputDevice}
-                            onChange={(event) =>
-                              void applyCallAudioPatch({ inputDeviceId: event.target.value })
-                            }
-                          >
-                            <option value="">System default</option>
-                            {callAudioDevices
-                              .filter((device) => device.kind === "audioinput")
-                              .map((device) => (
-                                <option key={device.deviceId} value={device.deviceId}>
-                                  {device.label}
-                                </option>
-                              ))}
-                          </select>
-                        </label>
-                        <label>
-                          Speaker output
-                          <select
-                            value={callAudioSettings.outputDeviceId}
-                            disabled={!callAudioCapabilities.canSelectOutputDevice}
-                            onChange={(event) =>
-                              void applyCallAudioPatch({ outputDeviceId: event.target.value })
-                            }
-                          >
-                            <option value="">System default</option>
-                            {callAudioDevices
-                              .filter((device) => device.kind === "audiooutput")
-                              .map((device) => (
-                                <option key={device.deviceId} value={device.deviceId}>
-                                  {device.label}
-                                </option>
-                              ))}
-                          </select>
-                        </label>
-                        {!callAudioCapabilities.canSelectOutputDevice && (
-                          <p className="muted-copy">
-                            This browser uses default output only.
-                          </p>
-                        )}
-                        <label className="inline-toggle">
-                          <input
-                            type="checkbox"
-                            checked={callAudioSettings.echoCancellation}
-                            disabled={!callAudioCapabilities.canUseEchoCancellation}
-                            onChange={(event) =>
-                              void applyCallAudioPatch({
-                                echoCancellation: event.target.checked
-                              })
-                            }
-                          />
-                          <span>Echo cancellation</span>
-                        </label>
-                        <label className="inline-toggle">
-                          <input
-                            type="checkbox"
-                            checked={callAudioSettings.noiseSuppression}
-                            disabled={!callAudioCapabilities.canUseNoiseSuppression}
-                            onChange={(event) =>
-                              void applyCallAudioPatch({
-                                noiseSuppression: event.target.checked
-                              })
-                            }
-                          />
-                          <span>Noise suppression</span>
-                        </label>
-                        <label className="inline-toggle">
-                          <input
-                            type="checkbox"
-                            checked={callAudioSettings.autoGainControl}
-                            disabled={!callAudioCapabilities.canUseAutoGainControl}
-                            onChange={(event) =>
-                              void applyCallAudioPatch({
-                                autoGainControl: event.target.checked
-                              })
-                            }
-                          />
-                          <span>Auto gain control</span>
-                        </label>
-                        <label className="inline-toggle">
-                          <input
-                            type="checkbox"
-                            checked={callAudioSettings.voiceEnhancement}
-                            disabled={!callAudioCapabilities.canUseVoiceEnhancement}
-                            onChange={(event) =>
-                              void applyCallAudioPatch({
-                                voiceEnhancement: event.target.checked
-                              })
-                            }
-                          />
-                          <span>Voice enhancement</span>
-                        </label>
-                        {isMobileViewport && (
-                          <div className="call-speaker-mode-row" role="group" aria-label="Speaker mode">
-                            <button
-                              type="button"
-                              className={callAudioSettings.speakerMode === "small" ? "active" : ""}
-                              aria-pressed={callAudioSettings.speakerMode === "small"}
-                              onClick={() => void applyCallAudioPatch({ speakerMode: "small" })}
-                            >
-                              <Volume1 aria-hidden="true" size={15} />
-                              Small speaker
-                            </button>
-                            <button
-                              type="button"
-                              className={callAudioSettings.speakerMode === "large" ? "active" : ""}
-                              aria-pressed={callAudioSettings.speakerMode === "large"}
-                              onClick={() => void applyCallAudioPatch({ speakerMode: "large" })}
-                            >
-                              <Volume2 aria-hidden="true" size={15} />
-                              Loud speaker
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </section>
                 )}
                 <form className="message-composer" onSubmit={handleSendMessage}>
