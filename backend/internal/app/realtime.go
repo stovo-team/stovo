@@ -184,7 +184,7 @@ func (s *Server) configureSockets() {
 				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Chat not found"})
 				return
 			}
-			session, err := s.startCallSession(chat, user.ID)
+			session, err := s.startCallSession(chat, user.ID, payload.CallType)
 			if err != nil {
 				s.logger.Warnf("realtime.call", "call:start session creation failed user_id=%s chat_id=%s error=%v", user.ID, payload.ChatID, err)
 				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": err.Error()})
@@ -194,6 +194,7 @@ func (s *Server) configureSockets() {
 				"chatId":    session.ChatID,
 				"callerId":  session.CallerUserID,
 				"calleeId":  session.CalleeUserID,
+				"callType":  session.CallType,
 				"state":     string(session.State),
 				"createdAt": session.CreatedAt.Format(time.RFC3339Nano),
 				"expiresAt": session.ExpiresAt.Format(time.RFC3339Nano),
