@@ -17,12 +17,16 @@ type callSession struct {
 	ChatID       string
 	CallerUserID string
 	CalleeUserID string
+	CallType     string // "audio" | "video"
 	State        callState
 	CreatedAt    time.Time
 	ExpiresAt    time.Time
 }
 
-func (s *Server) startCallSession(chat chatPublic, callerUserID string) (*callSession, error) {
+func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType string) (*callSession, error) {
+	if callType != "audio" && callType != "video" {
+		callType = "audio"
+	}
 	if chat.Type != "direct" || len(chat.Members) != 2 {
 		return nil, fmt.Errorf("calls are only available in direct messages")
 	}
@@ -55,6 +59,7 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string) (*callSe
 		ChatID:       chat.ID,
 		CallerUserID: callerUserID,
 		CalleeUserID: calleeUserID,
+		CallType:     callType,
 		State:        callStateRinging,
 		CreatedAt:    now,
 		ExpiresAt:    now.Add(s.callTimeout),
