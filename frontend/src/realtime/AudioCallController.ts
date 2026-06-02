@@ -72,6 +72,7 @@ export default class AudioCallController {
   private settings: CallAudioSettings = { ...DEFAULT_CALL_AUDIO_SETTINGS };
   private processorContext: AudioContext | null = null;
   private processorDestination: MediaStreamAudioDestinationNode | null = null;
+  private gainNode: GainNode | null = null;
 
   constructor(socket: Socket, accessToken: string) {
     this.socket = socket;
@@ -206,7 +207,11 @@ export default class AudioCallController {
     if (patch.micMuted !== undefined) {
       this.applyMicMutedState();
     }
-    if (patch.soundDisabled !== undefined) {
+    if (
+      patch.soundDisabled !== undefined ||
+      patch.speakerMode !== undefined ||
+      patch.outputVolume !== undefined
+    ) {
       this.applySoundDisabledState();
     }
 
@@ -215,7 +220,9 @@ export default class AudioCallController {
       patch.echoCancellation !== undefined ||
       patch.noiseSuppression !== undefined ||
       patch.autoGainControl !== undefined ||
-      patch.voiceEnhancement !== undefined;
+      patch.voiceEnhancement !== undefined ||
+      patch.voiceEnhancementThreshold !== undefined ||
+      patch.voiceEnhancementHighpass !== undefined;
 
     if (needsStreamReacquire && this.peer) {
       try {
@@ -226,6 +233,11 @@ export default class AudioCallController {
         this.applySoundDisabledState();
         throw error;
       }
+    }
+
+    // Hot-update gain without stream re-acquire
+    if (patch.inputGain !== undefined && this.gainNode) {
+      this.gainNode.gain.value = this.settings.inputGain / 100;
     }
 
     if (patch.outputDeviceId !== undefined) {
@@ -397,9 +409,7 @@ export default class AudioCallController {
       audio: this.buildAudioConstraints(),
       video: false
     });
-    const nextSendStream = this.settings.voiceEnhancement
-      ? this.createEnhancedStream(nextSource)
-      : nextSource;
+    const nextSendStream = this.createProcessedStream(nextSource);
 
     const nextTrack = nextSendStream.getAudioTracks()[0] ?? null;
     if (this.peer && nextTrack) {
@@ -426,7 +436,10 @@ export default class AudioCallController {
   private applySoundDisabledState() {
     if (this.remoteAudioEl) {
       this.remoteAudioEl.muted = this.settings.soundDisabled;
-      this.remoteAudioEl.volume = this.settings.speakerMode === "small" ? 0.35 : 1;
+      const baseVolume = this.settings.outputVolume / 100;
+      this.remoteAudioEl.volume = this.settings.speakerMode === "small"
+        ? baseVolume * 0.35
+        : baseVolume;
     }
   }
 
@@ -445,7 +458,7 @@ export default class AudioCallController {
     await audioEl.setSinkId(this.settings.outputDeviceId);
   }
 
-  private createEnhancedStream(input: MediaStream): MediaStream {
+  private createProcessedStream(input: MediaStream): MediaStream {
     const AudioCtor =
       typeof window === "undefined"
         ? null
@@ -459,23 +472,33 @@ export default class AudioCallController {
     this.closeAudioProcessor();
     this.processorContext = new AudioCtor();
     const source = this.processorContext.createMediaStreamSource(input);
-    const highpass = this.processorContext.createBiquadFilter();
-    highpass.type = "highpass";
-    highpass.frequency.value = 120;
-    const compressor = this.processorContext.createDynamicsCompressor();
-    compressor.threshold.value = -24;
-    compressor.knee.value = 24;
-    compressor.ratio.value = 3;
-    compressor.attack.value = 0.003;
-    compressor.release.value = 0.2;
+    this.gainNode = this.processorContext.createGain();
+    this.gainNode.gain.value = this.settings.inputGain / 100;
     this.processorDestination = this.processorContext.createMediaStreamDestination();
-    source.connect(highpass);
-    highpass.connect(compressor);
-    compressor.connect(this.processorDestination);
+
+    if (this.settings.voiceEnhancement) {
+      const highpass = this.processorContext.createBiquadFilter();
+      highpass.type = "highpass";
+      highpass.frequency.value = this.settings.voiceEnhancementHighpass;
+      const compressor = this.processorContext.createDynamicsCompressor();
+      compressor.threshold.value = this.settings.voiceEnhancementThreshold;
+      compressor.knee.value = 24;
+      compressor.ratio.value = 3;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.2;
+      source.connect(highpass);
+      highpass.connect(compressor);
+      compressor.connect(this.gainNode);
+    } else {
+      source.connect(this.gainNode);
+    }
+
+    this.gainNode.connect(this.processorDestination);
     return this.processorDestination.stream;
   }
 
   private closeAudioProcessor() {
+    this.gainNode = null;
     this.processorDestination = null;
     if (this.processorContext) {
       void this.processorContext.close().catch(() => undefined);
