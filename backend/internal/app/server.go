@@ -175,6 +175,8 @@ func (s *Server) Routes() http.Handler {
 	router.Post("/api/auth/logout", s.handleLogout)
 	router.Get("/api/auth/me", s.authenticated(s.handleMe))
 	router.Patch("/api/auth/me", s.authenticated(s.handleUpdateMe))
+	router.Get("/api/auth/audio-settings", s.authenticated(s.handleGetAudioSettings))
+	router.Put("/api/auth/audio-settings", s.authenticated(s.handlePutAudioSettings))
 
 	router.Get("/api/family", s.authenticated(s.handleGetFamily))
 	router.Patch("/api/family", s.authenticated(s.handleUpdateFamily))
