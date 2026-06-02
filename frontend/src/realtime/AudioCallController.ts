@@ -60,6 +60,7 @@ export default class AudioCallController {
   private chatId: string | null = null;
 
   private targetUserId: string | null = null;
+  private pendingCandidates: RTCIceCandidateInit[] = [];
   private settings: CallAudioSettings = { ...DEFAULT_CALL_AUDIO_SETTINGS };
   private processorContext: AudioContext | null = null;
   private processorDestination: MediaStreamAudioDestinationNode | null = null;
@@ -103,6 +104,7 @@ export default class AudioCallController {
       await this.peer!.setRemoteDescription(
         new RTCSessionDescription({ type: "offer", sdp: payload.data.sdp })
       );
+      await this.flushPendingCandidates();
       const answer = await this.peer!.createAnswer();
       await this.peer!.setLocalDescription(answer);
       this.emitSignal({
@@ -116,6 +118,7 @@ export default class AudioCallController {
       await this.peer!.setRemoteDescription(
         new RTCSessionDescription({ type: "answer", sdp: payload.data.sdp })
       );
+      await this.flushPendingCandidates();
       return;
     }
     if (
@@ -123,7 +126,19 @@ export default class AudioCallController {
       payload.data.candidate &&
       typeof payload.data.candidate === "object"
     ) {
-      await this.peer!.addIceCandidate(new RTCIceCandidate(payload.data.candidate as RTCIceCandidateInit));
+      const candidate = payload.data.candidate as RTCIceCandidateInit;
+      if (this.peer!.remoteDescription) {
+        await this.peer!.addIceCandidate(new RTCIceCandidate(candidate));
+      } else {
+        this.pendingCandidates.push(candidate);
+      }
+    }
+  }
+
+  private async flushPendingCandidates() {
+    const candidates = this.pendingCandidates.splice(0);
+    for (const candidate of candidates) {
+      await this.peer!.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => undefined);
     }
   }
 
@@ -229,6 +244,7 @@ export default class AudioCallController {
     this.settings = { ...DEFAULT_CALL_AUDIO_SETTINGS };
     this.chatId = null;
     this.targetUserId = null;
+    this.pendingCandidates = [];
   }
 
   private async ensurePeer() {
