@@ -167,6 +167,27 @@ export default class AudioCallController {
     };
   }
 
+  getTrackConstraintStatus(): {
+    echoCancellation: boolean | null;
+    noiseSuppression: boolean | null;
+    autoGainControl: boolean | null;
+  } {
+    const track = this.sourceStream?.getAudioTracks()[0] ?? null;
+    if (!track) {
+      return { echoCancellation: null, noiseSuppression: null, autoGainControl: null };
+    }
+    const s = track.getSettings() as MediaTrackSettings & {
+      echoCancellation?: boolean;
+      noiseSuppression?: boolean;
+      autoGainControl?: boolean;
+    };
+    return {
+      echoCancellation: s.echoCancellation ?? null,
+      noiseSuppression: s.noiseSuppression ?? null,
+      autoGainControl: s.autoGainControl ?? null,
+    };
+  }
+
   async getAvailableDevices(): Promise<CallAudioDevice[]> {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
       return [];
