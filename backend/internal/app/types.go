@@ -457,18 +457,3 @@ type iceServer struct {
 	Credential string   `json:"credential,omitempty"`
 }
 
-type audioCallSettings struct {
-	SpeakerMode                 string  `json:"speakerMode"`
-	InputDeviceID               string  `json:"inputDeviceId"`
-	OutputDeviceID              string  `json:"outputDeviceId"`
-	EchoCancellation            bool    `json:"echoCancellation"`
-	NoiseSuppression            bool    `json:"noiseSuppression"`
-	AutoGainControl             bool    `json:"autoGainControl"`
-	VoiceEnhancement            bool    `json:"voiceEnhancement"`
-	InputGain                   float64 `json:"inputGain"`
-	OutputVolume                float64 `json:"outputVolume"`
-	VoiceEnhancementThreshold   float64 `json:"voiceEnhancementThreshold"`
-	VoiceEnhancementHighpass    float64 `json:"voiceEnhancementHighpass"`
-}
-
-type updateAudioSettingsRequest = audioCallSettings
