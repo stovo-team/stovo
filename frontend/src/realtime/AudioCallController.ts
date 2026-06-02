@@ -242,8 +242,8 @@ export default class AudioCallController {
       patch.noiseSuppression !== undefined ||
       patch.autoGainControl !== undefined ||
       patch.voiceEnhancement !== undefined ||
-      patch.voiceEnhancementThreshold !== undefined ||
-      patch.voiceEnhancementHighpass !== undefined;
+      (patch.voiceEnhancementThreshold !== undefined && this.settings.voiceEnhancement) ||
+      (patch.voiceEnhancementHighpass !== undefined && this.settings.voiceEnhancement);
 
     if (needsStreamReacquire && this.peer) {
       try {
