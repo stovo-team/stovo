@@ -85,6 +85,12 @@ import AudioCallController, {
   CallAudioSettings,
   DEFAULT_CALL_AUDIO_SETTINGS
 } from "../realtime/AudioCallController";
+import {
+  getAudioSettings,
+  saveAudioSettings,
+  toPersistedSettings,
+  mergeWithDefaults
+} from "../api/audioSettings";
 
 type CallPhase = "idle" | "outgoing" | "incoming" | "connecting" | "in-call";
 
@@ -816,7 +822,13 @@ export default function ChatsPage() {
   const [callAudioSettings, setCallAudioSettings] = useState<CallAudioSettings>(
     DEFAULT_CALL_AUDIO_SETTINGS
   );
-  const [isCallAudioSettingsOpen, setIsCallAudioSettingsOpen] = useState(false);
+  const [isCallSettingsMenuOpen, setIsCallSettingsMenuOpen] = useState(false);
+  const [isCallAudioPopupOpen, setIsCallAudioPopupOpen] = useState(false);
+  const [callTrackStatus, setCallTrackStatus] = useState<{
+    echoCancellation: boolean | null;
+    noiseSuppression: boolean | null;
+    autoGainControl: boolean | null;
+  } | null>(null);
   const [callAudioDevices, setCallAudioDevices] = useState<CallAudioDevice[]>([]);
   const [callAudioCapabilities, setCallAudioCapabilities] = useState<CallAudioCapabilities>({
     canSelectInputDevice: false,
@@ -858,6 +870,7 @@ export default function ChatsPage() {
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const sendInFlightRef = useRef(false);
+  const saveAudioSettingsTimerRef = useRef<number | null>(null);
   const unreadTotal = useMemo(
     () => chats.reduce((total, chat) => total + chat.unreadCount, 0),
     [chats]
@@ -958,12 +971,22 @@ export default function ChatsPage() {
     }
     try {
       await controller.applyAudioSettings(patch);
+      setCallTrackStatus(controller.getTrackConstraintStatus());
     } catch (err) {
       setCallAudioWarning(
         err instanceof Error ? err.message : "Could not apply audio setting. Check permissions."
       );
+      return;
     }
-  }, []);
+    if (saveAudioSettingsTimerRef.current !== null) {
+      window.clearTimeout(saveAudioSettingsTimerRef.current);
+    }
+    saveAudioSettingsTimerRef.current = window.setTimeout(() => {
+      if (!accessToken) return;
+      const current = controller.getAudioSettings();
+      void saveAudioSettings(accessToken, toPersistedSettings(current)).catch(() => undefined);
+    }, 1000);
+  }, [accessToken]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1473,6 +1496,8 @@ export default function ChatsPage() {
       setFullViewImage(null);
       setMessageContextMenu(null);
       setForwardTarget(null);
+      setIsCallSettingsMenuOpen(false);
+      setIsCallAudioPopupOpen(false);
     }
 
     document.addEventListener("mousedown", handleDocumentMouseDown);
@@ -1507,6 +1532,15 @@ export default function ChatsPage() {
     setCallAudioCapabilities(audioController.getCapabilities());
     setCallAudioSettings(audioController.getAudioSettings());
     audioCallRef.current = audioController;
+    if (accessToken) {
+      void getAudioSettings(accessToken)
+        .then((saved) => {
+          const merged = mergeWithDefaults(saved);
+          setCallAudioSettings(merged);
+          return audioController.applyAudioSettings(merged);
+        })
+        .catch(() => undefined);
+    }
 
     const syncAfterSocketResume = () => {
       void loadRef.current();
@@ -1709,11 +1743,14 @@ export default function ChatsPage() {
       audioCallRef.current = null;
       socket.disconnect();
       socketRef.current = null;
+      if (saveAudioSettingsTimerRef.current !== null) {
+        window.clearTimeout(saveAudioSettingsTimerRef.current);
+      }
     };
   }, [accessToken, applyMessagesForChat, currentUser?.id, startIncomingRingtone, stopIncomingRingtone]);
 
   useEffect(() => {
-    if (!isCallAudioSettingsOpen) {
+    if (!isCallAudioPopupOpen) {
       return;
     }
     void refreshCallAudioDevices().catch(() => undefined);
@@ -1727,7 +1764,7 @@ export default function ChatsPage() {
     return () => {
       navigator.mediaDevices.removeEventListener("devicechange", onDeviceChange);
     };
-  }, [isCallAudioSettingsOpen, refreshCallAudioDevices]);
+  }, [isCallAudioPopupOpen, refreshCallAudioDevices]);
 
   useEffect(() => {
     if (callAudioSettings.soundDisabled) {
@@ -1742,7 +1779,9 @@ export default function ChatsPage() {
     setActiveCallChatId(null);
     setCallPeerUserId(null);
     setCallAudioSettings(DEFAULT_CALL_AUDIO_SETTINGS);
-    setIsCallAudioSettingsOpen(false);
+    setIsCallSettingsMenuOpen(false);
+    setIsCallAudioPopupOpen(false);
+    setCallTrackStatus(null);
     setCallAudioWarning(null);
     setCallNotice(notice ?? null);
   }
@@ -1811,7 +1850,9 @@ export default function ChatsPage() {
     setActiveCallChatId(null);
     setCallPeerUserId(null);
     setCallAudioSettings(DEFAULT_CALL_AUDIO_SETTINGS);
-    setIsCallAudioSettingsOpen(false);
+    setIsCallSettingsMenuOpen(false);
+    setIsCallAudioPopupOpen(false);
+    setCallTrackStatus(null);
     setCallAudioWarning(null);
     setCallNotice("Call ended");
     if (selectedChat?.id === endingChatId && selectedChat.type === "direct") {
@@ -2985,8 +3026,8 @@ export default function ChatsPage() {
                           )}
                           <button
                             type="button"
-                            onClick={() => setIsCallAudioSettingsOpen((current) => !current)}
-                            aria-pressed={isCallAudioSettingsOpen}
+                            onClick={() => setIsCallAudioPopupOpen((current) => !current)}
+                            aria-pressed={isCallAudioPopupOpen}
                           >
                             <SlidersHorizontal aria-hidden="true" size={15} />
                             Audio settings
@@ -2998,7 +3039,7 @@ export default function ChatsPage() {
                         </>
                       )}
                     </div>
-                    {isCallAudioSettingsOpen && (
+                    {isCallAudioPopupOpen && (
                       <div className="call-audio-settings-panel">
                         {callAudioWarning && <p className="muted-copy">{callAudioWarning}</p>}
                         <label>
