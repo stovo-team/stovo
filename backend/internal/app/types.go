@@ -420,8 +420,7 @@ type socketTypingRequest struct {
 }
 
 type socketCallStartRequest struct {
-	ChatID   string `json:"chatId"`
-	CallType string `json:"callType"` // "audio" or "video"; defaults to "audio"
+	ChatID string `json:"chatId"`
 }
 
 type socketCallActionRequest struct {
