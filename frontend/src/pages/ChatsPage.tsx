@@ -1532,15 +1532,15 @@ export default function ChatsPage() {
     setCallAudioCapabilities(audioController.getCapabilities());
     setCallAudioSettings(audioController.getAudioSettings());
     audioCallRef.current = audioController;
-    if (accessToken) {
-      void getAudioSettings(accessToken)
-        .then((saved) => {
-          const merged = mergeWithDefaults(saved);
-          setCallAudioSettings(merged);
-          return audioController.applyAudioSettings(merged);
-        })
-        .catch(() => undefined);
-    }
+    let audioSettingsCancelled = false;
+    void getAudioSettings(accessToken)
+      .then((saved) => {
+        if (audioSettingsCancelled) return;
+        const merged = mergeWithDefaults(saved);
+        setCallAudioSettings(merged);
+        return audioController.applyAudioSettings(merged);
+      })
+      .catch(() => undefined);
 
     const syncAfterSocketResume = () => {
       void loadRef.current();
@@ -1735,6 +1735,7 @@ export default function ChatsPage() {
     });
 
     return () => {
+      audioSettingsCancelled = true;
       socket.off("connect", syncAfterSocketResume);
       socket.off("connect_error", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
