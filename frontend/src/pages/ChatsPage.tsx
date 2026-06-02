@@ -21,8 +21,6 @@ import {
   Image,
   Info,
   MessageCircle,
-  Mic,
-  MicOff,
   MoreVertical,
   Paperclip,
   Phone,
@@ -31,9 +29,8 @@ import {
   Plus,
   Reply,
   SlidersHorizontal,
-  Smartphone,
+  Volume1,
   Volume2,
-  VolumeX,
   Search,
   Send,
   ShieldCheck,
@@ -842,7 +839,6 @@ export default function ChatsPage() {
   );
   const socketRef = useRef<Socket | null>(null);
   const audioCallRef = useRef<AudioCallController | null>(null);
-  const soundDisabledRef = useRef(callAudioSettings.soundDisabled);
   const ringtoneAudioContextRef = useRef<AudioContext | null>(null);
   const ringtoneTimerRef = useRef<number | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -931,12 +927,8 @@ export default function ChatsPage() {
     });
   }, []);
 
-  useEffect(() => {
-    soundDisabledRef.current = callAudioSettings.soundDisabled;
-  }, [callAudioSettings.soundDisabled]);
-
   const startIncomingRingtone = useCallback(() => {
-    if (soundDisabledRef.current) {
+    if (callAudioSettings.soundDisabled) {
       return;
     }
     if (ringtoneTimerRef.current !== null) {
@@ -946,7 +938,7 @@ export default function ChatsPage() {
     ringtoneTimerRef.current = window.setInterval(() => {
       void playIncomingRingtoneBurst().catch(() => undefined);
     }, 1800);
-  }, [playIncomingRingtoneBurst]);
+  }, [callAudioSettings.soundDisabled, playIncomingRingtoneBurst]);
 
   const refreshCallAudioDevices = useCallback(async () => {
     const controller = audioCallRef.current;
@@ -2935,95 +2927,74 @@ export default function ChatsPage() {
                               : "Call"}
                     </strong>
                     {callNotice && <span>{callNotice}</span>}
-                    <div className="call-controls-row">
+                    <div className="call-banner-actions">
                       {callPhase === "incoming" && (
                         <>
-                          <div className="call-control-wrap">
-                            <button
-                              type="button"
-                              className="call-control-btn accept-call"
-                              aria-label="Accept call"
-                              onClick={() => void acceptIncomingCall()}
-                            >
-                              <Phone aria-hidden="true" size={20} />
-                            </button>
-                            <span>Accept</span>
-                          </div>
-                          <div className="call-control-wrap">
-                            <button
-                              type="button"
-                              className="call-control-btn end-call"
-                              aria-label="Decline call"
-                              onClick={declineIncomingCall}
-                            >
-                              <PhoneOff aria-hidden="true" size={20} />
-                            </button>
-                            <span>Decline</span>
-                          </div>
+                          <button type="button" onClick={() => void acceptIncomingCall()}>
+                            <Phone aria-hidden="true" size={16} />
+                            Accept
+                          </button>
+                          <button type="button" className="danger" onClick={declineIncomingCall}>
+                            <PhoneOff aria-hidden="true" size={16} />
+                            Decline
+                          </button>
                         </>
                       )}
                       {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
                         <>
-                          <div className="call-control-wrap">
-                            <button
-                              type="button"
-                              className={`call-control-btn${callAudioSettings.micMuted ? " is-muted" : ""}`}
-                              aria-label={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"}
-                              onClick={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-                            >
-                              {callAudioSettings.micMuted ? <MicOff aria-hidden="true" size={20} /> : <Mic aria-hidden="true" size={20} />}
-                            </button>
-                            <span>{callAudioSettings.micMuted ? "Unmute" : "Mute"}</span>
-                          </div>
-                          <div className="call-control-wrap">
-                            <button
-                              type="button"
-                              className={`call-control-btn${callAudioSettings.soundDisabled ? " is-muted" : ""}`}
-                              aria-label={callAudioSettings.soundDisabled ? "Enable speaker" : "Disable speaker"}
-                              onClick={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
-                            >
-                              {callAudioSettings.soundDisabled ? <VolumeX aria-hidden="true" size={20} /> : <Volume2 aria-hidden="true" size={20} />}
-                            </button>
-                            <span>{callAudioSettings.soundDisabled ? "Unmute" : "Dynamic"}</span>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })
+                            }
+                          >
+                            {callAudioSettings.micMuted ? "Unmute" : "Mute"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              void applyCallAudioPatch({
+                                soundDisabled: !callAudioSettings.soundDisabled
+                              })
+                            }
+                          >
+                            {callAudioSettings.soundDisabled ? "Sound Off" : "Sound On"}
+                          </button>
                           {isMobileViewport && (
-                            <div className="call-control-wrap">
-                              <button
-                                type="button"
-                                className={`call-control-btn${callAudioSettings.speakerMode === "large" ? " is-on" : ""}`}
-                                aria-label={callAudioSettings.speakerMode === "small" ? "Switch to loudspeaker" : "Switch to earpiece"}
-                                onClick={() => void applyCallAudioPatch({ speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small" })}
-                              >
-                                {callAudioSettings.speakerMode === "small"
-                                  ? <Smartphone aria-hidden="true" size={20} />
-                                  : <Volume2 aria-hidden="true" size={20} />}
-                              </button>
-                              <span>{callAudioSettings.speakerMode === "small" ? "Speaker" : "Earpiece"}</span>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void applyCallAudioPatch({
+                                  speakerMode:
+                                    callAudioSettings.speakerMode === "small" ? "large" : "small"
+                                })
+                              }
+                            >
+                              {callAudioSettings.speakerMode === "small" ? (
+                                <>
+                                  <Volume1 aria-hidden="true" size={15} />
+                                  Small speaker
+                                </>
+                              ) : (
+                                <>
+                                  <Volume2 aria-hidden="true" size={15} />
+                                  Loud speaker
+                                </>
+                              )}
+                            </button>
                           )}
-                          <div className="call-control-wrap">
-                            <button
-                              type="button"
-                              className={`call-control-btn${isCallAudioSettingsOpen ? " is-on" : ""}`}
-                              aria-label="Audio settings"
-                              aria-pressed={isCallAudioSettingsOpen}
-                              onClick={() => setIsCallAudioSettingsOpen((current) => !current)}
-                            >
-                              <SlidersHorizontal aria-hidden="true" size={20} />
-                            </button>
-                            <span>Settings</span>
-                          </div>
-                          <div className="call-control-wrap">
-                            <button
-                              type="button"
-                              className="call-control-btn end-call"
-                              aria-label="End call"
-                              onClick={() => void endActiveCall()}
-                            >
-                              <PhoneOff aria-hidden="true" size={20} />
-                            </button>
-                            <span>End</span>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setIsCallAudioSettingsOpen((current) => !current)}
+                            aria-pressed={isCallAudioSettingsOpen}
+                          >
+                            <SlidersHorizontal aria-hidden="true" size={15} />
+                            Audio settings
+                          </button>
+                          <button type="button" className="danger" onClick={() => void endActiveCall()}>
+                            <PhoneOff aria-hidden="true" size={16} />
+                            End
+                          </button>
                         </>
                       )}
                     </div>
@@ -3126,24 +3097,24 @@ export default function ChatsPage() {
                           <span>Voice enhancement</span>
                         </label>
                         {isMobileViewport && (
-                          <div className="call-device-row" role="group" aria-label="Audio output">
+                          <div className="call-speaker-mode-row" role="group" aria-label="Speaker mode">
                             <button
                               type="button"
-                              className={`call-device-btn${callAudioSettings.speakerMode === "small" ? " active" : ""}`}
+                              className={callAudioSettings.speakerMode === "small" ? "active" : ""}
                               aria-pressed={callAudioSettings.speakerMode === "small"}
                               onClick={() => void applyCallAudioPatch({ speakerMode: "small" })}
                             >
-                              <Smartphone aria-hidden="true" size={18} />
-                              <span>Earpiece</span>
+                              <Volume1 aria-hidden="true" size={15} />
+                              Small speaker
                             </button>
                             <button
                               type="button"
-                              className={`call-device-btn${callAudioSettings.speakerMode === "large" ? " active" : ""}`}
+                              className={callAudioSettings.speakerMode === "large" ? "active" : ""}
                               aria-pressed={callAudioSettings.speakerMode === "large"}
                               onClick={() => void applyCallAudioPatch({ speakerMode: "large" })}
                             >
-                              <Volume2 aria-hidden="true" size={18} />
-                              <span>Loudspeaker</span>
+                              <Volume2 aria-hidden="true" size={15} />
+                              Loud speaker
                             </button>
                           </div>
                         )}
@@ -3535,29 +3506,15 @@ export default function ChatsPage() {
               </div>
               <p className="muted-copy">{activeCallPeerName} is calling you.</p>
               {callNotice && <p className="muted-copy">{callNotice}</p>}
-              <div className="call-controls-row call-modal-controls">
-                <div className="call-control-wrap">
-                  <button
-                    type="button"
-                    className="call-control-btn accept-call"
-                    aria-label="Accept call"
-                    onClick={() => void acceptIncomingCall()}
-                  >
-                    <Phone aria-hidden="true" size={22} />
-                  </button>
-                  <span>Accept</span>
-                </div>
-                <div className="call-control-wrap">
-                  <button
-                    type="button"
-                    className="call-control-btn end-call"
-                    aria-label="Decline call"
-                    onClick={declineIncomingCall}
-                  >
-                    <PhoneOff aria-hidden="true" size={22} />
-                  </button>
-                  <span>Decline</span>
-                </div>
+              <div className="call-banner-actions">
+                <button type="button" onClick={() => void acceptIncomingCall()}>
+                  <Phone aria-hidden="true" size={16} />
+                  Accept
+                </button>
+                <button type="button" className="danger" onClick={declineIncomingCall}>
+                  <PhoneOff aria-hidden="true" size={16} />
+                  Decline
+                </button>
               </div>
             </section>
           </div>
