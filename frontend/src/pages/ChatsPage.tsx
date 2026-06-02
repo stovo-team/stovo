@@ -831,11 +831,7 @@ export default function ChatsPage() {
   );
   const [isCallSettingsMenuOpen, setIsCallSettingsMenuOpen] = useState(false);
   const [isCallAudioPopupOpen, setIsCallAudioPopupOpen] = useState(false);
-  const [callTrackStatus, setCallTrackStatus] = useState<{
-    echoCancellation: boolean | null;
-    noiseSuppression: boolean | null;
-    autoGainControl: boolean | null;
-  } | null>(null);
+  const [callTrackStatus, setCallTrackStatus] = useState<CallTrackStatus | null>(null);
   const [callAudioDevices, setCallAudioDevices] = useState<CallAudioDevice[]>([]);
   const [callAudioCapabilities, setCallAudioCapabilities] = useState<CallAudioCapabilities>({
     canSelectInputDevice: false,
@@ -3053,6 +3049,8 @@ export default function ChatsPage() {
                             className={`call-settings-icon-btn${isCallSettingsMenuOpen || isCallAudioPopupOpen ? " active" : ""}`}
                             aria-label="Audio settings"
                             title="Audio settings"
+                            aria-haspopup="dialog"
+                            aria-expanded={isCallSettingsMenuOpen || isCallAudioPopupOpen}
                             onClick={() => {
                               if (isCallAudioPopupOpen) {
                                 setIsCallAudioPopupOpen(false);
@@ -3651,17 +3649,21 @@ function CallSettingsContextMenu({
   menuRef: RefObject<HTMLDivElement | null>;
   onOpenAudioSettings: () => void;
 }) {
-  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const btn = anchorRef.current;
     if (!btn) return;
-    const rect = btn.getBoundingClientRect();
-    setPos({
-      top: rect.bottom + 6,
-      right: window.innerWidth - rect.right,
-    });
+    const update = () => {
+      const rect = btn.getBoundingClientRect();
+      setPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
   }, [anchorRef]);
+
+  if (!pos) return null;
 
   return (
     <div
@@ -3700,10 +3702,12 @@ function AudioToggleRow({
   status: boolean | null;
   onChange: (value: boolean) => void;
 }) {
+  const id = `audio-toggle-${name.toLowerCase().replace(/\s+/g, "-")}`;
+
   return (
     <div className={`call-audio-toggle-row${disabled ? " disabled" : ""}`}>
       <div className="call-audio-toggle-info">
-        <span className="call-audio-toggle-name">
+        <span id={id} className="call-audio-toggle-name">
           {name}
           <span className={`call-audio-badge call-audio-badge-${badge}`}>{badge}</span>
           {status === true && <span className="call-audio-status-chip active">active</span>}
@@ -3714,6 +3718,7 @@ function AudioToggleRow({
       <label className="call-audio-toggle-switch">
         <input
           type="checkbox"
+          aria-labelledby={id}
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
@@ -3745,20 +3750,24 @@ function CallAudioSettingsPopup({
   onPatch: (patch: Partial<CallAudioSettings>) => void;
   onClose: () => void;
 }) {
-  const [pos, setPos] = useState({ top: 0, right: 0 });
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const btn = anchorRef.current;
     if (!btn) return;
-    const rect = btn.getBoundingClientRect();
-    setPos({
-      top: rect.bottom + 6,
-      right: window.innerWidth - rect.right,
-    });
+    const update = () => {
+      const rect = btn.getBoundingClientRect();
+      setPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
   }, [anchorRef]);
 
   const inputDevices = devices.filter((d) => d.kind === "audioinput");
   const outputDevices = devices.filter((d) => d.kind === "audiooutput");
+
+  if (!pos) return null;
 
   return (
     <div
@@ -3766,11 +3775,12 @@ function CallAudioSettingsPopup({
       className="call-audio-popup"
       style={{ top: pos.top, right: pos.right }}
       role="dialog"
+      aria-modal="true"
       aria-label="Audio settings"
     >
       <div className="call-audio-popup-header">
         <span>Audio settings</span>
-        <button type="button" className="call-audio-popup-close" aria-label="Close" onClick={onClose}>
+        <button type="button" className="call-audio-popup-close" aria-label="Close" autoFocus onClick={onClose}>
           <X aria-hidden="true" size={14} />
         </button>
       </div>
