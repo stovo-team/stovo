@@ -175,6 +175,8 @@ func (s *Server) Routes() http.Handler {
 	router.Post("/api/auth/logout", s.handleLogout)
 	router.Get("/api/auth/me", s.authenticated(s.handleMe))
 	router.Patch("/api/auth/me", s.authenticated(s.handleUpdateMe))
+	router.Get("/api/auth/audio-settings", s.authenticated(s.handleGetAudioSettings))
+	router.Put("/api/auth/audio-settings", s.authenticated(s.handlePutAudioSettings))
 
 	router.Get("/api/family", s.authenticated(s.handleGetFamily))
 	router.Patch("/api/family", s.authenticated(s.handleUpdateFamily))
@@ -497,6 +499,7 @@ func (s *Server) initSchema() error {
 		`UPDATE chats SET encryption_protocol = 'server_at_rest' WHERE encryption_protocol = 'end_to_end';`,
 		`UPDATE messages SET encryption_protocol = 'legacy_plaintext' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS audio_call_settings TEXT;`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.Exec(statement); err != nil {
