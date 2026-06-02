@@ -10,5 +10,9 @@ export default defineConfig({
     allowedHosts: ["frontend", ".loca.lt"],
     port: 5173,
     hmr: disableHmr ? false : undefined
-  }
+  },
+  test: {
+    environment: "jsdom",
+    globals: true,
+  },
 });
