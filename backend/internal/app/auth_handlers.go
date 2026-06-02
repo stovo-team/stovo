@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -511,3 +512,83 @@ func domainErrorStatus(err error) int {
 	}
 }
 
+func defaultAudioSettings() audioCallSettings {
+	return audioCallSettings{
+		SpeakerMode:               "large",
+		InputDeviceID:             "",
+		OutputDeviceID:            "",
+		EchoCancellation:          true,
+		NoiseSuppression:          true,
+		AutoGainControl:           true,
+		VoiceEnhancement:          false,
+		InputGain:                 100,
+		OutputVolume:              80,
+		VoiceEnhancementThreshold: -24,
+		VoiceEnhancementHighpass:  120,
+	}
+}
+
+func (s *Server) handleGetAudioSettings(w http.ResponseWriter, _ *http.Request, user userPublic) {
+	var raw sql.NullString
+	err := s.queryRow(`SELECT audio_call_settings FROM users WHERE id = ?`, user.ID).Scan(&raw)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load audio settings")
+		return
+	}
+	if !raw.Valid || strings.TrimSpace(raw.String) == "" {
+		s.json(w, http.StatusOK, defaultAudioSettings())
+		return
+	}
+	var settings audioCallSettings
+	if err := json.Unmarshal([]byte(raw.String), &settings); err != nil {
+		s.json(w, http.StatusOK, defaultAudioSettings())
+		return
+	}
+	s.json(w, http.StatusOK, settings)
+}
+
+func (s *Server) handlePutAudioSettings(w http.ResponseWriter, r *http.Request, user userPublic) {
+	var payload updateAudioSettingsRequest
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+
+	// Clamp ranges
+	if payload.InputGain < 0 {
+		payload.InputGain = 0
+	} else if payload.InputGain > 200 {
+		payload.InputGain = 200
+	}
+	if payload.OutputVolume < 0 {
+		payload.OutputVolume = 0
+	} else if payload.OutputVolume > 100 {
+		payload.OutputVolume = 100
+	}
+	if payload.VoiceEnhancementThreshold < -50 {
+		payload.VoiceEnhancementThreshold = -50
+	} else if payload.VoiceEnhancementThreshold > 0 {
+		payload.VoiceEnhancementThreshold = 0
+	}
+	if payload.VoiceEnhancementHighpass < 60 {
+		payload.VoiceEnhancementHighpass = 60
+	} else if payload.VoiceEnhancementHighpass > 300 {
+		payload.VoiceEnhancementHighpass = 300
+	}
+	if payload.SpeakerMode != "small" && payload.SpeakerMode != "large" {
+		payload.SpeakerMode = "large"
+	}
+
+	blob, err := json.Marshal(payload)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not encode audio settings")
+		return
+	}
+
+	if _, err := s.exec(`UPDATE users SET audio_call_settings = ? WHERE id = ?`, string(blob), user.ID); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not save audio settings")
+		return
+	}
+
+	s.json(w, http.StatusOK, payload)
+}
