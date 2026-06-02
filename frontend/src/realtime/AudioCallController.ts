@@ -17,6 +17,10 @@ export type CallAudioSettings = {
   noiseSuppression: boolean;
   autoGainControl: boolean;
   voiceEnhancement: boolean;
+  inputGain: number;
+  outputVolume: number;
+  voiceEnhancementThreshold: number;
+  voiceEnhancementHighpass: number;
 };
 
 export type CallAudioDevice = {
@@ -34,7 +38,7 @@ export type CallAudioCapabilities = {
   canUseVoiceEnhancement: boolean;
 };
 
-const DEFAULT_CALL_AUDIO_SETTINGS: CallAudioSettings = {
+export const DEFAULT_CALL_AUDIO_SETTINGS: CallAudioSettings = {
   micMuted: false,
   soundDisabled: false,
   speakerMode: "large",
@@ -43,7 +47,11 @@ const DEFAULT_CALL_AUDIO_SETTINGS: CallAudioSettings = {
   echoCancellation: true,
   noiseSuppression: true,
   autoGainControl: true,
-  voiceEnhancement: false
+  voiceEnhancement: false,
+  inputGain: 100,
+  outputVolume: 80,
+  voiceEnhancementThreshold: -24,
+  voiceEnhancementHighpass: 120,
 };
 
 export default class AudioCallController {
