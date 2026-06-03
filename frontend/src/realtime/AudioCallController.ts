@@ -299,6 +299,20 @@ export default class AudioCallController {
     this.pendingCandidates = [];
   }
 
+  /**
+   * Pre-acquire the microphone while still inside a user-gesture handler.
+   * Call this immediately on button tap (before any await / socket round-trip).
+   * `ensurePeer` will reuse the stream instead of calling getUserMedia again.
+   */
+  async primeLocalStream(): Promise<void> {
+    if (this.localStream) return;
+    try {
+      await this.acquireLocalAudioStream();
+    } catch {
+      // Swallow – ensurePeer will try again and surface the error properly.
+    }
+  }
+
   private async ensurePeer() {
     if (this.peer) {
       return;
@@ -312,7 +326,10 @@ export default class AudioCallController {
       throw new Error("Microphone is unavailable in this browser context. Use HTTPS (or localhost) and grant mic permission.");
     }
 
-    await this.acquireLocalAudioStream();
+    // Only call getUserMedia if not already primed from a user-gesture handler.
+    if (!this.localStream) {
+      await this.acquireLocalAudioStream();
+    }
 
     const peer = new RTCPeerConnection({
       iceServers: await this.loadIceServers()
@@ -412,10 +429,13 @@ export default class AudioCallController {
   }
 
   private buildAudioConstraints(): MediaTrackConstraints {
+    // Use `ideal` rather than exact booleans so the browser can satisfy the
+    // request even when a particular constraint isn't supported (e.g. some
+    // mobile browsers reject exact noiseSuppression/echoCancellation).
     const constraints: MediaTrackConstraints = {
-      echoCancellation: this.settings.echoCancellation,
-      noiseSuppression: this.settings.noiseSuppression,
-      autoGainControl: this.settings.autoGainControl
+      echoCancellation: { ideal: this.settings.echoCancellation },
+      noiseSuppression: { ideal: this.settings.noiseSuppression },
+      autoGainControl:  { ideal: this.settings.autoGainControl  },
     };
     if (this.settings.inputDeviceId) {
       constraints.deviceId = { exact: this.settings.inputDeviceId };
@@ -432,10 +452,17 @@ export default class AudioCallController {
       throw new Error("Microphone is unavailable in this browser context. Use HTTPS (or localhost) and grant mic permission.");
     }
 
-    const nextSource = await navigator.mediaDevices.getUserMedia({
-      audio: this.buildAudioConstraints(),
-      video: false
-    });
+    // Try with preferred constraints first; fall back to bare audio if the
+    // browser/device rejects the constrained request (common on some mobile).
+    let nextSource: MediaStream;
+    try {
+      nextSource = await navigator.mediaDevices.getUserMedia({
+        audio: this.buildAudioConstraints(),
+        video: false,
+      });
+    } catch {
+      nextSource = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    }
     const nextSendStream = await this.createProcessedStream(nextSource);
 
     const nextTrack = nextSendStream.getAudioTracks()[0] ?? null;
