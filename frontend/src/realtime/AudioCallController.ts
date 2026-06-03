@@ -89,9 +89,10 @@ export default class AudioCallController {
 
   attachRemoteAudioElement(element: HTMLAudioElement | null) {
     this.remoteAudioEl = element;
-    // If we already have a remote stream (late attach), start routing immediately
+    // If we already have a remote stream (late attach), start routing immediately.
+    // Not a user gesture — use the plain audio element path.
     if (this.remoteStream) {
-      this.applyRemoteAudioRouting();
+      this.applyRemoteAudioRouting(false);
     } else {
       this.applySoundDisabledState();
     }
@@ -242,7 +243,9 @@ export default class AudioCallController {
       this.applyMicMutedState();
     }
     if (patch.speakerMode !== undefined) {
-      this.applyRemoteAudioRouting();
+      // speakerMode is only ever changed via the speaker button — that IS a user gesture,
+      // so the AudioContext path is allowed here.
+      this.applyRemoteAudioRouting(true);
     } else if (patch.soundDisabled !== undefined || patch.outputVolume !== undefined) {
       this.applySoundDisabledState();
     }
@@ -380,7 +383,10 @@ export default class AudioCallController {
       const [remoteStream] = event.streams;
       if (remoteStream) {
         this.remoteStream = remoteStream;
-        this.applyRemoteAudioRouting();
+        // ontrack is a WebRTC callback, not a user gesture — use the audio element path.
+        // AudioContext creation outside a user gesture triggers autoplay policy warnings
+        // and the context starts suspended (silent).
+        this.applyRemoteAudioRouting(false);
       }
     };
 
@@ -514,26 +520,26 @@ export default class AudioCallController {
   }
 
   /**
-   * Routes the remote stream through either:
-   *   "large" (loudspeaker) → Web AudioContext  (forces device loudspeaker on iOS/Android)
-   *   "small" (earpiece)    → plain <audio> element
+   * Routes the remote stream.
+   *   fromUserGesture=true  → AudioContext path allowed (loudspeaker on mobile)
+   *   fromUserGesture=false → always use plain <audio> element (safe outside gesture)
    */
-  private applyRemoteAudioRouting() {
-    if (this.settings.speakerMode === "large") {
-      this.routeRemoteViaAudioContext();
+  private applyRemoteAudioRouting(fromUserGesture: boolean) {
+    if (fromUserGesture && this.settings.speakerMode === "large") {
+      void this.routeRemoteViaAudioContext();
     } else {
       this.routeRemoteViaElement();
     }
   }
 
-  private routeRemoteViaAudioContext() {
+  private async routeRemoteViaAudioContext() {
     // Silence the audio element so there's no double-play
     if (this.remoteAudioEl) {
       this.remoteAudioEl.srcObject = null;
       this.remoteAudioEl.pause();
     }
 
-    // Already routed through AudioContext with the same stream
+    // Already routed through AudioContext with the same stream — just re-apply volume
     if (this.remoteAudioCtx && this.remoteStreamSource && this.remoteStream) {
       this.applySoundDisabledState();
       return;
@@ -547,26 +553,34 @@ export default class AudioCallController {
         : (window.AudioContext ||
             (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
 
-    if (!AudioCtor || !this.remoteStream) return;
+    if (!AudioCtor || !this.remoteStream) {
+      this.routeRemoteViaElement();
+      return;
+    }
 
-    void (async () => {
-      try {
-        const ctx = new AudioCtor();
-        // Must resume before any audio flows — mobile starts contexts suspended.
-        await ctx.resume();
-        this.remoteAudioCtx = ctx;
-        this.remoteStreamSource = ctx.createMediaStreamSource(this.remoteStream!);
-        this.remoteGainNode = ctx.createGain();
-        const vol = this.settings.outputVolume / 100;
-        this.remoteGainNode.gain.value = this.settings.soundDisabled ? 0 : vol;
-        this.remoteStreamSource.connect(this.remoteGainNode);
-        this.remoteGainNode.connect(ctx.destination);
-      } catch {
-        // AudioContext not available or resume failed – fall back to element
-        this.closeRemoteAudioCtx();
+    try {
+      const ctx = new AudioCtor();
+      await ctx.resume();
+
+      // If the context didn't actually start (autoplay policy), fall back to element.
+      if (ctx.state !== "running") {
+        void ctx.close().catch(() => undefined);
         this.routeRemoteViaElement();
+        return;
       }
-    })();
+
+      this.remoteAudioCtx = ctx;
+      this.remoteStreamSource = ctx.createMediaStreamSource(this.remoteStream);
+      this.remoteGainNode = ctx.createGain();
+      const vol = this.settings.outputVolume / 100;
+      this.remoteGainNode.gain.value = this.settings.soundDisabled ? 0 : vol;
+      this.remoteStreamSource.connect(this.remoteGainNode);
+      this.remoteGainNode.connect(ctx.destination);
+    } catch {
+      // AudioContext not available or failed — fall back to element
+      this.closeRemoteAudioCtx();
+      this.routeRemoteViaElement();
+    }
   }
 
   private routeRemoteViaElement() {
