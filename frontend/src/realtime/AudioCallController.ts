@@ -72,8 +72,10 @@ export default class AudioCallController {
   private remoteGainNode: GainNode | null = null;
 
   private chatId: string | null = null;
-
   private targetUserId: string | null = null;
+
+  // Serialises concurrent ensurePeer() calls so only one RTCPeerConnection is ever created.
+  private ensurePeerPromise: Promise<void> | null = null;
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private settings: CallAudioSettings = { ...DEFAULT_CALL_AUDIO_SETTINGS };
   private processorContext: AudioContext | null = null;
@@ -287,6 +289,7 @@ export default class AudioCallController {
       this.peer.close();
     }
     this.peer = null;
+    this.ensurePeerPromise = null;
     this.closeRemoteAudioCtx();
     if (this.remoteAudioEl) {
       this.remoteAudioEl.srcObject = null;
@@ -314,9 +317,23 @@ export default class AudioCallController {
   }
 
   private async ensurePeer() {
-    if (this.peer) {
-      return;
+    if (this.peer) return;
+
+    // If a peer creation is already in flight, wait for it instead of creating a second one.
+    if (this.ensurePeerPromise) {
+      return this.ensurePeerPromise;
     }
+
+    this.ensurePeerPromise = this.createPeer().finally(() => {
+      this.ensurePeerPromise = null;
+    });
+
+    return this.ensurePeerPromise;
+  }
+
+  private async createPeer() {
+    // Double-check: another concurrent caller may have finished first.
+    if (this.peer) return;
 
     if (
       typeof navigator === "undefined" ||
@@ -336,33 +353,26 @@ export default class AudioCallController {
     });
 
     peer.oniceconnectionstatechange = () => {
-      console.log("ICE state:", peer.iceConnectionState);
+      console.log("[call] ICE:", peer.iceConnectionState);
     };
-
     peer.onconnectionstatechange = () => {
-      console.log("Peer state:", peer.connectionState);
+      console.log("[call] connection:", peer.connectionState);
     };
-
     peer.onsignalingstatechange = () => {
-      console.log("Signaling state:", peer.signalingState);
+      console.log("[call] signaling:", peer.signalingState);
     };
 
     for (const track of this.localStream?.getTracks() ?? []) {
+      console.log("[call] addTrack", track.kind, track.label, "enabled=", track.enabled, "readyState=", track.readyState);
       peer.addTrack(track, this.localStream!);
     }
 
     peer.onicecandidate = (event) => {
-      if (!event.candidate || !this.chatId || !this.targetUserId) {
-        return;
-      }
-
+      if (!event.candidate || !this.chatId || !this.targetUserId) return;
       this.emitSignal({
         chatId: this.chatId,
         targetUserId: this.targetUserId,
-        data: {
-          type: "ice-candidate",
-          candidate: event.candidate.toJSON()
-        }
+        data: { type: "ice-candidate", candidate: event.candidate.toJSON() }
       });
     };
 
