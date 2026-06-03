@@ -3104,7 +3104,6 @@ export default function ChatsPage() {
                     {isCallAudioPopupOpen && (
                       <CallAudioSettingsPopup
                         popupRef={callAudioPopupRef}
-                        anchorRef={callSettingsButtonRef}
                         settings={callAudioSettings}
                         capabilities={callAudioCapabilities}
                         devices={callAudioDevices}
@@ -3767,7 +3766,6 @@ function AudioToggleRow({
 
 function CallAudioSettingsPopup({
   popupRef,
-  anchorRef,
   settings,
   capabilities,
   devices,
@@ -3777,7 +3775,6 @@ function CallAudioSettingsPopup({
   onClose,
 }: {
   popupRef: RefObject<HTMLDivElement | null>;
-  anchorRef: RefObject<HTMLButtonElement | null>;
   settings: CallAudioSettings;
   capabilities: CallAudioCapabilities;
   devices: CallAudioDevice[];
@@ -3786,34 +3783,22 @@ function CallAudioSettingsPopup({
   onPatch: (patch: Partial<CallAudioSettings>) => void;
   onClose: () => void;
 }) {
-  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const btn = anchorRef.current;
-    if (!btn) return;
-    const update = () => {
-      const rect = btn.getBoundingClientRect();
-      setPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [anchorRef]);
-
   const inputDevices = devices.filter((d) => d.kind === "audioinput");
   const outputDevices = devices.filter((d) => d.kind === "audiooutput");
 
-  if (!pos) return null;
-
   return (
     <div
-      ref={popupRef}
-      className="call-audio-popup"
-      style={{ top: pos.top, right: pos.right }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Audio settings"
+      className="call-audio-popup-backdrop"
+      role="presentation"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
+      <div
+        ref={popupRef}
+        className="call-audio-popup"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Audio settings"
+      >
       <div className="call-audio-popup-header">
         <span>Audio settings</span>
         <button type="button" className="call-audio-popup-close" aria-label="Close" autoFocus onClick={onClose}>
@@ -3993,6 +3978,7 @@ function CallAudioSettingsPopup({
           </div>
         </section>
       </div>
+    </div>
     </div>
   );
 }
