@@ -65,16 +65,23 @@ func (s *Server) configureSockets() {
 
 		socket.On("disconnect", func(_ *socketio.EventPayload) {
 			s.unregisterSocket(user.ID, socket.Id)
-			if ended, ok := s.endCallForUser(user.ID); ok {
-				payload := map[string]any{
-					"chatId":   ended.ChatID,
-					"callerId": ended.CallerUserID,
-					"calleeId": ended.CalleeUserID,
-					"reason":   "disconnected",
-					"endedAt":  nowString(),
+			// Only end the call when the user has no remaining sockets.
+			// A polling→WebSocket transport upgrade fires a disconnect for the
+			// old polling socket while the new WebSocket is already registered;
+			// ending the call in that window would silently kill every call on a
+			// non-localhost hostname.
+			if !s.userOnline(user.ID) {
+				if ended, ok := s.endCallForUser(user.ID); ok {
+					payload := map[string]any{
+						"chatId":   ended.ChatID,
+						"callerId": ended.CallerUserID,
+						"calleeId": ended.CalleeUserID,
+						"reason":   "disconnected",
+						"endedAt":  nowString(),
+					}
+					_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payload)
+					_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payload)
 				}
-				_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payload)
-				_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payload)
 			}
 			if !s.userOnline(user.ID) {
 				if err := cache.NewPresenceService(s.cache).MarkOffline(context.Background(), user.ID); err != nil {
