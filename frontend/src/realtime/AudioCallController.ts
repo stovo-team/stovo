@@ -319,11 +319,13 @@ export default class AudioCallController {
     const saved = this.remoteAudioEl.srcObject;
     this.remoteAudioEl.srcObject = new MediaStream();
     this.remoteAudioEl.muted = true;
-    try {
-      await this.remoteAudioEl.play();
-    } catch {
-      // Expected — element is now unlocked for subsequent srcObject changes.
-    }
+    // Race against a 400 ms timeout: an empty MediaStream gives Chrome no
+    // audio data to buffer, so play() may stall indefinitely instead of
+    // resolving or rejecting.  The timeout guarantees we always continue.
+    await Promise.race([
+      this.remoteAudioEl.play().catch(() => undefined),
+      new Promise<void>((resolve) => setTimeout(resolve, 400)),
+    ]);
     this.remoteAudioEl.pause();
     this.remoteAudioEl.srcObject = saved;
     this.remoteAudioEl.muted = this.settings.soundDisabled;
