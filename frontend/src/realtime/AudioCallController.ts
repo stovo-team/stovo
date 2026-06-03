@@ -64,6 +64,12 @@ export default class AudioCallController {
 
   private localStream: MediaStream | null = null;
   private sourceStream: MediaStream | null = null;
+  private remoteStream: MediaStream | null = null;
+
+  // AudioContext path used for loudspeaker routing on mobile
+  private remoteAudioCtx: AudioContext | null = null;
+  private remoteStreamSource: MediaStreamAudioSourceNode | null = null;
+  private remoteGainNode: GainNode | null = null;
 
   private chatId: string | null = null;
 
@@ -81,7 +87,12 @@ export default class AudioCallController {
 
   attachRemoteAudioElement(element: HTMLAudioElement | null) {
     this.remoteAudioEl = element;
-    this.applySoundDisabledState();
+    // If we already have a remote stream (late attach), start routing immediately
+    if (this.remoteStream) {
+      this.applyRemoteAudioRouting();
+    } else {
+      this.applySoundDisabledState();
+    }
     void this.applyOutputDevice().catch(() => undefined);
   }
 
@@ -228,11 +239,9 @@ export default class AudioCallController {
     if (patch.micMuted !== undefined) {
       this.applyMicMutedState();
     }
-    if (
-      patch.soundDisabled !== undefined ||
-      patch.speakerMode !== undefined ||
-      patch.outputVolume !== undefined
-    ) {
+    if (patch.speakerMode !== undefined) {
+      this.applyRemoteAudioRouting();
+    } else if (patch.soundDisabled !== undefined || patch.outputVolume !== undefined) {
       this.applySoundDisabledState();
     }
 
@@ -271,12 +280,14 @@ export default class AudioCallController {
     this.stopStream(this.sourceStream);
     this.localStream = null;
     this.sourceStream = null;
+    this.remoteStream = null;
     if (this.peer) {
       this.peer.onicecandidate = null;
       this.peer.ontrack = null;
       this.peer.close();
     }
     this.peer = null;
+    this.closeRemoteAudioCtx();
     if (this.remoteAudioEl) {
       this.remoteAudioEl.srcObject = null;
       this.remoteAudioEl.muted = false;
@@ -339,15 +350,10 @@ export default class AudioCallController {
     };
 
     peer.ontrack = (event) => {
-      if (!this.remoteAudioEl) {
-        return;
-      }
-
       const [remoteStream] = event.streams;
       if (remoteStream) {
-        this.remoteAudioEl.srcObject = remoteStream;
-        this.remoteAudioEl.autoplay = true;
-        void this.remoteAudioEl.play().catch(() => undefined);
+        this.remoteStream = remoteStream;
+        this.applyRemoteAudioRouting();
       }
     };
 
@@ -455,12 +461,93 @@ export default class AudioCallController {
   }
 
   private applySoundDisabledState() {
+    const muted = this.settings.soundDisabled;
+    const vol = this.settings.outputVolume / 100;
+
+    // Audio-element route (earpiece / output-device)
     if (this.remoteAudioEl) {
-      this.remoteAudioEl.muted = this.settings.soundDisabled;
-      const baseVolume = this.settings.outputVolume / 100;
-      this.remoteAudioEl.volume = this.settings.speakerMode === "small"
-        ? baseVolume * 0.35
-        : baseVolume;
+      this.remoteAudioEl.muted = muted;
+      this.remoteAudioEl.volume = vol;
+    }
+
+    // AudioContext route (loudspeaker on mobile)
+    if (this.remoteGainNode) {
+      this.remoteGainNode.gain.value = muted ? 0 : vol;
+    }
+  }
+
+  /**
+   * Routes the remote stream through either:
+   *   "large" (loudspeaker) → Web AudioContext  (forces device loudspeaker on iOS/Android)
+   *   "small" (earpiece)    → plain <audio> element
+   */
+  private applyRemoteAudioRouting() {
+    if (this.settings.speakerMode === "large") {
+      this.routeRemoteViaAudioContext();
+    } else {
+      this.routeRemoteViaElement();
+    }
+  }
+
+  private routeRemoteViaAudioContext() {
+    // Silence the audio element so there's no double-play
+    if (this.remoteAudioEl) {
+      this.remoteAudioEl.srcObject = null;
+      this.remoteAudioEl.pause();
+    }
+
+    // Already routed through AudioContext with the same stream
+    if (this.remoteAudioCtx && this.remoteStreamSource && this.remoteStream) {
+      this.applySoundDisabledState();
+      return;
+    }
+
+    this.closeRemoteAudioCtx();
+
+    const AudioCtor =
+      typeof window === "undefined"
+        ? null
+        : (window.AudioContext ||
+            (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+
+    if (!AudioCtor || !this.remoteStream) return;
+
+    try {
+      this.remoteAudioCtx = new AudioCtor();
+      this.remoteStreamSource = this.remoteAudioCtx.createMediaStreamSource(this.remoteStream);
+      this.remoteGainNode = this.remoteAudioCtx.createGain();
+      const vol = this.settings.outputVolume / 100;
+      this.remoteGainNode.gain.value = this.settings.soundDisabled ? 0 : vol;
+      this.remoteStreamSource.connect(this.remoteGainNode);
+      this.remoteGainNode.connect(this.remoteAudioCtx.destination);
+      void this.remoteAudioCtx.resume().catch(() => undefined);
+    } catch {
+      // AudioContext not available – fall back to element
+      this.closeRemoteAudioCtx();
+      this.routeRemoteViaElement();
+    }
+  }
+
+  private routeRemoteViaElement() {
+    this.closeRemoteAudioCtx();
+
+    if (this.remoteAudioEl && this.remoteStream) {
+      this.remoteAudioEl.srcObject = this.remoteStream;
+      this.remoteAudioEl.autoplay = true;
+      this.applySoundDisabledState();
+      void this.remoteAudioEl.play().catch(() => undefined);
+    }
+  }
+
+  private closeRemoteAudioCtx() {
+    if (this.remoteStreamSource) {
+      this.remoteStreamSource.disconnect();
+      this.remoteStreamSource = null;
+    }
+    this.remoteGainNode = null;
+    if (this.remoteAudioCtx) {
+      void this.remoteAudioCtx.close().catch(() => undefined);
+      this.remoteAudioCtx = null;
     }
   }
 
