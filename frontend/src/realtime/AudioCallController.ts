@@ -316,12 +316,40 @@ export default class AudioCallController {
    */
   async primeRemoteAudio(): Promise<void> {
     if (!this.remoteAudioEl) return;
+
+    // Step 1 — unlock the Web Audio subsystem via a zero-length silent buffer.
+    // On iOS Safari, creating and resuming an AudioContext from inside a user-gesture
+    // handler unlocks both Web Audio and HTMLMediaElement playback for this session.
+    const AudioCtor =
+      typeof window === "undefined"
+        ? null
+        : (window.AudioContext ||
+            (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+    if (AudioCtor) {
+      try {
+        const ctx = new AudioCtor();
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+        }
+        if (ctx.state === "running") {
+          const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          src.start(0);
+        }
+        await ctx.close();
+      } catch {
+        // Ignore — best effort
+      }
+    }
+
+    // Step 2 — also call play() on the audio element directly.
+    // Race against 400 ms: an empty MediaStream gives Chrome no audio data
+    // to buffer so play() may stall; the timeout guarantees we always return.
     const saved = this.remoteAudioEl.srcObject;
     this.remoteAudioEl.srcObject = new MediaStream();
     this.remoteAudioEl.muted = true;
-    // Race against a 400 ms timeout: an empty MediaStream gives Chrome no
-    // audio data to buffer, so play() may stall indefinitely instead of
-    // resolving or rejecting.  The timeout guarantees we always continue.
     await Promise.race([
       this.remoteAudioEl.play().catch(() => undefined),
       new Promise<void>((resolve) => setTimeout(resolve, 400)),
