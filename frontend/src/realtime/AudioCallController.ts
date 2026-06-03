@@ -436,7 +436,7 @@ export default class AudioCallController {
       audio: this.buildAudioConstraints(),
       video: false
     });
-    const nextSendStream = this.createProcessedStream(nextSource);
+    const nextSendStream = await this.createProcessedStream(nextSource);
 
     const nextTrack = nextSendStream.getAudioTracks()[0] ?? null;
     if (this.peer && nextTrack) {
@@ -512,20 +512,24 @@ export default class AudioCallController {
 
     if (!AudioCtor || !this.remoteStream) return;
 
-    try {
-      this.remoteAudioCtx = new AudioCtor();
-      this.remoteStreamSource = this.remoteAudioCtx.createMediaStreamSource(this.remoteStream);
-      this.remoteGainNode = this.remoteAudioCtx.createGain();
-      const vol = this.settings.outputVolume / 100;
-      this.remoteGainNode.gain.value = this.settings.soundDisabled ? 0 : vol;
-      this.remoteStreamSource.connect(this.remoteGainNode);
-      this.remoteGainNode.connect(this.remoteAudioCtx.destination);
-      void this.remoteAudioCtx.resume().catch(() => undefined);
-    } catch {
-      // AudioContext not available – fall back to element
-      this.closeRemoteAudioCtx();
-      this.routeRemoteViaElement();
-    }
+    void (async () => {
+      try {
+        const ctx = new AudioCtor();
+        // Must resume before any audio flows — mobile starts contexts suspended.
+        await ctx.resume();
+        this.remoteAudioCtx = ctx;
+        this.remoteStreamSource = ctx.createMediaStreamSource(this.remoteStream!);
+        this.remoteGainNode = ctx.createGain();
+        const vol = this.settings.outputVolume / 100;
+        this.remoteGainNode.gain.value = this.settings.soundDisabled ? 0 : vol;
+        this.remoteStreamSource.connect(this.remoteGainNode);
+        this.remoteGainNode.connect(ctx.destination);
+      } catch {
+        // AudioContext not available or resume failed – fall back to element
+        this.closeRemoteAudioCtx();
+        this.routeRemoteViaElement();
+      }
+    })();
   }
 
   private routeRemoteViaElement() {
@@ -566,7 +570,18 @@ export default class AudioCallController {
     await audioEl.setSinkId(this.settings.outputDeviceId);
   }
 
-  private createProcessedStream(input: MediaStream): MediaStream {
+  private async createProcessedStream(input: MediaStream): Promise<MediaStream> {
+    const needsProcessing =
+      this.settings.voiceEnhancement ||
+      Math.abs(this.settings.inputGain - 100) >= 1;
+
+    // Fast-path: no processing needed → return the raw getUserMedia stream directly.
+    // This is the default case and avoids AudioContext on mobile (suspended context = silent mic).
+    if (!needsProcessing) {
+      this.closeAudioProcessor();
+      return input;
+    }
+
     const AudioCtor =
       typeof window === "undefined"
         ? null
@@ -577,8 +592,20 @@ export default class AudioCallController {
     if (!AudioCtor) {
       return input;
     }
+
     this.closeAudioProcessor();
     this.processorContext = new AudioCtor();
+
+    // Mobile browsers (iOS Safari, Android Chrome) start AudioContext suspended.
+    // We must resume it before connecting nodes or the output track is silent.
+    try {
+      await this.processorContext.resume();
+    } catch {
+      // If resume fails, fall back to the raw stream.
+      this.closeAudioProcessor();
+      return input;
+    }
+
     const source = this.processorContext.createMediaStreamSource(input);
     this.gainNode = this.processorContext.createGain();
     this.gainNode.gain.value = this.settings.inputGain / 100;
