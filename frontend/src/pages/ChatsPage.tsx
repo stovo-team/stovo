@@ -1555,6 +1555,9 @@ export default function ChatsPage() {
     socketRef.current = socket;
     const audioController = new AudioCallController(socket, accessToken);
     audioController.attachRemoteAudioElement(remoteAudioRef.current);
+    audioController.onConnectionFailed = (reason) => {
+      setCallNotice(reason);
+    };
     setCallAudioCapabilities(audioController.getCapabilities());
     setCallAudioSettings(audioController.getAudioSettings());
     audioCallRef.current = audioController;
