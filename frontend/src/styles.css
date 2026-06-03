@@ -98,23 +98,26 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 14px;
+  padding: 14px 16px;
   border: 1px solid var(--border-default);
   background: var(--surface-card);
-  border-radius: 8px;
+  border-radius: 12px;
   margin-bottom: 10px;
 }
 
 .call-banner > strong {
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .call-banner > span {
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  margin-top: -8px;
 }
 
+/* Legacy – kept for the forwarded call-banner-actions class if still referenced */
 .call-banner-actions {
   display: flex;
   align-items: center;
@@ -122,9 +125,104 @@
   gap: 8px;
 }
 
-.call-banner-actions .danger {
-  background: var(--danger-soft, #fee2e2);
-  color: var(--danger-text, #b91c1c);
+/* ── Circular call controls (banner + modal) ── */
+.call-ctrl-row {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+.call-modal-ctrl-row {
+  justify-content: center;
+  gap: 48px;
+  margin-top: 4px;
+}
+
+.call-ctrl-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.call-ctrl-wrap > span {
+  color: var(--text-tertiary);
+  font-size: 0.65rem;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.call-modal-ctrl-row .call-ctrl-wrap > span {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.call-ctrl-btn {
+  align-items: center;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: 50%;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+  height: 48px;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.14s, color 0.14s, border-color 0.14s, opacity 0.14s;
+  width: 48px;
+}
+
+.call-ctrl-btn:hover {
+  opacity: 0.82;
+}
+
+.call-ctrl-btn.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-border-soft);
+  color: var(--accent-primary);
+}
+
+.call-ctrl-btn.is-muted {
+  background: #fee2e2;
+  border-color: transparent;
+  color: #dc2626;
+}
+
+[data-theme-mode="dark"] .call-ctrl-btn.is-muted {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+}
+
+.call-ctrl-btn.accept-btn {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+  height: 56px;
+  width: 56px;
+}
+
+.call-ctrl-btn.accept-btn:hover {
+  background: #15803d;
+  opacity: 1;
+}
+
+.call-ctrl-btn.end-btn {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.call-ctrl-btn.end-btn:hover {
+  background: #b91c1c;
+  opacity: 1;
+}
+
+.call-modal-ctrl-row .call-ctrl-btn {
+  height: 64px;
+  width: 64px;
 }
 
 /* ── Call settings icon button ── */
@@ -3491,9 +3589,14 @@ h2 {
   }
 
   .mobile-back-button {
+    align-items: center;
     display: inline-flex;
+    justify-content: center;
     min-width: 0;
-    padding: 0 10px;
+    padding: 0 4px 0 0;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
   }
 
   .chat-header-actions {
