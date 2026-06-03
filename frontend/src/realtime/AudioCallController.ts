@@ -243,21 +243,24 @@ export default class AudioCallController {
       this.applyMicMutedState();
     }
     if (patch.speakerMode !== undefined) {
-      // speakerMode is only ever changed via the speaker button — that IS a user gesture,
-      // so the AudioContext path is allowed here.
-      this.applyRemoteAudioRouting(true);
+      // Only treat as a user gesture when the value actually changed.
+      // Programmatic updates (e.g. loading persisted settings) pass speakerMode
+      // in the full object but are not gestures — attempting AudioContext there
+      // triggers autoplay-policy warnings and can briefly silence the element.
+      const isActualChange = patch.speakerMode !== previous.speakerMode;
+      this.applyRemoteAudioRouting(isActualChange);
     } else if (patch.soundDisabled !== undefined || patch.outputVolume !== undefined) {
       this.applySoundDisabledState();
     }
 
     const needsStreamReacquire =
-      patch.inputDeviceId !== undefined ||
-      patch.echoCancellation !== undefined ||
-      patch.noiseSuppression !== undefined ||
-      patch.autoGainControl !== undefined ||
-      patch.voiceEnhancement !== undefined ||
-      (patch.voiceEnhancementThreshold !== undefined && this.settings.voiceEnhancement) ||
-      (patch.voiceEnhancementHighpass !== undefined && this.settings.voiceEnhancement);
+      (patch.inputDeviceId !== undefined && patch.inputDeviceId !== previous.inputDeviceId) ||
+      (patch.echoCancellation !== undefined && patch.echoCancellation !== previous.echoCancellation) ||
+      (patch.noiseSuppression !== undefined && patch.noiseSuppression !== previous.noiseSuppression) ||
+      (patch.autoGainControl !== undefined && patch.autoGainControl !== previous.autoGainControl) ||
+      (patch.voiceEnhancement !== undefined && patch.voiceEnhancement !== previous.voiceEnhancement) ||
+      (patch.voiceEnhancementThreshold !== undefined && patch.voiceEnhancementThreshold !== previous.voiceEnhancementThreshold && this.settings.voiceEnhancement) ||
+      (patch.voiceEnhancementHighpass !== undefined && patch.voiceEnhancementHighpass !== previous.voiceEnhancementHighpass && this.settings.voiceEnhancement);
 
     if (needsStreamReacquire && this.peer) {
       try {
@@ -303,6 +306,27 @@ export default class AudioCallController {
     this.chatId = null;
     this.targetUserId = null;
     this.pendingCandidates = [];
+  }
+
+  /**
+   * Must be called from a user-gesture handler (call / accept button).
+   * Plays a silent empty stream through the remote audio element so that iOS
+   * Safari and other strict-autoplay browsers unlock it for future programmatic
+   * play() calls when real WebRTC audio arrives via ontrack (non-gesture context).
+   */
+  async primeRemoteAudio(): Promise<void> {
+    if (!this.remoteAudioEl) return;
+    const saved = this.remoteAudioEl.srcObject;
+    this.remoteAudioEl.srcObject = new MediaStream();
+    this.remoteAudioEl.muted = true;
+    try {
+      await this.remoteAudioEl.play();
+    } catch {
+      // Expected — element is now unlocked for subsequent srcObject changes.
+    }
+    this.remoteAudioEl.pause();
+    this.remoteAudioEl.srcObject = saved;
+    this.remoteAudioEl.muted = this.settings.soundDisabled;
   }
 
   /**
@@ -533,19 +557,11 @@ export default class AudioCallController {
   }
 
   private async routeRemoteViaAudioContext() {
-    // Silence the audio element so there's no double-play
-    if (this.remoteAudioEl) {
-      this.remoteAudioEl.srcObject = null;
-      this.remoteAudioEl.pause();
-    }
-
     // Already routed through AudioContext with the same stream — just re-apply volume
     if (this.remoteAudioCtx && this.remoteStreamSource && this.remoteStream) {
       this.applySoundDisabledState();
       return;
     }
-
-    this.closeRemoteAudioCtx();
 
     const AudioCtor =
       typeof window === "undefined"
@@ -558,29 +574,35 @@ export default class AudioCallController {
       return;
     }
 
+    let ctx: AudioContext;
     try {
-      const ctx = new AudioCtor();
+      ctx = new AudioCtor();
       await ctx.resume();
-
-      // If the context didn't actually start (autoplay policy), fall back to element.
-      if (ctx.state !== "running") {
-        void ctx.close().catch(() => undefined);
-        this.routeRemoteViaElement();
-        return;
-      }
-
-      this.remoteAudioCtx = ctx;
-      this.remoteStreamSource = ctx.createMediaStreamSource(this.remoteStream);
-      this.remoteGainNode = ctx.createGain();
-      const vol = this.settings.outputVolume / 100;
-      this.remoteGainNode.gain.value = this.settings.soundDisabled ? 0 : vol;
-      this.remoteStreamSource.connect(this.remoteGainNode);
-      this.remoteGainNode.connect(ctx.destination);
     } catch {
-      // AudioContext not available or failed — fall back to element
-      this.closeRemoteAudioCtx();
-      this.routeRemoteViaElement();
+      // AudioContext not available or failed — leave the element path untouched.
+      return;
     }
+
+    // If the context didn't actually start (autoplay policy), leave element playing.
+    if (ctx.state !== "running") {
+      void ctx.close().catch(() => undefined);
+      return;
+    }
+
+    // AudioContext is running — now switch over from the element.
+    this.closeRemoteAudioCtx();
+    if (this.remoteAudioEl) {
+      this.remoteAudioEl.srcObject = null;
+      this.remoteAudioEl.pause();
+    }
+
+    this.remoteAudioCtx = ctx;
+    this.remoteStreamSource = ctx.createMediaStreamSource(this.remoteStream);
+    this.remoteGainNode = ctx.createGain();
+    const vol = this.settings.outputVolume / 100;
+    this.remoteGainNode.gain.value = this.settings.soundDisabled ? 0 : vol;
+    this.remoteStreamSource.connect(this.remoteGainNode);
+    this.remoteGainNode.connect(ctx.destination);
   }
 
   private routeRemoteViaElement() {
@@ -590,7 +612,9 @@ export default class AudioCallController {
       this.remoteAudioEl.srcObject = this.remoteStream;
       this.remoteAudioEl.autoplay = true;
       this.applySoundDisabledState();
-      void this.remoteAudioEl.play().catch(() => undefined);
+      void this.remoteAudioEl.play().catch((err) => {
+        console.warn("[call] remote audio play() blocked:", err);
+      });
     }
   }
 

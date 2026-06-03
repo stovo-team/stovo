@@ -1823,9 +1823,12 @@ export default function ChatsPage() {
       return;
     }
 
-    // Prime microphone NOW — we are inside a user-gesture handler.
-    // On iOS Safari getUserMedia is blocked when called later from a socket event.
-    await audioCallRef.current?.primeLocalStream().catch(() => undefined);
+    // Prime microphone and remote audio element NOW — we are inside a user-gesture handler.
+    // On iOS Safari getUserMedia and audio play() are blocked outside gesture context.
+    await Promise.all([
+      audioCallRef.current?.primeLocalStream().catch(() => undefined),
+      audioCallRef.current?.primeRemoteAudio().catch(() => undefined),
+    ]);
 
     const connected = await ensureSocketConnected(socket, 4500);
     if (!connected) {
@@ -1849,10 +1852,14 @@ export default function ChatsPage() {
       return;
     }
 
-    // Prime microphone before emitting call:accept — the offer signal can arrive
-    // before acceptIncoming() finishes, and handling it from a socket event would
-    // call getUserMedia outside a user-gesture context on iOS Safari.
-    await audioCallRef.current?.primeLocalStream().catch(() => undefined);
+    // Prime microphone and remote audio element before emitting call:accept.
+    // The offer signal can arrive before acceptIncoming() finishes, and handling it
+    // from a socket event would call getUserMedia / audio play() outside a user-gesture
+    // context on iOS Safari.
+    await Promise.all([
+      audioCallRef.current?.primeLocalStream().catch(() => undefined),
+      audioCallRef.current?.primeRemoteAudio().catch(() => undefined),
+    ]);
 
     setCallNotice(null);
     setCallPhase("connecting");
