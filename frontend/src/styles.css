@@ -276,16 +276,27 @@
 }
 
 /* ── Audio settings popup ── */
-.call-audio-popup {
+.call-audio-popup-backdrop {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
   position: fixed;
-  z-index: 60;
+  right: 0;
+  top: 0;
+  z-index: 70;
+}
+
+.call-audio-popup {
   background: var(--surface-card);
   border: 1px solid var(--border-default);
-  border-radius: 12px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
-  width: 320px;
+  border-radius: 14px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
   max-height: calc(100vh - 80px);
   overflow-y: auto;
+  width: 340px;
 }
 .call-audio-popup-header {
   align-items: center;
