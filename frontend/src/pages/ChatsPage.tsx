@@ -1822,6 +1822,11 @@ export default function ChatsPage() {
       setError("Realtime is not connected yet. Please wait a moment and try calling again.");
       return;
     }
+
+    // Prime microphone NOW — we are inside a user-gesture handler.
+    // On iOS Safari getUserMedia is blocked when called later from a socket event.
+    await audioCallRef.current?.primeLocalStream().catch(() => undefined);
+
     const connected = await ensureSocketConnected(socket, 4500);
     if (!connected) {
       setError("Realtime connection is offline. Please refresh and try again.");
@@ -1843,6 +1848,12 @@ export default function ChatsPage() {
     if (!socketRef.current || !activeCallChatId || !callPeerUserId) {
       return;
     }
+
+    // Prime microphone before emitting call:accept — the offer signal can arrive
+    // before acceptIncoming() finishes, and handling it from a socket event would
+    // call getUserMedia outside a user-gesture context on iOS Safari.
+    await audioCallRef.current?.primeLocalStream().catch(() => undefined);
+
     setCallNotice(null);
     setCallPhase("connecting");
     stopIncomingRingtone();
@@ -3104,6 +3115,7 @@ export default function ChatsPage() {
                     {isCallAudioPopupOpen && (
                       <CallAudioSettingsPopup
                         popupRef={callAudioPopupRef}
+                        isMobile={isMobileViewport}
                         settings={callAudioSettings}
                         capabilities={callAudioCapabilities}
                         devices={callAudioDevices}
@@ -3766,6 +3778,7 @@ function AudioToggleRow({
 
 function CallAudioSettingsPopup({
   popupRef,
+  isMobile,
   settings,
   capabilities,
   devices,
@@ -3775,6 +3788,7 @@ function CallAudioSettingsPopup({
   onClose,
 }: {
   popupRef: RefObject<HTMLDivElement | null>;
+  isMobile: boolean;
   settings: CallAudioSettings;
   capabilities: CallAudioCapabilities;
   devices: CallAudioDevice[];
@@ -3952,31 +3966,34 @@ function CallAudioSettingsPopup({
           </div>
         </section>
 
-        <div className="call-audio-popup-divider" />
-
-        <section className="call-audio-popup-section">
-          <div className="call-audio-section-label">Speaker mode</div>
-          <div className="call-audio-speaker-row" role="group" aria-label="Speaker mode">
-            <button
-              type="button"
-              className={`call-audio-speaker-btn${settings.speakerMode === "small" ? " active" : ""}`}
-              aria-pressed={settings.speakerMode === "small"}
-              onClick={() => onPatch({ speakerMode: "small" })}
-            >
-              <Smartphone aria-hidden="true" size={15} />
-              Earpiece
-            </button>
-            <button
-              type="button"
-              className={`call-audio-speaker-btn${settings.speakerMode === "large" ? " active" : ""}`}
-              aria-pressed={settings.speakerMode === "large"}
-              onClick={() => onPatch({ speakerMode: "large" })}
-            >
-              <Volume2 aria-hidden="true" size={15} />
-              Loudspeaker
-            </button>
-          </div>
-        </section>
+        {isMobile && (
+          <>
+            <div className="call-audio-popup-divider" />
+            <section className="call-audio-popup-section">
+              <div className="call-audio-section-label">Speaker mode</div>
+              <div className="call-audio-speaker-row" role="group" aria-label="Speaker mode">
+                <button
+                  type="button"
+                  className={`call-audio-speaker-btn${settings.speakerMode === "small" ? " active" : ""}`}
+                  aria-pressed={settings.speakerMode === "small"}
+                  onClick={() => onPatch({ speakerMode: "small" })}
+                >
+                  <Smartphone aria-hidden="true" size={15} />
+                  Earpiece
+                </button>
+                <button
+                  type="button"
+                  className={`call-audio-speaker-btn${settings.speakerMode === "large" ? " active" : ""}`}
+                  aria-pressed={settings.speakerMode === "large"}
+                  onClick={() => onPatch({ speakerMode: "large" })}
+                >
+                  <Volume2 aria-hidden="true" size={15} />
+                  Loudspeaker
+                </button>
+              </div>
+            </section>
+          </>
+        )}
       </div>
     </div>
     </div>
