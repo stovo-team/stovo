@@ -58,6 +58,8 @@ export default class AudioCallController {
   private socket: Socket;
   private accessToken: string;
 
+  onConnectionFailed: ((reason: string) => void) | null = null;
+
   private remoteAudioEl: HTMLAudioElement | null = null;
 
   private peer: RTCPeerConnection | null = null;
@@ -411,9 +413,16 @@ export default class AudioCallController {
 
     peer.oniceconnectionstatechange = () => {
       console.log("[call] ICE:", peer.iceConnectionState);
+      if (peer.iceConnectionState === "failed") {
+        console.warn("[call] ICE failed — TURN server unreachable or ports blocked");
+        this.onConnectionFailed?.("Network connection failed. Check that TURN ports 3478 and 49160-49200 UDP are open.");
+      }
     };
     peer.onconnectionstatechange = () => {
       console.log("[call] connection:", peer.connectionState);
+      if (peer.connectionState === "failed") {
+        this.onConnectionFailed?.("Call connection failed. The network could not route audio between the two devices.");
+      }
     };
     peer.onsignalingstatechange = () => {
       console.log("[call] signaling:", peer.signalingState);

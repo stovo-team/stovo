@@ -727,6 +727,9 @@ func (s *Server) handleGetIceServers(w http.ResponseWriter, r *http.Request, use
 			Username:   s.cfg.TurnUsername,
 			Credential: s.cfg.TurnPassword,
 		})
+		s.logger.Infof("realtime.call", "ice-servers served turn_host=%s user_id=%s", host, user.ID)
+	} else {
+		s.logger.Warnf("realtime.call", "ice-servers served without TURN (host=%q enabled=%v) user_id=%s", host, s.cfg.TurnEnabled, user.ID)
 	}
 
 	s.json(w, http.StatusOK, iceServerResponse{ICEServers: servers})
