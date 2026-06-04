@@ -19,6 +19,10 @@ export type CallSettings = {
   noiseSuppression: boolean;
   autoGainControl: boolean;
   voiceEnhancement: boolean;
+  inputGain: number;
+  outputVolume: number;
+  voiceEnhancementThreshold: number;
+  voiceEnhancementHighpass: number;
 };
 
 export type CallDevice = {
@@ -49,6 +53,10 @@ const DEFAULT_SETTINGS: CallSettings = {
   noiseSuppression: true,
   autoGainControl: true,
   voiceEnhancement: false,
+  inputGain: 100,
+  outputVolume: 100,
+  voiceEnhancementThreshold: -24,
+  voiceEnhancementHighpass: 120,
 };
 
 export default class CallController {
