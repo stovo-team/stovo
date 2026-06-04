@@ -33,6 +33,8 @@ import {
   Reply,
   SlidersHorizontal,
   Smartphone,
+  Video,
+  VideoOff,
   Volume2,
   VolumeX,
   Search,
@@ -83,12 +85,11 @@ import { useAuth } from "../auth/AuthContext";
 import ImageLightbox from "../components/ImageLightbox";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
-import AudioCallController, {
-  CallAudioCapabilities,
-  CallAudioDevice,
-  CallAudioSettings,
-  DEFAULT_CALL_AUDIO_SETTINGS
-} from "../realtime/AudioCallController";
+import CallController, {
+  CallCapabilities,
+  CallDevice,
+  CallSettings,
+} from "../realtime/CallController";
 import {
   getAudioSettings,
   saveAudioSettings,
@@ -829,20 +830,36 @@ export default function ChatsPage() {
   const [activeCallChatId, setActiveCallChatId] = useState<string | null>(null);
   const [callPeerUserId, setCallPeerUserId] = useState<string | null>(null);
   const [callNotice, setCallNotice] = useState<string | null>(null);
-  const [callAudioSettings, setCallAudioSettings] = useState<CallAudioSettings>(
-    DEFAULT_CALL_AUDIO_SETTINGS
-  );
+  const [callType, setCallType] = useState<"audio" | "video">("audio");
+  const [callAudioSettings, setCallAudioSettings] = useState<CallSettings>({
+    micMuted: false,
+    soundDisabled: false,
+    cameraEnabled: true,
+    speakerMode: "large",
+    inputDeviceId: "",
+    outputDeviceId: "",
+    videoDeviceId: "",
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+    voiceEnhancement: false,
+    inputGain: 100,
+    outputVolume: 100,
+    voiceEnhancementThreshold: -24,
+    voiceEnhancementHighpass: 120,
+  });
   const [isCallSettingsMenuOpen, setIsCallSettingsMenuOpen] = useState(false);
   const [isCallAudioPopupOpen, setIsCallAudioPopupOpen] = useState(false);
   const [callTrackStatus, setCallTrackStatus] = useState<CallTrackStatus | null>(null);
-  const [callAudioDevices, setCallAudioDevices] = useState<CallAudioDevice[]>([]);
-  const [callAudioCapabilities, setCallAudioCapabilities] = useState<CallAudioCapabilities>({
+  const [callAudioDevices, setCallAudioDevices] = useState<CallDevice[]>([]);
+  const [callAudioCapabilities, setCallAudioCapabilities] = useState<CallCapabilities>({
     canSelectInputDevice: false,
     canSelectOutputDevice: false,
     canUseNoiseSuppression: false,
     canUseEchoCancellation: false,
     canUseAutoGainControl: false,
-    canUseVoiceEnhancement: false
+    canUseVoiceEnhancement: false,
+    canUseCamera: false,
   });
   const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(
@@ -856,10 +873,12 @@ export default function ChatsPage() {
     typeof navigator === "undefined" ? true : navigator.onLine
   );
   const socketRef = useRef<Socket | null>(null);
-  const audioCallRef = useRef<AudioCallController | null>(null);
+  const audioCallRef = useRef<CallController | null>(null);
   const ringtoneAudioContextRef = useRef<AudioContext | null>(null);
   const ringtoneTimerRef = useRef<number | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const loadOverviewRequestRef = useRef(0);
   const loadChatRequestRef = useRef(0);
   const activeChatIdRef = useRef<string | undefined>(chatId);
@@ -976,7 +995,7 @@ export default function ChatsPage() {
     setCallAudioDevices(devices);
   }, []);
 
-  const applyCallAudioPatch = useCallback(async (patch: Partial<CallAudioSettings>) => {
+  const applyCallAudioPatch = useCallback(async (patch: Partial<CallSettings>) => {
     const controller = audioCallRef.current;
     setCallAudioWarning(null);
     setCallAudioSettings((current) => ({ ...current, ...patch }));
@@ -984,23 +1003,13 @@ export default function ChatsPage() {
       return;
     }
     try {
-      await controller.applyAudioSettings(patch);
-      setCallTrackStatus(controller.getTrackConstraintStatus());
+      await controller.applySettings(patch);
     } catch (err) {
       setCallAudioWarning(
-        err instanceof Error ? err.message : "Could not apply audio setting. Check permissions."
+        err instanceof Error ? err.message : "Could not apply setting. Check permissions."
       );
-      return;
     }
-    if (saveAudioSettingsTimerRef.current !== null) {
-      window.clearTimeout(saveAudioSettingsTimerRef.current);
-    }
-    saveAudioSettingsTimerRef.current = window.setTimeout(() => {
-      if (!accessToken) return;
-      const current = controller.getAudioSettings();
-      void saveAudioSettings(accessToken, toPersistedSettings(current)).catch(() => undefined);
-    }, 1000);
-  }, [accessToken]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -1553,21 +1562,20 @@ export default function ChatsPage() {
       reconnectionAttempts: Infinity
     });
     socketRef.current = socket;
-    const audioController = new AudioCallController(socket, accessToken);
+    const audioController = new CallController(socket, accessToken);
     audioController.attachRemoteAudioElement(remoteAudioRef.current);
-    audioController.onConnectionFailed = (reason) => {
-      setCallNotice(reason);
-    };
+    audioController.attachRemoteVideoElement(remoteVideoRef.current);
+    audioController.attachLocalVideoElement(localVideoRef.current);
     setCallAudioCapabilities(audioController.getCapabilities());
-    setCallAudioSettings(audioController.getAudioSettings());
+    setCallAudioSettings(audioController.getSettings());
     audioCallRef.current = audioController;
     let audioSettingsCancelled = false;
     void getAudioSettings(accessToken)
       .then((saved) => {
         if (audioSettingsCancelled) return;
         const merged = mergeWithDefaults(saved);
-        setCallAudioSettings(merged);
-        return audioController.applyAudioSettings(merged);
+        setCallAudioSettings((cur) => ({ ...cur, ...merged }));
+        return audioController.applySettings(merged);
       })
       .catch(() => undefined);
 
@@ -1695,9 +1703,11 @@ export default function ChatsPage() {
 
     socket.on(
       "call:ringing",
-      (payload: { chatId: string; callerId: string; calleeId: string; expiresAt?: string }) => {
+      (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; expiresAt?: string }) => {
         const selfUserId = currentUser?.id ?? null;
         const isCaller = selfUserId !== null && payload.callerId === selfUserId;
+        const incomingCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
+        setCallType(incomingCallType);
         setActiveCallChatId(payload.chatId);
         setCallPeerUserId(isCaller ? payload.calleeId : payload.callerId);
         if (isCaller) {
@@ -1705,26 +1715,28 @@ export default function ChatsPage() {
           stopIncomingRingtone();
         } else {
           setCallPhase("incoming");
-          setCallNotice("Incoming audio call");
+          setCallNotice(incomingCallType === "video" ? "Incoming video call" : "Incoming audio call");
           startIncomingRingtone();
         }
       }
     );
 
-    socket.on("call:accepted", (payload: { chatId: string; callerId: string; calleeId: string }) => {
+    socket.on("call:accepted", (payload: { chatId: string; callerId: string; calleeId: string; callType?: string }) => {
       if (!currentUser || payload.chatId !== activeCallChatIdRef.current) {
         return;
       }
       stopIncomingRingtone();
       const peerId = payload.callerId === currentUser.id ? payload.calleeId : payload.callerId;
+      const acceptedCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
       setCallPeerUserId(peerId);
+      setCallType(acceptedCallType);
       setCallPhase("connecting");
       if (payload.callerId === currentUser.id) {
         void audioController
-          .startOutgoing(payload.chatId, peerId)
+          .startOutgoing(payload.chatId, peerId, acceptedCallType)
           .then(() => setCallPhase("in-call"))
           .catch(async (err) => {
-            await resetCallState("Microphone permission or audio device failed");
+            await resetCallState("Camera/mic permission or device failed");
             setError(err instanceof Error ? err.message : "Could not start call");
           });
       } else {
@@ -1735,7 +1747,7 @@ export default function ChatsPage() {
     socket.on(
       "call:signal",
       (payload: { chatId: string; fromUserId: string; data: Record<string, unknown> }) => {
-        void audioController.handleSignal(payload).catch((err) => {
+        void audioController.handleSignal(payload as { chatId: string; fromUserId: string; data: Record<string, unknown> }).catch((err) => {
           setError(err instanceof Error ? err.message : "Call signaling failed");
         });
       }
@@ -1769,7 +1781,7 @@ export default function ChatsPage() {
       socket.off("connect_error", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
       stopIncomingRingtone();
-      void audioController.cleanup();
+      void audioController.cleanup().catch(() => undefined);
       audioCallRef.current = null;
       socket.disconnect();
       socketRef.current = null;
@@ -1808,7 +1820,8 @@ export default function ChatsPage() {
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
-    setCallAudioSettings(DEFAULT_CALL_AUDIO_SETTINGS);
+    setCallType("audio");
+    setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
     setIsCallSettingsMenuOpen(false);
     setIsCallAudioPopupOpen(false);
     setCallTrackStatus(null);
@@ -1816,23 +1829,15 @@ export default function ChatsPage() {
     setCallNotice(notice ?? null);
   }
 
-  async function startDirectAudioCall() {
+  async function startDirectCall(type: "audio" | "video") {
     if (!selectedChat || selectedChat.type !== "direct" || !currentUser) {
       return;
     }
     const socket = socketRef.current;
     if (!socket) {
-      setError("Realtime is not connected yet. Please wait a moment and try calling again.");
+      setError("Realtime is not connected yet. Please wait a moment and try again.");
       return;
     }
-
-    // Prime microphone and remote audio element NOW — we are inside a user-gesture handler.
-    // On iOS Safari getUserMedia and audio play() are blocked outside gesture context.
-    await Promise.all([
-      audioCallRef.current?.primeLocalStream().catch(() => undefined),
-      audioCallRef.current?.primeRemoteAudio().catch(() => undefined),
-    ]);
-
     const connected = await ensureSocketConnected(socket, 4500);
     if (!connected) {
       setError("Realtime connection is offline. Please refresh and try again.");
@@ -1844,35 +1849,26 @@ export default function ChatsPage() {
     }
     setError(null);
     setCallNotice(null);
+    setCallType(type);
     setCallPhase("outgoing");
     setActiveCallChatId(selectedChat.id);
     setCallPeerUserId(peer.id);
-    socket.emit("call:start", { chatId: selectedChat.id });
+    socket.emit("call:start", { chatId: selectedChat.id, callType: type });
   }
 
   async function acceptIncomingCall() {
     if (!socketRef.current || !activeCallChatId || !callPeerUserId) {
       return;
     }
-
-    // Prime microphone and remote audio element before emitting call:accept.
-    // The offer signal can arrive before acceptIncoming() finishes, and handling it
-    // from a socket event would call getUserMedia / audio play() outside a user-gesture
-    // context on iOS Safari.
-    await Promise.all([
-      audioCallRef.current?.primeLocalStream().catch(() => undefined),
-      audioCallRef.current?.primeRemoteAudio().catch(() => undefined),
-    ]);
-
     setCallNotice(null);
     setCallPhase("connecting");
     stopIncomingRingtone();
     socketRef.current.emit("call:accept", { chatId: activeCallChatId });
     try {
-      await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId);
+      await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
       setCallPhase("in-call");
     } catch (err) {
-      await resetCallState("Microphone permission or audio device failed");
+      await resetCallState("Camera/mic permission or device failed");
       setError(err instanceof Error ? err.message : "Could not join call");
     }
   }
@@ -1897,7 +1893,8 @@ export default function ChatsPage() {
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
-    setCallAudioSettings(DEFAULT_CALL_AUDIO_SETTINGS);
+    setCallType("audio");
+    setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
     setIsCallSettingsMenuOpen(false);
     setIsCallAudioPopupOpen(false);
     setCallTrackStatus(null);
@@ -2633,16 +2630,28 @@ export default function ChatsPage() {
                   </span>
                   <div className="chat-header-actions">
                     {selectedChat.type === "direct" && (
-                      <button
-                        type="button"
-                        className="icon-button subtle"
-                        aria-label="Start audio call"
-                        title="Start audio call"
-                        onClick={() => void startDirectAudioCall()}
-                        disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
-                      >
-                        <Phone aria-hidden="true" size={19} />
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className="icon-button subtle"
+                          aria-label="Audio call"
+                          title="Audio call"
+                          onClick={() => void startDirectCall("audio")}
+                          disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
+                        >
+                          <Phone aria-hidden="true" size={19} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-button subtle"
+                          aria-label="Video call"
+                          title="Video call"
+                          onClick={() => void startDirectCall("video")}
+                          disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
+                        >
+                          <Video aria-hidden="true" size={19} />
+                        </button>
+                      </>
                     )}
                     <div className="menu-anchor" ref={chatMenuRef}>
                       <button
@@ -2997,15 +3006,28 @@ export default function ChatsPage() {
                   <section className="call-banner" aria-live="polite">
                     <strong>
                       {callPhase === "incoming"
-                        ? "Incoming audio call"
+                        ? (callType === "video" ? "Incoming video call" : "Incoming audio call")
                         : callPhase === "outgoing"
                           ? "Ringing..."
                           : callPhase === "connecting"
                             ? "Connecting..."
                             : callPhase === "in-call"
-                              ? "Audio call in progress"
+                              ? (callType === "video" ? "Video call in progress" : "Audio call in progress")
                               : "Call"}
                     </strong>
+                    <video
+                      ref={remoteVideoRef}
+                      className={`call-remote-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
+                      autoPlay
+                      playsInline
+                    />
+                    <video
+                      ref={localVideoRef}
+                      className={`call-local-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
+                      autoPlay
+                      playsInline
+                      muted
+                    />
                     {callNotice && <span>{callNotice}</span>}
                     <div className="call-ctrl-row">
                       {callPhase === "incoming" && (
@@ -3098,6 +3120,21 @@ export default function ChatsPage() {
                             </button>
                             <span>Settings</span>
                           </div>
+                          {callPhase === "in-call" && callType === "video" && (
+                            <div className="call-ctrl-wrap">
+                              <button
+                                type="button"
+                                className={`call-ctrl-btn${callAudioSettings.cameraEnabled ? "" : " is-muted"}`}
+                                aria-label={callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
+                                onClick={() => void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled })}
+                              >
+                                {callAudioSettings.cameraEnabled
+                                  ? <Video aria-hidden="true" size={20} />
+                                  : <VideoOff aria-hidden="true" size={20} />}
+                              </button>
+                              <span>{callAudioSettings.cameraEnabled ? "Camera" : "Camera off"}</span>
+                            </div>
+                          )}
                           <div className="call-ctrl-wrap">
                             <button
                               type="button"
@@ -3799,12 +3836,12 @@ function CallAudioSettingsPopup({
 }: {
   popupRef: RefObject<HTMLDivElement | null>;
   isMobile: boolean;
-  settings: CallAudioSettings;
-  capabilities: CallAudioCapabilities;
-  devices: CallAudioDevice[];
+  settings: CallSettings;
+  capabilities: CallCapabilities;
+  devices: CallDevice[];
   trackStatus: CallTrackStatus | null;
   warning: string | null;
-  onPatch: (patch: Partial<CallAudioSettings>) => void;
+  onPatch: (patch: Partial<CallSettings>) => void;
   onClose: () => void;
 }) {
   const inputDevices = devices.filter((d) => d.kind === "audioinput");
