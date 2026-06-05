@@ -852,6 +852,7 @@ export default function ChatsPage() {
   });
   const [isCallSettingsMenuOpen, setIsCallSettingsMenuOpen] = useState(false);
   const [isCallAudioPopupOpen, setIsCallAudioPopupOpen] = useState(false);
+  const [isCallMinimized, setIsCallMinimized] = useState(false);
   const [callTrackStatus, setCallTrackStatus] = useState<CallTrackStatus | null>(null);
   const [callAudioDevices, setCallAudioDevices] = useState<CallDevice[]>([]);
   const [callAudioCapabilities, setCallAudioCapabilities] = useState<CallCapabilities>({
@@ -1573,6 +1574,11 @@ export default function ChatsPage() {
       setCallType("audio");
       setCallNotice("Camera not available — continuing with audio only");
     };
+    audioController.onConnectionFailed = () => {
+      const chatId = activeCallChatIdRef.current;
+      if (chatId && socket.connected) socket.emit("call:end", { chatId });
+      void resetCallState("Call connection lost");
+    };
     setCallAudioCapabilities(audioController.getCapabilities());
     setCallAudioSettings(audioController.getSettings());
     audioCallRef.current = audioController;
@@ -1743,6 +1749,7 @@ export default function ChatsPage() {
           .startOutgoing(payload.chatId, peerId, acceptedCallType)
           .then(() => setCallPhase("in-call"))
           .catch(async (err) => {
+            if (socket.connected) socket.emit("call:end", { chatId: payload.chatId });
             await resetCallState("Camera/mic permission or device failed");
             setError(err instanceof Error ? err.message : "Could not start call");
           });
@@ -1831,6 +1838,7 @@ export default function ChatsPage() {
     setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
     setIsCallSettingsMenuOpen(false);
     setIsCallAudioPopupOpen(false);
+    setIsCallMinimized(false);
     setCallTrackStatus(null);
     setCallAudioWarning(null);
     setCallNotice(notice ?? null);
@@ -1875,6 +1883,7 @@ export default function ChatsPage() {
       await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
       setCallPhase("in-call");
     } catch (err) {
+      if (socketRef.current?.connected) socketRef.current.emit("call:end", { chatId: activeCallChatId });
       await resetCallState("Camera/mic permission or device failed");
       setError(err instanceof Error ? err.message : "Could not join call");
     }
@@ -1904,6 +1913,7 @@ export default function ChatsPage() {
     setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
     setIsCallSettingsMenuOpen(false);
     setIsCallAudioPopupOpen(false);
+    setIsCallMinimized(false);
     setCallTrackStatus(null);
     setCallAudioWarning(null);
     setCallNotice("Call ended");
