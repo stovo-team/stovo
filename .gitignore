@@ -17,3 +17,8 @@ postgres-data/
 redis-data/
 uploads/*
 !uploads/.gitkeep
+
+# Local agent / editor scratch space
+.env.production.bak
+*.bak
+features.db
