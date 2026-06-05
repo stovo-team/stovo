@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: Stovo
-  labels:
-    app: Stovo
 spec:
   replicas: 1
   selector:
@@ -11,7 +9,6 @@ spec:
       app: Stovo
   template:
     metadata:
-      name: Stovo
       labels:
         app: Stovo
     spec:
@@ -31,13 +28,43 @@ spec:
         - name: stovo-postgres
           image: postgres:16-alpine
           imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgres-data
         - name: stovo-redis
           image: redis:7-alpine
           imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /data
+              name: redis-data
           command:
             - redis-server --appendonly yes
         - name: stovo-turn
           image: coturn/coturn:latest
           imagePullPolicy: IfNotPresent
+        - name: stovo-caddy
+          image: caddy:2-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+              protocol: TCP
+            - containerPort: 443
+              protocol: TCP
+            - containerPort: 443
+              protocol: UDP
+          volumeMounts:
+            - mountPath: /data
+              name:  caddy-data
+            - mountPath: caddy-config
+              name: /config
       restartPolicy: Always
+      volumes:
+        - name: postgres-data
+          emptyDir: {}
+        - name: redis-data
+          emptyDir: {}
+        - name: caddy-data
+          emptyDir: {}
+        - name: caddy-config
+          emptyDir: {}
       
