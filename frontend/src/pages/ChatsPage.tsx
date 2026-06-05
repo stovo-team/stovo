@@ -835,7 +835,7 @@ export default function ChatsPage() {
     micMuted: false,
     soundDisabled: false,
     cameraEnabled: true,
-    speakerMode: "large",
+    speakerMode: "small",
     inputDeviceId: "",
     outputDeviceId: "",
     videoDeviceId: "",
