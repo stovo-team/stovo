@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: "0.0.0.0",
-    allowedHosts: ["frontend", ".loca.lt"],
+    allowedHosts: ["frontend", ".loca.lt", "stovo-cloud.stovo.ru"],
     port: 5173,
     hmr: disableHmr ? false : undefined
   }
