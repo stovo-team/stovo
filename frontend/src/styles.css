@@ -95,6 +95,7 @@
 }
 
 .call-banner {
+  position: relative; /* anchor for .call-local-video PiP */
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -115,6 +116,83 @@
   color: var(--text-secondary);
   font-size: 0.82rem;
   margin-top: -8px;
+}
+
+/* ── Full-screen call overlay (mobile) ─────────────────────── */
+.call-banner.call-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  border-radius: 0;
+  border: none;
+  margin: 0;
+  padding: 0;
+  background: #000;
+  gap: 0;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+/* On full-screen, the status text floats at the top */
+.call-banner.call-fullscreen > strong {
+  position: absolute;
+  top: max(env(safe-area-inset-top), 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 1rem;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  white-space: nowrap;
+}
+
+.call-banner.call-fullscreen > span {
+  position: absolute;
+  top: max(env(safe-area-inset-top), 16px);
+  left: 50%;
+  transform: translate(-50%, 2rem);
+  color: rgba(255,255,255,0.8);
+  font-size: 0.85rem;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+  white-space: nowrap;
+}
+
+/* Controls bar at bottom of full-screen overlay */
+.call-banner.call-fullscreen .call-ctrl-row {
+  position: relative;
+  z-index: 10;
+  padding: 20px 24px max(env(safe-area-inset-bottom), 28px);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+  justify-content: center;
+  gap: 28px;
+}
+
+/* Label text below buttons: white in full-screen */
+.call-banner.call-fullscreen .call-ctrl-wrap > span {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Buttons: semi-transparent glass look in full-screen */
+.call-banner.call-fullscreen .call-ctrl-btn {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border-color: transparent;
+}
+.call-banner.call-fullscreen .call-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+.call-banner.call-fullscreen .call-ctrl-btn.is-muted {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+}
+.call-banner.call-fullscreen .call-ctrl-btn.end-btn {
+  background: #e53e3e;
+  color: #fff;
+  border-color: transparent;
+}
+.call-banner.call-fullscreen .call-ctrl-btn.accept-btn {
+  background: #38a169;
+  color: #fff;
+  border-color: transparent;
 }
 
 /* Legacy – kept for the forwarded call-banner-actions class if still referenced */
@@ -3668,8 +3746,17 @@ h2 {
 
 /* ── Video call layout ─────────────────────────────────────── */
 
-.call-remote-video {
+/* ── Video elements — always in DOM, visibility controlled by class ── */
+
+/* Hidden by default (display:none keeps them out of layout when not in a video call) */
+.call-remote-video,
+.call-local-video {
   display: none;
+}
+
+/* ── Desktop / banner video layout ─────────────────────────── */
+.call-remote-video.visible {
+  display: block;
   width: 100%;
   max-height: 320px;
   object-fit: cover;
@@ -3678,12 +3765,8 @@ h2 {
   margin-bottom: 10px;
 }
 
-.call-remote-video.visible {
+.call-local-video.visible {
   display: block;
-}
-
-.call-local-video {
-  display: none;
   position: absolute;
   bottom: 80px;
   right: 12px;
@@ -3696,6 +3779,33 @@ h2 {
   z-index: 10;
 }
 
-.call-local-video.visible {
-  display: block;
+/* ── Full-screen mobile video layout ────────────────────────── */
+/* Remote video fills entire screen behind the controls */
+.call-banner.call-fullscreen .call-remote-video.visible {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  margin: 0;
+  object-fit: cover;
+  background: #000;
+}
+
+/* Local video: PiP in top-right corner (above controls) */
+.call-banner.call-fullscreen .call-local-video.visible {
+  position: absolute;
+  top: max(env(safe-area-inset-top), 16px);
+  right: 12px;
+  bottom: auto;
+  width: 28vw;
+  max-width: 110px;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: #111;
+  z-index: 20;
+  object-fit: cover;
 }
