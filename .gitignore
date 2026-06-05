@@ -17,3 +17,13 @@ postgres-data/
 redis-data/
 uploads/*
 !uploads/.gitkeep
+
+.playwright-cli/
+.playwright/
+
+# Local agent / editor scratch space
+.autoforge/
+.obsidian/
+.env.production.bak
+*.bak
+features.db
