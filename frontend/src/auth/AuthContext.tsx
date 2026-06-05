@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react";
 
@@ -32,32 +33,69 @@ interface AuthState {
   authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>;
 }
 
+// Refresh this many seconds before the token actually expires
+const REFRESH_BUFFER_SECONDS = 60;
+
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const acceptAuthResponse = useCallback((response: AuthResponse) => {
-    setAccessToken(response.accessToken);
-    setCurrentUser(response.user);
+  // Use a ref so the scheduled callback always calls the latest version
+  // without causing re-renders or stale closure issues.
+  const doProactiveRefreshRef = useRef<() => Promise<void>>(async () => undefined);
+
+  const scheduleProactiveRefresh = useCallback((expiresInSeconds: number) => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+    const delayMs = Math.max(0, (expiresInSeconds - REFRESH_BUFFER_SECONDS) * 1000);
+    refreshTimerRef.current = setTimeout(() => {
+      doProactiveRefreshRef.current().catch(() => undefined);
+    }, delayMs);
   }, []);
+
+  const applyAuthResponse = useCallback(
+    (response: AuthResponse) => {
+      setAccessToken(response.accessToken);
+      setCurrentUser(response.user);
+      scheduleProactiveRefresh(response.expiresInSeconds);
+    },
+    [scheduleProactiveRefresh]
+  );
+
+  // Keep the ref up to date with the latest applyAuthResponse
+  useEffect(() => {
+    doProactiveRefreshRef.current = async () => {
+      const response = await refreshSession();
+      applyAuthResponse(response);
+    };
+  }, [applyAuthResponse]);
 
   const updateCurrentUser = useCallback((user: User) => {
     setCurrentUser(user);
   }, []);
 
+  // Used by authRequest 401 retry — also reschedules proactive refresh
   const refresh = useCallback(async () => {
     const response = await refreshSession();
-    acceptAuthResponse(response);
+    applyAuthResponse(response);
     return response;
-  }, [acceptAuthResponse]);
+  }, [applyAuthResponse]);
 
+  // On mount: attempt to restore session from the refresh cookie
   useEffect(() => {
     let cancelled = false;
 
-    refresh()
+    refreshSession()
+      .then((response) => {
+        if (!cancelled) {
+          applyAuthResponse(response);
+        }
+      })
       .catch(() => {
         if (!cancelled) {
           setAccessToken(null);
@@ -72,24 +110,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
     };
-  }, [refresh]);
+  }, []);
 
   const login = useCallback(
     async (payload: LoginPayload) => {
-      acceptAuthResponse(await loginRequest(payload));
+      applyAuthResponse(await loginRequest(payload));
     },
-    [acceptAuthResponse]
+    [applyAuthResponse]
   );
 
   const setup = useCallback(
     async (payload: SetupPayload) => {
-      acceptAuthResponse(await setupOwner(payload));
+      applyAuthResponse(await setupOwner(payload));
     },
-    [acceptAuthResponse]
+    [applyAuthResponse]
+  );
+
+  const acceptAuthResponse = useCallback(
+    (response: AuthResponse) => {
+      applyAuthResponse(response);
+    },
+    [applyAuthResponse]
   );
 
   const logout = useCallback(async () => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
     await logoutRequest().catch(() => undefined);
     setAccessToken(null);
     setCurrentUser(null);
