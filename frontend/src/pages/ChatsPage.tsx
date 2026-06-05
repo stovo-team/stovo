@@ -3019,191 +3019,6 @@ export default function ChatsPage() {
                     )}
                   </div>
                 )}
-                {(callPhase !== "idle" || callNotice) && selectedChat.type === "direct" && activeCallChatId === selectedChat.id && (
-                  <section className={`call-banner${isMobileViewport && callPhase !== "idle" ? " call-fullscreen" : ""}`} aria-live="polite">
-                    <strong>
-                      {callPhase === "incoming"
-                        ? (callType === "video" ? "Incoming video call" : "Incoming audio call")
-                        : callPhase === "outgoing"
-                          ? "Ringing..."
-                          : callPhase === "connecting"
-                            ? "Connecting..."
-                            : callPhase === "in-call"
-                              ? (callType === "video" ? "Video call in progress" : "Audio call in progress")
-                              : "Call"}
-                    </strong>
-                    {callNotice && <span>{callNotice}</span>}
-                    <div className="call-ctrl-row">
-                      {callPhase === "incoming" && (
-                        <>
-                          <div className="call-ctrl-wrap">
-                            <button
-                              type="button"
-                              className="call-ctrl-btn accept-btn"
-                              aria-label="Accept call"
-                              onClick={() => void acceptIncomingCall()}
-                            >
-                              <Phone aria-hidden="true" size={22} />
-                            </button>
-                            <span>Accept</span>
-                          </div>
-                          <div className="call-ctrl-wrap">
-                            <button
-                              type="button"
-                              className="call-ctrl-btn end-btn"
-                              aria-label="Decline call"
-                              onClick={declineIncomingCall}
-                            >
-                              <PhoneOff aria-hidden="true" size={22} />
-                            </button>
-                            <span>Decline</span>
-                          </div>
-                        </>
-                      )}
-                      {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
-                        <>
-                          <div className="call-ctrl-wrap">
-                            <button
-                              type="button"
-                              className={`call-ctrl-btn${callAudioSettings.micMuted ? " is-muted" : ""}`}
-                              aria-label={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"}
-                              onClick={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-                            >
-                              {callAudioSettings.micMuted
-                                ? <MicOff aria-hidden="true" size={20} />
-                                : <Mic aria-hidden="true" size={20} />}
-                            </button>
-                            <span>{callAudioSettings.micMuted ? "Unmute" : "Mute"}</span>
-                          </div>
-                          <div className="call-ctrl-wrap">
-                            <button
-                              type="button"
-                              className={`call-ctrl-btn${callAudioSettings.soundDisabled ? " is-muted" : ""}`}
-                              aria-label={callAudioSettings.soundDisabled ? "Enable sound" : "Mute sound"}
-                              onClick={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
-                            >
-                              {callAudioSettings.soundDisabled
-                                ? <VolumeX aria-hidden="true" size={20} />
-                                : <Volume2 aria-hidden="true" size={20} />}
-                            </button>
-                            <span>{callAudioSettings.soundDisabled ? "Unmute" : "Dynamic"}</span>
-                          </div>
-                          {isMobileViewport && (
-                            <div className="call-ctrl-wrap">
-                              <button
-                                type="button"
-                                className={`call-ctrl-btn${callAudioSettings.speakerMode === "large" ? " is-active" : ""}`}
-                                aria-label={callAudioSettings.speakerMode === "small" ? "Switch to loudspeaker" : "Switch to earpiece"}
-                                onClick={() => void applyCallAudioPatch({ speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small" })}
-                              >
-                                {callAudioSettings.speakerMode === "small"
-                                  ? <Smartphone aria-hidden="true" size={20} />
-                                  : <Volume2 aria-hidden="true" size={20} />}
-                              </button>
-                              <span>{callAudioSettings.speakerMode === "small" ? "Speaker" : "Earpiece"}</span>
-                            </div>
-                          )}
-                          <div className="call-ctrl-wrap">
-                            <button
-                              ref={callSettingsButtonRef}
-                              type="button"
-                              className={`call-ctrl-btn${isCallSettingsMenuOpen || isCallAudioPopupOpen ? " is-active" : ""}`}
-                              aria-label="Audio settings"
-                              aria-haspopup="dialog"
-                              aria-expanded={isCallSettingsMenuOpen || isCallAudioPopupOpen}
-                              onClick={() => {
-                                if (isCallAudioPopupOpen) {
-                                  setIsCallAudioPopupOpen(false);
-                                  setIsCallSettingsMenuOpen(false);
-                                } else {
-                                  setIsCallSettingsMenuOpen((v) => !v);
-                                }
-                              }}
-                            >
-                              <SlidersHorizontal aria-hidden="true" size={20} />
-                            </button>
-                            <span>Settings</span>
-                          </div>
-                          {callPhase === "in-call" && (
-                            <>
-                              {/* Camera on/off toggle — shown for video calls; also allows upgrading audio→video */}
-                              <div className="call-ctrl-wrap">
-                                <button
-                                  type="button"
-                                  className={`call-ctrl-btn${callType === "video" && callAudioSettings.cameraEnabled ? "" : " is-muted"}`}
-                                  aria-label={callType === "video" && callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
-                                  onClick={() => {
-                                    if (callType === "audio") {
-                                      // Upgrade audio → video
-                                      void audioCallRef.current?.toggleVideo(true).then(() => setCallType("video"));
-                                    } else {
-                                      void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
-                                    }
-                                  }}
-                                >
-                                  {callType === "video" && callAudioSettings.cameraEnabled
-                                    ? <Video aria-hidden="true" size={20} />
-                                    : <VideoOff aria-hidden="true" size={20} />}
-                                </button>
-                                <span>{callType === "video" && callAudioSettings.cameraEnabled ? "Camera" : "Camera off"}</span>
-                              </div>
-                              {/* Camera rotation — mobile only, during video calls */}
-                              {isMobileViewport && callType === "video" && (
-                                <div className="call-ctrl-wrap">
-                                  <button
-                                    type="button"
-                                    className="call-ctrl-btn"
-                                    aria-label="Flip camera"
-                                    onClick={() => void applyCallAudioPatch({
-                                      cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user"
-                                    })}
-                                  >
-                                    <RotateCcw aria-hidden="true" size={20} />
-                                  </button>
-                                  <span>Flip</span>
-                                </div>
-                              )}
-                            </>
-                          )}
-                          <div className="call-ctrl-wrap">
-                            <button
-                              type="button"
-                              className="call-ctrl-btn end-btn"
-                              aria-label="End call"
-                              onClick={() => void endActiveCall()}
-                            >
-                              <PhoneOff aria-hidden="true" size={20} />
-                            </button>
-                            <span>End</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    {isCallSettingsMenuOpen && (
-                      <CallSettingsContextMenu
-                        anchorRef={callSettingsButtonRef}
-                        menuRef={callSettingsMenuRef}
-                        onOpenAudioSettings={() => {
-                          setIsCallSettingsMenuOpen(false);
-                          setIsCallAudioPopupOpen(true);
-                        }}
-                      />
-                    )}
-                    {isCallAudioPopupOpen && (
-                      <CallAudioSettingsPopup
-                        popupRef={callAudioPopupRef}
-                        isMobile={isMobileViewport}
-                        settings={callAudioSettings}
-                        capabilities={callAudioCapabilities}
-                        devices={callAudioDevices}
-                        trackStatus={callTrackStatus}
-                        warning={callAudioWarning}
-                        onPatch={(patch) => void applyCallAudioPatch(patch)}
-                        onClose={() => setIsCallAudioPopupOpen(false)}
-                      />
-                    )}
-                  </section>
-                )}
                 <form className="message-composer" onSubmit={handleSendMessage}>
                   {channelCommentsDisabledForViewer && (
                     <p className="muted-copy">Comments are disabled in this channel.</p>
@@ -3584,52 +3399,17 @@ export default function ChatsPage() {
             controller is created. Visibility is controlled by CSS class only. */}
         <video
           ref={remoteVideoRef}
-          className={`call-remote-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
+          className={`call-popup-remote-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
           autoPlay
           playsInline
         />
         <video
           ref={localVideoRef}
-          className={`call-local-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
+          className={`call-popup-local-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
           autoPlay
           playsInline
           muted
         />
-        {callPhase === "incoming" && activeCallChatId && (
-          <div className="modal-backdrop call-modal-backdrop" role="presentation">
-            <section className="messenger-modal call-modal" role="dialog" aria-modal="true" aria-labelledby="incoming-call-title">
-              <div className="modal-header">
-                <h2 id="incoming-call-title">Incoming call</h2>
-              </div>
-              <p className="muted-copy">{activeCallPeerName} is calling you.</p>
-              {callNotice && <p className="muted-copy">{callNotice}</p>}
-              <div className="call-ctrl-row call-modal-ctrl-row">
-                <div className="call-ctrl-wrap">
-                  <button
-                    type="button"
-                    className="call-ctrl-btn accept-btn"
-                    aria-label="Accept call"
-                    onClick={() => void acceptIncomingCall()}
-                  >
-                    <Phone aria-hidden="true" size={26} />
-                  </button>
-                  <span>Accept</span>
-                </div>
-                <div className="call-ctrl-wrap">
-                  <button
-                    type="button"
-                    className="call-ctrl-btn end-btn"
-                    aria-label="Decline call"
-                    onClick={declineIncomingCall}
-                  >
-                    <PhoneOff aria-hidden="true" size={26} />
-                  </button>
-                  <span>Decline</span>
-                </div>
-              </div>
-            </section>
-          </div>
-        )}
         {isNewChatOpen && (
           <div className="modal-backdrop" role="presentation">
             <section className="messenger-modal" role="dialog" aria-modal="true" aria-labelledby="new-chat-title">
