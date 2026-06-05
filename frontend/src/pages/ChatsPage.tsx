@@ -1501,6 +1501,13 @@ export default function ChatsPage() {
     setDetailsTab("media");
   }, [chatId]);
 
+  // Auto-minimize the call popup when the user opens a different chat
+  useEffect(() => {
+    if (activeCallChatId && chatId && activeCallChatId !== chatId && callPhase !== "idle") {
+      setIsCallMinimized(true);
+    }
+  }, [chatId, activeCallChatId, callPhase]);
+
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
       if (!chatMenuRef.current?.contains(event.target as Node)) {
