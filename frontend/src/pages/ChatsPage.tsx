@@ -1569,7 +1569,7 @@ export default function ChatsPage() {
     socketRef.current = socket;
     const audioController = new CallController(socket, accessToken);
     audioController.attachRemoteAudioElement(remoteAudioRef.current);
-    // Video elements are always in the DOM (outside any conditional), so refs are valid here
+    // Note: refs are null here (popup not mounted yet); re-attach useEffect handles this when callPhase changes
     audioController.attachRemoteVideoElement(remoteVideoRef.current);
     audioController.attachLocalVideoElement(localVideoRef.current);
     audioController.onVideoUnavailable = () => {
@@ -3409,7 +3409,11 @@ export default function ChatsPage() {
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
         {callPhase !== "idle" && (
           <section
-            className={`call-popup${isCallMinimized ? " call-popup-minimized" : ""}`}
+            className={[
+              "call-popup",
+              isCallMinimized ? "call-popup-minimized" : "",
+              isMobileViewport && callPhase !== "idle" ? "call-popup-fullscreen" : "",
+            ].filter(Boolean).join(" ")}
             role="dialog"
             aria-modal="false"
             aria-label={
@@ -3535,6 +3539,31 @@ export default function ChatsPage() {
                       </button>
                       <span>{callAudioSettings.soundDisabled ? "Unmute" : "Speaker"}</span>
                     </div>
+                    {isMobileViewport && (
+                      <div className="call-ctrl-wrap">
+                        <button
+                          type="button"
+                          className={`call-ctrl-btn${callAudioSettings.speakerMode === "large" ? " is-active" : ""}`}
+                          aria-label={
+                            callAudioSettings.speakerMode === "small"
+                              ? "Switch to loudspeaker"
+                              : "Switch to earpiece"
+                          }
+                          onClick={() =>
+                            void applyCallAudioPatch({
+                              speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small",
+                            })
+                          }
+                        >
+                          {callAudioSettings.speakerMode === "small" ? (
+                            <Smartphone aria-hidden="true" size={20} />
+                          ) : (
+                            <Volume2 aria-hidden="true" size={20} />
+                          )}
+                        </button>
+                        <span>{callAudioSettings.speakerMode === "small" ? "Speaker" : "Earpiece"}</span>
+                      </div>
+                    )}
                     <div className="call-ctrl-wrap">
                       <button
                         ref={callSettingsButtonRef}
