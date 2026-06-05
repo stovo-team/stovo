@@ -352,12 +352,6 @@
   gap: 18px;
 }
 
-.call-modal-ctrl-row {
-  justify-content: center;
-  gap: 48px;
-  margin-top: 4px;
-}
-
 .call-ctrl-wrap {
   display: flex;
   flex-direction: column;
@@ -370,12 +364,6 @@
   font-size: 0.65rem;
   letter-spacing: 0.01em;
   white-space: nowrap;
-}
-
-.call-modal-ctrl-row .call-ctrl-wrap > span {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: var(--text-secondary);
 }
 
 .call-ctrl-btn {
@@ -437,11 +425,6 @@
 .call-ctrl-btn.end-btn:hover {
   background: #b91c1c;
   opacity: 1;
-}
-
-.call-modal-ctrl-row .call-ctrl-btn {
-  height: 64px;
-  width: 64px;
 }
 
 /* ── Call settings icon button ── */

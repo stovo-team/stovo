@@ -1576,9 +1576,6 @@ export default function ChatsPage() {
     socketRef.current = socket;
     const audioController = new CallController(socket, accessToken);
     audioController.attachRemoteAudioElement(remoteAudioRef.current);
-    // Note: refs are null here (popup not mounted yet); re-attach useEffect handles this when callPhase changes
-    audioController.attachRemoteVideoElement(remoteVideoRef.current);
-    audioController.attachLocalVideoElement(localVideoRef.current);
     audioController.onVideoUnavailable = () => {
       setCallType("audio");
       setCallNotice("Camera not available — continuing with audio only");
@@ -3464,7 +3461,7 @@ export default function ChatsPage() {
             </div>
 
             {/* ── Video area — always rendered inside popup (not inside !isCallMinimized) so refs stay stable ── */}
-            <div className={`call-popup-video-area${isCallMinimized ? " call-popup-video-area-hidden" : ""}`}>
+            <div className={`call-popup-video-area${isCallMinimized || callType === "audio" ? " call-popup-video-area-hidden" : ""}`}>
               <video
                 ref={remoteVideoRef}
                 className={`call-popup-remote-video${callType === "video" && callPhase === "in-call" && !isCallMinimized ? " visible" : ""}`}
