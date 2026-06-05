@@ -77,8 +77,8 @@ export default class CallController {
   private chatId: string | null = null;
   private targetUserId: string | null = null;
   // Whether this peer is the call initiator (decides who re-offers on renegotiation)
-  private isInitiator = false;
-  // Guard: don't fire onnegotiationneeded until initial offer is done
+  // Set to true after the initial offer/answer exchange completes.
+  // Used to guard callee-side renegotiation in handleSignal.
   private initialOfferSent = false;
   private callType: "audio" | "video" = "audio";
   private pendingCandidates: RTCIceCandidateInit[] = [];
@@ -123,7 +123,6 @@ export default class CallController {
     this.chatId = chatId;
     this.targetUserId = targetUserId;
     this.callType = callType;
-    this.isInitiator = true;
     this.initialOfferSent = false;
     await this.ensurePeer();
     const offer = await this.peer!.createOffer();
@@ -136,8 +135,7 @@ export default class CallController {
     this.chatId = chatId;
     this.targetUserId = targetUserId;
     this.callType = callType;
-    this.isInitiator = false;
-    // Keep initialOfferSent = false — onnegotiationneeded must NOT fire until
+    // Keep initialOfferSent = false — renegotiation must NOT fire until
     // the first offer/answer exchange is complete (set to true in handleSignal
     // after we send our answer). Premature offers cause DTLS role conflicts.
     this.initialOfferSent = false;
@@ -226,9 +224,10 @@ export default class CallController {
         void this.localVideoEl.play().catch(() => undefined);
       }
 
-      // Add track to peer → triggers onnegotiationneeded
+      // Add track to peer, then manually renegotiate
       this.peer.addTrack(videoTrack, this.localStream ?? this.sourceStream!);
       this.callType = "video";
+      await this.renegotiate();
     } else {
       // Remove video senders
       for (const sender of this.peer.getSenders()) {
@@ -239,14 +238,27 @@ export default class CallController {
       }
       // Stop local video tracks
       for (const track of this.sourceStream?.getVideoTracks() ?? []) track.stop();
-      for (const track of this.localStream?.getVideoTracks() ?? []) {
-        if (this.localStream !== this.sourceStream) track.stop();
+      if (this.localStream !== this.sourceStream) {
+        for (const track of this.localStream?.getVideoTracks() ?? []) track.stop();
       }
       // Clear local preview
       if (this.localVideoEl) this.localVideoEl.srcObject = null;
       this.callType = "audio";
-      // removeTrack also triggers onnegotiationneeded
+      await this.renegotiate();
     }
+  }
+
+  /** Explicitly create and send a new offer (used for mid-call renegotiation). */
+  private async renegotiate() {
+    if (!this.peer || !this.chatId || !this.targetUserId) return;
+    if (this.peer.signalingState !== "stable") return;
+    const offer = await this.peer.createOffer();
+    await this.peer.setLocalDescription(offer);
+    this.emitSignal({
+      chatId: this.chatId,
+      targetUserId: this.targetUserId,
+      data: { type: "offer", sdp: offer.sdp },
+    });
   }
 
   // ─── Settings ───────────────────────────────────────────────────────────────
@@ -323,7 +335,6 @@ export default class CallController {
     if (this.peer) {
       this.peer.onicecandidate = null;
       this.peer.ontrack = null;
-      this.peer.onnegotiationneeded = null;
       this.peer.close();
     }
     this.peer = null;
@@ -338,7 +349,6 @@ export default class CallController {
     this.chatId = null;
     this.targetUserId = null;
     this.callType = "audio";
-    this.isInitiator = false;
     this.initialOfferSent = false;
     this.pendingCandidates = [];
   }
@@ -392,23 +402,11 @@ export default class CallController {
       }
     };
 
-    // Renegotiation: fires when tracks are added/removed mid-call
-    peer.onnegotiationneeded = async () => {
-      // Don't fire until the initial offer has been sent, and only in stable state
-      if (!this.initialOfferSent || !this.chatId || !this.targetUserId) return;
-      if (peer.signalingState !== "stable") return;
-      try {
-        const offer = await peer.createOffer();
-        await peer.setLocalDescription(offer);
-        this.emitSignal({
-          chatId: this.chatId,
-          targetUserId: this.targetUserId,
-          data: { type: "offer", sdp: offer.sdp },
-        });
-      } catch {
-        // Renegotiation failed — not fatal, connection may still work
-      }
-    };
+    // NOTE: onnegotiationneeded is intentionally NOT wired here.
+    // It fires unpredictably (including right after setLocalDescription(answer)),
+    // causing callee-initiated offers that race with the established DTLS roles
+    // and produce m-line order mismatches. Renegotiation is triggered explicitly
+    // in toggleVideo() instead.
 
     this.peer = peer;
     this.applyMicMutedState();
