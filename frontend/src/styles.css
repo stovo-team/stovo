@@ -771,18 +771,6 @@
 }
 
 
-.call-modal-backdrop {
-  z-index: 85;
-}
-
-.call-modal {
-  display: grid;
-  gap: 12px;
-  max-width: 420px;
-}
-
-
-
 :root[data-accent="purple"] {
   --accent-primary-light: #8b5cf6;
   --accent-primary-hover-light: #7c3aed;
