@@ -137,7 +137,10 @@ export default class CallController {
     this.targetUserId = targetUserId;
     this.callType = callType;
     this.isInitiator = false;
-    this.initialOfferSent = true; // callee never sends the first offer; enable renegotiation immediately
+    // Keep initialOfferSent = false — onnegotiationneeded must NOT fire until
+    // the first offer/answer exchange is complete (set to true in handleSignal
+    // after we send our answer). Premature offers cause DTLS role conflicts.
+    this.initialOfferSent = false;
     await this.ensurePeer();
   }
 
@@ -149,10 +152,10 @@ export default class CallController {
 
     const signalType = payload.data.type;
     if (signalType === "offer" && typeof payload.data.sdp === "string") {
-      // If we're in the middle of a renegotiation offer of our own, roll back
-      if (this.peer!.signalingState !== "stable") {
-        await this.peer!.setLocalDescription({ type: "rollback" });
-      }
+      // Ignore incoming offer if we already have a local offer pending (glare).
+      // The remote side will handle our offer and the exchange will complete.
+      if (this.peer!.signalingState === "have-local-offer") return;
+
       await this.peer!.setRemoteDescription(
         new RTCSessionDescription({ type: "offer", sdp: payload.data.sdp })
       );
@@ -164,6 +167,8 @@ export default class CallController {
         targetUserId: payload.fromUserId,
         data: { type: "answer", sdp: answer.sdp },
       });
+      // First offer/answer exchange is now complete — enable renegotiation
+      this.initialOfferSent = true;
       return;
     }
     if (signalType === "answer" && typeof payload.data.sdp === "string") {
@@ -172,6 +177,7 @@ export default class CallController {
           new RTCSessionDescription({ type: "answer", sdp: payload.data.sdp })
         );
         await this.flushPendingCandidates();
+        // Caller side: exchange complete, renegotiation already enabled
       }
       return;
     }
