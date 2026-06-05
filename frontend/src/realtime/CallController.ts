@@ -11,6 +11,7 @@ export type CallSettings = {
   micMuted: boolean;
   soundDisabled: boolean;
   cameraEnabled: boolean;
+  cameraFacingMode: "user" | "environment";
   speakerMode: "small" | "large";
   inputDeviceId: string;
   outputDeviceId: string;
@@ -45,6 +46,7 @@ const DEFAULT_SETTINGS: CallSettings = {
   micMuted: false,
   soundDisabled: false,
   cameraEnabled: true,
+  cameraFacingMode: "user",
   speakerMode: "small",
   inputDeviceId: "",
   outputDeviceId: "",
@@ -63,26 +65,36 @@ export default class CallController {
   private socket: Socket;
   private accessToken: string;
 
+  // Element references — attached once at mount (elements always in DOM, not conditional)
   private remoteAudioEl: HTMLAudioElement | null = null;
   private remoteVideoEl: HTMLVideoElement | null = null;
   private localVideoEl: HTMLVideoElement | null = null;
 
   private peer: RTCPeerConnection | null = null;
-  private localStream: MediaStream | null = null;
-  private sourceStream: MediaStream | null = null;
+  private localStream: MediaStream | null = null;   // stream added to peer (may be voice-enhanced)
+  private sourceStream: MediaStream | null = null;  // raw stream from getUserMedia (for local preview)
 
   private chatId: string | null = null;
   private targetUserId: string | null = null;
+  // Whether this peer is the call initiator (decides who re-offers on renegotiation)
+  private isInitiator = false;
+  // Guard: don't fire onnegotiationneeded until initial offer is done
+  private initialOfferSent = false;
   private callType: "audio" | "video" = "audio";
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private settings: CallSettings = { ...DEFAULT_SETTINGS };
   private processorContext: AudioContext | null = null;
   private processorDestination: MediaStreamAudioDestinationNode | null = null;
 
+  /** Called when a video call had no camera — so UI can show a warning and downgrade visuals */
+  onVideoUnavailable?: () => void;
+
   constructor(socket: Socket, accessToken: string) {
     this.socket = socket;
     this.accessToken = accessToken;
   }
+
+  // ─── Element attachment ─────────────────────────────────────────────────────
 
   attachRemoteAudioElement(element: HTMLAudioElement | null) {
     this.remoteAudioEl = element;
@@ -92,22 +104,31 @@ export default class CallController {
 
   attachRemoteVideoElement(element: HTMLVideoElement | null) {
     this.remoteVideoEl = element;
+    // If we already have a remote stream with a video track, attach it now
+    if (element) this.reattachRemoteVideo();
   }
 
   attachLocalVideoElement(element: HTMLVideoElement | null) {
     this.localVideoEl = element;
-    if (element && this.sourceStream) {
+    // If we already acquired a local video stream, show it immediately
+    if (element && this.sourceStream && this.callType === "video") {
       element.srcObject = this.sourceStream;
+      void element.play().catch(() => undefined);
     }
   }
+
+  // ─── Call lifecycle ─────────────────────────────────────────────────────────
 
   async startOutgoing(chatId: string, targetUserId: string, callType: "audio" | "video" = "audio") {
     this.chatId = chatId;
     this.targetUserId = targetUserId;
     this.callType = callType;
+    this.isInitiator = true;
+    this.initialOfferSent = false;
     await this.ensurePeer();
     const offer = await this.peer!.createOffer();
     await this.peer!.setLocalDescription(offer);
+    this.initialOfferSent = true;
     this.emitSignal({ chatId, targetUserId, data: { type: "offer", sdp: offer.sdp } });
   }
 
@@ -115,6 +136,8 @@ export default class CallController {
     this.chatId = chatId;
     this.targetUserId = targetUserId;
     this.callType = callType;
+    this.isInitiator = false;
+    this.initialOfferSent = true; // callee never sends the first offer; enable renegotiation immediately
     await this.ensurePeer();
   }
 
@@ -126,6 +149,10 @@ export default class CallController {
 
     const signalType = payload.data.type;
     if (signalType === "offer" && typeof payload.data.sdp === "string") {
+      // If we're in the middle of a renegotiation offer of our own, roll back
+      if (this.peer!.signalingState !== "stable") {
+        await this.peer!.setLocalDescription({ type: "rollback" });
+      }
       await this.peer!.setRemoteDescription(
         new RTCSessionDescription({ type: "offer", sdp: payload.data.sdp })
       );
@@ -140,10 +167,12 @@ export default class CallController {
       return;
     }
     if (signalType === "answer" && typeof payload.data.sdp === "string") {
-      await this.peer!.setRemoteDescription(
-        new RTCSessionDescription({ type: "answer", sdp: payload.data.sdp })
-      );
-      await this.flushPendingCandidates();
+      if (this.peer!.signalingState === "have-local-offer") {
+        await this.peer!.setRemoteDescription(
+          new RTCSessionDescription({ type: "answer", sdp: payload.data.sdp })
+        );
+        await this.flushPendingCandidates();
+      }
       return;
     }
     if (signalType === "ice-candidate" && payload.data.candidate && typeof payload.data.candidate === "object") {
@@ -156,12 +185,65 @@ export default class CallController {
     }
   }
 
-  private async flushPendingCandidates() {
-    const candidates = this.pendingCandidates.splice(0);
-    for (const candidate of candidates) {
-      await this.peer!.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => undefined);
+  // ─── Video toggle mid-call ───────────────────────────────────────────────────
+
+  /**
+   * Enable or disable the camera mid-call, triggering WebRTC renegotiation.
+   * Safe to call during an audio call (upgrades to video) or a video call (disables camera).
+   */
+  async toggleVideo(enable: boolean): Promise<void> {
+    if (!this.peer) return;
+
+    if (enable) {
+      // Try to get a video track; fall back gracefully if no camera
+      let videoTrack: MediaStreamTrack | null = null;
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: this.buildVideoConstraints(),
+        });
+        videoTrack = videoStream.getVideoTracks()[0] ?? null;
+      } catch {
+        this.onVideoUnavailable?.();
+        return;
+      }
+      if (!videoTrack) { this.onVideoUnavailable?.(); return; }
+
+      // Add to local source stream so preview works
+      this.sourceStream?.addTrack(videoTrack);
+      if (this.sourceStream !== this.localStream) {
+        this.localStream?.addTrack(videoTrack);
+      }
+
+      // Show local preview
+      if (this.localVideoEl) {
+        this.localVideoEl.srcObject = this.sourceStream;
+        void this.localVideoEl.play().catch(() => undefined);
+      }
+
+      // Add track to peer → triggers onnegotiationneeded
+      this.peer.addTrack(videoTrack, this.localStream ?? this.sourceStream!);
+      this.callType = "video";
+    } else {
+      // Remove video senders
+      for (const sender of this.peer.getSenders()) {
+        if (sender.track?.kind === "video") {
+          sender.track.stop();
+          this.peer.removeTrack(sender);
+        }
+      }
+      // Stop local video tracks
+      for (const track of this.sourceStream?.getVideoTracks() ?? []) track.stop();
+      for (const track of this.localStream?.getVideoTracks() ?? []) {
+        if (this.localStream !== this.sourceStream) track.stop();
+      }
+      // Clear local preview
+      if (this.localVideoEl) this.localVideoEl.srcObject = null;
+      this.callType = "audio";
+      // removeTrack also triggers onnegotiationneeded
     }
   }
+
+  // ─── Settings ───────────────────────────────────────────────────────────────
 
   getSettings(): CallSettings {
     return { ...this.settings };
@@ -204,6 +286,8 @@ export default class CallController {
 
     const needsStreamReacquire =
       patch.inputDeviceId !== undefined ||
+      patch.videoDeviceId !== undefined ||
+      patch.cameraFacingMode !== undefined ||
       patch.echoCancellation !== undefined ||
       patch.noiseSuppression !== undefined ||
       patch.autoGainControl !== undefined ||
@@ -223,14 +307,17 @@ export default class CallController {
     if (patch.outputDeviceId !== undefined) await this.applyOutputDevice();
   }
 
+  // ─── Cleanup ────────────────────────────────────────────────────────────────
+
   async cleanup() {
     this.stopStream(this.localStream);
-    this.stopStream(this.sourceStream);
+    if (this.localStream !== this.sourceStream) this.stopStream(this.sourceStream);
     this.localStream = null;
     this.sourceStream = null;
     if (this.peer) {
       this.peer.onicecandidate = null;
       this.peer.ontrack = null;
+      this.peer.onnegotiationneeded = null;
       this.peer.close();
     }
     this.peer = null;
@@ -245,8 +332,12 @@ export default class CallController {
     this.chatId = null;
     this.targetUserId = null;
     this.callType = "audio";
+    this.isInitiator = false;
+    this.initialOfferSent = false;
     this.pendingCandidates = [];
   }
+
+  // ─── Private: peer setup ────────────────────────────────────────────────────
 
   private async ensurePeer() {
     if (this.peer) return;
@@ -264,9 +355,9 @@ export default class CallController {
 
     const peer = new RTCPeerConnection({ iceServers: await this.loadIceServers() });
 
-    peer.oniceconnectionstatechange = () => console.log("ICE state:", peer.iceConnectionState);
-    peer.onconnectionstatechange = () => console.log("Peer state:", peer.connectionState);
-    peer.onsignalingstatechange = () => console.log("Signaling state:", peer.signalingState);
+    peer.oniceconnectionstatechange = () => console.log("[call] ICE:", peer.iceConnectionState);
+    peer.onconnectionstatechange = () => console.log("[call] Peer:", peer.connectionState);
+    peer.onsignalingstatechange = () => console.log("[call] Signaling:", peer.signalingState);
 
     for (const track of this.localStream?.getTracks() ?? []) {
       peer.addTrack(track, this.localStream!);
@@ -289,11 +380,27 @@ export default class CallController {
         this.remoteAudioEl.autoplay = true;
         void this.remoteAudioEl.play().catch(() => undefined);
       }
-      if (event.track.kind === "video" && this.remoteVideoEl) {
-        this.remoteVideoEl.srcObject = remoteStream;
-        this.remoteVideoEl.muted = true;
-        this.remoteVideoEl.autoplay = true;
-        void this.remoteVideoEl.play().catch(() => undefined);
+      if (event.track.kind === "video") {
+        this.remoteStream = remoteStream;
+        this.reattachRemoteVideo();
+      }
+    };
+
+    // Renegotiation: fires when tracks are added/removed mid-call
+    peer.onnegotiationneeded = async () => {
+      // Don't fire until the initial offer has been sent, and only in stable state
+      if (!this.initialOfferSent || !this.chatId || !this.targetUserId) return;
+      if (peer.signalingState !== "stable") return;
+      try {
+        const offer = await peer.createOffer();
+        await peer.setLocalDescription(offer);
+        this.emitSignal({
+          chatId: this.chatId,
+          targetUserId: this.targetUserId,
+          data: { type: "offer", sdp: offer.sdp },
+        });
+      } catch {
+        // Renegotiation failed — not fatal, connection may still work
       }
     };
 
@@ -302,6 +409,151 @@ export default class CallController {
     this.applyCameraEnabledState();
     this.applySoundDisabledState();
     await this.applyOutputDevice();
+  }
+
+  // Stored most-recent remote stream that had a video track (for late-attachment)
+  private remoteStream: MediaStream | null = null;
+
+  private reattachRemoteVideo() {
+    if (!this.remoteVideoEl || !this.remoteStream) return;
+    this.remoteVideoEl.srcObject = this.remoteStream;
+    this.remoteVideoEl.muted = true; // audio comes from remoteAudioEl
+    this.remoteVideoEl.autoplay = true;
+    void this.remoteVideoEl.play().catch(() => undefined);
+  }
+
+  // ─── Private: stream management ─────────────────────────────────────────────
+
+  private async acquireLocalStream() {
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices ||
+      typeof navigator.mediaDevices.getUserMedia !== "function"
+    ) {
+      throw new Error(
+        "Media devices are unavailable. Use HTTPS (or localhost) and grant camera/mic permission."
+      );
+    }
+
+    const isVideo = this.callType === "video";
+    let nextSource: MediaStream;
+
+    if (isVideo) {
+      try {
+        nextSource = await navigator.mediaDevices.getUserMedia({
+          audio: this.buildAudioConstraints(),
+          video: this.buildVideoConstraints(),
+        });
+      } catch (videoErr) {
+        // If camera is unavailable, fall back to audio-only and notify UI
+        const isMediaError = videoErr instanceof DOMException &&
+          ["NotFoundError", "NotAllowedError", "DevicesNotFoundError",
+           "OverconstrainedError", "NotReadableError"].includes(videoErr.name);
+        if (isMediaError) {
+          nextSource = await navigator.mediaDevices.getUserMedia({
+            audio: this.buildAudioConstraints(),
+            video: false,
+          });
+          this.callType = "audio";
+          this.onVideoUnavailable?.();
+        } else {
+          throw videoErr;
+        }
+      }
+    } else {
+      nextSource = await navigator.mediaDevices.getUserMedia({
+        audio: this.buildAudioConstraints(),
+        video: false,
+      });
+    }
+
+    const nextSendStream = this.settings.voiceEnhancement
+      ? this.createEnhancedStream(nextSource)
+      : nextSource;
+
+    if (this.peer) {
+      const audioTrack = nextSendStream.getAudioTracks()[0] ?? null;
+      if (audioTrack) {
+        const sender = this.peer.getSenders().find((s) => s.track?.kind === "audio");
+        if (sender) await sender.replaceTrack(audioTrack);
+      }
+      const videoTrack = nextSendStream.getVideoTracks()[0] ?? null;
+      if (videoTrack) {
+        const sender = this.peer.getSenders().find((s) => s.track?.kind === "video");
+        if (sender) await sender.replaceTrack(videoTrack);
+      }
+    }
+
+    this.stopStream(this.localStream);
+    if (this.localStream !== this.sourceStream) this.stopStream(this.sourceStream);
+    this.localStream = nextSendStream;
+    this.sourceStream = nextSource;
+
+    // Show local preview — works even if element was attached after stream acquired
+    if (this.localVideoEl && this.callType === "video") {
+      this.localVideoEl.srcObject = nextSource;
+      void this.localVideoEl.play().catch(() => undefined);
+    }
+
+    this.applyMicMutedState();
+    this.applyCameraEnabledState();
+  }
+
+  private buildAudioConstraints(): MediaTrackConstraints {
+    const c: MediaTrackConstraints = {
+      echoCancellation: this.settings.echoCancellation,
+      noiseSuppression: this.settings.noiseSuppression,
+      autoGainControl: this.settings.autoGainControl,
+    };
+    if (this.settings.inputDeviceId) c.deviceId = { exact: this.settings.inputDeviceId };
+    return c;
+  }
+
+  private buildVideoConstraints(): MediaTrackConstraints {
+    const c: MediaTrackConstraints = {};
+    // facingMode only makes sense when no specific deviceId is selected
+    if (this.settings.videoDeviceId) {
+      c.deviceId = { exact: this.settings.videoDeviceId };
+    } else {
+      c.facingMode = this.settings.cameraFacingMode ?? "user";
+    }
+    return c;
+  }
+
+  private async flushPendingCandidates() {
+    const candidates = this.pendingCandidates.splice(0);
+    for (const candidate of candidates) {
+      await this.peer!.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => undefined);
+    }
+  }
+
+  private applyMicMutedState() {
+    const enabled = !this.settings.micMuted;
+    for (const track of this.localStream?.getAudioTracks() ?? []) track.enabled = enabled;
+  }
+
+  private applyCameraEnabledState() {
+    const enabled = this.settings.cameraEnabled;
+    for (const track of this.localStream?.getVideoTracks() ?? []) track.enabled = enabled;
+  }
+
+  private applySoundDisabledState() {
+    if (!this.remoteAudioEl) return;
+    this.remoteAudioEl.muted = this.settings.soundDisabled;
+    this.remoteAudioEl.volume = this.settings.speakerMode === "small" ? 0.35 : 1;
+  }
+
+  private supportsSinkId() {
+    if (!this.remoteAudioEl) return false;
+    return typeof (
+      this.remoteAudioEl as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
+    ).setSinkId === "function";
+  }
+
+  private async applyOutputDevice() {
+    if (!this.remoteAudioEl || !this.settings.outputDeviceId || !this.supportsSinkId()) return;
+    const el = this.remoteAudioEl as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> };
+    await el.setSinkId(this.settings.outputDeviceId);
   }
 
   private async loadIceServers(): Promise<RTCIceServer[]> {
@@ -340,98 +592,6 @@ export default class CallController {
     this.socket.emit("call:signal", payload);
   }
 
-  private buildAudioConstraints(): MediaTrackConstraints {
-    const c: MediaTrackConstraints = {
-      echoCancellation: this.settings.echoCancellation,
-      noiseSuppression: this.settings.noiseSuppression,
-      autoGainControl: this.settings.autoGainControl,
-    };
-    if (this.settings.inputDeviceId) c.deviceId = { exact: this.settings.inputDeviceId };
-    return c;
-  }
-
-  private buildVideoConstraints(): MediaTrackConstraints {
-    const c: MediaTrackConstraints = {};
-    if (this.settings.videoDeviceId) c.deviceId = { exact: this.settings.videoDeviceId };
-    return c;
-  }
-
-  private async acquireLocalStream() {
-    if (
-      typeof navigator === "undefined" ||
-      !navigator.mediaDevices ||
-      typeof navigator.mediaDevices.getUserMedia !== "function"
-    ) {
-      throw new Error(
-        "Media devices are unavailable. Use HTTPS (or localhost) and grant camera/mic permission."
-      );
-    }
-
-    const isVideo = this.callType === "video";
-    const nextSource = await navigator.mediaDevices.getUserMedia({
-      audio: this.buildAudioConstraints(),
-      video: isVideo ? this.buildVideoConstraints() : false,
-    });
-
-    const nextSendStream = this.settings.voiceEnhancement
-      ? this.createEnhancedStream(nextSource)
-      : nextSource;
-
-    if (this.peer) {
-      const audioTrack = nextSendStream.getAudioTracks()[0] ?? null;
-      if (audioTrack) {
-        const sender = this.peer.getSenders().find((s) => s.track?.kind === "audio");
-        if (sender) await sender.replaceTrack(audioTrack);
-      }
-      const videoTrack = nextSendStream.getVideoTracks()[0] ?? null;
-      if (videoTrack) {
-        const sender = this.peer.getSenders().find((s) => s.track?.kind === "video");
-        if (sender) await sender.replaceTrack(videoTrack);
-      }
-    }
-
-    this.stopStream(this.localStream);
-    this.stopStream(this.sourceStream);
-    this.localStream = nextSendStream;
-    this.sourceStream = nextSource;
-
-    if (this.localVideoEl && isVideo) {
-      this.localVideoEl.srcObject = nextSource;
-    }
-
-    this.applyMicMutedState();
-    this.applyCameraEnabledState();
-  }
-
-  private applyMicMutedState() {
-    const enabled = !this.settings.micMuted;
-    for (const track of this.localStream?.getAudioTracks() ?? []) track.enabled = enabled;
-  }
-
-  private applyCameraEnabledState() {
-    const enabled = this.settings.cameraEnabled;
-    for (const track of this.localStream?.getVideoTracks() ?? []) track.enabled = enabled;
-  }
-
-  private applySoundDisabledState() {
-    if (!this.remoteAudioEl) return;
-    this.remoteAudioEl.muted = this.settings.soundDisabled;
-    this.remoteAudioEl.volume = this.settings.speakerMode === "small" ? 0.35 : 1;
-  }
-
-  private supportsSinkId() {
-    if (!this.remoteAudioEl) return false;
-    return typeof (
-      this.remoteAudioEl as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }
-    ).setSinkId === "function";
-  }
-
-  private async applyOutputDevice() {
-    if (!this.remoteAudioEl || !this.settings.outputDeviceId || !this.supportsSinkId()) return;
-    const el = this.remoteAudioEl as HTMLAudioElement & { setSinkId: (id: string) => Promise<void> };
-    await el.setSinkId(this.settings.outputDeviceId);
-  }
-
   private createEnhancedStream(input: MediaStream): MediaStream {
     const AudioCtor =
       typeof window === "undefined"
@@ -444,9 +604,9 @@ export default class CallController {
     const source = this.processorContext.createMediaStreamSource(input);
     const highpass = this.processorContext.createBiquadFilter();
     highpass.type = "highpass";
-    highpass.frequency.value = 120;
+    highpass.frequency.value = this.settings.voiceEnhancementHighpass;
     const compressor = this.processorContext.createDynamicsCompressor();
-    compressor.threshold.value = -24;
+    compressor.threshold.value = this.settings.voiceEnhancementThreshold;
     compressor.knee.value = 24;
     compressor.ratio.value = 3;
     compressor.attack.value = 0.003;
@@ -455,6 +615,7 @@ export default class CallController {
     source.connect(highpass);
     highpass.connect(compressor);
     compressor.connect(this.processorDestination);
+    // Pass video tracks through unchanged
     for (const track of input.getVideoTracks()) {
       this.processorDestination.stream.addTrack(track);
     }
