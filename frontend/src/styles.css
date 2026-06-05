@@ -94,70 +94,190 @@
   --accent-ring-dark: rgba(52, 211, 153, 0.34);
 }
 
-.call-banner {
-  position: relative; /* anchor for .call-local-video PiP */
+/* ── Call popup (floating window) ─────────────────────────────── */
+.call-popup {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 200;
+  width: 320px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid var(--border-default);
-  background: var(--surface-card);
-  border-radius: 12px;
-  margin-bottom: 10px;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  overflow: hidden;
 }
 
-.call-banner > strong {
-  font-size: 0.9rem;
+/* Minimized: slim chip — width collapses to fit content */
+.call-popup.call-popup-minimized {
+  width: auto;
+  min-width: 200px;
+  padding: 8px 12px;
+  gap: 0;
+  flex-direction: row;
+  align-items: center;
+}
+
+.call-popup-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.call-popup-status {
+  flex: 1;
+  font-size: 0.88rem;
   font-weight: 600;
 }
 
-.call-banner > span {
+.call-popup-notice {
+  font-size: 0.78rem;
   color: var(--text-secondary);
-  font-size: 0.82rem;
-  margin-top: -8px;
 }
 
-/* ── Full-screen call overlay (mobile) ─────────────────────── */
-.call-banner.call-fullscreen {
+.call-popup-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.call-popup-peer-name {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ── Video area inside popup ── */
+.call-popup-video-area {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #111;
+  min-height: 180px;
+}
+.call-popup-video-area.call-popup-video-area-hidden {
+  display: none;
+}
+
+.call-popup-remote-video {
+  display: none;
+}
+.call-popup-remote-video.visible {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+}
+
+.call-popup-local-video {
+  display: none;
+}
+.call-popup-local-video.visible {
+  display: block;
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 88px;
+  height: 66px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: #111;
+  z-index: 10;
+}
+
+/* ── Minimized chip controls ── */
+.call-status-chip-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.call-chip-btn {
+  width: 30px !important;
+  height: 30px !important;
+}
+
+.call-chip-restore {
+  margin-left: 2px;
+}
+
+.call-popup-ctrl-row {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Mobile: fullscreen overlay ────────────────────────────────── */
+.call-popup.call-popup-fullscreen {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  width: 100%;
   border-radius: 0;
   border: none;
-  margin: 0;
   padding: 0;
   background: #000;
   gap: 0;
-  align-items: stretch;
   justify-content: flex-end;
 }
 
-/* On full-screen, the status text floats at the top */
-.call-banner.call-fullscreen > strong {
+.call-popup.call-popup-fullscreen .call-popup-header {
   position: absolute;
   top: max(env(safe-area-inset-top), 16px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  padding: 0 16px;
+}
+
+.call-popup.call-popup-fullscreen .call-popup-status {
   color: #fff;
   font-size: 1rem;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-  white-space: nowrap;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
-.call-banner.call-fullscreen > span {
+.call-popup.call-popup-fullscreen .call-popup-notice {
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.call-popup.call-popup-fullscreen .call-popup-video-area {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  min-height: unset;
+}
+
+.call-popup.call-popup-fullscreen .call-popup-remote-video.visible {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+}
+
+.call-popup.call-popup-fullscreen .call-popup-local-video.visible {
+  display: block;
   position: absolute;
   top: max(env(safe-area-inset-top), 16px);
-  left: 50%;
-  transform: translate(-50%, 2rem);
-  color: rgba(255,255,255,0.8);
-  font-size: 0.85rem;
-  text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-  white-space: nowrap;
+  right: 12px;
+  bottom: auto;
+  width: 28vw;
+  max-width: 110px;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  background: #111;
+  z-index: 20;
+  object-fit: cover;
 }
 
-/* Controls bar at bottom of full-screen overlay */
-.call-banner.call-fullscreen .call-ctrl-row {
+.call-popup.call-popup-fullscreen .call-popup-ctrl-row {
   position: relative;
   z-index: 10;
   padding: 20px 24px max(env(safe-area-inset-bottom), 28px);
@@ -166,41 +286,62 @@
   gap: 28px;
 }
 
-/* Label text below buttons: white in full-screen */
-.call-banner.call-fullscreen .call-ctrl-wrap > span {
+.call-popup.call-popup-fullscreen .call-ctrl-wrap > span {
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* Buttons: semi-transparent glass look in full-screen */
-.call-banner.call-fullscreen .call-ctrl-btn {
+.call-popup.call-popup-fullscreen .call-ctrl-btn {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
   border-color: transparent;
 }
-.call-banner.call-fullscreen .call-ctrl-btn:hover {
+.call-popup.call-popup-fullscreen .call-ctrl-btn:hover {
   background: rgba(255, 255, 255, 0.28);
 }
-.call-banner.call-fullscreen .call-ctrl-btn.is-muted {
+.call-popup.call-popup-fullscreen .call-ctrl-btn.is-muted {
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.5);
 }
-.call-banner.call-fullscreen .call-ctrl-btn.end-btn {
+.call-popup.call-popup-fullscreen .call-ctrl-btn.end-btn {
   background: #e53e3e;
   color: #fff;
   border-color: transparent;
 }
-.call-banner.call-fullscreen .call-ctrl-btn.accept-btn {
+.call-popup.call-popup-fullscreen .call-ctrl-btn.accept-btn {
   background: #38a169;
   color: #fff;
   border-color: transparent;
 }
 
-/* Legacy – kept for the forwarded call-banner-actions class if still referenced */
-.call-banner-actions {
-  display: flex;
+/* Minimized on mobile: same chip style as desktop */
+.call-popup.call-popup-fullscreen.call-popup-minimized {
+  position: fixed;
+  inset: unset;
+  top: 80px;
+  right: 16px;
+  width: auto;
+  min-width: 180px;
+  border-radius: 14px;
+  border: 1px solid var(--border-default);
+  padding: 8px 12px;
+  background: var(--surface-card);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  flex-direction: row;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 0;
+  justify-content: initial;
+}
+
+.call-popup.call-popup-fullscreen.call-popup-minimized .call-popup-header {
+  position: static;
+  padding: 0;
+  flex: 1;
+}
+
+.call-popup.call-popup-fullscreen.call-popup-minimized .call-popup-status {
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  text-shadow: none;
 }
 
 /* ── Circular call controls (banner + modal) ── */
@@ -3748,64 +3889,3 @@ h2 {
 
 /* ── Video elements — always in DOM, visibility controlled by class ── */
 
-/* Hidden by default (display:none keeps them out of layout when not in a video call) */
-.call-remote-video,
-.call-local-video {
-  display: none;
-}
-
-/* ── Desktop / banner video layout ─────────────────────────── */
-.call-remote-video.visible {
-  display: block;
-  width: 100%;
-  max-height: 320px;
-  object-fit: cover;
-  border-radius: 8px;
-  background: #111;
-  margin-bottom: 10px;
-}
-
-.call-local-video.visible {
-  display: block;
-  position: absolute;
-  bottom: 80px;
-  right: 12px;
-  width: 112px;
-  height: 84px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  background: #111;
-  z-index: 10;
-}
-
-/* ── Full-screen mobile video layout ────────────────────────── */
-/* Remote video fills entire screen behind the controls */
-.call-banner.call-fullscreen .call-remote-video.visible {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  max-height: none;
-  border-radius: 0;
-  margin: 0;
-  object-fit: cover;
-  background: #000;
-}
-
-/* Local video: PiP in top-right corner (above controls) */
-.call-banner.call-fullscreen .call-local-video.visible {
-  position: absolute;
-  top: max(env(safe-area-inset-top), 16px);
-  right: 12px;
-  bottom: auto;
-  width: 28vw;
-  max-width: 110px;
-  height: auto;
-  aspect-ratio: 3 / 4;
-  border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  background: #111;
-  z-index: 20;
-  object-fit: cover;
-}
