@@ -45,7 +45,7 @@ const DEFAULT_SETTINGS: CallSettings = {
   micMuted: false,
   soundDisabled: false,
   cameraEnabled: true,
-  speakerMode: "large",
+  speakerMode: "small",
   inputDeviceId: "",
   outputDeviceId: "",
   videoDeviceId: "",
@@ -200,7 +200,7 @@ export default class CallController {
 
     if (patch.micMuted !== undefined) this.applyMicMutedState();
     if (patch.cameraEnabled !== undefined) this.applyCameraEnabledState();
-    if (patch.soundDisabled !== undefined) this.applySoundDisabledState();
+    if (patch.soundDisabled !== undefined || patch.speakerMode !== undefined) this.applySoundDisabledState();
 
     const needsStreamReacquire =
       patch.inputDeviceId !== undefined ||
