@@ -31,6 +31,7 @@ import {
   Pin,
   Plus,
   Reply,
+  RotateCcw,
   SlidersHorizontal,
   Smartphone,
   Video,
@@ -835,6 +836,7 @@ export default function ChatsPage() {
     micMuted: false,
     soundDisabled: false,
     cameraEnabled: true,
+    cameraFacingMode: "user",
     speakerMode: "small",
     inputDeviceId: "",
     outputDeviceId: "",
@@ -1564,8 +1566,13 @@ export default function ChatsPage() {
     socketRef.current = socket;
     const audioController = new CallController(socket, accessToken);
     audioController.attachRemoteAudioElement(remoteAudioRef.current);
+    // Video elements are always in the DOM (outside any conditional), so refs are valid here
     audioController.attachRemoteVideoElement(remoteVideoRef.current);
     audioController.attachLocalVideoElement(localVideoRef.current);
+    audioController.onVideoUnavailable = () => {
+      setCallType("audio");
+      setCallNotice("Camera not available — continuing with audio only");
+    };
     setCallAudioCapabilities(audioController.getCapabilities());
     setCallAudioSettings(audioController.getSettings());
     audioCallRef.current = audioController;
@@ -3003,7 +3010,7 @@ export default function ChatsPage() {
                   </div>
                 )}
                 {(callPhase !== "idle" || callNotice) && selectedChat.type === "direct" && activeCallChatId === selectedChat.id && (
-                  <section className="call-banner" aria-live="polite">
+                  <section className={`call-banner${isMobileViewport && callPhase !== "idle" ? " call-fullscreen" : ""}`} aria-live="polite">
                     <strong>
                       {callPhase === "incoming"
                         ? (callType === "video" ? "Incoming video call" : "Incoming audio call")
@@ -3015,19 +3022,6 @@ export default function ChatsPage() {
                               ? (callType === "video" ? "Video call in progress" : "Audio call in progress")
                               : "Call"}
                     </strong>
-                    <video
-                      ref={remoteVideoRef}
-                      className={`call-remote-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
-                      autoPlay
-                      playsInline
-                    />
-                    <video
-                      ref={localVideoRef}
-                      className={`call-local-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
-                      autoPlay
-                      playsInline
-                      muted
-                    />
                     {callNotice && <span>{callNotice}</span>}
                     <div className="call-ctrl-row">
                       {callPhase === "incoming" && (
@@ -3120,20 +3114,46 @@ export default function ChatsPage() {
                             </button>
                             <span>Settings</span>
                           </div>
-                          {callPhase === "in-call" && callType === "video" && (
-                            <div className="call-ctrl-wrap">
-                              <button
-                                type="button"
-                                className={`call-ctrl-btn${callAudioSettings.cameraEnabled ? "" : " is-muted"}`}
-                                aria-label={callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
-                                onClick={() => void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled })}
-                              >
-                                {callAudioSettings.cameraEnabled
-                                  ? <Video aria-hidden="true" size={20} />
-                                  : <VideoOff aria-hidden="true" size={20} />}
-                              </button>
-                              <span>{callAudioSettings.cameraEnabled ? "Camera" : "Camera off"}</span>
-                            </div>
+                          {callPhase === "in-call" && (
+                            <>
+                              {/* Camera on/off toggle — shown for video calls; also allows upgrading audio→video */}
+                              <div className="call-ctrl-wrap">
+                                <button
+                                  type="button"
+                                  className={`call-ctrl-btn${callType === "video" && callAudioSettings.cameraEnabled ? "" : " is-muted"}`}
+                                  aria-label={callType === "video" && callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
+                                  onClick={() => {
+                                    if (callType === "audio") {
+                                      // Upgrade audio → video
+                                      void audioCallRef.current?.toggleVideo(true).then(() => setCallType("video"));
+                                    } else {
+                                      void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
+                                    }
+                                  }}
+                                >
+                                  {callType === "video" && callAudioSettings.cameraEnabled
+                                    ? <Video aria-hidden="true" size={20} />
+                                    : <VideoOff aria-hidden="true" size={20} />}
+                                </button>
+                                <span>{callType === "video" && callAudioSettings.cameraEnabled ? "Camera" : "Camera off"}</span>
+                              </div>
+                              {/* Camera rotation — mobile only, during video calls */}
+                              {isMobileViewport && callType === "video" && (
+                                <div className="call-ctrl-wrap">
+                                  <button
+                                    type="button"
+                                    className="call-ctrl-btn"
+                                    aria-label="Flip camera"
+                                    onClick={() => void applyCallAudioPatch({
+                                      cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user"
+                                    })}
+                                  >
+                                    <RotateCcw aria-hidden="true" size={20} />
+                                  </button>
+                                  <span>Flip</span>
+                                </div>
+                              )}
+                            </>
                           )}
                           <div className="call-ctrl-wrap">
                             <button
@@ -3550,6 +3570,21 @@ export default function ChatsPage() {
           )}
         </div>
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
+        {/* Video elements must always be in the DOM so refs are valid when the
+            controller is created. Visibility is controlled by CSS class only. */}
+        <video
+          ref={remoteVideoRef}
+          className={`call-remote-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
+          autoPlay
+          playsInline
+        />
+        <video
+          ref={localVideoRef}
+          className={`call-local-video${callType === "video" && callPhase === "in-call" ? " visible" : ""}`}
+          autoPlay
+          playsInline
+          muted
+        />
         {callPhase === "incoming" && activeCallChatId && (
           <div className="modal-backdrop call-modal-backdrop" role="presentation">
             <section className="messenger-modal call-modal" role="dialog" aria-modal="true" aria-labelledby="incoming-call-title">
