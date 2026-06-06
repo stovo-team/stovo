@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --background-primary: #ffffff;
   --background-secondary: #f6f7f9;
   --background-tertiary: #eef1f5;
@@ -4232,3 +4232,76 @@ h2 {
   color: rgba(255, 255, 255, 0.45);
 }
 
+
+/* ── Speaker output sheet ───────────────────────────────────────── */
+.call-speaker-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.call-speaker-sheet {
+  background: #1c1c1e;
+  border-radius: 14px 14px 0 0;
+  padding: 8px 0 max(env(safe-area-inset-bottom, 0px), 20px);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.call-speaker-sheet-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 20px 6px;
+}
+
+.call-speaker-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 20px;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.call-speaker-sheet-item:last-child {
+  border-bottom: none;
+}
+
+.call-speaker-sheet-item:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.call-speaker-sheet-item svg {
+  width: 20px;
+  height: 20px;
+  stroke: rgba(255, 255, 255, 0.55);
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.call-speaker-sheet-check {
+  margin-left: auto;
+  width: 18px;
+  height: 18px;
+  stroke: #4a90d9;
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
