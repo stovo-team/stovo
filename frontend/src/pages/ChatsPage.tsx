@@ -3416,7 +3416,7 @@ export default function ChatsPage() {
             className={[
               "call-popup",
               isCallMinimized ? "call-popup-minimized" : "",
-              isMobileViewport && callPhase !== "idle" ? "call-popup-fullscreen" : "",
+              isMobileViewport ? "call-popup-fullscreen" : "",
             ].filter(Boolean).join(" ")}
             role="dialog"
             aria-modal="false"
