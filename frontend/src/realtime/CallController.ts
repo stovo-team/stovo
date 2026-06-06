@@ -114,7 +114,9 @@ export default class CallController {
   /** Called when the peer connection cannot be recovered after repeated ICE restarts. */
   onConnectionFailed?: () => void;
   /** Called when a remote video track arrives mid-call (e.g. remote party enables camera). */
-  onRemoteVideoTrack?: () => void;
+  onRemoteVideoTrack?: (stream: MediaStream) => void;
+  /** Called when the local media stream is ready (initial call setup or camera toggle). */
+  onLocalStreamReady?: (stream: MediaStream) => void;
 
   constructor(socket: Socket, accessToken: string) {
     this.socket = socket;
@@ -220,9 +222,25 @@ export default class CallController {
           video: this.buildVideoConstraints(),
         });
         videoTrack = s.getVideoTracks()[0] ?? null;
-      } catch {
-        this.onVideoUnavailable?.();
-        return;
+      } catch (err) {
+        // On mobile (especially iOS Safari) the very first getUserMedia call
+        // can fail with NotAllowedError even when the user just granted
+        // permission, because the permission prompt resolves asynchronously
+        // and the browser fires a transient denial. Retry once with simple
+        // constraints before giving up.
+        const name = (err as DOMException)?.name ?? "";
+        if (name === "NotAllowedError" || name === "NotFoundError" || name === "PermissionDeniedError") {
+          try {
+            const s = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoTrack = s.getVideoTracks()[0] ?? null;
+          } catch {
+            this.onVideoUnavailable?.();
+            return;
+          }
+        } else {
+          this.onVideoUnavailable?.();
+          return;
+        }
       }
       if (!videoTrack) { this.onVideoUnavailable?.(); return; }
 
@@ -233,6 +251,10 @@ export default class CallController {
         this.localVideoEl.srcObject = this.sourceStream;
         void this.localVideoEl.play().catch(() => undefined);
       }
+
+      // Notify the UI that the local stream now has video so the mobile
+      // self-view can start immediately.
+      if (this.sourceStream) this.onLocalStreamReady?.(this.sourceStream);
 
       this.peer.addTrack(videoTrack, this.localStream ?? this.sourceStream!);
       this.callType = "video";
@@ -401,6 +423,7 @@ export default class CallController {
     this.stopSpeakingDetection();
     this.speakingCallback = null;
     this.onRemoteVideoTrack = undefined;
+    this.onLocalStreamReady = undefined;
     this.settings = { ...DEFAULT_SETTINGS };
     this.chatId = null;
     this.targetUserId = null;
@@ -473,7 +496,7 @@ export default class CallController {
         this.reattachRemoteVideo();
         // Notify the UI so it can show the video container even if the local
         // side started as audio-only (e.g. remote party enables camera mid-call).
-        this.onRemoteVideoTrack?.();
+        this.onRemoteVideoTrack?.(stream);
       }
     };
 
@@ -650,6 +673,10 @@ export default class CallController {
       this.localVideoEl.srcObject = nextSource;
       void this.localVideoEl.play().catch(() => undefined);
     }
+
+    // Notify the UI so the mobile self-view can be shown as soon as the
+    // local stream is ready (e.g. when a video call starts).
+    if (this.sourceStream) this.onLocalStreamReady?.(this.sourceStream);
 
     this.applyMicMutedState();
     this.applyCameraEnabledState();
