@@ -30,6 +30,7 @@ export type CallSettings = {
   outputVolume: number;
   voiceEnhancementThreshold: number;
   voiceEnhancementHighpass: number;
+  mirrorLocalVideo: boolean;
 };
 
 export type CallDevice = {
@@ -65,6 +66,7 @@ const DEFAULT_SETTINGS: CallSettings = {
   outputVolume: 100,
   voiceEnhancementThreshold: -24,
   voiceEnhancementHighpass: 120,
+  mirrorLocalVideo: true,
 };
 
 export default class CallController {
