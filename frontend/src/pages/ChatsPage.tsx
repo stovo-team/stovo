@@ -867,6 +867,7 @@ export default function ChatsPage() {
   });
   const [isCallSettingsMenuOpen, setIsCallSettingsMenuOpen] = useState(false);
   const [isCallAudioPopupOpen, setIsCallAudioPopupOpen] = useState(false);
+  const [isCallVideoPopupOpen, setIsCallVideoPopupOpen] = useState(false);
   const [isCallMinimized, setIsCallMinimized] = useState(false);
   const [callTrackStatus, setCallTrackStatus] = useState<CallTrackStatus | null>(null);
   const [callAudioDevices, setCallAudioDevices] = useState<CallDevice[]>([]);
@@ -3779,6 +3780,10 @@ export default function ChatsPage() {
                   setIsCallSettingsMenuOpen(false);
                   setIsCallAudioPopupOpen(true);
                 }}
+                onOpenVideoSettings={() => {
+                  setIsCallSettingsMenuOpen(false);
+                  setIsCallVideoPopupOpen(true);
+                }}
               />
             )}
             {isCallAudioPopupOpen && (
@@ -3792,6 +3797,16 @@ export default function ChatsPage() {
                 warning={callAudioWarning}
                 onPatch={(patch) => void applyCallAudioPatch(patch)}
                 onClose={() => setIsCallAudioPopupOpen(false)}
+              />
+            )}
+            {isCallVideoPopupOpen && (
+              <CallVideoSettingsPopup
+                settings={callAudioSettings}
+                capabilities={callAudioCapabilities}
+                devices={callAudioDevices}
+                isMobile={isMobileViewport}
+                onPatch={(patch) => void applyCallAudioPatch(patch)}
+                onClose={() => setIsCallVideoPopupOpen(false)}
               />
             )}
           </section>
@@ -3965,10 +3980,12 @@ function CallSettingsContextMenu({
   anchorRef,
   menuRef,
   onOpenAudioSettings,
+  onOpenVideoSettings,
 }: {
   anchorRef: RefObject<HTMLButtonElement | null>;
   menuRef: RefObject<HTMLDivElement | null>;
   onOpenAudioSettings: () => void;
+  onOpenVideoSettings: () => void;
 }) {
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
 
@@ -4001,6 +4018,15 @@ function CallSettingsContextMenu({
       >
         <SlidersHorizontal aria-hidden="true" size={14} />
         Audio settings
+      </button>
+      <button
+        type="button"
+        role="menuitem"
+        className="call-settings-context-item"
+        onClick={onOpenVideoSettings}
+      >
+        <Video aria-hidden="true" size={14} />
+        Video settings
       </button>
     </div>
   );
@@ -4507,6 +4533,86 @@ function CallSpeakerSheet({
             )}
           </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function CallVideoSettingsPopup({
+  settings,
+  capabilities,
+  devices,
+  isMobile,
+  onPatch,
+  onClose,
+}: {
+  settings: CallSettings;
+  capabilities: CallCapabilities;
+  devices: CallDevice[];
+  isMobile: boolean;
+  onPatch: (patch: Partial<CallSettings>) => void;
+  onClose: () => void;
+}) {
+  const videoDevices = devices.filter((d) => d.kind === "videoinput");
+
+  return (
+    <div
+      className="call-audio-popup-backdrop"
+      role="presentation"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="call-audio-popup"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Video settings"
+      >
+        <div className="call-audio-popup-header">
+          <span>Video settings</span>
+          <button type="button" className="call-audio-popup-close" aria-label="Close" autoFocus onClick={onClose}>
+            <X aria-hidden="true" size={14} />
+          </button>
+        </div>
+        <div className="call-audio-popup-body">
+          {!isMobile && (
+            <section className="call-audio-popup-section">
+              <div className="call-audio-section-label">Camera device</div>
+              <label className="call-audio-device-row">
+                <span>Camera</span>
+                <select
+                  value={settings.videoDeviceId}
+                  disabled={!capabilities.canUseCamera || videoDevices.length === 0}
+                  onChange={(e) => onPatch({ videoDeviceId: e.target.value })}
+                >
+                  <option value="">System default</option>
+                  {videoDevices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
+                  ))}
+                </select>
+              </label>
+            </section>
+          )}
+          {!isMobile && <div className="call-audio-popup-divider" />}
+          <section className="call-audio-popup-section">
+            <div className="call-audio-section-label">Display</div>
+            <div className="call-audio-toggle-group">
+              <div className="call-audio-toggle-row">
+                <div className="call-audio-toggle-info">
+                  <span className="call-audio-toggle-name">Mirror my video</span>
+                  <span className="call-audio-toggle-desc">Flip the local preview horizontally (front camera)</span>
+                </div>
+                <label className="call-audio-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={settings.mirrorLocalVideo}
+                    onChange={(e) => onPatch({ mirrorLocalVideo: e.target.checked })}
+                  />
+                  <span className="call-audio-toggle-track" />
+                </label>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
