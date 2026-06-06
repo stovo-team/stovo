@@ -851,6 +851,7 @@ export default function ChatsPage() {
     outputVolume: 100,
     voiceEnhancementThreshold: -24,
     voiceEnhancementHighpass: 120,
+    mirrorLocalVideo: true,
   });
   const [isCallSettingsMenuOpen, setIsCallSettingsMenuOpen] = useState(false);
   const [isCallAudioPopupOpen, setIsCallAudioPopupOpen] = useState(false);
@@ -3472,7 +3473,11 @@ export default function ChatsPage() {
               />
               <video
                 ref={localVideoRef}
-                className={`call-popup-local-video${callType === "video" && callPhase === "in-call" && !isCallMinimized ? " visible" : ""}`}
+                className={[
+                  "call-popup-local-video",
+                  callType === "video" && callPhase === "in-call" && !isCallMinimized ? "visible" : "",
+                  callAudioSettings.mirrorLocalVideo ? "mirrored" : "",
+                ].filter(Boolean).join(" ")}
                 autoPlay
                 playsInline
                 muted
