@@ -3962,3 +3962,111 @@ h2 {
 
 /* ── Video elements — always in DOM, visibility controlled by class ── */
 
+/* ── Mobile incoming call screen ────────────────────────────────── */
+.mobile-incoming-screen {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, #0e2a45 0%, #09151f 55%, #060a0e 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: max(env(safe-area-inset-top, 0px), 52px);
+}
+
+.mobile-incoming-avatar-wrap {
+  position: relative;
+  width: 88px;
+  height: 88px;
+}
+
+.mobile-incoming-ripple {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(80, 150, 255, 0.22);
+  animation: mobile-ripple 2.6s ease-out infinite;
+}
+
+.mobile-incoming-ripple:nth-child(1) { inset: -18px; animation-delay: 0s; }
+.mobile-incoming-ripple:nth-child(2) { inset: -34px; animation-delay: 0.65s; }
+.mobile-incoming-ripple:nth-child(3) { inset: -52px; animation-delay: 1.3s; }
+
+@keyframes mobile-ripple {
+  0%   { opacity: 0.7; transform: scale(0.82); }
+  100% { opacity: 0;   transform: scale(1.18); }
+}
+
+.mobile-incoming-avatar {
+  position: relative;
+  z-index: 2;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #3d7fe6, #1a52c4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 24px rgba(30, 90, 220, 0.35);
+}
+
+.mobile-incoming-name {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #fff;
+  margin-top: 18px;
+  letter-spacing: 0.01em;
+}
+
+.mobile-incoming-status {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.42);
+  margin-top: 6px;
+}
+
+.mobile-incoming-actions {
+  position: absolute;
+  bottom: max(env(safe-area-inset-bottom, 0px), 36px);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 52px;
+}
+
+.mobile-incoming-btn-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+
+.mobile-call-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  background: #34c759;
+}
+
+.mobile-call-btn.decline {
+  background: #ff3b30;
+}
+
+.mobile-call-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: #fff;
+}
+
+.mobile-call-btn-label {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
