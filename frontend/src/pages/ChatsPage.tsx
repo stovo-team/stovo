@@ -882,6 +882,8 @@ export default function ChatsPage() {
   const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
   const [isPeerSpeaking, setIsPeerSpeaking] = useState(false);
   const [isSpeakerSheetOpen, setIsSpeakerSheetOpen] = useState(false);
+  const [callPeerDisplayName, setCallPeerDisplayName] = useState<string | null>(null);
+  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const callTimer = useCallTimer(callPhase === "in-call");
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)").matches : false
@@ -1137,6 +1139,11 @@ export default function ChatsPage() {
     if (!currentUser || !callPeerUserId) {
       return "Unknown contact";
     }
+    // Try selectedChat.members first — most up-to-date when the caller initiates
+    if (selectedChat && selectedChat.id === activeCallChatId) {
+      const m = selectedChat.members.find((candidate) => candidate.id === callPeerUserId);
+      if (m?.displayName) return m.displayName;
+    }
     if (activeCallChat) {
       const member = activeCallChat.members.find((candidate) => candidate.id === callPeerUserId);
       if (member?.displayName) {
@@ -1145,7 +1152,7 @@ export default function ChatsPage() {
     }
     const member = members.find((candidate) => candidate.id === callPeerUserId);
     return member?.displayName ?? "Unknown contact";
-  }, [activeCallChat, callPeerUserId, currentUser, members]);
+  }, [activeCallChat, activeCallChatId, callPeerUserId, currentUser, members, selectedChat]);
   const canPostInSelectedChannel = selectedChat ? canPostToChannel(selectedChat, currentUser) : false;
   const canCommentInSelectedChannel = Boolean(
     selectedChat &&
@@ -1606,6 +1613,7 @@ export default function ChatsPage() {
     // on the receiving side without requiring the local user to act.
     audioController.onRemoteVideoTrack = () => {
       setCallType("video");
+      setHasRemoteVideo(true);
     };
     audioController.onSpeakingChange(setIsPeerSpeaking);
     setCallAudioCapabilities(audioController.getCapabilities());
@@ -1751,6 +1759,8 @@ export default function ChatsPage() {
         const incomingCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
         setCallType(incomingCallType);
         setActiveCallChatId(payload.chatId);
+        // Sync ref immediately so call:accepted guard sees the chatId before React re-renders
+        activeCallChatIdRef.current = payload.chatId;
         setCallPeerUserId(isCaller ? payload.calleeId : payload.callerId);
         if (isCaller) {
           setCallPhase("outgoing");
@@ -1880,6 +1890,14 @@ export default function ChatsPage() {
     }
   }, [callPhase]);
 
+  // When remote video track arrives, ensure the video element resumes playback
+  // (some browsers won't auto-play a video element that was hidden when srcObject was set)
+  useEffect(() => {
+    if (hasRemoteVideo && remoteVideoRef.current) {
+      void remoteVideoRef.current.play().catch(() => undefined);
+    }
+  }, [hasRemoteVideo]);
+
   async function resetCallState(notice?: string, serverAlreadyNotified = false) {
     console.log("[resetCallState] notice=", notice, "serverAlreadyNotified=", serverAlreadyNotified, new Error().stack?.split("\n").slice(1, 4).join(" | "));
     stopIncomingRingtone();
@@ -1887,6 +1905,8 @@ export default function ChatsPage() {
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
+    setCallPeerDisplayName(null);
+    setHasRemoteVideo(false);
     setCallType("audio");
     setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
     setIsCallSettingsMenuOpen(false);
@@ -1922,6 +1942,7 @@ export default function ChatsPage() {
     setCallPhase("outgoing");
     setActiveCallChatId(selectedChat.id);
     setCallPeerUserId(peer.id);
+    setCallPeerDisplayName(peer.displayName ?? null);
     // Update ref synchronously so call:accepted handler sees it before next render
     activeCallChatIdRef.current = selectedChat.id;
     socket.emit("call:start", { chatId: selectedChat.id, callType: type });
@@ -1968,6 +1989,8 @@ export default function ChatsPage() {
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
+    setCallPeerDisplayName(null);
+    setHasRemoteVideo(false);
     setCallType("audio");
     setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
     setIsCallSettingsMenuOpen(false);
@@ -3479,7 +3502,7 @@ export default function ChatsPage() {
             {/* Mobile incoming call full-screen */}
             {isMobileViewport && !isCallMinimized && callPhase === "incoming" && (
               <MobileIncomingScreen
-                peerName={activeCallPeerName ?? ""}
+                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
                 callType={callType}
                 onAccept={() => void acceptIncomingCall()}
                 onDecline={declineIncomingCall}
@@ -3488,7 +3511,7 @@ export default function ChatsPage() {
             {/* Mobile active call full-screen */}
             {isMobileViewport && !isCallMinimized && callPhase !== "incoming" && (
               <MobileActiveScreen
-                peerName={activeCallPeerName ?? ""}
+                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
                 callType={callType}
                 callPhase={callPhase}
                 isPeerSpeaking={isPeerSpeaking}
@@ -3498,6 +3521,10 @@ export default function ChatsPage() {
                 cameraFacingMode={callAudioSettings.cameraFacingMode}
                 speakerMode={callAudioSettings.speakerMode}
                 timer={callTimer}
+                hasRemoteVideo={hasRemoteVideo}
+                remoteVideoRef={remoteVideoRef}
+                localVideoRef={localVideoRef}
+                mirrorLocalVideo={callAudioSettings.mirrorLocalVideo}
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onToggleSound={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
                 onToggleCamera={() => {
@@ -3517,19 +3544,57 @@ export default function ChatsPage() {
             {/* ── Header row ── */}
             {!(isMobileViewport && !isCallMinimized && callPhase === "incoming") && (
             <div className="call-popup-header">
-              <strong className="call-popup-status">
-                {callPhase === "incoming"
-                  ? (callType === "video" ? "Incoming video call" : "Incoming call")
-                  : callPhase === "outgoing"
-                  ? "Ringing…"
-                  : callPhase === "connecting"
-                  ? "Connecting…"
-                  : callType === "video"
-                  ? "Video call"
-                  : "Audio call"}
-              </strong>
-              {callNotice && <span className="call-popup-notice">{callNotice}</span>}
+              {isCallMinimized && isMobileViewport && callPhase === "in-call" ? (
+                // Mobile minimized chip: avatar + name + timer
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    background: 'linear-gradient(140deg, #3d7fe6, #1a52c4)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.7rem', fontWeight: 700, color: '#fff', flexShrink: 0,
+                  }}>
+                    {(callPeerDisplayName ?? activeCallPeerName)?.charAt(0).toUpperCase() ?? "?"}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {callPeerDisplayName ?? activeCallPeerName}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{callTimer}</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <strong className="call-popup-status">
+                    {callPhase === "incoming"
+                      ? (callType === "video" ? "Incoming video call" : "Incoming call")
+                      : callPhase === "outgoing"
+                      ? "Ringing…"
+                      : callPhase === "connecting"
+                      ? "Connecting…"
+                      : callType === "video"
+                      ? "Video call"
+                      : "Audio call"}
+                  </strong>
+                  {callNotice && <span className="call-popup-notice">{callNotice}</span>}
+                </>
+              )}
               <div className="call-popup-header-actions">
+                {isCallMinimized && isMobileViewport && callPhase === "in-call" && (
+                  <button
+                    type="button"
+                    style={{
+                      background: '#ff3b30', border: 'none', borderRadius: '50%',
+                      width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: '#fff', flexShrink: 0,
+                    }}
+                    aria-label="End call"
+                    onClick={() => void endActiveCall()}
+                  >
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(135deg)' }}>
+                      <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+                    </svg>
+                  </button>
+                )}
                 {callPhase !== "incoming" && (
                   <button
                     type="button"
@@ -3549,10 +3614,10 @@ export default function ChatsPage() {
             )}
 
             {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
-            <div className={`call-popup-video-area${isCallMinimized || callType === "audio" ? " call-popup-video-area-hidden" : ""}`}>
+            <div className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo)) ? " call-popup-video-area-hidden" : ""}`}>
               <video
                 ref={remoteVideoRef}
-                className={`call-popup-remote-video${callType === "video" && callPhase === "in-call" && !isCallMinimized ? " visible" : ""}`}
+                className={`call-popup-remote-video${(callType === "video" || hasRemoteVideo) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? " visible" : ""}`}
                 autoPlay
                 playsInline
               />
@@ -3560,7 +3625,7 @@ export default function ChatsPage() {
                 ref={localVideoRef}
                 className={[
                   "call-popup-local-video",
-                  callType === "video" && callPhase === "in-call" && !isCallMinimized ? "visible" : "",
+                  callType === "video" && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? "visible" : "",
                   callAudioSettings.mirrorLocalVideo ? "mirrored" : "",
                 ].filter(Boolean).join(" ")}
                 autoPlay
@@ -3571,14 +3636,14 @@ export default function ChatsPage() {
 
             {/* ── Peer name (incoming) ── */}
             {!isCallMinimized && callPhase === "incoming" && !(isMobileViewport && !isCallMinimized) && (
-              <p className="call-popup-peer-name">{activeCallPeerName} is calling you.</p>
+              <p className="call-popup-peer-name">{callPeerDisplayName ?? activeCallPeerName} is calling you.</p>
             )}
 
             {/* Avatar area — shown when no remote video is playing */}
             {!isCallMinimized && (callType === "audio" || !callAudioSettings.cameraEnabled) && callPhase === "in-call" && !isMobileViewport && (
               <div className="call-popup-avatar-area">
                 <div className="call-popup-avatar-circle">
-                  {activeCallPeerName ? activeCallPeerName.charAt(0).toUpperCase() : "?"}
+                  {(callPeerDisplayName ?? activeCallPeerName) ? (callPeerDisplayName ?? activeCallPeerName)!.charAt(0).toUpperCase() : "?"}
                   <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
                   <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
                 </div>
@@ -4344,6 +4409,10 @@ function MobileActiveScreen({
   cameraFacingMode,
   speakerMode,
   timer,
+  hasRemoteVideo,
+  remoteVideoRef,
+  localVideoRef,
+  mirrorLocalVideo,
   onToggleMic,
   onToggleSound,
   onToggleCamera,
@@ -4361,6 +4430,10 @@ function MobileActiveScreen({
   cameraFacingMode: "user" | "environment";
   speakerMode: "small" | "large";
   timer: string;
+  hasRemoteVideo: boolean;
+  remoteVideoRef: RefObject<HTMLVideoElement | null>;
+  localVideoRef: RefObject<HTMLVideoElement | null>;
+  mirrorLocalVideo: boolean;
   onToggleMic: () => void;
   onToggleSound: () => void;
   onToggleCamera: () => void;
@@ -4368,11 +4441,61 @@ function MobileActiveScreen({
   onOpenSpeakerSheet: () => void;
   onEnd: () => void;
 }) {
+  // Local video elements for mobile — srcObject is mirrored from the stable desktop refs
+  const mobileRemoteRef = useRef<HTMLVideoElement>(null);
+  const mobileLocalRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const src = remoteVideoRef.current;
+    const dst = mobileRemoteRef.current;
+    if (!src || !dst) return;
+    if (dst.srcObject !== src.srcObject) {
+      dst.srcObject = src.srcObject;
+      void dst.play().catch(() => undefined);
+    }
+  }, [hasRemoteVideo, remoteVideoRef]);
+
+  useEffect(() => {
+    const src = localVideoRef.current;
+    const dst = mobileLocalRef.current;
+    if (!src || !dst) return;
+    if (dst.srcObject !== src.srcObject) {
+      dst.srcObject = src.srcObject;
+      void dst.play().catch(() => undefined);
+    }
+  }, [hasRemoteVideo, isCameraEnabled, localVideoRef]);
+
   const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
-  const showAvatar = callType === "audio" || !isCameraEnabled;
+  const showAvatar = !hasRemoteVideo && (callType === "audio" || !isCameraEnabled);
   const showVideo = callType === "video" && isCameraEnabled;
   return (
-    <div className={`mobile-active-screen${showVideo ? " mobile-active-screen--video" : ""}`}>
+    <div className={`mobile-active-screen${showVideo || hasRemoteVideo ? " mobile-active-screen--video" : ""}`}>
+      {/* Remote video — shown at z-index 0 behind controls when other party has camera on */}
+      {hasRemoteVideo && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
+          <video
+            ref={mobileRemoteRef}
+            autoPlay
+            playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          {isCameraEnabled && (
+            <video
+              ref={mobileLocalRef}
+              autoPlay
+              playsInline
+              muted
+              style={{
+                position: 'absolute', bottom: 8, right: 8,
+                width: 88, height: 66, objectFit: 'cover',
+                borderRadius: 6, border: '2px solid rgba(255,255,255,0.35)',
+                transform: mirrorLocalVideo ? 'scaleX(-1)' : 'none',
+                zIndex: 2,
+              }}
+            />
+          )}
+        </div>
+      )}
       {showAvatar && (
         <>
           <div className="mobile-active-avatar-wrap">
@@ -4429,11 +4552,13 @@ function MobileActiveScreen({
             onClick={onOpenSpeakerSheet}
           >
             <svg viewBox="0 0 24 24">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-              <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+              {speakerMode === "large"
+                ? <><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></>
+                : <><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>
+              }
             </svg>
           </button>
-          <span className="mobile-active-ctrl-lbl">Speaker</span>
+          <span className="mobile-active-ctrl-lbl">{speakerMode === "large" ? "Speaker" : "Earpiece"}</span>
         </div>
         {/* Camera */}
         <div className="mobile-active-ctrl">
