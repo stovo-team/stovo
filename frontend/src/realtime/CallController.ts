@@ -85,6 +85,7 @@ export default class CallController {
   private chatId: string | null = null;
   private targetUserId: string | null = null;
   private callType: "audio" | "video" = "audio";
+  private isOfferer: boolean = false;
   private pendingCandidates: RTCIceCandidateInit[] = [];
   // Signals that arrive before the peer is ready are buffered here and
   // replayed immediately after ensurePeer() finishes. This prevents the race
@@ -94,9 +95,13 @@ export default class CallController {
   private settings: CallSettings = { ...DEFAULT_SETTINGS };
   private processorContext: AudioContext | null = null;
   private processorDestination: MediaStreamAudioDestinationNode | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempts: number = 0;
 
   /** Called when a video call had no camera — UI can warn and show audio-only. */
   onVideoUnavailable?: () => void;
+  /** Called when the peer connection cannot be recovered after repeated ICE restarts. */
+  onConnectionFailed?: () => void;
 
   constructor(socket: Socket, accessToken: string) {
     this.socket = socket;
@@ -134,9 +139,12 @@ export default class CallController {
     this.chatId = chatId;
     this.targetUserId = targetUserId;
     this.callType = callType;
+    this.isOfferer = true;
     await this.ensurePeer();
-    const offer = await this.peer!.createOffer();
-    await this.peer!.setLocalDescription(offer);
+    // Guard against cleanup() being called while ensurePeer() was pending.
+    if (!this.peer) return;
+    const offer = await this.peer.createOffer();
+    await this.peer.setLocalDescription(offer);
     this.emitSignal({ chatId, targetUserId, data: { type: "offer", sdp: offer.sdp } });
   }
 
@@ -148,6 +156,7 @@ export default class CallController {
     this.chatId = chatId;
     this.targetUserId = targetUserId;
     this.callType = callType;
+    this.isOfferer = false;
     await this.ensurePeer();
     // ensurePeer() replays any buffered signals (offer + ICE candidates that
     // arrived before getUserMedia finished). No separate draining needed here.
@@ -232,7 +241,7 @@ export default class CallController {
       canUseNoiseSuppression: has,
       canUseEchoCancellation: has,
       canUseAutoGainControl: has,
-      canUseVoiceEnhancement: typeof window !== "undefined" && Boolean(window.AudioContext),
+      canUseVoiceEnhancement: typeof window !== "undefined" && "AudioContext" in window,
       canUseCamera: has,
     };
   }
@@ -285,6 +294,9 @@ export default class CallController {
   // ─── Cleanup ─────────────────────────────────────────────────────────────────
 
   async cleanup() {
+    this.clearReconnectTimer();
+    this.reconnectAttempts = 0;
+    this.isOfferer = false;
     this.stopStream(this.localStream);
     if (this.localStream !== this.sourceStream) this.stopStream(this.sourceStream);
     this.localStream = null;
@@ -293,6 +305,7 @@ export default class CallController {
     if (this.peer) {
       this.peer.onicecandidate = null;
       this.peer.ontrack = null;
+      this.peer.onconnectionstatechange = null;
       this.peer.close();
       this.peer = null;
     }
@@ -326,8 +339,21 @@ export default class CallController {
     const peer = new RTCPeerConnection({ iceServers: await this.loadIceServers() });
 
     peer.oniceconnectionstatechange = () => console.log("[call] ICE:", peer.iceConnectionState);
-    peer.onconnectionstatechange  = () => console.log("[call] Peer:", peer.connectionState);
     peer.onsignalingstatechange   = () => console.log("[call] Sig:", peer.signalingState);
+    peer.onconnectionstatechange  = () => {
+      const state = peer.connectionState;
+      console.log("[call] Peer:", state);
+      if (state === "connected") {
+        this.clearReconnectTimer();
+        this.reconnectAttempts = 0;
+      } else if (state === "disconnected") {
+        // Give the browser a few seconds to recover on its own before we try an ICE restart.
+        this.scheduleReconnect(3000);
+      } else if (state === "failed") {
+        // Failed is definitive — attempt ICE restart immediately.
+        this.scheduleReconnect(0);
+      }
+    };
 
     for (const track of this.localStream?.getTracks() ?? []) {
       peer.addTrack(track, this.localStream!);
@@ -415,16 +441,52 @@ export default class CallController {
 
   // ─── Private: renegotiation ───────────────────────────────────────────────────
 
-  private async renegotiate() {
+  private async renegotiate(options?: RTCOfferOptions) {
     if (!this.peer || !this.chatId || !this.targetUserId) return;
     if (this.peer.signalingState !== "stable") return;
-    const offer = await this.peer.createOffer();
+    const offer = await this.peer.createOffer(options);
     await this.peer.setLocalDescription(offer);
     this.emitSignal({
       chatId: this.chatId,
       targetUserId: this.targetUserId,
       data: { type: "offer", sdp: offer.sdp },
     });
+  }
+
+  private scheduleReconnect(delay: number) {
+    this.clearReconnectTimer();
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      const state = this.peer?.connectionState;
+      if (state === "disconnected" || state === "failed") {
+        void this.attemptReconnect();
+      }
+    }, delay);
+  }
+
+  private clearReconnectTimer() {
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+  }
+
+  private async attemptReconnect() {
+    if (!this.peer || !this.chatId || !this.targetUserId) return;
+    if (this.reconnectAttempts >= 3) {
+      this.onConnectionFailed?.();
+      return;
+    }
+    this.reconnectAttempts++;
+    // Only the offerer (caller) sends the new offer; the callee just waits for it.
+    if (!this.isOfferer) return;
+    try {
+      await this.renegotiate({ iceRestart: true });
+      // If still not recovered after another 5s, try again.
+      this.scheduleReconnect(5000);
+    } catch {
+      // Peer may have been closed; nothing to do.
+    }
   }
 
   // ─── Private: stream helpers ──────────────────────────────────────────────────
@@ -591,7 +653,8 @@ export default class CallController {
   private createEnhancedStream(input: MediaStream): MediaStream {
     const AudioCtor =
       typeof window === "undefined" ? null :
-      window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((window as any).AudioContext ?? (window as any).webkitAudioContext) as (new () => AudioContext) | null | undefined;
     if (!AudioCtor) return input;
     this.closeAudioProcessor();
     this.processorContext = new AudioCtor();
