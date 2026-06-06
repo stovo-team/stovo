@@ -3485,7 +3485,14 @@ export default function ChatsPage() {
                 speakerMode={callAudioSettings.speakerMode}
                 timer={callTimer}
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-                onToggleCamera={() => void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled })}
+                onToggleSound={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
+                onToggleCamera={() => {
+                  if (callType === "audio") {
+                    void audioCallRef.current?.toggleVideo(true).then(() => setCallType("video"));
+                  } else {
+                    void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
+                  }
+                }}
                 onToggleFlip={() => void applyCallAudioPatch({
                   cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user",
                 })}
@@ -3527,8 +3534,7 @@ export default function ChatsPage() {
             </div>
             )}
 
-            {/* ── Video area — always rendered inside popup (not inside !isCallMinimized) so refs stay stable ── */}
-            {!(isMobileViewport && !isCallMinimized) && (
+            {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
             <div className={`call-popup-video-area${isCallMinimized || callType === "audio" ? " call-popup-video-area-hidden" : ""}`}>
               <video
                 ref={remoteVideoRef}
@@ -3548,7 +3554,6 @@ export default function ChatsPage() {
                 muted
               />
             </div>
-            )}
 
             {/* ── Peer name (incoming) ── */}
             {!isCallMinimized && callPhase === "incoming" && !(isMobileViewport && !isCallMinimized) && (
@@ -4326,6 +4331,7 @@ function MobileActiveScreen({
   speakerMode,
   timer,
   onToggleMic,
+  onToggleSound,
   onToggleCamera,
   onToggleFlip,
   onOpenSpeakerSheet,
@@ -4342,6 +4348,7 @@ function MobileActiveScreen({
   speakerMode: "small" | "large";
   timer: string;
   onToggleMic: () => void;
+  onToggleSound: () => void;
   onToggleCamera: () => void;
   onToggleFlip: () => void;
   onOpenSpeakerSheet: () => void;
@@ -4349,8 +4356,9 @@ function MobileActiveScreen({
 }) {
   const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
   const showAvatar = callType === "audio" || !isCameraEnabled;
+  const showVideo = callType === "video" && isCameraEnabled;
   return (
-    <div className="mobile-active-screen">
+    <div className={`mobile-active-screen${showVideo ? " mobile-active-screen--video" : ""}`}>
       {showAvatar && (
         <>
           <div className="mobile-active-avatar-wrap">
@@ -4382,6 +4390,21 @@ function MobileActiveScreen({
             }</svg>
           </button>
           <span className="mobile-active-ctrl-lbl">{isMicMuted ? "Unmute" : "Mute"}</span>
+        </div>
+        {/* Remote audio */}
+        <div className="mobile-active-ctrl">
+          <button
+            type="button"
+            className={`mobile-active-ctrl-btn${isSoundDisabled ? " muted" : ""}`}
+            aria-label={isSoundDisabled ? "Unmute sound" : "Mute sound"}
+            onClick={onToggleSound}
+          >
+            <svg viewBox="0 0 24 24">{isSoundDisabled
+              ? <><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>
+              : <><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></>
+            }</svg>
+          </button>
+          <span className="mobile-active-ctrl-lbl">{isSoundDisabled ? "Unmute" : "Mute"}</span>
         </div>
         {/* Speaker */}
         <div className="mobile-active-ctrl">
@@ -4511,10 +4534,12 @@ function CallSpeakerSheet({
               onClick={() => { onSelect(null, "small"); onClose(); }}
             >
               <svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-              Earpiece
-              {speakerMode === "small" && !currentOutputDeviceId && (
-                <svg className="call-speaker-sheet-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-              )}
+              <span className="call-speaker-sheet-label">Earpiece</span>
+              <span className="call-speaker-sheet-check-slot" aria-hidden="true">
+                {speakerMode === "small" && !currentOutputDeviceId && (
+                  <svg className="call-speaker-sheet-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                )}
+              </span>
             </button>
             <button
               type="button"
@@ -4522,10 +4547,12 @@ function CallSpeakerSheet({
               onClick={() => { onSelect(null, "large"); onClose(); }}
             >
               <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></svg>
-              Speaker
-              {speakerMode === "large" && !currentOutputDeviceId && (
-                <svg className="call-speaker-sheet-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-              )}
+              <span className="call-speaker-sheet-label">Speaker</span>
+              <span className="call-speaker-sheet-check-slot" aria-hidden="true">
+                {speakerMode === "large" && !currentOutputDeviceId && (
+                  <svg className="call-speaker-sheet-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                )}
+              </span>
             </button>
           </>
         )}
@@ -4541,10 +4568,12 @@ function CallSpeakerSheet({
               ? <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></svg>
               : <svg viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>
             }
-            {d.label || "Audio output"}
-            {currentOutputDeviceId === d.deviceId && (
-              <svg className="call-speaker-sheet-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-            )}
+            <span className="call-speaker-sheet-label">{d.label || "Audio output"}</span>
+            <span className="call-speaker-sheet-check-slot" aria-hidden="true">
+              {currentOutputDeviceId === d.deviceId && (
+                <svg className="call-speaker-sheet-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              )}
+            </span>
           </button>
         ))}
       </div>
