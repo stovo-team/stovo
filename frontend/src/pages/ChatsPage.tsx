@@ -3419,7 +3419,11 @@ export default function ChatsPage() {
         </div>
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
         {callPhase !== "idle" && (
-          <section
+          <>
+            {!isCallMinimized && !isMobileViewport && (
+              <div className="call-popup-backdrop-overlay" aria-hidden="true" />
+            )}
+            <section
             className={[
               "call-popup",
               isCallMinimized ? "call-popup-minimized" : "",
@@ -3491,6 +3495,22 @@ export default function ChatsPage() {
             {/* ── Peer name (incoming) ── */}
             {!isCallMinimized && callPhase === "incoming" && (
               <p className="call-popup-peer-name">{activeCallPeerName} is calling you.</p>
+            )}
+
+            {/* Avatar area — shown when no remote video is playing */}
+            {!isCallMinimized && (callType === "audio" || !callAudioSettings.cameraEnabled) && callPhase === "in-call" && !isMobileViewport && (
+              <div className="call-popup-avatar-area">
+                <div className="call-popup-avatar-circle">
+                  {activeCallPeerName ? activeCallPeerName.charAt(0).toUpperCase() : "?"}
+                  <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
+                  <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
+                </div>
+                <div className="call-popup-waveform">
+                  {[0,1,2,3,4].map((i) => (
+                    <div key={i} className={`call-popup-wave-bar${isPeerSpeaking ? "" : " silent"}`} />
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* ── Controls row ── */}
@@ -3726,6 +3746,7 @@ export default function ChatsPage() {
               />
             )}
           </section>
+          </>
         )}
         {isNewChatOpen && (
           <div className="modal-backdrop" role="presentation">
