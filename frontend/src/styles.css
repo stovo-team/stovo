@@ -4070,3 +4070,165 @@ h2 {
   color: rgba(255, 255, 255, 0.55);
 }
 
+/* ── Mobile active call screen (video off) ──────────────────────── */
+.mobile-active-screen {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 28%, #131324 0%, #08080f 55%, #030305 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: max(env(safe-area-inset-top, 0px), 52px);
+}
+
+.mobile-active-avatar-wrap {
+  position: relative;
+  width: 88px;
+  height: 88px;
+}
+
+.mobile-active-audio-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.5px solid rgba(80, 160, 255, 0.35);
+  animation: call-audio-pulse 1.5s ease-in-out infinite;
+}
+
+.mobile-active-audio-ring:nth-child(1) { inset: -14px; animation-delay: 0s; }
+.mobile-active-audio-ring:nth-child(2) { inset: -26px; animation-delay: 0.3s; }
+
+.mobile-active-audio-ring.silent {
+  animation: none;
+  opacity: 0;
+}
+
+.mobile-active-avatar {
+  position: relative;
+  z-index: 2;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(140deg, #3d7fe6, #1a52c4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobile-active-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  margin-top: 14px;
+}
+
+.mobile-active-time {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.38);
+  margin-top: 4px;
+}
+
+.mobile-active-waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 12px;
+  height: 24px;
+}
+
+.mobile-active-wave-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: rgba(80, 160, 255, 0.7);
+  animation: call-wave 1.1s ease-in-out infinite;
+}
+
+.mobile-active-wave-bar:nth-child(1) { height:  5px; animation-delay: 0.00s; }
+.mobile-active-wave-bar:nth-child(2) { height: 13px; animation-delay: 0.10s; }
+.mobile-active-wave-bar:nth-child(3) { height: 20px; animation-delay: 0.20s; }
+.mobile-active-wave-bar:nth-child(4) { height: 11px; animation-delay: 0.30s; }
+.mobile-active-wave-bar:nth-child(5) { height: 16px; animation-delay: 0.15s; }
+.mobile-active-wave-bar:nth-child(6) { height:  7px; animation-delay: 0.25s; }
+.mobile-active-wave-bar:nth-child(7) { height: 17px; animation-delay: 0.05s; }
+
+.mobile-active-wave-bar.silent {
+  animation: none !important;
+  height: 3px !important;
+  opacity: 0.2;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Controls overlay at the bottom of mobile active screen */
+.mobile-active-controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px 24px max(env(safe-area-inset-bottom, 0px), 28px);
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  z-index: 10;
+}
+
+.mobile-active-ctrl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.mobile-active-ctrl-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+}
+
+.mobile-active-ctrl-btn.muted {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.mobile-active-ctrl-btn.active {
+  background: rgba(80, 160, 255, 0.25);
+  color: #5ab0ff;
+}
+
+.mobile-active-ctrl-btn.end {
+  background: #ff3b30;
+  border-color: transparent;
+}
+
+.mobile-active-ctrl-btn svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mobile-active-ctrl-btn.end svg {
+  fill: #fff;
+  stroke: none;
+}
+
+.mobile-active-ctrl-lbl {
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+

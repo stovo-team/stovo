@@ -788,6 +788,18 @@ function preferPollingFirst(hostname: string) {
   return true;
 }
 
+function useCallTimer(active: boolean): string {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (!active) { setSeconds(0); return; }
+    const id = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [active]);
+  const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const s = (seconds % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
 export default function ChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
@@ -869,6 +881,8 @@ export default function ChatsPage() {
   });
   const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
   const [isPeerSpeaking, setIsPeerSpeaking] = useState(false);
+  const [isSpeakerSheetOpen, setIsSpeakerSheetOpen] = useState(false);
+  const callTimer = useCallTimer(callPhase === "in-call");
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)").matches : false
   );
@@ -3448,6 +3462,28 @@ export default function ChatsPage() {
                 onDecline={declineIncomingCall}
               />
             )}
+            {/* Mobile active call full-screen */}
+            {isMobileViewport && !isCallMinimized && callPhase !== "incoming" && (
+              <MobileActiveScreen
+                peerName={activeCallPeerName ?? ""}
+                callType={callType}
+                callPhase={callPhase}
+                isPeerSpeaking={isPeerSpeaking}
+                isMicMuted={callAudioSettings.micMuted}
+                isSoundDisabled={callAudioSettings.soundDisabled}
+                isCameraEnabled={callAudioSettings.cameraEnabled}
+                cameraFacingMode={callAudioSettings.cameraFacingMode}
+                speakerMode={callAudioSettings.speakerMode}
+                timer={callTimer}
+                onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
+                onToggleCamera={() => void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled })}
+                onToggleFlip={() => void applyCallAudioPatch({
+                  cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user",
+                })}
+                onOpenSpeakerSheet={() => setIsSpeakerSheetOpen(true)}
+                onEnd={() => void endActiveCall()}
+              />
+            )}
             {/* ── Header row ── */}
             {!(isMobileViewport && !isCallMinimized && callPhase === "incoming") && (
             <div className="call-popup-header">
@@ -3483,6 +3519,7 @@ export default function ChatsPage() {
             )}
 
             {/* ── Video area — always rendered inside popup (not inside !isCallMinimized) so refs stay stable ── */}
+            {!(isMobileViewport && !isCallMinimized) && (
             <div className={`call-popup-video-area${isCallMinimized || callType === "audio" ? " call-popup-video-area-hidden" : ""}`}>
               <video
                 ref={remoteVideoRef}
@@ -3502,6 +3539,7 @@ export default function ChatsPage() {
                 muted
               />
             </div>
+            )}
 
             {/* ── Peer name (incoming) ── */}
             {!isCallMinimized && callPhase === "incoming" && !(isMobileViewport && !isCallMinimized) && (
@@ -3525,7 +3563,7 @@ export default function ChatsPage() {
             )}
 
             {/* ── Controls row ── */}
-            {!isCallMinimized && (
+            {!isCallMinimized && !isMobileViewport && (
               <div className="call-ctrl-row call-popup-ctrl-row">
                 {callPhase === "incoming" && (
                   <>
@@ -4217,6 +4255,128 @@ function CallAudioSettingsPopup({
         )}
       </div>
     </div>
+    </div>
+  );
+}
+
+function MobileActiveScreen({
+  peerName,
+  callType,
+  callPhase,
+  isPeerSpeaking,
+  isMicMuted,
+  isSoundDisabled,
+  isCameraEnabled,
+  cameraFacingMode,
+  speakerMode,
+  timer,
+  onToggleMic,
+  onToggleCamera,
+  onToggleFlip,
+  onOpenSpeakerSheet,
+  onEnd,
+}: {
+  peerName: string;
+  callType: "audio" | "video";
+  callPhase: string;
+  isPeerSpeaking: boolean;
+  isMicMuted: boolean;
+  isSoundDisabled: boolean;
+  isCameraEnabled: boolean;
+  cameraFacingMode: "user" | "environment";
+  speakerMode: "small" | "large";
+  timer: string;
+  onToggleMic: () => void;
+  onToggleCamera: () => void;
+  onToggleFlip: () => void;
+  onOpenSpeakerSheet: () => void;
+  onEnd: () => void;
+}) {
+  const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
+  const showAvatar = callType === "audio" || !isCameraEnabled;
+  return (
+    <div className="mobile-active-screen">
+      {showAvatar && (
+        <>
+          <div className="mobile-active-avatar-wrap">
+            <div className={`mobile-active-audio-ring${isPeerSpeaking ? "" : " silent"}`} />
+            <div className={`mobile-active-audio-ring${isPeerSpeaking ? "" : " silent"}`} />
+            <div className="mobile-active-avatar">{initial}</div>
+          </div>
+          <div className="mobile-active-name">{peerName}</div>
+          <div className="mobile-active-time">{callPhase === "in-call" ? timer : "Connecting…"}</div>
+          <div className="mobile-active-waveform">
+            {[0,1,2,3,4,5,6].map((i) => (
+              <div key={i} className={`mobile-active-wave-bar${isPeerSpeaking ? "" : " silent"}`} />
+            ))}
+          </div>
+        </>
+      )}
+      <div className="mobile-active-controls">
+        {/* Mic */}
+        <div className="mobile-active-ctrl">
+          <button
+            type="button"
+            className={`mobile-active-ctrl-btn${isMicMuted ? " muted" : ""}`}
+            aria-label={isMicMuted ? "Unmute" : "Mute"}
+            onClick={onToggleMic}
+          >
+            <svg viewBox="0 0 24 24">{isMicMuted
+              ? <><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6"/><path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23M12 19v4M8 23h8"/></>
+              : <><path d="M12 1a3 3 0 013 3v8a3 3 0 01-6 0V4a3 3 0 013-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></>
+            }</svg>
+          </button>
+          <span className="mobile-active-ctrl-lbl">{isMicMuted ? "Unmute" : "Mute"}</span>
+        </div>
+        {/* Speaker */}
+        <div className="mobile-active-ctrl">
+          <button
+            type="button"
+            className={`mobile-active-ctrl-btn${speakerMode === "large" ? " active" : ""}`}
+            aria-label="Audio output"
+            onClick={onOpenSpeakerSheet}
+          >
+            <svg viewBox="0 0 24 24">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/>
+            </svg>
+          </button>
+          <span className="mobile-active-ctrl-lbl">Speaker</span>
+        </div>
+        {/* Camera */}
+        <div className="mobile-active-ctrl">
+          <button
+            type="button"
+            className={`mobile-active-ctrl-btn${!isCameraEnabled ? " muted" : ""}`}
+            aria-label={isCameraEnabled ? "Turn off camera" : "Turn on camera"}
+            onClick={onToggleCamera}
+          >
+            <svg viewBox="0 0 24 24">
+              {isCameraEnabled
+                ? <><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></>
+                : <><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 01-2-2V8a2 2 0 012-2h3m3-3h6l2 3h2a2 2 0 012 2v9.34m-7.72-2.06A4 4 0 1111.17 9"/></>
+              }
+            </svg>
+          </button>
+          <span className="mobile-active-ctrl-lbl">{isCameraEnabled ? "Camera" : "Camera off"}</span>
+        </div>
+        {/* Flip camera — only during video */}
+        {callType === "video" && isCameraEnabled && (
+          <div className="mobile-active-ctrl">
+            <button type="button" className="mobile-active-ctrl-btn" aria-label="Flip camera" onClick={onToggleFlip}>
+              <svg viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg>
+            </button>
+            <span className="mobile-active-ctrl-lbl">Flip</span>
+          </div>
+        )}
+        {/* End */}
+        <div className="mobile-active-ctrl">
+          <button type="button" className="mobile-active-ctrl-btn end" aria-label="End call" onClick={onEnd}>
+            <svg viewBox="0 0 24 24" style={{ transform: "rotate(135deg)" }}><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+          </button>
+          <span className="mobile-active-ctrl-lbl">End</span>
+        </div>
+      </div>
     </div>
   );
 }
