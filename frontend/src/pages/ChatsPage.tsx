@@ -868,6 +868,7 @@ export default function ChatsPage() {
     canUseCamera: false,
   });
   const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
+  const [isPeerSpeaking, setIsPeerSpeaking] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)").matches : false
   );
@@ -1586,6 +1587,7 @@ export default function ChatsPage() {
       if (chatId && socket.connected) socket.emit("call:end", { chatId });
       void resetCallState("Call connection lost");
     };
+    audioController.onSpeakingChange(setIsPeerSpeaking);
     setCallAudioCapabilities(audioController.getCapabilities());
     setCallAudioSettings(audioController.getSettings());
     audioCallRef.current = audioController;
@@ -1858,6 +1860,7 @@ export default function ChatsPage() {
     setIsCallMinimized(false);
     setCallTrackStatus(null);
     setCallAudioWarning(null);
+    setIsPeerSpeaking(false);
     setCallNotice(notice ?? null);
   }
 
@@ -1935,6 +1938,7 @@ export default function ChatsPage() {
     setIsCallMinimized(false);
     setCallTrackStatus(null);
     setCallAudioWarning(null);
+    setIsPeerSpeaking(false);
     setCallNotice("Call ended");
     if (selectedChat?.id === endingChatId && selectedChat.type === "direct") {
       window.setTimeout(() => {
