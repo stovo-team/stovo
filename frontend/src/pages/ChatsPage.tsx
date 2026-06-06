@@ -1598,9 +1598,14 @@ export default function ChatsPage() {
     };
     audioController.onConnectionFailed = () => {
       console.error("[call] onConnectionFailed fired");
-      const chatId = activeCallChatIdRef.current;
-      if (chatId && socket.connected) socket.emit("call:end", { chatId });
+      // cleanup() will emit call:end; pass serverAlreadyNotified=false (default)
+      // so cleanup handles the server notification.
       void resetCallState("Call connection lost");
+    };
+    // When the remote party enables their camera mid-call, show the video UI
+    // on the receiving side without requiring the local user to act.
+    audioController.onRemoteVideoTrack = () => {
+      setCallType("video");
     };
     audioController.onSpeakingChange(setIsPeerSpeaking);
     setCallAudioCapabilities(audioController.getCapabilities());
@@ -1778,7 +1783,8 @@ export default function ChatsPage() {
           .catch(async (err) => {
             console.error("[call:accepted] startOutgoing threw:", err);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId });
-            await resetCallState("Camera/mic permission or device failed");
+            // We already emitted call:end above; cleanup should not re-emit.
+            await resetCallState("Camera/mic permission or device failed", true);
             setError(err instanceof Error ? err.message : "Could not start call");
           });
       } else {
@@ -1798,26 +1804,31 @@ export default function ChatsPage() {
 
     socket.on("call:declined", () => {
       stopIncomingRingtone();
-      void resetCallState("Call declined");
+      // Server already ended the session — pass serverAlreadyNotified=true so
+      // cleanup() does not send a redundant call:end that would produce a
+      // spurious call:error toast.
+      void resetCallState("Call declined", true);
     });
     socket.on("call:canceled", () => {
       stopIncomingRingtone();
-      void resetCallState("Call canceled");
+      void resetCallState("Call canceled", true);
     });
     socket.on("call:timeout", () => {
       stopIncomingRingtone();
-      void resetCallState("Missed call");
+      void resetCallState("Missed call", true);
     });
     socket.on("call:ended", () => {
       console.log("[call:ended] received");
       stopIncomingRingtone();
-      void resetCallState("Call ended");
+      void resetCallState("Call ended", true);
     });
     socket.on("call:error", (payload: { message?: string }) => {
       console.error("[call:error] received:", payload);
       stopIncomingRingtone();
       setError(payload.message ?? "Call failed");
-      void resetCallState();
+      // Server encountered an error and the session may already be gone;
+      // pass serverAlreadyNotified=true to avoid a redundant call:end.
+      void resetCallState(undefined, true);
     });
 
     return () => {
@@ -1869,10 +1880,10 @@ export default function ChatsPage() {
     }
   }, [callPhase]);
 
-  async function resetCallState(notice?: string) {
-    console.log("[resetCallState] notice=", notice, new Error().stack?.split("\n").slice(1, 4).join(" | "));
+  async function resetCallState(notice?: string, serverAlreadyNotified = false) {
+    console.log("[resetCallState] notice=", notice, "serverAlreadyNotified=", serverAlreadyNotified, new Error().stack?.split("\n").slice(1, 4).join(" | "));
     stopIncomingRingtone();
-    await audioCallRef.current?.cleanup();
+    await audioCallRef.current?.cleanup(serverAlreadyNotified);
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
@@ -1929,7 +1940,8 @@ export default function ChatsPage() {
       setCallPhase("in-call");
     } catch (err) {
       if (socketRef.current?.connected) socketRef.current.emit("call:end", { chatId: activeCallChatId });
-      await resetCallState("Camera/mic permission or device failed");
+      // We already emitted call:end above; cleanup should not re-emit.
+      await resetCallState("Camera/mic permission or device failed", true);
       setError(err instanceof Error ? err.message : "Could not join call");
     }
   }
@@ -1950,7 +1962,9 @@ export default function ChatsPage() {
     setCallNotice("Ending call...");
     stopIncomingRingtone();
     socketRef.current.emit("call:end", { chatId: activeCallChatId });
-    await audioCallRef.current?.cleanup().catch(() => undefined);
+    // serverAlreadyNotified=true: we just sent call:end above, cleanup should
+    // not send it again or the server will return a spurious call:error.
+    await audioCallRef.current?.cleanup(true).catch(() => undefined);
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);

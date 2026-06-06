@@ -94,6 +94,9 @@ export default class CallController {
   // where ICE candidates or the offer itself arrive while getUserMedia is still
   // pending in acceptIncoming(), which used to create duplicate peer connections.
   private preconnectSignals: BufferedSignal[] = [];
+  // Serial queue for processSignal — prevents concurrent offer/answer handling
+  // which causes "cannot create answer in state other than have-remote-offer".
+  private signalQueue: Promise<void> = Promise.resolve();
   private settings: CallSettings = { ...DEFAULT_SETTINGS };
   private processorContext: AudioContext | null = null;
   private processorDestination: MediaStreamAudioDestinationNode | null = null;
@@ -110,6 +113,8 @@ export default class CallController {
   onVideoUnavailable?: () => void;
   /** Called when the peer connection cannot be recovered after repeated ICE restarts. */
   onConnectionFailed?: () => void;
+  /** Called when a remote video track arrives mid-call (e.g. remote party enables camera). */
+  onRemoteVideoTrack?: () => void;
 
   constructor(socket: Socket, accessToken: string) {
     this.socket = socket;
@@ -179,21 +184,28 @@ export default class CallController {
    * Process a WebRTC signal from the remote peer.
    * If the peer isn't ready yet (getUserMedia still pending), the signal is
    * buffered and automatically replayed once the peer is created.
+   *
+   * All signals are serialized through signalQueue so that concurrent offers
+   * or ICE candidates cannot race and leave the peer in a bad signaling state.
    */
-  async handleSignal(payload: {
+  handleSignal(payload: {
     chatId: string;
     fromUserId: string;
     data: Record<string, unknown>;
-  }) {
-    if (!payload?.chatId || !payload?.data) return;
+  }): Promise<void> {
+    if (!payload?.chatId || !payload?.data) return Promise.resolve();
 
     if (!this.peer) {
       // Peer not ready — buffer until ensurePeer() completes
       this.preconnectSignals.push(payload);
-      return;
+      return Promise.resolve();
     }
 
-    await this.processSignal(payload);
+    // Chain onto the queue so signals are always processed one at a time.
+    this.signalQueue = this.signalQueue
+      .then(() => this.processSignal(payload))
+      .catch(() => undefined);
+    return this.signalQueue;
   }
 
   // ─── Video toggle mid-call ───────────────────────────────────────────────────
@@ -349,10 +361,27 @@ export default class CallController {
 
   // ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-  async cleanup() {
+  /**
+   * Clean up the call.
+   * @param serverAlreadyNotified - pass true when the caller has already
+   *   emitted `call:end` to the server (e.g. endActiveCall). When false
+   *   (default) cleanup will emit `call:end` itself to ensure the server-side
+   *   session is always cleared even on abnormal teardown (component unmount,
+   *   browser nav, connection failure).
+   */
+  async cleanup(serverAlreadyNotified = false) {
     this.clearReconnectTimer();
     this.reconnectAttempts = 0;
     this.isOfferer = false;
+
+    // Ensure the server-side call session is cleared even if the UI did not
+    // explicitly emit call:end (e.g. component unmount, browser navigation).
+    // Without this the server retains the session and the next call:start fails
+    // with "call already in progress".
+    if (!serverAlreadyNotified && this.chatId && this.socket.connected) {
+      this.socket.emit("call:end", { chatId: this.chatId });
+    }
+
     this.stopStream(this.localStream);
     if (this.localStream !== this.sourceStream) this.stopStream(this.sourceStream);
     this.localStream = null;
@@ -371,12 +400,16 @@ export default class CallController {
     this.closeAudioProcessor();
     this.stopSpeakingDetection();
     this.speakingCallback = null;
+    this.onRemoteVideoTrack = undefined;
     this.settings = { ...DEFAULT_SETTINGS };
     this.chatId = null;
     this.targetUserId = null;
     this.callType = "audio";
     this.pendingCandidates = [];
     this.preconnectSignals = [];
+    // Reset the signal queue so stale promises from a previous call cannot
+    // affect a freshly started call after cleanup.
+    this.signalQueue = Promise.resolve();
   }
 
   // ─── Private: peer creation ───────────────────────────────────────────────────
@@ -438,6 +471,9 @@ export default class CallController {
       if (e.track.kind === "video") {
         this.remoteStream = stream;
         this.reattachRemoteVideo();
+        // Notify the UI so it can show the video container even if the local
+        // side started as audio-only (e.g. remote party enables camera mid-call).
+        this.onRemoteVideoTrack?.();
       }
     };
 
@@ -452,10 +488,15 @@ export default class CallController {
     await this.applyOutputDevice();
 
     // Replay signals that arrived while getUserMedia was pending.
+    // Route them through the signalQueue so they are serialized with any
+    // signals that arrive concurrently from the socket during replay.
     const buffered = this.preconnectSignals.splice(0);
     for (const sig of buffered) {
-      await this.processSignal(sig);
+      this.signalQueue = this.signalQueue
+        .then(() => this.processSignal(sig))
+        .catch(() => undefined);
     }
+    await this.signalQueue;
   }
 
   // ─── Private: signal processing ──────────────────────────────────────────────
@@ -532,7 +573,7 @@ export default class CallController {
 
   private async attemptReconnect() {
     if (!this.peer || !this.chatId || !this.targetUserId) return;
-    if (this.reconnectAttempts >= 3) {
+    if (this.reconnectAttempts >= 5) {
       this.onConnectionFailed?.();
       return;
     }
