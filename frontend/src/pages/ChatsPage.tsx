@@ -1789,7 +1789,7 @@ export default function ChatsPage() {
         console.log("[call:accepted] caller path — calling startOutgoing");
         void audioController
           .startOutgoing(payload.chatId, peerId, acceptedCallType)
-          .then(() => { console.log("[call:accepted] startOutgoing resolved → in-call"); setCallPhase("in-call"); })
+          .then(() => { console.log("[call:accepted] startOutgoing resolved → in-call"); setCallPhase("in-call"); if (acceptedCallType === "video") { void applyCallAudioPatch({ speakerMode: "large" }); } })
           .catch(async (err) => {
             console.error("[call:accepted] startOutgoing threw:", err);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId });
@@ -1959,6 +1959,9 @@ export default function ChatsPage() {
     try {
       await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
       setCallPhase("in-call");
+      if (callType === "video") {
+        void applyCallAudioPatch({ speakerMode: "large" });
+      }
     } catch (err) {
       if (socketRef.current?.connected) socketRef.current.emit("call:end", { chatId: activeCallChatId });
       // We already emitted call:end above; cleanup should not re-emit.
@@ -4463,14 +4466,32 @@ function MobileActiveScreen({
       dst.srcObject = src.srcObject;
       void dst.play().catch(() => undefined);
     }
-  }, [hasRemoteVideo, isCameraEnabled, localVideoRef]);
+  }, [hasRemoteVideo, isCameraEnabled, localVideoRef, callPhase]);
 
   const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
   const showAvatar = !hasRemoteVideo && (callType === "audio" || !isCameraEnabled);
   const showVideo = callType === "video" && isCameraEnabled;
   return (
-    <div className={`mobile-active-screen${showVideo || hasRemoteVideo ? " mobile-active-screen--video" : ""}`}>
-      {/* Remote video — shown at z-index 0 behind controls when other party has camera on */}
+    <div className={`mobile-active-screen${(showVideo || hasRemoteVideo || (callType === "video" && isCameraEnabled)) ? " mobile-active-screen--video" : ""}`}>
+      {/* Case 1: Local camera only (no remote video yet) — show self-view fullscreen */}
+      {callType === "video" && isCameraEnabled && !hasRemoteVideo && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
+          <video
+            ref={mobileLocalRef}
+            autoPlay
+            playsInline
+            muted
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transform: mirrorLocalVideo ? 'scaleX(-1)' : 'none',
+            }}
+          />
+        </div>
+      )}
+
+      {/* Case 2: Remote video active — show remote fullscreen, local as PiP */}
       {hasRemoteVideo && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
           <video
@@ -4487,8 +4508,8 @@ function MobileActiveScreen({
               muted
               style={{
                 position: 'absolute', bottom: 8, right: 8,
-                width: 88, height: 66, objectFit: 'cover',
-                borderRadius: 6, border: '2px solid rgba(255,255,255,0.35)',
+                width: 88, height: 120, objectFit: 'cover',
+                borderRadius: 8, border: '2px solid rgba(255,255,255,0.35)',
                 transform: mirrorLocalVideo ? 'scaleX(-1)' : 'none',
                 zIndex: 2,
               }}
