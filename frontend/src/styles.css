@@ -234,7 +234,11 @@
 .call-popup.call-popup-fullscreen {
   position: fixed;
   inset: 0;
+  top: 0;
+  left: 0;
+  transform: none;
   width: 100%;
+  height: 100%;
   border-radius: 0;
   border: none;
   padding: 0;
