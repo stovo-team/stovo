@@ -884,6 +884,8 @@ export default function ChatsPage() {
   const [isSpeakerSheetOpen, setIsSpeakerSheetOpen] = useState(false);
   const [callPeerDisplayName, setCallPeerDisplayName] = useState<string | null>(null);
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
+  const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
+  const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const callTimer = useCallTimer(callPhase === "in-call");
   const [isMobileViewport, setIsMobileViewport] = useState(
     typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)").matches : false
@@ -1611,9 +1613,13 @@ export default function ChatsPage() {
     };
     // When the remote party enables their camera mid-call, show the video UI
     // on the receiving side without requiring the local user to act.
-    audioController.onRemoteVideoTrack = () => {
+    audioController.onRemoteVideoTrack = (stream: MediaStream) => {
       setCallType("video");
       setHasRemoteVideo(true);
+      setRemoteVideoStream(stream);
+    };
+    audioController.onLocalStreamReady = (stream: MediaStream) => {
+      setLocalVideoStream(stream);
     };
     audioController.onSpeakingChange(setIsPeerSpeaking);
     setCallAudioCapabilities(audioController.getCapabilities());
@@ -1907,6 +1913,8 @@ export default function ChatsPage() {
     setCallPeerUserId(null);
     setCallPeerDisplayName(null);
     setHasRemoteVideo(false);
+    setLocalVideoStream(null);
+    setRemoteVideoStream(null);
     setCallType("audio");
     setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
     setIsCallSettingsMenuOpen(false);
@@ -1971,11 +1979,17 @@ export default function ChatsPage() {
   }
 
   function declineIncomingCall() {
-    if (!socketRef.current || !activeCallChatId) {
+    const chatId = activeCallChatId ?? activeCallChatIdRef.current;
+    if (!socketRef.current || !chatId) {
       return;
     }
     stopIncomingRingtone();
-    socketRef.current.emit("call:decline", { chatId: activeCallChatId });
+    socketRef.current.emit("call:decline", { chatId });
+    // Reset local state immediately (optimistic) — don't wait for the server
+    // round-trip.  The server will still send call:declined to the caller which
+    // triggers their own reset.  Passing serverAlreadyNotified=true prevents
+    // cleanup() from emitting a duplicate call:end.
+    void resetCallState("Call declined", true);
   }
 
   async function endActiveCall() {
@@ -1994,6 +2008,8 @@ export default function ChatsPage() {
     setCallPeerUserId(null);
     setCallPeerDisplayName(null);
     setHasRemoteVideo(false);
+    setLocalVideoStream(null);
+    setRemoteVideoStream(null);
     setCallType("audio");
     setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
     setIsCallSettingsMenuOpen(false);
@@ -3525,8 +3541,8 @@ export default function ChatsPage() {
                 speakerMode={callAudioSettings.speakerMode}
                 timer={callTimer}
                 hasRemoteVideo={hasRemoteVideo}
-                remoteVideoRef={remoteVideoRef}
-                localVideoRef={localVideoRef}
+                localVideoStream={localVideoStream}
+                remoteVideoStream={remoteVideoStream}
                 mirrorLocalVideo={callAudioSettings.mirrorLocalVideo}
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onToggleSound={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
@@ -4413,8 +4429,8 @@ function MobileActiveScreen({
   speakerMode,
   timer,
   hasRemoteVideo,
-  remoteVideoRef,
-  localVideoRef,
+  localVideoStream,
+  remoteVideoStream,
   mirrorLocalVideo,
   onToggleMic,
   onToggleSound,
@@ -4434,8 +4450,8 @@ function MobileActiveScreen({
   speakerMode: "small" | "large";
   timer: string;
   hasRemoteVideo: boolean;
-  remoteVideoRef: RefObject<HTMLVideoElement | null>;
-  localVideoRef: RefObject<HTMLVideoElement | null>;
+  localVideoStream: MediaStream | null;
+  remoteVideoStream: MediaStream | null;
   mirrorLocalVideo: boolean;
   onToggleMic: () => void;
   onToggleSound: () => void;
@@ -4444,29 +4460,28 @@ function MobileActiveScreen({
   onOpenSpeakerSheet: () => void;
   onEnd: () => void;
 }) {
-  // Local video elements for mobile — srcObject is mirrored from the stable desktop refs
+  // Local video elements for mobile — srcObject is set directly from the stream props
+  // so the UI reacts as soon as the stream is available without timing fragility.
   const mobileRemoteRef = useRef<HTMLVideoElement>(null);
   const mobileLocalRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const src = remoteVideoRef.current;
     const dst = mobileRemoteRef.current;
-    if (!src || !dst) return;
-    if (dst.srcObject !== src.srcObject) {
-      dst.srcObject = src.srcObject;
-      void dst.play().catch(() => undefined);
+    if (!dst) return;
+    if (dst.srcObject !== remoteVideoStream) {
+      dst.srcObject = remoteVideoStream;
+      if (remoteVideoStream) void dst.play().catch(() => undefined);
     }
-  }, [hasRemoteVideo, remoteVideoRef]);
+  }, [remoteVideoStream]);
 
   useEffect(() => {
-    const src = localVideoRef.current;
     const dst = mobileLocalRef.current;
-    if (!src || !dst) return;
-    if (dst.srcObject !== src.srcObject) {
-      dst.srcObject = src.srcObject;
-      void dst.play().catch(() => undefined);
+    if (!dst) return;
+    if (dst.srcObject !== localVideoStream) {
+      dst.srcObject = localVideoStream;
+      if (localVideoStream) void dst.play().catch(() => undefined);
     }
-  }, [hasRemoteVideo, isCameraEnabled, localVideoRef, callPhase]);
+  }, [localVideoStream]);
 
   const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
   const showAvatar = !hasRemoteVideo && (callType === "audio" || !isCameraEnabled);
