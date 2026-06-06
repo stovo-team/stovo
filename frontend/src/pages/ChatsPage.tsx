@@ -965,7 +965,7 @@ export default function ChatsPage() {
       oscillator.frequency.value = frequency;
       const startAt = baseTime + index * 0.2;
       gainNode.gain.setValueAtTime(0.0001, startAt);
-      gainNode.gain.exponentialRampToValueAtTime(0.12, startAt + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.35, startAt + 0.02);
       gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.16);
       oscillator.connect(gainNode);
       gainNode.connect(context.destination);
@@ -1884,6 +1884,8 @@ export default function ChatsPage() {
     setCallPhase("outgoing");
     setActiveCallChatId(selectedChat.id);
     setCallPeerUserId(peer.id);
+    // Update ref synchronously so call:accepted handler sees it before next render
+    activeCallChatIdRef.current = selectedChat.id;
     socket.emit("call:start", { chatId: selectedChat.id, callType: type });
   }
 
