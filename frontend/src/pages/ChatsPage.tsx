@@ -1597,6 +1597,7 @@ export default function ChatsPage() {
       setCallNotice("Camera not available — continuing with audio only");
     };
     audioController.onConnectionFailed = () => {
+      console.error("[call] onConnectionFailed fired");
       const chatId = activeCallChatIdRef.current;
       if (chatId && socket.connected) socket.emit("call:end", { chatId });
       void resetCallState("Call connection lost");
@@ -1758,7 +1759,9 @@ export default function ChatsPage() {
     );
 
     socket.on("call:accepted", (payload: { chatId: string; callerId: string; calleeId: string; callType?: string }) => {
+      console.log("[call:accepted] chatId=", payload.chatId, "ref=", activeCallChatIdRef.current, "currentUser=", currentUser?.id);
       if (!currentUser || payload.chatId !== activeCallChatIdRef.current) {
+        console.warn("[call:accepted] GUARD FAILED — bailing. currentUser=", !!currentUser, "chatMatch=", payload.chatId === activeCallChatIdRef.current);
         return;
       }
       stopIncomingRingtone();
@@ -1768,15 +1771,18 @@ export default function ChatsPage() {
       setCallType(acceptedCallType);
       setCallPhase("connecting");
       if (payload.callerId === currentUser.id) {
+        console.log("[call:accepted] caller path — calling startOutgoing");
         void audioController
           .startOutgoing(payload.chatId, peerId, acceptedCallType)
-          .then(() => setCallPhase("in-call"))
+          .then(() => { console.log("[call:accepted] startOutgoing resolved → in-call"); setCallPhase("in-call"); })
           .catch(async (err) => {
+            console.error("[call:accepted] startOutgoing threw:", err);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId });
             await resetCallState("Camera/mic permission or device failed");
             setError(err instanceof Error ? err.message : "Could not start call");
           });
       } else {
+        console.log("[call:accepted] callee path → in-call");
         setCallPhase("in-call");
       }
     });
@@ -1803,10 +1809,12 @@ export default function ChatsPage() {
       void resetCallState("Missed call");
     });
     socket.on("call:ended", () => {
+      console.log("[call:ended] received");
       stopIncomingRingtone();
       void resetCallState("Call ended");
     });
     socket.on("call:error", (payload: { message?: string }) => {
+      console.error("[call:error] received:", payload);
       stopIncomingRingtone();
       setError(payload.message ?? "Call failed");
       void resetCallState();
@@ -1862,6 +1870,7 @@ export default function ChatsPage() {
   }, [callPhase]);
 
   async function resetCallState(notice?: string) {
+    console.log("[resetCallState] notice=", notice, new Error().stack?.split("\n").slice(1, 4).join(" | "));
     stopIncomingRingtone();
     await audioCallRef.current?.cleanup();
     setCallPhase("idle");
