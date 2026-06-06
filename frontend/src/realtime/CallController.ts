@@ -99,6 +99,12 @@ export default class CallController {
   private processorDestination: MediaStreamAudioDestinationNode | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts: number = 0;
+  private speakingCallback: ((isSpeaking: boolean) => void) | null = null;
+  private speakingAnimFrame: number | null = null;
+  private speakingAnalyser: AnalyserNode | null = null;
+  private speakingContext: AudioContext | null = null;
+  private wasSpeaking: boolean = false;
+  private readonly SPEAKING_THRESHOLD = 0.015;
 
   /** Called when a video call had no camera — UI can warn and show audio-only. */
   onVideoUnavailable?: () => void;
@@ -129,6 +135,11 @@ export default class CallController {
       element.srcObject = this.sourceStream;
       void element.play().catch(() => undefined);
     }
+  }
+
+  onSpeakingChange(callback: ((isSpeaking: boolean) => void) | null) {
+    this.speakingCallback = callback;
+    if (!callback) this.stopSpeakingDetection();
   }
 
   // ─── Call lifecycle ──────────────────────────────────────────────────────────
@@ -293,6 +304,49 @@ export default class CallController {
     if (patch.outputDeviceId !== undefined) await this.applyOutputDevice();
   }
 
+  // ─── Speaking detection ───────────────────────────────────────────────────────
+
+  private startSpeakingDetection(stream: MediaStream) {
+    this.stopSpeakingDetection();
+    const AudioCtor =
+      typeof window === "undefined"
+        ? null
+        : window.AudioContext ||
+          (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtor || !this.speakingCallback) return;
+    this.speakingContext = new AudioCtor();
+    const source = this.speakingContext.createMediaStreamSource(stream);
+    this.speakingAnalyser = this.speakingContext.createAnalyser();
+    this.speakingAnalyser.fftSize = 256;
+    source.connect(this.speakingAnalyser);
+    const data = new Uint8Array(this.speakingAnalyser.frequencyBinCount);
+    const poll = () => {
+      if (!this.speakingAnalyser) return;
+      this.speakingAnalyser.getByteFrequencyData(data);
+      const avg = data.reduce((s, v) => s + v, 0) / data.length / 255;
+      const speaking = avg > this.SPEAKING_THRESHOLD;
+      if (speaking !== this.wasSpeaking) {
+        this.wasSpeaking = speaking;
+        this.speakingCallback?.(speaking);
+      }
+      this.speakingAnimFrame = requestAnimationFrame(poll);
+    };
+    this.speakingAnimFrame = requestAnimationFrame(poll);
+  }
+
+  private stopSpeakingDetection() {
+    if (this.speakingAnimFrame !== null) {
+      cancelAnimationFrame(this.speakingAnimFrame);
+      this.speakingAnimFrame = null;
+    }
+    this.speakingAnalyser = null;
+    if (this.speakingContext) {
+      void this.speakingContext.close().catch(() => undefined);
+      this.speakingContext = null;
+    }
+    this.wasSpeaking = false;
+  }
+
   // ─── Cleanup ─────────────────────────────────────────────────────────────────
 
   async cleanup() {
@@ -315,6 +369,8 @@ export default class CallController {
     if (this.remoteVideoEl) this.remoteVideoEl.srcObject = null;
     if (this.localVideoEl) this.localVideoEl.srcObject = null;
     this.closeAudioProcessor();
+    this.stopSpeakingDetection();
+    this.speakingCallback = null;
     this.settings = { ...DEFAULT_SETTINGS };
     this.chatId = null;
     this.targetUserId = null;
@@ -377,6 +433,7 @@ export default class CallController {
         this.remoteAudioEl.srcObject = stream;
         this.remoteAudioEl.autoplay = true;
         void this.remoteAudioEl.play().catch(() => undefined);
+        this.startSpeakingDetection(stream);
       }
       if (e.track.kind === "video") {
         this.remoteStream = stream;
