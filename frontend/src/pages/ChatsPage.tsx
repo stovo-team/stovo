@@ -3510,6 +3510,7 @@ export default function ChatsPage() {
             ].filter(Boolean).join(" ")}
             role="dialog"
             aria-modal="false"
+            onClick={isCallMinimized && isMobileViewport ? () => setIsCallMinimized(false) : undefined}
             aria-label={
               callPhase === "incoming"
                 ? "Incoming call"
@@ -3563,23 +3564,14 @@ export default function ChatsPage() {
             {/* ── Header row ── */}
             {!(isMobileViewport && !isCallMinimized && callPhase === "incoming") && (
             <div className="call-popup-header">
-              {isCallMinimized && isMobileViewport && callPhase === "in-call" ? (
-                // Mobile minimized chip: avatar + name + timer
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    width: 28, height: 28, borderRadius: '50%',
-                    background: 'linear-gradient(140deg, #3d7fe6, #1a52c4)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.7rem', fontWeight: 700, color: '#fff', flexShrink: 0,
-                  }}>
-                    {(callPeerDisplayName ?? activeCallPeerName)?.charAt(0).toUpperCase() ?? "?"}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {callPeerDisplayName ?? activeCallPeerName}
-                    </span>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{callTimer}</span>
-                  </div>
+              {isCallMinimized && isMobileViewport ? (
+                // Mobile minimized: Telegram-style green bar — tap anywhere to restore
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                  <div className="mobile-call-bar-pulse" />
+                  <span style={{ flex: 1, fontSize: '0.88rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
+                    {callPhase === "in-call" ? ` · ${callTimer}` : callPhase === "outgoing" ? " · Calling…" : " · Connecting…"}
+                  </span>
                 </div>
               ) : (
                 <>
@@ -3607,14 +3599,14 @@ export default function ChatsPage() {
                       cursor: 'pointer', color: '#fff', flexShrink: 0,
                     }}
                     aria-label="End call"
-                    onClick={() => void endActiveCall()}
+                    onClick={(e) => { e.stopPropagation(); void endActiveCall(); }}
                   >
                     <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(135deg)' }}>
                       <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
                     </svg>
                   </button>
                 )}
-                {callPhase !== "incoming" && (
+                {callPhase !== "incoming" && !(isCallMinimized && isMobileViewport) && (
                   <button
                     type="button"
                     className="icon-button subtle"
@@ -4467,21 +4459,18 @@ function MobileActiveScreen({
 
   useEffect(() => {
     const dst = mobileRemoteRef.current;
-    if (!dst) return;
-    if (dst.srcObject !== remoteVideoStream) {
-      dst.srcObject = remoteVideoStream;
-      if (remoteVideoStream) void dst.play().catch(() => undefined);
-    }
-  }, [remoteVideoStream]);
+    if (!dst || !remoteVideoStream) return;
+    dst.muted = true;
+    dst.srcObject = remoteVideoStream;
+    void dst.play().catch(() => undefined);
+  }, [remoteVideoStream, hasRemoteVideo]);
 
   useEffect(() => {
     const dst = mobileLocalRef.current;
-    if (!dst) return;
-    if (dst.srcObject !== localVideoStream) {
-      dst.srcObject = localVideoStream;
-      if (localVideoStream) void dst.play().catch(() => undefined);
-    }
-  }, [localVideoStream]);
+    if (!dst || !localVideoStream) return;
+    dst.srcObject = localVideoStream;
+    void dst.play().catch(() => undefined);
+  }, [localVideoStream, hasRemoteVideo, isCameraEnabled]);
 
   const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
   const showAvatar = !hasRemoteVideo && (callType === "audio" || !isCameraEnabled);
@@ -4513,6 +4502,7 @@ function MobileActiveScreen({
             ref={mobileRemoteRef}
             autoPlay
             playsInline
+            muted
             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           />
           {isCameraEnabled && (
