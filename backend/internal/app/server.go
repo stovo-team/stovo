@@ -53,6 +53,7 @@ type Server struct {
 	callTimeout    time.Duration
 	frontendClient *http.Client
 	frontendTarget *url.URL
+	ntfyClient     *http.Client
 	realtimeCtx    context.Context
 	realtimeCancel context.CancelFunc
 	realtimeWG     sync.WaitGroup
@@ -135,6 +136,8 @@ func New(cfg config.Config) (*Server, error) {
 			},
 		}
 	}
+
+	app.ntfyClient = &http.Client{Timeout: 10 * time.Second}
 
 	app.configureSockets()
 	app.tunnel.ConfigureLocalTunnelHealth(app.validatePublicBackendURL, 5*time.Second, 3)
@@ -500,6 +503,7 @@ func (s *Server) initSchema() error {
 		`UPDATE messages SET encryption_protocol = 'legacy_plaintext' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS audio_call_settings TEXT;`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS ntfy_topic_token TEXT DEFAULT NULL;`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.Exec(statement); err != nil {
