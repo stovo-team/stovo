@@ -547,6 +547,33 @@ func (s *Server) handleGetAudioSettings(w http.ResponseWriter, _ *http.Request, 
 	s.json(w, http.StatusOK, settings)
 }
 
+func (s *Server) handleGetNotificationTopic(w http.ResponseWriter, _ *http.Request, user userPublic) {
+	var tokenStr string
+	row := s.queryRow(`SELECT ntfy_topic_token FROM users WHERE id = ?`, user.ID)
+	var token sql.NullString
+	if err := row.Scan(&token); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load notification topic")
+		return
+	}
+	if token.Valid && token.String != "" {
+		tokenStr = token.String
+	} else {
+		tokenStr = "stovo-user-" + uuid.NewString()
+		if _, err := s.exec(
+			`UPDATE users SET ntfy_topic_token = ? WHERE id = ?`,
+			tokenStr, user.ID,
+		); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not persist notification topic")
+			return
+		}
+	}
+	ntfyPublicURL := s.cfg.AppURL + "/ntfy"
+	s.json(w, http.StatusOK, map[string]string{
+		"topic":       tokenStr,
+		"ntfyBaseUrl": ntfyPublicURL,
+	})
+}
+
 func (s *Server) handlePutAudioSettings(w http.ResponseWriter, r *http.Request, user userPublic) {
 	var payload updateAudioSettingsRequest
 	if err := s.decodeJSON(r, &payload); err != nil {
