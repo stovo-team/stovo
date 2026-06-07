@@ -313,6 +313,11 @@ export default class CallController {
     if (patch.cameraEnabled !== undefined) this.applyCameraEnabledState();
     if (patch.soundDisabled !== undefined || patch.speakerMode !== undefined) {
       this.applySoundDisabledState();
+      // When switching to loudspeaker, attempt to route to the default output device
+      // (helps on Android Chrome; iOS handles this automatically when camera is active)
+      if (patch.speakerMode === "large" && !this.settings.outputDeviceId) {
+        void this.applyOutputDevice();
+      }
     }
 
     const needsReacquire =
