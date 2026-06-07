@@ -180,6 +180,7 @@ func (s *Server) Routes() http.Handler {
 	router.Patch("/api/auth/me", s.authenticated(s.handleUpdateMe))
 	router.Get("/api/auth/audio-settings", s.authenticated(s.handleGetAudioSettings))
 	router.Put("/api/auth/audio-settings", s.authenticated(s.handlePutAudioSettings))
+	router.Get("/api/notifications/topic", s.authenticated(s.handleGetNotificationTopic))
 
 	router.Get("/api/family", s.authenticated(s.handleGetFamily))
 	router.Patch("/api/family", s.authenticated(s.handleUpdateFamily))
