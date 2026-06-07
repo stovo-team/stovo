@@ -1953,6 +1953,11 @@ export default function ChatsPage() {
     setCallPeerDisplayName(peer.displayName ?? null);
     // Update ref synchronously so call:accepted handler sees it before next render
     activeCallChatIdRef.current = selectedChat.id;
+    // Pre-acquire media NOW while we are still inside the user gesture (button click).
+    // On iOS Safari, getUserMedia fails when called from an async socket callback
+    // (not a user gesture). prepareForCall stores the stream so that startOutgoing's
+    // ensurePeer() can reuse it without needing a new user gesture.
+    try { await audioCallRef.current?.prepareForCall(type); } catch { /* handled by startOutgoing */ }
     socket.emit("call:start", { chatId: selectedChat.id, callType: type });
   }
 
@@ -3549,7 +3554,11 @@ export default function ChatsPage() {
                 onToggleSound={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
                 onToggleCamera={() => {
                   if (callType === "audio") {
-                    void audioCallRef.current?.toggleVideo(true).then(() => setCallType("video"));
+                    // Set callType to "video" immediately so the mobile video element
+                    // mounts before onLocalStreamReady fires — prevents black screen
+                    // on first camera enable (iOS/Android).
+                    setCallType("video");
+                    void audioCallRef.current?.toggleVideo(true);
                   } else {
                     void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
                   }
@@ -3788,7 +3797,8 @@ export default function ChatsPage() {
                             }
                             onClick={() => {
                               if (callType === "audio") {
-                                void audioCallRef.current?.toggleVideo(true).then(() => setCallType("video"));
+                                setCallType("video");
+                                void audioCallRef.current?.toggleVideo(true);
                               } else {
                                 void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
                               }
@@ -4470,7 +4480,7 @@ function MobileActiveScreen({
     if (!dst || !localVideoStream) return;
     dst.srcObject = localVideoStream;
     void dst.play().catch(() => undefined);
-  }, [localVideoStream, hasRemoteVideo, isCameraEnabled]);
+  }, [localVideoStream, hasRemoteVideo, isCameraEnabled, callType]);
 
   const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
   const showAvatar = !hasRemoteVideo && (callType === "audio" || !isCameraEnabled);
