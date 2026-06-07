@@ -3574,14 +3574,49 @@ export default function ChatsPage() {
             {!(isMobileViewport && !isCallMinimized && callPhase === "incoming") && (
             <div className="call-popup-header">
               {isCallMinimized && isMobileViewport ? (
-                // Mobile minimized: Telegram-style green bar — tap anywhere to restore
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                  <div className="mobile-call-bar-pulse" />
-                  <span style={{ flex: 1, fontSize: '0.88rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
-                    {callPhase === "in-call" ? ` · ${callTimer}` : callPhase === "outgoing" ? " · Calling…" : " · Connecting…"}
-                  </span>
-                </div>
+                // Mobile minimized bar: [mic] [pulse · name · timer] [end-call]
+                // Tap the name/timer area (or anywhere outside the buttons) to restore.
+                <>
+                  {/* Mic toggle */}
+                  <button
+                    type="button"
+                    style={{
+                      background: callAudioSettings.micMuted ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)',
+                      border: 'none', borderRadius: '50%',
+                      width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: '#fff', flexShrink: 0,
+                    }}
+                    aria-label={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"}
+                    onClick={(e) => { e.stopPropagation(); void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted }); }}
+                  >
+                    {callAudioSettings.micMuted ? <MicOff size={15} aria-hidden="true" /> : <Mic size={15} aria-hidden="true" />}
+                  </button>
+
+                  {/* Name + timer — tap to expand */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
+                    <div className="mobile-call-bar-pulse" />
+                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
+                      {callPhase === "in-call" ? ` · ${callTimer}` : callPhase === "outgoing" ? " · Calling…" : " · Connecting…"}
+                    </span>
+                  </div>
+
+                  {/* End call */}
+                  <button
+                    type="button"
+                    style={{
+                      background: '#ff3b30', border: 'none', borderRadius: '50%',
+                      width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', color: '#fff', flexShrink: 0,
+                    }}
+                    aria-label="End call"
+                    onClick={(e) => { e.stopPropagation(); void endActiveCall(); }}
+                  >
+                    <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(135deg)' }}>
+                      <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+                    </svg>
+                  </button>
+                </>
               ) : (
                 <>
                   <strong className="call-popup-status">
@@ -3599,22 +3634,6 @@ export default function ChatsPage() {
                 </>
               )}
               <div className="call-popup-header-actions">
-                {isCallMinimized && isMobileViewport && callPhase === "in-call" && (
-                  <button
-                    type="button"
-                    style={{
-                      background: '#ff3b30', border: 'none', borderRadius: '50%',
-                      width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', color: '#fff', flexShrink: 0,
-                    }}
-                    aria-label="End call"
-                    onClick={(e) => { e.stopPropagation(); void endActiveCall(); }}
-                  >
-                    <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(135deg)' }}>
-                      <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
-                    </svg>
-                  </button>
-                )}
                 {callPhase !== "incoming" && !(isCallMinimized && isMobileViewport) && (
                   <button
                     type="button"
@@ -4499,7 +4518,7 @@ function MobileActiveScreen({
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              transform: mirrorLocalVideo ? 'scaleX(-1)' : 'none',
+              transform: mirrorLocalVideo && cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none',
             }}
           />
         </div>
@@ -4525,7 +4544,7 @@ function MobileActiveScreen({
                 position: 'absolute', bottom: 8, right: 8,
                 width: 88, height: 120, objectFit: 'cover',
                 borderRadius: 8, border: '2px solid rgba(255,255,255,0.35)',
-                transform: mirrorLocalVideo ? 'scaleX(-1)' : 'none',
+                transform: mirrorLocalVideo && cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none',
                 zIndex: 2,
               }}
             />
