@@ -11,6 +11,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
     "@vitejs/plugin-react": "^4.3.4",
     "emoji-picker-react": "^4.19.1",
     "lucide-react": "^1.16.0",
