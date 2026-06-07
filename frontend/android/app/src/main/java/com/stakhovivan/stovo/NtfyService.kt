@@ -1,10 +1,13 @@
 package com.stakhovivan.stovo
 
 import android.app.Notification
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.net.Uri
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -17,6 +20,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 class NtfyService : Service() {
@@ -49,6 +53,47 @@ class NtfyService : Service() {
 
         override fun onMessage(webSocket: WebSocket, text: String) {
             android.util.Log.d("NtfyService", "msg: $text")
+
+            val jsonObj = try {
+                JSONObject(text)
+            } catch (e: Exception) {
+                android.util.Log.w("NtfyService", "Failed to parse JSON: ${e.message}")
+                return
+            }
+
+            if (jsonObj.optString("event") != "message") return
+
+            val title = jsonObj.optString("title", "Stovo")
+            val body = jsonObj.optString("message", "New message")
+            val click = jsonObj.optString("click", "")
+
+            val notificationId = if (click.isNotEmpty()) click.hashCode() else System.currentTimeMillis().toInt()
+
+            val intent = if (click.isNotEmpty()) {
+                Intent(Intent.ACTION_VIEW, Uri.parse(click))
+            } else {
+                Intent(applicationContext, MainActivity::class.java)
+            }.apply {
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                applicationContext,
+                notificationId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(applicationContext, "stovo_messages")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .build()
+
+            NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
