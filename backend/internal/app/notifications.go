@@ -89,6 +89,7 @@ func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderN
 				Message:  messagePreview,
 				Priority: 3,
 				Tags:     []string{"speech_balloon"},
+				Click:    "stovo://chat/" + chatID,
 			}
 			if err := s.publishToNtfy(ctx, p); err != nil {
 				s.logger.Warnf("ntfy", "publish failed user_topic=%s error=%v", topic, err)
