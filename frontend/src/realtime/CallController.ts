@@ -168,6 +168,18 @@ export default class CallController {
     this.emitSignal({ chatId, targetUserId, data: { type: "offer", sdp: offer.sdp } });
   }
 
+  /**
+   * Acquire local media during a user gesture (required on iOS Safari).
+   * Call this from the button handler BEFORE emitting call:start / call:accept
+   * so that the subsequent ensurePeer() call can reuse the stream without
+   * needing a new user gesture.
+   */
+  async prepareForCall(callType: "audio" | "video") {
+    if (this.sourceStream) return; // already acquired
+    this.callType = callType;
+    await this.acquireLocalStream();
+  }
+
   async acceptIncoming(
     chatId: string,
     targetUserId: string,
@@ -427,8 +439,9 @@ export default class CallController {
     this.closeAudioProcessor();
     this.stopSpeakingDetection();
     this.speakingCallback = null;
-    this.onRemoteVideoTrack = undefined;
-    this.onLocalStreamReady = undefined;
+    // onRemoteVideoTrack and onLocalStreamReady are stable React state setters
+    // registered once at socket setup time. Do NOT clear them here — they must
+    // survive across calls; clearing them breaks video on the second call.
     this.settings = { ...DEFAULT_SETTINGS };
     this.chatId = null;
     this.targetUserId = null;
@@ -488,8 +501,9 @@ export default class CallController {
     };
 
     peer.ontrack = (e) => {
-      const [stream] = e.streams;
-      if (!stream) return;
+      // iOS Safari sometimes fires ontrack with e.streams = [] — fall back to
+      // constructing a stream from the track so we never drop the video.
+      const stream = e.streams[0] ?? new MediaStream([e.track]);
       if (e.track.kind === "audio" && this.remoteAudioEl) {
         this.remoteAudioEl.srcObject = stream;
         this.remoteAudioEl.autoplay = true;
@@ -620,6 +634,20 @@ export default class CallController {
   // ─── Private: stream helpers ──────────────────────────────────────────────────
 
   private async acquireLocalStream() {
+    // If prepareForCall() already acquired the stream during a user gesture and
+    // the peer hasn't been created yet, reuse it to avoid a redundant getUserMedia
+    // call (which may fail on iOS Safari outside a user-gesture context).
+    if (this.sourceStream && !this.peer) {
+      if (this.localVideoEl && this.callType === "video") {
+        this.localVideoEl.srcObject = this.sourceStream;
+        void this.localVideoEl.play().catch(() => undefined);
+      }
+      if (this.sourceStream) this.onLocalStreamReady?.(this.sourceStream);
+      this.applyMicMutedState();
+      this.applyCameraEnabledState();
+      return;
+    }
+
     const isVideo = this.callType === "video";
     let nextSource: MediaStream;
 
