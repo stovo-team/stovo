@@ -345,36 +345,36 @@
   border-color: transparent;
 }
 
-/* Minimized on mobile: same chip style as desktop */
+/* Minimized on mobile: Telegram-style full-width green bar at top */
 .call-popup.call-popup-fullscreen.call-popup-minimized {
   position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   inset: unset;
-  top: max(env(safe-area-inset-top, 0px), 16px);
-  right: 16px;
-  width: auto;
-  min-width: 220px;
-  max-width: calc(100vw - 32px);
-  border-radius: 14px;
-  border: 1px solid var(--border-default);
-  padding: 8px 12px;
-  background: var(--surface-card);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-  flex-direction: row;
-  align-items: center;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid rgba(0,0,0,0.18);
+  background: linear-gradient(90deg, #1a6b3a, #1e8044);
+  padding: 0;
   gap: 0;
-  justify-content: initial;
+  flex-direction: column;
+  z-index: 220;
 }
-
 .call-popup.call-popup-fullscreen.call-popup-minimized .call-popup-header {
   position: static;
-  padding: 0;
-  flex: 1;
-}
-
-.call-popup.call-popup-fullscreen.call-popup-minimized .call-popup-status {
-  color: var(--text-primary);
-  font-size: 0.88rem;
-  text-shadow: none;
+  padding: 0 12px;
+  padding-top: env(safe-area-inset-top, 0px);
+  min-height: 44px;
+  background: transparent;
+  z-index: auto;
+  top: auto;
+  left: auto;
+  right: auto;
+  cursor: pointer;
 }
 
 /* ── Desktop popup avatar (audio call / video off) ─────────────── */
@@ -4344,4 +4344,17 @@ h2 {
   stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.mobile-call-bar-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6ddc8a;
+  flex-shrink: 0;
+  animation: call-bar-dot-pulse 2s ease-in-out infinite;
+}
+@keyframes call-bar-dot-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
