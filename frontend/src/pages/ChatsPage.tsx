@@ -777,6 +777,17 @@ function preferPollingFirst(hostname: string) {
   if (override !== null) {
     return override;
   }
+  // Capacitor (Android/iOS) injects window.Capacitor at runtime. The
+  // doquangtan/socketio server library only populates socket.Handshake.URL
+  // for polling connections — WebSocket connections leave it empty, so the
+  // server cannot extract the auth token and immediately disconnects the
+  // socket. Force polling-first on native platforms so the handshake URL
+  // (which contains the token query param) is always available to the server.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cap = typeof window !== "undefined" ? (window as any).Capacitor : undefined;
+  if (cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform()) {
+    return true;
+  }
   const normalized = hostname.trim().toLowerCase();
   if (!normalized) {
     return false;
@@ -1760,6 +1771,7 @@ export default function ChatsPage() {
     socket.on(
       "call:ringing",
       (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; expiresAt?: string }) => {
+        console.log("[call:ringing] received", payload, "selfId=", currentUser?.id);
         const selfUserId = currentUser?.id ?? null;
         const isCaller = selfUserId !== null && payload.callerId === selfUserId;
         const incomingCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
