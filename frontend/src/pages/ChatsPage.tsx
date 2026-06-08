@@ -4553,18 +4553,27 @@ function MobileActiveScreen({
       )}
       {showAvatar && (
         <>
-          <div className="mobile-active-avatar-wrap">
-            <div className={`mobile-active-audio-ring${isPeerSpeaking ? "" : " silent"}`} />
-            <div className={`mobile-active-audio-ring${isPeerSpeaking ? "" : " silent"}`} />
-            <div className="mobile-active-avatar">{initial}</div>
-          </div>
-          <div className="mobile-active-name">{peerName}</div>
-          <div className="mobile-active-time">{callPhase === "in-call" ? timer : "Connecting…"}</div>
-          <div className="mobile-active-waveform">
-            {[0,1,2,3,4,5,6].map((i) => (
-              <div key={i} className={`mobile-active-wave-bar${isPeerSpeaking ? "" : " silent"}`} />
-            ))}
-          </div>
+          {(() => {
+            const isAnimating = isPeerSpeaking || callPhase === "outgoing" || callPhase === "connecting";
+            return (
+              <>
+                <div className="mobile-active-avatar-wrap">
+                  <div className={`mobile-active-audio-ring${isAnimating ? "" : " silent"}`} />
+                  <div className={`mobile-active-audio-ring${isAnimating ? "" : " silent"}`} />
+                  <div className="mobile-active-avatar">{initial}</div>
+                </div>
+                <div className="mobile-active-name">{peerName}</div>
+                <div className="mobile-active-time">
+                  {callPhase === "in-call" ? timer : callPhase === "outgoing" ? "Calling…" : "Connecting…"}
+                </div>
+                <div className="mobile-active-waveform">
+                  {[0,1,2,3,4,5,6].map((i) => (
+                    <div key={i} className={`mobile-active-wave-bar${isAnimating ? "" : " silent"}`} />
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </>
       )}
       <div className="mobile-active-controls">
