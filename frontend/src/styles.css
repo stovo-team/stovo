@@ -1602,8 +1602,8 @@ h2 {
 
 .error-text {
   background: var(--danger-soft);
-  border: 1px solid #fecaca;
-  color: #b91c1c;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--danger-text);
 }
 
 .success-text {
