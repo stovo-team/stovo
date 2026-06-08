@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
-import { ApiError } from "../api/client";
+import { ApiError, getApiUrl } from "../api/client";
 import { bootstrapNotifications } from "../api/notifications";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
@@ -27,7 +27,8 @@ export default function LoginPage() {
       void bootstrapNotifications(authRequest).catch(() => undefined);
       navigate("/app/chats", { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Login failed");
+      const detail = err instanceof ApiError ? `${err.status}: ${String(err.message)}` : String(err);
+      setError(`${detail}\n(${getApiUrl()})`);
     } finally {
       setIsSubmitting(false);
     }
