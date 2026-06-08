@@ -10,10 +10,12 @@ import {
   LogOut,
   Palette,
   RotateCcw,
+  Server,
   Shield,
   Type,
   X
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import {
   ACCENT_OPTIONS,
@@ -24,7 +26,7 @@ import {
   WALLPAPER_OPTIONS,
   useAppearance
 } from "../appearance/AppearanceContext";
-import { ApiError } from "../api/client";
+import { ApiError, getApiUrl, setApiUrlOverride } from "../api/client";
 import { User } from "../api/auth";
 import { Family } from "../api/family";
 import { FamilyFile, uploadFile } from "../api/files";
@@ -111,8 +113,10 @@ const themePresets = [
 ] as const;
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
   const { accessToken, authRequest, currentUser, logout, updateCurrentUser } = useAuth();
   const { appearance, resolvedThemeMode, updateAppearance } = useAppearance();
+  const [currentServerUrl] = useState(() => getApiUrl());
   const [family, setFamily] = useState<Family | null>(null);
   const [profileForm, setProfileForm] = useState({
     displayName: currentUser?.displayName ?? "",
@@ -542,6 +546,30 @@ export default function SettingsPage() {
             </button>
           </section>
         )}
+
+        <section className="settings-group">
+          <h2>Server</h2>
+          <div className="settings-list">
+            <button
+              type="button"
+              className="settings-row"
+              onClick={async () => {
+                await logout();
+                setApiUrlOverride(null);
+                navigate("/server-setup", { replace: true });
+              }}
+            >
+              <span className="settings-row-icon">
+                <Server aria-hidden="true" size={20} />
+              </span>
+              <span>
+                <strong>Change server address</strong>
+                <small>{currentServerUrl}</small>
+              </span>
+              <ChevronRight aria-hidden="true" size={18} />
+            </button>
+          </div>
+        </section>
 
         <button className="logout-row" type="button" onClick={() => void logout()}>
           <LogOut aria-hidden="true" size={20} />
