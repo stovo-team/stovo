@@ -6,12 +6,24 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.getcapacitor.JSObject
+import com.getcapacitor.PermissionState
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.getcapacitor.annotation.Permission
+import com.getcapacitor.annotation.PermissionCallback
 
-@CapacitorPlugin(name = "NtfyPlugin")
+@CapacitorPlugin(
+    name = "NtfyPlugin",
+    permissions = [
+        Permission(
+            strings = [android.Manifest.permission.POST_NOTIFICATIONS],
+            alias = "notifications"
+        )
+    ]
+)
 class NtfyPlugin : Plugin() {
 
     @PluginMethod
@@ -58,5 +70,30 @@ class NtfyPlugin : Plugin() {
         }
         // Below API 34 or already granted: resolve immediately with no action
         call.resolve()
+    }
+
+    /**
+     * Request POST_NOTIFICATIONS permission (Android 13+ / API 33+).
+     * On older APIs the permission does not exist and is considered granted.
+     * Returns { granted: boolean }.
+     */
+    @PluginMethod
+    fun requestNotificationPermission(call: PluginCall) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            // POST_NOTIFICATIONS does not exist below API 33 — always granted
+            call.resolve(JSObject().put("granted", true))
+            return
+        }
+        if (getPermissionState("notifications") == PermissionState.GRANTED) {
+            call.resolve(JSObject().put("granted", true))
+            return
+        }
+        requestPermissionForAlias("notifications", call, "handleNotificationPermissionResult")
+    }
+
+    @PermissionCallback
+    private fun handleNotificationPermissionResult(call: PluginCall) {
+        val granted = getPermissionState("notifications") == PermissionState.GRANTED
+        call.resolve(JSObject().put("granted", granted))
     }
 }
