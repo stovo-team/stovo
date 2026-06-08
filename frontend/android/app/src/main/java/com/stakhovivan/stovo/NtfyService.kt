@@ -20,6 +20,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
@@ -46,6 +47,22 @@ class NtfyService : Service() {
     private var currentBaseUrl: String = ""
     private var reconnectDelay = RECONNECT_BASE_DELAY_MS
 
+    private fun buildPendingIntent(click: String, requestCode: Int): PendingIntent {
+        val intent = if (click.isNotEmpty()) {
+            Intent(Intent.ACTION_VIEW, Uri.parse(click))
+        } else {
+            Intent(applicationContext, MainActivity::class.java)
+        }.apply {
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        return PendingIntent.getActivity(
+            applicationContext,
+            requestCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
     private val ntfyWebSocketListener = object : WebSocketListener() {
         override fun onOpen(webSocket: WebSocket, response: Response) {
             reconnectDelay = RECONNECT_BASE_DELAY_MS
@@ -69,29 +86,62 @@ class NtfyService : Service() {
 
             val notificationId = if (click.isNotEmpty()) click.hashCode() else System.currentTimeMillis().toInt()
 
-            val intent = if (click.isNotEmpty()) {
-                Intent(Intent.ACTION_VIEW, Uri.parse(click))
-            } else {
-                Intent(applicationContext, MainActivity::class.java)
-            }.apply {
-                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            // Parse tags to determine notification type
+            val tagsArray = jsonObj.optJSONArray("tags")
+            val tags = (0 until (tagsArray?.length() ?: 0)).map { tagsArray!!.getString(it) }
+
+            val isRinging = tags.contains("phone")
+            val isMissed = tags.contains("telephone_receiver")
+            val isMessage = !isRinging && !isMissed
+
+            val notification: Notification = when {
+                isRinging -> {
+                    val pendingIntent = buildPendingIntent(click, notificationId)
+                    val acceptPendingIntent = PendingIntent.getActivity(
+                        applicationContext,
+                        ("accept_" + notificationId).hashCode(),
+                        Intent(Intent.ACTION_VIEW, Uri.parse(click)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        },
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                    )
+                    NotificationCompat.Builder(applicationContext, "stovo_calls")
+                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setAutoCancel(true)
+                        .setContentIntent(pendingIntent)
+                        .setPriority(NotificationCompat.PRIORITY_MAX)
+                        .setCategory(NotificationCompat.CATEGORY_CALL)
+                        .setFullScreenIntent(pendingIntent, true)
+                        .addAction(android.R.drawable.ic_menu_call, "Accept", acceptPendingIntent)
+                        .build()
+                }
+                isMissed -> {
+                    val pendingIntent = buildPendingIntent(click, notificationId)
+                    NotificationCompat.Builder(applicationContext, "stovo_calls")
+                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setAutoCancel(true)
+                        .setContentIntent(pendingIntent)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
+                        .build()
+                }
+                else -> {
+                    // isMessage — keep existing logic unchanged
+                    val pendingIntent = buildPendingIntent(click, notificationId)
+                    NotificationCompat.Builder(applicationContext, "stovo_messages")
+                        .setSmallIcon(R.mipmap.ic_launcher)
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setAutoCancel(true)
+                        .setContentIntent(pendingIntent)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .build()
+                }
             }
-
-            val pendingIntent = PendingIntent.getActivity(
-                applicationContext,
-                notificationId,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-
-            val notification = NotificationCompat.Builder(applicationContext, "stovo_messages")
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle(title)
-                .setContentText(body)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .build()
 
             NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
         }
