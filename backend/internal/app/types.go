@@ -84,6 +84,7 @@ type authResponse struct {
 	TokenType        string     `json:"tokenType"`
 	ExpiresInSeconds int64      `json:"expiresInSeconds"`
 	User             userPublic `json:"user"`
+	RefreshToken     string     `json:"refreshToken,omitempty"` // Also in body for cross-origin clients (e.g. Capacitor on Android)
 }
 
 type setupStatusResponse struct {
@@ -458,17 +459,17 @@ type iceServer struct {
 }
 
 type audioCallSettings struct {
-	SpeakerMode                 string  `json:"speakerMode"`
-	InputDeviceID               string  `json:"inputDeviceId"`
-	OutputDeviceID              string  `json:"outputDeviceId"`
-	EchoCancellation            bool    `json:"echoCancellation"`
-	NoiseSuppression            bool    `json:"noiseSuppression"`
-	AutoGainControl             bool    `json:"autoGainControl"`
-	VoiceEnhancement            bool    `json:"voiceEnhancement"`
-	InputGain                   float64 `json:"inputGain"`
-	OutputVolume                float64 `json:"outputVolume"`
-	VoiceEnhancementThreshold   float64 `json:"voiceEnhancementThreshold"`
-	VoiceEnhancementHighpass    float64 `json:"voiceEnhancementHighpass"`
+	SpeakerMode               string  `json:"speakerMode"`
+	InputDeviceID             string  `json:"inputDeviceId"`
+	OutputDeviceID            string  `json:"outputDeviceId"`
+	EchoCancellation          bool    `json:"echoCancellation"`
+	NoiseSuppression          bool    `json:"noiseSuppression"`
+	AutoGainControl           bool    `json:"autoGainControl"`
+	VoiceEnhancement          bool    `json:"voiceEnhancement"`
+	InputGain                 float64 `json:"inputGain"`
+	OutputVolume              float64 `json:"outputVolume"`
+	VoiceEnhancementThreshold float64 `json:"voiceEnhancementThreshold"`
+	VoiceEnhancementHighpass  float64 `json:"voiceEnhancementHighpass"`
 }
 
 type updateAudioSettingsRequest = audioCallSettings
