@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Stovo</string>
+    <string name="title_activity_main">Stovo</string>
+    <string name="package_name">com.stakhovivan.stovo</string>
+    <string name="custom_url_scheme">com.stakhovivan.stovo</string>
+</resources>
