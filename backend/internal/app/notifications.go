@@ -113,6 +113,7 @@ func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatI
 			Message:  "Incoming call",
 			Priority: 5,
 			Tags:     []string{"phone"},
+			Click:    "stovo://call/" + chatID,
 		}
 		if err := s.publishToNtfy(ctx, p); err != nil {
 			s.logger.Warnf("ntfy", "call ringing publish failed user_topic=%s error=%v", topic, err)
@@ -135,6 +136,7 @@ func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID
 			Message:  "Missed call",
 			Priority: 3,
 			Tags:     []string{"telephone_receiver"},
+			Click:    "stovo://call/missed/" + chatID,
 		}
 		if err := s.publishToNtfy(ctx, p); err != nil {
 			s.logger.Warnf("ntfy", "call missed publish failed user_topic=%s error=%v", topic, err)
