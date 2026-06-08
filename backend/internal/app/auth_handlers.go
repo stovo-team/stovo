@@ -167,6 +167,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		TokenType:        "Bearer",
 		ExpiresInSeconds: expiresInSeconds,
 		User:             user,
+		RefreshToken:     token,
 	})
 }
 
@@ -222,17 +223,26 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		TokenType:        "Bearer",
 		ExpiresInSeconds: expiresInSeconds,
 		User:             user,
+		RefreshToken:     token,
 	})
 }
 
 func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie(s.cfg.RefreshCookieName)
-	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+	// Accept the refresh token from the cookie (same-origin web) or from the
+	// X-Refresh-Token header (cross-origin Capacitor Android clients).
+	rawToken := ""
+	if cookie, err := r.Cookie(s.cfg.RefreshCookieName); err == nil {
+		rawToken = strings.TrimSpace(cookie.Value)
+	}
+	if rawToken == "" {
+		rawToken = strings.TrimSpace(r.Header.Get("X-Refresh-Token"))
+	}
+	if rawToken == "" {
 		s.detail(w, http.StatusUnauthorized, "Refresh token is missing")
 		return
 	}
 
-	user, nextToken, err := s.rotateRefreshToken(r.Context(), cookie.Value, s.getClientIP(r))
+	user, nextToken, err := s.rotateRefreshToken(r.Context(), rawToken, s.getClientIP(r))
 	if err != nil {
 		s.clearRefreshCookie(w)
 		s.detail(w, http.StatusUnauthorized, "Invalid refresh token")
@@ -251,13 +261,20 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		TokenType:        "Bearer",
 		ExpiresInSeconds: expiresInSeconds,
 		User:             user,
+		RefreshToken:     nextToken,
 	})
 }
 
 func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie(s.cfg.RefreshCookieName)
-	if err == nil && strings.TrimSpace(cookie.Value) != "" {
-		_ = s.revokeRefreshToken(r.Context(), cookie.Value)
+	rawToken := ""
+	if cookie, err := r.Cookie(s.cfg.RefreshCookieName); err == nil {
+		rawToken = strings.TrimSpace(cookie.Value)
+	}
+	if rawToken == "" {
+		rawToken = strings.TrimSpace(r.Header.Get("X-Refresh-Token"))
+	}
+	if rawToken != "" {
+		_ = s.revokeRefreshToken(r.Context(), rawToken)
 	}
 	s.clearRefreshCookie(w)
 	s.json(w, http.StatusOK, map[string]string{"status": "ok"})

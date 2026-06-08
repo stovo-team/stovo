@@ -1,4 +1,4 @@
-import { apiRequest } from "./client";
+import { apiRequest, getStoredRefreshToken } from "./client";
 import { FamilyFile } from "./files";
 
 export type UserRole = "owner" | "admin" | "member" | "child";
@@ -22,6 +22,7 @@ export interface AuthResponse {
   tokenType: "Bearer";
   expiresInSeconds: number;
   user: User;
+  refreshToken?: string; // returned in body for cross-origin (Capacitor) clients
 }
 
 export interface SetupStatus {
@@ -59,13 +60,17 @@ export function login(payload: LoginPayload) {
 }
 
 export function refreshSession() {
+  const storedToken = getStoredRefreshToken();
   return apiRequest<AuthResponse>("/api/auth/refresh", {
-    method: "POST"
+    method: "POST",
+    headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
   });
 }
 
 export function logout() {
+  const storedToken = getStoredRefreshToken();
   return apiRequest<{ status: string }>("/api/auth/logout", {
-    method: "POST"
+    method: "POST",
+    headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
   });
 }

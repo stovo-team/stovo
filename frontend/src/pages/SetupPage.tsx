@@ -81,6 +81,9 @@ export default function SetupPage() {
         <p className="secondary-link">
           Already set up? <Link to="/login">Log in</Link>
         </p>
+        <p className="secondary-link">
+          <Link to="/server-setup">Change server address</Link>
+        </p>
       </section>
     </main>
   );
