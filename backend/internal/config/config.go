@@ -46,6 +46,8 @@ type Config struct {
 	TurnPort                     int
 	TurnUsername                 string
 	TurnPassword                 string
+	NtfyBaseURL                  string
+	NtfyPublishToken             string
 }
 
 func Load() (Config, error) {
@@ -123,6 +125,8 @@ func Load() (Config, error) {
 		TurnPort:                     envInt("TURN_PORT", 3478),
 		TurnUsername:                 envString("TURN_USERNAME", "family"),
 		TurnPassword:                 envString("TURN_PASSWORD", "change_me"),
+		NtfyBaseURL:                  envString("NTFY_BASE_URL", "http://ntfy:80"),
+		NtfyPublishToken:             envString("NTFY_PUBLISH_TOKEN", ""),
 	}
 
 	return cfg, nil
