@@ -4,12 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { setApiUrlOverride } from "../api/client";
 import VeloLogo from "../components/VeloLogo";
 
-function isValidHttpUrl(value: string): boolean {
+function normalizeUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
   try {
-    const url = new URL(value.trim());
-    return url.protocol === "http:" || url.protocol === "https:";
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    url.hash = "";
+    url.search = "";
+    return url.toString().replace(/\/$/, "");
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -17,16 +22,32 @@ export default function ServerSetupPage() {
   const navigate = useNavigate();
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    const trimmed = url.trim();
-    if (!isValidHttpUrl(trimmed)) {
-      setError("Enter a valid URL, e.g. http://192.168.1.100:8000");
+    const normalized = normalizeUrl(url);
+    if (!normalized) {
+      setError("Enter a valid URL, e.g. https://stovo.example.com or http://192.168.1.100:8000");
       return;
     }
-    setApiUrlOverride(trimmed);
-    navigate("/", { replace: true });
+    setError(null);
+    setIsTesting(true);
+    try {
+      const res = await fetch(`${normalized}/api/auth/setup-status`, {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok && res.status !== 401) {
+        setError(`Server replied with ${res.status} — check the URL`);
+        return;
+      }
+      setApiUrlOverride(normalized);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(`Cannot reach ${normalized} — ${String(err)}`);
+    } finally {
+      setIsTesting(false);
+    }
   }
 
   return (
@@ -36,7 +57,7 @@ export default function ServerSetupPage() {
         <VeloLogo className="app-brand-logo" title="Stovo" />
         <h1>Server address</h1>
         <p className="muted-copy">
-          Enter the address of your Stovo server to connect.
+          Enter the address of your Stovo server. Use <strong>https://</strong> for domain names.
         </p>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
@@ -44,7 +65,7 @@ export default function ServerSetupPage() {
             <input
               required
               type="url"
-              placeholder="http://192.168.1.100:8000"
+              placeholder="https://stovo.example.com"
               autoComplete="url"
               value={url}
               onChange={(event) => {
@@ -54,11 +75,12 @@ export default function ServerSetupPage() {
             />
           </label>
           {error && <p className="error-text">{error}</p>}
-          <button type="submit">Connect</button>
+          <button type="submit" disabled={isTesting}>
+            {isTesting ? "Testing connection…" : "Connect"}
+          </button>
         </form>
         <p className="secondary-link">
-          Find the server IP in your router or run <code>ipconfig</code> on the
-          server machine.
+          For local network: <code>http://192.168.1.100:8000</code>
         </p>
       </section>
     </main>
