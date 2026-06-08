@@ -692,8 +692,16 @@ func (s *Server) emitCallToUser(userID, event string, payload any) {
 		targets = append(targets, sock)
 	}
 	s.socketMu.RUnlock()
+	if len(targets) == 0 {
+		s.logger.Warnf("realtime.call", "emitCallToUser: no sockets for user_id=%s event=%s", userID, event)
+		return
+	}
 	for _, sock := range targets {
-		_ = sock.Emit(event, payload)
+		if err := sock.Emit(event, payload); err != nil {
+			s.logger.Warnf("realtime.call", "emitCallToUser: emit failed user_id=%s event=%s socket_id=%s error=%v", userID, event, sock.Id, err)
+		} else {
+			s.logger.Infof("realtime.call", "emitCallToUser: emitted user_id=%s event=%s socket_id=%s", userID, event, sock.Id)
+		}
 	}
 }
 
