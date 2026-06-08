@@ -213,7 +213,8 @@ func (s *Server) configureSockets() {
 			s.logger.Infof("realtime.call", "call:ringing emitted chat_id=%s caller=%s callee=%s", session.ChatID, session.CallerUserID, session.CalleeUserID)
 			_ = s.sockets.To("user:"+session.CallerUserID).Emit("call:ringing", payloadMap)
 			_ = s.sockets.To("user:"+session.CalleeUserID).Emit("call:ringing", payloadMap)
-			s.scheduleCallTimeout(session.ChatID, session.ExpiresAt)
+			s.scheduleCallTimeout(session.ChatID, session.ExpiresAt, user.DisplayName)
+			go s.notifyCallRinging(session.CalleeUserID, user.DisplayName, session.ChatID)
 		})
 
 		socket.On("call:accept", func(event *socketio.EventPayload) {
@@ -272,6 +273,7 @@ func (s *Server) configureSockets() {
 				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Call not available"})
 				return
 			}
+			wasRinging := session.State == callStateRinging
 			ended, endedOK := s.endCallSession(payload.ChatID)
 			if !endedOK {
 				return
@@ -281,6 +283,9 @@ func (s *Server) configureSockets() {
 			_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:canceled", payloadMap)
 			_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payloadMap)
 			_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payloadMap)
+			if wasRinging {
+				go s.notifyCallMissed(ended.CalleeUserID, user.DisplayName, ended.ChatID)
+			}
 		})
 
 		socket.On("call:end", func(event *socketio.EventPayload) {

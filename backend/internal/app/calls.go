@@ -123,7 +123,7 @@ func callParticipant(session *callSession, userID string) bool {
 	return session.CallerUserID == userID || session.CalleeUserID == userID
 }
 
-func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time) {
+func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time, callerName string) {
 	go func() {
 		time.Sleep(time.Until(expiresAt))
 		session, ok := s.getCallSession(chatID)
@@ -149,5 +149,6 @@ func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time) {
 		_ = s.sockets.To("user:" + ended.CallerUserID).Emit("call:ended", payload)
 		_ = s.sockets.To("user:" + ended.CalleeUserID).Emit("call:ended", payload)
 		s.logger.Warnf("realtime.call", "call timed out chat_id=%s caller=%s callee=%s", ended.ChatID, ended.CallerUserID, ended.CalleeUserID)
+		go s.notifyCallMissed(ended.CalleeUserID, callerName, ended.ChatID)
 	}()
 }
