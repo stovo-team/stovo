@@ -1,5 +1,6 @@
 const DEFAULT_API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const API_URL_STORAGE_KEY = "familyMessenger.apiUrl";
+const REFRESH_TOKEN_STORAGE_KEY = "familyMessenger.refreshToken";
 const KNOWN_TUNNEL_HOST_SUFFIXES = [
   ".trycloudflare.com",
   ".loca.lt",
@@ -90,6 +91,20 @@ export function isServerUrlConfigured(): boolean {
     return true;
   }
   return readStoredApiUrl() !== null;
+}
+
+export function storeRefreshToken(token: string | null) {
+  if (typeof window === "undefined") return;
+  if (token) {
+    window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, token);
+  } else {
+    window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+  }
+}
+
+export function getStoredRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
 }
 
 export function setApiUrlOverride(apiUrl: string | null) {

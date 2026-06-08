@@ -9,7 +9,7 @@ import {
   useState
 } from "react";
 
-import { ApiError, ApiRequestOptions, apiRequest } from "../api/client";
+import { ApiError, ApiRequestOptions, apiRequest, storeRefreshToken } from "../api/client";
 import {
   AuthResponse,
   LoginPayload,
@@ -63,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setAccessToken(response.accessToken);
       setCurrentUser(response.user);
       scheduleProactiveRefresh(response.expiresInSeconds);
+      if (response.refreshToken) {
+        storeRefreshToken(response.refreshToken);
+      }
     },
     [scheduleProactiveRefresh]
   );
@@ -142,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(refreshTimerRef.current);
     }
     await logoutRequest().catch(() => undefined);
+    storeRefreshToken(null);
     setAccessToken(null);
     setCurrentUser(null);
   }, []);
