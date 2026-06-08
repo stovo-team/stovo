@@ -8,9 +8,9 @@ import (
 type callState string
 
 const (
-	callStateRinging   callState = "ringing"
+	callStateRinging    callState = "ringing"
 	callStateConnecting callState = "connecting"
-	callStateConnected callState = "connected"
+	callStateConnected  callState = "connected"
 )
 
 type callSession struct {
@@ -123,6 +123,24 @@ func callParticipant(session *callSession, userID string) bool {
 	return session.CallerUserID == userID || session.CalleeUserID == userID
 }
 
+// getRingingSessionForUser returns the active ringing call session for a user
+// (where the user is the callee and the call is still in ringing state), or
+// nil if no such session exists. This is used to re-emit call:ringing to a
+// newly reconnected socket so the receiver never misses an incoming call.
+func (s *Server) getRingingSessionForUser(userID string) *callSession {
+	s.callMu.Lock()
+	defer s.callMu.Unlock()
+	chatID, ok := s.userActiveCall[userID]
+	if !ok {
+		return nil
+	}
+	session, exists := s.callByChat[chatID]
+	if !exists || session.State != callStateRinging {
+		return nil
+	}
+	return session
+}
+
 func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time, callerName string) {
 	go func() {
 		time.Sleep(time.Until(expiresAt))
@@ -138,16 +156,16 @@ func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time, callerN
 			return
 		}
 		payload := map[string]any{
-			"chatId":    ended.ChatID,
-			"callerId":  ended.CallerUserID,
-			"calleeId":  ended.CalleeUserID,
-			"reason":    "timeout",
-			"endedAt":   nowString(),
+			"chatId":   ended.ChatID,
+			"callerId": ended.CallerUserID,
+			"calleeId": ended.CalleeUserID,
+			"reason":   "timeout",
+			"endedAt":  nowString(),
 		}
-		_ = s.sockets.To("user:" + ended.CallerUserID).Emit("call:timeout", payload)
-		_ = s.sockets.To("user:" + ended.CalleeUserID).Emit("call:timeout", payload)
-		_ = s.sockets.To("user:" + ended.CallerUserID).Emit("call:ended", payload)
-		_ = s.sockets.To("user:" + ended.CalleeUserID).Emit("call:ended", payload)
+		_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:timeout", payload)
+		_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:timeout", payload)
+		_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payload)
+		_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payload)
 		s.logger.Warnf("realtime.call", "call timed out chat_id=%s caller=%s callee=%s", ended.ChatID, ended.CallerUserID, ended.CalleeUserID)
 		go s.notifyCallMissed(ended.CalleeUserID, callerName, ended.ChatID)
 	}()

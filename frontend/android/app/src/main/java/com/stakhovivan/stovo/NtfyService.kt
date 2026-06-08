@@ -106,23 +106,23 @@ class NtfyService : Service() {
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
                     NotificationCompat.Builder(applicationContext, "stovo_calls")
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .setContentTitle(title)
-                        .setContentText(body)
+                        .setSmallIcon(R.drawable.ic_notification_call)
+                        .setContentTitle(title)           // caller name
+                        .setContentText("Incoming call")
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
                         .setPriority(NotificationCompat.PRIORITY_MAX)
                         .setCategory(NotificationCompat.CATEGORY_CALL)
                         .setFullScreenIntent(pendingIntent, true)
-                        .addAction(android.R.drawable.ic_menu_call, "Accept", acceptPendingIntent)
+                        .addAction(R.drawable.ic_notification_call, "Accept", acceptPendingIntent)
                         .build()
                 }
                 isMissed -> {
                     val pendingIntent = buildPendingIntent(click, notificationId)
                     NotificationCompat.Builder(applicationContext, "stovo_calls")
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .setContentTitle(title)
-                        .setContentText(body)
+                        .setSmallIcon(R.drawable.ic_notification_call)
+                        .setContentTitle(title)           // caller name
+                        .setContentText("Missed call")
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -130,12 +130,12 @@ class NtfyService : Service() {
                         .build()
                 }
                 else -> {
-                    // isMessage — keep existing logic unchanged
+                    // Message notification: "Sender: text" on a single line
                     val pendingIntent = buildPendingIntent(click, notificationId)
                     NotificationCompat.Builder(applicationContext, "stovo_messages")
-                        .setSmallIcon(R.mipmap.ic_launcher)
-                        .setContentTitle(title)
-                        .setContentText(body)
+                        .setSmallIcon(R.drawable.ic_notification)
+                        .setContentTitle(title)           // sender name
+                        .setContentText(body)             // message text
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -204,7 +204,7 @@ class NtfyService : Service() {
         return NotificationCompat.Builder(this, NotificationChannels.SERVICE_CHANNEL_ID)
             .setContentTitle("Stovo")
             .setContentText("Notifications active")
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
             .setSilent(true)
             .build()

@@ -2,13 +2,12 @@ import { FormEvent, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { ApiError, getApiUrl } from "../api/client";
-import { bootstrapNotifications } from "../api/notifications";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { currentUser, login, authRequest } = useAuth();
+  const { currentUser, login } = useAuth();
   const [loginValue, setLoginValue] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +23,6 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login({ login: loginValue, password });
-      void bootstrapNotifications(authRequest).catch(() => undefined);
       navigate("/app/chats", { replace: true });
     } catch (err) {
       const detail = err instanceof ApiError ? `${err.status}: ${String(err.message)}` : String(err);

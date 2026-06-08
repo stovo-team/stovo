@@ -63,6 +63,24 @@ func (s *Server) configureSockets() {
 			}
 		}
 
+		// Re-emit call:ringing to this socket if there is a pending incoming call
+		// for the user. This handles the case where the callee's Android socket
+		// reconnects (e.g. app foregrounded from a notification) after the original
+		// call:ringing event was already sent to the previous socket.
+		if ringing := s.getRingingSessionForUser(user.ID); ringing != nil {
+			payloadMap := map[string]any{
+				"chatId":    ringing.ChatID,
+				"callerId":  ringing.CallerUserID,
+				"calleeId":  ringing.CalleeUserID,
+				"callType":  ringing.CallType,
+				"state":     string(ringing.State),
+				"createdAt": ringing.CreatedAt.Format(time.RFC3339Nano),
+				"expiresAt": ringing.ExpiresAt.Format(time.RFC3339Nano),
+			}
+			s.logger.Infof("realtime.call", "call:ringing re-emitted on reconnect user_id=%s chat_id=%s socket_id=%s", user.ID, ringing.ChatID, socket.Id)
+			_ = socket.Emit("call:ringing", payloadMap)
+		}
+
 		socket.On("disconnect", func(_ *socketio.EventPayload) {
 			s.unregisterSocket(user.ID, socket.Id)
 			// Only end the call when the user has no remaining sockets.
