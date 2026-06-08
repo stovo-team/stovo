@@ -81,6 +81,17 @@ export function getApiUrl() {
   );
 }
 
+export function isServerUrlConfigured(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  const params = new URLSearchParams(window.location.search);
+  if (normalizeApiUrl(params.get("apiUrl"))) {
+    return true;
+  }
+  return readStoredApiUrl() !== null;
+}
+
 export function setApiUrlOverride(apiUrl: string | null) {
   if (typeof window === "undefined") {
     return;
