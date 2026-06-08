@@ -97,8 +97,8 @@ func (s *Server) configureSockets() {
 						"reason":   "disconnected",
 						"endedAt":  nowString(),
 					}
-					_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payload)
-					_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payload)
+					s.emitCallToUser(ended.CallerUserID, "call:ended", payload)
+					s.emitCallToUser(ended.CalleeUserID, "call:ended", payload)
 				}
 			}
 			if !s.userOnline(user.ID) {
@@ -229,8 +229,8 @@ func (s *Server) configureSockets() {
 				"expiresAt": session.ExpiresAt.Format(time.RFC3339Nano),
 			}
 			s.logger.Infof("realtime.call", "call:ringing emitted chat_id=%s caller=%s callee=%s", session.ChatID, session.CallerUserID, session.CalleeUserID)
-			_ = s.sockets.To("user:"+session.CallerUserID).Emit("call:ringing", payloadMap)
-			_ = s.sockets.To("user:"+session.CalleeUserID).Emit("call:ringing", payloadMap)
+			s.emitCallToUser(session.CallerUserID, "call:ringing", payloadMap)
+			s.emitCallToUser(session.CalleeUserID, "call:ringing", payloadMap)
 			s.scheduleCallTimeout(session.ChatID, session.ExpiresAt, user.DisplayName)
 			go s.notifyCallRinging(session.CalleeUserID, user.DisplayName, session.ChatID)
 		})
@@ -254,8 +254,8 @@ func (s *Server) configureSockets() {
 				"callType": session.CallType,
 				"state":    string(session.State),
 			}
-			_ = s.sockets.To("user:"+session.CallerUserID).Emit("call:accepted", payloadMap)
-			_ = s.sockets.To("user:"+session.CalleeUserID).Emit("call:accepted", payloadMap)
+			s.emitCallToUser(session.CallerUserID, "call:accepted", payloadMap)
+			s.emitCallToUser(session.CalleeUserID, "call:accepted", payloadMap)
 		})
 
 		socket.On("call:decline", func(event *socketio.EventPayload) {
@@ -274,10 +274,10 @@ func (s *Server) configureSockets() {
 				return
 			}
 			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "declined", "endedAt": nowString()}
-			_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:declined", payloadMap)
-			_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:declined", payloadMap)
-			_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payloadMap)
-			_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payloadMap)
+			s.emitCallToUser(ended.CallerUserID, "call:declined", payloadMap)
+			s.emitCallToUser(ended.CalleeUserID, "call:declined", payloadMap)
+			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
+			s.emitCallToUser(ended.CalleeUserID, "call:ended", payloadMap)
 		})
 
 		socket.On("call:cancel", func(event *socketio.EventPayload) {
@@ -297,10 +297,10 @@ func (s *Server) configureSockets() {
 				return
 			}
 			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "canceled", "endedAt": nowString()}
-			_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:canceled", payloadMap)
-			_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:canceled", payloadMap)
-			_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payloadMap)
-			_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payloadMap)
+			s.emitCallToUser(ended.CallerUserID, "call:canceled", payloadMap)
+			s.emitCallToUser(ended.CalleeUserID, "call:canceled", payloadMap)
+			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
+			s.emitCallToUser(ended.CalleeUserID, "call:ended", payloadMap)
 			if wasRinging {
 				go s.notifyCallMissed(ended.CalleeUserID, user.DisplayName, ended.ChatID)
 			}
@@ -322,8 +322,8 @@ func (s *Server) configureSockets() {
 				return
 			}
 			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "ended", "endedAt": nowString()}
-			_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payloadMap)
-			_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payloadMap)
+			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
+			s.emitCallToUser(ended.CalleeUserID, "call:ended", payloadMap)
 		})
 
 		socket.On("call:signal", func(event *socketio.EventPayload) {
@@ -351,7 +351,7 @@ func (s *Server) configureSockets() {
 			if session.State == callStateConnecting {
 				_, _ = s.setCallSessionState(payload.ChatID, callStateConnected)
 			}
-			_ = s.sockets.To("user:"+targetUserID).Emit("call:signal", map[string]any{
+			s.emitCallToUser(targetUserID, "call:signal", map[string]any{
 				"chatId":     payload.ChatID,
 				"fromUserId": user.ID,
 				"data":       payload.Data,
@@ -678,6 +678,23 @@ func (s *Server) emitSocketError(socket *socketio.Socket, clientMessageID *strin
 		payload["clientMessageId"] = *clientMessageID
 	}
 	_ = socket.Emit("error", payload)
+}
+
+// emitCallToUser sends a call socket event directly to every socket tracked for
+// userID, bypassing the library's room-broadcast path. Room broadcasts fired
+// from inside a socket-event handler goroutine can deadlock or silently drop in
+// the doquangtan/socketio library; direct socket.Emit never has that problem.
+func (s *Server) emitCallToUser(userID, event string, payload any) {
+	s.socketMu.RLock()
+	sockets := s.userSockets[userID]
+	targets := make([]*socketio.Socket, 0, len(sockets))
+	for _, sock := range sockets {
+		targets = append(targets, sock)
+	}
+	s.socketMu.RUnlock()
+	for _, sock := range targets {
+		_ = sock.Emit(event, payload)
+	}
 }
 
 func (s *Server) registerSocket(user userPublic, socket *socketio.Socket) {

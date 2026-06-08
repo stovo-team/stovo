@@ -162,10 +162,10 @@ func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time, callerN
 			"reason":   "timeout",
 			"endedAt":  nowString(),
 		}
-		_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:timeout", payload)
-		_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:timeout", payload)
-		_ = s.sockets.To("user:"+ended.CallerUserID).Emit("call:ended", payload)
-		_ = s.sockets.To("user:"+ended.CalleeUserID).Emit("call:ended", payload)
+		s.emitCallToUser(ended.CallerUserID, "call:timeout", payload)
+		s.emitCallToUser(ended.CalleeUserID, "call:timeout", payload)
+		s.emitCallToUser(ended.CallerUserID, "call:ended", payload)
+		s.emitCallToUser(ended.CalleeUserID, "call:ended", payload)
 		s.logger.Warnf("realtime.call", "call timed out chat_id=%s caller=%s callee=%s", ended.ChatID, ended.CallerUserID, ended.CalleeUserID)
 		go s.notifyCallMissed(ended.CalleeUserID, callerName, ended.ChatID)
 	}()

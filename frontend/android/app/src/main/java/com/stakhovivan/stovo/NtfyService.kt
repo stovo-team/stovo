@@ -3,11 +3,15 @@ package com.stakhovivan.stovo
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.pm.PackageManager
 import android.content.Intent
+import android.os.Build
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -94,6 +98,25 @@ class NtfyService : Service() {
             val isMissed = tags.contains("telephone_receiver")
             val isMessage = !isRinging && !isMissed
 
+            // Guard: POST_NOTIFICATIONS required on API 33+. Foreground service
+            // notifications bypass this check, but regular notify() calls do not.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(
+                        applicationContext,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    android.util.Log.w(
+                        "NtfyService",
+                        "POST_NOTIFICATIONS not granted — notification suppressed. " +
+                        "Grant it in Settings → Apps → Stovo → Permissions → Notifications."
+                    )
+                    return
+                }
+            }
+
+            val appIcon = BitmapFactory.decodeResource(applicationContext.resources, R.mipmap.ic_launcher)
+
             val notification: Notification = when {
                 isRinging -> {
                     val pendingIntent = buildPendingIntent(click, notificationId)
@@ -107,6 +130,7 @@ class NtfyService : Service() {
                     )
                     NotificationCompat.Builder(applicationContext, "stovo_calls")
                         .setSmallIcon(R.drawable.ic_notification_call)
+                        .setLargeIcon(appIcon)
                         .setContentTitle(title)           // caller name
                         .setContentText("Incoming call")
                         .setAutoCancel(true)
@@ -121,6 +145,7 @@ class NtfyService : Service() {
                     val pendingIntent = buildPendingIntent(click, notificationId)
                     NotificationCompat.Builder(applicationContext, "stovo_calls")
                         .setSmallIcon(R.drawable.ic_notification_call)
+                        .setLargeIcon(appIcon)
                         .setContentTitle(title)           // caller name
                         .setContentText("Missed call")
                         .setAutoCancel(true)
@@ -130,10 +155,10 @@ class NtfyService : Service() {
                         .build()
                 }
                 else -> {
-                    // Message notification: "Sender: text" on a single line
                     val pendingIntent = buildPendingIntent(click, notificationId)
                     NotificationCompat.Builder(applicationContext, "stovo_messages")
                         .setSmallIcon(R.drawable.ic_notification)
+                        .setLargeIcon(appIcon)
                         .setContentTitle(title)           // sender name
                         .setContentText(body)             // message text
                         .setAutoCancel(true)
@@ -203,10 +228,11 @@ class NtfyService : Service() {
     private fun buildServiceNotification(): Notification {
         return NotificationCompat.Builder(this, NotificationChannels.SERVICE_CHANNEL_ID)
             .setContentTitle("Stovo")
-            .setContentText("Notifications active")
             .setSmallIcon(R.drawable.ic_notification)
-            .setOngoing(true)
+            .setOngoing(false)          // dismissable — user can swipe it away
             .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             .build()
     }
 
