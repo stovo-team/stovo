@@ -37,7 +37,10 @@ func (s *Server) publishToNtfy(ctx context.Context, payload ntfyPayload) error {
 	if err != nil {
 		return fmt.Errorf("ntfy marshal: %w", err)
 	}
-	url := s.cfg.NtfyBaseURL + "/" + payload.Topic
+	// ntfy JSON publishing API: POST to base URL with topic in the JSON body.
+	// Posting to /{topic} treats the entire body as plain text — the JSON fields
+	// (title, tags, click, etc.) are ignored and the raw JSON becomes the message.
+	url := s.cfg.NtfyBaseURL
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("ntfy request: %w", err)
