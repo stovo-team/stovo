@@ -8,6 +8,7 @@ interface NtfyPlugin {
   startService(options: { topic: string; ntfyBaseUrl: string }): Promise<void>;
   stopService(): Promise<void>;
   checkFullScreenIntent(): Promise<void>;
+  requestNotificationPermission(): Promise<{ granted: boolean }>;
 }
 
 const NtfyPlugin = registerPlugin<NtfyPlugin>("NtfyPlugin");
@@ -38,23 +39,13 @@ export async function requestPostNotificationsPermission(): Promise<boolean> {
     return true;
   }
   try {
-    // On SDK < 33 POST_NOTIFICATIONS does not exist — always granted.
-    const cap = Capacitor as unknown as {
-      Plugins: {
-        Permissions: {
-          checkPermissions: () => Promise<{ notifications: string }>;
-          requestPermissions: (perms: string[]) => Promise<{ notifications: string }>;
-        };
-      };
-    };
-    const result = await cap.Plugins.Permissions.checkPermissions();
-    if (result.notifications === "granted") {
-      return true;
-    }
-    const requested = await cap.Plugins.Permissions.requestPermissions(["notifications"]);
-    return requested.notifications === "granted";
+    // Delegates to NtfyPlugin native method which handles API-level guards:
+    // - API < 33: POST_NOTIFICATIONS does not exist, returns granted=true immediately
+    // - API 33+: checks current state, shows system dialog if not yet decided
+    const result = await NtfyPlugin.requestNotificationPermission();
+    return result.granted;
   } catch {
-    // Permissions plugin not available (SDK < 33 or web): treat as granted
+    // Plugin not available in web/test environments: treat as granted
     return true;
   }
 }
