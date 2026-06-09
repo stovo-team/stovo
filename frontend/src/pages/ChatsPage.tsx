@@ -36,7 +36,6 @@ import {
   Video,
   VideoOff,
   Volume2,
-  VolumeX,
   Maximize2,
   Minimize2,
   Search,
@@ -3614,7 +3613,6 @@ export default function ChatsPage() {
                 callPhase={callPhase}
                 isPeerSpeaking={isPeerSpeaking}
                 isMicMuted={callAudioSettings.micMuted}
-                isSoundDisabled={callAudioSettings.soundDisabled}
                 isCameraEnabled={callAudioSettings.cameraEnabled}
                 cameraFacingMode={callAudioSettings.cameraFacingMode}
                 speakerMode={callAudioSettings.speakerMode}
@@ -3624,7 +3622,6 @@ export default function ChatsPage() {
                 remoteVideoStream={remoteVideoStream}
                 mirrorLocalVideo={callAudioSettings.mirrorLocalVideo}
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-                onToggleSound={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
                 onToggleCamera={() => {
                   if (!localVideoStream) {
                     // Camera not yet open — start it. Set callType to "video"
@@ -3818,21 +3815,6 @@ export default function ChatsPage() {
                         )}
                       </button>
                       <span>{callAudioSettings.micMuted ? "Unmute" : "Mute"}</span>
-                    </div>
-                    <div className="call-ctrl-wrap">
-                      <button
-                        type="button"
-                        className={`call-ctrl-btn${callAudioSettings.soundDisabled ? " is-muted" : ""}`}
-                        aria-label={callAudioSettings.soundDisabled ? "Enable sound" : "Mute sound"}
-                        onClick={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
-                      >
-                        {callAudioSettings.soundDisabled ? (
-                          <VolumeX aria-hidden="true" size={20} />
-                        ) : (
-                          <Volume2 aria-hidden="true" size={20} />
-                        )}
-                      </button>
-                      <span>{callAudioSettings.soundDisabled ? "Unmute" : "Mute"}</span>
                     </div>
                     {isMobileViewport && (
                       <div className="call-ctrl-wrap">
@@ -4521,7 +4503,6 @@ function MobileActiveScreen({
   callPhase,
   isPeerSpeaking,
   isMicMuted,
-  isSoundDisabled,
   isCameraEnabled,
   cameraFacingMode,
   speakerMode,
@@ -4531,7 +4512,6 @@ function MobileActiveScreen({
   remoteVideoStream,
   mirrorLocalVideo,
   onToggleMic,
-  onToggleSound,
   onToggleCamera,
   onToggleFlip,
   onOpenSpeakerSheet,
@@ -4542,7 +4522,6 @@ function MobileActiveScreen({
   callPhase: string;
   isPeerSpeaking: boolean;
   isMicMuted: boolean;
-  isSoundDisabled: boolean;
   isCameraEnabled: boolean;
   cameraFacingMode: "user" | "environment";
   speakerMode: "small" | "large";
@@ -4552,7 +4531,6 @@ function MobileActiveScreen({
   remoteVideoStream: MediaStream | null;
   mirrorLocalVideo: boolean;
   onToggleMic: () => void;
-  onToggleSound: () => void;
   onToggleCamera: () => void;
   onToggleFlip: () => void;
   onOpenSpeakerSheet: () => void;
@@ -4673,21 +4651,6 @@ function MobileActiveScreen({
             }</svg>
           </button>
           <span className="mobile-active-ctrl-lbl">{isMicMuted ? "Unmute" : "Mute"}</span>
-        </div>
-        {/* Remote audio */}
-        <div className="mobile-active-ctrl">
-          <button
-            type="button"
-            className={`mobile-active-ctrl-btn${isSoundDisabled ? " muted" : ""}`}
-            aria-label={isSoundDisabled ? "Unmute sound" : "Mute sound"}
-            onClick={onToggleSound}
-          >
-            <svg viewBox="0 0 24 24">{isSoundDisabled
-              ? <><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>
-              : <><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14"/></>
-            }</svg>
-          </button>
-          <span className="mobile-active-ctrl-lbl">{isSoundDisabled ? "Unmute" : "Mute"}</span>
         </div>
         {/* Speaker */}
         <div className="mobile-active-ctrl">
