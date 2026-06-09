@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+
 const DEFAULT_API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const API_URL_STORAGE_KEY = "familyMessenger.apiUrl";
 const REFRESH_TOKEN_STORAGE_KEY = "familyMessenger.refreshToken";
@@ -73,9 +75,19 @@ function deriveApiUrlFromBrowser() {
 }
 
 export function getApiUrl() {
+  // On native (Android), the server URL is user-configured and stored.
+  // On web, the API is always at the same origin — ignore any stored override
+  // to prevent stale or malformed URLs from breaking requests.
+  if (Capacitor.isNativePlatform()) {
+    return (
+      storeApiUrlFromInviteLink() ??
+      readStoredApiUrl() ??
+      normalizeApiUrl(DEFAULT_API_URL) ??
+      "http://localhost:8000"
+    );
+  }
   return (
     storeApiUrlFromInviteLink() ??
-    readStoredApiUrl() ??
     deriveApiUrlFromBrowser() ??
     normalizeApiUrl(DEFAULT_API_URL) ??
     "http://localhost:8000"
@@ -108,7 +120,7 @@ export function getStoredRefreshToken(): string | null {
 }
 
 export function setApiUrlOverride(apiUrl: string | null) {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !Capacitor.isNativePlatform()) {
     return;
   }
   const normalized = normalizeApiUrl(apiUrl);
