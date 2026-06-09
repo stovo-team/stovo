@@ -98,6 +98,8 @@ import {
   toPersistedSettings,
   mergeWithDefaults
 } from "../api/audioSettings";
+import { Capacitor } from "@capacitor/core";
+import { App, AppState } from "@capacitor/app";
 
 type CallPhase = "idle" | "outgoing" | "incoming" | "connecting" | "in-call";
 
@@ -1658,6 +1660,31 @@ export default function ChatsPage() {
       })
       .catch(() => undefined);
 
+    // Track foreground/background state on Android so the backend can decide
+    // whether to suppress ntfy push notifications (only suppress when in foreground).
+    let appStateListener: { remove: () => Promise<void> } | null = null;
+    let appStateCancelled = false;
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+      void (async () => {
+        try {
+          const currentState = await App.getState();
+          if (!appStateCancelled) {
+            socket.emit("app:state", { foreground: currentState.isActive });
+          }
+          const listener = await App.addListener("appStateChange", (state: AppState) => {
+            socket.emit("app:state", { foreground: state.isActive });
+          });
+          if (appStateCancelled) {
+            void listener.remove();
+          } else {
+            appStateListener = listener;
+          }
+        } catch {
+          // Non-critical: if app state tracking fails, ntfy will fire as fallback.
+        }
+      })();
+    }
+
     const syncAfterSocketResume = () => {
       void loadRef.current();
     };
@@ -1874,6 +1901,8 @@ export default function ChatsPage() {
 
     return () => {
       audioSettingsCancelled = true;
+      appStateCancelled = true;
+      void appStateListener?.remove();
       socket.off("connect", syncAfterSocketResume);
       socket.off("connect_error", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);

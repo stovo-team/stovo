@@ -86,7 +86,7 @@ func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderN
 		if recipientID == senderID {
 			continue
 		}
-		if s.userOnline(recipientID) {
+		if s.userInForeground(recipientID) {
 			continue
 		}
 		topic, err := s.getUserNtfyTopic(context.Background(), recipientID)
