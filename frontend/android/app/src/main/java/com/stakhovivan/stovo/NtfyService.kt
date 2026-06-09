@@ -41,6 +41,9 @@ class NtfyService : Service() {
         const val PREFS_NAME = "stovo_ntfy"
         const val PREF_TOPIC = "topic"
         const val PREF_BASE_URL = "base_url"
+
+        /** ID of the most recently posted "ringing" call notification, or null if none. */
+        @Volatile var activeCallNotificationId: Int? = null
     }
 
     private lateinit var okHttpClient: OkHttpClient
@@ -168,6 +171,13 @@ class NtfyService : Service() {
                 }
             }
 
+            if (isRinging) {
+                activeCallNotificationId = notificationId
+            } else if (isMissed) {
+                // Ringing state is over — clear the tracked ID so a stale
+                // dismiss call does not accidentally cancel the missed-call notification.
+                activeCallNotificationId = null
+            }
             NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
         }
 

@@ -1009,6 +1009,18 @@ export default function ChatsPage() {
     soundDisabledRef.current = callAudioSettings.soundDisabled;
   }, [callAudioSettings.soundDisabled]);
 
+  // On Android (Capacitor), proactively acquire the local media stream as soon
+  // as an incoming call is displayed.  This triggers the OS permission dialog
+  // while the user can still see the incoming-call screen, so that when they
+  // tap Accept the stream is already ready and no second dialog appears.
+  useEffect(() => {
+    if (callPhase !== "incoming") return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cap = typeof window !== "undefined" ? (window as any).Capacitor : undefined;
+    if (!cap || typeof cap.isNativePlatform !== "function" || !cap.isNativePlatform()) return;
+    void audioCallRef.current?.prepareForCall(callType).catch(() => undefined);
+  }, [callPhase, callType]);
+
   const startIncomingRingtone = useCallback(() => {
     if (soundDisabledRef.current) {
       return;
@@ -1916,8 +1928,19 @@ export default function ChatsPage() {
     }
   }, [hasRemoteVideo]);
 
+  /** Dismiss the native Android incoming-call notification (no-op on web/iOS). */
+  function dismissNativeCallNotification() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cap = typeof window !== "undefined" ? (window as any).Capacitor : undefined;
+    if (cap && typeof cap.isNativePlatform === "function" && cap.isNativePlatform()) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (cap.Plugins?.NtfyPlugin as any)?.dismissCallNotification?.();
+    }
+  }
+
   async function resetCallState(notice?: string, serverAlreadyNotified = false) {
     console.log("[resetCallState] notice=", notice, "serverAlreadyNotified=", serverAlreadyNotified, new Error().stack?.split("\n").slice(1, 4).join(" | "));
+    dismissNativeCallNotification();
     stopIncomingRingtone();
     await audioCallRef.current?.cleanup(serverAlreadyNotified);
     setCallPhase("idle");
@@ -1977,6 +2000,7 @@ export default function ChatsPage() {
     if (!socketRef.current || !activeCallChatId || !callPeerUserId) {
       return;
     }
+    dismissNativeCallNotification();
     setCallNotice(null);
     setCallPhase("connecting");
     stopIncomingRingtone();
