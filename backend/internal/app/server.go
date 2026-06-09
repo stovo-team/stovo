@@ -59,6 +59,7 @@ type Server struct {
 	realtimeWG     sync.WaitGroup
 	recentEventMu  sync.Mutex
 	recentEvents   map[string]time.Time
+	ntfyRetryCh    chan ntfyRetryItem
 }
 
 func New(cfg config.Config) (*Server, error) {
@@ -118,6 +119,7 @@ func New(cfg config.Config) (*Server, error) {
 		userActiveCall: make(map[string]string),
 		callTimeout:    30 * time.Second,
 		recentEvents:   make(map[string]time.Time),
+		ntfyRetryCh:    make(chan ntfyRetryItem, 100),
 	}
 
 	if err := app.initSchema(); err != nil {
@@ -142,6 +144,12 @@ func New(cfg config.Config) (*Server, error) {
 	app.configureSockets()
 	app.tunnel.ConfigureLocalTunnelHealth(app.validatePublicBackendURL, 5*time.Second, 3)
 	app.startBrokerConsumers()
+	app.restoreCallSessions(context.Background())
+	app.realtimeWG.Add(1)
+	go func() {
+		defer app.realtimeWG.Done()
+		app.startNtfyRetryWorker(app.realtimeCtx)
+	}()
 	return app, nil
 }
 
@@ -505,6 +513,16 @@ func (s *Server) initSchema() error {
 		`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS audio_call_settings TEXT;`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS ntfy_topic_token TEXT DEFAULT NULL;`,
+		`CREATE TABLE IF NOT EXISTS call_sessions (
+			id          TEXT PRIMARY KEY,
+			caller_id   TEXT NOT NULL,
+			callee_id   TEXT NOT NULL,
+			call_type   TEXT NOT NULL,
+			state       TEXT NOT NULL,
+			created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			ended_at    TIMESTAMPTZ,
+			duration_s  INTEGER
+		);`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.Exec(statement); err != nil {

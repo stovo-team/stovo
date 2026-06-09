@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -67,6 +68,13 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	s.callByChat[chat.ID] = session
 	s.userActiveCall[callerUserID] = chat.ID
 	s.userActiveCall[calleeUserID] = chat.ID
+	go func(sess *callSession) {
+		ctx := context.Background()
+		s.exec(`INSERT INTO call_sessions (id, caller_id, callee_id, call_type, state, created_at)
+			VALUES (?, ?, ?, ?, ?, NOW())`,
+			sess.ChatID, sess.CallerUserID, sess.CalleeUserID, sess.CallType, string(sess.State))
+		s.persistCallSession(ctx, sess, 60*time.Second)
+	}(session)
 	return session, nil
 }
 
@@ -85,6 +93,15 @@ func (s *Server) setCallSessionState(chatID string, state callState) (*callSessi
 		return nil, false
 	}
 	session.State = state
+	go func(sess *callSession, st callState) {
+		ctx := context.Background()
+		s.exec(`UPDATE call_sessions SET state = ? WHERE id = ?`, string(st), sess.ChatID)
+		ttl := 60 * time.Second
+		if st == callStateConnecting || st == callStateConnected {
+			ttl = 3600 * time.Second
+		}
+		s.persistCallSession(ctx, sess, ttl)
+	}(session, state)
 	return session, true
 }
 
@@ -98,6 +115,12 @@ func (s *Server) endCallSession(chatID string) (*callSession, bool) {
 	delete(s.callByChat, chatID)
 	delete(s.userActiveCall, session.CallerUserID)
 	delete(s.userActiveCall, session.CalleeUserID)
+	go func(chatID string, created time.Time) {
+		ctx := context.Background()
+		dur := int(time.Since(created).Seconds())
+		s.exec(`UPDATE call_sessions SET state = 'ended', ended_at = NOW(), duration_s = ? WHERE id = ?`, dur, chatID)
+		s.deleteCallSession(ctx, chatID)
+	}(chatID, session.CreatedAt)
 	return session, true
 }
 
@@ -116,6 +139,12 @@ func (s *Server) endCallForUser(userID string) (*callSession, bool) {
 	delete(s.callByChat, chatID)
 	delete(s.userActiveCall, session.CallerUserID)
 	delete(s.userActiveCall, session.CalleeUserID)
+	go func(chatID string, created time.Time) {
+		ctx := context.Background()
+		dur := int(time.Since(created).Seconds())
+		s.exec(`UPDATE call_sessions SET state = 'ended', ended_at = NOW(), duration_s = ? WHERE id = ?`, dur, chatID)
+		s.deleteCallSession(ctx, chatID)
+	}(session.ChatID, session.CreatedAt)
 	return session, true
 }
 
