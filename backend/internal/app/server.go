@@ -29,7 +29,8 @@ import (
 )
 
 type socketSession struct {
-	User userPublic
+	User       userPublic
+	Foreground bool
 }
 
 type Server struct {
