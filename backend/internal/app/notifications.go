@@ -60,6 +60,17 @@ func (s *Server) publishToNtfy(ctx context.Context, payload ntfyPayload) error {
 	return nil
 }
 
+func (s *Server) publishToNtfyWithRetry(ctx context.Context, userID string, payload ntfyPayload) {
+	if err := s.publishToNtfy(ctx, payload); err != nil {
+		s.logger.Warnf("ntfy", "publish failed, queuing retry user_id=%s: %v", userID, err)
+		select {
+		case s.ntfyRetryCh <- ntfyRetryItem{UserID: userID, Payload: payload, Attempt: 0}:
+		default:
+			s.logger.Warnf("ntfy", "retry channel full, dropping user_id=%s", userID)
+		}
+	}
+}
+
 func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderName string, messagePreview string) {
 	rows, err := s.query(`SELECT user_id FROM chat_members WHERE chat_id = ?`, chatID)
 	if err != nil {
@@ -83,7 +94,7 @@ func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderN
 			s.logger.Warnf("ntfy", "no topic for user_id=%s: %v", recipientID, err)
 			continue
 		}
-		go func(topic string) {
+		go func(recipientID, topic string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			p := ntfyPayload{
@@ -94,10 +105,8 @@ func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderN
 				Tags:     []string{"speech_balloon"},
 				Click:    "stovo://chat/" + chatID,
 			}
-			if err := s.publishToNtfy(ctx, p); err != nil {
-				s.logger.Warnf("ntfy", "publish failed user_topic=%s error=%v", topic, err)
-			}
-		}(topic)
+			s.publishToNtfyWithRetry(ctx, recipientID, p)
+		}(recipientID, topic)
 	}
 }
 
@@ -118,9 +127,7 @@ func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatI
 			Tags:     []string{"phone"},
 			Click:    "stovo://call/" + chatID,
 		}
-		if err := s.publishToNtfy(ctx, p); err != nil {
-			s.logger.Warnf("ntfy", "call ringing publish failed user_topic=%s error=%v", topic, err)
-		}
+		s.publishToNtfyWithRetry(ctx, calleeUserID, p)
 	}(topic)
 }
 
@@ -141,9 +148,7 @@ func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID
 			Tags:     []string{"telephone_receiver"},
 			Click:    "stovo://call/missed/" + chatID,
 		}
-		if err := s.publishToNtfy(ctx, p); err != nil {
-			s.logger.Warnf("ntfy", "call missed publish failed user_topic=%s error=%v", topic, err)
-		}
+		s.publishToNtfyWithRetry(ctx, calleeUserID, p)
 	}(topic)
 }
 
