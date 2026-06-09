@@ -11,7 +11,6 @@ import InvitePage from "./pages/InvitePage";
 import LoginPage from "./pages/LoginPage";
 import MembersPage from "./pages/MembersPage";
 import RootRedirect from "./pages/RootRedirect";
-import ServerSetupPage from "./pages/ServerSetupPage";
 import SettingsPage from "./pages/SettingsPage";
 import SetupPage from "./pages/SetupPage";
 
@@ -60,7 +59,6 @@ function App() {
           <NotificationsBootstrapper />
           <Routes>
             <Route path="/" element={<RootRedirect />} />
-            <Route path="/server-setup" element={<ServerSetupPage />} />
             <Route path="/setup" element={<SetupPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/invite/:token" element={<InvitePage />} />

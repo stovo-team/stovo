@@ -3620,10 +3620,14 @@ export default function ChatsPage() {
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onToggleSound={() => void applyCallAudioPatch({ soundDisabled: !callAudioSettings.soundDisabled })}
                 onToggleCamera={() => {
-                  if (callType === "audio") {
-                    // Set callType to "video" immediately so the mobile video element
-                    // mounts before onLocalStreamReady fires — prevents black screen
-                    // on first camera enable (iOS/Android).
+                  if (!localVideoStream) {
+                    // Camera not yet open — start it. Set callType to "video"
+                    // immediately so the mobile video element mounts before
+                    // onLocalStreamReady fires (prevents black screen on
+                    // first camera enable on iOS/Android). We check
+                    // localVideoStream (not callType) because callType can
+                    // already be "video" if the remote party sent video first,
+                    // in which case we still need to open the local camera.
                     setCallType("video");
                     void audioCallRef.current?.toggleVideo(true);
                   } else {
@@ -4558,7 +4562,12 @@ function MobileActiveScreen({
     if (!dst || !remoteVideoStream) return;
     dst.muted = true;
     dst.srcObject = remoteVideoStream;
-    void dst.play().catch(() => undefined);
+    const tryPlay = () => void dst.play().catch(() => undefined);
+    // Trigger play immediately; also listen for canplay in case the initial
+    // call is rejected (e.g. Android WebView autoplay policy quirks).
+    dst.addEventListener('canplay', tryPlay, { once: true });
+    tryPlay();
+    return () => dst.removeEventListener('canplay', tryPlay);
   }, [remoteVideoStream, hasRemoteVideo]);
 
   useEffect(() => {
