@@ -119,6 +119,22 @@ func (s *Server) configureSockets() {
 			})
 		})
 
+		socket.On("app:state", func(event *socketio.EventPayload) {
+			var payload struct {
+				Foreground bool `json:"foreground"`
+			}
+			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil {
+				return
+			}
+			s.socketMu.Lock()
+			if session, ok := s.socketUsers[socket.Id]; ok {
+				session.Foreground = payload.Foreground
+				s.socketUsers[socket.Id] = session
+			}
+			s.socketMu.Unlock()
+			s.logger.Debugf("realtime.app_state", "socket_id=%s user_id=%s foreground=%v", socket.Id, user.ID, payload.Foreground)
+		})
+
 		socket.On("message:send", func(event *socketio.EventPayload) {
 			payload := socketSendMessageRequest{}
 			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" {
@@ -731,6 +747,17 @@ func (s *Server) userOnline(userID string) bool {
 	s.socketMu.RLock()
 	defer s.socketMu.RUnlock()
 	return len(s.userSockets[userID]) > 0
+}
+
+func (s *Server) userInForeground(userID string) bool {
+	s.socketMu.RLock()
+	defer s.socketMu.RUnlock()
+	for socketID := range s.userSockets[userID] {
+		if session, ok := s.socketUsers[socketID]; ok && session.Foreground {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) socketQueryValue(socket *socketio.Socket, key string) string {
