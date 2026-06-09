@@ -270,7 +270,13 @@ export default class CallController {
 
       this.peer.addTrack(videoTrack, this.localStream ?? this.sourceStream!);
       this.callType = "video";
-      await this.renegotiate();
+      // Chain through signalQueue so we don't renegotiate while a concurrent
+      // offer/answer is being processed (would cause signalingState !== "stable"
+      // and silently drop the offer, leaving the remote side without video).
+      this.signalQueue = this.signalQueue
+        .then(() => this.renegotiate())
+        .catch(() => undefined);
+      await this.signalQueue;
     } else {
       for (const sender of this.peer.getSenders()) {
         if (sender.track?.kind === "video") {
@@ -284,7 +290,10 @@ export default class CallController {
       }
       if (this.localVideoEl) this.localVideoEl.srcObject = null;
       this.callType = "audio";
-      await this.renegotiate();
+      this.signalQueue = this.signalQueue
+        .then(() => this.renegotiate())
+        .catch(() => undefined);
+      await this.signalQueue;
     }
   }
 
