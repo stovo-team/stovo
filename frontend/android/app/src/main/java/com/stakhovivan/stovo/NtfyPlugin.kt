@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.getcapacitor.JSObject
 import com.getcapacitor.PermissionState
@@ -95,5 +96,20 @@ class NtfyPlugin : Plugin() {
     private fun handleNotificationPermissionResult(call: PluginCall) {
         val granted = getPermissionState("notifications") == PermissionState.GRANTED
         call.resolve(JSObject().put("granted", granted))
+    }
+
+    /**
+     * Dismiss the active incoming-call notification (if any).
+     * Called from JS when the user accepts, declines, or the call ends/times out,
+     * so the ringing notification is cleared regardless of how the call resolves.
+     */
+    @PluginMethod
+    fun dismissCallNotification(call: PluginCall) {
+        val id = NtfyService.activeCallNotificationId
+        if (id != null) {
+            NotificationManagerCompat.from(context).cancel(id)
+            NtfyService.activeCallNotificationId = null
+        }
+        call.resolve()
     }
 }
