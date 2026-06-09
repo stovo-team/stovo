@@ -1665,6 +1665,7 @@ export default function ChatsPage() {
     socket.on("connect", syncAfterSocketResume);
     socket.on("connect_error", syncAfterSocketResume);
     socket.io.on("reconnect", syncAfterSocketResume);
+    socket.on("sync:needed", syncAfterSocketResume);
 
     socket.on("message:new", (message: Message) => {
       void (async () => {
@@ -1876,6 +1877,7 @@ export default function ChatsPage() {
       socket.off("connect", syncAfterSocketResume);
       socket.off("connect_error", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
+      socket.off("sync:needed", syncAfterSocketResume);
       stopIncomingRingtone();
       void audioController.cleanup().catch(() => undefined);
       audioCallRef.current = null;
