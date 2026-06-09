@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { FormEvent, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
@@ -66,6 +67,11 @@ export default function LoginPage() {
         <p className="secondary-link">
           New server? <Link to="/setup">Create owner account</Link>
         </p>
+        {Capacitor.isNativePlatform() && (
+          <p className="secondary-link">
+            <Link to="/server-setup">Change server address</Link>
+          </p>
+        )}
       </section>
     </main>
   );

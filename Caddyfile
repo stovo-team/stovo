@@ -14,6 +14,12 @@
     }
 
     handle {
-        reverse_proxy frontend:5173
+        reverse_proxy frontend:5173 {
+            @spa_miss status 404
+            handle_response @spa_miss {
+                rewrite * /
+                reverse_proxy frontend:5173
+            }
+        }
     }
 }
