@@ -921,6 +921,7 @@ export default function ChatsPage() {
   const loadChatRequestRef = useRef(0);
   const activeChatIdRef = useRef<string | undefined>(chatId);
   const activeCallChatIdRef = useRef<string | null>(null);
+  const callTypeRef = useRef<"audio" | "video">("audio");
   const chatsRef = useRef<Chat[]>([]);
   const messagesRef = useRef<Message[]>([]);
   const messageCacheRef = useRef<Record<string, Message[]>>({});
@@ -1497,6 +1498,9 @@ export default function ChatsPage() {
   useEffect(() => {
     activeCallChatIdRef.current = activeCallChatId;
   }, [activeCallChatId]);
+  useEffect(() => {
+    callTypeRef.current = callType;
+  }, [callType]);
 
   useEffect(() => {
     if (isLoading || chatId || chats.length === 0 || isMobileViewport) {
@@ -1635,6 +1639,13 @@ export default function ChatsPage() {
       // cleanup() will emit call:end; pass serverAlreadyNotified=false (default)
       // so cleanup handles the server notification.
       void resetCallState("Call connection lost");
+    };
+    audioController.onConnectionEstablished = () => {
+      console.log("[call] onConnectionEstablished fired");
+      setCallPhase("in-call");
+      if (callTypeRef.current === "video") {
+        void applyCallAudioPatch({ speakerMode: "large" });
+      }
     };
     // When the remote party enables their camera mid-call, show the video UI
     // on the receiving side without requiring the local user to act.
@@ -1847,7 +1858,7 @@ export default function ChatsPage() {
         console.log("[call:accepted] caller path — calling startOutgoing");
         void audioController
           .startOutgoing(payload.chatId, peerId, acceptedCallType)
-          .then(() => { console.log("[call:accepted] startOutgoing resolved → in-call"); setCallPhase("in-call"); if (acceptedCallType === "video") { void applyCallAudioPatch({ speakerMode: "large" }); } })
+          .then(() => { console.log("[call:accepted] startOutgoing resolved — waiting for ICE"); })
           .catch(async (err) => {
             console.error("[call:accepted] startOutgoing threw:", err);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId });
@@ -1856,8 +1867,7 @@ export default function ChatsPage() {
             setError(err instanceof Error ? err.message : "Could not start call");
           });
       } else {
-        console.log("[call:accepted] callee path → in-call");
-        setCallPhase("in-call");
+        console.log("[call:accepted] callee path — waiting for ICE");
       }
     });
 
@@ -2038,10 +2048,6 @@ export default function ChatsPage() {
     socketRef.current.emit("call:accept", { chatId: activeCallChatId });
     try {
       await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
-      setCallPhase("in-call");
-      if (callType === "video") {
-        void applyCallAudioPatch({ speakerMode: "large" });
-      }
     } catch (err) {
       if (socketRef.current?.connected) socketRef.current.emit("call:end", { chatId: activeCallChatId });
       // We already emitted call:end above; cleanup should not re-emit.
@@ -3942,8 +3948,8 @@ export default function ChatsPage() {
               </div>
             )}
 
-            {/* Minimized state: single-line chip controls */}
-            {isCallMinimized && (
+            {/* Minimized state: single-line chip controls (desktop only — mobile bar is in header) */}
+            {isCallMinimized && !isMobileViewport && (
               <div className="call-status-chip-controls">
                 {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
                   <button
