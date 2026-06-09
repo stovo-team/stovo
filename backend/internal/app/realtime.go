@@ -81,6 +81,16 @@ func (s *Server) configureSockets() {
 			_ = socket.Emit("call:ringing", payloadMap)
 		}
 
+		go func() {
+			events := s.drainPendingEvents(context.Background(), user.ID)
+			for _, ev := range events {
+				if err := socket.Emit(ev.Event, ev.Payload); err != nil {
+					s.logger.Warnf("realtime", "replay event failed user_id=%s event=%s: %v", user.ID, ev.Event, err)
+				}
+			}
+			_ = socket.Emit("sync:needed", map[string]any{"ts": time.Now().UTC().Format(time.RFC3339)})
+		}()
+
 		socket.On("disconnect", func(_ *socketio.EventPayload) {
 			s.unregisterSocket(user.ID, socket.Id)
 			// Only end the call when the user has no remaining sockets.
@@ -614,6 +624,18 @@ func (s *Server) emitMessageNew(chat chatPublic, message messagePublic) {
 		for _, member := range chat.Members {
 			_ = s.sockets.To("user:"+member.ID).Emit("message:delivered", payload)
 		}
+	}
+
+	// Queue for offline recipients
+	for _, member := range chat.Members {
+		if member.ID == message.SenderID {
+			continue
+		}
+		if s.userOnline(member.ID) {
+			continue
+		}
+		mID := member.ID
+		go s.enqueueEventForUser(context.Background(), mID, "message:new", message)
 	}
 }
 
