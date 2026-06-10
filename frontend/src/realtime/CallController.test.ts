@@ -10,8 +10,8 @@ describe('CallController — default settings', () => {
     ctrl = new CallController(makeSocket(), 'test-token')
   })
 
-  it('initializes cameraEnabled as true', () => {
-    expect(ctrl.getSettings().cameraEnabled).toBe(true)
+  it('initializes cameraEnabled as false', () => {
+    expect(ctrl.getSettings().cameraEnabled).toBe(false)
   })
 
   it('initializes videoDeviceId as empty string', () => {
@@ -47,6 +47,15 @@ describe('CallController — cleanup', () => {
     ;(ctrl as any).chatId = 'chat-1'
     await ctrl.cleanup(false)
     expect(socket.emit).toHaveBeenCalledWith('call:end', { chatId: 'chat-1' })
+  })
+
+  it('does not emit call:signal after cleanup has started', async () => {
+    const socket = { emit: vi.fn(), connected: true } as any
+    const ctrl = new CallController(socket, 'test-token')
+    ;(ctrl as any).chatId = 'chat-1'
+    ;(ctrl as any).tearingDown = true
+    ;(ctrl as any).emitSignal({ chatId: 'chat-1', data: { type: 'ice-candidate' } })
+    expect(socket.emit).not.toHaveBeenCalledWith('call:signal', expect.anything())
   })
 })
 
