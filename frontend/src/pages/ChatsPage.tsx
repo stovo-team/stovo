@@ -1,6 +1,7 @@
 import {
   ChangeEvent,
   FormEvent,
+  KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
   RefObject,
   useCallback,
@@ -91,6 +92,7 @@ import CallController, {
   CallDevice,
   CallSettings,
 } from "../realtime/CallController";
+import { createCallSoundPlayer } from "../realtime/callSounds";
 import {
   getAudioSettings,
   saveAudioSettings,
@@ -931,8 +933,7 @@ export default function ChatsPage() {
   );
   const socketRef = useRef<Socket | null>(null);
   const audioCallRef = useRef<CallController | null>(null);
-  const ringtoneAudioContextRef = useRef<AudioContext | null>(null);
-  const ringtoneTimerRef = useRef<number | null>(null);
+  const callSoundPlayerRef = useRef(createCallSoundPlayer());
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -948,7 +949,7 @@ export default function ChatsPage() {
   const hasLoadedOverviewRef = useRef(false);
   const typingStopTimerRef = useRef<number | null>(null);
   const messagesPanelRef = useRef<HTMLDivElement | null>(null);
-  const composerInputRef = useRef<HTMLInputElement | null>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
@@ -979,53 +980,20 @@ export default function ChatsPage() {
     [dismissToast]
   );
 
-  const stopIncomingRingtone = useCallback(() => {
-    if (ringtoneTimerRef.current !== null) {
-      window.clearInterval(ringtoneTimerRef.current);
-      ringtoneTimerRef.current = null;
-    }
-    if (ringtoneAudioContextRef.current) {
-      void ringtoneAudioContextRef.current.close().catch(() => undefined);
-      ringtoneAudioContextRef.current = null;
-    }
+  const stopCallRingtone = useCallback(() => {
+    callSoundPlayerRef.current.stopRingtone();
   }, []);
 
-  const playIncomingRingtoneBurst = useCallback(async () => {
-    const AudioCtor =
-      typeof window === "undefined"
-        ? null
-        : (
-            window.AudioContext ||
-            (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-          );
-    if (!AudioCtor) {
-      return;
-    }
-    if (!ringtoneAudioContextRef.current) {
-      ringtoneAudioContextRef.current = new AudioCtor();
-    }
-    const context = ringtoneAudioContextRef.current;
-    if (!context) {
-      return;
-    }
-    if (context.state === "suspended") {
-      await context.resume().catch(() => undefined);
-    }
-    const baseTime = context.currentTime;
-    [880, 660].forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gainNode = context.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.value = frequency;
-      const startAt = baseTime + index * 0.2;
-      gainNode.gain.setValueAtTime(0.0001, startAt);
-      gainNode.gain.exponentialRampToValueAtTime(0.35, startAt + 0.02);
-      gainNode.gain.exponentialRampToValueAtTime(0.0001, startAt + 0.16);
-      oscillator.connect(gainNode);
-      gainNode.connect(context.destination);
-      oscillator.start(startAt);
-      oscillator.stop(startAt + 0.18);
-    });
+  const startIncomingRingtone = useCallback(() => {
+    callSoundPlayerRef.current.startIncomingRingtone(() => soundDisabledRef.current);
+  }, []);
+
+  const startOutgoingRingtone = useCallback(() => {
+    callSoundPlayerRef.current.startOutgoingRingtone(() => soundDisabledRef.current);
+  }, []);
+
+  const playCallEndSound = useCallback(() => {
+    void callSoundPlayerRef.current.playCallEndSound(() => soundDisabledRef.current);
   }, []);
 
   useEffect(() => {
@@ -1043,19 +1011,6 @@ export default function ChatsPage() {
     if (!cap || typeof cap.isNativePlatform !== "function" || !cap.isNativePlatform()) return;
     void audioCallRef.current?.prepareForCall(callType).catch(() => undefined);
   }, [callPhase, callType]);
-
-  const startIncomingRingtone = useCallback(() => {
-    if (soundDisabledRef.current) {
-      return;
-    }
-    if (ringtoneTimerRef.current !== null) {
-      return;
-    }
-    void playIncomingRingtoneBurst().catch(() => undefined);
-    ringtoneTimerRef.current = window.setInterval(() => {
-      void playIncomingRingtoneBurst().catch(() => undefined);
-    }, 1800);
-  }, [playIncomingRingtoneBurst]);
 
   const refreshCallAudioDevices = useCallback(async () => {
     const controller = audioCallRef.current;
@@ -1855,7 +1810,8 @@ export default function ChatsPage() {
         setCallPeerUserId(isCaller ? payload.calleeId : payload.callerId);
         if (isCaller) {
           setCallPhase("outgoing");
-          stopIncomingRingtone();
+          stopCallRingtone();
+          startOutgoingRingtone();
         } else {
           setCallPhase("incoming");
           setCallNotice(incomingCallType === "video" ? "Incoming video call" : "Incoming audio call");
@@ -1870,7 +1826,7 @@ export default function ChatsPage() {
         console.warn("[call:accepted] GUARD FAILED — bailing. currentUser=", !!currentUser, "chatMatch=", payload.chatId === activeCallChatIdRef.current);
         return;
       }
-      stopIncomingRingtone();
+      stopCallRingtone();
       const peerId = payload.callerId === currentUser.id ? payload.calleeId : payload.callerId;
       const acceptedCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
       setCallPeerUserId(peerId);
@@ -1885,7 +1841,7 @@ export default function ChatsPage() {
             console.error("[call:accepted] startOutgoing threw:", err);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId });
             // We already emitted call:end above; cleanup should not re-emit.
-            await resetCallState("Camera/mic permission or device failed", true);
+            await resetCallState("Camera/mic permission or device failed", true, false);
             setError(err instanceof Error ? err.message : "Could not start call");
           });
       } else {
@@ -1903,29 +1859,32 @@ export default function ChatsPage() {
     );
 
     socket.on("call:declined", () => {
-      stopIncomingRingtone();
+      stopCallRingtone();
       // Server already ended the session — pass serverAlreadyNotified=true so
       // cleanup() does not send a redundant call:end that would produce a
       // spurious call:error toast.
       void resetCallState("Call declined", true);
     });
     socket.on("call:canceled", () => {
-      stopIncomingRingtone();
+      stopCallRingtone();
       void resetCallState("Call canceled", true);
     });
     socket.on("call:timeout", () => {
-      stopIncomingRingtone();
+      stopCallRingtone();
       void resetCallState("Missed call", true);
     });
     socket.on("call:ended", () => {
       console.log("[call:ended] received");
-      stopIncomingRingtone();
+      if (callPhaseRef.current === "idle") {
+        return;
+      }
+      stopCallRingtone();
       void resetCallState("Call ended", true);
     });
     socket.on("call:error", (payload: { message?: string }) => {
       const message = payload.message ?? "Call failed";
       console.error("[call:error] received:", payload);
-      stopIncomingRingtone();
+      stopCallRingtone();
       // Late call:end / call:signal on an already-cleared session is harmless noise.
       if (message === "Call not available") {
         if (callPhaseRef.current === "idle") return;
@@ -1946,7 +1905,7 @@ export default function ChatsPage() {
       socket.off("connect_error", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
       socket.off("sync:needed", syncAfterSocketResume);
-      stopIncomingRingtone();
+      stopCallRingtone();
       void audioController.cleanup().catch(() => undefined);
       audioCallRef.current = null;
       socket.disconnect();
@@ -1955,7 +1914,7 @@ export default function ChatsPage() {
         window.clearTimeout(saveAudioSettingsTimerRef.current);
       }
     };
-  }, [accessToken, applyMessagesForChat, currentUser?.id, startIncomingRingtone, stopIncomingRingtone]);
+  }, [accessToken, applyMessagesForChat, currentUser?.id, startIncomingRingtone, startOutgoingRingtone, stopCallRingtone]);
 
   useEffect(() => {
     if (!isCallAudioPopupOpen) {
@@ -1976,9 +1935,15 @@ export default function ChatsPage() {
 
   useEffect(() => {
     if (callAudioSettings.soundDisabled) {
-      stopIncomingRingtone();
+      stopCallRingtone();
     }
-  }, [callAudioSettings.soundDisabled, stopIncomingRingtone]);
+  }, [callAudioSettings.soundDisabled, stopCallRingtone]);
+
+  useEffect(() => {
+    if (callPhase === "outgoing" && !callAudioSettings.soundDisabled) {
+      startOutgoingRingtone();
+    }
+  }, [callPhase, callAudioSettings.soundDisabled, startOutgoingRingtone]);
 
   // Android: proximity sensor blanks the screen near the ear; route audio to earpiece/speaker.
   useEffect(() => {
@@ -2034,11 +1999,20 @@ export default function ChatsPage() {
     }
   }
 
-  async function resetCallState(notice?: string, serverAlreadyNotified = false) {
+  async function resetCallState(
+    notice?: string,
+    serverAlreadyNotified = false,
+    playEndSoundEffect = true
+  ) {
     console.log("[resetCallState] notice=", notice, "serverAlreadyNotified=", serverAlreadyNotified, new Error().stack?.split("\n").slice(1, 4).join(" | "));
     dismissNativeCallNotification();
-    stopIncomingRingtone();
+    if (playEndSoundEffect && callPhaseRef.current !== "idle") {
+      playCallEndSound();
+    } else {
+      stopCallRingtone();
+    }
     await audioCallRef.current?.cleanup(serverAlreadyNotified);
+    callPhaseRef.current = "idle";
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
@@ -2102,7 +2076,7 @@ export default function ChatsPage() {
     dismissNativeCallNotification();
     setCallNotice(null);
     setCallPhase("connecting");
-    stopIncomingRingtone();
+    stopCallRingtone();
     if (callType === "audio") {
       await applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
     }
@@ -2112,7 +2086,7 @@ export default function ChatsPage() {
     } catch (err) {
       if (socketRef.current?.connected) socketRef.current.emit("call:end", { chatId: activeCallChatId });
       // We already emitted call:end above; cleanup should not re-emit.
-      await resetCallState("Camera/mic permission or device failed", true);
+      await resetCallState("Camera/mic permission or device failed", true, false);
       setError(err instanceof Error ? err.message : "Could not join call");
     }
   }
@@ -2122,13 +2096,13 @@ export default function ChatsPage() {
     if (!socketRef.current || !chatId) {
       return;
     }
-    stopIncomingRingtone();
+    stopCallRingtone();
     socketRef.current.emit("call:decline", { chatId });
     // Reset local state immediately (optimistic) — don't wait for the server
     // round-trip.  The server will still send call:declined to the caller which
     // triggers their own reset.  Passing serverAlreadyNotified=true prevents
     // cleanup() from emitting a duplicate call:end.
-    void resetCallState("Call declined", true);
+    void resetCallState("Call declined", true, false);
   }
 
   async function endActiveCall() {
@@ -2137,7 +2111,9 @@ export default function ChatsPage() {
     }
     const endingChatId = activeCallChatId;
     setCallNotice("Ending call...");
-    stopIncomingRingtone();
+    stopCallRingtone();
+    playCallEndSound();
+    callPhaseRef.current = "idle";
     socketRef.current.emit("call:end", { chatId: activeCallChatId });
     // serverAlreadyNotified=true: we just sent call:end above, cleanup should
     // not send it again or the server will return a spurious call:error.
@@ -2397,6 +2373,36 @@ export default function ChatsPage() {
     setIsChatMenuOpen(false);
   }
 
+  const COMPOSER_MIN_HEIGHT_PX = 44;
+  const COMPOSER_MAX_HEIGHT_PX = 160;
+
+  const adjustComposerHeight = useCallback(() => {
+    const textarea = composerInputRef.current;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = "auto";
+    const nextHeight = Math.min(
+      Math.max(textarea.scrollHeight, COMPOSER_MIN_HEIGHT_PX),
+      COMPOSER_MAX_HEIGHT_PX
+    );
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > COMPOSER_MAX_HEIGHT_PX ? "auto" : "hidden";
+  }, []);
+
+  const resetComposerHeight = useCallback(() => {
+    const textarea = composerInputRef.current;
+    if (!textarea) {
+      return;
+    }
+    textarea.style.height = `${COMPOSER_MIN_HEIGHT_PX}px`;
+    textarea.style.overflowY = "hidden";
+  }, []);
+
+  useLayoutEffect(() => {
+    adjustComposerHeight();
+  }, [composer, adjustComposerHeight]);
+
   function handleComposerChange(value: string) {
     setComposer(value);
     if (selectedChat && value.trim()) {
@@ -2408,6 +2414,14 @@ export default function ChatsPage() {
         socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
       }, 1400);
     }
+  }
+
+  function handleComposerKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
   }
 
   async function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
@@ -2628,6 +2642,7 @@ export default function ChatsPage() {
       )
     );
     setComposer("");
+    resetComposerHeight();
     setPendingAttachments([]);
     setReplyTarget(null);
     socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
@@ -3187,9 +3202,6 @@ export default function ChatsPage() {
                     </div>
                   )}
                 </div>
-                {typingNames.length > 0 && (
-                  <p className="typing-indicator">{typingNames.join(", ")} typing...</p>
-                )}
                 {messageContextMenu && (
                   <div
                     className="action-menu message-context-menu"
@@ -3350,8 +3362,9 @@ export default function ChatsPage() {
                       type="file"
                       onChange={handleFileSelect}
                     />
-                    <input
+                    <textarea
                       ref={composerInputRef}
+                      rows={1}
                       maxLength={4000}
                       placeholder={
                         channelCommentsDisabledForViewer
@@ -3365,6 +3378,7 @@ export default function ChatsPage() {
                       value={composer}
                       disabled={channelCommentsDisabledForViewer || missingCommentThread}
                       onChange={(event) => handleComposerChange(event.target.value)}
+                      onKeyDown={handleComposerKeyDown}
                     />
                     <button
                       type="submit"
