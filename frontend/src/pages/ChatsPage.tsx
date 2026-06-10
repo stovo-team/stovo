@@ -799,6 +799,17 @@ function preferPollingFirst(hostname: string) {
   return true;
 }
 
+/** Mobile full-screen call UI: native Capacitor apps always, or narrow browser viewport. */
+function isMobileCallViewport(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  if (Capacitor.isNativePlatform()) {
+    return true;
+  }
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
 function useCallTimer(active: boolean): string {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
@@ -899,9 +910,7 @@ export default function ChatsPage() {
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const callTimer = useCallTimer(callPhase === "in-call");
-  const [isMobileViewport, setIsMobileViewport] = useState(
-    typeof window !== "undefined" ? window.matchMedia("(max-width: 768px)").matches : false
-  );
+  const [isMobileViewport, setIsMobileViewport] = useState(isMobileCallViewport);
   const [isLoading, setIsLoading] = useState(true);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -1066,13 +1075,11 @@ export default function ChatsPage() {
       return;
     }
     const media = window.matchMedia("(max-width: 768px)");
-    const onChange = (event: MediaQueryListEvent) => {
-      setIsMobileViewport(event.matches);
-    };
-    setIsMobileViewport(media.matches);
-    media.addEventListener("change", onChange);
+    const update = () => setIsMobileViewport(isMobileCallViewport());
+    update();
+    media.addEventListener("change", update);
     return () => {
-      media.removeEventListener("change", onChange);
+      media.removeEventListener("change", update);
     };
   }, []);
 
@@ -1957,16 +1964,18 @@ export default function ChatsPage() {
     if (callPhase !== "idle" && audioCallRef.current) {
       audioCallRef.current.attachRemoteVideoElement(remoteVideoRef.current);
       audioCallRef.current.attachLocalVideoElement(localVideoRef.current);
+      // Re-sync in case the remote track arrived before the call popup rendered.
+      audioCallRef.current.syncRemoteVideoToUI();
     }
   }, [callPhase]);
 
   // When remote video track arrives, ensure the video element resumes playback
   // (some browsers won't auto-play a video element that was hidden when srcObject was set)
   useEffect(() => {
-    if (hasRemoteVideo && remoteVideoRef.current) {
+    if ((hasRemoteVideo || remoteVideoStream) && remoteVideoRef.current) {
       void remoteVideoRef.current.play().catch(() => undefined);
     }
-  }, [hasRemoteVideo]);
+  }, [hasRemoteVideo, remoteVideoStream]);
 
   /** Dismiss the native Android incoming-call notification (no-op on web/iOS). */
   function dismissNativeCallNotification() {
@@ -4544,14 +4553,34 @@ function MobileActiveScreen({
   useEffect(() => {
     const dst = mobileRemoteRef.current;
     if (!dst || !remoteVideoStream) return;
-    dst.muted = true;
-    dst.srcObject = remoteVideoStream;
-    const tryPlay = () => void dst.play().catch(() => undefined);
-    // Trigger play immediately; also listen for canplay in case the initial
-    // call is rejected (e.g. Android WebView autoplay policy quirks).
-    dst.addEventListener('canplay', tryPlay, { once: true });
-    tryPlay();
-    return () => dst.removeEventListener('canplay', tryPlay);
+
+    const attachAndPlay = () => {
+      if (dst.srcObject !== remoteVideoStream) {
+        dst.srcObject = remoteVideoStream;
+      }
+      dst.muted = true;
+      void dst.play().catch(() => undefined);
+    };
+
+    attachAndPlay();
+
+    // Android WebView may reject the first play() until metadata is ready or the
+    // track unmutes — listen for those events and retry.
+    const tracks = remoteVideoStream.getVideoTracks();
+    const onTrackChange = () => attachAndPlay();
+    for (const track of tracks) {
+      track.addEventListener("unmute", onTrackChange);
+    }
+    dst.addEventListener("loadedmetadata", attachAndPlay);
+    dst.addEventListener("canplay", attachAndPlay, { once: true });
+
+    return () => {
+      for (const track of tracks) {
+        track.removeEventListener("unmute", onTrackChange);
+      }
+      dst.removeEventListener("loadedmetadata", attachAndPlay);
+      dst.removeEventListener("canplay", attachAndPlay);
+    };
   }, [remoteVideoStream, hasRemoteVideo]);
 
   useEffect(() => {
@@ -4562,12 +4591,13 @@ function MobileActiveScreen({
   }, [localVideoStream, hasRemoteVideo, isCameraEnabled, callType]);
 
   const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
-  const showAvatar = !hasRemoteVideo && (callType === "audio" || !isCameraEnabled);
+  const showRemoteVideo = hasRemoteVideo || remoteVideoStream !== null;
+  const showAvatar = !showRemoteVideo && (callType === "audio" || !isCameraEnabled);
   const showVideo = callType === "video" && isCameraEnabled;
   return (
-    <div className={`mobile-active-screen${(showVideo || hasRemoteVideo || (callType === "video" && isCameraEnabled)) ? " mobile-active-screen--video" : ""}`}>
+    <div className={`mobile-active-screen${(showVideo || showRemoteVideo || (callType === "video" && isCameraEnabled)) ? " mobile-active-screen--video" : ""}`}>
       {/* Case 1: Local camera only (no remote video yet) — show self-view fullscreen */}
-      {callType === "video" && isCameraEnabled && !hasRemoteVideo && (
+      {callType === "video" && isCameraEnabled && !showRemoteVideo && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
           <video
             ref={mobileLocalRef}
@@ -4585,7 +4615,7 @@ function MobileActiveScreen({
       )}
 
       {/* Case 2: Remote video active — show remote fullscreen, local as PiP */}
-      {hasRemoteVideo && (
+      {showRemoteVideo && remoteVideoStream && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
           <video
             ref={mobileRemoteRef}

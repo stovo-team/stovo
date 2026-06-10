@@ -464,9 +464,6 @@ func tunnelCommand(provider, origin string) ([]string, error) {
 		if host == "" || host == "127.0.0.1" || host == "localhost" || host == "::1" {
 			return []string{path, "--port", port}, nil
 		}
-		if host == "" || host == "127.0.0.1" || host == "localhost" || host == "::1" {
-			return []string{path, "--port", port}, nil
-		}
 
 		return []string{path, "--port", port, "--local-host", host}, nil
 	default:
