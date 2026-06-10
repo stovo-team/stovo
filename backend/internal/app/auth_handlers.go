@@ -531,7 +531,7 @@ func domainErrorStatus(err error) int {
 
 func defaultAudioSettings() audioCallSettings {
 	return audioCallSettings{
-		SpeakerMode:               "large",
+		SpeakerMode:               "small",
 		InputDeviceID:             "",
 		OutputDeviceID:            "",
 		EchoCancellation:          true,
@@ -620,7 +620,7 @@ func (s *Server) handlePutAudioSettings(w http.ResponseWriter, r *http.Request, 
 		payload.VoiceEnhancementHighpass = 300
 	}
 	if payload.SpeakerMode != "small" && payload.SpeakerMode != "large" {
-		payload.SpeakerMode = "large"
+		payload.SpeakerMode = "small"
 	}
 
 	blob, err := json.Marshal(payload)

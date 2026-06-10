@@ -52,7 +52,7 @@ export type CallCapabilities = {
 const DEFAULT_SETTINGS: CallSettings = {
   micMuted: false,
   soundDisabled: false,
-  cameraEnabled: true,
+  cameraEnabled: false,
   cameraFacingMode: "user",
   speakerMode: "small",
   inputDeviceId: "",
@@ -104,6 +104,8 @@ export default class CallController {
   private reconnectAttempts: number = 0;
   /** True once RTCPeerConnection reaches "connected" at least once this call. */
   private mediaConnected = false;
+  /** True while cleanup() is running — blocks late ICE signals to a dead server session. */
+  private tearingDown = false;
   private speakingCallback: ((isSpeaking: boolean) => void) | null = null;
   private speakingAnimFrame: number | null = null;
   private speakingAnalyser: AnalyserNode | null = null;
@@ -190,8 +192,10 @@ export default class CallController {
    * needing a new user gesture.
    */
   async prepareForCall(callType: "audio" | "video") {
-    if (this.sourceStream) return; // already acquired
     this.callType = callType;
+    const hasVideo = this.hasLiveVideoTrack(this.sourceStream);
+    // Reuse an existing stream only when it already satisfies the requested mode.
+    if (this.sourceStream && (callType === "audio" || hasVideo)) return;
     await this.acquireLocalStream();
   }
 
@@ -240,6 +244,13 @@ export default class CallController {
   // ─── Video toggle mid-call ───────────────────────────────────────────────────
 
   async toggleVideo(enable: boolean): Promise<void> {
+    if (enable && !this.peer) {
+      // Peer not created yet (e.g. connecting phase) — upgrade the local stream
+      // so ensurePeer() or the next acquireLocalStream() picks up video.
+      this.callType = "video";
+      await this.acquireLocalStream();
+      return;
+    }
     if (!this.peer) return;
 
     if (enable) {
@@ -256,9 +267,18 @@ export default class CallController {
         // and the browser fires a transient denial. Retry once with simple
         // constraints before giving up.
         const name = (err as DOMException)?.name ?? "";
-        if (name === "NotAllowedError" || name === "NotFoundError" || name === "PermissionDeniedError") {
+        if (
+          name === "NotAllowedError" ||
+          name === "NotFoundError" ||
+          name === "PermissionDeniedError" ||
+          name === "OverconstrainedError"
+        ) {
           try {
-            const s = await navigator.mediaDevices.getUserMedia({ video: true });
+            const s = await navigator.mediaDevices.getUserMedia({
+              video: name === "OverconstrainedError"
+                ? { facingMode: this.settings.cameraFacingMode ?? "user" }
+                : true,
+            });
             videoTrack = s.getVideoTracks()[0] ?? null;
           } catch {
             this.onVideoUnavailable?.();
@@ -279,9 +299,7 @@ export default class CallController {
         void this.localVideoEl.play().catch(() => undefined);
       }
 
-      // Notify the UI that the local stream now has video so the mobile
-      // self-view can start immediately.
-      if (this.sourceStream) this.onLocalStreamReady?.(this.sourceStream);
+      this.notifyLocalStreamReady();
 
       this.peer.addTrack(videoTrack, this.localStream ?? this.sourceStream!);
       this.callType = "video";
@@ -433,17 +451,33 @@ export default class CallController {
    *   browser nav, connection failure).
    */
   async cleanup(serverAlreadyNotified = false) {
+    if (this.tearingDown) return;
+    this.tearingDown = true;
     this.clearReconnectTimer();
     this.reconnectAttempts = 0;
     this.mediaConnected = false;
     this.isOfferer = false;
 
+    const endingChatId = this.chatId;
+
+    // Stop ICE/signal handlers before closing the peer so we don't emit call:signal
+    // to a session that call:end is about to clear (server returns "Call not available").
+    if (this.peer) {
+      this.peer.onicecandidate = null;
+      this.peer.ontrack = null;
+      this.peer.onconnectionstatechange = null;
+      this.peer.oniceconnectionstatechange = null;
+      this.peer.onsignalingstatechange = null;
+      this.peer.close();
+      this.peer = null;
+    }
+
     // Ensure the server-side call session is cleared even if the UI did not
     // explicitly emit call:end (e.g. component unmount, browser navigation).
     // Without this the server retains the session and the next call:start fails
     // with "call already in progress".
-    if (!serverAlreadyNotified && this.chatId && this.socket.connected) {
-      this.socket.emit("call:end", { chatId: this.chatId });
+    if (!serverAlreadyNotified && endingChatId && this.socket.connected) {
+      this.socket.emit("call:end", { chatId: endingChatId });
     }
 
     this.stopStream(this.localStream);
@@ -451,13 +485,6 @@ export default class CallController {
     this.localStream = null;
     this.sourceStream = null;
     this.remoteStream = null;
-    if (this.peer) {
-      this.peer.onicecandidate = null;
-      this.peer.ontrack = null;
-      this.peer.onconnectionstatechange = null;
-      this.peer.close();
-      this.peer = null;
-    }
     if (this.remoteAudioEl) { this.remoteAudioEl.srcObject = null; this.remoteAudioEl.muted = false; }
     if (this.remoteVideoEl) this.remoteVideoEl.srcObject = null;
     if (this.localVideoEl) this.localVideoEl.srcObject = null;
@@ -476,6 +503,7 @@ export default class CallController {
     // Reset the signal queue so stale promises from a previous call cannot
     // affect a freshly started call after cleanup.
     this.signalQueue = Promise.resolve();
+    this.tearingDown = false;
   }
 
   // ─── Private: peer creation ───────────────────────────────────────────────────
@@ -685,19 +713,38 @@ export default class CallController {
 
   // ─── Private: stream helpers ──────────────────────────────────────────────────
 
+  private hasLiveVideoTrack(stream: MediaStream | null): boolean {
+    return stream?.getVideoTracks().some((t) => t.readyState !== "ended") ?? false;
+  }
+
+  private notifyLocalStreamReady() {
+    if (this.sourceStream && this.hasLiveVideoTrack(this.sourceStream)) {
+      this.onLocalStreamReady?.(this.sourceStream);
+    }
+  }
+
   private async acquireLocalStream() {
     // If prepareForCall() already acquired the stream during a user gesture and
     // the peer hasn't been created yet, reuse it to avoid a redundant getUserMedia
     // call (which may fail on iOS Safari outside a user-gesture context).
     if (this.sourceStream && !this.peer) {
-      if (this.localVideoEl && this.callType === "video") {
-        this.localVideoEl.srcObject = this.sourceStream;
-        void this.localVideoEl.play().catch(() => undefined);
+      const needsVideo = this.callType === "video";
+      if (!needsVideo || this.hasLiveVideoTrack(this.sourceStream)) {
+        if (this.localVideoEl && this.callType === "video") {
+          this.localVideoEl.srcObject = this.sourceStream;
+          void this.localVideoEl.play().catch(() => undefined);
+        }
+        this.notifyLocalStreamReady();
+        this.applyMicMutedState();
+        this.applyCameraEnabledState();
+        return;
       }
-      if (this.sourceStream) this.onLocalStreamReady?.(this.sourceStream);
-      this.applyMicMutedState();
-      this.applyCameraEnabledState();
-      return;
+      // Audio-only stream cached while a video call was requested — discard and
+      // re-acquire with camera (common on Android when prepareForCall races accept).
+      this.stopStream(this.localStream);
+      if (this.localStream !== this.sourceStream) this.stopStream(this.sourceStream);
+      this.localStream = null;
+      this.sourceStream = null;
     }
 
     const isVideo = this.callType === "video";
@@ -705,10 +752,7 @@ export default class CallController {
 
     if (isVideo) {
       try {
-        nextSource = await navigator.mediaDevices.getUserMedia({
-          audio: this.buildAudioConstraints(),
-          video: this.buildVideoConstraints(),
-        });
+        nextSource = await this.acquireVideoStream();
       } catch (err) {
         const isMediaErr = err instanceof DOMException &&
           ["NotFoundError", "NotAllowedError", "DevicesNotFoundError",
@@ -759,12 +803,27 @@ export default class CallController {
       void this.localVideoEl.play().catch(() => undefined);
     }
 
-    // Notify the UI so the mobile self-view can be shown as soon as the
-    // local stream is ready (e.g. when a video call starts).
-    if (this.sourceStream) this.onLocalStreamReady?.(this.sourceStream);
+    this.notifyLocalStreamReady();
 
     this.applyMicMutedState();
     this.applyCameraEnabledState();
+  }
+
+  private async acquireVideoStream(): Promise<MediaStream> {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: this.buildAudioConstraints(),
+        video: this.buildVideoConstraints(),
+      });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "OverconstrainedError") {
+        return navigator.mediaDevices.getUserMedia({
+          audio: this.buildAudioConstraints(),
+          video: { facingMode: this.settings.cameraFacingMode ?? "user" },
+        });
+      }
+      throw err;
+    }
   }
 
   private reattachRemoteVideo() {
@@ -788,7 +847,7 @@ export default class CallController {
   private buildVideoConstraints(): MediaTrackConstraints {
     const c: MediaTrackConstraints = {};
     if (this.settings.videoDeviceId) {
-      c.deviceId = { exact: this.settings.videoDeviceId };
+      c.deviceId = { ideal: this.settings.videoDeviceId };
     } else {
       c.facingMode = this.settings.cameraFacingMode ?? "user";
     }
@@ -859,6 +918,7 @@ export default class CallController {
   }
 
   private emitSignal(payload: SignalEnvelope) {
+    if (this.tearingDown || !this.chatId) return;
     this.socket.emit("call:signal", payload);
   }
 
