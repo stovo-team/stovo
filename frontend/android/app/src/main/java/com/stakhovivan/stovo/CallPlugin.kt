@@ -57,13 +57,19 @@ class CallPlugin : Plugin() {
 
     private fun acquireProximityWakeLock() {
         if (proximityWakeLock?.isHeld == true) return
+        val sm = activity?.getSystemService(Context.SENSOR_SERVICE) as? SensorManager ?: return
+        if (sm.getDefaultSensor(Sensor.TYPE_PROXIMITY) == null) return
         val pm = activity?.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
-        @Suppress("DEPRECATION")
-        proximityWakeLock = pm.newWakeLock(
-            PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
-            "stovo:call-proximity"
-        )
-        proximityWakeLock?.acquire()
+        try {
+            @Suppress("DEPRECATION")
+            proximityWakeLock = pm.newWakeLock(
+                PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
+                "stovo:call-proximity"
+            )
+            proximityWakeLock?.acquire()
+        } catch (_: SecurityException) {
+            proximityWakeLock = null
+        }
     }
 
     private fun registerProximityListener() {
