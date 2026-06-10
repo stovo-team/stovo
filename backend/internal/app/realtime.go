@@ -102,7 +102,13 @@ func (s *Server) configureSockets() {
 			if !s.userOnline(user.ID) {
 				userID := user.ID
 				go func() {
-					time.Sleep(2 * time.Second)
+					grace := 2 * time.Second
+					if s.userHasActiveCall(userID) {
+						// Polling→WebSocket upgrade (or brief reconnect) during a call
+						// must not tear down the session before ICE can finish.
+						grace = 10 * time.Second
+					}
+					time.Sleep(grace)
 					if s.userOnline(userID) {
 						return
 					}
@@ -348,7 +354,7 @@ func (s *Server) configureSockets() {
 			}
 			session, ok := s.getCallSession(payload.ChatID)
 			if !ok || !callParticipant(session, user.ID) {
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Call not available"})
+				// Idempotent: client may race call:end after server already cleared the session.
 				return
 			}
 			ended, endedOK := s.endCallSession(payload.ChatID)
@@ -368,7 +374,7 @@ func (s *Server) configureSockets() {
 			}
 			session, ok := s.getCallSession(payload.ChatID)
 			if !ok || !callParticipant(session, user.ID) {
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Call not available"})
+				// Drop late ICE/signaling after the session ended (common during teardown).
 				return
 			}
 			targetUserID := session.CallerUserID
