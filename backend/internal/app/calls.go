@@ -152,6 +152,13 @@ func callParticipant(session *callSession, userID string) bool {
 	return session.CallerUserID == userID || session.CalleeUserID == userID
 }
 
+func (s *Server) userHasActiveCall(userID string) bool {
+	s.callMu.Lock()
+	defer s.callMu.Unlock()
+	_, ok := s.userActiveCall[userID]
+	return ok
+}
+
 // getRingingSessionForUser returns the active ringing call session for a user
 // (where the user is the callee and the call is still in ringing state), or
 // nil if no such session exists. This is used to re-emit call:ringing to a

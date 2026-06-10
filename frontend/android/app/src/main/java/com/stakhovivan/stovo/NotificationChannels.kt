@@ -9,15 +9,17 @@ import androidx.core.app.NotificationManagerCompat
 
 object NotificationChannels {
 
-    // Use v2 suffix so the channel is recreated with IMPORTANCE_MIN on existing installs
-    const val SERVICE_CHANNEL_ID = "stovo_service_v2"
+    // v3: IMPORTANCE_LOW is the correct minimum for foreground services.
+    // IMPORTANCE_MIN triggers an extra system notification on Android 8+.
+    const val SERVICE_CHANNEL_ID = "stovo_service_v3"
 
     fun createAll(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = NotificationManagerCompat.from(context)
 
-            // Delete the old service channel so it is no longer visible to the user
+            // Remove superseded service channels so users don't see stale entries.
             nm.deleteNotificationChannel("stovo_service")
+            nm.deleteNotificationChannel("stovo_service_v2")
 
             val messagesChannel = NotificationChannel(
                 "stovo_messages",
@@ -32,14 +34,17 @@ object NotificationChannels {
             )
             callsChannel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
 
-            // IMPORTANCE_MIN: no sound, no status-bar icon, appears only at the
-            // very bottom of the notification shade — effectively invisible.
+            // IMPORTANCE_LOW: silent, no peek — lowest level Android allows for
+            // foreground services without adding a second system warning notification.
             val serviceChannel = NotificationChannel(
                 SERVICE_CHANNEL_ID,
-                "Stovo connection",
-                NotificationManager.IMPORTANCE_MIN
+                "Background connection",
+                NotificationManager.IMPORTANCE_LOW
             )
             serviceChannel.setShowBadge(false)
+            serviceChannel.enableLights(false)
+            serviceChannel.enableVibration(false)
+            serviceChannel.setSound(null, null)
 
             nm.createNotificationChannels(listOf(messagesChannel, callsChannel, serviceChannel))
         }
