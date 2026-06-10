@@ -2253,7 +2253,7 @@ h2 {
 }
 
 .message-composer-row {
-  align-items: center;
+  align-items: flex-end;
   display: grid;
   gap: 10px;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
@@ -2290,12 +2290,19 @@ h2 {
   width: 28px;
 }
 
-.message-composer input {
+.message-composer textarea {
   background: var(--background-secondary);
   border-color: transparent;
-  border-radius: 999px;
+  border-radius: 22px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1.4;
+  max-height: 160px;
   min-height: 44px;
-  padding: 0 16px;
+  overflow-y: hidden;
+  padding: 10px 16px;
+  resize: none;
+  width: 100%;
 }
 
 .message-composer button[type="submit"] {
