@@ -99,6 +99,12 @@ import {
 } from "../api/audioSettings";
 import { Capacitor } from "@capacitor/core";
 import { App, AppState } from "@capacitor/app";
+import {
+  addProximityListener,
+  disableNativeCallMode,
+  enableNativeCallMode,
+  isNativeCallPluginAvailable,
+} from "../native/callPlugin";
 
 type CallPhase = "idle" | "outgoing" | "incoming" | "connecting" | "in-call";
 
@@ -799,6 +805,10 @@ function preferPollingFirst(hostname: string) {
   return true;
 }
 
+function hasLiveLocalVideo(stream: MediaStream | null): boolean {
+  return stream?.getVideoTracks().some((track) => track.readyState !== "ended") ?? false;
+}
+
 /** Mobile full-screen call UI: native Capacitor apps always, or narrow browser viewport. */
 function isMobileCallViewport(): boolean {
   if (typeof window === "undefined") {
@@ -871,7 +881,7 @@ export default function ChatsPage() {
   const [callAudioSettings, setCallAudioSettings] = useState<CallSettings>({
     micMuted: false,
     soundDisabled: false,
-    cameraEnabled: true,
+    cameraEnabled: false,
     cameraFacingMode: "user",
     speakerMode: "small",
     inputDeviceId: "",
@@ -904,6 +914,7 @@ export default function ChatsPage() {
   });
   const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
   const [isPeerSpeaking, setIsPeerSpeaking] = useState(false);
+  const [isProximityNear, setIsProximityNear] = useState(false);
   const [isSpeakerSheetOpen, setIsSpeakerSheetOpen] = useState(false);
   const [callPeerDisplayName, setCallPeerDisplayName] = useState<string | null>(null);
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
@@ -930,6 +941,7 @@ export default function ChatsPage() {
   const activeChatIdRef = useRef<string | undefined>(chatId);
   const activeCallChatIdRef = useRef<string | null>(null);
   const callTypeRef = useRef<"audio" | "video">("audio");
+  const callPhaseRef = useRef<CallPhase>("idle");
   const chatsRef = useRef<Chat[]>([]);
   const messagesRef = useRef<Message[]>([]);
   const messageCacheRef = useRef<Record<string, Message[]>>({});
@@ -1507,6 +1519,9 @@ export default function ChatsPage() {
   useEffect(() => {
     callTypeRef.current = callType;
   }, [callType]);
+  useEffect(() => {
+    callPhaseRef.current = callPhase;
+  }, [callPhase]);
 
   useEffect(() => {
     if (isLoading || chatId || chats.length === 0 || isMobileViewport) {
@@ -1642,8 +1657,7 @@ export default function ChatsPage() {
     };
     audioController.onConnectionFailed = () => {
       console.error("[call] onConnectionFailed fired");
-      // cleanup() will emit call:end; pass serverAlreadyNotified=false (default)
-      // so cleanup handles the server notification.
+      if (callPhaseRef.current === "idle") return;
       void resetCallState("Call connection lost");
     };
     audioController.onConnectionEstablished = () => {
@@ -1661,7 +1675,9 @@ export default function ChatsPage() {
       setRemoteVideoStream(stream);
     };
     audioController.onLocalStreamReady = (stream: MediaStream) => {
-      setLocalVideoStream(stream);
+      if (hasLiveLocalVideo(stream)) {
+        setLocalVideoStream(stream);
+      }
     };
     audioController.onSpeakingChange(setIsPeerSpeaking);
     setCallAudioCapabilities(audioController.getCapabilities());
@@ -1907,9 +1923,16 @@ export default function ChatsPage() {
       void resetCallState("Call ended", true);
     });
     socket.on("call:error", (payload: { message?: string }) => {
+      const message = payload.message ?? "Call failed";
       console.error("[call:error] received:", payload);
       stopIncomingRingtone();
-      setError(payload.message ?? "Call failed");
+      // Late call:end / call:signal on an already-cleared session is harmless noise.
+      if (message === "Call not available") {
+        if (callPhaseRef.current === "idle") return;
+        void resetCallState("Call ended", true);
+        return;
+      }
+      setError(message);
       // Server encountered an error and the session may already be gone;
       // pass serverAlreadyNotified=true to avoid a redundant call:end.
       void resetCallState(undefined, true);
@@ -1957,6 +1980,30 @@ export default function ChatsPage() {
     }
   }, [callAudioSettings.soundDisabled, stopIncomingRingtone]);
 
+  // Android: proximity sensor blanks the screen near the ear; route audio to earpiece/speaker.
+  useEffect(() => {
+    if (!isNativeCallPluginAvailable() || callPhase === "idle") {
+      setIsProximityNear(false);
+      void disableNativeCallMode();
+      return;
+    }
+
+    const earpiece =
+      callAudioSettings.speakerMode === "small" && !callAudioSettings.outputDeviceId;
+    void enableNativeCallMode(earpiece);
+
+    let removeListener: (() => void) | undefined;
+    void addProximityListener((near) => setIsProximityNear(near)).then((remove) => {
+      removeListener = remove;
+    });
+
+    return () => {
+      removeListener?.();
+      setIsProximityNear(false);
+      void disableNativeCallMode();
+    };
+  }, [callPhase, callAudioSettings.speakerMode, callAudioSettings.outputDeviceId]);
+
   // Re-attach video refs to the controller whenever a call becomes active.
   // startOutgoing / acceptIncoming await getUserMedia (hundreds of ms), giving
   // React time to render the popup and populate the refs before they're needed.
@@ -2000,7 +2047,7 @@ export default function ChatsPage() {
     setLocalVideoStream(null);
     setRemoteVideoStream(null);
     setCallType("audio");
-    setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
+    setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: false }));
     setIsCallSettingsMenuOpen(false);
     setIsCallAudioPopupOpen(false);
     setIsCallMinimized(false);
@@ -2031,6 +2078,9 @@ export default function ChatsPage() {
     setError(null);
     setCallNotice(null);
     setCallType(type);
+    if (type === "audio") {
+      void applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
+    }
     setCallPhase("outgoing");
     setActiveCallChatId(selectedChat.id);
     setCallPeerUserId(peer.id);
@@ -2053,6 +2103,9 @@ export default function ChatsPage() {
     setCallNotice(null);
     setCallPhase("connecting");
     stopIncomingRingtone();
+    if (callType === "audio") {
+      await applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
+    }
     socketRef.current.emit("call:accept", { chatId: activeCallChatId });
     try {
       await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
@@ -2097,7 +2150,7 @@ export default function ChatsPage() {
     setLocalVideoStream(null);
     setRemoteVideoStream(null);
     setCallType("audio");
-    setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: true }));
+    setCallAudioSettings((cur) => ({ ...cur, micMuted: false, soundDisabled: false, cameraEnabled: false }));
     setIsCallSettingsMenuOpen(false);
     setIsCallAudioPopupOpen(false);
     setIsCallMinimized(false);
@@ -3621,6 +3674,7 @@ export default function ChatsPage() {
                 callType={callType}
                 callPhase={callPhase}
                 isPeerSpeaking={isPeerSpeaking}
+                isProximityNear={isProximityNear}
                 isMicMuted={callAudioSettings.micMuted}
                 isCameraEnabled={callAudioSettings.cameraEnabled}
                 cameraFacingMode={callAudioSettings.cameraFacingMode}
@@ -3632,14 +3686,14 @@ export default function ChatsPage() {
                 mirrorLocalVideo={callAudioSettings.mirrorLocalVideo}
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onToggleCamera={() => {
-                  if (!localVideoStream) {
+                  if (!hasLiveLocalVideo(localVideoStream)) {
                     // Camera not yet open — start it. Set callType to "video"
                     // immediately so the mobile video element mounts before
                     // onLocalStreamReady fires (prevents black screen on
-                    // first camera enable on iOS/Android). We check
-                    // localVideoStream (not callType) because callType can
-                    // already be "video" if the remote party sent video first,
-                    // in which case we still need to open the local camera.
+                    // first camera enable on iOS/Android). We check live video
+                    // tracks (not callType) because callType can already be
+                    // "video" while the stream is still audio-only (e.g.
+                    // Android prepareForCall raced ahead of accept).
                     setCallType("video");
                     void audioCallRef.current?.toggleVideo(true);
                   } else {
@@ -3883,7 +3937,7 @@ export default function ChatsPage() {
                                 : "Turn on camera"
                             }
                             onClick={() => {
-                              if (callType === "audio") {
+                              if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
                                 setCallType("video");
                                 void audioCallRef.current?.toggleVideo(true);
                               } else {
@@ -4511,6 +4565,7 @@ function MobileActiveScreen({
   callType,
   callPhase,
   isPeerSpeaking,
+  isProximityNear,
   isMicMuted,
   isCameraEnabled,
   cameraFacingMode,
@@ -4530,6 +4585,7 @@ function MobileActiveScreen({
   callType: "audio" | "video";
   callPhase: string;
   isPeerSpeaking: boolean;
+  isProximityNear: boolean;
   isMicMuted: boolean;
   isCameraEnabled: boolean;
   cameraFacingMode: "user" | "environment";
@@ -4594,8 +4650,14 @@ function MobileActiveScreen({
   const showRemoteVideo = hasRemoteVideo || remoteVideoStream !== null;
   const showAvatar = !showRemoteVideo && (callType === "audio" || !isCameraEnabled);
   const showVideo = callType === "video" && isCameraEnabled;
+  const showProximityBlank =
+    isProximityNear &&
+    (callType === "audio" || !isCameraEnabled || !showRemoteVideo);
   return (
     <div className={`mobile-active-screen${(showVideo || showRemoteVideo || (callType === "video" && isCameraEnabled)) ? " mobile-active-screen--video" : ""}`}>
+      {showProximityBlank && (
+        <div className="mobile-active-proximity-blank" aria-hidden="true" />
+      )}
       {/* Case 1: Local camera only (no remote video yet) — show self-view fullscreen */}
       {callType === "video" && isCameraEnabled && !showRemoteVideo && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>

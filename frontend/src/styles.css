@@ -4121,6 +4121,14 @@ h2 {
   pointer-events: auto;
 }
 
+.mobile-active-proximity-blank {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: #000;
+  pointer-events: none;
+}
+
 .mobile-active-avatar-wrap {
   position: relative;
   width: 88px;
