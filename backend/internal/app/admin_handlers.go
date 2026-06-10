@@ -442,10 +442,6 @@ func (s *Server) handleQuickStartPublicAccess(w http.ResponseWriter, r *http.Req
 	})
 }
 
-func strPtr(s string) *string {
-	return &s
-}
-
 func (s *Server) handlePublicIPQuickStart(w http.ResponseWriter, r *http.Request, user userPublic) {
 	if err := s.requireAdmin(user); err != nil {
 		s.detail(w, http.StatusForbidden, "Admin access required")

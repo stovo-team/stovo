@@ -13,7 +13,6 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
@@ -277,23 +276,6 @@ func timePtrFromNull(value sql.NullTime) *time.Time {
 		return nil
 	}
 	return &value.Time
-}
-
-func intPtr(value int) *int {
-	return &value
-}
-
-func intStatusPtr(value int) *int {
-	return &value
-}
-
-func probeTCP(host string, port int, timeout time.Duration) error {
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, fmt.Sprintf("%d", port)), timeout)
-	if err != nil {
-		return err
-	}
-	_ = conn.Close()
-	return nil
 }
 
 func checkURL(target string, timeout time.Duration) (bool, *int, string) {

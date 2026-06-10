@@ -102,6 +102,8 @@ export default class CallController {
   private processorDestination: MediaStreamAudioDestinationNode | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts: number = 0;
+  /** True once RTCPeerConnection reaches "connected" at least once this call. */
+  private mediaConnected = false;
   private speakingCallback: ((isSpeaking: boolean) => void) | null = null;
   private speakingAnimFrame: number | null = null;
   private speakingAnalyser: AnalyserNode | null = null;
@@ -113,6 +115,8 @@ export default class CallController {
   onVideoUnavailable?: () => void;
   /** Called when the peer connection cannot be recovered after repeated ICE restarts. */
   onConnectionFailed?: () => void;
+  /** Called when ICE/media is established and the call is ready for in-call UI. */
+  onConnectionEstablished?: () => void;
   /** Called when a remote video track arrives mid-call (e.g. remote party enables camera). */
   onRemoteVideoTrack?: (stream: MediaStream) => void;
   /** Called when the local media stream is ready (initial call setup or camera toggle). */
@@ -133,7 +137,18 @@ export default class CallController {
 
   attachRemoteVideoElement(element: HTMLVideoElement | null) {
     this.remoteVideoEl = element;
-    if (element) this.reattachRemoteVideo();
+    if (element) this.syncRemoteVideoToUI();
+  }
+
+  /** Re-attach remote video to the DOM element and notify React (mobile UI). */
+  syncRemoteVideoToUI() {
+    if (!this.remoteStream) return;
+    const hasLiveVideo = this.remoteStream.getVideoTracks().some(
+      (track) => track.readyState !== "ended",
+    );
+    if (!hasLiveVideo) return;
+    this.reattachRemoteVideo();
+    this.onRemoteVideoTrack?.(this.remoteStream);
   }
 
   attachLocalVideoElement(element: HTMLVideoElement | null) {
@@ -420,6 +435,7 @@ export default class CallController {
   async cleanup(serverAlreadyNotified = false) {
     this.clearReconnectTimer();
     this.reconnectAttempts = 0;
+    this.mediaConnected = false;
     this.isOfferer = false;
 
     // Ensure the server-side call session is cleared even if the UI did not
@@ -487,12 +503,20 @@ export default class CallController {
       if (state === "connected") {
         this.clearReconnectTimer();
         this.reconnectAttempts = 0;
+        if (!this.mediaConnected) {
+          this.mediaConnected = true;
+          // Android WebView may deliver the remote video track before React mounts
+          // the mobile <video> element — re-sync when media is fully connected.
+          this.syncRemoteVideoToUI();
+          this.onConnectionEstablished?.();
+        }
       } else if (state === "disconnected") {
         // Give the browser a few seconds to recover on its own before we try an ICE restart.
         this.scheduleReconnect(3000);
       } else if (state === "failed") {
-        // Failed is definitive — attempt ICE restart immediately.
-        this.scheduleReconnect(0);
+        // Transient ICE failures during initial TURN setup are normal — keep retrying
+        // without ending the call until media has connected at least once.
+        this.scheduleReconnect(this.mediaConnected ? 0 : 3000);
       }
     };
 
@@ -521,10 +545,9 @@ export default class CallController {
       }
       if (e.track.kind === "video") {
         this.remoteStream = stream;
-        this.reattachRemoteVideo();
         // Notify the UI so it can show the video container even if the local
         // side started as audio-only (e.g. remote party enables camera mid-call).
-        this.onRemoteVideoTrack?.(stream);
+        this.syncRemoteVideoToUI();
       }
     };
 
@@ -624,13 +647,33 @@ export default class CallController {
 
   private async attemptReconnect() {
     if (!this.peer || !this.chatId || !this.targetUserId) return;
+
+    // During initial ICE/TURN setup, never give up — stay in "connecting" until
+    // media connects or the user hangs up. Callee waits for caller ICE restarts.
+    if (!this.mediaConnected) {
+      if (!this.isOfferer) {
+        this.scheduleReconnect(5000);
+        return;
+      }
+      try {
+        await this.renegotiate({ iceRestart: true });
+        this.scheduleReconnect(5000);
+      } catch {
+        // Peer may have been closed; nothing to do.
+      }
+      return;
+    }
+
     if (this.reconnectAttempts >= 5) {
       this.onConnectionFailed?.();
       return;
     }
     this.reconnectAttempts++;
     // Only the offerer (caller) sends the new offer; the callee just waits for it.
-    if (!this.isOfferer) return;
+    if (!this.isOfferer) {
+      this.scheduleReconnect(5000);
+      return;
+    }
     try {
       await this.renegotiate({ iceRestart: true });
       // If still not recovered after another 5s, try again.
