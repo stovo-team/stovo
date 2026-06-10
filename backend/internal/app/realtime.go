@@ -97,19 +97,27 @@ func (s *Server) configureSockets() {
 			// A polling→WebSocket transport upgrade fires a disconnect for the
 			// old polling socket while the new WebSocket is already registered;
 			// ending the call in that window would silently kill every call on a
-			// non-localhost hostname.
+			// non-localhost hostname. Debounce with a short grace period so a
+			// reconnecting socket is not treated as a full disconnect.
 			if !s.userOnline(user.ID) {
-				if ended, ok := s.endCallForUser(user.ID); ok {
-					payload := map[string]any{
-						"chatId":   ended.ChatID,
-						"callerId": ended.CallerUserID,
-						"calleeId": ended.CalleeUserID,
-						"reason":   "disconnected",
-						"endedAt":  nowString(),
+				userID := user.ID
+				go func() {
+					time.Sleep(2 * time.Second)
+					if s.userOnline(userID) {
+						return
 					}
-					s.emitCallToUser(ended.CallerUserID, "call:ended", payload)
-					s.emitCallToUser(ended.CalleeUserID, "call:ended", payload)
-				}
+					if ended, ok := s.endCallForUser(userID); ok {
+						payload := map[string]any{
+							"chatId":   ended.ChatID,
+							"callerId": ended.CallerUserID,
+							"calleeId": ended.CalleeUserID,
+							"reason":   "disconnected",
+							"endedAt":  nowString(),
+						}
+						s.emitCallToUser(ended.CallerUserID, "call:ended", payload)
+						s.emitCallToUser(ended.CalleeUserID, "call:ended", payload)
+					}
+				}()
 			}
 			if !s.userOnline(user.ID) {
 				if err := cache.NewPresenceService(s.cache).MarkOffline(context.Background(), user.ID); err != nil {

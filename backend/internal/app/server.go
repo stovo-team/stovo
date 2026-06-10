@@ -827,15 +827,6 @@ func (s *Server) getClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-func firstError(errs ...error) error {
-	for _, err := range errs {
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func isMissing(err error) bool {
 	return errors.Is(err, sql.ErrNoRows) || errors.Is(err, errNotFound)
 }
