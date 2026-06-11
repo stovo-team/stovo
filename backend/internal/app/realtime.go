@@ -79,6 +79,18 @@ func (s *Server) configureSockets() {
 			}
 			s.logger.Infof("realtime.call", "call:ringing re-emitted on reconnect user_id=%s chat_id=%s socket_id=%s", user.ID, ringing.ChatID, socket.Id)
 			_ = socket.Emit("call:ringing", payloadMap)
+		} else if active := s.getActiveCallSessionForUser(user.ID); active != nil {
+			// Re-sync an in-progress call after a socket reconnect so WebRTC signaling
+			// can resume instead of leaving the client stuck on "Connecting…".
+			payloadMap := map[string]any{
+				"chatId":   active.ChatID,
+				"callerId": active.CallerUserID,
+				"calleeId": active.CalleeUserID,
+				"callType": active.CallType,
+				"state":    string(active.State),
+			}
+			s.logger.Infof("realtime.call", "call:sync re-emitted on reconnect user_id=%s chat_id=%s state=%s", user.ID, active.ChatID, active.State)
+			_ = socket.Emit("call:sync", payloadMap)
 		}
 
 		go func() {
@@ -374,7 +386,12 @@ func (s *Server) configureSockets() {
 			}
 			session, ok := s.getCallSession(payload.ChatID)
 			if !ok || !callParticipant(session, user.ID) {
-				// Drop late ICE/signaling after the session ended (common during teardown).
+				// Session already ended — tell the sender to reset instead of silently
+				// dropping (which leaves the UI stuck on "Connecting…" forever).
+				_ = socket.Emit("call:ended", map[string]any{
+					"chatId": payload.ChatID,
+					"reason": "session_gone",
+				})
 				return
 			}
 			targetUserID := session.CallerUserID
@@ -745,7 +762,10 @@ func (s *Server) emitCallToUser(userID, event string, payload any) {
 	}
 	s.socketMu.RUnlock()
 	if len(targets) == 0 {
-		s.logger.Warnf("realtime.call", "emitCallToUser: no sockets for user_id=%s event=%s", userID, event)
+		s.logger.Warnf("realtime.call", "emitCallToUser: no sockets for user_id=%s event=%s — queueing", userID, event)
+		if strings.HasPrefix(event, "call:") {
+			go s.enqueueEventForUser(context.Background(), userID, event, payload)
+		}
 		return
 	}
 	for _, sock := range targets {

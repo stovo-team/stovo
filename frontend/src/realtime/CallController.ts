@@ -101,9 +101,11 @@ export default class CallController {
   private processorContext: AudioContext | null = null;
   private processorDestination: MediaStreamAudioDestinationNode | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectWatchdog: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts: number = 0;
-  /** True once RTCPeerConnection reaches "connected" at least once this call. */
+  /** True once ICE/media is established at least once this call. */
   private mediaConnected = false;
+  private static readonly INITIAL_CONNECT_TIMEOUT_MS = 90_000;
   /** True while cleanup() is running — blocks late ICE signals to a dead server session. */
   private tearingDown = false;
   private speakingCallback: ((isSpeaking: boolean) => void) | null = null;
@@ -179,7 +181,9 @@ export default class CallController {
     this.isOfferer = true;
     await this.ensurePeer();
     // Guard against cleanup() being called while ensurePeer() was pending.
-    if (!this.peer) return;
+    if (!this.peer) {
+      throw new Error("Call peer connection failed to initialize");
+    }
     const offer = await this.peer.createOffer();
     await this.peer.setLocalDescription(offer);
     this.emitSignal({ chatId, targetUserId, data: { type: "offer", sdp: offer.sdp } });
@@ -213,6 +217,31 @@ export default class CallController {
     // arrived before getUserMedia finished). No separate draining needed here.
   }
 
+  /** Resume WebRTC after a socket reconnect while the server session is still active. */
+  async resumeSignaling(
+    chatId: string,
+    targetUserId: string,
+    callType: "audio" | "video",
+    asOfferer: boolean,
+  ) {
+    if (this.mediaConnected) return;
+    this.chatId = chatId;
+    this.targetUserId = targetUserId;
+    this.callType = callType;
+    this.isOfferer = asOfferer;
+    if (!this.peer) {
+      if (asOfferer) await this.startOutgoing(chatId, targetUserId, callType);
+      else await this.acceptIncoming(chatId, targetUserId, callType);
+      return;
+    }
+    if (asOfferer) {
+      const sig = this.peer.signalingState;
+      if (sig === "stable" || sig === "have-local-offer") {
+        await this.renegotiate({ iceRestart: true });
+      }
+    }
+  }
+
   /**
    * Process a WebRTC signal from the remote peer.
    * If the peer isn't ready yet (getUserMedia still pending), the signal is
@@ -227,6 +256,7 @@ export default class CallController {
     data: Record<string, unknown>;
   }): Promise<void> {
     if (!payload?.chatId || !payload?.data) return Promise.resolve();
+    if (this.chatId && payload.chatId !== this.chatId) return Promise.resolve();
 
     if (!this.peer) {
       // Peer not ready — buffer until ensurePeer() completes
@@ -237,7 +267,9 @@ export default class CallController {
     // Chain onto the queue so signals are always processed one at a time.
     this.signalQueue = this.signalQueue
       .then(() => this.processSignal(payload))
-      .catch(() => undefined);
+      .catch((err) => {
+        console.error("[call] processSignal failed:", err);
+      });
     return this.signalQueue;
   }
 
@@ -454,6 +486,7 @@ export default class CallController {
     if (this.tearingDown) return;
     this.tearingDown = true;
     this.clearReconnectTimer();
+    this.clearConnectWatchdog();
     this.reconnectAttempts = 0;
     this.mediaConnected = false;
     this.isOfferer = false;
@@ -523,30 +556,31 @@ export default class CallController {
 
     const peer = new RTCPeerConnection({ iceServers: await this.loadIceServers() });
 
-    peer.oniceconnectionstatechange = () => console.log("[call] ICE:", peer.iceConnectionState);
-    peer.onsignalingstatechange   = () => console.log("[call] Sig:", peer.signalingState);
-    peer.onconnectionstatechange  = () => {
-      const state = peer.connectionState;
-      console.log("[call] Peer:", state);
-      if (state === "connected") {
-        this.clearReconnectTimer();
-        this.reconnectAttempts = 0;
-        if (!this.mediaConnected) {
-          this.mediaConnected = true;
-          // Android WebView may deliver the remote video track before React mounts
-          // the mobile <video> element — re-sync when media is fully connected.
-          this.syncRemoteVideoToUI();
-          this.onConnectionEstablished?.();
-        }
-      } else if (state === "disconnected") {
-        // Give the browser a few seconds to recover on its own before we try an ICE restart.
+    peer.oniceconnectionstatechange = () => {
+      const ice = peer.iceConnectionState;
+      console.log("[call] ICE:", ice);
+      if (ice === "connected" || ice === "completed") {
+        this.markMediaConnected();
+      } else if (ice === "disconnected") {
         this.scheduleReconnect(3000);
-      } else if (state === "failed") {
-        // Transient ICE failures during initial TURN setup are normal — keep retrying
-        // without ending the call until media has connected at least once.
+      } else if (ice === "failed") {
         this.scheduleReconnect(this.mediaConnected ? 0 : 3000);
       }
     };
+    peer.onsignalingstatechange = () => console.log("[call] Sig:", peer.signalingState);
+    peer.onconnectionstatechange = () => {
+      const state = peer.connectionState;
+      console.log("[call] Peer:", state);
+      if (state === "connected") {
+        this.markMediaConnected();
+      } else if (state === "disconnected") {
+        this.scheduleReconnect(3000);
+      } else if (state === "failed") {
+        this.scheduleReconnect(this.mediaConnected ? 0 : 3000);
+      }
+    };
+
+    this.startConnectWatchdog();
 
     for (const track of this.localStream?.getTracks() ?? []) {
       peer.addTrack(track, this.localStream!);
@@ -645,7 +679,11 @@ export default class CallController {
 
   private async renegotiate(options?: RTCOfferOptions) {
     if (!this.peer || !this.chatId || !this.targetUserId) return;
-    if (this.peer.signalingState !== "stable") return;
+    const sig = this.peer.signalingState;
+    const iceRestart = Boolean(options?.iceRestart);
+    // During initial connect the caller may still be in have-local-offer waiting
+    // for an answer when ICE fails — allow an ICE-restart offer to replace it.
+    if (sig !== "stable" && !(iceRestart && sig === "have-local-offer")) return;
     const offer = await this.peer.createOffer(options);
     await this.peer.setLocalDescription(offer);
     this.emitSignal({
@@ -671,6 +709,34 @@ export default class CallController {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+  }
+
+  private startConnectWatchdog() {
+    this.clearConnectWatchdog();
+    this.connectWatchdog = setTimeout(() => {
+      this.connectWatchdog = null;
+      if (!this.mediaConnected && this.peer && this.chatId) {
+        console.error("[call] initial connect watchdog timed out");
+        this.onConnectionFailed?.();
+      }
+    }, CallController.INITIAL_CONNECT_TIMEOUT_MS);
+  }
+
+  private clearConnectWatchdog() {
+    if (this.connectWatchdog !== null) {
+      clearTimeout(this.connectWatchdog);
+      this.connectWatchdog = null;
+    }
+  }
+
+  private markMediaConnected() {
+    if (this.mediaConnected) return;
+    this.mediaConnected = true;
+    this.clearReconnectTimer();
+    this.clearConnectWatchdog();
+    this.reconnectAttempts = 0;
+    this.syncRemoteVideoToUI();
+    this.onConnectionEstablished?.();
   }
 
   private async attemptReconnect() {
