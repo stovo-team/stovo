@@ -1893,7 +1893,7 @@ h2 {
   background: transparent;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: 100%;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -2050,14 +2050,13 @@ h2 {
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 12px;
+  border-radius: 24px;
   color: var(--text-primary);
   cursor: pointer;
   display: grid;
   gap: 10px;
   grid-template-columns: auto minmax(0, 1fr) auto;
   justify-content: stretch;
-  min-height: 72px;
   padding: 9px 10px;
   position: relative;
   text-decoration: none;
@@ -2074,7 +2073,7 @@ h2 {
 .chat-list-item.active {
   background: color-mix(in oklab, var(--accent-soft) 14%, transparent);
   border-left: 2px solid var(--accent-primary);
-  border-radius: 0 12px 12px 0;
+  border-radius: 24px;
 }
 
 .compose-fab {
@@ -2190,7 +2189,7 @@ h2 {
 
 .chat-detail-header {
   align-items: center;
-  border-bottom: 1px solid var(--border-default);
+  border-radius: 999px;
   display: flex;
   flex-wrap: nowrap;
   gap: 12px;
@@ -2550,7 +2549,7 @@ h2 {
 .message-composer {
   align-items: stretch;
   background: var(--surface-card);
-  border-top: 1px solid var(--border-default);
+  border-radius: 999px;
   display: grid;
   gap: 10px;
   grid-template-columns: minmax(0, 1fr);
