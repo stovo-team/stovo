@@ -1017,8 +1017,8 @@
 
 @media (max-width: 960px) {
   :root {
-    --float-outer-gap: 0px;
-    --float-panel-gap: 0px;
+    --float-outer-gap: 16px;
+    --float-panel-gap: 16px;
   }
 }
 
@@ -1243,7 +1243,7 @@ h2 {
 .app-frame {
   display: grid;
   gap: var(--float-panel-gap);
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: var(--nav-rail-width) minmax(0, 1fr);
   padding: var(--float-outer-gap);
 }
 
@@ -1304,8 +1304,8 @@ h2 {
 .app-frame > .app-nav {
   align-items: stretch;
   align-self: start;
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  background: var(--island-surface);
+  border: 1px solid color-mix(in oklab, #ffffff 8%, #1c1c1e);
   border-bottom: 0;
   border-radius: var(--float-radius-panel);
   box-shadow: var(--float-shadow);
@@ -1315,6 +1315,7 @@ h2 {
   padding: 16px 10px;
   position: sticky;
   top: var(--float-outer-gap);
+  width: var(--nav-rail-width);
 }
 
 @supports not (height: 100dvh) {
@@ -1916,8 +1917,8 @@ h2 {
 .chat-sidebar,
 .chat-detail,
 .chat-details-panel {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
+  background: var(--island-surface);
+  border: 1px solid color-mix(in oklab, #ffffff 8%, #1c1c1e);
   border-radius: var(--float-radius-panel);
   box-shadow: var(--float-shadow);
   min-height: 0;
