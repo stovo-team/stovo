@@ -1,21 +1,21 @@
 ---
 name: Stovo Family Messenger
 product: Private family messenger (Capacitor Android + web)
-version: 2
+version: 3
 iconLibrary:
   messenger: Material Symbols Outlined
   secondary: lucide-react
 stitch:
-  status: draft-input
+  status: v2-floating-islands-handoff
   targetTool: Google Stitch
-  handoff: "Polish mobile + desktop messenger shell; return Stitch exports to replace §Stitch Deliverables"
+  handoff: "Phase 7 Stitch V2 floating islands implemented — Capacitor UAT vs three reference frames (see 07-UI-SPEC.md)"
   referenceAesthetic: Telegram-inspired floating panels (not a clone)
 design-principles:
   - calm
   - private
   - family-first
   - themeable
-  - floating-over-wallpaper
+  - floating-islands-on-black
 breakpoints:
   mobile: "max-width 960px"
   compact: "max-width 680px"
@@ -53,7 +53,7 @@ spacing:
   xl: 32px
 floatTokens:
   outerGapDesktop: "16px (24px at >=1280px)"
-  outerGapMobile: 0px
+  outerGapMobile: 16px
   panelGapDesktop: 16px
   navPillInset: 16px
   navPillHeight: 64px
@@ -80,41 +80,41 @@ themes:
     navActiveFill: "#e6f5fc"
     navActiveIcon: "#168ac0"
   dark:
-    canvas: "#0f172a"
-    surface: "#182235"
-    surfaceSecondary: "#111827"
-    textPrimary: "#f9fafb"
+    canvas: "#000000"
+    surface: "#1c1c1e"
+    surfaceSecondary: "#2c2c2e"
+    textPrimary: "#ffffff"
     textSecondary: "#cbd5e1"
-    textMuted: "#94a3b8"
+    textMuted: "#8e8e93"
     border: "#334155"
-    accent: "#60a5fa"
-    accentSoft: "#1e3a5f"
-    bubbleIncoming: "#212121"
-    bubbleOutgoing: "#766ac8"
+    accent: "#6750A4"
+    accentSoft: "color-mix(in oklab, #6750A4 20%, #1c1c1e)"
+    bubbleIncoming: "#2c2c2e"
+    bubbleOutgoing: "#6750A4"
     bubbleOutgoingText: "#ffffff"
-    inputText: "#f9fafb"
-    inputPlaceholder: "#94a3b8"
-    navPillSurface: "rgba(24,34,53,0.92)"
+    inputText: "#ffffff"
+    inputPlaceholder: "#8e8e93"
+    navPillSurface: "#1c1c1e"
     navActiveFill: "subtle — see Mobile §Bottom Nav"
-    navActiveIcon: "#60a5fa"
+    navActiveIcon: "#6750A4"
   amoled:
     canvas: "#000000"
-    surface: "#05070c"
-    surfaceSecondary: "#02040a"
-    textPrimary: "#f8fafc"
+    surface: "#1c1c1e"
+    surfaceSecondary: "#2c2c2e"
+    textPrimary: "#ffffff"
     textSecondary: "#cbd5e1"
-    textMuted: "#94a3b8"
+    textMuted: "#8e8e93"
     border: "#1f2937"
-    accent: "#60a5fa"
-    accentSoft: "#1e3a5f"
-    bubbleIncoming: "#212121"
-    bubbleOutgoing: "#766ac8"
+    accent: "#6750A4"
+    accentSoft: "color-mix(in oklab, #6750A4 20%, #1c1c1e)"
+    bubbleIncoming: "#2c2c2e"
+    bubbleOutgoing: "#6750A4"
     bubbleOutgoingText: "#ffffff"
-    inputText: "#f8fafc"
-    inputPlaceholder: "#94a3b8"
-    navPillSurface: "rgba(5,7,12,0.92)"
+    inputText: "#ffffff"
+    inputPlaceholder: "#8e8e93"
+    navPillSurface: "#1c1c1e"
     navActiveFill: "subtle — see Mobile §Bottom Nav"
-    navActiveIcon: "#60a5fa"
+    navActiveIcon: "#6750A4"
 accentOptions:
   blue: { light: "#2aabee", dark: "#60a5fa" }
   green: { light: "#15946f", dark: "#34d399" }
@@ -123,14 +123,39 @@ accentOptions:
   amber: { light: "#d97706", dark: "#fbbf24" }
 defaults:
   themeMode: system
-  accent: blue
-  wallpaper: dots
+  accent: purple
+  wallpaper: plain
   density: comfortable
+  messengerWallpaper: plain
 ---
 
-# Stovo Design System — Stitch Handoff
+# Stovo Design System — Stitch V2 Handoff
 
-> **Purpose:** Input brief for [Google Stitch](https://stitch.withgoogle.com) polish pass. Phase 5 implemented a **raw** Telegram-inspired floating shell. This document splits **mobile** and **desktop** targets, lists known defects from device review, and defines what polished Stitch exports must deliver.
+> **Purpose:** Design contract for the Phase 7 **V2 floating islands** messenger shell. Stitch reference frames are authoritative. This document syncs implementation tokens with `.planning/phases/07-v2-floating-islands-stitch/07-UI-SPEC.md`.
+
+> **Supersession:** Phase 7 UI-SPEC supersedes Phase 6 messenger shell for **layout and color**; Phase 6 **motion contract** (150ms/200ms transitions, `prefers-reduced-motion`) is retained.
+
+---
+
+## V2 Floating Islands
+
+Three Stitch reference frames define the messenger chrome. Full geometry tables live in `07-UI-SPEC.md` §Stitch Frame Specs — this section summarizes acceptance targets only.
+
+| Frame | Viewport | Key chrome |
+|-------|----------|------------|
+| **Frame 1 — Mobile chat list** | 390×884 | Plain `#000000` canvas; floating top card (brand + search + filter chips); purple FAB only (no header compose); opaque bottom nav pill; last list row clears FAB + nav |
+| **Frame 2 — Mobile conversation** | 390×884 | No bottom nav; floating header pill + floating composer pill; grey `Message` placeholder (`#8e8e93`); typed text white (`#ffffff`); 44×44 circular icon-only send |
+| **Frame 3 — Desktop workspace** | 1440×900 | Three separate islands (nav rail · sidebar · chat detail) with 16–24px black gutters; plain black canvas; circular send at all widths |
+
+**Primary accent (messenger):** `#6750A4` — FAB, send, outgoing bubbles, active nav, filter chips.
+
+**Island surfaces:** `#1c1c1e` panels, `#2c2c2e` raised (search field, composer textarea).
+
+**Canvas:** `#000000` plain on messenger — `data-wallpaper="plain"` on `.messenger-shell`; no dot grid default.
+
+**Conversation chrome (mobile ≤960px):** Bottom nav and FAB hidden when `.has-active-chat`; FAB-only compose on `.chat-list-view`.
+
+**Send button:** 44×44px circle, icon-only, all breakpoints — no visible "Send" text.
 
 ---
 
@@ -236,7 +261,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 | Desktop composer | **Variant A** — flat bar | Border-top at panel bottom |
 | Mobile composer | **Variant B** — inset pill | Floating margin + soft shadow |
 | Panel elevation | **Variant A** — deep float | `0 20px 40px rgba(0,0,0,0.4)` |
-| Wallpaper | **Variant A** — 20px dot grid | On `#0f172a` canvas |
+| Wallpaper | **Plain black** on messenger | `data-wallpaper="plain"` — no dot grid on messenger shell |
 | Selected chat row | **Hybrid** | `border-left: 2px` accent + 14% tint |
 
 ### Motion defaults (Phase 6)
@@ -250,7 +275,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 
 `prefers-reduced-motion: reduce` collapses messenger transitions to `0.01ms`. No animation on bubble entrance, wallpaper, or panel shadow on scroll.
 
-**Outgoing bubble on dark/amoled:** `#766ac8` (violet) is intentional — distinct from accent blue (`#60a5fa`).
+**Outgoing bubble on dark/amoled:** `#6750A4` — matches messenger primary accent.
 
 ### Chat list structure (do not remove)
 
@@ -266,7 +291,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 | Outgoing radius | `12px 12px 4px 12px` |
 | Grouped stack | 2px vertical gap; inner corners flatten to 4px |
 | Incoming fill | `bubbleIncoming` per theme |
-| Outgoing fill | solid `accent` / violet `#766ac8` dark — **not** soft tint |
+| Outgoing fill | solid `#6750A4` — **not** soft tint |
 | Border / shadow | none on bubbles |
 | Timestamp | 11px inline bottom-right inside bubble, 55–70% opacity |
 | Max width | 88% mobile, 72% desktop |
@@ -281,7 +306,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 
 ```
 ┌─────────────────────────────┐
-│ Wallpaper canvas (full)      │
+│ Plain black canvas (full)    │
 │  ┌─────────────────────────┐ │
 │  │ Chat list OR conversation│ │
 │  │ (100dvh minus chrome)    │ │
@@ -316,6 +341,13 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 | Selected row | full-row tint `--accentSoft` at **~12–16% opacity** (refine in Stitch) |
 | Unread badge | accent or red circle, top-right of row meta |
 
+### Conversation chrome (mobile ≤960px)
+
+| View | Bottom nav | FAB | Top chrome |
+|------|------------|-----|------------|
+| Chat list (`.chat-list-view`) | Visible | Visible (FAB only — no header compose) | Floating top card |
+| Active chat (`.has-active-chat`) | **Hidden** | **Hidden** | Floating header pill + composer pill |
+
 ### Screen: Conversation
 
 | Element | Spec |
@@ -325,7 +357,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 | Date pill | centered, 12px bold, semi-transparent |
 | Composer | Floating pill: margin 0 16px 8px, radius 24px, border + soft shadow |
 | Composer input | **D-02:** typed text = `inputText`; placeholder = `inputPlaceholder` |
-| Composer actions | attach, emoji, send (accent fill) |
+| Composer actions | attach, emoji, send (44×44 circle, icon-only, `#6750A4`) |
 
 ### Bottom nav pill (**D-03** — redesign target)
 
@@ -377,7 +409,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ wallpaper (dots / user preference)                        │
+│ plain black canvas (#000000)                              │
 │  ┌──┐ ┌──────────┐ ┌─────────────────────────────────┐   │
 │  │N │ │ Sidebar  │ │ Chat detail                      │   │
 │  │a │ │ 340px    │ │ (flex)                           │   │
@@ -453,7 +485,7 @@ Use this table when exporting from Stitch. Map names to `frontend/src/styles.css
 | Composer | `textPrimary` | `textMuted` | `surfaceSecondary` inside pill |
 | Settings | `textPrimary` | `textMuted` | `surface` |
 
-**Acceptance:** Screenshot dark + amoled with typed message "Hello" — text must be white/off-white, not black.
+**Acceptance:** Screenshot dark + amoled with typed message "Hello" — text must be `#ffffff`, placeholder `#8e8e93` grey "Message".
 
 ---
 
@@ -487,4 +519,4 @@ Settings, storage, admin, and auth continue using the **card + 8px radius** syst
 
 ---
 
-*Document version: 2.1 — Stitch input + Phase 6 implementation sync. Last updated: 2026-06-11. Messenger polish implemented; Stitch exports optional.*
+*Document version: 3 — Stitch V2 floating islands handoff. Last updated: 2026-06-11. Aligned with Phase 7 UI-SPEC; Capacitor Android UAT required before phase sign-off.*
