@@ -1228,11 +1228,13 @@ h2 {
 
 .app-shell {
   min-height: 100dvh;
+  max-height: 100dvh;
 }
 
 @supports not (height: 100dvh) {
   .app-shell {
     min-height: 100vh;
+    max-height: 100vh;
   }
 }
 
@@ -4415,7 +4417,6 @@ h2 {
 
   .messenger-shell.has-active-chat .chat-detail-header--floating {
     background: var(--island-surface);
-    border: 1px solid var(--border-default);
     border-bottom: 0;
     border-radius: 999px;
     box-shadow: var(--float-shadow-soft);
