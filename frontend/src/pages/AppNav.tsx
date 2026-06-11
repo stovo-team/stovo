@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import {
-  ContactRound,
-  HardDrive,
-  LogOut,
-  MessageCircle,
-  Settings,
-  ShieldCheck
-} from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
+import {
+  IconChats,
+  IconContacts,
+  IconLogout,
+  IconSettings,
+  IconStorage
+} from "../components/icons";
 import VeloLogo from "../components/VeloLogo";
 
 export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: number }) {
@@ -52,7 +52,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
       </div>
       <div className="app-nav-links">
         <NavLink to="/app/chats" title="Chats" aria-label="Chats">
-          <MessageCircle aria-hidden="true" size={21} />
+          <IconChats size={22} />
           <span>Chats</span>
           {unreadTotal > 0 && (
             <small className="nav-badge" aria-label={`${unreadTotal} unread messages`}>
@@ -61,15 +61,15 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
           )}
         </NavLink>
         <NavLink to="/app/files" title="Storage" aria-label="Storage">
-          <HardDrive aria-hidden="true" size={21} />
+          <IconStorage size={22} />
           <span>Storage</span>
         </NavLink>
         <NavLink to="/app/members" title="Contacts" aria-label="Contacts">
-          <ContactRound aria-hidden="true" size={21} />
+          <IconContacts size={22} />
           <span>Contacts</span>
         </NavLink>
         <NavLink to="/app/settings" title="Settings" aria-label="Settings">
-          <Settings aria-hidden="true" size={21} />
+          <IconSettings size={22} />
           <span>Settings</span>
         </NavLink>
         {canViewAdmin && (
@@ -80,7 +80,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
         )}
       </div>
       <button className="app-nav-logout" type="button" aria-label="Log out" title="Log out" onClick={logout}>
-        <LogOut aria-hidden="true" size={20} />
+        <IconLogout size={20} />
         <span>Log out</span>
       </button>
     </nav>
