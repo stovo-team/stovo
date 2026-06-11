@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Download, X } from "lucide-react";
+import { Download } from "lucide-react";
 
 interface ImageLightboxProps {
   imageUrl: string;
@@ -35,7 +35,7 @@ export default function ImageLightbox({
 
   return (
     <div
-      className="modal-backdrop image-lightbox-backdrop"
+      className="image-lightbox-backdrop"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
@@ -43,34 +43,28 @@ export default function ImageLightbox({
         }
       }}
     >
-      <section
-        className="image-lightbox"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Full view of ${title}`}
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="image-lightbox-header">
-          <div className="image-lightbox-copy">
-            <strong>{title}</strong>
-            {subtitle && <span>{subtitle}</span>}
-          </div>
-          <div className="image-lightbox-actions">
-            {onDownload && (
-              <button type="button" onClick={onDownload}>
-                <Download aria-hidden="true" size={18} />
-                <span>Download</span>
-              </button>
-            )}
-            <button type="button" className="icon-button subtle" aria-label="Close image preview" onClick={onClose}>
-              <X aria-hidden="true" size={18} />
-            </button>
-          </div>
+      <header className="image-lightbox-toolbar">
+        <button type="button" className="image-lightbox-close" aria-label="Close image preview" onClick={onClose}>
+          <span className="ms-icon ms-icon--24" aria-hidden={true}>
+            close
+          </span>
+        </button>
+        <div className="image-lightbox-copy">
+          <strong>{title}</strong>
+          {subtitle && <span>{subtitle}</span>}
         </div>
-        <div className="image-lightbox-body">
-          <img src={imageUrl} alt={title} />
-        </div>
-      </section>
+        {onDownload ? (
+          <button type="button" className="image-lightbox-download" onClick={onDownload}>
+            <Download aria-hidden="true" size={18} />
+            <span>Download</span>
+          </button>
+        ) : (
+          <span className="image-lightbox-toolbar-spacer" aria-hidden={true} />
+        )}
+      </header>
+      <div className="image-lightbox-stage" role="dialog" aria-modal="true" aria-label={`Full view of ${title}`}>
+        <img src={imageUrl} alt={title} />
+      </div>
     </div>
   );
 }

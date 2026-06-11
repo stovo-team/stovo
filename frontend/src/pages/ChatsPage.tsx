@@ -11,11 +11,11 @@ import {
   useRef,
   useState
 } from "react";
+import { createPortal } from "react-dom";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
   BellOff,
-  Camera,
   CheckCheck,
   FileText,
   Forward,
@@ -35,8 +35,11 @@ import {
   Volume2,
   Maximize2,
   Minimize2,
+  Home,
+  Megaphone,
   ShieldCheck,
   Star,
+  Users,
   WifiOff,
   X
 } from "lucide-react";
@@ -81,6 +84,7 @@ import AttachmentPickerSheet, {
   AttachmentPickerOption
 } from "../components/AttachmentPickerSheet";
 import ImageLightbox from "../components/ImageLightbox";
+import VeloLogo from "../components/VeloLogo";
 import {
   CAMERA_ATTACHMENT_ACCEPT,
   DESKTOP_ATTACHMENT_ACCEPT,
@@ -131,12 +135,30 @@ function displayChatName(chat: Chat, currentUserId: string | undefined) {
 }
 
 function chatInitials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.at(0)?.toUpperCase())
-    .join("");
+  const parts = name.split(" ").filter(Boolean);
+  if (parts.length >= 2) {
+    return parts
+      .slice(0, 2)
+      .map((part) => part.at(0)?.toUpperCase())
+      .join("");
+  }
+  const compact = parts[0] ?? name;
+  return compact.slice(0, 2).toUpperCase();
+}
+
+type ChatAvatarFallbackKind = "direct" | "group" | "channel" | "family";
+
+function chatAvatarFallbackKind(chat: Chat): ChatAvatarFallbackKind {
+  if (chat.type === "family") {
+    return "family";
+  }
+  if (chat.type === "channel") {
+    return "channel";
+  }
+  if (chat.type === "group") {
+    return "group";
+  }
+  return "direct";
 }
 
 function formatChatTime(value: string | null | undefined) {
@@ -150,7 +172,7 @@ function formatChatTime(value: string | null | undefined) {
   }
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
-type NewChatMode = "direct" | "group" | "channel";
+type NewChatScreen = "pick" | "group" | "channel";
 type ChatFilter = "all" | "unread" | "groups" | "direct" | "muted";
 type ChatSectionKey = "dms" | "groups" | "channels";
 type SharedContentTab = "media" | "files" | "links";
@@ -801,18 +823,51 @@ function RealAvatar({
   accessToken,
   className,
   file,
+  fallbackKind = "direct",
   label
 }: {
   accessToken: string | null;
   className: string;
   file: FamilyFile | null | undefined;
+  fallbackKind?: ChatAvatarFallbackKind;
   label: string;
 }) {
   const previewUrl = useFilePreviewUrl(accessToken, file ?? null, Boolean(file));
+  const [imageBroken, setImageBroken] = useState(false);
+
+  useEffect(() => {
+    setImageBroken(false);
+  }, [file?.id, previewUrl]);
+
+  function renderFallback() {
+    const isXl = className.includes("avatar-xl");
+    const iconSize = isXl ? 56 : 24;
+
+    if (fallbackKind === "group") {
+      return <Users aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
+    }
+    if (fallbackKind === "channel") {
+      return <Megaphone aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
+    }
+    if (fallbackKind === "family") {
+      return <Home aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
+    }
+    return chatInitials(label);
+  }
+
+  const showImage = Boolean(previewUrl) && !imageBroken;
 
   return (
     <span className={className}>
-      {previewUrl ? <img src={previewUrl} alt="" /> : chatInitials(label)}
+      {showImage ? (
+        <img
+          src={previewUrl ?? undefined}
+          alt=""
+          onError={() => setImageBroken(true)}
+        />
+      ) : (
+        renderFallback()
+      )}
     </span>
   );
 }
@@ -914,7 +969,6 @@ export default function ChatsPage() {
   const [composer, setComposer] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<FamilyFile[]>([]);
   const [typingNames, setTypingNames] = useState<string[]>([]);
-  const [targetUserId, setTargetUserId] = useState("");
   const [chatSearch, setChatSearch] = useState("");
   const [chatFilter, setChatFilter] = useState<ChatFilter>("all");
   const [messageSearch, setMessageSearch] = useState("");
@@ -922,7 +976,8 @@ export default function ChatsPage() {
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
-  const [newChatMode, setNewChatMode] = useState<NewChatMode>("direct");
+  const [newChatScreen, setNewChatScreen] = useState<NewChatScreen>("pick");
+  const [newChatMemberSearch, setNewChatMemberSearch] = useState("");
   const [groupTitle, setGroupTitle] = useState("");
   const [groupMemberIds, setGroupMemberIds] = useState<string[]>([]);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -1127,6 +1182,32 @@ export default function ChatsPage() {
     () => members.filter((member) => member.id !== currentUser?.id),
     [members, currentUser?.id]
   );
+  const filteredNewChatMembers = useMemo(() => {
+    const query = newChatMemberSearch.trim().toLowerCase();
+    if (!query) {
+      return directTargets;
+    }
+    return directTargets.filter((member) => {
+      const haystack = `${member.displayName} ${member.username ?? ""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [directTargets, newChatMemberSearch]);
+
+  function openNewChatScreen() {
+    setNewChatScreen("pick");
+    setNewChatMemberSearch("");
+    setGroupTitle("");
+    setGroupMemberIds([]);
+    setIsNewChatOpen(true);
+  }
+
+  function closeNewChatScreen() {
+    setIsNewChatOpen(false);
+    setNewChatScreen("pick");
+    setNewChatMemberSearch("");
+    setGroupTitle("");
+    setGroupMemberIds([]);
+  }
 
   const filteredChats = useMemo(() => {
     const query = chatSearch.trim().toLowerCase();
@@ -1652,11 +1733,18 @@ export default function ChatsPage() {
       if (event.key !== "Escape") {
         return;
       }
+      if (isNewChatOpen && newChatScreen !== "pick") {
+        setNewChatScreen("pick");
+        setNewChatMemberSearch("");
+        return;
+      }
       setIsChatMenuOpen(false);
       setIsEmojiPickerOpen(false);
       setIsMessageSearchOpen(false);
       setIsDetailsOpen(false);
-      setIsNewChatOpen(false);
+      if (isNewChatOpen) {
+        closeNewChatScreen();
+      }
       setFullViewImage(null);
       setMessageContextMenu(null);
       setForwardTarget(null);
@@ -1670,7 +1758,7 @@ export default function ChatsPage() {
       document.removeEventListener("mousedown", handleDocumentMouseDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [isNewChatOpen, newChatScreen]);
 
   useEffect(() => {
     if (!accessToken || !currentUser?.id) {
@@ -1900,8 +1988,6 @@ export default function ChatsPage() {
         setCallPeerUserId(isCaller ? payload.calleeId : payload.callerId);
         if (isCaller) {
           setCallPhase("outgoing");
-          stopCallRingtone();
-          startOutgoingRingtone();
         } else {
           setCallPhase("incoming");
           setCallNotice(incomingCallType === "video" ? "Incoming video call" : "Incoming audio call");
@@ -2246,18 +2332,24 @@ export default function ChatsPage() {
     }
   }
 
-  async function handleCreateDirectChat(event: FormEvent) {
-    event.preventDefault();
-    if (!accessToken || !targetUserId) {
+  async function startDirectChatWith(userId: string) {
+    if (!accessToken || !userId) {
       return;
     }
 
     setError(null);
     try {
-      const chat = await createDirectChat(accessToken, targetUserId);
+      const existing = chats.find(
+        (chat) => chat.type === "direct" && chat.members.some((member) => member.id === userId)
+      );
+      if (existing) {
+        closeNewChatScreen();
+        navigate(`/app/chats/${existing.id}`);
+        return;
+      }
+      const chat = await createDirectChat(accessToken, userId);
       await loadOverview();
-      setIsNewChatOpen(false);
-      setTargetUserId("");
+      closeNewChatScreen();
       navigate(`/app/chats/${chat.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not create chat");
@@ -2277,9 +2369,7 @@ export default function ChatsPage() {
         memberIds: groupMemberIds
       });
       await loadOverview();
-      setIsNewChatOpen(false);
-      setGroupTitle("");
-      setGroupMemberIds([]);
+      closeNewChatScreen();
       navigate(`/app/chats/${chat.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not create group");
@@ -2326,9 +2416,7 @@ export default function ChatsPage() {
         memberIds: groupMemberIds
       });
       await loadOverview();
-      setIsNewChatOpen(false);
-      setGroupTitle("");
-      setGroupMemberIds([]);
+      closeNewChatScreen();
       navigate(`/app/chats/${chat.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not create channel");
@@ -2478,31 +2566,44 @@ export default function ChatsPage() {
     setIsChatMenuOpen(false);
   }
 
-  const COMPOSER_MIN_HEIGHT_PX = 44;
-  const COMPOSER_MAX_HEIGHT_PX = 160;
+  const COMPOSER_MAX_LINES = 3;
+
+  const getComposerHeightLimits = useCallback((textarea: HTMLTextAreaElement) => {
+    const style = window.getComputedStyle(textarea);
+    const fontSize = Number.parseFloat(style.fontSize) || 16;
+    const lineHeight = Number.parseFloat(style.lineHeight) || fontSize * 1.4;
+    const verticalChrome =
+      Number.parseFloat(style.paddingTop) +
+      Number.parseFloat(style.paddingBottom) +
+      Number.parseFloat(style.borderTopWidth) +
+      Number.parseFloat(style.borderBottomWidth);
+    const minHeight = Number.parseFloat(style.minHeight) || lineHeight + verticalChrome;
+    const maxHeight = lineHeight * COMPOSER_MAX_LINES + verticalChrome;
+    return { minHeight, maxHeight };
+  }, []);
 
   const adjustComposerHeight = useCallback(() => {
     const textarea = composerInputRef.current;
     if (!textarea) {
       return;
     }
+    const { minHeight, maxHeight } = getComposerHeightLimits(textarea);
     textarea.style.height = "auto";
-    const nextHeight = Math.min(
-      Math.max(textarea.scrollHeight, COMPOSER_MIN_HEIGHT_PX),
-      COMPOSER_MAX_HEIGHT_PX
-    );
+    const scrollHeight = textarea.scrollHeight;
+    const nextHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
     textarea.style.height = `${nextHeight}px`;
-    textarea.style.overflowY = textarea.scrollHeight > COMPOSER_MAX_HEIGHT_PX ? "auto" : "hidden";
-  }, []);
+    textarea.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [getComposerHeightLimits]);
 
   const resetComposerHeight = useCallback(() => {
     const textarea = composerInputRef.current;
     if (!textarea) {
       return;
     }
-    textarea.style.height = `${COMPOSER_MIN_HEIGHT_PX}px`;
+    const { minHeight } = getComposerHeightLimits(textarea);
+    textarea.style.height = `${minHeight}px`;
     textarea.style.overflowY = "hidden";
-  }, []);
+  }, [getComposerHeightLimits]);
 
   useLayoutEffect(() => {
     adjustComposerHeight();
@@ -2812,7 +2913,7 @@ export default function ChatsPage() {
 
   return (
     <main
-      className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}`}
+      className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}`}
       data-wallpaper="plain"
     >
       <AppNav unreadTotalOverride={unreadTotal} />
@@ -2854,8 +2955,10 @@ export default function ChatsPage() {
         <div className={`chat-layout ${isDetailsOpen && selectedChat ? "details-open" : ""}`}>
           <aside className="chat-sidebar">
             <div className="chat-sidebar-header">
-              <div className="sidebar-title-row">
-                <span className="avatar app-avatar">{chatInitials(family?.name ?? "Stovo")}</span>
+              <div className="sidebar-title-row chat-list-title">
+                <span className="chat-list-brand-mark">
+                  <VeloLogo className="chat-list-brand-logo" title="Stovo" />
+                </span>
                 <div>
                   <p className="eyebrow">{family?.name ?? "Stovo"}</p>
                   <h1>Chats</h1>
@@ -2866,7 +2969,7 @@ export default function ChatsPage() {
                     className="icon-button sidebar-compose-desktop"
                     aria-label="Create chat"
                     title="Create chat"
-                    onClick={() => setIsNewChatOpen(true)}
+                    onClick={openNewChatScreen}
                   >
                     <span className="ms-icon ms-icon--20" aria-hidden={true}>
                       edit
@@ -2874,7 +2977,7 @@ export default function ChatsPage() {
                   </button>
                 </div>
               </div>
-              <label className="search-field">
+              <label className="search-field chat-list-search">
                 <span className="ms-icon ms-icon--20" aria-hidden={true}>
                   search
                 </span>
@@ -2884,7 +2987,7 @@ export default function ChatsPage() {
                   onChange={(event) => setChatSearch(event.target.value)}
                 />
               </label>
-              <div className="filter-chip-row" aria-label="Chat filters">
+              <div className="filter-chip-row chat-list-filters" aria-label="Chat filters">
                 {CHAT_FILTERS.map((filter) => (
                   <button
                     type="button"
@@ -2898,6 +3001,18 @@ export default function ChatsPage() {
                 ))}
               </div>
             </div>
+
+            {callPhase !== "idle" && isCallMinimized && isMobileViewport && !chatId && (
+              <MobileMinimizedCallBar
+                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
+                callPhase={callPhase}
+                callTimer={callTimer}
+                micMuted={callAudioSettings.micMuted}
+                onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
+                onEnd={() => void endActiveCall()}
+                onExpand={() => setIsCallMinimized(false)}
+              />
+            )}
 
             <div className="chat-list" aria-busy={isLoading}>
               {isLoading
@@ -2933,6 +3048,7 @@ export default function ChatsPage() {
                               <RealAvatar
                                 accessToken={accessToken}
                                 className={`avatar chat-avatar ${chatAvatarTypeClass(chat)}`}
+                                fallbackKind={chatAvatarFallbackKind(chat)}
                                 file={chatAvatarFile(chat, currentUser?.id)}
                                 label={chatName}
                               />
@@ -2977,7 +3093,7 @@ export default function ChatsPage() {
                         : "No chats found"}
                   </strong>
                   <p>Start a direct message or create a group for your family space.</p>
-                  <button type="button" onClick={() => setIsNewChatOpen(true)}>
+                  <button type="button" onClick={openNewChatScreen}>
                     Start a chat
                   </button>
                 </div>
@@ -2988,7 +3104,7 @@ export default function ChatsPage() {
               className="compose-fab"
               aria-label="Start a chat"
               title="Start a chat"
-              onClick={() => setIsNewChatOpen(true)}
+              onClick={openNewChatScreen}
             >
               <span className="ms-icon ms-icon--24" aria-hidden={true}>
                 edit
@@ -3023,6 +3139,7 @@ export default function ChatsPage() {
                     <RealAvatar
                       accessToken={accessToken}
                       className={`avatar chat-avatar ${chatAvatarTypeClass(selectedChat)}`}
+                      fallbackKind={chatAvatarFallbackKind(selectedChat)}
                       file={chatAvatarFile(selectedChat, currentUser?.id)}
                       label={displayChatName(selectedChat, currentUser?.id)}
                     />
@@ -3073,7 +3190,7 @@ export default function ChatsPage() {
                     <div className="menu-anchor" ref={chatMenuRef}>
                       <button
                         type="button"
-                        className="icon-button subtle"
+                        className="icon-button subtle icon-button--plain"
                         aria-label="More actions"
                         aria-expanded={isChatMenuOpen}
                         aria-haspopup="menu"
@@ -3155,6 +3272,17 @@ export default function ChatsPage() {
                     </div>
                   </div>
                 </div>
+                {callPhase !== "idle" && isCallMinimized && isMobileViewport && chatId && (
+                  <MobileMinimizedCallBar
+                    peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
+                    callPhase={callPhase}
+                    callTimer={callTimer}
+                    micMuted={callAudioSettings.micMuted}
+                    onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
+                    onEnd={() => void endActiveCall()}
+                    onExpand={() => setIsCallMinimized(false)}
+                  />
+                )}
                 {isMessageSearchOpen && (
                   <div className="search-field message-search-field" role="search">
                     <span className="ms-icon ms-icon--20" aria-hidden={true}>
@@ -3462,6 +3590,20 @@ export default function ChatsPage() {
                     )}
                   </div>
                 )}
+                {pendingAttachments.length > 0 && (
+                  <div className="composer-attachments-strip" aria-label="Attachments to send">
+                    <div className="pending-attachments">
+                      {pendingAttachments.map((file) => (
+                        <PendingAttachmentCard
+                          accessToken={accessToken}
+                          file={file}
+                          key={file.id}
+                          onRemove={() => removePendingAttachment(file.id)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <form className="message-composer" onSubmit={handleSendMessage}>
                   {selectedChat?.type === "channel" && channelCommentsDisabledForViewer && (
                     <p className="muted-copy">Comments are disabled in this channel.</p>
@@ -3484,27 +3626,6 @@ export default function ChatsPage() {
                       </button>
                     </div>
                   )}
-                  {pendingAttachments.length > 0 && (
-                    <div className="pending-attachments">
-                      {pendingAttachments.map((file) => (
-                        <article key={file.id} className="pending-attachment-card">
-                          <div className="pending-attachment-copy">
-                            <strong>{file.originalName}</strong>
-                            <span>
-                              {pendingAttachmentKindLabel(file)} / {formatFileSize(file.sizeBytes)}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            aria-label={`Remove ${file.originalName}`}
-                            onClick={() => removePendingAttachment(file.id)}
-                          >
-                            <X aria-hidden="true" size={14} />
-                          </button>
-                        </article>
-                      ))}
-                    </div>
-                  )}
                   <div className="message-composer-row">
                     <button
                       type="button"
@@ -3514,7 +3635,7 @@ export default function ChatsPage() {
                       disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
                       onClick={handleAttachButtonClick}
                     >
-                      <span className="ms-icon ms-icon--22" aria-hidden={true}>
+                      <span className="ms-icon ms-icon--28" aria-hidden={true}>
                         attach_file
                       </span>
                     </button>
@@ -3638,245 +3759,35 @@ export default function ChatsPage() {
                 <MessageCircle aria-hidden="true" size={42} />
                 <strong>Select a chat</strong>
                 <p>Choose a conversation on the left, or start a new small-circle chat.</p>
-                <button type="button" onClick={() => setIsNewChatOpen(true)}>
+                <button type="button" onClick={openNewChatScreen}>
                   New message
                 </button>
               </div>
             )}
           </section>
           {selectedChat && isDetailsOpen && (
-            <aside className="chat-details-panel">
-              <div className="details-hero">
-                <button
-                  type="button"
-                  className="icon-button subtle close-panel-button"
-                  aria-label="Close details"
-                  title="Close details"
-                  onClick={() => setIsDetailsOpen(false)}
-                >
-                  <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                    close
-                  </span>
-                </button>
-                <RealAvatar
-                  accessToken={accessToken}
-                  className={`avatar avatar-xl chat-avatar ${chatAvatarTypeClass(selectedChat)}`}
-                  file={chatAvatarFile(selectedChat, currentUser?.id)}
-                  label={displayChatName(selectedChat, currentUser?.id)}
-                />
-                {canManageSelectedChat && (
-                  <>
-                    <button
-                      type="button"
-                      className="avatar-edit-button"
-                      aria-label="Change chat photo"
-                      title="Change chat photo"
-                      disabled={isUploading}
-                      onClick={() => chatPhotoInputRef.current?.click()}
-                    >
-                      <Camera aria-hidden="true" size={16} />
-                    </button>
-                    <input
-                      ref={chatPhotoInputRef}
-                      accept="image/jpeg,image/png,image/gif,image/webp"
-                      className="visually-hidden"
-                      disabled={isUploading}
-                      type="file"
-                      onChange={handleChatPhotoSelect}
-                    />
-                  </>
-                )}
-                <h2>{displayChatName(selectedChat, currentUser?.id)}</h2>
-                <p>
-                  {selectedChat.type === "direct"
-                    ? "Direct message"
-                    : `${selectedChat.members.length} members`}
-                </p>
-                <span className="encryption-pill details-encryption-pill">
-                  <ShieldCheck aria-hidden="true" size={13} />
-                  {encryptionProtocolLabel(selectedChat.encryptionProtocol)}
-                </span>
-                <div className="details-action-row">
-                  <button type="button" onClick={focusComposer}>
-                    <MessageCircle aria-hidden="true" size={18} />
-                    Message
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={selectedChat.isMuted}
-                    onClick={() =>
-                      void handleChatPreferenceChange(
-                        { isMuted: !selectedChat.isMuted },
-                        selectedChat.isMuted ? "Notifications enabled" : "Chat muted"
-                      )
-                    }
-                  >
-                    {selectedChat.isMuted ? (
-                      <Bell aria-hidden="true" size={18} />
-                    ) : (
-                      <BellOff aria-hidden="true" size={18} />
-                    )}
-                    {selectedChat.isMuted ? "Unmute" : "Mute"}
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={selectedChat.isFavorite}
-                    onClick={() =>
-                      void handleChatPreferenceChange(
-                        { isFavorite: !selectedChat.isFavorite },
-                        selectedChat.isFavorite ? "Removed from favorites" : "Added to favorites"
-                      )
-                    }
-                  >
-                    <Star aria-hidden="true" size={18} />
-                    {selectedChat.isFavorite ? "Saved" : "Favorite"}
-                  </button>
-                </div>
-              </div>
-
-              <form className="details-form" onSubmit={handleChatSettingsSubmit}>
-                <label>
-                  Chat name
-                  <input
-                    disabled={!canManageSelectedChat}
-                    value={chatTitleDraft}
-                    onChange={(event) => setChatTitleDraft(event.target.value)}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={
-                    !canManageSelectedChat ||
-                    !chatTitleDraft.trim() ||
-                    chatTitleDraft.trim() === displayChatName(selectedChat, currentUser?.id)
-                  }
-                >
-                  Save
-                </button>
-              </form>
-
-              {selectedChat.type !== "family" && (
-                <section className="details-section">
-                  <div className="section-title-row">
-                    <h3>Media access</h3>
-                    <span>
-                      {selectedChat.mediaVisibility === "family" ? "Family storage" : "Chat members"}
-                    </span>
-                  </div>
-                  <label className="inline-toggle media-visibility-toggle">
-                    <input
-                      type="checkbox"
-                      checked={mediaVisibilityToggleChecked(selectedChat)}
-                      disabled={!canUpdateMediaVisibility(selectedChat, currentUser)}
-                      onChange={(event) => void handleMediaVisibilityChange(event.target.checked)}
-                    />
-                    <span>Show media in family storage</span>
-                  </label>
-                  {selectedChat.mediaVisibilityPendingApproval && (
-                    <p className="muted-copy">
-                      {`Approval ${selectedChat.mediaVisibilityApprovalCount}/${selectedChat.mediaVisibilityApprovalRequired}`}
-                    </p>
-                  )}
-                </section>
-              )}
-
-              {selectedChat.type === "channel" && (
-                <section className="details-section">
-                  <div className="section-title-row">
-                    <h3>Comments</h3>
-                    <span>{selectedChat.commentsEnabled ? "Enabled" : "Disabled"}</span>
-                  </div>
-                  <label className="inline-toggle media-visibility-toggle">
-                    <input
-                      type="checkbox"
-                      checked={selectedChat.commentsEnabled}
-                      disabled={!canManageSelectedChat}
-                      onChange={(event) => void handleCommentsEnabledChange(event.target.checked)}
-                    />
-                    <span>Allow comments</span>
-                  </label>
-                </section>
-              )}
-
-              <section className="details-section">
-                <div className="section-title-row">
-                  <h3>Shared content</h3>
-                  <span>{detailsTab === "links" ? 0 : sharedContentItems.length}</span>
-                </div>
-                <div className="tab-row" role="tablist" aria-label="Shared content">
-                  <button
-                    type="button"
-                    className={detailsTab === "media" ? "active" : ""}
-                    aria-pressed={detailsTab === "media"}
-                    onClick={() => setDetailsTab("media")}
-                  >
-                    Media
-                  </button>
-                  <button
-                    type="button"
-                    className={detailsTab === "files" ? "active" : ""}
-                    aria-pressed={detailsTab === "files"}
-                    onClick={() => setDetailsTab("files")}
-                  >
-                    Files
-                  </button>
-                  <button
-                    type="button"
-                    className={detailsTab === "links" ? "active" : ""}
-                    aria-pressed={detailsTab === "links"}
-                    onClick={() => setDetailsTab("links")}
-                  >
-                    Links
-                  </button>
-                </div>
-                {sharedContentItems.length > 0 ? (
-                  <div className="details-media-grid">
-                    {sharedContentItems.map((file) => (
-                      <SharedContentThumb
-                        accessToken={accessToken}
-                        file={file}
-                        key={file.id}
-                        onOpenImage={(attachment, previewUrl) =>
-                          setFullViewImage({ file: attachment, previewUrl })
-                        }
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="muted-copy">
-                    {detailsTab === "links"
-                      ? "Links shared in messages will appear here."
-                      : detailsTab === "media"
-                        ? "Shared photos and videos appear here."
-                        : "Shared documents and other files appear here."}
-                  </p>
-                )}
-              </section>
-
-              <section className="details-section">
-                <div className="section-title-row">
-                  <h3>Members</h3>
-                  <span>{selectedChat.members.length}</span>
-                </div>
-                <div className="details-member-list">
-                  {selectedChat.members.map((member) => (
-                    <article className="details-member-row" key={member.id}>
-                      <RealAvatar
-                        accessToken={accessToken}
-                        className="avatar member-avatar"
-                        file={member.profilePhoto}
-                        label={member.displayName}
-                      />
-                      <div>
-                        <strong>{member.displayName}</strong>
-                        <span>@{member.username}</span>
-                      </div>
-                      <small>{member.role}</small>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            </aside>
+            <ChatInfoPanel
+              accessToken={accessToken}
+              chat={selectedChat}
+              chatPhotoInputRef={chatPhotoInputRef}
+              chatTitleDraft={chatTitleDraft}
+              canManageChat={canManageSelectedChat}
+              currentUser={currentUser}
+              currentUserId={currentUser?.id}
+              detailsTab={detailsTab}
+              isUploading={isUploading}
+              sharedContentItems={sharedContentItems}
+              onChatPhotoSelect={handleChatPhotoSelect}
+              onChatSettingsSubmit={handleChatSettingsSubmit}
+              onClose={() => setIsDetailsOpen(false)}
+              onCommentsEnabledChange={handleCommentsEnabledChange}
+              onDetailsTabChange={setDetailsTab}
+              onFocusComposer={focusComposer}
+              onMediaVisibilityChange={handleMediaVisibilityChange}
+              onOpenImage={(file, previewUrl) => setFullViewImage({ file, previewUrl })}
+              onPreferenceChange={handleChatPreferenceChange}
+              onTitleDraftChange={setChatTitleDraft}
+            />
           )}
         </div>
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
@@ -3890,10 +3801,10 @@ export default function ChatsPage() {
               "call-popup",
               isCallMinimized ? "call-popup-minimized" : "",
               isMobileViewport ? "call-popup-fullscreen" : "",
+              isCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
             ].filter(Boolean).join(" ")}
             role="dialog"
             aria-modal="false"
-            onClick={isCallMinimized && isMobileViewport ? () => setIsCallMinimized(false) : undefined}
             aria-label={
               callPhase === "incoming"
                 ? "Incoming call"
@@ -3952,53 +3863,9 @@ export default function ChatsPage() {
               />
             )}
             {/* ── Header row ── */}
-            {!(isMobileViewport && !isCallMinimized && callPhase === "incoming") && (
+            {!(isMobileViewport && !isCallMinimized && callPhase === "incoming") &&
+              !(isCallMinimized && isMobileViewport) && (
             <div className="call-popup-header">
-              {isCallMinimized && isMobileViewport ? (
-                // Mobile minimized bar: [mic] [pulse · name · timer] [end-call]
-                // Tap the name/timer area (or anywhere outside the buttons) to restore.
-                <>
-                  {/* Mic toggle */}
-                  <button
-                    type="button"
-                    style={{
-                      background: callAudioSettings.micMuted ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)',
-                      border: 'none', borderRadius: '50%',
-                      width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', color: '#fff', flexShrink: 0,
-                    }}
-                    aria-label={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"}
-                    onClick={(e) => { e.stopPropagation(); void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted }); }}
-                  >
-                    {callAudioSettings.micMuted ? <MicOff size={15} aria-hidden="true" /> : <Mic size={15} aria-hidden="true" />}
-                  </button>
-
-                  {/* Name + timer — tap to expand */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, minWidth: 0 }}>
-                    <div className="mobile-call-bar-pulse" />
-                    <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
-                      {callPhase === "in-call" ? ` · ${callTimer}` : callPhase === "outgoing" ? " · Calling…" : " · Connecting…"}
-                    </span>
-                  </div>
-
-                  {/* End call */}
-                  <button
-                    type="button"
-                    style={{
-                      background: '#ff3b30', border: 'none', borderRadius: '50%',
-                      width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer', color: '#fff', flexShrink: 0,
-                    }}
-                    aria-label="End call"
-                    onClick={(e) => { e.stopPropagation(); void endActiveCall(); }}
-                  >
-                    <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor" style={{ transform: 'rotate(135deg)' }}>
-                      <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
-                    </svg>
-                  </button>
-                </>
-              ) : (
                 <>
                   <strong className="call-popup-status">
                     {callPhase === "incoming"
@@ -4013,9 +3880,8 @@ export default function ChatsPage() {
                   </strong>
                   {callNotice && <span className="call-popup-notice">{callNotice}</span>}
                 </>
-              )}
               <div className="call-popup-header-actions">
-                {callPhase !== "incoming" && !(isCallMinimized && isMobileViewport) && (
+                {callPhase !== "incoming" && (
                   <button
                     type="button"
                     className="icon-button subtle"
@@ -4331,101 +4197,26 @@ export default function ChatsPage() {
           )}
           </>
         )}
-        {isNewChatOpen && (
-          <div className="modal-backdrop" role="presentation">
-            <section className="messenger-modal" role="dialog" aria-modal="true" aria-labelledby="new-chat-title">
-              <div className="modal-header">
-                <h2 id="new-chat-title">New chat</h2>
-                <button
-                  type="button"
-                  className="icon-button subtle"
-                  aria-label="Close new chat"
-                  title="Close"
-                  onClick={() => setIsNewChatOpen(false)}
-                >
-                  <X aria-hidden="true" size={18} />
-                </button>
-              </div>
-              <div className="segmented-control">
-                <button
-                  type="button"
-                  className={newChatMode === "direct" ? "active" : ""}
-                  aria-pressed={newChatMode === "direct"}
-                  onClick={() => setNewChatMode("direct")}
-                >
-                  DM
-                </button>
-                <button
-                  type="button"
-                  className={newChatMode === "group" ? "active" : ""}
-                  aria-pressed={newChatMode === "group"}
-                  onClick={() => setNewChatMode("group")}
-                >
-                  Group
-                </button>
-                <button
-                  type="button"
-                  className={newChatMode === "channel" ? "active" : ""}
-                  aria-pressed={newChatMode === "channel"}
-                  onClick={() => setNewChatMode("channel")}
-                >
-                  Channel
-                </button>
-              </div>
-              {newChatMode === "direct" ? (
-                <form className="modal-form" onSubmit={handleCreateDirectChat}>
-                  <label>
-                    Member
-                    <select
-                      value={targetUserId}
-                      onChange={(event) => setTargetUserId(event.target.value)}
-                    >
-                      <option value="">Select member</option>
-                      {directTargets.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.displayName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button type="submit" disabled={!targetUserId}>
-                    Start DM
-                  </button>
-                </form>
-              ) : (
-                <form
-                  className="modal-form"
-                  onSubmit={newChatMode === "channel" ? handleCreateChannelChat : handleCreateGroupChat}
-                >
-                  <label>
-                    {newChatMode === "channel" ? "Channel name" : "Group name"}
-                    <input
-                      maxLength={255}
-                      value={groupTitle}
-                      onChange={(event) => setGroupTitle(event.target.value)}
-                    />
-                  </label>
-                  <div className="member-picker">
-                    {directTargets.map((member) => (
-                      <label className="member-choice" key={member.id}>
-                        <input
-                          type="checkbox"
-                          checked={groupMemberIds.includes(member.id)}
-                          onChange={() => toggleGroupMember(member.id)}
-                        />
-                        <span>{member.displayName}</span>
-                        <small>{member.role}</small>
-                      </label>
-                    ))}
-                  </div>
-                  <button type="submit" disabled={!groupTitle.trim() || groupMemberIds.length === 0}>
-                    {newChatMode === "channel" ? "Create channel" : "Create group"}
-                  </button>
-                </form>
-              )}
-            </section>
-          </div>
-        )}
+        {isNewChatOpen &&
+          createPortal(
+            <NewChatScreen
+              accessToken={accessToken}
+              screen={newChatScreen}
+              members={filteredNewChatMembers}
+              memberSearch={newChatMemberSearch}
+              groupTitle={groupTitle}
+              groupMemberIds={groupMemberIds}
+              onMemberSearchChange={setNewChatMemberSearch}
+              onScreenChange={setNewChatScreen}
+              onClose={closeNewChatScreen}
+              onStartDirect={(userId) => void startDirectChatWith(userId)}
+              onGroupTitleChange={setGroupTitle}
+              onToggleGroupMember={toggleGroupMember}
+              onCreateGroup={(event) => void handleCreateGroupChat(event)}
+              onCreateChannel={(event) => void handleCreateChannelChat(event)}
+            />,
+            document.body
+          )}
 
         {forwardTarget && (
           <div className="modal-backdrop" role="presentation">
@@ -4453,6 +4244,7 @@ export default function ChatsPage() {
                     <RealAvatar
                       accessToken={accessToken}
                       className={`avatar member-avatar ${chatAvatarTypeClass(chat)}`}
+                      fallbackKind={chatAvatarFallbackKind(chat)}
                       file={chatAvatarFile(chat, currentUser?.id)}
                       label={displayChatName(chat, currentUser?.id)}
                     />
@@ -5039,6 +4831,604 @@ function MobileActiveScreen({
           <span className="mobile-active-ctrl-lbl">End</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PendingAttachmentCard({
+  accessToken,
+  file,
+  onRemove
+}: {
+  accessToken: string | null;
+  file: FamilyFile;
+  onRemove: () => void;
+}) {
+  const isImage = isImageAttachment(file);
+  const isVideo = file.mimeType.startsWith("video/");
+  const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
+  const showThumb = isImage || isVideo;
+
+  return (
+    <article
+      className={`pending-attachment-card${showThumb ? " pending-attachment-card--media" : ""}`}
+    >
+      {showThumb && (
+        <div className="pending-attachment-thumb" aria-hidden={true}>
+          {isImage && previewUrl ? (
+            <img src={previewUrl} alt="" />
+          ) : (
+            <span className="pending-attachment-thumb-placeholder">
+              {isVideo ? <Video aria-hidden="true" size={22} /> : <Image aria-hidden="true" size={22} />}
+            </span>
+          )}
+        </div>
+      )}
+      <div className="pending-attachment-copy">
+        <strong>{file.originalName}</strong>
+        <span>
+          {pendingAttachmentKindLabel(file)} / {formatFileSize(file.sizeBytes)}
+        </span>
+      </div>
+      <button
+        type="button"
+        className="pending-attachment-remove"
+        aria-label={`Remove ${file.originalName}`}
+        onClick={onRemove}
+      >
+        <X aria-hidden="true" size={16} />
+      </button>
+    </article>
+  );
+}
+
+function ChatInfoPanel({
+  accessToken,
+  chat,
+  chatPhotoInputRef,
+  chatTitleDraft,
+  canManageChat,
+  currentUser,
+  currentUserId,
+  detailsTab,
+  isUploading,
+  sharedContentItems,
+  onChatPhotoSelect,
+  onChatSettingsSubmit,
+  onClose,
+  onCommentsEnabledChange,
+  onDetailsTabChange,
+  onFocusComposer,
+  onMediaVisibilityChange,
+  onOpenImage,
+  onPreferenceChange,
+  onTitleDraftChange,
+}: {
+  accessToken: string | null;
+  chat: Chat;
+  chatPhotoInputRef: RefObject<HTMLInputElement | null>;
+  chatTitleDraft: string;
+  canManageChat: boolean;
+  currentUser: User | null;
+  currentUserId: string | undefined;
+  detailsTab: SharedContentTab;
+  isUploading: boolean;
+  sharedContentItems: FamilyFile[];
+  onChatPhotoSelect: (event: ChangeEvent<HTMLInputElement>) => void;
+  onChatSettingsSubmit: (event: FormEvent) => void;
+  onClose: () => void;
+  onCommentsEnabledChange: (enabled: boolean) => void;
+  onDetailsTabChange: (tab: SharedContentTab) => void;
+  onFocusComposer: () => void;
+  onMediaVisibilityChange: (enabled: boolean) => void;
+  onOpenImage: (file: FamilyFile, previewUrl: string) => void;
+  onPreferenceChange: (
+    payload: { isMuted?: boolean; isPinned?: boolean; isFavorite?: boolean },
+    notice: string
+  ) => void;
+  onTitleDraftChange: (value: string) => void;
+}) {
+  const chatName = displayChatName(chat, currentUserId);
+  const canRename =
+    canManageChat && chat.type !== "direct" && chatTitleDraft.trim() !== chatName.trim();
+
+  const showSettingsIsland =
+    (canManageChat && chat.type !== "direct") ||
+    (chat.type !== "family" && chat.type !== "direct") ||
+    chat.type === "channel";
+
+  return (
+    <aside className="chat-details-panel chat-info-screen" role="dialog" aria-modal="true" aria-labelledby="chat-info-title">
+      <header className="chat-info-topbar">
+        <button type="button" className="chat-info-back" aria-label="Back to chat" onClick={onClose}>
+          <span className="ms-icon ms-icon--24" aria-hidden={true}>
+            arrow_back
+          </span>
+        </button>
+        <h2 id="chat-info-title" className="visually-hidden">
+          {chatName}
+        </h2>
+      </header>
+
+      <div className="chat-info-body">
+        <section className="chat-info-hero">
+          <div className="chat-info-avatar-wrap">
+            <RealAvatar
+              accessToken={accessToken}
+              className={`avatar avatar-xl chat-avatar ${chatAvatarTypeClass(chat)}`}
+              fallbackKind={chatAvatarFallbackKind(chat)}
+              file={chatAvatarFile(chat, currentUserId)}
+              label={chatName}
+            />
+            {canManageChat && (
+              <>
+                <button
+                  type="button"
+                  className="chat-info-avatar-edit"
+                  aria-label="Change chat photo"
+                  title="Change chat photo"
+                  disabled={isUploading}
+                  onClick={() => chatPhotoInputRef.current?.click()}
+                >
+                  <span className="ms-icon ms-icon--24" aria-hidden={true}>
+                    add_a_photo
+                  </span>
+                </button>
+                <input
+                  ref={chatPhotoInputRef}
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  className="visually-hidden"
+                  disabled={isUploading}
+                  type="file"
+                  onChange={onChatPhotoSelect}
+                />
+              </>
+            )}
+          </div>
+          <h3>{chatName}</h3>
+          <p className="chat-info-subtitle">
+            {chat.type === "direct"
+              ? "Direct message"
+              : `${chat.members.length} member${chat.members.length === 1 ? "" : "s"}`}
+          </p>
+          <p className="chat-info-meta">{encryptionProtocolLabel(chat.encryptionProtocol)}</p>
+        </section>
+
+        <section className="chat-info-actions" aria-label="Chat actions">
+          <button type="button" className="chat-info-action" onClick={onFocusComposer}>
+            <span className="ms-icon ms-icon--24" aria-hidden={true}>
+              chat
+            </span>
+            <span>Message</span>
+          </button>
+          <button
+            type="button"
+            className="chat-info-action"
+            aria-pressed={chat.isMuted}
+            onClick={() =>
+              void onPreferenceChange(
+                { isMuted: !chat.isMuted },
+                chat.isMuted ? "Notifications enabled" : "Chat muted"
+              )
+            }
+          >
+            <span className="ms-icon ms-icon--24" aria-hidden={true}>
+              {chat.isMuted ? "notifications" : "notifications_off"}
+            </span>
+            <span>{chat.isMuted ? "Unmute" : "Mute"}</span>
+          </button>
+          <button
+            type="button"
+            className="chat-info-action"
+            aria-pressed={chat.isFavorite}
+            onClick={() =>
+              void onPreferenceChange(
+                { isFavorite: !chat.isFavorite },
+                chat.isFavorite ? "Removed from favorites" : "Added to favorites"
+              )
+            }
+          >
+            <span
+              className={`ms-icon ms-icon--24${chat.isFavorite ? " ms-icon--filled" : ""}`}
+              aria-hidden={true}
+            >
+              star
+            </span>
+            <span>{chat.isFavorite ? "Saved" : "Favorite"}</span>
+          </button>
+        </section>
+
+        {showSettingsIsland && (
+          <div className="chat-info-section">
+            <div className="chat-info-island">
+              {canManageChat && chat.type !== "direct" && (
+                <form className="chat-info-row chat-info-row--editable" onSubmit={onChatSettingsSubmit}>
+                  <label className="chat-info-row-copy" htmlFor="chat-info-name">
+                    <input
+                      id="chat-info-name"
+                      className="chat-info-inline-input"
+                      maxLength={255}
+                      value={chatTitleDraft}
+                      onChange={(event) => onTitleDraftChange(event.target.value)}
+                    />
+                    <small>Chat name</small>
+                  </label>
+                  <button type="submit" className="chat-info-row-action" disabled={!canRename}>
+                    Save
+                  </button>
+                </form>
+              )}
+
+              {chat.type !== "family" && (
+                <label className="chat-info-row chat-info-row--toggle">
+                  <span className="chat-info-row-copy">
+                    <strong>Family storage</strong>
+                    <small>Show media in shared family storage</small>
+                  </span>
+                  <span className="call-audio-toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={mediaVisibilityToggleChecked(chat)}
+                      disabled={!canUpdateMediaVisibility(chat, currentUser)}
+                      onChange={(event) => void onMediaVisibilityChange(event.target.checked)}
+                    />
+                    <span className="call-audio-toggle-slider" aria-hidden={true} />
+                  </span>
+                </label>
+              )}
+
+              {chat.mediaVisibilityPendingApproval && (
+                <p className="chat-info-island-note">
+                  Approval {chat.mediaVisibilityApprovalCount}/{chat.mediaVisibilityApprovalRequired}
+                </p>
+              )}
+
+              {chat.type === "channel" && (
+                <label className="chat-info-row chat-info-row--toggle">
+                  <span className="chat-info-row-copy">
+                    <strong>Comments</strong>
+                    <small>Allow members to comment on posts</small>
+                  </span>
+                  <span className="call-audio-toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={chat.commentsEnabled}
+                      disabled={!canManageChat}
+                      onChange={(event) => void onCommentsEnabledChange(event.target.checked)}
+                    />
+                    <span className="call-audio-toggle-slider" aria-hidden={true} />
+                  </span>
+                </label>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="chat-info-section chat-info-section--media">
+          <div className="chat-info-tabs" role="tablist" aria-label="Shared content">
+            {(["media", "files", "links"] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={`chat-info-tab${detailsTab === tab ? " active" : ""}`}
+                aria-pressed={detailsTab === tab}
+                onClick={() => onDetailsTabChange(tab)}
+              >
+                {tab === "media" ? "Media" : tab === "files" ? "Files" : "Links"}
+              </button>
+            ))}
+          </div>
+          {sharedContentItems.length > 0 ? (
+            <div className="details-media-grid chat-info-media-grid">
+              {sharedContentItems.map((file) => (
+                <SharedContentThumb
+                  accessToken={accessToken}
+                  file={file}
+                  key={file.id}
+                  onOpenImage={onOpenImage}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="chat-info-empty">
+              {detailsTab === "links"
+                ? "No links yet"
+                : detailsTab === "media"
+                  ? "No media yet"
+                  : "No files yet"}
+            </p>
+          )}
+        </div>
+
+        <div className="chat-info-section">
+          <p className="chat-info-section-label">
+            {chat.members.length} member{chat.members.length === 1 ? "" : "s"}
+          </p>
+          <div className="chat-info-island">
+            <ul className="chat-info-member-list">
+              {chat.members.map((member) => (
+                <li key={member.id}>
+                  <article className="chat-info-member-row">
+                    <RealAvatar
+                      accessToken={accessToken}
+                      className="avatar member-avatar"
+                      file={member.profilePhoto}
+                      label={member.displayName}
+                    />
+                    <div className="chat-info-member-copy">
+                      <strong>{member.displayName}</strong>
+                      <span>@{member.username}</span>
+                    </div>
+                    <small>{member.role}</small>
+                  </article>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function NewChatScreen({
+  accessToken,
+  screen,
+  members,
+  memberSearch,
+  groupTitle,
+  groupMemberIds,
+  onMemberSearchChange,
+  onScreenChange,
+  onClose,
+  onStartDirect,
+  onGroupTitleChange,
+  onToggleGroupMember,
+  onCreateGroup,
+  onCreateChannel,
+}: {
+  accessToken: string | null;
+  screen: NewChatScreen;
+  members: User[];
+  memberSearch: string;
+  groupTitle: string;
+  groupMemberIds: string[];
+  onMemberSearchChange: (value: string) => void;
+  onScreenChange: (screen: NewChatScreen) => void;
+  onClose: () => void;
+  onStartDirect: (userId: string) => void;
+  onGroupTitleChange: (value: string) => void;
+  onToggleGroupMember: (userId: string) => void;
+  onCreateGroup: (event: FormEvent) => void;
+  onCreateChannel: (event: FormEvent) => void;
+}) {
+  const composeFormId = screen === "channel" ? "new-channel-form" : "new-group-form";
+  const canCreateCompose = groupTitle.trim().length > 0 && groupMemberIds.length > 0;
+
+  if (screen === "group" || screen === "channel") {
+    const isChannel = screen === "channel";
+    return (
+      <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-compose-title">
+        <header className="new-chat-screen-header">
+          <button type="button" className="new-chat-screen-back" aria-label="Back" onClick={() => onScreenChange("pick")}>
+            <span className="ms-icon ms-icon--24" aria-hidden={true}>
+              arrow_back
+            </span>
+          </button>
+          <h2 id="new-chat-compose-title">{isChannel ? "New channel" : "New group"}</h2>
+          <button
+            type="submit"
+            form={composeFormId}
+            className="new-chat-screen-action"
+            disabled={!canCreateCompose}
+          >
+            Create
+          </button>
+        </header>
+        <form
+          id={composeFormId}
+          className="new-chat-compose"
+          onSubmit={isChannel ? onCreateChannel : onCreateGroup}
+        >
+          <label className="new-chat-compose-title-field">
+            <span>{isChannel ? "Channel name" : "Group name"}</span>
+            <input
+              autoFocus
+              maxLength={255}
+              placeholder={isChannel ? "Channel name" : "Group name"}
+              value={groupTitle}
+              onChange={(event) => onGroupTitleChange(event.target.value)}
+            />
+          </label>
+          <label className="search-field new-chat-screen-search">
+            <span className="ms-icon ms-icon--20" aria-hidden={true}>
+              search
+            </span>
+            <input
+              placeholder="Search members"
+              value={memberSearch}
+              onChange={(event) => onMemberSearchChange(event.target.value)}
+            />
+          </label>
+          <p className="new-chat-section-label">Members</p>
+          <ul className="new-chat-contact-list">
+            {members.map((member) => {
+              const selected = groupMemberIds.includes(member.id);
+              return (
+                <li key={member.id}>
+                  <button
+                    type="button"
+                    className={`new-chat-contact-row${selected ? " selected" : ""}`}
+                    aria-pressed={selected}
+                    onClick={() => onToggleGroupMember(member.id)}
+                  >
+                    <RealAvatar
+                      accessToken={accessToken}
+                      className="avatar chat-avatar"
+                      file={member.profilePhoto}
+                      label={member.displayName}
+                    />
+                    <span className="new-chat-contact-copy">
+                      <strong>{member.displayName}</strong>
+                      <small>{member.role}</small>
+                    </span>
+                    <span className={`new-chat-check${selected ? " selected" : ""}`} aria-hidden={true}>
+                      {selected ? (
+                        <span className="ms-icon ms-icon--20 ms-icon--filled">check_circle</span>
+                      ) : (
+                        <span className="ms-icon ms-icon--20">radio_button_unchecked</span>
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </form>
+      </section>
+    );
+  }
+
+  return (
+    <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-title">
+      <header className="new-chat-screen-header">
+        <button type="button" className="new-chat-screen-cancel" onClick={onClose}>
+          Cancel
+        </button>
+        <h2 id="new-chat-title">New Message</h2>
+        <span className="new-chat-screen-spacer" aria-hidden={true} />
+      </header>
+      <label className="search-field new-chat-screen-search">
+        <span className="ms-icon ms-icon--20" aria-hidden={true}>
+          search
+        </span>
+        <input
+          autoFocus
+          placeholder="Search contacts"
+          value={memberSearch}
+          onChange={(event) => onMemberSearchChange(event.target.value)}
+        />
+      </label>
+      <div className="new-chat-actions">
+        <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("group")}>
+          <span className="new-chat-action-icon" aria-hidden={true}>
+            <span className="ms-icon ms-icon--22 ms-icon--filled">group</span>
+          </span>
+          <span className="new-chat-action-copy">
+            <strong>New Group</strong>
+            <small>Chat with several family members</small>
+          </span>
+          <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
+            chevron_right
+          </span>
+        </button>
+        <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("channel")}>
+          <span className="new-chat-action-icon new-chat-action-icon--channel" aria-hidden={true}>
+            <span className="ms-icon ms-icon--22 ms-icon--filled">campaign</span>
+          </span>
+          <span className="new-chat-action-copy">
+            <strong>New Channel</strong>
+            <small>Broadcast updates to members</small>
+          </span>
+          <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
+            chevron_right
+          </span>
+        </button>
+      </div>
+      <p className="new-chat-section-label">Contacts</p>
+      <ul className="new-chat-contact-list">
+        {members.length === 0 ? (
+          <li className="new-chat-empty">No contacts match your search.</li>
+        ) : (
+          members.map((member) => (
+            <li key={member.id}>
+              <button
+                type="button"
+                className="new-chat-contact-row"
+                onClick={() => onStartDirect(member.id)}
+              >
+                <RealAvatar
+                  accessToken={accessToken}
+                  className="avatar chat-avatar"
+                  file={member.profilePhoto}
+                  label={member.displayName}
+                />
+                <span className="new-chat-contact-copy">
+                  <strong>{member.displayName}</strong>
+                  {member.username ? <small>@{member.username}</small> : null}
+                </span>
+              </button>
+            </li>
+          ))
+        )}
+      </ul>
+    </section>
+  );
+}
+
+function MobileMinimizedCallBar({
+  peerName,
+  callPhase,
+  callTimer,
+  micMuted,
+  onToggleMic,
+  onEnd,
+  onExpand,
+}: {
+  peerName: string;
+  callPhase: CallPhase;
+  callTimer: string;
+  micMuted: boolean;
+  onToggleMic: () => void;
+  onEnd: () => void;
+  onExpand: () => void;
+}) {
+  const statusLabel =
+    callPhase === "in-call"
+      ? callTimer
+      : callPhase === "outgoing"
+        ? "Calling…"
+        : "Connecting…";
+
+  return (
+    <div className="mobile-call-strip" role="status" aria-live="polite">
+      <button
+        type="button"
+        className={`mobile-call-strip-btn${micMuted ? " is-muted" : ""}`}
+        aria-label={micMuted ? "Unmute microphone" : "Mute microphone"}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleMic();
+        }}
+      >
+        <span className="ms-icon ms-icon--22" aria-hidden={true}>
+          {micMuted ? "mic_off" : "mic"}
+        </span>
+      </button>
+      <button
+        type="button"
+        className="mobile-call-strip-main"
+        aria-label="Restore call"
+        onClick={onExpand}
+      >
+        <span className="mobile-call-bar-pulse" aria-hidden="true" />
+        <span className="mobile-call-strip-label">
+          {peerName} · {statusLabel}
+        </span>
+      </button>
+      <button
+        type="button"
+        className="mobile-call-strip-btn mobile-call-strip-btn--end"
+        aria-label="End call"
+        onClick={(event) => {
+          event.stopPropagation();
+          onEnd();
+        }}
+      >
+        <span className="ms-icon ms-icon--22" aria-hidden={true}>
+          call_end
+        </span>
+      </button>
     </div>
   );
 }
