@@ -2084,6 +2084,7 @@ h2 {
   justify-content: center;
   position: absolute;
   right: 20px;
+  transition: filter 150ms ease-out, transform 200ms ease-out;
   width: var(--fab-size);
   z-index: 15;
 }
@@ -2578,7 +2579,14 @@ h2 {
   overflow-y: hidden;
   padding: 10px 16px;
   resize: none;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
   width: 100%;
+}
+
+.message-composer textarea:focus-visible {
+  border-color: var(--accent-border-soft);
+  box-shadow: 0 0 0 3px var(--outline-soft);
+  outline: none;
 }
 
 .message-composer textarea::placeholder {
@@ -4875,4 +4883,22 @@ h2 {
 @keyframes call-bar-dot-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-nav a,
+  .app-frame > .app-nav a,
+  .filter-chip,
+  .tab-row button,
+  .chat-list-item,
+  .compose-fab,
+  .message-composer textarea,
+  .app-frame > .app-nav a.active::before {
+    transition-duration: 0.01ms !important;
+  }
+
+  .filter-chip:active,
+  .compose-fab:active {
+    transform: none;
+  }
 }
