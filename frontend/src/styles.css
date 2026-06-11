@@ -61,6 +61,20 @@
   --radius-control: 8px;
   --radius-card: 8px;
   --radius-bubble: 18px;
+  --float-outer-gap: 16px;
+  --float-panel-gap: 16px;
+  --float-radius-panel: 20px;
+  --float-radius-bubble: 20px;
+  --float-radius-pill: 999px;
+  --message-gutter-x: 16px;
+  --float-shadow: 0 8px 32px rgba(15, 23, 42, 0.12);
+  --float-shadow-soft: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --nav-pill-inset-x: 16px;
+  --nav-pill-inset-bottom: 16px;
+  --nav-pill-height: 64px;
+  --fab-size: 56px;
+  --fab-offset-right: 20px;
+  --fab-offset-bottom: calc(var(--nav-pill-inset-bottom) + var(--nav-pill-height) + 16px);
   --surface-elevated: var(--surface-card);
   --text-tertiary: var(--text-muted);
   --surface-raised: var(--background-tertiary);
@@ -933,6 +947,8 @@
   --outline-soft: var(--outline-soft-dark);
   --accent-ring: var(--accent-ring-dark);
   --border-strong: #475569;
+  --float-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --float-shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.32);
 }
 
 :root[data-theme-mode="amoled"] {
@@ -970,6 +986,21 @@
   --outline-soft: var(--outline-soft-dark);
   --accent-ring: var(--accent-ring-dark);
   --border-strong: #334155;
+  --float-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --float-shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.32);
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --float-outer-gap: 24px;
+  }
+}
+
+@media (max-width: 960px) {
+  :root {
+    --float-outer-gap: 0px;
+    --float-panel-gap: 0px;
+  }
 }
 
 * {
