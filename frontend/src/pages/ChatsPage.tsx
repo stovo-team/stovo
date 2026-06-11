@@ -3463,11 +3463,8 @@ export default function ChatsPage() {
                   </div>
                 )}
                 <form className="message-composer" onSubmit={handleSendMessage}>
-                  {channelCommentsDisabledForViewer && (
+                  {selectedChat?.type === "channel" && channelCommentsDisabledForViewer && (
                     <p className="muted-copy">Comments are disabled in this channel.</p>
-                  )}
-                  {missingCommentThread && (
-                    <p className="muted-copy">Open a post thread to comment.</p>
                   )}
                   {replyTarget && (
                     <div className="reply-composer-preview">
@@ -3597,13 +3594,15 @@ export default function ChatsPage() {
                       rows={1}
                       maxLength={4000}
                       placeholder={
-                        channelCommentsDisabledForViewer
-                          ? "Comments are disabled"
-                          : missingCommentThread
-                            ? "Open a post thread to comment"
-                            : selectedChat?.type === "channel" && canPostInSelectedChannel
-                              ? "Post an update"
-                              : "Message"
+                        selectedChat?.type === "channel"
+                          ? channelCommentsDisabledForViewer
+                            ? "Comments are disabled"
+                            : missingCommentThread
+                              ? "Comment…"
+                              : canPostInSelectedChannel
+                                ? "Post an update"
+                                : "Message"
+                          : "Message"
                       }
                       value={composer}
                       disabled={channelCommentsDisabledForViewer || missingCommentThread}
