@@ -1,0 +1,10 @@
+export { default as IconChats } from "./IconChats";
+export { default as IconStorage } from "./IconStorage";
+export { default as IconContacts } from "./IconContacts";
+export { default as IconSettings } from "./IconSettings";
+export { default as IconCompose } from "./IconCompose";
+export { default as IconSearch } from "./IconSearch";
+export { default as IconAttach } from "./IconAttach";
+export { default as IconEmoji } from "./IconEmoji";
+export { default as IconSend } from "./IconSend";
+export { default as IconBack } from "./IconBack";
