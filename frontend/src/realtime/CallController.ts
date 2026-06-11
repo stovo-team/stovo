@@ -131,6 +131,11 @@ export default class CallController {
     this.accessToken = accessToken;
   }
 
+  /** Keep REST auth in sync after proactive token refresh (socket stays connected). */
+  updateAccessToken(accessToken: string) {
+    this.accessToken = accessToken;
+  }
+
   // ─── Element attachment ──────────────────────────────────────────────────────
 
   attachRemoteAudioElement(element: HTMLAudioElement | null) {
@@ -181,7 +186,7 @@ export default class CallController {
     this.isOfferer = true;
     await this.ensurePeer();
     // Guard against cleanup() being called while ensurePeer() was pending.
-    if (!this.peer) {
+    if (!this.peer || this.tearingDown || !this.chatId) {
       throw new Error("Call peer connection failed to initialize");
     }
     const offer = await this.peer.createOffer();

@@ -59,12 +59,24 @@ export function login(payload: LoginPayload) {
   });
 }
 
+let refreshSessionInFlight: Promise<AuthResponse> | null = null;
+
 export function refreshSession() {
-  const storedToken = getStoredRefreshToken();
-  return apiRequest<AuthResponse>("/api/auth/refresh", {
-    method: "POST",
-    headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
-  });
+  if (refreshSessionInFlight) {
+    return refreshSessionInFlight;
+  }
+  refreshSessionInFlight = (async () => {
+    try {
+      const storedToken = getStoredRefreshToken();
+      return await apiRequest<AuthResponse>("/api/auth/refresh", {
+        method: "POST",
+        headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
+      });
+    } finally {
+      refreshSessionInFlight = null;
+    }
+  })();
+  return refreshSessionInFlight;
 }
 
 export function logout() {
