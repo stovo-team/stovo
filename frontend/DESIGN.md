@@ -1,408 +1,490 @@
 ---
-name: Family Messenger Frontend
-product: Private Messenger
-version: 1
+name: Stovo Family Messenger
+product: Private family messenger (Capacitor Android + web)
+version: 2
+iconLibrary:
+  messenger: Material Symbols Outlined
+  secondary: lucide-react
+stitch:
+  status: draft-input
+  targetTool: Google Stitch
+  handoff: "Polish mobile + desktop messenger shell; return Stitch exports to replace §Stitch Deliverables"
+  referenceAesthetic: Telegram-inspired floating panels (not a clone)
 design-principles:
   - calm
   - private
-  - approachable
-  - practical
+  - family-first
   - themeable
+  - floating-over-wallpaper
+breakpoints:
+  mobile: "max-width 960px"
+  compact: "max-width 680px"
+  desktop: "min-width 961px"
+  desktopWide: "min-width 1280px"
+frames:
+  mobile:
+    width: 390
+    height: 844
+    safeArea: "respect env(safe-area-inset-*) on Capacitor Android"
+  desktop:
+    width: 1440
+    height: 900
+    minWidth: 1280
 typography:
   fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-  lineHeight: 1.5
-  headings:
-    h1:
-      fontSize: 24px
-      fontWeight: 700
-      lineHeight: 1.2
-    h2:
-      fontSize: 18px
-      fontWeight: 700
-      lineHeight: 1.25
-  body:
-    md:
-      fontSize: 16px
-      fontWeight: 400
-    sm:
-      fontSize: 14px
-      fontWeight: 500
-  label:
-    fontSize: 12px
-    fontWeight: 800
-    textTransform: uppercase
+  scale:
+    label: { size: 12, weight: 400, lineHeight: 1.2 }
+    labelBold: { size: 12, weight: 700, lineHeight: 1.2 }
+    body: { size: 16, weight: 400, lineHeight: 1.5 }
+    heading: { size: 18, weight: 700, lineHeight: 1.25 }
+    display: { size: 24, weight: 700, lineHeight: 1.2 }
 radius:
   control: 8px
   card: 8px
-  float-panel: 20px
-  float-bubble: 20px
-  bubble-rounded: 18px
-  bubble-soft: 12px
-  bubble-square: 6px
+  floatPanel: 24px
+  floatBubbleTail: "12px corners + 4px tail"
   pill: 999px
+  composerMobile: 24px
 spacing:
   xs: 4px
   sm: 8px
-  md: 12px
-  lg: 16px
-  xl: 24px
-  xxl: 32px
-layout:
-  pageMaxWidth: 1120px
-  storageMaxWidth: 1320px
-  desktopNavRail: 88px
-  chatSidebar:
-    min: 300px
-    max: 360px
-  chatDetailsPanel:
-    min: 292px
-    max: 340px
-  controlMinHeight: 40px
-  inputMinHeight: 42px
-  iconButtonSize: 42px
-  messenger:
-    paradigm: Telegram-inspired floating panels over wallpaper canvas
-    desktop:
-      outerGap: 16px (24px at >=1280px via --float-outer-gap)
-      panelGap: 16px (--float-panel-gap)
-      surfaces: rounded shadowed sidebar + chat detail cards (--float-radius-panel)
-      composeFab: 52px circle, absolute bottom-right inside sidebar (--fab-size)
-    mobile:
-      outerGap: 0px
-      navPill: fixed inset bottom bar (--nav-pill-inset-x, --nav-pill-inset-bottom, --nav-pill-height)
-      composeFab: 56px circle, viewport-fixed above nav pill (--fab-offset-bottom)
-      composer: inset pill with horizontal gutters (--message-gutter-x)
-    floatTokens:
-      - --float-outer-gap
-      - --float-panel-gap
-      - --float-radius-panel
-      - --float-radius-bubble
-      - --float-radius-pill
-      - --float-shadow
-      - --float-shadow-soft
-      - --message-gutter-x
-      - --nav-pill-inset-x
-      - --nav-pill-inset-bottom
-      - --nav-pill-height
-      - --fab-size
-      - --fab-offset-right
-      - --fab-offset-bottom
-shadows:
-  surface: "0 18px 44px rgba(15, 23, 42, 0.1)"
-  menu: "0 18px 42px rgba(15, 23, 42, 0.16)"
-  lightbox: "0 24px 60px rgba(15, 23, 42, 0.4)"
+  md: 16px
+  lg: 24px
+  xl: 32px
+floatTokens:
+  outerGapDesktop: "16px (24px at >=1280px)"
+  outerGapMobile: 0px
+  panelGapDesktop: 16px
+  navPillInset: 16px
+  navPillHeight: 64px
+  messageGutter: 16px
+  fabSizeMobile: 56px
+  fabSizeDesktop: 52px
 themes:
   light:
-    colors:
-      background-primary: "#ffffff"
-      background-secondary: "#f6f7f9"
-      background-tertiary: "#eef1f5"
-      background-panel-accent: "#edf2f7"
-      surface-card: "#ffffff"
-      text-primary: "#111827"
-      text-secondary: "#6b7280"
-      text-muted: "#9ca3af"
-      border-default: "#e5e7eb"
-      accent-primary: "#2aabee"
-      accent-primary-hover: "#168ac0"
-      accent-soft: "#e6f5fc"
-      accent-border-soft: "#bfdbfe"
-      focus-ring: "rgba(42, 171, 238, 0.32)"
-      focus-shadow: "rgba(42, 171, 238, 0.16)"
-      outline-soft: "rgba(42, 171, 238, 0.12)"
-      danger: "#ef4444"
-      success: "#22c55e"
-      warning: "#f59e0b"
-      chat-layout-background: "#d9e7ef"
-      message-bubble-bg: "#ffffff"
-      message-bubble-border: "rgba(229, 231, 235, 0.82)"
-      message-bubble-mine-bg: "#dff2fb"
-      message-bubble-mine-border: "#b8e4f7"
+    canvas: "#d9e7ef"
+    surface: "#ffffff"
+    surfaceSecondary: "#f6f7f9"
+    textPrimary: "#111827"
+    textSecondary: "#6b7280"
+    textMuted: "#9ca3af"
+    border: "#e5e7eb"
+    accent: "#2aabee"
+    accentSoft: "#e6f5fc"
+    bubbleIncoming: "#ffffff"
+    bubbleOutgoing: "#2aabee"
+    bubbleOutgoingText: "#ffffff"
+    inputText: "#111827"
+    inputPlaceholder: "#9ca3af"
+    navPillSurface: "rgba(255,255,255,0.92)"
+    navActiveFill: "#e6f5fc"
+    navActiveIcon: "#168ac0"
   dark:
-    colors:
-      background-primary: "#0f172a"
-      background-secondary: "#111827"
-      background-tertiary: "#1f2937"
-      background-panel-accent: "#182235"
-      surface-card: "#182235"
-      text-primary: "#f9fafb"
-      text-secondary: "#cbd5e1"
-      text-muted: "#94a3b8"
-      border-default: "#334155"
-      accent-primary: "#60a5fa"
-      accent-primary-hover: "#93c5fd"
-      accent-soft: "#1e3a5f"
-      accent-border-soft: "#3b82f6"
-      focus-ring: "rgba(96, 165, 250, 0.35)"
-      focus-shadow: "rgba(96, 165, 250, 0.24)"
-      outline-soft: "rgba(96, 165, 250, 0.18)"
-      chat-layout-background: "#0f172a"
-      message-bubble-bg: "#182235"
-      message-bubble-border: "#334155"
-      message-bubble-mine-bg: "#15324e"
-      message-bubble-mine-border: "#285d8a"
+    canvas: "#0f172a"
+    surface: "#182235"
+    surfaceSecondary: "#111827"
+    textPrimary: "#f9fafb"
+    textSecondary: "#cbd5e1"
+    textMuted: "#94a3b8"
+    border: "#334155"
+    accent: "#60a5fa"
+    accentSoft: "#1e3a5f"
+    bubbleIncoming: "#212121"
+    bubbleOutgoing: "#766ac8"
+    bubbleOutgoingText: "#ffffff"
+    inputText: "#f9fafb"
+    inputPlaceholder: "#94a3b8"
+    navPillSurface: "rgba(24,34,53,0.92)"
+    navActiveFill: "subtle — see Mobile §Bottom Nav"
+    navActiveIcon: "#60a5fa"
   amoled:
-    colors:
-      background-primary: "#000000"
-      background-secondary: "#02040a"
-      background-tertiary: "#0b1120"
-      background-panel-accent: "#05070c"
-      surface-card: "#05070c"
-      text-primary: "#f8fafc"
-      text-secondary: "#cbd5e1"
-      text-muted: "#94a3b8"
-      border-default: "#1f2937"
-      accent-primary: "#60a5fa"
-      accent-primary-hover: "#93c5fd"
-      accent-soft: "#1e3a5f"
-      accent-border-soft: "#3b82f6"
-      chat-layout-background: "#000000"
-      message-bubble-bg: "#0b1120"
-      message-bubble-border: "#1f2937"
-accent-options:
-  blue:
-    light: "#2aabee"
-    dark: "#60a5fa"
-  green:
-    light: "#15946f"
-    dark: "#34d399"
-  purple:
-    light: "#8b5cf6"
-    dark: "#a78bfa"
-  rose:
-    light: "#e11d48"
-    dark: "#fb7185"
-  amber:
-    light: "#d97706"
-    dark: "#fbbf24"
+    canvas: "#000000"
+    surface: "#05070c"
+    surfaceSecondary: "#02040a"
+    textPrimary: "#f8fafc"
+    textSecondary: "#cbd5e1"
+    textMuted: "#94a3b8"
+    border: "#1f2937"
+    accent: "#60a5fa"
+    accentSoft: "#1e3a5f"
+    bubbleIncoming: "#212121"
+    bubbleOutgoing: "#766ac8"
+    bubbleOutgoingText: "#ffffff"
+    inputText: "#f8fafc"
+    inputPlaceholder: "#94a3b8"
+    navPillSurface: "rgba(5,7,12,0.92)"
+    navActiveFill: "subtle — see Mobile §Bottom Nav"
+    navActiveIcon: "#60a5fa"
+accentOptions:
+  blue: { light: "#2aabee", dark: "#60a5fa" }
+  green: { light: "#15946f", dark: "#34d399" }
+  purple: { light: "#8b5cf6", dark: "#a78bfa" }
+  rose: { light: "#e11d48", dark: "#fb7185" }
+  amber: { light: "#d97706", dark: "#fbbf24" }
 defaults:
   themeMode: system
   accent: blue
   wallpaper: dots
   density: comfortable
-  bubbleShape: rounded
-  messageScale: 1
-  avatarColor: "#0ea5e9"
 ---
 
-# Design System
+# Stovo Design System — Stitch Handoff
 
-## Overview
-Family Messenger should feel private, calm, and trustworthy first, then friendly and modern second. The UI is intentionally cleaner than a social app and warmer than a corporate admin tool: soft surfaces, restrained color, rounded controls, strong legibility, and very little decorative noise outside the messaging canvas.
+> **Purpose:** Input brief for [Google Stitch](https://stitch.withgoogle.com) polish pass. Phase 5 implemented a **raw** Telegram-inspired floating shell. This document splits **mobile** and **desktop** targets, lists known defects from device review, and defines what polished Stitch exports must deliver.
 
-The dominant pattern is a practical messaging workspace: stable panels, sticky headers, card-based settings, and small, purposeful accents. Every new screen should feel like it belongs to the same product family as chats, storage, settings, and admin rather than looking like a standalone mini-app.
+---
 
-## Visual Language
-- Use a quiet neutral base and let accent color do the highlighting. The interface should never become rainbow-heavy or gradient-led.
-- Keep surfaces flat-to-soft. Depth comes from contrast, borders, and occasional shadow, not heavy elevation stacks.
-- Favor rounded geometry. Controls are 8px, cards are 8px, pills are fully rounded, and message bubbles are more rounded than the rest of the UI.
-- Use iconography to support scanning, not to decorate. The current visual language uses `lucide-react`; new icons should stay in that family.
-- Chat views may use subtle texture or wallpaper. Non-chat screens should stay cleaner and mostly panel/card based.
+## Stitch workflow
 
-## Theme Model
-The product is personalized by runtime appearance settings. Any new UI must inherit and respect the existing theme system instead of hard-coding one-off colors.
+### What to design in Stitch
 
-- Theme modes: `light`, `dark`, `amoled`, plus `system` as the default resolver.
-- Accent choices: `blue`, `green`, `purple`, `rose`, `amber`, and `custom`.
-- Density: `comfortable` and `compact`.
-- Wallpaper: `dots`, `paper`, `aurora`, `plain`.
-- Bubble shape: `rounded`, `soft`, `square`.
-- Message scale and avatar color are user-adjustable.
+| Priority | Screen | Platform | Stitch frame |
+|----------|--------|----------|--------------|
+| P0 | Chat list | Mobile | 390×844 |
+| P0 | Active DM conversation | Mobile | 390×844 |
+| P0 | Chat list + conversation | Desktop | 1440×900 |
+| P1 | Group chat (sender labels) | Mobile | 390×844 |
+| P1 | Settings → Appearance preview | Mobile + Desktop | both |
+| P2 | Storage, Contacts, Auth | Desktop | 1440×900 |
 
-When adding components, prefer existing CSS variables such as `--surface-card`, `--background-secondary`, `--text-primary`, `--text-secondary`, `--border-default`, `--accent-primary`, `--accent-soft`, and `--accent-border-soft`. New components should look correct in all three resolved themes without requiring per-screen overrides.
+### Stitch deliverables (return to repo)
 
-## Color Guidance
-### Core neutrals
-- `background-primary` and `surface-card` define the main canvas and cards.
-- `background-secondary` is the default panel/page fill.
-- `background-tertiary` is for quieter containers, icon chips, and previews.
-- `border-default` should be the default divider and outline color.
+When polished designs are ready, add under `frontend/design/stitch/`:
 
-### Accent usage
-- `accent-primary` is reserved for primary actions, active markers, unread emphasis, and selected states.
-- `accent-soft` is the preferred hover/active background for low-emphasis interactive UI.
-- `accent-border-soft` is used with `accent-soft` when a selected control needs more shape definition.
-- `accent-primary-hover` is primarily a text/icon color on tinted accent backgrounds.
+```
+frontend/design/stitch/
+  mobile/
+    chat-list.png (or .fig export)
+    chat-conversation.png
+    nav-states.png          # default + active tab close-up
+    composer-states.png     # empty + typing
+  desktop/
+    messenger-workspace.png
+    chat-list-sidebar.png
+    chat-detail.png
+  tokens.json               # optional: extracted colors/spacing from Stitch
+  NOTES.md                  # deltas from this DESIGN.md
+```
 
-### Semantic colors
-- Use red for destructive states, failures, unread urgency, and critical badges.
-- Use green for positive confirmation and healthy states.
-- Use amber/yellow for warnings, offline states, and non-fatal caution.
+Implementation agent maps Stitch output → `styles.css` + component class tweaks. **Do not** replace the appearance settings system or backend.
 
-### Messaging-specific color rules
-- Incoming message bubbles are neutral surfaces (`--message-bubble-bg`).
-- **Messenger-only exception:** outgoing chat bubbles use solid `--accent-primary` fill with white text (Telegram tail geometry). This overrides the general accent rule below for `.message-bubble.mine` only; settings preview cards and non-messenger surfaces still use tinted accent backgrounds.
-- Elsewhere, outgoing/tinted surfaces prefer `--accent-soft` / `--accent-border-soft`, not fully saturated brand fills.
-- Date separators, reaction pills, and search containers should be soft and unobtrusive so message content stays dominant.
+### Design references (mood, not copy)
 
-### Messenger float layout (Phase 5)
-- Wallpaper shows through outer gaps on desktop; panels float with `--float-shadow` and `--float-radius-panel`.
-- Mobile uses a floating bottom nav pill; compose FAB sits fixed above it via `--fab-offset-bottom`.
-- Message panel horizontal gutters use `--message-gutter-x` (16px desktop and mobile).
-- Themes (`light`, `dark`, `amoled`) and user accent choices remain unchanged — floating surfaces consume existing CSS variables, not shadcn or per-screen hex overrides.
+- Telegram floating panels, inset mobile nav pill, tail message bubbles
+- Stovo brand: calm, family-private, purple/blue accent (user-selectable)
+- Existing sketches: `.planning/sketches/001-desktop-floating-shell/`, `002-mobile-floating-chrome/`, `003-message-surfaces/`
 
-## Typography
-Use Inter everywhere. The type system is compact, readable, and biased toward scanning in dense communication views.
+---
 
-- `h1`: 24px, bold, used for top-level page titles.
-- `h2`: 18px, bold, used for section titles and sub-panels.
-- Body copy should generally stay around 14-16px.
-- Labels and UI metadata use heavier weights than body copy. Small labels are often uppercase and bold for quick recognition.
-- Secondary text should be quieter through color, not tiny sizing.
+## Known defects (v1 implementation — fix in polish)
 
-Avoid oversized marketing typography. This is a utility product, not a landing page.
+These were found on Android after `npm run build && npx cap sync android`. **Stitch designs must explicitly solve each.**
 
-## Spacing And Layout
-Spacing should feel tidy and regular, mostly built from 8px/12px/16px/24px steps.
+| ID | Issue | Expected behavior |
+|----|-------|-------------------|
+| **D-01** | Layout does not fit screen | All messenger chrome fits within **100dvh**; no horizontal scroll; safe-area insets respected; FAB + nav + composer never clip content |
+| **D-02** | Input text black on dark/amoled | Typed text in **search**, **composer textarea**, and **settings inputs** must use `inputText` token (`#f9fafb` dark, `#f8fafc` amoled). Placeholder uses `inputPlaceholder`. |
+| **D-03** | Mobile nav active fill harsh | Active tab indicator should feel **Telegram-native**: small rounded pill behind icon+label OR icon tint only — **not** a heavy full-width `--accent-soft` block. See Mobile §Bottom Nav. |
+| **D-04** | Overall polish raw | Spacing rhythm, shadow strength, wallpaper visibility, and touch targets need a cohesive pass — current CSS is structural only |
 
-- Prefer 8px gaps inside small controls and pill groups.
-- Prefer 12px-16px inside cards, forms, menus, and compact sections.
-- Prefer 18px-24px between major page regions.
-- Desktop app views are structured and panel-based.
-- Mobile should collapse gracefully rather than trying to preserve desktop density.
+### CSS hooks (implementation)
 
-### Layout patterns
-- Main app shell: navigation rail on desktop, bottom nav on smaller screens.
-- Standard content pages: centered page surface with generous padding.
-- Chats: left sidebar + active conversation + optional details panel.
-- Storage: content-first layout with a supportive sticky details panel on desktop.
-- Modals: centered, card-like, medium width, no fullscreen takeover unless the viewport forces it.
+| Component | Class / file |
+|-----------|----------------|
+| App shell | `.app-frame`, `.messenger-workspace`, `.messenger-shell` |
+| Desktop nav rail | `.app-frame > .app-nav` |
+| Mobile nav pill | `@media (max-width: 960px) .app-frame > .app-nav` |
+| Active nav | `.app-nav a.active` |
+| Search | `.search-field`, `.search-field input` |
+| Composer | `.message-composer`, `.message-composer textarea` |
+| Bubbles | `.message-bubble`, `.message-bubble.mine`, `.message-bubble-inner` |
+| FAB | `.compose-fab` |
+| Icons | `frontend/src/components/icons/*` |
 
-## Surfaces And Shape
-- Standard controls and cards use `8px` radii.
-- Use pill shapes for search, chips, composer fields, attachment pills, and send actions.
-- Message bubbles are the most expressive shape in the product and can vary with user preference.
-- Empty states and low-priority placeholders may use dashed borders for softer visual weight.
+---
 
-Shadows should be used sparingly:
-- auth panels, floating menus, modals, and lightboxes may use pronounced but soft shadows
-- ordinary cards generally rely on borders and contrast instead of stacked elevation
+## Shared foundations
 
-## Component Patterns
-### Buttons
-- Default buttons are neutral cards with border and strong label weight.
-- Primary submit actions use solid `accent-primary` fill with white text.
-- Hover states usually shift to `accent-soft` rather than scaling, glowing, or introducing dramatic motion.
-- Icon buttons are circular and should stay visually balanced at 42x42.
-- Destructive buttons use soft red fills and dark red text, not loud saturated red backgrounds.
+### Theme model
 
-### Inputs
-- Inputs and selects are full-width by default, 42px tall, and framed by a 1px border.
-- Focus treatment is important: visible outline plus soft shadow using theme-aware accent tokens.
-- Search fields are pill-shaped and usually sit on `background-secondary`.
-- Do not introduce underline-only or borderless text fields in standard app surfaces.
+Runtime via `AppearanceContext` → `document.documentElement` attributes:
 
-### Navigation
-- Navigation uses icons plus compact labels.
-- Active nav items receive soft accent background and accent-colored foreground.
-- Unread counts are small red circular badges.
-- Desktop rail should feel compact and vertical; mobile nav should feel touch-friendly and fixed.
+- `data-theme-mode`: `light` | `dark` | `amoled`
+- `data-accent`: `blue` | `green` | `purple` | `rose` | `amber` | `custom`
+- `data-wallpaper`, `data-density`, `data-bubble-shape`
 
-### Lists
-- Use comfortable, clearly tappable rows.
-- Selected rows should rely on tinted backgrounds and subtle left-edge accent indicators, not heavy fills.
-- Metadata should truncate cleanly and never push layout off balance.
+**Rule:** No hard-coded `#fff` / `#000` in components except white icons on solid accent buttons.
 
-### Cards And Panels
-- Cards are bordered, lightly elevated or flat, and use consistent padding.
-- Settings, admin, storage detail, and auth experiences all derive from the same panel language.
-- Panels should read as structured tools, not glossy marketing blocks.
+### Iconography
 
-### Chips, Tabs, And Segmented Controls
-- Filter chips and tabs use low-emphasis neutral backgrounds by default.
-- Active states switch to `accent-soft` with an accent-tinted border.
-- Keep them compact, pill-like, and horizontally scannable.
+- **Messenger chrome:** **Material Symbols Outlined** (Google Fonts) via `.ms-icon` ligatures; `FILL=1` on active nav routes
+- **Admin / calls / secondary:** lucide-react (unchanged)
+- **Legacy:** custom SVG components remain in `frontend/src/components/icons/` for reference; messenger chrome migrated in Phase 6
 
-### Alerts And Banners
-- Success, error, and offline notices should be short, high-contrast, and banner-like.
-- Floating alerts are acceptable for transient messaging, especially inside the chat workspace.
-- Never hide critical status in color alone; pair with icon or text.
+### CSS variable map (input tokens — D-02)
 
-### Empty States
-- Empty states should be centered, concise, and action-oriented.
-- Use one icon, one short title, one sentence, and optionally one clear next action.
-- Keep empty-state tone warm and practical, never jokey or overly promotional.
+| DESIGN.md token | CSS variable |
+|-----------------|--------------|
+| `inputText` | `--input-text` |
+| `inputPlaceholder` | `--input-placeholder` |
 
-### Modals And Menus
-- Menus are compact, bordered floating cards with tight padding.
-- Modal dialogs are medium-width panels with a clear title row and one obvious primary action.
-- Close actions should be available both visually and via Escape/backdrop patterns where appropriate.
+### Implemented design variants (Phase 6 defaults)
 
-### Messaging Components
-- Message bubbles should preserve a clean reading rhythm and avoid visual clutter.
-- Sender names appear only when useful, typically on incoming messages.
-- Metadata belongs at the bottom-right and stays secondary.
-- Reply and forward references use a slim accent rule rather than a full blockquote treatment.
-- Reactions are pill-shaped and should stay compact even when counts grow.
-- The composer is a pill-forward control bar: attachment, emoji, text input, send.
+| Area | Default | Notes |
+|------|---------|-------|
+| Mobile nav active | **Variant A** — centered 40×48px pill | Class `app-nav--active-variant-a` |
+| Desktop composer | **Variant A** — flat bar | Border-top at panel bottom |
+| Mobile composer | **Variant B** — inset pill | Floating margin + soft shadow |
+| Panel elevation | **Variant A** — deep float | `0 20px 40px rgba(0,0,0,0.4)` |
+| Wallpaper | **Variant A** — 20px dot grid | On `#0f172a` canvas |
+| Selected chat row | **Hybrid** | `border-left: 2px` accent + 14% tint |
 
-### Media And Files
-- Attachment cards should feel like small utility tiles, not social-media cards.
-- Image previews may become edge-to-edge within their own card.
-- Storage tiles can use richer color coding by content type, but the palette should still feel muted and system-driven.
-- Fullscreen/lightbox experiences may become darker and more cinematic than the rest of the UI, but only for media focus moments.
+### Motion defaults (Phase 6)
 
-## Page Patterns
-### Auth And Setup
-- Use a centered glassy card/panel over a calm background.
-- Keep the content narrow and reassuring.
-- Prioritize clarity over density.
+| Interaction | Duration | Easing |
+|-------------|----------|--------|
+| Color / background / border | 150ms | ease-out |
+| Transform (chip press, FAB) | 200ms | ease-out |
+| Nav active pill | 150ms | ease-out |
+| Theme switch (body) | 160ms | ease |
 
-### Chats
-- This is the primary product experience and should set the tone for all new UI.
-- The sidebar should feel quick to scan.
-- The active conversation should feel roomy, calm, and content-first.
-- Details panels should reuse the same card/section primitives as settings.
+`prefers-reduced-motion: reduce` collapses messenger transitions to `0.01ms`. No animation on bubble entrance, wallpaper, or panel shadow on scroll.
 
-### Settings
-- Settings are grouped as simple lists of actionable rows.
-- When a detail panel opens, it should feel like a continuation of the same page, not a brand-new route concept.
-- Appearance controls are one of the most expressive parts of the app, so previews are encouraged there.
+**Outgoing bubble on dark/amoled:** `#766ac8` (violet) is intentional — distinct from accent blue (`#60a5fa`).
 
-### Storage
-- Storage is more visual than the rest of the product but should still feel organized and utility-first.
-- Use a clear distinction between grid browsing and file detail inspection.
-- Preview areas can be larger, but metadata remains structured and quiet.
+### Chat list structure (do not remove)
 
-### Admin
-- Admin should stay aligned with the main design system, not switch to a separate enterprise style.
-- It can become denser and more tabular, but should still use the same cards, borders, badges, and typography.
+1. **Filter chips:** All · Unread · Groups · Direct · Muted (horizontal scroll, pill shape)
+2. **Sections:** Channels → Groups → DMs (uppercase 12px labels)
+3. **No** security/login promo banners in chat list
 
-## Motion And Interaction
-- Motion should be subtle and fast. Existing UI uses short transitions around 140-160ms.
-- Prefer color, border, and shadow changes over dramatic transforms.
-- Small press feedback like `translateY(1px)` is acceptable for buttons.
-- Avoid springy, bouncy, or oversized animation unless the interaction is explicitly playful, which this product generally is not.
+### Message bubbles (Telegram tail)
 
-## Accessibility And Readability
-- Maintain strong text contrast in every theme, especially dark and AMOLED.
-- Focus states must remain visible and theme-aware.
-- Touch targets should stay around 40px-44px minimum for primary interactive elements.
-- Support keyboard interaction for menus, dialogs, inputs, and close actions.
-- Do not rely on wallpaper or accent tint behind small text.
+| Property | Value |
+|----------|-------|
+| Incoming radius | `12px 12px 12px 4px` |
+| Outgoing radius | `12px 12px 4px 12px` |
+| Grouped stack | 2px vertical gap; inner corners flatten to 4px |
+| Incoming fill | `bubbleIncoming` per theme |
+| Outgoing fill | solid `accent` / violet `#766ac8` dark — **not** soft tint |
+| Border / shadow | none on bubbles |
+| Timestamp | 11px inline bottom-right inside bubble, 55–70% opacity |
+| Max width | 88% mobile, 72% desktop |
 
-## Do
-- Do build new UI from existing tokens and CSS variables first.
-- Do keep the interface calm, readable, and card-based.
-- Do use accent color to signal importance, active state, and interactivity.
-- Do design every new screen for light, dark, and AMOLED.
-- Do preserve consistent rounded geometry and compact utility-focused typography.
-- Do make empty and loading states feel intentional.
+---
 
-## Don't
-- Don't introduce unrelated brand colors or gradient-heavy hero treatments.
-- Don't create a new visual language for admin, settings, or storage.
-- Don't use saturated fills for every action; save strong color for priority actions.
-- Don't mix sharp-cornered components into otherwise rounded views.
-- Don't add decorative shadows to every surface.
-- Don't hard-code colors that ignore the runtime appearance system.
+## Mobile design spec
 
-## Guidance For Agents
-When generating new frontend screens or components:
+**Frame:** 390×844 (iPhone 14 logical). **Breakpoint:** ≤960px. **Primary device:** Capacitor Android.
 
-- start from the existing theme variables instead of new raw color constants
-- default to card, panel, list-row, chip, and pill patterns already present in the app
-- use Lucide icons where icons are needed
-- ensure new screens collapse well below `960px` and again below `680px`
-- prefer practical family-oriented copy over abstract product jargon
-- if a component could belong inside chats, settings, storage, or admin, make it feel like a sibling of those screens rather than a new brand direction
+### Layout stack (bottom → top)
+
+```
+┌─────────────────────────────┐
+│ Wallpaper canvas (full)      │
+│  ┌─────────────────────────┐ │
+│  │ Chat list OR conversation│ │
+│  │ (100dvh minus chrome)    │ │
+│  └─────────────────────────┘ │
+│                    [FAB]     │  ← compose, above nav
+│  ┌─────────────────────────┐ │
+│  │  ○ Chats  ○ Files  ...   │ │  ← floating nav pill (inset)
+│  └─────────────────────────┘ │
+└─────────────────────────────┘
+```
+
+### Viewport & safe area (**D-01**)
+
+| Token | Target |
+|-------|--------|
+| Workspace height | `100dvh` (not `100vh` alone) |
+| Horizontal overflow | `hidden` on messenger shell |
+| Bottom padding | `nav inset + nav height + FAB stack + composer margin + safe-area-inset-bottom` |
+| Top | respect `safe-area-inset-top` for status bar |
+
+**Stitch must show:** chat list and conversation with **no content hidden** behind FAB or nav pill.
+
+### Screen: Chat list
+
+| Element | Spec |
+|---------|------|
+| Header | App title or family name, minimal |
+| Search | Full-width pill, 44px height, icon + placeholder "Search chats" |
+| Filter chips | 32px height pills, 8px gap, horizontal scroll |
+| Section headers | CHANNELS / GROUPS / DMS — 12px bold uppercase, muted |
+| Row height | 72px min, 52px avatar, 16px name, 12px preview |
+| Selected row | full-row tint `--accentSoft` at **~12–16% opacity** (refine in Stitch) |
+| Unread badge | accent or red circle, top-right of row meta |
+
+### Screen: Conversation
+
+| Element | Spec |
+|---------|------|
+| Header | Back, avatar, name, call/menu icons (42px touch) |
+| Messages | `--messageGutter` 16px horizontal; wallpaper visible in gutters |
+| Date pill | centered, 12px bold, semi-transparent |
+| Composer | Floating pill: margin 0 16px 8px, radius 24px, border + soft shadow |
+| Composer input | **D-02:** typed text = `inputText`; placeholder = `inputPlaceholder` |
+| Composer actions | attach, emoji, send (accent fill) |
+
+### Bottom nav pill (**D-03** — redesign target)
+
+**Current (bad):** full tab cell filled with `--accent-soft` — reads heavy and blocky.
+
+**Target (Stitch):**
+
+| State | Background | Icon | Label |
+|-------|------------|------|-------|
+| Default | transparent | `textMuted` | `textMuted`, 10px bold |
+| Active | **Option A:** 40×56px rounded pill centered in tab slot, `accentSoft` at 20% | `accent` | `accent` |
+| Active | **Option B:** no fill; icon + label `accent` only | `accent` | `accent` |
+| Active | **Option C:** 2px accent top indicator + subtle 8% fill | `accent` | `accent` |
+
+**Nav pill container:**
+
+| Property | Value |
+|----------|-------|
+| Position | fixed, inset 16px from left/right/bottom |
+| Height | 64px |
+| Radius | 999px |
+| Surface | `navPillSurface` + 1px `border` |
+| Shadow | `--float-shadow` |
+| Items | Chats, Storage, Contacts, Settings (icons 22px + label) |
+
+**FAB:**
+
+| Property | Value |
+|----------|-------|
+| Size | 56px circle |
+| Position | fixed, right 20px, bottom = above nav pill + 16px gap |
+| Fill | solid `accent` |
+| Icon | white compose (+) |
+
+### Mobile states to export from Stitch
+
+1. Chat list — dark + amoled
+2. Conversation with bubbles — dark
+3. Nav pill — 4 tabs, one active (close-up)
+4. Composer focused — keyboard up (optional frame)
+
+---
+
+## Desktop design spec
+
+**Frame:** 1440×900. **Breakpoint:** ≥961px. **Wide:** ≥1280px increases outer gap to 24px.
+
+### Layout (floating workspace)
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ wallpaper (dots / user preference)                        │
+│  ┌──┐ ┌──────────┐ ┌─────────────────────────────────┐   │
+│  │N │ │ Sidebar  │ │ Chat detail                      │   │
+│  │a │ │ 340px    │ │ (flex)                           │   │
+│  │v │ │ + FAB    │ │                                  │   │
+│  │  │ └──────────┘ └─────────────────────────────────┘   │
+│  └──┘                                                     │
+│  16–24px outer gap all sides                              │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Nav rail
+
+| Property | Value |
+|----------|-------|
+| Width | 72–88px |
+| Shape | floating card, radius 20px, shadow |
+| Items | icon 22px + 10px label, stacked |
+| Active | `accentSoft` background on item (acceptable on desktop; lighter than mobile) |
+| Logout | bottom of rail |
+
+### Chat sidebar panel
+
+| Property | Value |
+|----------|-------|
+| Width | min 300px, max 360px |
+| Shape | floating card, radius 20px, shadow — **no** flush border to chat |
+| Search + chips | same as mobile |
+| Sections | Channels / Groups / DMs |
+| FAB | 52px, **inside** sidebar bottom-right (not viewport-fixed) |
+
+### Chat detail panel
+
+| Property | Value |
+|----------|-------|
+| Shape | floating card, radius 20px, shadow |
+| Header | sticky, 56–64px |
+| Messages | internal scroll; tail bubbles per shared spec |
+| Composer | full-width bottom of panel (desktop may use flat bar OR subtle pill — Stitch to decide) |
+
+### Desktop states to export from Stitch
+
+1. Full workspace — dark theme, conversation open
+2. Sidebar only — no chat selected (empty state)
+3. Three-panel with details open (optional)
+4. Light theme comparison strip
+
+---
+
+## Component token map (Stitch → CSS)
+
+Use this table when exporting from Stitch. Map names to `frontend/src/styles.css` variables.
+
+| Stitch token | CSS variable | Notes |
+|--------------|--------------|-------|
+| canvas | `--chat-layout-background` | + wallpaper pattern |
+| surface | `--surface-card` | panels, composer |
+| surfaceSecondary | `--background-secondary` | search, textarea bg |
+| textPrimary | `--text-primary` | body, input text **D-02** |
+| textMuted | `--text-muted` | placeholders |
+| accent | `--accent-primary` | FAB, send, outgoing bubble |
+| accentSoft | `--accent-soft` | chips, selected row (tune opacity) |
+| border | `--border-default` | |
+| floatShadow | `--float-shadow` | |
+| outerGap | `--float-outer-gap` | |
+| panelRadius | `--float-radius-panel` | 24px |
+| messageGutter | `--message-gutter-x` | 16px |
+
+### Input contract (**D-02**)
+
+| Field | Text color | Placeholder | Background |
+|-------|------------|-------------|--------------|
+| Search | `textPrimary` | `textMuted` | `surfaceSecondary` |
+| Composer | `textPrimary` | `textMuted` | `surfaceSecondary` inside pill |
+| Settings | `textPrimary` | `textMuted` | `surface` |
+
+**Acceptance:** Screenshot dark + amoled with typed message "Hello" — text must be white/off-white, not black.
+
+---
+
+## Out of scope (v2 polish)
+
+- Admin / storage page redesign (keep existing card system)
+- iOS-specific chrome
+- Login/security alert cards in chat list
+- Animated Telegram doodle wallpaper
+- New backend APIs
+
+---
+
+## Legacy guidance (non-messenger pages)
+
+Settings, storage, admin, and auth continue using the **card + 8px radius** system from v1. Only the **messenger shell** (`ChatsPage`, `AppNav` on mobile/desktop) uses the floating Telegram paradigm above.
+
+### Do
+
+- Design mobile and desktop as **separate Stitch frames**, not one responsive comp
+- Specify dark **and** amoled for messenger chrome
+- Show active nav state as a **dedicated close-up** (D-03)
+- Keep Channels / Groups / DMs structure visible in chat list frames
+
+### Don't
+
+- Flatten chat list into a single undifferentiated list
+- Use card-style bordered message bubbles (tails only)
+- Use soft tint for outgoing bubbles on dark themes
+- Hard-code colors that bypass theme tokens
+
+---
+
+*Document version: 2.1 — Stitch input + Phase 6 implementation sync. Last updated: 2026-06-11. Messenger polish implemented; Stitch exports optional.*
