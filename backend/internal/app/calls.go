@@ -159,6 +159,21 @@ func (s *Server) userHasActiveCall(userID string) bool {
 	return ok
 }
 
+// getActiveCallSessionForUser returns any in-memory call session for userID.
+func (s *Server) getActiveCallSessionForUser(userID string) *callSession {
+	s.callMu.Lock()
+	defer s.callMu.Unlock()
+	chatID, ok := s.userActiveCall[userID]
+	if !ok {
+		return nil
+	}
+	session, exists := s.callByChat[chatID]
+	if !exists {
+		return nil
+	}
+	return session
+}
+
 // getRingingSessionForUser returns the active ringing call session for a user
 // (where the user is the callee and the call is still in ringing state), or
 // nil if no such session exists. This is used to re-emit call:ringing to a
