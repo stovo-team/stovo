@@ -4934,8 +4934,8 @@ function ChatInfoPanel({
 
   const showSettingsIsland =
     (canManageChat && chat.type !== "direct") ||
-    (chat.type !== "family" && chat.type !== "direct") ||
-    chat.type === "channel";
+    chat.type !== "family" ||
+    Boolean(chat.mediaVisibilityPendingApproval);
 
   return (
     <aside className="chat-details-panel chat-info-screen" role="dialog" aria-modal="true" aria-labelledby="chat-info-title">
