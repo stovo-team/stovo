@@ -43,6 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const accessTokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    accessTokenRef.current = accessToken;
+  }, [accessToken]);
 
   // Use a ref so the scheduled callback always calls the latest version
   // without causing re-renders or stale closure issues.
@@ -155,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         return await apiRequest<T>(endpoint, {
           ...options,
-          accessToken
+          accessToken: accessTokenRef.current
         });
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
@@ -168,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [accessToken, refresh]
+    [refresh]
   );
 
   const value = useMemo(

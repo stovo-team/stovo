@@ -2657,6 +2657,103 @@ h2 {
   max-width: 100%;
 }
 
+.message-bubble.has-photo-attachments {
+  gap: 0;
+  max-width: min(300px, 78%);
+  padding: 3px;
+}
+
+.message-bubble.has-photo-attachments .message-attachments {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 3px;
+  width: 100%;
+}
+
+.message-photo-stack {
+  display: block;
+  max-width: 100%;
+  position: relative;
+  width: fit-content;
+}
+
+.message-photo-attachment {
+  background: var(--background-tertiary);
+  border: 0;
+  border-radius: 16px;
+  cursor: zoom-in;
+  display: block;
+  line-height: 0;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  width: 100%;
+}
+
+.message-photo-attachment:disabled {
+  cursor: progress;
+}
+
+.message-photo-attachment img {
+  display: block;
+  max-height: 420px;
+  min-height: 120px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.message-bubble.grouped.has-photo-attachments .message-photo-attachment,
+.message-bubble.grouped.has-photo-attachments .message-photo-attachment img {
+  border-radius: 12px;
+}
+
+.message-bubble.mine.has-photo-attachments .message-photo-attachment img {
+  border-radius: 16px 16px 4px 16px;
+}
+
+.message-bubble.mine.grouped.has-photo-attachments .message-photo-attachment img {
+  border-radius: 12px 12px 4px 12px;
+}
+
+.message-bubble:not(.mine).has-photo-attachments .message-photo-attachment img {
+  border-radius: 16px 16px 16px 4px;
+}
+
+.message-bubble:not(.mine).grouped.has-photo-attachments .message-photo-attachment img {
+  border-radius: 12px 12px 12px 4px;
+}
+
+.message-photo-placeholder {
+  align-items: center;
+  aspect-ratio: 4 / 3;
+  color: var(--text-secondary);
+  display: inline-flex;
+  justify-content: center;
+  min-height: 160px;
+  width: 100%;
+}
+
+.message-photo-stack .message-meta {
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 999px;
+  bottom: 8px;
+  color: #ffffff;
+  margin: 0;
+  opacity: 1;
+  padding: 2px 8px;
+  position: absolute;
+  right: 8px;
+  z-index: 1;
+}
+
+.message-bubble.has-photo-attachments .message-bubble-inner {
+  padding: 4px 8px 2px;
+}
+
+.message-bubble.has-photo-attachments .message-bubble-inner p {
+  margin-top: 2px;
+}
+
 .pending-attachment-card {
   align-items: center;
   background: var(--background-secondary);
