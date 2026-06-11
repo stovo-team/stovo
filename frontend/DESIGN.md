@@ -34,6 +34,8 @@ typography:
 radius:
   control: 8px
   card: 8px
+  float-panel: 20px
+  float-bubble: 20px
   bubble-rounded: 18px
   bubble-soft: 12px
   bubble-square: 6px
@@ -58,6 +60,33 @@ layout:
   controlMinHeight: 40px
   inputMinHeight: 42px
   iconButtonSize: 42px
+  messenger:
+    paradigm: Telegram-inspired floating panels over wallpaper canvas
+    desktop:
+      outerGap: 16px (24px at >=1280px via --float-outer-gap)
+      panelGap: 16px (--float-panel-gap)
+      surfaces: rounded shadowed sidebar + chat detail cards (--float-radius-panel)
+      composeFab: 52px circle, absolute bottom-right inside sidebar (--fab-size)
+    mobile:
+      outerGap: 0px
+      navPill: fixed inset bottom bar (--nav-pill-inset-x, --nav-pill-inset-bottom, --nav-pill-height)
+      composeFab: 56px circle, viewport-fixed above nav pill (--fab-offset-bottom)
+      composer: inset pill with horizontal gutters (--message-gutter-x)
+    floatTokens:
+      - --float-outer-gap
+      - --float-panel-gap
+      - --float-radius-panel
+      - --float-radius-bubble
+      - --float-radius-pill
+      - --float-shadow
+      - --float-shadow-soft
+      - --message-gutter-x
+      - --nav-pill-inset-x
+      - --nav-pill-inset-bottom
+      - --nav-pill-height
+      - --fab-size
+      - --fab-offset-right
+      - --fab-offset-bottom
 shadows:
   surface: "0 18px 44px rgba(15, 23, 42, 0.1)"
   menu: "0 18px 42px rgba(15, 23, 42, 0.16)"
@@ -201,9 +230,16 @@ When adding components, prefer existing CSS variables such as `--surface-card`, 
 - Use amber/yellow for warnings, offline states, and non-fatal caution.
 
 ### Messaging-specific color rules
-- Incoming message bubbles are neutral surfaces.
-- Outgoing bubbles use a tinted accent-family background, never a fully saturated brand fill.
+- Incoming message bubbles are neutral surfaces (`--message-bubble-bg`).
+- **Messenger-only exception:** outgoing chat bubbles use solid `--accent-primary` fill with white text (Telegram tail geometry). This overrides the general accent rule below for `.message-bubble.mine` only; settings preview cards and non-messenger surfaces still use tinted accent backgrounds.
+- Elsewhere, outgoing/tinted surfaces prefer `--accent-soft` / `--accent-border-soft`, not fully saturated brand fills.
 - Date separators, reaction pills, and search containers should be soft and unobtrusive so message content stays dominant.
+
+### Messenger float layout (Phase 5)
+- Wallpaper shows through outer gaps on desktop; panels float with `--float-shadow` and `--float-radius-panel`.
+- Mobile uses a floating bottom nav pill; compose FAB sits fixed above it via `--fab-offset-bottom`.
+- Message panel horizontal gutters use `--message-gutter-x` (16px desktop and mobile).
+- Themes (`light`, `dark`, `amoled`) and user accent choices remain unchanged — floating surfaces consume existing CSS variables, not shadcn or per-screen hex overrides.
 
 ## Typography
 Use Inter everywhere. The type system is compact, readable, and biased toward scanning in dense communication views.
