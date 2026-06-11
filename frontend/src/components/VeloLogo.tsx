@@ -1,9 +1,13 @@
+import { useId } from "react";
+
 type VeloLogoProps = {
   className?: string;
   title?: string;
 };
 
 export default function VeloLogo({ className, title = "Stovo logo" }: VeloLogoProps) {
+  const gradientId = useId();
+
   return (
     <svg
       className={className}
@@ -13,7 +17,7 @@ export default function VeloLogo({ className, title = "Stovo logo" }: VeloLogoPr
       aria-label={title}
     >
       <defs>
-        <linearGradient id="roseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" style={{ stopColor: "#e11d48", stopOpacity: 1 }} />
           <stop offset="100%" style={{ stopColor: "#fb923c", stopOpacity: 1 }} />
         </linearGradient>
@@ -24,7 +28,7 @@ export default function VeloLogo({ className, title = "Stovo logo" }: VeloLogoPr
         width="45"
         height="10"
         rx="5"
-        fill="url(#roseGrad)"
+        fill={`url(#${gradientId})`}
         transform="rotate(-25 37.5 37)"
       />
       <rect
@@ -33,7 +37,7 @@ export default function VeloLogo({ className, title = "Stovo logo" }: VeloLogoPr
         width="60"
         height="10"
         rx="5"
-        fill="url(#roseGrad)"
+        fill={`url(#${gradientId})`}
         transform="rotate(-25 55 57)"
       />
       <rect
@@ -42,7 +46,7 @@ export default function VeloLogo({ className, title = "Stovo logo" }: VeloLogoPr
         width="35"
         height="10"
         rx="5"
-        fill="url(#roseGrad)"
+        fill={`url(#${gradientId})`}
         transform="rotate(-25 62.5 77)"
       />
     </svg>
