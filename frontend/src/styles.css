@@ -2279,6 +2279,20 @@ h2 {
   -webkit-text-fill-color: var(--input-text);
 }
 
+:root[data-theme-mode="dark"] .search-field input::placeholder,
+:root[data-theme-mode="amoled"] .search-field input::placeholder,
+:root[data-theme-mode="dark"] .message-search-field input::placeholder,
+:root[data-theme-mode="amoled"] .message-search-field input::placeholder {
+  -webkit-text-fill-color: var(--input-placeholder);
+  opacity: 1;
+}
+
+:root[data-theme-mode="dark"] .message-composer textarea::placeholder,
+:root[data-theme-mode="amoled"] .message-composer textarea::placeholder {
+  -webkit-text-fill-color: var(--input-placeholder);
+  opacity: 1;
+}
+
 .clear-search-button {
   height: 32px;
   min-height: 32px;
@@ -4364,7 +4378,8 @@ h2 {
     padding: 16px;
   }
 
-  .chat-layout.chat-list-view .chat-list {
+  .chat-layout.chat-list-view .chat-list,
+  .messenger-shell.chat-list-view .chat-list {
     padding: 8px 16px var(--chat-list-bottom-inset);
   }
 
