@@ -8,3 +8,8 @@ export { default as IconAttach } from "./IconAttach";
 export { default as IconEmoji } from "./IconEmoji";
 export { default as IconSend } from "./IconSend";
 export { default as IconBack } from "./IconBack";
+export { default as IconPhone } from "./IconPhone";
+export { default as IconVideo } from "./IconVideo";
+export { default as IconMenu } from "./IconMenu";
+export { default as IconClose } from "./IconClose";
+export { default as IconLogout } from "./IconLogout";
