@@ -60,12 +60,39 @@ export function login(payload: LoginPayload) {
 }
 
 let refreshSessionInFlight: Promise<AuthResponse> | null = null;
+const REFRESH_LOCK_KEY = "familyMessenger.refreshLock";
+const REFRESH_LOCK_MAX_WAIT_MS = 15_000;
+
+async function acquireRefreshLock(): Promise<void> {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const started = Date.now();
+  while (window.localStorage.getItem(REFRESH_LOCK_KEY)) {
+    if (Date.now() - started > REFRESH_LOCK_MAX_WAIT_MS) {
+      break;
+    }
+    if (refreshSessionInFlight) {
+      await refreshSessionInFlight.catch(() => undefined);
+      return;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
+  }
+  window.localStorage.setItem(REFRESH_LOCK_KEY, String(Date.now()));
+}
+
+function releaseRefreshLock(): void {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(REFRESH_LOCK_KEY);
+  }
+}
 
 export function refreshSession() {
   if (refreshSessionInFlight) {
     return refreshSessionInFlight;
   }
   refreshSessionInFlight = (async () => {
+    await acquireRefreshLock();
     try {
       const storedToken = getStoredRefreshToken();
       return await apiRequest<AuthResponse>("/api/auth/refresh", {
@@ -73,6 +100,7 @@ export function refreshSession() {
         headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
       });
     } finally {
+      releaseRefreshLock();
       refreshSessionInFlight = null;
     }
   })();

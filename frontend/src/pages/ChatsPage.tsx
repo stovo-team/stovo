@@ -577,6 +577,51 @@ function messageActionSummary(message: Message) {
   return "Message";
 }
 
+function isImageAttachment(file: FamilyFile) {
+  return file.mimeType.startsWith("image/");
+}
+
+function messageHasOnlyImageAttachments(message: Message) {
+  return (
+    message.attachments.length > 0 &&
+    message.attachments.every((file) => isImageAttachment(file))
+  );
+}
+
+function MessageImageAttachment({
+  accessToken,
+  file,
+  onOpenImage
+}: {
+  accessToken: string | null;
+  file: FamilyFile;
+  onOpenImage?: (file: FamilyFile, previewUrl: string) => void;
+}) {
+  const previewUrl = useFilePreviewUrl(accessToken, file, true);
+
+  return (
+    <button
+      type="button"
+      className="message-photo-attachment"
+      aria-label={`Open ${file.originalName} full view`}
+      disabled={!previewUrl}
+      onClick={() => {
+        if (previewUrl) {
+          onOpenImage?.(file, previewUrl);
+        }
+      }}
+    >
+      {previewUrl ? (
+        <img src={previewUrl} alt="" />
+      ) : (
+        <span className="message-photo-placeholder" aria-hidden="true">
+          <Image size={28} />
+        </span>
+      )}
+    </button>
+  );
+}
+
 function AttachmentCard({
   accessToken,
   file,
@@ -588,8 +633,18 @@ function AttachmentCard({
   compact?: boolean;
   onOpenImage?: (file: FamilyFile, previewUrl: string) => void;
 }) {
-  const isImage = file.mimeType.startsWith("image/");
+  const isImage = isImageAttachment(file);
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
+
+  if (compact && isImage) {
+    return (
+      <MessageImageAttachment
+        accessToken={accessToken}
+        file={file}
+        onOpenImage={onOpenImage}
+      />
+    );
+  }
 
   return (
     <article className={`attachment-card ${compact ? "compact" : ""} ${isImage ? "image-preview-card" : ""}`}>
@@ -623,19 +678,8 @@ function AttachmentCard({
         <span>
           {file.mimeType} / {formatFileSize(file.sizeBytes)}
         </span>
-        {isImage && accessToken && (
-          <div className="attachment-action-row">
-            <button
-              type="button"
-              className="attachment-action-button subtle"
-              onClick={() => void saveFileToDisk(accessToken, file)}
-            >
-              Save
-            </button>
-          </div>
-        )}
       </div>
-      {accessToken && !isImage && (
+      {accessToken && (
         <button type="button" onClick={() => void saveFileToDisk(accessToken, file)}>
           Save
         </button>
@@ -1276,9 +1320,9 @@ export default function ChatsPage() {
         chatId: targetChatId,
         messageId
       });
-      if (accessToken) {
-        await markMessageRead(accessToken, messageId).catch(() => undefined);
-      }
+      await authRequest<Message>(`/api/messages/${messageId}/read`, { method: "PATCH" }).catch(
+        () => undefined
+      );
       setChats((current) =>
         current.map((chat) => (chat.id === targetChatId ? { ...chat, unreadCount: 0 } : chat))
       );
@@ -1295,11 +1339,11 @@ export default function ChatsPage() {
         );
       }
     },
-    [accessToken, applyMessagesForChat, currentUser?.id]
+    [applyMessagesForChat, authRequest, currentUser?.id]
   );
 
   const loadOverview = useCallback(async () => {
-    if (!accessToken) {
+    if (!accessTokenRef.current) {
       return;
     }
 
@@ -1314,7 +1358,7 @@ export default function ChatsPage() {
       const [familyResult, memberResult, chatResult] = await Promise.all([
         authRequest<Family>("/api/family"),
         authRequest<User[]>("/api/family/members"),
-        getChats(accessToken)
+        authRequest<Chat[]>("/api/chats")
       ]);
       if (!isCurrentRequest()) {
         return;
@@ -1342,11 +1386,11 @@ export default function ChatsPage() {
         setIsLoading(false);
       }
     }
-  }, [accessToken, authRequest]);
+  }, [authRequest]);
 
   const loadSelectedChat = useCallback(
     async (requestedChatId: string | undefined, preserveVisibleMessages = false) => {
-      if (!accessToken) {
+      if (!accessTokenRef.current) {
         return;
       }
 
@@ -1378,8 +1422,8 @@ export default function ChatsPage() {
 
       try {
         const [chat, messageResult] = await Promise.all([
-          getChat(accessToken, requestedChatId),
-          getMessages(accessToken, requestedChatId)
+          authRequest<Chat>(`/api/chats/${requestedChatId}`),
+          authRequest<Message[]>(`/api/chats/${requestedChatId}/messages?limit=50`)
         ]);
         if (!isCurrentRequest()) {
           return;
@@ -1417,7 +1461,7 @@ export default function ChatsPage() {
         }
       }
     },
-    [accessToken, applyMessagesForChat, currentUser?.id, markChatRead]
+    [applyMessagesForChat, authRequest, currentUser?.id, markChatRead]
   );
 
   const syncCurrentView = useCallback(async () => {
@@ -1952,7 +1996,8 @@ export default function ChatsPage() {
       socket.io.off("reconnect", syncAfterSocketResume);
       socket.off("sync:needed", syncAfterSocketResume);
       stopCallRingtone();
-      void audioController.cleanup().catch(() => undefined);
+      // Do not emit call:end here — socket teardown must not kill an active call.
+      void audioController.cleanup(true).catch(() => undefined);
       audioCallRef.current = null;
       socket.disconnect();
       socketRef.current = null;
@@ -2111,7 +2156,16 @@ export default function ChatsPage() {
     // On iOS Safari, getUserMedia fails when called from an async socket callback
     // (not a user gesture). prepareForCall stores the stream so that startOutgoing's
     // ensurePeer() can reuse it without needing a new user gesture.
-    try { await audioCallRef.current?.prepareForCall(type); } catch { /* handled by startOutgoing */ }
+    try {
+      await audioCallRef.current?.prepareForCall(type);
+    } catch (err) {
+      setCallPhase("idle");
+      setActiveCallChatId(null);
+      setCallPeerUserId(null);
+      activeCallChatIdRef.current = null;
+      setError(err instanceof Error ? err.message : "Microphone permission is required to call");
+      return;
+    }
     socket.emit("call:start", { chatId: selectedChat.id, callType: type });
   }
 
@@ -2123,16 +2177,21 @@ export default function ChatsPage() {
     setCallNotice(null);
     setCallPhase("connecting");
     stopCallRingtone();
-    if (callType === "audio") {
-      await applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
-    }
-    socketRef.current.emit("call:accept", { chatId: activeCallChatId });
     try {
+      if (callType === "audio") {
+        await applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
+      }
+      // Acquire mic and create the peer BEFORE telling the server we accepted.
+      // If this fails the call stays ringing — we must not emit call:accept then
+      // call:end, which kills the session for both parties.
       await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
+      socketRef.current.emit("call:accept", { chatId: activeCallChatId });
     } catch (err) {
-      if (socketRef.current?.connected) socketRef.current.emit("call:end", { chatId: activeCallChatId });
-      // We already emitted call:end above; cleanup should not re-emit.
-      await resetCallState("Camera/mic permission or device failed", true, false);
+      await audioCallRef.current?.cleanup(true).catch(() => undefined);
+      setCallPhase("incoming");
+      setCallNotice(
+        callType === "video" ? "Incoming video call" : "Incoming audio call"
+      );
       setError(err instanceof Error ? err.message : "Could not join call");
     }
   }
@@ -3186,9 +3245,19 @@ export default function ChatsPage() {
                           (member) => member.id === message.senderId
                         );
                         const showSenderIdentity = !mine && isMultiMemberChat(selectedChat.type);
+                        const photoOnlyMessage = messageHasOnlyImageAttachments(message);
+                        const hasCaption = Boolean(message.content?.trim());
+                        const messageMeta = (
+                          <span className="message-meta">
+                            {messageDeliveryLabel(message, mine)}
+                            {mine && message.deliveryState !== "failed" && (
+                              <CheckCheck aria-hidden="true" size={14} />
+                            )}
+                          </span>
+                        );
                         return (
                           <article
-                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""}`}
+                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""}`}
                             key={message.id}
                             onContextMenu={(event) => openMessageContextMenu(event, message)}
                           >
@@ -3221,32 +3290,47 @@ export default function ChatsPage() {
                                 Forwarded from {message.forwardedFrom.senderDisplayName ?? "Family member"}
                               </span>
                             )}
-                            <div className="message-bubble-inner">
-                              {message.content ? (
-                                <p>{message.content}</p>
-                              ) : message.deliveryError ? (
-                                <p className="encrypted-message-unavailable">{message.deliveryError}</p>
-                              ) : null}
-                              <span className="message-meta">
-                                {messageDeliveryLabel(message, mine)}
-                                {mine && message.deliveryState !== "failed" && (
-                                  <CheckCheck aria-hidden="true" size={14} />
-                                )}
-                              </span>
-                            </div>
                             {message.attachments.length > 0 && (
                               <div className="message-attachments">
-                                {message.attachments.map((file) => (
-                                  <AttachmentCard
-                                    accessToken={accessToken}
-                                    file={file}
-                                    key={file.id}
-                                    compact
-                                    onOpenImage={(attachment, previewUrl) =>
-                                      setFullViewImage({ file: attachment, previewUrl })
-                                    }
-                                  />
-                                ))}
+                                {message.attachments.map((file, attachmentIndex) => {
+                                  const isLastAttachment =
+                                    attachmentIndex === message.attachments.length - 1;
+                                  const showOverlayMeta =
+                                    photoOnlyMessage &&
+                                    !hasCaption &&
+                                    isLastAttachment &&
+                                    isImageAttachment(file);
+                                  const attachment = (
+                                    <AttachmentCard
+                                      accessToken={accessToken}
+                                      file={file}
+                                      compact
+                                      onOpenImage={(item, previewUrl) =>
+                                        setFullViewImage({ file: item, previewUrl })
+                                      }
+                                    />
+                                  );
+
+                                  if (!showOverlayMeta) {
+                                    return <div key={file.id}>{attachment}</div>;
+                                  }
+
+                                  return (
+                                    <div className="message-photo-stack" key={file.id}>
+                                      {attachment}
+                                      {messageMeta}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {(hasCaption || message.deliveryError || !photoOnlyMessage) && (
+                              <div className="message-bubble-inner">
+                                {hasCaption ? <p>{message.content}</p> : null}
+                                {message.deliveryError ? (
+                                  <p className="encrypted-message-unavailable">{message.deliveryError}</p>
+                                ) : null}
+                                {(!photoOnlyMessage || hasCaption) && messageMeta}
                               </div>
                             )}
                             {message.reactions.length > 0 && (

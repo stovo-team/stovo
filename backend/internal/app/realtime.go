@@ -373,6 +373,7 @@ func (s *Server) configureSockets() {
 			if !endedOK {
 				return
 			}
+			s.logger.Infof("realtime.call", "call:end user_id=%s chat_id=%s caller=%s callee=%s", user.ID, ended.ChatID, ended.CallerUserID, ended.CalleeUserID)
 			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "ended", "endedAt": nowString()}
 			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
 			s.emitCallToUser(ended.CalleeUserID, "call:ended", payloadMap)
