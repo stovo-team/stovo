@@ -17,7 +17,6 @@ import {
   BellOff,
   Camera,
   CheckCheck,
-  ChevronLeft,
   FileText,
   Forward,
   Image,
@@ -25,11 +24,8 @@ import {
   MessageCircle,
   Mic,
   MicOff,
-  MoreVertical,
-  Paperclip,
   Phone,
   Pin,
-  Plus,
   Reply,
   RotateCcw,
   SlidersHorizontal,
@@ -39,10 +35,7 @@ import {
   Volume2,
   Maximize2,
   Minimize2,
-  Search,
-  Send,
   ShieldCheck,
-  Smile,
   Star,
   WifiOff,
   X
@@ -84,6 +77,18 @@ import {
   uploadFile
 } from "../api/files";
 import { useAuth } from "../auth/AuthContext";
+import {
+  IconAttach,
+  IconBack,
+  IconClose,
+  IconCompose,
+  IconEmoji,
+  IconMenu,
+  IconPhone,
+  IconSearch,
+  IconSend,
+  IconVideo,
+} from "../components/icons";
 import ImageLightbox from "../components/ImageLightbox";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
@@ -314,6 +319,24 @@ function messageDeliveryLabel(message: Message, mine: boolean) {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+function isGroupedMessage(
+  message: Message,
+  previous: Message | undefined,
+  currentUserId: string | undefined
+) {
+  if (!previous) {
+    return false;
+  }
+  const mine = message.senderId === currentUserId;
+  const previousMine = previous.senderId === currentUserId;
+  if (mine !== previousMine || message.senderId !== previous.senderId) {
+    return false;
+  }
+  const elapsed =
+    new Date(message.createdAt).getTime() - new Date(previous.createdAt).getTime();
+  return elapsed <= 5 * 60 * 1000;
 }
 
 function canManageChat(chat: Chat, currentUser: User | null) {
@@ -2745,12 +2768,12 @@ export default function ChatsPage() {
                     title="Create chat"
                     onClick={() => setIsNewChatOpen(true)}
                   >
-                    <Plus aria-hidden="true" size={20} />
+                    <IconCompose aria-hidden={true} size={20} />
                   </button>
                 </div>
               </div>
               <label className="search-field">
-                <Search aria-hidden="true" size={18} />
+                <IconSearch aria-hidden={true} size={18} />
                 <input
                   placeholder="Search chats"
                   value={chatSearch}
@@ -2856,6 +2879,15 @@ export default function ChatsPage() {
                 </div>
               )}
             </div>
+            <button
+              type="button"
+              className="compose-fab"
+              aria-label="Start a chat"
+              title="Start a chat"
+              onClick={() => setIsNewChatOpen(true)}
+            >
+              <IconCompose size={24} />
+            </button>
           </aside>
 
           <section className="chat-detail">
@@ -2872,7 +2904,7 @@ export default function ChatsPage() {
                       navigate("/app/chats");
                     }}
                   >
-                    <ChevronLeft aria-hidden="true" size={20} />
+                    <IconBack aria-hidden={true} size={20} />
                   </button>
                   <button
                     type="button"
@@ -2912,7 +2944,7 @@ export default function ChatsPage() {
                           onClick={() => void startDirectCall("audio")}
                           disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
                         >
-                          <Phone aria-hidden="true" size={19} />
+                          <IconPhone aria-hidden={true} size={19} />
                         </button>
                         <button
                           type="button"
@@ -2922,7 +2954,7 @@ export default function ChatsPage() {
                           onClick={() => void startDirectCall("video")}
                           disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
                         >
-                          <Video aria-hidden="true" size={19} />
+                          <IconVideo aria-hidden={true} size={19} />
                         </button>
                       </>
                     )}
@@ -2936,12 +2968,12 @@ export default function ChatsPage() {
                         title="More actions"
                         onClick={() => setIsChatMenuOpen((value) => !value)}
                       >
-                        <MoreVertical aria-hidden="true" size={19} />
+                        <IconMenu aria-hidden={true} size={19} />
                       </button>
                       {isChatMenuOpen && (
                         <div className="action-menu" role="menu">
                           <button type="button" role="menuitem" onClick={openMessageSearch}>
-                            <Search aria-hidden="true" size={16} />
+                            <IconSearch aria-hidden={true} size={16} />
                             Search messages
                           </button>
                           <button
@@ -3009,7 +3041,7 @@ export default function ChatsPage() {
                 </div>
                 {isMessageSearchOpen && (
                   <div className="search-field message-search-field" role="search">
-                    <Search aria-hidden="true" size={18} />
+                    <IconSearch aria-hidden={true} size={18} />
                     <input
                       autoFocus
                       aria-label="Search this chat"
@@ -3026,7 +3058,7 @@ export default function ChatsPage() {
                         setIsMessageSearchOpen(false);
                       }}
                     >
-                      <X aria-hidden="true" size={16} />
+                      <IconClose aria-hidden={true} size={16} />
                     </button>
                   </div>
                 )}
@@ -3049,7 +3081,7 @@ export default function ChatsPage() {
                     </>
                   ) : visibleMessages.length === 0 ? (
                     <div className="phase-empty-state compact-empty">
-                      <Search aria-hidden="true" size={28} />
+                      <IconSearch aria-hidden={true} size={28} />
                       <strong>{threadRootMessageId ? "No messages in this thread" : "No matches"}</strong>
                       <p>
                         {threadRootMessageId
@@ -3062,7 +3094,7 @@ export default function ChatsPage() {
                       {threadRootMessage && (
                         <div className="thread-header">
                           <button type="button" onClick={() => setThreadRootMessageId(null)}>
-                            <ChevronLeft aria-hidden="true" size={16} />
+                            <IconBack aria-hidden={true} size={16} />
                             Back to chat
                           </button>
                           <span>
@@ -3072,8 +3104,15 @@ export default function ChatsPage() {
                         </div>
                       )}
                       <div className="date-separator">{formatDateSeparator(visibleMessages[0]?.createdAt)}</div>
-                      {visibleMessages.map((message) => {
+                      {visibleMessages.map((message, messageIndex) => {
                         const mine = message.senderId === currentUser?.id;
+                        const previousMessage =
+                          messageIndex > 0 ? visibleMessages[messageIndex - 1] : undefined;
+                        const grouped = isGroupedMessage(
+                          message,
+                          previousMessage,
+                          currentUser?.id
+                        );
                         const repliedMessage = message.replyToMessageId
                           ? messages.find((candidate) => candidate.id === message.replyToMessageId)
                           : null;
@@ -3083,7 +3122,7 @@ export default function ChatsPage() {
                         const showSenderIdentity = !mine && isMultiMemberChat(selectedChat.type);
                         return (
                           <article
-                            className={`message-bubble ${mine ? "mine" : ""} ${message.deliveryState ?? ""}`}
+                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""}`}
                             key={message.id}
                             onContextMenu={(event) => openMessageContextMenu(event, message)}
                           >
@@ -3116,11 +3155,19 @@ export default function ChatsPage() {
                                 Forwarded from {message.forwardedFrom.senderDisplayName ?? "Family member"}
                               </span>
                             )}
-                            {message.content ? (
-                              <p>{message.content}</p>
-                            ) : message.deliveryError ? (
-                              <p className="encrypted-message-unavailable">{message.deliveryError}</p>
-                            ) : null}
+                            <div className="message-bubble-inner">
+                              {message.content ? (
+                                <p>{message.content}</p>
+                              ) : message.deliveryError ? (
+                                <p className="encrypted-message-unavailable">{message.deliveryError}</p>
+                              ) : null}
+                              <span className="message-meta">
+                                {messageDeliveryLabel(message, mine)}
+                                {mine && message.deliveryState !== "failed" && (
+                                  <CheckCheck aria-hidden="true" size={14} />
+                                )}
+                              </span>
+                            </div>
                             {message.attachments.length > 0 && (
                               <div className="message-attachments">
                                 {message.attachments.map((file) => (
@@ -3190,12 +3237,6 @@ export default function ChatsPage() {
                                 {selectedChat?.type === "channel" ? "comments" : "thread messages"}
                               </button>
                             )}
-                            <span className="message-meta">
-                              {messageDeliveryLabel(message, mine)}
-                              {mine && message.deliveryState !== "failed" && (
-                                <CheckCheck aria-hidden="true" size={14} />
-                              )}
-                            </span>
                           </article>
                         );
                       })}
@@ -3327,7 +3368,7 @@ export default function ChatsPage() {
                       disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
                       onClick={() => attachmentInputRef.current?.click()}
                     >
-                      <Paperclip aria-hidden="true" size={20} />
+                      <IconAttach aria-hidden={true} size={20} />
                     </button>
                     <div className="emoji-picker-shell" ref={emojiPickerRef}>
                       <button
@@ -3339,7 +3380,7 @@ export default function ChatsPage() {
                         disabled={channelCommentsDisabledForViewer || missingCommentThread}
                         onClick={() => setIsEmojiPickerOpen((current) => !current)}
                       >
-                        <Smile aria-hidden="true" size={20} />
+                        <IconEmoji aria-hidden={true} size={20} />
                       </button>
                       {isEmojiPickerOpen && (
                         <div className="emoji-picker" role="menu" aria-label="Choose emoji">
@@ -3397,7 +3438,7 @@ export default function ChatsPage() {
                         "Sending"
                       ) : (
                         <>
-                          <Send aria-hidden="true" size={18} />
+                          <IconSend aria-hidden={true} size={18} />
                           <span>Send</span>
                         </>
                       )}
@@ -3426,7 +3467,7 @@ export default function ChatsPage() {
                   title="Close details"
                   onClick={() => setIsDetailsOpen(false)}
                 >
-                  <X aria-hidden="true" size={18} />
+                  <IconClose aria-hidden={true} size={18} />
                 </button>
                 <RealAvatar
                   accessToken={accessToken}
