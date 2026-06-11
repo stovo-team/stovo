@@ -3854,23 +3854,36 @@ h2 {
 @media (max-width: 960px) {
   .app-frame {
     display: block;
-    padding-bottom: 76px;
+    padding-bottom: calc(
+      var(--nav-pill-inset-bottom) + var(--nav-pill-height) + var(--fab-offset-bottom) +
+        var(--fab-size) + 8px
+    );
   }
 
   .app-frame > .app-nav {
     align-items: center;
-    border-right: 0;
-    border-top: 1px solid var(--border-default);
-    bottom: 0;
+    background: color-mix(in oklab, var(--surface-card) 92%, transparent);
+    border: 1px solid var(--border-default);
+    border-radius: var(--float-radius-pill);
+    bottom: var(--nav-pill-inset-bottom);
+    box-shadow: var(--float-shadow);
     flex-direction: row;
     gap: 6px;
+    height: var(--nav-pill-height);
     justify-content: space-around;
-    left: 0;
-    min-height: 68px;
+    left: var(--nav-pill-inset-x);
+    min-height: auto;
     padding: 6px 8px;
     position: fixed;
-    right: 0;
+    right: var(--nav-pill-inset-x);
     top: auto;
+    width: auto;
+  }
+
+  .app-frame > .app-nav a.active {
+    background: var(--accent-soft);
+    border-radius: 999px;
+    color: var(--accent-primary);
   }
 
   .app-frame > .app-nav .app-brand,
@@ -3892,8 +3905,12 @@ h2 {
     min-height: 56px;
   }
 
+  .compose-fab {
+    display: none;
+  }
+
   .messenger-workspace {
-    height: calc(100dvh - 76px);
+    height: 100dvh;
     min-height: 0;
   }
 
@@ -3927,7 +3944,7 @@ h2 {
 
   .chat-details-panel {
     border-left: 0;
-    bottom: 76px;
+    bottom: calc(var(--nav-pill-inset-bottom) + var(--nav-pill-height) + 8px);
     box-shadow: var(--shadow);
     max-width: 420px;
     position: fixed;
