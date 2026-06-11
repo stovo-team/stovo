@@ -2811,7 +2811,10 @@ export default function ChatsPage() {
   }
 
   return (
-    <main className="app-shell app-frame messenger-shell">
+    <main
+      className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}`}
+      data-wallpaper="plain"
+    >
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
         {visibleError && <p className="error-text floating-alert" role="alert">{visibleError}</p>}
@@ -2848,11 +2851,7 @@ export default function ChatsPage() {
           </p>
         )}
 
-        <div
-          className={`chat-layout ${isDetailsOpen && selectedChat ? "details-open" : ""} ${
-            chatId ? "has-active-chat" : "chat-list-view"
-          }`}
-        >
+        <div className={`chat-layout ${isDetailsOpen && selectedChat ? "details-open" : ""}`}>
           <aside className="chat-sidebar">
             <div className="chat-sidebar-header">
               <div className="sidebar-title-row">
@@ -2864,7 +2863,7 @@ export default function ChatsPage() {
                 <div className="sidebar-actions">
                   <button
                     type="button"
-                    className="icon-button"
+                    className="icon-button sidebar-compose-desktop"
                     aria-label="Create chat"
                     title="Create chat"
                     onClick={() => setIsNewChatOpen(true)}
