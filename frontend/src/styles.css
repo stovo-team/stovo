@@ -1173,7 +1173,13 @@ h2 {
 
 .app-frame {
   display: grid;
+  gap: var(--float-panel-gap);
   grid-template-columns: 88px minmax(0, 1fr);
+  padding: var(--float-outer-gap);
+}
+
+.messenger-shell.app-frame {
+  background: var(--chat-layout-background);
 }
 
 .workspace,
@@ -1218,12 +1224,18 @@ h2 {
 
 .app-frame > .app-nav {
   align-items: stretch;
+  align-self: start;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
   border-bottom: 0;
-  border-right: 1px solid var(--border-default);
+  border-radius: var(--float-radius-panel);
+  box-shadow: var(--float-shadow);
   flex-direction: column;
   gap: 20px;
-  min-height: 100vh;
+  height: calc(100vh - 2 * var(--float-outer-gap));
   padding: 16px 10px;
+  position: sticky;
+  top: var(--float-outer-gap);
 }
 
 .app-brand {
@@ -1758,6 +1770,7 @@ h2 {
 }
 
 .messenger-workspace {
+  background: transparent;
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -1765,9 +1778,10 @@ h2 {
 }
 
 .chat-layout {
-  background: var(--chat-layout-background);
+  background: transparent;
   display: grid;
   flex: 1;
+  gap: var(--float-panel-gap);
   grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
   min-height: 0;
 }
@@ -1780,11 +1794,14 @@ h2 {
 .chat-detail,
 .chat-details-panel {
   background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--float-radius-panel);
+  box-shadow: var(--float-shadow);
   min-height: 0;
+  overflow: hidden;
 }
 
 .chat-sidebar {
-  border-right: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
   position: relative;
@@ -1877,7 +1894,7 @@ h2 {
   align-items: center;
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: 12px;
   color: var(--text-primary);
   cursor: pointer;
   display: grid;
@@ -1898,8 +1915,30 @@ h2 {
   background: var(--accent-soft);
 }
 
-.chat-list-item.active {
-  box-shadow: inset 3px 0 0 var(--accent-primary);
+.compose-fab {
+  align-items: center;
+  background: var(--accent-primary);
+  border: 0;
+  border-radius: 50%;
+  bottom: 20px;
+  box-shadow: var(--float-shadow);
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  height: 52px;
+  justify-content: center;
+  position: absolute;
+  right: 20px;
+  width: 52px;
+  z-index: 15;
+}
+
+.compose-fab:hover {
+  filter: brightness(1.08);
+}
+
+.compose-fab:active {
+  transform: translateY(1px);
 }
 
 .chat-list-copy {
@@ -2562,7 +2601,6 @@ h2 {
 }
 
 .chat-details-panel {
-  border-left: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
   overflow: auto;
