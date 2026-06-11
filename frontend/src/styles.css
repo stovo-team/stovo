@@ -1695,7 +1695,12 @@ h2 {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding-bottom: 2px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.filter-chip-row::-webkit-scrollbar {
+  display: none;
 }
 
 .filter-chip,
@@ -2620,11 +2625,21 @@ h2 {
 }
 
 .message-composer button[type="submit"] {
+  align-items: center;
   background: var(--accent-primary);
   border-color: var(--accent-primary);
-  border-radius: 999px;
+  border-radius: 50%;
   color: #ffffff;
-  min-width: 88px;
+  display: inline-flex;
+  height: 44px;
+  justify-content: center;
+  min-width: 44px;
+  padding: 0;
+  width: 44px;
+}
+
+.message-composer button[type="submit"] > span:not(.ms-icon):not(.visually-hidden) {
+  display: none;
 }
 
 .file-picker,
@@ -4198,29 +4213,32 @@ h2 {
     display: block;
   }
 
-  .messenger-shell.chat-list-view .app-frame,
-  .app-frame:has(.chat-layout.chat-list-view) {
+  .app-frame.chat-list-view,
+  .messenger-shell.chat-list-view {
     padding-bottom: 0;
   }
 
-  .messenger-shell.has-active-chat .app-frame,
-  .app-frame:has(.chat-layout.has-active-chat) {
+  .app-frame.has-active-chat,
+  .messenger-shell.has-active-chat {
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  .messenger-shell.has-active-chat .app-frame > .app-nav,
-  .app-frame:has(.chat-layout.has-active-chat) > .app-nav {
+  .app-frame.has-active-chat > .app-nav,
+  .messenger-shell.has-active-chat > .app-nav {
     display: none !important;
   }
 
-  .messenger-shell.has-active-chat .compose-fab,
-  .chat-layout.has-active-chat .compose-fab {
+  .messenger-shell.has-active-chat .compose-fab {
     display: none !important;
+  }
+
+  .sidebar-compose-desktop {
+    display: none;
   }
 
   .app-frame > .app-nav {
     align-items: center;
-    background: color-mix(in oklab, var(--surface-card) 92%, transparent);
+    background: var(--island-surface);
     border: 1px solid var(--border-default);
     border-radius: var(--float-radius-pill);
     bottom: var(--nav-pill-inset-bottom);
@@ -4352,22 +4370,22 @@ h2 {
     min-height: 0;
   }
 
-  .chat-layout.has-active-chat .chat-sidebar {
+  .messenger-shell.has-active-chat .chat-sidebar {
     display: none;
   }
 
-  .chat-layout.chat-list-view .chat-detail {
+  .messenger-shell.chat-list-view .chat-detail {
     display: none;
   }
 
-  .chat-layout.chat-list-view .chat-sidebar {
+  .messenger-shell.chat-list-view .chat-sidebar {
     background: transparent;
     border: none;
     border-radius: 0;
     box-shadow: none;
   }
 
-  .chat-layout.chat-list-view .chat-sidebar-header {
+  .messenger-shell.chat-list-view .chat-sidebar-header {
     background: var(--island-surface);
     border: 1px solid var(--border-default);
     border-bottom: 0;
@@ -4378,16 +4396,15 @@ h2 {
     padding: 16px;
   }
 
-  .chat-layout.chat-list-view .chat-list,
   .messenger-shell.chat-list-view .chat-list {
     padding: 8px 16px var(--chat-list-bottom-inset);
   }
 
-  .chat-layout.chat-list-view .chat-list-item {
+  .messenger-shell.chat-list-view .chat-list-item {
     background: transparent;
   }
 
-  .chat-layout.has-active-chat .chat-detail {
+  .messenger-shell.has-active-chat .chat-detail {
     background: transparent;
     border: none;
     border-radius: 0;
@@ -4396,7 +4413,6 @@ h2 {
     min-height: 0;
   }
 
-  .chat-layout.has-active-chat .chat-detail-header--floating,
   .messenger-shell.has-active-chat .chat-detail-header--floating {
     background: var(--island-surface);
     border: 1px solid var(--border-default);
@@ -4411,14 +4427,12 @@ h2 {
     z-index: 2;
   }
 
-  .chat-layout.has-active-chat .messages-panel,
   .messenger-shell.has-active-chat .messages-panel {
     --message-gutter-x: 16px;
     background: transparent;
     padding: 12px 16px;
   }
 
-  .chat-layout.has-active-chat .message-composer,
   .messenger-shell.has-active-chat .message-composer {
     background: var(--island-surface);
     border: 1px solid var(--border-default);
@@ -4552,15 +4566,6 @@ h2 {
 
   .emoji-picker {
     left: -52px;
-  }
-
-  .message-composer button[type="submit"] {
-    min-width: 44px;
-    padding: 0;
-  }
-
-  .message-composer button[type="submit"] span {
-    display: none;
   }
 
   .attachment-card,
