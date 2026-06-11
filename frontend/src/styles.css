@@ -82,6 +82,14 @@
   --fab-size: 56px;
   --fab-offset-right: 20px;
   --fab-offset-bottom: calc(var(--nav-pill-inset-bottom) + var(--nav-pill-height) + 16px);
+  --stovo-primary: #6750a4;
+  --canvas-amoled: #000000;
+  --island-surface: #1c1c1e;
+  --island-surface-raised: #2c2c2e;
+  --chat-list-bottom-inset: calc(
+    var(--fab-size) + 16px + var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 16px
+  );
+  --nav-rail-width: 88px;
   --surface-elevated: var(--surface-card);
   --text-tertiary: var(--text-muted);
   --surface-raised: var(--background-tertiary);
@@ -925,33 +933,29 @@
 
 :root[data-theme-mode="dark"] {
   --background-primary: #0f172a;
-  --background-secondary: #111827;
-  --background-tertiary: #1f2937;
+  --background-secondary: #1c1c1e;
+  --background-tertiary: #2c2c2e;
   --background-panel-accent: #182235;
-  --chat-layout-background: #0f172a;
-  --messages-panel-background:
-    radial-gradient(circle, var(--wallpaper-dot-color) 1px, transparent 1px),
-    #0f172a;
-  --phase-empty-background:
-    radial-gradient(circle, var(--wallpaper-dot-color) 1px, transparent 1px),
-    #0f172a;
+  --chat-layout-background: #000000;
+  --messages-panel-background: #000000;
+  --phase-empty-background: #000000;
   --auth-panel-bg-start: rgba(31, 41, 55, 0.82);
   --auth-panel-bg-end: rgba(24, 34, 53, 0.96);
   --auth-panel-border: rgba(71, 85, 105, 0.78);
   --auth-panel-shadow: rgba(0, 0, 0, 0.24);
-  --surface-card: #182235;
-  --text-primary: #f9fafb;
+  --surface-card: #1c1c1e;
+  --text-primary: #ffffff;
   --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --text-muted: #8e8e93;
   --border-default: #334155;
   --message-bubble-bg: #182235;
   --message-bubble-border: #334155;
   --date-separator-bg: rgba(15, 23, 42, 0.82);
   --reaction-pill-bg: rgba(15, 23, 42, 0.64);
   --storage-tile-overlay: rgba(15, 23, 42, 0.72);
-  --accent-primary: var(--accent-primary-dark);
+  --accent-primary: #6750a4;
   --accent-primary-hover: var(--accent-primary-hover-dark);
-  --accent-soft: var(--accent-soft-dark);
+  --accent-soft: color-mix(in oklab, #6750a4 20%, #1c1c1e);
   --accent-border-soft: var(--accent-border-soft-dark);
   --focus-ring: var(--focus-ring-dark);
   --focus-shadow: var(--focus-shadow-dark);
@@ -960,49 +964,37 @@
   --border-strong: #475569;
   --float-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   --float-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.25);
-  --input-text: #f9fafb;
-  --input-placeholder: #94a3b8;
-  --bubble-outgoing: #766ac8;
-  --bubble-incoming: #212121;
+  --input-text: #ffffff;
+  --input-placeholder: #8e8e93;
+  --bubble-outgoing: #6750a4;
+  --bubble-incoming: #2c2c2e;
 }
 
 :root[data-theme-mode="amoled"] {
   --background-primary: #000000;
-  --background-secondary: #02040a;
-  --background-tertiary: #0b1120;
+  --background-secondary: #1c1c1e;
+  --background-tertiary: #2c2c2e;
   --background-panel-accent: #05070c;
   --chat-layout-background: #000000;
-  --messages-panel-background:
-    radial-gradient(
-      circle,
-      color-mix(in oklab, var(--wallpaper-dot-color) 14%, transparent) 1px,
-      transparent 1px
-    ),
-    #000000;
-  --phase-empty-background:
-    radial-gradient(
-      circle,
-      color-mix(in oklab, var(--wallpaper-dot-color) 14%, transparent) 1px,
-      transparent 1px
-    ),
-    #000000;
+  --messages-panel-background: #000000;
+  --phase-empty-background: #000000;
   --auth-panel-bg-start: rgba(5, 7, 12, 0.88);
   --auth-panel-bg-end: rgba(2, 4, 10, 0.96);
   --auth-panel-border: rgba(51, 65, 85, 0.8);
   --auth-panel-shadow: rgba(0, 0, 0, 0.4);
-  --surface-card: #05070c;
-  --text-primary: #f8fafc;
+  --surface-card: #1c1c1e;
+  --text-primary: #ffffff;
   --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --text-muted: #8e8e93;
   --border-default: #1f2937;
   --message-bubble-bg: #0b1120;
   --message-bubble-border: #1f2937;
   --date-separator-bg: rgba(2, 6, 23, 0.9);
   --reaction-pill-bg: rgba(2, 6, 23, 0.9);
   --storage-tile-overlay: rgba(2, 6, 23, 0.82);
-  --accent-primary: var(--accent-primary-dark);
+  --accent-primary: #6750a4;
   --accent-primary-hover: var(--accent-primary-hover-dark);
-  --accent-soft: var(--accent-soft-dark);
+  --accent-soft: color-mix(in oklab, #6750a4 20%, #1c1c1e);
   --accent-border-soft: var(--accent-border-soft-dark);
   --focus-ring: var(--focus-ring-dark);
   --focus-shadow: var(--focus-shadow-dark);
@@ -1011,10 +1003,10 @@
   --border-strong: #334155;
   --float-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   --float-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.25);
-  --input-text: #f8fafc;
-  --input-placeholder: #94a3b8;
-  --bubble-outgoing: #766ac8;
-  --bubble-incoming: #212121;
+  --input-text: #ffffff;
+  --input-placeholder: #8e8e93;
+  --bubble-outgoing: #6750a4;
+  --bubble-incoming: #2c2c2e;
 }
 
 @media (min-width: 1280px) {
@@ -1255,8 +1247,17 @@ h2 {
   padding: var(--float-outer-gap);
 }
 
+.messenger-shell {
+  --messages-panel-background: var(--canvas-amoled);
+}
+
+.messenger-shell,
+.messenger-shell .chat-layout {
+  background: transparent;
+}
+
 .messenger-shell.app-frame {
-  background: var(--chat-layout-background);
+  background: var(--canvas-amoled);
   overflow-x: hidden;
 }
 
