@@ -3612,6 +3612,7 @@ export default function ChatsPage() {
                     <button
                       type="submit"
                       aria-label="Send message"
+                      aria-busy={isUploading || isSendingMessage}
                       disabled={
                         isUploading ||
                         isSendingMessage ||
@@ -3620,17 +3621,13 @@ export default function ChatsPage() {
                         (!composer.trim() && pendingAttachments.length === 0)
                       }
                     >
-                      {isUploading ? (
-                        "Uploading"
-                      ) : isSendingMessage ? (
-                        "Sending"
-                      ) : (
-                        <>
-                          <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                            send
-                          </span>
-                          <span>Send</span>
-                        </>
+                      <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                        send
+                      </span>
+                      {(isUploading || isSendingMessage) && (
+                        <span className="visually-hidden">
+                          {isUploading ? "Uploading" : "Sending"}
+                        </span>
                       )}
                     </button>
                   </div>
