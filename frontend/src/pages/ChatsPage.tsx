@@ -77,19 +77,16 @@ import {
   uploadFile
 } from "../api/files";
 import { useAuth } from "../auth/AuthContext";
-import {
-  IconAttach,
-  IconBack,
-  IconClose,
-  IconCompose,
-  IconEmoji,
-  IconMenu,
-  IconPhone,
-  IconSearch,
-  IconSend,
-  IconVideo,
-} from "../components/icons";
+import AttachmentPickerSheet, {
+  AttachmentPickerOption
+} from "../components/AttachmentPickerSheet";
 import ImageLightbox from "../components/ImageLightbox";
+import {
+  CAMERA_ATTACHMENT_ACCEPT,
+  DESKTOP_ATTACHMENT_ACCEPT,
+  DOCUMENT_ATTACHMENT_ACCEPT,
+  GALLERY_ATTACHMENT_ACCEPT
+} from "../attachmentAccept";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import CallController, {
@@ -120,6 +117,10 @@ type CallTrackStatus = {
   noiseSuppression: boolean | null;
   autoGainControl: boolean | null;
 };
+
+function isSuppressedUserError(message: string | null): boolean {
+  return message === "Authentication required";
+}
 
 function displayChatName(chat: Chat, currentUserId: string | undefined) {
   if (chat.type === "family" || chat.type === "group" || chat.type === "channel") {
@@ -966,6 +967,7 @@ export default function ChatsPage() {
   const activeCallChatIdRef = useRef<string | null>(null);
   const callTypeRef = useRef<"audio" | "video">("audio");
   const callPhaseRef = useRef<CallPhase>("idle");
+  const accessTokenRef = useRef<string | null>(accessToken);
   const chatsRef = useRef<Chat[]>([]);
   const messagesRef = useRef<Message[]>([]);
   const messageCacheRef = useRef<Record<string, Message[]>>({});
@@ -974,6 +976,10 @@ export default function ChatsPage() {
   const messagesPanelRef = useRef<HTMLDivElement | null>(null);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryAttachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraAttachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const documentAttachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
@@ -1500,6 +1506,20 @@ export default function ChatsPage() {
   useEffect(() => {
     callPhaseRef.current = callPhase;
   }, [callPhase]);
+  useEffect(() => {
+    accessTokenRef.current = accessToken;
+    const socket = socketRef.current;
+    if (socket && accessToken) {
+      socket.auth = { token: accessToken };
+      const query =
+        socket.io.opts.query && typeof socket.io.opts.query === "object"
+          ? { ...(socket.io.opts.query as Record<string, string>) }
+          : {};
+      query.token = accessToken;
+      socket.io.opts.query = query;
+    }
+    audioCallRef.current?.updateAccessToken(accessToken ?? "");
+  }, [accessToken]);
 
   useEffect(() => {
     if (isLoading || chatId || chats.length === 0 || isMobileViewport) {
@@ -1609,7 +1629,7 @@ export default function ChatsPage() {
   }, []);
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!accessToken || !currentUser?.id) {
       return;
     }
 
@@ -1816,7 +1836,10 @@ export default function ChatsPage() {
           );
         }
       }
-      setError(payload.message ?? "Realtime connection error");
+      const message = payload.message ?? "Realtime connection error";
+      if (!isSuppressedUserError(message)) {
+        setError(message);
+      }
     });
 
     socket.on(
@@ -1937,7 +1960,7 @@ export default function ChatsPage() {
         window.clearTimeout(saveAudioSettingsTimerRef.current);
       }
     };
-  }, [accessToken, applyMessagesForChat, currentUser?.id, startIncomingRingtone, startOutgoingRingtone, stopCallRingtone]);
+  }, [applyMessagesForChat, currentUser?.id, startIncomingRingtone, startOutgoingRingtone, stopCallRingtone]);
 
   useEffect(() => {
     if (!isCallAudioPopupOpen) {
@@ -2447,6 +2470,27 @@ export default function ChatsPage() {
     event.currentTarget.form?.requestSubmit();
   }
 
+  function handleAttachButtonClick() {
+    if (Capacitor.isNativePlatform()) {
+      setIsAttachmentSheetOpen(true);
+      return;
+    }
+    attachmentInputRef.current?.click();
+  }
+
+  function handleAttachmentSheetPick(option: AttachmentPickerOption) {
+    setIsAttachmentSheetOpen(false);
+    if (option === "gallery") {
+      galleryAttachmentInputRef.current?.click();
+      return;
+    }
+    if (option === "camera") {
+      cameraAttachmentInputRef.current?.click();
+      return;
+    }
+    documentAttachmentInputRef.current?.click();
+  }
+
   async function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
     if (!accessToken) {
       return;
@@ -2606,11 +2650,7 @@ export default function ChatsPage() {
       return;
     }
     const content = composer.trim();
-    if (!accessToken || !selectedChat || (!content && pendingAttachments.length === 0)) {
-      return;
-    }
-    if (!currentUser) {
-      setError("Authentication required");
+    if (!accessToken || !currentUser || !selectedChat || (!content && pendingAttachments.length === 0)) {
       return;
     }
     if (channelCommentsDisabledForViewer) {
@@ -2705,7 +2745,9 @@ export default function ChatsPage() {
     }
   }
 
-  if (chatId && !isLoading && !isChatLoading && !selectedChat && !error) {
+  const visibleError = error && !isSuppressedUserError(error) ? error : null;
+
+  if (chatId && !isLoading && !isChatLoading && !selectedChat && !visibleError) {
     return <Navigate to="/app/chats" replace />;
   }
 
@@ -2713,7 +2755,7 @@ export default function ChatsPage() {
     <main className="app-shell app-frame messenger-shell">
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
-        {error && <p className="error-text floating-alert" role="alert">{error}</p>}
+        {visibleError && <p className="error-text floating-alert" role="alert">{visibleError}</p>}
         {settingsNotice && (
           <p className="success-text floating-alert" role="status">
             {settingsNotice}
@@ -2768,12 +2810,16 @@ export default function ChatsPage() {
                     title="Create chat"
                     onClick={() => setIsNewChatOpen(true)}
                   >
-                    <IconCompose aria-hidden={true} size={20} />
+                    <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                      edit
+                    </span>
                   </button>
                 </div>
               </div>
               <label className="search-field">
-                <IconSearch aria-hidden={true} size={18} />
+                <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                  search
+                </span>
                 <input
                   placeholder="Search chats"
                   value={chatSearch}
@@ -2886,14 +2932,16 @@ export default function ChatsPage() {
               title="Start a chat"
               onClick={() => setIsNewChatOpen(true)}
             >
-              <IconCompose size={24} />
+              <span className="ms-icon ms-icon--24" aria-hidden={true}>
+                edit
+              </span>
             </button>
           </aside>
 
           <section className="chat-detail">
             {selectedChat ? (
               <>
-                <div className="chat-detail-header">
+                <div className="chat-detail-header chat-detail-header--floating">
                   <button
                     type="button"
                     className="mobile-back-button"
@@ -2904,7 +2952,9 @@ export default function ChatsPage() {
                       navigate("/app/chats");
                     }}
                   >
-                    <IconBack aria-hidden={true} size={20} />
+                    <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                      arrow_back
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -2944,7 +2994,9 @@ export default function ChatsPage() {
                           onClick={() => void startDirectCall("audio")}
                           disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
                         >
-                          <IconPhone aria-hidden={true} size={19} />
+                          <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                            call
+                          </span>
                         </button>
                         <button
                           type="button"
@@ -2954,7 +3006,9 @@ export default function ChatsPage() {
                           onClick={() => void startDirectCall("video")}
                           disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
                         >
-                          <IconVideo aria-hidden={true} size={19} />
+                          <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                            videocam
+                          </span>
                         </button>
                       </>
                     )}
@@ -2968,12 +3022,16 @@ export default function ChatsPage() {
                         title="More actions"
                         onClick={() => setIsChatMenuOpen((value) => !value)}
                       >
-                        <IconMenu aria-hidden={true} size={19} />
+                        <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                          more_vert
+                        </span>
                       </button>
                       {isChatMenuOpen && (
                         <div className="action-menu" role="menu">
                           <button type="button" role="menuitem" onClick={openMessageSearch}>
-                            <IconSearch aria-hidden={true} size={16} />
+                            <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                              search
+                            </span>
                             Search messages
                           </button>
                           <button
@@ -3041,7 +3099,9 @@ export default function ChatsPage() {
                 </div>
                 {isMessageSearchOpen && (
                   <div className="search-field message-search-field" role="search">
-                    <IconSearch aria-hidden={true} size={18} />
+                    <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                      search
+                    </span>
                     <input
                       autoFocus
                       aria-label="Search this chat"
@@ -3058,7 +3118,9 @@ export default function ChatsPage() {
                         setIsMessageSearchOpen(false);
                       }}
                     >
-                      <IconClose aria-hidden={true} size={16} />
+                      <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                        close
+                      </span>
                     </button>
                   </div>
                 )}
@@ -3081,7 +3143,9 @@ export default function ChatsPage() {
                     </>
                   ) : visibleMessages.length === 0 ? (
                     <div className="phase-empty-state compact-empty">
-                      <IconSearch aria-hidden={true} size={28} />
+                      <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                        search
+                      </span>
                       <strong>{threadRootMessageId ? "No messages in this thread" : "No matches"}</strong>
                       <p>
                         {threadRootMessageId
@@ -3094,7 +3158,9 @@ export default function ChatsPage() {
                       {threadRootMessage && (
                         <div className="thread-header">
                           <button type="button" onClick={() => setThreadRootMessageId(null)}>
-                            <IconBack aria-hidden={true} size={16} />
+                            <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                              arrow_back
+                            </span>
                             Back to chat
                           </button>
                           <span>
@@ -3366,9 +3432,11 @@ export default function ChatsPage() {
                       aria-label="Attach files"
                       title="Attach files"
                       disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
-                      onClick={() => attachmentInputRef.current?.click()}
+                      onClick={handleAttachButtonClick}
                     >
-                      <IconAttach aria-hidden={true} size={20} />
+                      <span className="ms-icon ms-icon--22" aria-hidden={true}>
+                        attach_file
+                      </span>
                     </button>
                     <div className="emoji-picker-shell" ref={emojiPickerRef}>
                       <button
@@ -3380,7 +3448,9 @@ export default function ChatsPage() {
                         disabled={channelCommentsDisabledForViewer || missingCommentThread}
                         onClick={() => setIsEmojiPickerOpen((current) => !current)}
                       >
-                        <IconEmoji aria-hidden={true} size={20} />
+                        <span className="ms-icon ms-icon--22" aria-hidden={true}>
+                          sentiment_satisfied
+                        </span>
                       </button>
                       {isEmojiPickerOpen && (
                         <div className="emoji-picker" role="menu" aria-label="Choose emoji">
@@ -3396,12 +3466,48 @@ export default function ChatsPage() {
                     </div>
                     <input
                       ref={attachmentInputRef}
-                      accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/mp4,audio/aac,audio/wav,audio/x-wav,audio/ogg,audio/webm,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                      accept={DESKTOP_ATTACHMENT_ACCEPT}
                       className="visually-hidden"
                       disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
                       multiple
                       type="file"
                       onChange={handleFileSelect}
+                    />
+                    {Capacitor.isNativePlatform() && (
+                      <>
+                        <input
+                          ref={galleryAttachmentInputRef}
+                          accept={GALLERY_ATTACHMENT_ACCEPT}
+                          className="visually-hidden"
+                          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
+                          multiple
+                          type="file"
+                          onChange={handleFileSelect}
+                        />
+                        <input
+                          ref={cameraAttachmentInputRef}
+                          accept={CAMERA_ATTACHMENT_ACCEPT}
+                          capture="environment"
+                          className="visually-hidden"
+                          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
+                          type="file"
+                          onChange={handleFileSelect}
+                        />
+                        <input
+                          ref={documentAttachmentInputRef}
+                          accept={DOCUMENT_ATTACHMENT_ACCEPT}
+                          className="visually-hidden"
+                          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
+                          multiple
+                          type="file"
+                          onChange={handleFileSelect}
+                        />
+                      </>
+                    )}
+                    <AttachmentPickerSheet
+                      open={isAttachmentSheetOpen}
+                      onClose={() => setIsAttachmentSheetOpen(false)}
+                      onPick={handleAttachmentSheetPick}
                     />
                     <textarea
                       ref={composerInputRef}
@@ -3438,7 +3544,9 @@ export default function ChatsPage() {
                         "Sending"
                       ) : (
                         <>
-                          <IconSend aria-hidden={true} size={18} />
+                          <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                            send
+                          </span>
                           <span>Send</span>
                         </>
                       )}
@@ -3467,7 +3575,9 @@ export default function ChatsPage() {
                   title="Close details"
                   onClick={() => setIsDetailsOpen(false)}
                 >
-                  <IconClose aria-hidden={true} size={18} />
+                  <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                    close
+                  </span>
                 </button>
                 <RealAvatar
                   accessToken={accessToken}
