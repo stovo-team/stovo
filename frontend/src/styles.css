@@ -4321,6 +4321,41 @@ h2 {
     display: none;
   }
 
+  .chat-layout.chat-list-view .chat-sidebar {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .chat-layout.chat-list-view .chat-sidebar-header {
+    background: var(--island-surface);
+    border: 1px solid var(--border-default);
+    border-bottom: 0;
+    border-radius: 24px;
+    box-shadow: var(--float-shadow);
+    gap: 12px;
+    margin: max(16px, env(safe-area-inset-top)) 16px 0;
+    padding: 16px;
+  }
+
+  .chat-layout.chat-list-view .chat-list {
+    padding: 8px 16px var(--chat-list-bottom-inset);
+  }
+
+  .chat-layout.chat-list-view .chat-list-item {
+    background: transparent;
+  }
+
+  .chat-layout.has-active-chat .chat-detail {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    height: 100%;
+    min-height: 0;
+  }
+
   .chat-details-panel {
     border-left: 0;
     bottom: calc(var(--nav-pill-inset-bottom) + var(--nav-pill-height) + 8px);
