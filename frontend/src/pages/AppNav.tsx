@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { ShieldCheck } from "lucide-react";
-
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 
@@ -103,8 +101,17 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
         </NavLink>
         {canViewAdmin && (
           <NavLink to="/app/admin" title="Admin" aria-label="Admin">
-            <ShieldCheck aria-hidden="true" size={21} />
-            <span>Admin</span>
+            {({ isActive }) => (
+              <>
+                <span
+                  className={`ms-icon ms-icon--22${isActive ? " ms-icon--filled" : ""}`}
+                  aria-hidden={true}
+                >
+                  verified_user
+                </span>
+                <span>Admin</span>
+              </>
+            )}
           </NavLink>
         )}
       </div>
