@@ -4182,10 +4182,26 @@ h2 {
 @media (max-width: 960px) {
   .app-frame {
     display: block;
-    padding-bottom: calc(
-      var(--nav-pill-inset-bottom) + var(--nav-pill-height) + var(--fab-offset-bottom) +
-        var(--fab-size) + 8px
-    );
+  }
+
+  .messenger-shell.chat-list-view .app-frame,
+  .app-frame:has(.chat-layout.chat-list-view) {
+    padding-bottom: 0;
+  }
+
+  .messenger-shell.has-active-chat .app-frame,
+  .app-frame:has(.chat-layout.has-active-chat) {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .messenger-shell.has-active-chat .app-frame > .app-nav,
+  .app-frame:has(.chat-layout.has-active-chat) > .app-nav {
+    display: none !important;
+  }
+
+  .messenger-shell.has-active-chat .compose-fab,
+  .chat-layout.has-active-chat .compose-fab {
+    display: none !important;
   }
 
   .app-frame > .app-nav {
