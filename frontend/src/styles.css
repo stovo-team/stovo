@@ -1102,10 +1102,12 @@ select {
 
 :root[data-bubble-shape="soft"] {
   --radius-bubble: 12px;
+  --float-radius-bubble: 12px;
 }
 
 :root[data-bubble-shape="square"] {
   --radius-bubble: 6px;
+  --float-radius-bubble: 6px;
 }
 
 input[type="color"] {
@@ -1925,11 +1927,11 @@ h2 {
   color: #ffffff;
   cursor: pointer;
   display: inline-flex;
-  height: 52px;
+  height: var(--fab-size);
   justify-content: center;
   position: absolute;
   right: 20px;
-  width: 52px;
+  width: var(--fab-size);
   z-index: 15;
 }
 
@@ -2080,7 +2082,7 @@ h2 {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 18px;
+  padding: 18px var(--message-gutter-x);
 }
 
 .message-search-field {
@@ -2107,8 +2109,8 @@ h2 {
 
 .date-separator {
   align-self: center;
-  background: var(--date-separator-bg);
-  border: 1px solid var(--border-default);
+  background: color-mix(in oklab, var(--surface-card) 85%, transparent);
+  border: 0;
   border-radius: 999px;
   color: var(--text-secondary);
   font-size: 0.8rem;
@@ -2119,15 +2121,23 @@ h2 {
 
 .message-bubble {
   background: var(--message-bubble-bg);
-  border: 1px solid var(--message-bubble-border);
-  border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) 6px;
-  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
+  border: 0;
+  border-radius: 12px 12px 12px 4px;
+  box-shadow: none;
   display: grid;
   font-size: calc(0.95rem * var(--message-scale));
   gap: 4px;
   justify-self: start;
-  max-width: min(560px, 74%);
-  padding: 10px 12px 8px;
+  max-width: min(480px, 72%);
+  padding: 6px 10px 5px 12px;
+}
+
+.message-bubble.grouped {
+  margin-top: 2px;
+}
+
+.message-bubble.grouped:not(.mine) {
+  border-radius: 4px 12px 12px 4px;
 }
 
 .message-sender-row {
@@ -2143,10 +2153,15 @@ h2 {
 }
 
 .message-bubble.mine {
-  background: var(--message-bubble-mine-bg);
-  border-color: var(--message-bubble-mine-border);
-  border-radius: var(--radius-bubble) var(--radius-bubble) 6px var(--radius-bubble);
+  background: var(--accent-primary);
+  border: 0;
+  border-radius: 12px 12px 4px 12px;
+  color: #ffffff;
   justify-self: end;
+}
+
+.message-bubble.mine.grouped {
+  border-radius: 12px 4px 4px 12px;
 }
 
 .message-bubble.sending {
@@ -2155,7 +2170,8 @@ h2 {
 
 .message-bubble.failed {
   background: var(--danger-soft);
-  border-color: #fecaca;
+  border: 0;
+  color: #ffffff;
 }
 
 .message-sender {
@@ -2177,7 +2193,15 @@ h2 {
   white-space: nowrap;
 }
 
+.message-bubble-inner {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+
 .message-bubble p {
+  flex: 1 1 auto;
   margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -2186,9 +2210,17 @@ h2 {
 .message-meta {
   align-items: center;
   display: inline-flex;
-  font-size: 0.76rem;
+  flex: 0 0 auto;
+  font-size: 11px;
   gap: 4px;
-  justify-self: end;
+  margin-bottom: 1px;
+  opacity: 0.55;
+  white-space: nowrap;
+}
+
+.message-bubble.mine .message-meta {
+  color: inherit;
+  opacity: 0.7;
 }
 
 .message-reactions,
@@ -2874,8 +2906,8 @@ h2 {
 
 .preview-bubble {
   background: var(--message-bubble-bg);
-  border: 1px solid var(--message-bubble-border);
-  border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) 6px;
+  border: 0;
+  border-radius: 12px 12px 12px 4px;
   color: var(--text-primary);
   font-size: calc(0.9rem * var(--message-scale));
   justify-self: start;
@@ -2883,9 +2915,10 @@ h2 {
 }
 
 .preview-bubble.mine {
-  background: var(--message-bubble-mine-bg);
-  border-color: var(--message-bubble-mine-border);
-  border-radius: var(--radius-bubble) var(--radius-bubble) 6px var(--radius-bubble);
+  background: var(--accent-primary);
+  border: 0;
+  border-radius: 12px 12px 4px 12px;
+  color: #ffffff;
   justify-self: end;
 }
 
@@ -3906,7 +3939,19 @@ h2 {
   }
 
   .compose-fab {
-    display: none;
+    bottom: var(--fab-offset-bottom);
+    display: inline-flex;
+    position: fixed;
+    right: var(--fab-offset-right);
+    z-index: 15;
+  }
+
+  .message-composer {
+    border: 1px solid var(--border-default);
+    border-radius: 24px;
+    border-top: 0;
+    box-shadow: var(--float-shadow-soft);
+    margin: 0 var(--message-gutter-x) 8px;
   }
 
   .messenger-workspace {
