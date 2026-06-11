@@ -55,10 +55,6 @@ export function createCallSoundPlayer() {
       loopTimer = null;
     }
     loopMode = null;
-    if (context) {
-      void context.close().catch(() => undefined);
-      context = null;
-    }
   }
 
   async function ensureContext(): Promise<AudioContext | null> {
@@ -66,7 +62,7 @@ export function createCallSoundPlayer() {
     if (!AudioCtor) {
       return null;
     }
-    if (!context) {
+    if (!context || context.state === "closed") {
       context = new AudioCtor();
     }
     if (context.state === "suspended") {
@@ -84,10 +80,10 @@ export function createCallSoundPlayer() {
   async function playOutgoingBurst() {
     const ctx = await ensureContext();
     if (!ctx) return;
-    playToneBurst(ctx, [440, 480], {
-      staggerSeconds: 0,
-      toneDurationSeconds: 1.8,
-      gainPeak: 0.22,
+    playToneBurst(ctx, [440, 520], {
+      staggerSeconds: 0.18,
+      toneDurationSeconds: 0.22,
+      gainPeak: 0.24,
     });
   }
 
@@ -120,7 +116,7 @@ export function createCallSoundPlayer() {
     stopLoop();
     loopMode = mode;
     const playBurst = mode === "incoming" ? playIncomingBurst : playOutgoingBurst;
-    const intervalMs = mode === "incoming" ? 1800 : 6000;
+    const intervalMs = mode === "incoming" ? 1800 : 2400;
     void playBurst().catch(() => undefined);
     loopTimer = window.setInterval(() => {
       void playBurst().catch(() => undefined);

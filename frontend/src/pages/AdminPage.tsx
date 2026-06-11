@@ -822,44 +822,9 @@ export default function AdminPage() {
               </form>
             </section>
 
-            <div className="summary-band compact">
-              <div><span className="summary-label">Visible</span><strong>{logs?.records.length ?? 0}</strong></div>
-              <div><span className="summary-label">Matched</span><strong>{logs?.total ?? 0}</strong></div>
-              <div><span className="summary-label">Buffer</span><strong>{logs?.bufferSize ?? 0}</strong></div>
-            </div>
 
-            <form className="log-toolbar" onSubmit={handleSubmit}>
-              <label>
-                Level
-                <select value={level} onChange={(event) => setLevel(event.target.value as LogLevel | "")}>{LOG_LEVELS.map((item) => <option key={item || "ALL"} value={item}>{item || "ALL"}</option>)}</select>
-              </label>
-              <label>
-                Logger
-                <input placeholder="app.modules.realtime" value={loggerName} onChange={(event) => setLoggerName(event.target.value)} />
-              </label>
-              <label>
-                Search
-                <input value={search} onChange={(event) => setSearch(event.target.value)} />
-              </label>
-              <label>
-                Limit
-                <input min={1} max={1000} type="number" value={limit} onChange={(event) => setLimit(Number(event.target.value))} />
-              </label>
-              <label className="inline-toggle">
-                <input checked={autoRefresh} type="checkbox" onChange={(event) => setAutoRefresh(event.target.checked)} />
-                Auto
-              </label>
-              <button type="submit" disabled={isLoading}>Refresh</button>
-            </form>
 
-            <section className="log-panel" aria-busy={isLoading}>
-              {logs?.records.length ? logs.records.slice().reverse().map((entry) => <LogRow entry={entry} key={entry.id} />) : (
-                <div className="phase-empty-state">
-                  <strong>{isLoading ? "Loading logs" : "No logs found"}</strong>
-                  <p>Adjust filters or wait for new backend activity.</p>
-                </div>
-              )}
-            </section>
+
           </>
         )}
       </section>
