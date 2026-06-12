@@ -1,16 +1,12 @@
 # Build a signed release APK and publish to Telegram.
 #
-# CI calls the Telegram Bot API directly (no separate release-bot server required).
-# Optional: if RELEASE_BOT_URL + RELEASE_BOT_SECRET are set, also POSTs to
-# https://github.com/left-try/release-bot webhook for formatted release notes.
-#
 # Required repository secrets:
 #   TELEGRAM_BOT_TOKEN   — bot token from @BotFather (bot must be channel admin)
 #   TELEGRAM_CHAT_ID     — target channel ID (e.g. -1001234567890)
 #
 # Optional (LLM release notes from commit history):
 #   OPENAI_API_KEY       — OpenAI API key (alias: OPEN_AI_API_KEY; falls back to commit list if unset)
-#   OPENAI_MODEL         — repo variable, optional (default in workflow: gpt-4.1-nano)
+#   OPENAI_MODEL         — repo variable, optional (default: gpt-4.1-nano)
 #
 # Optional (release-bot sidecar):
 #   RELEASE_BOT_URL      — base URL (e.g. https://releases.example.com)
@@ -39,6 +35,9 @@ on:
 concurrency:
   group: android-release
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   build-and-publish:
@@ -91,6 +90,22 @@ jobs:
             echo "No keystore secret — building unsigned release APK"
           fi
 
+      - name: Compute patch version
+        id: patch
+        run: |
+          git fetch --tags
+          LATEST=$(git tag --list 'v1.1.*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST" ]; then
+            PATCH=1
+          else
+            PATCH=$(echo "$LATEST" | awk -F. '{print $3}')
+            PATCH=$((PATCH + 1))
+          fi
+          VERSION="1.1.${PATCH}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Next version: $VERSION"
+
       - name: Build release APK
         working-directory: frontend/android
         env:
@@ -101,25 +116,21 @@ jobs:
           chmod +x ./gradlew
           ./gradlew assembleRelease \
             -PversionCode=${{ github.run_number }} \
+            -PversionName=${{ steps.patch.outputs.version }} \
             --no-daemon
 
-      - name: Locate APK artifact
+      - name: Locate and rename APK
         id: apk
         run: |
-          APK=$(find frontend/android/app/build/outputs/apk/release -name '*.apk' | head -1)
-          if [ -z "$APK" ]; then
+          SRC=$(find frontend/android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          if [ -z "$SRC" ]; then
             echo "No APK found under app/build/outputs/apk/release" >&2
             exit 1
           fi
-          echo "path=$APK" >> "$GITHUB_OUTPUT"
-          echo "Found: $APK ($(du -h "$APK" | cut -f1))"
-
-      - name: Resolve version label
-        id: version
-        run: |
-          VERSION_NAME=$(grep 'versionName' frontend/android/app/build.gradle | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "label=${VERSION_NAME}-build${{ github.run_number }} (${SHORT_SHA})" >> "$GITHUB_OUTPUT"
+          DEST="stovo-${{ steps.patch.outputs.version }}.apk"
+          cp "$SRC" "$DEST"
+          echo "path=$DEST" >> "$GITHUB_OUTPUT"
+          echo "Found: $SRC ($(du -h "$SRC" | cut -f1)) → $DEST"
 
       - name: Generate release notes
         id: notes
@@ -181,11 +192,18 @@ jobs:
       - name: Post release notice to Telegram
         run: |
           TEXT=$(printf '📱 Stovo %s\n\n%s\n\n⬇️ APK attached below' \
-            "${{ steps.version.outputs.label }}" \
+            "${{ steps.patch.outputs.version }}" \
             "${{ steps.notes.outputs.summary }}")
           curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "text=${TEXT}"
+
+      - name: Upload APK to Telegram channel
+        run: |
+          curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
+            -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -F "document=@${{ steps.apk.outputs.path }}" \
+            -F "caption=Stovo ${{ steps.patch.outputs.version }}"
 
       - name: Notify release-bot webhook (optional)
         continue-on-error: true
@@ -199,7 +217,7 @@ jobs:
           fi
           BODY=$(jq -n \
             --arg project "Stovo Android" \
-            --arg version "${{ steps.version.outputs.label }}" \
+            --arg version "${{ steps.patch.outputs.version }}" \
             --arg message "${{ steps.notes.outputs.summary }}" \
             '{project: $project, version: $version, message: $message}')
           curl -fsSL -X POST "${RELEASE_BOT_URL}/webhook" \
@@ -207,17 +225,16 @@ jobs:
             -H "Content-Type: application/json" \
             --data-binary "$BODY"
 
-      - name: Upload APK to Telegram channel
+      - name: Create git tag
         run: |
-          CAPTION=$(printf 'Stovo %s' "${{ steps.version.outputs.label }}")
-          curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
-            -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -F "document=@${{ steps.apk.outputs.path }}" \
-            -F "caption=${CAPTION}"
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag "${{ steps.patch.outputs.tag }}"
+          git push origin "${{ steps.patch.outputs.tag }}"
 
       - name: Upload APK as GitHub artifact
         uses: actions/upload-artifact@v4
         with:
-          name: stovo-android-${{ github.run_number }}
+          name: stovo-android-${{ steps.patch.outputs.version }}
           path: ${{ steps.apk.outputs.path }}
           retention-days: 30
