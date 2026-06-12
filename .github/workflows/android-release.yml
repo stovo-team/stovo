@@ -1,15 +1,16 @@
 # Build a signed release APK and publish to Telegram.
 #
-# Notification text is sent via release-bot webhook:
-#   https://github.com/left-try/release-bot
-# The APK file is uploaded with the Telegram Bot API sendDocument endpoint
-# (release-bot handles text-only notifications).
+# CI calls the Telegram Bot API directly (no separate release-bot server required).
+# Optional: if RELEASE_BOT_URL + RELEASE_BOT_SECRET are set, also POSTs to
+# https://github.com/left-try/release-bot webhook for formatted release notes.
 #
 # Required repository secrets:
-#   RELEASE_BOT_URL      — base URL of your release-bot instance (e.g. https://releases.example.com)
-#   RELEASE_BOT_SECRET   — WEBHOOK_SECRET / Authorization Bearer token
-#   TELEGRAM_BOT_TOKEN   — same bot token release-bot uses (@BotFather)
+#   TELEGRAM_BOT_TOKEN   — bot token from @BotFather (bot must be channel admin)
 #   TELEGRAM_CHAT_ID     — target channel ID (e.g. -1001234567890)
+#
+# Optional (release-bot sidecar):
+#   RELEASE_BOT_URL      — base URL (e.g. https://releases.example.com)
+#   RELEASE_BOT_SECRET   — WEBHOOK_SECRET bearer token
 #
 # Optional (for signed release APKs):
 #   ANDROID_KEYSTORE_BASE64   — base64-encoded .jks or .keystore file
@@ -114,17 +115,35 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "label=${VERSION_NAME}-build${{ github.run_number }} (${SHORT_SHA})" >> "$GITHUB_OUTPUT"
 
-      - name: Notify release via release-bot
+      - name: Post release notice to Telegram
         run: |
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          TEXT=$(printf 'Stovo Android %s\n\nAPK built from commit %s\n%s' \
+            "${{ steps.version.outputs.label }}" "${{ github.sha }}" "$RUN_URL")
+          curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "text=${TEXT}"
+
+      - name: Notify release-bot webhook (optional)
+        continue-on-error: true
+        env:
+          RELEASE_BOT_URL: ${{ secrets.RELEASE_BOT_URL }}
+          RELEASE_BOT_SECRET: ${{ secrets.RELEASE_BOT_SECRET }}
+        run: |
+          if [ -z "$RELEASE_BOT_URL" ] || [ -z "$RELEASE_BOT_SECRET" ]; then
+            echo "Skipping release-bot (RELEASE_BOT_URL or RELEASE_BOT_SECRET not set)"
+            exit 0
+          fi
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           BODY=$(jq -n \
             --arg project "Stovo Android" \
             --arg version "${{ steps.version.outputs.label }}" \
-            --arg message "APK built from commit ${{ github.sha }}. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg message "APK built from commit ${{ github.sha }}. Run: ${RUN_URL}" \
             '{project: $project, version: $version, message: $message}')
-          curl -fsSL -X POST "${{ secrets.RELEASE_BOT_URL }}/webhook" \
-            -H "Authorization: Bearer ${{ secrets.RELEASE_BOT_SECRET }}" \
+          curl -fsSL -X POST "${RELEASE_BOT_URL}/webhook" \
+            -H "Authorization: Bearer ${RELEASE_BOT_SECRET}" \
             -H "Content-Type: application/json" \
-            -d "$BODY"
+            --data-binary "$BODY"
 
       - name: Upload APK to Telegram channel
         run: |
