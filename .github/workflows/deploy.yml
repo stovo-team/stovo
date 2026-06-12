@@ -1,0 +1,62 @@
+# Deploy Stovo web stack to Cloud.ru Evolution (VPS) via SSH + Docker Compose.
+#
+# Required repository secrets:
+#   DEPLOY_HOST       — public IP or hostname of the Evolution VM
+#   DEPLOY_USER       — SSH user (e.g. deploy or ubuntu)
+#   DEPLOY_SSH_KEY    — private key for SSH (PEM, no passphrase)
+#   DEPLOY_PATH       — absolute path to the git checkout on the server (e.g. /opt/stovo)
+# Optional:
+#   DEPLOY_SSH_PORT   — SSH port (default 22)
+#
+# Server prerequisites:
+#   - Docker + Docker Compose v2
+#   - git clone of this repo at DEPLOY_PATH
+#   - .env file configured on the server (never committed)
+
+name: Deploy Web
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'frontend/android/**'
+      - '.planning/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-web
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.DEPLOY_PATH }}"
+
+            echo "==> Pulling latest master"
+            git fetch origin master
+            git reset --hard origin/master
+
+            echo "==> Building and restarting services"
+            docker compose build --pull
+            docker compose up -d --remove-orphans
+
+            echo "==> Pruning dangling images"
+            docker image prune -f
+
+            echo "==> Service status"
+            docker compose ps
