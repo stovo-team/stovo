@@ -43,8 +43,9 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
           command_timeout: 30m
+          script_stop: true
           script: |
-            set -euo pipefail
+            set -eu
             cd "${{ secrets.DEPLOY_PATH }}"
 
             echo "==> Pulling latest master"
