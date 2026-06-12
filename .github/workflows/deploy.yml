@@ -4,7 +4,7 @@
 #   DEPLOY_HOST       — public IP or hostname of the Evolution VM
 #   DEPLOY_USER       — SSH user (e.g. deploy or ubuntu)
 #   DEPLOY_SSH_KEY    — private key for SSH (PEM, no passphrase)
-#   DEPLOY_PATH       — absolute path to the git checkout on the server (e.g. /opt/stovo)
+#   DEPLOY_PATH       — repo path on the server; tilde is expanded (e.g. ~/Stovo or /home/user/Stovo)
 # Optional:
 #   DEPLOY_SSH_PORT   — SSH port (default 22)
 #
@@ -46,7 +46,12 @@ jobs:
           script_stop: true
           script: |
             set -eu
-            cd "${{ secrets.DEPLOY_PATH }}"
+            DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}'
+            case "$DEPLOY_PATH" in
+              "~") DEPLOY_PATH="$HOME" ;;
+              "~/"*) DEPLOY_PATH="$HOME/${DEPLOY_PATH#~/}" ;;
+            esac
+            cd "$DEPLOY_PATH"
 
             echo "==> Pulling latest master"
             git fetch origin master
