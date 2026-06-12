@@ -57,7 +57,7 @@ jobs:
             git reset --hard origin/master
 
             echo "==> Building and restarting services"
-            docker compose build --pull
+            docker compose build
             docker compose up -d --remove-orphans
 
             echo "==> Pruning dangling images"
