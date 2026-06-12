@@ -1,14 +1,14 @@
 ---
 name: Stovo Family Messenger
 product: Private family messenger (Capacitor Android + web)
-version: 3
+version: 4
 iconLibrary:
   messenger: Material Symbols Outlined
   secondary: lucide-react
 stitch:
   status: v2-floating-islands-handoff
   targetTool: Google Stitch
-  handoff: "Phase 7 Stitch V2 floating islands implemented — Capacitor UAT vs three reference frames (see 07-UI-SPEC.md)"
+  handoff: "Phase 7 Stitch V2 floating islands + Phase 8 appearance personalization restored (see 07-UI-SPEC.md, 08-UI-SPEC.md)"
   referenceAesthetic: Telegram-inspired floating panels (not a clone)
 design-principles:
   - calm
@@ -87,16 +87,16 @@ themes:
     textSecondary: "#cbd5e1"
     textMuted: "#8e8e93"
     border: "#334155"
-    accent: "#6750A4"
-    accentSoft: "color-mix(in oklab, #6750A4 20%, #1c1c1e)"
+    accent: "var(--accent-primary) — user-selectable via data-accent"
+    accentSoft: "var(--accent-soft)"
     bubbleIncoming: "#2c2c2e"
-    bubbleOutgoing: "#6750A4"
+    bubbleOutgoing: "var(--accent-primary)"
     bubbleOutgoingText: "#ffffff"
     inputText: "#ffffff"
     inputPlaceholder: "#8e8e93"
     navPillSurface: "#1c1c1e"
     navActiveFill: "subtle — see Mobile §Bottom Nav"
-    navActiveIcon: "#6750A4"
+    navActiveIcon: "var(--stovo-primary)"
   amoled:
     canvas: "#000000"
     surface: "#1c1c1e"
@@ -105,16 +105,16 @@ themes:
     textSecondary: "#cbd5e1"
     textMuted: "#8e8e93"
     border: "#1f2937"
-    accent: "#6750A4"
-    accentSoft: "color-mix(in oklab, #6750A4 20%, #1c1c1e)"
+    accent: "var(--accent-primary) — user-selectable via data-accent"
+    accentSoft: "var(--accent-soft)"
     bubbleIncoming: "#2c2c2e"
-    bubbleOutgoing: "#6750A4"
+    bubbleOutgoing: "var(--accent-primary)"
     bubbleOutgoingText: "#ffffff"
     inputText: "#ffffff"
     inputPlaceholder: "#8e8e93"
     navPillSurface: "#1c1c1e"
     navActiveFill: "subtle — see Mobile §Bottom Nav"
-    navActiveIcon: "#6750A4"
+    navActiveIcon: "var(--stovo-primary)"
 accentOptions:
   blue: { light: "#2aabee", dark: "#60a5fa" }
   green: { light: "#15946f", dark: "#34d399" }
@@ -123,17 +123,16 @@ accentOptions:
   amber: { light: "#d97706", dark: "#fbbf24" }
 defaults:
   themeMode: system
-  accent: purple
-  wallpaper: plain
+  accent: blue
+  wallpaper: dots
   density: comfortable
-  messengerWallpaper: plain
 ---
 
-# Stovo Design System — Stitch V2 Handoff
+# Stovo Design System — Stitch V2 + Appearance Personalization
 
-> **Purpose:** Design contract for the Phase 7 **V2 floating islands** messenger shell. Stitch reference frames are authoritative. This document syncs implementation tokens with `.planning/phases/07-v2-floating-islands-stitch/07-UI-SPEC.md`.
+> **Purpose:** Design contract for the Phase 7 **V2 floating islands** messenger shell and Phase 8 **appearance personalization** restore. Stitch reference frames remain authoritative for island geometry. Accent, wallpaper, and settings editor contracts live in `.planning/phases/08-appearance-customization-rework-fix-accent-wallpaper-overrid/08-UI-SPEC.md`.
 
-> **Supersession:** Phase 7 UI-SPEC supersedes Phase 6 messenger shell for **layout and color**; Phase 6 **motion contract** (150ms/200ms transitions, `prefers-reduced-motion`) is retained.
+> **Supersession:** Phase 7 UI-SPEC defines messenger **layout**; Phase 8 restores user-controlled **accent and wallpaper** (no locked `#6750A4`). Phase 6 **motion contract** (150ms/200ms transitions, `prefers-reduced-motion`) is retained.
 
 ---
 
@@ -147,15 +146,36 @@ Three Stitch reference frames define the messenger chrome. Full geometry tables 
 | **Frame 2 — Mobile conversation** | 390×884 | No bottom nav; floating header pill + floating composer pill; grey `Message` placeholder (`#8e8e93`); typed text white (`#ffffff`); 44×44 circular icon-only send |
 | **Frame 3 — Desktop workspace** | 1440×900 | Three separate islands (nav rail · sidebar · chat detail) with 16–24px black gutters; plain black canvas; circular send at all widths |
 
-**Primary accent (messenger):** `#6750A4` — FAB, send, outgoing bubbles, active nav, filter chips.
+**Primary accent (messenger):** User-selected via `AppearanceContext` → `data-accent` on `:root`. `--stovo-primary` and `--bubble-outgoing` alias `var(--accent-primary)`. Studio preset uses purple; `#6750A4` is not a global lock.
+
+**Accent cascade:** `:root[data-accent="…"]` sets light/dark token maps; `:root[data-theme-mode]` delegates resolved `--accent-primary` (dark/amoled use `var(--accent-primary-dark)`).
 
 **Island surfaces:** `#1c1c1e` panels, `#2c2c2e` raised (search field, composer textarea).
 
-**Canvas:** `#000000` plain on messenger — `data-wallpaper="plain"` on `.messenger-shell`; no dot grid default.
+**Canvas:** `#000000` AMOLED on messenger shell (L0). Message gutters (`.messages-panel`) respect `data-wallpaper` from `AppearanceContext` — dots, paper, aurora, or plain on black.
 
 **Conversation chrome (mobile ≤960px):** Bottom nav and FAB hidden when `.has-active-chat`; FAB-only compose on `.chat-list-view`.
 
 **Send button:** 44×44px circle, icon-only, all breakpoints — no visible "Send" text.
+
+---
+
+## Appearance Editor (Phase 8)
+
+Settings → **Appearance** opens a drill-down editor (not an inline detail panel).
+
+| Element | Contract |
+|---------|----------|
+| Navigation | Back chevron returns to settings list; profile/groups hidden while editor open |
+| Preview hero | Live mini-thread (incoming + outgoing bubbles) updates on every `updateAppearance` call |
+| Quick looks | Horizontal preset cards: Fresh, Forest, Studio, Warm |
+| Theme | 4-segment control: System, Light, Dark, AMOLED |
+| Accent | Swatch row + custom color input |
+| Chat background | Visual tiles (Dots, Paper, Aurora, Plain) — no `<select>` |
+| Bubbles | Chip row: Rounded, Soft, Square |
+| Reset | Confirmation modal before restoring `DEFAULT_APPEARANCE` |
+
+Full component specs: `08-UI-SPEC.md`. Instant apply — no save button.
 
 ---
 
@@ -261,7 +281,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 | Desktop composer | **Variant A** — flat bar | Border-top at panel bottom |
 | Mobile composer | **Variant B** — inset pill | Floating margin + soft shadow |
 | Panel elevation | **Variant A** — deep float | `0 20px 40px rgba(0,0,0,0.4)` |
-| Wallpaper | **Plain black** on messenger | `data-wallpaper="plain"` — no dot grid on messenger shell |
+| Wallpaper | User-selectable on message gutters | L0 canvas `#000`; `.messages-panel` uses `data-wallpaper` from AppearanceContext |
 | Selected chat row | **Hybrid** | `border-left: 2px` accent + 14% tint |
 
 ### Motion defaults (Phase 6)
@@ -275,7 +295,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 
 `prefers-reduced-motion: reduce` collapses messenger transitions to `0.01ms`. No animation on bubble entrance, wallpaper, or panel shadow on scroll.
 
-**Outgoing bubble on dark/amoled:** `#6750A4` — matches messenger primary accent.
+**Outgoing bubble on dark/amoled:** `var(--accent-primary)` — follows user accent choice.
 
 ### Chat list structure (do not remove)
 
@@ -291,7 +311,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 | Outgoing radius | `12px 12px 4px 12px` |
 | Grouped stack | 2px vertical gap; inner corners flatten to 4px |
 | Incoming fill | `bubbleIncoming` per theme |
-| Outgoing fill | solid `#6750A4` — **not** soft tint |
+| Outgoing fill | solid `var(--accent-primary)` — **not** soft tint |
 | Border / shadow | none on bubbles |
 | Timestamp | 11px inline bottom-right inside bubble, 55–70% opacity |
 | Max width | 88% mobile, 72% desktop |
@@ -357,7 +377,7 @@ Runtime via `AppearanceContext` → `document.documentElement` attributes:
 | Date pill | centered, 12px bold, semi-transparent |
 | Composer | Floating pill: margin 0 16px 8px, radius 24px, border + soft shadow |
 | Composer input | **D-02:** typed text = `inputText`; placeholder = `inputPlaceholder` |
-| Composer actions | attach, emoji, send (44×44 circle, icon-only, `#6750A4`) |
+| Composer actions | attach, emoji, send (44×44 circle, icon-only, `var(--accent-primary)`) |
 
 ### Bottom nav pill (**D-03** — redesign target)
 

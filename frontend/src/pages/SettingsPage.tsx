@@ -1,7 +1,16 @@
-import { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import {
   Bell,
   Camera,
+  ChevronLeft,
   ChevronRight,
   Database,
   HelpCircle,
@@ -19,11 +28,12 @@ import { useNavigate } from "react-router-dom";
 
 import {
   ACCENT_OPTIONS,
+  AppearanceSettings,
   BUBBLE_SHAPE_OPTIONS,
   DEFAULT_APPEARANCE,
   DENSITY_OPTIONS,
   THEME_MODE_OPTIONS,
-  WALLPAPER_OPTIONS,
+  WallpaperChoice,
   useAppearance
 } from "../appearance/AppearanceContext";
 import { ApiError, getApiUrl, setApiUrlOverride } from "../api/client";
@@ -89,7 +99,11 @@ const settingsGroups = [
   }
 ];
 
-const themePresets = [
+const themePresets: Array<{
+  label: string;
+  helper: string;
+  patch: Partial<AppearanceSettings>;
+}> = [
   {
     label: "Fresh",
     helper: "Light, blue, dotted chat",
@@ -110,12 +124,287 @@ const themePresets = [
     helper: "Light, amber, aurora",
     patch: { themeMode: "light", accent: "amber", wallpaper: "aurora", bubbleShape: "soft" }
   }
-] as const;
+];
+
+const wallpaperTileMeta: Array<{ value: WallpaperChoice; label: string; thumbClass: string }> = [
+  { value: "dots", label: "Dots", thumbClass: "appearance-wallpaper-thumb--dots" },
+  { value: "paper", label: "Paper", thumbClass: "appearance-wallpaper-thumb--paper" },
+  { value: "aurora", label: "Aurora", thumbClass: "appearance-wallpaper-thumb--aurora" },
+  { value: "plain", label: "Plain", thumbClass: "appearance-wallpaper-thumb--plain" }
+];
+
+function AppearanceEditor({
+  displayName,
+  onBack,
+  backButtonRef
+}: {
+  displayName: string;
+  onBack: () => void;
+  backButtonRef: RefObject<HTMLButtonElement | null>;
+}) {
+  const { appearance, resolvedThemeMode, updateAppearance } = useAppearance();
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    backButtonRef.current?.focus();
+  }, [backButtonRef]);
+
+  function handleResetConfirm() {
+    updateAppearance(DEFAULT_APPEARANCE);
+    setResetConfirmOpen(false);
+  }
+
+  const previewHero = (
+    <div
+      className="appearance-preview-hero"
+      role="img"
+      aria-label="Theme preview"
+    >
+      <span className="preview-avatar" aria-hidden="true">
+        {initials(displayName)}
+      </span>
+      <div className="preview-thread">
+        <span className="preview-bubble">Family dinner is at 7.</span>
+        <span className="preview-bubble mine">I will bring dessert.</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="appearance-editor appearance-editor-enter">
+        <header className="appearance-editor-header">
+          <button
+            ref={backButtonRef}
+            type="button"
+            className="icon-button subtle appearance-editor-back"
+            aria-label="Back to settings"
+            onClick={onBack}
+          >
+            <ChevronLeft aria-hidden="true" size={20} />
+          </button>
+          <h2 className="appearance-editor-title" tabIndex={-1}>
+            Appearance
+          </h2>
+        </header>
+
+        <div className="appearance-editor-preview-column">{previewHero}</div>
+
+        <div className="appearance-editor-controls">
+          <section className="appearance-section-card">
+            <p className="appearance-section-label">Quick looks</p>
+            <div className="appearance-preset-scroll" role="list" aria-label="Theme presets">
+              {themePresets.map((preset) => (
+                <button
+                  type="button"
+                  className="appearance-preset-card"
+                  key={preset.label}
+                  onClick={() => updateAppearance(preset.patch)}
+                >
+                  <strong>{preset.label}</strong>
+                  <small>{preset.helper}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="appearance-section-card">
+            <p className="appearance-section-label">Theme</p>
+            <div className="appearance-segment" role="tablist" aria-label="Theme mode">
+              {THEME_MODE_OPTIONS.map((option) => (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={appearance.themeMode === option.value}
+                  className={appearance.themeMode === option.value ? "active" : ""}
+                  key={option.value}
+                  onClick={() => updateAppearance({ themeMode: option.value })}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {appearance.themeMode === "system" && (
+              <small className="muted-copy">Using {resolvedThemeMode}</small>
+            )}
+          </section>
+
+          <section className="appearance-section-card">
+            <p className="appearance-section-label">Accent color</p>
+            <div className="appearance-swatch-row">
+              {ACCENT_OPTIONS.map((accent) => (
+                <button
+                  type="button"
+                  className={`color-swatch ${accent.swatchClassName} ${
+                    appearance.accent === accent.value ? "active" : ""
+                  }`}
+                  aria-label={`${accent.label} accent`}
+                  aria-pressed={appearance.accent === accent.value}
+                  title={`${accent.label} accent`}
+                  key={accent.value}
+                  onClick={() => updateAppearance({ accent: accent.value })}
+                />
+              ))}
+            </div>
+            <label className="color-field">
+              <Palette aria-hidden="true" size={18} />
+              <span>Custom color</span>
+              <input
+                type="color"
+                value={appearance.customAccent}
+                onChange={(event) =>
+                  updateAppearance({ accent: "custom", customAccent: event.target.value })
+                }
+              />
+            </label>
+          </section>
+
+          <section className="appearance-section-card">
+            <p className="appearance-section-label">Chat background</p>
+            <div className="appearance-wallpaper-grid" role="radiogroup" aria-label="Chat background">
+              {wallpaperTileMeta.map((tile) => (
+                <button
+                  type="button"
+                  className="appearance-wallpaper-tile"
+                  role="radio"
+                  aria-checked={appearance.wallpaper === tile.value}
+                  key={tile.value}
+                  onClick={() => updateAppearance({ wallpaper: tile.value })}
+                >
+                  <span className={`appearance-wallpaper-thumb ${tile.thumbClass}`} aria-hidden="true" />
+                  <span>{tile.label}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="appearance-section-card">
+            <p className="appearance-section-label">Message bubbles</p>
+            <div className="appearance-chip-row" role="group" aria-label="Bubble shape">
+              {BUBBLE_SHAPE_OPTIONS.map((option) => (
+                <button
+                  type="button"
+                  className={`appearance-chip ${appearance.bubbleShape === option.value ? "active" : ""}`}
+                  aria-pressed={appearance.bubbleShape === option.value}
+                  key={option.value}
+                  onClick={() => updateAppearance({ bubbleShape: option.value })}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="appearance-section-card">
+            <div className="appearance-inline-row">
+              <span className="appearance-section-label" style={{ margin: 0 }}>
+                Density
+              </span>
+              <div className="appearance-segment appearance-segment--2" role="group" aria-label="Density">
+                {DENSITY_OPTIONS.map((option) => (
+                  <button
+                    type="button"
+                    className={appearance.density === option.value ? "active" : ""}
+                    aria-pressed={appearance.density === option.value}
+                    key={option.value}
+                    onClick={() => updateAppearance({ density: option.value })}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="appearance-section-card">
+            <label className="range-field">
+              <span className="appearance-inline-row">
+                Message size
+                <strong>{Math.round(appearance.messageScale * 100)}%</strong>
+              </span>
+              <input
+                type="range"
+                min="0.9"
+                max="1.18"
+                step="0.02"
+                value={appearance.messageScale}
+                onChange={(event) =>
+                  updateAppearance({ messageScale: Number(event.target.value) })
+                }
+              />
+            </label>
+          </section>
+
+          <section className="appearance-section-card">
+            <div className="appearance-inline-row">
+              <span className="appearance-section-label" style={{ margin: 0 }}>
+                Avatar color
+              </span>
+              <span className="color-field inline">
+                <Type aria-hidden="true" size={18} />
+                <input
+                  type="color"
+                  value={appearance.avatarColor}
+                  aria-label="Avatar color"
+                  onChange={(event) => updateAppearance({ avatarColor: event.target.value })}
+                />
+              </span>
+            </div>
+          </section>
+
+          <button
+            type="button"
+            className="subtle-action"
+            onClick={() => setResetConfirmOpen(true)}
+          >
+            <RotateCcw aria-hidden="true" size={18} />
+            Reset to defaults
+          </button>
+        </div>
+      </div>
+
+      {resetConfirmOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={() => setResetConfirmOpen(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setResetConfirmOpen(false);
+            }
+          }}
+        >
+          <section
+            className="messenger-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="appearance-reset-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2 id="appearance-reset-title">Reset all appearance settings?</h2>
+            </div>
+            <p className="muted-copy">
+              Your theme, accent, wallpaper, and chat display options will return to Stovo defaults.
+            </p>
+            <div className="segmented-control">
+              <button type="button" onClick={() => setResetConfirmOpen(false)}>
+                Keep my theme
+              </button>
+              <button type="button" onClick={handleResetConfirm}>
+                Reset
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { accessToken, authRequest, currentUser, logout, updateCurrentUser } = useAuth();
-  const { appearance, resolvedThemeMode, updateAppearance } = useAppearance();
   const [currentServerUrl] = useState(() => getApiUrl());
   const [family, setFamily] = useState<Family | null>(null);
   const [profileForm, setProfileForm] = useState({
@@ -128,8 +417,10 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
+  const appearanceBackRef = useRef<HTMLButtonElement | null>(null);
 
   const canManageFamily = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const isAppearanceEditor = activeSettingsItem === "Appearance";
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -220,361 +511,189 @@ export default function SettingsPage() {
     <main className="app-shell app-frame settings-page">
       <AppNav />
       <section className="page-surface settings-layout" aria-busy={isLoading}>
-        <header className="section-header">
-          <div>
-            <p className="eyebrow">{family?.name ?? "Stovo"}</p>
-            <h1>Settings</h1>
-          </div>
-        </header>
+        {isAppearanceEditor ? (
+          <AppearanceEditor
+            displayName={profileForm.displayName}
+            backButtonRef={appearanceBackRef}
+            onBack={() => setActiveSettingsItem(null)}
+          />
+        ) : (
+          <>
+            <header className="section-header">
+              <div>
+                <p className="eyebrow">{family?.name ?? "Stovo"}</p>
+                <h1>Settings</h1>
+              </div>
+            </header>
 
-        {error && <p className="error-text" role="alert">{error}</p>}
-        {notice && <p className="success-text" role="status">{notice}</p>}
+            {error && <p className="error-text" role="alert">{error}</p>}
+            {notice && <p className="success-text" role="status">{notice}</p>}
 
-        <section className="profile-card">
-          <div className="profile-photo-control">
-            <ProfileAvatar
-              accessToken={accessToken}
-              file={currentUser?.profilePhoto}
-              label={profileForm.displayName}
-            />
-            <button
-              type="button"
-              className="avatar-edit-button"
-              aria-label="Change profile photo"
-              title="Change profile photo"
-              disabled={isSaving}
-              onClick={() => profilePhotoInputRef.current?.click()}
-            >
-              <Camera aria-hidden="true" size={16} />
-            </button>
-            <input
-              ref={profilePhotoInputRef}
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              className="visually-hidden"
-              disabled={isSaving}
-              type="file"
-              onChange={handleProfilePhotoSelect}
-            />
-          </div>
-          <div>
-            <h2>{profileForm.displayName || "Family member"}</h2>
-            <p>{currentUser?.email}</p>
-            <span className="role-pill">{currentUser?.role}</span>
-          </div>
-        </section>
-
-        <form className="settings-form" onSubmit={handleProfileSubmit}>
-          <label>
-            Avatar display name
-            <input
-              maxLength={255}
-              value={profileForm.displayName}
-              onChange={(event) =>
-                setProfileForm((current) => ({
-                  ...current,
-                  displayName: event.target.value
-                }))
-              }
-            />
-          </label>
-          <label>
-            Family space name
-            <input
-              disabled={!canManageFamily}
-              maxLength={255}
-              value={profileForm.familyName}
-              onChange={(event) =>
-                setProfileForm((current) => ({
-                  ...current,
-                  familyName: event.target.value
-                }))
-              }
-            />
-          </label>
-          <button type="submit" disabled={isSaving || !profileForm.displayName.trim()}>
-            {isSaving ? "Saving" : "Save profile"}
-          </button>
-        </form>
-
-        <div className="settings-groups">
-          {settingsGroups.map((group) => (
-            <section className="settings-group" key={group.title}>
-              <h2>{group.title}</h2>
-              <div className="settings-list">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      type="button"
-                      className="settings-row"
-                      key={item.label}
-                      aria-expanded={activeSettingsItem === item.label}
-                      onClick={() => setActiveSettingsItem(item.label)}
-                    >
-                      <span className="settings-row-icon">
-                        <Icon aria-hidden="true" size={20} />
-                      </span>
-                      <span>
-                        <strong>{item.label}</strong>
-                        <small>{item.helper}</small>
-                      </span>
-                      <ChevronRight aria-hidden="true" size={18} />
-                    </button>
-                  );
-                })}
+            <section className="profile-card">
+              <div className="profile-photo-control">
+                <ProfileAvatar
+                  accessToken={accessToken}
+                  file={currentUser?.profilePhoto}
+                  label={profileForm.displayName}
+                />
+                <button
+                  type="button"
+                  className="avatar-edit-button"
+                  aria-label="Change profile photo"
+                  title="Change profile photo"
+                  disabled={isSaving}
+                  onClick={() => profilePhotoInputRef.current?.click()}
+                >
+                  <Camera aria-hidden="true" size={16} />
+                </button>
+                <input
+                  ref={profilePhotoInputRef}
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  className="visually-hidden"
+                  disabled={isSaving}
+                  type="file"
+                  onChange={handleProfilePhotoSelect}
+                />
+              </div>
+              <div>
+                <h2>{profileForm.displayName || "Family member"}</h2>
+                <p>{currentUser?.email}</p>
+                <span className="role-pill">{currentUser?.role}</span>
               </div>
             </section>
-          ))}
-        </div>
 
-        {activeSettingsItem && (
-          <section className="settings-detail-panel" role="region" aria-label={activeSettingsItem}>
-            <div className="section-title-row">
-              <h2>{activeSettingsItem}</h2>
-              <button
-                type="button"
-                className="icon-button subtle"
-                aria-label="Close settings panel"
-                onClick={() => setActiveSettingsItem(null)}
-              >
-                <X aria-hidden="true" size={18} />
+            <form className="settings-form" onSubmit={handleProfileSubmit}>
+              <label>
+                Avatar display name
+                <input
+                  maxLength={255}
+                  value={profileForm.displayName}
+                  onChange={(event) =>
+                    setProfileForm((current) => ({
+                      ...current,
+                      displayName: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <label>
+                Family space name
+                <input
+                  disabled={!canManageFamily}
+                  maxLength={255}
+                  value={profileForm.familyName}
+                  onChange={(event) =>
+                    setProfileForm((current) => ({
+                      ...current,
+                      familyName: event.target.value
+                    }))
+                  }
+                />
+              </label>
+              <button type="submit" disabled={isSaving || !profileForm.displayName.trim()}>
+                {isSaving ? "Saving" : "Save profile"}
               </button>
+            </form>
+
+            <div className="settings-groups">
+              {settingsGroups.map((group) => (
+                <section className="settings-group" key={group.title}>
+                  <h2>{group.title}</h2>
+                  <div className="settings-list">
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          type="button"
+                          className="settings-row"
+                          key={item.label}
+                          aria-expanded={activeSettingsItem === item.label}
+                          onClick={() => setActiveSettingsItem(item.label)}
+                        >
+                          <span className="settings-row-icon">
+                            <Icon aria-hidden="true" size={20} />
+                          </span>
+                          <span>
+                            <strong>{item.label}</strong>
+                            <small>{item.helper}</small>
+                          </span>
+                          <ChevronRight aria-hidden="true" size={18} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
-            {activeSettingsItem === "Appearance" ? (
-              <div className="appearance-panel">
-                <div className="settings-summary">
-                  <span>Current theme</span>
-                  <strong>
-                    {appearance.themeMode === "system"
-                      ? `System / ${resolvedThemeMode}`
-                      : appearance.themeMode}
-                  </strong>
+
+            {activeSettingsItem && activeSettingsItem !== "Appearance" && (
+              <section className="settings-detail-panel" role="region" aria-label={activeSettingsItem}>
+                <div className="section-title-row">
+                  <h2>{activeSettingsItem}</h2>
+                  <button
+                    type="button"
+                    className="icon-button subtle"
+                    aria-label="Close settings panel"
+                    onClick={() => setActiveSettingsItem(null)}
+                  >
+                    <X aria-hidden="true" size={18} />
+                  </button>
                 </div>
-                <div className="appearance-preview">
-                  <ProfileAvatar
-                    accessToken={accessToken}
-                    file={currentUser?.profilePhoto}
-                    label={profileForm.displayName}
-                    size="default"
-                  />
-                  <div className="preview-thread">
-                    <span className="preview-bubble">Family dinner is at 7.</span>
-                    <span className="preview-bubble mine">I will bring dessert.</span>
-                  </div>
-                </div>
-                <div className="appearance-settings">
-                  <span className="summary-label">Theme maker</span>
-                  <div className="theme-option-grid" role="list" aria-label="Theme presets">
-                    {themePresets.map((preset) => (
-                      <button
-                        type="button"
-                        className="theme-option"
-                        key={preset.label}
-                        onClick={() => updateAppearance(preset.patch)}
-                      >
-                        <strong>{preset.label}</strong>
-                        <small>{preset.helper}</small>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="appearance-settings">
-                  <span className="summary-label">Theme mode</span>
-                  <div className="theme-option-grid" role="list" aria-label="Theme mode">
-                    {THEME_MODE_OPTIONS.map((option) => (
-                      <button
-                        type="button"
-                        className={`theme-option ${appearance.themeMode === option.value ? "active" : ""}`}
-                        aria-pressed={appearance.themeMode === option.value}
-                        key={option.value}
-                        onClick={() => updateAppearance({ themeMode: option.value })}
-                      >
-                        <strong>{option.label}</strong>
-                        <small>
-                          {option.value === "system"
-                            ? `Using ${resolvedThemeMode}`
-                            : option.value === "amoled"
-                              ? "Black background preset"
-                              : `${option.label} surfaces`}
-                        </small>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="appearance-settings">
-                  <span className="summary-label">Accent color</span>
-                  <div className="swatch-row">
-                    {ACCENT_OPTIONS.map((accent) => (
-                      <button
-                        type="button"
-                        className={`color-swatch ${accent.swatchClassName} ${
-                          appearance.accent === accent.value ? "active" : ""
-                        }`}
-                        aria-label={`${accent.label} accent`}
-                        title={`${accent.label} accent`}
-                        key={accent.value}
-                        onClick={() => updateAppearance({ accent: accent.value })}
-                      />
-                    ))}
-                  </div>
-                  <label className="color-field">
-                    <Palette aria-hidden="true" size={18} />
-                    <span>Custom accent</span>
-                    <input
-                      type="color"
-                      value={appearance.customAccent}
-                      onChange={(event) =>
-                        updateAppearance({ accent: "custom", customAccent: event.target.value })
-                      }
-                    />
-                  </label>
-                </div>
-                <div className="appearance-control-grid">
-                  <label>
-                    Density
-                    <select
-                      value={appearance.density}
-                      onChange={(event) =>
-                        updateAppearance({
-                          density: event.target.value === "compact" ? "compact" : "comfortable"
-                        })
-                      }
-                    >
-                      {DENSITY_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Wallpaper
-                    <select
-                      value={appearance.wallpaper}
-                      onChange={(event) =>
-                        updateAppearance({
-                          wallpaper:
-                            event.target.value === "paper" ||
-                            event.target.value === "aurora" ||
-                            event.target.value === "plain"
-                              ? event.target.value
-                              : "dots"
-                        })
-                      }
-                    >
-                      {WALLPAPER_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Bubble shape
-                    <select
-                      value={appearance.bubbleShape}
-                      onChange={(event) =>
-                        updateAppearance({
-                          bubbleShape:
-                            event.target.value === "soft" || event.target.value === "square"
-                              ? event.target.value
-                              : "rounded"
-                        })
-                      }
-                    >
-                      {BUBBLE_SHAPE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    Avatar color
-                    <span className="color-field inline">
-                      <Type aria-hidden="true" size={18} />
-                      <input
-                        type="color"
-                        value={appearance.avatarColor}
-                        onChange={(event) => updateAppearance({ avatarColor: event.target.value })}
-                      />
-                    </span>
-                  </label>
-                </div>
-                <label className="range-field">
-                  <span>
-                    Message size
-                    <strong>{Math.round(appearance.messageScale * 100)}%</strong>
+                {activeSettingsItem === "Data and Storage" ? (
+                  <p className="muted-copy">
+                    Storage files can be uploaded, downloaded, favorited, and deleted from the Storage screen.
+                  </p>
+                ) : activeSettingsItem === "Notifications" ? (
+                  <p className="muted-copy">
+                    Notification preferences are managed per chat with the mute button in chat details.
+                  </p>
+                ) : (
+                  <p className="muted-copy">
+                    This area is ready for Stovo controls as they are added.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotice(`${activeSettingsItem} opened`);
+                    setActiveSettingsItem(null);
+                  }}
+                >
+                  Done
+                </button>
+              </section>
+            )}
+
+            <section className="settings-group">
+              <h2>Server</h2>
+              <div className="settings-list">
+                <button
+                  type="button"
+                  className="settings-row"
+                  onClick={async () => {
+                    await logout();
+                    setApiUrlOverride(null);
+                    navigate("/server-setup", { replace: true });
+                  }}
+                >
+                  <span className="settings-row-icon">
+                    <Server aria-hidden="true" size={20} />
                   </span>
-                  <input
-                    type="range"
-                    min="0.9"
-                    max="1.18"
-                    step="0.02"
-                    value={appearance.messageScale}
-                    onChange={(event) =>
-                      updateAppearance({ messageScale: Number(event.target.value) })
-                    }
-                  />
-                </label>
-                <button type="button" className="subtle-action" onClick={() => updateAppearance(DEFAULT_APPEARANCE)}>
-                  <RotateCcw aria-hidden="true" size={18} />
-                  Reset appearance
+                  <span>
+                    <strong>Change server address</strong>
+                    <small>{currentServerUrl}</small>
+                  </span>
+                  <ChevronRight aria-hidden="true" size={18} />
                 </button>
               </div>
-            ) : activeSettingsItem === "Data and Storage" ? (
-              <p className="muted-copy">
-                Storage files can be uploaded, downloaded, favorited, and deleted from the Storage screen.
-              </p>
-            ) : activeSettingsItem === "Notifications" ? (
-              <p className="muted-copy">
-                Notification preferences are managed per chat with the mute button in chat details.
-              </p>
-            ) : (
-              <p className="muted-copy">
-                This area is ready for Stovo controls as they are added.
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setNotice(`${activeSettingsItem} opened`);
-                setActiveSettingsItem(null);
-              }}
-            >
-              Done
+            </section>
+
+            <button className="logout-row" type="button" onClick={() => void logout()}>
+              <LogOut aria-hidden="true" size={20} />
+              Log out
             </button>
-          </section>
+          </>
         )}
-
-        <section className="settings-group">
-          <h2>Server</h2>
-          <div className="settings-list">
-            <button
-              type="button"
-              className="settings-row"
-              onClick={async () => {
-                await logout();
-                setApiUrlOverride(null);
-                navigate("/server-setup", { replace: true });
-              }}
-            >
-              <span className="settings-row-icon">
-                <Server aria-hidden="true" size={20} />
-              </span>
-              <span>
-                <strong>Change server address</strong>
-                <small>{currentServerUrl}</small>
-              </span>
-              <ChevronRight aria-hidden="true" size={18} />
-            </button>
-          </div>
-        </section>
-
-        <button className="logout-row" type="button" onClick={() => void logout()}>
-          <LogOut aria-hidden="true" size={20} />
-          Log out
-        </button>
       </section>
     </main>
   );
