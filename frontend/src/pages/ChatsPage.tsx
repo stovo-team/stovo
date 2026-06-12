@@ -2914,7 +2914,6 @@ export default function ChatsPage() {
   return (
     <main
       className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}`}
-      data-wallpaper="plain"
     >
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
