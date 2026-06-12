@@ -56,23 +56,55 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
 
-            if docker compose version >/dev/null 2>&1; then
-              COMPOSE="docker compose"
-            elif command -v docker-compose >/dev/null 2>&1; then
-              COMPOSE="docker-compose"
+            USE_SUDO=0
+            if docker info >/dev/null 2>&1; then
+              echo "==> Docker: direct socket access"
+            elif sudo -n docker info >/dev/null 2>&1; then
+              USE_SUDO=1
+              echo "==> Docker: using sudo (add user to 'docker' group to avoid this)"
             else
-              echo "ERROR: need 'docker compose' (v2 plugin) or 'docker-compose' (standalone)" >&2
-              docker --version || true
+              echo "ERROR: SSH user cannot access Docker (/var/run/docker.sock permission denied)." >&2
+              echo "On the server run once:" >&2
+              echo "  sudo usermod -aG docker $(whoami)" >&2
+              echo "Then log out/in or reboot the VM." >&2
               exit 1
             fi
-            echo "==> Using: $COMPOSE ($($COMPOSE version 2>/dev/null | head -1))"
+
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE_STYLE=plugin
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE_STYLE=standalone
+            else
+              echo "ERROR: need 'docker compose' (v2 plugin) or 'docker-compose' (standalone)" >&2
+              exit 1
+            fi
+
+            run_compose() {
+              if [ "$USE_SUDO" = "1" ]; then
+                if [ "$COMPOSE_STYLE" = "plugin" ]; then
+                  sudo docker compose "$@"
+                else
+                  sudo docker-compose "$@"
+                fi
+              elif [ "$COMPOSE_STYLE" = "plugin" ]; then
+                docker compose "$@"
+              else
+                docker-compose "$@"
+              fi
+            }
+
+            run_docker() {
+              if [ "$USE_SUDO" = "1" ]; then sudo docker "$@"; else docker "$@"; fi
+            }
+
+            echo "==> Compose: ${COMPOSE_STYLE} ($(run_compose version 2>/dev/null | head -1))"
 
             echo "==> Building and restarting services"
-            $COMPOSE build
-            $COMPOSE up -d --remove-orphans
+            run_compose build
+            run_compose up -d --remove-orphans
 
             echo "==> Pruning dangling images"
-            docker image prune -f
+            run_docker image prune -f
 
             echo "==> Service status"
-            $COMPOSE ps
+            run_compose ps
