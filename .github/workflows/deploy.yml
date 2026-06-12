@@ -9,7 +9,7 @@
 #   DEPLOY_SSH_PORT   — SSH port (default 22)
 #
 # Server prerequisites:
-#   - Docker + Docker Compose v2
+#   - Docker Engine + Compose (plugin `docker compose` OR standalone `docker-compose`)
 #   - git clone of this repo at DEPLOY_PATH
 #   - .env file configured on the server (never committed)
 
@@ -56,12 +56,23 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
 
+            if docker compose version >/dev/null 2>&1; then
+              COMPOSE="docker compose"
+            elif command -v docker-compose >/dev/null 2>&1; then
+              COMPOSE="docker-compose"
+            else
+              echo "ERROR: need 'docker compose' (v2 plugin) or 'docker-compose' (standalone)" >&2
+              docker --version || true
+              exit 1
+            fi
+            echo "==> Using: $COMPOSE ($($COMPOSE version 2>/dev/null | head -1))"
+
             echo "==> Building and restarting services"
-            docker compose build
-            docker compose up -d --remove-orphans
+            $COMPOSE build
+            $COMPOSE up -d --remove-orphans
 
             echo "==> Pruning dangling images"
             docker image prune -f
 
             echo "==> Service status"
-            docker compose ps
+            $COMPOSE ps
