@@ -8,6 +8,10 @@
 #   TELEGRAM_BOT_TOKEN   — bot token from @BotFather (bot must be channel admin)
 #   TELEGRAM_CHAT_ID     — target channel ID (e.g. -1001234567890)
 #
+# Optional (LLM release notes from commit history):
+#   OPENAI_API_KEY       — OpenAI API key (alias: OPEN_AI_API_KEY; falls back to commit list if unset)
+#   OPENAI_MODEL         — repo variable, optional (default in workflow: gpt-4.1-nano)
+#
 # Optional (release-bot sidecar):
 #   RELEASE_BOT_URL      — base URL (e.g. https://releases.example.com)
 #   RELEASE_BOT_SECRET   — WEBHOOK_SECRET bearer token
@@ -43,6 +47,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -115,11 +121,68 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           echo "label=${VERSION_NAME}-build${{ github.run_number }} (${SHORT_SHA})" >> "$GITHUB_OUTPUT"
 
+      - name: Generate release notes
+        id: notes
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+        run: |
+          set -eu
+          if [ -z "${OPENAI_API_KEY:-}" ]; then OPENAI_API_KEY="${OPEN_AI_API_KEY:-}"; fi
+          MODEL="${OPENAI_MODEL:-gpt-4.1-nano}"
+          BEFORE="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            RANGE="${BEFORE}..${{ github.sha }}"
+          else
+            RANGE="-20"
+          fi
+
+          COMMITS=$(git log --pretty=format:'- %s (%h)' "$RANGE" 2>/dev/null | head -40)
+          if [ -z "$COMMITS" ]; then
+            COMMITS=$(git log -15 --pretty=format:'- %s (%h)')
+          fi
+
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "OPENAI_API_KEY not set — using commit list"
+            SUMMARY=$(printf 'Что нового:\n%s' "$COMMITS")
+          else
+            PROMPT=$(printf 'Write short release notes for the Stovo family messenger Android app.\nAudience: family members, not developers.\nFormat: plain text, 2-5 bullet points, friendly tone. Match the language of the commits.\nNo markdown headers, no hype.\n\nCommits:\n%s' "$COMMITS")
+            RESPONSE=$(curl -fsSL https://api.openai.com/v1/chat/completions \
+              -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n \
+                --arg model "${MODEL}" \
+                --arg prompt "$PROMPT" \
+                '{
+                  model: $model,
+                  max_tokens: 280,
+                  temperature: 0.4,
+                  messages: [
+                    {role: "system", content: "You write concise mobile app release notes."},
+                    {role: "user", content: $prompt}
+                  ]
+                }')")
+            SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+            if [ -z "$SUMMARY" ]; then
+              echo "OpenAI call failed, falling back to commit list" >&2
+              echo "$RESPONSE" >&2
+              SUMMARY=$(printf 'Что нового:\n%s' "$COMMITS")
+            fi
+          fi
+
+          {
+            echo 'summary<<EOF'
+            printf '%s' "$SUMMARY"
+            echo
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Post release notice to Telegram
         run: |
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          TEXT=$(printf 'Stovo Android %s\n\nAPK built from commit %s\n%s' \
-            "${{ steps.version.outputs.label }}" "${{ github.sha }}" "$RUN_URL")
+          TEXT=$(printf '📱 Stovo %s\n\n%s\n\n⬇️ APK attached below' \
+            "${{ steps.version.outputs.label }}" \
+            "${{ steps.notes.outputs.summary }}")
           curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "text=${TEXT}"
@@ -134,11 +197,10 @@ jobs:
             echo "Skipping release-bot (RELEASE_BOT_URL or RELEASE_BOT_SECRET not set)"
             exit 0
           fi
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           BODY=$(jq -n \
             --arg project "Stovo Android" \
             --arg version "${{ steps.version.outputs.label }}" \
-            --arg message "APK built from commit ${{ github.sha }}. Run: ${RUN_URL}" \
+            --arg message "${{ steps.notes.outputs.summary }}" \
             '{project: $project, version: $version, message: $message}')
           curl -fsSL -X POST "${RELEASE_BOT_URL}/webhook" \
             -H "Authorization: Bearer ${RELEASE_BOT_SECRET}" \
@@ -147,10 +209,11 @@ jobs:
 
       - name: Upload APK to Telegram channel
         run: |
+          CAPTION=$(printf 'Stovo %s' "${{ steps.version.outputs.label }}")
           curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
             -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             -F "document=@${{ steps.apk.outputs.path }}" \
-            -F "caption=Stovo ${{ steps.version.outputs.label }}"
+            -F "caption=${CAPTION}"
 
       - name: Upload APK as GitHub artifact
         uses: actions/upload-artifact@v4
