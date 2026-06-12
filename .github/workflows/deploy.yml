@@ -47,10 +47,9 @@ jobs:
           script: |
             set -eu
             DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}'
-            case "$DEPLOY_PATH" in
-              "~") DEPLOY_PATH="$HOME" ;;
-              "~/"*) DEPLOY_PATH="$HOME/${DEPLOY_PATH#~/}" ;;
-            esac
+            if [ "${DEPLOY_PATH#~}" != "$DEPLOY_PATH" ]; then
+              DEPLOY_PATH="$HOME${DEPLOY_PATH#~}"
+            fi
             cd "$DEPLOY_PATH"
 
             echo "==> Pulling latest master"
