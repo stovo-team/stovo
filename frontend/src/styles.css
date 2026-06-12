@@ -67,6 +67,7 @@
   --float-radius-bubble: 20px;
   --float-radius-pill: 999px;
   --message-gutter-x: 16px;
+  --chat-floating-header-overlap: 60px;
   --float-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
   --float-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.25);
   --nav-active-pill-opacity: 0.2;
@@ -2397,7 +2398,9 @@ h2 {
 }
 
 .messenger-shell.has-active-chat .chat-detail-header--floating {
-  background: var(--island-surface);
+  background: color-mix(in oklab, var(--island-surface) 94%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: none;
   border-radius: var(--float-radius-pill);
   box-shadow: var(--float-shadow-soft);
@@ -2411,6 +2414,9 @@ h2 {
 
 .messenger-shell.has-active-chat .messages-panel {
   background: transparent;
+  margin-top: calc(-1 * var(--chat-floating-header-overlap));
+  padding-top: calc(18px + var(--chat-floating-header-overlap));
+  scroll-padding-top: 12px;
 }
 
 .messenger-shell.has-active-chat .message-composer {
@@ -5203,8 +5209,14 @@ h2 {
     width: 36px;
   }
 
+  .messenger-shell.has-active-chat {
+    --chat-floating-header-overlap: 52px;
+  }
+
   .messenger-shell.has-active-chat .messages-panel {
-    padding: 10px var(--mobile-edge-inset-x);
+    margin-top: calc(-1 * var(--chat-floating-header-overlap));
+    padding: calc(10px + var(--chat-floating-header-overlap)) var(--mobile-edge-inset-x) 10px;
+    scroll-padding-top: 10px;
   }
 
   .messenger-shell.has-active-chat .message-composer {
