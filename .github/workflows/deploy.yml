@@ -1,17 +1,9 @@
-# Deploy Stovo web stack to Cloud.ru Evolution (VPS) via SSH + Docker Compose.
+# Deploy Stovo to Cloud.ru Evolution via SSH.
 #
-# Required repository secrets:
-#   DEPLOY_HOST       — public IP or hostname of the Evolution VM
-#   DEPLOY_USER       — SSH user (e.g. deploy or ubuntu)
-#   DEPLOY_SSH_KEY    — private key for SSH (PEM, no passphrase)
-#   DEPLOY_PATH       — repo path on the server; tilde is expanded (e.g. ~/Stovo or /home/user/Stovo)
-# Optional:
-#   DEPLOY_SSH_PORT   — SSH port (default 22)
+# Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_PATH
+# Optional: DEPLOY_SSH_PORT (default 22)
 #
-# Server prerequisites:
-#   - Docker Engine + Compose (plugin `docker compose` OR standalone `docker-compose`)
-#   - git clone of this repo at DEPLOY_PATH
-#   - .env file configured on the server (never committed)
+# DEPLOY_PATH example: /home/user1/Stovo
 
 name: Deploy Web
 
@@ -46,65 +38,7 @@ jobs:
           script_stop: true
           script: |
             set -eu
-            DEPLOY_PATH='${{ secrets.DEPLOY_PATH }}'
-            if [ "${DEPLOY_PATH#~}" != "$DEPLOY_PATH" ]; then
-              DEPLOY_PATH="$HOME${DEPLOY_PATH#~}"
-            fi
-            cd "$DEPLOY_PATH"
-
-            echo "==> Pulling latest master"
-            git fetch origin master
-            git reset --hard origin/master
-
-            USE_SUDO=0
-            if docker info >/dev/null 2>&1; then
-              echo "==> Docker: direct socket access"
-            elif sudo -n docker info >/dev/null 2>&1; then
-              USE_SUDO=1
-              echo "==> Docker: using sudo (add user to 'docker' group to avoid this)"
-            else
-              echo "ERROR: SSH user cannot access Docker (/var/run/docker.sock permission denied)." >&2
-              echo "On the server run once:" >&2
-              echo "  sudo usermod -aG docker $(whoami)" >&2
-              echo "Then log out/in or reboot the VM." >&2
-              exit 1
-            fi
-
-            if docker compose version >/dev/null 2>&1; then
-              COMPOSE_STYLE=plugin
-            elif command -v docker-compose >/dev/null 2>&1; then
-              COMPOSE_STYLE=standalone
-            else
-              echo "ERROR: need 'docker compose' (v2 plugin) or 'docker-compose' (standalone)" >&2
-              exit 1
-            fi
-
-            run_compose() {
-              if [ "$USE_SUDO" = "1" ]; then
-                if [ "$COMPOSE_STYLE" = "plugin" ]; then
-                  sudo docker compose "$@"
-                else
-                  sudo docker-compose "$@"
-                fi
-              elif [ "$COMPOSE_STYLE" = "plugin" ]; then
-                docker compose "$@"
-              else
-                docker-compose "$@"
-              fi
-            }
-
-            run_docker() {
-              if [ "$USE_SUDO" = "1" ]; then sudo docker "$@"; else docker "$@"; fi
-            }
-
-            echo "==> Compose: ${COMPOSE_STYLE} ($(run_compose version 2>/dev/null | head -1))"
-
-            echo "==> Building and restarting services"
-            run_compose build
-            run_compose up -d --remove-orphans
-
-            echo "==> Pruning dangling images"
-            run_docker image prune -f
-
-            echo "==> Service status"
-            run_compose ps
+            cd '${{ secrets.DEPLOY_PATH }}'
+            git pull origin master
+            sudo docker-compose down
+            sudo docker-compose up -d --build
