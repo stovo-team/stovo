@@ -1,0 +1,12 @@
+# Local Gradle overrides — do not commit.
+#
+# org.gradle.java.home must be set before Gradle starts, so copy the line below
+# into your user Gradle config (recommended):
+#   Windows: %USERPROFILE%\.gradle\gradle.properties
+#   macOS/Linux: ~/.gradle/gradle.properties
+#
+# Alternatively set JAVA_HOME to your JDK install directory.
+#
+# CI uses Java 21 from actions/setup-java; do not add this file to the repo.
+
+org.gradle.java.home=C:\\Program Files\\Java\\jdk-24
