@@ -58,3 +58,40 @@ export async function addProximityListener(
     return () => undefined;
   }
 }
+
+/**
+ * Returns false only when the microphone permission is permanently denied on
+ * Android (user tapped "Don't allow"). In all other states (granted, prompt,
+ * or when the Permissions API is unavailable) returns true so getUserMedia can
+ * surface a more specific error if needed.
+ */
+export async function ensureNativeMicrophonePermission(): Promise<boolean> {
+  // On web getUserMedia handles the permission prompt natively.
+  if (!isNativeCallPluginAvailable()) return true;
+  try {
+    if (typeof navigator !== "undefined" && navigator.permissions) {
+      const result = await navigator.permissions.query({ name: "microphone" as PermissionName });
+      if (result.state === "denied") return false;
+    }
+  } catch {
+    // Permissions API not supported in this WebView version — proceed and let
+    // getUserMedia surface the denial as NotAllowedError if needed.
+  }
+  return true;
+}
+
+/**
+ * Same as ensureNativeMicrophonePermission but for camera.
+ */
+export async function ensureNativeCameraPermission(): Promise<boolean> {
+  if (!isNativeCallPluginAvailable()) return true;
+  try {
+    if (typeof navigator !== "undefined" && navigator.permissions) {
+      const result = await navigator.permissions.query({ name: "camera" as PermissionName });
+      if (result.state === "denied") return false;
+    }
+  } catch {
+    // Permissions API not supported — proceed.
+  }
+  return true;
+}
