@@ -106,7 +106,7 @@ jobs:
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Next version: $VERSION"
 
-      - name: Build release APK
+      - name: Build APK
         working-directory: frontend/android
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -114,7 +114,14 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleRelease \
+          if [ -n "$ANDROID_KEYSTORE_PATH" ]; then
+            echo "Building signed release APK"
+            TASK="assembleRelease"
+          else
+            echo "No keystore — building debug APK (signed with debug key, installable)"
+            TASK="assembleDebug"
+          fi
+          ./gradlew "$TASK" \
             -PversionCode=${{ github.run_number }} \
             -PversionName=${{ steps.patch.outputs.version }} \
             --no-daemon
@@ -122,9 +129,12 @@ jobs:
       - name: Locate and rename APK
         id: apk
         run: |
-          SRC=$(find frontend/android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          SRC=$(find frontend/android/app/build/outputs/apk -name '*.apk' | grep -v unsigned | head -1)
           if [ -z "$SRC" ]; then
-            echo "No APK found under app/build/outputs/apk/release" >&2
+            SRC=$(find frontend/android/app/build/outputs/apk -name '*.apk' | head -1)
+          fi
+          if [ -z "$SRC" ]; then
+            echo "No APK found under app/build/outputs/apk" >&2
             exit 1
           fi
           DEST="stovo-${{ steps.patch.outputs.version }}.apk"
