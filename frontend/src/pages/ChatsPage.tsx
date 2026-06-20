@@ -3578,6 +3578,18 @@ export default function ChatsPage() {
                     <button
                       type="button"
                       role="menuitem"
+                      disabled={!messageContextMenu.message.content}
+                      onClick={() => {
+                        void navigator.clipboard.writeText(messageContextMenu.message.content ?? "");
+                        setMessageContextMenu(null);
+                      }}
+                    >
+                      <span className="ms-icon ms-icon--20" aria-hidden={true}>content_copy</span>
+                      Copy
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
                       disabled={messageContextMenu.message.id.startsWith("pending:")}
                       onClick={() => {
                         setForwardTarget(messageContextMenu.message);
