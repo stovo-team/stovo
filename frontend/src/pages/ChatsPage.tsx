@@ -1697,6 +1697,8 @@ export default function ChatsPage() {
     setForwardTarget(null);
     setFullViewImage(null);
     setDetailsTab("media");
+    const draft = chatId ? (window.localStorage.getItem(`stovo:draft:${chatId}`) ?? "") : "";
+    setComposer(draft);
   }, [chatId]);
 
   // Auto-minimize the call popup when the user opens a different chat
@@ -2611,6 +2613,13 @@ export default function ChatsPage() {
 
   function handleComposerChange(value: string) {
     setComposer(value);
+    if (chatId) {
+      if (value) {
+        window.localStorage.setItem(`stovo:draft:${chatId}`, value);
+      } else {
+        window.localStorage.removeItem(`stovo:draft:${chatId}`);
+      }
+    }
     if (selectedChat && value.trim()) {
       socketRef.current?.emit("typing:start", { chatId: selectedChat.id });
       if (typingStopTimerRef.current) {
@@ -2868,6 +2877,9 @@ export default function ChatsPage() {
     resetComposerHeight();
     setPendingAttachments([]);
     setReplyTarget(null);
+    if (chatId) {
+      window.localStorage.removeItem(`stovo:draft:${chatId}`);
+    }
     socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
 
     try {
@@ -3056,7 +3068,17 @@ export default function ChatsPage() {
                                   <strong>{chatName}</strong>
                                   <time>{formatChatTime(chat.updatedAt)}</time>
                                 </span>
-                                <span>{chatPreview(chat)}</span>
+                                {(() => {
+                                  const draftText = window.localStorage.getItem(`stovo:draft:${chat.id}`);
+                                  return draftText ? (
+                                    <span>
+                                      <span className="chat-list-draft-label">Draft:</span>{" "}
+                                      {draftText.slice(0, 40)}{draftText.length > 40 ? "…" : ""}
+                                    </span>
+                                  ) : (
+                                    <span>{chatPreview(chat)}</span>
+                                  );
+                                })()}
                               </span>
                               <span className="chat-row-meta">
                                 {chat.isMuted && <BellOff aria-label="Muted" size={14} />}
