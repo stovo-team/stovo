@@ -243,6 +243,20 @@ function chatAvatarTypeClass(chat: Chat) {
   return "";
 }
 
+function emojiSizeClass(content: string | null | undefined): string {
+  if (!content) return "";
+  const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  const segments = [...segmenter.segment(content.trim())];
+  if (!segments.every((s) => /^\p{Emoji}/u.test(s.segment) || /^\s+$/.test(s.segment))) {
+    return "";
+  }
+  const emojiCount = segments.filter((s) => /^\p{Emoji}/u.test(s.segment)).length;
+  if (emojiCount === 0) return "";
+  if (emojiCount === 1) return "emoji-only-xl";
+  if (emojiCount === 2) return "emoji-only-lg";
+  return "emoji-only-md";
+}
+
 function chatPreview(chat: Chat) {
   if (chat.lastMessageContent && chat.lastMessageSenderDisplayName) {
     return `${chat.lastMessageSenderDisplayName}: ${chat.lastMessageContent}`;
@@ -3405,7 +3419,7 @@ export default function ChatsPage() {
                         );
                         return (
                           <article
-                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""}`}
+                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}`}
                             key={message.id}
                             onContextMenu={(event) => openMessageContextMenu(event, message)}
                           >
@@ -3574,6 +3588,18 @@ export default function ChatsPage() {
                     >
                       <Reply aria-hidden="true" size={16} />
                       {selectedChat?.type === "channel" ? "Comment" : "Reply"}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!messageContextMenu.message.content}
+                      onClick={() => {
+                        void navigator.clipboard.writeText(messageContextMenu.message.content ?? "");
+                        setMessageContextMenu(null);
+                      }}
+                    >
+                      <span className="ms-icon ms-icon--20" aria-hidden={true}>content_copy</span>
+                      Copy
                     </button>
                     <button
                       type="button"
