@@ -3068,7 +3068,17 @@ export default function ChatsPage() {
                                   <strong>{chatName}</strong>
                                   <time>{formatChatTime(chat.updatedAt)}</time>
                                 </span>
-                                <span>{chatPreview(chat)}</span>
+                                {(() => {
+                                  const draftText = window.localStorage.getItem(`stovo:draft:${chat.id}`);
+                                  return draftText ? (
+                                    <span>
+                                      <span className="chat-list-draft-label">Draft:</span>{" "}
+                                      {draftText.slice(0, 40)}{draftText.length > 40 ? "…" : ""}
+                                    </span>
+                                  ) : (
+                                    <span>{chatPreview(chat)}</span>
+                                  );
+                                })()}
                               </span>
                               <span className="chat-row-meta">
                                 {chat.isMuted && <BellOff aria-label="Muted" size={14} />}
