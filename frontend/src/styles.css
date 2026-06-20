@@ -2264,6 +2264,12 @@ h2 {
   border-radius: 0 12px 12px 0;
 }
 
+.chat-list-draft-label {
+  color: var(--danger);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .compose-fab {
   align-items: center;
   background: var(--accent-primary);
@@ -2652,6 +2658,31 @@ h2 {
 .message-bubble.mine .message-meta {
   color: inherit;
   opacity: 0.7;
+}
+
+/* Emoji-only bubble: transparent bubble for expressive emoji rendering */
+.message-bubble.emoji-only-xl,
+.message-bubble.emoji-only-lg,
+.message-bubble.emoji-only-md {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 4px 0;
+}
+
+.message-bubble.emoji-only-xl .message-bubble-inner p {
+  font-size: 3rem;
+  line-height: 1.2;
+}
+
+.message-bubble.emoji-only-lg .message-bubble-inner p {
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.message-bubble.emoji-only-md .message-bubble-inner p {
+  font-size: 1.25rem;
+  line-height: 1.2;
 }
 
 .message-reactions,
