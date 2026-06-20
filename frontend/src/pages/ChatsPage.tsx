@@ -1697,6 +1697,8 @@ export default function ChatsPage() {
     setForwardTarget(null);
     setFullViewImage(null);
     setDetailsTab("media");
+    const draft = chatId ? (window.localStorage.getItem(`stovo:draft:${chatId}`) ?? "") : "";
+    setComposer(draft);
   }, [chatId]);
 
   // Auto-minimize the call popup when the user opens a different chat
@@ -2611,6 +2613,13 @@ export default function ChatsPage() {
 
   function handleComposerChange(value: string) {
     setComposer(value);
+    if (chatId) {
+      if (value) {
+        window.localStorage.setItem(`stovo:draft:${chatId}`, value);
+      } else {
+        window.localStorage.removeItem(`stovo:draft:${chatId}`);
+      }
+    }
     if (selectedChat && value.trim()) {
       socketRef.current?.emit("typing:start", { chatId: selectedChat.id });
       if (typingStopTimerRef.current) {
@@ -2868,6 +2877,9 @@ export default function ChatsPage() {
     resetComposerHeight();
     setPendingAttachments([]);
     setReplyTarget(null);
+    if (chatId) {
+      window.localStorage.removeItem(`stovo:draft:${chatId}`);
+    }
     socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
 
     try {
