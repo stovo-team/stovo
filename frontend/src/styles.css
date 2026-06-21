@@ -2955,6 +2955,17 @@ h2 {
   z-index: 20;
 }
 
+.emoji-picker--bottom-sheet {
+  border-radius: 20px 20px 0 0;
+  bottom: 0;
+  height: 40vh;
+  left: 0;
+  position: fixed;
+  right: 0;
+  width: 100%;
+  z-index: 100;
+}
+
 .pending-attachments,
 .message-attachments {
   display: flex;
