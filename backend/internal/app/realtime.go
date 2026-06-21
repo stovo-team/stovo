@@ -126,11 +126,12 @@ func (s *Server) configureSockets() {
 					}
 					if ended, ok := s.endCallForUser(userID); ok {
 						payload := map[string]any{
-							"chatId":   ended.ChatID,
-							"callerId": ended.CallerUserID,
-							"calleeId": ended.CalleeUserID,
-							"reason":   "disconnected",
-							"endedAt":  nowString(),
+							"chatId":           ended.ChatID,
+							"callerId":         ended.CallerUserID,
+							"calleeId":         ended.CalleeUserID,
+							"reason":           "disconnected",
+							"endedAt":          nowString(),
+							"sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano),
 						}
 						s.emitCallToUser(ended.CallerUserID, "call:ended", payload)
 						s.emitCallToUser(ended.CalleeUserID, "call:ended", payload)
@@ -300,11 +301,12 @@ func (s *Server) configureSockets() {
 			}
 			session, _ = s.setCallSessionState(payload.ChatID, callStateConnecting)
 			payloadMap := map[string]any{
-				"chatId":   session.ChatID,
-				"callerId": session.CallerUserID,
-				"calleeId": session.CalleeUserID,
-				"callType": session.CallType,
-				"state":    string(session.State),
+				"chatId":           session.ChatID,
+				"callerId":         session.CallerUserID,
+				"calleeId":         session.CalleeUserID,
+				"callType":         session.CallType,
+				"state":            string(session.State),
+				"sessionStartedAt": session.CreatedAt.Format(time.RFC3339Nano),
 			}
 			s.emitCallToUser(session.CallerUserID, "call:accepted", payloadMap)
 			s.emitCallToUser(session.CalleeUserID, "call:accepted", payloadMap)
@@ -325,7 +327,7 @@ func (s *Server) configureSockets() {
 			if !endedOK {
 				return
 			}
-			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "declined", "endedAt": nowString()}
+			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "declined", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
 			s.emitCallToUser(ended.CallerUserID, "call:declined", payloadMap)
 			s.emitCallToUser(ended.CalleeUserID, "call:declined", payloadMap)
 			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
@@ -348,7 +350,7 @@ func (s *Server) configureSockets() {
 			if !endedOK {
 				return
 			}
-			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "canceled", "endedAt": nowString()}
+			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "canceled", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
 			s.emitCallToUser(ended.CallerUserID, "call:canceled", payloadMap)
 			s.emitCallToUser(ended.CalleeUserID, "call:canceled", payloadMap)
 			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
@@ -374,7 +376,7 @@ func (s *Server) configureSockets() {
 				return
 			}
 			s.logger.Infof("realtime.call", "call:end user_id=%s chat_id=%s caller=%s callee=%s", user.ID, ended.ChatID, ended.CallerUserID, ended.CalleeUserID)
-			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "ended", "endedAt": nowString()}
+			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "ended", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
 			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
 			s.emitCallToUser(ended.CalleeUserID, "call:ended", payloadMap)
 		})
@@ -389,6 +391,11 @@ func (s *Server) configureSockets() {
 			if !ok || !callParticipant(session, user.ID) {
 				// Session already ended — tell the sender to reset instead of silently
 				// dropping (which leaves the UI stuck on "Connecting…" forever).
+				// sessionStartedAt is omitted intentionally: the session is gone so we
+				// have no CreatedAt. The client's session guard will treat a missing
+				// sessionStartedAt as stale when a live session is active, but here
+				// there IS no live session (callPhaseRef will be idle or the chatId
+				// won't match), so the event is still processed correctly.
 				_ = socket.Emit("call:ended", map[string]any{
 					"chatId": payload.ChatID,
 					"reason": "session_gone",

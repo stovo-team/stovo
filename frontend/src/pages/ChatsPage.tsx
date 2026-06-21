@@ -1132,6 +1132,9 @@ export default function ChatsPage() {
   const loadChatRequestRef = useRef(0);
   const activeChatIdRef = useRef<string | undefined>(chatId);
   const activeCallChatIdRef = useRef<string | null>(null);
+  // Per-session identifier set from call:ringing.createdAt; guards stale same-chatId
+  // termination events from previous call sessions.
+  const activeCallSessionIdRef = useRef<string | null>(null);
   const callTypeRef = useRef<"audio" | "video">("audio");
   const callPhaseRef = useRef<CallPhase>("idle");
   const accessTokenRef = useRef<string | null>(accessToken);
@@ -2046,7 +2049,7 @@ export default function ChatsPage() {
 
     socket.on(
       "call:ringing",
-      (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; expiresAt?: string }) => {
+      (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; expiresAt?: string; createdAt?: string }) => {
         console.log("[call:ringing] received", payload, "selfId=", currentUser?.id);
         const selfUserId = currentUser?.id ?? null;
         const isCaller = selfUserId !== null && payload.callerId === selfUserId;
@@ -2055,6 +2058,12 @@ export default function ChatsPage() {
         setActiveCallChatId(payload.chatId);
         // Sync ref immediately so call:accepted guard sees the chatId before React re-renders
         activeCallChatIdRef.current = payload.chatId;
+        // Store per-session identifier so termination events from a previous call session
+        // for the same chatId (stale events queued while Android was offline) can be
+        // rejected without affecting the current session.
+        if (payload.createdAt) {
+          activeCallSessionIdRef.current = payload.createdAt;
+        }
         setCallPeerUserId(isCaller ? payload.calleeId : payload.callerId);
         if (isCaller) {
           setCallPhase("outgoing");
@@ -2066,7 +2075,7 @@ export default function ChatsPage() {
       }
     );
 
-    socket.on("call:accepted", (payload: { chatId: string; callerId: string; calleeId: string; callType?: string }) => {
+    socket.on("call:accepted", (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; sessionStartedAt?: string }) => {
       console.log("[call:accepted] chatId=", payload.chatId, "ref=", activeCallChatIdRef.current, "currentUser=", currentUser?.id);
       if (!currentUser || payload.chatId !== activeCallChatIdRef.current) {
         console.warn("[call:accepted] GUARD FAILED — bailing. currentUser=", !!currentUser, "chatMatch=", payload.chatId === activeCallChatIdRef.current);
@@ -2104,36 +2113,44 @@ export default function ChatsPage() {
       }
     );
 
-    socket.on("call:declined", (payload: { chatId?: string }) => {
+    // Session-aware guard for all termination events.
+    // Stale events from a previous call session for the SAME chatId are rejected
+    // when sessionStartedAt doesn't match the active session (stored on call:ringing).
+    // Fail-closed: if activeCallSessionIdRef is set but the event has no sessionStartedAt,
+    // the event is treated as stale (handles events queued before the server-side fix).
+    function isSessionMismatch(p: { sessionStartedAt?: string; chatId?: string }) {
+      if (callPhaseRef.current === "idle") return true; // not in a call
+      if (p.chatId && activeCallChatIdRef.current && p.chatId !== activeCallChatIdRef.current) return true; // wrong chat
+      if (activeCallSessionIdRef.current) {
+        if (!p.sessionStartedAt || p.sessionStartedAt !== activeCallSessionIdRef.current) return true; // stale or untagged session
+      }
+      return false;
+    }
+
+    socket.on("call:declined", (payload: { chatId?: string; sessionStartedAt?: string }) => {
       // Guard against stale queued events from previous calls being delivered
       // via drainPendingEvents on socket reconnect killing a newly started call.
-      if (callPhaseRef.current === "idle") return;
-      if (payload?.chatId && activeCallChatIdRef.current && payload.chatId !== activeCallChatIdRef.current) return;
+      if (isSessionMismatch(payload)) return;
       stopCallRingtone();
       // Server already ended the session — pass serverAlreadyNotified=true so
       // cleanup() does not send a redundant call:end that would produce a
       // spurious call:error toast.
       void resetCallState("Call declined", true);
     });
-    socket.on("call:canceled", (payload: { chatId?: string }) => {
-      if (callPhaseRef.current === "idle") return;
-      if (payload?.chatId && activeCallChatIdRef.current && payload.chatId !== activeCallChatIdRef.current) return;
+    socket.on("call:canceled", (payload: { chatId?: string; sessionStartedAt?: string }) => {
+      if (isSessionMismatch(payload)) return;
       stopCallRingtone();
       void resetCallState("Call canceled", true);
     });
-    socket.on("call:timeout", (payload: { chatId?: string }) => {
-      if (callPhaseRef.current === "idle") return;
-      if (payload?.chatId && activeCallChatIdRef.current && payload.chatId !== activeCallChatIdRef.current) return;
+    socket.on("call:timeout", (payload: { chatId?: string; sessionStartedAt?: string }) => {
+      if (isSessionMismatch(payload)) return;
       stopCallRingtone();
       void resetCallState("Missed call", true);
     });
-    socket.on("call:ended", (payload: { chatId?: string }) => {
-      console.log("[call:ended] received", payload?.chatId);
-      if (callPhaseRef.current === "idle") {
-        return;
-      }
-      if (payload?.chatId && activeCallChatIdRef.current && payload.chatId !== activeCallChatIdRef.current) {
-        console.log("[call:ended] ignoring — chatId mismatch", payload.chatId, "!=", activeCallChatIdRef.current);
+    socket.on("call:ended", (payload: { chatId?: string; sessionStartedAt?: string }) => {
+      console.log("[call:ended] received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current);
+      if (isSessionMismatch(payload)) {
+        console.log("[call:ended] ignoring — session mismatch or idle");
         return;
       }
       stopCallRingtone();
@@ -2286,6 +2303,7 @@ export default function ChatsPage() {
     }
     await audioCallRef.current?.cleanup(serverAlreadyNotified);
     callPhaseRef.current = "idle";
+    activeCallSessionIdRef.current = null;
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
@@ -2333,6 +2351,11 @@ export default function ChatsPage() {
     // the useEffect runs (e.g. stale queued events drained on reconnect) see the
     // correct phase and don't prematurely kill the just-started call.
     callPhaseRef.current = "outgoing";
+    // Set a "pending" placeholder so the session guard rejects ALL termination events
+    // that arrive before call:ringing is received (which provides the real session ID).
+    // This prevents stale same-chatId events from previous sessions slipping through
+    // in the window between callPhaseRef = "outgoing" and call:ringing arriving.
+    activeCallSessionIdRef.current = "pending";
     setActiveCallChatId(selectedChat.id);
     setCallPeerUserId(peer.id);
     setCallPeerDisplayName(peer.displayName ?? null);
@@ -2347,6 +2370,7 @@ export default function ChatsPage() {
     } catch (err) {
       setCallPhase("idle");
       callPhaseRef.current = "idle";
+      activeCallSessionIdRef.current = null;
       setActiveCallChatId(null);
       setCallPeerUserId(null);
       activeCallChatIdRef.current = null;
