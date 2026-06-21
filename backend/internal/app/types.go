@@ -260,6 +260,7 @@ type messagePublic struct {
 	CreatedAt           time.Time               `json:"createdAt"`
 	UpdatedAt           time.Time               `json:"updatedAt"`
 	DeletedAt           *time.Time              `json:"deletedAt"`
+	IsEdited            bool                    `json:"isEdited"`
 	ForwardedFrom       *messageForwardPublic   `json:"forwardedFrom,omitempty"`
 	Statuses            []messageStatusPublic   `json:"statuses"`
 	Reactions           []messageReactionPublic `json:"reactions"`
@@ -286,6 +287,10 @@ type forwardMessageRequest struct {
 
 type messageReactionRequest struct {
 	Emoji string `json:"emoji"`
+}
+
+type editMessageRequest struct {
+	Content string `json:"content"`
 }
 
 type logsResponse struct {
