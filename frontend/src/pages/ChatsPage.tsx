@@ -1781,7 +1781,7 @@ export default function ChatsPage() {
       if (!chatMenuRef.current?.contains(event.target as Node)) {
         setIsChatMenuOpen(false);
       }
-      if (!emojiPickerRef.current?.contains(event.target as Node)) {
+      if (!emojiPickerRef.current?.contains(event.target as Node) && !Capacitor.isNativePlatform()) {
         setIsEmojiPickerOpen(false);
       }
       setMessageContextMenu(null);
@@ -2655,11 +2655,12 @@ export default function ChatsPage() {
     const end = input?.selectionEnd ?? composer.length;
     const nextValue = `${composer.slice(0, start)}${emoji}${composer.slice(end)}`.slice(0, 4000);
     setComposer(nextValue);
-    setIsEmojiPickerOpen(false);
     window.setTimeout(() => {
       const cursor = Math.min(start + emoji.length, nextValue.length);
-      composerInputRef.current?.focus();
-      composerInputRef.current?.setSelectionRange(cursor, cursor);
+      if (!Capacitor.isNativePlatform()) {
+        composerInputRef.current?.focus();
+        composerInputRef.current?.setSelectionRange(cursor, cursor);
+      }
     }, 0);
   }
 
@@ -3780,7 +3781,13 @@ export default function ChatsPage() {
                         aria-expanded={isEmojiPickerOpen}
                         title="Add emoji"
                         disabled={channelCommentsDisabledForViewer || missingCommentThread}
-                        onClick={() => setIsEmojiPickerOpen((current) => !current)}
+                        onClick={() => {
+                          const opening = !isEmojiPickerOpen;
+                          if (opening && Capacitor.isNativePlatform()) {
+                            composerInputRef.current?.blur();
+                          }
+                          setIsEmojiPickerOpen((current) => !current);
+                        }}
                       >
                         <span className="ms-icon ms-icon--22" aria-hidden={true}>
                           sentiment_satisfied
