@@ -207,11 +207,12 @@ func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time, callerN
 			return
 		}
 		payload := map[string]any{
-			"chatId":   ended.ChatID,
-			"callerId": ended.CallerUserID,
-			"calleeId": ended.CalleeUserID,
-			"reason":   "timeout",
-			"endedAt":  nowString(),
+			"chatId":           ended.ChatID,
+			"callerId":         ended.CallerUserID,
+			"calleeId":         ended.CalleeUserID,
+			"reason":           "timeout",
+			"endedAt":          nowString(),
+			"sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano),
 		}
 		s.emitCallToUser(ended.CallerUserID, "call:timeout", payload)
 		s.emitCallToUser(ended.CalleeUserID, "call:timeout", payload)
