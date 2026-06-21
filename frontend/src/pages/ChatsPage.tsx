@@ -971,6 +971,59 @@ function useCallTimer(active: boolean): string {
   return `${m}:${s}`;
 }
 
+function CopySheetTextarea({
+  content,
+  onCopy,
+  onClose,
+}: {
+  content: string;
+  onCopy: () => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    ref.current?.focus();
+    ref.current?.select();
+  }, []);
+  function handleCopy() {
+    if (ref.current) {
+      ref.current.focus();
+      ref.current.select();
+    }
+    const ok = document.execCommand("copy");
+    if (!ok) {
+      void navigator.clipboard.writeText(ref.current?.value ?? content);
+    }
+    onCopy();
+  }
+  return (
+    <>
+      <textarea
+        ref={ref}
+        defaultValue={content}
+        readOnly={false}
+        className="copy-sheet-textarea"
+      />
+      <div className="copy-sheet-actions">
+        <button
+          type="button"
+          className="copy-sheet-cancel-btn"
+          onClick={onClose}
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="copy-sheet-copy-btn"
+          onClick={handleCopy}
+        >
+          Copy
+        </button>
+      </div>
+    </>
+  );
+}
+
 export default function ChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
@@ -989,6 +1042,7 @@ export default function ChatsPage() {
   const [isMessageSearchOpen, setIsMessageSearchOpen] = useState(false);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [copySheetContent, setCopySheetContent] = useState<string | null>(null);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [newChatScreen, setNewChatScreen] = useState<NewChatScreen>("pick");
   const [newChatMemberSearch, setNewChatMemberSearch] = useState("");
@@ -3626,7 +3680,7 @@ export default function ChatsPage() {
                       role="menuitem"
                       disabled={!messageContextMenu.message.content}
                       onClick={() => {
-                        void navigator.clipboard.writeText(messageContextMenu.message.content ?? "");
+                        setCopySheetContent(messageContextMenu.message.content ?? "");
                         setMessageContextMenu(null);
                       }}
                     >
@@ -4345,6 +4399,28 @@ export default function ChatsPage() {
               accessToken ? () => void saveFileToDisk(accessToken, fullViewImage.file) : undefined
             }
           />
+        )}
+
+        {copySheetContent !== null && (
+          <div
+            className="copy-sheet-backdrop"
+            role="presentation"
+            onMouseDown={() => setCopySheetContent(null)}
+          >
+            <div
+              className="copy-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Copy message text"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <CopySheetTextarea
+                content={copySheetContent}
+                onCopy={() => setCopySheetContent(null)}
+                onClose={() => setCopySheetContent(null)}
+              />
+            </div>
+          </div>
         )}
       </section>
     </main>
