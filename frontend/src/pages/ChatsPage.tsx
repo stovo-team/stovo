@@ -3794,7 +3794,11 @@ export default function ChatsPage() {
                         </span>
                       </button>
                       {isEmojiPickerOpen && (
-                        <div className="emoji-picker" role="menu" aria-label="Choose emoji">
+                        <div
+                          className={`emoji-picker${Capacitor.isNativePlatform() ? " emoji-picker--bottom-sheet" : ""}`}
+                          role="menu"
+                          aria-label="Choose emoji"
+                        >
                           <EmojiPicker
                             onEmojiClick={handleComposerEmojiPick}
                             autoFocusSearch={false}
