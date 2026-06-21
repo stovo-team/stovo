@@ -2567,6 +2567,9 @@ h2 {
   justify-self: start;
   max-width: min(480px, 72%);
   padding: 6px 10px 5px 12px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .message-bubble.grouped {
