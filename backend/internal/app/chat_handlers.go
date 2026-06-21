@@ -805,8 +805,9 @@ func (s *Server) listMessages(chatID string, user userPublic, before string, lim
 		SELECT id
 		FROM messages
 		WHERE chat_id = ? AND deleted_at IS NULL
+		AND id NOT IN (SELECT message_id FROM message_user_deletions WHERE user_id = ?)
 	`
-	args := []any{chatID}
+	args := []any{chatID, user.ID}
 	if threadRootMessageID != "" {
 		if err := s.validateReplyTarget(chatID, threadRootMessageID); err != nil {
 			return nil, err
@@ -869,7 +870,7 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 		SELECT m.id, m.chat_id, c.family_id, m.sender_id, u.display_name, m.type, m.content,
 		       m.encryption_protocol, m.ciphertext, m.nonce, m.key_version, m.encryption_metadata,
 		       m.reply_to_message_id, m.thread_root_message_id, m.message_kind, m.forwarded_from_message_id, m.forwarded_from_chat_id,
-		       m.created_at, m.updated_at, m.deleted_at
+		       m.created_at, m.updated_at, m.deleted_at, m.is_edited
 		FROM messages m
 		JOIN chats c ON c.id = m.chat_id
 		JOIN users u ON u.id = m.sender_id
@@ -881,6 +882,7 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 	var content, encryptionProtocol, ciphertext, nonce, metadata, replyTo, threadRootMessageID, messageKind, forwardedFromMessageID, forwardedFromChatID, deletedAt sql.NullString
 	var keyVersion sql.NullInt64
 	var createdAt, updatedAt string
+	var isEdited bool
 	if err := row.Scan(
 		&message.ID,
 		&message.ChatID,
@@ -902,6 +904,7 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 		&createdAt,
 		&updatedAt,
 		&deletedAt,
+		&isEdited,
 	); err != nil {
 		return messagePublic{}, err
 	}
@@ -957,6 +960,7 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 		deleted := parseTime(deletedAt.String)
 		message.DeletedAt = &deleted
 	}
+	message.IsEdited = isEdited
 
 	statusRows, err := s.query(`
 		SELECT user_id, status, created_at
@@ -1285,4 +1289,115 @@ func (s *Server) setMessageReaction(ctx context.Context, user userPublic, messag
 		return messagePublic{}, err
 	}
 	return message, nil
+}
+
+func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request, user userPublic) {
+	messageID := messageIDFromURL(r)
+
+	var payload editMessageRequest
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+
+	content := strings.TrimSpace(payload.Content)
+	if content == "" {
+		s.detail(w, http.StatusUnprocessableEntity, "content is required")
+		return
+	}
+	if len(content) > 4000 {
+		s.detail(w, http.StatusUnprocessableEntity, "content exceeds maximum length of 4000 characters")
+		return
+	}
+
+	row := s.queryRow(`SELECT sender_id, chat_id FROM messages WHERE id = ? AND deleted_at IS NULL`, messageID)
+	var senderID, chatID string
+	if err := row.Scan(&senderID, &chatID); err != nil {
+		s.detail(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	if senderID != user.ID {
+		s.detail(w, http.StatusForbidden, "You can only edit your own messages")
+		return
+	}
+
+	chat, err := s.buildChatPublic(chatID, user)
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "Chat not found")
+		return
+	}
+
+	now := nowString()
+	if chat.EncryptionProtocol == encryptionProtocolServerAtRest {
+		ciphertext, nonce, err := s.encryptServerAtRest(chat.FamilyID, content)
+		if err != nil {
+			s.detail(w, http.StatusInternalServerError, "Encryption failed")
+			return
+		}
+		keyVersion := 1
+		metadata := messageEncryptionMetadataServer
+		if _, err := s.exec(`
+			UPDATE messages
+			SET ciphertext = ?, nonce = ?, key_version = ?, encryption_metadata = ?, content = NULL,
+			    is_edited = TRUE, updated_at = ?
+			WHERE id = ?
+		`, ciphertext, nonce, keyVersion, metadata, now, messageID); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Failed to update message")
+			return
+		}
+	} else {
+		if _, err := s.exec(`
+			UPDATE messages
+			SET content = ?, is_edited = TRUE, updated_at = ?
+			WHERE id = ?
+		`, content, now, messageID); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Failed to update message")
+			return
+		}
+	}
+
+	message, err := s.buildMessage(messageID, user.ID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Failed to load updated message")
+		return
+	}
+	s.emitMessageUpdated(chatID, message)
+	s.json(w, http.StatusOK, message)
+}
+
+func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request, user userPublic) {
+	messageID := messageIDFromURL(r)
+	scope := r.URL.Query().Get("scope")
+
+	row := s.queryRow(`SELECT sender_id, chat_id FROM messages WHERE id = ? AND deleted_at IS NULL`, messageID)
+	var senderID, chatID string
+	if err := row.Scan(&senderID, &chatID); err != nil {
+		s.detail(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	if senderID != user.ID {
+		s.detail(w, http.StatusForbidden, "You can only delete your own messages")
+		return
+	}
+
+	if scope == "me" {
+		if _, err := s.exec(`
+			INSERT INTO message_user_deletions (message_id, user_id, deleted_at)
+			VALUES (?, ?, ?)
+			ON CONFLICT (message_id, user_id) DO NOTHING
+		`, messageID, user.ID, nowString()); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Failed to delete message")
+			return
+		}
+	} else {
+		if _, err := s.exec(`
+			UPDATE messages SET deleted_at = ? WHERE id = ?
+		`, nowString(), messageID); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Failed to delete message")
+			return
+		}
+		s.emitMessageDeleted(chatID, messageID)
+	}
+
+	s.json(w, http.StatusOK, map[string]string{"messageId": messageID, "chatId": chatID})
 }
