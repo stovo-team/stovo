@@ -116,12 +116,11 @@ jobs:
           chmod +x ./gradlew
           if [ -n "$ANDROID_KEYSTORE_PATH" ]; then
             echo "Building signed release APK"
-            TASK="assembleRelease"
           else
-            echo "No keystore — building debug APK (signed with debug key, installable)"
-            TASK="assembleDebug"
+            echo "WARNING: ANDROID_KEYSTORE_BASE64 secret not set — APK will be unsigned and uninstallable on real devices."
+            echo "Set ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD secrets."
           fi
-          ./gradlew "$TASK" \
+          ./gradlew assembleRelease \
             -PversionCode=${{ github.run_number }} \
             -PversionName=${{ steps.patch.outputs.version }} \
             --no-daemon
