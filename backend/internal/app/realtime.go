@@ -719,6 +719,17 @@ func (s *Server) emitMessageUpdated(chatID string, message messagePublic) {
 	}
 }
 
+func (s *Server) emitMessageDeleted(chatID string, messageID string) {
+	members, err := s.chatMembers(chatID)
+	if err != nil {
+		return
+	}
+	payload := map[string]any{"messageId": messageID, "chatId": chatID}
+	for _, member := range members {
+		_ = s.sockets.To("user:"+member.ID).Emit("message:deleted", payload)
+	}
+}
+
 func (s *Server) emitTyping(chatID string, user userPublic, isTyping bool) error {
 	chat, err := s.buildChatPublic(chatID, user)
 	if err != nil {

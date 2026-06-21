@@ -212,6 +212,8 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/chats/{chatId}/messages", s.authenticated(s.handleGetMessages))
 	router.Post("/api/chats/{chatId}/messages", s.authenticated(s.handleSendMessage))
 
+	router.Patch("/api/messages/{messageId}", s.authenticated(s.handleEditMessage))
+	router.Delete("/api/messages/{messageId}", s.authenticated(s.handleDeleteMessage))
 	router.Patch("/api/messages/{messageId}/read", s.authenticated(s.handleMarkMessageRead))
 	router.Post("/api/messages/{messageId}/forward", s.authenticated(s.handleForwardMessage))
 	router.Post("/api/messages/{messageId}/reactions", s.authenticated(s.handleAddMessageReaction))
@@ -523,6 +525,15 @@ func (s *Server) initSchema() error {
 			created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			ended_at    TIMESTAMPTZ,
 			duration_s  INTEGER
+		);`,
+		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_edited BOOLEAN NOT NULL DEFAULT FALSE;`,
+		`CREATE TABLE IF NOT EXISTS message_user_deletions (
+			message_id TEXT NOT NULL,
+			user_id    TEXT NOT NULL,
+			deleted_at TEXT NOT NULL,
+			PRIMARY KEY (message_id, user_id),
+			FOREIGN KEY (message_id) REFERENCES messages(id),
+			FOREIGN KEY (user_id) REFERENCES users(id)
 		);`,
 	}
 	for _, statement := range statements {
