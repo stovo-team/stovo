@@ -2050,28 +2050,54 @@ export default function ChatsPage() {
       }
     );
 
-    socket.on("call:declined", () => {
+    socket.on("call:declined", (payload: { chatId?: string }) => {
+      // Guard against stale queued events from previous calls being delivered
+      // via drainPendingEvents on socket reconnect killing a newly started call.
+      if (callPhaseRef.current === "idle") return;
+      if (payload?.chatId && activeCallChatIdRef.current && payload.chatId !== activeCallChatIdRef.current) return;
       stopCallRingtone();
       // Server already ended the session — pass serverAlreadyNotified=true so
       // cleanup() does not send a redundant call:end that would produce a
       // spurious call:error toast.
       void resetCallState("Call declined", true);
     });
-    socket.on("call:canceled", () => {
+    socket.on("call:canceled", (payload: { chatId?: string }) => {
+      if (callPhaseRef.current === "idle") return;
+      if (payload?.chatId && activeCallChatIdRef.current && payload.chatId !== activeCallChatIdRef.current) return;
       stopCallRingtone();
       void resetCallState("Call canceled", true);
     });
-    socket.on("call:timeout", () => {
+    socket.on("call:timeout", (payload: { chatId?: string }) => {
+      if (callPhaseRef.current === "idle") return;
+      if (payload?.chatId && activeCallChatIdRef.current && payload.chatId !== activeCallChatIdRef.current) return;
       stopCallRingtone();
       void resetCallState("Missed call", true);
     });
-    socket.on("call:ended", () => {
-      console.log("[call:ended] received");
+    socket.on("call:ended", (payload: { chatId?: string }) => {
+      console.log("[call:ended] received", payload?.chatId);
       if (callPhaseRef.current === "idle") {
+        return;
+      }
+      if (payload?.chatId && activeCallChatIdRef.current && payload.chatId !== activeCallChatIdRef.current) {
+        console.log("[call:ended] ignoring — chatId mismatch", payload.chatId, "!=", activeCallChatIdRef.current);
         return;
       }
       stopCallRingtone();
       void resetCallState("Call ended", true);
+    });
+    // call:sync is emitted by the server when the user's socket reconnects during
+    // an active call. Resume WebRTC signaling so the call can recover from a brief
+    // socket disconnect without ending the call entirely.
+    socket.on("call:sync", (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; state?: string }) => {
+      console.log("[call:sync] received", payload);
+      if (!currentUser || callPhaseRef.current === "idle") return;
+      if (payload.chatId !== activeCallChatIdRef.current) return;
+      const callType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
+      const asOfferer = payload.callerId === currentUser.id;
+      const peerId = asOfferer ? payload.calleeId : payload.callerId;
+      void audioController.resumeSignaling(payload.chatId, peerId, callType, asOfferer).catch((err) => {
+        console.error("[call:sync] resumeSignaling failed:", err);
+      });
     });
     socket.on("call:error", (payload: { message?: string }) => {
       const message = payload.message ?? "Call failed";
@@ -2249,6 +2275,10 @@ export default function ChatsPage() {
       void applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
     }
     setCallPhase("outgoing");
+    // Update callPhaseRef synchronously so socket event handlers that fire before
+    // the useEffect runs (e.g. stale queued events drained on reconnect) see the
+    // correct phase and don't prematurely kill the just-started call.
+    callPhaseRef.current = "outgoing";
     setActiveCallChatId(selectedChat.id);
     setCallPeerUserId(peer.id);
     setCallPeerDisplayName(peer.displayName ?? null);
@@ -2262,6 +2292,7 @@ export default function ChatsPage() {
       await audioCallRef.current?.prepareForCall(type);
     } catch (err) {
       setCallPhase("idle");
+      callPhaseRef.current = "idle";
       setActiveCallChatId(null);
       setCallPeerUserId(null);
       activeCallChatIdRef.current = null;
@@ -2278,6 +2309,7 @@ export default function ChatsPage() {
     dismissNativeCallNotification();
     setCallNotice(null);
     setCallPhase("connecting");
+    callPhaseRef.current = "connecting"; // Sync update — see startDirectCall for rationale
     stopCallRingtone();
     try {
       if (callType === "audio") {
