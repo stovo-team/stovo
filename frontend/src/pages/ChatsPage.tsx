@@ -1,4 +1,4 @@
-import {
+﻿import {
   ChangeEvent,
   FormEvent,
   KeyboardEvent as ReactKeyboardEvent,
@@ -101,13 +101,6 @@ import CallController, {
   CallDevice,
   CallSettings,
 } from "../realtime/CallController";
-import {
-  callLog,
-  clearCallLog,
-  getCallLog,
-  subscribeCallLog,
-  type CallLogEntry,
-} from "../realtime/callDebugLog";
 import { createCallSoundPlayer } from "../realtime/callSounds";
 import {
   getAudioSettings,
@@ -199,35 +192,35 @@ const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> = [
   { key: "groups", label: "Groups" },
   { key: "dms", label: "DMs" }
 ];
-const MESSAGE_REACTION_CHOICES = ["👍", "❤️", "😂", "😮", "🙏"];
+const MESSAGE_REACTION_CHOICES = ["рџ‘Ќ", "вќ¤пёЏ", "рџ‚", "рџ®", "рџ™Џ"];
 const MESSAGE_CONTEXT_MENU_WIDTH = 236;
 const MESSAGE_CONTEXT_MENU_HEIGHT = 220;
 
 const COMPOSER_EMOJIS = [
-  "😀",
-  "😂",
-  "😍",
-  "🥰",
-  "😊",
-  "😎",
-  "😢",
-  "😮",
-  "👍",
-  "👎",
-  "👏",
-  "🙏",
-  "❤️",
-  "🔥",
-  "🎉",
-  "✨",
-  "💬",
-  "📷",
-  "🍕",
-  "☕",
-  "🏠",
-  "🌟",
-  "✅",
-  "❗"
+  "рџЂ",
+  "рџ‚",
+  "рџЌ",
+  "рџҐ°",
+  "рџЉ",
+  "рџЋ",
+  "рџў",
+  "рџ®",
+  "рџ‘Ќ",
+  "рџ‘Ћ",
+  "рџ‘Џ",
+  "рџ™Џ",
+  "вќ¤пёЏ",
+  "рџ”Ґ",
+  "рџЋ‰",
+  "вњЁ",
+  "рџ’¬",
+  "рџ“·",
+  "рџЌ•",
+  "в•",
+  "рџЏ ",
+  "рџЊџ",
+  "вњ…",
+  "вќ—"
 ];
 
 function chatTypeLabel(chat: Chat) {
@@ -935,7 +928,7 @@ function preferPollingFirst(hostname: string) {
   }
   // Capacitor (Android/iOS) injects window.Capacitor at runtime. The
   // doquangtan/socketio server library only populates socket.Handshake.URL
-  // for polling connections — WebSocket connections leave it empty, so the
+  // for polling connections вЂ” WebSocket connections leave it empty, so the
   // server cannot extract the auth token and immediately disconnects the
   // socket. Force polling-first on native platforms so the handshake URL
   // (which contains the token query param) is always available to the server.
@@ -1031,72 +1024,6 @@ function CopySheetTextarea({
         </button>
       </div>
     </>
-  );
-}
-
-// ─── Call Debug Overlay ──────────────────────────────────────────────────────
-
-function CallDebugOverlay({ visible, onDismiss }: { visible: boolean; onDismiss: () => void }) {
-  const [entries, setEntries] = useState<CallLogEntry[]>(() => getCallLog());
-
-  useEffect(() => {
-    // Sync immediately on mount in case logs already exist
-    setEntries(getCallLog());
-    const unsub = subscribeCallLog(() => setEntries(getCallLog()));
-    return unsub;
-  }, []);
-
-  if (!visible || entries.length === 0) return null;
-
-  const last15 = entries.slice(-15);
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 9999,
-        background: "rgba(0,0,0,0.82)",
-        color: "#d0ffd0",
-        fontFamily: "monospace",
-        fontSize: "10px",
-        lineHeight: "1.45",
-        padding: "6px 8px 8px",
-        maxHeight: "50vh",
-        overflowY: "auto",
-        borderTop: "1px solid rgba(255,255,255,0.15)",
-        pointerEvents: "auto",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-        <span style={{ color: "#aaffaa", fontWeight: "bold", fontSize: "10px" }}>CALL DEBUG LOG</span>
-        <button
-          type="button"
-          onClick={() => { clearCallLog(); onDismiss(); }}
-          style={{
-            background: "none",
-            border: "1px solid rgba(255,255,255,0.3)",
-            color: "#ffffff",
-            cursor: "pointer",
-            fontSize: "11px",
-            lineHeight: 1,
-            padding: "2px 6px",
-            borderRadius: "3px",
-          }}
-          aria-label="Clear debug log"
-        >
-          x
-        </button>
-      </div>
-      {last15.map((e, i) => (
-        <div key={i} style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
-          <span style={{ color: "#88cc88", marginRight: "6px" }}>{e.ts}</span>
-          <span>{e.msg}</span>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -1196,8 +1123,6 @@ export default function ChatsPage() {
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const callTimer = useCallTimer(callPhase === "in-call");
-  const [isDebugOverlayVisible, setIsDebugOverlayVisible] = useState(false);
-  const debugOverlayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState(isMobileCallViewport);
   const [isLoading, setIsLoading] = useState(true);
   const [isChatLoading, setIsChatLoading] = useState(false);
@@ -1449,7 +1374,7 @@ export default function ChatsPage() {
     if (!currentUser || !callPeerUserId) {
       return "Unknown contact";
     }
-    // Try selectedChat.members first — most up-to-date when the caller initiates
+    // Try selectedChat.members first вЂ” most up-to-date when the caller initiates
     if (selectedChat && selectedChat.id === activeCallChatId) {
       const m = selectedChat.members.find((candidate) => candidate.id === callPeerUserId);
       if (m?.displayName) return m.displayName;
@@ -1786,28 +1711,6 @@ export default function ChatsPage() {
   useEffect(() => {
     callPhaseRef.current = callPhase;
   }, [callPhase]);
-  // Show debug overlay whenever a call is active; keep visible 10 s post-call.
-  useEffect(() => {
-    if (callPhase !== "idle") {
-      if (debugOverlayTimerRef.current !== null) {
-        clearTimeout(debugOverlayTimerRef.current);
-        debugOverlayTimerRef.current = null;
-      }
-      setIsDebugOverlayVisible(true);
-    } else {
-      // Phase just became idle — keep overlay visible for 10 s so logs can be read
-      debugOverlayTimerRef.current = setTimeout(() => {
-        debugOverlayTimerRef.current = null;
-        setIsDebugOverlayVisible(false);
-      }, 10_000);
-    }
-    return () => {
-      if (debugOverlayTimerRef.current !== null) {
-        clearTimeout(debugOverlayTimerRef.current);
-        debugOverlayTimerRef.current = null;
-      }
-    };
-  }, [callPhase]);
   useEffect(() => {
     accessTokenRef.current = accessToken;
     const socket = socketRef.current;
@@ -1965,17 +1868,15 @@ export default function ChatsPage() {
     audioController.attachRemoteAudioElement(remoteAudioRef.current);
     audioController.onVideoUnavailable = () => {
       setCallType("audio");
-      setCallNotice("Camera not available — continuing with audio only");
+      setCallNotice("Camera not available вЂ” continuing with audio only");
     };
     audioController.onConnectionFailed = () => {
       console.error("[CALL] onConnectionFailed fired callPhase=", callPhaseRef.current, "activeSession=", activeCallSessionIdRef.current);
-      callLog(`onConnectionFailed callPhase=${callPhaseRef.current}`);
       if (callPhaseRef.current === "idle") return;
       void resetCallState("Call connection lost");
     };
     audioController.onConnectionEstablished = () => {
       console.log("[CALL] onConnectionEstablished fired callPhase=", callPhaseRef.current);
-      callLog(`onConnectionEstablished callPhase=${callPhaseRef.current}`);
       setCallPhase("in-call");
       if (callTypeRef.current === "video") {
         void applyCallAudioPatch({ speakerMode: "large" });
@@ -2204,18 +2105,18 @@ export default function ChatsPage() {
         // kill the current call.
         //
         // Allow through if:
-        //   (a) No active call (idle) — always process incoming call:ringing
+        //   (a) No active call (idle) вЂ” always process incoming call:ringing
         //   (b) isCaller=true AND activeCallSessionIdRef.current === "pending"
-        //       → This is our own outgoing call:ringing being confirmed; update session ID
+        //       в†’ This is our own outgoing call:ringing being confirmed; update session ID
         //   (c) payload.createdAt matches the current activeCallSessionIdRef.current
-        //       → Re-emit of the current session on socket reconnect; safe to process
+        //       в†’ Re-emit of the current session on socket reconnect; safe to process
         if (callPhaseRef.current !== "idle") {
           const isPendingOutgoingConfirm =
             isCaller && activeCallSessionIdRef.current === "pending";
           const isCurrentSessionReemit =
             payload.createdAt && payload.createdAt === activeCallSessionIdRef.current;
           if (!isPendingOutgoingConfirm && !isCurrentSessionReemit) {
-            console.log("[call:ringing] ignoring stale event — active session mismatch",
+            console.log("[call:ringing] ignoring stale event вЂ” active session mismatch",
               "payload.createdAt=", payload.createdAt,
               "activeSession=", activeCallSessionIdRef.current);
             return;
@@ -2234,12 +2135,10 @@ export default function ChatsPage() {
         }
         setCallPeerUserId(isCaller ? payload.calleeId : payload.callerId);
         if (isCaller) {
-          console.log("[CALL] call:ringing: isCaller=true — transitioning to outgoing, sessionId=", payload.createdAt);
-          callLog(`call:ringing isCaller=true sessionId=${payload.createdAt} → outgoing`);
+          console.log("[CALL] call:ringing: isCaller=true вЂ” transitioning to outgoing, sessionId=", payload.createdAt);
           setCallPhase("outgoing");
         } else {
-          console.log("[CALL] call:ringing: isCaller=false — transitioning to incoming, sessionId=", payload.createdAt);
-          callLog(`call:ringing isCaller=false sessionId=${payload.createdAt} → incoming`);
+          console.log("[CALL] call:ringing: isCaller=false вЂ” transitioning to incoming, sessionId=", payload.createdAt);
           setCallPhase("incoming");
           setCallNotice(incomingCallType === "video" ? "Incoming video call" : "Incoming audio call");
           startIncomingRingtone();
@@ -2249,10 +2148,8 @@ export default function ChatsPage() {
 
     socket.on("call:accepted", (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; sessionStartedAt?: string }) => {
       console.log("[call:accepted] chatId=", payload.chatId, "ref=", activeCallChatIdRef.current, "currentUser=", currentUser?.id);
-      callLog(`call:accepted chatId=${payload.chatId}`);
       if (!currentUser || payload.chatId !== activeCallChatIdRef.current) {
-        console.warn("[call:accepted] GUARD FAILED — bailing. currentUser=", !!currentUser, "chatMatch=", payload.chatId === activeCallChatIdRef.current);
-        callLog("call:accepted GUARD FAILED — bailing");
+        console.warn("[call:accepted] GUARD FAILED вЂ” bailing. currentUser=", !!currentUser, "chatMatch=", payload.chatId === activeCallChatIdRef.current);
         return;
       }
       stopCallRingtone();
@@ -2262,21 +2159,19 @@ export default function ChatsPage() {
       setCallType(acceptedCallType);
       setCallPhase("connecting");
       if (payload.callerId === currentUser.id) {
-        console.log("[call:accepted] caller path — calling startOutgoing");
-        callLog("call:accepted: caller path → startOutgoing");
+        console.log("[call:accepted] caller path вЂ” calling startOutgoing");
         void audioController
           .startOutgoing(payload.chatId, peerId, acceptedCallType)
-          .then(() => { console.log("[call:accepted] startOutgoing resolved — waiting for ICE"); callLog("call:accepted: startOutgoing resolved — waiting for ICE"); })
+          .then(() => { console.log("[call:accepted] startOutgoing resolved вЂ” waiting for ICE"); })
           .catch(async (err) => {
             console.error("[call:accepted] startOutgoing threw:", err);
-            callLog(`call:accepted: startOutgoing THREW ${err instanceof Error ? err.name + ": " + err.message : String(err)}`);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId });
             // We already emitted call:end above; cleanup should not re-emit.
             await resetCallState("Camera/mic permission or device failed", true, false);
             setError(err instanceof Error ? err.message : "Could not start call");
           });
       } else {
-        console.log("[call:accepted] callee path — waiting for ICE");
+        console.log("[call:accepted] callee path вЂ” waiting for ICE");
       }
     });
 
@@ -2296,76 +2191,64 @@ export default function ChatsPage() {
     // the event is treated as stale (handles events queued before the server-side fix).
     function isSessionMismatch(p: { sessionStartedAt?: string; chatId?: string }) {
       if (callPhaseRef.current === "idle") {
-        console.log("[CALL] isSessionMismatch: MISMATCH — callPhase is idle");
+        console.log("[CALL] isSessionMismatch: MISMATCH вЂ” callPhase is idle");
         return true; // not in a call
       }
       if (p.chatId && activeCallChatIdRef.current && p.chatId !== activeCallChatIdRef.current) {
-        console.log("[CALL] isSessionMismatch: MISMATCH — chatId", p.chatId, "!== activeCallChatId", activeCallChatIdRef.current);
+        console.log("[CALL] isSessionMismatch: MISMATCH вЂ” chatId", p.chatId, "!== activeCallChatId", activeCallChatIdRef.current);
         return true; // wrong chat
       }
       if (activeCallSessionIdRef.current) {
         if (!p.sessionStartedAt || p.sessionStartedAt !== activeCallSessionIdRef.current) {
-          console.log("[CALL] isSessionMismatch: MISMATCH — sessionStartedAt", p.sessionStartedAt, "!== activeSession", activeCallSessionIdRef.current);
+          console.log("[CALL] isSessionMismatch: MISMATCH вЂ” sessionStartedAt", p.sessionStartedAt, "!== activeSession", activeCallSessionIdRef.current);
           return true; // stale or untagged session
         }
       }
-      console.log("[CALL] isSessionMismatch: PASS — event is for current session");
+      console.log("[CALL] isSessionMismatch: PASS вЂ” event is for current session");
       return false;
     }
 
     socket.on("call:declined", (payload: { chatId?: string; sessionStartedAt?: string }) => {
       console.log("[CALL] call:declined received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
-      callLog(`call:declined received chatId=${payload?.chatId}`);
       // Guard against stale queued events from previous calls being delivered
       // via drainPendingEvents on socket reconnect killing a newly started call.
       if (isSessionMismatch(payload)) {
-        console.log("[CALL] call:declined ignored — session mismatch or idle");
-        callLog("call:declined ignored — session mismatch");
+        console.log("[CALL] call:declined ignored вЂ” session mismatch or idle");
         return;
       }
       console.log("[CALL] call:declined: resetting call state");
-      callLog("call:declined: resetting call state");
       stopCallRingtone();
-      // Server already ended the session — pass serverAlreadyNotified=true so
+      // Server already ended the session вЂ” pass serverAlreadyNotified=true so
       // cleanup() does not send a redundant call:end that would produce a
       // spurious call:error toast.
       void resetCallState("Call declined", true);
     });
     socket.on("call:canceled", (payload: { chatId?: string; sessionStartedAt?: string }) => {
       console.log("[CALL] call:canceled received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
-      callLog(`call:canceled received chatId=${payload?.chatId}`);
       if (isSessionMismatch(payload)) {
-        console.log("[CALL] call:canceled ignored — session mismatch or idle");
-        callLog("call:canceled ignored — session mismatch");
+        console.log("[CALL] call:canceled ignored вЂ” session mismatch or idle");
         return;
       }
       console.log("[CALL] call:canceled: resetting call state");
-      callLog("call:canceled: resetting call state");
       stopCallRingtone();
       void resetCallState("Call canceled", true);
     });
     socket.on("call:timeout", (payload: { chatId?: string; sessionStartedAt?: string }) => {
       console.log("[CALL] call:timeout received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
-      callLog(`call:timeout received chatId=${payload?.chatId}`);
       if (isSessionMismatch(payload)) {
-        console.log("[CALL] call:timeout ignored — session mismatch or idle");
-        callLog("call:timeout ignored — session mismatch");
+        console.log("[CALL] call:timeout ignored вЂ” session mismatch or idle");
         return;
       }
       console.log("[CALL] call:timeout: resetting call state");
-      callLog("call:timeout: resetting call state → Missed call");
       stopCallRingtone();
       void resetCallState("Missed call", true);
     });
     socket.on("call:ended", (payload: { chatId?: string; sessionStartedAt?: string }) => {
       console.log("[call:ended] received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current);
-      callLog(`call:ended received chatId=${payload?.chatId}`);
       if (isSessionMismatch(payload)) {
-        console.log("[call:ended] ignoring — session mismatch or idle");
-        callLog("call:ended ignored — session mismatch");
+        console.log("[call:ended] ignoring вЂ” session mismatch or idle");
         return;
       }
-      callLog("call:ended: resetting call state");
       stopCallRingtone();
       void resetCallState("Call ended", true);
     });
@@ -2408,7 +2291,7 @@ export default function ChatsPage() {
       socket.io.off("reconnect", syncAfterSocketResume);
       socket.off("sync:needed", syncAfterSocketResume);
       stopCallRingtone();
-      // Do not emit call:end here — socket teardown must not kill an active call.
+      // Do not emit call:end here вЂ” socket teardown must not kill an active call.
       void audioController.cleanup(true).catch(() => undefined);
       audioCallRef.current = null;
       socket.disconnect();
@@ -2537,10 +2420,8 @@ export default function ChatsPage() {
 
   async function startDirectCall(type: "audio" | "video") {
     console.log("[CALL] startDirectCall: entered type=", type, "callPhase=", callPhaseRef.current, "chatId=", selectedChat?.id, "socketConnected=", socketRef.current?.connected);
-    callLog(`startDirectCall type=${type} chatId=${selectedChat?.id}`);
     if (!selectedChat || selectedChat.type !== "direct" || !currentUser) {
-      console.warn("[CALL] startDirectCall: guard failed — selectedChat=", !!selectedChat, "type=", selectedChat?.type, "currentUser=", !!currentUser);
-      callLog("startDirectCall: guard failed — missing selectedChat/currentUser");
+      console.warn("[CALL] startDirectCall: guard failed вЂ” selectedChat=", !!selectedChat, "type=", selectedChat?.type, "currentUser=", !!currentUser);
       return;
     }
     const socket = socketRef.current;
@@ -2549,10 +2430,8 @@ export default function ChatsPage() {
       return;
     }
     console.log("[CALL] startDirectCall: ensuring socket connected, socket.connected=", socket.connected);
-    callLog(`startDirectCall: ensuring socket connected socket.connected=${socket.connected}`);
     const connected = await ensureSocketConnected(socket, 4500);
     console.log("[CALL] startDirectCall: socket connected=", connected);
-    callLog(`startDirectCall: socket connected=${connected}`);
     if (!connected) {
       setError("Realtime connection is offline. Please refresh and try again.");
       return;
@@ -2589,14 +2468,11 @@ export default function ChatsPage() {
     // (not a user gesture). prepareForCall stores the stream so that startOutgoing's
     // ensurePeer() can reuse it without needing a new user gesture.
     console.log("[CALL] startDirectCall: calling prepareForCall type=", type);
-    callLog(`startDirectCall: calling prepareForCall type=${type}`);
     try {
       await audioCallRef.current?.prepareForCall(type);
       console.log("[CALL] startDirectCall: prepareForCall resolved OK");
-      callLog("startDirectCall: prepareForCall OK");
     } catch (err) {
       console.error("[CALL] startDirectCall: prepareForCall threw:", err instanceof Error ? err.name + ": " + err.message : err);
-      callLog(`startDirectCall: prepareForCall THREW ${err instanceof Error ? err.name + ": " + err.message : String(err)}`);
       setCallPhase("idle");
       callPhaseRef.current = "idle";
       activeCallSessionIdRef.current = null;
@@ -2607,10 +2483,8 @@ export default function ChatsPage() {
       return;
     }
     console.log("[CALL] startDirectCall: emitting call:start chatId=", selectedChat.id, "callType=", type);
-    callLog(`startDirectCall: emitting call:start chatId=${selectedChat.id} callType=${type}`);
     socket.emit("call:start", { chatId: selectedChat.id, callType: type });
-    console.log("[CALL] startDirectCall: call:start emitted — waiting for call:ringing from server");
-    callLog("startDirectCall: call:start emitted — waiting for call:ringing");
+    console.log("[CALL] startDirectCall: call:start emitted вЂ” waiting for call:ringing from server");
   }
 
   async function acceptIncomingCall() {
@@ -2620,14 +2494,14 @@ export default function ChatsPage() {
     dismissNativeCallNotification();
     setCallNotice(null);
     setCallPhase("connecting");
-    callPhaseRef.current = "connecting"; // Sync update — see startDirectCall for rationale
+    callPhaseRef.current = "connecting"; // Sync update вЂ” see startDirectCall for rationale
     stopCallRingtone();
     try {
       if (callType === "audio") {
         await applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
       }
       // Acquire mic and create the peer BEFORE telling the server we accepted.
-      // If this fails the call stays ringing — we must not emit call:accept then
+      // If this fails the call stays ringing вЂ” we must not emit call:accept then
       // call:end, which kills the session for both parties.
       await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
       socketRef.current.emit("call:accept", { chatId: activeCallChatId });
@@ -2648,7 +2522,7 @@ export default function ChatsPage() {
     }
     stopCallRingtone();
     socketRef.current.emit("call:decline", { chatId });
-    // Reset local state immediately (optimistic) — don't wait for the server
+    // Reset local state immediately (optimistic) вЂ” don't wait for the server
     // round-trip.  The server will still send call:declined to the caller which
     // triggers their own reset.  Passing serverAlreadyNotified=true prevents
     // cleanup() from emitting a duplicate call:end.
@@ -3246,7 +3120,7 @@ export default function ChatsPage() {
       return;
     }
 
-    // Edit branch — send as PATCH instead of creating a new message
+    // Edit branch вЂ” send as PATCH instead of creating a new message
     if (editTargetMessage !== null) {
       if (editInFlightRef.current) {
         return;
@@ -3515,7 +3389,7 @@ export default function ChatsPage() {
                                   return draftText ? (
                                     <span>
                                       <span className="chat-list-draft-label">Draft:</span>{" "}
-                                      {draftText.slice(0, 40)}{draftText.length > 40 ? "…" : ""}
+                                      {draftText.slice(0, 40)}{draftText.length > 40 ? "вЂ¦" : ""}
                                     </span>
                                   ) : (
                                     <span>{chatPreview(chat)}</span>
@@ -4255,7 +4129,7 @@ export default function ChatsPage() {
                           ? channelCommentsDisabledForViewer
                             ? "Comments are disabled"
                             : missingCommentThread
-                              ? "Comment…"
+                              ? "CommentвЂ¦"
                               : canPostInSelectedChannel
                                 ? "Post an update"
                                 : "Message"
@@ -4378,7 +4252,7 @@ export default function ChatsPage() {
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onToggleCamera={() => {
                   if (!hasLiveLocalVideo(localVideoStream)) {
-                    // Camera not yet open — start it. Set callType to "video"
+                    // Camera not yet open вЂ” start it. Set callType to "video"
                     // immediately so the mobile video element mounts before
                     // onLocalStreamReady fires (prevents black screen on
                     // first camera enable on iOS/Android). We check live video
@@ -4398,7 +4272,7 @@ export default function ChatsPage() {
                 onEnd={() => void endActiveCall()}
               />
             )}
-            {/* ── Header row ── */}
+            {/* в”Ђв”Ђ Header row в”Ђв”Ђ */}
             {!(isMobileViewport && !isCallMinimized && callPhase === "incoming") &&
               !(isCallMinimized && isMobileViewport) && (
             <div className="call-popup-header">
@@ -4407,9 +4281,9 @@ export default function ChatsPage() {
                     {callPhase === "incoming"
                       ? (callType === "video" ? "Incoming video call" : "Incoming call")
                       : callPhase === "outgoing"
-                      ? "Ringing…"
+                      ? "RingingвЂ¦"
                       : callPhase === "connecting"
-                      ? "Connecting…"
+                      ? "ConnectingвЂ¦"
                       : callType === "video"
                       ? "Video call"
                       : "Audio call"}
@@ -4435,7 +4309,7 @@ export default function ChatsPage() {
             </div>
             )}
 
-            {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
+            {/* в”Ђв”Ђ Video area вЂ” always rendered so refs stay stable (hidden via CSS when unused) в”Ђв”Ђ */}
             <div className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo)) ? " call-popup-video-area-hidden" : ""}`}>
               <video
                 ref={remoteVideoRef}
@@ -4456,12 +4330,12 @@ export default function ChatsPage() {
               />
             </div>
 
-            {/* ── Peer name (incoming) ── */}
+            {/* в”Ђв”Ђ Peer name (incoming) в”Ђв”Ђ */}
             {!isCallMinimized && callPhase === "incoming" && !(isMobileViewport && !isCallMinimized) && (
               <p className="call-popup-peer-name">{callPeerDisplayName ?? activeCallPeerName} is calling you.</p>
             )}
 
-            {/* Avatar area — shown when no remote video is playing */}
+            {/* Avatar area вЂ” shown when no remote video is playing */}
             {!isCallMinimized && (callType === "audio" || !callAudioSettings.cameraEnabled) && callPhase === "in-call" && !isMobileViewport && (
               <div className="call-popup-avatar-area">
                 <div className="call-popup-avatar-circle">
@@ -4477,7 +4351,7 @@ export default function ChatsPage() {
               </div>
             )}
 
-            {/* ── Controls row ── */}
+            {/* в”Ђв”Ђ Controls row в”Ђв”Ђ */}
             {!isCallMinimized && !isMobileViewport && (
               <div className="call-ctrl-row call-popup-ctrl-row">
                 {callPhase === "incoming" && (
@@ -4639,7 +4513,7 @@ export default function ChatsPage() {
               </div>
             )}
 
-            {/* Minimized state: single-line chip controls (desktop only — mobile bar is in header) */}
+            {/* Minimized state: single-line chip controls (desktop only вЂ” mobile bar is in header) */}
             {isCallMinimized && !isMobileViewport && (
               <div className="call-status-chip-controls">
                 {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
@@ -4733,11 +4607,6 @@ export default function ChatsPage() {
           )}
           </>
         )}
-        {/* Debug overlay — position:fixed, always outside the call conditional so it stays visible 10 s after call ends */}
-        <CallDebugOverlay
-          visible={isDebugOverlayVisible}
-          onDismiss={() => setIsDebugOverlayVisible(false)}
-        />
         {isNewChatOpen &&
           createPortal(
             <NewChatScreen
@@ -5259,7 +5128,7 @@ function MobileActiveScreen({
   onOpenSpeakerSheet: () => void;
   onEnd: () => void;
 }) {
-  // Local video elements for mobile — srcObject is set directly from the stream props
+  // Local video elements for mobile вЂ” srcObject is set directly from the stream props
   // so the UI reacts as soon as the stream is available without timing fragility.
   const mobileRemoteRef = useRef<HTMLVideoElement>(null);
   const mobileLocalRef = useRef<HTMLVideoElement>(null);
@@ -5279,7 +5148,7 @@ function MobileActiveScreen({
     attachAndPlay();
 
     // Android WebView may reject the first play() until metadata is ready or the
-    // track unmutes — listen for those events and retry.
+    // track unmutes вЂ” listen for those events and retry.
     const tracks = remoteVideoStream.getVideoTracks();
     const onTrackChange = () => attachAndPlay();
     for (const track of tracks) {
@@ -5316,7 +5185,7 @@ function MobileActiveScreen({
       {showProximityBlank && (
         <div className="mobile-active-proximity-blank" aria-hidden="true" />
       )}
-      {/* Case 1: Local camera only (no remote video yet) — show self-view fullscreen */}
+      {/* Case 1: Local camera only (no remote video yet) вЂ” show self-view fullscreen */}
       {callType === "video" && isCameraEnabled && !showRemoteVideo && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
           <video
@@ -5334,7 +5203,7 @@ function MobileActiveScreen({
         </div>
       )}
 
-      {/* Case 2: Remote video active — show remote fullscreen, local as PiP */}
+      {/* Case 2: Remote video active вЂ” show remote fullscreen, local as PiP */}
       {showRemoteVideo && remoteVideoStream && (
         <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
           <video
@@ -5374,7 +5243,7 @@ function MobileActiveScreen({
                 </div>
                 <div className="mobile-active-name">{peerName}</div>
                 <div className="mobile-active-time">
-                  {callPhase === "in-call" ? timer : callPhase === "outgoing" ? "Calling…" : "Connecting…"}
+                  {callPhase === "in-call" ? timer : callPhase === "outgoing" ? "CallingвЂ¦" : "ConnectingвЂ¦"}
                 </div>
                 <div className="mobile-active-waveform">
                   {[0,1,2,3,4,5,6].map((i) => (
@@ -5436,7 +5305,7 @@ function MobileActiveScreen({
           </button>
           <span className="mobile-active-ctrl-lbl">{isCameraEnabled ? "Camera" : "Camera off"}</span>
         </div>
-        {/* Flip camera — only during video */}
+        {/* Flip camera вЂ” only during video */}
         {callType === "video" && isCameraEnabled && (
           <div className="mobile-active-ctrl">
             <button type="button" className="mobile-active-ctrl-btn" aria-label="Flip camera" onClick={onToggleFlip}>
@@ -6009,8 +5878,8 @@ function MobileMinimizedCallBar({
     callPhase === "in-call"
       ? callTimer
       : callPhase === "outgoing"
-        ? "Calling…"
-        : "Connecting…";
+        ? "CallingвЂ¦"
+        : "ConnectingвЂ¦";
 
   return (
     <div className="mobile-call-strip" role="status" aria-live="polite">
@@ -6035,7 +5904,7 @@ function MobileMinimizedCallBar({
       >
         <span className="mobile-call-bar-pulse" aria-hidden="true" />
         <span className="mobile-call-strip-label">
-          {peerName} · {statusLabel}
+          {peerName} В· {statusLabel}
         </span>
       </button>
       <button
@@ -6077,7 +5946,7 @@ function MobileIncomingScreen({
       </div>
       <div className="mobile-incoming-name">{peerName}</div>
       <div className="mobile-incoming-status">
-        {callType === "video" ? "Incoming video call…" : "Incoming call…"}
+        {callType === "video" ? "Incoming video callвЂ¦" : "Incoming callвЂ¦"}
       </div>
       <div className="mobile-incoming-actions">
         <div className="mobile-incoming-btn-wrap">
