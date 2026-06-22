@@ -80,6 +80,7 @@ export interface Message {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  isEdited: boolean;
   forwardedFrom?: MessageForward | null;
   statuses: MessageStatus[];
   reactions: MessageReaction[];
@@ -232,4 +233,22 @@ export function removeMessageReaction(accessToken: string, messageId: string, em
     method: "DELETE",
     accessToken
   });
+}
+
+export function editMessage(accessToken: string, messageId: string, content: string) {
+  return apiRequest<Message>(`/api/messages/${messageId}`, {
+    method: "PATCH",
+    accessToken,
+    body: { content }
+  });
+}
+
+export function deleteMessage(accessToken: string, messageId: string, scope: "everyone" | "me") {
+  return apiRequest<{ messageId: string; chatId: string }>(
+    `/api/messages/${messageId}?scope=${scope}`,
+    {
+      method: "DELETE",
+      accessToken
+    }
+  );
 }
