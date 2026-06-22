@@ -37,6 +37,7 @@ import {
   Minimize2,
   Home,
   Megaphone,
+  Pencil,
   ShieldCheck,
   Star,
   Users,
@@ -54,6 +55,8 @@ import {
   createChannelChat,
   createDirectChat,
   createGroupChat,
+  deleteMessage,
+  editMessage,
   forwardMessage,
   getChat,
   getChats,
@@ -1064,6 +1067,12 @@ export default function ChatsPage() {
   const [threadRootMessageId, setThreadRootMessageId] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<Message | null>(null);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
+  const [editTargetMessage, setEditTargetMessage] = useState<Message | null>(null);
+  const draftBeforeEditRef = useRef<string>("");
+  const editInFlightRef = useRef(false);
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
+  const [deleteForMe, setDeleteForMe] = useState(true);
+  const [deleteForEveryone, setDeleteForEveryone] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ChatToast[]>([]);
   const [callPhase, setCallPhase] = useState<CallPhase>("idle");
@@ -1766,6 +1775,9 @@ export default function ChatsPage() {
     setReplyTarget(null);
     setThreadRootMessageId(null);
     setForwardTarget(null);
+    setEditTargetMessage(null);
+    draftBeforeEditRef.current = "";
+    setDeleteTarget(null);
     setFullViewImage(null);
     setDetailsTab("media");
     const draft = chatId ? (window.localStorage.getItem(`stovo:draft:${chatId}`) ?? "") : "";
@@ -1987,6 +1999,22 @@ export default function ChatsPage() {
         const displayMessage = await decryptMessage(message.chatId, message, currentUser?.id);
         applyMessagesForChat(message.chatId, (current) => replaceMessage(current, displayMessage));
       })();
+    });
+
+    socket.on("message:deleted", (payload: { messageId: string; chatId: string }) => {
+      applyMessagesForChat(payload.chatId, (current) =>
+        current.filter((m) => m.id !== payload.messageId)
+      );
+      setMessageContextMenu((current) =>
+        current?.message.id === payload.messageId ? null : current
+      );
+      setEditTargetMessage((current) => {
+        if (current?.id === payload.messageId) {
+          draftBeforeEditRef.current = "";
+          return null;
+        }
+        return current;
+      });
     });
 
     socket.on(
@@ -2757,6 +2785,11 @@ export default function ChatsPage() {
   }
 
   function handleComposerKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Escape" && editTargetMessage !== null) {
+      cancelEditMode();
+      event.preventDefault();
+      return;
+    }
     if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
       return;
     }
@@ -2868,6 +2901,38 @@ export default function ChatsPage() {
     requestAnimationFrame(() => composerInputRef.current?.focus());
   }
 
+  function handleEditMessage(message: Message) {
+    draftBeforeEditRef.current = composer;
+    setComposer(message.content ?? "");
+    setEditTargetMessage(message);
+    setMessageContextMenu(null);
+    requestAnimationFrame(() => composerInputRef.current?.focus());
+  }
+
+  function cancelEditMode() {
+    setComposer(draftBeforeEditRef.current);
+    setEditTargetMessage(null);
+    draftBeforeEditRef.current = "";
+  }
+
+  async function handleConfirmDelete() {
+    if (!accessToken || !deleteTarget) {
+      return;
+    }
+    const scope = deleteForEveryone ? "everyone" : "me";
+    try {
+      await deleteMessage(accessToken, deleteTarget.id, scope);
+      if (scope === "me") {
+        applyMessagesForChat(deleteTarget.chatId, (current) =>
+          current.filter((m) => m.id !== deleteTarget.id)
+        );
+      }
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not delete message");
+    }
+  }
+
   async function handleOpenThread(rootMessage: Message) {
     setThreadRootMessageId(rootMessage.id);
     setReplyTarget(rootMessage);
@@ -2955,6 +3020,30 @@ export default function ChatsPage() {
       setError("Choose a post thread before commenting");
       return;
     }
+
+    // Edit branch — send as PATCH instead of creating a new message
+    if (editTargetMessage !== null) {
+      if (editInFlightRef.current) {
+        return;
+      }
+      const editTarget = editTargetMessage;
+      const savedDraft = draftBeforeEditRef.current;
+      try {
+        editInFlightRef.current = true;
+        const updated = await editMessage(accessToken, editTarget.id, content);
+        applyMessagesForChat(editTarget.chatId, (current) => replaceMessage(current, updated));
+        setEditTargetMessage(null);
+        setComposer(savedDraft);
+        draftBeforeEditRef.current = "";
+        resetComposerHeight();
+      } catch (err) {
+        setError(err instanceof ApiError ? String(err.message) : "Could not edit message");
+      } finally {
+        editInFlightRef.current = false;
+      }
+      return;
+    }
+
     const clientMessageId = createClientMessageId();
     const createdAt = new Date().toISOString();
     const attachments = pendingAttachments;
@@ -3599,7 +3688,16 @@ export default function ChatsPage() {
                             )}
                             {(hasCaption || message.deliveryError || !photoOnlyMessage) && (
                               <div className="message-bubble-inner">
-                                {hasCaption ? <p>{message.content}</p> : null}
+                                {hasCaption ? (
+                                  <p>
+                                    {message.content}
+                                    {message.isEdited && (
+                                      <span className="message-edited-label" aria-label="Edited">
+                                        (edited)
+                                      </span>
+                                    )}
+                                  </p>
+                                ) : null}
                                 {message.deliveryError ? (
                                   <p className="encrypted-message-unavailable">{message.deliveryError}</p>
                                 ) : null}
@@ -3724,6 +3822,34 @@ export default function ChatsPage() {
                       <Forward aria-hidden="true" size={16} />
                       Forward
                     </button>
+                    {messageContextMenu.message.senderId === currentUser?.id &&
+                      Boolean(messageContextMenu.message.content?.trim()) && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={messageContextMenu.message.id.startsWith("pending:")}
+                          onClick={() => handleEditMessage(messageContextMenu.message)}
+                        >
+                          <Pencil aria-hidden="true" size={16} />
+                          Edit
+                        </button>
+                      )}
+                    {messageContextMenu.message.senderId === currentUser?.id && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={messageContextMenu.message.id.startsWith("pending:")}
+                        onClick={() => {
+                          setDeleteForMe(true);
+                          setDeleteForEveryone(true);
+                          setDeleteTarget(messageContextMenu.message);
+                          setMessageContextMenu(null);
+                        }}
+                      >
+                        <X aria-hidden="true" size={16} />
+                        Delete
+                      </button>
+                    )}
                     {isMultiMemberChat(selectedChat?.type ?? "direct") && (
                       <div className="message-context-seen-by" aria-live="polite">
                         <strong>Seen by</strong>
@@ -3779,6 +3905,20 @@ export default function ChatsPage() {
                         aria-label="Cancel reply"
                         title="Cancel reply"
                         onClick={() => setReplyTarget(null)}
+                      >
+                        <X aria-hidden="true" size={14} />
+                      </button>
+                    </div>
+                  )}
+                  {editTargetMessage && (
+                    <div className="editing-indicator">
+                      <Pencil aria-hidden="true" size={16} />
+                      <span>Editing message</span>
+                      <button
+                        type="button"
+                        aria-label="Cancel edit"
+                        title="Cancel edit"
+                        onClick={cancelEditMode}
                       >
                         <X aria-hidden="true" size={14} />
                       </button>
@@ -4419,6 +4559,65 @@ export default function ChatsPage() {
                     <span>{displayChatName(chat, currentUser?.id)}</span>
                   </button>
                 ))}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {deleteTarget && (
+          <div className="modal-backdrop" role="presentation">
+            <section
+              className="messenger-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-message-title"
+            >
+              <div className="modal-header">
+                <h2 id="delete-message-title">Delete message?</h2>
+                <button
+                  type="button"
+                  className="icon-button subtle"
+                  aria-label="Close delete dialog"
+                  title="Close"
+                  onClick={() => setDeleteTarget(null)}
+                >
+                  <X aria-hidden="true" size={18} />
+                </button>
+              </div>
+              <div className="delete-message-options">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={deleteForMe}
+                    onChange={(e) => setDeleteForMe(e.target.checked)}
+                  />
+                  Delete for me
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={deleteForEveryone}
+                    onChange={(e) => setDeleteForEveryone(e.target.checked)}
+                  />
+                  Delete for everyone
+                </label>
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="button-danger"
+                  disabled={!deleteForMe && !deleteForEveryone}
+                  onClick={() => void handleConfirmDelete()}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  className="button-secondary"
+                  onClick={() => setDeleteTarget(null)}
+                >
+                  Cancel
+                </button>
               </div>
             </section>
           </div>
