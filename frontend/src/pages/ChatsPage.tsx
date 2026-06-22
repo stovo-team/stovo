@@ -2111,14 +2111,35 @@ export default function ChatsPage() {
         //   (c) payload.createdAt matches the current activeCallSessionIdRef.current
         //       → Re-emit of the current session on socket reconnect; safe to process
         if (callPhaseRef.current !== "idle") {
+          // (b) Confirm this is our own outgoing call:ringing: must be isCaller=true,
+          // session ID must still be "pending" (not yet assigned), AND the chatId must
+          // match the current call's chatId.
+          //
+          // The chatId check is an extra defence: without it, a stale call:ringing from
+          // a DIFFERENT chat (where Android was caller and the event was queued via the
+          // polling→WebSocket upgrade transport race) would also satisfy
+          // (isCaller=true && ref==="pending") and corrupt the session ID.
+          //
+          // Limitation: a stale caller call:ringing for the SAME chatId still passes
+          // this guard, because we have no per-session identifier until call:ringing
+          // provides one. That scenario (same chat, same caller, queued via transport race)
+          // is mitigated by the fact that drainPendingEvents completes before the server
+          // processes the new call:start — so the real call:ringing for the new session
+          // always arrives AFTER the drain. If the stale event does corrupt the ref, the
+          // real call:ringing will be blocked; the call will time out naturally on the
+          // server and resetCallState will handle cleanup.
           const isPendingOutgoingConfirm =
-            isCaller && activeCallSessionIdRef.current === "pending";
+            isCaller &&
+            activeCallSessionIdRef.current === "pending" &&
+            payload.chatId === activeCallChatIdRef.current;
           const isCurrentSessionReemit =
             payload.createdAt && payload.createdAt === activeCallSessionIdRef.current;
           if (!isPendingOutgoingConfirm && !isCurrentSessionReemit) {
             console.log("[call:ringing] ignoring stale event — active session mismatch",
               "payload.createdAt=", payload.createdAt,
-              "activeSession=", activeCallSessionIdRef.current);
+              "payload.chatId=", payload.chatId,
+              "activeSession=", activeCallSessionIdRef.current,
+              "activeChat=", activeCallChatIdRef.current);
             return;
           }
         }
@@ -2473,6 +2494,12 @@ export default function ChatsPage() {
       console.log("[CALL] startDirectCall: prepareForCall resolved OK");
     } catch (err) {
       console.error("[CALL] startDirectCall: prepareForCall threw:", err instanceof Error ? err.name + ": " + err.message : err);
+      // Stop the ringtone that may have started via the callPhase="outgoing" useEffect
+      // while getUserMedia was pending. Without this the ringtone keeps playing after the
+      // call screen disappears. call:start has NOT been emitted yet so there is no server
+      // session to end — pass serverAlreadyNotified=true so cleanup() doesn't emit call:end.
+      stopCallRingtone();
+      void audioCallRef.current?.cleanup(true).catch(() => undefined);
       setCallPhase("idle");
       callPhaseRef.current = "idle";
       activeCallSessionIdRef.current = null;
