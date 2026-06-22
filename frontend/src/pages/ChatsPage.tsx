@@ -2081,6 +2081,31 @@ export default function ChatsPage() {
         console.log("[call:ringing] received", payload, "selfId=", currentUser?.id);
         const selfUserId = currentUser?.id ?? null;
         const isCaller = selfUserId !== null && payload.callerId === selfUserId;
+        // Guard against stale queued call:ringing events from previous sessions
+        // overwriting the active session state. Without this guard, a stale
+        // call:ringing (from a session where Android was callee while offline) can
+        // corrupt activeCallSessionIdRef.current, causing the subsequent stale
+        // call:timeout in the same drain batch to pass the session guard and
+        // kill the current call.
+        //
+        // Allow through if:
+        //   (a) No active call (idle) — always process incoming call:ringing
+        //   (b) isCaller=true AND activeCallSessionIdRef.current === "pending"
+        //       → This is our own outgoing call:ringing being confirmed; update session ID
+        //   (c) payload.createdAt matches the current activeCallSessionIdRef.current
+        //       → Re-emit of the current session on socket reconnect; safe to process
+        if (callPhaseRef.current !== "idle") {
+          const isPendingOutgoingConfirm =
+            isCaller && activeCallSessionIdRef.current === "pending";
+          const isCurrentSessionReemit =
+            payload.createdAt && payload.createdAt === activeCallSessionIdRef.current;
+          if (!isPendingOutgoingConfirm && !isCurrentSessionReemit) {
+            console.log("[call:ringing] ignoring stale event — active session mismatch",
+              "payload.createdAt=", payload.createdAt,
+              "activeSession=", activeCallSessionIdRef.current);
+            return;
+          }
+        }
         const incomingCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
         setCallType(incomingCallType);
         setActiveCallChatId(payload.chatId);
@@ -3068,6 +3093,7 @@ export default function ChatsPage() {
       createdAt,
       updatedAt: createdAt,
       deletedAt: null,
+      isEdited: false,
       forwardedFrom: null,
       statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
       reactions: [],
