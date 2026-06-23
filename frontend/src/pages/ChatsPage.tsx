@@ -1733,14 +1733,23 @@ export default function ChatsPage() {
     openChat(chats[0]);
   }, [chatId, chats, isLoading, isMobileViewport]);
 
+  const prevChatIdRef = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
     if (!selectedChat || messages.length === 0 || messageSearch.trim()) {
       return;
     }
-
     const panel = messagesPanelRef.current;
-    if (panel) {
+    if (!panel) return;
+    const chatChanged = prevChatIdRef.current !== selectedChat.id;
+    prevChatIdRef.current = selectedChat.id;
+    // Always jump to bottom when switching chats; also on new messages if already near bottom
+    if (chatChanged) {
       panel.scrollTop = panel.scrollHeight;
+    } else {
+      const distanceFromBottom = panel.scrollHeight - panel.scrollTop - panel.clientHeight;
+      if (distanceFromBottom < 120) {
+        panel.scrollTop = panel.scrollHeight;
+      }
     }
   }, [selectedChat?.id, messages.length, messageSearch]);
 
