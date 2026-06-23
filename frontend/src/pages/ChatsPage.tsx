@@ -3173,7 +3173,8 @@ export default function ChatsPage() {
         editInFlightRef.current = true;
         setIsSendingMessage(true);
         const updated = await editMessage(accessToken, editTarget.id, content);
-        applyMessagesForChat(editTarget.chatId, (current) => replaceMessage(current, updated));
+        const displayMessage = await decryptMessage(editTarget.chatId, updated, currentUser.id);
+        applyMessagesForChat(editTarget.chatId, (current) => replaceMessage(current, displayMessage));
         setEditTargetMessage(null);
         setComposer(savedDraft);
         draftBeforeEditRef.current = "";
