@@ -1850,6 +1850,7 @@ export default function ChatsPage() {
       return;
     }
 
+    const isNative = Capacitor.isNativePlatform();
     const transports: Array<"polling" | "websocket"> = preferPollingFirst(window.location.hostname)
       ? ["polling", "websocket"]
       : ["websocket", "polling"];
@@ -1859,6 +1860,11 @@ export default function ChatsPage() {
       auth: { token: accessToken },
       query: { token: accessToken },
       transports,
+      // On native Android/iOS, prevent the polling→WebSocket upgrade. The upgrade
+      // causes a brief disconnect window on every app launch — any call:start emitted
+      // during that window lands on an unstable server session, causing the first call
+      // to fail while subsequent calls (on the stable WebSocket) succeed.
+      upgrade: !isNative,
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity
@@ -3164,6 +3170,8 @@ export default function ChatsPage() {
         draftBeforeEditRef.current = "";
         resetComposerHeight();
       } catch (err) {
+        setEditTargetMessage(null);
+        draftBeforeEditRef.current = "";
         setError(err instanceof ApiError ? String(err.message) : "Could not edit message");
       } finally {
         editInFlightRef.current = false;
