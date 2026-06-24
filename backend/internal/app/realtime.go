@@ -730,6 +730,27 @@ func (s *Server) emitMessageDeleted(chatID string, messageID string) {
 	}
 }
 
+func (s *Server) emitMessagePinned(chatID string, pin pinnedMessagePublic) {
+	members, err := s.chatMembers(chatID)
+	if err != nil {
+		return
+	}
+	for _, member := range members {
+		_ = s.sockets.To("user:"+member.ID).Emit("message:pinned", pin)
+	}
+}
+
+func (s *Server) emitMessageUnpinned(chatID string, messageID string) {
+	members, err := s.chatMembers(chatID)
+	if err != nil {
+		return
+	}
+	payload := map[string]any{"chatId": chatID, "messageId": messageID}
+	for _, member := range members {
+		_ = s.sockets.To("user:"+member.ID).Emit("message:unpinned", payload)
+	}
+}
+
 func (s *Server) emitTyping(chatID string, user userPublic, isTyping bool) error {
 	chat, err := s.buildChatPublic(chatID, user)
 	if err != nil {
