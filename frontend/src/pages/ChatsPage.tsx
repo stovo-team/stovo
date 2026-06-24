@@ -51,6 +51,7 @@ import { User } from "../api/auth";
 import {
   Chat,
   Message,
+  PinnedMessage,
   addMessageReaction,
   createChannelChat,
   createDirectChat,
@@ -61,10 +62,14 @@ import {
   getChat,
   getChats,
   getMessages,
+  getPinnedMessages,
   markMessageRead,
+  pinMessage,
   sendMessage,
   removeMessageReaction,
+  unpinMessage,
   updateChat,
+  updateChatPinPermission,
   updateChatPreferences
 } from "../api/chats";
 import { Family } from "../api/family";
@@ -1068,6 +1073,9 @@ export default function ChatsPage() {
   const [replyTarget, setReplyTarget] = useState<Message | null>(null);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
   const [editTargetMessage, setEditTargetMessage] = useState<Message | null>(null);
+  const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
+  const [pinIndex, setPinIndex] = useState<number>(0);
+  const [pinnedBannerDismissed, setPinnedBannerDismissed] = useState<boolean>(false);
   const draftBeforeEditRef = useRef<string>("");
   const editInFlightRef = useRef(false);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
@@ -1562,6 +1570,9 @@ export default function ChatsPage() {
       if (!requestedChatId) {
         setSelectedChat(null);
         setMessages([]);
+        setPinnedMessages([]);
+        setPinIndex(0);
+        setPinnedBannerDismissed(false);
         setIsChatLoading(false);
         return;
       }
@@ -1581,10 +1592,14 @@ export default function ChatsPage() {
       }
       setIsChatLoading(!cachedMessages);
 
+      setPinIndex(0);
+      setPinnedBannerDismissed(false);
+
       try {
-        const [chat, messageResult] = await Promise.all([
+        const [chat, messageResult, pinsResult] = await Promise.all([
           authRequest<Chat>(`/api/chats/${requestedChatId}`),
-          authRequest<Message[]>(`/api/chats/${requestedChatId}/messages?limit=50`)
+          authRequest<Message[]>(`/api/chats/${requestedChatId}/messages?limit=50`),
+          authRequest<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`).catch(() => [] as PinnedMessage[])
         ]);
         if (!isCurrentRequest()) {
           return;
@@ -1595,6 +1610,7 @@ export default function ChatsPage() {
         }
         setSelectedChat(chat);
         applyMessagesForChat(requestedChatId, decryptedMessages);
+        setPinnedMessages(pinsResult);
 
         const latestMessage = decryptedMessages.at(-1);
         if (latestMessage) {
@@ -2048,6 +2064,29 @@ export default function ChatsPage() {
       });
     });
 
+    socket.on("message:pinned", (pin: PinnedMessage) => {
+      if (pin.chatId !== activeChatIdRef.current) {
+        return;
+      }
+      setPinnedMessages((current) => {
+        const withoutDup = current.filter((p) => p.messageId !== pin.messageId);
+        return [pin, ...withoutDup];
+      });
+      setPinIndex(0);
+      setPinnedBannerDismissed(false);
+    });
+
+    socket.on("message:unpinned", (payload: { chatId: string; messageId: string }) => {
+      if (payload.chatId !== activeChatIdRef.current) {
+        return;
+      }
+      setPinnedMessages((current) => {
+        const updated = current.filter((p) => p.messageId !== payload.messageId);
+        setPinIndex((idx) => (idx >= updated.length ? Math.max(0, updated.length - 1) : idx));
+        return updated;
+      });
+    });
+
     socket.on(
       "message:delivered",
       (payload: { messageId: string; chatId: string; userIds?: string[] }) => {
@@ -2326,6 +2365,8 @@ export default function ChatsPage() {
       socket.off("connect_error", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
       socket.off("sync:needed", syncAfterSocketResume);
+      socket.off("message:pinned");
+      socket.off("message:unpinned");
       stopCallRingtone();
       // Do not emit call:end here — socket teardown must not kill an active call.
       void audioController.cleanup(true).catch(() => undefined);
@@ -2767,6 +2808,58 @@ export default function ChatsPage() {
   function applyChatUpdate(chat: Chat) {
     setSelectedChat((current) => (current?.id === chat.id ? chat : current));
     setChats((current) => current.map((item) => (item.id === chat.id ? chat : item)));
+  }
+
+  async function handlePinMessage(message: Message) {
+    if (!accessToken || !selectedChat) {
+      return;
+    }
+    try {
+      const pin = await pinMessage(accessToken, selectedChat.id, message.id);
+      setPinnedMessages((current) => {
+        const withoutDup = current.filter((p) => p.messageId !== pin.messageId);
+        return [pin, ...withoutDup];
+      });
+      setPinIndex(0);
+      setPinnedBannerDismissed(false);
+      pushToast({ message: "Message pinned" });
+      setMessageContextMenu(null);
+    } catch {
+      pushToast({ message: "Could not pin message. Try again." });
+    }
+  }
+
+  async function handleUnpinMessage(message: Message) {
+    if (!accessToken || !selectedChat) {
+      return;
+    }
+    try {
+      await unpinMessage(accessToken, selectedChat.id, message.id);
+      setPinnedMessages((current) => {
+        const updated = current.filter((p) => p.messageId !== message.id);
+        if (pinIndex >= updated.length) {
+          setPinIndex(Math.max(0, updated.length - 1));
+        }
+        return updated;
+      });
+      pushToast({ message: "Message unpinned" });
+      setMessageContextMenu(null);
+    } catch {
+      pushToast({ message: "Could not pin message. Try again." });
+    }
+  }
+
+  async function handlePinPermissionChange(permission: "everyone" | "admins_only") {
+    if (!accessToken || !selectedChat) {
+      return;
+    }
+    try {
+      const chat = await updateChatPinPermission(accessToken, selectedChat.id, permission);
+      applyChatUpdate(chat);
+      pushToast({ message: "Pin permission updated" });
+    } catch (err) {
+      pushToast({ message: err instanceof ApiError ? String(err.message) : "Could not update pin permission" });
+    }
   }
 
   async function handleChatPreferenceChange(
@@ -3692,6 +3785,46 @@ export default function ChatsPage() {
                     </button>
                   </div>
                 )}
+                {pinnedMessages.length > 0 && !pinnedBannerDismissed && (
+                  <div className="pinned-banner" role="status">
+                    <button
+                      type="button"
+                      className="pinned-banner-click-area"
+                      aria-label="Go to pinned message"
+                      onClick={() => {
+                        const currentPin = pinnedMessages[pinIndex];
+                        if (currentPin) {
+                          const el = document.getElementById(currentPin.messageId);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                            el.classList.add("message-pin-flash");
+                            window.setTimeout(() => {
+                              el.classList.remove("message-pin-flash");
+                            }, 300);
+                          }
+                        }
+                        setPinIndex((current) => (current + 1) % pinnedMessages.length);
+                      }}
+                    >
+                      <span className="pinned-banner-eyebrow" aria-live="polite">
+                        {pinnedMessages.length === 1
+                          ? "Pinned message"
+                          : `Pinned message · ${pinIndex + 1} of ${pinnedMessages.length}`}
+                      </span>
+                      <span className="pinned-banner-preview">
+                        {pinnedMessages[pinIndex]?.message.content ?? ""}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="pinned-banner-dismiss"
+                      aria-label="Dismiss pinned message banner"
+                      onClick={() => setPinnedBannerDismissed(true)}
+                    >
+                      <X aria-hidden="true" size={14} />
+                    </button>
+                  </div>
+                )}
                 <div
                   className={messages.length === 0 ? "phase-empty-state" : "messages-panel"}
                   aria-busy={isChatLoading}
@@ -3957,6 +4090,29 @@ export default function ChatsPage() {
                       <span className="ms-icon ms-icon--20" aria-hidden={true}>content_copy</span>
                       Copy
                     </button>
+                    {selectedChat &&
+                      (selectedChat.pinPermission !== "admins_only" ||
+                        (currentUser &&
+                          (selectedChat.members.find((m) => m.id === currentUser.id)?.role === "owner" ||
+                            selectedChat.members.find((m) => m.id === currentUser.id)?.role === "admin"))) && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={messageContextMenu.message.id.startsWith("pending:")}
+                          onClick={() => {
+                            if (pinnedMessages.some((p) => p.messageId === messageContextMenu.message.id)) {
+                              void handleUnpinMessage(messageContextMenu.message);
+                            } else {
+                              void handlePinMessage(messageContextMenu.message);
+                            }
+                          }}
+                        >
+                          <Pin aria-hidden="true" size={16} />
+                          {pinnedMessages.some((p) => p.messageId === messageContextMenu.message.id)
+                            ? "Unpin message"
+                            : "Pin message"}
+                        </button>
+                      )}
                     <button
                       type="button"
                       role="menuitem"
@@ -4240,6 +4396,7 @@ export default function ChatsPage() {
               onFocusComposer={focusComposer}
               onMediaVisibilityChange={handleMediaVisibilityChange}
               onOpenImage={(file, previewUrl) => setFullViewImage({ file, previewUrl })}
+              onPinPermissionChange={handlePinPermissionChange}
               onPreferenceChange={handleChatPreferenceChange}
               onTitleDraftChange={setChatTitleDraft}
             />
@@ -5437,6 +5594,7 @@ function ChatInfoPanel({
   onFocusComposer,
   onMediaVisibilityChange,
   onOpenImage,
+  onPinPermissionChange,
   onPreferenceChange,
   onTitleDraftChange,
 }: {
@@ -5458,6 +5616,7 @@ function ChatInfoPanel({
   onFocusComposer: () => void;
   onMediaVisibilityChange: (enabled: boolean) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string) => void;
+  onPinPermissionChange: (permission: "everyone" | "admins_only") => void;
   onPreferenceChange: (
     payload: { isMuted?: boolean; isPinned?: boolean; isFavorite?: boolean },
     notice: string
@@ -5636,6 +5795,39 @@ function ChatInfoPanel({
                   </span>
                 </label>
               )}
+            </div>
+          </div>
+        )}
+
+        {chat.type !== "direct" && canManageChat && (
+          <div className="chat-info-section">
+            <div className="chat-info-island">
+              <div className="chat-info-row">
+                <div className="chat-info-row-copy">
+                  <strong>Permissions</strong>
+                  <small>Who can pin messages</small>
+                </div>
+              </div>
+              <label className="chat-info-row chat-info-row--radio">
+                <input
+                  type="radio"
+                  name="pinPermission"
+                  value="everyone"
+                  checked={(chat.pinPermission ?? "everyone") === "everyone"}
+                  onChange={() => void onPinPermissionChange("everyone")}
+                />
+                <span>Everyone</span>
+              </label>
+              <label className="chat-info-row chat-info-row--radio">
+                <input
+                  type="radio"
+                  name="pinPermission"
+                  value="admins_only"
+                  checked={(chat.pinPermission ?? "everyone") === "admins_only"}
+                  onChange={() => void onPinPermissionChange("admins_only")}
+                />
+                <span>Admins only</span>
+              </label>
             </div>
           </div>
         )}
