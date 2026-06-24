@@ -271,6 +271,25 @@ func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user u
 		}
 	}
 
+	if payload.PinPermission != nil {
+		if !s.canManageChat(chat, user) {
+			s.detail(w, http.StatusForbidden, "Permission denied")
+			return
+		}
+		perm := *payload.PinPermission
+		if perm != "everyone" && perm != "admins_only" {
+			s.detail(w, http.StatusUnprocessableEntity, "pinPermission must be 'everyone' or 'admins_only'")
+			return
+		}
+		if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
+			_, err := s.txExec(tx, `UPDATE chats SET pin_permission = ?, updated_at = ? WHERE id = ?`, perm, nowString(), chatID)
+			return err
+		}); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not update chat")
+			return
+		}
+	}
+
 	updated, _ := s.buildChatPublic(chatID, user)
 	s.json(w, http.StatusOK, updated)
 }
@@ -488,7 +507,7 @@ func (s *Server) listChats(user userPublic) ([]chatPublic, error) {
 
 func (s *Server) buildChatPublic(chatID string, user userPublic) (chatPublic, error) {
 	row := s.queryRow(`
-		SELECT c.id, c.family_id, c.type, c.title, c.created_by, c.chat_photo_file_id, c.media_visibility, c.comments_enabled, c.encryption_protocol, c.created_at, c.updated_at,
+		SELECT c.id, c.family_id, c.type, c.title, c.created_by, c.chat_photo_file_id, c.media_visibility, c.comments_enabled, c.encryption_protocol, c.pin_permission, c.created_at, c.updated_at,
 		       cp.is_muted, cp.is_pinned, cp.is_favorite
 		FROM chats c
 		JOIN chat_members cm ON cm.chat_id = c.id AND cm.user_id = ?
@@ -501,6 +520,7 @@ func (s *Server) buildChatPublic(chatID string, user userPublic) (chatPublic, er
 	var createdAt, updatedAt string
 	var commentsEnabled sql.NullBool
 	var isMuted, isPinned, isFavorite sql.NullBool
+	var pinPermission sql.NullString
 	if err := row.Scan(
 		&chat.ID,
 		&chat.FamilyID,
@@ -511,6 +531,7 @@ func (s *Server) buildChatPublic(chatID string, user userPublic) (chatPublic, er
 		&chat.MediaVisibility,
 		&commentsEnabled,
 		&chat.EncryptionProtocol,
+		&pinPermission,
 		&createdAt,
 		&updatedAt,
 		&isMuted,
@@ -538,6 +559,11 @@ func (s *Server) buildChatPublic(chatID string, user userPublic) (chatPublic, er
 	chat.IsMuted = boolFromNull(isMuted)
 	chat.IsPinned = boolFromNull(isPinned)
 	chat.IsFavorite = boolFromNull(isFavorite)
+	if pinPermission.Valid && pinPermission.String != "" {
+		chat.PinPermission = pinPermission.String
+	} else {
+		chat.PinPermission = "everyone"
+	}
 
 	members, err := s.chatMembers(chat.ID)
 	if err != nil {
