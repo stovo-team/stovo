@@ -2822,10 +2822,10 @@ export default function ChatsPage() {
       });
       setPinIndex(0);
       setPinnedBannerDismissed(false);
-      pushToast({ message: "Message pinned" });
+      pushToast({ chatId: selectedChat.id, title: "", body: "Message pinned" });
       setMessageContextMenu(null);
     } catch {
-      pushToast({ message: "Could not pin message. Try again." });
+      pushToast({ chatId: selectedChat.id, title: "", body: "Could not pin message. Try again." });
     }
   }
 
@@ -2842,10 +2842,10 @@ export default function ChatsPage() {
         }
         return updated;
       });
-      pushToast({ message: "Message unpinned" });
+      pushToast({ chatId: selectedChat.id, title: "", body: "Message unpinned" });
       setMessageContextMenu(null);
     } catch {
-      pushToast({ message: "Could not pin message. Try again." });
+      pushToast({ chatId: selectedChat.id, title: "", body: "Could not unpin message. Try again." });
     }
   }
 
@@ -2856,9 +2856,9 @@ export default function ChatsPage() {
     try {
       const chat = await updateChatPinPermission(accessToken, selectedChat.id, permission);
       applyChatUpdate(chat);
-      pushToast({ message: "Pin permission updated" });
+      pushToast({ chatId: selectedChat.id, title: "", body: "Pin permission updated" });
     } catch (err) {
-      pushToast({ message: err instanceof ApiError ? String(err.message) : "Could not update pin permission" });
+      pushToast({ chatId: selectedChat.id, title: "", body: err instanceof ApiError ? String(err.message) : "Could not update pin permission" });
     }
   }
 
