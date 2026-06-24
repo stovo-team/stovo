@@ -171,6 +171,7 @@ type chatPublic struct {
 	IsMuted                         bool               `json:"isMuted"`
 	IsPinned                        bool               `json:"isPinned"`
 	IsFavorite                      bool               `json:"isFavorite"`
+	PinPermission                   string             `json:"pinPermission"`
 }
 
 type createDirectChatRequest struct {
@@ -192,6 +193,15 @@ type updateChatRequest struct {
 	MediaVisibility *string `json:"mediaVisibility"`
 	ChatPhotoFileID *string `json:"chatPhotoFileId"`
 	CommentsEnabled *bool   `json:"commentsEnabled"`
+	PinPermission   *string `json:"pinPermission"`
+}
+
+type pinnedMessagePublic struct {
+	ChatID    string        `json:"chatId"`
+	MessageID string        `json:"messageId"`
+	PinnedBy  string        `json:"pinnedBy"`
+	PinnedAt  time.Time     `json:"pinnedAt"`
+	Message   messagePublic `json:"message"`
 }
 
 type updateChatPreferencesRequest struct {
