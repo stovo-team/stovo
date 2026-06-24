@@ -2837,9 +2837,7 @@ export default function ChatsPage() {
       await unpinMessage(accessToken, selectedChat.id, message.id);
       setPinnedMessages((current) => {
         const updated = current.filter((p) => p.messageId !== message.id);
-        if (pinIndex >= updated.length) {
-          setPinIndex(Math.max(0, updated.length - 1));
-        }
+        setPinIndex((idx) => (idx >= updated.length ? Math.max(0, updated.length - 1) : idx));
         return updated;
       });
       pushToast({ chatId: selectedChat.id, title: "", body: "Message unpinned" });
@@ -4093,8 +4091,7 @@ export default function ChatsPage() {
                     {selectedChat &&
                       (selectedChat.pinPermission !== "admins_only" ||
                         (currentUser &&
-                          (selectedChat.members.find((m) => m.id === currentUser.id)?.role === "owner" ||
-                            selectedChat.members.find((m) => m.id === currentUser.id)?.role === "admin"))) && (
+                          (currentUser.role === "owner" || currentUser.role === "admin"))) && (
                         <button
                           type="button"
                           role="menuitem"
