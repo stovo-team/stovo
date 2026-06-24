@@ -6804,3 +6804,80 @@ h2 {
   font-weight: 600;
   padding: 8px 16px;
 }
+
+/* Pinned message banner */
+
+.pinned-banner {
+  align-items: center;
+  background: var(--background-secondary);
+  border-left: 3px solid var(--accent-primary);
+  border-radius: var(--radius-control);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  max-height: 56px;
+  min-height: 40px;
+  overflow: hidden;
+  padding: 6px 8px;
+  transition: opacity 200ms ease-out, max-height 200ms ease-out;
+}
+
+.pinned-banner-click-area {
+  align-items: flex-start;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.pinned-banner-eyebrow {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.pinned-banner-preview {
+  color: var(--text-primary);
+  display: block;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.pinned-banner-dismiss {
+  border-radius: 50%;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  width: 28px;
+}
+
+@keyframes message-pin-flash {
+  0% { background: var(--accent-soft); }
+  60% { background: var(--accent-soft); }
+  100% { background: transparent; }
+}
+
+.message-pin-flash {
+  animation: message-pin-flash 300ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pinned-banner {
+    transition: none;
+  }
+
+  .message-pin-flash {
+    animation: none;
+  }
+}
