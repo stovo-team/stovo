@@ -38,6 +38,7 @@ export interface Chat {
   isMuted: boolean;
   isPinned: boolean;
   isFavorite: boolean;
+  pinPermission?: "everyone" | "admins_only";
 }
 
 export type MessageEncryptionProtocol = "end_to_end" | "server_at_rest" | "legacy_plaintext";
@@ -251,4 +252,45 @@ export function deleteMessage(accessToken: string, messageId: string, scope: "ev
       accessToken
     }
   );
+}
+
+export interface PinnedMessage {
+  chatId: string;
+  messageId: string;
+  pinnedBy: string;
+  pinnedAt: string;
+  message: Message;
+}
+
+export function getPinnedMessages(accessToken: string, chatId: string) {
+  return apiRequest<PinnedMessage[]>(`/api/chats/${chatId}/pins`, { accessToken });
+}
+
+export function pinMessage(accessToken: string, chatId: string, messageId: string) {
+  return apiRequest<PinnedMessage>(`/api/chats/${chatId}/pins/${messageId}`, {
+    method: "POST",
+    accessToken
+  });
+}
+
+export function unpinMessage(accessToken: string, chatId: string, messageId: string) {
+  return apiRequest<{ chatId: string; messageId: string }>(
+    `/api/chats/${chatId}/pins/${messageId}`,
+    {
+      method: "DELETE",
+      accessToken
+    }
+  );
+}
+
+export function updateChatPinPermission(
+  accessToken: string,
+  chatId: string,
+  pinPermission: "everyone" | "admins_only"
+) {
+  return apiRequest<Chat>(`/api/chats/${chatId}`, {
+    method: "PATCH",
+    accessToken,
+    body: { pinPermission }
+  });
 }
