@@ -212,6 +212,10 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/chats/{chatId}/messages", s.authenticated(s.handleGetMessages))
 	router.Post("/api/chats/{chatId}/messages", s.authenticated(s.handleSendMessage))
 
+	router.Get("/api/chats/{chatId}/pins", s.authenticated(s.handleGetPins))
+	router.Post("/api/chats/{chatId}/pins/{messageId}", s.authenticated(s.handlePinMessage))
+	router.Delete("/api/chats/{chatId}/pins/{messageId}", s.authenticated(s.handleUnpinMessage))
+
 	router.Patch("/api/messages/{messageId}", s.authenticated(s.handleEditMessage))
 	router.Delete("/api/messages/{messageId}", s.authenticated(s.handleDeleteMessage))
 	router.Patch("/api/messages/{messageId}/read", s.authenticated(s.handleMarkMessageRead))
@@ -535,6 +539,17 @@ func (s *Server) initSchema() error {
 			FOREIGN KEY (message_id) REFERENCES messages(id),
 			FOREIGN KEY (user_id) REFERENCES users(id)
 		);`,
+		`CREATE TABLE IF NOT EXISTS pinned_messages (
+			chat_id    TEXT NOT NULL,
+			message_id TEXT NOT NULL,
+			pinned_by  TEXT NOT NULL,
+			pinned_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			PRIMARY KEY (chat_id, message_id),
+			FOREIGN KEY (chat_id)    REFERENCES chats(id),
+			FOREIGN KEY (message_id) REFERENCES messages(id),
+			FOREIGN KEY (pinned_by)  REFERENCES users(id)
+		);`,
+		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS pin_permission TEXT NOT NULL DEFAULT 'everyone';`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.Exec(statement); err != nil {
