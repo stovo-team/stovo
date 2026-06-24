@@ -21,30 +21,57 @@ func (s *Server) handlePinMessage(w http.ResponseWriter, r *http.Request, user u
 		return
 	}
 
-	// Verify calling user is a chat member (buildChatPublic returns error if not a member).
-	if _, err := s.buildChatPublic(chatID, user); err != nil {
+	// Verify calling user is a chat member and retrieve chat (including PinPermission).
+	chat, err := s.buildChatPublic(chatID, user)
+	if err != nil {
 		s.detail(w, http.StatusForbidden, "Chat not found or access denied")
 		return
 	}
 
-	// Check pin permission.
-	var pinPermission string
-	permRow := s.queryRow(`SELECT pin_permission FROM chats WHERE id = ?`, chatID)
-	if err := permRow.Scan(&pinPermission); err != nil {
-		pinPermission = "everyone"
-	}
-	if pinPermission == "admins_only" && !isAdmin(user.Role) {
+	// Check pin permission using the value already loaded by buildChatPublic.
+	if chat.PinPermission == "admins_only" && !isAdmin(user.Role) {
 		s.detail(w, http.StatusForbidden, "Only admins can pin messages in this chat")
 		return
 	}
 
+	// Capture timestamp once so the INSERT and response struct are in perfect agreement.
+	now := time.Now().UTC()
+	nowStr := now.Format(time.RFC3339Nano)
+
 	// Insert pin record (idempotent via ON CONFLICT DO NOTHING).
-	if _, err := s.exec(`
+	result, err := s.exec(`
 		INSERT INTO pinned_messages (chat_id, message_id, pinned_by, pinned_at)
 		VALUES (?, ?, ?, ?)
 		ON CONFLICT (chat_id, message_id) DO NOTHING
-	`, chatID, messageID, user.ID, nowString()); err != nil {
+	`, chatID, messageID, user.ID, nowStr)
+	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Failed to pin message")
+		return
+	}
+
+	// If the pin already existed (ON CONFLICT DO NOTHING was a no-op), return 200 with the
+	// stored pin data so the client is not misled into thinking a new resource was created.
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		var existingPinnedBy, existingPinnedAtStr string
+		existingRow := s.queryRow(`SELECT pinned_by, pinned_at FROM pinned_messages WHERE chat_id = ? AND message_id = ?`, chatID, messageID)
+		if err := existingRow.Scan(&existingPinnedBy, &existingPinnedAtStr); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Failed to load existing pin")
+			return
+		}
+		message, err := s.buildMessage(messageID, user.ID)
+		if err != nil {
+			s.detail(w, http.StatusInternalServerError, "Failed to load pinned message")
+			return
+		}
+		existingPin := pinnedMessagePublic{
+			ChatID:    chatID,
+			MessageID: messageID,
+			PinnedBy:  existingPinnedBy,
+			PinnedAt:  parseTime(existingPinnedAtStr),
+			Message:   message,
+		}
+		s.json(w, http.StatusOK, existingPin)
 		return
 	}
 
@@ -59,7 +86,7 @@ func (s *Server) handlePinMessage(w http.ResponseWriter, r *http.Request, user u
 		ChatID:    chatID,
 		MessageID: messageID,
 		PinnedBy:  user.ID,
-		PinnedAt:  time.Now().UTC(),
+		PinnedAt:  now, // same instant as the INSERT
 		Message:   message,
 	}
 
@@ -70,6 +97,12 @@ func (s *Server) handlePinMessage(w http.ResponseWriter, r *http.Request, user u
 func (s *Server) handleUnpinMessage(w http.ResponseWriter, r *http.Request, user userPublic) {
 	chatID := chatIDFromURL(r)
 	messageID := messageIDFromURL(r)
+
+	// Verify calling user is a chat member — same guard used in handlePinMessage.
+	if _, err := s.buildChatPublic(chatID, user); err != nil {
+		s.detail(w, http.StatusForbidden, "Chat not found or access denied")
+		return
+	}
 
 	// Verify pin exists and fetch the pinner.
 	var pinnedBy string
@@ -120,10 +153,16 @@ func (s *Server) handleGetPins(w http.ResponseWriter, r *http.Request, user user
 	for rows.Next() {
 		var msgID, pinnedBy, pinnedAtStr string
 		if err := rows.Scan(&msgID, &pinnedBy, &pinnedAtStr); err != nil {
-			continue
+			// Scan errors on valid DB rows are unexpected; treat as fatal to avoid
+			// returning a corrupt or truncated list with no indication of failure.
+			s.detail(w, http.StatusInternalServerError, "Failed to read pins")
+			return
 		}
 		message, err := s.buildMessage(msgID, user.ID)
 		if err != nil {
+			// Message may be deleted or unavailable; log and skip rather than failing
+			// the whole response.
+			s.logger.Warnf("pins", "skipping pin for deleted/missing message=%s err=%v", msgID, err)
 			continue
 		}
 		pinnedAt := parseTime(pinnedAtStr)
