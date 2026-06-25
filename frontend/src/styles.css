@@ -6819,7 +6819,9 @@ h2 {
   min-height: 40px;
   overflow: hidden;
   padding: 6px 8px;
+  position: relative;
   transition: opacity 200ms ease-out, max-height 200ms ease-out;
+  z-index: 3;
 }
 
 .pinned-banner-click-area {
