@@ -3791,10 +3791,14 @@ export default function ChatsPage() {
                       aria-label="Go to pinned message"
                       onClick={() => {
                         const currentPin = pinnedMessages[pinIndex];
-                        if (currentPin) {
+                        const panel = messagesPanelRef.current;
+                        if (currentPin && panel) {
                           const el = document.getElementById(currentPin.messageId);
                           if (el) {
-                            el.scrollIntoView({ behavior: "smooth", block: "center" });
+                            const panelRect = panel.getBoundingClientRect();
+                            const elRect = el.getBoundingClientRect();
+                            const targetTop = panel.scrollTop + elRect.top - panelRect.top - panel.clientHeight / 2 + el.clientHeight / 2;
+                            panel.scrollTo({ top: targetTop, behavior: "smooth" });
                             el.classList.add("message-pin-flash");
                             window.setTimeout(() => {
                               el.classList.remove("message-pin-flash");
