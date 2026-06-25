@@ -3898,6 +3898,7 @@ export default function ChatsPage() {
                         return (
                           <article
                             className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}`}
+                            id={message.id}
                             key={message.id}
                             onContextMenu={(event) => openMessageContextMenu(event, message)}
                           >
