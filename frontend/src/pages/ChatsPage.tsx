@@ -241,6 +241,12 @@ function chatTypeLabel(chat: Chat) {
   return "Direct chat";
 }
 
+function sortPinsByPosition(pins: PinnedMessage[]): PinnedMessage[] {
+  return [...pins].sort(
+    (a, b) => new Date(a.message.createdAt).getTime() - new Date(b.message.createdAt).getTime()
+  );
+}
+
 function chatAvatarTypeClass(chat: Chat) {
   if (chat.type === "family") {
     return "family";
@@ -1161,6 +1167,7 @@ export default function ChatsPage() {
   const hasLoadedOverviewRef = useRef(false);
   const typingStopTimerRef = useRef<number | null>(null);
   const messagesPanelRef = useRef<HTMLDivElement | null>(null);
+  const pinClickScrollingRef = useRef(false);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const galleryAttachmentInputRef = useRef<HTMLInputElement | null>(null);
@@ -1610,7 +1617,9 @@ export default function ChatsPage() {
         }
         setSelectedChat(chat);
         applyMessagesForChat(requestedChatId, decryptedMessages);
-        setPinnedMessages(pinsResult);
+        const sortedPins = sortPinsByPosition(pinsResult);
+        setPinnedMessages(sortedPins);
+        setPinIndex(Math.max(0, sortedPins.length - 1));
 
         const latestMessage = decryptedMessages.at(-1);
         if (latestMessage) {
@@ -1769,6 +1778,37 @@ export default function ChatsPage() {
     }
   }, [selectedChat?.id, messages.length, messageSearch]);
 
+  // Update active pin index based on scroll position (TG-style: active = nearest pin above viewport)
+  useEffect(() => {
+    const panel = messagesPanelRef.current;
+    if (!panel || pinnedMessages.length <= 1) return;
+    let rafId: number | undefined;
+    function handlePinScroll() {
+      if (pinClickScrollingRef.current) return;
+      if (rafId !== undefined) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const panelRect = panel!.getBoundingClientRect();
+        // Find the highest-index (newest/lowest in chat) pin whose element is still at or below the viewport top
+        // That's the next pin you'll encounter scrolling up
+        let newIndex = pinnedMessages.length - 1;
+        for (let i = pinnedMessages.length - 1; i >= 0; i--) {
+          const el = document.getElementById(pinnedMessages[i].messageId);
+          if (!el) continue;
+          if (el.getBoundingClientRect().bottom >= panelRect.top) {
+            newIndex = i;
+            break;
+          }
+        }
+        setPinIndex(newIndex);
+      });
+    }
+    panel.addEventListener("scroll", handlePinScroll, { passive: true });
+    return () => {
+      panel.removeEventListener("scroll", handlePinScroll);
+      if (rafId !== undefined) cancelAnimationFrame(rafId);
+    };
+  }, [pinnedMessages]);
+
   useEffect(() => {
     function syncWhenVisible() {
       if (document.visibilityState === "visible") {
@@ -1821,7 +1861,7 @@ export default function ChatsPage() {
       if (!chatMenuRef.current?.contains(event.target as Node)) {
         setIsChatMenuOpen(false);
       }
-      if (!emojiPickerRef.current?.contains(event.target as Node) && !Capacitor.isNativePlatform()) {
+      if (!emojiPickerRef.current?.contains(event.target as Node)) {
         setIsEmojiPickerOpen(false);
       }
       setMessageContextMenu(null);
@@ -2070,9 +2110,10 @@ export default function ChatsPage() {
       }
       setPinnedMessages((current) => {
         const withoutDup = current.filter((p) => p.messageId !== pin.messageId);
-        return [pin, ...withoutDup];
+        const sorted = sortPinsByPosition([...withoutDup, pin]);
+        setPinIndex(sorted.length - 1);
+        return sorted;
       });
-      setPinIndex(0);
       setPinnedBannerDismissed(false);
     });
 
@@ -2818,9 +2859,10 @@ export default function ChatsPage() {
       const pin = await pinMessage(accessToken, selectedChat.id, message.id);
       setPinnedMessages((current) => {
         const withoutDup = current.filter((p) => p.messageId !== pin.messageId);
-        return [pin, ...withoutDup];
+        const sorted = sortPinsByPosition([...withoutDup, pin]);
+        setPinIndex(sorted.length - 1);
+        return sorted;
       });
-      setPinIndex(0);
       setPinnedBannerDismissed(false);
       pushToast({ chatId: selectedChat.id, title: "", body: "Message pinned" });
       setMessageContextMenu(null);
@@ -3795,23 +3837,33 @@ export default function ChatsPage() {
                         if (currentPin && panel) {
                           const el = document.getElementById(currentPin.messageId);
                           if (el) {
+                            pinClickScrollingRef.current = true;
                             const panelRect = panel.getBoundingClientRect();
                             const elRect = el.getBoundingClientRect();
-                            const targetTop = panel.scrollTop + elRect.top - panelRect.top - panel.clientHeight / 2 + el.clientHeight / 2;
+                            const targetTop =
+                              panel.scrollTop +
+                              elRect.top -
+                              panelRect.top -
+                              panel.clientHeight / 2 +
+                              el.clientHeight / 2;
                             panel.scrollTo({ top: targetTop, behavior: "smooth" });
                             el.classList.add("message-pin-flash");
                             window.setTimeout(() => {
                               el.classList.remove("message-pin-flash");
                             }, 300);
+                            window.setTimeout(() => {
+                              pinClickScrollingRef.current = false;
+                            }, 900);
                           }
                         }
-                        setPinIndex((current) => (current + 1) % pinnedMessages.length);
+                        // Cycle toward older (lower index), wrapping from 0 back to newest
+                        setPinIndex((current) => (current - 1 + pinnedMessages.length) % pinnedMessages.length);
                       }}
                     >
                       <span className="pinned-banner-eyebrow" aria-live="polite">
                         {pinnedMessages.length === 1
                           ? "Pinned message"
-                          : `Pinned message · ${pinIndex + 1} of ${pinnedMessages.length}`}
+                          : `Pinned message · ${pinnedMessages.length - pinIndex} of ${pinnedMessages.length}`}
                       </span>
                       <span className="pinned-banner-preview">
                         {pinnedMessages[pinIndex]?.message.content ?? ""}
@@ -4262,6 +4314,13 @@ export default function ChatsPage() {
                           sentiment_satisfied
                         </span>
                       </button>
+                      {isEmojiPickerOpen && (
+                        <div
+                          className="emoji-picker-backdrop"
+                          aria-hidden={true}
+                          onClick={() => setIsEmojiPickerOpen(false)}
+                        />
+                      )}
                       {isEmojiPickerOpen && (
                         <div
                           className={`emoji-picker${Capacitor.isNativePlatform() ? " emoji-picker--bottom-sheet" : ""}`}
