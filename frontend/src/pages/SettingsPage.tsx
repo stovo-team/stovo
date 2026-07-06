@@ -421,6 +421,7 @@ export default function SettingsPage() {
 
   const canManageFamily = currentUser?.role === "owner" || currentUser?.role === "admin";
   const isAppearanceEditor = activeSettingsItem === "Appearance";
+  const hasDetailSurface = Boolean(activeSettingsItem);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -510,7 +511,10 @@ export default function SettingsPage() {
   return (
     <main className="app-shell app-frame settings-page">
       <AppNav />
-      <section className="page-surface settings-layout" aria-busy={isLoading}>
+      <section
+        className={`page-surface settings-layout${hasDetailSurface ? " settings-layout--detail-open" : ""}`}
+        aria-busy={isLoading}
+      >
         {isAppearanceEditor ? (
           <AppearanceEditor
             displayName={profileForm.displayName}
@@ -605,7 +609,7 @@ export default function SettingsPage() {
                       return (
                         <button
                           type="button"
-                          className="settings-row"
+                          className={`settings-row${activeSettingsItem === item.label ? " is-active" : ""}`}
                           key={item.label}
                           aria-expanded={activeSettingsItem === item.label}
                           onClick={() => setActiveSettingsItem(item.label)}
@@ -627,7 +631,11 @@ export default function SettingsPage() {
             </div>
 
             {activeSettingsItem && activeSettingsItem !== "Appearance" && (
-              <section className="settings-detail-panel" role="region" aria-label={activeSettingsItem}>
+              <section
+                className="settings-detail-panel"
+                role="region"
+                aria-label={activeSettingsItem}
+              >
                 <div className="section-title-row">
                   <h2>{activeSettingsItem}</h2>
                   <button

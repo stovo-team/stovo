@@ -58,6 +58,13 @@
   --warning: #f59e0b;
   --shadow: 0 18px 44px rgba(15, 23, 42, 0.1);
   --shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.12);
+  --motion-route-duration: 220ms;
+  --motion-route-duration-fast: 160ms;
+  --motion-route-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-route-distance: 24px;
+  --motion-route-distance-tight: 12px;
+  --motion-fade-duration: 140ms;
+  --motion-surface-duration: 200ms;
   --radius-control: 8px;
   --radius-card: 8px;
   --radius-bubble: 18px;
@@ -110,6 +117,20 @@
   text-rendering: optimizeLegibility;
 }
 
+@supports (view-transition-name: none) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--motion-route-duration);
+    animation-timing-function: var(--motion-route-ease);
+  }
+
+  .chat-avatar,
+  .chat-list-topline strong,
+  .chat-title-group strong {
+    contain: paint;
+  }
+}
+
 :root[data-accent="green"] {
   --accent-primary-light: #15946f;
   --accent-primary-hover-light: #0f7659;
@@ -154,6 +175,11 @@
   gap: 12px;
   padding: 14px 16px 16px;
   overflow: hidden;
+  opacity: 1;
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease),
+    box-shadow var(--motion-surface-duration) var(--motion-route-ease);
 }
 
 /* Minimized: slim chip — width collapses to fit content */
@@ -280,6 +306,9 @@
   background: #000;
   gap: 0;
   justify-content: flex-end;
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  animation: call-surface-enter var(--motion-surface-duration) var(--motion-route-ease);
 }
 
 .call-popup.call-popup-fullscreen .call-popup-header {
@@ -346,6 +375,9 @@
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
   justify-content: center;
   gap: 28px;
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease);
 }
 
 .call-popup.call-popup-fullscreen .call-ctrl-wrap > span {
@@ -390,6 +422,20 @@
   top: 0;
   width: 1px;
   z-index: -1;
+  opacity: 0;
+  transform: translate3d(0, 18px, 0) scale(0.98);
+}
+
+@keyframes call-surface-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 .call-popup.call-popup-fullscreen.call-popup-minimized.call-popup-slim-host .call-popup-header {
@@ -1528,7 +1574,10 @@ h2 {
   padding: 8px 12px;
   position: relative;
   text-decoration: none;
-  transition: background-color 150ms ease-out, color 150ms ease-out;
+  transition:
+    background-color var(--motion-route-duration-fast) var(--motion-route-ease),
+    color var(--motion-route-duration-fast) var(--motion-route-ease),
+    transform var(--motion-route-duration-fast) var(--motion-route-ease);
 }
 
 .app-frame > .app-nav a {
@@ -2262,7 +2311,10 @@ h2 {
   position: relative;
   text-decoration: none;
   text-align: left;
-  transition: background-color 150ms ease-out;
+  transition:
+    background-color var(--motion-route-duration-fast) var(--motion-route-ease),
+    transform var(--motion-route-duration-fast) var(--motion-route-ease),
+    opacity var(--motion-fade-duration) var(--motion-route-ease);
   width: 100%;
   z-index: 3;
 }
@@ -2297,7 +2349,10 @@ h2 {
   justify-content: center;
   position: absolute;
   right: 20px;
-  transition: filter 150ms ease-out, transform 200ms ease-out;
+  transition:
+    filter var(--motion-route-duration-fast) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease),
+    opacity var(--motion-fade-duration) var(--motion-route-ease);
   width: var(--fab-size);
   z-index: 15;
 }
@@ -2570,6 +2625,8 @@ h2 {
 }
 
 .message-bubble {
+  --message-swipe-offset: 0px;
+  --message-swipe-progress: 0;
   background: var(--bubble-incoming);
   border: 0;
   border-radius: 20px 20px 20px 4px;
@@ -2579,10 +2636,82 @@ h2 {
   gap: 4px;
   justify-self: start;
   max-width: min(480px, 72%);
+  overflow: visible;
   padding: 6px 10px 5px 12px;
+  position: relative;
+  touch-action: pan-y;
+  transform: translate3d(var(--message-swipe-offset), 0, 0);
+  transition:
+    transform var(--motion-surface-duration) var(--motion-route-ease),
+    box-shadow var(--motion-surface-duration) var(--motion-route-ease);
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+
+.message-bubble > * {
+  position: relative;
+  z-index: 1;
+}
+
+.message-bubble.is-swipe-active {
+  transition: none;
+  will-change: transform;
+}
+
+.message-bubble.is-swipe-armed {
+  box-shadow: 0 14px 28px color-mix(in oklab, var(--accent-primary) 18%, transparent);
+}
+
+.message-swipe-affordance {
+  align-items: center;
+  color: var(--accent-primary);
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  left: 12px;
+  opacity: calc(0.16 + (var(--message-swipe-progress) * 0.84));
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transform:
+    translateY(-50%)
+    translateX(calc((1 - var(--message-swipe-progress)) * -10px))
+    scale(calc(0.92 + (var(--message-swipe-progress) * 0.08)));
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease),
+    color var(--motion-surface-duration) var(--motion-route-ease);
+  width: 36px;
+  z-index: 0;
+}
+
+.message-swipe-affordance::before {
+  background: color-mix(in oklab, var(--accent-primary) 16%, transparent);
+  border-radius: 999px;
+  content: "";
+  inset: 0;
+  opacity: calc(0.1 + (var(--message-swipe-progress) * 0.5));
+  position: absolute;
+  transform: scale(calc(0.88 + (var(--message-swipe-progress) * 0.12)));
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease),
+    background var(--motion-surface-duration) var(--motion-route-ease);
+}
+
+.message-swipe-affordance svg {
+  position: relative;
+  z-index: 1;
+}
+
+.message-bubble.is-swipe-armed .message-swipe-affordance {
+  color: #ffffff;
+}
+
+.message-bubble.is-swipe-armed .message-swipe-affordance::before {
+  background: var(--accent-primary);
+  opacity: 0.96;
 }
 
 .message-bubble.grouped {
@@ -2644,6 +2773,15 @@ h2 {
   padding-left: 8px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.message-reference-button {
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  cursor: pointer;
+  text-align: left;
 }
 
 .message-bubble-inner {
@@ -3711,13 +3849,13 @@ h2 {
 }
 
 .appearance-editor-enter {
-  animation: appearance-editor-enter 150ms ease-out;
+  animation: appearance-editor-enter var(--motion-surface-duration) var(--motion-route-ease);
 }
 
 @keyframes appearance-editor-enter {
   from {
     opacity: 0;
-    transform: translateX(8px);
+    transform: translateX(var(--motion-route-distance-tight));
   }
 
   to {
@@ -3876,7 +4014,10 @@ h2 {
   font-weight: 700;
   min-height: 44px;
   padding: 0 8px;
-  transition: background 150ms ease-out, color 150ms ease-out;
+  transition:
+    background var(--motion-route-duration-fast) var(--motion-route-ease),
+    color var(--motion-route-duration-fast) var(--motion-route-ease),
+    transform var(--motion-route-duration-fast) var(--motion-route-ease);
 }
 
 .appearance-segment button[aria-selected="true"],
@@ -4260,7 +4401,17 @@ h2 {
   justify-content: stretch;
   padding: 0;
   position: fixed;
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(1.01);
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease);
   z-index: 70;
+}
+
+.image-lightbox-backdrop.is-ready {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
 }
 
 .image-lightbox-toolbar {
@@ -4275,7 +4426,17 @@ h2 {
   position: absolute;
   right: 0;
   top: 0;
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--motion-route-distance-tight)));
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease);
   z-index: 2;
+}
+
+.image-lightbox-backdrop.is-ready .image-lightbox-toolbar {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .image-lightbox-close {
@@ -4347,7 +4508,17 @@ h2 {
     calc(max(56px, env(safe-area-inset-top)) + 12px)
     16px
     max(20px, env(safe-area-inset-bottom));
+  opacity: 0;
+  transform: translateY(var(--motion-route-distance-tight)) scale(0.985);
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease);
   -webkit-overflow-scrolling: touch;
+}
+
+.image-lightbox-backdrop.is-ready .image-lightbox-stage {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .image-lightbox-stage img {
@@ -4357,6 +4528,21 @@ h2 {
   max-height: 100%;
   max-width: 100%;
   object-fit: contain;
+}
+
+.image-lightbox-backdrop.is-closing .image-lightbox-toolbar {
+  opacity: 0;
+  transform: translateY(calc(-1 * var(--motion-route-distance-tight)));
+}
+
+.image-lightbox-backdrop.is-closing {
+  opacity: 0;
+  transform: translate3d(0, 0, 0) scale(1.01);
+}
+
+.image-lightbox-backdrop.is-closing .image-lightbox-stage {
+  opacity: 0;
+  transform: translateY(var(--motion-route-distance-tight)) scale(0.985);
 }
 
 .skeleton-row,
@@ -4545,10 +4731,22 @@ h2 {
   min-height: 64px;
   padding: 10px 14px;
   text-align: left;
+  transition:
+    background-color var(--motion-route-duration-fast) var(--motion-route-ease),
+    color var(--motion-route-duration-fast) var(--motion-route-ease),
+    transform var(--motion-route-duration-fast) var(--motion-route-ease);
 }
 
 .settings-row + .settings-row {
   border-top: 1px solid var(--border-default);
+}
+
+.settings-row:hover {
+  background: color-mix(in oklab, var(--accent-soft) 12%, transparent);
+}
+
+.settings-row.is-active {
+  background: color-mix(in oklab, var(--accent-soft) 18%, transparent);
 }
 
 .settings-row span:not(.settings-row-icon) {
@@ -4565,6 +4763,44 @@ h2 {
   height: 38px;
   justify-content: center;
   width: 38px;
+}
+
+.settings-detail-panel {
+  background: color-mix(in oklab, var(--surface-card) 92%, transparent);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  display: grid;
+  gap: 12px;
+  animation: settings-surface-enter var(--motion-surface-duration) var(--motion-route-ease);
+  margin-top: 18px;
+  padding: 16px;
+  transform: translateY(0);
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease),
+    box-shadow var(--motion-route-duration-fast) var(--motion-route-ease);
+}
+
+@keyframes settings-surface-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--motion-route-distance-tight));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-layout--detail-open .settings-form,
+.settings-layout--detail-open .profile-card,
+.settings-layout--detail-open .settings-groups,
+.settings-layout--detail-open .logout-row {
+  transition:
+    opacity var(--motion-fade-duration) var(--motion-route-ease),
+    transform var(--motion-route-duration-fast) var(--motion-route-ease);
 }
 
 .logout-row {
@@ -5053,7 +5289,9 @@ h2 {
     position: absolute;
     top: 50%;
     transform: translate(-50%, -50%);
-    transition: opacity 150ms ease-out, transform 150ms ease-out;
+    transition:
+      opacity var(--motion-route-duration-fast) var(--motion-route-ease),
+      transform var(--motion-route-duration-fast) var(--motion-route-ease);
     width: 44px;
     z-index: 0;
   }
@@ -5141,6 +5379,8 @@ h2 {
     height: 100%;
     grid-template-columns: 1fr;
     min-height: 0;
+    overflow: hidden;
+    position: relative;
   }
 
   .chat-sidebar {
@@ -5156,12 +5396,23 @@ h2 {
     min-height: 0;
   }
 
-  .messenger-shell.has-active-chat .chat-sidebar {
-    display: none;
+  .messenger-shell.chat-list-view .chat-sidebar,
+  .messenger-shell.chat-list-view .chat-detail,
+  .messenger-shell.has-active-chat .chat-sidebar,
+  .messenger-shell.has-active-chat .chat-detail {
+    grid-column: 1;
+    grid-row: 1;
+    transition:
+      opacity var(--motion-route-duration) var(--motion-route-ease),
+      transform var(--motion-route-duration) var(--motion-route-ease),
+      visibility var(--motion-route-duration) step-end;
   }
 
   .messenger-shell.chat-list-view .chat-detail {
-    display: none;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(var(--motion-route-distance));
+    visibility: hidden;
   }
 
   .messenger-shell.chat-list-view .chat-sidebar {
@@ -5169,6 +5420,10 @@ h2 {
     border: none;
     border-radius: 0;
     box-shadow: none;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+    visibility: visible;
   }
 
   .messenger-shell.chat-list-view .chat-sidebar-header {
@@ -5235,6 +5490,17 @@ h2 {
   .messenger-shell.has-active-chat .chat-detail {
     height: 100%;
     min-height: 0;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .messenger-shell.has-active-chat .chat-sidebar {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(calc(-1 * var(--motion-route-distance-tight)));
+    visibility: hidden;
   }
 
   .messenger-shell.has-active-chat .chat-detail-header--floating {
@@ -5950,6 +6216,19 @@ h2 {
   margin: 0 var(--mobile-edge-inset-x, 16px) 8px;
   min-height: 48px;
   padding: 8px 10px;
+  animation: mobile-call-strip-enter var(--motion-surface-duration) var(--motion-route-ease);
+}
+
+@keyframes mobile-call-strip-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .mobile-call-strip-btn {
@@ -6637,12 +6916,28 @@ h2 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-route-duration: 0.01ms;
+    --motion-route-duration-fast: 0.01ms;
+    --motion-fade-duration: 0.01ms;
+    --motion-surface-duration: 0.01ms;
+    --motion-route-distance: 0px;
+    --motion-route-distance-tight: 0px;
+  }
+
   .app-nav a,
   .app-frame > .app-nav a,
   .filter-chip,
   .tab-row button,
   .chat-list-item,
   .compose-fab,
+  .settings-row,
+  .settings-detail-panel,
+  .image-lightbox-backdrop,
+  .image-lightbox-toolbar,
+  .image-lightbox-stage,
+  .chat-sidebar,
+  .chat-detail,
   .message-composer textarea,
   .app-frame > .app-nav a.active::before {
     transition-duration: 0.01ms !important;
@@ -6651,6 +6946,16 @@ h2 {
   .filter-chip:active,
   .compose-fab:active {
     transform: none;
+  }
+
+  .image-lightbox-backdrop,
+  .image-lightbox-toolbar,
+  .image-lightbox-stage,
+  .chat-sidebar,
+  .chat-detail,
+  .settings-detail-panel {
+    animation: none !important;
+    transform: none !important;
   }
 }
 
@@ -6809,35 +7114,61 @@ h2 {
 
 .pinned-banner {
   align-items: center;
-  background: var(--background-secondary);
-  border-left: 3px solid var(--accent-primary);
-  border-radius: var(--radius-control);
+  background: color-mix(in oklab, var(--island-surface) 94%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: none;
+  border-radius: var(--float-radius-pill);
+  box-shadow: var(--float-shadow-soft);
   display: grid;
-  gap: 8px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  max-height: 56px;
-  min-height: 40px;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  max-height: 64px;
+  min-height: 48px;
   overflow: hidden;
-  padding: 6px 8px;
+  margin: 10px var(--message-gutter-x) 0;
+  padding: 8px 14px;
   position: relative;
-  transition: opacity 200ms ease-out, max-height 200ms ease-out;
+  transition:
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    transform var(--motion-surface-duration) var(--motion-route-ease);
   z-index: 3;
+}
+
+.pinned-banner::before {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent-primary) 24%, transparent),
+    transparent
+  );
+  border-radius: 999px;
+  content: "";
+  height: calc(100% - 18px);
+  left: 8px;
+  position: absolute;
+  top: 9px;
+  width: 4px;
 }
 
 .pinned-banner-click-area {
   align-items: flex-start;
+  background: transparent;
+  border: none;
+  color: inherit;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
-  padding: 0;
+  padding: 0 0 0 10px;
   text-align: left;
+  width: 100%;
 }
 
 .pinned-banner-eyebrow {
-  color: var(--text-secondary);
+  color: color-mix(in oklab, var(--text-secondary) 82%, #ffffff);
   font-size: 0.75rem;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6847,39 +7178,71 @@ h2 {
 .pinned-banner-preview {
   color: var(--text-primary);
   display: block;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   width: 100%;
 }
 
-.pinned-banner-dismiss {
-  border-radius: 50%;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  height: 28px;
-  min-height: 28px;
-  padding: 0;
-  width: 28px;
+@keyframes message-pin-flash {
+  0% {
+    background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-primary) 16%, transparent);
+  }
+
+  55% {
+    background: color-mix(in oklab, var(--accent-soft) 52%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-primary) 12%, transparent);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
 }
 
-@keyframes message-pin-flash {
-  0% { background: var(--accent-soft); }
-  60% { background: var(--accent-soft); }
-  100% { background: transparent; }
+@keyframes message-context-flash {
+  0% {
+    background: color-mix(in oklab, var(--surface-card) 48%, var(--accent-soft));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-primary) 18%, transparent);
+  }
+
+  55% {
+    background: color-mix(in oklab, var(--surface-card) 72%, var(--accent-soft));
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent-primary) 12%, transparent);
+  }
+
+  100% {
+    background: transparent;
+    box-shadow: none;
+  }
 }
 
 .message-pin-flash {
-  animation: message-pin-flash 300ms ease-out forwards;
+  animation: message-pin-flash 680ms var(--motion-route-ease) forwards;
+}
+
+.message-context-flash {
+  animation: message-context-flash 680ms var(--motion-route-ease) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .message-bubble,
+  .message-swipe-affordance,
+  .message-swipe-affordance::before {
+    transition-duration: 0.01ms !important;
+  }
+
   .pinned-banner {
     transition: none;
   }
 
-  .message-pin-flash {
+  .message-pin-flash,
+  .message-context-flash,
+  .mobile-call-strip,
+  .call-popup.call-popup-fullscreen {
     animation: none;
   }
 }

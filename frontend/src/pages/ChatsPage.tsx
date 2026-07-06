@@ -1,8 +1,10 @@
 import {
+  CSSProperties,
   ChangeEvent,
   FormEvent,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
   RefObject,
   useCallback,
   useEffect,
@@ -100,6 +102,8 @@ import {
   GALLERY_ATTACHMENT_ACCEPT
 } from "../attachmentAccept";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
+import { useReducedMotion } from "../hooks/useReducedMotion";
+import { navigateWithMotion } from "../motion/navigation";
 import AppNav from "./AppNav";
 import CallController, {
   CallCapabilities,
@@ -140,6 +144,18 @@ function displayChatName(chat: Chat, currentUserId: string | undefined) {
   }
   const otherMember = chat.members.find((member) => member.id !== currentUserId);
   return otherMember?.displayName ?? "Direct chat";
+}
+
+function chatTransitionName(chatId: string, part: "avatar" | "title") {
+  return `chat-${chatId}-${part}`;
+}
+
+function transitionAnchorStyle(name?: string): CSSProperties | undefined {
+  if (!name) {
+    return undefined;
+  }
+
+  return { viewTransitionName: name };
 }
 
 function chatInitials(name: string) {
@@ -200,6 +216,10 @@ const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> = [
 const MESSAGE_REACTION_CHOICES = ["👍", "❤️", "😂", "😮", "🙏"];
 const MESSAGE_CONTEXT_MENU_WIDTH = 236;
 const MESSAGE_CONTEXT_MENU_HEIGHT = 220;
+const SWIPE_REPLY_MAX_OFFSET = 84;
+const SWIPE_REPLY_TRIGGER_OFFSET = 56;
+const SWIPE_REPLY_DIRECTION_LOCK = 12;
+const SWIPE_REPLY_VERTICAL_TOLERANCE = 14;
 
 const COMPOSER_EMOJIS = [
   "😀",
@@ -334,6 +354,27 @@ type ChatToast = {
   chatId: string;
   title: string;
   body: string;
+};
+
+type SwipeReplyState = {
+  messageId: string;
+  offset: number;
+  activated: boolean;
+};
+
+type SwipeReplyGestureState = {
+  messageId: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  lastOffset: number;
+  lock: "pending" | "horizontal";
+};
+
+type PendingMessageFocus = {
+  messageId: string;
+  highlightClassName: "message-pin-flash" | "message-context-flash";
+  lockPinTracking?: boolean;
 };
 
 function formatDateSeparator(value: string | null | undefined) {
@@ -852,13 +893,15 @@ function RealAvatar({
   className,
   file,
   fallbackKind = "direct",
-  label
+  label,
+  style
 }: {
   accessToken: string | null;
   className: string;
   file: FamilyFile | null | undefined;
   fallbackKind?: ChatAvatarFallbackKind;
   label: string;
+  style?: CSSProperties;
 }) {
   const previewUrl = useFilePreviewUrl(accessToken, file ?? null, Boolean(file));
   const [imageBroken, setImageBroken] = useState(false);
@@ -886,7 +929,7 @@ function RealAvatar({
   const showImage = Boolean(previewUrl) && !imageBroken;
 
   return (
-    <span className={className}>
+    <span className={className} style={style}>
       {showImage ? (
         <img
           src={previewUrl ?? undefined}
@@ -973,6 +1016,19 @@ function isMobileCallViewport(): boolean {
   return window.matchMedia("(max-width: 768px)").matches;
 }
 
+function supportsSwipeReplyGesture(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  if (Capacitor.isNativePlatform()) {
+    return true;
+  }
+  return (
+    window.matchMedia("(pointer: coarse)").matches &&
+    window.matchMedia("(max-width: 960px)").matches
+  );
+}
+
 function useCallTimer(active: boolean): string {
   const [seconds, setSeconds] = useState(0);
   useEffect(() => {
@@ -1041,6 +1097,7 @@ function CopySheetTextarea({
 export default function ChatsPage() {
   const { chatId } = useParams();
   const navigate = useNavigate();
+  const prefersReducedMotion = useReducedMotion();
   const { accessToken, currentUser, authRequest, updateCurrentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<User[]>([]);
@@ -1070,6 +1127,7 @@ export default function ChatsPage() {
     file: FamilyFile;
     previewUrl: string;
   } | null>(null);
+  const [isFullViewImageClosing, setIsFullViewImageClosing] = useState(false);
   const [messageContextMenu, setMessageContextMenu] = useState<{
     message: Message;
     x: number;
@@ -1079,9 +1137,9 @@ export default function ChatsPage() {
   const [replyTarget, setReplyTarget] = useState<Message | null>(null);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
   const [editTargetMessage, setEditTargetMessage] = useState<Message | null>(null);
+  const [swipeReplyState, setSwipeReplyState] = useState<SwipeReplyState | null>(null);
   const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
   const [pinIndex, setPinIndex] = useState<number>(0);
-  const [pinnedBannerDismissed, setPinnedBannerDismissed] = useState<boolean>(false);
   const draftBeforeEditRef = useRef<string>("");
   const editInFlightRef = useRef(false);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
@@ -1168,7 +1226,11 @@ export default function ChatsPage() {
   const typingStopTimerRef = useRef<number | null>(null);
   const messagesPanelRef = useRef<HTMLDivElement | null>(null);
   const pinClickScrollingRef = useRef(false);
+  const pinTrackingTimeoutRef = useRef<number | null>(null);
+  const messageHighlightTimeoutRef = useRef<number | null>(null);
+  const pendingMessageFocusRef = useRef<PendingMessageFocus | null>(null);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const swipeReplyGestureRef = useRef<SwipeReplyGestureState | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const galleryAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const cameraAttachmentInputRef = useRef<HTMLInputElement | null>(null);
@@ -1188,8 +1250,93 @@ export default function ChatsPage() {
     [chats]
   );
 
+  const clearMessageMotionState = useCallback(() => {
+    if (pinTrackingTimeoutRef.current !== null) {
+      window.clearTimeout(pinTrackingTimeoutRef.current);
+      pinTrackingTimeoutRef.current = null;
+    }
+    if (messageHighlightTimeoutRef.current !== null) {
+      window.clearTimeout(messageHighlightTimeoutRef.current);
+      messageHighlightTimeoutRef.current = null;
+    }
+    pinClickScrollingRef.current = false;
+  }, []);
+
+  const focusMessageInPanel = useCallback(
+    ({
+      messageId,
+      highlightClassName,
+      lockPinTracking = false,
+    }: PendingMessageFocus) => {
+      const panel = messagesPanelRef.current;
+      const element = document.getElementById(messageId);
+      if (!panel || !element) {
+        return false;
+      }
+
+      clearMessageMotionState();
+      if (lockPinTracking) {
+        pinClickScrollingRef.current = true;
+        pinTrackingTimeoutRef.current = window.setTimeout(() => {
+          pinClickScrollingRef.current = false;
+          pinTrackingTimeoutRef.current = null;
+        }, prefersReducedMotion ? 80 : 820);
+      }
+
+      const panelRect = panel.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      const topInset = Math.min(Math.max(panel.clientHeight * 0.24, 88), 144);
+      const targetTop = Math.max(
+        0,
+        panel.scrollTop + elementRect.top - panelRect.top - topInset
+      );
+
+      panel.scrollTo({
+        top: targetTop,
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+      });
+
+      element.classList.remove("message-pin-flash", "message-context-flash");
+      void element.offsetWidth;
+      element.classList.add(highlightClassName);
+      messageHighlightTimeoutRef.current = window.setTimeout(() => {
+        element.classList.remove(highlightClassName);
+        messageHighlightTimeoutRef.current = null;
+      }, prefersReducedMotion ? 120 : 720);
+
+      return true;
+    },
+    [clearMessageMotionState, prefersReducedMotion]
+  );
+
+  const finishCloseFullViewImage = useCallback(() => {
+    setFullViewImage(null);
+    setIsFullViewImageClosing(false);
+  }, []);
+
+  const requestCloseFullViewImage = useCallback(() => {
+    if (!fullViewImage) {
+      return;
+    }
+    if (prefersReducedMotion) {
+      finishCloseFullViewImage();
+      return;
+    }
+    setIsFullViewImageClosing(true);
+  }, [finishCloseFullViewImage, fullViewImage, prefersReducedMotion]);
+
+  const openFullViewImage = useCallback((file: FamilyFile, previewUrl: string) => {
+    setIsFullViewImageClosing(false);
+    setFullViewImage({ file, previewUrl });
+  }, []);
+
   const dismissToast = useCallback((toastId: string) => {
     setToasts((current) => current.filter((toast) => toast.id !== toastId));
+  }, []);
+
+  const resetSwipeReplyState = useCallback(() => {
+    swipeReplyGestureRef.current = null;
+    setSwipeReplyState(null);
   }, []);
 
   const pushToast = useCallback(
@@ -1579,7 +1726,6 @@ export default function ChatsPage() {
         setMessages([]);
         setPinnedMessages([]);
         setPinIndex(0);
-        setPinnedBannerDismissed(false);
         setIsChatLoading(false);
         return;
       }
@@ -1600,7 +1746,6 @@ export default function ChatsPage() {
       setIsChatLoading(!cachedMessages);
 
       setPinIndex(0);
-      setPinnedBannerDismissed(false);
 
       try {
         const [chat, messageResult, pinsResult] = await Promise.all([
@@ -1778,6 +1923,20 @@ export default function ChatsPage() {
     }
   }, [selectedChat?.id, messages.length, messageSearch]);
 
+  useEffect(() => {
+    const pendingFocus = pendingMessageFocusRef.current;
+    if (!pendingFocus) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      if (focusMessageInPanel(pendingFocus)) {
+        pendingMessageFocusRef.current = null;
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusMessageInPanel, visibleMessages, messages.length, threadRootMessageId]);
+
   // Update active pin index based on scroll position (TG-style: active = nearest pin above viewport)
   useEffect(() => {
     const panel = messagesPanelRef.current;
@@ -1895,7 +2054,7 @@ export default function ChatsPage() {
       if (isNewChatOpen) {
         closeNewChatScreen();
       }
-      setFullViewImage(null);
+      requestCloseFullViewImage();
       setMessageContextMenu(null);
       setForwardTarget(null);
       setIsCallSettingsMenuOpen(false);
@@ -1908,7 +2067,116 @@ export default function ChatsPage() {
       document.removeEventListener("mousedown", handleDocumentMouseDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isNewChatOpen, newChatScreen]);
+  }, [closeNewChatScreen, isNewChatOpen, newChatScreen, requestCloseFullViewImage]);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return undefined;
+    }
+
+    let disposed = false;
+    let listener: { remove: () => Promise<void> } | null = null;
+
+    void (async () => {
+      listener = await App.addListener("backButton", ({ canGoBack }) => {
+        if (fullViewImage) {
+          requestCloseFullViewImage();
+          return;
+        }
+        if (copySheetContent !== null) {
+          setCopySheetContent(null);
+          return;
+        }
+        if (messageContextMenu) {
+          setMessageContextMenu(null);
+          return;
+        }
+        if (isEmojiPickerOpen) {
+          setIsEmojiPickerOpen(false);
+          return;
+        }
+        if (isChatMenuOpen) {
+          setIsChatMenuOpen(false);
+          return;
+        }
+        if (isCallSettingsMenuOpen) {
+          setIsCallSettingsMenuOpen(false);
+          return;
+        }
+        if (isCallAudioPopupOpen) {
+          setIsCallAudioPopupOpen(false);
+          return;
+        }
+        if (isMessageSearchOpen) {
+          setIsMessageSearchOpen(false);
+          return;
+        }
+        if (forwardTarget) {
+          setForwardTarget(null);
+          return;
+        }
+        if (deleteTarget) {
+          setDeleteTarget(null);
+          return;
+        }
+        if (isNewChatOpen && newChatScreen !== "pick") {
+          setNewChatScreen("pick");
+          setNewChatMemberSearch("");
+          return;
+        }
+        if (isNewChatOpen) {
+          closeNewChatScreen();
+          return;
+        }
+        if (isDetailsOpen) {
+          setIsDetailsOpen(false);
+          return;
+        }
+        if (chatId) {
+          closeActiveChat();
+          return;
+        }
+        if (canGoBack) {
+          navigate(-1);
+          return;
+        }
+        void App.minimizeApp();
+      });
+
+      if (disposed) {
+        void listener.remove();
+      }
+    })();
+
+    return () => {
+      disposed = true;
+      void listener?.remove();
+    };
+  }, [
+    chatId,
+    closeActiveChat,
+    closeNewChatScreen,
+    copySheetContent,
+    deleteTarget,
+    forwardTarget,
+    fullViewImage,
+    isCallAudioPopupOpen,
+    isCallSettingsMenuOpen,
+    isChatMenuOpen,
+    isDetailsOpen,
+    isEmojiPickerOpen,
+    isMessageSearchOpen,
+    isNewChatOpen,
+    messageContextMenu,
+    newChatScreen,
+    requestCloseFullViewImage
+  ]);
+
+  useEffect(() => {
+    resetSwipeReplyState();
+  }, [chatId, messageContextMenu, resetSwipeReplyState]);
+
+  useEffect(() => () => clearMessageMotionState(), [clearMessageMotionState]);
 
   useEffect(() => {
     if (!accessToken || !currentUser?.id) {
@@ -2114,7 +2382,6 @@ export default function ChatsPage() {
         setPinIndex(sorted.length - 1);
         return sorted;
       });
-      setPinnedBannerDismissed(false);
     });
 
     socket.on("message:unpinned", (payload: { chatId: string; messageId: string }) => {
@@ -2701,13 +2968,13 @@ export default function ChatsPage() {
       );
       if (existing) {
         closeNewChatScreen();
-        navigate(`/app/chats/${existing.id}`);
+        navigateToChat(existing);
         return;
       }
       const chat = await createDirectChat(accessToken, userId);
       await loadOverview();
       closeNewChatScreen();
-      navigate(`/app/chats/${chat.id}`);
+      navigateToChat(chat);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not create chat");
     }
@@ -2727,7 +2994,7 @@ export default function ChatsPage() {
       });
       await loadOverview();
       closeNewChatScreen();
-      navigate(`/app/chats/${chat.id}`);
+      navigateToChat(chat);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not create group");
     }
@@ -2774,7 +3041,7 @@ export default function ChatsPage() {
       });
       await loadOverview();
       closeNewChatScreen();
-      navigate(`/app/chats/${chat.id}`);
+      navigateToChat(chat);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not create channel");
     }
@@ -2863,7 +3130,6 @@ export default function ChatsPage() {
         setPinIndex(sorted.length - 1);
         return sorted;
       });
-      setPinnedBannerDismissed(false);
       pushToast({ chatId: selectedChat.id, title: "", body: "Message pinned" });
       setMessageContextMenu(null);
     } catch {
@@ -2942,6 +3208,20 @@ export default function ChatsPage() {
     window.setTimeout(() => composerInputRef.current?.focus(), 0);
   }
 
+  function navigateToChat(chat: Chat, replace = false) {
+    navigateWithMotion(navigate, `/app/chats/${chat.id}`, {
+      replace,
+      reducedMotion: prefersReducedMotion
+    });
+  }
+
+  function navigateToChatList(replace = false) {
+    navigateWithMotion(navigate, "/app/chats", {
+      replace,
+      reducedMotion: prefersReducedMotion
+    });
+  }
+
   function openChat(chat: Chat) {
     setSelectedChat(chat);
     setError(null);
@@ -2952,7 +3232,13 @@ export default function ChatsPage() {
     if (chat.id === chatId) {
       return;
     }
-    navigate(`/app/chats/${chat.id}`);
+    navigateToChat(chat);
+  }
+
+  function closeActiveChat() {
+    setIsDetailsOpen(false);
+    setSelectedChat(null);
+    navigateToChatList();
   }
 
   function insertEmoji(emoji: string) {
@@ -3133,6 +3419,7 @@ export default function ChatsPage() {
 
   function openMessageContextMenu(event: ReactMouseEvent<HTMLElement>, message: Message) {
     event.preventDefault();
+    resetSwipeReplyState();
     setIsChatMenuOpen(false);
     setMessageContextMenu({
       message,
@@ -3149,10 +3436,131 @@ export default function ChatsPage() {
     }
     if (selectedChat?.type === "channel") {
       setThreadRootMessageId(message.id);
+      pendingMessageFocusRef.current = {
+        messageId: message.id,
+        highlightClassName: "message-context-flash",
+      };
     }
+    resetSwipeReplyState();
     setReplyTarget(message);
     setMessageContextMenu(null);
     requestAnimationFrame(() => composerInputRef.current?.focus());
+  }
+
+  function shouldAllowSwipeReply(message: Message, event: ReactPointerEvent<HTMLElement>) {
+    if (!supportsSwipeReplyGesture() || !event.isPrimary || event.button !== 0) {
+      return false;
+    }
+    if (event.pointerType === "mouse" || messageContextMenu !== null) {
+      return false;
+    }
+    if (channelCommentsDisabledForViewer || missingCommentThread) {
+      return false;
+    }
+    if (message.deliveryState === "sending") {
+      return false;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, a, input, textarea, select, [role='button']")) {
+      return false;
+    }
+    return true;
+  }
+
+  function beginSwipeReplyGesture(
+    event: ReactPointerEvent<HTMLElement>,
+    message: Message
+  ) {
+    if (!shouldAllowSwipeReply(message, event)) {
+      return;
+    }
+    swipeReplyGestureRef.current = {
+      messageId: message.id,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastOffset: 0,
+      lock: "pending",
+    };
+    setSwipeReplyState({
+      messageId: message.id,
+      offset: 0,
+      activated: false,
+    });
+  }
+
+  function updateSwipeReplyOffset(messageId: string, offset: number) {
+    const clampedOffset = Math.min(Math.max(offset, 0), SWIPE_REPLY_MAX_OFFSET);
+    setSwipeReplyState({
+      messageId,
+      offset: clampedOffset,
+      activated: clampedOffset >= SWIPE_REPLY_TRIGGER_OFFSET,
+    });
+  }
+
+  function handleSwipeReplyMove(
+    event: ReactPointerEvent<HTMLElement>,
+    message: Message
+  ) {
+    const gesture = swipeReplyGestureRef.current;
+    if (
+      !gesture ||
+      gesture.messageId !== message.id ||
+      gesture.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    const deltaX = event.clientX - gesture.startX;
+    const deltaY = event.clientY - gesture.startY;
+
+    if (gesture.lock === "pending") {
+      if (
+        Math.abs(deltaY) > SWIPE_REPLY_VERTICAL_TOLERANCE &&
+        Math.abs(deltaY) > Math.abs(deltaX)
+      ) {
+        resetSwipeReplyState();
+        return;
+      }
+      if (deltaX <= SWIPE_REPLY_DIRECTION_LOCK || deltaX <= Math.abs(deltaY)) {
+        return;
+      }
+      gesture.lock = "horizontal";
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+
+    gesture.lastOffset = Math.min(Math.max(deltaX, 0), SWIPE_REPLY_MAX_OFFSET);
+    event.preventDefault();
+    updateSwipeReplyOffset(message.id, gesture.lastOffset);
+  }
+
+  function endSwipeReplyGesture(
+    event: ReactPointerEvent<HTMLElement>,
+    message: Message,
+    options?: { commit?: boolean }
+  ) {
+    const gesture = swipeReplyGestureRef.current;
+    if (
+      !gesture ||
+      gesture.messageId !== message.id ||
+      gesture.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const shouldCommit =
+      options?.commit !== false &&
+      gesture.lock === "horizontal" &&
+      gesture.lastOffset >= SWIPE_REPLY_TRIGGER_OFFSET;
+    resetSwipeReplyState();
+
+    if (shouldCommit) {
+      handleReplyToMessage(message);
+    }
   }
 
   function handleEditMessage(message: Message) {
@@ -3210,6 +3618,10 @@ export default function ChatsPage() {
   async function handleOpenThread(rootMessage: Message) {
     setThreadRootMessageId(rootMessage.id);
     setReplyTarget(rootMessage);
+    pendingMessageFocusRef.current = {
+      messageId: rootMessage.id,
+      highlightClassName: "message-context-flash",
+    };
     if (!accessToken || !selectedChat) {
       return;
     }
@@ -3441,7 +3853,9 @@ export default function ChatsPage() {
                 if (chat) {
                   openChat(chat);
                 } else {
-                  navigate(`/app/chats/${toast.chatId}`);
+                  navigateWithMotion(navigate, `/app/chats/${toast.chatId}`, {
+                    reducedMotion: prefersReducedMotion
+                  });
                 }
               }}
             >
@@ -3541,6 +3955,13 @@ export default function ChatsPage() {
                         {sectionChats.map((chat) => {
                           const chatName = displayChatName(chat, currentUser?.id);
                           const hasUnread = chat.unreadCount > 0;
+                          const isTransitionSource = selectedChat?.id === chat.id;
+                          const avatarTransitionStyle = transitionAnchorStyle(
+                            isTransitionSource ? chatTransitionName(chat.id, "avatar") : undefined
+                          );
+                          const titleTransitionStyle = transitionAnchorStyle(
+                            isTransitionSource ? chatTransitionName(chat.id, "title") : undefined
+                          );
                           return (
                             <button
                               type="button"
@@ -3556,10 +3977,11 @@ export default function ChatsPage() {
                                 fallbackKind={chatAvatarFallbackKind(chat)}
                                 file={chatAvatarFile(chat, currentUser?.id)}
                                 label={chatName}
+                                style={avatarTransitionStyle}
                               />
                               <span className="chat-list-copy">
                                 <span className="chat-list-topline">
-                                  <strong>{chatName}</strong>
+                                  <strong style={titleTransitionStyle}>{chatName}</strong>
                                   <time>{formatChatTime(chat.updatedAt)}</time>
                                 </span>
                                 {(() => {
@@ -3635,11 +4057,7 @@ export default function ChatsPage() {
                     type="button"
                     className="mobile-back-button"
                     aria-label="Back to chats"
-                    onClick={() => {
-                      setIsDetailsOpen(false);
-                      setSelectedChat(null);
-                      navigate("/app/chats");
-                    }}
+                    onClick={closeActiveChat}
                   >
                     <span className="ms-icon ms-icon--20" aria-hidden={true}>
                       arrow_back
@@ -3657,9 +4075,12 @@ export default function ChatsPage() {
                       fallbackKind={chatAvatarFallbackKind(selectedChat)}
                       file={chatAvatarFile(selectedChat, currentUser?.id)}
                       label={displayChatName(selectedChat, currentUser?.id)}
+                      style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "avatar"))}
                     />
                     <span>
-                      <strong>{displayChatName(selectedChat, currentUser?.id)}</strong>
+                      <strong style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "title"))}>
+                        {displayChatName(selectedChat, currentUser?.id)}
+                      </strong>
                       <small>
                         {typingNames.length > 0
                           ? `${typingNames.join(", ")} typing...`
@@ -3825,7 +4246,7 @@ export default function ChatsPage() {
                     </button>
                   </div>
                 )}
-                {pinnedMessages.length > 0 && !pinnedBannerDismissed && (
+                {pinnedMessages.length > 0 && (
                   <div className="pinned-banner" role="status">
                     <button
                       type="button"
@@ -3833,28 +4254,12 @@ export default function ChatsPage() {
                       aria-label="Go to pinned message"
                       onClick={() => {
                         const currentPin = pinnedMessages[pinIndex];
-                        const panel = messagesPanelRef.current;
-                        if (currentPin && panel) {
-                          const el = document.getElementById(currentPin.messageId);
-                          if (el) {
-                            pinClickScrollingRef.current = true;
-                            const panelRect = panel.getBoundingClientRect();
-                            const elRect = el.getBoundingClientRect();
-                            const targetTop =
-                              panel.scrollTop +
-                              elRect.top -
-                              panelRect.top -
-                              panel.clientHeight / 2 +
-                              el.clientHeight / 2;
-                            panel.scrollTo({ top: targetTop, behavior: "smooth" });
-                            el.classList.add("message-pin-flash");
-                            window.setTimeout(() => {
-                              el.classList.remove("message-pin-flash");
-                            }, 300);
-                            window.setTimeout(() => {
-                              pinClickScrollingRef.current = false;
-                            }, 900);
-                          }
+                        if (currentPin) {
+                          focusMessageInPanel({
+                            messageId: currentPin.messageId,
+                            highlightClassName: "message-pin-flash",
+                            lockPinTracking: true,
+                          });
                         }
                         // Cycle toward older (lower index), wrapping from 0 back to newest
                         setPinIndex((current) => (current - 1 + pinnedMessages.length) % pinnedMessages.length);
@@ -3866,16 +4271,10 @@ export default function ChatsPage() {
                           : `Pinned message · ${pinnedMessages.length - pinIndex} of ${pinnedMessages.length}`}
                       </span>
                       <span className="pinned-banner-preview">
-                        {pinnedMessages[pinIndex]?.message.content ?? ""}
+                        {messageActionSummary(
+                          pinnedMessages[pinIndex]?.message ?? pinnedMessages[0].message
+                        )}
                       </span>
-                    </button>
-                    <button
-                      type="button"
-                      className="pinned-banner-dismiss"
-                      aria-label="Dismiss pinned message banner"
-                      onClick={() => setPinnedBannerDismissed(true)}
-                    >
-                      <X aria-hidden="true" size={14} />
                     </button>
                   </div>
                 )}
@@ -3943,6 +4342,17 @@ export default function ChatsPage() {
                         const showSenderIdentity = !mine && isMultiMemberChat(selectedChat.type);
                         const photoOnlyMessage = messageHasOnlyImageAttachments(message);
                         const hasCaption = Boolean(message.content?.trim());
+                        const swipeStateForMessage =
+                          swipeReplyState?.messageId === message.id ? swipeReplyState : null;
+                        const swipeProgress = swipeStateForMessage
+                          ? Math.min(swipeStateForMessage.offset / SWIPE_REPLY_TRIGGER_OFFSET, 1)
+                          : 0;
+                        const swipeStyle = swipeStateForMessage
+                          ? ({
+                              "--message-swipe-offset": `${swipeStateForMessage.offset}px`,
+                              "--message-swipe-progress": String(swipeProgress),
+                            } as CSSProperties)
+                          : undefined;
                         const messageMeta = (
                           <span className="message-meta">
                             {messageDeliveryLabel(message, mine)}
@@ -3953,11 +4363,21 @@ export default function ChatsPage() {
                         );
                         return (
                           <article
-                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}`}
+                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}${swipeStateForMessage ? " is-swipe-active" : ""}${swipeStateForMessage?.activated ? " is-swipe-armed" : ""}`}
                             id={message.id}
                             key={message.id}
                             onContextMenu={(event) => openMessageContextMenu(event, message)}
+                            onPointerCancel={(event) =>
+                              endSwipeReplyGesture(event, message, { commit: false })
+                            }
+                            onPointerDown={(event) => beginSwipeReplyGesture(event, message)}
+                            onPointerMove={(event) => handleSwipeReplyMove(event, message)}
+                            onPointerUp={(event) => endSwipeReplyGesture(event, message)}
+                            style={swipeStyle}
                           >
+                            <span className="message-swipe-affordance" aria-hidden="true">
+                              <Reply size={16} />
+                            </span>
                             {showSenderIdentity && (
                               <div className="message-sender-row">
                                 <RealAvatar
@@ -3977,10 +4397,19 @@ export default function ChatsPage() {
                               </strong>
                             )}
                             {repliedMessage && (
-                              <span className="message-reference">
+                              <button
+                                type="button"
+                                className="message-reference message-reference-button"
+                                onClick={() =>
+                                  focusMessageInPanel({
+                                    messageId: repliedMessage.id,
+                                    highlightClassName: "message-context-flash",
+                                  })
+                                }
+                              >
                                 Reply to {repliedMessage.senderDisplayName ?? "Family member"}:{" "}
                                 {messageActionSummary(repliedMessage)}
-                              </span>
+                              </button>
                             )}
                             {message.forwardedFrom && (
                               <span className="message-reference">
@@ -4002,9 +4431,7 @@ export default function ChatsPage() {
                                       accessToken={accessToken}
                                       file={file}
                                       compact
-                                      onOpenImage={(item, previewUrl) =>
-                                        setFullViewImage({ file: item, previewUrl })
-                                      }
+                                      onOpenImage={openFullViewImage}
                                     />
                                   );
 
@@ -4456,7 +4883,7 @@ export default function ChatsPage() {
               onDetailsTabChange={setDetailsTab}
               onFocusComposer={focusComposer}
               onMediaVisibilityChange={handleMediaVisibilityChange}
-              onOpenImage={(file, previewUrl) => setFullViewImage({ file, previewUrl })}
+              onOpenImage={openFullViewImage}
               onPinPermissionChange={handlePinPermissionChange}
               onPreferenceChange={handleChatPreferenceChange}
               onTitleDraftChange={setChatTitleDraft}
@@ -4991,9 +5418,10 @@ export default function ChatsPage() {
         {fullViewImage && (
           <ImageLightbox
             imageUrl={fullViewImage.previewUrl}
+            isExternallyClosing={isFullViewImageClosing}
             title={fullViewImage.file.originalName}
             subtitle={`${fullViewImage.file.mimeType} / ${formatFileSize(fullViewImage.file.sizeBytes)}`}
-            onClose={() => setFullViewImage(null)}
+            onClose={finishCloseFullViewImage}
             onDownload={
               accessToken ? () => void saveFileToDisk(accessToken, fullViewImage.file) : undefined
             }
