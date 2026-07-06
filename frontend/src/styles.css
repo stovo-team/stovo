@@ -1718,6 +1718,7 @@ h2 {
 
 .menu-anchor {
   position: relative;
+  z-index: 1;
 }
 
 .action-menu {
@@ -1731,7 +1732,7 @@ h2 {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  z-index: 45;
+  z-index: 18;
 }
 
 .action-menu button {
@@ -1757,7 +1758,27 @@ h2 {
   position: fixed;
   right: auto;
   top: auto;
-  z-index: 55;
+  z-index: 24;
+}
+
+.message-selection-banner {
+  align-items: center;
+  background: color-mix(in oklab, var(--island-surface) 94%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: var(--float-radius-pill);
+  box-shadow: var(--float-shadow-soft);
+  color: var(--text-primary);
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin: 8px var(--message-gutter-x) 0;
+  padding: 8px 10px;
+}
+
+.message-selection-banner span {
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .thread-header {
@@ -2663,6 +2684,31 @@ h2 {
   box-shadow: 0 14px 28px color-mix(in oklab, var(--accent-primary) 18%, transparent);
 }
 
+.message-bubble.is-selection-mode {
+  cursor: pointer;
+}
+
+.message-bubble.is-selected {
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--accent-primary) 40%, transparent),
+    0 14px 28px color-mix(in oklab, var(--accent-primary) 16%, transparent);
+}
+
+.message-selection-indicator {
+  align-items: center;
+  background: var(--accent-primary);
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  height: 22px;
+  justify-content: center;
+  position: absolute;
+  right: -7px;
+  top: -7px;
+  width: 22px;
+  z-index: 2;
+}
+
 .message-swipe-affordance {
   align-items: center;
   color: var(--accent-primary);
@@ -3106,15 +3152,50 @@ h2 {
   z-index: 20;
 }
 
-.emoji-picker--bottom-sheet {
-  border-radius: 20px 20px 0 0;
-  bottom: 0;
-  height: 40vh;
-  left: 0;
-  position: fixed;
-  right: 0;
+.emoji-picker-dock {
+  border-top: 1px solid color-mix(in oklab, var(--border-default) 88%, transparent);
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+}
+
+.emoji-picker-dock-header {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  justify-content: space-between;
+  letter-spacing: 0.01em;
+}
+
+.emoji-picker-dock-close {
+  background: var(--background-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  width: 28px;
+}
+
+.emoji-picker--docked {
+  bottom: auto;
+  left: auto;
+  max-width: 100%;
+  position: relative;
   width: 100%;
-  z-index: 100;
+  z-index: 1;
+}
+
+.emoji-picker--docked > * {
+  width: 100%;
+}
+
+.emoji-picker--docked .EmojiPickerReact {
+  border: 0 !important;
+  width: 100% !important;
 }
 
 .pending-attachments,
@@ -4431,7 +4512,7 @@ h2 {
   transition:
     opacity var(--motion-surface-duration) var(--motion-route-ease),
     transform var(--motion-surface-duration) var(--motion-route-ease);
-  z-index: 2;
+  z-index: 10;
 }
 
 .image-lightbox-backdrop.is-ready .image-lightbox-toolbar {
@@ -5517,7 +5598,13 @@ h2 {
   }
 
   .messenger-shell.has-active-chat .mobile-back-button {
+    align-items: center;
+    background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
+    border-radius: 999px;
+    display: inline-flex;
     height: 34px;
+    justify-content: center;
+    padding: 0;
     width: 34px;
   }
 
@@ -5543,15 +5630,33 @@ h2 {
     scroll-padding-top: 10px;
   }
 
+  .messenger-shell.has-active-chat .messages-panel--emoji-docked {
+    padding-bottom: 18px;
+    scroll-padding-bottom: 18px;
+  }
+
   .messenger-shell.has-active-chat .message-composer {
     gap: 4px;
     margin: 0 var(--mobile-edge-inset-x) calc(var(--mobile-edge-inset-y) + env(safe-area-inset-bottom));
     padding: 6px 8px;
   }
 
+  .messenger-shell.has-active-chat .message-composer--emoji-docked {
+    gap: 8px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  .messenger-shell.has-active-chat .message-composer--emoji-open {
+    border-radius: 24px;
+  }
+
   .messenger-shell.has-active-chat .message-composer-row {
     align-items: center;
     gap: 6px;
+  }
+
+  .messenger-shell.has-active-chat .message-composer--emoji-open .message-composer-row {
+    align-items: end;
   }
 
   .messenger-shell.has-active-chat .message-composer textarea {
@@ -5577,6 +5682,17 @@ h2 {
   .messenger-shell.has-active-chat .message-composer .ms-icon.ms-icon--filled,
   .messenger-shell.has-active-chat .message-composer button[type="submit"] .ms-icon {
     font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 22;
+  }
+
+  .messenger-shell.has-active-chat .emoji-picker-dock {
+    margin-top: 2px;
+  }
+
+  .messenger-shell.has-active-chat .emoji-picker--docked {
+    border-radius: 22px;
+    box-shadow: none;
+    max-height: min(320px, 42vh);
+    overflow: hidden;
   }
 
   .chat-details-panel:not(.chat-info-screen) {
@@ -5654,14 +5770,21 @@ h2 {
 
   .mobile-back-button {
     align-items: center;
+    background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
+    border-radius: 999px;
     display: inline-flex;
     justify-content: center;
     min-width: 0;
-    padding: 0 4px 0 0;
+    padding: 0;
     width: 36px;
     height: 36px;
     flex-shrink: 0;
     border: 0;
+  }
+
+  .message-selection-banner {
+    margin: 8px var(--mobile-edge-inset-x) 0;
+    padding: 7px 8px 7px 12px;
   }
 
   .chat-header-actions {
@@ -6053,8 +6176,9 @@ h2 {
 
 .attachment-picker-sheet-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 14px;
+  justify-content: flex-start;
   width: 100%;
   padding: 14px 20px;
   border: none;
@@ -6081,10 +6205,13 @@ h2 {
 }
 
 .attachment-picker-sheet-copy {
+  align-items: flex-start;
   display: flex;
   flex-direction: column;
+  flex: 1;
   gap: 2px;
   min-width: 0;
+  text-align: left;
 }
 
 .attachment-picker-sheet-copy strong {
@@ -7118,7 +7245,7 @@ h2 {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: none;
-  border-radius: var(--float-radius-pill);
+  border-radius: 16px;
   box-shadow: var(--float-shadow-soft);
   display: grid;
   gap: 10px;
@@ -7132,7 +7259,7 @@ h2 {
   transition:
     opacity var(--motion-surface-duration) var(--motion-route-ease),
     transform var(--motion-surface-duration) var(--motion-route-ease);
-  z-index: 3;
+  z-index: 4;
 }
 
 .pinned-banner::before {
@@ -7141,7 +7268,7 @@ h2 {
     color-mix(in oklab, var(--accent-primary) 24%, transparent),
     transparent
   );
-  border-radius: 999px;
+  border-radius: 10px;
   content: "";
   height: calc(100% - 18px);
   left: 8px;
