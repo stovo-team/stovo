@@ -1,9 +1,13 @@
 import { ReactElement, useEffect, useRef } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 
 import { bootstrapNotifications, ensureFullScreenIntentPermission } from "./api/notifications";
 import { AppearanceProvider } from "./appearance/AppearanceContext";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { useReducedMotion } from "./hooks/useReducedMotion";
+import { navigateWithMotion } from "./motion/navigation";
 import AdminPage from "./pages/AdminPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
@@ -48,6 +52,60 @@ function RequireAuth({ children }: { children: ReactElement }) {
   return children;
 }
 
+function AndroidBackOrchestrator() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const prefersReducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return undefined;
+    }
+
+    let disposed = false;
+    let listener: { remove: () => Promise<void> } | null = null;
+
+    void (async () => {
+      listener = await CapacitorApp.addListener("backButton", ({ canGoBack }) => {
+        if (location.pathname.startsWith("/app/chats")) {
+          return;
+        }
+
+        if (location.pathname.startsWith("/app/")) {
+          if (canGoBack) {
+            navigate(-1);
+            return;
+          }
+
+          navigateWithMotion(navigate, "/app/chats", {
+            replace: true,
+            reducedMotion: prefersReducedMotion
+          });
+          return;
+        }
+
+        if (canGoBack) {
+          navigate(-1);
+          return;
+        }
+
+        void CapacitorApp.minimizeApp();
+      });
+
+      if (disposed) {
+        void listener.remove();
+      }
+    })();
+
+    return () => {
+      disposed = true;
+      void listener?.remove();
+    };
+  }, [location.pathname, navigate, prefersReducedMotion]);
+
+  return null;
+}
+
 function App() {
   useEffect(() => {
     void ensureFullScreenIntentPermission();
@@ -58,6 +116,7 @@ function App() {
       <AppearanceProvider>
         <AuthProvider>
           <NotificationsBootstrapper />
+          <AndroidBackOrchestrator />
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/server-setup" element={<ServerSetupPage />} />
