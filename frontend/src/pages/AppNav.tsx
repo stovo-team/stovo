@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 
 export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: number }) {
   const { authRequest, currentUser, logout } = useAuth();
   const [unreadTotal, setUnreadTotal] = useState(0);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const prefersReducedMotion = useReducedMotion();
+  const enableViewTransitions = !prefersReducedMotion;
 
   useEffect(() => {
     if (typeof unreadTotalOverride === "number") {
@@ -42,7 +45,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
         </span>
       </div>
       <div className="app-nav-links">
-        <NavLink to="/app/chats" title="Chats" aria-label="Chats">
+        <NavLink to="/app/chats" title="Chats" aria-label="Chats" viewTransition={enableViewTransitions}>
           {({ isActive }) => (
             <>
               <span
@@ -60,7 +63,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
             </>
           )}
         </NavLink>
-        <NavLink to="/app/files" title="Storage" aria-label="Storage">
+        <NavLink to="/app/files" title="Storage" aria-label="Storage" viewTransition={enableViewTransitions}>
           {({ isActive }) => (
             <>
               <span
@@ -73,7 +76,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
             </>
           )}
         </NavLink>
-        <NavLink to="/app/members" title="Contacts" aria-label="Contacts">
+        <NavLink to="/app/members" title="Contacts" aria-label="Contacts" viewTransition={enableViewTransitions}>
           {({ isActive }) => (
             <>
               <span
@@ -86,7 +89,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
             </>
           )}
         </NavLink>
-        <NavLink to="/app/settings" title="Settings" aria-label="Settings">
+        <NavLink to="/app/settings" title="Settings" aria-label="Settings" viewTransition={enableViewTransitions}>
           {({ isActive }) => (
             <>
               <span
@@ -100,7 +103,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
           )}
         </NavLink>
         {canViewAdmin && (
-          <NavLink to="/app/admin" title="Admin" aria-label="Admin">
+          <NavLink to="/app/admin" title="Admin" aria-label="Admin" viewTransition={enableViewTransitions}>
             {({ isActive }) => (
               <>
                 <span
