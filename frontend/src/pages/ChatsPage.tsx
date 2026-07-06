@@ -219,6 +219,8 @@ const MESSAGE_CONTEXT_MENU_HEIGHT = 220;
 const SWIPE_REPLY_MAX_OFFSET = 84;
 const SWIPE_REPLY_TRIGGER_OFFSET = 56;
 const SWIPE_REPLY_DIRECTION_LOCK = 12;
+const MESSAGE_LONG_PRESS_DURATION_MS = 420;
+const MESSAGE_LONG_PRESS_MOVE_TOLERANCE = 10;
 const SWIPE_REPLY_VERTICAL_TOLERANCE = 14;
 
 const COMPOSER_EMOJIS = [
@@ -369,6 +371,14 @@ type SwipeReplyGestureState = {
   startY: number;
   lastOffset: number;
   lock: "pending" | "horizontal";
+};
+
+type MessageLongPressState = {
+  messageId: string;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  timerId: number;
 };
 
 type PendingMessageFocus = {
@@ -1133,6 +1143,7 @@ export default function ChatsPage() {
     x: number;
     y: number;
   } | null>(null);
+  const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
   const [threadRootMessageId, setThreadRootMessageId] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<Message | null>(null);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
@@ -1231,6 +1242,11 @@ export default function ChatsPage() {
   const pendingMessageFocusRef = useRef<PendingMessageFocus | null>(null);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   const swipeReplyGestureRef = useRef<SwipeReplyGestureState | null>(null);
+  const messageLongPressRef = useRef<MessageLongPressState | null>(null);
+  const suppressedMessageClickRef = useRef<{
+    messageId: string;
+    expiresAt: number;
+  } | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const galleryAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const cameraAttachmentInputRef = useRef<HTMLInputElement | null>(null);
@@ -1338,6 +1354,134 @@ export default function ChatsPage() {
     swipeReplyGestureRef.current = null;
     setSwipeReplyState(null);
   }, []);
+
+  const clearSelectedMessages = useCallback(() => {
+    setSelectedMessageIds([]);
+  }, []);
+
+  const isMessageSelectionMode = selectedMessageIds.length > 0;
+
+  const clearMessageLongPressGesture = useCallback(() => {
+    if (messageLongPressRef.current) {
+      window.clearTimeout(messageLongPressRef.current.timerId);
+      messageLongPressRef.current = null;
+    }
+  }, []);
+
+  const markNextMessageClickSuppressed = useCallback((messageId: string) => {
+    suppressedMessageClickRef.current = {
+      messageId,
+      expiresAt: Date.now() + 900,
+    };
+  }, []);
+
+  const consumeSuppressedMessageClick = useCallback((messageId: string) => {
+    const current = suppressedMessageClickRef.current;
+    if (!current) {
+      return false;
+    }
+    if (current.expiresAt < Date.now()) {
+      suppressedMessageClickRef.current = null;
+      return false;
+    }
+    if (current.messageId !== messageId) {
+      return false;
+    }
+    suppressedMessageClickRef.current = null;
+    return true;
+  }, []);
+
+  const toggleSelectedMessage = useCallback((messageId: string) => {
+    setSelectedMessageIds((current) =>
+      current.includes(messageId)
+        ? current.filter((candidate) => candidate !== messageId)
+        : [...current, messageId]
+    );
+  }, []);
+
+  const showMessageContextMenu = useCallback(
+    (message: Message, x: number, y: number) => {
+      resetSwipeReplyState();
+      clearMessageLongPressGesture();
+      clearSelectedMessages();
+      setIsChatMenuOpen(false);
+      setMessageContextMenu({
+        message,
+        x: Math.max(8, Math.min(x, window.innerWidth - MESSAGE_CONTEXT_MENU_WIDTH)),
+        y: Math.max(8, Math.min(y, window.innerHeight - MESSAGE_CONTEXT_MENU_HEIGHT))
+      });
+    },
+    [clearMessageLongPressGesture, clearSelectedMessages, resetSwipeReplyState]
+  );
+
+  const requestCloseActiveChatSurface = useCallback(() => {
+    if (copySheetContent !== null) {
+      setCopySheetContent(null);
+      return true;
+    }
+    if (messageContextMenu) {
+      setMessageContextMenu(null);
+      return true;
+    }
+    if (isEmojiPickerOpen) {
+      closeEmojiPicker();
+      return true;
+    }
+    if (isChatMenuOpen) {
+      setIsChatMenuOpen(false);
+      return true;
+    }
+    if (isCallSettingsMenuOpen) {
+      setIsCallSettingsMenuOpen(false);
+      return true;
+    }
+    if (isCallAudioPopupOpen) {
+      setIsCallAudioPopupOpen(false);
+      return true;
+    }
+    if (isMessageSelectionMode) {
+      clearSelectedMessages();
+      return true;
+    }
+    if (isMessageSearchOpen) {
+      setMessageSearch("");
+      setIsMessageSearchOpen(false);
+      return true;
+    }
+    if (forwardTarget) {
+      setForwardTarget(null);
+      return true;
+    }
+    if (deleteTarget) {
+      setDeleteTarget(null);
+      return true;
+    }
+    if (isDetailsOpen) {
+      setIsDetailsOpen(false);
+      return true;
+    }
+    if (chatId) {
+      closeActiveChat();
+      return true;
+    }
+    return false;
+  }, [
+    chatId,
+    clearSelectedMessages,
+    closeActiveChat,
+    closeEmojiPicker,
+    copySheetContent,
+    deleteTarget,
+    forwardTarget,
+    isCallAudioPopupOpen,
+    isCallSettingsMenuOpen,
+    isChatMenuOpen,
+    isDetailsOpen,
+    isEmojiPickerOpen,
+    isMessageSearchOpen,
+    isMessageSelectionMode,
+    messageContextMenu
+  ]);
 
   const pushToast = useCallback(
     (toast: Omit<ChatToast, "id">) => {
@@ -1994,8 +2138,9 @@ export default function ChatsPage() {
     setMessageSearch("");
     setIsMessageSearchOpen(false);
     setIsChatMenuOpen(false);
-    setIsEmojiPickerOpen(false);
+    closeEmojiPicker();
     setMessageContextMenu(null);
+    setSelectedMessageIds([]);
     setReplyTarget(null);
     setThreadRootMessageId(null);
     setForwardTarget(null);
@@ -2020,8 +2165,8 @@ export default function ChatsPage() {
       if (!chatMenuRef.current?.contains(event.target as Node)) {
         setIsChatMenuOpen(false);
       }
-      if (!emojiPickerRef.current?.contains(event.target as Node)) {
-        setIsEmojiPickerOpen(false);
+      if (!Capacitor.isNativePlatform() && !emojiPickerRef.current?.contains(event.target as Node)) {
+        closeEmojiPicker();
       }
       setMessageContextMenu(null);
       if (
@@ -2047,8 +2192,12 @@ export default function ChatsPage() {
         setNewChatMemberSearch("");
         return;
       }
+      if (isMessageSelectionMode) {
+        clearSelectedMessages();
+        return;
+      }
       setIsChatMenuOpen(false);
-      setIsEmojiPickerOpen(false);
+      closeEmojiPicker();
       setIsMessageSearchOpen(false);
       setIsDetailsOpen(false);
       if (isNewChatOpen) {
@@ -2067,7 +2216,14 @@ export default function ChatsPage() {
       document.removeEventListener("mousedown", handleDocumentMouseDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeNewChatScreen, isNewChatOpen, newChatScreen, requestCloseFullViewImage]);
+  }, [
+    clearSelectedMessages,
+    closeNewChatScreen,
+    isMessageSelectionMode,
+    isNewChatOpen,
+    newChatScreen,
+    requestCloseFullViewImage
+  ]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) {
@@ -2092,7 +2248,7 @@ export default function ChatsPage() {
           return;
         }
         if (isEmojiPickerOpen) {
-          setIsEmojiPickerOpen(false);
+          closeEmojiPicker();
           return;
         }
         if (isChatMenuOpen) {
@@ -2128,12 +2284,7 @@ export default function ChatsPage() {
           closeNewChatScreen();
           return;
         }
-        if (isDetailsOpen) {
-          setIsDetailsOpen(false);
-          return;
-        }
-        if (chatId) {
-          closeActiveChat();
+        if (requestCloseActiveChatSurface()) {
           return;
         }
         if (canGoBack) {
@@ -2154,7 +2305,6 @@ export default function ChatsPage() {
     };
   }, [
     chatId,
-    closeActiveChat,
     closeNewChatScreen,
     copySheetContent,
     deleteTarget,
@@ -2166,15 +2316,18 @@ export default function ChatsPage() {
     isDetailsOpen,
     isEmojiPickerOpen,
     isMessageSearchOpen,
+    isMessageSelectionMode,
     isNewChatOpen,
     messageContextMenu,
     newChatScreen,
+    requestCloseActiveChatSurface,
     requestCloseFullViewImage
   ]);
 
   useEffect(() => {
     resetSwipeReplyState();
-  }, [chatId, messageContextMenu, resetSwipeReplyState]);
+    clearMessageLongPressGesture();
+  }, [chatId, clearMessageLongPressGesture, messageContextMenu, resetSwipeReplyState]);
 
   useEffect(() => () => clearMessageMotionState(), [clearMessageMotionState]);
 
@@ -3236,9 +3389,30 @@ export default function ChatsPage() {
   }
 
   function closeActiveChat() {
+    clearSelectedMessages();
     setIsDetailsOpen(false);
     setSelectedChat(null);
     navigateToChatList();
+  }
+
+  function closeEmojiPicker() {
+    setIsEmojiPickerOpen(false);
+  }
+
+  function openEmojiPicker() {
+    setIsAttachmentSheetOpen(false);
+    if (Capacitor.isNativePlatform()) {
+      composerInputRef.current?.blur();
+    }
+    setIsEmojiPickerOpen(true);
+  }
+
+  function toggleEmojiPicker() {
+    if (isEmojiPickerOpen) {
+      closeEmojiPicker();
+      return;
+    }
+    openEmojiPicker();
   }
 
   function insertEmoji(emoji: string) {
@@ -3257,6 +3431,7 @@ export default function ChatsPage() {
   }
 
   function openMessageSearch() {
+    clearSelectedMessages();
     setIsMessageSearchOpen(true);
     setIsChatMenuOpen(false);
   }
@@ -3338,6 +3513,7 @@ export default function ChatsPage() {
   }
 
   function handleAttachButtonClick() {
+    closeEmojiPicker();
     if (Capacitor.isNativePlatform()) {
       setIsAttachmentSheetOpen(true);
       return;
@@ -3419,13 +3595,7 @@ export default function ChatsPage() {
 
   function openMessageContextMenu(event: ReactMouseEvent<HTMLElement>, message: Message) {
     event.preventDefault();
-    resetSwipeReplyState();
-    setIsChatMenuOpen(false);
-    setMessageContextMenu({
-      message,
-      x: Math.max(8, Math.min(event.clientX, window.innerWidth - MESSAGE_CONTEXT_MENU_WIDTH)),
-      y: Math.max(8, Math.min(event.clientY, window.innerHeight - MESSAGE_CONTEXT_MENU_HEIGHT))
-    });
+    showMessageContextMenu(message, event.clientX, event.clientY);
   }
 
   function handleReplyToMessage(message: Message) {
@@ -3451,6 +3621,9 @@ export default function ChatsPage() {
     if (!supportsSwipeReplyGesture() || !event.isPrimary || event.button !== 0) {
       return false;
     }
+    if (isMessageSelectionMode) {
+      return false;
+    }
     if (event.pointerType === "mouse" || messageContextMenu !== null) {
       return false;
     }
@@ -3467,11 +3640,116 @@ export default function ChatsPage() {
     return true;
   }
 
+  function shouldAllowMobileMessageGesture(
+    event: ReactPointerEvent<HTMLElement>,
+    message: Message
+  ) {
+    if (!isMobileViewport || !event.isPrimary || event.button !== 0) {
+      return false;
+    }
+    if (event.pointerType === "mouse" || message.deliveryState === "sending") {
+      return false;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, a, input, textarea, select, [role='button']")) {
+      return false;
+    }
+    return true;
+  }
+
+  function beginMessageLongPressGesture(
+    event: ReactPointerEvent<HTMLElement>,
+    message: Message
+  ) {
+    clearMessageLongPressGesture();
+    if (isMessageSelectionMode || !shouldAllowMobileMessageGesture(event, message)) {
+      return;
+    }
+    const timerId = window.setTimeout(() => {
+      markNextMessageClickSuppressed(message.id);
+      resetSwipeReplyState();
+      setMessageContextMenu(null);
+      setSelectedMessageIds([message.id]);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate(10);
+      }
+      messageLongPressRef.current = null;
+    }, MESSAGE_LONG_PRESS_DURATION_MS);
+    messageLongPressRef.current = {
+      messageId: message.id,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      timerId,
+    };
+  }
+
+  function handleMessageLongPressMove(
+    event: ReactPointerEvent<HTMLElement>,
+    message: Message
+  ) {
+    const gesture = messageLongPressRef.current;
+    if (
+      !gesture ||
+      gesture.messageId !== message.id ||
+      gesture.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+    if (
+      Math.abs(event.clientX - gesture.startX) > MESSAGE_LONG_PRESS_MOVE_TOLERANCE ||
+      Math.abs(event.clientY - gesture.startY) > MESSAGE_LONG_PRESS_MOVE_TOLERANCE
+    ) {
+      clearMessageLongPressGesture();
+    }
+  }
+
+  function endMessageLongPressGesture(
+    event: ReactPointerEvent<HTMLElement>,
+    message: Message
+  ) {
+    const gesture = messageLongPressRef.current;
+    if (
+      !gesture ||
+      gesture.messageId !== message.id ||
+      gesture.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+    clearMessageLongPressGesture();
+  }
+
+  function handleMessageBubbleClick(event: ReactMouseEvent<HTMLElement>, message: Message) {
+    if (!isMobileViewport) {
+      return;
+    }
+    if (consumeSuppressedMessageClick(message.id)) {
+      event.preventDefault();
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, a, input, textarea, select, [role='button']")) {
+      return;
+    }
+    if (isMessageSelectionMode) {
+      event.preventDefault();
+      toggleSelectedMessage(message.id);
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    showMessageContextMenu(
+      message,
+      rect.right - 20,
+      rect.top + Math.min(rect.height * 0.5, 40)
+    );
+  }
+
   function beginSwipeReplyGesture(
     event: ReactPointerEvent<HTMLElement>,
     message: Message
   ) {
     if (!shouldAllowSwipeReply(message, event)) {
+      beginMessageLongPressGesture(event, message);
       return;
     }
     swipeReplyGestureRef.current = {
@@ -3487,6 +3765,7 @@ export default function ChatsPage() {
       offset: 0,
       activated: false,
     });
+    beginMessageLongPressGesture(event, message);
   }
 
   function updateSwipeReplyOffset(messageId: string, offset: number) {
@@ -3508,8 +3787,11 @@ export default function ChatsPage() {
       gesture.messageId !== message.id ||
       gesture.pointerId !== event.pointerId
     ) {
+      handleMessageLongPressMove(event, message);
       return;
     }
+
+    handleMessageLongPressMove(event, message);
 
     const deltaX = event.clientX - gesture.startX;
     const deltaY = event.clientY - gesture.startY;
@@ -3520,12 +3802,14 @@ export default function ChatsPage() {
         Math.abs(deltaY) > Math.abs(deltaX)
       ) {
         resetSwipeReplyState();
+        clearMessageLongPressGesture();
         return;
       }
       if (deltaX <= SWIPE_REPLY_DIRECTION_LOCK || deltaX <= Math.abs(deltaY)) {
         return;
       }
       gesture.lock = "horizontal";
+      clearMessageLongPressGesture();
       event.currentTarget.setPointerCapture?.(event.pointerId);
     }
 
@@ -3539,6 +3823,7 @@ export default function ChatsPage() {
     message: Message,
     options?: { commit?: boolean }
   ) {
+    endMessageLongPressGesture(event, message);
     const gesture = swipeReplyGestureRef.current;
     if (
       !gesture ||
@@ -3559,6 +3844,7 @@ export default function ChatsPage() {
     resetSwipeReplyState();
 
     if (shouldCommit) {
+      markNextMessageClickSuppressed(message.id);
       handleReplyToMessage(message);
     }
   }
@@ -3642,6 +3928,12 @@ export default function ChatsPage() {
 
   function handleComposerEmojiPick(emojiData: EmojiClickData) {
     insertEmoji(emojiData.emoji);
+  }
+
+  function handleComposerFocus() {
+    if (Capacitor.isNativePlatform() && isEmojiPickerOpen) {
+      closeEmojiPicker();
+    }
   }
 
   async function handleForwardMessage(targetChatId: string) {
@@ -3828,6 +4120,9 @@ export default function ChatsPage() {
   if (chatId && !isLoading && !isChatLoading && !selectedChat && !visibleError) {
     return <Navigate to="/app/chats" replace />;
   }
+
+  const isDockedEmojiPicker = Capacitor.isNativePlatform() && isMobileViewport;
+  const showDockedEmojiPicker = isDockedEmojiPicker && isEmojiPickerOpen;
 
   return (
     <main
@@ -4057,7 +4352,7 @@ export default function ChatsPage() {
                     type="button"
                     className="mobile-back-button"
                     aria-label="Back to chats"
-                    onClick={closeActiveChat}
+                    onClick={requestCloseActiveChatSurface}
                   >
                     <span className="ms-icon ms-icon--20" aria-hidden={true}>
                       arrow_back
@@ -4246,6 +4541,21 @@ export default function ChatsPage() {
                     </button>
                   </div>
                 )}
+                {isMessageSelectionMode && (
+                  <div className="message-selection-banner" role="status" aria-live="polite">
+                    <span>
+                      {selectedMessageIds.length} message{selectedMessageIds.length === 1 ? "" : "s"} selected
+                    </span>
+                    <button
+                      type="button"
+                      className="icon-button subtle"
+                      aria-label="Exit message selection mode"
+                      onClick={clearSelectedMessages}
+                    >
+                      <X aria-hidden="true" size={18} />
+                    </button>
+                  </div>
+                )}
                 {pinnedMessages.length > 0 && (
                   <div className="pinned-banner" role="status">
                     <button
@@ -4279,7 +4589,11 @@ export default function ChatsPage() {
                   </div>
                 )}
                 <div
-                  className={messages.length === 0 ? "phase-empty-state" : "messages-panel"}
+                  className={
+                    messages.length === 0
+                      ? "phase-empty-state"
+                      : `messages-panel${showDockedEmojiPicker ? " messages-panel--emoji-docked" : ""}`
+                  }
                   aria-busy={isChatLoading}
                   ref={messagesPanelRef}
                 >
@@ -4353,6 +4667,7 @@ export default function ChatsPage() {
                               "--message-swipe-progress": String(swipeProgress),
                             } as CSSProperties)
                           : undefined;
+                        const isSelected = selectedMessageIds.includes(message.id);
                         const messageMeta = (
                           <span className="message-meta">
                             {messageDeliveryLabel(message, mine)}
@@ -4363,9 +4678,11 @@ export default function ChatsPage() {
                         );
                         return (
                           <article
-                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}${swipeStateForMessage ? " is-swipe-active" : ""}${swipeStateForMessage?.activated ? " is-swipe-armed" : ""}`}
+                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}${swipeStateForMessage ? " is-swipe-active" : ""}${swipeStateForMessage?.activated ? " is-swipe-armed" : ""}${isMessageSelectionMode ? " is-selection-mode" : ""}${isSelected ? " is-selected" : ""}`}
                             id={message.id}
                             key={message.id}
+                            aria-pressed={isMessageSelectionMode ? isSelected : undefined}
+                            onClick={(event) => handleMessageBubbleClick(event, message)}
                             onContextMenu={(event) => openMessageContextMenu(event, message)}
                             onPointerCancel={(event) =>
                               endSwipeReplyGesture(event, message, { commit: false })
@@ -4375,6 +4692,11 @@ export default function ChatsPage() {
                             onPointerUp={(event) => endSwipeReplyGesture(event, message)}
                             style={swipeStyle}
                           >
+                            {isSelected && (
+                              <span className="message-selection-indicator" aria-hidden="true">
+                                <CheckCheck size={14} />
+                              </span>
+                            )}
                             <span className="message-swipe-affordance" aria-hidden="true">
                               <Reply size={16} />
                             </span>
@@ -4672,7 +4994,10 @@ export default function ChatsPage() {
                     </div>
                   </div>
                 )}
-                <form className="message-composer" onSubmit={handleSendMessage}>
+                <form
+                  className={`message-composer${isDockedEmojiPicker ? " message-composer--emoji-docked" : ""}${showDockedEmojiPicker ? " message-composer--emoji-open" : ""}`}
+                  onSubmit={handleSendMessage}
+                >
                   {selectedChat?.type === "channel" && channelCommentsDisabledForViewer && (
                     <p className="muted-copy">Comments are disabled in this channel.</p>
                   )}
@@ -4729,28 +5054,15 @@ export default function ChatsPage() {
                         aria-expanded={isEmojiPickerOpen}
                         title="Add emoji"
                         disabled={channelCommentsDisabledForViewer || missingCommentThread}
-                        onClick={() => {
-                          const opening = !isEmojiPickerOpen;
-                          if (opening && Capacitor.isNativePlatform()) {
-                            composerInputRef.current?.blur();
-                          }
-                          setIsEmojiPickerOpen((current) => !current);
-                        }}
+                        onClick={toggleEmojiPicker}
                       >
                         <span className="ms-icon ms-icon--22" aria-hidden={true}>
                           sentiment_satisfied
                         </span>
                       </button>
-                      {isEmojiPickerOpen && (
+                      {!showDockedEmojiPicker && isEmojiPickerOpen && (
                         <div
-                          className="emoji-picker-backdrop"
-                          aria-hidden={true}
-                          onClick={() => setIsEmojiPickerOpen(false)}
-                        />
-                      )}
-                      {isEmojiPickerOpen && (
-                        <div
-                          className={`emoji-picker${Capacitor.isNativePlatform() ? " emoji-picker--bottom-sheet" : ""}`}
+                          className="emoji-picker"
                           role="menu"
                           aria-label="Choose emoji"
                         >
@@ -4827,6 +5139,7 @@ export default function ChatsPage() {
                       value={composer}
                       disabled={channelCommentsDisabledForViewer || missingCommentThread}
                       onChange={(event) => handleComposerChange(event.target.value)}
+                      onFocus={handleComposerFocus}
                       onKeyDown={handleComposerKeyDown}
                     />
                     <button
@@ -4851,6 +5164,31 @@ export default function ChatsPage() {
                       )}
                     </button>
                   </div>
+                  {showDockedEmojiPicker && (
+                    <div className="emoji-picker-dock" role="group" aria-label="Emoji picker">
+                      <div className="emoji-picker-dock-header">
+                        <span>Emoji</span>
+                        <button
+                          type="button"
+                          className="emoji-picker-dock-close"
+                          aria-label="Close emoji picker"
+                          title="Close emoji picker"
+                          onClick={closeEmojiPicker}
+                        >
+                          <X aria-hidden="true" size={14} />
+                        </button>
+                      </div>
+                      <div className="emoji-picker emoji-picker--docked" role="menu" aria-label="Choose emoji">
+                        <EmojiPicker
+                          onEmojiClick={handleComposerEmojiPick}
+                          autoFocusSearch={false}
+                          lazyLoadEmojis
+                          width="100%"
+                          height={320}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </form>
               </>
             ) : (
