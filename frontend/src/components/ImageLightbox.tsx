@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Download } from "lucide-react";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 
 interface ImageLightboxProps {
   imageUrl: string;
   title: string;
   subtitle?: string;
+  isExternallyClosing?: boolean;
   onClose: () => void;
   onDownload?: () => void;
 }
@@ -13,16 +15,53 @@ export default function ImageLightbox({
   imageUrl,
   title,
   subtitle,
+  isExternallyClosing = false,
   onClose,
   onDownload
 }: ImageLightboxProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const [isClosing, setIsClosing] = useState(false);
+  const [isReady, setIsReady] = useState(prefersReducedMotion);
+
+  const requestClose = useCallback(() => {
+    if (isClosing) {
+      return;
+    }
+
+    if (prefersReducedMotion) {
+      onClose();
+      return;
+    }
+
+    setIsClosing(true);
+  }, [isClosing, onClose, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setIsReady(true);
+      return;
+    }
+
+    setIsReady(false);
+    const frame = window.requestAnimationFrame(() => {
+      setIsReady(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [imageUrl, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (isExternallyClosing) {
+      requestClose();
+    }
+  }, [isExternallyClosing, requestClose]);
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        requestClose();
       }
     }
 
@@ -31,20 +70,34 @@ export default function ImageLightbox({
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, [requestClose]);
+
+  useEffect(() => {
+    if (!isClosing || prefersReducedMotion) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => onClose(), 220);
+    return () => window.clearTimeout(timeout);
+  }, [isClosing, onClose, prefersReducedMotion]);
 
   return (
     <div
-      className="image-lightbox-backdrop"
+      className={`image-lightbox-backdrop${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
-          onClose();
+          requestClose();
         }
       }}
     >
       <header className="image-lightbox-toolbar">
-        <button type="button" className="image-lightbox-close" aria-label="Close image preview" onClick={onClose}>
+        <button
+          type="button"
+          className="image-lightbox-close"
+          aria-label="Close image preview"
+          onClick={requestClose}
+        >
           <span className="ms-icon ms-icon--24" aria-hidden={true}>
             close
           </span>
