@@ -5825,7 +5825,9 @@ h2 {
   }
 
   .emoji-picker {
-    left: -52px;
+    left: auto;
+    max-width: min(320px, calc(100vw - (var(--mobile-edge-inset-x) * 2)));
+    right: 0;
   }
 
   .attachment-card,
