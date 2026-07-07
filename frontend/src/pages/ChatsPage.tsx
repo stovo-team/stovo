@@ -3795,7 +3795,7 @@ export default function ChatsPage() {
     const target = event.target as HTMLElement | null;
     if (
       target?.closest(
-        "button, a, input, textarea, select, [role='button'], .message-bubble, .action-menu, .emoji-picker, .emoji-picker-dock"
+        "button, a, input, textarea, select, [role='button'], .action-menu, .emoji-picker, .emoji-picker-dock"
       )
     ) {
       return false;
@@ -4564,14 +4564,6 @@ export default function ChatsPage() {
                             </span>
                             Search messages
                           </button>
-                          {pinnedMessages.length > 0 && (
-                            <button type="button" role="menuitem" onClick={openPinnedMessages}>
-                              <Pin aria-hidden="true" size={16} />
-                              {pinnedMessages.length === 1
-                                ? "Pinned message"
-                                : `Pinned messages (${pinnedMessages.length})`}
-                            </button>
-                          )}
                           <button
                             type="button"
                             role="menuitem"
@@ -4688,24 +4680,13 @@ export default function ChatsPage() {
                     </button>
                   </div>
                 )}
-                {false && pinnedMessages.length > 0 && (
+                {pinnedMessages.length > 0 && (
                   <div className="pinned-banner" role="status">
                     <button
                       type="button"
                       className="pinned-banner-click-area"
                       aria-label="Go to pinned message"
-                      onClick={() => {
-                        const currentPin = pinnedMessages[pinIndex];
-                        if (currentPin) {
-                          focusMessageInPanel({
-                            messageId: currentPin.messageId,
-                            highlightClassName: "message-pin-flash",
-                            lockPinTracking: true,
-                          });
-                        }
-                        // Cycle toward older (lower index), wrapping from 0 back to newest
-                        setPinIndex((current) => (current - 1 + pinnedMessages.length) % pinnedMessages.length);
-                      }}
+                      onClick={openPinnedMessages}
                     >
                       <span className="pinned-banner-eyebrow" aria-live="polite">
                         {pinnedMessages.length === 1
