@@ -1721,6 +1721,10 @@ h2 {
   z-index: 1;
 }
 
+.menu-anchor--open {
+  z-index: 40;
+}
+
 .action-menu {
   background: var(--surface-card);
   border: 1px solid var(--border-default);
@@ -2504,7 +2508,7 @@ h2 {
   padding-top: max(6px, env(safe-area-inset-top));
   position: sticky;
   top: 8px;
-  z-index: 2;
+  z-index: 12;
 }
 
 .messenger-shell.has-active-chat .messages-panel {
@@ -3229,11 +3233,24 @@ h2 {
   background: transparent;
   border-radius: 999px;
   color: var(--text-secondary);
+  opacity: 1 !important;
 }
 
 .emoji-picker .epr-cat-btn.epr-active {
   background: color-mix(in oklab, var(--accent-soft) 92%, transparent);
   color: var(--accent-primary);
+}
+
+.emoji-picker .epr-cat-btn:hover {
+  background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
+  color: var(--text-primary);
+}
+
+.emoji-picker .epr-cat-btn svg,
+.emoji-picker .epr-cat-btn path {
+  color: currentColor !important;
+  fill: currentColor !important;
+  opacity: 1 !important;
 }
 
 .emoji-picker .epr-emoji-category-label {
@@ -5758,7 +5775,7 @@ h2 {
 
   .action-menu {
     right: 0;
-    z-index: 32;
+    z-index: 48;
   }
 
   .storage-layout {
