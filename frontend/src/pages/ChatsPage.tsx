@@ -4542,7 +4542,7 @@ export default function ChatsPage() {
                         </button>
                       </>
                     )}
-                    <div className="menu-anchor" ref={chatMenuRef}>
+                    <div className={isChatMenuOpen ? "menu-anchor menu-anchor--open" : "menu-anchor"} ref={chatMenuRef}>
                       <button
                         type="button"
                         className="icon-button subtle icon-button--plain"
