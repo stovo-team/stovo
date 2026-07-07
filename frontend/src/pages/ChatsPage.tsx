@@ -5183,6 +5183,9 @@ export default function ChatsPage() {
                             onEmojiClick={handleComposerEmojiPick}
                             autoFocusSearch={false}
                             lazyLoadEmojis
+                            previewConfig={{ showPreview: false }}
+                            searchDisabled
+                            skinTonesDisabled
                             width={320}
                             height={380}
                           />
@@ -5296,6 +5299,9 @@ export default function ChatsPage() {
                           onEmojiClick={handleComposerEmojiPick}
                           autoFocusSearch={false}
                           lazyLoadEmojis
+                          previewConfig={{ showPreview: false }}
+                          searchDisabled
+                          skinTonesDisabled
                           width="100%"
                           height={320}
                         />

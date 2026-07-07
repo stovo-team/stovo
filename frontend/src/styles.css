@@ -2706,7 +2706,7 @@ h2 {
   right: -7px;
   top: -7px;
   width: 22px;
-  z-index: 2;
+  z-index: 6;
 }
 
 .message-swipe-affordance {
@@ -3143,6 +3143,8 @@ h2 {
 .emoji-picker {
   --epr-bg-color: color-mix(in oklab, var(--island-surface) 96%, transparent);
   --epr-category-label-bg-color: color-mix(in oklab, var(--island-surface) 96%, transparent);
+  --epr-category-label-text-color: var(--text-secondary);
+  --epr-category-icon-active-color: var(--accent-primary);
   --epr-hover-bg-color: color-mix(in oklab, var(--accent-soft) 88%, transparent);
   --epr-focus-bg-color: color-mix(in oklab, var(--accent-soft) 72%, transparent);
   --epr-text-color: var(--text-primary);
@@ -3211,6 +3213,35 @@ h2 {
 .emoji-picker .EmojiPickerReact {
   background: transparent !important;
   border: 0 !important;
+}
+
+.emoji-picker .epr-category-nav {
+  align-items: center;
+  background: color-mix(in oklab, var(--island-surface) 96%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--border-default) 72%, transparent);
+  display: flex;
+  gap: 4px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.emoji-picker .epr-cat-btn {
+  background: transparent;
+  border-radius: 999px;
+  color: var(--text-secondary);
+}
+
+.emoji-picker .epr-cat-btn.epr-active {
+  background: color-mix(in oklab, var(--accent-soft) 92%, transparent);
+  color: var(--accent-primary);
+}
+
+.emoji-picker .epr-emoji-category-label {
+  background: color-mix(in oklab, var(--island-surface) 96%, transparent);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .pending-attachments,
@@ -5727,6 +5758,7 @@ h2 {
 
   .action-menu {
     right: 0;
+    z-index: 32;
   }
 
   .storage-layout {
