@@ -222,6 +222,8 @@ const SWIPE_REPLY_DIRECTION_LOCK = 12;
 const MESSAGE_LONG_PRESS_DURATION_MS = 420;
 const MESSAGE_LONG_PRESS_MOVE_TOLERANCE = 10;
 const SWIPE_REPLY_VERTICAL_TOLERANCE = 14;
+const CHAT_EXIT_SWIPE_EDGE_THRESHOLD = 32;
+const CHAT_EXIT_SWIPE_TRIGGER_OFFSET = 78;
 
 const COMPOSER_EMOJIS = [
   "😀",
@@ -379,6 +381,14 @@ type MessageLongPressState = {
   startX: number;
   startY: number;
   timerId: number;
+};
+
+type ChatExitSwipeState = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  lock: "pending" | "horizontal" | "vertical";
+  committed: boolean;
 };
 
 type PendingMessageFocus = {
@@ -1243,6 +1253,7 @@ export default function ChatsPage() {
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   const swipeReplyGestureRef = useRef<SwipeReplyGestureState | null>(null);
   const messageLongPressRef = useRef<MessageLongPressState | null>(null);
+  const chatExitSwipeRef = useRef<ChatExitSwipeState | null>(null);
   const suppressedMessageClickRef = useRef<{
     messageId: string;
     expiresAt: number;
@@ -1366,6 +1377,10 @@ export default function ChatsPage() {
       window.clearTimeout(messageLongPressRef.current.timerId);
       messageLongPressRef.current = null;
     }
+  }, []);
+
+  const resetChatExitSwipeGesture = useCallback(() => {
+    chatExitSwipeRef.current = null;
   }, []);
 
   const markNextMessageClickSuppressed = useCallback((messageId: string) => {
@@ -2327,7 +2342,14 @@ export default function ChatsPage() {
   useEffect(() => {
     resetSwipeReplyState();
     clearMessageLongPressGesture();
-  }, [chatId, clearMessageLongPressGesture, messageContextMenu, resetSwipeReplyState]);
+    resetChatExitSwipeGesture();
+  }, [
+    chatId,
+    clearMessageLongPressGesture,
+    messageContextMenu,
+    resetChatExitSwipeGesture,
+    resetSwipeReplyState
+  ]);
 
   useEffect(() => () => clearMessageMotionState(), [clearMessageMotionState]);
 
@@ -3436,6 +3458,19 @@ export default function ChatsPage() {
     setIsChatMenuOpen(false);
   }
 
+  function openPinnedMessages() {
+    const currentPin = pinnedMessages[pinIndex] ?? pinnedMessages[0];
+    if (currentPin) {
+      focusMessageInPanel({
+        messageId: currentPin.messageId,
+        highlightClassName: "message-pin-flash",
+        lockPinTracking: true,
+      });
+      setPinIndex((current) => (current - 1 + pinnedMessages.length) % pinnedMessages.length);
+    }
+    setIsChatMenuOpen(false);
+  }
+
   const COMPOSER_MAX_LINES = 3;
 
   const getComposerHeightLimits = useCallback((textarea: HTMLTextAreaElement) => {
@@ -3595,6 +3630,9 @@ export default function ChatsPage() {
 
   function openMessageContextMenu(event: ReactMouseEvent<HTMLElement>, message: Message) {
     event.preventDefault();
+    if (isMobileViewport || isMessageSelectionMode) {
+      return;
+    }
     showMessageContextMenu(message, event.clientX, event.clientY);
   }
 
@@ -3742,6 +3780,86 @@ export default function ChatsPage() {
       rect.right - 20,
       rect.top + Math.min(rect.height * 0.5, 40)
     );
+  }
+
+  function shouldAllowChatExitSwipe(event: ReactPointerEvent<HTMLElement>) {
+    if (!isMobileViewport || !chatId || !event.isPrimary || event.button !== 0) {
+      return false;
+    }
+    if (event.pointerType === "mouse") {
+      return false;
+    }
+    if (event.clientX > CHAT_EXIT_SWIPE_EDGE_THRESHOLD) {
+      return false;
+    }
+    const target = event.target as HTMLElement | null;
+    if (
+      target?.closest(
+        "button, a, input, textarea, select, [role='button'], .message-bubble, .action-menu, .emoji-picker, .emoji-picker-dock"
+      )
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  function beginChatExitSwipe(event: ReactPointerEvent<HTMLElement>) {
+    if (!shouldAllowChatExitSwipe(event)) {
+      return;
+    }
+    chatExitSwipeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lock: "pending",
+      committed: false,
+    };
+  }
+
+  function moveChatExitSwipe(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = chatExitSwipeRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId || gesture.committed) {
+      return;
+    }
+
+    const deltaX = event.clientX - gesture.startX;
+    const deltaY = event.clientY - gesture.startY;
+
+    if (gesture.lock === "pending") {
+      if (Math.abs(deltaY) > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        gesture.lock = "vertical";
+        return;
+      }
+      if (deltaX <= 10 || deltaX <= Math.abs(deltaY)) {
+        return;
+      }
+      gesture.lock = "horizontal";
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
+
+    if (gesture.lock !== "horizontal") {
+      return;
+    }
+
+    if (deltaX >= CHAT_EXIT_SWIPE_TRIGGER_OFFSET) {
+      gesture.committed = true;
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      requestCloseActiveChatSurface();
+      resetChatExitSwipeGesture();
+    }
+  }
+
+  function endChatExitSwipe(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = chatExitSwipeRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+      return;
+    }
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    resetChatExitSwipeGesture();
   }
 
   function beginSwipeReplyGesture(
@@ -4344,7 +4462,13 @@ export default function ChatsPage() {
             </button>
           </aside>
 
-          <section className="chat-detail">
+          <section
+            className="chat-detail"
+            onPointerCancel={endChatExitSwipe}
+            onPointerDown={beginChatExitSwipe}
+            onPointerMove={moveChatExitSwipe}
+            onPointerUp={endChatExitSwipe}
+          >
             {selectedChat ? (
               <>
                 <div className="chat-detail-header chat-detail-header--floating">
@@ -4440,6 +4564,14 @@ export default function ChatsPage() {
                             </span>
                             Search messages
                           </button>
+                          {pinnedMessages.length > 0 && (
+                            <button type="button" role="menuitem" onClick={openPinnedMessages}>
+                              <Pin aria-hidden="true" size={16} />
+                              {pinnedMessages.length === 1
+                                ? "Pinned message"
+                                : `Pinned messages (${pinnedMessages.length})`}
+                            </button>
+                          )}
                           <button
                             type="button"
                             role="menuitem"
@@ -4556,7 +4688,7 @@ export default function ChatsPage() {
                     </button>
                   </div>
                 )}
-                {pinnedMessages.length > 0 && (
+                {false && pinnedMessages.length > 0 && (
                   <div className="pinned-banner" role="status">
                     <button
                       type="button"
