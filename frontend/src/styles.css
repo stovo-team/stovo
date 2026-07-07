@@ -3141,14 +3141,24 @@ h2 {
 }
 
 .emoji-picker {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-card);
+  --epr-bg-color: color-mix(in oklab, var(--island-surface) 96%, transparent);
+  --epr-category-label-bg-color: color-mix(in oklab, var(--island-surface) 96%, transparent);
+  --epr-hover-bg-color: color-mix(in oklab, var(--accent-soft) 88%, transparent);
+  --epr-focus-bg-color: color-mix(in oklab, var(--accent-soft) 72%, transparent);
+  --epr-text-color: var(--text-primary);
+  --epr-search-border-color: color-mix(in oklab, var(--border-default) 86%, transparent);
+  --epr-search-input-bg-color: color-mix(in oklab, var(--background-secondary) 88%, transparent);
+  --epr-picker-border-color: transparent;
+  --epr-shadow: none;
+  background: color-mix(in oklab, var(--island-surface) 96%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border-default) 88%, transparent);
+  border-radius: 24px;
   bottom: calc(100% + 10px);
   box-shadow: var(--shadow-soft);
-  left: 0;
+  left: 50%;
   overflow: hidden;
   position: absolute;
+  transform: translateX(-50%);
   z-index: 20;
 }
 
@@ -3196,6 +3206,11 @@ h2 {
 .emoji-picker--docked .EmojiPickerReact {
   border: 0 !important;
   width: 100% !important;
+}
+
+.emoji-picker .EmojiPickerReact {
+  background: transparent !important;
+  border: 0 !important;
 }
 
 .pending-attachments,
@@ -5602,10 +5617,13 @@ h2 {
     background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
     border-radius: 999px;
     display: inline-flex;
-    height: 34px;
+    flex: 0 0 40px;
+    height: 40px;
     justify-content: center;
+    min-height: 40px;
+    min-width: 40px;
     padding: 0;
-    width: 34px;
+    width: 40px;
   }
 
   .messenger-shell.has-active-chat .chat-header-actions .icon-button {
@@ -5773,11 +5791,13 @@ h2 {
     background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
     border-radius: 999px;
     display: inline-flex;
+    flex: 0 0 40px;
     justify-content: center;
-    min-width: 0;
+    min-height: 40px;
+    min-width: 40px;
     padding: 0;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
     border: 0;
   }
@@ -5825,9 +5845,10 @@ h2 {
   }
 
   .emoji-picker {
-    left: auto;
+    left: 50%;
     max-width: min(320px, calc(100vw - (var(--mobile-edge-inset-x) * 2)));
-    right: 0;
+    right: auto;
+    transform: translateX(-50%);
   }
 
   .attachment-card,
