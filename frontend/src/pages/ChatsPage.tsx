@@ -120,10 +120,12 @@ import {
 import { Capacitor } from "@capacitor/core";
 import { App, AppState } from "@capacitor/app";
 import {
+  addPictureInPictureListener,
   addProximityListener,
   disableNativeCallMode,
   enableNativeCallMode,
   isNativeCallPluginAvailable,
+  setNativeActiveCallState,
 } from "../native/callPlugin";
 
 type CallPhase = "idle" | "outgoing" | "incoming" | "connecting" | "in-call";
@@ -1239,6 +1241,7 @@ export default function ChatsPage() {
   const activeCallSessionIdRef = useRef<string | null>(null);
   const callTypeRef = useRef<"audio" | "video">("audio");
   const callPhaseRef = useRef<CallPhase>("idle");
+  const pictureInPictureActiveRef = useRef(false);
   const accessTokenRef = useRef<string | null>(accessToken);
   const chatsRef = useRef<Chat[]>([]);
   const messagesRef = useRef<Message[]>([]);
@@ -1497,6 +1500,51 @@ export default function ChatsPage() {
     isMessageSelectionMode,
     messageContextMenu
   ]);
+
+  const syncNativePictureInPictureCallState = useCallback(() => {
+    if (!isNativeCallPluginAvailable()) {
+      return;
+    }
+
+    const phase = callPhaseRef.current;
+    const hasLiveSession = Boolean(activeCallSessionIdRef.current);
+    const active = (phase === "connecting" || phase === "in-call") && hasLiveSession;
+    const video = active && callTypeRef.current === "video";
+
+    void setNativeActiveCallState({
+      active,
+      video,
+      chatId: active ? activeCallChatIdRef.current : null,
+      sessionId: active ? activeCallSessionIdRef.current : null,
+    });
+  }, []);
+
+  const restoreActiveCallSurface = useCallback(() => {
+    if (callPhaseRef.current === "idle") {
+      return;
+    }
+
+    setIsCallMinimized(false);
+    setIsDetailsOpen(false);
+
+    const callChatId = activeCallChatIdRef.current;
+    if (!callChatId || activeChatIdRef.current === callChatId) {
+      return;
+    }
+
+    const callChat = chatsRef.current.find((candidate) => candidate.id === callChatId) ?? null;
+    if (callChat) {
+      setSelectedChat(callChat);
+      const cachedMessages = messageCacheRef.current[callChat.id];
+      if (cachedMessages) {
+        setMessages(cachedMessages);
+      }
+    }
+
+    navigateWithMotion(navigate, `/app/chats/${callChatId}`, {
+      reducedMotion: prefersReducedMotion
+    });
+  }, [navigate, prefersReducedMotion]);
 
   const pushToast = useCallback(
     (toast: Omit<ChatToast, "id">) => {
@@ -2041,6 +2089,9 @@ export default function ChatsPage() {
     callPhaseRef.current = callPhase;
   }, [callPhase]);
   useEffect(() => {
+    syncNativePictureInPictureCallState();
+  }, [activeCallChatId, callPhase, callType, syncNativePictureInPictureCallState]);
+  useEffect(() => {
     accessTokenRef.current = accessToken;
     const socket = socketRef.current;
     if (socket && accessToken) {
@@ -2426,6 +2477,7 @@ export default function ChatsPage() {
     // whether to suppress ntfy push notifications (only suppress when in foreground).
     let appStateListener: { remove: () => Promise<void> } | null = null;
     let appStateCancelled = false;
+    let removePictureInPictureListener: (() => void) | null = null;
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
       void (async () => {
         try {
@@ -2445,6 +2497,23 @@ export default function ChatsPage() {
           // Non-critical: if app state tracking fails, ntfy will fire as fallback.
         }
       })();
+
+      void addPictureInPictureListener((state) => {
+        pictureInPictureActiveRef.current = state.active;
+        if (state.active) {
+          setIsCallMinimized(false);
+          return;
+        }
+        if (callPhaseRef.current !== "idle") {
+          restoreActiveCallSurface();
+        }
+      }).then((remove) => {
+        if (appStateCancelled) {
+          remove();
+        } else {
+          removePictureInPictureListener = remove;
+        }
+      });
     }
 
     const syncAfterSocketResume = () => {
@@ -2713,8 +2782,12 @@ export default function ChatsPage() {
       stopCallRingtone();
       const peerId = payload.callerId === currentUser.id ? payload.calleeId : payload.callerId;
       const acceptedCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
+      if (payload.sessionStartedAt) {
+        activeCallSessionIdRef.current = payload.sessionStartedAt;
+      }
       setCallPeerUserId(peerId);
       setCallType(acceptedCallType);
+      callTypeRef.current = acceptedCallType;
       setCallPhase("connecting");
       if (payload.callerId === currentUser.id) {
         console.log("[call:accepted] caller path — calling startOutgoing");
@@ -2844,6 +2917,7 @@ export default function ChatsPage() {
       audioSettingsCancelled = true;
       appStateCancelled = true;
       void appStateListener?.remove();
+      removePictureInPictureListener?.();
       socket.off("connect", syncAfterSocketResume);
       socket.off("connect_error", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
@@ -2915,6 +2989,12 @@ export default function ChatsPage() {
     };
   }, [callPhase, callAudioSettings.speakerMode, callAudioSettings.outputDeviceId]);
 
+  useEffect(() => {
+    if (callPhase === "idle") {
+      pictureInPictureActiveRef.current = false;
+    }
+  }, [callPhase]);
+
   // Re-attach video refs to the controller whenever a call becomes active.
   // startOutgoing / acceptIncoming await getUserMedia (hundreds of ms), giving
   // React time to render the popup and populate the refs before they're needed.
@@ -2960,6 +3040,9 @@ export default function ChatsPage() {
     await audioCallRef.current?.cleanup(serverAlreadyNotified);
     callPhaseRef.current = "idle";
     activeCallSessionIdRef.current = null;
+    activeCallChatIdRef.current = null;
+    callTypeRef.current = "audio";
+    pictureInPictureActiveRef.current = false;
     setCallPhase("idle");
     setActiveCallChatId(null);
     setCallPeerUserId(null);
@@ -3005,6 +3088,7 @@ export default function ChatsPage() {
     setError(null);
     setCallNotice(null);
     setCallType(type);
+    callTypeRef.current = type;
     if (type === "audio") {
       void applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
     }
@@ -3042,6 +3126,7 @@ export default function ChatsPage() {
       setCallPhase("idle");
       callPhaseRef.current = "idle";
       activeCallSessionIdRef.current = null;
+      callTypeRef.current = "audio";
       setActiveCallChatId(null);
       setCallPeerUserId(null);
       activeCallChatIdRef.current = null;
@@ -3061,6 +3146,7 @@ export default function ChatsPage() {
     setCallNotice(null);
     setCallPhase("connecting");
     callPhaseRef.current = "connecting"; // Sync update — see startDirectCall for rationale
+    callTypeRef.current = callType;
     stopCallRingtone();
     try {
       if (callType === "audio") {
@@ -3104,6 +3190,10 @@ export default function ChatsPage() {
     stopCallRingtone();
     playCallEndSound();
     callPhaseRef.current = "idle";
+    activeCallSessionIdRef.current = null;
+    activeCallChatIdRef.current = null;
+    callTypeRef.current = "audio";
+    pictureInPictureActiveRef.current = false;
     socketRef.current.emit("call:end", { chatId: activeCallChatId });
     // serverAlreadyNotified=true: we just sent call:end above, cleanup should
     // not send it again or the server will return a spurious call:error.
