@@ -42,7 +42,7 @@ class CallPlugin : Plugin() {
     private var isVideoCall = false
     private var activeCallChatId: String? = null
     private var activeCallSessionId: String? = null
-    private var isInPictureInPictureMode = false
+    private var pictureInPictureActive = false
 
     override fun load() {
         super.load()
@@ -200,7 +200,7 @@ class CallPlugin : Plugin() {
     }
 
     private fun handlePictureInPictureModeChangedInternal(isInPictureInPictureMode: Boolean) {
-        this.isInPictureInPictureMode = isInPictureInPictureMode
+        pictureInPictureActive = isInPictureInPictureMode
         notifyPictureInPictureChanged(
             if (isInPictureInPictureMode) "entered" else "exited"
         )
@@ -221,7 +221,7 @@ class CallPlugin : Plugin() {
                 PictureInPictureParams.Builder().build()
             )
             if (entered) {
-                isInPictureInPictureMode = currentActivity.isInPictureInPictureModeCompat()
+                pictureInPictureActive = currentActivity.isInPictureInPictureModeCompat()
                 notifyPictureInPictureChanged(reason)
             }
             entered
@@ -240,7 +240,7 @@ class CallPlugin : Plugin() {
 
     private fun buildPictureInPictureState(reason: String): JSObject {
         val payload = JSObject()
-        payload.put("active", isPictureInPictureMode)
+        payload.put("active", pictureInPictureActive)
         payload.put("supported", isPictureInPictureSupported(activity ?: bridge?.activity))
         payload.put("eligible", isPictureInPictureEligible())
         payload.put("callActive", isActiveCall)
@@ -265,7 +265,7 @@ class CallPlugin : Plugin() {
 
     private fun Activity.isInPictureInPictureModeCompat(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            isInPictureInPictureMode
+            this.isInPictureInPictureMode()
         } else {
             false
         }
