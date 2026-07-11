@@ -6,7 +6,6 @@ export type UserRole = "owner" | "admin" | "member" | "child";
 export interface User {
   id: string;
   familyId: string;
-  email: string;
   username: string;
   displayName: string;
   role: UserRole;
@@ -37,7 +36,7 @@ export interface SetupPayload {
 }
 
 export interface LoginPayload {
-  login: string;
+  username: string;
   password: string;
 }
 

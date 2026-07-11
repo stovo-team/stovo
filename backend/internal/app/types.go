@@ -5,7 +5,6 @@ import "time"
 type userPublic struct {
 	ID           string      `json:"id"`
 	FamilyID     string      `json:"familyId"`
-	Email        string      `json:"email"`
 	Username     string      `json:"username"`
 	DisplayName  string      `json:"displayName"`
 	Role         string      `json:"role"`
@@ -95,14 +94,13 @@ type setupStatusResponse struct {
 type setupRequest struct {
 	FamilyName  string `json:"familyName"`
 	Nickname    string `json:"nickname"`
-	Email       string `json:"email"`
 	Username    string `json:"username"`
 	Password    string `json:"password"`
 	DisplayName string `json:"displayName"`
 }
 
 type loginRequest struct {
-	Login    string `json:"login"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
@@ -129,7 +127,6 @@ type createInviteRequest struct {
 
 type acceptInviteRequest struct {
 	Nickname    string `json:"nickname"`
-	Email       string `json:"email"`
 	Username    string `json:"username"`
 	Password    string `json:"password"`
 	DisplayName string `json:"displayName"`

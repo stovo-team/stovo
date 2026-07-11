@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.stakhovivan.stovo",
+      "sha256_cert_fingerprints": [
+        "92:EF:BD:21:E1:CB:AB:8A:17:50:78:E1:66:E9:1F:B1:E6:0B:5E:08:3B:EA:83:4E:34:1A:C1:04:F4:2D:BB:F3"
+      ]
+    }
+  }
+]
