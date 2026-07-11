@@ -70,7 +70,7 @@ func (s *Server) handleUpdateFamily(w http.ResponseWriter, r *http.Request, user
 
 func (s *Server) handleGetMembers(w http.ResponseWriter, _ *http.Request, user userPublic) {
 	rows, err := s.query(`
-		SELECT id, family_id, email, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at
+		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at
 		FROM users
 		WHERE family_id = ? AND is_active = 1
 		ORDER BY created_at ASC
@@ -90,7 +90,6 @@ func (s *Server) handleGetMembers(w http.ResponseWriter, _ *http.Request, user u
 		if err := rows.Scan(
 			&member.ID,
 			&member.FamilyID,
-			&member.Email,
 			&member.Username,
 			&member.DisplayName,
 			&member.Role,
@@ -268,11 +267,10 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
 		return
 	}
-	payload.Email = strings.TrimSpace(strings.ToLower(payload.Email))
 	payload.Username = strings.TrimSpace(payload.Username)
 	payload.DisplayName = strings.TrimSpace(payload.DisplayName)
 	payload.Nickname = strings.TrimSpace(payload.Nickname)
-	applyNicknameRegistrationDefaults(nil, &payload.Email, &payload.Username, &payload.DisplayName, payload.Nickname)
+	applyNicknameRegistrationDefaults(nil, &payload.Username, &payload.DisplayName, payload.Nickname)
 	if payload.Username == "" || payload.DisplayName == "" || len(payload.Password) < 8 {
 		s.detail(w, http.StatusUnprocessableEntity, "Invalid invite acceptance payload")
 		return
@@ -292,9 +290,6 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 
 	userID := uuid.NewString()
 	now := nowString()
-	if payload.Email == "" {
-		payload.Email = generatedAccountEmail(userID)
-	}
 	token, refreshHash, refreshExpires, err := s.issueRefreshToken(userID)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create session")
@@ -309,9 +304,9 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 
 	err = s.withTx(r.Context(), func(tx *sql.Tx) error {
 		if _, err := s.txExec(tx, `
-			INSERT INTO users (id, family_id, email, username, password_hash, display_name, role, is_active, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
-		`, userID, family.ID, payload.Email, payload.Username, passwordHash, payload.DisplayName, invite.Role, now); err != nil {
+			INSERT INTO users (id, family_id, username, password_hash, display_name, role, is_active, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+		`, userID, family.ID, payload.Username, passwordHash, payload.DisplayName, invite.Role, now); err != nil {
 			return err
 		}
 		if _, err := s.txExec(tx, `
@@ -341,7 +336,7 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
-			s.detail(w, http.StatusConflict, "Email or username already exists")
+			s.detail(w, http.StatusConflict, "Username already exists")
 			return
 		}
 		s.detail(w, http.StatusInternalServerError, "Could not accept invite")

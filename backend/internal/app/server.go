@@ -337,7 +337,6 @@ func (s *Server) initSchema() error {
 		`CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
 			family_id TEXT NOT NULL,
-			email TEXT NOT NULL UNIQUE,
 			username TEXT NOT NULL UNIQUE,
 			password_hash TEXT NOT NULL,
 			display_name TEXT NOT NULL,
@@ -349,6 +348,7 @@ func (s *Server) initSchema() error {
 			last_seen_at TEXT,
 			FOREIGN KEY (family_id) REFERENCES families(id)
 		);`,
+		`ALTER TABLE users DROP COLUMN IF EXISTS email;`,
 		`CREATE TABLE IF NOT EXISTS refresh_tokens (
 			id TEXT PRIMARY KEY,
 			user_id TEXT NOT NULL,
@@ -759,7 +759,7 @@ func parseTime(value string) time.Time {
 
 func (s *Server) getUserByID(userID string) (userPublic, error) {
 	row := s.queryRow(`
-		SELECT id, family_id, email, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at
+		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at
 		FROM users
 		WHERE id = ?
 	`, userID)
@@ -771,7 +771,6 @@ func (s *Server) getUserByID(userID string) (userPublic, error) {
 	if err := row.Scan(
 		&user.ID,
 		&user.FamilyID,
-		&user.Email,
 		&user.Username,
 		&user.DisplayName,
 		&user.Role,
