@@ -194,7 +194,6 @@ func createInvitedUser(t *testing.T, ownerClient *http.Client, serverURL string,
 	memberJar, _ := cookiejar.New(nil)
 	memberClient := &http.Client{Jar: memberJar}
 	resp := jsonRequest(t, memberClient, http.MethodPost, serverURL+"/api/invites/"+token+"/accept", "", map[string]any{
-		"email":       username + "@example.com",
 		"username":    username,
 		"password":    "secure-password",
 		"displayName": strings.Title(username),
@@ -216,6 +215,13 @@ func TestSetupInviteChatAndRefreshFlow(t *testing.T) {
 		t.Fatalf("setup status = %d", setupResp.StatusCode)
 	}
 	owner := decodeJSON[authResponse](t, setupResp)
+	userJSON, err := json.Marshal(owner.User)
+	if err != nil {
+		t.Fatalf("marshal setup user: %v", err)
+	}
+	if strings.Contains(strings.ToLower(string(userJSON)), "email") {
+		t.Fatalf("setup user exposes email: %s", userJSON)
+	}
 	if owner.User.Username != "Owner" || owner.User.DisplayName != "Owner" {
 		t.Fatalf("unexpected minimal setup user: %#v", owner.User)
 	}
@@ -311,7 +317,6 @@ func TestDirectMediaVisibilityAndPublicAccess(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Files Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -380,7 +385,6 @@ func TestLoginRateLimitAndHealthChecks(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Rate Limit Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -428,7 +432,6 @@ func TestChatAndFilePreferencesArePerUser(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Preferences Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -518,7 +521,6 @@ func TestAuthContractEdgeCases(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Auth Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -536,7 +538,6 @@ func TestAuthContractEdgeCases(t *testing.T) {
 
 	secondSetupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Other",
-		"email":       "other@example.com",
 		"username":    "other",
 		"password":    "secure-password",
 		"displayName": "Other",
@@ -547,7 +548,7 @@ func TestAuthContractEdgeCases(t *testing.T) {
 	_ = secondSetupResp.Body.Close()
 
 	usernameLoginResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/login", "", map[string]any{
-		"login":    "owner",
+		"username": "owner",
 		"password": "secure-password",
 	})
 	if usernameLoginResp.StatusCode != http.StatusOK {
@@ -556,13 +557,13 @@ func TestAuthContractEdgeCases(t *testing.T) {
 	_ = decodeJSON[authResponse](t, usernameLoginResp)
 
 	emailLoginResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/login", "", map[string]any{
-		"login":    "owner@example.com",
+		"username": "owner@example.com",
 		"password": "secure-password",
 	})
-	if emailLoginResp.StatusCode != http.StatusOK {
+	if emailLoginResp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("email login status = %d", emailLoginResp.StatusCode)
 	}
-	_ = decodeJSON[authResponse](t, emailLoginResp)
+	_ = emailLoginResp.Body.Close()
 
 	refreshURL, _ := url.Parse(serverURL.URL + "/api/auth/refresh")
 	refreshCookie := client.Jar.Cookies(refreshURL)[0].Value
@@ -590,8 +591,7 @@ func TestAuthContractEdgeCases(t *testing.T) {
 	token := invite.InviteURL[strings.LastIndex(invite.InviteURL, "/")+1:]
 
 	duplicateAcceptResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/invites/"+token+"/accept", "", map[string]any{
-		"email":       "owner@example.com",
-		"username":    "new-member",
+		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "New Member",
 	})
@@ -601,7 +601,6 @@ func TestAuthContractEdgeCases(t *testing.T) {
 	_ = duplicateAcceptResp.Body.Close()
 
 	acceptedResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/invites/"+token+"/accept", "", map[string]any{
-		"email":       "accepted-member@example.com",
 		"username":    "accepted-member",
 		"password":    "secure-password",
 		"displayName": "Accepted Member",
@@ -615,7 +614,6 @@ func TestAuthContractEdgeCases(t *testing.T) {
 	}
 
 	exhaustedAcceptResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/invites/"+token+"/accept", "", map[string]any{
-		"email":       "other-member@example.com",
 		"username":    "other-member",
 		"password":    "secure-password",
 		"displayName": "Other Member",
@@ -626,12 +624,42 @@ func TestAuthContractEdgeCases(t *testing.T) {
 	_ = exhaustedAcceptResp.Body.Close()
 }
 
+func TestUsersSchemaPermanentlyErasesEmailColumn(t *testing.T) {
+	server, _, _ := newTestServer(t)
+
+	assertNoEmailColumn := func() {
+		var count int
+		if err := server.queryRow(`
+			SELECT COUNT(*)
+			FROM information_schema.columns
+			WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'email'
+		`).Scan(&count); err != nil {
+			t.Fatalf("inspect users columns: %v", err)
+		}
+		if count != 0 {
+			t.Fatalf("users.email column still exists")
+		}
+	}
+
+	assertNoEmailColumn()
+	if _, err := server.exec(`ALTER TABLE users ADD COLUMN email TEXT`); err != nil {
+		t.Fatalf("add legacy email column: %v", err)
+	}
+	if err := server.initSchema(); err != nil {
+		t.Fatalf("migrate legacy schema: %v", err)
+	}
+	assertNoEmailColumn()
+	if err := server.initSchema(); err != nil {
+		t.Fatalf("repeat schema initialization: %v", err)
+	}
+	assertNoEmailColumn()
+}
+
 func TestMessageValidationHistoryAndReadParity(t *testing.T) {
 	_, serverURL, client := newTestServer(t)
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Messages Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -762,7 +790,6 @@ func TestGroupMediaAdminValidationAndInviteUrlParity(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Admin Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -870,7 +897,6 @@ func TestRealtimeMessageDeliveryParity(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Realtime Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -933,7 +959,6 @@ func TestChannelChatPermissions(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Channel Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -1055,7 +1080,6 @@ func TestForwardMessageClonesAttachmentsAndMetadata(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Forward Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",
@@ -1132,7 +1156,6 @@ func TestMessageReactionsAreInlineAndIdempotent(t *testing.T) {
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Reaction Family",
-		"email":       "owner@example.com",
 		"username":    "owner",
 		"password":    "secure-password",
 		"displayName": "Owner",

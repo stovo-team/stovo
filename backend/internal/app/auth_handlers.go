@@ -63,11 +63,10 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	payload.FamilyName = strings.TrimSpace(payload.FamilyName)
-	payload.Email = strings.TrimSpace(strings.ToLower(payload.Email))
 	payload.Username = strings.TrimSpace(payload.Username)
 	payload.DisplayName = strings.TrimSpace(payload.DisplayName)
 	payload.Nickname = strings.TrimSpace(payload.Nickname)
-	applyNicknameRegistrationDefaults(&payload.FamilyName, &payload.Email, &payload.Username, &payload.DisplayName, payload.Nickname)
+	applyNicknameRegistrationDefaults(&payload.FamilyName, &payload.Username, &payload.DisplayName, payload.Nickname)
 	if payload.FamilyName == "" || payload.Username == "" || payload.DisplayName == "" || len(payload.Password) < 8 {
 		s.detail(w, http.StatusUnprocessableEntity, "Invalid setup payload")
 		return
@@ -92,9 +91,6 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	familyID := uuid.NewString()
 	userID := uuid.NewString()
 	chatID := uuid.NewString()
-	if payload.Email == "" {
-		payload.Email = generatedAccountEmail(userID)
-	}
 	now := nowString()
 	token, tokenHash, expiresAt, err := s.issueRefreshToken(userID)
 	if err != nil {
@@ -110,9 +106,9 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if _, err := s.txExec(tx, `
-			INSERT INTO users (id, family_id, email, username, password_hash, display_name, role, is_active, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
-		`, userID, familyID, payload.Email, payload.Username, passwordHash, payload.DisplayName, ownerRole, now); err != nil {
+			INSERT INTO users (id, family_id, username, password_hash, display_name, role, is_active, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+		`, userID, familyID, payload.Username, passwordHash, payload.DisplayName, ownerRole, now); err != nil {
 			return err
 		}
 		if _, err := s.txExec(tx, `
@@ -143,7 +139,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
-			s.detail(w, http.StatusConflict, "Email or username already exists")
+			s.detail(w, http.StatusConflict, "Username already exists")
 			return
 		}
 		s.detail(w, http.StatusInternalServerError, "Could not complete setup")
@@ -189,7 +185,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, passwordHash, err := s.getUserForLogin(strings.TrimSpace(payload.Login))
+	user, passwordHash, err := s.getUserForLogin(strings.TrimSpace(payload.Username))
 	if err != nil || !verifyPassword(payload.Password, passwordHash) || !user.IsActive {
 		s.detail(w, http.StatusUnauthorized, "Invalid credentials")
 		return
@@ -343,13 +339,13 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 	s.json(w, http.StatusOK, updated)
 }
 
-func (s *Server) getUserForLogin(login string) (userPublic, string, error) {
+func (s *Server) getUserForLogin(username string) (userPublic, string, error) {
 	row := s.queryRow(`
-		SELECT id, family_id, email, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at, password_hash
+		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at, password_hash
 		FROM users
-		WHERE lower(email) = lower(?) OR lower(username) = lower(?)
+		WHERE lower(username) = lower(?)
 		LIMIT 1
-	`, login, login)
+	`, username)
 
 	var user userPublic
 	var createdAt string
@@ -359,7 +355,6 @@ func (s *Server) getUserForLogin(login string) (userPublic, string, error) {
 	if err := row.Scan(
 		&user.ID,
 		&user.FamilyID,
-		&user.Email,
 		&user.Username,
 		&user.DisplayName,
 		&user.Role,
@@ -450,7 +445,7 @@ func (s *Server) revokeUserSessions(ctx context.Context, tx *sql.Tx, userID stri
 	return err
 }
 
-func applyNicknameRegistrationDefaults(familyName *string, email *string, username *string, displayName *string, nickname string) {
+func applyNicknameRegistrationDefaults(familyName *string, username *string, displayName *string, nickname string) {
 	nickname = strings.TrimSpace(nickname)
 	if username != nil && strings.TrimSpace(*username) == "" {
 		if nickname != "" {
@@ -473,19 +468,12 @@ func applyNicknameRegistrationDefaults(familyName *string, email *string, userna
 		}
 		*familyName = name
 	}
-	if email != nil {
-		*email = strings.TrimSpace(strings.ToLower(*email))
-	}
 	if username != nil {
 		*username = strings.TrimSpace(*username)
 	}
 	if displayName != nil {
 		*displayName = strings.TrimSpace(*displayName)
 	}
-}
-
-func generatedAccountEmail(userID string) string {
-	return strings.ToLower(userID) + "@users.family-messenger.invalid"
 }
 
 func chatIDFromURL(r *http.Request) string {

@@ -86,7 +86,7 @@ export default function MembersPage() {
       return members;
     }
     return members.filter((member) =>
-      `${member.displayName} ${member.email} ${member.username} ${member.role}`
+      `${member.displayName} ${member.username} ${member.role}`
         .toLowerCase()
         .includes(query)
     );
@@ -388,7 +388,7 @@ export default function MembersPage() {
                   <MemberAvatar accessToken={accessToken} member={member} />
                   <span>
                     <strong>{member.displayName}</strong>
-                    <small>{member.email}</small>
+                    <small>@{member.username}</small>
                   </span>
                 </div>
                 <div className="member-actions">
