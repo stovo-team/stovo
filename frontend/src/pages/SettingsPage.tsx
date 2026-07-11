@@ -561,7 +561,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2>{profileForm.displayName || "Family member"}</h2>
-                <p>{currentUser?.email}</p>
+                <p>@{currentUser?.username}</p>
                 <span className="role-pill">{currentUser?.role}</span>
               </div>
             </section>

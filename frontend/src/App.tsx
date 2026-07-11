@@ -8,6 +8,7 @@ import { AppearanceProvider } from "./appearance/AppearanceContext";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { useReducedMotion } from "./hooks/useReducedMotion";
 import { navigateWithMotion } from "./motion/navigation";
+import { getInviteAppLinkPath } from "./appLinks";
 import AdminPage from "./pages/AdminPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
@@ -106,6 +107,44 @@ function AndroidBackOrchestrator() {
   return null;
 }
 
+function NativeAppLinkRouter() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      return undefined;
+    }
+
+    let disposed = false;
+    let listener: { remove: () => Promise<void> } | null = null;
+
+    const openInviteLink = (url: string) => {
+      const path = getInviteAppLinkPath(url);
+      if (path) {
+        navigate(path);
+      }
+    };
+
+    void (async () => {
+      listener = await CapacitorApp.addListener("appUrlOpen", ({ url }) => openInviteLink(url));
+      const launchUrl = await CapacitorApp.getLaunchUrl();
+      if (launchUrl?.url) {
+        openInviteLink(launchUrl.url);
+      }
+      if (disposed) {
+        void listener.remove();
+      }
+    })();
+
+    return () => {
+      disposed = true;
+      void listener?.remove();
+    };
+  }, [navigate]);
+
+  return null;
+}
+
 function App() {
   useEffect(() => {
     void ensureFullScreenIntentPermission();
@@ -117,6 +156,7 @@ function App() {
         <AuthProvider>
           <NotificationsBootstrapper />
           <AndroidBackOrchestrator />
+          <NativeAppLinkRouter />
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/server-setup" element={<ServerSetupPage />} />

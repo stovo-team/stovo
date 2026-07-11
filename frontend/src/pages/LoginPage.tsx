@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await login({ login: loginValue, password });
+      await login({ username: loginValue, password });
       navigate("/app/chats", { replace: true });
     } catch (err) {
       const detail = err instanceof ApiError ? `${err.status}: ${String(err.message)}` : String(err);
