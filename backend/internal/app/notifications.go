@@ -86,7 +86,7 @@ func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderN
 		if recipientID == senderID {
 			continue
 		}
-		if s.userInForeground(recipientID) {
+		if s.userViewingChatInForeground(recipientID, chatID) {
 			continue
 		}
 		topic, err := s.getUserNtfyTopic(context.Background(), recipientID)
@@ -111,6 +111,9 @@ func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderN
 }
 
 func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatID string) {
+	if s.userViewingChatInForeground(calleeUserID, chatID) {
+		return
+	}
 	topic, err := s.getUserNtfyTopic(context.Background(), calleeUserID)
 	if err != nil || topic == "" {
 		s.logger.Warnf("ntfy", "no topic for callee user_id=%s: %v", calleeUserID, err)
@@ -132,6 +135,9 @@ func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatI
 }
 
 func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID string) {
+	if s.userViewingChatInForeground(calleeUserID, chatID) {
+		return
+	}
 	topic, err := s.getUserNtfyTopic(context.Background(), calleeUserID)
 	if err != nil || topic == "" {
 		s.logger.Warnf("ntfy", "no topic for callee user_id=%s: %v", calleeUserID, err)

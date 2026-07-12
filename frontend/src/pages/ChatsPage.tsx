@@ -2078,6 +2078,9 @@ export default function ChatsPage() {
 
   useEffect(() => {
     activeChatIdRef.current = chatId;
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+      socketRef.current?.emit("app:state", { foreground: true, activeChatId: chatId ?? "" });
+    }
   }, [chatId]);
   useEffect(() => {
     activeCallChatIdRef.current = activeCallChatId;
@@ -2483,10 +2486,16 @@ export default function ChatsPage() {
         try {
           const currentState = await App.getState();
           if (!appStateCancelled) {
-            socket.emit("app:state", { foreground: currentState.isActive });
+            socket.emit("app:state", {
+              foreground: currentState.isActive,
+              activeChatId: currentState.isActive ? activeChatIdRef.current ?? "" : ""
+            });
           }
           const listener = await App.addListener("appStateChange", (state: AppState) => {
-            socket.emit("app:state", { foreground: state.isActive });
+            socket.emit("app:state", {
+              foreground: state.isActive,
+              activeChatId: state.isActive ? activeChatIdRef.current ?? "" : ""
+            });
           });
           if (appStateCancelled) {
             void listener.remove();
@@ -2518,6 +2527,16 @@ export default function ChatsPage() {
 
     const syncAfterSocketResume = () => {
       void loadRef.current();
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+        void App.getState()
+          .then((state) => {
+            socket.emit("app:state", {
+              foreground: state.isActive,
+              activeChatId: state.isActive ? activeChatIdRef.current ?? "" : ""
+            });
+          })
+          .catch(() => undefined);
+      }
     };
 
     socket.on("connect", syncAfterSocketResume);
