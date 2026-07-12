@@ -2674,6 +2674,39 @@ h2 {
   -webkit-touch-callout: none;
 }
 
+.call-history-message {
+  align-items: center;
+  background: color-mix(in oklab, var(--bubble-incoming) 72%, transparent);
+  border-radius: 14px;
+  color: var(--text-secondary);
+  display: grid;
+  font-size: 0.84rem;
+  gap: 8px;
+  grid-template-columns: auto 1fr auto;
+  justify-self: center;
+  max-width: min(360px, 88%);
+  padding: 8px 12px;
+}
+
+.call-history-message svg {
+  color: var(--accent-primary);
+}
+
+.call-history-message span {
+  display: grid;
+  gap: 1px;
+}
+
+.call-history-message strong {
+  color: var(--text-primary);
+}
+
+.call-history-message small,
+.call-history-message time {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+}
+
 .message-bubble > * {
   position: relative;
   z-index: 1;
@@ -3237,16 +3270,21 @@ h2 {
   border-radius: 999px;
   color: var(--text-secondary);
   flex: 0 0 var(--epr-category-navigation-button-size);
+  height: var(--epr-category-navigation-button-size);
+  min-height: var(--epr-category-navigation-button-size);
+  min-width: var(--epr-category-navigation-button-size);
   opacity: 1 !important;
+  padding: 0;
+  width: var(--epr-category-navigation-button-size);
 }
 
 .emoji-picker .epr-cat-btn.epr-active {
-  background: color-mix(in oklab, var(--accent-soft) 92%, transparent);
+  background-color: color-mix(in oklab, var(--accent-soft) 92%, transparent);
   color: var(--accent-primary);
 }
 
 .emoji-picker .epr-cat-btn:hover {
-  background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
+  background-color: color-mix(in oklab, var(--accent-soft) 72%, transparent);
   color: var(--text-primary);
 }
 

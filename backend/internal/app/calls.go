@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type callState string
@@ -21,7 +24,22 @@ type callSession struct {
 	CallType     string // "audio" | "video"
 	State        callState
 	CreatedAt    time.Time
+	ConnectedAt  time.Time
 	ExpiresAt    time.Time
+}
+
+func callHistoryStatus(state callState, reason string) (string, bool) {
+	if state == callStateConnected {
+		return "completed", true
+	}
+	switch reason {
+	case "timeout":
+		return "missed", false
+	case "declined":
+		return "declined", false
+	default:
+		return "failed", false
+	}
 }
 
 func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType string) (*callSession, error) {
@@ -68,13 +86,15 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	s.callByChat[chat.ID] = session
 	s.userActiveCall[callerUserID] = chat.ID
 	s.userActiveCall[calleeUserID] = chat.ID
-	go func(sess *callSession) {
-		ctx := context.Background()
-		s.exec(`INSERT INTO call_sessions (id, caller_id, callee_id, call_type, state, created_at)
-			VALUES (?, ?, ?, ?, ?, NOW())`,
-			sess.ChatID, sess.CallerUserID, sess.CalleeUserID, sess.CallType, string(sess.State))
-		s.persistCallSession(ctx, sess, 60*time.Second)
-	}(session)
+	if s.db != nil {
+		go func(sess *callSession) {
+			ctx := context.Background()
+			s.exec(`INSERT INTO call_sessions (id, caller_id, callee_id, call_type, state, created_at)
+				VALUES (?, ?, ?, ?, ?, NOW())`,
+				sess.ChatID, sess.CallerUserID, sess.CalleeUserID, sess.CallType, string(sess.State))
+			s.persistCallSession(ctx, sess, 60*time.Second)
+		}(session)
+	}
 	return session, nil
 }
 
@@ -93,6 +113,9 @@ func (s *Server) setCallSessionState(chatID string, state callState) (*callSessi
 		return nil, false
 	}
 	session.State = state
+	if state == callStateConnected && session.ConnectedAt.IsZero() {
+		session.ConnectedAt = time.Now().UTC()
+	}
 	go func(sess *callSession, st callState) {
 		ctx := context.Background()
 		s.exec(`UPDATE call_sessions SET state = ? WHERE id = ?`, string(st), sess.ChatID)
@@ -105,6 +128,63 @@ func (s *Server) setCallSessionState(chatID string, state callState) (*callSessi
 	return session, true
 }
 
+func (s *Server) recordCallHistory(session *callSession, reason string) {
+	status, completed := callHistoryStatus(session.State, reason)
+	record := callHistoryPublic{
+		Status:   status,
+		CallType: session.CallType,
+		CallerID: session.CallerUserID,
+		CalleeID: session.CalleeUserID,
+	}
+	if completed {
+		startedAt := session.ConnectedAt
+		if startedAt.IsZero() {
+			startedAt = session.CreatedAt
+		}
+		duration := int(time.Since(startedAt).Seconds())
+		if duration < 0 {
+			duration = 0
+		}
+		record.DurationSeconds = &duration
+	}
+	metadata, err := json.Marshal(record)
+	if err != nil {
+		s.logger.Warnf("realtime.call", "call history serialization failed chat_id=%s error=%v", session.ChatID, err)
+		return
+	}
+	messageID := uuid.NewString()
+	now := nowString()
+	if _, err := s.exec(`
+		INSERT INTO messages (id, chat_id, sender_id, type, content, encryption_protocol, encryption_metadata, message_kind, created_at, updated_at)
+		VALUES (?, ?, ?, 'call', NULL, 'legacy_plaintext', ?, 'chat', ?, ?)
+	`, messageID, session.ChatID, session.CallerUserID, string(metadata), now, now); err != nil {
+		s.logger.Warnf("realtime.call", "call history insert failed chat_id=%s error=%v", session.ChatID, err)
+		return
+	}
+	if _, err := s.exec(`INSERT INTO message_statuses (message_id, user_id, status, created_at) VALUES (?, ?, 'sent', ?)`, messageID, session.CallerUserID, now); err != nil {
+		s.logger.Warnf("realtime.call", "call history status insert failed message_id=%s error=%v", messageID, err)
+	}
+	if _, err := s.exec(`UPDATE chats SET updated_at = ? WHERE id = ?`, now, session.ChatID); err != nil {
+		s.logger.Warnf("realtime.call", "call history chat update failed chat_id=%s error=%v", session.ChatID, err)
+	}
+	caller, err := s.getUserByID(session.CallerUserID)
+	if err != nil {
+		s.logger.Warnf("realtime.call", "call history caller lookup failed caller_id=%s error=%v", session.CallerUserID, err)
+		return
+	}
+	chat, err := s.buildChatPublic(session.ChatID, caller)
+	if err != nil {
+		s.logger.Warnf("realtime.call", "call history chat lookup failed chat_id=%s error=%v", session.ChatID, err)
+		return
+	}
+	message, err := s.buildMessage(messageID, session.CallerUserID)
+	if err != nil {
+		s.logger.Warnf("realtime.call", "call history message lookup failed message_id=%s error=%v", messageID, err)
+		return
+	}
+	s.emitMessageNew(chat, message)
+}
+
 func (s *Server) endCallSession(chatID string) (*callSession, bool) {
 	s.callMu.Lock()
 	defer s.callMu.Unlock()
@@ -115,12 +195,14 @@ func (s *Server) endCallSession(chatID string) (*callSession, bool) {
 	delete(s.callByChat, chatID)
 	delete(s.userActiveCall, session.CallerUserID)
 	delete(s.userActiveCall, session.CalleeUserID)
-	go func(chatID string, created time.Time) {
-		ctx := context.Background()
-		dur := int(time.Since(created).Seconds())
-		s.exec(`UPDATE call_sessions SET state = 'ended', ended_at = NOW(), duration_s = ? WHERE id = ?`, dur, chatID)
-		s.deleteCallSession(ctx, chatID)
-	}(chatID, session.CreatedAt)
+	if s.db != nil {
+		go func(chatID string, created time.Time) {
+			ctx := context.Background()
+			dur := int(time.Since(created).Seconds())
+			s.exec(`UPDATE call_sessions SET state = 'ended', ended_at = NOW(), duration_s = ? WHERE id = ?`, dur, chatID)
+			s.deleteCallSession(ctx, chatID)
+		}(chatID, session.CreatedAt)
+	}
 	return session, true
 }
 
@@ -139,12 +221,14 @@ func (s *Server) endCallForUser(userID string) (*callSession, bool) {
 	delete(s.callByChat, chatID)
 	delete(s.userActiveCall, session.CallerUserID)
 	delete(s.userActiveCall, session.CalleeUserID)
-	go func(chatID string, created time.Time) {
-		ctx := context.Background()
-		dur := int(time.Since(created).Seconds())
-		s.exec(`UPDATE call_sessions SET state = 'ended', ended_at = NOW(), duration_s = ? WHERE id = ?`, dur, chatID)
-		s.deleteCallSession(ctx, chatID)
-	}(session.ChatID, session.CreatedAt)
+	if s.db != nil {
+		go func(chatID string, created time.Time) {
+			ctx := context.Background()
+			dur := int(time.Since(created).Seconds())
+			s.exec(`UPDATE call_sessions SET state = 'ended', ended_at = NOW(), duration_s = ? WHERE id = ?`, dur, chatID)
+			s.deleteCallSession(ctx, chatID)
+		}(session.ChatID, session.CreatedAt)
+	}
 	return session, true
 }
 
@@ -206,6 +290,7 @@ func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time, callerN
 		if !endedOK {
 			return
 		}
+		s.recordCallHistory(ended, "timeout")
 		payload := map[string]any{
 			"chatId":           ended.ChatID,
 			"callerId":         ended.CallerUserID,
