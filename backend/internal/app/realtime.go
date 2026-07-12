@@ -158,7 +158,8 @@ func (s *Server) configureSockets() {
 
 		socket.On("app:state", func(event *socketio.EventPayload) {
 			var payload struct {
-				Foreground bool `json:"foreground"`
+				Foreground   bool   `json:"foreground"`
+				ActiveChatID string `json:"activeChatId"`
 			}
 			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil {
 				return
@@ -166,6 +167,7 @@ func (s *Server) configureSockets() {
 			s.socketMu.Lock()
 			if session, ok := s.socketUsers[socket.Id]; ok {
 				session.Foreground = payload.Foreground
+				session.ActiveChatID = payload.ActiveChatID
 				s.socketUsers[socket.Id] = session
 			}
 			s.socketMu.Unlock()
@@ -845,11 +847,11 @@ func (s *Server) userOnline(userID string) bool {
 	return len(s.userSockets[userID]) > 0
 }
 
-func (s *Server) userInForeground(userID string) bool {
+func (s *Server) userViewingChatInForeground(userID string, chatID string) bool {
 	s.socketMu.RLock()
 	defer s.socketMu.RUnlock()
 	for socketID := range s.userSockets[userID] {
-		if session, ok := s.socketUsers[socketID]; ok && session.Foreground {
+		if session, ok := s.socketUsers[socketID]; ok && session.Foreground && session.ActiveChatID == chatID {
 			return true
 		}
 	}

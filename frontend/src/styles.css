@@ -3225,14 +3225,18 @@ h2 {
   border-bottom: 1px solid color-mix(in oklab, var(--border-default) 72%, transparent);
   display: flex;
   gap: 4px;
-  justify-content: space-between;
+  justify-content: flex-start;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding: 10px 12px;
+  scrollbar-width: thin;
 }
 
 .emoji-picker .epr-cat-btn {
-  background: transparent;
+  background-color: transparent;
   border-radius: 999px;
   color: var(--text-secondary);
+  flex: 0 0 var(--epr-category-navigation-button-size);
   opacity: 1 !important;
 }
 
