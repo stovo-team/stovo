@@ -249,6 +249,14 @@ type messageReactionPublic struct {
 	Reacted bool     `json:"reacted"`
 }
 
+type callHistoryPublic struct {
+	Status          string `json:"status"`
+	CallType        string `json:"callType"`
+	CallerID        string `json:"callerId"`
+	CalleeID        string `json:"calleeId"`
+	DurationSeconds *int   `json:"durationSeconds,omitempty"`
+}
+
 type messagePublic struct {
 	ID                  string                  `json:"id"`
 	ChatID              string                  `json:"chatId"`
@@ -273,6 +281,7 @@ type messagePublic struct {
 	Reactions           []messageReactionPublic `json:"reactions"`
 	Attachments         []filePublic            `json:"attachments"`
 	ClientMessageID     *string                 `json:"clientMessageId,omitempty"`
+	Call                *callHistoryPublic      `json:"call,omitempty"`
 }
 
 type sendMessageRequest struct {

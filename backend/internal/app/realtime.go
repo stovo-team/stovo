@@ -125,6 +125,7 @@ func (s *Server) configureSockets() {
 						return
 					}
 					if ended, ok := s.endCallForUser(userID); ok {
+						s.recordCallHistory(ended, "disconnected")
 						payload := map[string]any{
 							"chatId":           ended.ChatID,
 							"callerId":         ended.CallerUserID,
@@ -329,6 +330,7 @@ func (s *Server) configureSockets() {
 			if !endedOK {
 				return
 			}
+			s.recordCallHistory(ended, "declined")
 			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "declined", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
 			s.emitCallToUser(ended.CallerUserID, "call:declined", payloadMap)
 			s.emitCallToUser(ended.CalleeUserID, "call:declined", payloadMap)
@@ -352,6 +354,7 @@ func (s *Server) configureSockets() {
 			if !endedOK {
 				return
 			}
+			s.recordCallHistory(ended, "canceled")
 			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "canceled", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
 			s.emitCallToUser(ended.CallerUserID, "call:canceled", payloadMap)
 			s.emitCallToUser(ended.CalleeUserID, "call:canceled", payloadMap)
@@ -377,6 +380,7 @@ func (s *Server) configureSockets() {
 			if !endedOK {
 				return
 			}
+			s.recordCallHistory(ended, "ended")
 			s.logger.Infof("realtime.call", "call:end user_id=%s chat_id=%s caller=%s callee=%s", user.ID, ended.ChatID, ended.CallerUserID, ended.CalleeUserID)
 			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "ended", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
 			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
