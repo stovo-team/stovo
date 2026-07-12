@@ -15,6 +15,9 @@ describe("docked emoji picker styles", () => {
     expect(rule(".emoji-picker .epr-cat-btn")).toContain("min-height: var(--epr-category-navigation-button-size);");
     expect(rule(".emoji-picker .epr-cat-btn.epr-active")).toContain("background-color:");
     expect(rule(".emoji-picker .epr-cat-btn.epr-active")).not.toContain("background:");
+    expect(rule(".emoji-picker .epr-cat-btn.epr-active")).toContain(
+      "background-position-y: calc(var(--epr-category-navigation-button-size) * 2) !important;"
+    );
     expect(rule(".emoji-picker .epr-category-nav")).toContain("overflow-x: auto;");
   });
 
