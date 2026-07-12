@@ -46,7 +46,7 @@ import {
   WifiOff,
   X
 } from "lucide-react";
-import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { Socket, io } from "socket.io-client";
 
 import { User } from "../api/auth";
@@ -90,6 +90,7 @@ import {
   uploadFile
 } from "../api/files";
 import { useAuth } from "../auth/AuthContext";
+import { useAppearance } from "../appearance/AppearanceContext";
 import AttachmentPickerSheet, {
   AttachmentPickerOption
 } from "../components/AttachmentPickerSheet";
@@ -1121,6 +1122,7 @@ export default function ChatsPage() {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
   const { accessToken, currentUser, authRequest, updateCurrentUser } = useAuth();
+  const { resolvedThemeMode } = useAppearance();
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<User[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
@@ -5295,6 +5297,7 @@ export default function ChatsPage() {
                             previewConfig={{ showPreview: false }}
                             searchDisabled
                             skinTonesDisabled
+                            theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
                             width={320}
                             height={380}
                           />
@@ -5411,6 +5414,7 @@ export default function ChatsPage() {
                           previewConfig={{ showPreview: false }}
                           searchDisabled
                           skinTonesDisabled
+                          theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
                           width="100%"
                           height={320}
                         />
