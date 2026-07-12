@@ -49,6 +49,7 @@ import {
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { Socket, io } from "socket.io-client";
 
+import { callHistoryLabel } from "../callHistory";
 import { User } from "../api/auth";
 import {
   Chat,
@@ -315,6 +316,9 @@ function chatPreview(chat: Chat) {
 }
 
 function messagePreviewText(message: Message) {
+  if (message.type === "call" && message.call) {
+    return callHistoryLabel(message.call);
+  }
   if (message.content?.trim()) {
     return message.content.trim();
   }
@@ -4900,6 +4904,20 @@ export default function ChatsPage() {
                             )}
                           </span>
                         );
+                        if (message.type === "call" && message.call) {
+                          const isVideoCall = message.call.callType === "video";
+                          const CallIcon = isVideoCall ? Video : Phone;
+                          return (
+                            <article className="call-history-message" id={message.id} key={message.id}>
+                              <CallIcon aria-hidden="true" size={18} />
+                              <span>
+                                <strong>{callHistoryLabel(message.call)}</strong>
+                                <small>{isVideoCall ? "Video call" : "Audio call"}</small>
+                              </span>
+                              <time>{messageDeliveryLabel(message, mine)}</time>
+                            </article>
+                          );
+                        }
                         return (
                           <article
                             className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}${swipeStateForMessage ? " is-swipe-active" : ""}${swipeStateForMessage?.activated ? " is-swipe-armed" : ""}${isMessageSelectionMode ? " is-selection-mode" : ""}${isSelected ? " is-selected" : ""}`}
