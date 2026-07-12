@@ -2,6 +2,31 @@ package app
 
 import "testing"
 
+func TestCallHistoryStatus(t *testing.T) {
+	tests := []struct {
+		name    string
+		state   callState
+		reason  string
+		want    string
+		isFinal bool
+	}{
+		{name: "timeout is missed", state: callStateRinging, reason: "timeout", want: "missed"},
+		{name: "decline is declined", state: callStateRinging, reason: "declined", want: "declined"},
+		{name: "cancel is failed", state: callStateRinging, reason: "canceled", want: "failed"},
+		{name: "ended before connection is failed", state: callStateConnecting, reason: "ended", want: "failed"},
+		{name: "connected call is completed", state: callStateConnected, reason: "ended", want: "completed", isFinal: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			status, isFinal := callHistoryStatus(tt.state, tt.reason)
+			if status != tt.want || isFinal != tt.isFinal {
+				t.Fatalf("callHistoryStatus(%q, %q) = (%q, %t), want (%q, %t)", tt.state, tt.reason, status, isFinal, tt.want, tt.isFinal)
+			}
+		})
+	}
+}
+
 func TestCallSessionBusyRulesAndCleanup(t *testing.T) {
 	server := &Server{
 		callByChat:     make(map[string]*callSession),

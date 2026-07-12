@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"path"
@@ -645,6 +646,8 @@ func deriveMessagePreview(content sql.NullString, messageType string, attachment
 		return fmt.Sprintf("%d attachments", attachmentCount)
 	}
 	switch messageType {
+	case "call":
+		return "Call"
 	case "image":
 		return "Photo"
 	case "video":
@@ -943,6 +946,12 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 	message.Ciphertext = stringPtrFromNull(ciphertext)
 	message.Nonce = stringPtrFromNull(nonce)
 	message.EncryptionMetadata = stringPtrFromNull(metadata)
+	if message.Type == "call" && metadata.Valid {
+		var call callHistoryPublic
+		if err := json.Unmarshal([]byte(metadata.String), &call); err == nil {
+			message.Call = &call
+		}
+	}
 	if keyVersion.Valid {
 		value := int(keyVersion.Int64)
 		message.KeyVersion = &value

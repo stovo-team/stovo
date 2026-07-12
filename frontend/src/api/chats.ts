@@ -63,12 +63,20 @@ export interface MessageReaction {
   reacted: boolean;
 }
 
+export interface CallHistory {
+  status: "missed" | "declined" | "failed" | "completed";
+  callType: "audio" | "video";
+  callerId: string;
+  calleeId: string;
+  durationSeconds?: number | null;
+}
+
 export interface Message {
   id: string;
   chatId: string;
   senderId: string;
   senderDisplayName: string | null;
-  type: "text" | "image" | "video" | "file" | "mixed";
+  type: "text" | "image" | "video" | "file" | "mixed" | "call";
   content: string | null;
   encryptionProtocol: MessageEncryptionProtocol;
   ciphertext: string | null;
@@ -87,6 +95,7 @@ export interface Message {
   reactions: MessageReaction[];
   attachments: FamilyFile[];
   clientMessageId?: string;
+  call?: CallHistory | null;
   deliveryError?: string;
   deliveryState?: "sending" | "failed";
 }
