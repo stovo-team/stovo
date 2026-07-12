@@ -29,8 +29,9 @@ import (
 )
 
 type socketSession struct {
-	User       userPublic
-	Foreground bool
+	User         userPublic
+	Foreground   bool
+	ActiveChatID string
 }
 
 type Server struct {
