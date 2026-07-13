@@ -221,6 +221,8 @@ func (s *Server) Routes() http.Handler {
 	router.Delete("/api/messages/{messageId}", s.authenticated(s.handleDeleteMessage))
 	router.Patch("/api/messages/{messageId}/read", s.authenticated(s.handleMarkMessageRead))
 	router.Post("/api/messages/{messageId}/forward", s.authenticated(s.handleForwardMessage))
+	router.Get("/api/message-archive", s.authenticated(s.handleGetMessageArchive))
+	router.Post("/api/messages/{messageId}/archive", s.authenticated(s.handleArchiveMessage))
 	router.Post("/api/messages/{messageId}/reactions", s.authenticated(s.handleAddMessageReaction))
 	router.Delete("/api/messages/{messageId}/reactions/{emoji}", s.authenticated(s.handleRemoveMessageReaction))
 

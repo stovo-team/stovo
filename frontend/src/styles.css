@@ -3289,6 +3289,10 @@ h2 {
   color: var(--text-primary);
 }
 
+.emoji-picker .epr-cat-btn:focus::before {
+  display: none;
+}
+
 .emoji-picker .epr-cat-btn svg,
 .emoji-picker .epr-cat-btn path {
   color: currentColor !important;
