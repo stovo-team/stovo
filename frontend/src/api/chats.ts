@@ -14,7 +14,7 @@ export interface ChatMember {
 export interface Chat {
   id: string;
   familyId: string;
-  type: "family" | "direct" | "group" | "channel";
+  type: "family" | "direct" | "group" | "channel" | "archive";
   title: string | null;
   createdBy: string | null;
   mediaVisibility: "family" | "members";
@@ -102,6 +102,14 @@ export interface Message {
 
 export function getChats(accessToken: string) {
   return apiRequest<Chat[]>("/api/chats", { accessToken });
+}
+
+export function getMessageArchive(accessToken: string) {
+  return apiRequest<Chat>("/api/message-archive", { accessToken });
+}
+
+export function archiveMessage(accessToken: string, messageId: string) {
+  return apiRequest<Message>(`/api/messages/${messageId}/archive`, { method: "POST", accessToken });
 }
 
 export function getChat(accessToken: string, chatId: string) {
