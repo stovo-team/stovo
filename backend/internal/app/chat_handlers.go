@@ -397,6 +397,40 @@ func (s *Server) handleForwardMessage(w http.ResponseWriter, r *http.Request, us
 	s.json(w, http.StatusCreated, message)
 }
 
+func (s *Server) handleGetMessageArchive(w http.ResponseWriter, _ *http.Request, user userPublic) {
+	archive, err := s.ensureMessageArchive(user)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load Message Archive")
+		return
+	}
+	s.json(w, http.StatusOK, archive)
+}
+
+func (s *Server) handleArchiveMessage(w http.ResponseWriter, r *http.Request, user userPublic) {
+	archive, err := s.ensureMessageArchive(user)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load Message Archive")
+		return
+	}
+	var existingID string
+	err = s.queryRow(`SELECT id FROM messages WHERE chat_id = ? AND forwarded_from_message_id = ? AND deleted_at IS NULL`, archive.ID, messageIDFromURL(r)).Scan(&existingID)
+	if err == nil {
+		message, buildErr := s.buildMessage(existingID, user.ID)
+		if buildErr != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not save message")
+			return
+		}
+		s.json(w, http.StatusOK, message)
+		return
+	}
+	message, err := s.forwardMessage(r.Context(), user, messageIDFromURL(r), archive.ID)
+	if err != nil {
+		s.detail(w, domainErrorStatus(err), err.Error())
+		return
+	}
+	s.json(w, http.StatusCreated, message)
+}
+
 func (s *Server) handleAddMessageReaction(w http.ResponseWriter, r *http.Request, user userPublic) {
 	var payload messageReactionRequest
 	if err := s.decodeJSON(r, &payload); err != nil {
@@ -489,6 +523,12 @@ func (s *Server) listChats(user userPublic) ([]chatPublic, error) {
 	}
 
 	slices.SortFunc(chats, func(a, b chatPublic) int {
+		if (a.Type == "archive") != (b.Type == "archive") {
+			if a.Type == "archive" {
+				return -1
+			}
+			return 1
+		}
 		if a.IsPinned != b.IsPinned {
 			if a.IsPinned {
 				return -1
@@ -504,6 +544,26 @@ func (s *Server) listChats(user userPublic) ([]chatPublic, error) {
 		return 0
 	})
 	return chats, nil
+}
+
+func (s *Server) ensureMessageArchive(user userPublic) (chatPublic, error) {
+	row := s.queryRow(`SELECT c.id FROM chats c JOIN chat_members cm ON cm.chat_id = c.id WHERE c.family_id = ? AND c.type = 'archive' AND cm.user_id = ?`, user.FamilyID, user.ID)
+	var chatID string
+	if err := row.Scan(&chatID); err == nil {
+		return s.buildChatPublic(chatID, user)
+	}
+	chatID = uuid.NewString()
+	now := nowString()
+	if err := s.withTx(context.Background(), func(tx *sql.Tx) error {
+		if _, err := s.txExec(tx, `INSERT INTO chats (id, family_id, type, title, created_by, media_visibility, encryption_protocol, created_at, updated_at) VALUES (?, ?, 'archive', 'Message Archive', ?, 'members', ?, ?, ?)`, chatID, user.FamilyID, user.ID, s.defaultMessageEncryptionProtocol(user.FamilyID), now, now); err != nil {
+			return err
+		}
+		_, err := s.txExec(tx, `INSERT INTO chat_members (chat_id, user_id, created_at) VALUES (?, ?, ?)`, chatID, user.ID, now)
+		return err
+	}); err != nil {
+		return chatPublic{}, err
+	}
+	return s.buildChatPublic(chatID, user)
 }
 
 func (s *Server) buildChatPublic(chatID string, user userPublic) (chatPublic, error) {

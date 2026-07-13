@@ -19,6 +19,7 @@ describe("docked emoji picker styles", () => {
     expect(rule(".emoji-picker .epr-cat-btn.epr-active")).toContain("background-color:");
     expect(rule(".emoji-picker .epr-cat-btn.epr-active")).not.toContain("background:");
     expect(rule(".emoji-picker .epr-category-nav")).toContain("overflow-x: auto;");
+    expect(rule(".emoji-picker .epr-cat-btn:focus::before")).toContain("display: none;");
   });
 
   it("uses the picker's own dark sprite theme", () => {
