@@ -56,6 +56,7 @@ import {
   Message,
   PinnedMessage,
   addMessageReaction,
+	archiveMessage,
   createChannelChat,
   createDirectChat,
   createGroupChat,
@@ -202,7 +203,7 @@ function formatChatTime(value: string | null | undefined) {
 }
 type NewChatScreen = "pick" | "group" | "channel";
 type ChatFilter = "all" | "unread" | "groups" | "direct" | "muted";
-type ChatSectionKey = "dms" | "groups" | "channels";
+type ChatSectionKey = "archive" | "dms" | "groups" | "channels";
 type SharedContentTab = "media" | "files" | "links";
 
 const CHAT_FILTERS: Array<{ label: string; value: ChatFilter }> = [
@@ -213,6 +214,7 @@ const CHAT_FILTERS: Array<{ label: string; value: ChatFilter }> = [
   { label: "Muted", value: "muted" }
 ];
 const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> = [
+  { key: "archive", label: "Message Archive" },
   { key: "channels", label: "Channels" },
   { key: "groups", label: "Groups" },
   { key: "dms", label: "DMs" }
@@ -1693,12 +1695,15 @@ export default function ChatsPage() {
 
   const chatsBySection = useMemo(() => {
     const sections: Record<ChatSectionKey, Chat[]> = {
+      archive: [],
       dms: [],
       groups: [],
       channels: []
     };
     for (const chat of filteredChats) {
-      if (chat.type === "direct") {
+      if (chat.type === "archive") {
+        sections.archive.push(chat);
+      } else if (chat.type === "direct") {
         sections.dms.push(chat);
       } else if (chat.type === "channel") {
         sections.channels.push(chat);
@@ -4354,6 +4359,17 @@ export default function ChatsPage() {
     return <Navigate to="/app/chats" replace />;
   }
 
+  async function handleArchiveMessage(message: Message) {
+    if (!accessToken) return;
+    try {
+      await archiveMessage(accessToken, message.id);
+      setMessageContextMenu(null);
+      setSettingsNotice("Saved to Message Archive");
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not save message");
+    }
+  }
+
   const isDockedEmojiPicker = Capacitor.isNativePlatform() && isMobileViewport;
   const showDockedEmojiPicker = isDockedEmojiPicker && isEmojiPickerOpen;
 
@@ -5169,6 +5185,15 @@ export default function ChatsPage() {
                     >
                       <Forward aria-hidden="true" size={16} />
                       Forward
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={messageContextMenu.message.id.startsWith("pending:")}
+                      onClick={() => void handleArchiveMessage(messageContextMenu.message)}
+                    >
+                      <Star aria-hidden="true" size={16} />
+                      Save to Message Archive
                     </button>
                     {messageContextMenu.message.senderId === currentUser?.id &&
                       Boolean(messageContextMenu.message.content?.trim()) && (
