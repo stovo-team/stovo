@@ -3267,6 +3267,7 @@ h2 {
 
 .emoji-picker .epr-cat-btn {
   background-color: transparent;
+  background-position-y: calc(var(--epr-category-navigation-button-size) * 2) !important;
   border-radius: 999px;
   color: var(--text-secondary);
   flex: 0 0 var(--epr-category-navigation-button-size);
@@ -3280,7 +3281,6 @@ h2 {
 
 .emoji-picker .epr-cat-btn.epr-active {
   background-color: color-mix(in oklab, var(--accent-soft) 92%, transparent);
-  background-position-y: calc(var(--epr-category-navigation-button-size) * 2) !important;
   color: var(--accent-primary);
 }
 
