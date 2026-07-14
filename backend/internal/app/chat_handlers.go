@@ -502,6 +502,11 @@ func (s *Server) resolveChatMembers(user userPublic, rawMemberIDs []string) ([]s
 }
 
 func (s *Server) listChats(user userPublic) ([]chatPublic, error) {
+	// The archive is a first-class personal chat: it exists as soon as the
+	// user loads their chat list, rather than only after their first save.
+	if _, err := s.ensureMessageArchive(user); err != nil {
+		return nil, err
+	}
 	rows, err := s.query(`
 		SELECT chat_id FROM chat_members WHERE user_id = ?
 	`, user.ID)
