@@ -144,6 +144,9 @@ function isSuppressedUserError(message: string | null): boolean {
 }
 
 function displayChatName(chat: Chat, currentUserId: string | undefined) {
+  if (chat.type === "archive") {
+    return "Message Archive";
+  }
   if (chat.type === "family" || chat.type === "group" || chat.type === "channel") {
     return chat.title ?? "General Family Chat";
   }
@@ -5437,19 +5440,6 @@ export default function ChatsPage() {
                   </div>
                   {showDockedEmojiPicker && (
                     <div className="emoji-picker-dock" role="group" aria-label="Emoji picker">
-                      <div className="emoji-picker-dock-header">
-                        <span>Emoji</span>
-                        <button
-                          type="button"
-                          className="emoji-picker-dock-close"
-                          aria-label="Close emoji picker"
-                          title="Close emoji picker"
-                          onClick={closeEmojiPicker}
-                        >
-                          <X aria-hidden="true" size={14} />
-                        </button>
-                      </div>
-                      <div className="emoji-picker emoji-picker--docked" role="menu" aria-label="Choose emoji">
                         <EmojiPicker
                           onEmojiClick={handleComposerEmojiPick}
                           autoFocusSearch={false}
@@ -5461,7 +5451,6 @@ export default function ChatsPage() {
                           width="100%"
                           height={320}
                         />
-                      </div>
                     </div>
                   )}
                 </form>

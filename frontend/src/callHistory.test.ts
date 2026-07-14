@@ -10,4 +10,8 @@ describe("callHistoryLabel", () => {
   it("shows a declined call without a duration", () => {
     expect(callHistoryLabel({ status: "declined" })).toBe("Call declined");
   });
+
+  it("shows a cancelled call without a duration", () => {
+    expect(callHistoryLabel({ status: "canceled" })).toBe("Call cancelled");
+  });
 });
