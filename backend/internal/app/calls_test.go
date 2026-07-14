@@ -12,7 +12,7 @@ func TestCallHistoryStatus(t *testing.T) {
 	}{
 		{name: "timeout is missed", state: callStateRinging, reason: "timeout", want: "missed"},
 		{name: "decline is declined", state: callStateRinging, reason: "declined", want: "declined"},
-		{name: "cancel is failed", state: callStateRinging, reason: "canceled", want: "failed"},
+		{name: "cancel is canceled", state: callStateRinging, reason: "canceled", want: "canceled"},
 		{name: "ended before connection is failed", state: callStateConnecting, reason: "ended", want: "failed"},
 		{name: "connected call is completed", state: callStateConnected, reason: "ended", want: "completed", isFinal: true},
 	}

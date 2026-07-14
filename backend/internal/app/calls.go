@@ -37,6 +37,8 @@ func callHistoryStatus(state callState, reason string) (string, bool) {
 		return "missed", false
 	case "declined":
 		return "declined", false
+	case "canceled":
+		return "canceled", false
 	default:
 		return "failed", false
 	}

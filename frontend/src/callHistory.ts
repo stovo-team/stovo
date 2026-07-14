@@ -1,5 +1,5 @@
 export interface CallHistoryLabelInput {
-  status: "missed" | "declined" | "failed" | "completed";
+  status: "missed" | "declined" | "canceled" | "failed" | "completed";
   durationSeconds?: number | null;
 }
 
@@ -16,6 +16,7 @@ export function callHistoryLabel(call: CallHistoryLabelInput) {
   return {
     missed: "Missed call",
     declined: "Call declined",
+    canceled: "Call cancelled",
     failed: "Call failed"
   }[call.status];
 }

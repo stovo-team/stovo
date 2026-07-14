@@ -64,7 +64,7 @@ export interface MessageReaction {
 }
 
 export interface CallHistory {
-  status: "missed" | "declined" | "failed" | "completed";
+  status: "missed" | "declined" | "canceled" | "failed" | "completed";
   callType: "audio" | "video";
   callerId: string;
   calleeId: string;
