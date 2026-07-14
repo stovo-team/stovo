@@ -5440,6 +5440,7 @@ export default function ChatsPage() {
                   </div>
                   {showDockedEmojiPicker && (
                     <div className="emoji-picker-dock" role="group" aria-label="Emoji picker">
+                      <div className="emoji-picker emoji-picker--docked" role="menu" aria-label="Choose emoji">
                         <EmojiPicker
                           onEmojiClick={handleComposerEmojiPick}
                           autoFocusSearch={false}
@@ -5451,6 +5452,7 @@ export default function ChatsPage() {
                           width="100%"
                           height={320}
                         />
+                      </div>
                     </div>
                   )}
                 </form>
