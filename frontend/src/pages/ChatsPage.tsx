@@ -13,17 +13,23 @@ import {
   useRef,
   useState
 } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
   BellOff,
+  Bus,
+  Cat,
   CheckCheck,
   FileText,
   Forward,
+  Flag,
+  History,
   Image,
   Info,
   MessageCircle,
+  Music,
   Mic,
   MicOff,
   Phone,
@@ -41,12 +47,16 @@ import {
   Megaphone,
   Pencil,
   ShieldCheck,
+  Shirt,
+  Smile,
   Star,
+  Trophy,
+  Utensils,
   Users,
   WifiOff,
   X
 } from "lucide-react";
-import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import EmojiPicker, { Categories, EmojiClickData, Theme } from "emoji-picker-react";
 import { Socket, io } from "socket.io-client";
 
 import { callHistoryLabel } from "../callHistory";
@@ -132,6 +142,17 @@ import {
 } from "../native/callPlugin";
 
 type CallPhase = "idle" | "outgoing" | "incoming" | "connecting" | "in-call";
+
+export function androidAppStatePayload(isActive: boolean, activeChatId?: string) {
+  return {
+    foreground: isActive,
+    activeChatId: isActive ? activeChatId ?? "" : ""
+  };
+}
+
+export function callTerminationEvent(phase: CallPhase): "call:cancel" | "call:end" {
+  return phase === "outgoing" ? "call:cancel" : "call:end";
+}
 
 type CallTrackStatus = {
   echoCancellation: boolean | null;
@@ -260,6 +281,18 @@ const COMPOSER_EMOJIS = [
   "✅",
   "❗"
 ];
+
+const EMOJI_CATEGORY_ICONS: Partial<Record<Categories, ReactNode>> = {
+  [Categories.SUGGESTED]: <History aria-hidden="true" size={18} />,
+  [Categories.SMILEYS_PEOPLE]: <Smile aria-hidden="true" size={18} />,
+  [Categories.ANIMALS_NATURE]: <Cat aria-hidden="true" size={18} />,
+  [Categories.FOOD_DRINK]: <Utensils aria-hidden="true" size={18} />,
+  [Categories.TRAVEL_PLACES]: <Bus aria-hidden="true" size={18} />,
+  [Categories.ACTIVITIES]: <Trophy aria-hidden="true" size={18} />,
+  [Categories.OBJECTS]: <Shirt aria-hidden="true" size={18} />,
+  [Categories.SYMBOLS]: <Music aria-hidden="true" size={18} />,
+  [Categories.FLAGS]: <Flag aria-hidden="true" size={18} />
+};
 
 function chatTypeLabel(chat: Chat) {
   if (chat.type === "family") {
@@ -1280,6 +1313,7 @@ export default function ChatsPage() {
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
+  const emojiPickerDockRef = useRef<HTMLDivElement | null>(null);
   const sendInFlightRef = useRef(false);
   const saveAudioSettingsTimerRef = useRef<number | null>(null);
   const soundDisabledRef = useRef(callAudioSettings.soundDisabled);
@@ -2093,7 +2127,11 @@ export default function ChatsPage() {
   useEffect(() => {
     activeChatIdRef.current = chatId;
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
-      socketRef.current?.emit("app:state", { foreground: true, activeChatId: chatId ?? "" });
+      void App.getState()
+        .then((state) => {
+          socketRef.current?.emit("app:state", androidAppStatePayload(state.isActive, chatId));
+        })
+        .catch(() => undefined);
     }
   }, [chatId]);
   useEffect(() => {
@@ -2248,7 +2286,11 @@ export default function ChatsPage() {
       if (!chatMenuRef.current?.contains(event.target as Node)) {
         setIsChatMenuOpen(false);
       }
-      if (!Capacitor.isNativePlatform() && !emojiPickerRef.current?.contains(event.target as Node)) {
+      if (
+        !Capacitor.isNativePlatform() &&
+        !emojiPickerRef.current?.contains(event.target as Node) &&
+        !emojiPickerDockRef.current?.contains(event.target as Node)
+      ) {
         closeEmojiPicker();
       }
       setMessageContextMenu(null);
@@ -2500,16 +2542,10 @@ export default function ChatsPage() {
         try {
           const currentState = await App.getState();
           if (!appStateCancelled) {
-            socket.emit("app:state", {
-              foreground: currentState.isActive,
-              activeChatId: currentState.isActive ? activeChatIdRef.current ?? "" : ""
-            });
+            socket.emit("app:state", androidAppStatePayload(currentState.isActive, activeChatIdRef.current));
           }
           const listener = await App.addListener("appStateChange", (state: AppState) => {
-            socket.emit("app:state", {
-              foreground: state.isActive,
-              activeChatId: state.isActive ? activeChatIdRef.current ?? "" : ""
-            });
+            socket.emit("app:state", androidAppStatePayload(state.isActive, activeChatIdRef.current));
           });
           if (appStateCancelled) {
             void listener.remove();
@@ -2544,10 +2580,7 @@ export default function ChatsPage() {
       if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
         void App.getState()
           .then((state) => {
-            socket.emit("app:state", {
-              foreground: state.isActive,
-              activeChatId: state.isActive ? activeChatIdRef.current ?? "" : ""
-            });
+            socket.emit("app:state", androidAppStatePayload(state.isActive, activeChatIdRef.current));
           })
           .catch(() => undefined);
       }
@@ -3219,6 +3252,7 @@ export default function ChatsPage() {
       return;
     }
     const endingChatId = activeCallChatId;
+    const terminationEvent = callTerminationEvent(callPhaseRef.current);
     setCallNotice("Ending call...");
     stopCallRingtone();
     playCallEndSound();
@@ -3227,9 +3261,9 @@ export default function ChatsPage() {
     activeCallChatIdRef.current = null;
     callTypeRef.current = "audio";
     pictureInPictureActiveRef.current = false;
-    socketRef.current.emit("call:end", { chatId: activeCallChatId });
-    // serverAlreadyNotified=true: we just sent call:end above, cleanup should
-    // not send it again or the server will return a spurious call:error.
+    socketRef.current.emit(terminationEvent, { chatId: activeCallChatId });
+    // serverAlreadyNotified=true: we just sent the phase-appropriate termination
+    // event above, so cleanup must not send a second call:end.
     await audioCallRef.current?.cleanup(true).catch(() => undefined);
     setCallPhase("idle");
     setActiveCallChatId(null);
@@ -4373,7 +4407,7 @@ export default function ChatsPage() {
     }
   }
 
-  const isDockedEmojiPicker = Capacitor.isNativePlatform() && isMobileViewport;
+  const isDockedEmojiPicker = isMobileViewport;
   const showDockedEmojiPicker = isDockedEmojiPicker && isEmojiPickerOpen;
 
   return (
@@ -5343,6 +5377,7 @@ export default function ChatsPage() {
                             previewConfig={{ showPreview: false }}
                             searchDisabled
                             skinTonesDisabled
+                            categoryIcons={EMOJI_CATEGORY_ICONS}
                             theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
                             width={320}
                             height={380}
@@ -5439,7 +5474,12 @@ export default function ChatsPage() {
                     </button>
                   </div>
                   {showDockedEmojiPicker && (
-                    <div className="emoji-picker-dock" role="group" aria-label="Emoji picker">
+                    <div
+                      className="emoji-picker-dock"
+                      ref={emojiPickerDockRef}
+                      role="group"
+                      aria-label="Emoji picker"
+                    >
                       <div className="emoji-picker emoji-picker--docked" role="menu" aria-label="Choose emoji">
                         <EmojiPicker
                           onEmojiClick={handleComposerEmojiPick}
@@ -5448,6 +5488,7 @@ export default function ChatsPage() {
                           previewConfig={{ showPreview: false }}
                           searchDisabled
                           skinTonesDisabled
+                          categoryIcons={EMOJI_CATEGORY_ICONS}
                           theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
                           width="100%"
                           height={320}
