@@ -100,3 +100,48 @@ func TestCallSessionStoresCallType(t *testing.T) {
 		t.Fatalf("expected CallType %q, got %q", "audio", audioSession.CallType)
 	}
 }
+
+func TestEndCallForUserPreservesRingingSessionForTimeout(t *testing.T) {
+	server := &Server{
+		callByChat: map[string]*callSession{
+			"chat-a": {
+				ChatID:       "chat-a",
+				CallerUserID: "user-1",
+				CalleeUserID: "user-2",
+				State:        callStateRinging,
+			},
+		},
+		userActiveCall: map[string]string{
+			"user-1": "chat-a",
+			"user-2": "chat-a",
+		},
+	}
+
+	if ended, ok := server.endCallForUser("user-2"); ok || ended != nil {
+		t.Fatal("expected a ringing call to remain active for the normal timeout path")
+	}
+	if _, ok := server.getCallSession("chat-a"); !ok {
+		t.Fatal("expected ringing call session to remain available")
+	}
+}
+
+func TestEndCallForUserEndsCallAfterRinging(t *testing.T) {
+	server := &Server{
+		callByChat: map[string]*callSession{
+			"chat-a": {
+				ChatID:       "chat-a",
+				CallerUserID: "user-1",
+				CalleeUserID: "user-2",
+				State:        callStateConnecting,
+			},
+		},
+		userActiveCall: map[string]string{
+			"user-1": "chat-a",
+			"user-2": "chat-a",
+		},
+	}
+
+	if ended, ok := server.endCallForUser("user-2"); !ok || ended == nil {
+		t.Fatal("expected a connecting call to end after its participant disconnects")
+	}
+}

@@ -220,6 +220,9 @@ func (s *Server) endCallForUser(userID string) (*callSession, bool) {
 		delete(s.userActiveCall, userID)
 		return nil, false
 	}
+	if session.State == callStateRinging {
+		return nil, false
+	}
 	delete(s.callByChat, chatID)
 	delete(s.userActiveCall, session.CallerUserID)
 	delete(s.userActiveCall, session.CalleeUserID)

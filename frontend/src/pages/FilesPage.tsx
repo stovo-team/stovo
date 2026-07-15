@@ -1,4 +1,4 @@
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   Download,
   FileAudio,
@@ -6,12 +6,14 @@ import {
   Heart,
   Image,
   Info,
+  Maximize2,
   MoreVertical,
   RefreshCw,
   Search,
   Trash2,
   Upload,
-  Video
+  Video,
+  X
 } from "lucide-react";
 
 import { ApiError } from "../api/client";
@@ -27,6 +29,11 @@ import { useAuth } from "../auth/AuthContext";
 import ImageLightbox from "../components/ImageLightbox";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
+import {
+  initialStorageSelection,
+  shouldOpenStorageTilePreview,
+  storageSelectionReducer
+} from "./storageSelection";
 
 type StorageFilter = "all" | "photos" | "videos" | "documents" | "favorites";
 
@@ -116,10 +123,12 @@ function StorageTile({
     <button
       type="button"
       className={`storage-tile ${isSelected ? "selected" : ""} ${fileKind(file)}`}
+      data-storage-file-id={file.id}
       aria-pressed={isSelected}
       onClick={() => {
         onSelect();
-        if (previewUrl) {
+        const isMobileViewport = window.matchMedia("(max-width: 960px)").matches;
+        if (shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport) && previewUrl) {
           onOpenImage(file, previewUrl);
         }
       }}
@@ -142,7 +151,11 @@ export default function FilesPage() {
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [files, setFiles] = useState<FamilyFile[]>([]);
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [selection, dispatchSelection] = useReducer(
+    storageSelectionReducer,
+    initialStorageSelection
+  );
+  const { selectedFileId, mobileDetailsOpen } = selection;
   const [fullViewImage, setFullViewImage] = useState<{
     file: FamilyFile;
     previewUrl: string;
@@ -156,6 +169,18 @@ export default function FilesPage() {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const storageDetailsCloseRef = useRef<HTMLButtonElement | null>(null);
+
+  const closeMobileDetails = useCallback(() => {
+    const fileIdToRestore = selectedFileId;
+    dispatchSelection({ type: "close" });
+    window.requestAnimationFrame(() => {
+      const selectedTile = Array.from(
+        document.querySelectorAll<HTMLElement>("[data-storage-file-id]")
+      ).find((element) => element.dataset.storageFileId === fileIdToRestore);
+      selectedTile?.focus();
+    });
+  }, [selectedFileId]);
 
   const load = useCallback(async () => {
     if (!accessToken) {
@@ -170,7 +195,7 @@ export default function FilesPage() {
       ]);
       setFamily(familyResult);
       setFiles(filesResult);
-      setSelectedFileId((current) => current ?? filesResult[0]?.id ?? null);
+      dispatchSelection({ type: "load-default", fileId: filesResult[0]?.id ?? null });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not load storage");
     } finally {
@@ -179,8 +204,31 @@ export default function FilesPage() {
   }, [accessToken, authRequest]);
 
   useEffect(() => {
+    dispatchSelection({ type: "reset-gallery" });
+  }, []);
+
+  useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!mobileDetailsOpen) {
+      return;
+    }
+
+    const focusFrame = window.requestAnimationFrame(() => storageDetailsCloseRef.current?.focus());
+    function handleDetailsKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMobileDetails();
+      }
+    }
+    document.addEventListener("keydown", handleDetailsKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleDetailsKeyDown);
+    };
+  }, [closeMobileDetails, mobileDetailsOpen]);
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
@@ -252,7 +300,9 @@ export default function FilesPage() {
         uploadedFiles.push(await uploadFile(accessToken, file));
       }
       setFiles((current) => [...uploadedFiles, ...current]);
-      setSelectedFileId(uploadedFiles[0]?.id ?? null);
+      if (uploadedFiles[0]) {
+        dispatchSelection({ type: "open", fileId: uploadedFiles[0].id });
+      }
       setNotice("Upload complete");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not upload file");
@@ -272,7 +322,7 @@ export default function FilesPage() {
         isFavorite: !file.isFavorite
       });
       setFiles((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      setSelectedFileId(updated.id);
+      dispatchSelection({ type: "select", fileId: updated.id });
       setNotice(updated.isFavorite ? "Added to favorites" : "Removed from favorites");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not update favorite");
@@ -288,7 +338,7 @@ export default function FilesPage() {
     try {
       await authRequest<void>(`/api/files/${fileId}`, { method: "DELETE" });
       setFiles((current) => current.filter((file) => file.id !== fileId));
-      setSelectedFileId((current) => (current === fileId ? null : current));
+      dispatchSelection({ type: "remove", fileId });
       setFullViewImage((current) => (current?.file.id === fileId ? null : current));
       setNotice("Moved to trash");
     } catch (err) {
@@ -297,7 +347,7 @@ export default function FilesPage() {
   }
 
   return (
-    <main className="app-shell app-frame storage-page">
+    <main className={`app-shell app-frame storage-page${mobileDetailsOpen ? " has-storage-selection" : ""}`}>
       <AppNav />
       <section className="page-surface storage-layout" aria-busy={isLoading || isUploading}>
         <div className="storage-main">
@@ -441,7 +491,7 @@ export default function FilesPage() {
                         onOpenImage={(imageFile, previewUrl) =>
                           setFullViewImage({ file: imageFile, previewUrl })
                         }
-                        onSelect={() => setSelectedFileId(file.id)}
+                        onSelect={() => dispatchSelection({ type: "open", fileId: file.id })}
                       />
                     ))}
                   </div>
@@ -451,47 +501,82 @@ export default function FilesPage() {
           )}
         </div>
 
-        <aside className="storage-details-panel">
+        {mobileDetailsOpen && (
+          <button
+            type="button"
+            className="storage-details-backdrop"
+            aria-label="Close file details"
+            onClick={closeMobileDetails}
+          />
+        )}
+        <aside
+          className="storage-details-panel"
+          aria-label="File details"
+          aria-labelledby={mobileDetailsOpen ? "storage-file-details-title" : undefined}
+          aria-modal={mobileDetailsOpen ? false : undefined}
+          role={mobileDetailsOpen ? "dialog" : undefined}
+        >
           {selectedFile ? (
             <>
-              {selectedFilePreviewUrl ? (
+              <div className="storage-mobile-detail-header">
+                <strong id="storage-file-details-title">File details</strong>
                 <button
+                  ref={storageDetailsCloseRef}
                   type="button"
-                  className="storage-preview storage-preview-button"
-                  aria-label={`Open ${selectedFile.originalName} full view`}
-                  onClick={() =>
-                    setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl })
-                  }
+                  className="mobile-back-button"
+                  aria-label="Close file details"
+                  onClick={closeMobileDetails}
                 >
-                  <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
+                  <X aria-hidden="true" size={20} />
                 </button>
-              ) : (
-                <div className="storage-preview">
-                  {(() => {
+              </div>
+              <div className="storage-preview storage-preview-frame">
+                {selectedFilePreviewUrl ? (
+                  <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
+                ) : (
+                  (() => {
                     const Icon = fileIcon(selectedFile);
                     return <Icon aria-hidden="true" size={42} />;
-                  })()}
+                  })()
+                )}
+                <div className="storage-preview-actions">
+                  {accessToken && (
+                    <button
+                      type="button"
+                      aria-label="Download file"
+                      title="Download"
+                      onClick={() => void saveFileToDisk(accessToken, selectedFile)}
+                    >
+                      <Download aria-hidden="true" size={20} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className={selectedFile.isFavorite ? "is-active" : undefined}
+                    aria-label={selectedFile.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    aria-pressed={selectedFile.isFavorite}
+                    title={selectedFile.isFavorite ? "Favorited" : "Favorite"}
+                    onClick={() => void handleFavoriteToggle(selectedFile)}
+                  >
+                    <Heart aria-hidden="true" size={20} />
+                  </button>
+                  {selectedFilePreviewUrl && (
+                    <button
+                      type="button"
+                      aria-label={`Open ${selectedFile.originalName} full screen`}
+                      title="Full screen"
+                      onClick={() =>
+                        setFullViewImage({ file: selectedFile, previewUrl: selectedFilePreviewUrl })
+                      }
+                    >
+                      <Maximize2 aria-hidden="true" size={20} />
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
               <div className="storage-details-copy">
                 <h2>{selectedFile.originalName}</h2>
                 <p>{selectedFile.mimeType}</p>
-              </div>
-              <div className="details-action-row">
-                {accessToken && (
-                  <button type="button" onClick={() => void saveFileToDisk(accessToken, selectedFile)}>
-                    <Download aria-hidden="true" size={18} />
-                    Download
-                  </button>
-                )}
-                <button
-                  type="button"
-                  aria-pressed={selectedFile.isFavorite}
-                  onClick={() => void handleFavoriteToggle(selectedFile)}
-                >
-                  <Heart aria-hidden="true" size={18} />
-                  {selectedFile.isFavorite ? "Favorited" : "Favorite"}
-                </button>
               </div>
               <dl className="file-detail-list">
                 <div>
@@ -507,10 +592,6 @@ export default function FilesPage() {
                   <dd>
                     {chatFolderLabel(selectedFile)} / {accessLabel(selectedFile)}
                   </dd>
-                </div>
-                <div>
-                  <dt>Checksum</dt>
-                  <dd>{selectedFile.checksum ?? "Pending"}</dd>
                 </div>
               </dl>
               {canDeleteFile(selectedFile, currentUser?.id, currentUser?.role) && (

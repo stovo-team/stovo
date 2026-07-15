@@ -509,7 +509,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="app-shell app-frame settings-page">
+    <main
+      className={`app-shell app-frame settings-page${hasDetailSurface ? " settings-detail-view" : ""}${isAppearanceEditor ? " settings-appearance-view" : ""}`}
+    >
       <AppNav />
       <section
         className={`page-surface settings-layout${hasDetailSurface ? " settings-layout--detail-open" : ""}`}
