@@ -1,10 +1,23 @@
 import { Capacitor } from "@capacitor/core";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
+import { fetchSetupStatus } from "../api/auth";
 import { ApiError, getApiUrl } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
+
+export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | null }) {
+  if (setupRequired !== true) {
+    return null;
+  }
+
+  return (
+    <p className="secondary-link">
+      New server? <Link to="/setup">Create owner account</Link>
+    </p>
+  );
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -13,6 +26,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSetupStatus()
+      .then((status) => {
+        if (!cancelled) {
+          setSetupRequired(status.setupRequired);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSetupRequired(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (currentUser) {
     return <Navigate to="/app/chats" replace />;
@@ -64,9 +96,7 @@ export default function LoginPage() {
             {isSubmitting ? "Signing in" : "Log in"}
           </button>
         </form>
-        <p className="secondary-link">
-          New server? <Link to="/setup">Create owner account</Link>
-        </p>
+        <OwnerSetupPrompt setupRequired={setupRequired} />
         {Capacitor.isNativePlatform() && (
           <p className="secondary-link">
             <Link to="/server-setup">Change server address</Link>

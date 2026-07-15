@@ -26,6 +26,7 @@ import AppNav from "./AppNav";
 const LOG_LEVELS: Array<LogLevel | ""> = ["","DEBUG","INFO","WARNING","ERROR","CRITICAL"];
 type TunnelProvider = "cloudflare" | "localtunnel";
 type MediaType = MediaQualityRule["mediaType"];
+type AdminMobileSection = "menu" | "public-access" | "encryption" | "media-quality";
 const MEDIA_TYPES: MediaType[] = ["image","video","audio"];
 
 function isLoopbackHost(hostname: string) {
@@ -84,6 +85,7 @@ export default function AdminPage() {
   const [lastDomainLink,setLastDomainLink] = useState<DomainLinkResponse | null>(null);
   const [encryptionSettings,setEncryptionSettings] = useState<EncryptionSettings | null>(null);
   const [encryptionProtocolDraft,setEncryptionProtocolDraft] = useState<AdminMessageEncryptionProtocol>("server_at_rest");
+  const [mobileSection, setMobileSection] = useState<AdminMobileSection>("menu");
   const [level,setLevel] = useState<LogLevel | "">("");
   const [loggerName,setLoggerName] = useState("");
   const [search,setSearch] = useState("");
@@ -459,7 +461,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="app-shell app-frame">
+    <main className={`app-shell app-frame admin-page${mobileSection !== "menu" ? " admin-detail-view" : ""}`}>
       <AppNav />
       <section className="page-surface">
         <div className="masthead">
@@ -469,13 +471,64 @@ export default function AdminPage() {
           </div>
         </div>
 
+        <div className="admin-mobile-detail-header">
+          <button
+            type="button"
+            className="mobile-back-button"
+            aria-label="Back to Admin menu"
+            onClick={() => setMobileSection("menu")}
+          >
+            <span className="ms-icon ms-icon--22" aria-hidden="true">arrow_back</span>
+          </button>
+          <strong>
+            {mobileSection === "public-access"
+              ? "Public access"
+              : mobileSection === "encryption"
+                ? "Message encryption"
+                : "Stored media quality"}
+          </strong>
+        </div>
+
+        <nav className="admin-mobile-menu" aria-label="Admin settings">
+          <button type="button" onClick={() => setMobileSection("public-access")}>
+            <span className="settings-row-icon">
+              <span className="ms-icon ms-icon--22" aria-hidden="true">public</span>
+            </span>
+            <span>
+              <strong>Public access</strong>
+              <small>Tunnels, public links, and network setup</small>
+            </span>
+            <span className="ms-icon ms-icon--20" aria-hidden="true">chevron_right</span>
+          </button>
+          <button type="button" onClick={() => setMobileSection("encryption")}>
+            <span className="settings-row-icon">
+              <span className="ms-icon ms-icon--22" aria-hidden="true">encrypted</span>
+            </span>
+            <span>
+              <strong>Message encryption</strong>
+              <small>Default protocol for new chats</small>
+            </span>
+            <span className="ms-icon ms-icon--20" aria-hidden="true">chevron_right</span>
+          </button>
+          <button type="button" onClick={() => setMobileSection("media-quality")}>
+            <span className="settings-row-icon">
+              <span className="ms-icon ms-icon--22" aria-hidden="true">high_quality</span>
+            </span>
+            <span>
+              <strong>Stored media quality</strong>
+              <small>Compression rules by media type</small>
+            </span>
+            <span className="ms-icon ms-icon--20" aria-hidden="true">chevron_right</span>
+          </button>
+        </nav>
+
         {!canViewAdmin && <p className="error-text">Admin access required.</p>}
         {error && <p className="error-text">{error}</p>}
         {notice && <p className="success-text">{notice}</p>}
 
         {canViewAdmin && (
           <>
-            <section className="public-access-panel">
+            <section className={`public-access-panel admin-mobile-section admin-mobile-section--public-access${mobileSection === "public-access" ? " is-mobile-active" : ""}`}>
               <div className="public-access-header">
                 <h2>Public access</h2>
                 <strong>{publicAccessReady ? "Ready" : "Private"}</strong>
@@ -757,7 +810,7 @@ export default function AdminPage() {
               </details>
             </section>
 
-            <section className="encryption-settings-panel">
+            <section className={`encryption-settings-panel admin-mobile-section admin-mobile-section--encryption${mobileSection === "encryption" ? " is-mobile-active" : ""}`}>
               <div className="public-access-header">
                 <h2>Message encryption</h2>
                 <strong>{encryptionSettings?.supportedProtocols.find((protocol) => protocol.value === encryptionProtocolDraft)?.label ?? "Server-side"}</strong>
@@ -781,7 +834,7 @@ export default function AdminPage() {
               </form>
             </section>
 
-            <section className="media-quality-panel">
+            <section className={`media-quality-panel admin-mobile-section admin-mobile-section--media-quality${mobileSection === "media-quality" ? " is-mobile-active" : ""}`}>
               <div className="public-access-header">
                 <h2>Stored media quality</h2>
                 <strong>{mediaQualityRules.length} rules</strong>
