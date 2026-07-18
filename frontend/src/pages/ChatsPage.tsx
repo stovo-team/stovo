@@ -106,8 +106,18 @@ import { useAppearance } from "../appearance/AppearanceContext";
 import AttachmentPickerSheet, {
   AttachmentPickerOption
 } from "../components/AttachmentPickerSheet";
+import { FormattingToolbar } from "../components/FormattingToolbar";
 import ImageLightbox from "../components/ImageLightbox";
 import VeloLogo from "../components/VeloLogo";
+import {
+  applyFormattingToTextarea,
+  measureTextareaSelectionAnchor
+} from "../composerFormatting";
+import type {
+  FormattingKind,
+  TextSelection,
+  ToolbarAnchor
+} from "../composerFormatting";
 import { MessageMarkdown } from "../messageMarkdown";
 import {
   CAMERA_ATTACHMENT_ACCEPT,
@@ -1172,6 +1182,8 @@ export default function ChatsPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [composer, setComposer] = useState("");
+  const [formattingToolbarAnchor, setFormattingToolbarAnchor] =
+    useState<ToolbarAnchor | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<FamilyFile[]>([]);
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [chatSearch, setChatSearch] = useState("");
@@ -1299,6 +1311,7 @@ export default function ChatsPage() {
   const messageHighlightTimeoutRef = useRef<number | null>(null);
   const pendingMessageFocusRef = useRef<PendingMessageFocus | null>(null);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const composerFormattingSelectionRef = useRef<TextSelection | null>(null);
   const swipeReplyGestureRef = useRef<SwipeReplyGestureState | null>(null);
   const messageLongPressRef = useRef<MessageLongPressState | null>(null);
   const chatExitSwipeRef = useRef<ChatExitSwipeState | null>(null);
@@ -2255,6 +2268,7 @@ export default function ChatsPage() {
   }, [currentUser?.id, selectedChat]);
 
   useEffect(() => {
+    clearComposerFormattingSelection();
     setPendingAttachments([]);
     setTypingNames([]);
     setMessageSearch("");
@@ -3595,11 +3609,80 @@ export default function ChatsPage() {
     openEmojiPicker();
   }
 
+  function clearComposerFormattingSelection() {
+    composerFormattingSelectionRef.current = null;
+    setFormattingToolbarAnchor(null);
+  }
+
+  function updateComposerFormattingSelection() {
+    const textarea = composerInputRef.current;
+    if (!textarea) {
+      clearComposerFormattingSelection();
+      return;
+    }
+
+    const selection = {
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd
+    };
+    if (selection.start === selection.end) {
+      clearComposerFormattingSelection();
+      return;
+    }
+
+    composerFormattingSelectionRef.current = selection;
+    setFormattingToolbarAnchor(measureTextareaSelectionAnchor(textarea, selection));
+  }
+
+  function handleComposerFormat(kind: FormattingKind) {
+    const textarea = composerInputRef.current;
+    const selection = composerFormattingSelectionRef.current;
+    if (
+      !textarea ||
+      !selection ||
+      selection.start < 0 ||
+      selection.end <= selection.start ||
+      selection.end > composer.length ||
+      textarea.value !== composer ||
+      textarea.selectionStart !== selection.start ||
+      textarea.selectionEnd !== selection.end
+    ) {
+      clearComposerFormattingSelection();
+      return;
+    }
+
+    const edit = applyFormattingToTextarea(textarea, selection, kind, 4000);
+    if (!edit.changed) {
+      return;
+    }
+
+    handleComposerChange(edit.value);
+    requestAnimationFrame(() => {
+      const currentTextarea = composerInputRef.current;
+      if (!currentTextarea || currentTextarea.value !== edit.value) {
+        clearComposerFormattingSelection();
+        return;
+      }
+
+      currentTextarea.focus();
+      currentTextarea.setSelectionRange(edit.selectionStart, edit.selectionEnd);
+      const nextSelection = {
+        start: edit.selectionStart,
+        end: edit.selectionEnd
+      };
+      composerFormattingSelectionRef.current = nextSelection;
+      setFormattingToolbarAnchor(
+        measureTextareaSelectionAnchor(currentTextarea, nextSelection)
+      );
+    });
+  }
+
   function insertEmoji(emoji: string) {
     const input = composerInputRef.current;
     const start = input?.selectionStart ?? composer.length;
     const end = input?.selectionEnd ?? composer.length;
     const nextValue = `${composer.slice(0, start)}${emoji}${composer.slice(end)}`.slice(0, 4000);
+    clearComposerFormattingSelection();
     setComposer(nextValue);
     window.setTimeout(() => {
       const cursor = Math.min(start + emoji.length, nextValue.length);
@@ -4127,6 +4210,7 @@ export default function ChatsPage() {
 
   function handleEditMessage(message: Message) {
     draftBeforeEditRef.current = composer;
+    clearComposerFormattingSelection();
     setComposer(message.content ?? "");
     setEditTargetMessage(message);
     setMessageContextMenu(null);
@@ -4134,6 +4218,7 @@ export default function ChatsPage() {
   }
 
   function cancelEditMode() {
+    clearComposerFormattingSelection();
     setComposer(draftBeforeEditRef.current);
     setEditTargetMessage(null);
     draftBeforeEditRef.current = "";
@@ -4288,11 +4373,13 @@ export default function ChatsPage() {
         const updated = await editMessage(accessToken, editTarget.id, content);
         const displayMessage = await decryptMessage(editTarget.chatId, updated, currentUser.id);
         applyMessagesForChat(editTarget.chatId, (current) => replaceMessage(current, displayMessage));
+        clearComposerFormattingSelection();
         setEditTargetMessage(null);
         setComposer(savedDraft);
         draftBeforeEditRef.current = "";
         resetComposerHeight();
       } catch (err) {
+        clearComposerFormattingSelection();
         setEditTargetMessage(null);
         draftBeforeEditRef.current = "";
         setError(err instanceof ApiError ? String(err.message) : "Could not edit message");
@@ -4347,6 +4434,7 @@ export default function ChatsPage() {
           : chat
       )
     );
+    clearComposerFormattingSelection();
     setComposer("");
     resetComposerHeight();
     setPendingAttachments([]);
@@ -5448,9 +5536,21 @@ export default function ChatsPage() {
                       }
                       value={composer}
                       disabled={channelCommentsDisabledForViewer || missingCommentThread}
-                      onChange={(event) => handleComposerChange(event.target.value)}
+                      onChange={(event) => {
+                        clearComposerFormattingSelection();
+                        handleComposerChange(event.target.value);
+                      }}
                       onFocus={handleComposerFocus}
                       onKeyDown={handleComposerKeyDown}
+                      onKeyUp={updateComposerFormattingSelection}
+                      onPointerUp={updateComposerFormattingSelection}
+                      onScroll={updateComposerFormattingSelection}
+                      onSelect={updateComposerFormattingSelection}
+                    />
+                    <FormattingToolbar
+                      selection={composerFormattingSelectionRef.current}
+                      anchor={formattingToolbarAnchor}
+                      onFormat={handleComposerFormat}
                     />
                     <button
                       type="submit"
