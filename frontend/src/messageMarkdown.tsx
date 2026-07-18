@@ -1,4 +1,4 @@
-import type React from "react";
+import React, { Fragment, useState } from "react";
 
 export type StovoMarkdownNode =
   | { type: "text"; value: string }
@@ -210,5 +210,60 @@ export function isSafeMessageUrl(candidate: string): boolean {
 export function MessageMarkdown(_props: {
   source: string | null | undefined;
 }): React.ReactNode {
-  return null;
+  return renderNodes(parseStovoMarkdown(_props.source), "message");
+}
+
+function Spoiler({ children }: { children: React.ReactNode }) {
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <button
+      type="button"
+      className={`message-spoiler${revealed ? " is-revealed" : ""}`}
+      aria-label="Reveal spoiler"
+      aria-expanded={revealed}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        setRevealed((current) => !current);
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        event.stopPropagation();
+        setRevealed((current) => !current);
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function renderNodes(nodes: StovoMarkdownNode[], keyPrefix: string): React.ReactNode {
+  return nodes.map((node, index) => {
+    const key = `${keyPrefix}-${index}`;
+    if (node.type === "text") {
+      return <Fragment key={key}>{node.value}</Fragment>;
+    }
+
+    const children = renderNodes(node.children, key);
+    switch (node.type) {
+      case "bold":
+        return <strong key={key}>{children}</strong>;
+      case "italic":
+        return <em key={key}>{children}</em>;
+      case "underline":
+        return <u key={key}>{children}</u>;
+      case "strikethrough":
+        return <s key={key}>{children}</s>;
+      case "spoiler":
+        return <Spoiler key={key}>{children}</Spoiler>;
+      case "link":
+        return (
+          <a key={key} href={node.href} rel="noopener noreferrer">
+            {children}
+          </a>
+        );
+    }
+  });
 }
