@@ -130,3 +130,123 @@ export function formatComposerSelection(
     normalized.end + delimiter.length
   );
 }
+
+const defaultComposerMaxLength = 4000;
+const toolbarViewportGutter = 12;
+
+export function applyFormattingToTextarea(
+  textarea: HTMLTextAreaElement | null,
+  selection: TextSelection | null,
+  kind: FormattingKind,
+  maxLength = defaultComposerMaxLength
+): FormattingEdit {
+  if (textarea === null) return unchangedEdit("", { start: 0, end: 0 });
+
+  const normalized = normalizeSelection(textarea.value, selection);
+  const edit = formatComposerSelection(textarea.value, normalized, kind);
+  if (!edit.changed || edit.value.length > maxLength) {
+    return unchangedEdit(textarea.value, normalized);
+  }
+
+  textarea.setRangeText(edit.replacement, edit.replaceStart, edit.replaceEnd, "preserve");
+  textarea.focus();
+  textarea.setSelectionRange(edit.selectionStart, edit.selectionEnd);
+
+  return { ...edit, value: textarea.value };
+}
+
+const mirrorStyleProperties = [
+  "box-sizing",
+  "width",
+  "font-family",
+  "font-size",
+  "font-weight",
+  "font-style",
+  "font-variant",
+  "font-stretch",
+  "letter-spacing",
+  "line-height",
+  "text-align",
+  "text-indent",
+  "text-transform",
+  "direction",
+  "tab-size",
+  "padding-top",
+  "padding-right",
+  "padding-bottom",
+  "padding-left",
+  "border-top-width",
+  "border-right-width",
+  "border-bottom-width",
+  "border-left-width",
+  "border-top-style",
+  "border-right-style",
+  "border-bottom-style",
+  "border-left-style",
+  "white-space",
+  "overflow-wrap",
+  "word-break"
+] as const;
+
+function clampViewportCoordinate(value: number, viewportSize: number): number {
+  const maximum = Math.max(toolbarViewportGutter, viewportSize - toolbarViewportGutter);
+  return Math.min(Math.max(value, toolbarViewportGutter), maximum);
+}
+
+export function measureTextareaSelectionAnchor(
+  textarea: HTMLTextAreaElement | null,
+  selection: TextSelection | null
+): ToolbarAnchor | null {
+  if (textarea === null || textarea.value.length === 0 || textarea.value.length > defaultComposerMaxLength) {
+    return null;
+  }
+
+  const normalized = normalizeSelection(textarea.value, selection);
+  if (normalized.start === normalized.end) return null;
+
+  const mirror = document.createElement("div");
+  try {
+    const textareaRect = textarea.getBoundingClientRect();
+    const computed = window.getComputedStyle(textarea);
+    mirror.className = "composer-selection-mirror";
+    for (const property of mirrorStyleProperties) {
+      mirror.style.setProperty(property, computed.getPropertyValue(property));
+    }
+    mirror.style.position = "fixed";
+    mirror.style.left = `${textareaRect.left - textarea.scrollLeft}px`;
+    mirror.style.top = `${textareaRect.top - textarea.scrollTop}px`;
+    mirror.style.width = `${textareaRect.width}px`;
+    mirror.style.height = "auto";
+    mirror.style.minHeight = `${textareaRect.height}px`;
+    mirror.style.overflow = "hidden";
+    mirror.style.pointerEvents = "none";
+    mirror.style.visibility = "hidden";
+    mirror.style.whiteSpace = "pre-wrap";
+    mirror.style.overflowWrap = "break-word";
+
+    const marker = document.createElement("span");
+    mirror.append(
+      document.createTextNode(textarea.value.slice(0, normalized.start)),
+      marker,
+      document.createTextNode(textarea.value.slice(normalized.end))
+    );
+    marker.textContent = textarea.value.slice(normalized.start, normalized.end);
+    document.body.appendChild(mirror);
+
+    const markerRect = marker.getBoundingClientRect();
+    const rawLeft = markerRect.left + markerRect.width / 2;
+    const rawTop = markerRect.top - 8;
+    if (!Number.isFinite(rawLeft) || !Number.isFinite(rawTop)) return null;
+
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    return {
+      left: clampViewportCoordinate(rawLeft, viewportWidth),
+      top: clampViewportCoordinate(rawTop, viewportHeight)
+    };
+  } catch {
+    return null;
+  } finally {
+    mirror.remove();
+  }
+}
