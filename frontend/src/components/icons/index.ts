@@ -13,3 +13,8 @@ export { default as IconVideo } from "./IconVideo";
 export { default as IconMenu } from "./IconMenu";
 export { default as IconClose } from "./IconClose";
 export { default as IconLogout } from "./IconLogout";
+export { default as IconBold } from "./IconBold";
+export { default as IconItalic } from "./IconItalic";
+export { default as IconUnderline } from "./IconUnderline";
+export { default as IconStrikethrough } from "./IconStrikethrough";
+export { default as IconSpoiler } from "./IconSpoiler";
