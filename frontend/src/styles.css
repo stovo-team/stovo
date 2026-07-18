@@ -2908,6 +2908,69 @@ h2 {
   white-space: pre-wrap;
 }
 
+.message-bubble p strong,
+.message-bubble p em,
+.message-bubble p u,
+.message-bubble p s {
+  color: inherit;
+}
+
+.message-bubble p u {
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.14em;
+}
+
+.message-bubble p s {
+  text-decoration-thickness: 0.08em;
+}
+
+.message-bubble p a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.message-bubble.mine p a {
+  color: inherit;
+}
+
+.message-spoiler {
+  appearance: none;
+  background: var(--border-default);
+  border: 0;
+  border-radius: 4px;
+  color: transparent;
+  cursor: pointer;
+  display: inline;
+  font: inherit;
+  line-height: inherit;
+  margin: 0;
+  padding: 0 2px;
+  text-align: inherit;
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  user-select: text;
+  vertical-align: baseline;
+}
+
+.message-spoiler:hover {
+  background: var(--text-secondary);
+}
+
+.message-spoiler:focus-visible {
+  box-shadow: 0 0 0 3px var(--outline-soft);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.message-spoiler.is-revealed {
+  background: transparent;
+  color: inherit;
+}
+
+.message-spoiler.is-revealed:hover {
+  background: var(--outline-soft);
+}
+
 .message-meta {
   align-items: center;
   display: inline-flex;
@@ -3139,6 +3202,63 @@ h2 {
   border-color: var(--accent-border-soft);
   box-shadow: 0 0 0 3px var(--outline-soft);
   outline: none;
+}
+
+.formatting-toolbar {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  box-shadow: var(--float-shadow-soft);
+  color: var(--text-primary);
+  display: flex;
+  gap: 2px;
+  max-width: calc(100vw - 24px);
+  overflow-x: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  scrollbar-width: none;
+  transform: translate(-50%, calc(-100% - 8px));
+  z-index: 80;
+}
+
+.formatting-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.formatting-toolbar-action {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 0;
+}
+
+.formatting-toolbar-action:hover {
+  background: var(--outline-soft);
+  color: var(--accent-primary);
+}
+
+.formatting-toolbar-action:focus-visible {
+  box-shadow: 0 0 0 3px var(--outline-soft);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 1px;
+}
+
+.formatting-toolbar-action:active {
+  transform: scale(0.96);
+}
+
+.formatting-toolbar-action svg {
+  display: block;
+  pointer-events: none;
 }
 
 .message-composer textarea::placeholder {
