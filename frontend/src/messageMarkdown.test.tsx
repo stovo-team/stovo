@@ -1,10 +1,48 @@
-import { describe, expect, it } from "vitest";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   isSafeMessageUrl,
+  MessageMarkdown,
   parseStovoMarkdown,
   type StovoMarkdownNode
 } from "./messageMarkdown";
+
+const mountedRoots: Root[] = [];
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
+  .IS_REACT_ACT_ENVIRONMENT = true;
+
+function renderMessage(
+  source: string | null | undefined,
+  parentHandlers: {
+    onClick?: () => void;
+    onPointerDown?: () => void;
+    onKeyDown?: () => void;
+  } = {}
+): HTMLDivElement {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  mountedRoots.push(root);
+  act(() => {
+    root.render(
+      <div {...parentHandlers}>
+        <MessageMarkdown source={source} />
+      </div>
+    );
+  });
+  return container;
+}
+
+afterEach(() => {
+  while (mountedRoots.length > 0) {
+    const root = mountedRoots.pop();
+    act(() => root?.unmount());
+  }
+  document.body.replaceChildren();
+});
 
 function text(value: string): StovoMarkdownNode {
   return { type: "text", value };
@@ -162,5 +200,124 @@ describe("isSafeMessageUrl", () => {
     "https://example.com\u0000.evil.test"
   ])("rejects an unsafe or malformed URL: %s", (candidate) => {
     expect(isSafeMessageUrl(candidate)).toBe(false);
+  });
+});
+
+describe("MessageMarkdown", () => {
+  it("renders all formats as semantic inline elements while preserving literal text and lines", () => {
+    const container = renderMessage(
+      "before\n**bold** _italic_ __under__ ~~strike~~ ||secret||\nafter"
+    );
+
+    expect(container.querySelector("strong")?.textContent).toBe("bold");
+    expect(container.querySelector("em")?.textContent).toBe("italic");
+    expect(container.querySelector("u")?.textContent).toBe("under");
+    expect(container.querySelector("s")?.textContent).toBe("strike");
+    expect(container.querySelector("button")?.textContent).toBe("secret");
+    expect(container.textContent).toBe("before\nbold italic under strike secret\nafter");
+  });
+
+  it("renders approved anchors with protective rel attributes and leaves rejected links inert", () => {
+    const safe = renderMessage(
+      "[site](https://example.com/path) mailto:family@example.com"
+    );
+    const anchors = [...safe.querySelectorAll("a")];
+    expect(anchors).toHaveLength(2);
+    expect(anchors[0].getAttribute("href")).toBe("https://example.com/path");
+    expect(anchors[0].getAttribute("rel")).toBe("noopener noreferrer");
+    expect(anchors[1].getAttribute("href")).toBe("mailto:family@example.com");
+    expect(anchors[1].getAttribute("rel")).toBe("noopener noreferrer");
+
+    const unsafe = renderMessage("[run](javascript:alert(1))");
+    expect(unsafe.querySelector("a")).toBeNull();
+    expect(unsafe.textContent).toBe("[run](javascript:alert(1))");
+  });
+
+  it.each(["x", "\ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\u200d\ud83d\udc66"])(
+    "conceals and reveals a spoiler containing %s",
+    (content) => {
+      const container = renderMessage(`||${content}||`);
+      const spoiler = container.querySelector("button");
+
+      expect(spoiler).not.toBeNull();
+      expect(spoiler?.getAttribute("aria-label")).toBe("Reveal spoiler");
+      expect(spoiler?.getAttribute("aria-expanded")).toBe("false");
+      expect(spoiler?.classList.contains("is-revealed")).toBe(false);
+
+      act(() => {
+        spoiler?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+
+      expect(spoiler?.getAttribute("aria-expanded")).toBe("true");
+      expect(spoiler?.classList.contains("is-revealed")).toBe(true);
+      expect(spoiler?.textContent).toBe(content);
+    }
+  );
+
+  it("renders and reveals nested formatted spoiler content", () => {
+    const container = renderMessage("||one **two** _three_||");
+    const spoiler = container.querySelector("button");
+    expect(spoiler?.querySelector("strong")?.textContent).toBe("two");
+    expect(spoiler?.querySelector("em")?.textContent).toBe("three");
+
+    act(() => {
+      spoiler?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(spoiler?.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("stops pointer and click propagation when revealing a spoiler", () => {
+    const onClick = vi.fn();
+    const onPointerDown = vi.fn();
+    const container = renderMessage("||secret||", { onClick, onPointerDown });
+    const spoiler = container.querySelector("button");
+
+    act(() => {
+      spoiler?.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      spoiler?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onPointerDown).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
+    expect(spoiler?.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it.each(["Enter", " "])(
+    "reveals with the %s key without bubbling to message handlers",
+    (key) => {
+      const onKeyDown = vi.fn();
+      const container = renderMessage("||secret||", { onKeyDown });
+      const spoiler = container.querySelector("button");
+
+      act(() => {
+        spoiler?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      });
+
+      expect(onKeyDown).not.toHaveBeenCalled();
+      expect(spoiler?.getAttribute("aria-expanded")).toBe("true");
+    }
+  );
+
+  it("adds no wrapper or interactive control for null and empty source", () => {
+    const absent = renderMessage(null);
+    const empty = renderMessage("");
+
+    expect(absent.firstElementChild?.childNodes).toHaveLength(0);
+    expect(empty.firstElementChild?.childNodes).toHaveLength(0);
+    expect(document.querySelector("button")).toBeNull();
+  });
+
+  it("renders plain, emoji-only, normalization-distinct, and legacy multiline text exactly", () => {
+    const samples = [
+      "x",
+      "\ud83d\udc4d\ud83c\udffd",
+      "\u00e9",
+      "e\u0301",
+      "legacy\nmessage"
+    ];
+
+    for (const sample of samples) {
+      expect(renderMessage(sample).textContent).toBe(sample);
+    }
   });
 });
