@@ -297,7 +297,9 @@ describe("measureTextareaSelectionAnchor", () => {
     textarea.getBoundingClientRect = vi.fn(() => new DOMRect(40, 50, 200, 80));
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 100 });
     Object.defineProperty(window, "innerHeight", { configurable: true, value: 100 });
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement
+    ) {
       if (this.tagName === "SPAN") return new DOMRect(-30, 200, 10, 16);
       return new DOMRect(0, 0, 0, 0);
     });
@@ -333,7 +335,9 @@ describe("measureTextareaSelectionAnchor", () => {
     const textarea = document.createElement("textarea");
     textarea.value = "selected";
     textarea.getBoundingClientRect = vi.fn(() => new DOMRect(10, 20, 200, 80));
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function () {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement
+    ) {
       if (this.tagName === "SPAN") throw new Error("layout failed");
       return new DOMRect(0, 0, 0, 0);
     });
