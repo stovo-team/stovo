@@ -108,6 +108,7 @@ import AttachmentPickerSheet, {
 } from "../components/AttachmentPickerSheet";
 import ImageLightbox from "../components/ImageLightbox";
 import VeloLogo from "../components/VeloLogo";
+import { MessageMarkdown } from "../messageMarkdown";
 import {
   CAMERA_ATTACHMENT_ACCEPT,
   DESKTOP_ATTACHMENT_ACCEPT,
@@ -5069,7 +5070,7 @@ export default function ChatsPage() {
                               <div className="message-bubble-inner">
                                 {hasCaption ? (
                                   <p>
-                                    {message.content}
+                                    <MessageMarkdown source={message.content} />
                                     {message.isEdited && (
                                       <span className="message-edited-label" aria-label="Edited">
                                         (edited)
