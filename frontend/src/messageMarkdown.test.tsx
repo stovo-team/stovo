@@ -6,8 +6,10 @@ import {
   isSafeMessageUrl,
   MessageMarkdown,
   parseStovoMarkdown,
+  renderStovoMarkdownNodes,
   type StovoMarkdownNode
 } from "./messageMarkdown";
+import "./styles.css";
 
 const mountedRoots: Root[] = [];
 
@@ -30,6 +32,39 @@ function renderMessage(
     root.render(
       <div {...parentHandlers}>
         <MessageMarkdown source={source} />
+      </div>
+    );
+  });
+  return container;
+}
+
+function renderMessageBubble(
+  source: string,
+  parentHandlers: { onClick?: () => void } = {}
+): HTMLDivElement {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  mountedRoots.push(root);
+  act(() => {
+    root.render(
+      <div className="message-bubble" {...parentHandlers}>
+        <p><MessageMarkdown source={source} /></p>
+      </div>
+    );
+  });
+  return container;
+}
+
+function renderNodeTree(nodes: StovoMarkdownNode[]): HTMLDivElement {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  mountedRoots.push(root);
+  act(() => {
+    root.render(
+      <div className="message-bubble">
+        <p>{renderStovoMarkdownNodes(nodes)}</p>
       </div>
     );
   });
@@ -204,6 +239,78 @@ describe("isSafeMessageUrl", () => {
 });
 
 describe("MessageMarkdown", () => {
+  it("conceals a spoiler-wrapped link without nested interactive DOM, then reveals one safe anchor", () => {
+    const onClick = vi.fn();
+    const container = renderMessageBubble(
+      "||[family](https://example.com/family)||",
+      { onClick }
+    );
+    const spoiler = container.querySelector("button.message-spoiler");
+    const concealedLinkText = spoiler?.querySelector(".message-link-text");
+
+    expect(spoiler).not.toBeNull();
+    expect(container.querySelector("a")).toBeNull();
+    expect(spoiler?.querySelector("a, button")).toBeNull();
+    expect(getComputedStyle(concealedLinkText as Element).color).toBe("rgba(0, 0, 0, 0)");
+
+    act(() => {
+      spoiler?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const revealed = container.querySelector(".message-spoiler.is-revealed");
+    const anchor = revealed?.querySelector("a");
+    expect(revealed?.tagName.toLowerCase()).toBe("span");
+    expect(container.querySelector("button")).toBeNull();
+    expect(anchor?.getAttribute("href")).toBe("https://example.com/family");
+    expect(revealed?.querySelector("button")).toBeNull();
+    expect(getComputedStyle(anchor as Element).color).not.toBe("rgba(0, 0, 0, 0)");
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("suppresses an outer link when its label contains a spoiler", () => {
+    const onClick = vi.fn();
+    const container = renderMessage(
+      "[before ||secret|| after](https://example.com/path)",
+      { onClick }
+    );
+    const spoiler = container.querySelector("button.message-spoiler");
+
+    expect(container.querySelector("a")).toBeNull();
+    expect(container.querySelector(".message-link-text")?.textContent).toBe("before secret after");
+    expect(container.querySelector("a button, button a")).toBeNull();
+
+    act(() => {
+      spoiler?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(spoiler?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.querySelector("a")).toBeNull();
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("never nests spoiler buttons while revealing a nested spoiler tree", () => {
+    const container = renderNodeTree([{
+      type: "spoiler",
+      children: [
+        text("outer "),
+        { type: "spoiler", children: [text("inner")] }
+      ]
+    }]);
+    const outer = container.querySelector("button.message-spoiler");
+
+    expect(container.querySelectorAll("button")).toHaveLength(1);
+    expect(container.querySelector("button button")).toBeNull();
+    act(() => outer?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+
+    const inner = container.querySelector("button.message-spoiler");
+    expect(container.querySelectorAll("button")).toHaveLength(1);
+    expect(container.querySelector("button button")).toBeNull();
+    expect(container.querySelector(".message-spoiler.is-revealed")?.tagName.toLowerCase()).toBe("span");
+
+    act(() => inner?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(container.querySelector("button button")).toBeNull();
+  });
+
   it("renders all formats as semantic inline elements while preserving literal text and lines", () => {
     const container = renderMessage(
       "before\n**bold** _italic_ __under__ ~~strike~~ ||secret||\nafter"
