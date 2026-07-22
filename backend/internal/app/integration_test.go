@@ -20,8 +20,10 @@ import (
 	"time"
 
 	"family-messenger/backend/internal/config"
+	"family-messenger/backend/internal/storage"
 
 	socketio "github.com/doquangtan/socketio/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -41,27 +43,28 @@ func newTestServer(t *testing.T) (*Server, *httptest.Server, *http.Client) {
 	}
 	resetTestRuntime(t, databaseURL, redisURL)
 	cfg := config.Config{
-		AppName:             "family-messenger-backend",
-		AppVersion:          "0.1.0",
-		AppEnv:              "development",
-		Host:                "127.0.0.1",
-		Port:                0,
-		AppURL:              "http://localhost:5173",
-		APIURL:              "http://localhost:8000",
-		FrontendOrigin:      "http://localhost:5173",
-		PublicTunnelOrigin:  "http://127.0.0.1:8000",
-		DatabaseURL:         databaseURL,
-		RedisURL:            redisURL,
-		JWTSecret:           "test-access-secret",
-		RefreshTokenSecret:  "test-refresh-secret",
-		InviteTokenSecret:   "test-invite-secret",
-		RefreshCookieName:   "family_refresh_token",
-		AccessTokenTTL:      15 * time.Minute,
-		RefreshTokenTTL:     30 * 24 * time.Hour,
-		MaxUploadSizeBytes:  100 * 1024 * 1024,
-		LocalStoragePath:    filepath.Join(root, "uploads"),
-		LogFilePath:         filepath.Join(root, "logs", "backend.log"),
-		LogBufferMaxRecords: 2000,
+		AppName:               "family-messenger-backend",
+		AppVersion:            "0.1.0",
+		AppEnv:                "development",
+		Host:                  "127.0.0.1",
+		Port:                  0,
+		AppURL:                "http://localhost:5173",
+		APIURL:                "http://localhost:8000",
+		FrontendOrigin:        "http://localhost:5173",
+		PublicTunnelOrigin:    "http://127.0.0.1:8000",
+		DatabaseURL:           databaseURL,
+		RedisURL:              redisURL,
+		JWTSecret:             "test-access-secret",
+		RefreshTokenSecret:    "test-refresh-secret",
+		InviteTokenSecret:     "test-invite-secret",
+		RefreshCookieName:     "family_refresh_token",
+		AccessTokenTTL:        15 * time.Minute,
+		RefreshTokenTTL:       30 * 24 * time.Hour,
+		MediaPlaybackTokenTTL: 12 * time.Hour,
+		MaxUploadSizeBytes:    100 * 1024 * 1024,
+		LocalStoragePath:      filepath.Join(root, "uploads"),
+		LogFilePath:           filepath.Join(root, "logs", "backend.log"),
+		LogBufferMaxRecords:   2000,
 	}
 	server, err := New(cfg)
 	if err != nil {
@@ -179,6 +182,28 @@ func uploadFileRequest(t *testing.T, client *http.Client, target, token, chatID,
 	return resp
 }
 
+func mediaPlaybackRequest(t *testing.T, client *http.Client, method, target, token, byteRange, ifModifiedSince string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(method, target, nil)
+	if err != nil {
+		t.Fatalf("new media playback request: %v", err)
+	}
+	if token != "" {
+		req.Header.Set(mediaPlaybackTokenHeader, token)
+	}
+	if byteRange != "" {
+		req.Header.Set("Range", byteRange)
+	}
+	if ifModifiedSince != "" {
+		req.Header.Set("If-Modified-Since", ifModifiedSince)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("do media playback request: %v", err)
+	}
+	return resp
+}
+
 func createInvitedUser(t *testing.T, ownerClient *http.Client, serverURL string, owner authResponse, username string) authResponse {
 	t.Helper()
 	inviteResp := jsonRequest(t, ownerClient, http.MethodPost, serverURL+"/api/invites", owner.AccessToken, map[string]any{
@@ -202,6 +227,294 @@ func createInvitedUser(t *testing.T, ownerClient *http.Client, serverURL string,
 		t.Fatalf("accept invite status = %d", resp.StatusCode)
 	}
 	return decodeJSON[authResponse](t, resp)
+}
+
+type mediaPlaybackFixture struct {
+	server     *Server
+	httpServer *httptest.Server
+	client     *http.Client
+	owner      authResponse
+	member     authResponse
+	observer   authResponse
+	chat       chatPublic
+	file       filePublic
+	data       []byte
+}
+
+func newMediaPlaybackFixture(t *testing.T) mediaPlaybackFixture {
+	t.Helper()
+	server, httpServer, client := newTestServer(t)
+	setupResp := jsonRequest(t, client, http.MethodPost, httpServer.URL+"/api/auth/setup", "", map[string]any{
+		"familyName":  "Playback Family",
+		"username":    "playback-owner",
+		"password":    "secure-password",
+		"displayName": "Playback Owner",
+	})
+	if setupResp.StatusCode != http.StatusCreated {
+		t.Fatalf("setup status = %d", setupResp.StatusCode)
+	}
+	owner := decodeJSON[authResponse](t, setupResp)
+	member := createInvitedUser(t, client, httpServer.URL, owner, "playback-member")
+	observer := createInvitedUser(t, client, httpServer.URL, owner, "playback-observer")
+
+	chatResp := jsonRequest(t, client, http.MethodPost, httpServer.URL+"/api/chats/direct", owner.AccessToken, map[string]any{
+		"userId": member.User.ID,
+	})
+	if chatResp.StatusCode != http.StatusCreated {
+		t.Fatalf("create playback chat status = %d", chatResp.StatusCode)
+	}
+	chat := decodeJSON[chatPublic](t, chatResp)
+	data := []byte("0123456789abcdef")
+	uploadResp := uploadFileRequest(t, client, httpServer.URL+"/api/files/upload", owner.AccessToken, chat.ID, "track.mp3", data)
+	if uploadResp.StatusCode != http.StatusCreated {
+		t.Fatalf("upload playback audio status = %d", uploadResp.StatusCode)
+	}
+	file := decodeJSON[filePublic](t, uploadResp)
+
+	return mediaPlaybackFixture{
+		server: server, httpServer: httpServer, client: client,
+		owner: owner, member: member, observer: observer,
+		chat: chat, file: file, data: data,
+	}
+}
+
+func TestMediaPlaybackFullRangeHeadAndConditionalResponses(t *testing.T) {
+	fixture := newMediaPlaybackFixture(t)
+	mintResp := jsonRequest(t, fixture.client, http.MethodPost, fixture.httpServer.URL+"/api/files/"+fixture.file.ID+"/playback-token", fixture.owner.AccessToken, nil)
+	if mintResp.StatusCode != http.StatusOK {
+		t.Fatalf("mint playback token status = %d", mintResp.StatusCode)
+	}
+	capability := decodeJSON[mediaPlaybackTokenResponse](t, mintResp)
+	if capability.Token == "" {
+		t.Fatal("mint response token is empty")
+	}
+	if !capability.ExpiresAt.After(time.Now()) {
+		t.Fatalf("mint response expiry is not in the future: %s", capability.ExpiresAt)
+	}
+
+	mediaURL := fixture.httpServer.URL + "/api/media/" + fixture.file.ID
+	fullResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, capability.Token, "", "")
+	fullBody, err := io.ReadAll(fullResp.Body)
+	fullResp.Body.Close()
+	if err != nil {
+		t.Fatalf("read full media body: %v", err)
+	}
+	if fullResp.StatusCode != http.StatusOK || !bytes.Equal(fullBody, fixture.data) {
+		t.Fatalf("full media response status/body = %d/%q", fullResp.StatusCode, fullBody)
+	}
+	if got := fullResp.Header.Get("Content-Type"); got != fixture.file.MimeType {
+		t.Fatalf("content type = %q, want %q", got, fixture.file.MimeType)
+	}
+	if got := fullResp.Header.Get("Content-Disposition"); got != "inline" {
+		t.Fatalf("content disposition = %q, want inline", got)
+	}
+	if got := fullResp.Header.Get("Content-Length"); got != "16" {
+		t.Fatalf("content length = %q, want 16", got)
+	}
+	if got := fullResp.Header.Get("Accept-Ranges"); got != "bytes" {
+		t.Fatalf("accept ranges = %q, want bytes", got)
+	}
+	lastModified := fullResp.Header.Get("Last-Modified")
+	if lastModified == "" {
+		t.Fatal("last-modified header is empty")
+	}
+
+	rangeResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, capability.Token, "bytes=2-5", "")
+	rangeBody, err := io.ReadAll(rangeResp.Body)
+	rangeResp.Body.Close()
+	if err != nil {
+		t.Fatalf("read range body: %v", err)
+	}
+	if rangeResp.StatusCode != http.StatusPartialContent || string(rangeBody) != "2345" {
+		t.Fatalf("range response status/body = %d/%q", rangeResp.StatusCode, rangeBody)
+	}
+	if got := rangeResp.Header.Get("Content-Range"); got != "bytes 2-5/16" {
+		t.Fatalf("content range = %q", got)
+	}
+	if got := rangeResp.Header.Get("Accept-Ranges"); got != "bytes" {
+		t.Fatalf("range accept ranges = %q", got)
+	}
+
+	headResp := mediaPlaybackRequest(t, fixture.client, http.MethodHead, mediaURL, capability.Token, "", "")
+	headBody, err := io.ReadAll(headResp.Body)
+	headResp.Body.Close()
+	if err != nil {
+		t.Fatalf("read HEAD body: %v", err)
+	}
+	if headResp.StatusCode != http.StatusOK || len(headBody) != 0 {
+		t.Fatalf("HEAD response status/body length = %d/%d", headResp.StatusCode, len(headBody))
+	}
+	if headResp.Header.Get("Content-Length") != "16" || headResp.Header.Get("Accept-Ranges") != "bytes" {
+		t.Fatalf("HEAD headers length/ranges = %q/%q", headResp.Header.Get("Content-Length"), headResp.Header.Get("Accept-Ranges"))
+	}
+
+	conditionalResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, capability.Token, "", lastModified)
+	conditionalBody, err := io.ReadAll(conditionalResp.Body)
+	conditionalResp.Body.Close()
+	if err != nil {
+		t.Fatalf("read conditional body: %v", err)
+	}
+	if conditionalResp.StatusCode != http.StatusNotModified || len(conditionalBody) != 0 {
+		t.Fatalf("conditional response status/body length = %d/%d", conditionalResp.StatusCode, len(conditionalBody))
+	}
+
+	for _, byteRange := range []string{"bytes=99-100", "bytes=not-a-range"} {
+		resp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, capability.Token, byteRange, "")
+		_, _ = io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
+			t.Fatalf("range %q status = %d, want 416", byteRange, resp.StatusCode)
+		}
+	}
+
+	_, objectKey, err := fixture.server.loadFileRecord(fixture.file.ID, fixture.owner.User.ID)
+	if err != nil {
+		t.Fatalf("load playback object key: %v", err)
+	}
+	if err := fixture.server.storage.Delete(objectKey); err != nil {
+		t.Fatalf("delete media after responses (handle leak): %v", err)
+	}
+}
+
+func TestMediaPlaybackAuthorizationFailuresAreUniform(t *testing.T) {
+	fixture := newMediaPlaybackFixture(t)
+	mediaURL := fixture.httpServer.URL + "/api/media/" + fixture.file.ID
+
+	missingResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, "", "", "")
+	wantBody, err := io.ReadAll(missingResp.Body)
+	missingResp.Body.Close()
+	if err != nil {
+		t.Fatalf("read missing-token body: %v", err)
+	}
+	if missingResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing-token status = %d", missingResp.StatusCode)
+	}
+
+	valid, _, err := fixture.server.mintMediaPlaybackToken(fixture.owner.User.ID, fixture.owner.User.FamilyID, fixture.file.ID)
+	if err != nil {
+		t.Fatalf("mint valid playback token: %v", err)
+	}
+	expired := signedMediaPlaybackTokenForTest(t, fixture.server.cfg.JWTSecret, mediaPlaybackClaimsForTest(
+		fixture.owner.User.ID, fixture.owner.User.FamilyID, fixture.file.ID, mediaPlaybackTokenType, mediaPlaybackTokenAudience, time.Now().Add(-time.Minute),
+	), jwt.SigningMethodHS256)
+	wrongFile, _, err := fixture.server.mintMediaPlaybackToken(fixture.owner.User.ID, fixture.owner.User.FamilyID, "another-file")
+	if err != nil {
+		t.Fatalf("mint wrong-file playback token: %v", err)
+	}
+	wrongFamily, _, err := fixture.server.mintMediaPlaybackToken(fixture.owner.User.ID, "another-family", fixture.file.ID)
+	if err != nil {
+		t.Fatalf("mint wrong-family playback token: %v", err)
+	}
+
+	for name, raw := range map[string]string{
+		"malformed":    "not-a-token",
+		"expired":      expired,
+		"wrong file":   wrongFile,
+		"wrong family": wrongFamily,
+	} {
+		t.Run(name, func(t *testing.T) {
+			resp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, raw, "", "")
+			body, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if readErr != nil {
+				t.Fatalf("read denial body: %v", readErr)
+			}
+			if resp.StatusCode != http.StatusNotFound || !bytes.Equal(body, wantBody) {
+				t.Fatalf("denial status/body = %d/%q, want 404/%q", resp.StatusCode, body, wantBody)
+			}
+		})
+	}
+
+	nonAudioResp := uploadFileRequest(t, fixture.client, fixture.httpServer.URL+"/api/files/upload", fixture.owner.AccessToken, "", "notes.txt", []byte("notes"))
+	if nonAudioResp.StatusCode != http.StatusCreated {
+		t.Fatalf("upload non-audio status = %d", nonAudioResp.StatusCode)
+	}
+	nonAudio := decodeJSON[filePublic](t, nonAudioResp)
+	for name, target := range map[string]string{
+		"non-audio":   fixture.httpServer.URL + "/api/files/" + nonAudio.ID + "/playback-token",
+		"invisible":   fixture.httpServer.URL + "/api/files/" + fixture.file.ID + "/playback-token",
+		"nonexistent": fixture.httpServer.URL + "/api/files/missing/playback-token",
+	} {
+		t.Run("mint "+name, func(t *testing.T) {
+			token := fixture.owner.AccessToken
+			if name == "invisible" {
+				token = fixture.observer.AccessToken
+			}
+			resp := jsonRequest(t, fixture.client, http.MethodPost, target, token, nil)
+			body, readErr := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if readErr != nil {
+				t.Fatalf("read mint denial body: %v", readErr)
+			}
+			if resp.StatusCode != http.StatusNotFound || !bytes.Equal(body, wantBody) {
+				t.Fatalf("mint denial status/body = %d/%q, want 404/%q", resp.StatusCode, body, wantBody)
+			}
+		})
+	}
+
+	if _, err := fixture.server.exec(`UPDATE files SET deleted_at = ? WHERE id = ?`, nowString(), fixture.file.ID); err != nil {
+		t.Fatalf("mark playback file deleted: %v", err)
+	}
+	deletedResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, valid, "", "")
+	deletedBody, err := io.ReadAll(deletedResp.Body)
+	deletedResp.Body.Close()
+	if err != nil {
+		t.Fatalf("read deleted denial body: %v", err)
+	}
+	if deletedResp.StatusCode != http.StatusNotFound || !bytes.Equal(deletedBody, wantBody) {
+		t.Fatalf("deleted denial status/body = %d/%q, want 404/%q", deletedResp.StatusCode, deletedBody, wantBody)
+	}
+}
+
+func TestMediaPlaybackVisibilityRevocationAfterMint(t *testing.T) {
+	fixture := newMediaPlaybackFixture(t)
+	mintResp := jsonRequest(t, fixture.client, http.MethodPost, fixture.httpServer.URL+"/api/files/"+fixture.file.ID+"/playback-token", fixture.member.AccessToken, nil)
+	if mintResp.StatusCode != http.StatusOK {
+		t.Fatalf("member mint status = %d", mintResp.StatusCode)
+	}
+	capability := decodeJSON[mediaPlaybackTokenResponse](t, mintResp)
+	if _, err := fixture.server.exec(`DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?`, fixture.chat.ID, fixture.member.User.ID); err != nil {
+		t.Fatalf("remove member after mint: %v", err)
+	}
+	resp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, fixture.httpServer.URL+"/api/media/"+fixture.file.ID, capability.Token, "", "")
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		t.Fatalf("read revoked visibility body: %v", err)
+	}
+	if resp.StatusCode != http.StatusNotFound || len(body) == 0 {
+		t.Fatalf("revoked visibility status/body = %d/%q", resp.StatusCode, body)
+	}
+}
+
+func TestLocalStorageOpenIsSeekableAndRejectsTraversal(t *testing.T) {
+	store, err := storage.NewLocalStorage(t.TempDir())
+	if err != nil {
+		t.Fatalf("new local storage: %v", err)
+	}
+	if err := store.Save("audio/track.mp3", []byte("0123456789")); err != nil {
+		t.Fatalf("save local object: %v", err)
+	}
+	handle, err := store.Open("audio/track.mp3")
+	if err != nil {
+		t.Fatalf("open local object: %v", err)
+	}
+	buf := make([]byte, 3)
+	if _, err := handle.Read(buf); err != nil || string(buf) != "012" {
+		t.Fatalf("first read = %q, err=%v", buf, err)
+	}
+	if _, err := handle.Seek(5, io.SeekStart); err != nil {
+		t.Fatalf("seek local object: %v", err)
+	}
+	if _, err := handle.Read(buf); err != nil || string(buf) != "567" {
+		t.Fatalf("read after seek = %q, err=%v", buf, err)
+	}
+	if err := handle.Close(); err != nil {
+		t.Fatalf("close local object: %v", err)
+	}
+	if _, err := store.Open("../outside.mp3"); err == nil {
+		t.Fatal("expected traversal open to fail")
+	}
 }
 
 func TestSetupInviteChatAndRefreshFlow(t *testing.T) {
