@@ -10,27 +10,91 @@ type CallPluginNative = {
     chatId?: string | null;
     sessionId?: string | null;
   }): Promise<PictureInPictureState>;
+  setActiveVideoState(options: NativeVideoPictureInPictureState): Promise<PictureInPictureState>;
   isPictureInPictureSupported(): Promise<PictureInPictureState>;
   isPictureInPictureActive(): Promise<PictureInPictureState>;
   enterPictureInPictureIfPossible(): Promise<PictureInPictureState & { entered?: boolean }>;
   addListener(
-    eventName: "proximityChange" | "pictureInPictureChange",
-    listener: ((event: { near: boolean }) => void) | ((event: PictureInPictureState) => void)
+    eventName: "proximityChange",
+    listener: (event: { near: boolean }) => void,
   ): Promise<{ remove: () => Promise<void> }>;
+  addListener(
+    eventName: "pictureInPictureChange",
+    listener: (event: PictureInPictureState) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+  addListener(
+    eventName: "pictureInPictureAction",
+    listener: (event: PictureInPictureActionEvent) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+};
+
+export type PictureInPictureOwner = "none" | "call" | "video";
+
+export type NativeVideoPictureInPictureState = {
+  active: boolean;
+  playing: boolean;
+  chatId: string;
+  messageId: string;
+  fileId: string;
+  positionSeconds: number;
+  durationSeconds: number;
+  width: number;
+  height: number;
+  revision: number;
+};
+
+export type PictureInPictureAction =
+  | "play"
+  | "pause"
+  | "seek-backward"
+  | "seek-forward";
+
+export type PictureInPictureActionEvent = {
+  action: PictureInPictureAction;
+  videoState: NativeVideoPictureInPictureState;
 };
 
 export type PictureInPictureState = {
   active: boolean;
   supported: boolean;
   eligible: boolean;
+  owner: PictureInPictureOwner;
+  requestedOwner: PictureInPictureOwner;
+  activeOwner: PictureInPictureOwner;
   callActive: boolean;
   video: boolean;
   chatId?: string | null;
   sessionId?: string | null;
+  acceptedRevision: number;
+  videoState?: NativeVideoPictureInPictureState | null;
   reason?: string;
 };
 
 const CallPlugin = registerPlugin<CallPluginNative>("CallPlugin");
+
+function unavailablePictureInPictureState(): PictureInPictureState {
+  return {
+    active: false,
+    supported: false,
+    eligible: false,
+    owner: "none",
+    requestedOwner: "none",
+    activeOwner: "none",
+    callActive: false,
+    video: false,
+    acceptedRevision: -1,
+    videoState: null,
+  };
+}
+
+function isPictureInPictureAction(value: unknown): value is PictureInPictureAction {
+  return (
+    value === "play" ||
+    value === "pause" ||
+    value === "seek-backward" ||
+    value === "seek-forward"
+  );
+}
 
 export function isNativeCallPluginAvailable(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
@@ -93,49 +157,32 @@ export async function setNativeActiveCallState(options: {
   }
 }
 
-export async function getNativePictureInPictureSupport(): Promise<PictureInPictureState> {
-  if (!isNativeCallPluginAvailable()) {
-    return {
-      active: false,
-      supported: false,
-      eligible: false,
-      callActive: false,
-      video: false,
-    };
+export async function setNativeActiveVideoState(
+  options: NativeVideoPictureInPictureState,
+): Promise<PictureInPictureState | null> {
+  if (!isNativeCallPluginAvailable()) return null;
+  try {
+    return await CallPlugin.setActiveVideoState(options);
+  } catch {
+    return null;
   }
+}
+
+export async function getNativePictureInPictureSupport(): Promise<PictureInPictureState> {
+  if (!isNativeCallPluginAvailable()) return unavailablePictureInPictureState();
   try {
     return await CallPlugin.isPictureInPictureSupported();
   } catch {
-    return {
-      active: false,
-      supported: false,
-      eligible: false,
-      callActive: false,
-      video: false,
-    };
+    return unavailablePictureInPictureState();
   }
 }
 
 export async function getNativePictureInPictureState(): Promise<PictureInPictureState> {
-  if (!isNativeCallPluginAvailable()) {
-    return {
-      active: false,
-      supported: false,
-      eligible: false,
-      callActive: false,
-      video: false,
-    };
-  }
+  if (!isNativeCallPluginAvailable()) return unavailablePictureInPictureState();
   try {
     return await CallPlugin.isPictureInPictureActive();
   } catch {
-    return {
-      active: false,
-      supported: false,
-      eligible: false,
-      callActive: false,
-      video: false,
-    };
+    return unavailablePictureInPictureState();
   }
 }
 
@@ -159,6 +206,29 @@ export async function addPictureInPictureListener(
     });
     return () => {
       void handle.remove();
+    };
+  } catch {
+    return () => undefined;
+  }
+}
+
+export async function addPictureInPictureActionListener(
+  onAction: (event: PictureInPictureActionEvent) => void,
+): Promise<() => void> {
+  if (!isNativeCallPluginAvailable()) return () => undefined;
+  try {
+    const handle = await CallPlugin.addListener(
+      "pictureInPictureAction",
+      (event: PictureInPictureActionEvent) => {
+        if (!isPictureInPictureAction(event?.action)) return;
+        onAction(event);
+      },
+    );
+    let removed = false;
+    return () => {
+      if (removed) return;
+      removed = true;
+      void handle.remove().catch(() => undefined);
     };
   } catch {
     return () => undefined;
