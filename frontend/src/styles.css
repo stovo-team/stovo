@@ -3218,7 +3218,6 @@ h2 {
   overscroll-behavior: contain;
   padding: 4px;
   scrollbar-width: none;
-  transform: translate(-50%, calc(-100% - 8px));
   z-index: 80;
 }
 
