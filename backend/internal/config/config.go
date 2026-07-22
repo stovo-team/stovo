@@ -37,6 +37,7 @@ type Config struct {
 	RefreshCookieName            string
 	AccessTokenTTL               time.Duration
 	RefreshTokenTTL              time.Duration
+	MediaPlaybackTokenTTL        time.Duration
 	MaxUploadSizeBytes           int64
 	LocalStoragePath             string
 	LogFilePath                  string
@@ -59,6 +60,14 @@ func Load() (Config, error) {
 	refreshTTL, err := ParseFlexibleDuration(getenv("JWT_REFRESH_EXPIRES_IN", "30d"))
 	if err != nil {
 		return Config{}, fmt.Errorf("parse JWT_REFRESH_EXPIRES_IN: %w", err)
+	}
+
+	mediaPlaybackTTL, err := ParseFlexibleDuration(getenv("MEDIA_PLAYBACK_TOKEN_TTL", "12h"))
+	if err != nil {
+		return Config{}, fmt.Errorf("parse MEDIA_PLAYBACK_TOKEN_TTL: %w", err)
+	}
+	if mediaPlaybackTTL <= 0 {
+		return Config{}, fmt.Errorf("parse MEDIA_PLAYBACK_TOKEN_TTL: duration must be positive")
 	}
 
 	port, err := atoi(getenv("PORT", "8000"))
@@ -116,6 +125,7 @@ func Load() (Config, error) {
 		RefreshCookieName:            getenv("REFRESH_COOKIE_NAME", "family_refresh_token"),
 		AccessTokenTTL:               accessTTL,
 		RefreshTokenTTL:              refreshTTL,
+		MediaPlaybackTokenTTL:        mediaPlaybackTTL,
 		MaxUploadSizeBytes:           int64(maxUploadMB) * 1024 * 1024,
 		LocalStoragePath:             storagePath,
 		LogFilePath:                  logPath,
