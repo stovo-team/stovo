@@ -247,6 +247,14 @@ describe("VideoPlayer", () => {
     await settle();
     expect(document.exitFullscreen).toHaveBeenCalled();
     expect(container.querySelector("video")).toBe(element);
+
+    vi.mocked(root.requestFullscreen).mockRejectedValueOnce(new Error("denied"));
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Enter fullscreen"]')?.click());
+    await settle();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      "Fullscreen request was denied",
+    );
+    expect(container.querySelector("video")).toBe(element);
   });
 
   it("isolates pointer and click gestures while retaining native controls", async () => {
