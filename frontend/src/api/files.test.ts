@@ -61,8 +61,11 @@ describe("media playback file API", () => {
       })
     );
 
-    const request = createMediaPlaybackToken("access-secret", "file?playback=secret");
-    await expect(request).rejects.toMatchObject<ApiError>({
+    const error = await createMediaPlaybackToken("access-secret", "file?playback=secret").catch(
+      (reason: unknown) => reason
+    );
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({
       status: 404,
       detail: "File not found"
     });
