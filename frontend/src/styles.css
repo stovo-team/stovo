@@ -2967,6 +2967,24 @@ h2 {
   color: inherit;
 }
 
+.message-bubble p .message-spoiler:not(.is-revealed),
+.message-bubble p .message-spoiler:not(.is-revealed) * {
+  color: transparent !important;
+  text-decoration-color: transparent !important;
+}
+
+.message-bubble p .message-spoiler.is-revealed a {
+  color: var(--accent-primary);
+}
+
+.message-bubble.mine p .message-spoiler.is-revealed a {
+  color: inherit;
+}
+
+span.message-spoiler.is-revealed {
+  cursor: text;
+}
+
 .message-spoiler.is-revealed:hover {
   background: var(--outline-soft);
 }

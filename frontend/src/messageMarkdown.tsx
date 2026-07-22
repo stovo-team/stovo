@@ -210,11 +210,45 @@ export function isSafeMessageUrl(candidate: string): boolean {
 export function MessageMarkdown(_props: {
   source: string | null | undefined;
 }): React.ReactNode {
-  return renderNodes(parseStovoMarkdown(_props.source), "message");
+  return renderStovoMarkdownNodes(parseStovoMarkdown(_props.source));
 }
 
-function Spoiler({ children }: { children: React.ReactNode }) {
+type RenderContext = {
+  suppressInteractions: boolean;
+};
+
+function containsInteractiveNode(nodes: StovoMarkdownNode[]): boolean {
+  return nodes.some((node) => (
+    node.type === "link" ||
+    node.type === "spoiler" ||
+    (node.type !== "text" && containsInteractiveNode(node.children))
+  ));
+}
+
+function containsSpoiler(nodes: StovoMarkdownNode[]): boolean {
+  return nodes.some((node) => (
+    node.type === "spoiler" ||
+    (node.type !== "text" && containsSpoiler(node.children))
+  ));
+}
+
+function Spoiler({
+  nodes,
+  keyPrefix
+}: {
+  nodes: StovoMarkdownNode[];
+  keyPrefix: string;
+}) {
   const [revealed, setRevealed] = useState(false);
+  const hasInteractiveContent = containsInteractiveNode(nodes);
+
+  if (revealed && hasInteractiveContent) {
+    return (
+      <span className="message-spoiler is-revealed">
+        {renderNodes(nodes, keyPrefix, { suppressInteractions: false })}
+      </span>
+    );
+  }
 
   return (
     <button
@@ -234,19 +268,23 @@ function Spoiler({ children }: { children: React.ReactNode }) {
         setRevealed((current) => !current);
       }}
     >
-      {children}
+      {renderNodes(nodes, keyPrefix, { suppressInteractions: !revealed })}
     </button>
   );
 }
 
-function renderNodes(nodes: StovoMarkdownNode[], keyPrefix: string): React.ReactNode {
+function renderNodes(
+  nodes: StovoMarkdownNode[],
+  keyPrefix: string,
+  context: RenderContext
+): React.ReactNode {
   return nodes.map((node, index) => {
     const key = `${keyPrefix}-${index}`;
     if (node.type === "text") {
       return <Fragment key={key}>{node.value}</Fragment>;
     }
 
-    const children = renderNodes(node.children, key);
+    const children = renderNodes(node.children, key, context);
     switch (node.type) {
       case "bold":
         return <strong key={key}>{children}</strong>;
@@ -257,8 +295,14 @@ function renderNodes(nodes: StovoMarkdownNode[], keyPrefix: string): React.React
       case "strikethrough":
         return <s key={key}>{children}</s>;
       case "spoiler":
-        return <Spoiler key={key}>{children}</Spoiler>;
+        if (context.suppressInteractions) {
+          return <span key={key} className="message-spoiler-content">{children}</span>;
+        }
+        return <Spoiler key={key} nodes={node.children} keyPrefix={key} />;
       case "link":
+        if (context.suppressInteractions || containsSpoiler(node.children)) {
+          return <span key={key} className="message-link-text">{children}</span>;
+        }
         return (
           <a key={key} href={node.href} rel="noopener noreferrer">
             {children}
@@ -266,4 +310,10 @@ function renderNodes(nodes: StovoMarkdownNode[], keyPrefix: string): React.React
         );
     }
   });
+}
+
+export function renderStovoMarkdownNodes(
+  nodes: StovoMarkdownNode[]
+): React.ReactNode {
+  return renderNodes(nodes, "message", { suppressInteractions: false });
 }
