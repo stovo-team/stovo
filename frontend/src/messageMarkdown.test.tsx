@@ -1,6 +1,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+// @ts-ignore Vitest supplies Node built-ins while the browser app omits Node typings.
+import { readFileSync } from "node:fs";
 
 import {
   isSafeMessageUrl,
@@ -9,7 +11,9 @@ import {
   renderStovoMarkdownNodes,
   type StovoMarkdownNode
 } from "./messageMarkdown";
-import "./styles.css";
+
+// @ts-ignore Vitest runs from the frontend project root.
+const messageStyles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
 
 const mountedRoots: Root[] = [];
 
@@ -42,6 +46,19 @@ function renderMessageBubble(
   source: string,
   parentHandlers: { onClick?: () => void } = {}
 ): HTMLDivElement {
+  const concealmentStart = messageStyles.indexOf(
+    ".message-bubble p .message-spoiler:not(.is-revealed)"
+  );
+  const concealmentEnd = messageStyles.indexOf(
+    "span.message-spoiler.is-revealed",
+    concealmentStart
+  );
+  expect(concealmentStart).toBeGreaterThanOrEqual(0);
+  expect(concealmentEnd).toBeGreaterThan(concealmentStart);
+  const style = document.createElement("style");
+  style.dataset.messageMarkdownTestStyles = "true";
+  style.textContent = messageStyles.slice(concealmentStart, concealmentEnd);
+  document.head.appendChild(style);
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -77,6 +94,8 @@ afterEach(() => {
     act(() => root?.unmount());
   }
   document.body.replaceChildren();
+  document.head.querySelectorAll("[data-message-markdown-test-styles]")
+    .forEach((style) => style.remove());
 });
 
 function text(value: string): StovoMarkdownNode {
