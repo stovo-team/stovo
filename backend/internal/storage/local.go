@@ -41,6 +41,14 @@ func (s *LocalStorage) Read(objectKey string) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
+func (s *LocalStorage) Open(objectKey string) (*os.File, error) {
+	path, err := s.resolve(objectKey)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(path)
+}
+
 func (s *LocalStorage) Delete(objectKey string) error {
 	path, err := s.resolve(objectKey)
 	if err != nil {

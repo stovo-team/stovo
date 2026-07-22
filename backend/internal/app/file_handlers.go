@@ -12,6 +12,16 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	mediaPlaybackTokenHeader        = "X-Stovo-Media-Token"
+	maxMediaPlaybackTokenHeaderSize = 4096
+)
+
+type mediaPlaybackTokenResponse struct {
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
 func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request, user userPublic) {
 	if err := r.ParseMultipartForm(s.cfg.MaxUploadSizeBytes); err != nil {
 		s.detail(w, http.StatusBadRequest, "Could not parse upload")
@@ -134,6 +144,65 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request, user
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename*=UTF-8''%s`, url.QueryEscape(file.OriginalName)))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
+}
+
+func (s *Server) handleCreateMediaPlaybackToken(w http.ResponseWriter, r *http.Request, user userPublic) {
+	file, _, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
+	if err != nil || file.DeletedAt != nil || !strings.HasPrefix(file.MimeType, "audio/") || !s.fileVisibleToUser(file, user) {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	token, expiresAt, err := s.mintMediaPlaybackToken(user.ID, user.FamilyID, file.ID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not create playback token")
+		return
+	}
+	s.json(w, http.StatusOK, mediaPlaybackTokenResponse{Token: token, ExpiresAt: expiresAt})
+}
+
+func (s *Server) handleStreamMediaPlaybackFile(w http.ResponseWriter, r *http.Request) {
+	fileID := fileIDFromURL(r)
+	headerValues := r.Header.Values(mediaPlaybackTokenHeader)
+	if len(headerValues) != 1 {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	rawToken := strings.TrimSpace(headerValues[0])
+	if rawToken == "" || len(rawToken) > maxMediaPlaybackTokenHeaderSize {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	claims, err := s.parseMediaPlaybackToken(rawToken, fileID)
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	user, err := s.getUserByID(claims.UserID)
+	if err != nil || !user.IsActive || user.FamilyID != claims.FamilyID {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	file, objectKey, err := s.loadFileRecord(fileID, user.ID)
+	if err != nil || file.ID != claims.FileID || file.FamilyID != claims.FamilyID || file.DeletedAt != nil ||
+		!strings.HasPrefix(file.MimeType, "audio/") || !s.fileVisibleToUser(file, user) {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	handle, err := s.storage.Open(objectKey)
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	defer handle.Close()
+	info, err := handle.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+
+	w.Header().Set("Content-Type", file.MimeType)
+	w.Header().Set("Content-Disposition", "inline")
+	http.ServeContent(w, r, "", info.ModTime(), handle)
 }
 
 func (s *Server) handleUpdateFilePreferences(w http.ResponseWriter, r *http.Request, user userPublic) {
