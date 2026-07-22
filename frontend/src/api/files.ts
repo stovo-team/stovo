@@ -18,6 +18,11 @@ export interface FamilyFile {
   isFavorite: boolean;
 }
 
+export interface MediaPlaybackToken {
+  token: string;
+  expiresAt: string;
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
@@ -52,6 +57,17 @@ export function getFiles(accessToken: string) {
 
 export function getFile(accessToken: string, fileId: string) {
   return apiRequest<FamilyFile>(`/api/files/${fileId}`, { accessToken });
+}
+
+export function createMediaPlaybackToken(accessToken: string, fileId: string) {
+  return apiRequest<MediaPlaybackToken>(`/api/files/${encodeURIComponent(fileId)}/playback-token`, {
+    method: "POST",
+    accessToken
+  });
+}
+
+export function getMediaPlaybackUrl(fileId: string) {
+  return `${getApiUrl()}/api/media/${encodeURIComponent(fileId)}`;
 }
 
 export function deleteFile(accessToken: string, fileId: string) {
