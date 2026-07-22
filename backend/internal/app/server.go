@@ -230,8 +230,11 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/files", s.authenticated(s.handleGetFiles))
 	router.Get("/api/files/{fileId}", s.authenticated(s.handleGetFile))
 	router.Get("/api/files/{fileId}/download", s.authenticated(s.handleDownloadFile))
+	router.Post("/api/files/{fileId}/playback-token", s.authenticated(s.handleCreateMediaPlaybackToken))
 	router.Patch("/api/files/{fileId}/preferences", s.authenticated(s.handleUpdateFilePreferences))
 	router.Delete("/api/files/{fileId}", s.authenticated(s.handleDeleteFile))
+	router.Get("/api/media/{fileId}", s.handleStreamMediaPlaybackFile)
+	router.Head("/api/media/{fileId}", s.handleStreamMediaPlaybackFile)
 
 	router.Get("/api/admin/logs", s.authenticated(s.handleAdminLogs))
 	router.Get("/api/admin/media-quality", s.authenticated(s.handleGetMediaQuality))
@@ -262,7 +265,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		}
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Refresh-Token, bypass-tunnel-reminder, abypass-tunnel-reminder")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Refresh-Token, X-Stovo-Media-Token, bypass-tunnel-reminder, abypass-tunnel-reminder")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
