@@ -108,6 +108,7 @@ import AttachmentPickerSheet, {
 } from "../components/AttachmentPickerSheet";
 import { FormattingToolbar } from "../components/FormattingToolbar";
 import ImageLightbox from "../components/ImageLightbox";
+import { VideoPlayer } from "../components/VideoPlayer";
 import VeloLogo from "../components/VeloLogo";
 import {
   applyFormattingToTextarea,
@@ -144,15 +145,28 @@ import {
 import { Capacitor } from "@capacitor/core";
 import { App, AppState } from "@capacitor/app";
 import {
+  addPictureInPictureActionListener,
   addPictureInPictureListener,
   addProximityListener,
   disableNativeCallMode,
   enableNativeCallMode,
   isNativeCallPluginAvailable,
   setNativeActiveCallState,
+  setNativeActiveVideoState,
+  type PictureInPictureState,
 } from "../native/callPlugin";
+import {
+  applyPictureInPictureAction,
+  parseVideoPictureInPictureRestore,
+  toNativeVideoPictureInPictureState,
+} from "../videoPiPBridge";
+import { videoPlaybackSession } from "../videoPlaybackSession";
 
 type CallPhase = "idle" | "outgoing" | "incoming" | "connecting" | "in-call";
+
+function activeSessionVideoElement(): HTMLVideoElement | null {
+  return document.querySelector<HTMLVideoElement>(".video-player.is-session-active video");
+}
 
 export function androidAppStatePayload(isActive: boolean, activeChatId?: string) {
   return {
@@ -791,17 +805,37 @@ function MessageImageAttachment({
 
 function AttachmentCard({
   accessToken,
+  chatId,
   file,
+  messageId,
+  disabledReason,
   compact = false,
   onOpenImage
 }: {
   accessToken: string | null;
+  chatId: string;
   file: FamilyFile;
+  messageId: string;
+  disabledReason?: string;
   compact?: boolean;
   onOpenImage?: (file: FamilyFile, previewUrl: string) => void;
 }) {
   const isImage = isImageAttachment(file);
+  const isVideo = file.mimeType.startsWith("video/");
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
+
+  if (isVideo) {
+    return (
+      <article className="message-video-attachment">
+        <VideoPlayer
+          accessToken={accessToken ?? ""}
+          file={file}
+          identity={{ chatId, messageId, fileId: file.id }}
+          disabledReason={disabledReason}
+        />
+      </article>
+    );
+  }
 
   if (compact && isImage) {
     return (
@@ -1255,6 +1289,7 @@ export default function ChatsPage() {
   const [isCallAudioPopupOpen, setIsCallAudioPopupOpen] = useState(false);
   const [isCallVideoPopupOpen, setIsCallVideoPopupOpen] = useState(false);
   const [isCallMinimized, setIsCallMinimized] = useState(false);
+  const [isVideoPictureInPictureActive, setIsVideoPictureInPictureActive] = useState(false);
   const [callTrackStatus, setCallTrackStatus] = useState<CallTrackStatus | null>(null);
   const [callAudioDevices, setCallAudioDevices] = useState<CallDevice[]>([]);
   const [callAudioCapabilities, setCallAudioCapabilities] = useState<CallCapabilities>({
@@ -1299,6 +1334,8 @@ export default function ChatsPage() {
   const callTypeRef = useRef<"audio" | "video">("audio");
   const callPhaseRef = useRef<CallPhase>("idle");
   const pictureInPictureActiveRef = useRef(false);
+  const videoPictureInPictureActiveRef = useRef(false);
+  const lastNativeVideoRevisionRef = useRef(0);
   const accessTokenRef = useRef<string | null>(accessToken);
   const chatsRef = useRef<Chat[]>([]);
   const messagesRef = useRef<Message[]>([]);
@@ -1561,13 +1598,20 @@ export default function ChatsPage() {
   ]);
 
   const syncNativePictureInPictureCallState = useCallback(() => {
-    if (!isNativeCallPluginAvailable()) {
-      return;
-    }
-
     const phase = callPhaseRef.current;
+    if (phase !== "idle") {
+      videoPictureInPictureActiveRef.current = false;
+      setIsVideoPictureInPictureActive(false);
+      try {
+        activeSessionVideoElement()?.pause();
+      } catch {
+        // Detached media can reject a synchronous pause during route changes.
+      }
+    }
+    if (!isNativeCallPluginAvailable()) return;
+
     const hasLiveSession = Boolean(activeCallSessionIdRef.current);
-    const active = (phase === "connecting" || phase === "in-call") && hasLiveSession;
+    const active = phase !== "idle" && hasLiveSession;
     const video = active && callTypeRef.current === "video";
 
     void setNativeActiveCallState({
@@ -1603,6 +1647,64 @@ export default function ChatsPage() {
     navigateWithMotion(navigate, `/app/chats/${callChatId}`, {
       reducedMotion: prefersReducedMotion
     });
+  }, [navigate, prefersReducedMotion]);
+
+  const restoreActiveVideoSurface = useCallback((state: PictureInPictureState) => {
+    const target = parseVideoPictureInPictureRestore(
+      state,
+      lastNativeVideoRevisionRef.current,
+    );
+    if (!target || !accessTokenRef.current) return;
+
+    const targetChat = chatsRef.current.find(
+      (candidate) => candidate.id === target.identity.chatId,
+    );
+    if (!targetChat) return;
+
+    const cachedMessages =
+      messageCacheRef.current[targetChat.id] ??
+      (activeChatIdRef.current === targetChat.id ? messagesRef.current : null);
+    if (!cachedMessages) return;
+    const targetMessage = cachedMessages.find(
+      (message) => message.id === target.identity.messageId,
+    );
+    const targetFile = targetMessage?.attachments.find(
+      (file) => file.id === target.identity.fileId && file.mimeType.startsWith("video/"),
+    );
+    if (!targetMessage || targetMessage.chatId !== targetChat.id || !targetFile) return;
+
+    const activeVideo = activeSessionVideoElement();
+    const activeRoot = activeVideo?.closest<HTMLElement>(".video-player");
+    if (
+      activeVideo &&
+      activeRoot?.dataset.videoChatId === target.identity.chatId &&
+      activeRoot.dataset.videoMessageId === target.identity.messageId &&
+      activeRoot.dataset.videoFileId === target.identity.fileId
+    ) {
+      try {
+        activeVideo.currentTime = target.currentTime;
+      } catch {
+        // The retained coordinator snapshot restores again after metadata is ready.
+      }
+    }
+
+    setSelectedChat(targetChat);
+    setMessages(cachedMessages);
+    setIsDetailsOpen(false);
+    if (targetMessage.messageKind === "thread" && targetMessage.threadRootMessageId) {
+      setThreadRootMessageId(targetMessage.threadRootMessageId);
+    } else {
+      setThreadRootMessageId(null);
+    }
+    pendingMessageFocusRef.current = {
+      messageId: targetMessage.id,
+      highlightClassName: "message-context-flash",
+    };
+    navigateWithMotion(
+      navigate,
+      `/app/chats/${encodeURIComponent(target.identity.chatId)}`,
+      { reducedMotion: prefersReducedMotion },
+    );
   }, [navigate, prefersReducedMotion]);
 
   const pushToast = useCallback(
@@ -2158,6 +2260,103 @@ export default function ChatsPage() {
     callPhaseRef.current = callPhase;
   }, [callPhase]);
   useEffect(() => {
+    if (!currentUser?.id) return;
+
+    let disposed = false;
+    let throttleTimer: number | null = null;
+    let pendingUpdate: ReturnType<typeof toNativeVideoPictureInPictureState> | null = null;
+    let previousUpdate: ReturnType<typeof toNativeVideoPictureInPictureState> | null = null;
+
+    const sendUpdate = (
+      update: ReturnType<typeof toNativeVideoPictureInPictureState>,
+    ) => {
+      if (disposed) return;
+      lastNativeVideoRevisionRef.current = Math.max(
+        lastNativeVideoRevisionRef.current,
+        update.revision,
+      );
+      previousUpdate = update;
+      if (!isNativeCallPluginAvailable()) return;
+      void setNativeActiveVideoState(update).then((state) => {
+        if (!state || disposed) return;
+        lastNativeVideoRevisionRef.current = Math.max(
+          lastNativeVideoRevisionRef.current,
+          state.acceptedRevision,
+        );
+      });
+    };
+
+    const publish = () => {
+      const snapshot = videoPlaybackSession.getSnapshot();
+      if (!snapshot) {
+        if (throttleTimer !== null) window.clearTimeout(throttleTimer);
+        throttleTimer = null;
+        pendingUpdate = null;
+        if (videoPictureInPictureActiveRef.current) {
+          videoPictureInPictureActiveRef.current = false;
+          setIsVideoPictureInPictureActive(false);
+        }
+      }
+      const element = activeSessionVideoElement();
+      const update = toNativeVideoPictureInPictureState(
+        snapshot,
+        {
+          width: element?.videoWidth ?? 0,
+          height: element?.videoHeight ?? 0,
+        },
+        lastNativeVideoRevisionRef.current + 1,
+      );
+      if (callPhaseRef.current !== "idle") update.playing = false;
+
+      const positionOnly = Boolean(
+        previousUpdate &&
+        update.active === previousUpdate.active &&
+        update.playing === previousUpdate.playing &&
+        update.chatId === previousUpdate.chatId &&
+        update.messageId === previousUpdate.messageId &&
+        update.fileId === previousUpdate.fileId &&
+        update.durationSeconds === previousUpdate.durationSeconds &&
+        update.width === previousUpdate.width &&
+        update.height === previousUpdate.height &&
+        Math.abs(update.positionSeconds - previousUpdate.positionSeconds) < 2,
+      );
+
+      if (!positionOnly) {
+        if (throttleTimer !== null) window.clearTimeout(throttleTimer);
+        throttleTimer = null;
+        pendingUpdate = null;
+        sendUpdate(update);
+        return;
+      }
+
+      pendingUpdate = update;
+      if (throttleTimer !== null) return;
+      throttleTimer = window.setTimeout(() => {
+        throttleTimer = null;
+        const latest = pendingUpdate;
+        pendingUpdate = null;
+        if (latest) sendUpdate(latest);
+      }, 500);
+    };
+
+    const unsubscribe = videoPlaybackSession.subscribe(publish);
+    publish();
+    return () => {
+      disposed = true;
+      unsubscribe();
+      if (throttleTimer !== null) window.clearTimeout(throttleTimer);
+      videoPictureInPictureActiveRef.current = false;
+      const inactive = toNativeVideoPictureInPictureState(
+        null,
+        undefined,
+        lastNativeVideoRevisionRef.current + 1,
+      );
+      lastNativeVideoRevisionRef.current = inactive.revision;
+      void setNativeActiveVideoState(inactive);
+      videoPlaybackSession.reset();
+    };
+  }, [currentUser?.id]);
+  useEffect(() => {
     syncNativePictureInPictureCallState();
   }, [activeCallChatId, callPhase, callType, syncNativePictureInPictureCallState]);
   useEffect(() => {
@@ -2552,6 +2751,7 @@ export default function ChatsPage() {
     let appStateListener: { remove: () => Promise<void> } | null = null;
     let appStateCancelled = false;
     let removePictureInPictureListener: (() => void) | null = null;
+    let removePictureInPictureActionListener: (() => void) | null = null;
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
       void (async () => {
         try {
@@ -2574,11 +2774,24 @@ export default function ChatsPage() {
 
       void addPictureInPictureListener((state) => {
         pictureInPictureActiveRef.current = state.active;
+        if (Number.isSafeInteger(state.acceptedRevision) && state.acceptedRevision >= 0) {
+          lastNativeVideoRevisionRef.current = Math.max(
+            lastNativeVideoRevisionRef.current,
+            state.acceptedRevision,
+          );
+        }
         if (state.active) {
+          const videoOwner = state.owner === "video";
+          videoPictureInPictureActiveRef.current = videoOwner;
+          setIsVideoPictureInPictureActive(videoOwner);
           setIsCallMinimized(false);
           return;
         }
-        if (callPhaseRef.current !== "idle") {
+        videoPictureInPictureActiveRef.current = false;
+        setIsVideoPictureInPictureActive(false);
+        if (state.owner === "video") {
+          restoreActiveVideoSurface(state);
+        } else if (state.owner === "call" && callPhaseRef.current !== "idle") {
           restoreActiveCallSurface();
         }
       }).then((remove) => {
@@ -2586,6 +2799,42 @@ export default function ChatsPage() {
           remove();
         } else {
           removePictureInPictureListener = remove;
+        }
+      });
+
+      void addPictureInPictureActionListener((event) => {
+        if (callPhaseRef.current !== "idle") return;
+        const snapshot = videoPlaybackSession.getSnapshot();
+        const action = applyPictureInPictureAction(
+          event,
+          snapshot,
+          lastNativeVideoRevisionRef.current,
+        );
+        const element = activeSessionVideoElement();
+        if (!action || !element) return;
+
+        try {
+          switch (action.type) {
+            case "play":
+              void element.play().catch(() => undefined);
+              break;
+            case "pause":
+              element.pause();
+              break;
+            case "seek":
+              element.currentTime = action.currentTime;
+              break;
+            case "mute":
+              break;
+          }
+        } catch {
+          // A detached or not-yet-seekable element safely ignores stale actions.
+        }
+      }).then((remove) => {
+        if (appStateCancelled) {
+          remove();
+        } else {
+          removePictureInPictureActionListener = remove;
         }
       });
     }
@@ -2999,6 +3248,9 @@ export default function ChatsPage() {
       appStateCancelled = true;
       void appStateListener?.remove();
       removePictureInPictureListener?.();
+      removePictureInPictureActionListener?.();
+      videoPictureInPictureActiveRef.current = false;
+      setIsVideoPictureInPictureActive(false);
       socket.off("connect", syncAfterSocketResume);
       socket.off("connect_error", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
@@ -4501,7 +4753,7 @@ export default function ChatsPage() {
 
   return (
     <main
-      className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}`}
+      className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}${isVideoPictureInPictureActive ? " messenger-shell--video-pip" : ""}`}
     >
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
@@ -5135,7 +5387,14 @@ export default function ChatsPage() {
                                   const attachment = (
                                     <AttachmentCard
                                       accessToken={accessToken}
+                                      chatId={message.chatId}
                                       file={file}
+                                      messageId={message.id}
+                                      disabledReason={
+                                        callPhase !== "idle"
+                                          ? "Video is paused while a call is active"
+                                          : undefined
+                                      }
                                       compact
                                       onOpenImage={openFullViewImage}
                                     />
