@@ -1,9 +1,13 @@
 package com.stakhovivan.stovo
 
 import android.app.Activity
+import android.app.PendingIntent
 import android.app.PictureInPictureParams
+import android.app.RemoteAction
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.drawable.Icon
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -11,17 +15,22 @@ import android.hardware.SensorManager
 import android.media.AudioManager
 import android.os.Build
 import android.os.PowerManager
+import android.util.Rational
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.lang.ref.WeakReference
+import kotlin.math.roundToInt
 
 @CapacitorPlugin(name = "CallPlugin")
 class CallPlugin : Plugin() {
     companion object {
         private var activeInstanceRef: WeakReference<CallPlugin>? = null
+        private const val MIN_ASPECT_RATIO = 100.0 / 239.0
+        private const val MAX_ASPECT_RATIO = 239.0 / 100.0
+        private const val MAX_RATIO_COMPONENT = 10_000.0
 
         fun handleUserLeaveHint(activity: Activity?) {
             activeInstanceRef?.get()?.handleUserLeaveHintInternal(activity)
@@ -32,17 +41,20 @@ class CallPlugin : Plugin() {
                 isInPictureInPictureMode
             )
         }
+
+        fun handlePictureInPictureAction(action: PiPAction) {
+            activeInstanceRef?.get()?.handlePictureInPictureActionInternal(action)
+        }
     }
+
+    private data class EntryResult(val entered: Boolean, val reason: String)
 
     private var proximityWakeLock: PowerManager.WakeLock? = null
     private var sensorManager: SensorManager? = null
     private var proximitySensor: Sensor? = null
     private var proximityListener: SensorEventListener? = null
-    private var isActiveCall = false
-    private var isVideoCall = false
-    private var activeCallChatId: String? = null
-    private var activeCallSessionId: String? = null
     private var pictureInPictureActive = false
+    private val pictureInPictureCoordinator = PictureInPictureCoordinator()
 
     override fun load() {
         super.load()
@@ -73,18 +85,42 @@ class CallPlugin : Plugin() {
 
     @PluginMethod
     fun setActiveCallState(call: PluginCall) {
-        isActiveCall = call.getBoolean("active", false) ?: false
-        isVideoCall = call.getBoolean("video", false) ?: false
-        activeCallChatId = call.getString("chatId")
-        activeCallSessionId = call.getString("sessionId")
-
-        if (!isActiveCall) {
-            isVideoCall = false
-            activeCallChatId = null
-            activeCallSessionId = null
-        }
-
+        pictureInPictureCoordinator.updateCallState(
+            active = call.getBoolean("active", false) ?: false,
+            video = call.getBoolean("video", false) ?: false,
+            chatId = call.getString("chatId"),
+            sessionId = call.getString("sessionId")
+        )
         call.resolve(buildPictureInPictureState("call-state"))
+    }
+
+    @PluginMethod
+    fun setActiveVideoState(call: PluginCall) {
+        val candidate = VideoPiPState(
+            active = call.getBoolean("active", false) ?: false,
+            playing = call.getBoolean("playing", false) ?: false,
+            chatId = call.getString("chatId") ?: "",
+            messageId = call.getString("messageId") ?: "",
+            fileId = call.getString("fileId") ?: "",
+            positionSeconds = call.getDouble("positionSeconds") ?: Double.NaN,
+            durationSeconds = call.getDouble("durationSeconds") ?: Double.NaN,
+            width = call.getDouble("width") ?: Double.NaN,
+            height = call.getDouble("height") ?: Double.NaN,
+            revision = call.getLong("revision") ?: -1L
+        )
+        val previousRevision = pictureInPictureCoordinator.snapshot().acceptedVideoRevision
+        val update = {
+            val accepted = pictureInPictureCoordinator.updateVideoState(candidate)
+            val reason = when {
+                accepted -> "video-state"
+                candidate.revision < previousRevision -> "stale-video-state"
+                else -> "invalid-video-state"
+            }
+            refreshPictureInPictureParams()
+            call.resolve(buildPictureInPictureState(reason))
+        }
+        val currentActivity = activity ?: bridge?.activity
+        if (currentActivity == null) update() else currentActivity.runOnUiThread(update)
     }
 
     @PluginMethod
@@ -108,18 +144,16 @@ class CallPlugin : Plugin() {
         }
 
         currentActivity.runOnUiThread {
-            val entered = maybeEnterPictureInPicture(currentActivity, "manual")
-            val payload = buildPictureInPictureState("manual").apply {
-                put("entered", entered)
-            }
-            call.resolve(payload)
+            val result = maybeEnterPictureInPicture(currentActivity, "manual")
+            call.resolve(buildPictureInPictureState(result.reason).apply {
+                put("entered", result.entered)
+            })
         }
     }
 
     override fun handleOnDestroy() {
-        if (activeInstanceRef?.get() === this) {
-            activeInstanceRef = null
-        }
+        if (activeInstanceRef?.get() === this) activeInstanceRef = null
+        pictureInPictureCoordinator.clearActivePictureInPicture()
         releaseCallMode()
         super.handleOnDestroy()
     }
@@ -157,19 +191,14 @@ class CallPlugin : Plugin() {
         proximityListener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
                 val maxRange = proximitySensor?.maximumRange ?: 5f
-                val near = event.values[0] < maxRange
                 val payload = JSObject()
-                payload.put("near", near)
+                payload.put("near", event.values[0] < maxRange)
                 notifyListeners("proximityChange", payload)
             }
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
-        sm.registerListener(
-            proximityListener,
-            sensor,
-            SensorManager.SENSOR_DELAY_NORMAL
-        )
+        sm.registerListener(proximityListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     private fun releaseCallMode() {
@@ -201,36 +230,134 @@ class CallPlugin : Plugin() {
 
     private fun handlePictureInPictureModeChangedInternal(isInPictureInPictureMode: Boolean) {
         pictureInPictureActive = isInPictureInPictureMode
-        notifyPictureInPictureChanged(
-            if (isInPictureInPictureMode) "entered" else "exited"
-        )
+        if (isInPictureInPictureMode) {
+            if (pictureInPictureCoordinator.activePictureInPictureSnapshot() == null) {
+                pictureInPictureCoordinator.captureForEntry()
+            }
+            notifyPictureInPictureChanged("entered")
+        } else {
+            notifyPictureInPictureChanged("exited")
+            pictureInPictureCoordinator.clearActivePictureInPicture()
+        }
     }
 
-    private fun maybeEnterPictureInPicture(
-        hostActivity: Activity?,
-        reason: String
-    ): Boolean {
-        val currentActivity = hostActivity ?: activity ?: bridge?.activity ?: return false
-        if (!isPictureInPictureSupported(currentActivity)) return false
-        if (!isPictureInPictureEligible()) return false
-        if (currentActivity.isFinishing || currentActivity.isDestroyed) return false
-        if (currentActivity.isInPictureInPictureModeCompat()) return true
+    private fun handlePictureInPictureActionInternal(action: PiPAction) {
+        val currentActivity = activity ?: bridge?.activity
+        fun dispatch() {
+            val updated = pictureInPictureCoordinator.performAction(action) ?: return
+            refreshPictureInPictureParams()
+            val payload = JSObject()
+            payload.put("action", action.wireValue)
+            payload.put("videoState", buildVideoState(updated))
+            notifyListeners("pictureInPictureAction", payload)
+        }
+        if (currentActivity == null) {
+            dispatch()
+        } else {
+            currentActivity.runOnUiThread { dispatch() }
+        }
+    }
 
+    private fun maybeEnterPictureInPicture(hostActivity: Activity?, reason: String): EntryResult {
+        val currentActivity = hostActivity ?: activity ?: bridge?.activity
+            ?: return EntryResult(false, "missing-activity")
+        if (!isPictureInPictureSupported(currentActivity)) return EntryResult(false, "unsupported")
+        if (!pictureInPictureCoordinator.snapshot().eligible) return EntryResult(false, "ineligible")
+        if (currentActivity.isFinishing || currentActivity.isDestroyed) {
+            return EntryResult(false, "activity-unavailable")
+        }
+        if (currentActivity.isInPictureInPictureModeCompat()) return EntryResult(true, "already-active")
+
+        val captured = pictureInPictureCoordinator.captureForEntry()
+            ?: return EntryResult(false, "ineligible")
         return try {
             val entered = currentActivity.enterPictureInPictureMode(
-                PictureInPictureParams.Builder().build()
+                buildPictureInPictureParams(currentActivity, captured)
             )
             if (entered) {
                 pictureInPictureActive = currentActivity.isInPictureInPictureModeCompat()
                 notifyPictureInPictureChanged(reason)
+                EntryResult(true, reason)
+            } else {
+                pictureInPictureCoordinator.clearActivePictureInPicture()
+                EntryResult(false, "entry-rejected")
             }
-            entered
         } catch (_: IllegalArgumentException) {
-            false
+            pictureInPictureCoordinator.clearActivePictureInPicture()
+            EntryResult(false, "entry-rejected")
         } catch (_: IllegalStateException) {
-            false
+            pictureInPictureCoordinator.clearActivePictureInPicture()
+            EntryResult(false, "entry-rejected")
         } catch (_: SecurityException) {
-            false
+            pictureInPictureCoordinator.clearActivePictureInPicture()
+            EntryResult(false, "entry-denied")
+        }
+    }
+
+    private fun buildPictureInPictureParams(
+        hostActivity: Activity,
+        snapshot: PiPCoordinatorSnapshot
+    ): PictureInPictureParams {
+        val builder = PictureInPictureParams.Builder()
+        sanitizedAspectRatio(snapshot.videoState)?.let(builder::setAspectRatio)
+        if (snapshot.activeOwner == PiPOwner.VIDEO) {
+            builder.setActions(buildRemoteActions(hostActivity))
+        }
+        return builder.build()
+    }
+
+    private fun sanitizedAspectRatio(videoState: VideoPiPState?): Rational? {
+        val state = videoState ?: return null
+        if (state.width <= 0 || state.height <= 0) return null
+        val ratio = state.width / state.height
+        if (!ratio.isFinite() || ratio < MIN_ASPECT_RATIO || ratio > MAX_ASPECT_RATIO) return null
+        val width = state.width.coerceAtMost(MAX_RATIO_COMPONENT).roundToInt().coerceAtLeast(1)
+        val height = state.height.coerceAtMost(MAX_RATIO_COMPONENT).roundToInt().coerceAtLeast(1)
+        return Rational(width, height)
+    }
+
+    private fun buildRemoteActions(hostActivity: Activity): List<RemoteAction> {
+        return pictureInPictureCoordinator.availableActions().map { action ->
+            val (iconResource, title) = when (action) {
+                PiPAction.PLAY -> android.R.drawable.ic_media_play to "Play"
+                PiPAction.PAUSE -> android.R.drawable.ic_media_pause to "Pause"
+                PiPAction.SEEK_BACKWARD -> android.R.drawable.ic_media_rew to "Back 10 seconds"
+                PiPAction.SEEK_FORWARD -> android.R.drawable.ic_media_ff to "Forward 10 seconds"
+            }
+            val intent = Intent(hostActivity, PictureInPictureActionReceiver::class.java).apply {
+                this.action = PictureInPictureActionReceiver.intentAction(action)
+            }
+            val pendingIntent = PendingIntent.getBroadcast(
+                hostActivity,
+                action.ordinal,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            RemoteAction(
+                Icon.createWithResource(hostActivity, iconResource),
+                title,
+                title,
+                pendingIntent
+            )
+        }
+    }
+
+    private fun refreshPictureInPictureParams() {
+        val currentActivity = activity ?: bridge?.activity ?: return
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || !currentActivity.isInPictureInPictureModeCompat()) {
+            return
+        }
+        val snapshot = pictureInPictureCoordinator.activePictureInPictureSnapshot() ?: return
+        try {
+            currentActivity.setPictureInPictureParams(
+                buildPictureInPictureParams(currentActivity, snapshot)
+            )
+        } catch (_: IllegalArgumentException) {
+            // The active PiP session and captured restore state remain valid.
+        } catch (_: IllegalStateException) {
+            // OEMs may reject parameter changes during a lifecycle transition.
+        } catch (_: SecurityException) {
+            // PiP denial is a typed fallback, never a playback teardown.
         }
     }
 
@@ -239,35 +366,50 @@ class CallPlugin : Plugin() {
     }
 
     private fun buildPictureInPictureState(reason: String): JSObject {
-        val payload = JSObject()
-        payload.put("active", pictureInPictureActive)
-        payload.put("supported", isPictureInPictureSupported(activity ?: bridge?.activity))
-        payload.put("eligible", isPictureInPictureEligible())
-        payload.put("callActive", isActiveCall)
-        payload.put("video", isVideoCall)
-        payload.put("chatId", activeCallChatId)
-        payload.put("sessionId", activeCallSessionId)
-        payload.put("reason", reason)
-        return payload
+        val snapshot = pictureInPictureCoordinator.snapshot()
+        val owner = if (snapshot.activeOwner != PiPOwner.NONE) {
+            snapshot.activeOwner
+        } else {
+            snapshot.requestedOwner
+        }
+        return JSObject().apply {
+            put("active", pictureInPictureActive)
+            put("supported", isPictureInPictureSupported(activity ?: bridge?.activity))
+            put("eligible", snapshot.eligible)
+            put("owner", owner.wireValue)
+            put("requestedOwner", snapshot.requestedOwner.wireValue)
+            put("activeOwner", snapshot.activeOwner.wireValue)
+            put("callActive", snapshot.callActive)
+            put("video", snapshot.callVideo)
+            put("chatId", snapshot.callChatId)
+            put("sessionId", snapshot.callSessionId)
+            put("acceptedRevision", snapshot.acceptedVideoRevision)
+            put("videoState", snapshot.videoState?.let(::buildVideoState))
+            put("reason", reason)
+        }
     }
 
-    private fun isPictureInPictureEligible(): Boolean {
-        return isActiveCall && isVideoCall
+    private fun buildVideoState(state: VideoPiPState): JSObject = JSObject().apply {
+        put("active", state.active)
+        put("playing", state.playing)
+        put("chatId", state.chatId)
+        put("messageId", state.messageId)
+        put("fileId", state.fileId)
+        put("positionSeconds", state.positionSeconds)
+        put("durationSeconds", state.durationSeconds)
+        put("width", state.width)
+        put("height", state.height)
+        put("revision", state.revision)
     }
 
     private fun isPictureInPictureSupported(hostActivity: Activity?): Boolean {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             hostActivity != null &&
-            hostActivity.packageManager.hasSystemFeature(
-                PackageManager.FEATURE_PICTURE_IN_PICTURE
-            )
+            hostActivity.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)
     }
 
     private fun Activity.isInPictureInPictureModeCompat(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            this.isInPictureInPictureMode()
-        } else {
-            false
-        }
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode()
     }
+
 }

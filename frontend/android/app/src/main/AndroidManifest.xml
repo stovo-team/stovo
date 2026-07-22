@@ -57,6 +57,10 @@
             android:name=".NtfyService"
             android:foregroundServiceType="remoteMessaging"
             android:exported="false" />
+
+        <receiver
+            android:name=".PictureInPictureActionReceiver"
+            android:exported="false" />
     </application>
 
     <!-- Permissions -->
