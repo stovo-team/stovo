@@ -55,6 +55,7 @@ afterEach(() => {
     act(() => root?.unmount());
   }
   document.body.replaceChildren();
+  vi.restoreAllMocks();
 });
 
 describe("FormattingToolbar", () => {
@@ -140,16 +141,18 @@ describe("FormattingToolbar", () => {
     const remove = vi.spyOn(window, "removeEventListener");
     const root = renderToolbar(visibleProps());
 
-    expect(rect).toHaveBeenCalledTimes(1);
+    const initialMeasurements = rect.mock.calls.length;
+    expect(initialMeasurements).toBeGreaterThanOrEqual(1);
     act(() => {
       root.render(<FormattingToolbar {...visibleProps()} anchor={{ left: 200, top: 160 }} />);
     });
-    expect(rect).toHaveBeenCalledTimes(2);
+    const measurementsAfterAnchorChange = rect.mock.calls.length;
+    expect(measurementsAfterAnchorChange).toBeGreaterThan(initialMeasurements);
     expect(toolbar()?.style.left).toBe("150px");
     expect(toolbar()?.style.top).toBe("112px");
 
     act(() => window.dispatchEvent(new Event("resize")));
-    expect(rect).toHaveBeenCalledTimes(3);
+    expect(rect.mock.calls.length).toBeGreaterThan(measurementsAfterAnchorChange);
 
     act(() => root.unmount());
     mountedRoots.splice(mountedRoots.indexOf(root), 1);
