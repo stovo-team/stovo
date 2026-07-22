@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FormattingKind } from "../composerFormatting";
 import {
   FormattingToolbar,
+  getFormattingToolbarPlacement,
   type FormattingToolbarProps
 } from "./FormattingToolbar";
 
@@ -57,6 +58,38 @@ afterEach(() => {
 });
 
 describe("FormattingToolbar", () => {
+  it("centers the measured toolbar above an ordinary selection anchor", () => {
+    expect(getFormattingToolbarPlacement(
+      { left: 200, top: 200 },
+      { width: 100, height: 40 },
+      { width: 800, height: 600 }
+    )).toEqual({ left: 150, top: 152 });
+  });
+
+  it.each([
+    [{ left: 20, top: 200 }, { left: 12, top: 152 }],
+    [{ left: 790, top: 200 }, { left: 688, top: 152 }],
+    [{ left: 200, top: 20 }, { left: 150, top: 12 }]
+  ] as const)("clamps the complete measured rectangle at viewport edges", (anchor, expected) => {
+    expect(getFormattingToolbarPlacement(
+      anchor,
+      { width: 100, height: 40 },
+      { width: 800, height: 600 }
+    )).toEqual(expected);
+  });
+
+  it("uses finite gutter-aligned placement for an oversized toolbar and invalid geometry", () => {
+    const oversized = getFormattingToolbarPlacement(
+      { left: Number.POSITIVE_INFINITY, top: Number.NaN },
+      { width: 900, height: Number.POSITIVE_INFINITY },
+      { width: 320, height: 480 }
+    );
+
+    expect(oversized).toEqual({ left: 12, top: 12 });
+    expect(Number.isFinite(oversized.left)).toBe(true);
+    expect(Number.isFinite(oversized.top)).toBe(true);
+  });
+
   it.each([
     { selection: null, anchor: { left: 1, top: 2 } },
     { selection: { start: 0, end: 1 }, anchor: null },
@@ -67,7 +100,18 @@ describe("FormattingToolbar", () => {
     expect(toolbar()).toBeNull();
   });
 
-  it("portals one fixed-position toolbar for a single selected code unit", () => {
+  it("portals one measured fixed-position toolbar for a single selected code unit", () => {
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 100,
+      height: 40,
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 40,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
     renderToolbar(visibleProps());
 
     const element = toolbar();
@@ -75,8 +119,42 @@ describe("FormattingToolbar", () => {
     expect(element?.parentElement).toBe(document.body);
     expect(element?.getAttribute("aria-label")).toBe("Format selected text");
     expect(element?.style.position).toBe("fixed");
-    expect(element?.style.left).toBe("120px");
-    expect(element?.style.top).toBe("80px");
+    expect(element?.style.left).toBe("70px");
+    expect(element?.style.top).toBe("32px");
+    expect(element?.style.visibility).toBe("visible");
+  });
+
+  it("remeasures on anchor changes and resize, then removes the resize listener", () => {
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      width: 100,
+      height: 40,
+      left: 0,
+      right: 100,
+      top: 0,
+      bottom: 40,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+    const add = vi.spyOn(window, "addEventListener");
+    const remove = vi.spyOn(window, "removeEventListener");
+    const root = renderToolbar(visibleProps());
+
+    expect(rect).toHaveBeenCalledTimes(1);
+    act(() => {
+      root.render(<FormattingToolbar {...visibleProps()} anchor={{ left: 200, top: 160 }} />);
+    });
+    expect(rect).toHaveBeenCalledTimes(2);
+    expect(toolbar()?.style.left).toBe("150px");
+    expect(toolbar()?.style.top).toBe("112px");
+
+    act(() => window.dispatchEvent(new Event("resize")));
+    expect(rect).toHaveBeenCalledTimes(3);
+
+    act(() => root.unmount());
+    mountedRoots.splice(mountedRoots.indexOf(root), 1);
+    expect(add).toHaveBeenCalledWith("resize", expect.any(Function));
+    expect(remove).toHaveBeenCalledWith("resize", expect.any(Function));
   });
 
   it("renders exactly five actions in the declared order with fixed names", () => {
