@@ -206,7 +206,7 @@ export class AudioPlaybackSession {
 
   constructor(
     private readonly backend: AudioPlaybackBackend,
-    private readonly sourceFactory: AudioSourceFactory,
+    private sourceFactory: AudioSourceFactory,
   ) {
     this.snapshot = idleSnapshot(0, backend.getSnapshot().platform);
     this.unsubscribeBackend = backend.subscribe((snapshot) => {
@@ -239,6 +239,14 @@ export class AudioPlaybackSession {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /**
+   * Installs the current account's ephemeral source resolver. Credentials stay
+   * inside the closure and are never copied to a snapshot or recovery state.
+   */
+  setSourceFactory(sourceFactory: AudioSourceFactory): void {
+    this.sourceFactory = sourceFactory;
   }
 
   async load(descriptor: AudioDescriptor, position = 0): Promise<void> {
