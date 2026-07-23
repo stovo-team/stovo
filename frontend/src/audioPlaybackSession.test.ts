@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AudioPlaybackSession,
+  WebAudioPlaybackBackend,
   sameAudioIdentity,
   type AudioDescriptor,
   type AudioPlaybackBackend,
@@ -251,5 +252,174 @@ describe("AudioPlaybackSession", () => {
     expect(backend.load).not.toHaveBeenCalled();
     expect(backend.play).not.toHaveBeenCalled();
     expect(JSON.stringify(session.getSnapshot())).not.toMatch(/blob:|token|url/i);
+  });
+});
+
+class FakeAudioElement extends EventTarget {
+  src = "";
+  currentTime = 0;
+  duration = Number.NaN;
+  paused = true;
+  error: { code: number } | null = null;
+  bufferedEnd = 0;
+  pause = vi.fn(() => {
+    this.paused = true;
+  });
+  play = vi.fn(async () => {
+    this.paused = false;
+  });
+  load = vi.fn();
+  removeAttribute = vi.fn((name: string) => {
+    if (name === "src") this.src = "";
+  });
+  get buffered(): TimeRanges {
+    return {
+      length: this.bufferedEnd > 0 ? 1 : 0,
+      start: () => 0,
+      end: () => this.bufferedEnd,
+    };
+  }
+}
+
+function webDescriptor(fileId: string): AudioDescriptor {
+  return {
+    identity: { chatId: "chat", messageId: `message-${fileId}`, fileId },
+    title: `${fileId}.mp3`,
+  };
+}
+
+describe("WebAudioPlaybackBackend", () => {
+  let element: FakeAudioElement;
+  let elementFactory: ReturnType<typeof vi.fn>;
+  let revokeObjectURL: ReturnType<typeof vi.fn>;
+  let backend: WebAudioPlaybackBackend;
+
+  beforeEach(() => {
+    element = new FakeAudioElement();
+    elementFactory = vi.fn(() => element as unknown as HTMLAudioElement);
+    revokeObjectURL = vi.fn();
+    backend = new WebAudioPlaybackBackend(elementFactory, revokeObjectURL);
+  });
+
+  it("creates one long-lived audio element and reuses it for every identity", async () => {
+    await backend.load(webDescriptor("one"), { url: "blob:one", objectUrl: true }, 0);
+    await backend.load(webDescriptor("two"), { url: "blob:two", objectUrl: true }, 0);
+
+    expect(elementFactory).toHaveBeenCalledTimes(1);
+    expect(element.src).toBe("blob:two");
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:one");
+    expect(element.play).not.toHaveBeenCalled();
+  });
+
+  it("cancels late source resolution, seeks after metadata, and revokes each owned URL once", async () => {
+    let resolveFirst!: (source: AudioPlaybackSource) => void;
+    const sourceFactory = vi
+      .fn<(descriptor: AudioDescriptor) => Promise<AudioPlaybackSource>>()
+      .mockReturnValueOnce(new Promise((resolve) => {
+        resolveFirst = resolve;
+      }))
+      .mockResolvedValueOnce({ url: "blob:second", objectUrl: true });
+    const session = new AudioPlaybackSession(backend, sourceFactory);
+
+    const firstLoad = session.load(webDescriptor("first"), 22);
+    await session.load(webDescriptor("second"), 37);
+    resolveFirst({ url: "blob:late", objectUrl: true });
+    await firstLoad;
+
+    expect(element.src).toBe("blob:second");
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:late");
+    element.duration = 100;
+    element.dispatchEvent(new Event("loadedmetadata"));
+    expect(element.currentTime).toBe(37);
+
+    await backend.clear();
+    await backend.clear();
+    expect(revokeObjectURL.mock.calls.filter(([url]) => url === "blob:second")).toHaveLength(1);
+  });
+
+  it("maps media events to ordered intent, playback, buffering, progress, end, and error state", async () => {
+    const snapshots: AudioPlaybackSnapshot[] = [];
+    backend.subscribe((snapshot) => snapshots.push(snapshot));
+    await backend.load(webDescriptor("events"), { url: "blob:events", objectUrl: true }, 5);
+    element.duration = 80;
+    element.currentTime = 5;
+    element.bufferedEnd = 30;
+
+    element.dispatchEvent(new Event("loadedmetadata"));
+    await backend.play();
+    element.dispatchEvent(new Event("play"));
+    element.dispatchEvent(new Event("waiting"));
+    element.dispatchEvent(new Event("canplay"));
+    element.currentTime = 12;
+    element.dispatchEvent(new Event("timeupdate"));
+    element.dispatchEvent(new Event("progress"));
+    element.dispatchEvent(new Event("playing"));
+    element.dispatchEvent(new Event("pause"));
+    element.dispatchEvent(new Event("ended"));
+
+    expect(snapshots.map((snapshot) => snapshot.revision)).toEqual(
+      [...snapshots.map((snapshot) => snapshot.revision)].sort((left, right) => left - right),
+    );
+    expect(snapshots.some((snapshot) =>
+      snapshot.status === "buffering" &&
+      snapshot.playWhenReady &&
+      !snapshot.isPlaying)).toBe(true);
+    expect(snapshots.some((snapshot) =>
+      snapshot.status === "playing" &&
+      snapshot.playWhenReady &&
+      snapshot.isPlaying)).toBe(true);
+    expect(snapshots.some((snapshot) => snapshot.position === 12)).toBe(true);
+    expect(snapshots.some((snapshot) => snapshot.bufferedPosition === 30)).toBe(true);
+    expect(backend.getSnapshot()).toMatchObject({
+      status: "ended",
+      playWhenReady: false,
+      isPlaying: false,
+      position: 80,
+    });
+  });
+
+  it("converts rejected play, decoder failures, invalid timing, and unsupported sources to closed errors", async () => {
+    await backend.load(webDescriptor("failure"), { url: "blob:failure", objectUrl: true }, 0);
+    element.play.mockRejectedValueOnce(new DOMException("raw denied text", "NotAllowedError"));
+    await backend.play();
+    expect(backend.getSnapshot()).toMatchObject({
+      status: "error",
+      error: "playback-denied",
+    });
+    expect(JSON.stringify(backend.getSnapshot())).not.toContain("raw denied text");
+
+    element.duration = Number.POSITIVE_INFINITY;
+    element.dispatchEvent(new Event("durationchange"));
+    expect(backend.getSnapshot().duration).toBe(0);
+
+    element.error = { code: 4 };
+    element.dispatchEvent(new Event("error"));
+    expect(backend.getSnapshot().error).toBe("unsupported");
+    element.error = { code: 3 };
+    element.dispatchEvent(new Event("error"));
+    expect(backend.getSnapshot().error).toBe("decode");
+
+    await backend.load(webDescriptor("empty"), { url: "" }, 0);
+    expect(backend.getSnapshot()).toMatchObject({
+      status: "error",
+      error: "unsupported",
+    });
+  });
+
+  it("makes clear idempotently pause, detach, load, revoke, and reject late decoder events", async () => {
+    await backend.load(webDescriptor("clear"), { url: "blob:clear", objectUrl: true }, 0);
+    await backend.clear();
+    const cleared = backend.getSnapshot();
+    element.currentTime = 99;
+    element.dispatchEvent(new Event("timeupdate"));
+    element.dispatchEvent(new Event("playing"));
+
+    expect(element.pause).toHaveBeenCalled();
+    expect(element.removeAttribute).toHaveBeenCalledWith("src");
+    expect(element.load).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1);
+    expect(backend.getSnapshot()).toEqual(cleared);
+    expect(cleared).toMatchObject({ identity: null, status: "idle" });
   });
 });
