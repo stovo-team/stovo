@@ -347,4 +347,169 @@ class AudioPlaybackCoordinatorTest {
         assertNull(AudioSuppressionReason.fromWireValue("other"))
         assertNull(AudioPlaybackErrorCode.fromWireValue("raw-http-401"))
     }
+
+    @Test
+    fun `service engine states map to the closed playback policy`() {
+        val coordinator = AudioPlaybackCoordinator()
+
+        assertTrue(
+            coordinator.acceptServiceState(
+                AudioPlaybackServiceState(
+                    identity = identity(),
+                    engineState = AudioPlaybackEngineState.BUFFERING,
+                    playWhenReady = true,
+                    isPlaying = false,
+                    suppressionReason = null,
+                    position = 8.0,
+                    duration = 60.0,
+                    bufferedPosition = 16.0,
+                    canSeek = true,
+                    error = null,
+                    revision = 1
+                )
+            )
+        )
+        assertEquals(AudioPlaybackStatus.BUFFERING, coordinator.snapshot().status)
+        assertTrue(coordinator.snapshot().playWhenReady)
+        assertFalse(coordinator.snapshot().isPlaying)
+
+        assertTrue(
+            coordinator.acceptServiceState(
+                AudioPlaybackServiceState(
+                    identity = identity(),
+                    engineState = AudioPlaybackEngineState.READY,
+                    playWhenReady = true,
+                    isPlaying = true,
+                    suppressionReason = null,
+                    position = 9.0,
+                    duration = 60.0,
+                    bufferedPosition = 20.0,
+                    canSeek = true,
+                    error = null,
+                    revision = 2
+                )
+            )
+        )
+        assertEquals(AudioPlaybackStatus.PLAYING, coordinator.snapshot().status)
+
+        assertTrue(
+            coordinator.acceptServiceState(
+                AudioPlaybackServiceState(
+                    identity = identity(),
+                    engineState = AudioPlaybackEngineState.READY,
+                    playWhenReady = false,
+                    isPlaying = false,
+                    suppressionReason = AudioSuppressionReason.FOCUS,
+                    position = 9.0,
+                    duration = 60.0,
+                    bufferedPosition = 20.0,
+                    canSeek = true,
+                    error = null,
+                    revision = 3
+                )
+            )
+        )
+        assertEquals(AudioPlaybackStatus.SUPPRESSED, coordinator.snapshot().status)
+        assertEquals(AudioSuppressionReason.FOCUS, coordinator.snapshot().suppressionReason)
+
+        assertTrue(
+            coordinator.acceptServiceState(
+                AudioPlaybackServiceState(
+                    identity = identity(),
+                    engineState = AudioPlaybackEngineState.ENDED,
+                    playWhenReady = false,
+                    isPlaying = false,
+                    suppressionReason = null,
+                    position = 59.0,
+                    duration = 60.0,
+                    bufferedPosition = 60.0,
+                    canSeek = true,
+                    error = null,
+                    revision = 4
+                )
+            )
+        )
+        assertEquals(AudioPlaybackStatus.ENDED, coordinator.snapshot().status)
+        assertEquals(60.0, coordinator.snapshot().position, 0.0)
+    }
+
+    @Test
+    fun `service errors override engine state without exposing raw failures`() {
+        val coordinator = AudioPlaybackCoordinator()
+
+        assertTrue(
+            coordinator.acceptServiceState(
+                AudioPlaybackServiceState(
+                    identity = identity(),
+                    engineState = AudioPlaybackEngineState.READY,
+                    playWhenReady = true,
+                    isPlaying = false,
+                    suppressionReason = null,
+                    position = 18.0,
+                    duration = 60.0,
+                    bufferedPosition = 30.0,
+                    canSeek = true,
+                    error = AudioPlaybackErrorCode.DECODE,
+                    revision = 1
+                )
+            )
+        )
+        assertEquals(AudioPlaybackStatus.ERROR, coordinator.snapshot().status)
+        assertEquals(AudioPlaybackErrorCode.DECODE, coordinator.snapshot().error)
+        assertFalse(coordinator.snapshot().playWhenReady)
+        assertFalse(coordinator.snapshot().isPlaying)
+    }
+
+    @Test
+    fun `load decision accepts one exact credentialed item and honors call gate`() {
+        val coordinator = AudioPlaybackCoordinator()
+
+        val accepted = coordinator.evaluateLoad(
+            identity = identity(),
+            itemCount = 1,
+            hasScopedCredential = true,
+            startPosition = 22.0,
+            requestedPlay = true
+        )
+        assertTrue(accepted.accepted)
+        assertEquals(22.0, accepted.startPosition, 0.0)
+        assertTrue(accepted.playWhenReady)
+
+        coordinator.setCallActive(true)
+        val callSuppressed = coordinator.evaluateLoad(
+            identity = identity(),
+            itemCount = 1,
+            hasScopedCredential = true,
+            startPosition = 22.0,
+            requestedPlay = true
+        )
+        assertTrue(callSuppressed.accepted)
+        assertFalse(callSuppressed.playWhenReady)
+
+        val rejected = listOf(
+            coordinator.evaluateLoad(identity(), 0, true, 0.0, false),
+            coordinator.evaluateLoad(identity(), 2, true, 0.0, false),
+            coordinator.evaluateLoad(identity(), 1, false, 0.0, false),
+            coordinator.evaluateLoad(identity(chatId = ""), 1, true, 0.0, false),
+            coordinator.evaluateLoad(identity(), 1, true, Double.NaN, false),
+            coordinator.evaluateLoad(identity(), 1, true, -1.0, false)
+        )
+        assertTrue(rejected.none { it.accepted })
+    }
+
+    @Test
+    fun `service custom commands are a closed allowlist`() {
+        assertEquals(
+            AudioPlaybackCustomCommand.LOAD,
+            AudioPlaybackCustomCommand.fromWireValue(AudioPlaybackCustomCommand.LOAD.wireValue)
+        )
+        assertEquals(
+            AudioPlaybackCustomCommand.GET_STATE,
+            AudioPlaybackCustomCommand.fromWireValue(
+                AudioPlaybackCustomCommand.GET_STATE.wireValue
+            )
+        )
+        assertNull(AudioPlaybackCustomCommand.fromWireValue("delete-message"))
+        assertNull(AudioPlaybackCustomCommand.fromWireValue(""))
+    }
 }
