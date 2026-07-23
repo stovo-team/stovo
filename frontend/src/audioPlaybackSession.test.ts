@@ -7,6 +7,7 @@ import {
   type AudioPlaybackBackend,
   type AudioPlaybackSnapshot,
   type AudioPlaybackSource,
+  type AudioSourceFactory,
 } from "./audioPlaybackSession";
 
 const firstDescriptor: AudioDescriptor = {
@@ -94,7 +95,7 @@ class FakeBackend implements AudioPlaybackBackend {
 
 describe("AudioPlaybackSession", () => {
   let backend: FakeBackend;
-  let sourceFactory: ReturnType<typeof vi.fn>;
+  let sourceFactory: ReturnType<typeof vi.fn<AudioSourceFactory>>;
   let session: AudioPlaybackSession;
 
   beforeEach(() => {
@@ -290,14 +291,16 @@ function webDescriptor(fileId: string): AudioDescriptor {
 
 describe("WebAudioPlaybackBackend", () => {
   let element: FakeAudioElement;
-  let elementFactory: ReturnType<typeof vi.fn>;
-  let revokeObjectURL: ReturnType<typeof vi.fn>;
+  let elementFactory: ReturnType<typeof vi.fn<() => HTMLAudioElement>>;
+  let revokeObjectURL: ReturnType<typeof vi.fn<(url: string) => void>>;
   let backend: WebAudioPlaybackBackend;
 
   beforeEach(() => {
     element = new FakeAudioElement();
-    elementFactory = vi.fn(() => element as unknown as HTMLAudioElement);
-    revokeObjectURL = vi.fn();
+    elementFactory = vi.fn<() => HTMLAudioElement>(
+      () => element as unknown as HTMLAudioElement,
+    );
+    revokeObjectURL = vi.fn<(url: string) => void>();
     backend = new WebAudioPlaybackBackend(elementFactory, revokeObjectURL);
   });
 
