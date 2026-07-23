@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   AudioPlaybackSession,
+  type AudioIdentity,
   type AudioPlaybackBackend,
   type AudioPlaybackSnapshot,
   type AudioSourceFactory,
@@ -65,7 +66,7 @@ class FakeBackend implements AudioPlaybackBackend {
 const roots: Root[] = [];
 let backend: FakeBackend;
 let session: AudioPlaybackSession;
-let onRestore: ReturnType<typeof vi.fn>;
+let onRestore: ReturnType<typeof vi.fn<(identity: AudioIdentity) => void>>;
 
 function renderNowPlaying(
   props: Partial<React.ComponentProps<typeof AudioNowPlaying>> = {},
@@ -97,7 +98,7 @@ beforeEach(() => {
   backend = new FakeBackend();
   const sourceFactory: AudioSourceFactory = async () => ({ url: "blob:audio" });
   session = new AudioPlaybackSession(backend, sourceFactory);
-  onRestore = vi.fn();
+  onRestore = vi.fn<(identity: AudioIdentity) => void>();
 });
 
 afterEach(() => {
