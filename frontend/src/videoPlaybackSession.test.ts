@@ -41,6 +41,41 @@ describe("VideoPlaybackSession", () => {
     expect(secondElement.pause).not.toHaveBeenCalled();
   });
 
+  it("pauses the active registration while retaining its resumable snapshot", () => {
+    const mediaIdentity = identity("chat", "message", "file");
+    const element = videoElement();
+    const registration = session.attach(mediaIdentity, element);
+    session.activate(registration);
+    session.update(registration, {
+      currentTime: 37,
+      duration: 120,
+      status: "playing",
+      playIntent: true,
+    });
+    const revision = session.getSnapshot(mediaIdentity)?.revision;
+
+    expect(session.pauseActive()).toBe(true);
+    expect(element.pause).toHaveBeenCalledTimes(1);
+    expect(session.getSnapshot()).toMatchObject({
+      identity: mediaIdentity,
+      currentTime: 37,
+      duration: 120,
+      status: "paused",
+      playIntent: false,
+    });
+    expect(session.getSnapshot(mediaIdentity)?.revision).toBeGreaterThan(revision ?? 0);
+  });
+
+  it("safely ignores idle and detached active registrations", () => {
+    expect(session.pauseActive()).toBe(false);
+
+    const registration = session.attach(identity("chat", "message", "file"), videoElement());
+    session.activate(registration);
+    session.detach(registration);
+
+    expect(session.pauseActive()).toBe(false);
+  });
+
   it("restores finite position, mute, and play intent after detach and reattach", () => {
     const mediaIdentity = identity("chat", "message", "file");
     const firstElement = videoElement();

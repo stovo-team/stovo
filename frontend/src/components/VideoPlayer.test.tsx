@@ -222,6 +222,54 @@ describe("VideoPlayer", () => {
     expect(formatVideoTime(3661)).toBe("1:01:01");
   });
 
+  it("awaits beforePlay before activating or playing initial and replayed video", async () => {
+    let releaseBeforePlay!: () => void;
+    const beforePlay = vi.fn(() => new Promise<void>((resolve) => { releaseBeforePlay = resolve; }));
+    const { container } = renderPlayer(playerProps({ beforePlay }));
+    await settle();
+    const element = media(container);
+    setMediaTiming(element, 60, 0);
+    act(() => element.dispatchEvent(new Event("loadedmetadata")));
+    const playMock = vi.spyOn(element, "play").mockResolvedValue(undefined);
+    const playButton = container.querySelector<HTMLButtonElement>('button[aria-label="Play video"]')!;
+
+    act(() => playButton.click());
+    await settle();
+    expect(beforePlay).toHaveBeenCalledTimes(1);
+    expect(playMock).not.toHaveBeenCalled();
+    expect(videoPlaybackSession.getSnapshot()).toBeNull();
+
+    await act(async () => releaseBeforePlay());
+    expect(playMock).toHaveBeenCalledTimes(1);
+    act(() => element.dispatchEvent(new Event("playing")));
+    act(() => element.dispatchEvent(new Event("ended")));
+
+    act(() => playButton.click());
+    await settle();
+    expect(beforePlay).toHaveBeenCalledTimes(2);
+    expect(playMock).toHaveBeenCalledTimes(1);
+    await act(async () => releaseBeforePlay());
+    expect(playMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the safe playback error when beforePlay rejects without playing video", async () => {
+    const beforePlay = vi.fn().mockRejectedValue(new Error("audio pause failed"));
+    const { container } = renderPlayer(playerProps({ beforePlay }));
+    await settle();
+    const element = media(container);
+    setMediaTiming(element, 60, 0);
+    act(() => element.dispatchEvent(new Event("loadedmetadata")));
+    const playMock = vi.spyOn(element, "play").mockResolvedValue(undefined);
+
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Play video"]')?.click());
+    await settle();
+
+    expect(beforePlay).toHaveBeenCalledTimes(1);
+    expect(playMock).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("Playback could not start");
+    expect(videoPlaybackSession.getSnapshot()).toBeNull();
+  });
+
   it("uses the existing root and video node for fullscreen entry and exit", async () => {
     const { container } = renderPlayer();
     await settle();
