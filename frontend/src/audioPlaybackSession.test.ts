@@ -184,6 +184,24 @@ describe("AudioPlaybackSession", () => {
     expect(backend.play).not.toHaveBeenCalled();
   });
 
+  it("uses only the current in-memory source factory when the app configures authenticated playback", async () => {
+    const configuredFactory = vi.fn<AudioSourceFactory>(async (descriptor) => ({
+      url: `https://media.example/${descriptor.identity.fileId}`,
+      token: "live-only-token"
+    }));
+
+    session.setSourceFactory(configuredFactory);
+    await session.load(firstDescriptor);
+
+    expect(configuredFactory).toHaveBeenCalledWith(firstDescriptor);
+    expect(backend.load).toHaveBeenLastCalledWith(
+      firstDescriptor,
+      { url: "https://media.example/file%2Fthree", token: "live-only-token" },
+      0
+    );
+    expect(JSON.stringify(session.getSnapshot())).not.toContain("live-only-token");
+  });
+
   it("retains position through video and call suppression without auto-resuming", async () => {
     await session.load(firstDescriptor);
     backend.emit(backendSnapshot({ position: 41, duration: 90, isPlaying: true, playWhenReady: true, status: "playing", revision: 12 }));
