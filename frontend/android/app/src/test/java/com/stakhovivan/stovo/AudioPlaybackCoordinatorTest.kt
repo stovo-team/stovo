@@ -1,5 +1,6 @@
 package com.stakhovivan.stovo
 
+import java.lang.reflect.Modifier
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -79,14 +80,22 @@ class AudioPlaybackCoordinatorTest {
                 "platform"
             ),
             AudioPlaybackSnapshot::class.java.declaredFields
-                .filterNot { it.isSynthetic || it.name.startsWith("$") }
+                .filterNot {
+                    it.isSynthetic ||
+                        it.name.startsWith("$") ||
+                        Modifier.isStatic(it.modifiers)
+                }
                 .map { it.name }
                 .toSet()
         )
         assertEquals(
             setOf("chatId", "messageId", "fileId"),
             AudioPlaybackIdentity::class.java.declaredFields
-                .filterNot { it.isSynthetic || it.name.startsWith("$") }
+                .filterNot {
+                    it.isSynthetic ||
+                        it.name.startsWith("$") ||
+                        Modifier.isStatic(it.modifiers)
+                }
                 .map { it.name }
                 .toSet()
         )
@@ -293,7 +302,11 @@ class AudioPlaybackCoordinatorTest {
             "messagecontent"
         )
         val recoveryFields = AudioPlaybackRecovery::class.java.declaredFields
-            .filterNot { it.isSynthetic || it.name.startsWith("$") }
+            .filterNot {
+                it.isSynthetic ||
+                    it.name.startsWith("$") ||
+                    Modifier.isStatic(it.modifiers)
+            }
             .map { it.name.lowercase() }
         assertTrue(recoveryFields.none { field -> forbiddenFragments.any(field::contains) })
 
