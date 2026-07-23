@@ -8,7 +8,7 @@ import { AppearanceProvider } from "./appearance/AppearanceContext";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { useReducedMotion } from "./hooks/useReducedMotion";
 import { navigateWithMotion } from "./motion/navigation";
-import { getInviteAppLinkPath } from "./appLinks";
+import { getAudioPlaybackAppLinkPath, getInviteAppLinkPath } from "./appLinks";
 import AdminPage from "./pages/AdminPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
@@ -118,18 +118,18 @@ function NativeAppLinkRouter() {
     let disposed = false;
     let listener: { remove: () => Promise<void> } | null = null;
 
-    const openInviteLink = (url: string) => {
-      const path = getInviteAppLinkPath(url);
+    const openAppLink = (url: string) => {
+      const path = getAudioPlaybackAppLinkPath(url) ?? getInviteAppLinkPath(url);
       if (path) {
         navigate(path);
       }
     };
 
     void (async () => {
-      listener = await CapacitorApp.addListener("appUrlOpen", ({ url }) => openInviteLink(url));
+      listener = await CapacitorApp.addListener("appUrlOpen", ({ url }) => openAppLink(url));
       const launchUrl = await CapacitorApp.getLaunchUrl();
       if (launchUrl?.url) {
-        openInviteLink(launchUrl.url);
+        openAppLink(launchUrl.url);
       }
       if (disposed) {
         void listener.remove();
