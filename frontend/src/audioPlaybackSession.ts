@@ -81,6 +81,7 @@ export interface AudioPlaybackBackend {
   seek(position: number): Promise<void>;
   clear(): Promise<void>;
   setCallActive(active: boolean): Promise<void>;
+  releaseSource?(source: AudioPlaybackSource): void;
 }
 
 export type AudioPlaybackClearReason =
@@ -401,6 +402,7 @@ export class AudioPlaybackSession {
         !this.descriptor ||
         !sameAudioIdentity(this.descriptor.identity, descriptor.identity)
       ) {
+        this.backend.releaseSource?.(source);
         return;
       }
       await this.backend.load(descriptor, source, position);
@@ -493,6 +495,336 @@ export class AudioPlaybackSession {
   }
 }
 
+export class WebAudioPlaybackBackend implements AudioPlaybackBackend {
+  private readonly element: HTMLAudioElement;
+  private snapshot = idleSnapshot(0, "web");
+  private listeners = new Set<(snapshot: AudioPlaybackSnapshot) => void>();
+  private descriptor: AudioDescriptor | null = null;
+  private ownedObjectUrl: string | null = null;
+  private pendingSeek: number | null = null;
+  private active = false;
+
+  constructor(
+    elementFactory: () => HTMLAudioElement = () => new Audio(),
+    private readonly revokeObjectUrl: (url: string) => void = (url) =>
+      URL.revokeObjectURL(url),
+  ) {
+    this.element = elementFactory();
+    this.registerMediaListeners();
+  }
+
+  async connect(): Promise<void> {}
+
+  getSnapshot(): AudioPlaybackSnapshot {
+    return this.snapshot;
+  }
+
+  subscribe(listener: (snapshot: AudioPlaybackSnapshot) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  async load(
+    descriptor: AudioDescriptor,
+    source: AudioPlaybackSource,
+    position: number,
+  ): Promise<void> {
+    this.releaseOwnedObjectUrl();
+    this.active = false;
+    this.safePause();
+    this.descriptor = {
+      identity: { ...descriptor.identity },
+      title: descriptor.title,
+    };
+    this.pendingSeek = normalizedFinite(position);
+
+    if (!source.url?.trim()) {
+      this.active = true;
+      this.publish({
+        identity: descriptor.identity,
+        title: descriptor.title,
+        status: "error",
+        playWhenReady: false,
+        isPlaying: false,
+        error: "unsupported",
+      });
+      return;
+    }
+
+    this.ownedObjectUrl = source.objectUrl ? source.url : null;
+    this.element.src = source.url;
+    this.active = true;
+    this.publish({
+      identity: descriptor.identity,
+      title: descriptor.title,
+      position: this.pendingSeek,
+      duration: 0,
+      bufferedPosition: 0,
+      status: "loading",
+      playWhenReady: false,
+      isPlaying: false,
+      suppressionReason: null,
+      canSeek: false,
+      error: null,
+    });
+    try {
+      this.element.load();
+    } catch {
+      this.publish({
+        status: "error",
+        error: "unsupported",
+        playWhenReady: false,
+        isPlaying: false,
+      });
+    }
+  }
+
+  async play(): Promise<void> {
+    if (!this.active || !this.snapshot.identity) return;
+    this.publish({
+      playWhenReady: true,
+      isPlaying: false,
+      suppressionReason: null,
+      status:
+        this.snapshot.status === "ready" || this.snapshot.status === "paused"
+          ? "buffering"
+          : this.snapshot.status,
+      error: null,
+    });
+    try {
+      await this.element.play();
+    } catch {
+      this.publish({
+        status: "error",
+        playWhenReady: false,
+        isPlaying: false,
+        error: "playback-denied",
+      });
+    }
+  }
+
+  async pause(): Promise<void> {
+    if (!this.active) return;
+    this.safePause();
+    this.publish({
+      status: "paused",
+      playWhenReady: false,
+      isPlaying: false,
+      suppressionReason: null,
+    });
+  }
+
+  async seek(position: number): Promise<void> {
+    if (!this.active || !Number.isFinite(position)) return;
+    const clamped = clampPosition(position, this.snapshot.duration);
+    try {
+      this.element.currentTime = clamped;
+      this.pendingSeek = null;
+      this.publish({ position: clamped });
+    } catch {
+      this.pendingSeek = clamped;
+    }
+  }
+
+  async clear(): Promise<void> {
+    this.active = false;
+    this.descriptor = null;
+    this.pendingSeek = null;
+    this.safePause();
+    try {
+      this.element.removeAttribute("src");
+      this.element.load();
+    } catch {
+      // A synthetic or already detached decoder can reject teardown commands.
+    }
+    this.releaseOwnedObjectUrl();
+    this.snapshot = idleSnapshot(this.snapshot.revision + 1, "web");
+    this.emit();
+  }
+
+  async setCallActive(active: boolean): Promise<void> {
+    if (!this.active) return;
+    if (active) {
+      this.safePause();
+      this.publish({
+        status: "suppressed",
+        playWhenReady: false,
+        isPlaying: false,
+        suppressionReason: "call",
+      });
+    } else if (this.snapshot.suppressionReason === "call") {
+      this.publish({
+        status: "paused",
+        playWhenReady: false,
+        isPlaying: false,
+        suppressionReason: null,
+      });
+    }
+  }
+
+  releaseSource(source: AudioPlaybackSource): void {
+    if (source.objectUrl && source.url) {
+      this.revokeObjectUrl(source.url);
+    }
+  }
+
+  private registerMediaListeners(): void {
+    this.element.addEventListener("loadstart", () => {
+      if (!this.active) return;
+      this.publish({ status: "loading", isPlaying: false });
+    });
+    this.element.addEventListener("loadedmetadata", () => {
+      if (!this.active) return;
+      const duration = normalizedFinite(this.element.duration);
+      if (this.pendingSeek !== null) {
+        const position = clampPosition(this.pendingSeek, duration);
+        try {
+          this.element.currentTime = position;
+          this.pendingSeek = null;
+        } catch {
+          // Metadata can precede a usable seekable range; a later seek may retry.
+        }
+      }
+      this.publish({
+        duration,
+        position: clampPosition(this.element.currentTime, duration),
+        status: "ready",
+        isPlaying: false,
+        canSeek: duration > 0,
+        error: null,
+      });
+    });
+    this.element.addEventListener("durationchange", () => {
+      if (!this.active) return;
+      const duration = normalizedFinite(this.element.duration);
+      this.publish({
+        duration,
+        position: clampPosition(this.element.currentTime, duration),
+        canSeek: duration > 0,
+      });
+    });
+    this.element.addEventListener("timeupdate", () => {
+      if (!this.active) return;
+      this.publish({
+        position: clampPosition(this.element.currentTime, this.snapshot.duration),
+      });
+    });
+    this.element.addEventListener("progress", () => {
+      if (!this.active) return;
+      let bufferedPosition = 0;
+      try {
+        if (this.element.buffered.length > 0) {
+          bufferedPosition = this.element.buffered.end(
+            this.element.buffered.length - 1,
+          );
+        }
+      } catch {
+        bufferedPosition = 0;
+      }
+      this.publish({
+        bufferedPosition: clampPosition(
+          bufferedPosition,
+          this.snapshot.duration,
+        ),
+      });
+    });
+    this.element.addEventListener("play", () => {
+      if (!this.active) return;
+      this.publish({
+        playWhenReady: true,
+        isPlaying: false,
+        status: "buffering",
+        suppressionReason: null,
+      });
+    });
+    this.element.addEventListener("waiting", () => {
+      if (!this.active) return;
+      this.publish({
+        status: "buffering",
+        playWhenReady: true,
+        isPlaying: false,
+      });
+    });
+    this.element.addEventListener("canplay", () => {
+      if (!this.active || this.snapshot.isPlaying) return;
+      this.publish({
+        status: this.snapshot.playWhenReady ? "buffering" : "ready",
+        isPlaying: false,
+      });
+    });
+    this.element.addEventListener("playing", () => {
+      if (!this.active) return;
+      this.publish({
+        status: "playing",
+        playWhenReady: true,
+        isPlaying: true,
+        suppressionReason: null,
+        error: null,
+      });
+    });
+    this.element.addEventListener("pause", () => {
+      if (!this.active || this.snapshot.status === "ended") return;
+      this.publish({
+        status: "paused",
+        playWhenReady: false,
+        isPlaying: false,
+      });
+    });
+    this.element.addEventListener("ended", () => {
+      if (!this.active) return;
+      this.publish({
+        position:
+          this.snapshot.duration > 0
+            ? this.snapshot.duration
+            : normalizedFinite(this.element.currentTime),
+        status: "ended",
+        playWhenReady: false,
+        isPlaying: false,
+        suppressionReason: null,
+      });
+    });
+    this.element.addEventListener("error", () => {
+      if (!this.active) return;
+      const code = this.element.error?.code;
+      this.publish({
+        status: "error",
+        playWhenReady: false,
+        isPlaying: false,
+        error: code === 4 ? "unsupported" : code === 3 ? "decode" : "unknown",
+      });
+    });
+  }
+
+  private publish(update: Partial<AudioPlaybackSnapshot>): void {
+    this.snapshot = immutableSnapshot({
+      ...this.snapshot,
+      ...update,
+      revision: this.snapshot.revision + 1,
+      platform: "web",
+    });
+    this.emit();
+  }
+
+  private safePause(): void {
+    try {
+      this.element.pause();
+    } catch {
+      // Detached and synthetic media elements may reject imperative pause.
+    }
+  }
+
+  private releaseOwnedObjectUrl(): void {
+    if (!this.ownedObjectUrl) return;
+    const url = this.ownedObjectUrl;
+    this.ownedObjectUrl = null;
+    this.revokeObjectUrl(url);
+  }
+
+  private emit(): void {
+    this.listeners.forEach((listener) => listener(this.snapshot));
+  }
+}
+
 class UnavailableAudioPlaybackBackend implements AudioPlaybackBackend {
   private snapshot = idleSnapshot(0, "unavailable");
 
@@ -529,7 +861,10 @@ const unavailableSourceFactory: AudioSourceFactory = async () => {
 };
 
 export function createAudioPlaybackSession(
-  backend: AudioPlaybackBackend = new UnavailableAudioPlaybackBackend(),
+  backend: AudioPlaybackBackend =
+    typeof Audio === "undefined"
+      ? new UnavailableAudioPlaybackBackend()
+      : new WebAudioPlaybackBackend(),
   sourceFactory: AudioSourceFactory = unavailableSourceFactory,
 ): AudioPlaybackSession {
   return new AudioPlaybackSession(backend, sourceFactory);
