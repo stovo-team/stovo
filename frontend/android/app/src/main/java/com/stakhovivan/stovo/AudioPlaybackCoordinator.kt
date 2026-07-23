@@ -59,6 +59,26 @@ enum class AudioPlaybackCleanupReason {
     EXPLICIT_CLOSE
 }
 
+enum class AudioPlaybackEngineState {
+    IDLE,
+    BUFFERING,
+    READY,
+    ENDED
+}
+
+enum class AudioPlaybackCustomCommand(val wireValue: String) {
+    LOAD("com.stakhovivan.stovo.audio.LOAD"),
+    GET_STATE("com.stakhovivan.stovo.audio.GET_STATE"),
+    CLEAR("com.stakhovivan.stovo.audio.CLEAR"),
+    SET_CALL_ACTIVE("com.stakhovivan.stovo.audio.SET_CALL_ACTIVE");
+
+    companion object {
+        fun fromWireValue(value: String?): AudioPlaybackCustomCommand? = entries.firstOrNull {
+            it.wireValue == value
+        }
+    }
+}
+
 data class AudioPlaybackSnapshot(
     val identity: AudioPlaybackIdentity?,
     val position: Double,
@@ -85,6 +105,26 @@ data class AudioPlaybackRecovery(
     val formerPlayWhenReady: Boolean
 )
 
+data class AudioPlaybackServiceState(
+    val identity: AudioPlaybackIdentity?,
+    val engineState: AudioPlaybackEngineState,
+    val playWhenReady: Boolean,
+    val isPlaying: Boolean,
+    val suppressionReason: AudioSuppressionReason?,
+    val position: Double,
+    val duration: Double,
+    val bufferedPosition: Double,
+    val canSeek: Boolean,
+    val error: AudioPlaybackErrorCode?,
+    val revision: Long
+)
+
+data class AudioPlaybackLoadDecision(
+    val accepted: Boolean,
+    val startPosition: Double,
+    val playWhenReady: Boolean
+)
+
 class AudioPlaybackCoordinator {
     private var acceptedRevision = -1L
     private var callActive = false
@@ -100,6 +140,78 @@ class AudioPlaybackCoordinator {
         val normalized = normalize(candidate) ?: return false
         current = normalized
         return true
+    }
+
+    fun acceptServiceState(state: AudioPlaybackServiceState): Boolean {
+        val status = when {
+            state.identity == null -> AudioPlaybackStatus.IDLE
+            state.error != null -> AudioPlaybackStatus.ERROR
+            state.suppressionReason != null -> AudioPlaybackStatus.SUPPRESSED
+            state.engineState == AudioPlaybackEngineState.IDLE -> AudioPlaybackStatus.LOADING
+            state.engineState == AudioPlaybackEngineState.BUFFERING -> {
+                if (
+                    state.position == 0.0 &&
+                    state.duration == 0.0 &&
+                    state.bufferedPosition == 0.0
+                ) {
+                    AudioPlaybackStatus.LOADING
+                } else {
+                    AudioPlaybackStatus.BUFFERING
+                }
+            }
+            state.engineState == AudioPlaybackEngineState.ENDED -> AudioPlaybackStatus.ENDED
+            state.isPlaying -> AudioPlaybackStatus.PLAYING
+            state.playWhenReady -> AudioPlaybackStatus.BUFFERING
+            state.position > 0.0 -> AudioPlaybackStatus.PAUSED
+            else -> AudioPlaybackStatus.READY
+        }
+        val terminalOrSuppressed =
+            status == AudioPlaybackStatus.ERROR ||
+                status == AudioPlaybackStatus.ENDED ||
+                status == AudioPlaybackStatus.SUPPRESSED
+        val duration = state.duration
+        return accept(
+            AudioPlaybackSnapshot(
+                identity = state.identity,
+                position = if (status == AudioPlaybackStatus.ENDED && duration > 0.0) {
+                    duration
+                } else {
+                    state.position
+                },
+                duration = duration,
+                bufferedPosition = state.bufferedPosition,
+                status = status,
+                playWhenReady = if (terminalOrSuppressed) false else state.playWhenReady,
+                isPlaying = status == AudioPlaybackStatus.PLAYING && state.isPlaying,
+                suppressionReason = if (status == AudioPlaybackStatus.SUPPRESSED) {
+                    state.suppressionReason
+                } else {
+                    null
+                },
+                canSeek = state.canSeek,
+                error = if (status == AudioPlaybackStatus.ERROR) state.error else null,
+                revision = state.revision
+            )
+        )
+    }
+
+    fun evaluateLoad(
+        identity: AudioPlaybackIdentity,
+        itemCount: Int,
+        hasScopedCredential: Boolean,
+        startPosition: Double,
+        requestedPlay: Boolean
+    ): AudioPlaybackLoadDecision {
+        val accepted =
+            validIdentity(identity) &&
+                itemCount == 1 &&
+                hasScopedCredential &&
+                validFinite(startPosition)
+        return AudioPlaybackLoadDecision(
+            accepted = accepted,
+            startPosition = if (accepted) startPosition else 0.0,
+            playWhenReady = accepted && requestedPlay && !callActive
+        )
     }
 
     fun setCallActive(active: Boolean) {
