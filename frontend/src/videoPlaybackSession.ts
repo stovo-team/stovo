@@ -219,6 +219,23 @@ export class VideoPlaybackSession {
     }
   }
 
+  pauseActive(): boolean {
+    if (!this.activeIdentity) return false;
+    const registration = this.findRegistration(this.activeIdentity);
+    const snapshot = this.findSnapshot(this.activeIdentity);
+    if (!registration || !snapshot) return false;
+
+    this.safePause(registration.element);
+    this.replaceSnapshot(snapshot, {
+      ...snapshot,
+      playIntent: false,
+      status: "paused",
+      revision: this.issueRevision(),
+    });
+    this.emit();
+    return true;
+  }
+
   issueRevision(): number {
     return ++this.sequence;
   }
