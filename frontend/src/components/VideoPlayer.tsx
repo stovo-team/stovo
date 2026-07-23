@@ -28,6 +28,7 @@ export interface VideoPlayerProps {
   accessToken: string;
   identity: VideoIdentity;
   disabledReason?: string;
+  beforePlay?: () => void | Promise<void>;
 }
 
 function isFiniteTime(value: number): boolean {
@@ -72,6 +73,7 @@ export function VideoPlayer({
   accessToken,
   identity,
   disabledReason,
+  beforePlay,
 }: VideoPlayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -213,13 +215,19 @@ export function VideoPlayer({
     const element = videoRef.current;
     if (!registration || !element || disabledReason || !sourceUrl) return;
     setLocalError(null);
+    try {
+      await beforePlay?.();
+    } catch {
+      reportFailure("Playback could not start");
+      return;
+    }
     if (!videoPlaybackSession.performAction(registration, { type: "play" })) return;
     try {
       await element.play();
     } catch {
       reportFailure("Playback could not start");
     }
-  }, [disabledReason, reportFailure, sourceUrl]);
+  }, [beforePlay, disabledReason, reportFailure, sourceUrl]);
 
   const pause = useCallback(() => {
     const registration = registrationRef.current;
