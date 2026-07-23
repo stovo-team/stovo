@@ -7,6 +7,7 @@ class MainActivity : BridgeActivity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         registerPlugin(NtfyPlugin::class.java)
         registerPlugin(CallPlugin::class.java)
+        registerPlugin(AudioPlaybackPlugin::class.java)
         super.onCreate(savedInstanceState)
     }
 
