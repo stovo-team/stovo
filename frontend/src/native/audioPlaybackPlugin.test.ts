@@ -26,6 +26,7 @@ import type {
   AudioPlaybackSnapshot,
   AudioPlaybackSource,
 } from "../audioPlaybackSession";
+import type { NativeAudioPlaybackState } from "../audioNativeBridge";
 import {
   NativeAudioPlaybackBackend,
   addAudioPlaybackStateListener,
@@ -46,10 +47,11 @@ const source: AudioPlaybackSource = {
   token: "playback-secret",
 };
 
-function nativeState(overrides: Partial<AudioPlaybackSnapshot> = {}): AudioPlaybackSnapshot {
+function nativeState(
+  overrides: Partial<NativeAudioPlaybackState> = {},
+): NativeAudioPlaybackState {
   return {
     identity: descriptor.identity,
-    title: "",
     position: 12,
     duration: 40,
     bufferedPosition: 30,
@@ -137,7 +139,7 @@ describe("native audio playback plugin", () => {
         return { remove };
       },
     );
-    const received: AudioPlaybackSnapshot[] = [];
+    const received: NativeAudioPlaybackState[] = [];
     const cleanup = await addAudioPlaybackStateListener((snapshot) => received.push(snapshot), 7);
 
     listener?.(nativeState({ revision: 7 }));

@@ -1,3 +1,8 @@
+import {
+  NativeAudioPlaybackBackend,
+  isNativeAudioPlaybackAvailable,
+} from "./native/audioPlaybackPlugin";
+
 export interface AudioIdentity {
   chatId: string;
   messageId: string;
@@ -862,7 +867,9 @@ const unavailableSourceFactory: AudioSourceFactory = async () => {
 
 export function createAudioPlaybackSession(
   backend: AudioPlaybackBackend =
-    typeof Audio === "undefined"
+    isNativeAudioPlaybackAvailable()
+      ? new NativeAudioPlaybackBackend()
+      : typeof Audio === "undefined"
       ? new UnavailableAudioPlaybackBackend()
       : new WebAudioPlaybackBackend(),
   sourceFactory: AudioSourceFactory = unavailableSourceFactory,
