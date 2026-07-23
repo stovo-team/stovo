@@ -15,7 +15,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Bell,
   BellOff,
@@ -97,7 +97,10 @@ import {
 } from "../api/messageCrypto";
 import {
   FamilyFile,
+  createMediaPlaybackToken,
+  downloadFileBlob,
   formatFileSize,
+  getMediaPlaybackUrl,
   saveFileToDisk,
   uploadFile
 } from "../api/files";
@@ -108,6 +111,8 @@ import AttachmentPickerSheet, {
 } from "../components/AttachmentPickerSheet";
 import { FormattingToolbar } from "../components/FormattingToolbar";
 import ImageLightbox from "../components/ImageLightbox";
+import { AudioNowPlaying } from "../components/AudioNowPlaying";
+import { AudioPlayer } from "../components/AudioPlayer";
 import { VideoPlayer } from "../components/VideoPlayer";
 import VeloLogo from "../components/VeloLogo";
 import {
@@ -161,8 +166,34 @@ import {
   toNativeVideoPictureInPictureState,
 } from "../videoPiPBridge";
 import { videoPlaybackSession } from "../videoPlaybackSession";
+import {
+  audioPlaybackSession,
+  type AudioDescriptor,
+  type AudioIdentity,
+  type AudioSourceFactory
+} from "../audioPlaybackSession";
+import { validateAudioRestoreTarget } from "../audioRestore";
 
 type CallPhase = "idle" | "outgoing" | "incoming" | "connecting" | "in-call";
+
+export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory {
+  return async (descriptor) => {
+    if (!accessToken.trim()) {
+      throw new Error("Audio playback requires authentication");
+    }
+
+    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+      const capability = await createMediaPlaybackToken(accessToken, descriptor.identity.fileId);
+      return {
+        url: getMediaPlaybackUrl(descriptor.identity.fileId),
+        token: capability.token
+      };
+    }
+
+    const blob = await downloadFileBlob(accessToken, descriptor.identity.fileId);
+    return { url: URL.createObjectURL(blob), objectUrl: true };
+  };
+}
 
 function activeSessionVideoElement(): HTMLVideoElement | null {
   return document.querySelector<HTMLVideoElement>(".video-player.is-session-active video");
@@ -463,7 +494,7 @@ type ChatExitSwipeState = {
 
 type PendingMessageFocus = {
   messageId: string;
-  highlightClassName: "message-pin-flash" | "message-context-flash";
+  highlightClassName: "message-pin-flash" | "message-context-flash" | "message-audio-context-flash";
   lockPinTracking?: boolean;
 };
 
@@ -809,6 +840,7 @@ function AttachmentCard({
   file,
   messageId,
   disabledReason,
+  onBeforeAudioPlay,
   compact = false,
   onOpenImage
 }: {
@@ -817,12 +849,29 @@ function AttachmentCard({
   file: FamilyFile;
   messageId: string;
   disabledReason?: string;
+  onBeforeAudioPlay?: () => Promise<void>;
   compact?: boolean;
   onOpenImage?: (file: FamilyFile, previewUrl: string) => void;
 }) {
   const isImage = isImageAttachment(file);
   const isVideo = file.mimeType.startsWith("video/");
+  const isAudio = file.mimeType.startsWith("audio/");
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
+
+  if (isAudio) {
+    const descriptor: AudioDescriptor = {
+      identity: { chatId, messageId, fileId: file.id },
+      title: file.originalName
+    };
+    return (
+      <AudioPlayer
+        descriptor={descriptor}
+        sourceFactory={buildAudioSourceFactory(accessToken ?? "")}
+        disabledReason={disabledReason}
+        onBeforePlay={onBeforeAudioPlay}
+      />
+    );
+  }
 
   if (isVideo) {
     return (
@@ -832,6 +881,7 @@ function AttachmentCard({
           file={file}
           identity={{ chatId, messageId, fileId: file.id }}
           disabledReason={disabledReason}
+          beforePlay={() => audioPlaybackSession.pauseForVideo()}
         />
       </article>
     );
@@ -1206,6 +1256,7 @@ function CopySheetTextarea({
 
 export default function ChatsPage() {
   const { chatId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
   const { accessToken, currentUser, authRequest, updateCurrentUser } = useAuth();
@@ -1260,6 +1311,7 @@ export default function ChatsPage() {
   const [deleteForMe, setDeleteForMe] = useState(true);
   const [deleteForEveryone, setDeleteForEveryone] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [audioRestoreStatus, setAudioRestoreStatus] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ChatToast[]>([]);
   const [callPhase, setCallPhase] = useState<CallPhase>("idle");
   const [activeCallChatId, setActiveCallChatId] = useState<string | null>(null);
@@ -1346,6 +1398,9 @@ export default function ChatsPage() {
   const pinClickScrollingRef = useRef(false);
   const pinTrackingTimeoutRef = useRef<number | null>(null);
   const messageHighlightTimeoutRef = useRef<number | null>(null);
+  const audioRestoreStatusTimerRef = useRef<number | null>(null);
+  const observedAudioUserIdRef = useRef<string | null>(currentUser?.id ?? null);
+  const lastAudioVideoArbitrationRevisionRef = useRef(-1);
   const pendingMessageFocusRef = useRef<PendingMessageFocus | null>(null);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   const composerFormattingSelectionRef = useRef<TextSelection | null>(null);
@@ -2166,6 +2221,68 @@ export default function ChatsPage() {
     [applyMessagesForChat, authRequest, currentUser?.id, markChatRead]
   );
 
+  const restoreActiveAudioSurface = useCallback(async (requestedIdentity?: AudioIdentity) => {
+    const snapshot = audioPlaybackSession.getSnapshot();
+    const identity = requestedIdentity ?? snapshot.identity;
+    const accessToken = accessTokenRef.current;
+    setAudioRestoreStatus("Opening audio message…");
+
+    try {
+      if (!identity || !accessToken || !currentUser?.id) {
+        throw new Error("Audio restore is unavailable");
+      }
+
+      const targetChat = chatsRef.current.find((candidate) => candidate.id === identity.chatId);
+      if (!targetChat) throw new Error("Audio chat is unavailable");
+
+      let targetMessages =
+        messageCacheRef.current[targetChat.id] ??
+        (activeChatIdRef.current === targetChat.id ? messagesRef.current : null);
+      if (!targetMessages) {
+        const loaded = await getMessages(accessToken, targetChat.id, undefined, 100);
+        targetMessages = await decryptMessages(targetChat.id, loaded, currentUser.id);
+        messageCacheRef.current[targetChat.id] = targetMessages;
+      }
+
+      const authorized = validateAudioRestoreTarget(identity, [targetChat], targetMessages);
+      if (!authorized) throw new Error("Audio target is unavailable");
+      const targetMessage = targetMessages.find((message) => message.id === authorized.messageId);
+      const targetFile = targetMessage?.attachments.find((file) => file.id === authorized.fileId);
+      if (!targetMessage || !targetFile) throw new Error("Audio file is unavailable");
+
+      if (snapshot.status === "authorization-required") {
+        await audioPlaybackSession.load(
+          { identity: authorized, title: targetFile.originalName },
+          Math.max(0, Number.isFinite(snapshot.position) ? snapshot.position : 0)
+        );
+      }
+
+      setSelectedChat(targetChat);
+      setMessages(targetMessages);
+      setIsDetailsOpen(false);
+      pendingMessageFocusRef.current = {
+        messageId: targetMessage.id,
+        highlightClassName: "message-audio-context-flash"
+      };
+      navigateWithMotion(
+        navigate,
+        `/app/chats/${encodeURIComponent(authorized.chatId)}`,
+        { reducedMotion: prefersReducedMotion }
+      );
+    } catch {
+      await audioPlaybackSession.clear("authorization").catch(() => undefined);
+      setError("This audio message is no longer available.");
+    } finally {
+      if (audioRestoreStatusTimerRef.current !== null) {
+        window.clearTimeout(audioRestoreStatusTimerRef.current);
+      }
+      audioRestoreStatusTimerRef.current = window.setTimeout(() => {
+        setAudioRestoreStatus(null);
+        audioRestoreStatusTimerRef.current = null;
+      }, 1200);
+    }
+  }, [currentUser?.id, navigate, prefersReducedMotion]);
+
   const syncCurrentView = useCallback(async () => {
     await loadOverview();
     await loadSelectedChat(activeChatIdRef.current, true);
@@ -2175,6 +2292,21 @@ export default function ChatsPage() {
   useEffect(() => {
     void loadOverview();
   }, [loadOverview]);
+
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("restoreAudio") !== "1" || !currentUser?.id) {
+      return;
+    }
+    let cancelled = false;
+    void restoreActiveAudioSurface().finally(() => {
+      if (!cancelled) {
+        navigate("/app/chats", { replace: true });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, location.search, navigate, restoreActiveAudioSurface]);
 
   useEffect(() => {
     if (!currentUser) {
@@ -2258,6 +2390,67 @@ export default function ChatsPage() {
   }, [callType]);
   useEffect(() => {
     callPhaseRef.current = callPhase;
+  }, [callPhase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const nextUserId = currentUser?.id ?? null;
+      const previousUserId = observedAudioUserIdRef.current;
+      if (!nextUserId || !accessToken) {
+        audioPlaybackSession.setSourceFactory(buildAudioSourceFactory(""));
+        if (previousUserId) await audioPlaybackSession.clear("logout");
+        observedAudioUserIdRef.current = null;
+        return;
+      }
+
+      if (previousUserId && previousUserId !== nextUserId) {
+        await audioPlaybackSession.clear("user-switch");
+      }
+      if (cancelled) return;
+      observedAudioUserIdRef.current = nextUserId;
+      audioPlaybackSession.setSourceFactory(buildAudioSourceFactory(accessToken));
+      await audioPlaybackSession.connect();
+    })().catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, currentUser?.id]);
+
+  useEffect(() => {
+    return audioPlaybackSession.subscribe(() => {
+      const snapshot = audioPlaybackSession.getSnapshot();
+      if (
+        snapshot.revision <= lastAudioVideoArbitrationRevisionRef.current ||
+        !snapshot.identity ||
+        snapshot.suppressionReason !== null ||
+        (!snapshot.isPlaying && !snapshot.playWhenReady)
+      ) {
+        return;
+      }
+      lastAudioVideoArbitrationRevisionRef.current = snapshot.revision;
+      videoPlaybackSession.pauseActive();
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (audioRestoreStatusTimerRef.current !== null) {
+        window.clearTimeout(audioRestoreStatusTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      if (callPhase !== "idle") {
+        videoPlaybackSession.pauseActive();
+        await audioPlaybackSession.setCallActive(true);
+        return;
+      }
+      await audioPlaybackSession.setCallActive(false);
+    })().catch(() => undefined);
   }, [callPhase]);
   useEffect(() => {
     if (!currentUser?.id) return;
@@ -2816,7 +3009,10 @@ export default function ChatsPage() {
         try {
           switch (action.type) {
             case "play":
-              void element.play().catch(() => undefined);
+              void audioPlaybackSession
+                .pauseForVideo()
+                .then(() => element.play())
+                .catch(() => undefined);
               break;
             case "pause":
               element.pause();
@@ -4802,7 +4998,7 @@ export default function ChatsPage() {
                 </span>
                 <div>
                   <p className="eyebrow">{family?.name ?? "Stovo"}</p>
-                  <h1>Chats</h1>
+                  <h1 tabIndex={-1}>Chats</h1>
                 </div>
                 <div className="sidebar-actions">
                   <button
@@ -5392,9 +5588,12 @@ export default function ChatsPage() {
                                       messageId={message.id}
                                       disabledReason={
                                         callPhase !== "idle"
-                                          ? "Video is paused while a call is active"
+                                          ? "Media playback is paused while a call is active"
                                           : undefined
                                       }
+                                      onBeforeAudioPlay={async () => {
+                                        videoPlaybackSession.pauseActive();
+                                      }}
                                       compact
                                       onOpenImage={openFullViewImage}
                                     />
@@ -5895,6 +6094,18 @@ export default function ChatsPage() {
             />
           )}
         </div>
+        {audioRestoreStatus && <p className="audio-restore-status" role="status">{audioRestoreStatus}</p>}
+        {currentUser && (
+          <AudioNowPlaying
+            onRestore={(identity) => void restoreActiveAudioSurface(identity)}
+            onFocusAfterClose={() => {
+              const activeControl = messagesPanelRef.current?.querySelector<HTMLButtonElement>(
+                ".audio-player.is-session-active .audio-player-play-pause"
+              );
+              activeControl?.focus() ?? document.querySelector<HTMLElement>(".chat-list-title h1")?.focus();
+            }}
+          />
+        )}
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
         {callPhase !== "idle" && (
           <>
