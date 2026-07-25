@@ -140,4 +140,35 @@ class PictureInPictureCoordinatorTest {
         assertNull(PiPAction.fromWireValue("delete-message"))
         assertNull(PiPAction.fromWireValue(""))
     }
+
+    @Test
+    fun `ending a call retains paused video state without starting playback`() {
+        val coordinator = PictureInPictureCoordinator()
+        assertTrue(coordinator.updateVideoState(video(playing = true, revision = 1)))
+        coordinator.updateCallState(active = true, video = true, chatId = "call", sessionId = "session")
+        assertEquals(PiPOwner.CALL, coordinator.snapshot().requestedOwner)
+
+        assertTrue(coordinator.updateVideoState(video(playing = false, revision = 2)))
+        coordinator.updateCallState(active = false, video = false, chatId = null, sessionId = null)
+
+        val snapshot = coordinator.snapshot()
+        assertEquals(PiPOwner.NONE, snapshot.requestedOwner)
+        assertEquals(false, snapshot.videoState?.playing)
+        assertEquals("file/opaque%2Fid", snapshot.videoState?.fileId)
+        assertNull(PiPAction.fromWireValue("auto-resume"))
+    }
+
+    @Test
+    fun `stale revisions and unknown actions cannot displace the captured call-priority owner`() {
+        val coordinator = PictureInPictureCoordinator()
+        assertTrue(coordinator.updateVideoState(video(revision = 5)))
+        coordinator.updateCallState(active = true, video = true, chatId = "call-chat", sessionId = "call-session")
+        val entered = coordinator.captureForEntry()
+        assertEquals(PiPOwner.CALL, entered?.activeOwner)
+
+        assertFalse(coordinator.updateVideoState(video(playing = false, revision = 4)))
+        assertNull(PiPAction.fromWireValue("delete-message"))
+        assertEquals(PiPOwner.CALL, coordinator.activePictureInPictureSnapshot()?.activeOwner)
+        assertEquals(5L, coordinator.snapshot().acceptedVideoRevision)
+    }
 }

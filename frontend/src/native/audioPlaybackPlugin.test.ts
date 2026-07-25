@@ -211,4 +211,63 @@ describe("native audio playback plugin", () => {
     expect(nativePlugin.addListener).toHaveBeenCalledTimes(2);
     expect(nativePlugin.load).toHaveBeenCalledTimes(1);
   });
+
+  it("rejects malformed, incomplete, and lower-revision listener payloads without changing accepted state", async () => {
+    let listener: ((value: unknown) => void) | undefined;
+    nativePlugin.addListener.mockImplementation(
+      async (_name: string, onState: (value: unknown) => void) => {
+        listener = onState;
+        return { remove: vi.fn().mockResolvedValue(undefined) };
+      },
+    );
+    const backend = new NativeAudioPlaybackBackend();
+    const snapshots: AudioPlaybackSnapshot[] = [];
+    backend.subscribe((snapshot) => snapshots.push(snapshot));
+    await backend.connect();
+    const accepted = backend.getSnapshot();
+
+    listener?.({ ...nativeState({ revision: 8 }), identity: { chatId: "", messageId: "m", fileId: "f" } });
+    listener?.({ ...nativeState({ revision: 8 }), position: Number.NaN });
+    listener?.({ ...nativeState({ revision: 8 }), status: "teleport" });
+    listener?.(nativeState({ revision: 6, position: 99 }));
+    listener?.(null);
+    listener?.("not-an-object");
+
+    expect(backend.getSnapshot()).toMatchObject({
+      revision: accepted.revision,
+      position: accepted.position,
+    });
+    expect(snapshots.every((snapshot) => snapshot.revision >= accepted.revision)).toBe(true);
+    expect(JSON.stringify(backend.getSnapshot())).not.toMatch(
+      /playback-secret|Private filename|https:\/\/stovo-local/,
+    );
+  });
+
+  it("does not stop playback when only the Activity bridge listener disconnects", async () => {
+    const remove = vi.fn().mockResolvedValue(undefined);
+    nativePlugin.addListener.mockResolvedValue({ remove });
+    nativePlugin.getState.mockResolvedValue(
+      nativeState({ revision: 11, status: "playing", isPlaying: true, playWhenReady: true }),
+    );
+    const backend = new NativeAudioPlaybackBackend();
+    await backend.connect();
+    expect(backend.getSnapshot()).toMatchObject({
+      revision: 11,
+      status: "playing",
+      isPlaying: true,
+    });
+
+    const cleanup = await addAudioPlaybackStateListener(vi.fn(), 11);
+    cleanup();
+    cleanup();
+
+    expect(nativePlugin.clear).not.toHaveBeenCalled();
+    expect(nativePlugin.pause).not.toHaveBeenCalled();
+    expect(backend.getSnapshot()).toMatchObject({
+      revision: 11,
+      status: "playing",
+      isPlaying: true,
+      identity: descriptor.identity,
+    });
+  });
 });
