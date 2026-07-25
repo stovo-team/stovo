@@ -275,7 +275,7 @@ describe("FormattingToolbar", () => {
     }
 
     act(() => {
-      buttons[0].focus();
+      (buttons[0] as HTMLButtonElement).focus();
       buttons[0].dispatchEvent(
         new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
       );
