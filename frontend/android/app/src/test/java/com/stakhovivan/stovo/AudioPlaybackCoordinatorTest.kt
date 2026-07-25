@@ -512,4 +512,70 @@ class AudioPlaybackCoordinatorTest {
         assertNull(AudioPlaybackCustomCommand.fromWireValue("delete-message"))
         assertNull(AudioPlaybackCustomCommand.fromWireValue(""))
     }
+
+    @Test
+    fun `bridge disconnect does not clear a valid session and call end never auto resumes`() {
+        val coordinator = AudioPlaybackCoordinator()
+        assertTrue(
+            coordinator.accept(
+                candidate(
+                    position = 18.0,
+                    duration = 90.0,
+                    status = AudioPlaybackStatus.PLAYING,
+                    playWhenReady = true,
+                    isPlaying = true,
+                    revision = 12
+                )
+            )
+        )
+
+        // Activity/WebView listener teardown is not a cleanup reason.
+        assertEquals(identity(), coordinator.snapshot().identity)
+        assertEquals(AudioPlaybackStatus.PLAYING, coordinator.snapshot().status)
+        assertFalse(
+            AudioPlaybackCleanupReason.entries.any { reason ->
+                reason.name.contains("DISCONNECT", ignoreCase = true) ||
+                    reason.name.contains("ACTIVITY", ignoreCase = true)
+            }
+        )
+
+        coordinator.setCallActive(true)
+        assertEquals(AudioPlaybackStatus.SUPPRESSED, coordinator.snapshot().status)
+        assertFalse(coordinator.requestPlay())
+        coordinator.setCallActive(false)
+        assertEquals(AudioPlaybackStatus.PAUSED, coordinator.snapshot().status)
+        assertFalse(coordinator.snapshot().playWhenReady)
+        assertFalse(coordinator.snapshot().isPlaying)
+        assertEquals(18.0, coordinator.snapshot().position, 0.0)
+    }
+
+    @Test
+    fun `snapshots omit private message fields and keep opaque identity only`() {
+        val coordinator = AudioPlaybackCoordinator()
+        assertTrue(coordinator.accept(candidate(revision = 3)))
+        val encoded = coordinator.snapshot().toString().lowercase()
+        listOf(
+            "token",
+            "authorization",
+            "https://",
+            "sourceurl",
+            "message text",
+            "family chat",
+            "capability"
+        ).forEach { fragment ->
+            assertFalse(encoded.contains(fragment))
+        }
+        assertEquals(identity(), coordinator.snapshot().identity)
+        assertEquals(
+            setOf("chatId", "messageId", "fileId"),
+            AudioPlaybackIdentity::class.java.declaredFields
+                .filterNot {
+                    it.isSynthetic ||
+                        it.name.startsWith("$") ||
+                        Modifier.isStatic(it.modifiers)
+                }
+                .map { it.name }
+                .toSet()
+        )
+    }
 }
