@@ -241,4 +241,57 @@ describe("FormattingToolbar", () => {
 
     expect(toolbar()).toBeNull();
   });
+
+  it("exposes SVG-only keyboard-reachable actions and returns selection focus to the composer", () => {
+    const textarea = document.createElement("textarea");
+    textarea.value = "selected text";
+    document.body.append(textarea);
+    textarea.focus();
+    textarea.setSelectionRange(0, 8);
+    const initialSelection = {
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd
+    };
+    const onFormat = vi.fn((kind: FormattingKind) => {
+      textarea.focus();
+      textarea.setSelectionRange(initialSelection.start, initialSelection.end);
+      expect(kind).toBe("bold");
+    });
+
+    renderToolbar({
+      selection: { start: 0, end: 8 },
+      anchor: { left: 12, top: 24 },
+      onFormat
+    });
+
+    const element = toolbar();
+    const buttons = [...document.body.querySelectorAll('[role="toolbar"] button')];
+    expect(element?.getAttribute("aria-label")).toBe("Format selected text");
+    expect(buttons).toHaveLength(5);
+    for (const button of buttons) {
+      expect(button.getAttribute("tabindex")).not.toBe("-1");
+      expect(button.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+      expect(button.textContent).toBe("");
+    }
+
+    act(() => {
+      buttons[0].focus();
+      buttons[0].dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
+      );
+      buttons[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onFormat).toHaveBeenCalledWith("bold");
+    expect(document.activeElement).toBe(textarea);
+    expect(textarea.selectionStart).toBe(initialSelection.start);
+    expect(textarea.selectionEnd).toBe(initialSelection.end);
+    expect(
+      getFormattingToolbarPlacement(
+        { left: 790, top: 20 },
+        { width: 100, height: 40 },
+        { width: 800, height: 600 }
+      )
+    ).toEqual({ left: 688, top: 12 });
+  });
 });

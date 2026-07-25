@@ -265,6 +265,46 @@ describe("applyFormattingToTextarea", () => {
     expect(edit.value).toBe(`left:||${selected}||:right`);
     expect(textarea.value.slice(edit.selectionStart, edit.selectionEnd)).toBe(selected);
   });
+
+  it("wraps then unwraps every formatting kind on the exact Unicode range without shifting focus or neighbors", () => {
+    const kinds: FormattingKind[] = [
+      "bold",
+      "italic",
+      "underline",
+      "strikethrough",
+      "spoiler"
+    ];
+    const selected = "é/e\u0301/\ud83d\ude80";
+    const neighbor = "prefix:";
+    const tail = ":suffix";
+
+    for (const kind of kinds) {
+      const textarea = document.createElement("textarea");
+      textarea.value = `${neighbor}${selected}${tail}`;
+      document.body.append(textarea);
+      const start = neighbor.length;
+      const end = start + selected.length;
+      const focus = vi.spyOn(textarea, "focus");
+
+      const wrapped = applyFormattingToTextarea(textarea, { start, end }, kind);
+      expect(wrapped.changed).toBe(true);
+      expect(textarea.value.startsWith(neighbor)).toBe(true);
+      expect(textarea.value.endsWith(tail)).toBe(true);
+      expect(textarea.value.slice(wrapped.selectionStart, wrapped.selectionEnd)).toBe(selected);
+      expect(focus).toHaveBeenCalledOnce();
+      expect(document.activeElement === textarea || focus.mock.calls.length === 1).toBe(true);
+
+      const unwrapped = applyFormattingToTextarea(
+        textarea,
+        { start: wrapped.selectionStart, end: wrapped.selectionEnd },
+        kind
+      );
+      expect(unwrapped.value).toBe(`${neighbor}${selected}${tail}`);
+      expect(textarea.value.slice(unwrapped.selectionStart, unwrapped.selectionEnd)).toBe(selected);
+      expect(focus).toHaveBeenCalledTimes(2);
+      textarea.remove();
+    }
+  });
 });
 
 describe("measureTextareaSelectionAnchor", () => {
