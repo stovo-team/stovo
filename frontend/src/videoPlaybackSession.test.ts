@@ -200,3 +200,184 @@ describe("VideoPlaybackSession", () => {
     expect(JSON.stringify(session.getSnapshot())).not.toContain("HTMLVideoElement");
   });
 });
+
+describe("Phase 27 video ownership against audio and call gates", () => {
+  let session: VideoPlaybackSession;
+
+  beforeEach(() => {
+    session = new VideoPlaybackSession();
+  });
+
+  it("awaits audio pause before a user or PiP-originated play leaves one active owner", async () => {
+    const { AudioPlaybackSession } = await import("./audioPlaybackSession");
+    const pauseOrder: string[] = [];
+    let audioSnapshot = {
+      identity: null as { chatId: string; messageId: string; fileId: string } | null,
+      title: "",
+      position: 0,
+      duration: 0,
+      bufferedPosition: 0,
+      status: "idle" as const,
+      playWhenReady: false,
+      isPlaying: false,
+      suppressionReason: null as "call" | "video" | "focus" | null,
+      canSeek: false,
+      error: null,
+      revision: 0,
+      platform: "web" as const,
+    };
+    const listeners = new Set<(snapshot: typeof audioSnapshot) => void>();
+    const audioBackend = {
+      connect: vi.fn(async () => undefined),
+      getSnapshot: vi.fn(() => audioSnapshot),
+      subscribe: vi.fn((listener: (snapshot: typeof audioSnapshot) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      }),
+      load: vi.fn(async (descriptor: { identity: { chatId: string; messageId: string; fileId: string }; title: string }, _source: unknown, position: number) => {
+        audioSnapshot = {
+          ...audioSnapshot,
+          identity: descriptor.identity,
+          title: descriptor.title,
+          position,
+          duration: 40,
+          bufferedPosition: 20,
+          status: "ready",
+          revision: audioSnapshot.revision + 1,
+        };
+        listeners.forEach((listener) => listener(audioSnapshot));
+      }),
+      play: vi.fn(async () => undefined),
+      pause: vi.fn(async () => {
+        pauseOrder.push("audio-pause");
+      }),
+      seek: vi.fn(async () => undefined),
+      clear: vi.fn(async () => undefined),
+      setCallActive: vi.fn(async () => undefined),
+    };
+    const audioSession = new AudioPlaybackSession(audioBackend, async () => ({
+      url: "blob:audio",
+      objectUrl: true,
+    }));
+    await audioSession.load({
+      identity: { chatId: "chat", messageId: "audio", fileId: "audio-file" },
+      title: "clip.mp3",
+    }, 11);
+    audioSnapshot = {
+      ...audioSnapshot,
+      position: 11,
+      duration: 40,
+      status: "playing",
+      playWhenReady: true,
+      isPlaying: true,
+      revision: audioSnapshot.revision + 1,
+    };
+    listeners.forEach((listener) => listener(audioSnapshot));
+
+    const first = session.attach(identity("chat", "message-v1", "file-v1"), videoElement());
+    const second = session.attach(identity("chat", "message-v2", "file-v2"), videoElement());
+    session.activate(first);
+    session.update(first, {
+      currentTime: 22,
+      duration: 100,
+      status: "playing",
+      playIntent: true,
+    });
+
+    await audioSession.pauseForVideo();
+    pauseOrder.push("video-before-play");
+    expect(session.pauseActive()).toBe(true);
+    expect(session.activate(second)).toBe(true);
+    session.update(second, {
+      currentTime: 5,
+      duration: 80,
+      status: "playing",
+      playIntent: true,
+    });
+
+    expect(pauseOrder).toEqual(["audio-pause", "video-before-play"]);
+    expect(session.getSnapshot()?.identity).toEqual(identity("chat", "message-v2", "file-v2"));
+    expect(session.getSnapshot(identity("chat", "message-v1", "file-v1"))).toMatchObject({
+      currentTime: 22,
+      status: "paused",
+      playIntent: false,
+    });
+    expect(audioSession.getSnapshot()).toMatchObject({
+      position: 11,
+      suppressionReason: "video",
+      playWhenReady: false,
+      isPlaying: false,
+    });
+  });
+
+  it("pauses for any non-idle call and retains state without implicit resume on idle", () => {
+    const mediaIdentity = identity("chat", "message", "file");
+    const element = videoElement();
+    const registration = session.attach(mediaIdentity, element);
+    session.activate(registration);
+    session.update(registration, {
+      currentTime: 33,
+      duration: 120,
+      status: "playing",
+      playIntent: true,
+    });
+    const beforeCallRevision = session.getSnapshot(mediaIdentity)?.revision ?? 0;
+
+    expect(session.pauseActive()).toBe(true);
+    expect(element.pause).toHaveBeenCalledTimes(1);
+    expect(session.getSnapshot(mediaIdentity)).toMatchObject({
+      currentTime: 33,
+      duration: 120,
+      status: "paused",
+      playIntent: false,
+    });
+    expect(session.getSnapshot(mediaIdentity)?.revision).toBeGreaterThan(beforeCallRevision);
+
+    expect(session.pauseActive()).toBe(true);
+    expect(element.pause).toHaveBeenCalledTimes(2);
+    expect(session.getSnapshot(mediaIdentity)?.playIntent).toBe(false);
+    expect(element.play).not.toHaveBeenCalled();
+  });
+
+  it("ignores stale lower revisions and ordinary detach without clearing a still-valid owner", () => {
+    const mediaIdentity = identity("chat", "message", "file");
+    const firstElement = videoElement();
+    const first = session.attach(mediaIdentity, firstElement);
+    session.activate(first);
+    session.update(first, {
+      currentTime: 40,
+      duration: 100,
+      status: "playing",
+      playIntent: true,
+    });
+    const acceptedRevision = session.issueRevision();
+    expect(
+      session.update(
+        first,
+        { currentTime: 41, duration: 100, status: "playing", playIntent: true },
+        acceptedRevision,
+      ),
+    ).toBe(true);
+    expect(
+      session.update(
+        first,
+        { currentTime: 1, duration: 100, status: "paused", playIntent: false },
+        acceptedRevision - 1,
+      ),
+    ).toBe(false);
+    expect(session.getSnapshot(mediaIdentity)?.currentTime).toBe(41);
+
+    session.detach(first);
+    expect(session.getSnapshot(mediaIdentity)).toMatchObject({
+      currentTime: 41,
+      duration: 100,
+      playIntent: true,
+    });
+
+    const replacement = videoElement();
+    const second = session.attach(mediaIdentity, replacement);
+    expect(second.snapshot.currentTime).toBe(41);
+    expect(replacement.currentTime).toBe(41);
+    expect(session.getSnapshot()?.identity).toEqual(mediaIdentity);
+  });
+});
