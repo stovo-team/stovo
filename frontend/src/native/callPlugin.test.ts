@@ -162,4 +162,88 @@ describe("native call PiP bridge", () => {
     const cleanup = await addPictureInPictureActionListener(vi.fn());
     expect(() => cleanup()).not.toThrow();
   });
+
+  it("forwards call-priority PiP snapshots and never exposes private media fields on the bridge", async () => {
+    const callOwned: PictureInPictureState = {
+      active: true,
+      supported: true,
+      eligible: true,
+      owner: "call",
+      requestedOwner: "call",
+      activeOwner: "call",
+      callActive: true,
+      video: true,
+      chatId: "call-chat",
+      sessionId: "call-session",
+      acceptedRevision: 9,
+      videoState: { ...video, playing: false },
+      reason: "call-priority",
+    };
+    const audioCallBlocked: PictureInPictureState = {
+      ...callOwned,
+      video: false,
+      owner: "none",
+      requestedOwner: "none",
+      activeOwner: "none",
+      eligible: false,
+      reason: "audio-call",
+    };
+    nativePlugin.setActiveCallState.mockResolvedValueOnce(callOwned);
+    nativePlugin.setActiveCallState.mockResolvedValueOnce(audioCallBlocked);
+    nativePlugin.setActiveVideoState.mockResolvedValue({
+      ...videoPiPState,
+      callActive: false,
+      owner: "video",
+      videoState: { ...video, playing: false },
+    });
+
+    const { setNativeActiveCallState } = await import("./callPlugin");
+    expect(await setNativeActiveCallState({
+      active: true,
+      video: true,
+      chatId: "call-chat",
+      sessionId: "call-session",
+    })).toMatchObject({ owner: "call", callActive: true, video: true });
+    expect(await setNativeActiveCallState({
+      active: true,
+      video: false,
+      chatId: "call-chat",
+      sessionId: "call-session",
+    })).toMatchObject({ owner: "none", callActive: true, video: false, eligible: false });
+
+    const pausedRestore = await setNativeActiveVideoState({ ...video, playing: false });
+    expect(pausedRestore?.videoState?.playing).toBe(false);
+    expect(JSON.stringify(pausedRestore)).not.toMatch(/token|sourceUrl|Authorization|blob:/i);
+    expect(JSON.stringify(nativePlugin.setActiveCallState.mock.calls)).not.toMatch(
+      /token|sourceUrl|Authorization|blob:/i,
+    );
+  });
+
+  it("ignores incomplete, non-finite, and unknown action payloads without invoking the listener", async () => {
+    let nativeListener: ((event: PictureInPictureActionEvent) => void) | undefined;
+    nativePlugin.addListener.mockImplementation(
+      async (_name: string, listener: (event: PictureInPictureActionEvent) => void) => {
+        nativeListener = listener;
+        return { remove: vi.fn().mockResolvedValue(undefined) };
+      },
+    );
+    const onAction = vi.fn();
+    await addPictureInPictureActionListener(onAction);
+
+    nativeListener?.({ action: "play", videoState: video });
+    nativeListener?.({ action: "seek-to-end" as PictureInPictureActionEvent["action"], videoState: video });
+    nativeListener?.({
+      action: "pause",
+      videoState: {
+        ...video,
+        positionSeconds: Number.NaN,
+        durationSeconds: Number.POSITIVE_INFINITY,
+      },
+    });
+    nativeListener?.(undefined as unknown as PictureInPictureActionEvent);
+
+    expect(onAction).toHaveBeenCalledTimes(2);
+    expect(onAction).toHaveBeenNthCalledWith(1, { action: "play", videoState: video });
+    expect(onAction.mock.calls[1][0].action).toBe("pause");
+  });
 });
