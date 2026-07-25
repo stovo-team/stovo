@@ -210,27 +210,52 @@ describe("Phase 27 video ownership against audio and call gates", () => {
 
   it("awaits audio pause before a user or PiP-originated play leaves one active owner", async () => {
     const { AudioPlaybackSession } = await import("./audioPlaybackSession");
+    type AudioSnapshot = {
+      identity: { chatId: string; messageId: string; fileId: string } | null;
+      title: string;
+      position: number;
+      duration: number;
+      bufferedPosition: number;
+      status:
+        | "idle"
+        | "loading"
+        | "ready"
+        | "playing"
+        | "paused"
+        | "buffering"
+        | "suppressed"
+        | "ended"
+        | "error"
+        | "authorization-required";
+      playWhenReady: boolean;
+      isPlaying: boolean;
+      suppressionReason: "call" | "video" | "focus" | null;
+      canSeek: boolean;
+      error: null;
+      revision: number;
+      platform: "web";
+    };
     const pauseOrder: string[] = [];
-    let audioSnapshot = {
-      identity: null as { chatId: string; messageId: string; fileId: string } | null,
+    let audioSnapshot: AudioSnapshot = {
+      identity: null,
       title: "",
       position: 0,
       duration: 0,
       bufferedPosition: 0,
-      status: "idle" as const,
+      status: "idle",
       playWhenReady: false,
       isPlaying: false,
-      suppressionReason: null as "call" | "video" | "focus" | null,
+      suppressionReason: null,
       canSeek: false,
       error: null,
       revision: 0,
-      platform: "web" as const,
+      platform: "web",
     };
-    const listeners = new Set<(snapshot: typeof audioSnapshot) => void>();
+    const listeners = new Set<(snapshot: AudioSnapshot) => void>();
     const audioBackend = {
       connect: vi.fn(async () => undefined),
       getSnapshot: vi.fn(() => audioSnapshot),
-      subscribe: vi.fn((listener: (snapshot: typeof audioSnapshot) => void) => {
+      subscribe: vi.fn((listener: (snapshot: AudioSnapshot) => void) => {
         listeners.add(listener);
         return () => listeners.delete(listener);
       }),
