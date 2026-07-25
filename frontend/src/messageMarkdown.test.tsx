@@ -446,4 +446,58 @@ describe("MessageMarkdown", () => {
       expect(renderMessage(sample).textContent).toBe(sample);
     }
   });
+
+  it("keeps raw HTML and rejected links inert beside legacy reply, emoji, and single-character text", () => {
+    const onClick = vi.fn();
+    const onPointerDown = vi.fn();
+    const onKeyDown = vi.fn();
+    const replyStyle = "> earlier note";
+    const source =
+      `${replyStyle}\n` +
+      `<script>alert(1)</script> [run](javascript:alert(1))\n` +
+      `x\n` +
+      `\ud83d\ude80 family`;
+
+    const container = renderMessage(source, { onClick, onPointerDown, onKeyDown });
+
+    expect(container.querySelector("script, img, a")).toBeNull();
+    expect(container.textContent).toBe(source);
+    expect(parseStovoMarkdown(source).every((node) =>
+      node.type === "text" ||
+      (node.type !== "link" && sourceText([node]).length >= 0)
+    )).toBe(true);
+    expect(collectNodes(parseStovoMarkdown(source), "link")).toEqual([]);
+    expect(container.textContent).toContain(replyStyle);
+    expect(container.textContent).toContain("x");
+    expect(container.textContent).toContain("\ud83d\ude80 family");
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onPointerDown).not.toHaveBeenCalled();
+    expect(onKeyDown).not.toHaveBeenCalled();
+  });
+
+  it("keeps canonical Markdown available for editing while spoilers stay isolated until explicit activation", () => {
+    const canonical = "reply **bold** _italic_ ||opaque-id-7f3a||";
+    const onClick = vi.fn();
+    const onPointerDown = vi.fn();
+    const onKeyDown = vi.fn();
+    const container = renderMessage(canonical, { onClick, onPointerDown, onKeyDown });
+    const spoiler = container.querySelector("button.message-spoiler");
+
+    expect(sourceText(parseStovoMarkdown(canonical))).toBe("reply bold italic opaque-id-7f3a");
+    expect(container.querySelector("strong")?.textContent).toBe("bold");
+    expect(container.querySelector("em")?.textContent).toBe("italic");
+    expect(spoiler?.getAttribute("aria-expanded")).toBe("false");
+    expect(spoiler?.classList.contains("is-revealed")).toBe(false);
+
+    act(() => {
+      spoiler?.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      spoiler?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+
+    expect(spoiler?.getAttribute("aria-expanded")).toBe("true");
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onPointerDown).not.toHaveBeenCalled();
+    expect(onKeyDown).not.toHaveBeenCalled();
+    expect(canonical).toContain("||opaque-id-7f3a||");
+  });
 });
