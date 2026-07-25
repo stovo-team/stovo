@@ -274,6 +274,154 @@ describe("AudioPlaybackSession", () => {
   });
 });
 
+describe("Phase 27 ordinary-media ownership handoffs", () => {
+  let backend: FakeBackend;
+  let session: AudioPlaybackSession;
+
+  beforeEach(() => {
+    backend = new FakeBackend();
+    session = new AudioPlaybackSession(
+      backend,
+      async (descriptor: AudioDescriptor) => ({
+        url: `blob:${descriptor.identity.fileId}`,
+        objectUrl: true,
+      }),
+    );
+  });
+
+  it("becomes the sole ordinary owner only after video pause-for-audio completes", async () => {
+    const { VideoPlaybackSession } = await import("./videoPlaybackSession");
+    const videoSession = new VideoPlaybackSession();
+    const videoElement = {
+      pause: vi.fn(),
+      play: vi.fn().mockResolvedValue(undefined),
+      currentTime: 18,
+      duration: 90,
+      muted: false,
+    } as unknown as HTMLVideoElement;
+    const registration = videoSession.attach(
+      { chatId: "chat|one", messageId: "message/video", fileId: "file%2Fvideo" },
+      videoElement,
+    );
+    videoSession.activate(registration);
+    videoSession.update(registration, {
+      currentTime: 18,
+      duration: 90,
+      status: "playing",
+      playIntent: true,
+    });
+
+    await session.load(firstDescriptor);
+    expect(videoSession.pauseActive()).toBe(true);
+    backend.emit(
+      backendSnapshot({
+        position: 0,
+        duration: 40,
+        isPlaying: true,
+        playWhenReady: true,
+        status: "playing",
+        revision: 3,
+      }),
+    );
+
+    expect(videoElement.pause).toHaveBeenCalledTimes(1);
+    expect(videoSession.getSnapshot()).toMatchObject({
+      identity: { chatId: "chat|one", messageId: "message/video", fileId: "file%2Fvideo" },
+      currentTime: 18,
+      status: "paused",
+      playIntent: false,
+    });
+    expect(session.getSnapshot()).toMatchObject({
+      identity: firstDescriptor.identity,
+      isPlaying: true,
+      status: "playing",
+    });
+    expect(backend.play).not.toHaveBeenCalled();
+  });
+
+  it("accepts system-originated playing state without auto-resuming after call or video interruption ends", async () => {
+    await session.load(firstDescriptor);
+    backend.emit(
+      backendSnapshot({
+        position: 27,
+        duration: 80,
+        isPlaying: true,
+        playWhenReady: true,
+        status: "playing",
+        revision: 5,
+      }),
+    );
+
+    await session.pauseForVideo();
+    expect(session.getSnapshot()).toMatchObject({
+      position: 27,
+      suppressionReason: "video",
+      playWhenReady: false,
+      isPlaying: false,
+    });
+
+    backend.emit(
+      backendSnapshot({
+        position: 27,
+        duration: 80,
+        isPlaying: false,
+        playWhenReady: false,
+        status: "paused",
+        revision: 6,
+      }),
+    );
+    expect(backend.play).not.toHaveBeenCalled();
+
+    await session.setCallActive(true);
+    await session.setCallActive(false);
+    expect(session.getSnapshot()).toMatchObject({
+      position: 27,
+      playWhenReady: false,
+      isPlaying: false,
+      suppressionReason: null,
+    });
+    expect(backend.play).not.toHaveBeenCalled();
+  });
+
+  it("applies terminal and account cleanup once while ordinary reconnect preserves ownership", async () => {
+    await session.load(firstDescriptor);
+    backend.emit(
+      backendSnapshot({
+        position: 14,
+        duration: 50,
+        status: "playing",
+        isPlaying: true,
+        playWhenReady: true,
+        revision: 9,
+        platform: "android",
+      }),
+    );
+    backend.load.mockClear();
+    backend.play.mockClear();
+    backend.clear.mockClear();
+
+    await session.connect();
+    await session.connect();
+    expect(backend.connect).toHaveBeenCalledTimes(1);
+    expect(backend.load).not.toHaveBeenCalled();
+    expect(backend.play).not.toHaveBeenCalled();
+    expect(session.getSnapshot()).toMatchObject({
+      identity: firstDescriptor.identity,
+      position: 14,
+    });
+
+    backend.emit(backendSnapshot({ position: 14, duration: 50, revision: 9 }));
+    backend.emit(backendSnapshot({ position: 99, duration: 50, revision: 8 }));
+    expect(session.getSnapshot().position).toBe(14);
+
+    await session.clear("logout");
+    expect(session.getSnapshot()).toMatchObject({ identity: null, status: "idle" });
+    await session.clear("logout");
+    expect(session.getSnapshot()).toMatchObject({ identity: null, status: "idle" });
+    expect(backend.clear).toHaveBeenCalled();
+  });
+});
+
 class FakeAudioElement extends EventTarget {
   src = "";
   currentTime = 0;
