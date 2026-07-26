@@ -168,6 +168,10 @@ class AudioPlaybackService : MediaSessionService() {
                 player.pause()
                 return
             }
+            if (player.playbackState == Player.STATE_ENDED && identity != null) {
+                clearPlayback(AudioPlaybackCleanupReason.EXPLICIT_CLOSE)
+                return
+            }
             publishPlayerState()
         }
 
