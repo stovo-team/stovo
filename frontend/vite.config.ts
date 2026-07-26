@@ -1,4 +1,5 @@
-import { defineConfig } from "vite";
+/// <reference types="vitest/config" />
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 const disableHmr = process.env.VITE_DISABLE_HMR === "true";
@@ -6,7 +7,7 @@ const disableHmr = process.env.VITE_DISABLE_HMR === "true";
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
   },
   server: {

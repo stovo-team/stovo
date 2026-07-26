@@ -113,6 +113,10 @@ import { FormattingToolbar } from "../components/FormattingToolbar";
 import ImageLightbox from "../components/ImageLightbox";
 import { AudioNowPlaying } from "../components/AudioNowPlaying";
 import { AudioPlayer } from "../components/AudioPlayer";
+import {
+  DocumentAttachmentPreview,
+  detectDocumentPreviewKind
+} from "../components/DocumentAttachmentPreview";
 import { VideoPlayer } from "../components/VideoPlayer";
 import VeloLogo from "../components/VeloLogo";
 import {
@@ -842,7 +846,8 @@ function AttachmentCard({
   disabledReason,
   onBeforeAudioPlay,
   compact = false,
-  onOpenImage
+  onOpenImage,
+  videoAutoplay = true
 }: {
   accessToken: string | null;
   chatId: string;
@@ -852,10 +857,12 @@ function AttachmentCard({
   onBeforeAudioPlay?: () => Promise<void>;
   compact?: boolean;
   onOpenImage?: (file: FamilyFile, previewUrl: string) => void;
+  videoAutoplay?: boolean;
 }) {
   const isImage = isImageAttachment(file);
   const isVideo = file.mimeType.startsWith("video/");
   const isAudio = file.mimeType.startsWith("audio/");
+  const documentKind = detectDocumentPreviewKind(file);
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
 
   if (isAudio) {
@@ -882,9 +889,14 @@ function AttachmentCard({
           identity={{ chatId, messageId, fileId: file.id }}
           disabledReason={disabledReason}
           beforePlay={() => audioPlaybackSession.pauseForVideo()}
+          autoplay={videoAutoplay}
         />
       </article>
     );
+  }
+
+  if (documentKind !== "unsupported") {
+    return <DocumentAttachmentPreview accessToken={accessToken} file={file} />;
   }
 
   if (compact && isImage) {
@@ -1260,7 +1272,7 @@ export default function ChatsPage() {
   const navigate = useNavigate();
   const prefersReducedMotion = useReducedMotion();
   const { accessToken, currentUser, authRequest, updateCurrentUser } = useAuth();
-  const { resolvedThemeMode } = useAppearance();
+  const { appearance, resolvedThemeMode } = useAppearance();
   const [family, setFamily] = useState<Family | null>(null);
   const [members, setMembers] = useState<User[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
@@ -5596,6 +5608,7 @@ export default function ChatsPage() {
                                       }}
                                       compact
                                       onOpenImage={openFullViewImage}
+                                      videoAutoplay={appearance.videoAutoplay}
                                     />
                                   );
 
@@ -5616,7 +5629,11 @@ export default function ChatsPage() {
                               <div className="message-bubble-inner">
                                 {hasCaption ? (
                                   <p>
-                                    <MessageMarkdown source={message.content} />
+                                    {appearance.renderMarkdown ? (
+                                      <MessageMarkdown source={message.content} />
+                                    ) : (
+                                      message.content
+                                    )}
                                     {message.isEdited && (
                                       <span className="message-edited-label" aria-label="Edited">
                                         (edited)
@@ -6004,6 +6021,14 @@ export default function ChatsPage() {
                       onPointerUp={updateComposerFormattingSelection}
                       onScroll={updateComposerFormattingSelection}
                       onSelect={updateComposerFormattingSelection}
+                      onContextMenu={(event) => {
+                        const textarea = event.currentTarget;
+                        if (textarea.selectionStart !== textarea.selectionEnd) {
+                          // Prefer the Telegram-style formatting toolbar over the OS menu.
+                          event.preventDefault();
+                          updateComposerFormattingSelection();
+                        }
+                      }}
                     />
                     <FormattingToolbar
                       selection={composerFormattingSelectionRef.current}

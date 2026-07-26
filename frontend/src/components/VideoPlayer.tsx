@@ -5,6 +5,7 @@ import {
   Play,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import {
   useCallback,
@@ -12,8 +13,10 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
   type SyntheticEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { downloadFileBlob, type FamilyFile } from "../api/files";
 import {
@@ -29,6 +32,8 @@ export interface VideoPlayerProps {
   identity: VideoIdentity;
   disabledReason?: string;
   beforePlay?: () => void | Promise<void>;
+  /** Telegram-style muted inline autoplay. Defaults to true. */
+  autoplay?: boolean;
 }
 
 function isFiniteTime(value: number): boolean {
@@ -68,20 +73,40 @@ function stopPropagation(event: SyntheticEvent): void {
   event.stopPropagation();
 }
 
+function orientationStyle(width: number, height: number): CSSProperties {
+  if (!(width > 0 && height > 0)) {
+    return { aspectRatio: "16 / 9" };
+  }
+  const ratio = width / height;
+  const isPortrait = height > width;
+  return {
+    aspectRatio: `${width} / ${height}`,
+    maxWidth: isPortrait ? "min(280px, 72vw)" : "100%",
+    maxHeight: isPortrait ? "min(72vh, 520px)" : "min(56vh, 420px)",
+    width: isPortrait ? undefined : "100%",
+    ["--video-aspect-ratio" as string]: String(ratio),
+  };
+}
+
 export function VideoPlayer({
   file,
   accessToken,
   identity,
   disabledReason,
   beforePlay,
+  autoplay = true,
 }: VideoPlayerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const expandedVideoRef = useRef<HTMLVideoElement>(null);
   const registrationRef = useRef<VideoPlaybackRegistration | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [localError, setLocalError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
+  const autoplayEnabled = autoplay;
 
   const getOwnSnapshot = useCallback(
     () => videoPlaybackSession.getSnapshot(identity),
@@ -101,8 +126,9 @@ export function VideoPlayer({
   const isPlaying = ownSnapshot?.status === "playing" || Boolean(ownSnapshot?.playIntent);
   const currentTime = ownSnapshot?.currentTime ?? 0;
   const duration = ownSnapshot?.duration ?? 0;
-  const muted = ownSnapshot?.muted ?? false;
+  const muted = ownSnapshot?.muted ?? autoplayEnabled;
   const error = localError ?? ownSnapshot?.error ?? null;
+  const remaining = Math.max(0, duration - currentTime);
 
   const updateSession = useCallback(
     (update: Parameters<typeof videoPlaybackSession.update>[1]) => {
@@ -126,11 +152,15 @@ export function VideoPlayer({
     const registration = videoPlaybackSession.attach(identity, element);
     registrationRef.current = registration;
     setLocalError(registration.snapshot.error);
+    // Prefer muted for Telegram-style inline autoplay.
+    if (autoplayEnabled) {
+      videoPlaybackSession.performAction(registration, { type: "mute", muted: true });
+    }
     return () => {
       videoPlaybackSession.detach(registration);
       if (registrationRef.current?.token === registration.token) registrationRef.current = null;
     };
-  }, [identity.chatId, identity.fileId, identity.messageId]);
+  }, [autoplayEnabled, identity.chatId, identity.fileId, identity.messageId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +168,7 @@ export function VideoPlayer({
     setSourceUrl(null);
     setLocalError(null);
     setIsLoading(true);
+    setVideoSize({ width: 0, height: 0 });
 
     const invalid = validVideoSource(file, accessToken, identity);
     if (invalid) {
@@ -210,7 +241,7 @@ export function VideoPlayer({
     }
   }, [disabledReason]);
 
-  const play = useCallback(async () => {
+  const play = useCallback(async (opts?: { unmuted?: boolean }) => {
     const registration = registrationRef.current;
     const element = videoRef.current;
     if (!registration || !element || disabledReason || !sourceUrl) return;
@@ -220,6 +251,9 @@ export function VideoPlayer({
     } catch {
       reportFailure("Playback could not start");
       return;
+    }
+    if (opts?.unmuted) {
+      videoPlaybackSession.performAction(registration, { type: "mute", muted: false });
     }
     if (!videoPlaybackSession.performAction(registration, { type: "play" })) return;
     try {
@@ -234,10 +268,14 @@ export function VideoPlayer({
     if (registration) videoPlaybackSession.performAction(registration, { type: "pause" });
   }, []);
 
-  const handleMetadata = useCallback(() => {
-    const element = videoRef.current;
+  const handleMetadata = useCallback((element: HTMLVideoElement) => {
     const registration = registrationRef.current;
-    if (!element || !registration) return;
+    if (!registration) return;
+    const width = element.videoWidth || 0;
+    const height = element.videoHeight || 0;
+    if (width > 0 && height > 0) {
+      setVideoSize({ width, height });
+    }
     const snapshot = videoPlaybackSession.getSnapshot(identity);
     if (snapshot) {
       try {
@@ -248,6 +286,8 @@ export function VideoPlayer({
         // The decoder may not expose a seekable range yet.
       }
       element.muted = snapshot.muted;
+    } else if (autoplayEnabled) {
+      element.muted = true;
     }
     updateSession({
       duration: element.duration,
@@ -258,8 +298,27 @@ export function VideoPlayer({
     });
     setIsLoading(false);
     setLocalError(null);
-    if (snapshot?.playIntent && !disabledReason) void play();
-  }, [disabledReason, identity, play, updateSession]);
+    if (snapshot?.playIntent && !disabledReason) {
+      void play();
+      return;
+    }
+    if (autoplayEnabled && !disabledReason && !expanded) {
+      void play();
+    }
+  }, [autoplayEnabled, disabledReason, expanded, identity, play, updateSession]);
+
+  const openExpanded = useCallback(() => {
+    setExpanded(true);
+    void play({ unmuted: true });
+  }, [play]);
+
+  const closeExpanded = useCallback(() => {
+    setExpanded(false);
+    const registration = registrationRef.current;
+    if (registration && autoplayEnabled) {
+      videoPlaybackSession.performAction(registration, { type: "mute", muted: true });
+    }
+  }, [autoplayEnabled]);
 
   const toggleFullscreen = useCallback(async () => {
     const root = rootRef.current;
@@ -277,119 +336,275 @@ export function VideoPlayer({
     }
   }, [reportFailure]);
 
+  const frameStyle = orientationStyle(videoSize.width, videoSize.height);
+  const compact = autoplayEnabled && !expanded;
+
+  const videoNode = (
+    <video
+      ref={videoRef}
+      src={sourceUrl ?? undefined}
+      preload="metadata"
+      playsInline
+      controls={false}
+      muted={muted}
+      loop={compact && autoplayEnabled}
+      onLoadStart={() => {
+        setIsLoading(true);
+        updateSession({ status: "loading" });
+      }}
+      onLoadedMetadata={(event) => handleMetadata(event.currentTarget)}
+      onDurationChange={(event) => updateSession({ duration: event.currentTarget.duration })}
+      onTimeUpdate={(event) => updateSession({ currentTime: event.currentTarget.currentTime })}
+      onWaiting={() => updateSession({ status: "waiting", playIntent: true })}
+      onPlaying={() => {
+        setIsLoading(false);
+        setLocalError(null);
+        updateSession({ status: "playing", playIntent: true, error: null });
+      }}
+      onPause={() => updateSession({ status: "paused", playIntent: false })}
+      onEnded={() => updateSession({ status: "ended", playIntent: false })}
+      onError={() => reportFailure("Video could not be decoded")}
+    />
+  );
+
   return (
-    <div
-      ref={rootRef}
-      className={`video-player${isSessionActive ? " is-session-active" : ""}`}
-      data-session-active={isSessionActive ? "true" : "false"}
-      data-video-chat-id={identity.chatId}
-      data-video-message-id={identity.messageId}
-      data-video-file-id={identity.fileId}
-      onClick={stopPropagation}
-      onPointerDown={stopPropagation}
-    >
-      <video
-        ref={videoRef}
-        src={sourceUrl ?? undefined}
-        preload="metadata"
-        playsInline
-        controls={false}
-        muted={muted}
-        onLoadStart={() => {
-          setIsLoading(true);
-          updateSession({ status: "loading" });
-        }}
-        onLoadedMetadata={handleMetadata}
-        onDurationChange={(event) => updateSession({ duration: event.currentTarget.duration })}
-        onTimeUpdate={(event) => updateSession({ currentTime: event.currentTarget.currentTime })}
-        onWaiting={() => updateSession({ status: "waiting", playIntent: true })}
-        onPlaying={() => {
-          setIsLoading(false);
-          setLocalError(null);
-          updateSession({ status: "playing", playIntent: true, error: null });
-        }}
-        onPause={() => updateSession({ status: "paused", playIntent: false })}
-        onEnded={() => updateSession({ status: "ended", playIntent: false })}
-        onError={() => reportFailure("Video could not be decoded")}
-      />
-
-      {isLoading && !error && !disabledReason && (
-        <div className="video-player-status" role="status" aria-live="polite">Loading video…</div>
-      )}
-      {disabledReason && (
-        <div className="video-player-status" role="status">{disabledReason}</div>
-      )}
-      {error && <div className="video-player-error" role="alert">{error}</div>}
-
+    <>
       <div
-        className="video-player-controls"
-        aria-label="Video controls"
-        onClick={stopPropagation}
+        ref={rootRef}
+        className={`video-player${isSessionActive ? " is-session-active" : ""}${compact ? " is-compact" : ""}${videoSize.height > videoSize.width ? " is-portrait" : " is-landscape"}`}
+        data-session-active={isSessionActive ? "true" : "false"}
+        data-video-chat-id={identity.chatId}
+        data-video-message-id={identity.messageId}
+        data-video-file-id={identity.fileId}
+        style={frameStyle}
+        onClick={(event) => {
+          stopPropagation(event);
+          if (compact && sourceUrl && !disabledReason && !error) openExpanded();
+        }}
         onPointerDown={stopPropagation}
       >
-        <button
-          type="button"
-          data-control="play-pause"
-          aria-label={isPlaying ? "Pause video" : "Play video"}
-          title={isPlaying ? "Pause video" : "Play video"}
-          disabled={Boolean(disabledReason) || !sourceUrl}
-          onClick={() => { if (isPlaying) pause(); else void play(); }}
-        >
-          {isPlaying
-            ? <Pause size={20} aria-hidden="true" />
-            : <Play size={20} aria-hidden="true" />}
-        </button>
-        <input
-          type="range"
-          data-control="seek"
-          aria-label="Seek video"
-          min={0}
-          max={duration > 0 ? duration : 0}
-          step="any"
-          value={Math.min(currentTime, duration > 0 ? duration : currentTime)}
-          disabled={duration <= 0 || Boolean(disabledReason)}
-          onChange={(event) => {
-            const registration = registrationRef.current;
-            if (registration) {
-              videoPlaybackSession.performAction(registration, {
-                type: "seek",
-                currentTime: Number(event.currentTarget.value),
-              });
-            }
-          }}
-        />
-        <output data-control="time" aria-label="Video time">
-          {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
-        </output>
-        <button
-          type="button"
-          data-control="mute"
-          aria-label={muted ? "Unmute video" : "Mute video"}
-          title={muted ? "Unmute video" : "Mute video"}
-          disabled={Boolean(disabledReason)}
-          onClick={() => {
-            const registration = registrationRef.current;
-            if (registration) {
-              videoPlaybackSession.performAction(registration, { type: "mute", muted: !muted });
-            }
-          }}
-        >
-          {muted
-            ? <VolumeX size={20} aria-hidden="true" />
-            : <Volume2 size={20} aria-hidden="true" />}
-        </button>
-        <button
-          type="button"
-          data-control="fullscreen"
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-          onClick={() => void toggleFullscreen()}
-        >
-          {isFullscreen
-            ? <Minimize2 size={20} aria-hidden="true" />
-            : <Maximize2 size={20} aria-hidden="true" />}
-        </button>
+        {videoNode}
+
+        {isLoading && !error && !disabledReason && (
+          <div className="video-player-status" role="status" aria-live="polite">Loading video…</div>
+        )}
+        {disabledReason && (
+          <div className="video-player-status" role="status">{disabledReason}</div>
+        )}
+        {error && <div className="video-player-error" role="alert">{error}</div>}
+
+        {compact ? (
+          <div className="video-player-compact-chrome" aria-hidden={Boolean(error || disabledReason)}>
+            {!isPlaying && !isLoading && !error && (
+              <button
+                type="button"
+                className="video-player-play-overlay"
+                aria-label="Play video"
+                title="Play video"
+                disabled={Boolean(disabledReason) || !sourceUrl}
+                onClick={(event) => {
+                  stopPropagation(event);
+                  openExpanded();
+                }}
+              >
+                <Play size={28} aria-hidden="true" />
+              </button>
+            )}
+            <output className="video-player-compact-time" aria-label="Video time">
+              {duration > 0 ? formatVideoTime(remaining || duration) : formatVideoTime(0)}
+            </output>
+          </div>
+        ) : (
+          <div
+            className="video-player-controls"
+            aria-label="Video controls"
+            onClick={stopPropagation}
+            onPointerDown={stopPropagation}
+          >
+            <button
+              type="button"
+              data-control="play-pause"
+              aria-label={isPlaying ? "Pause video" : "Play video"}
+              title={isPlaying ? "Pause video" : "Play video"}
+              disabled={Boolean(disabledReason) || !sourceUrl}
+              onClick={() => { if (isPlaying) pause(); else void play({ unmuted: true }); }}
+            >
+              {isPlaying
+                ? <Pause size={20} aria-hidden="true" />
+                : <Play size={20} aria-hidden="true" />}
+            </button>
+            <input
+              type="range"
+              data-control="seek"
+              aria-label="Seek video"
+              min={0}
+              max={duration > 0 ? duration : 0}
+              step="any"
+              value={Math.min(currentTime, duration > 0 ? duration : currentTime)}
+              disabled={duration <= 0 || Boolean(disabledReason)}
+              onChange={(event) => {
+                const registration = registrationRef.current;
+                if (registration) {
+                  videoPlaybackSession.performAction(registration, {
+                    type: "seek",
+                    currentTime: Number(event.currentTarget.value),
+                  });
+                }
+              }}
+            />
+            <output data-control="time" aria-label="Video time">
+              {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+            </output>
+            <button
+              type="button"
+              data-control="mute"
+              aria-label={muted ? "Unmute video" : "Mute video"}
+              title={muted ? "Unmute video" : "Mute video"}
+              disabled={Boolean(disabledReason)}
+              onClick={() => {
+                const registration = registrationRef.current;
+                if (registration) {
+                  videoPlaybackSession.performAction(registration, { type: "mute", muted: !muted });
+                }
+              }}
+            >
+              {muted
+                ? <VolumeX size={20} aria-hidden="true" />
+                : <Volume2 size={20} aria-hidden="true" />}
+            </button>
+            <button
+              type="button"
+              data-control="fullscreen"
+              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              onClick={() => void toggleFullscreen()}
+            >
+              {isFullscreen
+                ? <Minimize2 size={20} aria-hidden="true" />
+                : <Maximize2 size={20} aria-hidden="true" />}
+            </button>
+          </div>
+        )}
       </div>
-    </div>
+
+      {expanded && typeof document !== "undefined"
+        ? createPortal(
+          <div
+            className="video-player-lightbox"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Video player"
+            onClick={closeExpanded}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") closeExpanded();
+            }}
+          >
+            <div
+              className={`video-player video-player-expanded${videoSize.height > videoSize.width ? " is-portrait" : " is-landscape"}`}
+              style={orientationStyle(videoSize.width, videoSize.height)}
+              onClick={stopPropagation}
+            >
+              <video
+                ref={expandedVideoRef}
+                src={sourceUrl ?? undefined}
+                preload="auto"
+                playsInline
+                controls={false}
+                muted={muted}
+                autoPlay
+                onLoadedMetadata={(event) => {
+                  const el = event.currentTarget;
+                  try {
+                    el.currentTime = currentTime;
+                  } catch {
+                    // Seek may fail before ranges are ready.
+                  }
+                  el.muted = muted;
+                  void el.play().catch(() => undefined);
+                }}
+                onTimeUpdate={(event) => {
+                  const registration = registrationRef.current;
+                  if (registration) {
+                    videoPlaybackSession.performAction(registration, {
+                      type: "seek",
+                      currentTime: event.currentTarget.currentTime,
+                    });
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="video-player-lightbox-close"
+                aria-label="Close video"
+                title="Close video"
+                onClick={closeExpanded}
+              >
+                <X size={20} aria-hidden="true" />
+              </button>
+              <div className="video-player-controls" aria-label="Video controls">
+                <button
+                  type="button"
+                  data-control="play-pause"
+                  aria-label={isPlaying ? "Pause video" : "Play video"}
+                  onClick={() => {
+                    const el = expandedVideoRef.current;
+                    if (!el) return;
+                    if (el.paused) void el.play();
+                    else el.pause();
+                  }}
+                >
+                  {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                </button>
+                <input
+                  type="range"
+                  data-control="seek"
+                  aria-label="Seek video"
+                  min={0}
+                  max={duration > 0 ? duration : 0}
+                  step="any"
+                  value={Math.min(currentTime, duration > 0 ? duration : currentTime)}
+                  onChange={(event) => {
+                    const next = Number(event.currentTarget.value);
+                    const el = expandedVideoRef.current;
+                    if (el) el.currentTime = next;
+                    const registration = registrationRef.current;
+                    if (registration) {
+                      videoPlaybackSession.performAction(registration, {
+                        type: "seek",
+                        currentTime: next,
+                      });
+                    }
+                  }}
+                />
+                <output data-control="time" aria-label="Video time">
+                  {formatVideoTime(currentTime)} / {formatVideoTime(duration)}
+                </output>
+                <button
+                  type="button"
+                  data-control="mute"
+                  aria-label={muted ? "Unmute video" : "Mute video"}
+                  onClick={() => {
+                    const registration = registrationRef.current;
+                    const nextMuted = !muted;
+                    if (registration) {
+                      videoPlaybackSession.performAction(registration, {
+                        type: "mute",
+                        muted: nextMuted,
+                      });
+                    }
+                    if (expandedVideoRef.current) {
+                      expandedVideoRef.current.muted = nextMuted;
+                    }
+                  }}
+                >
+                  {muted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )
+        : null}
+    </>
   );
 }

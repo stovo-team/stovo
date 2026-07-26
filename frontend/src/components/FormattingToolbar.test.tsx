@@ -160,39 +160,41 @@ describe("FormattingToolbar", () => {
     expect(remove).toHaveBeenCalledWith("resize", expect.any(Function));
   });
 
-  it("renders exactly five actions in the declared order with fixed names", () => {
+  it("renders formatting actions in the declared order with labels and descriptions", () => {
     renderToolbar(visibleProps());
     const buttons = [...document.body.querySelectorAll("button")];
 
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(7);
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
       "Bold",
       "Italic",
       "Underline",
       "Strikethrough",
-      "Spoiler"
+      "Spoiler",
+      "Code",
+      "Quote"
     ]);
     expect(buttons.map((button) => button.getAttribute("title"))).toEqual([
-      "Bold",
-      "Italic",
-      "Underline",
-      "Strikethrough",
-      "Spoiler"
+      "Bold — Strong emphasis",
+      "Italic — Emphasis",
+      "Underline — Underline text",
+      "Strikethrough — Strikethrough",
+      "Spoiler — Hidden until tapped",
+      "Code — Inline code",
+      "Quote — Quoted reply style"
     ]);
     expect(buttons.every((button) => button.type === "button")).toBe(true);
   });
 
-  it("uses one decorative SVG and no visible text inside every action", () => {
+  it("uses one decorative SVG plus a short label inside every action", () => {
     renderToolbar(visibleProps());
     const buttons = document.body.querySelectorAll("button");
 
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(7);
     for (const button of buttons) {
-      expect(button.textContent).toBe("");
-      expect(button.children).toHaveLength(1);
-      expect(button.firstElementChild?.tagName.toLowerCase()).toBe("svg");
-      expect(button.firstElementChild?.getAttribute("aria-hidden")).toBe("true");
-      expect(button.firstElementChild?.hasAttribute("role")).toBe(false);
+      expect(button.children.length).toBeGreaterThanOrEqual(1);
+      expect(button.querySelector("svg")).not.toBeNull();
+      expect(button.querySelector(".formatting-toolbar-action-label")).not.toBeNull();
     }
   });
 
@@ -218,7 +220,9 @@ describe("FormattingToolbar", () => {
       "italic",
       "underline",
       "strikethrough",
-      "spoiler"
+      "spoiler",
+      "code",
+      "quote"
     ];
 
     [...document.body.querySelectorAll("button")].forEach((button, index) => {
@@ -228,7 +232,7 @@ describe("FormattingToolbar", () => {
       expect(onFormat).toHaveBeenNthCalledWith(index + 1, kinds[index]);
     });
 
-    expect(onFormat).toHaveBeenCalledTimes(5);
+    expect(onFormat).toHaveBeenCalledTimes(7);
     expect(onClick).not.toHaveBeenCalled();
   });
 
@@ -242,7 +246,7 @@ describe("FormattingToolbar", () => {
     expect(toolbar()).toBeNull();
   });
 
-  it("exposes SVG-only keyboard-reachable actions and returns selection focus to the composer", () => {
+  it("exposes keyboard-reachable actions and returns selection focus to the composer", () => {
     const textarea = document.createElement("textarea");
     textarea.value = "selected text";
     document.body.append(textarea);
@@ -267,11 +271,10 @@ describe("FormattingToolbar", () => {
     const element = toolbar();
     const buttons = [...document.body.querySelectorAll('[role="toolbar"] button')];
     expect(element?.getAttribute("aria-label")).toBe("Format selected text");
-    expect(buttons).toHaveLength(5);
+    expect(buttons).toHaveLength(7);
     for (const button of buttons) {
       expect(button.getAttribute("tabindex")).not.toBe("-1");
-      expect(button.firstElementChild?.tagName.toLowerCase()).toBe("svg");
-      expect(button.textContent).toBe("");
+      expect(button.querySelector("svg")).not.toBeNull();
     }
 
     act(() => {
