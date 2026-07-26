@@ -482,6 +482,10 @@ export class AudioPlaybackSession {
       error,
       platform,
     });
+    // Dismiss the Android system media session as soon as playback finishes.
+    if (status === "ended" && platform === "android") {
+      void this.clear("close");
+    }
   }
 
   private publish(update: Partial<AudioPlaybackSnapshot>): void {

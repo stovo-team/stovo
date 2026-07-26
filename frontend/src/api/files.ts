@@ -74,8 +74,15 @@ export function createMediaPlaybackToken(accessToken: string, fileId: string) {
   });
 }
 
-export function getMediaPlaybackUrl(fileId: string) {
-  return `${getApiUrl()}/api/media/${encodeURIComponent(fileId)}`;
+export function getMediaPlaybackUrl(fileId: string, token?: string) {
+  const base = `${getApiUrl()}/api/media/${encodeURIComponent(fileId)}`;
+  if (!token) return base;
+  return `${base}?token=${encodeURIComponent(token)}`;
+}
+
+export async function createStreamingMediaUrl(accessToken: string, fileId: string) {
+  const capability = await createMediaPlaybackToken(accessToken, fileId);
+  return getMediaPlaybackUrl(fileId, capability.token);
 }
 
 export function deleteFile(accessToken: string, fileId: string) {

@@ -378,6 +378,20 @@ function AppearanceEditor({
                 onChange={(event) => updateAppearance({ renderMarkdown: event.target.checked })}
               />
             </label>
+            <label className="appearance-toggle-row">
+              <span>
+                <strong>Enter to send</strong>
+                <span className="appearance-toggle-help">
+                  Off: Enter adds a new line, Ctrl/Cmd+Enter sends
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={appearance.sendOnEnter}
+                aria-label="Enter to send"
+                onChange={(event) => updateAppearance({ sendOnEnter: event.target.checked })}
+              />
+            </label>
           </section>
 
           <button

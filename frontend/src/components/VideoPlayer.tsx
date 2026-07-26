@@ -18,7 +18,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import { downloadFileBlob, type FamilyFile } from "../api/files";
+import { downloadFileBlob, type FamilyFile, createStreamingMediaUrl } from "../api/files";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
 import {
   sameVideoIdentity,
@@ -76,16 +76,16 @@ function stopPropagation(event: SyntheticEvent): void {
 
 function orientationStyle(width: number, height: number): CSSProperties {
   if (!(width > 0 && height > 0)) {
-    return { aspectRatio: "16 / 9" };
+    return { aspectRatio: "16 / 9", width: "100%", maxWidth: "100%" };
   }
   const ratio = width / height;
   const isPortrait = height > width;
-  // Match vertical photo bubble sizing: ~300px wide, up to 420px tall.
+  // Always fit the message bubble width; preserve aspect ratio vertically.
   return {
     aspectRatio: `${width} / ${height}`,
-    maxWidth: isPortrait ? "min(300px, 78vw)" : "100%",
+    width: "100%",
+    maxWidth: "100%",
     maxHeight: isPortrait ? "min(420px, 72vh)" : "min(56vh, 420px)",
-    width: isPortrait ? "min(300px, 78vw)" : "100%",
     ["--video-aspect-ratio" as string]: String(ratio),
   };
 }
@@ -180,27 +180,44 @@ export function VideoPlayer({
     }
 
     updateSession({ status: "loading", error: null });
-    void downloadFileBlob(accessToken, file.id)
-      .then((blob) => {
+
+    const cached = peekCachedObjectUrl(file.id);
+    if (cached) {
+      setSourceUrl(cached);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void createStreamingMediaUrl(accessToken, file.id)
+      .then((url) => {
         if (cancelled) return;
-        if (blob.size === 0) {
-          reportFailure("Video source is empty");
-          return;
-        }
-        const url = peekCachedObjectUrl(file.id);
-        if (!url) {
-          reportFailure("Video source is unavailable");
-          return;
-        }
         setSourceUrl(url);
+        void downloadFileBlob(accessToken, file.id).catch(() => undefined);
       })
       .catch(() => {
-        if (!cancelled) reportFailure("Video download failed");
+        if (cancelled) return;
+        void downloadFileBlob(accessToken, file.id)
+          .then((blob) => {
+            if (cancelled) return;
+            if (blob.size === 0) {
+              reportFailure("Video source is empty");
+              return;
+            }
+            const url = peekCachedObjectUrl(file.id);
+            if (!url) {
+              reportFailure("Video source is unavailable");
+              return;
+            }
+            setSourceUrl(url);
+          })
+          .catch(() => {
+            if (!cancelled) reportFailure("Video download failed");
+          });
       });
 
     return () => {
       cancelled = true;
-      // Cached object URLs are owned by mediaBlobCache — do not revoke here.
     };
   }, [
     accessToken,

@@ -2,10 +2,9 @@ import {
   FileSpreadsheet,
   FileText,
   LoaderCircle,
-  Maximize2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
@@ -133,7 +132,27 @@ async function loadTablePreview(file: FamilyFile, blob: Blob): Promise<TablePrev
 async function loadDocxPreview(blob: Blob): Promise<DocxPreview> {
   const mammoth = await import("mammoth");
   const buffer = await blob.arrayBuffer();
-  const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+  const result = await mammoth.convertToHtml(
+    { arrayBuffer: buffer },
+    {
+      styleMap: [
+        "p[style-name='Title'] => h1.docx-title:fresh",
+        "p[style-name='Heading 1'] => h1:fresh",
+        "p[style-name='Heading 2'] => h2:fresh",
+        "p[style-name='Heading 3'] => h3:fresh",
+        "p[style-name='Heading 4'] => h4:fresh",
+        "r[style-name='Strong'] => strong",
+        "p[style-name='Quote'] => blockquote:fresh",
+        "table => table.docx-table:fresh",
+      ],
+      includeDefaultStyleMap: true,
+      convertImage: mammoth.images.imgElement((image) =>
+        image.read("base64").then((imageBuffer) => ({
+          src: `data:${image.contentType};base64,${imageBuffer}`,
+        })),
+      ),
+    },
+  );
   const html = (result.value || "<p>(Empty document)</p>")
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
     .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
@@ -150,6 +169,80 @@ function kindLabel(kind: DocumentPreviewKind): string {
 function KindIcon({ kind }: { kind: DocumentPreviewKind }) {
   if (kind === "table") return <FileSpreadsheet size={18} aria-hidden="true" />;
   return <FileText size={18} aria-hidden="true" />;
+}
+
+function PdfCanvasViewer({ blob }: { blob: Blob }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pageCount, setPageCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const host = hostRef.current;
+    if (!host) return;
+
+    host.replaceChildren();
+    setError(null);
+    setPageCount(0);
+
+    void (async () => {
+      try {
+        const pdfjs = await import("pdfjs-dist");
+        // Vite resolves the worker as a static asset URL.
+        const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
+        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        const data = await blob.arrayBuffer();
+        const doc = await pdfjs.getDocument({ data }).promise;
+        if (cancelled) {
+          await doc.destroy();
+          return;
+        }
+        setPageCount(doc.numPages);
+        const maxPages = Math.min(doc.numPages, 40);
+        for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
+          if (cancelled) break;
+          const page = await doc.getPage(pageNumber);
+          const baseViewport = page.getViewport({ scale: 1 });
+          const width = Math.min(host.clientWidth || 720, 900);
+          const scale = width / baseViewport.width;
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement("canvas");
+          canvas.className = "document-viewer-pdf-page";
+          canvas.width = Math.floor(viewport.width);
+          canvas.height = Math.floor(viewport.height);
+          const context = canvas.getContext("2d");
+          if (!context) continue;
+          await page.render({ canvasContext: context, viewport }).promise;
+          if (!cancelled) host.appendChild(canvas);
+        }
+        if (!cancelled && doc.numPages > maxPages) {
+          const note = document.createElement("p");
+          note.className = "document-preview-truncated";
+          note.textContent = `Showing first ${maxPages} of ${doc.numPages} pages. Save the file for the full PDF.`;
+          host.appendChild(note);
+        }
+        await doc.destroy();
+      } catch {
+        if (!cancelled) setError("PDF couldn’t be rendered on this device.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      host.replaceChildren();
+    };
+  }, [blob]);
+
+  return (
+    <div className="document-viewer-pdf-host">
+      {error && (
+        <div className="document-preview-error" role="alert">
+          {error}
+        </div>
+      )}
+      <div ref={hostRef} className="document-viewer-pdf-pages" data-page-count={pageCount} />
+    </div>
+  );
 }
 
 /** Compact attachment card — opens a full viewer on demand. */
@@ -184,7 +277,6 @@ export function DocumentAttachmentPreview({
               className="document-preview-open"
               onClick={() => setViewerOpen(true)}
             >
-              <Maximize2 size={14} aria-hidden="true" />
               Open
             </button>
             {accessToken && (
@@ -224,7 +316,7 @@ export function DocumentViewerModal({
 }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [docx, setDocx] = useState<DocxPreview | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
 
@@ -232,7 +324,7 @@ export function DocumentViewerModal({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setPdfUrl(null);
+    setPdfBlob(null);
     setDocx(null);
     setTable(null);
 
@@ -240,12 +332,11 @@ export function DocumentViewerModal({
       .then(async (blob) => {
         if (cancelled) return;
         if (kind === "pdf") {
-          const typed =
+          setPdfBlob(
             blob.type === "application/pdf"
               ? blob
-              : new Blob([blob], { type: "application/pdf" });
-          // Prefer a dedicated viewer URL; fall back if cache peek is unavailable.
-          setPdfUrl(URL.createObjectURL(typed));
+              : new Blob([blob], { type: "application/pdf" }),
+          );
           return;
         }
         if (kind === "docx") {
@@ -265,12 +356,6 @@ export function DocumentViewerModal({
       cancelled = true;
     };
   }, [accessToken, file, kind]);
-
-  useEffect(() => {
-    return () => {
-      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
-    };
-  }, [pdfUrl]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -324,13 +409,7 @@ export function DocumentViewerModal({
             </div>
           )}
 
-          {!loading && !error && kind === "pdf" && pdfUrl && (
-            <iframe
-              className="document-viewer-pdf"
-              src={pdfUrl}
-              title={file.originalName}
-            />
-          )}
+          {!loading && !error && kind === "pdf" && pdfBlob && <PdfCanvasViewer blob={pdfBlob} />}
 
           {!loading && !error && kind === "docx" && docx && (
             <div
