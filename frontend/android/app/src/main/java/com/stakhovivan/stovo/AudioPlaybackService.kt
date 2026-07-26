@@ -99,6 +99,8 @@ class AudioPlaybackService : MediaSessionService() {
     private var callActive = false
     private var revision = 0L
     private var released = false
+    /** Suppresses IDLE→LOADING noise while tearing down media after a natural end. */
+    private var suppressPlayerEvents = false
 
     override fun onCreate() {
         super.onCreate()
@@ -164,24 +166,27 @@ class AudioPlaybackService : MediaSessionService() {
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (suppressPlayerEvents) return
             if (playbackState == Player.STATE_ENDED && identity != null) {
-                clearPlayback(AudioPlaybackCleanupReason.EXPLICIT_CLOSE)
+                handlePlaybackEnded()
             }
         }
 
         override fun onEvents(player: Player, events: Player.Events) {
+            if (suppressPlayerEvents) return
             if (callActive && player.playWhenReady) {
                 player.pause()
                 return
             }
             if (player.playbackState == Player.STATE_ENDED && identity != null) {
-                clearPlayback(AudioPlaybackCleanupReason.EXPLICIT_CLOSE)
+                handlePlaybackEnded()
                 return
             }
             publishPlayerState()
         }
 
         override fun onPlayerError(error: PlaybackException) {
+            if (suppressPlayerEvents) return
             credentials.clear()
             publishPlayerState(mapPlaybackError(error))
         }
@@ -324,21 +329,58 @@ class AudioPlaybackService : MediaSessionService() {
         }
     }
 
-    private fun clearPlayback(reason: AudioPlaybackCleanupReason) {
+    /**
+     * Natural end: publish ENDED for in-app replay, tear down the player without
+     * emitting IDLE→LOADING (which left the UI on eternal loading), dismiss the
+     * system media notification, then stop the service so the system player goes away.
+     */
+    private fun handlePlaybackEnded() {
+        if (identity == null) return
+        if (coordinator.snapshot().status == AudioPlaybackStatus.ENDED) return
+
         player.playWhenReady = false
-        player.pause()
-        player.stop()
-        player.clearMediaItems()
-        credentials.clear()
-        resumeStore.clear()
-        coordinator.cleanup(reason)
-        identity = null
-        callActive = false
+        coordinator.naturalEnd()
+        val ended = coordinator.snapshot()
         if (::mediaSession.isInitialized) {
-            mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle())
+            mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle(ended))
         }
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+
+        suppressPlayerEvents = true
+        try {
+            player.pause()
+            player.stop()
+            player.clearMediaItems()
+            credentials.clear()
+            resumeStore.clear()
+            identity = null
+            callActive = false
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        } finally {
+            suppressPlayerEvents = false
+        }
+    }
+
+    private fun clearPlayback(reason: AudioPlaybackCleanupReason) {
+        suppressPlayerEvents = true
+        try {
+            player.playWhenReady = false
+            player.pause()
+            player.stop()
+            player.clearMediaItems()
+            credentials.clear()
+            resumeStore.clear()
+            coordinator.cleanup(reason)
+            identity = null
+            callActive = false
+            if (::mediaSession.isInitialized) {
+                mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle())
+            }
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        } finally {
+            suppressPlayerEvents = false
+        }
     }
 
     private fun snapshotBundle(snapshot: AudioPlaybackSnapshot = coordinator.snapshot()) = Bundle().apply {

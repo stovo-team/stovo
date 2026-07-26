@@ -252,6 +252,36 @@ describe("AudioPlaybackSession", () => {
     expect(backend.clear).toHaveBeenCalledTimes(4);
   });
 
+  it("reloads from the start when play is requested after a natural end", async () => {
+    await session.load(firstDescriptor);
+    backend.emit(
+      backendSnapshot({
+        position: 90,
+        duration: 90,
+        status: "ended",
+        revision: 20,
+        platform: "android",
+      }),
+    );
+    expect(session.getSnapshot()).toMatchObject({
+      identity: firstDescriptor.identity,
+      status: "ended",
+    });
+
+    backend.load.mockClear();
+    backend.play.mockClear();
+    sourceFactory.mockClear();
+    await session.play();
+
+    expect(sourceFactory).toHaveBeenCalledWith(firstDescriptor);
+    expect(backend.load).toHaveBeenCalledWith(
+      firstDescriptor,
+      expect.any(Object),
+      0,
+    );
+    expect(backend.play).toHaveBeenCalledTimes(1);
+  });
+
   it("rehydrates only credential-free metadata in a paused authorization-required state", () => {
     session.restore({
       identity: firstDescriptor.identity,

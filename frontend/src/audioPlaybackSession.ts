@@ -268,8 +268,15 @@ export class AudioPlaybackSession {
 
   async play(): Promise<void> {
     if (!this.descriptor || this.callActive) return;
-    if (this.snapshot.status === "authorization-required") {
-      await this.prepareCurrent(this.snapshot.position);
+    // Authorization and natural-end both need a fresh backend load (Android stops
+    // the media service after ENDED, so seek+play alone hangs on buffering).
+    if (
+      this.snapshot.status === "authorization-required" ||
+      this.snapshot.status === "ended"
+    ) {
+      await this.prepareCurrent(
+        this.snapshot.status === "ended" ? 0 : this.snapshot.position,
+      );
     }
     this.publish({
       playWhenReady: true,
@@ -482,10 +489,6 @@ export class AudioPlaybackSession {
       error,
       platform,
     });
-    // Dismiss the Android system media session as soon as playback finishes.
-    if (status === "ended" && platform === "android") {
-      void this.clear("close");
-    }
   }
 
   private publish(update: Partial<AudioPlaybackSnapshot>): void {
@@ -598,15 +601,29 @@ export class WebAudioPlaybackBackend implements AudioPlaybackBackend {
 
   async play(): Promise<void> {
     if (!this.active || !this.snapshot.identity) return;
+    // HTMLMediaElement.play() is a no-op at the natural end unless we rewind first.
+    if (this.element.ended || this.snapshot.status === "ended") {
+      try {
+        this.element.currentTime = 0;
+      } catch {
+        this.pendingSeek = 0;
+      }
+    }
     this.publish({
       playWhenReady: true,
       isPlaying: false,
       suppressionReason: null,
       status:
-        this.snapshot.status === "ready" || this.snapshot.status === "paused"
+        this.snapshot.status === "ready" ||
+        this.snapshot.status === "paused" ||
+        this.snapshot.status === "ended"
           ? "buffering"
           : this.snapshot.status,
       error: null,
+      position:
+        this.element.ended || this.snapshot.status === "ended"
+          ? 0
+          : this.snapshot.position,
     });
     try {
       await this.element.play();

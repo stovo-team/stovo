@@ -2,13 +2,13 @@ import type React from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ChevronRight,
+  ChevronLeft,
   ClipboardPaste,
   Code2,
   Copy,
+  MoreVertical,
   Quote,
   Scissors,
-  Type,
 } from "lucide-react";
 
 import type {
@@ -84,12 +84,12 @@ export function getFormattingToolbarPlacement(
 }
 
 const formattingActions = [
+  { kind: "spoiler", label: "Spoiler", description: "Hidden until tapped", Icon: IconSpoiler },
   { kind: "bold", label: "Bold", description: "Strong emphasis", Icon: IconBold },
   { kind: "italic", label: "Italic", description: "Emphasis", Icon: IconItalic },
-  { kind: "underline", label: "Underline", description: "Underline text", Icon: IconUnderline },
+  { kind: "code", label: "Mono", description: "Inline code", Icon: Code2 },
   { kind: "strikethrough", label: "Strike", description: "Strikethrough", Icon: IconStrikethrough },
-  { kind: "spoiler", label: "Spoiler", description: "Hidden until tapped", Icon: IconSpoiler },
-  { kind: "code", label: "Code", description: "Inline code", Icon: Code2 },
+  { kind: "underline", label: "Underline", description: "Underline text", Icon: IconUnderline },
   { kind: "quote", label: "Quote", description: "Quoted reply style", Icon: Quote }
 ] as const satisfies ReadonlyArray<{
   kind: FormattingKind;
@@ -164,88 +164,112 @@ export function FormattingToolbar(
       }}
       onClick={(event) => event.stopPropagation()}
     >
-      <button
-        type="button"
-        className="formatting-toolbar-action"
-        aria-label="Cut"
-        title="Cut"
-        onClick={(event) => {
-          event.stopPropagation();
-          onCut?.();
-        }}
-      >
-        <Scissors size={18} aria-hidden="true" />
-        <span className="formatting-toolbar-action-label">Cut</span>
-      </button>
-      <button
-        type="button"
-        className="formatting-toolbar-action"
-        aria-label="Copy"
-        title="Copy"
-        onClick={(event) => {
-          event.stopPropagation();
-          onCopy?.();
-        }}
-      >
-        <Copy size={18} aria-hidden="true" />
-        <span className="formatting-toolbar-action-label">Copy</span>
-      </button>
-      <button
-        type="button"
-        className="formatting-toolbar-action"
-        aria-label="Paste"
-        title="Paste"
-        onClick={(event) => {
-          event.stopPropagation();
-          onPaste?.();
-        }}
-      >
-        <ClipboardPaste size={18} aria-hidden="true" />
-        <span className="formatting-toolbar-action-label">Paste</span>
-      </button>
-
-      <span className="formatting-toolbar-divider" aria-hidden="true" />
-
-      <div className="formatting-toolbar-format">
-        <button
-          type="button"
-          className={`formatting-toolbar-action formatting-toolbar-format-trigger${formatOpen ? " is-active" : ""}`}
-          aria-label="Formatting"
-          aria-expanded={formatOpen}
-          aria-haspopup="menu"
-          title="Formatting"
-          onClick={(event) => {
-            event.stopPropagation();
-            setFormatOpen((open) => !open);
-          }}
-        >
-          <Type size={18} aria-hidden="true" />
-          <span className="formatting-toolbar-action-label">Format</span>
-          <ChevronRight size={14} aria-hidden="true" className="formatting-toolbar-chevron" />
-        </button>
-        {formatOpen && (
-          <div className="formatting-toolbar-submenu" role="menu" aria-label="Formatting options">
-            {formattingActions.map(({ kind, label, description, Icon }) => (
-              <button
-                key={kind}
-                type="button"
-                role="menuitem"
-                className="formatting-toolbar-action formatting-toolbar-submenu-action"
-                aria-label={label}
-                title={`${label} — ${description}`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onFormat(kind);
-                  setFormatOpen(false);
-                }}
-              >
-                <Icon size={18} aria-hidden="true" />
-                <span className="formatting-toolbar-action-label">{label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {!formatOpen ? (
+        <>
+          <button
+            type="button"
+            className="formatting-toolbar-action"
+            aria-label="Cut"
+            title="Cut"
+            onClick={(event) => {
+              event.stopPropagation();
+              onCut?.();
+            }}
+          >
+            <Scissors size={15} aria-hidden="true" />
+            <span className="formatting-toolbar-action-label">Cut</span>
+          </button>
+          <button
+            type="button"
+            className="formatting-toolbar-action"
+            aria-label="Copy"
+            title="Copy"
+            onClick={(event) => {
+              event.stopPropagation();
+              onCopy?.();
+            }}
+          >
+            <Copy size={15} aria-hidden="true" />
+            <span className="formatting-toolbar-action-label">Copy</span>
+          </button>
+          <button
+            type="button"
+            className="formatting-toolbar-action"
+            aria-label="Paste"
+            title="Paste"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPaste?.();
+            }}
+          >
+            <ClipboardPaste size={15} aria-hidden="true" />
+            <span className="formatting-toolbar-action-label">Paste</span>
+          </button>
+          <button
+            type="button"
+            className="formatting-toolbar-action"
+            aria-label="Quote"
+            title="Quote — Quoted reply style"
+            onClick={(event) => {
+              event.stopPropagation();
+              onFormat("quote");
+            }}
+          >
+            <Quote size={15} aria-hidden="true" />
+            <span className="formatting-toolbar-action-label">Quote</span>
+          </button>
+          <span className="formatting-toolbar-divider" aria-hidden="true" />
+          <button
+            type="button"
+            className="formatting-toolbar-action formatting-toolbar-more"
+            aria-label="Formatting"
+            aria-expanded={false}
+            aria-haspopup="menu"
+            title="Formatting"
+            onClick={(event) => {
+              event.stopPropagation();
+              setFormatOpen(true);
+            }}
+          >
+            <MoreVertical size={16} aria-hidden="true" />
+          </button>
+        </>
+      ) : (
+        <div className="formatting-toolbar-submenu" role="menu" aria-label="Formatting options">
+          <button
+            type="button"
+            className="formatting-toolbar-action formatting-toolbar-back"
+            aria-label="Back"
+            title="Back"
+            onClick={(event) => {
+              event.stopPropagation();
+              setFormatOpen(false);
+            }}
+          >
+            <ChevronLeft size={15} aria-hidden="true" />
+            <span className="formatting-toolbar-action-label">Back</span>
+          </button>
+          <span className="formatting-toolbar-divider" aria-hidden="true" />
+          {formattingActions.filter((action) => action.kind !== "quote").map(({ kind, label, description, Icon }) => (
+            <button
+              key={kind}
+              type="button"
+              role="menuitem"
+              className="formatting-toolbar-action"
+              aria-label={label}
+              title={`${label} — ${description}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onFormat(kind);
+                setFormatOpen(false);
+              }}
+            >
+              <Icon size={15} aria-hidden="true" />
+              <span className="formatting-toolbar-action-label">{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>,
     document.body
   );
