@@ -192,6 +192,9 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
       this.publishUnavailable("unavailable");
       return;
     }
+    // Natural end stops the service and resets its revision counter. Accept the
+    // next load's snapshots even when they restart from a low revision.
+    this.acceptedRevision = -1;
     await this.connect();
     if (!source.url?.trim() || !Number.isFinite(position)) {
       this.publishUnavailable("android");

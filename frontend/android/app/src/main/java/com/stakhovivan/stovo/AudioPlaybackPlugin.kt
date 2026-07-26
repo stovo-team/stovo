@@ -249,6 +249,12 @@ class AudioPlaybackPlugin : Plugin() {
 
     private fun emitSnapshot(bundle: Bundle) {
         notifyListeners("stateChanged", snapshotObject(bundle))
+        // Natural end stops the service; drop the stale MediaController so the
+        // next load/play binds a fresh session instead of a dying one (which
+        // left the in-app player on eternal loading).
+        if (bundle.getString(AudioPlaybackService.KEY_STATUS) == "ended") {
+            releaseController()
+        }
     }
 
     private fun snapshotObject(bundle: Bundle): JSObject = JSObject().apply {
