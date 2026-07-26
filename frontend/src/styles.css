@@ -2924,6 +2924,23 @@ h2 {
   text-decoration-thickness: 0.08em;
 }
 
+.message-inline-code {
+  background: color-mix(in oklab, var(--border-default) 55%, transparent);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  padding: 0.1em 0.35em;
+}
+
+.message-quote {
+  border-left: 3px solid var(--accent-primary);
+  color: var(--text-secondary);
+  display: block;
+  margin: 0.2em 0;
+  padding-left: 0.65em;
+  white-space: pre-wrap;
+}
+
 .message-bubble p a {
   color: var(--accent-primary);
   text-decoration: underline;
@@ -3223,7 +3240,7 @@ span.message-spoiler.is-revealed {
 }
 
 .formatting-toolbar {
-  align-items: center;
+  align-items: stretch;
   background: var(--background-secondary);
   border: 1px solid var(--border-default);
   border-radius: 14px;
@@ -3234,9 +3251,9 @@ span.message-spoiler.is-revealed {
   max-width: calc(100vw - 24px);
   overflow-x: auto;
   overscroll-behavior: contain;
-  padding: 4px;
+  padding: 6px;
   scrollbar-width: none;
-  z-index: 80;
+  z-index: 10000;
 }
 
 .formatting-toolbar::-webkit-scrollbar {
@@ -3252,10 +3269,22 @@ span.message-spoiler.is-revealed {
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
-  flex: 0 0 44px;
-  height: 44px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
+  height: auto;
   justify-content: center;
-  padding: 0;
+  min-height: 44px;
+  min-width: 52px;
+  padding: 6px 8px;
+}
+
+.formatting-toolbar-action-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .formatting-toolbar-action:hover {
@@ -3594,17 +3623,96 @@ span.message-spoiler.is-revealed {
 }
 
 .video-player {
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--video-aspect-ratio, 16 / 9);
   background: #000000;
   border: 1px solid color-mix(in oklab, var(--border-default) 76%, #000000);
   border-radius: 16px;
   color: #ffffff;
   isolation: isolate;
   max-width: 100%;
-  min-height: 180px;
+  min-height: 120px;
   overflow: hidden;
   position: relative;
   width: 100%;
+}
+
+.video-player.is-portrait {
+  margin-inline: auto;
+}
+
+.video-player.is-compact .video-player-controls {
+  display: none;
+}
+
+.video-player-compact-chrome {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.video-player-play-overlay {
+  align-items: center;
+  background: rgba(20, 23, 29, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  height: 56px;
+  justify-content: center;
+  left: 50%;
+  pointer-events: auto;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+}
+
+.video-player-compact-time {
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+  bottom: 8px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+  pointer-events: none;
+  position: absolute;
+  right: 8px;
+}
+
+.video-player-lightbox {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.86);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  position: fixed;
+  z-index: 120;
+}
+
+.video-player-expanded {
+  max-height: min(92vh, 900px);
+  max-width: min(96vw, 1100px);
+  width: auto;
+}
+
+.video-player-lightbox-close {
+  align-items: center;
+  background: rgba(20, 23, 29, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  height: 40px;
+  justify-content: center;
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 40px;
+  z-index: 4;
 }
 
 .video-player-media,
@@ -8875,4 +8983,167 @@ span.message-spoiler.is-revealed {
     background: color-mix(in oklab, var(--surface-card) 72%, var(--accent-soft));
     box-shadow: 0 0 0 1px var(--accent-primary);
   }
+}
+
+.appearance-toggle-row {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.appearance-toggle-row strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.appearance-toggle-help {
+  color: var(--text-secondary);
+  display: block;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+.appearance-toggle-row input[type="checkbox"] {
+  accent-color: var(--accent-primary);
+  height: 18px;
+  width: 18px;
+}
+
+.document-preview-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  max-width: min(520px, 100%);
+  overflow: hidden;
+  width: 100%;
+}
+
+.document-preview-header {
+  align-items: center;
+  border-bottom: 1px solid var(--border-default);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  padding: 12px 14px;
+}
+
+.document-preview-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.document-preview-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-preview-copy span,
+.document-preview-status,
+.document-preview-error,
+.document-preview-truncated {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.document-preview-save {
+  background: transparent;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+}
+
+.document-preview-status,
+.document-preview-error {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+.document-preview-error {
+  color: var(--danger);
+}
+
+.document-preview-spinner {
+  animation: video-player-spin 900ms linear infinite;
+}
+
+.document-preview-docx {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  max-height: 280px;
+  overflow: auto;
+  padding: 12px 14px;
+  white-space: normal;
+}
+
+.document-preview-docx p {
+  margin: 0 0 0.65em;
+}
+
+.document-preview-table-wrap {
+  display: grid;
+  gap: 0;
+}
+
+.document-preview-sheet-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px 10px 0;
+}
+
+.document-preview-sheet-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 6px 10px;
+}
+
+.document-preview-sheet-tabs button.is-active {
+  border-bottom-color: var(--accent-primary);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.document-preview-table-scroll {
+  max-height: 280px;
+  overflow: auto;
+  padding: 8px 10px 12px;
+}
+
+.document-preview-table {
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  min-width: 100%;
+}
+
+.document-preview-table th,
+.document-preview-table td {
+  border: 1px solid var(--border-default);
+  max-width: 160px;
+  overflow: hidden;
+  padding: 6px 8px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.document-preview-table th {
+  background: color-mix(in oklab, var(--border-default) 35%, transparent);
+  font-weight: 700;
+}
+
+.document-preview-truncated {
+  margin: 8px 2px 0;
 }
