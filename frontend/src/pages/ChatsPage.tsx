@@ -111,12 +111,15 @@ import AttachmentPickerSheet, {
 } from "../components/AttachmentPickerSheet";
 import { FormattingToolbar } from "../components/FormattingToolbar";
 import ImageLightbox from "../components/ImageLightbox";
-import { AudioNowPlaying } from "../components/AudioNowPlaying";
 import { AudioPlayer } from "../components/AudioPlayer";
 import {
   DocumentAttachmentPreview,
   detectDocumentPreviewKind
 } from "../components/DocumentAttachmentPreview";
+import {
+  MessageEnlargeButton,
+  MessageEnlargeModal
+} from "../components/MessageEnlargeModal";
 import { VideoPlayer } from "../components/VideoPlayer";
 import VeloLogo from "../components/VeloLogo";
 import {
@@ -1012,7 +1015,7 @@ function canPostToChannel(chat: Chat, currentUser: User | null) {
   );
 }
 
-function pendingAttachmentKindLabel(file: FamilyFile) {
+function pendingAttachmentKindLabel(file: { mimeType: string }) {
   if (file.mimeType.startsWith("image/")) {
     return "Image";
   }
@@ -1022,11 +1025,17 @@ function pendingAttachmentKindLabel(file: FamilyFile) {
   if (file.mimeType.startsWith("audio/")) {
     return "Audio";
   }
-  if (file.mimeType === "application/pdf") {
+  if (file.mimeType === "application/pdf" || /\.pdf$/i.test(file.mimeType)) {
     return "PDF";
   }
   return "File";
 }
+
+type PendingLocalAttachment = {
+  localId: string;
+  file: File;
+  previewUrl: string | null;
+};
 
 async function ensureSocketConnected(socket: Socket, timeoutMs = 4000) {
   if (socket.connected) {
@@ -1281,7 +1290,7 @@ export default function ChatsPage() {
   const [composer, setComposer] = useState("");
   const [formattingToolbarAnchor, setFormattingToolbarAnchor] =
     useState<ToolbarAnchor | null>(null);
-  const [pendingAttachments, setPendingAttachments] = useState<FamilyFile[]>([]);
+  const [pendingAttachments, setPendingAttachments] = useState<PendingLocalAttachment[]>([]);
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [chatSearch, setChatSearch] = useState("");
   const [chatFilter, setChatFilter] = useState<ChatFilter>("all");
@@ -1304,6 +1313,7 @@ export default function ChatsPage() {
     previewUrl: string;
   } | null>(null);
   const [isFullViewImageClosing, setIsFullViewImageClosing] = useState(false);
+  const [enlargedMessage, setEnlargedMessage] = useState<Message | null>(null);
   const [messageContextMenu, setMessageContextMenu] = useState<{
     message: Message;
     x: number;
@@ -4094,6 +4104,56 @@ export default function ChatsPage() {
     setFormattingToolbarAnchor(measureTextareaSelectionAnchor(textarea, selection));
   }
 
+  function handleComposerCut() {
+    const textarea = composerInputRef.current;
+    const selection = composerFormattingSelectionRef.current;
+    if (!textarea || !selection || selection.end <= selection.start) return;
+    const selected = composer.slice(selection.start, selection.end);
+    void navigator.clipboard?.writeText(selected).catch(() => undefined);
+    const next =
+      composer.slice(0, selection.start) + composer.slice(selection.end);
+    handleComposerChange(next);
+    requestAnimationFrame(() => {
+      const current = composerInputRef.current;
+      if (!current) return;
+      current.focus();
+      current.setSelectionRange(selection.start, selection.start);
+      clearComposerFormattingSelection();
+    });
+  }
+
+  function handleComposerCopy() {
+    const selection = composerFormattingSelectionRef.current;
+    if (!selection || selection.end <= selection.start) return;
+    const selected = composer.slice(selection.start, selection.end);
+    void navigator.clipboard?.writeText(selected).catch(() => undefined);
+  }
+
+  async function handleComposerPaste() {
+    const textarea = composerInputRef.current;
+    const selection = composerFormattingSelectionRef.current;
+    if (!textarea) return;
+    let pasted = "";
+    try {
+      pasted = await navigator.clipboard.readText();
+    } catch {
+      return;
+    }
+    if (!pasted) return;
+    const start = selection?.start ?? textarea.selectionStart;
+    const end = selection?.end ?? textarea.selectionEnd;
+    const next = composer.slice(0, start) + pasted + composer.slice(end);
+    const caret = start + pasted.length;
+    handleComposerChange(next);
+    requestAnimationFrame(() => {
+      const current = composerInputRef.current;
+      if (!current) return;
+      current.focus();
+      current.setSelectionRange(caret, caret);
+      clearComposerFormattingSelection();
+    });
+  }
+
   function handleComposerFormat(kind: FormattingKind) {
     const textarea = composerInputRef.current;
     const selection = composerFormattingSelectionRef.current;
@@ -4271,33 +4331,33 @@ export default function ChatsPage() {
   }
 
   async function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
-    if (!accessToken) {
-      return;
-    }
-
     const selectedFiles = Array.from(event.target.files ?? []);
     event.target.value = "";
     if (selectedFiles.length === 0) {
       return;
     }
 
-    setIsUploading(true);
-    setError(null);
-    try {
-      const uploaded: FamilyFile[] = [];
-      for (const file of selectedFiles) {
-        uploaded.push(await uploadFile(accessToken, file, selectedChat?.id));
-      }
-      setPendingAttachments((current) => [...current, ...uploaded]);
-    } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Could not upload file");
-    } finally {
-      setIsUploading(false);
-    }
+    // Keep attachments local until send — no server upload on pick.
+    const next: PendingLocalAttachment[] = selectedFiles.map((file) => {
+      const isPreviewable =
+        file.type.startsWith("image/") || file.type.startsWith("video/");
+      return {
+        localId: `local:${crypto.randomUUID()}`,
+        file,
+        previewUrl: isPreviewable ? URL.createObjectURL(file) : null
+      };
+    });
+    setPendingAttachments((current) => [...current, ...next]);
   }
 
-  function removePendingAttachment(fileId: string) {
-    setPendingAttachments((current) => current.filter((file) => file.id !== fileId));
+  function removePendingAttachment(localId: string) {
+    setPendingAttachments((current) => {
+      const removed = current.find((item) => item.localId === localId);
+      if (removed?.previewUrl) {
+        URL.revokeObjectURL(removed.previewUrl);
+      }
+      return current.filter((item) => item.localId !== localId);
+    });
   }
 
   async function handleMessageReaction(message: Message, emoji: string) {
@@ -4852,67 +4912,81 @@ export default function ChatsPage() {
 
     const clientMessageId = createClientMessageId();
     const createdAt = new Date().toISOString();
-    const attachments = pendingAttachments;
+    const localAttachments = pendingAttachments;
     const isChannelThreadMessage = selectedChat.type === "channel" && Boolean(threadRootMessageId);
     const threadRootForSend = isChannelThreadMessage ? threadRootMessageId : null;
     const replyToMessageId = isChannelThreadMessage ? null : replyTarget?.id ?? null;
-    const optimisticMessage: Message = {
-      id: `pending:${clientMessageId}`,
-      chatId: selectedChat.id,
-      senderId: currentUser.id,
-      senderDisplayName: currentUser.displayName,
-      type: inferOptimisticMessageType(attachments, content || null),
-      content: content || null,
-      encryptionProtocol: selectedChat.encryptionProtocol,
-      ciphertext: null,
-      nonce: null,
-      keyVersion: null,
-      encryptionMetadata: null,
-      replyToMessageId,
-      threadRootMessageId: threadRootForSend,
-      messageKind: threadRootForSend ? "thread" : "chat",
-      createdAt,
-      updatedAt: createdAt,
-      deletedAt: null,
-      isEdited: false,
-      forwardedFrom: null,
-      statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
-      reactions: [],
-      attachments,
-      clientMessageId,
-      deliveryState: "sending"
-    };
-    setError(null);
-    applyMessagesForChat(selectedChat.id, (current) => [...current, optimisticMessage]);
-    setChats((current) =>
-      current.map((chat) =>
-        chat.id === selectedChat.id
-          ? {
-              ...applyMessagePreviewToChat(chat, optimisticMessage),
-              unreadCount: 0
-            }
-          : chat
-      )
-    );
-    clearComposerFormattingSelection();
-    setComposer("");
-    resetComposerHeight();
-    setPendingAttachments([]);
-    setReplyTarget(null);
-    if (chatId) {
-      window.localStorage.removeItem(`stovo:draft:${chatId}`);
-    }
-    socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+    const draftContent = content;
 
     try {
       sendInFlightRef.current = true;
       setIsSendingMessage(true);
-      const encrypted = await encryptMessageContent(selectedChat, content || null, currentUser.id);
+      setIsUploading(localAttachments.length > 0);
+      setError(null);
+
+      const uploadedAttachments: FamilyFile[] = [];
+      for (const pending of localAttachments) {
+        uploadedAttachments.push(await uploadFile(accessToken, pending.file, selectedChat.id));
+      }
+      setIsUploading(false);
+
+      clearComposerFormattingSelection();
+      setComposer("");
+      resetComposerHeight();
+      for (const pending of localAttachments) {
+        if (pending.previewUrl) URL.revokeObjectURL(pending.previewUrl);
+      }
+      setPendingAttachments([]);
+      setReplyTarget(null);
+      if (chatId) {
+        window.localStorage.removeItem(`stovo:draft:${chatId}`);
+      }
+      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+
+      const optimisticMessage: Message = {
+        id: `pending:${clientMessageId}`,
+        chatId: selectedChat.id,
+        senderId: currentUser.id,
+        senderDisplayName: currentUser.displayName,
+        type: inferOptimisticMessageType(uploadedAttachments, draftContent || null),
+        content: draftContent || null,
+        encryptionProtocol: selectedChat.encryptionProtocol,
+        ciphertext: null,
+        nonce: null,
+        keyVersion: null,
+        encryptionMetadata: null,
+        replyToMessageId,
+        threadRootMessageId: threadRootForSend,
+        messageKind: threadRootForSend ? "thread" : "chat",
+        createdAt,
+        updatedAt: createdAt,
+        deletedAt: null,
+        isEdited: false,
+        forwardedFrom: null,
+        statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
+        reactions: [],
+        attachments: uploadedAttachments,
+        clientMessageId,
+        deliveryState: "sending"
+      };
+      applyMessagesForChat(selectedChat.id, (current) => [...current, optimisticMessage]);
+      setChats((current) =>
+        current.map((chat) =>
+          chat.id === selectedChat.id
+            ? {
+                ...applyMessagePreviewToChat(chat, optimisticMessage),
+                unreadCount: 0
+              }
+            : chat
+        )
+      );
+
+      const encrypted = await encryptMessageContent(selectedChat, draftContent || null, currentUser.id);
       const message = await sendMessage(
         accessToken,
         selectedChat.id,
         encrypted.content,
-        attachments.map((file) => file.id),
+        uploadedAttachments.map((file) => file.id),
         replyToMessageId,
         threadRootForSend,
         encrypted.encryption
@@ -4925,17 +4999,24 @@ export default function ChatsPage() {
         })
       );
     } catch (err) {
-      applyMessagesForChat(selectedChat.id, (current) =>
-        markPendingMessageFailed(
+      applyMessagesForChat(selectedChat.id, (current) => {
+        const hasOptimistic = current.some(
+          (item) => item.clientMessageId === clientMessageId || item.id === `pending:${clientMessageId}`
+        );
+        if (!hasOptimistic) {
+          return current;
+        }
+        return markPendingMessageFailed(
           current,
           clientMessageId,
           err instanceof ApiError ? String(err.message) : "Message failed"
-        )
-      );
+        );
+      });
       setError(err instanceof ApiError ? String(err.message) : "Message failed");
     } finally {
       sendInFlightRef.current = false;
       setIsSendingMessage(false);
+      setIsUploading(false);
     }
   }
 
@@ -5628,7 +5709,7 @@ export default function ChatsPage() {
                             {(hasCaption || message.deliveryError || !photoOnlyMessage) && (
                               <div className="message-bubble-inner">
                                 {hasCaption ? (
-                                  <p>
+                                  <div className="message-body">
                                     {appearance.renderMarkdown ? (
                                       <MessageMarkdown source={message.content} />
                                     ) : (
@@ -5639,7 +5720,12 @@ export default function ChatsPage() {
                                         (edited)
                                       </span>
                                     )}
-                                  </p>
+                                    {message.content && (
+                                      <MessageEnlargeButton
+                                        onClick={() => setEnlargedMessage(message)}
+                                      />
+                                    )}
+                                  </div>
                                 ) : null}
                                 {message.deliveryError ? (
                                   <p className="encrypted-message-unavailable">{message.deliveryError}</p>
@@ -5851,12 +5937,11 @@ export default function ChatsPage() {
                 {pendingAttachments.length > 0 && (
                   <div className="composer-attachments-strip" aria-label="Attachments to send">
                     <div className="pending-attachments">
-                      {pendingAttachments.map((file) => (
+                      {pendingAttachments.map((pending) => (
                         <PendingAttachmentCard
-                          accessToken={accessToken}
-                          file={file}
-                          key={file.id}
-                          onRemove={() => removePendingAttachment(file.id)}
+                          key={pending.localId}
+                          pending={pending}
+                          onRemove={() => removePendingAttachment(pending.localId)}
                         />
                       ))}
                     </div>
@@ -6034,6 +6119,9 @@ export default function ChatsPage() {
                       selection={composerFormattingSelectionRef.current}
                       anchor={formattingToolbarAnchor}
                       onFormat={handleComposerFormat}
+                      onCut={handleComposerCut}
+                      onCopy={handleComposerCopy}
+                      onPaste={() => void handleComposerPaste()}
                     />
                     <button
                       type="submit"
@@ -6120,17 +6208,6 @@ export default function ChatsPage() {
           )}
         </div>
         {audioRestoreStatus && <p className="audio-restore-status" role="status">{audioRestoreStatus}</p>}
-        {currentUser && (
-          <AudioNowPlaying
-            onRestore={(identity) => void restoreActiveAudioSurface(identity)}
-            onFocusAfterClose={() => {
-              const activeControl = messagesPanelRef.current?.querySelector<HTMLButtonElement>(
-                ".audio-player.is-session-active .audio-player-play-pause"
-              );
-              activeControl?.focus() ?? document.querySelector<HTMLElement>(".chat-list-title h1")?.focus();
-            }}
-          />
-        )}
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
         {callPhase !== "idle" && (
           <>
@@ -6666,6 +6743,24 @@ export default function ChatsPage() {
             onDownload={
               accessToken ? () => void saveFileToDisk(accessToken, fullViewImage.file) : undefined
             }
+          />
+        )}
+
+        {enlargedMessage?.content && (
+          <MessageEnlargeModal
+            content={enlargedMessage.content}
+            renderMarkdown={appearance.renderMarkdown}
+            canEdit={
+              Boolean(currentUser) &&
+              enlargedMessage.senderId === currentUser?.id &&
+              !enlargedMessage.id.startsWith("pending:")
+            }
+            onClose={() => setEnlargedMessage(null)}
+            onEdit={() => {
+              const target = enlargedMessage;
+              setEnlargedMessage(null);
+              handleEditMessage(target);
+            }}
           />
         )}
 
@@ -7259,17 +7354,15 @@ function MobileActiveScreen({
 }
 
 function PendingAttachmentCard({
-  accessToken,
-  file,
+  pending,
   onRemove
 }: {
-  accessToken: string | null;
-  file: FamilyFile;
+  pending: PendingLocalAttachment;
   onRemove: () => void;
 }) {
-  const isImage = isImageAttachment(file);
-  const isVideo = file.mimeType.startsWith("video/");
-  const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
+  const { file, previewUrl } = pending;
+  const isImage = file.type.startsWith("image/");
+  const isVideo = file.type.startsWith("video/");
   const showThumb = isImage || isVideo;
 
   return (
@@ -7278,8 +7371,12 @@ function PendingAttachmentCard({
     >
       {showThumb && (
         <div className="pending-attachment-thumb" aria-hidden={true}>
-          {isImage && previewUrl ? (
-            <img src={previewUrl} alt="" />
+          {previewUrl ? (
+            isVideo ? (
+              <video src={previewUrl} muted playsInline preload="metadata" />
+            ) : (
+              <img src={previewUrl} alt="" />
+            )
           ) : (
             <span className="pending-attachment-thumb-placeholder">
               {isVideo ? <Video aria-hidden="true" size={22} /> : <Image aria-hidden="true" size={22} />}
@@ -7288,15 +7385,16 @@ function PendingAttachmentCard({
         </div>
       )}
       <div className="pending-attachment-copy">
-        <strong>{file.originalName}</strong>
+        <strong>{file.name}</strong>
         <span>
-          {pendingAttachmentKindLabel(file)} / {formatFileSize(file.sizeBytes)}
+          {pendingAttachmentKindLabel({ mimeType: file.type || "application/octet-stream" })} /{" "}
+          {formatFileSize(file.size)}
         </span>
       </div>
       <button
         type="button"
         className="pending-attachment-remove"
-        aria-label={`Remove ${file.originalName}`}
+        aria-label={`Remove ${file.name}`}
         onClick={onRemove}
       >
         <X aria-hidden="true" size={16} />
