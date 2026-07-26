@@ -156,8 +156,8 @@ class AudioPlaybackPlugin : Plugin() {
 
     private fun withController(
         call: PluginCall?,
+        allowRetry: Boolean = true,
         action: (MediaController) -> Unit,
-        allowRetry: Boolean = true
     ) {
         if (destroyed) {
             call?.reject("Audio controller unavailable")
@@ -178,7 +178,7 @@ class AudioPlaybackPlugin : Plugin() {
                     if (!controller.isConnected) {
                         releaseController(future)
                         if (allowRetry) {
-                            withController(call, action, allowRetry = false)
+                            withController(call, allowRetry = false, action = action)
                         } else {
                             call?.reject("Audio controller unavailable")
                         }
@@ -188,7 +188,7 @@ class AudioPlaybackPlugin : Plugin() {
                 } catch (_: Exception) {
                     releaseController(future)
                     if (allowRetry) {
-                        withController(call, action, allowRetry = false)
+                        withController(call, allowRetry = false, action = action)
                     } else {
                         call?.reject("Audio controller unavailable")
                     }
