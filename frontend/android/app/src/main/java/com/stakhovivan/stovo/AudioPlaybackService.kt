@@ -163,6 +163,12 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     private val playerListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_ENDED && identity != null) {
+                clearPlayback(AudioPlaybackCleanupReason.EXPLICIT_CLOSE)
+            }
+        }
+
         override fun onEvents(player: Player, events: Player.Events) {
             if (callActive && player.playWhenReady) {
                 player.pause()
@@ -319,6 +325,7 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     private fun clearPlayback(reason: AudioPlaybackCleanupReason) {
+        player.playWhenReady = false
         player.pause()
         player.stop()
         player.clearMediaItems()
@@ -327,6 +334,9 @@ class AudioPlaybackService : MediaSessionService() {
         coordinator.cleanup(reason)
         identity = null
         callActive = false
+        if (::mediaSession.isInitialized) {
+            mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle())
+        }
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
