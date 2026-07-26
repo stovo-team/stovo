@@ -1,4 +1,5 @@
 import { ApiError, apiRequest, getApiUrl } from "./client";
+import { getCachedFileBlob, seedMediaBlobCache } from "../mediaBlobCache";
 
 export interface FamilyFile {
   id: string;
@@ -48,7 +49,14 @@ export async function uploadFile(accessToken: string, file: File, chatId?: strin
     credentials: "include"
   });
 
-  return parseResponse<FamilyFile>(response);
+  const uploaded = await parseResponse<FamilyFile>(response);
+  // Warm local cache from the just-selected File so first playback is instant.
+  try {
+    seedMediaBlobCache(uploaded.id, file);
+  } catch {
+    // Non-fatal.
+  }
+  return uploaded;
 }
 
 export function getFiles(accessToken: string) {
@@ -89,7 +97,7 @@ export function updateFilePreferences(
   });
 }
 
-export async function downloadFileBlob(accessToken: string, fileId: string) {
+async function fetchFileBlob(accessToken: string, fileId: string) {
   const response = await fetch(`${getApiUrl()}/api/files/${fileId}/download`, {
     headers: {
       Authorization: `Bearer ${accessToken}`
@@ -103,6 +111,10 @@ export async function downloadFileBlob(accessToken: string, fileId: string) {
   }
 
   return response.blob();
+}
+
+export async function downloadFileBlob(accessToken: string, fileId: string) {
+  return getCachedFileBlob(accessToken, fileId, fetchFileBlob);
 }
 
 export async function saveFileToDisk(accessToken: string, file: FamilyFile) {

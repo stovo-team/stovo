@@ -1,7 +1,5 @@
 import {
   AlertCircle,
-  FileAudio,
-  Music2,
   Pause,
   Play,
   RotateCcw,
@@ -161,7 +159,6 @@ export function AudioPlayer({
     if (playbackDisabled) return;
     try {
       await onBeforePlay?.();
-      // Keep the session resolver aligned with this attachment's ephemeral credentials.
       session.setSourceFactory(sourceFactory);
       const activeSnapshot = session.getSnapshot();
       const sameTrack = sameAudioIdentity(activeSnapshot.identity, descriptor.identity);
@@ -210,9 +207,11 @@ export function AudioPlayer({
     if (seekable) void session.seek(clamp(value, duration));
   }, [duration, seekable, session]);
 
+  const progress = duration > 0 ? (position / duration) * 100 : 0;
+
   return (
     <article
-      className={`message-audio-attachment audio-player${isActive ? " is-session-active" : ""}`}
+      className={`message-audio-attachment audio-player audio-player--compact${isActive ? " is-session-active" : ""}`}
       data-audio-chat-id={descriptor.identity.chatId}
       data-audio-message-id={descriptor.identity.messageId}
       data-audio-file-id={descriptor.identity.fileId}
@@ -222,24 +221,36 @@ export function AudioPlayer({
       onContextMenu={stopInteraction}
       onKeyDown={stopActivationPropagation}
     >
-      <header className="audio-player-header">
-        <Music2 size={20} aria-hidden="true" />
-        <span className="audio-player-title" title={descriptor.title}>{descriptor.title}</span>
-        <FileAudio size={16} aria-hidden="true" />
-        {isActive && <span className="sr-only">Current audio player</span>}
-      </header>
-      <div className="audio-player-controls" aria-label="Audio controls">
-        <button
-          type="button"
-          data-control="play-pause"
-          className="audio-player-play-pause"
-          aria-label={primaryLabel}
-          title={primaryLabel}
-          disabled={playbackDisabled}
-          onClick={togglePlayback}
-        >
-          {isPauseAction ? <Pause size={20} aria-hidden="true" /> : isEnded ? <RotateCcw size={20} aria-hidden="true" /> : <Play size={20} aria-hidden="true" />}
-        </button>
+      <button
+        type="button"
+        data-control="play-pause"
+        className="audio-player-play-pause"
+        aria-label={primaryLabel}
+        title={primaryLabel}
+        disabled={playbackDisabled}
+        onClick={togglePlayback}
+      >
+        {isPauseAction ? (
+          <Pause size={18} aria-hidden="true" />
+        ) : isEnded ? (
+          <RotateCcw size={18} aria-hidden="true" />
+        ) : (
+          <Play size={18} aria-hidden="true" />
+        )}
+      </button>
+      <div className="audio-player-body">
+        <div className="audio-player-wave" aria-hidden="true">
+          <span className="audio-player-wave-fill" style={{ width: `${progress}%` }} />
+        </div>
+        <div className="audio-player-meta-row">
+          <output data-control="time" className="audio-player-time" aria-label="Audio time">
+            {isActive ? formatAudioTime(position) : formatAudioTime(duration || 0)}
+            {isActive && duration > 0 ? ` / ${formatAudioTime(duration)}` : ""}
+          </output>
+          <span className="audio-player-title" title={descriptor.title}>
+            {descriptor.title}
+          </span>
+        </div>
         <input
           type="range"
           data-control="seek"
@@ -247,7 +258,7 @@ export function AudioPlayer({
           aria-label="Seek audio"
           aria-valuetext={`${formatAudioTimeWords(position)} elapsed of ${formatAudioTimeWords(duration)}`}
           min={0}
-          max={duration}
+          max={duration || 1}
           step={1}
           value={position}
           disabled={!seekable || isCallDisabled}
@@ -266,28 +277,25 @@ export function AudioPlayer({
             if (dragRevision.current === null) commitSeek(Number(event.currentTarget.value));
           }}
         />
-        <output data-control="time" className="audio-player-time" aria-label="Audio time">
-          {formatAudioTime(position)} / {formatAudioTime(duration)}
-        </output>
       </div>
       {statusCopy && <div className="audio-player-status" role="status">{statusCopy}</div>}
       {snapshot?.status === "error" && (
         <div className="audio-player-error" role="alert">
-          <AlertCircle size={16} aria-hidden="true" />
+          <AlertCircle size={14} aria-hidden="true" />
           {errorCopy(snapshot.error)}
+          {recoverableError && (
+            <button
+              type="button"
+              className="audio-player-retry"
+              aria-label="Retry audio"
+              title="Retry audio"
+              disabled={isCallDisabled}
+              onClick={() => void retry()}
+            >
+              Retry
+            </button>
+          )}
         </div>
-      )}
-      {recoverableError && (
-        <button
-          type="button"
-          className="audio-player-retry"
-          aria-label="Retry audio"
-          title="Retry audio"
-          disabled={isCallDisabled}
-          onClick={() => void retry()}
-        >
-          Retry audio
-        </button>
       )}
     </article>
   );

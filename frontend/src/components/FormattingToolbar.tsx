@@ -1,7 +1,15 @@
 import type React from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Code2, Quote } from "lucide-react";
+import {
+  ChevronRight,
+  ClipboardPaste,
+  Code2,
+  Copy,
+  Quote,
+  Scissors,
+  Type,
+} from "lucide-react";
 
 import type {
   FormattingKind,
@@ -20,6 +28,9 @@ export type FormattingToolbarProps = {
   selection: TextSelection | null;
   anchor: ToolbarAnchor | null;
   onFormat: (kind: FormattingKind) => void;
+  onCut?: () => void;
+  onCopy?: () => void;
+  onPaste?: () => void;
 };
 
 type RectangleSize = {
@@ -88,10 +99,11 @@ const formattingActions = [
 }>;
 
 export function FormattingToolbar(
-  { selection, anchor, onFormat }: FormattingToolbarProps
+  { selection, anchor, onFormat, onCut, onCopy, onPaste }: FormattingToolbarProps
 ): React.ReactNode {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<ToolbarAnchor | null>(null);
+  const [formatOpen, setFormatOpen] = useState(false);
   const canRender = Boolean(
     selection &&
     selection.end > selection.start &&
@@ -102,6 +114,7 @@ export function FormattingToolbar(
   useLayoutEffect(() => {
     if (!canRender || !anchor) {
       setPlacement(null);
+      setFormatOpen(false);
       return;
     }
 
@@ -122,7 +135,7 @@ export function FormattingToolbar(
     reposition();
     window.addEventListener("resize", reposition);
     return () => window.removeEventListener("resize", reposition);
-  }, [anchor, canRender]);
+  }, [anchor, canRender, formatOpen]);
 
   if (!canRender) {
     return null;
@@ -131,9 +144,9 @@ export function FormattingToolbar(
   return createPortal(
     <div
       ref={toolbarRef}
-      className="formatting-toolbar"
+      className={`formatting-toolbar${formatOpen ? " is-format-open" : ""}`}
       role="toolbar"
-      aria-label="Format selected text"
+      aria-label="Text selection"
       style={{
         position: "fixed",
         left: placement?.left ?? 0,
@@ -151,22 +164,88 @@ export function FormattingToolbar(
       }}
       onClick={(event) => event.stopPropagation()}
     >
-      {formattingActions.map(({ kind, label, description, Icon }) => (
+      <button
+        type="button"
+        className="formatting-toolbar-action"
+        aria-label="Cut"
+        title="Cut"
+        onClick={(event) => {
+          event.stopPropagation();
+          onCut?.();
+        }}
+      >
+        <Scissors size={18} aria-hidden="true" />
+        <span className="formatting-toolbar-action-label">Cut</span>
+      </button>
+      <button
+        type="button"
+        className="formatting-toolbar-action"
+        aria-label="Copy"
+        title="Copy"
+        onClick={(event) => {
+          event.stopPropagation();
+          onCopy?.();
+        }}
+      >
+        <Copy size={18} aria-hidden="true" />
+        <span className="formatting-toolbar-action-label">Copy</span>
+      </button>
+      <button
+        type="button"
+        className="formatting-toolbar-action"
+        aria-label="Paste"
+        title="Paste"
+        onClick={(event) => {
+          event.stopPropagation();
+          onPaste?.();
+        }}
+      >
+        <ClipboardPaste size={18} aria-hidden="true" />
+        <span className="formatting-toolbar-action-label">Paste</span>
+      </button>
+
+      <span className="formatting-toolbar-divider" aria-hidden="true" />
+
+      <div className="formatting-toolbar-format">
         <button
-          key={kind}
           type="button"
-          className="formatting-toolbar-action"
-          aria-label={label}
-          title={`${label} — ${description}`}
+          className={`formatting-toolbar-action formatting-toolbar-format-trigger${formatOpen ? " is-active" : ""}`}
+          aria-label="Formatting"
+          aria-expanded={formatOpen}
+          aria-haspopup="menu"
+          title="Formatting"
           onClick={(event) => {
             event.stopPropagation();
-            onFormat(kind);
+            setFormatOpen((open) => !open);
           }}
         >
-          <Icon size={18} aria-hidden="true" />
-          <span className="formatting-toolbar-action-label">{label}</span>
+          <Type size={18} aria-hidden="true" />
+          <span className="formatting-toolbar-action-label">Format</span>
+          <ChevronRight size={14} aria-hidden="true" className="formatting-toolbar-chevron" />
         </button>
-      ))}
+        {formatOpen && (
+          <div className="formatting-toolbar-submenu" role="menu" aria-label="Formatting options">
+            {formattingActions.map(({ kind, label, description, Icon }) => (
+              <button
+                key={kind}
+                type="button"
+                role="menuitem"
+                className="formatting-toolbar-action formatting-toolbar-submenu-action"
+                aria-label={label}
+                title={`${label} — ${description}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onFormat(kind);
+                  setFormatOpen(false);
+                }}
+              >
+                <Icon size={18} aria-hidden="true" />
+                <span className="formatting-toolbar-action-label">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>,
     document.body
   );

@@ -1,9 +1,21 @@
-import { FileSpreadsheet, FileText, LoaderCircle } from "lucide-react";
+import {
+  FileSpreadsheet,
+  FileText,
+  LoaderCircle,
+  Maximize2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
-import { downloadFileBlob, formatFileSize, saveFileToDisk, type FamilyFile } from "../api/files";
+import {
+  downloadFileBlob,
+  formatFileSize,
+  saveFileToDisk,
+  type FamilyFile,
+} from "../api/files";
 
-type PreviewKind = "docx" | "table" | "unsupported";
+export type DocumentPreviewKind = "pdf" | "docx" | "table" | "unsupported";
 
 type TablePreview = {
   sheets: Array<{ name: string; rows: string[][] }>;
@@ -19,13 +31,13 @@ function extensionOf(name: string): string {
   return idx >= 0 ? name.slice(idx + 1).toLowerCase() : "";
 }
 
-export function detectDocumentPreviewKind(file: FamilyFile): PreviewKind {
+export function detectDocumentPreviewKind(file: FamilyFile): DocumentPreviewKind {
   const ext = extensionOf(file.originalName);
   const mime = file.mimeType.toLowerCase();
-  if (
-    mime.includes("wordprocessingml") ||
-    ext === "docx"
-  ) {
+  if (mime === "application/pdf" || ext === "pdf") {
+    return "pdf";
+  }
+  if (mime.includes("wordprocessingml") || ext === "docx") {
     return "docx";
   }
   if (
@@ -128,6 +140,19 @@ async function loadDocxPreview(blob: Blob): Promise<DocxPreview> {
   return { html };
 }
 
+function kindLabel(kind: DocumentPreviewKind): string {
+  if (kind === "pdf") return "PDF";
+  if (kind === "docx") return "Document";
+  if (kind === "table") return "Spreadsheet";
+  return "File";
+}
+
+function KindIcon({ kind }: { kind: DocumentPreviewKind }) {
+  if (kind === "table") return <FileSpreadsheet size={18} aria-hidden="true" />;
+  return <FileText size={18} aria-hidden="true" />;
+}
+
+/** Compact attachment card — opens a full viewer on demand. */
 export function DocumentAttachmentPreview({
   accessToken,
   file,
@@ -136,110 +161,221 @@ export function DocumentAttachmentPreview({
   file: FamilyFile;
 }) {
   const kind = useMemo(() => detectDocumentPreviewKind(file), [file]);
-  const [loading, setLoading] = useState(kind !== "unsupported");
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  if (kind === "unsupported") {
+    return null;
+  }
+
+  return (
+    <>
+      <article className="document-preview-card document-preview-card--compact" data-preview-kind={kind}>
+        <header className="document-preview-header">
+          <KindIcon kind={kind} />
+          <div className="document-preview-copy">
+            <strong title={file.originalName}>{file.originalName}</strong>
+            <span>
+              {kindLabel(kind)} · {formatFileSize(file.sizeBytes)}
+            </span>
+          </div>
+          <div className="document-preview-actions">
+            <button
+              type="button"
+              className="document-preview-open"
+              onClick={() => setViewerOpen(true)}
+            >
+              <Maximize2 size={14} aria-hidden="true" />
+              Open
+            </button>
+            {accessToken && (
+              <button
+                type="button"
+                className="document-preview-save"
+                onClick={() => void saveFileToDisk(accessToken, file)}
+              >
+                Save
+              </button>
+            )}
+          </div>
+        </header>
+      </article>
+      {viewerOpen && accessToken && (
+        <DocumentViewerModal
+          accessToken={accessToken}
+          file={file}
+          kind={kind}
+          onClose={() => setViewerOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+export function DocumentViewerModal({
+  accessToken,
+  file,
+  kind,
+  onClose,
+}: {
+  accessToken: string;
+  file: FamilyFile;
+  kind: DocumentPreviewKind;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [docx, setDocx] = useState<DocxPreview | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
 
   useEffect(() => {
-    if (!accessToken || kind === "unsupported") {
-      setLoading(false);
-      return;
-    }
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setPdfUrl(null);
     setDocx(null);
     setTable(null);
+
     void downloadFileBlob(accessToken, file.id)
       .then(async (blob) => {
         if (cancelled) return;
+        if (kind === "pdf") {
+          const typed =
+            blob.type === "application/pdf"
+              ? blob
+              : new Blob([blob], { type: "application/pdf" });
+          // Prefer a dedicated viewer URL; fall back if cache peek is unavailable.
+          setPdfUrl(URL.createObjectURL(typed));
+          return;
+        }
         if (kind === "docx") {
           setDocx(await loadDocxPreview(blob));
-        } else {
-          setTable(await loadTablePreview(file, blob));
+          return;
         }
+        setTable(await loadTablePreview(file, blob));
       })
       .catch(() => {
-        if (!cancelled) setError("Preview couldn’t load.");
+        if (!cancelled) setError("Document couldn’t load.");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
   }, [accessToken, file, kind]);
 
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const activeSheet = table?.sheets[table.activeSheet];
 
-  return (
-    <article className="document-preview-card" data-preview-kind={kind}>
-      <header className="document-preview-header">
-        {kind === "table" ? <FileSpreadsheet size={18} aria-hidden="true" /> : <FileText size={18} aria-hidden="true" />}
-        <div className="document-preview-copy">
-          <strong title={file.originalName}>{file.originalName}</strong>
-          <span>{file.mimeType} / {formatFileSize(file.sizeBytes)}</span>
-        </div>
-        {accessToken && (
-          <button type="button" className="document-preview-save" onClick={() => void saveFileToDisk(accessToken, file)}>
-            Save
-          </button>
-        )}
-      </header>
+  return createPortal(
+    <div className="document-viewer-backdrop" role="presentation" onClick={onClose}>
+      <div
+        className="document-viewer-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={file.originalName}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="document-viewer-header">
+          <div className="document-viewer-title">
+            <KindIcon kind={kind} />
+            <div>
+              <strong title={file.originalName}>{file.originalName}</strong>
+              <span>
+                {kindLabel(kind)} · {formatFileSize(file.sizeBytes)}
+              </span>
+            </div>
+          </div>
+          <div className="document-viewer-header-actions">
+            <button type="button" onClick={() => void saveFileToDisk(accessToken, file)}>
+              Save
+            </button>
+            <button type="button" className="document-viewer-close" aria-label="Close" onClick={onClose}>
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
+        </header>
 
-      {loading && (
-        <div className="document-preview-status" role="status">
-          <LoaderCircle size={16} className="document-preview-spinner" aria-hidden="true" />
-          Loading preview…
-        </div>
-      )}
-      {error && <div className="document-preview-error" role="alert">{error}</div>}
-
-      {!loading && !error && kind === "docx" && docx && (
-        <div
-          className="document-preview-docx"
-          dangerouslySetInnerHTML={{ __html: docx.html }}
-        />
-      )}
-
-      {!loading && !error && kind === "table" && table && activeSheet && (
-        <div className="document-preview-table-wrap">
-          {table.sheets.length > 1 && (
-            <div className="document-preview-sheet-tabs" role="tablist" aria-label="Sheets">
-              {table.sheets.map((sheet, index) => (
-                <button
-                  key={sheet.name}
-                  type="button"
-                  role="tab"
-                  aria-selected={index === table.activeSheet}
-                  className={index === table.activeSheet ? "is-active" : ""}
-                  onClick={() => setTable({ ...table, activeSheet: index })}
-                >
-                  {sheet.name}
-                </button>
-              ))}
+        <div className="document-viewer-body">
+          {loading && (
+            <div className="document-preview-status" role="status">
+              <LoaderCircle size={18} className="document-preview-spinner" aria-hidden="true" />
+              Loading document…
             </div>
           )}
-          <div className="document-preview-table-scroll">
-            <table className="document-preview-table">
-              <tbody>
-                {activeSheet.rows.slice(0, 40).map((row, rowIndex) => (
-                  <tr key={`r-${rowIndex}`}>
-                    {row.slice(0, 20).map((cell, cellIndex) => {
-                      const Tag = rowIndex === 0 ? "th" : "td";
-                      return <Tag key={`c-${cellIndex}`}>{cell}</Tag>;
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {(activeSheet.rows.length > 40 || (activeSheet.rows[0]?.length ?? 0) > 20) && (
-              <p className="document-preview-truncated">Showing first 40×20 cells. Save the file for the full sheet.</p>
-            )}
-          </div>
+          {error && (
+            <div className="document-preview-error" role="alert">
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && kind === "pdf" && pdfUrl && (
+            <iframe
+              className="document-viewer-pdf"
+              src={pdfUrl}
+              title={file.originalName}
+            />
+          )}
+
+          {!loading && !error && kind === "docx" && docx && (
+            <div
+              className="document-viewer-docx"
+              dangerouslySetInnerHTML={{ __html: docx.html }}
+            />
+          )}
+
+          {!loading && !error && kind === "table" && table && activeSheet && (
+            <div className="document-preview-table-wrap document-viewer-table-wrap">
+              {table.sheets.length > 1 && (
+                <div className="document-preview-sheet-tabs" role="tablist" aria-label="Sheets">
+                  {table.sheets.map((sheet, index) => (
+                    <button
+                      key={sheet.name}
+                      type="button"
+                      role="tab"
+                      aria-selected={index === table.activeSheet}
+                      className={index === table.activeSheet ? "is-active" : ""}
+                      onClick={() => setTable({ ...table, activeSheet: index })}
+                    >
+                      {sheet.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="document-preview-table-scroll">
+                <table className="document-preview-table">
+                  <tbody>
+                    {activeSheet.rows.map((row, rowIndex) => (
+                      <tr key={`r-${rowIndex}`}>
+                        {row.map((cell, cellIndex) => {
+                          const Tag = rowIndex === 0 ? "th" : "td";
+                          return <Tag key={`c-${cellIndex}`}>{cell}</Tag>;
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </article>
+      </div>
+    </div>,
+    document.body,
   );
 }

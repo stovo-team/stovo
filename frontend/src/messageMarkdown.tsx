@@ -3,8 +3,21 @@ import React, { Fragment, useState } from "react";
 export type StovoMarkdownNode =
   | { type: "text"; value: string }
   | {
-      type: "bold" | "italic" | "underline" | "strikethrough" | "spoiler" | "code" | "quote";
+      type:
+        | "bold"
+        | "italic"
+        | "underline"
+        | "strikethrough"
+        | "spoiler"
+        | "code"
+        | "quote"
+        | "heading"
+        | "list"
+        | "listItem"
+        | "paragraph";
       children: StovoMarkdownNode[];
+      level?: number;
+      ordered?: boolean;
     }
   | { type: "link"; href: string; children: StovoMarkdownNode[] };
 
@@ -188,41 +201,145 @@ function parseInline(source: string, depth: number): StovoMarkdownNode[] {
   return nodes;
 }
 
+type BlockLine =
+  | { kind: "heading"; level: number; text: string }
+  | { kind: "quote"; text: string }
+  | { kind: "ul"; text: string }
+  | { kind: "ol"; text: string }
+  | { kind: "empty" }
+  | { kind: "paragraph"; text: string };
+
+function classifyLine(line: string): BlockLine {
+  const heading = /^(#{1,6})\s+(.+)$/.exec(line);
+  if (heading) {
+    return { kind: "heading", level: heading[1].length, text: heading[2] };
+  }
+  if (line.startsWith("> ")) {
+    return { kind: "quote", text: line.slice(2) };
+  }
+  if (line === ">") {
+    return { kind: "quote", text: "" };
+  }
+  const unordered = /^[-*+]\s+(.+)$/.exec(line);
+  if (unordered) {
+    return { kind: "ul", text: unordered[1] };
+  }
+  const ordered = /^\d+[.)]\s+(.+)$/.exec(line);
+  if (ordered) {
+    return { kind: "ol", text: ordered[1] };
+  }
+  if (line.trim() === "") {
+    return { kind: "empty" };
+  }
+  return { kind: "paragraph", text: line };
+}
+
 export function parseStovoMarkdown(
   source: string | null | undefined
 ): StovoMarkdownNode[] {
   if (!source) return [];
-  // Quote lines: lines starting with "> " become quote nodes (Telegram-style).
-  if (source.includes("\n") || source.startsWith(">")) {
-    const lines = source.split("\n");
-    const nodes: StovoMarkdownNode[] = [];
-    let quoteBuffer: string[] = [];
-    const flushQuote = () => {
-      if (quoteBuffer.length === 0) return;
-      nodes.push({
-        type: "quote",
-        children: parseInline(quoteBuffer.join("\n"), 0)
-      });
-      quoteBuffer = [];
-    };
-    for (let i = 0; i < lines.length; i += 1) {
-      const line = lines[i];
-      if (line.startsWith("> ")) {
-        quoteBuffer.push(line.slice(2));
-        continue;
-      }
-      if (line === ">") {
-        quoteBuffer.push("");
-        continue;
-      }
-      flushQuote();
-      if (nodes.length > 0 || i > 0) appendText(nodes, "\n");
-      nodes.push(...parseInline(line, 0));
-    }
-    flushQuote();
-    return nodes;
+
+  const lines = source.split("\n");
+  const hasBlockMarkup = lines.some((line) => {
+    const kind = classifyLine(line).kind;
+    return kind === "heading" || kind === "ul" || kind === "ol" || kind === "quote";
+  });
+
+  // Preserve legacy inline-only messages (including plain newlines) exactly.
+  if (!hasBlockMarkup) {
+    return parseInline(source, 0);
   }
-  return parseInline(source, 0);
+
+  const nodes: StovoMarkdownNode[] = [];
+  let quoteBuffer: string[] = [];
+  let listBuffer: { ordered: boolean; items: string[] } | null = null;
+  let paragraphBuffer: string[] = [];
+
+  const flushQuote = () => {
+    if (quoteBuffer.length === 0) return;
+    nodes.push({
+      type: "quote",
+      children: parseInline(quoteBuffer.join("\n"), 0)
+    });
+    quoteBuffer = [];
+  };
+
+  const flushList = () => {
+    if (!listBuffer || listBuffer.items.length === 0) {
+      listBuffer = null;
+      return;
+    }
+    nodes.push({
+      type: "list",
+      ordered: listBuffer.ordered,
+      children: listBuffer.items.map((item) => ({
+        type: "listItem" as const,
+        children: parseInline(item, 0)
+      }))
+    });
+    listBuffer = null;
+  };
+
+  const flushParagraph = () => {
+    if (paragraphBuffer.length === 0) return;
+    const text = paragraphBuffer.join("\n");
+    nodes.push({
+      type: "paragraph",
+      children: parseInline(text, 0)
+    });
+    paragraphBuffer = [];
+  };
+
+  const flushBlocks = () => {
+    flushQuote();
+    flushList();
+    flushParagraph();
+  };
+
+  for (const line of lines) {
+    const classified = classifyLine(line);
+
+    if (classified.kind === "quote") {
+      flushList();
+      flushParagraph();
+      quoteBuffer.push(classified.text);
+      continue;
+    }
+
+    if (classified.kind === "ul" || classified.kind === "ol") {
+      flushQuote();
+      flushParagraph();
+      const ordered = classified.kind === "ol";
+      if (!listBuffer || listBuffer.ordered !== ordered) {
+        flushList();
+        listBuffer = { ordered, items: [] };
+      }
+      listBuffer.items.push(classified.text);
+      continue;
+    }
+
+    if (classified.kind === "heading") {
+      flushBlocks();
+      nodes.push({
+        type: "heading",
+        level: classified.level,
+        children: parseInline(classified.text, 0)
+      });
+      continue;
+    }
+
+    if (classified.kind === "empty") {
+      flushBlocks();
+      continue;
+    }
+
+    flushQuote();
+    flushList();
+    paragraphBuffer.push(classified.text);
+  }
+
+  flushBlocks();
+  return nodes;
 }
 
 export function isSafeMessageUrl(candidate: string): boolean {
@@ -335,6 +452,29 @@ function renderNodes(
         return <code key={key} className="message-inline-code">{children}</code>;
       case "quote":
         return <blockquote key={key} className="message-quote">{children}</blockquote>;
+      case "heading": {
+        const level = Math.min(Math.max(node.level ?? 1, 1), 6);
+        const Tag = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
+        return (
+          <Tag key={key} className={`message-heading message-heading-${level}`}>
+            {children}
+          </Tag>
+        );
+      }
+      case "list":
+        return node.ordered ? (
+          <ol key={key} className="message-list message-list-ordered">{children}</ol>
+        ) : (
+          <ul key={key} className="message-list message-list-unordered">{children}</ul>
+        );
+      case "listItem":
+        return <li key={key} className="message-list-item">{children}</li>;
+      case "paragraph":
+        return (
+          <span key={key} className="message-paragraph">
+            {children}
+          </span>
+        );
       case "spoiler":
         if (context.suppressInteractions) {
           return <span key={key} className="message-spoiler-content">{children}</span>;
