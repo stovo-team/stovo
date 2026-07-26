@@ -19,6 +19,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { downloadFileBlob, type FamilyFile } from "../api/files";
+import { peekCachedObjectUrl } from "../mediaBlobCache";
 import {
   sameVideoIdentity,
   videoPlaybackSession,
@@ -79,11 +80,12 @@ function orientationStyle(width: number, height: number): CSSProperties {
   }
   const ratio = width / height;
   const isPortrait = height > width;
+  // Match vertical photo bubble sizing: ~300px wide, up to 420px tall.
   return {
     aspectRatio: `${width} / ${height}`,
-    maxWidth: isPortrait ? "min(280px, 72vw)" : "100%",
-    maxHeight: isPortrait ? "min(72vh, 520px)" : "min(56vh, 420px)",
-    width: isPortrait ? undefined : "100%",
+    maxWidth: isPortrait ? "min(300px, 78vw)" : "100%",
+    maxHeight: isPortrait ? "min(420px, 72vh)" : "min(56vh, 420px)",
+    width: isPortrait ? "min(300px, 78vw)" : "100%",
     ["--video-aspect-ratio" as string]: String(ratio),
   };
 }
@@ -164,7 +166,6 @@ export function VideoPlayer({
 
   useEffect(() => {
     let cancelled = false;
-    let ownedUrl: string | null = null;
     setSourceUrl(null);
     setLocalError(null);
     setIsLoading(true);
@@ -186,17 +187,12 @@ export function VideoPlayer({
           reportFailure("Video source is empty");
           return;
         }
-        if (blob.type && !/^video\/[^\s/]+$/i.test(blob.type)) {
-          reportFailure("Unsupported video format");
+        const url = peekCachedObjectUrl(file.id);
+        if (!url) {
+          reportFailure("Video source is unavailable");
           return;
         }
-        ownedUrl = URL.createObjectURL(blob);
-        if (cancelled) {
-          URL.revokeObjectURL(ownedUrl);
-          ownedUrl = null;
-          return;
-        }
-        setSourceUrl(ownedUrl);
+        setSourceUrl(url);
       })
       .catch(() => {
         if (!cancelled) reportFailure("Video download failed");
@@ -204,7 +200,7 @@ export function VideoPlayer({
 
     return () => {
       cancelled = true;
-      if (ownedUrl) URL.revokeObjectURL(ownedUrl);
+      // Cached object URLs are owned by mediaBlobCache — do not revoke here.
     };
   }, [
     accessToken,

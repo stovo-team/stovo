@@ -500,4 +500,35 @@ describe("MessageMarkdown", () => {
     expect(onKeyDown).not.toHaveBeenCalled();
     expect(canonical).toContain("||opaque-id-7f3a||");
   });
+
+  it("parses headings and bullet/numbered lists as block nodes", () => {
+    expect(parseStovoMarkdown("# Title\n## Sub")).toEqual([
+      { type: "heading", level: 1, children: [text("Title")] },
+      { type: "heading", level: 2, children: [text("Sub")] }
+    ]);
+    expect(parseStovoMarkdown("- one\n- two")).toEqual([
+      {
+        type: "list",
+        ordered: false,
+        children: [
+          { type: "listItem", children: [text("one")] },
+          { type: "listItem", children: [text("two")] }
+        ]
+      }
+    ]);
+    expect(parseStovoMarkdown("1. alpha\n2. beta")).toEqual([
+      {
+        type: "list",
+        ordered: true,
+        children: [
+          { type: "listItem", children: [text("alpha")] },
+          { type: "listItem", children: [text("beta")] }
+        ]
+      }
+    ]);
+
+    const container = renderMessage("# Hello\n- item");
+    expect(container.querySelector("h1")?.textContent).toBe("Hello");
+    expect(container.querySelector("ul li")?.textContent).toBe("item");
+  });
 });
