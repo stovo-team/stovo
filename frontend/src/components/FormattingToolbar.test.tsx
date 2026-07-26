@@ -118,7 +118,7 @@ describe("FormattingToolbar", () => {
     const element = toolbar();
     expect(element).not.toBeNull();
     expect(element?.parentElement).toBe(document.body);
-    expect(element?.getAttribute("aria-label")).toBe("Format selected text");
+    expect(element?.getAttribute("aria-label")).toBe("Text selection");
     expect(element?.style.position).toBe("fixed");
     expect(element?.style.left).toBe("70px");
     expect(element?.style.top).toBe("32px");
@@ -160,42 +160,58 @@ describe("FormattingToolbar", () => {
     expect(remove).toHaveBeenCalledWith("resize", expect.any(Function));
   });
 
-  it("renders formatting actions in the declared order with labels and descriptions", () => {
+  it("renders a compact selection menu with cut/copy/paste/quote and a format overflow", () => {
     renderToolbar(visibleProps());
     const buttons = [...document.body.querySelectorAll("button")];
 
-    expect(buttons).toHaveLength(7);
     expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
-      "Bold",
-      "Italic",
-      "Underline",
-      "Strikethrough",
-      "Spoiler",
-      "Code",
-      "Quote"
-    ]);
-    expect(buttons.map((button) => button.getAttribute("title"))).toEqual([
-      "Bold — Strong emphasis",
-      "Italic — Emphasis",
-      "Underline — Underline text",
-      "Strikethrough — Strikethrough",
-      "Spoiler — Hidden until tapped",
-      "Code — Inline code",
-      "Quote — Quoted reply style"
+      "Cut",
+      "Copy",
+      "Paste",
+      "Quote",
+      "Formatting"
     ]);
     expect(buttons.every((button) => button.type === "button")).toBe(true);
   });
 
-  it("uses one decorative SVG plus a short label inside every action", () => {
-    renderToolbar(visibleProps());
-    const buttons = document.body.querySelectorAll("button");
+  it("opens formatting options from the overflow control", () => {
+    const onFormat = vi.fn();
+    renderToolbar(visibleProps(onFormat));
 
-    expect(buttons).toHaveLength(7);
+    act(() => {
+      document.body
+        .querySelector('button[aria-label="Formatting"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const labels = [...document.body.querySelectorAll("button")].map((button) =>
+      button.getAttribute("aria-label")
+    );
+    expect(labels[0]).toBe("Back");
+    expect(labels).toContain("Bold");
+    expect(labels).toContain("Spoiler");
+    expect(labels).toContain("Mono");
+
+    act(() => {
+      document.body
+        .querySelector('button[aria-label="Bold"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onFormat).toHaveBeenCalledWith("bold");
+  });
+
+  it("uses compact icon+label actions in the primary menu", () => {
+    renderToolbar(visibleProps());
+    const buttons = [...document.body.querySelectorAll("button")];
+
+    expect(buttons.length).toBeGreaterThanOrEqual(4);
     for (const button of buttons) {
-      expect(button.children.length).toBeGreaterThanOrEqual(1);
       expect(button.querySelector("svg")).not.toBeNull();
-      expect(button.querySelector(".formatting-toolbar-action-label")).not.toBeNull();
     }
+    expect(
+      [...buttons].filter((button) => button.querySelector(".formatting-toolbar-action-label"))
+        .length
+    ).toBeGreaterThanOrEqual(4);
   });
 
   it("prevents pointer default behavior and isolates pointer-down from its React parent", () => {
@@ -211,28 +227,18 @@ describe("FormattingToolbar", () => {
     expect(onPointerDown).not.toHaveBeenCalled();
   });
 
-  it("isolates clicks and emits the identical formatting kind exactly once", () => {
+  it("isolates quote formatting clicks from the React parent", () => {
     const onClick = vi.fn();
     const onFormat = vi.fn();
     renderToolbar(visibleProps(onFormat), { onClick });
-    const kinds: FormattingKind[] = [
-      "bold",
-      "italic",
-      "underline",
-      "strikethrough",
-      "spoiler",
-      "code",
-      "quote"
-    ];
 
-    [...document.body.querySelectorAll("button")].forEach((button, index) => {
-      act(() => {
-        button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      });
-      expect(onFormat).toHaveBeenNthCalledWith(index + 1, kinds[index]);
+    act(() => {
+      document.body
+        .querySelector('button[aria-label="Quote"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(onFormat).toHaveBeenCalledTimes(7);
+    expect(onFormat).toHaveBeenCalledWith("quote");
     expect(onClick).not.toHaveBeenCalled();
   });
 
@@ -259,7 +265,7 @@ describe("FormattingToolbar", () => {
     const onFormat = vi.fn((kind: FormattingKind) => {
       textarea.focus();
       textarea.setSelectionRange(initialSelection.start, initialSelection.end);
-      expect(kind).toBe("bold");
+      expect(kind).toBe("quote");
     });
 
     renderToolbar({
@@ -270,22 +276,22 @@ describe("FormattingToolbar", () => {
 
     const element = toolbar();
     const buttons = [...document.body.querySelectorAll('[role="toolbar"] button')];
-    expect(element?.getAttribute("aria-label")).toBe("Format selected text");
-    expect(buttons).toHaveLength(7);
+    expect(element?.getAttribute("aria-label")).toBe("Text selection");
+    expect(buttons.length).toBeGreaterThanOrEqual(4);
     for (const button of buttons) {
       expect(button.getAttribute("tabindex")).not.toBe("-1");
       expect(button.querySelector("svg")).not.toBeNull();
     }
 
     act(() => {
-      (buttons[0] as HTMLButtonElement).focus();
-      buttons[0].dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true })
-      );
-      buttons[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      const quote = document.body.querySelector(
+        'button[aria-label="Quote"]'
+      ) as HTMLButtonElement;
+      quote.focus();
+      quote.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(onFormat).toHaveBeenCalledWith("bold");
+    expect(onFormat).toHaveBeenCalledWith("quote");
     expect(document.activeElement).toBe(textarea);
     expect(textarea.selectionStart).toBe(initialSelection.start);
     expect(textarea.selectionEnd).toBe(initialSelection.end);

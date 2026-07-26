@@ -1315,6 +1315,7 @@ export default function ChatsPage() {
   } | null>(null);
   const [isFullViewImageClosing, setIsFullViewImageClosing] = useState(false);
   const [composerEnlargeOpen, setComposerEnlargeOpen] = useState(false);
+  const [composerIsMultiline, setComposerIsMultiline] = useState(false);
   const [messageContextMenu, setMessageContextMenu] = useState<{
     message: Message;
     x: number;
@@ -4260,6 +4261,8 @@ export default function ChatsPage() {
     const nextHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
+    // Show enlarge only once the composer has grown past a single line.
+    setComposerIsMultiline(scrollHeight > minHeight + 2);
   }, [getComposerHeightLimits]);
 
   const resetComposerHeight = useCallback(() => {
@@ -4270,6 +4273,7 @@ export default function ChatsPage() {
     const { minHeight } = getComposerHeightLimits(textarea);
     textarea.style.height = `${minHeight}px`;
     textarea.style.overflowY = "hidden";
+    setComposerIsMultiline(false);
   }, [getComposerHeightLimits]);
 
   useLayoutEffect(() => {
@@ -6124,7 +6128,7 @@ export default function ChatsPage() {
                           }
                         }}
                       />
-                      {composer.trim().length > 0 && (
+                      {composerIsMultiline && (
                         <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
                       )}
                     </div>

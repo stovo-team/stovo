@@ -94,7 +94,7 @@ export function MessageEnlargeButton({
         onClick();
       }}
     >
-      <Maximize2 size={14} aria-hidden="true" />
+      <Maximize2 size={16} strokeWidth={2} aria-hidden="true" />
     </button>
   );
 }

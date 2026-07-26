@@ -2920,22 +2920,27 @@ h2 {
 
 .message-enlarge-button {
   align-items: center;
-  background: color-mix(in oklab, var(--border-default) 55%, transparent);
+  background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: 50%;
   color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex;
-  height: 24px;
+  flex: 0 0 auto;
+  height: 28px;
   justify-content: center;
-  margin-left: 6px;
+  margin: 0;
+  opacity: 0.72;
   padding: 0;
-  vertical-align: middle;
-  width: 24px;
+  width: 28px;
 }
 
-.message-enlarge-button:hover {
+.message-enlarge-button:hover,
+.message-enlarge-button:focus-visible {
+  background: color-mix(in oklab, var(--border-default) 45%, transparent);
   color: var(--text-primary);
+  opacity: 1;
+  outline: none;
 }
 
 .message-enlarge-backdrop {
@@ -3317,10 +3322,17 @@ span.message-spoiler.is-revealed {
 }
 
 .message-composer-row {
-  align-items: center;
+  align-items: flex-end;
   display: grid;
   gap: 10px;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
+}
+
+.message-composer-row > .file-picker,
+.message-composer-row > .emoji-picker-shell,
+.message-composer-row > button[type="submit"] {
+  align-self: flex-end;
+  margin-bottom: 0;
 }
 
 .reply-composer-preview {
@@ -3357,13 +3369,14 @@ span.message-spoiler.is-revealed {
 .message-composer-input-wrap {
   align-items: flex-end;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   grid-template-columns: minmax(0, 1fr) auto;
   min-width: 0;
+  position: relative;
 }
 
 .message-composer-input-wrap .message-enlarge-button {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .message-composer textarea {
@@ -3390,18 +3403,18 @@ span.message-spoiler.is-revealed {
 }
 
 .formatting-toolbar {
-  align-items: stretch;
-  background: var(--background-secondary);
+  align-items: center;
+  background: color-mix(in oklab, var(--background-secondary) 92%, #000000);
   border: 1px solid var(--border-default);
-  border-radius: 14px;
+  border-radius: 999px;
   box-shadow: var(--float-shadow-soft);
   color: var(--text-primary);
   display: flex;
-  gap: 2px;
+  gap: 0;
   max-width: calc(100vw - 24px);
   overflow: visible;
   overscroll-behavior: contain;
-  padding: 6px;
+  padding: 3px 4px;
   scrollbar-width: none;
   z-index: 10000;
 }
@@ -3414,51 +3427,22 @@ span.message-spoiler.is-revealed {
   align-self: stretch;
   background: var(--border-default);
   flex: 0 0 1px;
-  margin: 6px 4px;
+  margin: 6px 2px;
   width: 1px;
 }
 
-.formatting-toolbar-format {
-  position: relative;
-}
-
-.formatting-toolbar-format-trigger {
-  flex-direction: row;
-  gap: 4px;
-  min-width: 72px;
-}
-
-.formatting-toolbar-format-trigger.is-active {
-  background: var(--outline-soft);
-  color: var(--accent-primary);
-}
-
-.formatting-toolbar-chevron {
-  opacity: 0.75;
-  transform: rotate(-90deg);
-}
-
 .formatting-toolbar-submenu {
-  background: var(--background-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
-  bottom: calc(100% + 6px);
-  box-shadow: var(--float-shadow-soft);
+  align-items: center;
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  left: 0;
-  min-width: 168px;
-  padding: 4px;
-  position: absolute;
-  z-index: 2;
+  flex-wrap: nowrap;
+  gap: 0;
+  max-width: calc(100vw - 32px);
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.formatting-toolbar-submenu-action {
-  flex-direction: row;
-  justify-content: flex-start;
-  min-width: 0;
-  width: 100%;
+.formatting-toolbar-submenu::-webkit-scrollbar {
+  display: none;
 }
 
 .formatting-toolbar-action {
@@ -3466,24 +3450,29 @@ span.message-spoiler.is-revealed {
   appearance: none;
   background: transparent;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
   flex: 0 0 auto;
-  flex-direction: column;
-  gap: 2px;
-  height: auto;
+  flex-direction: row;
+  gap: 5px;
+  height: 32px;
   justify-content: center;
-  min-height: 44px;
-  min-width: 52px;
-  padding: 6px 8px;
+  min-height: 32px;
+  min-width: 0;
+  padding: 0 10px;
+}
+
+.formatting-toolbar-more {
+  min-width: 32px;
+  padding: 0 8px;
 }
 
 .formatting-toolbar-action-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
 }
@@ -3494,17 +3483,18 @@ span.message-spoiler.is-revealed {
 }
 
 .formatting-toolbar-action:focus-visible {
-  box-shadow: 0 0 0 3px var(--outline-soft);
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 1px;
+  box-shadow: 0 0 0 2px var(--outline-soft);
+  outline: 1px solid var(--accent-primary);
+  outline-offset: 0;
 }
 
 .formatting-toolbar-action:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 .formatting-toolbar-action svg {
   display: block;
+  flex: 0 0 auto;
   pointer-events: none;
 }
 
@@ -3828,7 +3818,8 @@ span.message-spoiler.is-revealed {
   display: block;
   max-width: 100%;
   min-width: 0;
-  width: 100%;
+  overflow: hidden;
+  width: fit-content;
 }
 
 .message-video-attachment:has(.video-player.is-landscape) {
@@ -3852,8 +3843,13 @@ span.message-spoiler.is-revealed {
 
 .video-player.is-portrait {
   margin-inline: 0;
-  max-width: 100%;
+  max-width: min(100%, 320px);
+  width: auto;
+}
+
+.video-player.is-landscape {
   width: 100%;
+  max-width: 100%;
 }
 
 .video-player.is-compact .video-player-controls {
@@ -3912,6 +3908,18 @@ span.message-spoiler.is-revealed {
   max-height: min(92vh, 900px);
   max-width: min(96vw, 1100px);
   width: auto;
+  height: auto;
+}
+
+.video-player-expanded.is-portrait {
+  max-height: min(92vh, 900px);
+  max-width: min(88vw, 420px);
+  width: auto;
+}
+
+.video-player-expanded.is-landscape {
+  width: min(96vw, 1100px);
+  max-height: min(92vh, 900px);
 }
 
 .video-player-lightbox-close {
@@ -6554,12 +6562,12 @@ span.message-spoiler.is-revealed {
   }
 
   .messenger-shell.has-active-chat .message-composer-row {
-    align-items: center;
+    align-items: flex-end;
     gap: 6px;
   }
 
   .messenger-shell.has-active-chat .message-composer--emoji-open .message-composer-row {
-    align-items: end;
+    align-items: flex-end;
   }
 
   .messenger-shell.has-active-chat .message-composer textarea {
@@ -6743,12 +6751,18 @@ span.message-spoiler.is-revealed {
   }
 
   .message-video-attachment {
-    width: min(100%, calc(100vw - 48px));
+    max-width: min(100%, calc(100vw - 48px));
+    width: fit-content;
   }
 
   .video-player {
     border-radius: 14px;
     min-height: 160px;
+  }
+
+  .video-player.is-portrait {
+    max-width: min(100%, 280px);
+    max-height: min(72vh, 640px);
   }
 
   .video-player-controls {
