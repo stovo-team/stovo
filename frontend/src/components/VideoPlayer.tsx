@@ -76,17 +76,22 @@ function stopPropagation(event: SyntheticEvent): void {
 
 function orientationStyle(width: number, height: number): CSSProperties {
   if (!(width > 0 && height > 0)) {
-    return { aspectRatio: "16 / 9", width: "100%", maxWidth: "100%" };
+    return {
+      aspectRatio: "16 / 9",
+      width: "100%",
+      maxWidth: "100%",
+      height: "auto",
+    };
   }
-  const ratio = width / height;
   const isPortrait = height > width;
-  // Always fit the message bubble width; preserve aspect ratio vertically.
+  // Portrait: taller in-chat tile (Telegram-style). Landscape: full bubble width.
   return {
     aspectRatio: `${width} / ${height}`,
-    width: "100%",
+    width: isPortrait ? "auto" : "100%",
     maxWidth: "100%",
-    maxHeight: isPortrait ? "min(420px, 72vh)" : "min(56vh, 420px)",
-    ["--video-aspect-ratio" as string]: String(ratio),
+    height: "auto",
+    maxHeight: isPortrait ? "min(72vh, 640px)" : "min(56vh, 420px)",
+    ["--video-aspect-ratio" as string]: `${width} / ${height}`,
   };
 }
 

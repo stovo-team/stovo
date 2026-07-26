@@ -166,6 +166,7 @@ export function AudioPlayer({
         !sameTrack ||
         activeSnapshot.status === "error" ||
         activeSnapshot.status === "idle" ||
+        activeSnapshot.status === "ended" ||
         activeSnapshot.status === "authorization-required";
       if (needsReload) {
         const resumeAt =
@@ -175,8 +176,6 @@ export function AudioPlayer({
             ? activeSnapshot.position
             : 0;
         await session.load(descriptor, resumeAt);
-      } else if (activeSnapshot.status === "ended") {
-        await session.seek(0);
       }
       await session.play();
     } catch {

@@ -113,14 +113,16 @@ class AudioPlaybackPlugin : Plugin() {
 
     @PluginMethod
     fun clear(call: PluginCall) {
-        withController(call) {
+        withController(call) { controller ->
             sendCommand(
-                it,
+                controller,
                 AudioPlaybackService.COMMAND_CLEAR,
                 Bundle.EMPTY,
                 call,
                 resolveState = false
             )
+            // Service stops itself on clear — drop the stale controller handle.
+            releaseController()
         }
     }
 
@@ -152,7 +154,11 @@ class AudioPlaybackPlugin : Plugin() {
         super.handleOnDestroy()
     }
 
-    private fun withController(call: PluginCall?, action: (MediaController) -> Unit) {
+    private fun withController(
+        call: PluginCall?,
+        action: (MediaController) -> Unit,
+        allowRetry: Boolean = true
+    ) {
         if (destroyed) {
             call?.reject("Audio controller unavailable")
             return
@@ -167,14 +173,35 @@ class AudioPlaybackPlugin : Plugin() {
         future.addListener(
             {
                 try {
-                    if (!destroyed) action(future.get())
+                    if (destroyed) return@addListener
+                    val controller = future.get()
+                    if (!controller.isConnected) {
+                        releaseController(future)
+                        if (allowRetry) {
+                            withController(call, action, allowRetry = false)
+                        } else {
+                            call?.reject("Audio controller unavailable")
+                        }
+                        return@addListener
+                    }
+                    action(controller)
                 } catch (_: Exception) {
-                    if (controllerFuture === future) controllerFuture = null
-                    call?.reject("Audio controller unavailable")
+                    releaseController(future)
+                    if (allowRetry) {
+                        withController(call, action, allowRetry = false)
+                    } else {
+                        call?.reject("Audio controller unavailable")
+                    }
                 }
             },
             executor
         )
+    }
+
+    private fun releaseController(future: ListenableFuture<MediaController>? = controllerFuture) {
+        if (future == null) return
+        if (controllerFuture === future) controllerFuture = null
+        MediaController.releaseFuture(future)
     }
 
     private fun requestState(

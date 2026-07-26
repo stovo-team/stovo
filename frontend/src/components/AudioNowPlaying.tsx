@@ -77,9 +77,8 @@ export function AudioNowPlaying({
       await session.pause();
       return;
     }
-    if (isEnded) await session.seek(0);
     await session.play();
-  }, [isEnded, isLoading, isPauseAction, session, snapshot.identity]);
+  }, [isLoading, isPauseAction, session, snapshot.identity]);
 
   const retry = useCallback(async () => {
     if (!retryable) return;
