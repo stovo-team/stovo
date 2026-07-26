@@ -102,6 +102,21 @@ function initialSnapshotFor(
   return sameAudioIdentity(snapshot.identity, descriptor.identity) ? snapshot : null;
 }
 
+function PlayingWave({ active }: { active: boolean }) {
+  return (
+    <span
+      className={`audio-player-eq${active ? " is-active" : ""}`}
+      data-control="playing-indicator"
+      aria-hidden="true"
+    >
+      <span />
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
+
 export function AudioPlayer({
   descriptor,
   sourceFactory,
@@ -135,6 +150,7 @@ export function AudioPlayer({
   const seekable = Boolean(snapshot?.canSeek && duration > 0);
   const isLoading = snapshot?.status === "loading";
   const isBuffering = snapshot?.status === "buffering";
+  const isPlaying = snapshot?.status === "playing" || isBuffering;
   const isEnded = snapshot?.status === "ended";
   const isPauseAction = snapshot?.status === "playing" || isBuffering;
   const isCallDisabled = Boolean(disabledReason);
@@ -143,7 +159,9 @@ export function AudioPlayer({
     : isEnded
       ? "Replay audio"
       : "Play audio";
-  const playbackDisabled = isCallDisabled || isLoading;
+  // Keep the control clickable while loading so a stuck load cannot trap replay.
+  // prepareCurrent still gates concurrent work; only calls disable the button.
+  const playbackDisabled = isCallDisabled;
   const recoverableError = snapshot?.status === "error" && canRetry(snapshot.error);
   const statusCopy = isCallDisabled
     ? "Audio is paused while a call is active."
@@ -162,11 +180,13 @@ export function AudioPlayer({
       session.setSourceFactory(sourceFactory);
       const activeSnapshot = session.getSnapshot();
       const sameTrack = sameAudioIdentity(activeSnapshot.identity, descriptor.identity);
+      // Natural end is handled inside session.play() (platform-specific reload
+      // vs rewind). Reloading here too caused eternal loading after Android
+      // service restart when revision watermarks rejected the new snapshots.
       const needsReload =
         !sameTrack ||
         activeSnapshot.status === "error" ||
         activeSnapshot.status === "idle" ||
-        activeSnapshot.status === "ended" ||
         activeSnapshot.status === "authorization-required";
       if (needsReload) {
         const resumeAt =
@@ -210,72 +230,79 @@ export function AudioPlayer({
 
   return (
     <article
-      className={`message-audio-attachment audio-player audio-player--compact${isActive ? " is-session-active" : ""}`}
+      className={`message-audio-attachment audio-player audio-player--compact${isActive ? " is-session-active" : ""}${isPlaying ? " is-playing" : ""}${isEnded ? " is-ended" : ""}`}
       data-audio-chat-id={descriptor.identity.chatId}
       data-audio-message-id={descriptor.identity.messageId}
       data-audio-file-id={descriptor.identity.fileId}
       data-session-active={isActive ? "true" : "false"}
+      data-playing={isPlaying ? "true" : "false"}
       onClick={stopInteraction}
       onPointerDown={stopInteraction}
       onContextMenu={stopInteraction}
       onKeyDown={stopActivationPropagation}
     >
-      <button
-        type="button"
-        data-control="play-pause"
-        className="audio-player-play-pause"
-        aria-label={primaryLabel}
-        title={primaryLabel}
-        disabled={playbackDisabled}
-        onClick={togglePlayback}
-      >
-        {isPauseAction ? (
-          <Pause size={18} aria-hidden="true" />
-        ) : isEnded ? (
-          <RotateCcw size={18} aria-hidden="true" />
-        ) : (
-          <Play size={18} aria-hidden="true" />
-        )}
-      </button>
-      <div className="audio-player-body">
-        <div className="audio-player-wave" aria-hidden="true">
-          <span className="audio-player-wave-fill" style={{ width: `${progress}%` }} />
+      <div className="audio-player-controls">
+        <button
+          type="button"
+          data-control="play-pause"
+          className={`audio-player-play-pause${isPlaying ? " is-playing" : ""}${isLoading ? " is-loading" : ""}`}
+          aria-label={primaryLabel}
+          title={primaryLabel}
+          disabled={playbackDisabled}
+          onClick={togglePlayback}
+        >
+          <span className="audio-player-play-pulse" aria-hidden="true" />
+          {isPauseAction ? (
+            <Pause size={14} aria-hidden="true" />
+          ) : isEnded ? (
+            <RotateCcw size={14} aria-hidden="true" />
+          ) : (
+            <Play size={14} aria-hidden="true" />
+          )}
+        </button>
+        <div className="audio-player-body">
+          <div className="audio-player-wave-row">
+            <PlayingWave active={isPlaying} />
+            <div className="audio-player-wave" aria-hidden="true">
+              <span className="audio-player-wave-fill" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+          <div className="audio-player-meta-row">
+            <output data-control="time" className="audio-player-time" aria-label="Audio time">
+              {isActive ? formatAudioTime(position) : formatAudioTime(duration || 0)}
+              {isActive && duration > 0 ? ` / ${formatAudioTime(duration)}` : ""}
+            </output>
+            <span className="audio-player-title" title={descriptor.title}>
+              {descriptor.title}
+            </span>
+          </div>
+          <input
+            type="range"
+            data-control="seek"
+            className="audio-player-seek"
+            aria-label="Seek audio"
+            aria-valuetext={`${formatAudioTimeWords(position)} elapsed of ${formatAudioTimeWords(duration)}`}
+            min={0}
+            max={duration || 1}
+            step={1}
+            value={position}
+            disabled={!seekable || isCallDisabled}
+            onPointerDown={(event: PointerEvent<HTMLInputElement>) => {
+              stopInteraction(event);
+              dragRevision.current = snapshot?.revision ?? null;
+            }}
+            onPointerUp={(event: PointerEvent<HTMLInputElement>) => {
+              stopInteraction(event);
+              commitSeek(Number(event.currentTarget.value));
+            }}
+            onInput={(event) => {
+              setPreviewPosition(clamp(Number(event.currentTarget.value), duration));
+            }}
+            onChange={(event) => {
+              if (dragRevision.current === null) commitSeek(Number(event.currentTarget.value));
+            }}
+          />
         </div>
-        <div className="audio-player-meta-row">
-          <output data-control="time" className="audio-player-time" aria-label="Audio time">
-            {isActive ? formatAudioTime(position) : formatAudioTime(duration || 0)}
-            {isActive && duration > 0 ? ` / ${formatAudioTime(duration)}` : ""}
-          </output>
-          <span className="audio-player-title" title={descriptor.title}>
-            {descriptor.title}
-          </span>
-        </div>
-        <input
-          type="range"
-          data-control="seek"
-          className="audio-player-seek"
-          aria-label="Seek audio"
-          aria-valuetext={`${formatAudioTimeWords(position)} elapsed of ${formatAudioTimeWords(duration)}`}
-          min={0}
-          max={duration || 1}
-          step={1}
-          value={position}
-          disabled={!seekable || isCallDisabled}
-          onPointerDown={(event: PointerEvent<HTMLInputElement>) => {
-            stopInteraction(event);
-            dragRevision.current = snapshot?.revision ?? null;
-          }}
-          onPointerUp={(event: PointerEvent<HTMLInputElement>) => {
-            stopInteraction(event);
-            commitSeek(Number(event.currentTarget.value));
-          }}
-          onInput={(event) => {
-            setPreviewPosition(clamp(Number(event.currentTarget.value), duration));
-          }}
-          onChange={(event) => {
-            if (dragRevision.current === null) commitSeek(Number(event.currentTarget.value));
-          }}
-        />
       </div>
       {statusCopy && <div className="audio-player-status" role="status">{statusCopy}</div>}
       {snapshot?.status === "error" && (

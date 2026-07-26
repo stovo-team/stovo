@@ -4247,7 +4247,30 @@ export default function ChatsPage() {
       Number.parseFloat(style.borderBottomWidth);
     const minHeight = Number.parseFloat(style.minHeight) || lineHeight + verticalChrome;
     const maxHeight = lineHeight * COMPOSER_MAX_LINES + verticalChrome;
-    return { minHeight, maxHeight };
+    return { minHeight, maxHeight, lineHeight, verticalChrome };
+  }, []);
+
+  const applyComposerActionInsets = useCallback((textarea: HTMLTextAreaElement, nextHeight: number, minHeight: number) => {
+    const composer = textarea.closest(".message-composer") as HTMLElement | null;
+    if (!composer) {
+      return;
+    }
+    // Pill composer radius tracks height (border-radius: 999px → ~height/2).
+    // Extra growth needs matching inset so bottom-aligned end controls stay inside the curve.
+    const growth = Math.max(0, nextHeight - minHeight);
+    const inset = Math.min(18, Math.round(growth * 0.42));
+    const bottom = Math.min(12, Math.round(growth * 0.28));
+    composer.style.setProperty("--composer-action-inset", `${inset}px`);
+    composer.style.setProperty("--composer-action-bottom", `${bottom}px`);
+  }, []);
+
+  const clearComposerActionInsets = useCallback((textarea: HTMLTextAreaElement | null) => {
+    const composer = textarea?.closest(".message-composer") as HTMLElement | null;
+    if (!composer) {
+      return;
+    }
+    composer.style.setProperty("--composer-action-inset", "0px");
+    composer.style.setProperty("--composer-action-bottom", "0px");
   }, []);
 
   const adjustComposerHeight = useCallback(() => {
@@ -4261,9 +4284,10 @@ export default function ChatsPage() {
     const nextHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
-    // Show enlarge only once the composer has grown past a single line.
-    setComposerIsMultiline(scrollHeight > minHeight + 2);
-  }, [getComposerHeightLimits]);
+    // Show enlarge only once content reaches the 3-line composer capacity.
+    setComposerIsMultiline(scrollHeight >= maxHeight - 2);
+    applyComposerActionInsets(textarea, nextHeight, minHeight);
+  }, [applyComposerActionInsets, getComposerHeightLimits]);
 
   const resetComposerHeight = useCallback(() => {
     const textarea = composerInputRef.current;
@@ -4274,7 +4298,8 @@ export default function ChatsPage() {
     textarea.style.height = `${minHeight}px`;
     textarea.style.overflowY = "hidden";
     setComposerIsMultiline(false);
-  }, [getComposerHeightLimits]);
+    clearComposerActionInsets(textarea);
+  }, [clearComposerActionInsets, getComposerHeightLimits]);
 
   useLayoutEffect(() => {
     adjustComposerHeight();
@@ -6128,9 +6153,6 @@ export default function ChatsPage() {
                           }
                         }}
                       />
-                      {composerIsMultiline && (
-                        <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
-                      )}
                     </div>
                     <FormattingToolbar
                       selection={composerFormattingSelectionRef.current}
@@ -6140,27 +6162,32 @@ export default function ChatsPage() {
                       onCopy={handleComposerCopy}
                       onPaste={() => void handleComposerPaste()}
                     />
-                    <button
-                      type="submit"
-                      aria-label="Send message"
-                      aria-busy={isUploading || isSendingMessage}
-                      disabled={
-                        isUploading ||
-                        isSendingMessage ||
-                        channelCommentsDisabledForViewer ||
-                        missingCommentThread ||
-                        (!composer.trim() && pendingAttachments.length === 0)
-                      }
-                    >
-                      <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                        send
-                      </span>
-                      {(isUploading || isSendingMessage) && (
-                        <span className="visually-hidden">
-                          {isUploading ? "Uploading" : "Sending"}
-                        </span>
+                    <div className="message-composer-actions">
+                      {composerIsMultiline && (
+                        <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
                       )}
-                    </button>
+                      <button
+                        type="submit"
+                        aria-label="Send message"
+                        aria-busy={isUploading || isSendingMessage}
+                        disabled={
+                          isUploading ||
+                          isSendingMessage ||
+                          channelCommentsDisabledForViewer ||
+                          missingCommentThread ||
+                          (!composer.trim() && pendingAttachments.length === 0)
+                        }
+                      >
+                        <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                          send
+                        </span>
+                        {(isUploading || isSendingMessage) && (
+                          <span className="visually-hidden">
+                            {isUploading ? "Uploading" : "Sending"}
+                          </span>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   {showDockedEmojiPicker && (
                     <div

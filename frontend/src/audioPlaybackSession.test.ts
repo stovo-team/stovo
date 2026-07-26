@@ -282,6 +282,93 @@ describe("AudioPlaybackSession", () => {
     expect(backend.play).toHaveBeenCalledTimes(1);
   });
 
+  it("accepts restarted low revisions after natural end so replay leaves loading", async () => {
+    await session.load(firstDescriptor);
+    backend.emit(
+      backendSnapshot({
+        position: 90,
+        duration: 90,
+        status: "ended",
+        revision: 100,
+        platform: "android",
+      }),
+    );
+    expect(session.getSnapshot().status).toBe("ended");
+
+    // Simulate Android service restart: revisions reset while JS still holds 100.
+    backend.load.mockImplementationOnce(
+      async (descriptor: AudioDescriptor, _source: AudioPlaybackSource, position: number) => {
+        backend.emit(
+          backendSnapshot({
+            identity: descriptor.identity,
+            title: descriptor.title,
+            position,
+            duration: 90,
+            status: "ready",
+            canSeek: true,
+            revision: 1,
+            platform: "android",
+          }),
+        );
+      },
+    );
+    backend.play.mockImplementationOnce(async () => {
+      backend.emit(
+        backendSnapshot({
+          identity: firstDescriptor.identity,
+          title: firstDescriptor.title,
+          position: 0,
+          duration: 90,
+          status: "playing",
+          playWhenReady: true,
+          isPlaying: true,
+          canSeek: true,
+          revision: 2,
+          platform: "android",
+        }),
+      );
+    });
+
+    await session.play();
+
+    expect(session.getSnapshot()).toMatchObject({
+      status: "playing",
+      isPlaying: true,
+      position: 0,
+      revision: expect.any(Number),
+    });
+    expect(session.getSnapshot().status).not.toBe("loading");
+  });
+
+  it("rewinds web playback after natural end without a full reload", async () => {
+    await session.load(firstDescriptor);
+    backend.emit(
+      backendSnapshot({
+        position: 40,
+        duration: 40,
+        status: "ended",
+        revision: 9,
+        platform: "web",
+      }),
+    );
+    backend.load.mockClear();
+    sourceFactory.mockClear();
+    backend.seek.mockClear();
+    backend.play.mockClear();
+
+    await session.play();
+
+    expect(sourceFactory).not.toHaveBeenCalled();
+    expect(backend.load).not.toHaveBeenCalled();
+    expect(backend.seek).toHaveBeenCalledWith(0);
+    expect(backend.play).toHaveBeenCalledTimes(1);
+    expect(session.getSnapshot()).toMatchObject({
+      position: 0,
+      playWhenReady: true,
+      status: "buffering",
+    });
+  });
+
   it("rehydrates only credential-free metadata in a paused authorization-required state", () => {
     session.restore({
       identity: firstDescriptor.identity,

@@ -74,7 +74,7 @@ function stopPropagation(event: SyntheticEvent): void {
   event.stopPropagation();
 }
 
-function orientationStyle(width: number, height: number): CSSProperties {
+export function orientationStyle(width: number, height: number): CSSProperties {
   if (!(width > 0 && height > 0)) {
     return {
       aspectRatio: "16 / 9",
@@ -84,13 +84,24 @@ function orientationStyle(width: number, height: number): CSSProperties {
     };
   }
   const isPortrait = height > width;
-  // Portrait: taller in-chat tile (Telegram-style). Landscape: full bubble width.
+  // Portrait must be width-driven: width:auto inside fit-content collapses to min-height.
+  // Landscape fills the bubble width; height follows aspect-ratio under max-height.
+  if (isPortrait) {
+    return {
+      aspectRatio: `${width} / ${height}`,
+      width: "min(100%, 72vw, 360px)",
+      maxWidth: "100%",
+      height: "auto",
+      maxHeight: "min(78vh, 720px)",
+      ["--video-aspect-ratio" as string]: `${width} / ${height}`,
+    };
+  }
   return {
     aspectRatio: `${width} / ${height}`,
-    width: isPortrait ? "auto" : "100%",
+    width: "100%",
     maxWidth: "100%",
     height: "auto",
-    maxHeight: isPortrait ? "min(72vh, 640px)" : "min(56vh, 420px)",
+    maxHeight: "min(56vh, 420px)",
     ["--video-aspect-ratio" as string]: `${width} / ${height}`,
   };
 }

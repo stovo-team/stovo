@@ -13,6 +13,12 @@ import {
   saveFileToDisk,
   type FamilyFile,
 } from "../api/files";
+import {
+  applyPdfPageZoom,
+  nextPinchZoom,
+  nextWheelZoom,
+  touchDistance,
+} from "./pdfViewerZoom";
 
 export type DocumentPreviewKind = "pdf" | "docx" | "table" | "unsupported";
 
@@ -173,8 +179,74 @@ function KindIcon({ kind }: { kind: DocumentPreviewKind }) {
 
 function PdfCanvasViewer({ blob }: { blob: Blob }) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const gestureRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef(1);
   const [error, setError] = useState<string | null>(null);
   const [pageCount, setPageCount] = useState(0);
+  const [zoom, setZoom] = useState(1);
+
+  useEffect(() => {
+    zoomRef.current = zoom;
+    const host = hostRef.current;
+    if (host) applyPdfPageZoom(host, zoom);
+  }, [zoom, pageCount]);
+
+  useEffect(() => {
+    setZoom(1);
+    zoomRef.current = 1;
+  }, [blob]);
+
+  useEffect(() => {
+    const gestureHost = gestureRef.current;
+    if (!gestureHost) return;
+
+    let pinch: { startDistance: number; startZoom: number } | null = null;
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (event.touches.length === 2) {
+        pinch = {
+          startDistance: touchDistance(event.touches[0], event.touches[1]),
+          startZoom: zoomRef.current,
+        };
+      }
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (event.touches.length !== 2 || !pinch) return;
+      // Prevent browser page-zoom / scroll fighting while pinching.
+      event.preventDefault();
+      const distance = touchDistance(event.touches[0], event.touches[1]);
+      setZoom(nextPinchZoom(pinch.startZoom, pinch.startDistance, distance));
+    };
+
+    const endPinch = () => {
+      pinch = null;
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      if (event.touches.length < 2) endPinch();
+    };
+
+    const onWheel = (event: WheelEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+      setZoom((current) => nextWheelZoom(current, event.deltaY));
+    };
+
+    gestureHost.addEventListener("touchstart", onTouchStart, { passive: true });
+    gestureHost.addEventListener("touchmove", onTouchMove, { passive: false });
+    gestureHost.addEventListener("touchend", onTouchEnd);
+    gestureHost.addEventListener("touchcancel", endPinch);
+    gestureHost.addEventListener("wheel", onWheel, { passive: false });
+
+    return () => {
+      gestureHost.removeEventListener("touchstart", onTouchStart);
+      gestureHost.removeEventListener("touchmove", onTouchMove);
+      gestureHost.removeEventListener("touchend", onTouchEnd);
+      gestureHost.removeEventListener("touchcancel", endPinch);
+      gestureHost.removeEventListener("wheel", onWheel);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -200,6 +272,7 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
         setPageCount(doc.numPages);
         const maxPages = Math.min(doc.numPages, 40);
         const dpr = Math.min(window.devicePixelRatio || 1, 3);
+        const currentZoom = zoomRef.current;
         for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
           if (cancelled) break;
           const page = await doc.getPage(pageNumber);
@@ -211,8 +284,12 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
           canvas.className = "document-viewer-pdf-page";
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
-          canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
-          canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
+          const baseCssWidth = Math.floor(viewport.width / dpr);
+          const baseCssHeight = Math.floor(viewport.height / dpr);
+          canvas.dataset.baseWidth = String(baseCssWidth);
+          canvas.dataset.baseHeight = String(baseCssHeight);
+          canvas.style.width = `${baseCssWidth * currentZoom}px`;
+          canvas.style.height = `${baseCssHeight * currentZoom}px`;
           const context = canvas.getContext("2d");
           if (!context) continue;
           await page.render({ canvasContext: context, viewport }).promise;
@@ -237,7 +314,11 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
   }, [blob]);
 
   return (
-    <div className="document-viewer-pdf-host">
+    <div
+      className="document-viewer-pdf-host"
+      ref={gestureRef}
+      data-pdf-zoom={zoom.toFixed(2)}
+    >
       {error && (
         <div className="document-preview-error" role="alert">
           {error}

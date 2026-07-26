@@ -136,11 +136,10 @@ describe("AudioPlayer", () => {
     const player = container.querySelector<HTMLElement>(".audio-player")!;
     const controls = container.querySelector(".audio-player-controls")!;
 
-    expect([...controls.children].map((child) => child.getAttribute("data-control"))).toEqual([
-      "play-pause",
-      "seek",
-      "time",
-    ]);
+    expect(controls.querySelector('[data-control="play-pause"]')).not.toBeNull();
+    expect(controls.querySelector('[data-control="seek"]')).not.toBeNull();
+    expect(controls.querySelector('[data-control="time"]')).not.toBeNull();
+    expect(controls.querySelector('[data-control="playing-indicator"]')).not.toBeNull();
     expect(container.querySelector('button[aria-label="Play audio"]')?.getAttribute("title"))
       .toBe("Play audio");
     expect(player.getAttribute("data-session-active")).toBe("false");
@@ -171,6 +170,9 @@ describe("AudioPlayer", () => {
     expect(container.querySelector('[role="status"]')?.textContent).toBe("Loading audio…");
     expect(container.querySelector<HTMLInputElement>('input[aria-label="Seek audio"]')?.disabled)
       .toBe(true);
+    // Loading must not permanently disable replay — eternal loading used to trap the button.
+    expect(container.querySelector<HTMLButtonElement>('button[aria-label="Play audio"]')?.disabled)
+      .toBe(false);
 
     emit(snapshot({
       revision: 3,
@@ -180,6 +182,8 @@ describe("AudioPlayer", () => {
     }));
     expect(container.querySelector('[role="status"]')?.textContent).toBe("Buffering…");
     expect(container.querySelector('button[aria-label="Pause audio"]')).not.toBeNull();
+    expect(container.querySelector(".audio-player-eq.is-active")).not.toBeNull();
+    expect(container.querySelector(".audio-player")?.getAttribute("data-playing")).toBe("true");
 
     emit(snapshot({
       revision: 4,
@@ -233,6 +237,26 @@ describe("AudioPlayer", () => {
 
     emit(snapshot({ revision: 7, status: "ended", position: 75 }));
     expect(container.querySelector('button[aria-label="Replay audio"]')).not.toBeNull();
+    expect(container.querySelector(".audio-player.is-ended")).not.toBeNull();
+  });
+
+  it("replays after natural end without staying stuck on loading", async () => {
+    const { container } = renderPlayer();
+    emit(snapshot({
+      revision: 2,
+      status: "ended",
+      position: 75,
+      duration: 75,
+      platform: "web",
+    }));
+
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Replay audio"]')?.click());
+    await settle();
+
+    expect(backend.load).not.toHaveBeenCalled();
+    expect(backend.seek).toHaveBeenCalledWith(0);
+    expect(backend.play).toHaveBeenCalledTimes(1);
+    expect(session.getSnapshot().status).not.toBe("loading");
   });
 
   it("loads only on explicit play, runs arbitration first, and has no mount lifecycle effects", async () => {
@@ -328,7 +352,8 @@ describe("AudioPlayer", () => {
     const { container } = renderPlayer();
     emit(snapshot({ revision: 2, status: "error", error: "decode" }));
     const alert = container.querySelector('[role="alert"]');
-    expect(alert?.textContent).toBe("Audio couldn’t be played. Try again.");
+    expect(alert?.textContent).toContain("Audio couldn’t be played. Try again.");
+    expect(container.querySelector('button[aria-label="Retry audio"]')).not.toBeNull();
 
     emit(snapshot({
       revision: 3,
