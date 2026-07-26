@@ -49,16 +49,16 @@ function toolbar(): HTMLElement | null {
   return document.body.querySelector('[role="toolbar"]');
 }
 
-afterEach(() => {
-  while (mountedRoots.length > 0) {
-    const root = mountedRoots.pop();
-    act(() => root?.unmount());
-  }
-  document.body.replaceChildren();
-  vi.restoreAllMocks();
-});
-
 describe("FormattingToolbar", () => {
+  afterEach(() => {
+    while (mountedRoots.length > 0) {
+      const root = mountedRoots.pop();
+      act(() => root?.unmount());
+    }
+    document.body.replaceChildren();
+    vi.restoreAllMocks();
+  });
+
   it("centers the measured toolbar above an ordinary selection anchor", () => {
     expect(getFormattingToolbarPlacement(
       { left: 200, top: 200 },
@@ -183,6 +183,12 @@ describe("FormattingToolbar", () => {
         .querySelector('button[aria-label="Formatting"]')
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
+
+    const element = toolbar();
+    const submenu = document.body.querySelector(".formatting-toolbar-submenu");
+    expect(element?.classList.contains("is-format-open")).toBe(true);
+    expect(submenu).not.toBeNull();
+    expect(submenu?.getAttribute("role")).toBe("menu");
 
     const labels = [...document.body.querySelectorAll("button")].map((button) =>
       button.getAttribute("aria-label")

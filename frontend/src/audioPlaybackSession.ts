@@ -268,22 +268,41 @@ export class AudioPlaybackSession {
 
   async play(): Promise<void> {
     if (!this.descriptor || this.callActive) return;
-    // Authorization and natural-end both need a fresh backend load (Android stops
-    // the media service after ENDED, so seek+play alone hangs on buffering).
-    if (
-      this.snapshot.status === "authorization-required" ||
-      this.snapshot.status === "ended"
-    ) {
-      await this.prepareCurrent(
-        this.snapshot.status === "ended" ? 0 : this.snapshot.position,
-      );
+    const priorStatus = this.snapshot.status;
+    // Authorization always needs a fresh credentialed load. Android also tears
+    // down the media service after ENDED, so seek+play alone hangs on buffering
+    // there — web can rewind the still-attached element instead.
+    if (priorStatus === "authorization-required") {
+      await this.prepareCurrent(this.snapshot.position);
+    } else if (priorStatus === "ended") {
+      if (this.snapshot.platform === "android") {
+        await this.prepareCurrent(0);
+      } else {
+        await this.backend.seek(0);
+        this.publish({
+          position: 0,
+          status: "ready",
+          playWhenReady: false,
+          isPlaying: false,
+          error: null,
+        });
+      }
     }
+    const afterPrepare = this.snapshot.status;
     this.publish({
       playWhenReady: true,
       isPlaying: false,
       suppressionReason: null,
-      status: this.snapshot.status === "ended" ? "ready" : this.snapshot.status,
+      // Preserve in-flight loading from prepareCurrent; otherwise advertise
+      // buffering so the UI never sticks on a terminal ended/ready idle state.
+      status:
+        afterPrepare === "loading"
+          ? "loading"
+          : afterPrepare === "playing"
+            ? "playing"
+            : "buffering",
       error: null,
+      position: priorStatus === "ended" ? 0 : this.snapshot.position,
     });
     try {
       await this.backend.play();
@@ -382,6 +401,8 @@ export class AudioPlaybackSession {
 
   async clear(_reason: AudioPlaybackClearReason): Promise<void> {
     this.loadGeneration += 1;
+    // Service/backend may restart and reissue low revisions after clear.
+    this.lastBackendRevision = -1;
     await this.backend.clear();
     this.descriptor = null;
     this.callActive = false;
@@ -401,17 +422,20 @@ export class AudioPlaybackSession {
       title: this.descriptor.title,
     };
     const generation = ++this.loadGeneration;
+    // Android stopSelf() after natural end restarts the service with revision 0.
+    // Drop the watermark so the next backend snapshots are not treated as stale.
+    this.lastBackendRevision = -1;
     this.publish({
       identity: descriptor.identity,
       title: descriptor.title,
       position,
-      duration: 0,
+      duration: this.snapshot.duration > 0 ? this.snapshot.duration : 0,
       bufferedPosition: 0,
       status: "loading",
       playWhenReady: false,
       isPlaying: false,
       suppressionReason: null,
-      canSeek: false,
+      canSeek: this.snapshot.duration > 0,
       error: null,
     });
 
