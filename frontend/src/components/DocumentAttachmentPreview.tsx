@@ -199,17 +199,20 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
         }
         setPageCount(doc.numPages);
         const maxPages = Math.min(doc.numPages, 40);
+        const dpr = Math.min(window.devicePixelRatio || 1, 3);
         for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
           if (cancelled) break;
           const page = await doc.getPage(pageNumber);
           const baseViewport = page.getViewport({ scale: 1 });
-          const width = Math.min(host.clientWidth || 720, 900);
-          const scale = width / baseViewport.width;
+          const cssWidth = Math.min(host.clientWidth || 720, 900);
+          const scale = (cssWidth / baseViewport.width) * dpr;
           const viewport = page.getViewport({ scale });
           const canvas = document.createElement("canvas");
           canvas.className = "document-viewer-pdf-page";
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
+          canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
+          canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
           const context = canvas.getContext("2d");
           if (!context) continue;
           await page.render({ canvasContext: context, viewport }).promise;
