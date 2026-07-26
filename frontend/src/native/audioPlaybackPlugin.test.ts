@@ -243,6 +243,48 @@ describe("native audio playback plugin", () => {
     );
   });
 
+  it("resets the revision watermark on load so a restarted service can replay", async () => {
+    let listener: ((value: unknown) => void) | undefined;
+    nativePlugin.addListener.mockImplementation(
+      async (_name: string, onState: (value: unknown) => void) => {
+        listener = onState;
+        return { remove: vi.fn().mockResolvedValue(undefined) };
+      },
+    );
+    const backend = new NativeAudioPlaybackBackend();
+    await backend.connect();
+    listener?.(
+      nativeState({
+        revision: 40,
+        status: "ended",
+        position: 12,
+        duration: 12,
+        bufferedPosition: 12,
+        playWhenReady: false,
+        isPlaying: false,
+      }),
+    );
+    expect(backend.getSnapshot()).toMatchObject({ status: "ended", revision: 40 });
+
+    await backend.load(descriptor, source, 0);
+    listener?.(
+      nativeState({
+        revision: 1,
+        status: "ready",
+        position: 0,
+        duration: 12,
+        bufferedPosition: 0,
+        canSeek: true,
+      }),
+    );
+
+    expect(backend.getSnapshot()).toMatchObject({
+      status: "ready",
+      revision: 1,
+      position: 0,
+    });
+  });
+
   it("does not stop playback when only the Activity bridge listener disconnects", async () => {
     const remove = vi.fn().mockResolvedValue(undefined);
     nativePlugin.addListener.mockResolvedValue({ remove });

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FamilyFile } from "../api/files";
 import { videoPlaybackSession, type VideoIdentity } from "../videoPlaybackSession";
-import { formatVideoTime, VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
+import { formatVideoTime, orientationStyle, VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
 
 const { downloadFileBlobMock } = vi.hoisted(() => ({
   downloadFileBlobMock: vi.fn(),
@@ -346,6 +346,43 @@ describe("VideoPlayer", () => {
     roots.splice(roots.indexOf(root), 1);
     expect(revokeObjectURLMock).toHaveBeenCalledTimes(1);
     expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:video-1");
+  });
+
+  it("sizes portrait videos with a large width-driven frame and keeps landscape full-bleed", async () => {
+    expect(orientationStyle(720, 1280)).toMatchObject({
+      aspectRatio: "720 / 1280",
+      width: "min(100%, 72vw, 360px)",
+      maxHeight: "min(78vh, 720px)",
+      height: "auto",
+    });
+    expect(orientationStyle(1920, 1080)).toMatchObject({
+      aspectRatio: "1920 / 1080",
+      width: "100%",
+      maxHeight: "min(56vh, 420px)",
+    });
+
+    const { container } = renderPlayer();
+    await settle();
+    const element = media(container);
+    setMediaTiming(element, 30, 0);
+    Object.defineProperty(element, "videoWidth", { configurable: true, value: 720 });
+    Object.defineProperty(element, "videoHeight", { configurable: true, value: 1280 });
+    act(() => element.dispatchEvent(new Event("loadedmetadata")));
+
+    const portraitRoot = container.querySelector<HTMLElement>(".video-player")!;
+    expect(portraitRoot.classList.contains("is-portrait")).toBe(true);
+    expect(portraitRoot.classList.contains("is-landscape")).toBe(false);
+    expect(portraitRoot.style.getPropertyValue("--video-aspect-ratio").trim()).toBe("720 / 1280");
+
+    Object.defineProperty(element, "videoWidth", { configurable: true, value: 1920 });
+    Object.defineProperty(element, "videoHeight", { configurable: true, value: 1080 });
+    act(() => element.dispatchEvent(new Event("loadedmetadata")));
+
+    const landscapeRoot = container.querySelector<HTMLElement>(".video-player")!;
+    expect(landscapeRoot.classList.contains("is-landscape")).toBe(true);
+    expect(landscapeRoot.classList.contains("is-portrait")).toBe(false);
+    expect(landscapeRoot.style.width).toBe("100%");
+    expect(landscapeRoot.style.getPropertyValue("--video-aspect-ratio").trim()).toBe("1920 / 1080");
   });
 
   it("pauses and exposes a call-priority reason when disabled", async () => {
