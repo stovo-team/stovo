@@ -148,7 +148,7 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request, user
 
 func (s *Server) handleCreateMediaPlaybackToken(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, _, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !strings.HasPrefix(file.MimeType, "audio/") || !s.fileVisibleToUser(file, user) {
+	if err != nil || file.DeletedAt != nil || !isStreamableMediaMime(file.MimeType) || !s.fileVisibleToUser(file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -162,12 +162,7 @@ func (s *Server) handleCreateMediaPlaybackToken(w http.ResponseWriter, r *http.R
 
 func (s *Server) handleStreamMediaPlaybackFile(w http.ResponseWriter, r *http.Request) {
 	fileID := fileIDFromURL(r)
-	headerValues := r.Header.Values(mediaPlaybackTokenHeader)
-	if len(headerValues) != 1 {
-		s.detail(w, http.StatusNotFound, "File not found")
-		return
-	}
-	rawToken := strings.TrimSpace(headerValues[0])
+	rawToken := mediaPlaybackTokenFromRequest(r)
 	if rawToken == "" || len(rawToken) > maxMediaPlaybackTokenHeaderSize {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
@@ -184,7 +179,7 @@ func (s *Server) handleStreamMediaPlaybackFile(w http.ResponseWriter, r *http.Re
 	}
 	file, objectKey, err := s.loadFileRecord(fileID, user.ID)
 	if err != nil || file.ID != claims.FileID || file.FamilyID != claims.FamilyID || file.DeletedAt != nil ||
-		!strings.HasPrefix(file.MimeType, "audio/") || !s.fileVisibleToUser(file, user) {
+		!isStreamableMediaMime(file.MimeType) || !s.fileVisibleToUser(file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -202,7 +197,23 @@ func (s *Server) handleStreamMediaPlaybackFile(w http.ResponseWriter, r *http.Re
 
 	w.Header().Set("Content-Type", file.MimeType)
 	w.Header().Set("Content-Disposition", "inline")
+	w.Header().Set("Accept-Ranges", "bytes")
 	http.ServeContent(w, r, "", info.ModTime(), handle)
+}
+
+func isStreamableMediaMime(mimeType string) bool {
+	return strings.HasPrefix(mimeType, "audio/") || strings.HasPrefix(mimeType, "video/")
+}
+
+func mediaPlaybackTokenFromRequest(r *http.Request) string {
+	headerValues := r.Header.Values(mediaPlaybackTokenHeader)
+	if len(headerValues) == 1 {
+		return strings.TrimSpace(headerValues[0])
+	}
+	if token := strings.TrimSpace(r.URL.Query().Get("token")); token != "" {
+		return token
+	}
+	return ""
 }
 
 func (s *Server) handleUpdateFilePreferences(w http.ResponseWriter, r *http.Request, user userPublic) {
