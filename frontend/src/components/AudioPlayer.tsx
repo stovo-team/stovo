@@ -106,7 +106,7 @@ function initialSnapshotFor(
 
 export function AudioPlayer({
   descriptor,
-  sourceFactory: _sourceFactory,
+  sourceFactory,
   disabledReason,
   onBeforePlay,
   session = audioPlaybackSession,
@@ -161,9 +161,23 @@ export function AudioPlayer({
     if (playbackDisabled) return;
     try {
       await onBeforePlay?.();
+      // Keep the session resolver aligned with this attachment's ephemeral credentials.
+      session.setSourceFactory(sourceFactory);
       const activeSnapshot = session.getSnapshot();
-      if (!sameAudioIdentity(activeSnapshot.identity, descriptor.identity)) {
-        await session.load(descriptor);
+      const sameTrack = sameAudioIdentity(activeSnapshot.identity, descriptor.identity);
+      const needsReload =
+        !sameTrack ||
+        activeSnapshot.status === "error" ||
+        activeSnapshot.status === "idle" ||
+        activeSnapshot.status === "authorization-required";
+      if (needsReload) {
+        const resumeAt =
+          sameTrack &&
+          (activeSnapshot.status === "error" ||
+            activeSnapshot.status === "authorization-required")
+            ? activeSnapshot.position
+            : 0;
+        await session.load(descriptor, resumeAt);
       } else if (activeSnapshot.status === "ended") {
         await session.seek(0);
       }
@@ -171,7 +185,7 @@ export function AudioPlayer({
     } catch {
       // The canonical session maps backend failures to its closed error vocabulary.
     }
-  }, [descriptor, onBeforePlay, playbackDisabled, session]);
+  }, [descriptor, onBeforePlay, playbackDisabled, session, sourceFactory]);
 
   const togglePlayback = useCallback(() => {
     if (isPauseAction) return void session.pause();
@@ -182,12 +196,13 @@ export function AudioPlayer({
     if (!recoverableError || isCallDisabled) return;
     try {
       await onBeforePlay?.();
+      session.setSourceFactory(sourceFactory);
       await session.retry();
       await session.play();
     } catch {
       // Keep error presentation safe and generic.
     }
-  }, [isCallDisabled, onBeforePlay, recoverableError, session]);
+  }, [isCallDisabled, onBeforePlay, recoverableError, session, sourceFactory]);
 
   const commitSeek = useCallback((value: number) => {
     setPreviewPosition(null);

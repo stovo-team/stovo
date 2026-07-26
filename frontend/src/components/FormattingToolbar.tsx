@@ -1,6 +1,7 @@
 import type React from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Code2, Quote } from "lucide-react";
 
 import type {
   FormattingKind,
@@ -72,14 +73,17 @@ export function getFormattingToolbarPlacement(
 }
 
 const formattingActions = [
-  { kind: "bold", label: "Bold", Icon: IconBold },
-  { kind: "italic", label: "Italic", Icon: IconItalic },
-  { kind: "underline", label: "Underline", Icon: IconUnderline },
-  { kind: "strikethrough", label: "Strikethrough", Icon: IconStrikethrough },
-  { kind: "spoiler", label: "Spoiler", Icon: IconSpoiler }
+  { kind: "bold", label: "Bold", description: "Strong emphasis", Icon: IconBold },
+  { kind: "italic", label: "Italic", description: "Emphasis", Icon: IconItalic },
+  { kind: "underline", label: "Underline", description: "Underline text", Icon: IconUnderline },
+  { kind: "strikethrough", label: "Strike", description: "Strikethrough", Icon: IconStrikethrough },
+  { kind: "spoiler", label: "Spoiler", description: "Hidden until tapped", Icon: IconSpoiler },
+  { kind: "code", label: "Code", description: "Inline code", Icon: Code2 },
+  { kind: "quote", label: "Quote", description: "Quoted reply style", Icon: Quote }
 ] as const satisfies ReadonlyArray<{
   kind: FormattingKind;
   label: string;
+  description: string;
   Icon: React.ComponentType<{ size?: number }>;
 }>;
 
@@ -134,27 +138,33 @@ export function FormattingToolbar(
         position: "fixed",
         left: placement?.left ?? 0,
         top: placement?.top ?? 0,
-        visibility: placement ? "visible" : "hidden"
+        visibility: placement ? "visible" : "hidden",
+        zIndex: 10000
       }}
       onPointerDown={(event) => {
         event.preventDefault();
         event.stopPropagation();
       }}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }}
       onClick={(event) => event.stopPropagation()}
     >
-      {formattingActions.map(({ kind, label, Icon }) => (
+      {formattingActions.map(({ kind, label, description, Icon }) => (
         <button
           key={kind}
           type="button"
           className="formatting-toolbar-action"
           aria-label={label}
-          title={label}
+          title={`${label} — ${description}`}
           onClick={(event) => {
             event.stopPropagation();
             onFormat(kind);
           }}
         >
-          <Icon size={20} />
+          <Icon size={18} aria-hidden="true" />
+          <span className="formatting-toolbar-action-label">{label}</span>
         </button>
       ))}
     </div>,

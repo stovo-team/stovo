@@ -3,7 +3,7 @@ import React, { Fragment, useState } from "react";
 export type StovoMarkdownNode =
   | { type: "text"; value: string }
   | {
-      type: "bold" | "italic" | "underline" | "strikethrough" | "spoiler";
+      type: "bold" | "italic" | "underline" | "strikethrough" | "spoiler" | "code" | "quote";
       children: StovoMarkdownNode[];
     }
   | { type: "link"; href: string; children: StovoMarkdownNode[] };
@@ -15,6 +15,8 @@ const formattingDelimiters = [
   { delimiter: "__", type: "underline" },
   { delimiter: "~~", type: "strikethrough" },
   { delimiter: "||", type: "spoiler" },
+  { delimiter: "`", type: "code" },
+  { delimiter: "*", type: "italic" },
   { delimiter: "_", type: "italic" }
 ] as const;
 
@@ -154,9 +156,13 @@ function parseInline(source: string, depth: number): StovoMarkdownNode[] {
         continue;
       }
       if (contentEnd > contentStart) {
+        const inner = source.slice(contentStart, contentEnd);
         nodes.push({
           type: format.type,
-          children: parseInline(source.slice(contentStart, contentEnd), depth + 1)
+          children:
+            format.type === "code"
+              ? [{ type: "text", value: inner }]
+              : parseInline(inner, depth + 1)
         });
         index = contentEnd + format.delimiter.length;
         continue;
@@ -185,7 +191,38 @@ function parseInline(source: string, depth: number): StovoMarkdownNode[] {
 export function parseStovoMarkdown(
   source: string | null | undefined
 ): StovoMarkdownNode[] {
-  return source ? parseInline(source, 0) : [];
+  if (!source) return [];
+  // Quote lines: lines starting with "> " become quote nodes (Telegram-style).
+  if (source.includes("\n") || source.startsWith(">")) {
+    const lines = source.split("\n");
+    const nodes: StovoMarkdownNode[] = [];
+    let quoteBuffer: string[] = [];
+    const flushQuote = () => {
+      if (quoteBuffer.length === 0) return;
+      nodes.push({
+        type: "quote",
+        children: parseInline(quoteBuffer.join("\n"), 0)
+      });
+      quoteBuffer = [];
+    };
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (line.startsWith("> ")) {
+        quoteBuffer.push(line.slice(2));
+        continue;
+      }
+      if (line === ">") {
+        quoteBuffer.push("");
+        continue;
+      }
+      flushQuote();
+      if (nodes.length > 0 || i > 0) appendText(nodes, "\n");
+      nodes.push(...parseInline(line, 0));
+    }
+    flushQuote();
+    return nodes;
+  }
+  return parseInline(source, 0);
 }
 
 export function isSafeMessageUrl(candidate: string): boolean {
@@ -294,6 +331,10 @@ function renderNodes(
         return <u key={key}>{children}</u>;
       case "strikethrough":
         return <s key={key}>{children}</s>;
+      case "code":
+        return <code key={key} className="message-inline-code">{children}</code>;
+      case "quote":
+        return <blockquote key={key} className="message-quote">{children}</blockquote>;
       case "spoiler":
         if (context.suppressInteractions) {
           return <span key={key} className="message-spoiler-content">{children}</span>;

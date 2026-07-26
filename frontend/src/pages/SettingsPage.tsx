@@ -352,6 +352,34 @@ function AppearanceEditor({
             </div>
           </section>
 
+          <section className="appearance-section-card">
+            <p className="appearance-section-label">Chat media</p>
+            <label className="appearance-toggle-row">
+              <span>
+                <strong>Video autoplay</strong>
+                <span className="appearance-toggle-help">Muted inline preview like Telegram</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={appearance.videoAutoplay}
+                aria-label="Video autoplay"
+                onChange={(event) => updateAppearance({ videoAutoplay: event.target.checked })}
+              />
+            </label>
+            <label className="appearance-toggle-row">
+              <span>
+                <strong>Render markdown</strong>
+                <span className="appearance-toggle-help">Bold, italic, links, code, and more</span>
+              </span>
+              <input
+                type="checkbox"
+                checked={appearance.renderMarkdown}
+                aria-label="Render markdown"
+                onChange={(event) => updateAppearance({ renderMarkdown: event.target.checked })}
+              />
+            </label>
+          </section>
+
           <button
             type="button"
             className="subtle-action"
