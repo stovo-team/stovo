@@ -1,5 +1,5 @@
-import { Maximize2, Pencil, X } from "lucide-react";
-import { useEffect } from "react";
+import { Maximize2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { MessageMarkdown } from "../messageMarkdown";
@@ -7,16 +7,22 @@ import { MessageMarkdown } from "../messageMarkdown";
 export function MessageEnlargeModal({
   content,
   renderMarkdown,
-  canEdit,
+  editable = false,
   onClose,
-  onEdit,
+  onChange,
 }: {
   content: string;
   renderMarkdown: boolean;
-  canEdit?: boolean;
+  editable?: boolean;
   onClose: () => void;
-  onEdit?: () => void;
+  onChange?: (value: string) => void;
 }) {
+  const [draft, setDraft] = useState(content);
+
+  useEffect(() => {
+    setDraft(content);
+  }, [content]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -35,21 +41,8 @@ export function MessageEnlargeModal({
         onClick={(event) => event.stopPropagation()}
       >
         <header className="message-enlarge-header">
-          <strong>Message</strong>
+          <strong>{editable ? "Compose" : "Message"}</strong>
           <div className="message-enlarge-actions">
-            {canEdit && onEdit && (
-              <button
-                type="button"
-                className="message-enlarge-edit"
-                onClick={() => {
-                  onEdit();
-                  onClose();
-                }}
-              >
-                <Pencil size={16} aria-hidden="true" />
-                Edit
-              </button>
-            )}
             <button
               type="button"
               className="message-enlarge-close"
@@ -61,7 +54,23 @@ export function MessageEnlargeModal({
           </div>
         </header>
         <div className="message-enlarge-body">
-          {renderMarkdown ? <MessageMarkdown source={content} /> : content}
+          {editable ? (
+            <textarea
+              className="message-enlarge-editor"
+              value={draft}
+              maxLength={4000}
+              autoFocus
+              onChange={(event) => {
+                const next = event.target.value;
+                setDraft(next);
+                onChange?.(next);
+              }}
+            />
+          ) : renderMarkdown ? (
+            <MessageMarkdown source={content} />
+          ) : (
+            content
+          )}
         </div>
       </div>
     </div>,

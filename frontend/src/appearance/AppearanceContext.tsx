@@ -29,6 +29,8 @@ export interface AppearanceSettings {
   videoAutoplay: boolean;
   /** Render message markdown instead of plain text. */
   renderMarkdown: boolean;
+  /** When true, Enter sends; when false, Enter inserts a newline (Ctrl/Cmd+Enter sends). */
+  sendOnEnter: boolean;
 }
 
 interface AppearanceContextValue {
@@ -75,7 +77,8 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   messageScale: 1,
   avatarColor: "#0ea5e9",
   videoAutoplay: true,
-  renderMarkdown: true
+  renderMarkdown: true,
+  sendOnEnter: false
 };
 
 export const WALLPAPER_OPTIONS: Array<{ label: string; value: WallpaperChoice }> = [
@@ -150,7 +153,11 @@ function readAppearanceSettings(): AppearanceSettings {
       renderMarkdown:
         typeof parsed.renderMarkdown === "boolean"
           ? parsed.renderMarkdown
-          : DEFAULT_APPEARANCE.renderMarkdown
+          : DEFAULT_APPEARANCE.renderMarkdown,
+      sendOnEnter:
+        typeof parsed.sendOnEnter === "boolean"
+          ? parsed.sendOnEnter
+          : DEFAULT_APPEARANCE.sendOnEnter
     };
   } catch {
     return DEFAULT_APPEARANCE;

@@ -98,7 +98,6 @@ import {
 import {
   FamilyFile,
   createMediaPlaybackToken,
-  downloadFileBlob,
   formatFileSize,
   getMediaPlaybackUrl,
   saveFileToDisk,
@@ -189,16 +188,18 @@ export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory
       throw new Error("Audio playback requires authentication");
     }
 
+    // Stream via playback token so playback starts without waiting for a full download.
+    const capability = await createMediaPlaybackToken(accessToken, descriptor.identity.fileId);
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
-      const capability = await createMediaPlaybackToken(accessToken, descriptor.identity.fileId);
       return {
         url: getMediaPlaybackUrl(descriptor.identity.fileId),
         token: capability.token
       };
     }
 
-    const blob = await downloadFileBlob(accessToken, descriptor.identity.fileId);
-    return { url: URL.createObjectURL(blob), objectUrl: true };
+    return {
+      url: getMediaPlaybackUrl(descriptor.identity.fileId, capability.token)
+    };
   };
 }
 
@@ -1313,7 +1314,7 @@ export default function ChatsPage() {
     previewUrl: string;
   } | null>(null);
   const [isFullViewImageClosing, setIsFullViewImageClosing] = useState(false);
-  const [enlargedMessage, setEnlargedMessage] = useState<Message | null>(null);
+  const [composerEnlargeOpen, setComposerEnlargeOpen] = useState(false);
   const [messageContextMenu, setMessageContextMenu] = useState<{
     message: Message;
     x: number;
@@ -4301,11 +4302,23 @@ export default function ChatsPage() {
       event.preventDefault();
       return;
     }
-    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
       return;
     }
-    event.preventDefault();
-    event.currentTarget.form?.requestSubmit();
+    const sendWithModifier = event.ctrlKey || event.metaKey;
+    if (appearance.sendOnEnter) {
+      if (event.shiftKey) {
+        return; // Shift+Enter = newline when send-on-enter is on
+      }
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+      return;
+    }
+    // Default: Enter inserts newline; Ctrl/Cmd+Enter sends.
+    if (sendWithModifier) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
   }
 
   function handleAttachButtonClick() {
@@ -5720,11 +5733,6 @@ export default function ChatsPage() {
                                         (edited)
                                       </span>
                                     )}
-                                    {message.content && (
-                                      <MessageEnlargeButton
-                                        onClick={() => setEnlargedMessage(message)}
-                                      />
-                                    )}
                                   </div>
                                 ) : null}
                                 {message.deliveryError ? (
@@ -6079,42 +6087,47 @@ export default function ChatsPage() {
                       onClose={() => setIsAttachmentSheetOpen(false)}
                       onPick={handleAttachmentSheetPick}
                     />
-                    <textarea
-                      ref={composerInputRef}
-                      rows={1}
-                      maxLength={4000}
-                      placeholder={
-                        selectedChat?.type === "channel"
-                          ? channelCommentsDisabledForViewer
-                            ? "Comments are disabled"
-                            : missingCommentThread
-                              ? "Comment…"
-                              : canPostInSelectedChannel
-                                ? "Post an update"
-                                : "Message"
-                          : "Message"
-                      }
-                      value={composer}
-                      disabled={channelCommentsDisabledForViewer || missingCommentThread}
-                      onChange={(event) => {
-                        clearComposerFormattingSelection();
-                        handleComposerChange(event.target.value);
-                      }}
-                      onFocus={handleComposerFocus}
-                      onKeyDown={handleComposerKeyDown}
-                      onKeyUp={updateComposerFormattingSelection}
-                      onPointerUp={updateComposerFormattingSelection}
-                      onScroll={updateComposerFormattingSelection}
-                      onSelect={updateComposerFormattingSelection}
-                      onContextMenu={(event) => {
-                        const textarea = event.currentTarget;
-                        if (textarea.selectionStart !== textarea.selectionEnd) {
-                          // Prefer the Telegram-style formatting toolbar over the OS menu.
-                          event.preventDefault();
-                          updateComposerFormattingSelection();
+                    <div className="message-composer-input-wrap">
+                      <textarea
+                        ref={composerInputRef}
+                        rows={1}
+                        maxLength={4000}
+                        placeholder={
+                          selectedChat?.type === "channel"
+                            ? channelCommentsDisabledForViewer
+                              ? "Comments are disabled"
+                              : missingCommentThread
+                                ? "Comment…"
+                                : canPostInSelectedChannel
+                                  ? "Post an update"
+                                  : "Message"
+                            : "Message"
                         }
-                      }}
-                    />
+                        value={composer}
+                        disabled={channelCommentsDisabledForViewer || missingCommentThread}
+                        onChange={(event) => {
+                          clearComposerFormattingSelection();
+                          handleComposerChange(event.target.value);
+                        }}
+                        onFocus={handleComposerFocus}
+                        onKeyDown={handleComposerKeyDown}
+                        onKeyUp={updateComposerFormattingSelection}
+                        onPointerUp={updateComposerFormattingSelection}
+                        onScroll={updateComposerFormattingSelection}
+                        onSelect={updateComposerFormattingSelection}
+                        onContextMenu={(event) => {
+                          const textarea = event.currentTarget;
+                          if (textarea.selectionStart !== textarea.selectionEnd) {
+                            // Prefer the Telegram-style formatting toolbar over the OS menu.
+                            event.preventDefault();
+                            updateComposerFormattingSelection();
+                          }
+                        }}
+                      />
+                      {composer.trim().length > 0 && (
+                        <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
+                      )}
+                    </div>
                     <FormattingToolbar
                       selection={composerFormattingSelectionRef.current}
                       anchor={formattingToolbarAnchor}
@@ -6746,21 +6759,13 @@ export default function ChatsPage() {
           />
         )}
 
-        {enlargedMessage?.content && (
+        {composerEnlargeOpen && (
           <MessageEnlargeModal
-            content={enlargedMessage.content}
+            content={composer}
             renderMarkdown={appearance.renderMarkdown}
-            canEdit={
-              Boolean(currentUser) &&
-              enlargedMessage.senderId === currentUser?.id &&
-              !enlargedMessage.id.startsWith("pending:")
-            }
-            onClose={() => setEnlargedMessage(null)}
-            onEdit={() => {
-              const target = enlargedMessage;
-              setEnlargedMessage(null);
-              handleEditMessage(target);
-            }}
+            editable
+            onClose={() => setComposerEnlargeOpen(false)}
+            onChange={(value) => handleComposerChange(value)}
           />
         )}
 
