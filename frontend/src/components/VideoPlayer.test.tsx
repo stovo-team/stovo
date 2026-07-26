@@ -54,6 +54,7 @@ function playerProps(overrides: Partial<VideoPlayerProps> = {}): VideoPlayerProp
     file: familyFile(),
     accessToken: "access-token",
     identity: identity(),
+    autoplay: false,
     ...overrides,
   };
 }

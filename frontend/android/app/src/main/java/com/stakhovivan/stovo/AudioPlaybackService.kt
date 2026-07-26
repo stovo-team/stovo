@@ -359,10 +359,10 @@ class AudioPlaybackService : MediaSessionService() {
 
     private fun isExactMediaUrl(uri: Uri, fileId: String?): Boolean {
         if (fileId.isNullOrBlank()) return false
-        val origin = Uri.parse(API_ORIGIN)
-        return uri.scheme == origin.scheme &&
-            uri.host == origin.host &&
-            effectivePort(uri) == effectivePort(origin) &&
+        val scheme = uri.scheme?.lowercase()
+        // Path-shaped media URLs from the configured API origin; credential is the playback token.
+        return (scheme == "https" || scheme == "http") &&
+            !uri.host.isNullOrBlank() &&
             uri.userInfo == null &&
             uri.query == null &&
             uri.fragment == null &&
@@ -371,9 +371,6 @@ class AudioPlaybackService : MediaSessionService() {
             uri.pathSegments[1] == "media" &&
             uri.pathSegments[2] == fileId
     }
-
-    private fun effectivePort(uri: Uri): Int =
-        if (uri.port != -1) uri.port else if (uri.scheme == "https") 443 else 80
 
     private fun mapPlaybackError(error: PlaybackException): AudioPlaybackErrorCode =
         when (error.errorCode) {
@@ -391,18 +388,19 @@ class AudioPlaybackService : MediaSessionService() {
             else -> AudioPlaybackErrorCode.UNKNOWN
         }
 
-    private class OriginCheckingDataSource(
+    private inner class OriginCheckingDataSource(
         private val upstream: DataSource
     ) : DataSource by upstream {
         override fun open(dataSpec: DataSpec): Long {
             val opened = upstream.open(dataSpec)
             val finalUri = upstream.uri
-            val expected = Uri.parse(API_ORIGIN)
+            val expectedSource = credentials.sourceUrl?.let(Uri::parse)
             if (
                 finalUri == null ||
-                finalUri.scheme != expected.scheme ||
-                finalUri.host != expected.host ||
-                effectivePort(finalUri) != effectivePort(expected)
+                expectedSource == null ||
+                finalUri.scheme != expectedSource.scheme ||
+                finalUri.host != expectedSource.host ||
+                effectivePort(finalUri) != effectivePort(expectedSource)
             ) {
                 upstream.close()
                 throw IOException("Audio redirect rejected")

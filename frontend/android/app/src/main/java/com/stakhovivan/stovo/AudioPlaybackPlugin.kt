@@ -261,10 +261,12 @@ class AudioPlaybackPlugin : Plugin() {
     }
 
     private fun isExactMediaUrl(sourceUrl: String, fileId: String): Boolean {
+        if (fileId.isBlank()) return false
         val uri = Uri.parse(sourceUrl)
-        return uri.scheme == "https" &&
-            uri.host == "stovo-local.stovo.ru" &&
-            (uri.port == -1 || uri.port == 443) &&
+        val scheme = uri.scheme?.lowercase()
+        // Accept the configured API origin (http/https). Auth is the short-lived playback token.
+        return (scheme == "https" || scheme == "http") &&
+            !uri.host.isNullOrBlank() &&
             uri.userInfo == null &&
             uri.query == null &&
             uri.fragment == null &&

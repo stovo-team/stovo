@@ -25,6 +25,10 @@ export interface AppearanceSettings {
   bubbleShape: BubbleShapeChoice;
   messageScale: number;
   avatarColor: string;
+  /** Muted inline video autoplay in chat (Telegram-style). */
+  videoAutoplay: boolean;
+  /** Render message markdown instead of plain text. */
+  renderMarkdown: boolean;
 }
 
 interface AppearanceContextValue {
@@ -69,7 +73,9 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   wallpaper: "dots",
   bubbleShape: "rounded",
   messageScale: 1,
-  avatarColor: "#0ea5e9"
+  avatarColor: "#0ea5e9",
+  videoAutoplay: true,
+  renderMarkdown: true
 };
 
 export const WALLPAPER_OPTIONS: Array<{ label: string; value: WallpaperChoice }> = [
@@ -136,7 +142,15 @@ function readAppearanceSettings(): AppearanceSettings {
       avatarColor:
         typeof parsed.avatarColor === "string" && /^#[0-9a-f]{6}$/i.test(parsed.avatarColor)
           ? parsed.avatarColor
-          : DEFAULT_APPEARANCE.avatarColor
+          : DEFAULT_APPEARANCE.avatarColor,
+      videoAutoplay:
+        typeof parsed.videoAutoplay === "boolean"
+          ? parsed.videoAutoplay
+          : DEFAULT_APPEARANCE.videoAutoplay,
+      renderMarkdown:
+        typeof parsed.renderMarkdown === "boolean"
+          ? parsed.renderMarkdown
+          : DEFAULT_APPEARANCE.renderMarkdown
     };
   } catch {
     return DEFAULT_APPEARANCE;

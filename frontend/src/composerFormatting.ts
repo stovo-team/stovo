@@ -1,4 +1,11 @@
-export type FormattingKind = "bold" | "italic" | "underline" | "strikethrough" | "spoiler";
+export type FormattingKind =
+  | "bold"
+  | "italic"
+  | "underline"
+  | "strikethrough"
+  | "spoiler"
+  | "code"
+  | "quote";
 
 export type TextSelection = {
   start: number;
@@ -25,7 +32,9 @@ export const formattingDelimiters: Record<FormattingKind, string> = {
   italic: "_",
   underline: "__",
   strikethrough: "~~",
-  spoiler: "||"
+  spoiler: "||",
+  code: "`",
+  quote: "> "
 };
 
 function clampOffset(offset: number, length: number): number {
@@ -85,6 +94,28 @@ export function formatComposerSelection(
 
   const delimiter = formattingDelimiters[kind];
   const selected = value.slice(normalized.start, normalized.end);
+
+  if (kind === "quote") {
+    const quoted = selected
+      .split("\n")
+      .map((line) => (line.startsWith("> ") ? line.slice(2) : `> ${line}`))
+      .join("\n");
+    const stripping = selected.split("\n").every((line) => line.startsWith("> ") || line === ">");
+    const replacement = stripping
+      ? selected
+          .split("\n")
+          .map((line) => (line.startsWith("> ") ? line.slice(2) : line === ">" ? "" : line))
+          .join("\n")
+      : quoted;
+    return changedEdit(
+      value,
+      normalized.start,
+      normalized.end,
+      replacement,
+      normalized.start,
+      normalized.start + replacement.length
+    );
+  }
 
   if (
     selected.length >= delimiter.length * 2 &&
