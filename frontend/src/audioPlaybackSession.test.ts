@@ -252,7 +252,7 @@ describe("AudioPlaybackSession", () => {
     expect(backend.clear).toHaveBeenCalledTimes(4);
   });
 
-  it("rewinds Android playback after a natural end without tearing down the session", async () => {
+  it("reloads Android playback after a natural end without tearing down the session", async () => {
     await session.load(firstDescriptor);
     backend.emit(
       backendSnapshot({
@@ -274,9 +274,13 @@ describe("AudioPlaybackSession", () => {
     sourceFactory.mockClear();
     await session.play();
 
-    expect(sourceFactory).not.toHaveBeenCalled();
-    expect(backend.load).not.toHaveBeenCalled();
-    expect(backend.seek).toHaveBeenCalledWith(0);
+    expect(sourceFactory).toHaveBeenCalledWith(firstDescriptor);
+    expect(backend.load).toHaveBeenCalledWith(
+      firstDescriptor,
+      expect.any(Object),
+      0,
+    );
+    expect(backend.seek).not.toHaveBeenCalled();
     expect(backend.play).toHaveBeenCalledTimes(1);
     expect(session.getSnapshot().status).not.toBe("ended");
   });

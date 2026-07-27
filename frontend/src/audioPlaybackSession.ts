@@ -273,17 +273,20 @@ export class AudioPlaybackSession {
     if (priorStatus === "authorization-required") {
       await this.prepareCurrent(this.snapshot.position);
     } else if (priorStatus === "ended") {
-      // Keep the same path on web and Android: rewind the still-attached player.
-      // Android used to tear down AudioPlaybackService on ENDED and full-reload
-      // here, which raced MediaController reconnect and crashed the app.
-      await this.backend.seek(0);
-      this.publish({
-        position: 0,
-        status: "ready",
-        playWhenReady: false,
-        isPlaying: false,
-        error: null,
-      });
+      if (this.snapshot.platform === "android") {
+        // Service stays alive after natural end — reload with a fresh token and
+        // media item. seek+play alone is unreliable (async seek + stale creds).
+        await this.prepareCurrent(0);
+      } else {
+        await this.backend.seek(0);
+        this.publish({
+          position: 0,
+          status: "ready",
+          playWhenReady: false,
+          isPlaying: false,
+          error: null,
+        });
+      }
     }
     const afterPrepare = this.snapshot.status;
     this.publish({
