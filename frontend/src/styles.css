@@ -3349,7 +3349,13 @@ span.message-spoiler.is-revealed {
   align-items: center;
   display: flex;
   flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
   justify-content: flex-end;
+}
+
+.message-composer-actions .message-enlarge-button {
+  margin-bottom: 0;
 }
 
 .reply-composer-preview {
@@ -3389,17 +3395,6 @@ span.message-spoiler.is-revealed {
   grid-template-columns: minmax(0, 1fr);
   min-width: 0;
   position: relative;
-}
-
-.message-composer-input-wrap .message-enlarge-button {
-  position: absolute;
-  right: 2px;
-  top: 2px;
-  z-index: 1;
-}
-
-.message-composer-input-wrap:has(.message-enlarge-button) textarea {
-  padding-inline-end: 34px;
 }
 
 .message-composer textarea {
@@ -3449,6 +3444,10 @@ span.message-spoiler.is-revealed {
   border-radius: 14px;
   max-width: min(220px, calc(100vw - 24px));
   padding: 4px;
+}
+
+.formatting-toolbar.is-format-open .formatting-toolbar-submenu {
+  max-height: min(52vh, calc(100dvh - 120px));
 }
 
 .formatting-toolbar::-webkit-scrollbar {
@@ -3806,12 +3805,21 @@ span.message-spoiler.is-revealed {
   max-width: min(360px, 85%);
 }
 
-.message-bubble:has(.message-video-attachment) {
-  max-width: min(380px, 85%);
+/* Telegram-style: video fills the bubble — no thick purple frame. */
+.message-bubble.has-photo-attachments:has(.message-video-attachment),
+.message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
+  gap: 0;
+  max-width: min(280px, 72%);
+  padding: 2px;
 }
 
 .message-bubble:has(.message-video-attachment) .message-attachments {
   width: 100%;
+}
+
+.message-bubble.has-photo-attachments:has(.message-video-attachment) .message-attachments,
+.message-bubble:has(.message-video-attachment) .message-attachments {
+  gap: 0;
 }
 
 .message-bubble.has-photo-attachments .message-attachments {
@@ -4015,8 +4023,8 @@ span.message-spoiler.is-revealed {
 .video-player {
   aspect-ratio: var(--video-aspect-ratio, 16 / 9);
   background: #000000;
-  border: 1px solid color-mix(in oklab, var(--border-default) 76%, #000000);
-  border-radius: 16px;
+  border: 0;
+  border-radius: 14px;
   color: #ffffff;
   isolation: isolate;
   max-width: 100%;
@@ -4024,6 +4032,33 @@ span.message-spoiler.is-revealed {
   overflow: hidden;
   position: relative;
   width: 100%;
+}
+
+.message-bubble.has-photo-attachments .video-player,
+.message-bubble:has(.message-video-attachment) .video-player {
+  border: 0;
+  border-radius: 14px;
+  min-height: 0;
+}
+
+.message-bubble.mine.has-photo-attachments .video-player,
+.message-bubble.mine:has(.message-video-attachment) .video-player {
+  border-radius: 16px 16px 2px 16px;
+}
+
+.message-bubble.mine.grouped.has-photo-attachments .video-player,
+.message-bubble.mine.grouped:has(.message-video-attachment) .video-player {
+  border-radius: 16px 2px 2px 16px;
+}
+
+.message-bubble:not(.mine).has-photo-attachments .video-player,
+.message-bubble:not(.mine):has(.message-video-attachment) .video-player {
+  border-radius: 16px 16px 16px 2px;
+}
+
+.message-bubble:not(.mine).grouped.has-photo-attachments .video-player,
+.message-bubble:not(.mine).grouped:has(.message-video-attachment) .video-player {
+  border-radius: 16px 16px 2px 2px;
 }
 
 /* Portrait shares landscape bubble width; height comes from aspect-ratio only. */
@@ -4132,9 +4167,13 @@ span.message-spoiler.is-revealed {
   display: block;
   height: 100%;
   inset: 0;
-  object-fit: contain;
+  object-fit: cover;
   position: absolute;
   width: 100%;
+}
+
+.video-player-expanded > video {
+  object-fit: contain;
 }
 
 .video-player-overlay {
@@ -6798,10 +6837,6 @@ span.message-spoiler.is-revealed {
     padding: 6px 2px;
   }
 
-  .messenger-shell.has-active-chat .message-composer-input-wrap:has(.message-enlarge-button) textarea {
-    padding-inline-end: 30px;
-  }
-
   .messenger-shell.has-active-chat .message-composer .file-picker,
   .messenger-shell.has-active-chat .message-composer .emoji-picker-button,
   .messenger-shell.has-active-chat .message-composer button[type="submit"],
@@ -9246,6 +9281,48 @@ span.message-spoiler.is-revealed {
     box-shadow 180ms ease-out,
     color 150ms ease-out;
   width: min(268px, 100%);
+}
+
+/* Outgoing bubble: blend into purple — no nested dark card. */
+.message-bubble.mine .audio-player {
+  background: rgba(0, 0, 0, 0.16);
+  border: 0;
+  border-radius: 14px;
+  box-shadow: none;
+  color: #ffffff;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.message-bubble.mine .audio-player.is-session-active,
+.message-bubble.mine .audio-player[data-session-active="true"],
+.message-bubble.mine .audio-player.is-playing {
+  border: 0;
+  box-shadow: none;
+}
+
+.message-bubble.mine .audio-player-play-pause {
+  background: #ffffff;
+  color: var(--accent-primary);
+}
+
+.message-bubble.mine .audio-player-play-pulse {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.message-bubble.mine .audio-player-eq span,
+.message-bubble.mine .audio-player-wave-fill {
+  background: #ffffff;
+}
+
+.message-bubble.mine .audio-player-wave::before {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.message-bubble.mine .audio-player-time,
+.message-bubble.mine .audio-player-title,
+.message-bubble.mine .audio-player-status {
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .audio-player--compact {

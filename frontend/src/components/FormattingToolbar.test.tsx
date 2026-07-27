@@ -67,6 +67,15 @@ describe("FormattingToolbar", () => {
     )).toEqual({ left: 150, top: 152 });
   });
 
+  it("shifts the format submenu right and higher above the selection", () => {
+    expect(getFormattingToolbarPlacement(
+      { left: 200, top: 320 },
+      { width: 160, height: 240 },
+      { width: 800, height: 600 },
+      { formatOpen: true }
+    )).toEqual({ left: 224, top: 60 });
+  });
+
   it.each([
     [{ left: 20, top: 200 }, { left: 12, top: 152 }],
     [{ left: 790, top: 200 }, { left: 688, top: 152 }],
