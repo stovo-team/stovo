@@ -88,21 +88,9 @@ class AudioPlaybackPlugin : Plugin() {
     fun play(call: PluginCall) {
         withController(call) { controller ->
             try {
+                // ExoPlayer.play() is a no-op at STATE_ENDED unless we rewind first.
                 if (controller.playbackState == Player.STATE_ENDED) {
-                    val seekFuture = controller.seekTo(0L)
-                    seekFuture.addListener(
-                        {
-                            try {
-                                seekFuture.get()
-                                controller.play()
-                                call.resolve()
-                            } catch (_: Exception) {
-                                call.reject("Audio play unavailable")
-                            }
-                        },
-                        executor,
-                    )
-                    return@withController
+                    controller.seekTo(0L)
                 }
                 controller.play()
                 call.resolve()
@@ -129,18 +117,8 @@ class AudioPlaybackPlugin : Plugin() {
         }
         withController(call) { controller ->
             try {
-                val seekFuture = controller.seekTo((position * 1000.0).toLong())
-                seekFuture.addListener(
-                    {
-                        try {
-                            seekFuture.get()
-                            call.resolve()
-                        } catch (_: Exception) {
-                            call.reject("Audio seek unavailable")
-                        }
-                    },
-                    executor,
-                )
+                controller.seekTo((position * 1000.0).toLong())
+                call.resolve()
             } catch (_: Exception) {
                 call.reject("Audio seek unavailable")
             }
