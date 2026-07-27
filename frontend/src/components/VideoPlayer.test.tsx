@@ -486,4 +486,38 @@ describe("VideoPlayer", () => {
     expect(container.querySelector('[role="status"]')?.textContent).toContain("Active calls have priority");
     expect(container.querySelector<HTMLButtonElement>('button[aria-label="Play video"]')?.disabled).toBe(true);
   });
+
+  it("plays audio only in the expanded lightbox, not the inline tile", async () => {
+    const { container } = renderPlayer(playerProps({ autoplay: true }));
+    await settle();
+    const inline = media(container);
+    setMediaTiming(inline, 12, 0);
+    Object.defineProperty(inline, "videoWidth", { configurable: true, value: 1280 });
+    Object.defineProperty(inline, "videoHeight", { configurable: true, value: 720 });
+    act(() => inline.dispatchEvent(new Event("loadedmetadata")));
+    await settle();
+
+    const playMock = inline.play as ReturnType<typeof vi.fn>;
+    const pauseMock = inline.pause as ReturnType<typeof vi.fn>;
+    playMock.mockClear();
+    pauseMock.mockClear();
+
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Play video"]')?.click());
+    await settle();
+
+    const videos = document.querySelectorAll("video");
+    expect(videos).toHaveLength(2);
+    const expanded = videos[1] as HTMLVideoElement;
+
+    expect(pauseMock).toHaveBeenCalled();
+    expect(inline.muted).toBe(true);
+    expect(expanded.muted).toBe(false);
+    expect(playMock).not.toHaveBeenCalled();
+    expect(expanded.play).toHaveBeenCalled();
+
+    act(() => document.querySelector<HTMLButtonElement>('button[aria-label="Close video"]')?.click());
+    await settle();
+    expect(expanded.pause).toHaveBeenCalled();
+    expect(document.querySelector(".video-player-lightbox")).toBeNull();
+  });
 });
