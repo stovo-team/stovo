@@ -144,14 +144,15 @@ describe("AudioPlayer", () => {
       .toBe("Play audio");
     expect(player.getAttribute("data-session-active")).toBe("false");
     expect(container.querySelector("audio")).toBeNull();
+    expect(container.querySelector('input[aria-label="Seek audio"]')).toBeNull();
 
     emit(snapshot({ revision: 2 }));
-    const seek = container.querySelector<HTMLInputElement>('input[aria-label="Seek audio"]')!;
+    const seek = container.querySelector<HTMLElement>('[data-control="seek"]')!;
     expect(player.getAttribute("data-session-active")).toBe("true");
-    expect(seek.min).toBe("0");
-    expect(seek.max).toBe("75");
-    expect(seek.step).toBe("1");
-    expect(seek.value).toBe("12");
+    expect(seek.getAttribute("role")).toBe("slider");
+    expect(seek.getAttribute("aria-valuemin")).toBe("0");
+    expect(seek.getAttribute("aria-valuemax")).toBe("75");
+    expect(seek.getAttribute("aria-valuenow")).toBe("12");
     expect(seek.getAttribute("aria-valuetext")).toBe(
       "12 seconds elapsed of 1 minute 15 seconds",
     );
@@ -167,9 +168,11 @@ describe("AudioPlayer", () => {
     const { container, root } = renderPlayer();
 
     emit(snapshot({ revision: 2, status: "loading", duration: 0, canSeek: false }));
-    expect(container.querySelector('[role="status"]')?.textContent).toBe("Loading audio…");
-    expect(container.querySelector<HTMLInputElement>('input[aria-label="Seek audio"]')?.disabled)
-      .toBe(true);
+    // Loading is indicated on the play button — no permanent status strip.
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(container.querySelector(".audio-player-play-pause.is-loading")).not.toBeNull();
+    expect(container.querySelector<HTMLElement>('[data-control="seek"]')?.getAttribute("aria-disabled"))
+      .toBe("true");
     // Loading must not permanently disable replay — eternal loading used to trap the button.
     expect(container.querySelector<HTMLButtonElement>('button[aria-label="Play audio"]')?.disabled)
       .toBe(false);
@@ -180,7 +183,7 @@ describe("AudioPlayer", () => {
       playWhenReady: true,
       isPlaying: false,
     }));
-    expect(container.querySelector('[role="status"]')?.textContent).toBe("Buffering…");
+    expect(container.querySelector('[role="status"]')).toBeNull();
     expect(container.querySelector('button[aria-label="Pause audio"]')).not.toBeNull();
     expect(container.querySelector(".audio-player-eq.is-active")).not.toBeNull();
     expect(container.querySelector(".audio-player")?.getAttribute("data-playing")).toBe("true");
@@ -288,25 +291,38 @@ describe("AudioPlayer", () => {
   it("previews pointer seeks, commits once on release, and commits keyboard changes immediately", async () => {
     const { container } = renderPlayer();
     emit(snapshot({ revision: 2, duration: 100, position: 10 }));
-    const seek = container.querySelector<HTMLInputElement>('input[aria-label="Seek audio"]')!;
+    const seek = container.querySelector<HTMLElement>('[data-control="seek"]')!;
+    Object.defineProperty(seek, "getBoundingClientRect", {
+      value: () => ({ left: 0, width: 100, top: 0, height: 18, right: 100, bottom: 18, x: 0, y: 0, toJSON: () => ({}) }),
+    });
 
-    act(() => seek.dispatchEvent(new Event("pointerdown", { bubbles: true })));
     act(() => {
-      seek.value = "70";
-      seek.dispatchEvent(new Event("input", { bubbles: true }));
+      seek.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true,
+        clientX: 70,
+        pointerId: 1,
+      }));
     });
     expect(container.querySelector('output[aria-label="Audio time"]')?.textContent)
       .toBe("1:10 / 1:40");
     expect(backend.seek).not.toHaveBeenCalled();
 
-    act(() => seek.dispatchEvent(new Event("pointerup", { bubbles: true })));
+    act(() => {
+      seek.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true,
+        clientX: 70,
+        pointerId: 1,
+      }));
+    });
     await settle();
     expect(backend.seek).toHaveBeenCalledTimes(1);
     expect(backend.seek).toHaveBeenLastCalledWith(70);
 
     act(() => {
-      seek.value = "140";
-      seek.dispatchEvent(new Event("change", { bubbles: true }));
+      seek.dispatchEvent(new KeyboardEvent("keydown", {
+        bubbles: true,
+        key: "End",
+      }));
     });
     await settle();
     expect(backend.seek).toHaveBeenCalledTimes(2);

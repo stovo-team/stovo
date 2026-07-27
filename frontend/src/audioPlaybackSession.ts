@@ -727,10 +727,8 @@ export class WebAudioPlaybackBackend implements AudioPlaybackBackend {
   }
 
   private registerMediaListeners(): void {
-    this.element.addEventListener("loadstart", () => {
-      if (!this.active) return;
-      this.publish({ status: "loading", isPlaying: false });
-    });
+    // Do not re-enter "loading" on loadstart — that event also fires during
+    // seek/replay and was leaving the UI stuck after the first successful play.
     this.element.addEventListener("loadedmetadata", () => {
       if (!this.active) return;
       const duration = normalizedFinite(this.element.duration);

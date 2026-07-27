@@ -1,6 +1,6 @@
-import { Camera, FileText, Image } from "lucide-react";
+import { AudioLines, Camera, FileText, Image } from "lucide-react";
 
-export type AttachmentPickerOption = "gallery" | "camera" | "file";
+export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file";
 
 type AttachmentPickerSheetProps = {
   open: boolean;
@@ -27,9 +27,15 @@ const OPTIONS: Array<{
     icon: Camera
   },
   {
+    id: "audio",
+    label: "Audio",
+    description: "Music and voice files",
+    icon: AudioLines
+  },
+  {
     id: "file",
     label: "File",
-    description: "Documents and audio",
+    description: "Documents",
     icon: FileText
   }
 ];

@@ -3,16 +3,22 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FamilyFile } from "../api/files";
+import { clearMediaBlobCache, seedMediaBlobCache } from "../mediaBlobCache";
 import { videoPlaybackSession, type VideoIdentity } from "../videoPlaybackSession";
 import { formatVideoTime, orientationStyle, VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
 
-const { downloadFileBlobMock } = vi.hoisted(() => ({
+const { downloadFileBlobMock, createStreamingMediaUrlMock } = vi.hoisted(() => ({
   downloadFileBlobMock: vi.fn(),
+  createStreamingMediaUrlMock: vi.fn(),
 }));
 
 vi.mock("../api/files", async () => {
   const actual = await vi.importActual<typeof import("../api/files")>("../api/files");
-  return { ...actual, downloadFileBlob: downloadFileBlobMock };
+  return {
+    ...actual,
+    downloadFileBlob: downloadFileBlobMock,
+    createStreamingMediaUrl: createStreamingMediaUrlMock,
+  };
 });
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
@@ -94,7 +100,13 @@ function setMediaTiming(element: HTMLVideoElement, duration: number, currentTime
 }
 
 beforeEach(() => {
-  downloadFileBlobMock.mockReset().mockResolvedValue(new Blob(["video"], { type: "video/mp4" }));
+  clearMediaBlobCache();
+  createStreamingMediaUrlMock.mockReset().mockRejectedValue(new Error("stream unavailable"));
+  downloadFileBlobMock.mockReset().mockImplementation(async (_token: string, fileId: string) => {
+    const blob = new Blob(["video"], { type: "video/mp4" });
+    seedMediaBlobCache(fileId, blob);
+    return blob;
+  });
   vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => undefined);
   vi.spyOn(HTMLMediaElement.prototype, "canPlayType").mockReturnValue("probably");
@@ -159,10 +171,19 @@ describe("VideoPlayer", () => {
 
   it("announces loading and converts source, download, decode, and play failures to UI", async () => {
     let resolveDownload!: (blob: Blob) => void;
-    downloadFileBlobMock.mockReturnValue(new Promise<Blob>((resolve) => { resolveDownload = resolve; }));
+    downloadFileBlobMock.mockImplementationOnce(
+      () => new Promise<Blob>((resolve) => { resolveDownload = resolve; }),
+    );
     const { container } = renderPlayer();
     expect(container.querySelector('[role="status"]')?.textContent).toContain("Loading video");
-    await act(async () => resolveDownload(new Blob(["video"], { type: "video/mp4" })));
+    await settle();
+    expect(resolveDownload).toEqual(expect.any(Function));
+    await act(async () => {
+      const blob = new Blob(["video"], { type: "video/mp4" });
+      seedMediaBlobCache("file-1", blob);
+      resolveDownload(blob);
+    });
+    await settle();
     const element = media(container);
     expect(element.src).toContain("blob:video-1");
     setMediaTiming(element, 60, 0);
@@ -179,7 +200,7 @@ describe("VideoPlayer", () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("Playback could not start");
 
     downloadFileBlobMock.mockRejectedValueOnce(new Error("network"));
-    const second = renderPlayer(playerProps({ identity: identity({ messageId: "message-2" }) }));
+    const second = renderPlayer(playerProps({ identity: identity({ messageId: "message-2", fileId: "file-missing" }), file: familyFile({ id: "file-missing" }) }));
     await settle();
     expect(second.container.querySelector('[role="alert"]')?.textContent).toContain("Video download failed");
 
@@ -323,36 +344,50 @@ describe("VideoPlayer", () => {
     expect(container.querySelector<HTMLInputElement>('input[aria-label="Seek video"]')?.type).toBe("range");
   });
 
-  it("revokes only owned URLs and ignores superseded async downloads", async () => {
+  it("keeps the active source when a superseded download resolves late", async () => {
     let resolveFirst!: (blob: Blob) => void;
-    downloadFileBlobMock.mockReturnValueOnce(
-      new Promise<Blob>((resolve) => { resolveFirst = resolve; }),
-    ).mockResolvedValueOnce(new Blob(["second"], { type: "video/mp4" }));
+    downloadFileBlobMock
+      .mockImplementationOnce(
+        () => new Promise<Blob>((resolve) => { resolveFirst = resolve; }),
+      )
+      .mockImplementationOnce(async (_token: string, fileId: string) => {
+        const blob = new Blob(["second"], { type: "video/mp4" });
+        seedMediaBlobCache(fileId, blob);
+        return blob;
+      });
     const initial = playerProps();
     const { root, container } = renderPlayer(initial);
+    await settle();
+    expect(resolveFirst).toEqual(expect.any(Function));
+
     const replacement = playerProps({
       file: familyFile({ id: "file-2", originalName: "replacement.mp4" }),
       identity: identity({ fileId: "file-2" }),
     });
     act(() => root.render(<VideoPlayer {...replacement} />));
     await settle();
-    expect(media(container).src).toContain("blob:video-1");
+    expect(media(container).src).toContain("blob:video-");
 
-    await act(async () => resolveFirst(new Blob(["first"], { type: "video/mp4" })));
-    expect(createObjectURLMock).toHaveBeenCalledTimes(1);
-    expect(media(container).src).toContain("blob:video-1");
+    const activeSrc = media(container).src;
+    await act(async () => {
+      const blob = new Blob(["first"], { type: "video/mp4" });
+      seedMediaBlobCache("file-1", blob);
+      resolveFirst(blob);
+    });
+    await settle();
+    // Superseded download for file-1 must not replace the active file-2 source.
+    expect(media(container).src).toBe(activeSrc);
 
     act(() => root.unmount());
     roots.splice(roots.indexOf(root), 1);
-    expect(revokeObjectURLMock).toHaveBeenCalledTimes(1);
-    expect(revokeObjectURLMock).toHaveBeenCalledWith("blob:video-1");
   });
 
-  it("sizes portrait videos with a large width-driven frame and keeps landscape full-bleed", async () => {
+  it("sizes portrait videos to the landscape bubble width without a landscape height cap", async () => {
     expect(orientationStyle(720, 1280)).toMatchObject({
       aspectRatio: "720 / 1280",
-      width: "min(100%, 72vw, 360px)",
-      maxHeight: "min(78vh, 720px)",
+      width: "100%",
+      maxWidth: "100%",
+      maxHeight: "none",
       height: "auto",
     });
     expect(orientationStyle(1920, 1080)).toMatchObject({
@@ -372,6 +407,8 @@ describe("VideoPlayer", () => {
     const portraitRoot = container.querySelector<HTMLElement>(".video-player")!;
     expect(portraitRoot.classList.contains("is-portrait")).toBe(true);
     expect(portraitRoot.classList.contains("is-landscape")).toBe(false);
+    expect(portraitRoot.style.width).toBe("100%");
+    expect(portraitRoot.style.maxHeight).toBe("none");
     expect(portraitRoot.style.getPropertyValue("--video-aspect-ratio").trim()).toBe("720 / 1280");
 
     Object.defineProperty(element, "videoWidth", { configurable: true, value: 1920 });
@@ -383,6 +420,62 @@ describe("VideoPlayer", () => {
     expect(landscapeRoot.classList.contains("is-portrait")).toBe(false);
     expect(landscapeRoot.style.width).toBe("100%");
     expect(landscapeRoot.style.getPropertyValue("--video-aspect-ratio").trim()).toBe("1920 / 1080");
+  });
+
+  it("autoplays muted when visible and pauses when scrolled away", async () => {
+    type ObserverCallback = IntersectionObserverCallback;
+    const observers: Array<{ callback: ObserverCallback; disconnect: ReturnType<typeof vi.fn> }> = [];
+    class FakeIntersectionObserver {
+      readonly callback: ObserverCallback;
+      readonly disconnect = vi.fn();
+      constructor(callback: ObserverCallback) {
+        this.callback = callback;
+        observers.push({ callback, disconnect: this.disconnect });
+      }
+      observe() {
+        // Initial delivery: not visible yet.
+        this.callback(
+          [{ isIntersecting: false, intersectionRatio: 0 } as IntersectionObserverEntry],
+          this as unknown as IntersectionObserver,
+        );
+      }
+      unobserve() {}
+      takeRecords() { return []; }
+    }
+    vi.stubGlobal("IntersectionObserver", FakeIntersectionObserver);
+
+    const { container } = renderPlayer(playerProps({ autoplay: true }));
+    await settle();
+    const element = media(container);
+    setMediaTiming(element, 12, 0);
+    Object.defineProperty(element, "videoWidth", { configurable: true, value: 1280 });
+    Object.defineProperty(element, "videoHeight", { configurable: true, value: 720 });
+    act(() => element.dispatchEvent(new Event("loadedmetadata")));
+    await settle();
+
+    expect(observers.length).toBeGreaterThan(0);
+    expect(element.play).not.toHaveBeenCalled();
+
+    act(() => {
+      observers[0]?.callback(
+        [{ isIntersecting: true, intersectionRatio: 0.8 } as IntersectionObserverEntry],
+        observers[0] as unknown as IntersectionObserver,
+      );
+    });
+    await settle();
+    expect(element.muted).toBe(true);
+    expect(element.play).toHaveBeenCalled();
+
+    const playCalls = (element.play as ReturnType<typeof vi.fn>).mock.calls.length;
+    act(() => {
+      observers[0]?.callback(
+        [{ isIntersecting: false, intersectionRatio: 0 } as IntersectionObserverEntry],
+        observers[0] as unknown as IntersectionObserver,
+      );
+    });
+    await settle();
+    expect(element.pause).toHaveBeenCalled();
+    expect((element.play as ReturnType<typeof vi.fn>).mock.calls.length).toBe(playCalls);
   });
 
   it("pauses and exposes a call-priority reason when disabled", async () => {

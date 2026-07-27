@@ -11,7 +11,7 @@ import {
   useState,
   useSyncExternalStore,
   type KeyboardEvent,
-  type PointerEvent,
+  type PointerEvent as ReactPointerEvent,
   type SyntheticEvent,
 } from "react";
 
@@ -117,6 +117,17 @@ function PlayingWave({ active }: { active: boolean }) {
   );
 }
 
+function positionFromClientX(
+  clientX: number,
+  element: HTMLElement,
+  duration: number,
+): number {
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || duration <= 0) return 0;
+  const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+  return clamp(ratio * duration, duration);
+}
+
 export function AudioPlayer({
   descriptor,
   sourceFactory,
@@ -134,6 +145,8 @@ export function AudioPlayer({
     getOwnSnapshot,
   );
   const dragRevision = useRef<number | null>(null);
+  const playInFlight = useRef(false);
+  const waveRef = useRef<HTMLDivElement | null>(null);
   const [previewPosition, setPreviewPosition] = useState<number | null>(null);
 
   useEffect(() => {
@@ -163,18 +176,16 @@ export function AudioPlayer({
   // prepareCurrent still gates concurrent work; only calls disable the button.
   const playbackDisabled = isCallDisabled;
   const recoverableError = snapshot?.status === "error" && canRetry(snapshot.error);
+  // Loading/buffering stay on the play button — avoid a permanent status strip.
   const statusCopy = isCallDisabled
     ? "Audio is paused while a call is active."
-    : isLoading
-      ? "Loading audio…"
-      : isBuffering
-        ? "Buffering…"
-        : snapshot?.status === "suppressed" && snapshot.suppressionReason === "focus"
-          ? "Playback paused by another app."
-          : null;
+    : snapshot?.status === "suppressed" && snapshot.suppressionReason === "focus"
+      ? "Playback paused by another app."
+      : null;
 
   const beginPlayback = useCallback(async () => {
-    if (playbackDisabled) return;
+    if (playbackDisabled || playInFlight.current) return;
+    playInFlight.current = true;
     try {
       await onBeforePlay?.();
       session.setSourceFactory(sourceFactory);
@@ -200,16 +211,21 @@ export function AudioPlayer({
       await session.play();
     } catch {
       // The canonical session maps backend failures to its closed error vocabulary.
+    } finally {
+      playInFlight.current = false;
     }
   }, [descriptor, onBeforePlay, playbackDisabled, session, sourceFactory]);
 
   const togglePlayback = useCallback(() => {
     if (isPauseAction) return void session.pause();
+    // Already resolving this track — stacked loads race and leave eternal loading.
+    if (isLoading && isActive) return;
     return void beginPlayback();
-  }, [beginPlayback, isPauseAction, session]);
+  }, [beginPlayback, isActive, isLoading, isPauseAction, session]);
 
   const retry = useCallback(async () => {
-    if (!recoverableError || isCallDisabled) return;
+    if (!recoverableError || isCallDisabled || playInFlight.current) return;
+    playInFlight.current = true;
     try {
       await onBeforePlay?.();
       session.setSourceFactory(sourceFactory);
@@ -217,6 +233,8 @@ export function AudioPlayer({
       await session.play();
     } catch {
       // Keep error presentation safe and generic.
+    } finally {
+      playInFlight.current = false;
     }
   }, [isCallDisabled, onBeforePlay, recoverableError, session, sourceFactory]);
 
@@ -225,6 +243,55 @@ export function AudioPlayer({
     dragRevision.current = null;
     if (seekable) void session.seek(clamp(value, duration));
   }, [duration, seekable, session]);
+
+  const onWavePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    stopInteraction(event);
+    if (!seekable || isCallDisabled) return;
+    const target = event.currentTarget;
+    try {
+      target.setPointerCapture?.(event.pointerId);
+    } catch {
+      // jsdom and some browsers may not implement pointer capture.
+    }
+    dragRevision.current = snapshot?.revision ?? null;
+    const next = positionFromClientX(event.clientX, target, duration);
+    setPreviewPosition(next);
+  }, [duration, isCallDisabled, seekable, snapshot?.revision]);
+
+  const onWavePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRevision.current === null || !seekable) return;
+    setPreviewPosition(positionFromClientX(event.clientX, event.currentTarget, duration));
+  }, [duration, seekable]);
+
+  const onWavePointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    stopInteraction(event);
+    if (dragRevision.current === null) return;
+    try {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    } catch {
+      // Capture may already be released.
+    }
+    commitSeek(positionFromClientX(event.clientX, event.currentTarget, duration));
+  }, [commitSeek, duration]);
+
+  const onWaveKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    stopActivationPropagation(event);
+    if (!seekable || isCallDisabled) return;
+    const step = event.shiftKey ? 10 : 1;
+    if (event.key === "ArrowRight" || event.key === "ArrowUp") {
+      event.preventDefault();
+      commitSeek(position + step);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
+      event.preventDefault();
+      commitSeek(position - step);
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      commitSeek(0);
+    } else if (event.key === "End") {
+      event.preventDefault();
+      commitSeek(duration);
+    }
+  }, [commitSeek, duration, isCallDisabled, position, seekable]);
 
   const progress = duration > 0 ? (position / duration) * 100 : 0;
 
@@ -263,7 +330,24 @@ export function AudioPlayer({
         <div className="audio-player-body">
           <div className="audio-player-wave-row">
             <PlayingWave active={isPlaying} />
-            <div className="audio-player-wave" aria-hidden="true">
+            <div
+              ref={waveRef}
+              className="audio-player-wave"
+              data-control="seek"
+              role="slider"
+              tabIndex={seekable && !isCallDisabled ? 0 : -1}
+              aria-label="Seek audio"
+              aria-valuemin={0}
+              aria-valuemax={Math.max(1, Math.floor(duration))}
+              aria-valuenow={Math.floor(position)}
+              aria-valuetext={`${formatAudioTimeWords(position)} elapsed of ${formatAudioTimeWords(duration)}`}
+              aria-disabled={!seekable || isCallDisabled}
+              onPointerDown={onWavePointerDown}
+              onPointerMove={onWavePointerMove}
+              onPointerUp={onWavePointerUp}
+              onPointerCancel={onWavePointerUp}
+              onKeyDown={onWaveKeyDown}
+            >
               <span className="audio-player-wave-fill" style={{ width: `${progress}%` }} />
             </div>
           </div>
@@ -276,32 +360,6 @@ export function AudioPlayer({
               {descriptor.title}
             </span>
           </div>
-          <input
-            type="range"
-            data-control="seek"
-            className="audio-player-seek"
-            aria-label="Seek audio"
-            aria-valuetext={`${formatAudioTimeWords(position)} elapsed of ${formatAudioTimeWords(duration)}`}
-            min={0}
-            max={duration || 1}
-            step={1}
-            value={position}
-            disabled={!seekable || isCallDisabled}
-            onPointerDown={(event: PointerEvent<HTMLInputElement>) => {
-              stopInteraction(event);
-              dragRevision.current = snapshot?.revision ?? null;
-            }}
-            onPointerUp={(event: PointerEvent<HTMLInputElement>) => {
-              stopInteraction(event);
-              commitSeek(Number(event.currentTarget.value));
-            }}
-            onInput={(event) => {
-              setPreviewPosition(clamp(Number(event.currentTarget.value), duration));
-            }}
-            onChange={(event) => {
-              if (dragRevision.current === null) commitSeek(Number(event.currentTarget.value));
-            }}
-          />
         </div>
       </div>
       {statusCopy && <div className="audio-player-status" role="status">{statusCopy}</div>}
