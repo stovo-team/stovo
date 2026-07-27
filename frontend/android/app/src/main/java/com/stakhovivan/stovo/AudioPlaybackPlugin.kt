@@ -15,6 +15,7 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import org.json.JSONObject
 
 @CapacitorPlugin(name = "AudioPlaybackPlugin")
 class AudioPlaybackPlugin : Plugin() {
@@ -257,40 +258,55 @@ class AudioPlaybackPlugin : Plugin() {
         }
     }
 
+    /**
+     * Capacitor's JSObject extends JSONObject: put(key, null) *removes* the key.
+     * The JS bridge requires a closed schema (null fields present as JSON null),
+     * so optional values must use JSONObject.NULL or every playing/paused update
+     * is dropped and the in-app player never shows pause, progress, or EQ.
+     */
     private fun snapshotObject(bundle: Bundle): JSObject = JSObject().apply {
         val chatId = bundle.getString(AudioPlaybackService.KEY_CHAT_ID)
         val messageId = bundle.getString(AudioPlaybackService.KEY_MESSAGE_ID)
         val fileId = bundle.getString(AudioPlaybackService.KEY_FILE_ID)
-        val identity = if (chatId != null && messageId != null && fileId != null) {
-            JSObject().apply {
-                put(AudioPlaybackService.KEY_CHAT_ID, chatId)
-                put(AudioPlaybackService.KEY_MESSAGE_ID, messageId)
-                put(AudioPlaybackService.KEY_FILE_ID, fileId)
-            }
+        if (chatId != null && messageId != null && fileId != null) {
+            put(
+                "identity",
+                JSObject().apply {
+                    put(AudioPlaybackService.KEY_CHAT_ID, chatId)
+                    put(AudioPlaybackService.KEY_MESSAGE_ID, messageId)
+                    put(AudioPlaybackService.KEY_FILE_ID, fileId)
+                }
+            )
         } else {
-            null
+            put("identity", JSONObject.NULL)
         }
-        put("identity", identity)
         put(AudioPlaybackService.KEY_POSITION, bundle.getDouble(AudioPlaybackService.KEY_POSITION))
         put(AudioPlaybackService.KEY_DURATION, bundle.getDouble(AudioPlaybackService.KEY_DURATION))
         put(
             AudioPlaybackService.KEY_BUFFERED_POSITION,
             bundle.getDouble(AudioPlaybackService.KEY_BUFFERED_POSITION)
         )
-        put(AudioPlaybackService.KEY_STATUS, bundle.getString(AudioPlaybackService.KEY_STATUS))
+        putNullable(AudioPlaybackService.KEY_STATUS, bundle.getString(AudioPlaybackService.KEY_STATUS))
         put(
             AudioPlaybackService.KEY_PLAY_WHEN_READY,
             bundle.getBoolean(AudioPlaybackService.KEY_PLAY_WHEN_READY)
         )
         put(AudioPlaybackService.KEY_IS_PLAYING, bundle.getBoolean(AudioPlaybackService.KEY_IS_PLAYING))
-        put(
+        putNullable(
             AudioPlaybackService.KEY_SUPPRESSION_REASON,
             bundle.getString(AudioPlaybackService.KEY_SUPPRESSION_REASON)
         )
         put(AudioPlaybackService.KEY_CAN_SEEK, bundle.getBoolean(AudioPlaybackService.KEY_CAN_SEEK))
-        put(AudioPlaybackService.KEY_ERROR, bundle.getString(AudioPlaybackService.KEY_ERROR))
+        putNullable(AudioPlaybackService.KEY_ERROR, bundle.getString(AudioPlaybackService.KEY_ERROR))
         put(AudioPlaybackService.KEY_REVISION, bundle.getLong(AudioPlaybackService.KEY_REVISION))
-        put(AudioPlaybackService.KEY_PLATFORM, bundle.getString(AudioPlaybackService.KEY_PLATFORM))
+        putNullable(
+            AudioPlaybackService.KEY_PLATFORM,
+            bundle.getString(AudioPlaybackService.KEY_PLATFORM)
+        )
+    }
+
+    private fun JSObject.putNullable(key: String, value: String?) {
+        if (value == null) put(key, JSONObject.NULL) else put(key, value)
     }
 
     private fun isExactMediaUrl(sourceUrl: String, fileId: String): Boolean {

@@ -243,6 +243,29 @@ describe("AudioPlayer", () => {
     expect(container.querySelector(".audio-player.is-ended")).not.toBeNull();
   });
 
+  it("shows pause chrome optimistically on tap and reloads when stuck loading", async () => {
+    const { container } = renderPlayer();
+
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Play audio"]')?.click());
+    expect(container.querySelector('button[aria-label="Pause audio"]')).not.toBeNull();
+    expect(container.querySelector(".audio-player-eq.is-active")).not.toBeNull();
+    await settle();
+
+    emit(snapshot({ revision: 2, status: "loading", duration: 0, canSeek: false, position: 0 }));
+    expect(container.querySelector('button[aria-label="Pause audio"]')).not.toBeNull();
+
+    backend.load.mockClear();
+    backend.play.mockClear();
+
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Pause audio"]')?.click());
+    await settle();
+
+    // Second tap while stuck on loading recovers via reload, not pause.
+    expect(backend.pause).not.toHaveBeenCalled();
+    expect(backend.load).toHaveBeenCalled();
+    expect(backend.play).toHaveBeenCalled();
+  });
+
   it("replays after natural end without staying stuck on loading", async () => {
     const { container } = renderPlayer();
     emit(snapshot({
