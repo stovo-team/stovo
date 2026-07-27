@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.net.Uri
 import android.os.Bundle
 import androidx.core.content.ContextCompat
+import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
@@ -85,9 +86,17 @@ class AudioPlaybackPlugin : Plugin() {
 
     @PluginMethod
     fun play(call: PluginCall) {
-        withController(call) {
-            it.play()
-            call.resolve()
+        withController(call) { controller ->
+            try {
+                // ExoPlayer.play() is a no-op at STATE_ENDED unless we rewind first.
+                if (controller.playbackState == Player.STATE_ENDED) {
+                    controller.seekTo(0L)
+                }
+                controller.play()
+                call.resolve()
+            } catch (_: Exception) {
+                call.reject("Audio play unavailable")
+            }
         }
     }
 
@@ -185,7 +194,17 @@ class AudioPlaybackPlugin : Plugin() {
                         }
                         return@addListener
                     }
-                    action(controller)
+                    try {
+                        action(controller)
+                    } catch (_: Exception) {
+                        // MediaSession can be mid-teardown during clear/stopSelf.
+                        releaseController(future)
+                        if (allowRetry) {
+                            withController(call, allowRetry = false, action = action)
+                        } else {
+                            call?.reject("Audio controller unavailable")
+                        }
+                    }
                 } catch (_: Exception) {
                     releaseController(future)
                     if (allowRetry) {
@@ -250,12 +269,8 @@ class AudioPlaybackPlugin : Plugin() {
 
     private fun emitSnapshot(bundle: Bundle) {
         notifyListeners("stateChanged", snapshotObject(bundle))
-        // Natural end stops the service; drop the stale MediaController so the
-        // next load/play binds a fresh session instead of a dying one (which
-        // left the in-app player on eternal loading).
-        if (bundle.getString(AudioPlaybackService.KEY_STATUS) == "ended") {
-            releaseController()
-        }
+        // Natural end keeps the service + media item alive for seek+play replay.
+        // Only explicit clear() releases the controller (service stopSelf).
     }
 
     /**
