@@ -252,7 +252,7 @@ describe("AudioPlaybackSession", () => {
     expect(backend.clear).toHaveBeenCalledTimes(4);
   });
 
-  it("reloads from the start when play is requested after a natural end", async () => {
+  it("rewinds Android playback after a natural end without tearing down the session", async () => {
     await session.load(firstDescriptor);
     backend.emit(
       backendSnapshot({
@@ -270,19 +270,18 @@ describe("AudioPlaybackSession", () => {
 
     backend.load.mockClear();
     backend.play.mockClear();
+    backend.seek.mockClear();
     sourceFactory.mockClear();
     await session.play();
 
-    expect(sourceFactory).toHaveBeenCalledWith(firstDescriptor);
-    expect(backend.load).toHaveBeenCalledWith(
-      firstDescriptor,
-      expect.any(Object),
-      0,
-    );
+    expect(sourceFactory).not.toHaveBeenCalled();
+    expect(backend.load).not.toHaveBeenCalled();
+    expect(backend.seek).toHaveBeenCalledWith(0);
     expect(backend.play).toHaveBeenCalledTimes(1);
+    expect(session.getSnapshot().status).not.toBe("ended");
   });
 
-  it("accepts restarted low revisions after natural end so replay leaves loading", async () => {
+  it("accepts restarted low revisions after explicit reload so replay leaves loading", async () => {
     await session.load(firstDescriptor);
     backend.emit(
       backendSnapshot({
@@ -295,7 +294,7 @@ describe("AudioPlaybackSession", () => {
     );
     expect(session.getSnapshot().status).toBe("ended");
 
-    // Simulate Android service restart: revisions reset while JS still holds 100.
+    // Simulate Android service restart after clear: revisions reset while JS still holds 100.
     backend.load.mockImplementationOnce(
       async (descriptor: AudioDescriptor, _source: AudioPlaybackSource, position: number) => {
         backend.emit(
@@ -329,6 +328,7 @@ describe("AudioPlaybackSession", () => {
       );
     });
 
+    await session.load(firstDescriptor, 0);
     await session.play();
 
     expect(session.getSnapshot()).toMatchObject({

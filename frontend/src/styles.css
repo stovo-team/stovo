@@ -3805,21 +3805,31 @@ span.message-spoiler.is-revealed {
   max-width: min(360px, 85%);
 }
 
-/* Telegram-style: video fills the bubble — no thick purple frame. */
+/* Telegram-style: video fills the bubble — no thick purple frame.
+   Use definite `width` (not only max-width): <video> is position:absolute, so
+   shrink-to-fit bubbles otherwise collapse to 0×0 when the player is width:100%. */
 .message-bubble.has-photo-attachments:has(.message-video-attachment),
 .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
   gap: 0;
   max-width: min(280px, 72%);
   padding: 2px;
+  width: min(280px, 72%);
 }
 
 .message-bubble:has(.message-video-attachment) .message-attachments {
+  min-width: 0;
   width: 100%;
 }
 
 .message-bubble.has-photo-attachments:has(.message-video-attachment) .message-attachments,
 .message-bubble:has(.message-video-attachment) .message-attachments {
   gap: 0;
+}
+
+.message-bubble:has(.message-video-attachment) .message-attachments > div,
+.message-bubble:has(.message-video-attachment) .message-media-album-stack {
+  min-width: 0;
+  width: 100%;
 }
 
 .message-bubble.has-photo-attachments .message-attachments {
@@ -4038,7 +4048,8 @@ span.message-spoiler.is-revealed {
 .message-bubble:has(.message-video-attachment) .video-player {
   border: 0;
   border-radius: 14px;
-  min-height: 0;
+  /* Keep a floor while metadata/aspect-ratio resolve — absolute <video> has no intrinsic box. */
+  min-height: 120px;
 }
 
 .message-bubble.mine.has-photo-attachments .video-player,
@@ -4412,8 +4423,10 @@ span.message-spoiler.is-revealed {
     max-width: min(560px, 84%);
   }
 
-  .message-bubble:has(.message-video-attachment) {
+  .message-bubble.has-photo-attachments:has(.message-video-attachment),
+  .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
     max-width: min(420px, 84%);
+    width: min(420px, 84%);
   }
 
   .message-photo-attachment img {
@@ -7017,9 +7030,17 @@ span.message-spoiler.is-revealed {
     width: 100%;
   }
 
-  .video-player {
+  .video-player,
+  .message-bubble.has-photo-attachments .video-player,
+  .message-bubble:has(.message-video-attachment) .video-player {
     border-radius: 14px;
     min-height: 160px;
+  }
+
+  .message-bubble.has-photo-attachments:has(.message-video-attachment),
+  .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
+    max-width: min(280px, calc(100vw - 48px));
+    width: min(280px, calc(100vw - 48px));
   }
 
   .video-player.is-portrait {

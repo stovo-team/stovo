@@ -269,24 +269,21 @@ export class AudioPlaybackSession {
   async play(): Promise<void> {
     if (!this.descriptor || this.callActive) return;
     const priorStatus = this.snapshot.status;
-    // Authorization always needs a fresh credentialed load. Android also tears
-    // down the media service after ENDED, so seek+play alone hangs on buffering
-    // there — web can rewind the still-attached element instead.
+    // Authorization always needs a fresh credentialed load.
     if (priorStatus === "authorization-required") {
       await this.prepareCurrent(this.snapshot.position);
     } else if (priorStatus === "ended") {
-      if (this.snapshot.platform === "android") {
-        await this.prepareCurrent(0);
-      } else {
-        await this.backend.seek(0);
-        this.publish({
-          position: 0,
-          status: "ready",
-          playWhenReady: false,
-          isPlaying: false,
-          error: null,
-        });
-      }
+      // Keep the same path on web and Android: rewind the still-attached player.
+      // Android used to tear down AudioPlaybackService on ENDED and full-reload
+      // here, which raced MediaController reconnect and crashed the app.
+      await this.backend.seek(0);
+      this.publish({
+        position: 0,
+        status: "ready",
+        playWhenReady: false,
+        isPlaying: false,
+        error: null,
+      });
     }
     const afterPrepare = this.snapshot.status;
     this.publish({
