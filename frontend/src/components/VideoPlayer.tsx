@@ -81,18 +81,19 @@ export function orientationStyle(width: number, height: number): CSSProperties {
       width: "100%",
       maxWidth: "100%",
       height: "auto",
+      maxHeight: "none",
     };
   }
   const isPortrait = height > width;
-  // Portrait must be width-driven: width:auto inside fit-content collapses to min-height.
-  // Landscape fills the bubble width; height follows aspect-ratio under max-height.
+  // Both orientations share the landscape bubble width. Portrait grows taller via
+  // aspect-ratio — never share landscape's height budget (that squashes verticals).
   if (isPortrait) {
     return {
       aspectRatio: `${width} / ${height}`,
-      width: "min(100%, 72vw, 360px)",
+      width: "100%",
       maxWidth: "100%",
       height: "auto",
-      maxHeight: "min(78vh, 720px)",
+      maxHeight: "none",
       ["--video-aspect-ratio" as string]: `${width} / ${height}`,
     };
   }
@@ -270,7 +271,7 @@ export function VideoPlayer({
     }
   }, [disabledReason]);
 
-  const play = useCallback(async (opts?: { unmuted?: boolean }) => {
+  const play = useCallback(async (opts?: { unmuted?: boolean; silent?: boolean }) => {
     const registration = registrationRef.current;
     const element = videoRef.current;
     if (!registration || !element || disabledReason || !sourceUrl) return;
@@ -278,24 +279,34 @@ export function VideoPlayer({
     try {
       await beforePlay?.();
     } catch {
-      reportFailure("Playback could not start");
+      if (!opts?.silent) reportFailure("Playback could not start");
       return;
     }
     if (opts?.unmuted) {
       videoPlaybackSession.performAction(registration, { type: "mute", muted: false });
+    } else if (opts?.silent || autoplayEnabled) {
+      // Browsers only allow inline autoplay when muted.
+      videoPlaybackSession.performAction(registration, { type: "mute", muted: true });
+      element.muted = true;
     }
     if (!videoPlaybackSession.performAction(registration, { type: "play" })) return;
     try {
       await element.play();
     } catch {
-      reportFailure("Playback could not start");
+      if (!opts?.silent) reportFailure("Playback could not start");
+      else updateSession({ status: "ready", playIntent: false });
     }
-  }, [beforePlay, disabledReason, reportFailure, sourceUrl]);
+  }, [autoplayEnabled, beforePlay, disabledReason, reportFailure, sourceUrl, updateSession]);
 
   const pause = useCallback(() => {
     const registration = registrationRef.current;
     if (registration) videoPlaybackSession.performAction(registration, { type: "pause" });
   }, []);
+
+  const playRef = useRef(play);
+  const pauseRef = useRef(pause);
+  playRef.current = play;
+  pauseRef.current = pause;
 
   const handleMetadata = useCallback((element: HTMLVideoElement) => {
     const registration = registrationRef.current;
@@ -328,13 +339,34 @@ export function VideoPlayer({
     setIsLoading(false);
     setLocalError(null);
     if (snapshot?.playIntent && !disabledReason) {
-      void play();
-      return;
-    }
-    if (autoplayEnabled && !disabledReason && !expanded) {
-      void play();
+      void play({ silent: autoplayEnabled && !expanded });
     }
   }, [autoplayEnabled, disabledReason, expanded, identity, play, updateSession]);
+
+  // Telegram-style: muted inline autoplay only while the tile is on screen.
+  useEffect(() => {
+    if (!autoplayEnabled || disabledReason || expanded || !sourceUrl) return;
+    const root = rootRef.current;
+    if (!root || typeof IntersectionObserver === "undefined") {
+      void playRef.current({ silent: true });
+      return;
+    }
+
+    let visible = false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        const nextVisible = Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.35);
+        if (nextVisible === visible) return;
+        visible = nextVisible;
+        if (nextVisible) void playRef.current({ silent: true });
+        else pauseRef.current();
+      },
+      { threshold: [0, 0.35, 0.6, 1] },
+    );
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [autoplayEnabled, disabledReason, expanded, sourceUrl]);
 
   const openExpanded = useCallback(() => {
     setExpanded(true);
