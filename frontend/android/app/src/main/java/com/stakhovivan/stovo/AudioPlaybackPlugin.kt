@@ -88,9 +88,21 @@ class AudioPlaybackPlugin : Plugin() {
     fun play(call: PluginCall) {
         withController(call) { controller ->
             try {
-                // ExoPlayer.play() is a no-op at STATE_ENDED unless we rewind first.
                 if (controller.playbackState == Player.STATE_ENDED) {
-                    controller.seekTo(0L)
+                    val seekFuture = controller.seekTo(0L)
+                    seekFuture.addListener(
+                        {
+                            try {
+                                seekFuture.get()
+                                controller.play()
+                                call.resolve()
+                            } catch (_: Exception) {
+                                call.reject("Audio play unavailable")
+                            }
+                        },
+                        executor,
+                    )
+                    return@withController
                 }
                 controller.play()
                 call.resolve()
@@ -115,9 +127,23 @@ class AudioPlaybackPlugin : Plugin() {
             call.reject("Invalid audio seek position")
             return
         }
-        withController(call) {
-            it.seekTo((position * 1000.0).toLong())
-            call.resolve()
+        withController(call) { controller ->
+            try {
+                val seekFuture = controller.seekTo((position * 1000.0).toLong())
+                seekFuture.addListener(
+                    {
+                        try {
+                            seekFuture.get()
+                            call.resolve()
+                        } catch (_: Exception) {
+                            call.reject("Audio seek unavailable")
+                        }
+                    },
+                    executor,
+                )
+            } catch (_: Exception) {
+                call.reject("Audio seek unavailable")
+            }
         }
     }
 
@@ -328,15 +354,22 @@ class AudioPlaybackPlugin : Plugin() {
         if (fileId.isBlank()) return false
         val uri = Uri.parse(sourceUrl)
         val scheme = uri.scheme?.lowercase()
+        val segments = uri.pathSegments
+        val pathFileId = if (
+            segments.size == 3 &&
+            segments[0] == "api" &&
+            segments[1] == "media"
+        ) {
+            Uri.decode(segments[2])
+        } else {
+            null
+        }
         // Accept the configured API origin (http/https). Auth is the short-lived playback token.
         return (scheme == "https" || scheme == "http") &&
             !uri.host.isNullOrBlank() &&
             uri.userInfo == null &&
             uri.query == null &&
             uri.fragment == null &&
-            uri.pathSegments.size == 3 &&
-            uri.pathSegments[0] == "api" &&
-            uri.pathSegments[1] == "media" &&
-            uri.pathSegments[2] == fileId
+            pathFileId == fileId
     }
 }

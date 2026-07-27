@@ -338,10 +338,23 @@ export function VideoPlayer({
     });
     setIsLoading(false);
     setLocalError(null);
-    if (snapshot?.playIntent && !disabledReason) {
-      void play({ silent: autoplayEnabled && !expanded });
+    if (snapshot?.playIntent && !disabledReason && !expanded) {
+      void play({ silent: autoplayEnabled });
     }
   }, [autoplayEnabled, disabledReason, expanded, identity, play, updateSession]);
+
+  // Only the lightbox video may output audio — keep the inline tile paused while expanded.
+  useEffect(() => {
+    if (!expanded) return;
+    const inline = videoRef.current;
+    if (!inline) return;
+    try {
+      inline.pause();
+    } catch {
+      // A detached media element may reject an imperative pause.
+    }
+    inline.muted = true;
+  }, [expanded, isPlaying]);
 
   // Telegram-style: muted inline autoplay only while the tile is on screen.
   useEffect(() => {
@@ -369,15 +382,48 @@ export function VideoPlayer({
   }, [autoplayEnabled, disabledReason, expanded, sourceUrl]);
 
   const openExpanded = useCallback(() => {
+    const inline = videoRef.current;
+    const registration = registrationRef.current;
+    if (inline) {
+      try {
+        inline.pause();
+      } catch {
+        // A detached media element may reject an imperative pause.
+      }
+      inline.muted = true;
+    }
+    if (registration) {
+      videoPlaybackSession.performAction(registration, { type: "pause" });
+      videoPlaybackSession.update(registration, {
+        muted: false,
+        playIntent: true,
+        status: "ready",
+        error: null,
+      });
+    }
     setExpanded(true);
-    void play({ unmuted: true });
-  }, [play]);
+  }, []);
 
   const closeExpanded = useCallback(() => {
+    const expanded = expandedVideoRef.current;
+    if (expanded) {
+      try {
+        expanded.pause();
+      } catch {
+        // A detached media element may reject an imperative pause.
+      }
+    }
     setExpanded(false);
     const registration = registrationRef.current;
-    if (registration && autoplayEnabled) {
-      videoPlaybackSession.performAction(registration, { type: "mute", muted: true });
+    const inline = videoRef.current;
+    if (registration) {
+      videoPlaybackSession.performAction(registration, { type: "pause" });
+      if (autoplayEnabled) {
+        videoPlaybackSession.performAction(registration, { type: "mute", muted: true });
+      }
+    }
+    if (inline && autoplayEnabled) {
+      inline.muted = true;
     }
   }, [autoplayEnabled]);
 
@@ -407,7 +453,7 @@ export function VideoPlayer({
       preload="metadata"
       playsInline
       controls={false}
-      muted={muted}
+      muted={expanded || muted}
       loop={compact && autoplayEnabled}
       onLoadStart={() => {
         setIsLoading(true);
@@ -567,12 +613,12 @@ export function VideoPlayer({
             >
               <video
                 ref={expandedVideoRef}
+                className="video-player-media"
                 src={sourceUrl ?? undefined}
                 preload="auto"
                 playsInline
                 controls={false}
-                muted={muted}
-                autoPlay
+                muted={false}
                 onLoadedMetadata={(event) => {
                   const el = event.currentTarget;
                   try {
@@ -580,7 +626,7 @@ export function VideoPlayer({
                   } catch {
                     // Seek may fail before ranges are ready.
                   }
-                  el.muted = muted;
+                  el.muted = false;
                   void el.play().catch(() => undefined);
                 }}
                 onTimeUpdate={(event) => {
@@ -592,6 +638,12 @@ export function VideoPlayer({
                     });
                   }
                 }}
+                onPlaying={() => {
+                  setIsLoading(false);
+                  setLocalError(null);
+                  updateSession({ status: "playing", playIntent: true, error: null });
+                }}
+                onPause={() => updateSession({ status: "paused", playIntent: false })}
               />
               <button
                 type="button"

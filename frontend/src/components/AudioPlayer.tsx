@@ -224,7 +224,8 @@ export function AudioPlayer({
         activeSnapshot.status === "error" ||
         activeSnapshot.status === "idle" ||
         activeSnapshot.status === "loading" ||
-        activeSnapshot.status === "authorization-required";
+        activeSnapshot.status === "authorization-required" ||
+        activeSnapshot.status === "ended";
       if (needsReload) {
         const resumeAt =
           sameTrack &&

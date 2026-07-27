@@ -276,11 +276,18 @@ describe("AudioPlayer", () => {
       platform: "web",
     }));
 
+    backend.load.mockImplementationOnce(async () => {
+      backend.emit(snapshot({ revision: 3, status: "ready", position: 0 }));
+    });
+
     act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Replay audio"]')?.click());
     await settle();
 
-    expect(backend.load).not.toHaveBeenCalled();
-    expect(backend.seek).toHaveBeenCalledWith(0);
+    expect(backend.load).toHaveBeenCalledWith(
+      descriptor,
+      expect.any(Object),
+      0,
+    );
     expect(backend.play).toHaveBeenCalledTimes(1);
     expect(session.getSnapshot().status).not.toBe("loading");
   });
