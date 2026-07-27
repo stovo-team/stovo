@@ -139,15 +139,18 @@ export function AudioPlayer({
     () => initialSnapshotFor(session, descriptor),
     [descriptor.identity.chatId, descriptor.identity.fileId, descriptor.identity.messageId, session],
   );
-  const snapshot = useSyncExternalStore(
-    session.subscribe.bind(session),
-    getOwnSnapshot,
-    getOwnSnapshot,
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => session.subscribe(onStoreChange),
+    [session],
   );
+  const snapshot = useSyncExternalStore(subscribe, getOwnSnapshot, getOwnSnapshot);
   const dragRevision = useRef<number | null>(null);
   const playInFlight = useRef(false);
   const waveRef = useRef<HTMLDivElement | null>(null);
   const [previewPosition, setPreviewPosition] = useState<number | null>(null);
+  // Optimistic chrome so the control reacts on tap even if the native bridge
+  // briefly lags (or used to drop playing snapshots entirely).
+  const [playIntent, setPlayIntent] = useState(false);
 
   useEffect(() => {
     if (previewPosition !== null && dragRevision.current !== snapshot?.revision) {
@@ -156,18 +159,38 @@ export function AudioPlayer({
     }
   }, [previewPosition, snapshot?.revision]);
 
+  useEffect(() => {
+    const status = snapshot?.status;
+    if (
+      status === "playing" ||
+      status === "buffering" ||
+      status === "paused" ||
+      status === "ended" ||
+      status === "error" ||
+      status === "suppressed" ||
+      status === "idle" ||
+      snapshot === null
+    ) {
+      setPlayIntent(false);
+    }
+  }, [snapshot, snapshot?.status]);
+
   const isActive = snapshot !== null;
   const duration = isFiniteTime(snapshot?.duration ?? 0) ? snapshot?.duration ?? 0 : 0;
   const canonicalPosition = clamp(snapshot?.position ?? 0, duration);
   const position = previewPosition === null ? canonicalPosition : clamp(previewPosition, duration);
   const seekable = Boolean(snapshot?.canSeek && duration > 0);
-  const isLoading = snapshot?.status === "loading";
+  const isLoading = snapshot?.status === "loading" || (playIntent && snapshot?.status !== "playing" && snapshot?.status !== "buffering");
   const isBuffering = snapshot?.status === "buffering";
-  const isPlaying = snapshot?.status === "playing" || isBuffering;
-  const isEnded = snapshot?.status === "ended";
-  const isPauseAction = snapshot?.status === "playing" || isBuffering;
+  const sessionPlaying =
+    snapshot?.status === "playing" || snapshot?.status === "buffering";
+  const isPlaying = sessionPlaying || playIntent;
+  const isEnded = snapshot?.status === "ended" && !playIntent;
+  // Icon follows optimistic intent; only a live playing/buffering session pauses on tap
+  // so a second tap can recover a stuck load instead of calling pause().
+  const isPauseAction = isPlaying && !isEnded;
   const isCallDisabled = Boolean(disabledReason);
-  const primaryLabel = isPauseAction
+  const primaryLabel = sessionPlaying || (playIntent && !isEnded)
     ? "Pause audio"
     : isEnded
       ? "Replay audio"
@@ -186,6 +209,7 @@ export function AudioPlayer({
   const beginPlayback = useCallback(async () => {
     if (playbackDisabled || playInFlight.current) return;
     playInFlight.current = true;
+    setPlayIntent(true);
     try {
       await onBeforePlay?.();
       session.setSourceFactory(sourceFactory);
@@ -194,16 +218,19 @@ export function AudioPlayer({
       // Natural end is handled inside session.play() (platform-specific reload
       // vs rewind). Reloading here too caused eternal loading after Android
       // service restart when revision watermarks rejected the new snapshots.
+      // Force a fresh load when still stuck on loading so a second tap recovers.
       const needsReload =
         !sameTrack ||
         activeSnapshot.status === "error" ||
         activeSnapshot.status === "idle" ||
+        activeSnapshot.status === "loading" ||
         activeSnapshot.status === "authorization-required";
       if (needsReload) {
         const resumeAt =
           sameTrack &&
           (activeSnapshot.status === "error" ||
-            activeSnapshot.status === "authorization-required")
+            activeSnapshot.status === "authorization-required" ||
+            activeSnapshot.status === "loading")
             ? activeSnapshot.position
             : 0;
         await session.load(descriptor, resumeAt);
@@ -211,21 +238,27 @@ export function AudioPlayer({
       await session.play();
     } catch {
       // The canonical session maps backend failures to its closed error vocabulary.
+      setPlayIntent(false);
     } finally {
       playInFlight.current = false;
     }
   }, [descriptor, onBeforePlay, playbackDisabled, session, sourceFactory]);
 
   const togglePlayback = useCallback(() => {
-    if (isPauseAction) return void session.pause();
-    // Already resolving this track — stacked loads race and leave eternal loading.
-    if (isLoading && isActive) return;
+    if (playbackDisabled) return;
+    // Only pause when the session is actually playing/buffering. Optimistic
+    // playIntent alone must not steal the second tap from a stuck load recovery.
+    if (snapshot?.status === "playing" || snapshot?.status === "buffering") {
+      setPlayIntent(false);
+      return void session.pause();
+    }
     return void beginPlayback();
-  }, [beginPlayback, isActive, isLoading, isPauseAction, session]);
+  }, [beginPlayback, playbackDisabled, session, snapshot?.status]);
 
   const retry = useCallback(async () => {
     if (!recoverableError || isCallDisabled || playInFlight.current) return;
     playInFlight.current = true;
+    setPlayIntent(true);
     try {
       await onBeforePlay?.();
       session.setSourceFactory(sourceFactory);
@@ -233,6 +266,7 @@ export function AudioPlayer({
       await session.play();
     } catch {
       // Keep error presentation safe and generic.
+      setPlayIntent(false);
     } finally {
       playInFlight.current = false;
     }

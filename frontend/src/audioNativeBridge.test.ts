@@ -78,6 +78,18 @@ describe("parseNativeAudioPlaybackState", () => {
     expect(parseNativeAudioPlaybackState(value)).toBeNull();
   });
 
+  it("rejects states that omit null optional keys (Capacitor put(null) footgun)", () => {
+    const { error: _error, suppressionReason: _suppression, ...withoutNulls } = nativeState();
+    expect(parseNativeAudioPlaybackState(withoutNulls)).toBeNull();
+    expect(
+      parseNativeAudioPlaybackState({
+        ...withoutNulls,
+        error: null,
+        suppressionReason: null,
+      }),
+    ).toMatchObject({ status: "playing", revision: 17 });
+  });
+
   it("rejects lower/equal revisions and accepts a strictly newer one", () => {
     expect(parseNativeAudioPlaybackState(nativeState({ revision: 16 }), 16)).toBeNull();
     expect(parseNativeAudioPlaybackState(nativeState({ revision: 15 }), 16)).toBeNull();

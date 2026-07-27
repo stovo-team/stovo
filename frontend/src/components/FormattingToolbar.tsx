@@ -42,6 +42,9 @@ type ViewportSize = RectangleSize;
 
 const toolbarViewportGutter = 12;
 const toolbarAnchorGap = 8;
+const formatMenuAnchorGap = 20;
+/** Shift the vertical format menu right of the selection center. */
+const formatMenuRightBias = 56;
 
 function finiteNonNegative(value: number): number {
   return Number.isFinite(value) ? Math.max(0, value) : 0;
@@ -51,13 +54,22 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
+export type FormattingToolbarPlacementOptions = {
+  formatOpen?: boolean;
+  gutter?: number;
+};
+
 export function getFormattingToolbarPlacement(
   anchor: ToolbarAnchor,
   toolbar: RectangleSize,
   viewport: ViewportSize,
-  gutter = toolbarViewportGutter
+  gutterOrOptions: number | FormattingToolbarPlacementOptions = toolbarViewportGutter
 ): ToolbarAnchor {
-  const safeGutter = finiteNonNegative(gutter);
+  const options: FormattingToolbarPlacementOptions =
+    typeof gutterOrOptions === "number"
+      ? { gutter: gutterOrOptions }
+      : gutterOrOptions;
+  const safeGutter = finiteNonNegative(options.gutter ?? toolbarViewportGutter);
   const toolbarWidth = finiteNonNegative(toolbar.width);
   const toolbarHeight = finiteNonNegative(toolbar.height);
   const viewportWidth = finiteNonNegative(viewport.width);
@@ -72,14 +84,15 @@ export function getFormattingToolbarPlacement(
     safeGutter,
     viewportHeight - safeGutter - toolbarHeight
   );
+  const formatOpen = Boolean(options.formatOpen);
+  const preferredLeft = formatOpen
+    ? anchorLeft - toolbarWidth * 0.2 + formatMenuRightBias
+    : anchorLeft - toolbarWidth / 2;
+  const gap = formatOpen ? formatMenuAnchorGap : toolbarAnchorGap;
 
   return {
-    left: clamp(anchorLeft - toolbarWidth / 2, safeGutter, maximumLeft),
-    top: clamp(
-      anchorTop - toolbarHeight - toolbarAnchorGap,
-      safeGutter,
-      maximumTop
-    )
+    left: clamp(preferredLeft, safeGutter, maximumLeft),
+    top: clamp(anchorTop - toolbarHeight - gap, safeGutter, maximumTop)
   };
 }
 
@@ -128,7 +141,8 @@ export function FormattingToolbar(
         {
           width: window.innerWidth || document.documentElement.clientWidth,
           height: window.innerHeight || document.documentElement.clientHeight
-        }
+        },
+        { formatOpen }
       ));
     };
 

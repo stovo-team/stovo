@@ -6272,9 +6272,6 @@ export default function ChatsPage() {
                           }
                         }}
                       />
-                      {composerIsMultiline && (
-                        <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
-                      )}
                     </div>
                     <FormattingToolbar
                       selection={composerFormattingSelectionRef.current}
@@ -6285,6 +6282,9 @@ export default function ChatsPage() {
                       onPaste={() => void handleComposerPaste()}
                     />
                     <div className="message-composer-actions">
+                      {composerIsMultiline && (
+                        <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
+                      )}
                       {isVoiceRecording ? (
                         <button
                           type="button"
