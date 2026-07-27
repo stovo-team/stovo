@@ -153,7 +153,7 @@ class AudioPlaybackService : MediaSessionService() {
 
     override fun onGetSession(
         controllerInfo: MediaSession.ControllerInfo
-    ): MediaSession = mediaSession
+    ): MediaSession? = if (released) null else mediaSession
 
     override fun onDestroy() {
         if (!released) {
@@ -330,9 +330,10 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     /**
-     * Natural end: publish ENDED for in-app replay, tear down the player without
-     * emitting IDLE→LOADING (which left the UI on eternal loading), dismiss the
-     * system media notification, then stop the service so the system player goes away.
+     * Natural end: publish ENDED for in-app replay, keep the media item bound so
+     * replay is a simple seekTo(0)+play. Do **not** stopSelf or clear the player —
+     * tearing the MediaSession down here races MediaController reconnect and
+     * crashes the app when the user taps replay.
      */
     private fun handlePlaybackEnded() {
         if (identity == null) return
@@ -344,21 +345,8 @@ class AudioPlaybackService : MediaSessionService() {
         if (::mediaSession.isInitialized) {
             mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle(ended))
         }
-
-        suppressPlayerEvents = true
-        try {
-            player.pause()
-            player.stop()
-            player.clearMediaItems()
-            credentials.clear()
-            resumeStore.clear()
-            identity = null
-            callActive = false
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
-        } finally {
-            suppressPlayerEvents = false
-        }
+        // Drop the foreground notification; keep the service bindable for replay.
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun clearPlayback(reason: AudioPlaybackCleanupReason) {
