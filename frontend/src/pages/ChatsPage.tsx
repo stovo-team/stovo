@@ -36,6 +36,7 @@ import {
   Pin,
   Reply,
   RotateCcw,
+  Square,
   SlidersHorizontal,
   Smartphone,
   Video,
@@ -98,11 +99,13 @@ import {
 import {
   FamilyFile,
   createMediaPlaybackToken,
+  downloadFileBlob,
   formatFileSize,
   getMediaPlaybackUrl,
   saveFileToDisk,
   uploadFile
 } from "../api/files";
+import { peekCachedObjectUrl } from "../mediaBlobCache";
 import { useAuth } from "../auth/AuthContext";
 import { useAppearance } from "../appearance/AppearanceContext";
 import AttachmentPickerSheet, {
@@ -119,6 +122,10 @@ import {
   MessageEnlargeButton,
   MessageEnlargeModal
 } from "../components/MessageEnlargeModal";
+import MessageMediaAlbum, {
+  isMediaAttachment,
+  partitionMessageAttachments
+} from "../components/MessageMediaAlbum";
 import { VideoPlayer } from "../components/VideoPlayer";
 import VeloLogo from "../components/VeloLogo";
 import {
@@ -132,11 +139,17 @@ import type {
 } from "../composerFormatting";
 import { MessageMarkdown } from "../messageMarkdown";
 import {
+  AUDIO_ATTACHMENT_ACCEPT,
   CAMERA_ATTACHMENT_ACCEPT,
   DESKTOP_ATTACHMENT_ACCEPT,
   DOCUMENT_ATTACHMENT_ACCEPT,
   GALLERY_ATTACHMENT_ACCEPT
 } from "../attachmentAccept";
+import {
+  isVoiceRecordingSupported,
+  startVoiceRecording,
+  type VoiceRecorderHandle
+} from "../voiceRecording";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { navigateWithMotion } from "../motion/navigation";
@@ -188,18 +201,27 @@ export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory
       throw new Error("Audio playback requires authentication");
     }
 
-    // Stream via playback token so playback starts without waiting for a full download.
-    const capability = await createMediaPlaybackToken(accessToken, descriptor.identity.fileId);
+    const fileId = descriptor.identity.fileId;
+
+    // Android MediaService needs a credentialed stream URL. Warm the blob cache
+    // in the background so later web/fallback playback is instant.
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+      void downloadFileBlob(accessToken, fileId).catch(() => undefined);
+      const capability = await createMediaPlaybackToken(accessToken, fileId);
       return {
-        url: getMediaPlaybackUrl(descriptor.identity.fileId),
+        url: getMediaPlaybackUrl(fileId),
         token: capability.token
       };
     }
 
-    return {
-      url: getMediaPlaybackUrl(descriptor.identity.fileId, capability.token)
-    };
+    // Web: play from the shared media blob cache. Never mark objectUrl owned —
+    // the playback backend must not revoke cache URLs (that crashed second play).
+    await downloadFileBlob(accessToken, fileId);
+    const cachedUrl = peekCachedObjectUrl(fileId);
+    if (!cachedUrl) {
+      throw new Error("Audio cache miss after download");
+    }
+    return { url: cachedUrl };
   };
 }
 
@@ -801,10 +823,10 @@ function isImageAttachment(file: FamilyFile) {
   return file.mimeType.startsWith("image/");
 }
 
-function messageHasOnlyImageAttachments(message: Message) {
+function messageHasOnlyMediaAttachments(message: Message) {
   return (
     message.attachments.length > 0 &&
-    message.attachments.every((file) => isImageAttachment(file))
+    message.attachments.every((file) => isMediaAttachment(file))
   );
 }
 
@@ -1014,22 +1036,6 @@ function canPostToChannel(chat: Chat, currentUser: User | null) {
     currentUser.role === "admin" ||
     chat.createdBy === currentUser.id
   );
-}
-
-function pendingAttachmentKindLabel(file: { mimeType: string }) {
-  if (file.mimeType.startsWith("image/")) {
-    return "Image";
-  }
-  if (file.mimeType.startsWith("video/")) {
-    return "Video";
-  }
-  if (file.mimeType.startsWith("audio/")) {
-    return "Audio";
-  }
-  if (file.mimeType === "application/pdf" || /\.pdf$/i.test(file.mimeType)) {
-    return "PDF";
-  }
-  return "File";
 }
 
 type PendingLocalAttachment = {
@@ -1438,8 +1444,11 @@ export default function ChatsPage() {
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const galleryAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const cameraAttachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const audioAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const documentAttachmentInputRef = useRef<HTMLInputElement | null>(null);
   const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null);
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
@@ -2686,6 +2695,7 @@ export default function ChatsPage() {
   useEffect(() => {
     clearComposerFormattingSelection();
     setPendingAttachments([]);
+    cancelVoiceRecording();
     setTypingNames([]);
     setMessageSearch("");
     setIsMessageSearchOpen(false);
@@ -4255,11 +4265,10 @@ export default function ChatsPage() {
     if (!composer) {
       return;
     }
-    // Pill composer radius tracks height (border-radius: 999px → ~height/2).
-    // Extra growth needs matching inset so bottom-aligned end controls stay inside the curve.
+    // Soft 28px radius needs only light tuck-in when the field grows past one line.
     const growth = Math.max(0, nextHeight - minHeight);
-    const inset = Math.min(18, Math.round(growth * 0.42));
-    const bottom = Math.min(12, Math.round(growth * 0.28));
+    const inset = Math.min(6, Math.round(growth * 0.12));
+    const bottom = Math.min(4, Math.round(growth * 0.08));
     composer.style.setProperty("--composer-action-inset", `${inset}px`);
     composer.style.setProperty("--composer-action-bottom", `${bottom}px`);
   }, []);
@@ -4369,10 +4378,14 @@ export default function ChatsPage() {
       cameraAttachmentInputRef.current?.click();
       return;
     }
+    if (option === "audio") {
+      audioAttachmentInputRef.current?.click();
+      return;
+    }
     documentAttachmentInputRef.current?.click();
   }
 
-  async function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
+  function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(event.target.files ?? []);
     event.target.value = "";
     if (selectedFiles.length === 0) {
@@ -4380,16 +4393,38 @@ export default function ChatsPage() {
     }
 
     // Keep attachments local until send — no server upload on pick.
+    // Images get object URLs immediately; video thumbs are deferred so pick stays instant.
     const next: PendingLocalAttachment[] = selectedFiles.map((file) => {
-      const isPreviewable =
-        file.type.startsWith("image/") || file.type.startsWith("video/");
+      const isImage = file.type.startsWith("image/");
       return {
         localId: `local:${crypto.randomUUID()}`,
         file,
-        previewUrl: isPreviewable ? URL.createObjectURL(file) : null
+        previewUrl: isImage ? URL.createObjectURL(file) : null
       };
     });
     setPendingAttachments((current) => [...current, ...next]);
+
+    const videoPending = next.filter((item) => item.file.type.startsWith("video/"));
+    if (videoPending.length === 0) {
+      return;
+    }
+    const schedule =
+      typeof window.requestIdleCallback === "function"
+        ? (cb: () => void) => window.requestIdleCallback(() => cb())
+        : (cb: () => void) => window.setTimeout(cb, 0);
+    schedule(() => {
+      setPendingAttachments((current) =>
+        current.map((item) => {
+          if (!videoPending.some((pending) => pending.localId === item.localId)) {
+            return item;
+          }
+          if (item.previewUrl) {
+            return item;
+          }
+          return { ...item, previewUrl: URL.createObjectURL(item.file) };
+        })
+      );
+    });
   }
 
   function removePendingAttachment(localId: string) {
@@ -4904,13 +4939,17 @@ export default function ChatsPage() {
     }
   }
 
-  async function handleSendMessage(event: FormEvent) {
-    event.preventDefault();
+  async function handleSendMessage(
+    event?: FormEvent,
+    attachmentOverride?: PendingLocalAttachment[]
+  ) {
+    event?.preventDefault();
     if (sendInFlightRef.current) {
       return;
     }
     const content = composer.trim();
-    if (!accessToken || !currentUser || !selectedChat || (!content && pendingAttachments.length === 0)) {
+    const localAttachments = attachmentOverride ?? pendingAttachments;
+    if (!accessToken || !currentUser || !selectedChat || (!content && localAttachments.length === 0)) {
       return;
     }
     if (channelCommentsDisabledForViewer) {
@@ -4954,7 +4993,6 @@ export default function ChatsPage() {
 
     const clientMessageId = createClientMessageId();
     const createdAt = new Date().toISOString();
-    const localAttachments = pendingAttachments;
     const isChannelThreadMessage = selectedChat.type === "channel" && Boolean(threadRootMessageId);
     const threadRootForSend = isChannelThreadMessage ? threadRootMessageId : null;
     const replyToMessageId = isChannelThreadMessage ? null : replyTarget?.id ?? null;
@@ -5059,6 +5097,49 @@ export default function ChatsPage() {
       sendInFlightRef.current = false;
       setIsSendingMessage(false);
       setIsUploading(false);
+    }
+  }
+
+  function cancelVoiceRecording() {
+    voiceRecorderRef.current?.cancel();
+    voiceRecorderRef.current = null;
+    setIsVoiceRecording(false);
+  }
+
+  async function handleVoiceButtonClick() {
+    if (channelCommentsDisabledForViewer || missingCommentThread || isUploading || isSendingMessage) {
+      return;
+    }
+    if (isVoiceRecording) {
+      const handle = voiceRecorderRef.current;
+      voiceRecorderRef.current = null;
+      setIsVoiceRecording(false);
+      if (!handle) return;
+      try {
+        const file = await handle.stop();
+        const pending: PendingLocalAttachment = {
+          localId: `local:${crypto.randomUUID()}`,
+          file,
+          previewUrl: null
+        };
+        await handleSendMessage(undefined, [pending]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not send voice message");
+      }
+      return;
+    }
+    if (!isVoiceRecordingSupported()) {
+      setError("Voice recording is not supported on this device");
+      return;
+    }
+    try {
+      setError(null);
+      voiceRecorderRef.current = await startVoiceRecording();
+      setIsVoiceRecording(true);
+    } catch (err) {
+      voiceRecorderRef.current = null;
+      setIsVoiceRecording(false);
+      setError(err instanceof Error ? err.message : "Microphone permission is required to record");
     }
   }
 
@@ -5607,7 +5688,7 @@ export default function ChatsPage() {
                           (member) => member.id === message.senderId
                         );
                         const showSenderIdentity = !mine && isMultiMemberChat(selectedChat.type);
-                        const photoOnlyMessage = messageHasOnlyImageAttachments(message);
+                        const mediaOnlyMessage = messageHasOnlyMediaAttachments(message);
                         const hasCaption = Boolean(message.content?.trim());
                         const swipeStateForMessage =
                           swipeReplyState?.messageId === message.id ? swipeReplyState : null;
@@ -5645,7 +5726,7 @@ export default function ChatsPage() {
                         }
                         return (
                           <article
-                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${photoOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}${swipeStateForMessage ? " is-swipe-active" : ""}${swipeStateForMessage?.activated ? " is-swipe-armed" : ""}${isMessageSelectionMode ? " is-selection-mode" : ""}${isSelected ? " is-selected" : ""}`}
+                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${mediaOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}${swipeStateForMessage ? " is-swipe-active" : ""}${swipeStateForMessage?.activated ? " is-swipe-armed" : ""}${isMessageSelectionMode ? " is-selection-mode" : ""}${isSelected ? " is-selected" : ""}`}
                             id={message.id}
                             key={message.id}
                             aria-pressed={isMessageSelectionMode ? isSelected : undefined}
@@ -5705,50 +5786,79 @@ export default function ChatsPage() {
                                 Forwarded from {message.forwardedFrom.senderDisplayName ?? "Family member"}
                               </span>
                             )}
-                            {message.attachments.length > 0 && (
-                              <div className="message-attachments">
-                                {message.attachments.map((file, attachmentIndex) => {
-                                  const isLastAttachment =
-                                    attachmentIndex === message.attachments.length - 1;
-                                  const showOverlayMeta =
-                                    photoOnlyMessage &&
-                                    !hasCaption &&
-                                    isLastAttachment &&
-                                    isImageAttachment(file);
-                                  const attachment = (
-                                    <AttachmentCard
-                                      accessToken={accessToken}
-                                      chatId={message.chatId}
-                                      file={file}
-                                      messageId={message.id}
-                                      disabledReason={
-                                        callPhase !== "idle"
-                                          ? "Media playback is paused while a call is active"
-                                          : undefined
+                            {message.attachments.length > 0 && (() => {
+                              const { media, other } = partitionMessageAttachments(message.attachments);
+                              const showAlbumMeta = mediaOnlyMessage && !hasCaption && media.length > 0;
+                              const mediaDisabledReason =
+                                callPhase !== "idle"
+                                  ? "Media playback is paused while a call is active"
+                                  : undefined;
+                              const renderSingleAttachment = (file: FamilyFile) => (
+                                <AttachmentCard
+                                  accessToken={accessToken}
+                                  chatId={message.chatId}
+                                  file={file}
+                                  messageId={message.id}
+                                  disabledReason={mediaDisabledReason}
+                                  onBeforeAudioPlay={async () => {
+                                    videoPlaybackSession.pauseActive();
+                                  }}
+                                  compact
+                                  onOpenImage={openFullViewImage}
+                                  videoAutoplay={appearance.videoAutoplay}
+                                />
+                              );
+
+                              return (
+                                <div className="message-attachments">
+                                  {media.length > 1 ? (
+                                    <div
+                                      className={
+                                        showAlbumMeta
+                                          ? "message-photo-stack message-media-album-stack"
+                                          : "message-media-album-stack"
                                       }
-                                      onBeforeAudioPlay={async () => {
-                                        videoPlaybackSession.pauseActive();
-                                      }}
-                                      compact
-                                      onOpenImage={openFullViewImage}
-                                      videoAutoplay={appearance.videoAutoplay}
-                                    />
-                                  );
-
-                                  if (!showOverlayMeta) {
-                                    return <div key={file.id}>{attachment}</div>;
-                                  }
-
-                                  return (
-                                    <div className="message-photo-stack" key={file.id}>
-                                      {attachment}
-                                      {messageMeta}
+                                    >
+                                      <MessageMediaAlbum
+                                        accessToken={accessToken}
+                                        chatId={message.chatId}
+                                        messageId={message.id}
+                                        files={media}
+                                        disabledReason={mediaDisabledReason}
+                                        videoAutoplay={appearance.videoAutoplay}
+                                        renderImage={(file) => (
+                                          <MessageImageAttachment
+                                            accessToken={accessToken}
+                                            file={file}
+                                            onOpenImage={openFullViewImage}
+                                          />
+                                        )}
+                                      />
+                                      {showAlbumMeta ? messageMeta : null}
                                     </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            {(hasCaption || message.deliveryError || !photoOnlyMessage) && (
+                                  ) : (
+                                    media.map((file) => {
+                                      const showOverlayMeta =
+                                        showAlbumMeta && isImageAttachment(file);
+                                      const attachment = renderSingleAttachment(file);
+                                      if (!showOverlayMeta) {
+                                        return <div key={file.id}>{attachment}</div>;
+                                      }
+                                      return (
+                                        <div className="message-photo-stack" key={file.id}>
+                                          {attachment}
+                                          {messageMeta}
+                                        </div>
+                                      );
+                                    })
+                                  )}
+                                  {other.map((file) => (
+                                    <div key={file.id}>{renderSingleAttachment(file)}</div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                            {(hasCaption || message.deliveryError || !mediaOnlyMessage) && (
                               <div className="message-bubble-inner">
                                 {hasCaption ? (
                                   <div className="message-body">
@@ -5767,7 +5877,7 @@ export default function ChatsPage() {
                                 {message.deliveryError ? (
                                   <p className="encrypted-message-unavailable">{message.deliveryError}</p>
                                 ) : null}
-                                {(!photoOnlyMessage || hasCaption) && messageMeta}
+                                {(!mediaOnlyMessage || hasCaption) && messageMeta}
                               </div>
                             )}
                             {message.reactions.length > 0 && (
@@ -6101,6 +6211,15 @@ export default function ChatsPage() {
                           onChange={handleFileSelect}
                         />
                         <input
+                          ref={audioAttachmentInputRef}
+                          accept={AUDIO_ATTACHMENT_ACCEPT}
+                          className="visually-hidden"
+                          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
+                          multiple
+                          type="file"
+                          onChange={handleFileSelect}
+                        />
+                        <input
                           ref={documentAttachmentInputRef}
                           accept={DOCUMENT_ATTACHMENT_ACCEPT}
                           className="visually-hidden"
@@ -6153,6 +6272,9 @@ export default function ChatsPage() {
                           }
                         }}
                       />
+                      {composerIsMultiline && (
+                        <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
+                      )}
                     </div>
                     <FormattingToolbar
                       selection={composerFormattingSelectionRef.current}
@@ -6163,30 +6285,63 @@ export default function ChatsPage() {
                       onPaste={() => void handleComposerPaste()}
                     />
                     <div className="message-composer-actions">
-                      {composerIsMultiline && (
-                        <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
-                      )}
-                      <button
-                        type="submit"
-                        aria-label="Send message"
-                        aria-busy={isUploading || isSendingMessage}
-                        disabled={
-                          isUploading ||
-                          isSendingMessage ||
-                          channelCommentsDisabledForViewer ||
-                          missingCommentThread ||
-                          (!composer.trim() && pendingAttachments.length === 0)
-                        }
-                      >
-                        <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                          send
-                        </span>
-                        {(isUploading || isSendingMessage) && (
-                          <span className="visually-hidden">
-                            {isUploading ? "Uploading" : "Sending"}
+                      {isVoiceRecording ? (
+                        <button
+                          type="button"
+                          className="composer-voice-button is-recording"
+                          aria-label="Stop and send voice message"
+                          title="Stop and send"
+                          disabled={
+                            isUploading ||
+                            isSendingMessage ||
+                            channelCommentsDisabledForViewer ||
+                            missingCommentThread
+                          }
+                          onClick={() => void handleVoiceButtonClick()}
+                        >
+                          <Square size={18} aria-hidden="true" fill="currentColor" />
+                        </button>
+                      ) : !composer.trim() &&
+                        pendingAttachments.length === 0 &&
+                        isVoiceRecordingSupported() ? (
+                        <button
+                          type="button"
+                          className="composer-voice-button"
+                          aria-label="Record voice message"
+                          title="Record voice message"
+                          disabled={
+                            isUploading ||
+                            isSendingMessage ||
+                            channelCommentsDisabledForViewer ||
+                            missingCommentThread
+                          }
+                          onClick={() => void handleVoiceButtonClick()}
+                        >
+                          <Mic size={20} aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <button
+                          type="submit"
+                          aria-label="Send message"
+                          aria-busy={isUploading || isSendingMessage}
+                          disabled={
+                            isUploading ||
+                            isSendingMessage ||
+                            channelCommentsDisabledForViewer ||
+                            missingCommentThread ||
+                            (!composer.trim() && pendingAttachments.length === 0)
+                          }
+                        >
+                          <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                            send
                           </span>
-                        )}
-                      </button>
+                          {(isUploading || isSendingMessage) && (
+                            <span className="visually-hidden">
+                              {isUploading ? "Uploading" : "Sending"}
+                            </span>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                   {showDockedEmojiPicker && (
@@ -7401,11 +7556,9 @@ function PendingAttachmentCard({
   const isVideo = file.type.startsWith("video/");
   const showThumb = isImage || isVideo;
 
-  return (
-    <article
-      className={`pending-attachment-card${showThumb ? " pending-attachment-card--media" : ""}`}
-    >
-      {showThumb && (
+  if (showThumb) {
+    return (
+      <article className="pending-attachment-card pending-attachment-card--thumb">
         <div className="pending-attachment-thumb" aria-hidden={true}>
           {previewUrl ? (
             isVideo ? (
@@ -7419,13 +7572,22 @@ function PendingAttachmentCard({
             </span>
           )}
         </div>
-      )}
+        <button
+          type="button"
+          className="pending-attachment-remove"
+          aria-label={`Remove ${file.name}`}
+          onClick={onRemove}
+        >
+          <X aria-hidden="true" size={14} />
+        </button>
+      </article>
+    );
+  }
+
+  return (
+    <article className="pending-attachment-card pending-attachment-card--file">
       <div className="pending-attachment-copy">
-        <strong>{file.name}</strong>
-        <span>
-          {pendingAttachmentKindLabel({ mimeType: file.type || "application/octet-stream" })} /{" "}
-          {formatFileSize(file.size)}
-        </span>
+        <strong title={file.name}>{file.name}</strong>
       </div>
       <button
         type="button"
@@ -7433,7 +7595,7 @@ function PendingAttachmentCard({
         aria-label={`Remove ${file.name}`}
         onClick={onRemove}
       >
-        <X aria-hidden="true" size={16} />
+        <X aria-hidden="true" size={14} />
       </button>
     </article>
   );
