@@ -16,6 +16,11 @@ import {
 } from "react";
 
 import {
+  getCachedAudioDuration,
+  readAudioDurationFromUrl,
+  setCachedAudioDuration,
+} from "../audioDurationCache";
+import {
   audioPlaybackSession,
   sameAudioIdentity,
   type AudioDescriptor,
@@ -32,6 +37,8 @@ export interface AudioPlayerProps {
   disabledReason?: string;
   onBeforePlay?: () => void | Promise<void>;
   session?: AudioPlaybackSession;
+  /** Resolves a playable URL (typically a cached blob:) for metadata duration probe. */
+  resolveDurationUrl?: () => Promise<string | null>;
 }
 
 function isFiniteTime(value: number): boolean {
@@ -134,6 +141,7 @@ export function AudioPlayer({
   disabledReason,
   onBeforePlay,
   session = audioPlaybackSession,
+  resolveDurationUrl,
 }: AudioPlayerProps) {
   const getOwnSnapshot = useCallback(
     () => initialSnapshotFor(session, descriptor),
@@ -151,6 +159,9 @@ export function AudioPlayer({
   // Optimistic chrome so the control reacts on tap even if the native bridge
   // briefly lags (or used to drop playing snapshots entirely).
   const [playIntent, setPlayIntent] = useState(false);
+  const [knownDuration, setKnownDuration] = useState(
+    () => getCachedAudioDuration(descriptor.identity.fileId) ?? 0,
+  );
 
   useEffect(() => {
     if (previewPosition !== null && dragRevision.current !== snapshot?.revision) {
@@ -175,8 +186,48 @@ export function AudioPlayer({
     }
   }, [snapshot, snapshot?.status]);
 
+  useEffect(() => {
+    const sessionDuration = snapshot?.duration ?? 0;
+    if (isFiniteTime(sessionDuration) && sessionDuration > 0) {
+      setCachedAudioDuration(descriptor.identity.fileId, sessionDuration);
+      setKnownDuration(sessionDuration);
+    }
+  }, [descriptor.identity.fileId, snapshot?.duration]);
+
+  useEffect(() => {
+    const fileId = descriptor.identity.fileId;
+    const cached = getCachedAudioDuration(fileId);
+    if (cached !== null) {
+      setKnownDuration(cached);
+      return;
+    }
+    if (!resolveDurationUrl) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const url = await resolveDurationUrl();
+        if (cancelled || !url) return;
+        const probed = await readAudioDurationFromUrl(url);
+        if (cancelled || probed === null) return;
+        setCachedAudioDuration(fileId, probed);
+        setKnownDuration(probed);
+      } catch {
+        // Duration probe is best-effort; playback can still reveal length later.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [descriptor.identity.fileId, resolveDurationUrl]);
+
   const isActive = snapshot !== null;
-  const duration = isFiniteTime(snapshot?.duration ?? 0) ? snapshot?.duration ?? 0 : 0;
+  const sessionDuration = isFiniteTime(snapshot?.duration ?? 0) ? snapshot?.duration ?? 0 : 0;
+  const duration =
+    sessionDuration > 0
+      ? sessionDuration
+      : isFiniteTime(knownDuration) && knownDuration > 0
+        ? knownDuration
+        : 0;
   const canonicalPosition = clamp(snapshot?.position ?? 0, duration);
   const position = previewPosition === null ? canonicalPosition : clamp(previewPosition, duration);
   const seekable = Boolean(snapshot?.canSeek && duration > 0);
