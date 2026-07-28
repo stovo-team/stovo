@@ -20,10 +20,46 @@ uploads/*
 
 .playwright-cli/
 .playwright/
+.playwright-daemon/
+.playwright-snapshot.txt
 
-# Local agent / editor scratch space
+# Local agent / editor / planning scratch
 .autoforge/
 .obsidian/
+.agents/
+.cache/
+.claude/
+.codex/
+.codex-remote-attachments/
+.cursor/
+.idea/
+.planning/
+.superpowers/
+Excalidraw/
+Ideas/
+Project Structure/
+Stovo/
+AGENTS.md
+CLAUDE.md
+skills-lock.json
+
+# Runtime / heavy local artifacts
+*.log
+*.pid
+*.tmp
+*.temp
+*.cache
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.out
+coverage/
+tmp/
+temp/
+ntfy/cache/
+ntfy/data/
+
 .env.production.bak
 *.bak
 features.db
