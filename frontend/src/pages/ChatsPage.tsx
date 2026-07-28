@@ -890,6 +890,15 @@ function AttachmentCard({
   const isAudio = file.mimeType.startsWith("audio/");
   const documentKind = detectDocumentPreviewKind(file);
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
+  const resolveAudioDurationUrl = useCallback(async () => {
+    if (!accessToken?.trim()) return null;
+    try {
+      await downloadFileBlob(accessToken, file.id);
+      return peekCachedObjectUrl(file.id);
+    } catch {
+      return null;
+    }
+  }, [accessToken, file.id]);
 
   if (isAudio) {
     const descriptor: AudioDescriptor = {
@@ -902,6 +911,7 @@ function AttachmentCard({
         sourceFactory={buildAudioSourceFactory(accessToken ?? "")}
         disabledReason={disabledReason}
         onBeforePlay={onBeforeAudioPlay}
+        resolveDurationUrl={resolveAudioDurationUrl}
       />
     );
   }
