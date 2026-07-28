@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.core.net.toUri
 import androidx.media3.common.AudioAttributes
@@ -101,6 +103,24 @@ class AudioPlaybackService : MediaSessionService() {
     private var released = false
     /** Suppresses IDLE→LOADING noise while tearing down media after a natural end. */
     private var suppressPlayerEvents = false
+    /**
+     * After natural end we clear the media item (dismiss system media controls) but keep
+     * the coordinator on ENDED for in-app replay chrome. Ignore player events until load().
+     */
+    private var ignorePlayerEventsUntilLoad = false
+    private val progressHandler = Handler(Looper.getMainLooper())
+    private val progressTick = object : Runnable {
+        override fun run() {
+            if (released || suppressPlayerEvents || ignorePlayerEventsUntilLoad || !::player.isInitialized) {
+                return
+            }
+            if (!player.isPlaying) return
+            // ExoPlayer does not emit continuous position events — poll while playing
+            // so the in-app time text and progress bar can advance.
+            publishPlayerState(persistResume = false)
+            progressHandler.postDelayed(this, PROGRESS_INTERVAL_MS)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -156,6 +176,7 @@ class AudioPlaybackService : MediaSessionService() {
     ): MediaSession? = if (released) null else mediaSession
 
     override fun onDestroy() {
+        stopProgressUpdates()
         if (!released) {
             released = true
             mediaSession.release()
@@ -166,14 +187,14 @@ class AudioPlaybackService : MediaSessionService() {
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
-            if (suppressPlayerEvents) return
+            if (suppressPlayerEvents || ignorePlayerEventsUntilLoad) return
             if (playbackState == Player.STATE_ENDED && identity != null) {
                 handlePlaybackEnded()
             }
         }
 
         override fun onEvents(player: Player, events: Player.Events) {
-            if (suppressPlayerEvents) return
+            if (suppressPlayerEvents || ignorePlayerEventsUntilLoad) return
             if (callActive && player.playWhenReady) {
                 player.pause()
                 return
@@ -186,7 +207,7 @@ class AudioPlaybackService : MediaSessionService() {
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            if (suppressPlayerEvents) return
+            if (suppressPlayerEvents || ignorePlayerEventsUntilLoad) return
             credentials.clear()
             publishPlayerState(mapPlaybackError(error))
         }
@@ -265,6 +286,7 @@ class AudioPlaybackService : MediaSessionService() {
 
         identity = requestedIdentity
         credentials.set(sourceUrl, token)
+        ignorePlayerEventsUntilLoad = false
         val metadata = MediaMetadata.Builder()
             .setTitle("Audio attachment")
             .setArtist("Stovo")
@@ -292,7 +314,8 @@ class AudioPlaybackService : MediaSessionService() {
 
     private fun publishPlayerState(
         error: AudioPlaybackErrorCode? = null,
-        suppression: AudioSuppressionReason? = null
+        suppression: AudioSuppressionReason? = null,
+        persistResume: Boolean = true,
     ) {
         val currentIdentity = identity
         val state = AudioPlaybackServiceState(
@@ -323,33 +346,59 @@ class AudioPlaybackService : MediaSessionService() {
         )
         coordinator.acceptServiceState(state)
         val snapshot = coordinator.snapshot()
-        if (snapshot.identity != null) resumeStore.save(snapshot)
+        if (persistResume && snapshot.identity != null) resumeStore.save(snapshot)
         if (::mediaSession.isInitialized) {
             mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle(snapshot))
         }
+        syncProgressUpdates(snapshot.isPlaying)
+    }
+
+    private fun syncProgressUpdates(isPlaying: Boolean) {
+        if (isPlaying && !suppressPlayerEvents && !ignorePlayerEventsUntilLoad && !released) {
+            progressHandler.removeCallbacks(progressTick)
+            progressHandler.postDelayed(progressTick, PROGRESS_INTERVAL_MS)
+        } else {
+            stopProgressUpdates()
+        }
+    }
+
+    private fun stopProgressUpdates() {
+        progressHandler.removeCallbacks(progressTick)
     }
 
     /**
-     * Natural end: publish ENDED for in-app replay, keep the media item bound so
-     * replay is a simple seekTo(0)+play. Do **not** stopSelf or clear the player —
-     * tearing the MediaSession down here races MediaController reconnect and
-     * crashes the app when the user taps replay.
+     * Natural end: publish ENDED for in-app replay. Keep the service process alive
+     * (no stopSelf) so MediaController reconnect does not race a dying session.
+     * Clear the media item so system media controls dismiss; JS Android replay
+     * reloads via prepareCurrent() with a fresh credentialed source.
      */
     private fun handlePlaybackEnded() {
         if (identity == null) return
         if (coordinator.snapshot().status == AudioPlaybackStatus.ENDED) return
 
+        stopProgressUpdates()
         player.playWhenReady = false
         coordinator.naturalEnd()
         val ended = coordinator.snapshot()
+        if (ended.identity != null) resumeStore.save(ended)
         if (::mediaSession.isInitialized) {
             mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle(ended))
         }
-        // Drop the foreground notification; keep the service bindable for replay.
+        // Drop the foreground notification and unbound media so the system
+        // media/audio player no longer shows this finished track.
         stopForeground(STOP_FOREGROUND_REMOVE)
+        ignorePlayerEventsUntilLoad = true
+        suppressPlayerEvents = true
+        try {
+            player.clearMediaItems()
+            credentials.clear()
+        } finally {
+            suppressPlayerEvents = false
+        }
     }
 
     private fun clearPlayback(reason: AudioPlaybackCleanupReason) {
+        stopProgressUpdates()
         suppressPlayerEvents = true
         try {
             player.playWhenReady = false
@@ -361,6 +410,7 @@ class AudioPlaybackService : MediaSessionService() {
             coordinator.cleanup(reason)
             identity = null
             callActive = false
+            ignorePlayerEventsUntilLoad = false
             if (::mediaSession.isInitialized) {
                 mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle())
             }
@@ -484,6 +534,7 @@ class AudioPlaybackService : MediaSessionService() {
 
         private const val GENERIC_MEDIA_ID = "stovo-audio"
         private const val SEEK_INCREMENT_MS = 10_000L
+        private const val PROGRESS_INTERVAL_MS = 250L
 
         val COMMAND_LOAD = SessionCommand(AudioPlaybackCustomCommand.LOAD.wireValue, Bundle.EMPTY)
         val COMMAND_GET_STATE =
