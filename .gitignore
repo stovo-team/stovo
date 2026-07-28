@@ -18,7 +18,23 @@ redis-data/
 uploads/*
 !uploads/.gitkeep
 
-# Local agent / editor scratch space
+# Runtime / heavy local artifacts
+*.log
+*.pid
+*.tmp
+*.temp
+*.cache
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.out
+coverage/
+tmp/
+temp/
+ntfy/cache/
+ntfy/data/
+
 .env.production.bak
 *.bak
 features.db
