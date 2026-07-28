@@ -10,6 +10,7 @@ import {
   type AudioPlaybackSource,
   type AudioSourceFactory,
 } from "../audioPlaybackSession";
+import { clearCachedAudioDuration, setCachedAudioDuration } from "../audioDurationCache";
 import { AudioPlayer, formatAudioTime } from "./AudioPlayer";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
@@ -126,11 +127,21 @@ afterEach(() => {
     act(() => root?.unmount());
   }
   session.destroy();
+  clearCachedAudioDuration();
   document.body.replaceChildren();
   vi.restoreAllMocks();
 });
 
 describe("AudioPlayer", () => {
+  it("shows cached duration before the session is attached", () => {
+    setCachedAudioDuration(descriptor.identity.fileId, 125);
+    const { container } = renderPlayer();
+    expect(container.querySelector('output[aria-label="Audio time"]')?.textContent)
+      .toBe("2:05");
+    expect(container.querySelector(".audio-player")?.getAttribute("data-session-active"))
+      .toBe("false");
+  });
+
   it("renders exact controls, time formats, active identity, and seek semantics", () => {
     const { container } = renderPlayer();
     const player = container.querySelector<HTMLElement>(".audio-player")!;
