@@ -16,3 +16,7 @@ if ($workflow -notmatch 'api/health' -or
     $workflow -notmatch 'docker compose logs --tail=100 backend caddy minio minio-init') {
     throw "Deployment must check the public health endpoint and print startup logs on failure."
 }
+
+if ($workflow -notmatch 'uploads logs') {
+    throw "Deployment must grant the backend user access to both local storage and logs."
+}
