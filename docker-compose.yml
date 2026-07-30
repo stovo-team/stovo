@@ -1,10 +1,10 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-family_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
-      POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -14,18 +14,18 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    image: redis@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   ntfy:
-    image: binwiederhier/ntfy:v2.11.0
+    image: binwiederhier/ntfy@sha256:4a7d0f0adc6d5d9fc36e64ab55ef676e76e124a2bdd50ce115b6d9c1c7430294
     command: serve
     volumes:
       - ./ntfy/server.yml:/etc/ntfy/server.yml:ro
@@ -46,24 +46,23 @@ services:
       APP_ENV: ${APP_ENV:-production}
       APP_URL: ${APP_URL:-http://localhost:8000}
       API_URL: ${API_URL:-http://localhost:8000}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:5173}
-      PUBLIC_TUNNEL_ORIGIN: ${PUBLIC_TUNNEL_ORIGIN:-http://127.0.0.1:8000}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:8080}
       PUBLIC_REACHABILITY_CHECKER_URL: ${PUBLIC_REACHABILITY_CHECKER_URL:-}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_USER: ${POSTGRES_USER:-family_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
-      POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      JWT_SECRET: ${JWT_SECRET:-change_me}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
-      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:-change_me_too}
-      INVITE_TOKEN_SECRET: ${INVITE_TOKEN_SECRET:-change_me_invites}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:?Set REFRESH_TOKEN_SECRET in .env}
+      INVITE_TOKEN_SECRET: ${INVITE_TOKEN_SECRET:?Set INVITE_TOKEN_SECRET in .env}
       REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-family_refresh_token}
-      MESSAGE_ENCRYPTION_KEY: ${MESSAGE_ENCRYPTION_KEY:-MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=}
+      MESSAGE_ENCRYPTION_KEY: ${MESSAGE_ENCRYPTION_KEY:?Set MESSAGE_ENCRYPTION_KEY in .env}
       STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
       LOCAL_STORAGE_PATH: /app/uploads
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-100}
@@ -74,8 +73,8 @@ services:
       TURN_HOST: ${TURN_HOST:-}
       TURN_PORT: ${TURN_PORT:-3478}
       TURN_REALM: ${TURN_REALM:-family-messenger}
-      TURN_USERNAME: ${TURN_USERNAME:-family}
-      TURN_PASSWORD: ${TURN_PASSWORD:-change_me}
+      TURN_USERNAME: ${TURN_USERNAME:?Set TURN_USERNAME in .env}
+      TURN_PASSWORD: ${TURN_PASSWORD:?Set TURN_PASSWORD in .env}
       NTFY_BASE_URL: ${NTFY_BASE_URL:-http://ntfy:80}
       NTFY_PUBLISH_TOKEN: ${NTFY_PUBLISH_TOKEN:-}
     expose:
@@ -83,6 +82,11 @@ services:
     volumes:
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,12 +101,19 @@ services:
     environment:
       VITE_DISABLE_HMR: ${VITE_DISABLE_HMR:-true}
     expose:
-      - "5173"
+      - "8080"
     depends_on:
       - backend
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy@sha256:77c07d5ebfa5be9fd6c820d2094ae662c9e7eeb9bf98346b7f639900263ee2a2
     restart: unless-stopped
     depends_on:
       - frontend
@@ -118,7 +129,7 @@ services:
       - caddy-config:/config
 
   coturn:
-    image: coturn/coturn:latest
+    image: coturn/coturn@sha256:161cedd63c5414c2136f306098e02e9aede74606cedad8b9b8581aae1da4e732
     restart: unless-stopped
     # Host networking is required on Linux so coturn sees real client IPs
     # and UDP relay works without Docker NAT interfering.
@@ -126,17 +137,17 @@ services:
     # but that's fine since both WebRTC peers are on localhost anyway.
     network_mode: host
     environment:
-      TURN_USERNAME: ${TURN_USERNAME:-family}
-      TURN_PASSWORD: ${TURN_PASSWORD:-change_me}
-      TURN_REALM: ${TURN_REALM:-family-messenger}
+      TURN_USERNAME: ${TURN_USERNAME:?Set TURN_USERNAME in .env}
+      TURN_PASSWORD: ${TURN_PASSWORD:?Set TURN_PASSWORD in .env}
+      TURN_REALM: ${TURN_REALM:?Set TURN_REALM in .env}
       PUBLIC_IP: ${PUBLIC_IP:-}
     command:
       - -n
       - --log-file=stdout
       - --lt-cred-mech
       - --fingerprint
-      - --user=${TURN_USERNAME:-family}:${TURN_PASSWORD:-change_me}
-      - --realm=${TURN_REALM:-family-messenger}
+      - --user=${TURN_USERNAME:?Set TURN_USERNAME in .env}:${TURN_PASSWORD:?Set TURN_PASSWORD in .env}
+      - --realm=${TURN_REALM:?Set TURN_REALM in .env}
       - --listening-port=3478
       - --min-port=49160
       - --max-port=49200

@@ -6,3 +6,10 @@ server.exe
 *.sqlite
 *.sqlite3
 *.log
+.git/
+.env*
+coverage/
+*.orig
+*.rej
+*.bak*
+*_test.go

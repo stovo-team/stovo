@@ -1,5 +1,8 @@
 base-url: ""
 cache-file: /var/cache/ntfy/cache.db
 auth-file: /var/lib/ntfy/user.db
+# Clients have anonymous read access to their high-entropy, per-user topics.
+# Caddy blocks all public write methods; only the backend can publish over the
+# internal Compose network.
 auth-default-access: read-write
 behind-proxy: true
