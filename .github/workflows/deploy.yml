@@ -39,6 +39,10 @@ jobs:
           script: |
             set -eu
             cd '${{ secrets.DEPLOY_PATH }}'
+            # The running backend owns uploads. Give Git temporary access so it
+            # can restore the tracked placeholder during the working-tree sync.
+            sudo install -d -m 0750 -o "$(id -u)" -g "$(id -g)" uploads
+            sudo chown -R "$(id -u):$(id -g)" uploads
             # Force-pushed / rewritten history is expected; sync exactly to remote.
             git fetch origin master
             git checkout master
