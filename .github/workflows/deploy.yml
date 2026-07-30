@@ -47,6 +47,21 @@ jobs:
             git fetch origin master
             git checkout master
             git reset --hard origin/master
+            # Older production .env files predate the MinIO service. Preserve
+            # existing values and generate secrets only for keys that are absent.
+            test -f .env
+            umask 077
+            ensure_env() {
+              key="$1"
+              value="$2"
+              if ! grep -q "^${key}=." .env; then
+                printf '\n%s=%s\n' "$key" "$value" >> .env
+              fi
+            }
+            ensure_env MINIO_ROOT_USER stovo_minio_root
+            ensure_env MINIO_ROOT_PASSWORD "$(openssl rand -hex 32)"
+            ensure_env MINIO_ACCESS_KEY stovo_backend
+            ensure_env MINIO_SECRET_KEY "$(openssl rand -hex 32)"
             sudo docker compose version
             # The backend runs as the distroless non-root user (UID 65532).
             # Keep the read-only migration source accessible until cutover is accepted.
