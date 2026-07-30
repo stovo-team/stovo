@@ -37,7 +37,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="stovo-local.stovo.ru"
+                    android:host="stovo-cloud.stovo.ru"
                     android:pathPrefix="/invite" />
             </intent-filter>
 
@@ -47,7 +47,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="stovo-local.stovo.ru"
+                    android:host="stovo-cloud.stovo.ru"
                     android:path="/app/audio" />
             </intent-filter>
 

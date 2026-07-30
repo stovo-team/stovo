@@ -31,7 +31,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import java.io.IOException
 import kotlin.math.max
 
-private const val API_ORIGIN = "https://stovo-local.stovo.ru"
+private const val API_ORIGIN = "https://stovo-cloud.stovo.ru"
 const val AUDIO_RETURN_URI = "$API_ORIGIN/app/audio"
 
 private class PlaybackCredentialStore {

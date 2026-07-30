@@ -112,4 +112,14 @@ class NtfyPlugin : Plugin() {
         }
         call.resolve()
     }
+
+    /** Dismiss the notification posted for a chat after the user opens it. */
+    @PluginMethod
+    fun dismissMessageNotification(call: PluginCall) {
+        val chatId = call.getString("chatId")?.trim()
+        if (!chatId.isNullOrEmpty()) {
+            NotificationManagerCompat.from(context).cancel(messageNotificationId(chatId))
+        }
+        call.resolve()
+    }
 }

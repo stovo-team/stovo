@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -242,8 +243,13 @@ func chooseMessageType(content *string, files []filePublic) string {
 	return "file"
 }
 
-func allowedMime(mime string) bool {
-	switch mime {
+func allowedMime(contentType string) bool {
+	mimeType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return false
+	}
+
+	switch mimeType {
 	case "image/jpeg", "image/png", "image/gif", "image/webp",
 		"video/mp4", "video/webm", "video/quicktime",
 		"audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/x-wav", "audio/ogg", "audio/webm",
@@ -258,6 +264,26 @@ func allowedMime(mime string) bool {
 	default:
 		return false
 	}
+}
+
+// normalizeUploadMime preserves a valid MIME type supplied by the client. Some
+// mobile file providers only report application/octet-stream for local files,
+// so a known, allowed filename extension is used for that specific fallback.
+func normalizeUploadMime(contentType, filename string) (string, bool) {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err == nil && allowedMime(mediaType) {
+		return mediaType, true
+	}
+	if mediaType != "" && mediaType != "application/octet-stream" && mediaType != "binary/octet-stream" {
+		return "", false
+	}
+
+	inferred := mime.TypeByExtension(strings.ToLower(filepath.Ext(filename)))
+	inferredType, _, err := mime.ParseMediaType(inferred)
+	if err != nil || !allowedMime(inferredType) {
+		return "", false
+	}
+	return inferredType, true
 }
 
 func boolFromNull(value sql.NullBool) bool {

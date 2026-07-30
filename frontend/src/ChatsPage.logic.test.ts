@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import * as chatsPageModule from "./pages/ChatsPage";
 
 type ChatsPageLogic = {
+  emojiSizeClass?: (content: string | null | undefined) => string;
+  shouldShowMessageSender?: (
+    chatType: "family" | "direct" | "group" | "channel" | "archive",
+    mine: boolean
+  ) => boolean;
   androidAppStatePayload?: (
     isActive: boolean,
     activeChatId?: string
@@ -15,6 +20,25 @@ type ChatsPageLogic = {
 const logic = chatsPageModule as ChatsPageLogic;
 
 describe("ChatsPage lifecycle decisions", () => {
+  it("grades emoji-only messages and returns standard styling for four or more emoji", () => {
+    expect(logic.emojiSizeClass).toBeTypeOf("function");
+    expect(logic.emojiSizeClass?.("🥰")).toBe("emoji-only-xl");
+    expect(logic.emojiSizeClass?.("🥰 ❤️")).toBe("emoji-only-lg");
+    expect(logic.emojiSizeClass?.("🥰 ❤️ 👍")).toBe("emoji-only-md");
+    expect(logic.emojiSizeClass?.("🥰 ❤️ 👍 🎉")).toBe("");
+  });
+
+  it("hides sender names on incoming messages in direct chats", () => {
+    expect(logic.shouldShowMessageSender).toBeTypeOf("function");
+    expect(logic.shouldShowMessageSender?.("direct", false)).toBe(false);
+  });
+
+  it("keeps sender names on incoming messages in multi-member chats", () => {
+    expect(logic.shouldShowMessageSender?.("group", false)).toBe(true);
+    expect(logic.shouldShowMessageSender?.("family", false)).toBe(true);
+    expect(logic.shouldShowMessageSender?.("channel", false)).toBe(true);
+  });
+
   it("reports a backgrounded Android app as not foregrounded", () => {
     expect(logic.androidAppStatePayload).toBeTypeOf("function");
     expect(logic.androidAppStatePayload?.(false, "chat-a")).toEqual({
