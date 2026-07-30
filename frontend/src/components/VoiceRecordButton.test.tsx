@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe("VoiceRecordButton", () => {
-  it("records only while the pointer is held and sends when released", () => {
+  it("keeps a mouse recording active until the next click", () => {
     const onPressStart = vi.fn();
     const onPressEnd = vi.fn();
     const onPressCancel = vi.fn();
@@ -37,13 +37,17 @@ describe("VoiceRecordButton", () => {
 
     const button = container.querySelector("button");
     if (!button) throw new Error("Expected a voice recording button");
-    expect(button.getAttribute("title")).toBe("Hold to record voice message");
+    expect(button.getAttribute("title")).toBe("Click to record voice message");
 
-    act(() => button.dispatchEvent(new Event("pointerdown", { bubbles: true, cancelable: true })));
-    act(() => button.dispatchEvent(new Event("pointerup", { bubbles: true, cancelable: true })));
+    const pointerDown = new Event("pointerdown", { bubbles: true, cancelable: true });
+    Object.defineProperty(pointerDown, "pointerType", { value: "mouse" });
+    const pointerUp = new Event("pointerup", { bubbles: true, cancelable: true });
+    Object.defineProperty(pointerUp, "pointerType", { value: "mouse" });
+    act(() => button.dispatchEvent(pointerDown));
+    act(() => button.dispatchEvent(pointerUp));
 
     expect(onPressStart).toHaveBeenCalledTimes(1);
-    expect(onPressEnd).toHaveBeenCalledTimes(1);
+    expect(onPressEnd).not.toHaveBeenCalled();
     expect(onPressCancel).not.toHaveBeenCalled();
   });
 });

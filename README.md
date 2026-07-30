@@ -1,6 +1,6 @@
 # Family Messenger
 
-This project is a self-hosted family messenger that provides real-time private communication, invite-based access, role-based permissions, local file sharing, and modular infrastructure abstractions. The system uses PostgreSQL for persistent data, Redis for message brokering and caching, and a replaceable storage layer that initially stores files locally but can later be migrated to MinIO or S3-compatible storage.
+This project is a self-hosted family messenger that provides real-time private communication, invite-based access, role-based permissions, MinIO-backed private file sharing, and modular infrastructure abstractions. The system uses PostgreSQL for persistent data, Redis for message brokering and caching, and MinIO for file objects and durable structured log archives.
 
 The backend is a FastAPI modular monolith. It is intentionally structured so future phases can keep business logic separate from infrastructure details such as Redis and local file storage.
 
@@ -117,6 +117,16 @@ Start the full stack from the repository root:
 ```bash
 docker compose up --build
 ```
+
+### Migrating Existing Local Uploads
+
+After MinIO starts and before removing the legacy `uploads` directory, run the checksum-verified migration while uploads are paused:
+
+```bash
+docker compose run --rm backend /usr/local/bin/storage-migrate
+```
+
+The command writes a JSON manifest to the private `stovo-logs/migrations/` prefix and exits non-zero if any referenced object cannot be copied and verified. Keep the legacy directory for rollback until the manifest and production smoke test are accepted.
 
 What happens on startup:
 

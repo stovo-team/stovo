@@ -45,8 +45,8 @@ jobs:
             git reset --hard origin/master
             sudo docker compose version
             # The backend runs as the distroless non-root user (UID 65532).
-            # Keep its bind-mounted log directory writable after every deploy.
-            sudo install -d -m 0750 -o 65532 -g 65532 logs
-            sudo chown -R 65532:65532 logs
+            # Keep the read-only migration source accessible until cutover is accepted.
+            sudo install -d -m 0750 -o 65532 -g 65532 uploads
+            sudo chown -R 65532:65532 uploads
             sudo docker compose down
             sudo docker compose up -d --build

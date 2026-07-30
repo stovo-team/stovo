@@ -54,6 +54,11 @@ describe("active chat message spacing", () => {
       "margin-inline: var(--active-chat-message-inset-x);"
     );
   });
+
+  it("does not apply Markdown list indentation to the chat message list", () => {
+    expect(styles).not.toMatch(/(?:^|\n)\.message-list \{\r?\n  margin: 0.35em 0;/);
+    expect(styles).toContain(".message-body .message-list {");
+  });
 });
 
 describe("emoji-only message sizes", () => {
