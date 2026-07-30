@@ -1,6 +1,13 @@
 (stovo) {
 	encode gzip
 
+	# Keep an HTTPS document from accepting an accidental HTTP subresource
+	# (for example, a URL retained by an older client configuration).
+	header {
+		Content-Security-Policy "upgrade-insecure-requests"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+
 	handle /api/* {
 		reverse_proxy backend:8000
 	}
