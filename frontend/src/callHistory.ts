@@ -20,3 +20,10 @@ export function callHistoryLabel(call: CallHistoryLabelInput) {
     failed: "Call failed"
   }[call.status];
 }
+
+export function callHistoryTimestamp(createdAt: string) {
+  return new Date(createdAt).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}

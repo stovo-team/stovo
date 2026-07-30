@@ -39,7 +39,14 @@ type Config struct {
 	RefreshTokenTTL              time.Duration
 	MediaPlaybackTokenTTL        time.Duration
 	MaxUploadSizeBytes           int64
+	StorageProvider              string
 	LocalStoragePath             string
+	MinIOEndpoint                string
+	MinIOAccessKey               string
+	MinIOSecretKey               string
+	MinIOSecure                  bool
+	MinIOFilesBucket             string
+	MinIOLogsBucket              string
 	LogFilePath                  string
 	LogBufferMaxRecords          int
 	TurnEnabled                  bool
@@ -127,7 +134,14 @@ func Load() (Config, error) {
 		RefreshTokenTTL:              refreshTTL,
 		MediaPlaybackTokenTTL:        mediaPlaybackTTL,
 		MaxUploadSizeBytes:           int64(maxUploadMB) * 1024 * 1024,
+		StorageProvider:              strings.ToLower(getenv("STORAGE_PROVIDER", "local")),
 		LocalStoragePath:             storagePath,
+		MinIOEndpoint:                getenv("MINIO_ENDPOINT", "minio:9000"),
+		MinIOAccessKey:               strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")),
+		MinIOSecretKey:               strings.TrimSpace(os.Getenv("MINIO_SECRET_KEY")),
+		MinIOSecure:                  envBool("MINIO_SECURE", false),
+		MinIOFilesBucket:             getenv("MINIO_FILES_BUCKET", "stovo-files"),
+		MinIOLogsBucket:              getenv("MINIO_LOGS_BUCKET", "stovo-logs"),
 		LogFilePath:                  logPath,
 		LogBufferMaxRecords:          bufferSize,
 		TurnEnabled:                  envBool("TURN_ENABLED", true),

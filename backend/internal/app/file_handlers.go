@@ -187,16 +187,10 @@ func (s *Server) handleStreamMediaPlaybackFile(w http.ResponseWriter, r *http.Re
 		return
 	}
 	defer handle.Close()
-	info, err := handle.Stat()
-	if err != nil || !info.Mode().IsRegular() {
-		s.detail(w, http.StatusNotFound, "File not found")
-		return
-	}
-
 	w.Header().Set("Content-Type", file.MimeType)
 	w.Header().Set("Content-Disposition", "inline")
 	w.Header().Set("Accept-Ranges", "bytes")
-	http.ServeContent(w, r, "", info.ModTime(), handle)
+	http.ServeContent(w, r, "", time.Time{}, handle)
 }
 
 func isStreamableMediaMime(mimeType string) bool {

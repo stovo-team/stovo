@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,18 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+type ArchiveWriter interface {
+	Save(objectKey string, data []byte) error
+}
+
+func recordJSONL(record Record) ([]byte, error) {
+	line, err := json.Marshal(record)
+	if err != nil {
+		return nil, err
+	}
+	return append(line, '\n'), nil
+}
 
 type Record struct {
 	ID           int64     `json:"id"`
@@ -30,6 +43,15 @@ type Buffer struct {
 	records []Record
 	nextID  atomic.Int64
 	logFile *os.File
+	archive *archiveSink
+}
+
+// NewBufferWithArchive keeps recent records in memory and writes immutable JSONL batches asynchronously.
+func NewBufferWithArchive(limit int, writer ArchiveWriter) *Buffer {
+	if limit <= 0 {
+		limit = 2000
+	}
+	return &Buffer{limit: limit, records: make([]Record, 0, limit), archive: newArchiveSink(writer)}
 }
 
 func NewBuffer(limit int, logPath string) (*Buffer, error) {
@@ -51,6 +73,9 @@ func NewBuffer(limit int, logPath string) (*Buffer, error) {
 }
 
 func (b *Buffer) Close() error {
+	if b.archive != nil {
+		b.archive.Close()
+	}
 	if b.logFile == nil {
 		return nil
 	}
@@ -72,6 +97,9 @@ func (b *Buffer) Clear() {
 }
 
 func (b *Buffer) append(record Record) {
+	if b.archive != nil {
+		b.archive.Enqueue(record)
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	if len(b.records) >= b.limit {
@@ -146,7 +174,9 @@ func (l *Logger) log(level string, levelNo int, loggerName string, exception *st
 		record.Logger,
 		record.Message,
 	)
-	_, _ = l.buffer.logFile.WriteString(line)
+	if l.buffer.logFile != nil {
+		_, _ = l.buffer.logFile.WriteString(line)
+	}
 	l.buffer.append(record)
 }
 

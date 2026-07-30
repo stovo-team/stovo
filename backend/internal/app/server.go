@@ -40,7 +40,7 @@ type Server struct {
 	redis     *redis.Client
 	logger    *logging.Logger
 	logBuffer *logging.Buffer
-	storage   *storage.LocalStorage
+	storage   storage.ObjectStore
 	tunnel    *tunnel.Manager
 	sockets   *socketio.Io
 	cache     cache.CachingService
@@ -65,14 +65,26 @@ type Server struct {
 }
 
 func New(cfg config.Config) (*Server, error) {
-	logBuffer, err := logging.NewBuffer(cfg.LogBufferMaxRecords, cfg.LogFilePath)
+	storageService, err := storage.New(storage.Config{
+		Provider: cfg.StorageProvider, LocalPath: cfg.LocalStoragePath,
+		Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey,
+		Secure: cfg.MinIOSecure, Bucket: cfg.MinIOFilesBucket,
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	storageService, err := storage.NewLocalStorage(cfg.LocalStoragePath)
-	if err != nil {
-		return nil, err
+	var logBuffer *logging.Buffer
+	if cfg.StorageProvider == "minio" {
+		logStore, err := storage.New(storage.Config{Provider: "minio", Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure, Bucket: cfg.MinIOLogsBucket})
+		if err != nil {
+			return nil, err
+		}
+		logBuffer = logging.NewBufferWithArchive(cfg.LogBufferMaxRecords, logStore)
+	} else {
+		logBuffer, err = logging.NewBuffer(cfg.LogBufferMaxRecords, cfg.LogFilePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	db, err := sql.Open("pgx", cfg.EffectiveDatabaseURL())

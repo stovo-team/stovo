@@ -59,7 +59,7 @@ import {
 import EmojiPicker, { Categories, EmojiClickData, Theme } from "emoji-picker-react";
 import { Socket, io } from "socket.io-client";
 
-import { callHistoryLabel } from "../callHistory";
+import { callHistoryLabel, callHistoryTimestamp } from "../callHistory";
 import { User } from "../api/auth";
 import {
   Chat,
@@ -5073,6 +5073,10 @@ export default function ChatsPage() {
     if (channelCommentsDisabledForViewer || missingCommentThread || isUploading || isSendingMessage) {
       return;
     }
+    if (event.pointerType === "mouse" && voiceRecordingPointerIdRef.current !== null) {
+      await stopAndSendVoiceRecording();
+      return;
+    }
     if (event.button !== 0 || voiceRecordingPointerIdRef.current !== null) {
       return;
     }
@@ -5104,6 +5108,10 @@ export default function ChatsPage() {
 
   async function handleVoicePressEnd(event: ReactPointerEvent<HTMLButtonElement>) {
     if (voiceRecordingPointerIdRef.current !== event.pointerId) return;
+    await stopAndSendVoiceRecording();
+  }
+
+  async function stopAndSendVoiceRecording() {
     voiceRecordingPointerIdRef.current = null;
     const handle = voiceRecorderRef.current;
     voiceRecorderRef.current = null;
@@ -5665,7 +5673,7 @@ export default function ChatsPage() {
                                 <strong>{callHistoryLabel(message.call)}</strong>
                                 <small>{isVideoCall ? "Video call" : "Audio call"}</small>
                               </span>
-                              <time>{messageDeliveryLabel(message, mine)}</time>
+                              <time>{callHistoryTimestamp(message.createdAt)}</time>
                             </article>
                           );
                         }
