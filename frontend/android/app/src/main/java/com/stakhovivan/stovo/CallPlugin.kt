@@ -22,16 +22,11 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import java.lang.ref.WeakReference
-import kotlin.math.roundToInt
 
 @CapacitorPlugin(name = "CallPlugin")
 class CallPlugin : Plugin() {
     companion object {
         private var activeInstanceRef: WeakReference<CallPlugin>? = null
-        private const val MIN_ASPECT_RATIO = 100.0 / 239.0
-        private const val MAX_ASPECT_RATIO = 239.0 / 100.0
-        private const val MAX_RATIO_COMPONENT = 10_000.0
-
         fun handleUserLeaveHint(activity: Activity?) {
             activeInstanceRef?.get()?.handleUserLeaveHintInternal(activity)
         }
@@ -299,21 +294,12 @@ class CallPlugin : Plugin() {
         snapshot: PiPCoordinatorSnapshot
     ): PictureInPictureParams {
         val builder = PictureInPictureParams.Builder()
-        sanitizedAspectRatio(snapshot.videoState)?.let(builder::setAspectRatio)
+        pictureInPictureAspectRatio(snapshot.activeOwner, snapshot.videoState)
+            ?.let { ratio -> builder.setAspectRatio(Rational(ratio.width, ratio.height)) }
         if (snapshot.activeOwner == PiPOwner.VIDEO) {
             builder.setActions(buildRemoteActions(hostActivity))
         }
         return builder.build()
-    }
-
-    private fun sanitizedAspectRatio(videoState: VideoPiPState?): Rational? {
-        val state = videoState ?: return null
-        if (state.width <= 0 || state.height <= 0) return null
-        val ratio = state.width / state.height
-        if (!ratio.isFinite() || ratio < MIN_ASPECT_RATIO || ratio > MAX_ASPECT_RATIO) return null
-        val width = state.width.coerceAtMost(MAX_RATIO_COMPONENT).roundToInt().coerceAtLeast(1)
-        val height = state.height.coerceAtMost(MAX_RATIO_COMPONENT).roundToInt().coerceAtLeast(1)
-        return Rational(width, height)
     }
 
     private fun buildRemoteActions(hostActivity: Activity): List<RemoteAction> {

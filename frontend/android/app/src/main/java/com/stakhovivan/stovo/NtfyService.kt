@@ -93,7 +93,7 @@ class NtfyService : Service() {
             val body = jsonObj.optString("message", "New message")
             val click = jsonObj.optString("click", "")
 
-            val notificationId = if (click.isNotEmpty()) click.hashCode() else System.currentTimeMillis().toInt()
+            var notificationId = if (click.isNotEmpty()) click.hashCode() else System.currentTimeMillis().toInt()
 
             // Parse tags to determine notification type
             val tagsArray = jsonObj.optJSONArray("tags")
@@ -102,6 +102,9 @@ class NtfyService : Service() {
             val isRinging = tags.contains("phone")
             val isMissed = tags.contains("telephone_receiver")
             val isMessage = !isRinging && !isMissed
+            if (isMessage && click.startsWith("stovo://chat/")) {
+                notificationId = messageNotificationId(click.removePrefix("stovo://chat/"))
+            }
 
             // Guard: POST_NOTIFICATIONS required on API 33+. Foreground service
             // notifications bypass this check, but regular notify() calls do not.

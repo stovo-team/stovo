@@ -193,12 +193,14 @@
 
 /* Minimized: slim chip — width collapses to fit content */
 .call-popup.call-popup-minimized {
-  top: 80px;
+  top: 96px;
   left: auto;
   right: 24px;
   transform: none;
-  width: auto;
-  min-width: 200px;
+  width: max-content;
+  max-width: calc(100vw - 48px);
+  min-width: 0;
+  border-radius: var(--float-radius-pill, 999px);
   padding: 8px 12px;
   gap: 0;
   flex-direction: row;
@@ -284,11 +286,13 @@
   align-items: center;
   gap: 6px;
   margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .call-chip-btn {
   width: 30px !important;
   height: 30px !important;
+  flex: 0 0 30px;
 }
 
 .call-chip-restore {
@@ -2487,9 +2491,14 @@ h2 {
   z-index: 12;
 }
 
+.messenger-shell.has-active-chat {
+  --active-chat-message-inset-x: 10px;
+}
+
 .messenger-shell.has-active-chat .messages-panel {
   background: transparent;
   margin-top: calc(-1 * var(--chat-floating-header-overlap));
+  padding-inline: var(--active-chat-message-inset-x);
   padding-top: calc(18px + var(--chat-floating-header-overlap));
   scroll-padding-top: 12px;
 }
@@ -2499,7 +2508,8 @@ h2 {
   border: none;
   border-radius: 28px;
   box-shadow: var(--float-shadow-soft);
-  margin: 0 var(--message-gutter-x) 8px;
+  margin-inline: var(--active-chat-message-inset-x);
+  margin-block: 0 8px;
   padding: 6px 8px;
 }
 
@@ -2648,6 +2658,10 @@ h2 {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+
+.message-bubble.direct {
+  padding-top: 4px;
 }
 
 .call-history-message {
@@ -3124,17 +3138,17 @@ span.message-spoiler.is-revealed {
   padding: 4px 0;
 }
 
-.message-bubble.emoji-only-xl .message-bubble-inner p {
+.message-bubble.emoji-only-xl .message-body {
   font-size: 3rem;
   line-height: 1.2;
 }
 
-.message-bubble.emoji-only-lg .message-bubble-inner p {
+.message-bubble.emoji-only-lg .message-body {
   font-size: 2rem;
   line-height: 1.2;
 }
 
-.message-bubble.emoji-only-md .message-bubble-inner p {
+.message-bubble.emoji-only-md .message-body {
   font-size: 1.25rem;
   line-height: 1.2;
 }
@@ -3524,6 +3538,14 @@ span.message-spoiler.is-revealed {
 .message-composer .composer-voice-button.is-recording {
   background: var(--danger);
   border-color: var(--danger);
+  animation: composer-voice-recording-pulse 1s ease-in-out infinite;
+}
+
+@keyframes composer-voice-recording-pulse {
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger) 28%, transparent);
+    transform: scale(1.06);
+  }
 }
 
 .message-composer button[type="submit"] > span:not(.ms-icon):not(.visually-hidden) {
@@ -6760,7 +6782,7 @@ span.message-spoiler.is-revealed {
 
   .messenger-shell.has-active-chat .messages-panel {
     margin-top: calc(-1 * var(--chat-floating-header-overlap));
-    padding: calc(10px + var(--chat-floating-header-overlap)) var(--mobile-edge-inset-x) 10px;
+    padding: calc(10px + var(--chat-floating-header-overlap)) var(--active-chat-message-inset-x) 10px;
     scroll-padding-top: 10px;
   }
 
@@ -6771,7 +6793,7 @@ span.message-spoiler.is-revealed {
 
   .messenger-shell.has-active-chat .message-composer {
     gap: 4px;
-    margin: 0 var(--mobile-edge-inset-x) calc(var(--mobile-edge-inset-y) + env(safe-area-inset-bottom));
+    margin: 0 var(--active-chat-message-inset-x) calc(var(--mobile-edge-inset-y) + env(safe-area-inset-bottom));
     padding: 6px 8px;
   }
 
@@ -7170,7 +7192,10 @@ span.message-spoiler.is-revealed {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   padding-top: max(env(safe-area-inset-top, 0px), 52px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 132px);
   z-index: 5;
 }
 
@@ -7544,7 +7569,7 @@ span.message-spoiler.is-revealed {
   display: flex;
   flex-shrink: 0;
   gap: 10px;
-  margin: 0 var(--mobile-edge-inset-x, 16px) 8px;
+  margin: 8px var(--mobile-edge-inset-x, 16px) 8px;
   min-height: 48px;
   padding: 8px 10px;
   animation: mobile-call-strip-enter var(--motion-surface-duration) var(--motion-route-ease);
@@ -9617,7 +9642,8 @@ span.message-spoiler.is-revealed {
 
 @media (prefers-reduced-motion: reduce) {
   .audio-player-eq.is-active span,
-  .audio-player-play-pause.is-playing .audio-player-play-pulse {
+  .audio-player-play-pause.is-playing .audio-player-play-pulse,
+  .message-composer .composer-voice-button.is-recording {
     animation: none !important;
   }
 

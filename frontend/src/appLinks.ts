@@ -1,4 +1,4 @@
-const APP_LINK_HOST = "stovo-local.stovo.ru";
+const APP_LINK_HOST = "stovo-cloud.stovo.ru";
 const AUDIO_PLAYBACK_APP_LINK_PATH = "/app/chats?restoreAudio=1";
 
 export function getAudioPlaybackAppLinkPath(rawUrl: string): string | null {

@@ -1,5 +1,31 @@
 package com.stakhovivan.stovo
 
+import kotlin.math.roundToInt
+
+data class PiPAspectRatio(val width: Int, val height: Int)
+
+private const val MIN_ASPECT_RATIO = 100.0 / 239.0
+private const val MAX_ASPECT_RATIO = 239.0 / 100.0
+private const val MAX_RATIO_COMPONENT = 10_000.0
+private val PORTRAIT_CALL_ASPECT_RATIO = PiPAspectRatio(width = 9, height = 16)
+
+fun pictureInPictureAspectRatio(
+    owner: PiPOwner,
+    videoState: VideoPiPState?
+): PiPAspectRatio? {
+    if (owner == PiPOwner.CALL) return PORTRAIT_CALL_ASPECT_RATIO
+
+    val state = videoState ?: return null
+    if (state.width <= 0 || state.height <= 0) return null
+    val ratio = state.width / state.height
+    if (!ratio.isFinite() || ratio < MIN_ASPECT_RATIO || ratio > MAX_ASPECT_RATIO) return null
+
+    return PiPAspectRatio(
+        width = state.width.coerceAtMost(MAX_RATIO_COMPONENT).roundToInt().coerceAtLeast(1),
+        height = state.height.coerceAtMost(MAX_RATIO_COMPONENT).roundToInt().coerceAtLeast(1)
+    )
+}
+
 enum class PiPOwner(val wireValue: String) {
     NONE("none"),
     CALL("call"),

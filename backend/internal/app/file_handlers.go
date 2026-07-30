@@ -39,8 +39,8 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request, user u
 		return
 	}
 
-	mimeType := header.Header.Get("Content-Type")
-	if !allowedMime(mimeType) {
+	mimeType, allowed := normalizeUploadMime(header.Header.Get("Content-Type"), header.Filename)
+	if !allowed {
 		s.detail(w, http.StatusBadRequest, "Disallowed file type")
 		return
 	}

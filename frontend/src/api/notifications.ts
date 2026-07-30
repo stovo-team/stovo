@@ -9,6 +9,7 @@ interface NtfyPlugin {
   stopService(): Promise<void>;
   checkFullScreenIntent(): Promise<void>;
   requestNotificationPermission(): Promise<{ granted: boolean }>;
+  dismissMessageNotification(options: { chatId: string }): Promise<void>;
 }
 
 const NtfyPlugin = registerPlugin<NtfyPlugin>("NtfyPlugin");
@@ -63,6 +64,18 @@ export async function ensureFullScreenIntentPermission(): Promise<void> {
     await NtfyPlugin.checkFullScreenIntent();
   } catch {
     // Safe no-op on older APIs or when plugin method is not yet implemented
+  }
+}
+
+/** Dismiss the Android notification for a chat once its messages are visible. */
+export async function dismissMessageNotification(chatId: string): Promise<void> {
+  if (!chatId || !Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
+    return;
+  }
+  try {
+    await NtfyPlugin.dismissMessageNotification({ chatId });
+  } catch {
+    // The native bridge is absent in browser and older app builds.
   }
 }
 

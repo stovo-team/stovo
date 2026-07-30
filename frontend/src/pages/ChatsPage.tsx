@@ -36,7 +36,6 @@ import {
   Pin,
   Reply,
   RotateCcw,
-  Square,
   SlidersHorizontal,
   Smartphone,
   Video,
@@ -89,6 +88,7 @@ import {
 } from "../api/chats";
 import { Family } from "../api/family";
 import { ApiError, getApiUrl, isTunnelHost } from "../api/client";
+import { dismissMessageNotification } from "../api/notifications";
 import {
   decryptMessage,
   decryptMessages,
@@ -138,6 +138,7 @@ import type {
   ToolbarAnchor
 } from "../composerFormatting";
 import { MessageMarkdown } from "../messageMarkdown";
+import { VoiceRecordButton } from "../components/VoiceRecordButton";
 import {
   AUDIO_ATTACHMENT_ACCEPT,
   CAMERA_ATTACHMENT_ACCEPT,
@@ -409,7 +410,7 @@ function chatAvatarTypeClass(chat: Chat) {
   return "";
 }
 
-function emojiSizeClass(content: string | null | undefined): string {
+export function emojiSizeClass(content: string | null | undefined): string {
   if (!content) return "";
   const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
   const segments = [...segmenter.segment(content.trim())];
@@ -420,7 +421,8 @@ function emojiSizeClass(content: string | null | undefined): string {
   if (emojiCount === 0) return "";
   if (emojiCount === 1) return "emoji-only-xl";
   if (emojiCount === 2) return "emoji-only-lg";
-  return "emoji-only-md";
+  if (emojiCount === 3) return "emoji-only-md";
+  return "";
 }
 
 function chatPreview(chat: Chat) {
@@ -1030,6 +1032,10 @@ function isMultiMemberChat(type: Chat["type"]) {
   return type === "family" || type === "group" || type === "channel";
 }
 
+export function shouldShowMessageSender(chatType: Chat["type"], mine: boolean) {
+  return !mine && isMultiMemberChat(chatType);
+}
+
 function canPostToChannel(chat: Chat, currentUser: User | null) {
   if (!currentUser || chat.type !== "channel") {
     return false;
@@ -1450,6 +1456,7 @@ export default function ChatsPage() {
   const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null);
+  const voiceRecordingPointerIdRef = useRef<number | null>(null);
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
@@ -2393,6 +2400,9 @@ export default function ChatsPage() {
 
   useEffect(() => {
     activeChatIdRef.current = chatId;
+    if (chatId) {
+      void dismissMessageNotification(chatId);
+    }
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
       void App.getState()
         .then((state) => {
@@ -2971,9 +2981,15 @@ export default function ChatsPage() {
           const currentState = await App.getState();
           if (!appStateCancelled) {
             socket.emit("app:state", androidAppStatePayload(currentState.isActive, activeChatIdRef.current));
+            if (currentState.isActive && activeChatIdRef.current) {
+              void dismissMessageNotification(activeChatIdRef.current);
+            }
           }
           const listener = await App.addListener("appStateChange", (state: AppState) => {
             socket.emit("app:state", androidAppStatePayload(state.isActive, activeChatIdRef.current));
+            if (state.isActive && activeChatIdRef.current) {
+              void dismissMessageNotification(activeChatIdRef.current);
+            }
           });
           if (appStateCancelled) {
             void listener.remove();
@@ -5047,46 +5063,68 @@ export default function ChatsPage() {
   }
 
   function cancelVoiceRecording() {
+    voiceRecordingPointerIdRef.current = null;
     voiceRecorderRef.current?.cancel();
     voiceRecorderRef.current = null;
     setIsVoiceRecording(false);
   }
 
-  async function handleVoiceButtonClick() {
+  async function handleVoicePressStart(event: ReactPointerEvent<HTMLButtonElement>) {
     if (channelCommentsDisabledForViewer || missingCommentThread || isUploading || isSendingMessage) {
       return;
     }
-    if (isVoiceRecording) {
-      const handle = voiceRecorderRef.current;
-      voiceRecorderRef.current = null;
-      setIsVoiceRecording(false);
-      if (!handle) return;
-      try {
-        const file = await handle.stop();
-        const pending: PendingLocalAttachment = {
-          localId: `local:${crypto.randomUUID()}`,
-          file,
-          previewUrl: null
-        };
-        await handleSendMessage(undefined, [pending]);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not send voice message");
-      }
+    if (event.button !== 0 || voiceRecordingPointerIdRef.current !== null) {
       return;
     }
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    voiceRecordingPointerIdRef.current = event.pointerId;
     if (!isVoiceRecordingSupported()) {
+      voiceRecordingPointerIdRef.current = null;
       setError("Voice recording is not supported on this device");
       return;
     }
     try {
       setError(null);
-      voiceRecorderRef.current = await startVoiceRecording();
+      const handle = await startVoiceRecording();
+      if (voiceRecordingPointerIdRef.current !== event.pointerId) {
+        handle.cancel();
+        return;
+      }
+      voiceRecorderRef.current = handle;
       setIsVoiceRecording(true);
     } catch (err) {
+      if (voiceRecordingPointerIdRef.current !== event.pointerId) return;
+      voiceRecordingPointerIdRef.current = null;
       voiceRecorderRef.current = null;
       setIsVoiceRecording(false);
       setError(err instanceof Error ? err.message : "Microphone permission is required to record");
     }
+  }
+
+  async function handleVoicePressEnd(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (voiceRecordingPointerIdRef.current !== event.pointerId) return;
+    voiceRecordingPointerIdRef.current = null;
+    const handle = voiceRecorderRef.current;
+    voiceRecorderRef.current = null;
+    setIsVoiceRecording(false);
+    if (!handle) return;
+    try {
+      const file = await handle.stop();
+      const pending: PendingLocalAttachment = {
+        localId: `local:${crypto.randomUUID()}`,
+        file,
+        previewUrl: null
+      };
+      await handleSendMessage(undefined, [pending]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send voice message");
+    }
+  }
+
+  function handleVoicePressCancel(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (voiceRecordingPointerIdRef.current !== event.pointerId) return;
+    cancelVoiceRecording();
   }
 
   const visibleError = error && !isSuppressedUserError(error) ? error : null;
@@ -5594,7 +5632,7 @@ export default function ChatsPage() {
                         const senderProfile = selectedChat.members.find(
                           (member) => member.id === message.senderId
                         );
-                        const showSenderIdentity = !mine && isMultiMemberChat(selectedChat.type);
+                        const showSenderIdentity = shouldShowMessageSender(selectedChat.type, mine);
                         const mediaOnlyMessage = messageHasOnlyMediaAttachments(message);
                         const hasCaption = Boolean(message.content?.trim());
                         const swipeStateForMessage =
@@ -5633,7 +5671,7 @@ export default function ChatsPage() {
                         }
                         return (
                           <article
-                            className={`message-bubble ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${mediaOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}${swipeStateForMessage ? " is-swipe-active" : ""}${swipeStateForMessage?.activated ? " is-swipe-armed" : ""}${isMessageSelectionMode ? " is-selection-mode" : ""}${isSelected ? " is-selected" : ""}`}
+                            className={`message-bubble ${selectedChat.type === "direct" ? "direct" : ""} ${mine ? "mine" : ""} ${grouped ? "grouped" : ""} ${message.deliveryState ?? ""} ${mediaOnlyMessage ? "has-photo-attachments" : ""} ${emojiSizeClass(message.content)}${swipeStateForMessage ? " is-swipe-active" : ""}${swipeStateForMessage?.activated ? " is-swipe-armed" : ""}${isMessageSelectionMode ? " is-selection-mode" : ""}${isSelected ? " is-selected" : ""}`}
                             id={message.id}
                             key={message.id}
                             aria-pressed={isMessageSelectionMode ? isSelected : undefined}
@@ -5667,11 +5705,6 @@ export default function ChatsPage() {
                                   {message.senderDisplayName ?? senderProfile?.displayName ?? "Family member"}
                                 </strong>
                               </div>
-                            )}
-                            {!mine && !showSenderIdentity && (
-                              <strong className="message-sender">
-                                {message.senderDisplayName ?? "Family member"}
-                              </strong>
                             )}
                             {repliedMessage && (
                               <button
@@ -6192,40 +6225,21 @@ export default function ChatsPage() {
                       {composerIsMultiline && (
                         <MessageEnlargeButton onClick={() => setComposerEnlargeOpen(true)} />
                       )}
-                      {isVoiceRecording ? (
-                        <button
-                          type="button"
-                          className="composer-voice-button is-recording"
-                          aria-label="Stop and send voice message"
-                          title="Stop and send"
-                          disabled={
-                            isUploading ||
-                            isSendingMessage ||
-                            channelCommentsDisabledForViewer ||
-                            missingCommentThread
-                          }
-                          onClick={() => void handleVoiceButtonClick()}
-                        >
-                          <Square size={18} aria-hidden="true" fill="currentColor" />
-                        </button>
-                      ) : !composer.trim() &&
+                      {(!composer.trim() &&
                         pendingAttachments.length === 0 &&
-                        isVoiceRecordingSupported() ? (
-                        <button
-                          type="button"
-                          className="composer-voice-button"
-                          aria-label="Record voice message"
-                          title="Record voice message"
+                        isVoiceRecordingSupported()) || isVoiceRecording ? (
+                        <VoiceRecordButton
+                          isRecording={isVoiceRecording}
                           disabled={
                             isUploading ||
                             isSendingMessage ||
                             channelCommentsDisabledForViewer ||
                             missingCommentThread
                           }
-                          onClick={() => void handleVoiceButtonClick()}
-                        >
-                          <Mic size={20} aria-hidden="true" />
-                        </button>
+                          onPressStart={(event) => void handleVoicePressStart(event)}
+                          onPressEnd={(event) => void handleVoicePressEnd(event)}
+                          onPressCancel={handleVoicePressCancel}
+                        />
                       ) : (
                         <button
                           type="submit"
@@ -6405,7 +6419,7 @@ export default function ChatsPage() {
                   {callNotice && <span className="call-popup-notice">{callNotice}</span>}
                 </>
               <div className="call-popup-header-actions">
-                {callPhase !== "incoming" && (
+                {callPhase !== "incoming" && !isCallMinimized && (
                   <button
                     type="button"
                     className="icon-button subtle"
@@ -6641,6 +6655,31 @@ export default function ChatsPage() {
                       <MicOff aria-hidden="true" size={16} />
                     ) : (
                       <Mic aria-hidden="true" size={16} />
+                    )}
+                  </button>
+                )}
+                {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
+                  <button
+                    type="button"
+                    className={`call-ctrl-btn call-chip-btn call-chip-video${callType === "video" && callAudioSettings.cameraEnabled ? "" : " is-muted"}`}
+                    aria-label={
+                      callType === "video" && callAudioSettings.cameraEnabled
+                        ? "Turn off camera"
+                        : "Turn on camera"
+                    }
+                    onClick={() => {
+                      if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
+                        setCallType("video");
+                        void audioCallRef.current?.toggleVideo(true);
+                      } else {
+                        void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
+                      }
+                    }}
+                  >
+                    {callType === "video" && callAudioSettings.cameraEnabled ? (
+                      <Video aria-hidden="true" size={16} />
+                    ) : (
+                      <VideoOff aria-hidden="true" size={16} />
                     )}
                   </button>
                 )}
