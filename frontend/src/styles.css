@@ -2988,7 +2988,7 @@ h2 {
 .message-heading-5,
 .message-heading-6 { font-size: 1.05em; }
 
-.message-list {
+.message-body .message-list {
   margin: 0.35em 0;
   padding-left: 1.35em;
   white-space: normal;

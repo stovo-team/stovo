@@ -39,6 +39,10 @@ Excalidraw/
 Ideas/
 Project Structure/
 Stovo/
+!frontend/android/app/src/main/java/com/stakhovivan/stovo/
+!frontend/android/app/src/main/java/com/stakhovivan/stovo/**
+!frontend/android/app/src/test/java/com/stakhovivan/stovo/
+!frontend/android/app/src/test/java/com/stakhovivan/stovo/**
 AGENTS.md
 CLAUDE.md
 skills-lock.json

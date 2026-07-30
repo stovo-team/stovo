@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,6 +34,8 @@ func (s *LocalStorage) Save(objectKey string, data []byte) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
+func (s *LocalStorage) Provider() string { return "local" }
+
 func (s *LocalStorage) Read(objectKey string) ([]byte, error) {
 	path, err := s.resolve(objectKey)
 	if err != nil {
@@ -41,7 +44,7 @@ func (s *LocalStorage) Read(objectKey string) ([]byte, error) {
 	return os.ReadFile(path)
 }
 
-func (s *LocalStorage) Open(objectKey string) (*os.File, error) {
+func (s *LocalStorage) Open(objectKey string) (io.ReadSeekCloser, error) {
 	path, err := s.resolve(objectKey)
 	if err != nil {
 		return nil, err

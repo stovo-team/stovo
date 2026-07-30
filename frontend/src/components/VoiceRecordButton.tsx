@@ -20,12 +20,14 @@ export function VoiceRecordButton({
     <button
       type="button"
       className={`composer-voice-button${isRecording ? " is-recording" : ""}`}
-      aria-label={isRecording ? "Release to send voice message" : "Hold to record voice message"}
+      aria-label={isRecording ? "Click to send voice message" : "Click to record voice message"}
       aria-pressed={isRecording}
-      title={isRecording ? "Release to send voice message" : "Hold to record voice message"}
+      title={isRecording ? "Click to send voice message" : "Click to record voice message"}
       disabled={disabled}
       onPointerDown={onPressStart}
-      onPointerUp={onPressEnd}
+      onPointerUp={(event) => {
+        if (event.pointerType !== "mouse") onPressEnd(event);
+      }}
       onPointerCancel={onPressCancel}
     >
       {isRecording ? (
