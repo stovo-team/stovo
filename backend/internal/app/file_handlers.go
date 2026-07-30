@@ -44,8 +44,6 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request, user u
 		s.detail(w, http.StatusBadRequest, "Disallowed file type")
 		return
 	}
-	data = s.optimizeUploadMedia(data, mimeType, header.Filename, user.FamilyID)
-
 	chatID := strings.TrimSpace(r.FormValue("chatId"))
 	accessScope := "family"
 	objectKey := path.Join("family", user.FamilyID, time.Now().UTC().Format("2006"), time.Now().UTC().Format("01"), uuid.NewString()+"-"+sanitizeFilename(header.Filename))
