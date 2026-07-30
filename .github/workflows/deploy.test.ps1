@@ -11,3 +11,8 @@ if ($workflow -notmatch 'ensure_env\(\) \{' -or
     $workflow -notmatch 'MINIO_SECRET_KEY') {
     throw "Deployment must initialize missing MinIO credentials before Docker Compose runs."
 }
+
+if ($workflow -notmatch 'api/health' -or
+    $workflow -notmatch 'docker compose logs --tail=100 backend caddy minio minio-init') {
+    throw "Deployment must check the public health endpoint and print startup logs on failure."
+}
