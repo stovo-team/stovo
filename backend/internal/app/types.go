@@ -354,16 +354,6 @@ type publicAccessUpdateRequest struct {
 	APIURL *string `json:"apiUrl"`
 }
 
-type mediaQualityRule struct {
-	MediaType      string `json:"mediaType"`
-	Extension      string `json:"extension"`
-	QualityPercent int    `json:"qualityPercent"`
-}
-
-type mediaQualitySettings struct {
-	Rules []mediaQualityRule `json:"rules"`
-}
-
 type publicTunnelStatus struct {
 	State                  string                `json:"state"`
 	Provider               *string               `json:"provider"`

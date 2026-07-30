@@ -484,13 +484,6 @@ function applyMessagePreviewToChat(chat: Chat, message: Message) {
   };
 }
 
-type ChatToast = {
-  id: string;
-  chatId: string;
-  title: string;
-  body: string;
-};
-
 type SwipeReplyState = {
   messageId: string;
   offset: number;
@@ -1324,7 +1317,6 @@ export default function ChatsPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsTab, setDetailsTab] = useState<SharedContentTab>("media");
   const [chatTitleDraft, setChatTitleDraft] = useState("");
-  const [settingsNotice, setSettingsNotice] = useState<string | null>(null);
   const [fullViewImage, setFullViewImage] = useState<{
     file: FamilyFile;
     previewUrl: string;
@@ -1352,7 +1344,6 @@ export default function ChatsPage() {
   const [deleteForEveryone, setDeleteForEveryone] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [audioRestoreStatus, setAudioRestoreStatus] = useState<string | null>(null);
-  const [toasts, setToasts] = useState<ChatToast[]>([]);
   const [callPhase, setCallPhase] = useState<CallPhase>("idle");
   const [activeCallChatId, setActiveCallChatId] = useState<string | null>(null);
   const [callPeerUserId, setCallPeerUserId] = useState<string | null>(null);
@@ -1552,10 +1543,6 @@ export default function ChatsPage() {
   const openFullViewImage = useCallback((file: FamilyFile, previewUrl: string) => {
     setIsFullViewImageClosing(false);
     setFullViewImage({ file, previewUrl });
-  }, []);
-
-  const dismissToast = useCallback((toastId: string) => {
-    setToasts((current) => current.filter((toast) => toast.id !== toastId));
   }, []);
 
   const resetSwipeReplyState = useCallback(() => {
@@ -1804,17 +1791,6 @@ export default function ChatsPage() {
       { reducedMotion: prefersReducedMotion },
     );
   }, [navigate, prefersReducedMotion]);
-
-  const pushToast = useCallback(
-    (toast: Omit<ChatToast, "id">) => {
-      const id = createClientMessageId();
-      setToasts((current) => [...current.slice(-2), { id, ...toast }]);
-      window.setTimeout(() => {
-        dismissToast(id);
-      }, 5000);
-    },
-    [dismissToast]
-  );
 
   const stopCallRingtone = useCallback(() => {
     callSoundPlayerRef.current.stopRingtone();
@@ -3101,7 +3077,6 @@ export default function ChatsPage() {
       const hasKnownChat = chatsRef.current.some((chat) => chat.id === message.chatId);
       const isActiveChat = message.chatId === activeChatIdRef.current;
       const isMine = message.senderId === currentUser?.id;
-      const preview = messagePreviewText(displayMessage);
       setChats((current) =>
         current.map((chat) => {
           if (chat.id !== message.chatId) {
@@ -3116,19 +3091,6 @@ export default function ChatsPage() {
       );
       if (!hasKnownChat) {
         void loadRef.current();
-      }
-      if (!isMine && !isActiveChat) {
-        const sourceChat =
-          chatsRef.current.find((chat) => chat.id === message.chatId) ??
-          selectedChat ??
-          null;
-        if (sourceChat) {
-          pushToast({
-            chatId: message.chatId,
-            title: displayChatName(sourceChat, currentUser?.id),
-            body: `${displayMessage.senderDisplayName ?? "Someone"}: ${preview}`
-          });
-        }
       }
       if (isActiveChat) {
         setSelectedChat((current) =>
@@ -3421,7 +3383,7 @@ export default function ChatsPage() {
       stopCallRingtone();
       // Server already ended the session — pass serverAlreadyNotified=true so
       // cleanup() does not send a redundant call:end that would produce a
-      // spurious call:error toast.
+      // spurious call:error response.
       void resetCallState("Call declined", true);
     });
     socket.on("call:canceled", (payload: { chatId?: string; sessionStartedAt?: string }) => {
@@ -3860,7 +3822,6 @@ export default function ChatsPage() {
       });
       setSelectedChat(chat);
       setChats((current) => current.map((item) => (item.id === chat.id ? chat : item)));
-      setSettingsNotice("Chat settings saved");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not update chat");
     }
@@ -3895,7 +3856,6 @@ export default function ChatsPage() {
 
     setIsUploading(true);
     setError(null);
-    setSettingsNotice(null);
     try {
       const uploaded = await uploadFile(accessToken, file);
       const chat = await updateChat(accessToken, selectedChat.id, {
@@ -3903,7 +3863,6 @@ export default function ChatsPage() {
       });
       setSelectedChat(chat);
       setChats((current) => current.map((item) => (item.id === chat.id ? chat : item)));
-      setSettingsNotice("Chat photo updated");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not update chat photo");
     } finally {
@@ -3917,18 +3876,12 @@ export default function ChatsPage() {
     }
 
     setError(null);
-    setSettingsNotice(null);
     try {
       const chat = await updateChat(accessToken, selectedChat.id, {
         mediaVisibility: enabled ? "family" : "members"
       });
       setSelectedChat(chat);
       setChats((current) => current.map((item) => (item.id === chat.id ? chat : item)));
-      setSettingsNotice(
-        chat.mediaVisibilityPendingApproval
-          ? "Waiting for the other DM approval"
-          : "Media access updated"
-      );
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not update media access");
     }
@@ -3939,14 +3892,12 @@ export default function ChatsPage() {
       return;
     }
     setError(null);
-    setSettingsNotice(null);
     try {
       const chat = await updateChat(accessToken, selectedChat.id, {
         commentsEnabled: enabled
       });
       setSelectedChat(chat);
       setChats((current) => current.map((item) => (item.id === chat.id ? chat : item)));
-      setSettingsNotice(enabled ? "Comments enabled" : "Comments disabled");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not update comments");
     }
@@ -3969,11 +3920,8 @@ export default function ChatsPage() {
         setPinIndex(sorted.length - 1);
         return sorted;
       });
-      pushToast({ chatId: selectedChat.id, title: "", body: "Message pinned" });
       setMessageContextMenu(null);
-    } catch {
-      pushToast({ chatId: selectedChat.id, title: "", body: "Could not pin message. Try again." });
-    }
+    } catch {}
   }
 
   async function handleUnpinMessage(message: Message) {
@@ -3987,11 +3935,8 @@ export default function ChatsPage() {
         setPinIndex((idx) => (idx >= updated.length ? Math.max(0, updated.length - 1) : idx));
         return updated;
       });
-      pushToast({ chatId: selectedChat.id, title: "", body: "Message unpinned" });
       setMessageContextMenu(null);
-    } catch {
-      pushToast({ chatId: selectedChat.id, title: "", body: "Could not unpin message. Try again." });
-    }
+    } catch {}
   }
 
   async function handlePinPermissionChange(permission: "everyone" | "admins_only") {
@@ -4001,26 +3946,20 @@ export default function ChatsPage() {
     try {
       const chat = await updateChatPinPermission(accessToken, selectedChat.id, permission);
       applyChatUpdate(chat);
-      pushToast({ chatId: selectedChat.id, title: "", body: "Pin permission updated" });
-    } catch (err) {
-      pushToast({ chatId: selectedChat.id, title: "", body: err instanceof ApiError ? String(err.message) : "Could not update pin permission" });
-    }
+    } catch {}
   }
 
   async function handleChatPreferenceChange(
-    payload: { isMuted?: boolean; isPinned?: boolean; isFavorite?: boolean },
-    notice: string
+    payload: { isMuted?: boolean; isPinned?: boolean; isFavorite?: boolean }
   ) {
     if (!accessToken || !selectedChat) {
       return;
     }
 
     setError(null);
-    setSettingsNotice(null);
     try {
       const chat = await updateChatPreferences(accessToken, selectedChat.id, payload);
       applyChatUpdate(chat);
-      setSettingsNotice(notice);
       setIsChatMenuOpen(false);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not update chat");
@@ -4033,12 +3972,10 @@ export default function ChatsPage() {
     }
     const latestMessage = messages.at(-1);
     if (!latestMessage) {
-      setSettingsNotice("No messages to mark read");
       setIsChatMenuOpen(false);
       return;
     }
     await markChatRead(selectedChat.id, latestMessage.id);
-    setSettingsNotice("Marked as read");
     setIsChatMenuOpen(false);
   }
 
@@ -4943,7 +4880,6 @@ export default function ChatsPage() {
         )
       );
       setForwardTarget(null);
-      setSettingsNotice("Message forwarded");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not forward message");
     }
@@ -5164,7 +5100,6 @@ export default function ChatsPage() {
     try {
       await archiveMessage(accessToken, message.id);
       setMessageContextMenu(null);
-      setSettingsNotice("Saved to Message Archive");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not save message");
     }
@@ -5179,35 +5114,6 @@ export default function ChatsPage() {
     >
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
-        {visibleError && <p className="error-text floating-alert" role="alert">{visibleError}</p>}
-        {settingsNotice && (
-          <p className="success-text floating-alert" role="status">
-            {settingsNotice}
-          </p>
-        )}
-        <div className="toast-stack" aria-live="polite" aria-atomic="false">
-          {toasts.map((toast) => (
-            <button
-              key={toast.id}
-              type="button"
-              className="toast-card"
-              onClick={() => {
-                dismissToast(toast.id);
-                const chat = chatsRef.current.find((item) => item.id === toast.chatId);
-                if (chat) {
-                  openChat(chat);
-                } else {
-                  navigateWithMotion(navigate, `/app/chats/${toast.chatId}`, {
-                    reducedMotion: prefersReducedMotion
-                  });
-                }
-              }}
-            >
-              <strong>{toast.title}</strong>
-              <span>{toast.body}</span>
-            </button>
-          ))}
-        </div>
         {!isOnline && (
           <p className="offline-banner" role="status">
             <WifiOff aria-hidden="true" size={18} />
@@ -5514,10 +5420,7 @@ export default function ChatsPage() {
                             type="button"
                             role="menuitem"
                             onClick={() =>
-                              void handleChatPreferenceChange(
-                                { isPinned: !selectedChat.isPinned },
-                                selectedChat.isPinned ? "Chat unpinned" : "Chat pinned"
-                              )
+                              void handleChatPreferenceChange({ isPinned: !selectedChat.isPinned })
                             }
                           >
                             <Pin aria-hidden="true" size={16} />
@@ -5527,10 +5430,7 @@ export default function ChatsPage() {
                             type="button"
                             role="menuitem"
                             onClick={() =>
-                              void handleChatPreferenceChange(
-                                { isMuted: !selectedChat.isMuted },
-                                selectedChat.isMuted ? "Notifications enabled" : "Chat muted"
-                              )
+                              void handleChatPreferenceChange({ isMuted: !selectedChat.isMuted })
                             }
                           >
                             {selectedChat.isMuted ? (
@@ -5544,10 +5444,7 @@ export default function ChatsPage() {
                             type="button"
                             role="menuitem"
                             onClick={() =>
-                              void handleChatPreferenceChange(
-                                { isFavorite: !selectedChat.isFavorite },
-                                selectedChat.isFavorite ? "Removed from favorites" : "Added to favorites"
-                              )
+                              void handleChatPreferenceChange({ isFavorite: !selectedChat.isFavorite })
                             }
                           >
                             <Star aria-hidden="true" size={16} />

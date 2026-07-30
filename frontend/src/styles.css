@@ -2036,15 +2036,6 @@ h2 {
   color: #92400e;
 }
 
-.floating-alert {
-  left: 50%;
-  max-width: min(520px, calc(100vw - 32px));
-  position: fixed;
-  top: 14px;
-  transform: translateX(-50%);
-  z-index: 30;
-}
-
 .empty-state,
 .phase-empty-state {
   align-content: center;
@@ -2285,48 +2276,6 @@ h2 {
     background: var(--border-default);
     border-radius: 999px;
   }
-}
-
-.toast-stack {
-  position: fixed;
-  top: 1.2rem;
-  right: 1.2rem;
-  z-index: 55;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  pointer-events: none;
-}
-
-.toast-card {
-  pointer-events: auto;
-  border: 1px solid var(--border-strong);
-  background: color-mix(in oklab, var(--card-background) 90%, black 10%);
-  color: var(--text-primary);
-  border-radius: 0.9rem;
-  min-width: 240px;
-  max-width: 320px;
-  padding: 0.65rem 0.8rem;
-  text-align: left;
-  display: grid;
-  gap: 0.2rem;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
-}
-
-.toast-card strong,
-.toast-card span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.toast-card strong {
-  font-size: 0.86rem;
-}
-
-.toast-card span {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
 }
 
 .chat-list-section {

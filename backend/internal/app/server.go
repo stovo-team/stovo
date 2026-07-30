@@ -237,16 +237,10 @@ func (s *Server) Routes() http.Handler {
 	router.Head("/api/media/{fileId}", s.handleStreamMediaPlaybackFile)
 
 	router.Get("/api/admin/logs", s.authenticated(s.handleAdminLogs))
-	router.Get("/api/admin/media-quality", s.authenticated(s.handleGetMediaQuality))
-	router.Put("/api/admin/media-quality", s.authenticated(s.handleUpdateMediaQuality))
 	router.Get("/api/admin/public-access", s.authenticated(s.handleGetPublicAccess))
 	router.Put("/api/admin/public-access", s.authenticated(s.handleUpdatePublicAccess))
 	router.Get("/api/admin/public-access/suggestions", s.authenticated(s.handlePublicAccessSuggestions))
 	router.Get("/api/admin/public-access/check", s.authenticated(s.handlePublicAccessCheck))
-	router.Get("/api/admin/public-access/tunnel", s.authenticated(s.handleTunnelStatus))
-	router.Post("/api/admin/public-access/quick-start", s.authenticated(s.handleQuickStartPublicAccess))
-	router.Post("/api/admin/public-access/tunnel/start", s.authenticated(s.handleTunnelStart))
-	router.Post("/api/admin/public-access/tunnel/stop", s.authenticated(s.handleTunnelStop))
 	router.Post("/api/admin/public-access/public-ip/quick-start", s.authenticated(s.handlePublicIPQuickStart))
 	router.Post("/api/admin/public-access/domain-link", s.authenticated(s.handleDomainLink))
 	router.Get("/api/admin/encryption-settings", s.authenticated(s.handleGetEncryptionSettings))
@@ -446,15 +440,6 @@ func (s *Server) initSchema() error {
 			PRIMARY KEY (file_id, user_id),
 			FOREIGN KEY (file_id) REFERENCES files(id),
 			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS media_quality_settings (
-			family_id TEXT NOT NULL,
-			media_type TEXT NOT NULL,
-			extension TEXT NOT NULL DEFAULT '',
-			quality_percent INTEGER NOT NULL,
-			updated_at TEXT NOT NULL,
-			PRIMARY KEY (family_id, media_type, extension),
-			FOREIGN KEY (family_id) REFERENCES families(id)
 		);`,
 		`CREATE TABLE IF NOT EXISTS messages (
 			id TEXT PRIMARY KEY,
