@@ -1,4 +1,11 @@
 node_modules/
 dist/
 .vite/
-
+.git/
+.env*
+android/
+coverage/
+*.md
+*.orig
+*.rej
+*.bak*
