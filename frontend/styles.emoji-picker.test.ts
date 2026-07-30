@@ -44,3 +44,22 @@ describe("docked emoji picker styles", () => {
     );
   });
 });
+
+describe("active chat message spacing", () => {
+  it("uses one narrower shared horizontal inset for the message list and composer", () => {
+    expect(rule(".messenger-shell.has-active-chat .messages-panel")).toContain(
+      "padding-inline: var(--active-chat-message-inset-x);"
+    );
+    expect(rule(".messenger-shell.has-active-chat .message-composer")).toContain(
+      "margin-inline: var(--active-chat-message-inset-x);"
+    );
+  });
+});
+
+describe("emoji-only message sizes", () => {
+  it("sizes the Markdown message body for one, two, and three emoji", () => {
+    expect(rule(".message-bubble.emoji-only-xl .message-body")).toContain("font-size: 3rem;");
+    expect(rule(".message-bubble.emoji-only-lg .message-body")).toContain("font-size: 2rem;");
+    expect(rule(".message-bubble.emoji-only-md .message-body")).toContain("font-size: 1.25rem;");
+  });
+});

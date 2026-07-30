@@ -7,6 +7,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PictureInPictureCoordinatorTest {
+    @Test
+    fun `video call PiP uses a portrait aspect ratio`() {
+        assertEquals(
+            PiPAspectRatio(width = 9, height = 16),
+            pictureInPictureAspectRatio(PiPOwner.CALL, null)
+        )
+    }
+
     private fun video(
         active: Boolean = true,
         playing: Boolean = true,
