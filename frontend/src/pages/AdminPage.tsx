@@ -117,21 +117,17 @@ export default function AdminPage() {
 
     setError(null);
     try {
-      const [familyResult,logsResult,publicAccessResult,mediaQualityResult,suggestionsResult,tunnelResult,encryptionResult] = await Promise.all([
+      const [familyResult,logsResult,publicAccessResult,suggestionsResult,encryptionResult] = await Promise.all([
         authRequest<Family>("/api/family"),
         authRequest<LogsResponse>(logsPath({ level,loggerName,search,limit })),
         authRequest<PublicAccessSettings>("/api/admin/public-access"),
-        authRequest<MediaQualitySettings>("/api/admin/media-quality"),
         authRequest<PublicAccessSuggestions>("/api/admin/public-access/suggestions"),
-        authRequest<PublicTunnelStatus>("/api/admin/public-access/tunnel"),
         authRequest<EncryptionSettings>("/api/admin/encryption-settings")
       ]);
       setFamily(familyResult);
       setLogs(logsResult);
       setPublicAccess(publicAccessResult);
-      setMediaQualityRules(mediaQualityResult.rules);
       setPublicAccessSuggestions(suggestionsResult.candidates);
-      setPublicTunnel(tunnelResult);
       setEncryptionSettings(encryptionResult);
       setEncryptionProtocolDraft(encryptionResult.defaultMessageEncryptionProtocol);
       setPublicAccessForm({ appUrl: publicAccessResult.appUrl,apiUrl: publicAccessResult.apiUrl });
