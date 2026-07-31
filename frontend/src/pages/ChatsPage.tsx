@@ -5178,19 +5178,6 @@ export default function ChatsPage() {
                   <p className="eyebrow">{family?.name ?? "Stovo"}</p>
                   <h1 tabIndex={-1}>Chats</h1>
                 </div>
-                <div className="sidebar-actions">
-                  <button
-                    type="button"
-                    className="icon-button sidebar-compose-desktop"
-                    aria-label="Create chat"
-                    title="Create chat"
-                    onClick={openNewChatScreen}
-                  >
-                    <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                      edit
-                    </span>
-                  </button>
-                </div>
               </div>
               <label className="search-field chat-list-search">
                 <span className="ms-icon ms-icon--20" aria-hidden={true}>
