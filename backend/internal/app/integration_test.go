@@ -1389,7 +1389,7 @@ func TestChannelChatPermissions(t *testing.T) {
 }
 
 func TestForwardMessageClonesAttachmentsAndMetadata(t *testing.T) {
-	_, serverURL, client := newTestServer(t)
+	server, serverURL, client := newTestServer(t)
 
 	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
 		"familyName":  "Forward Family",
@@ -1410,6 +1410,13 @@ func TestForwardMessageClonesAttachmentsAndMetadata(t *testing.T) {
 		t.Fatalf("upload status = %d", uploadResp.StatusCode)
 	}
 	originalFile := decodeJSON[filePublic](t, uploadResp)
+	thumbnailKey := "family/forward/thumbnail.jpg"
+	if err := server.storage.Save(thumbnailKey, []byte("forward-thumbnail")); err != nil {
+		t.Fatalf("save thumbnail: %v", err)
+	}
+	if _, err := server.exec(`UPDATE files SET thumbnail_object_key = ? WHERE id = ?`, thumbnailKey, originalFile.ID); err != nil {
+		t.Fatalf("set thumbnail key: %v", err)
+	}
 
 	sendResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats/"+directChat.ID+"/messages", owner.AccessToken, map[string]any{
 		"type":    "mixed",
@@ -1455,6 +1462,13 @@ func TestForwardMessageClonesAttachmentsAndMetadata(t *testing.T) {
 	}
 	if forwarded.Attachments[0].ChatID == nil || *forwarded.Attachments[0].ChatID != familyChatID {
 		t.Fatalf("unexpected forwarded attachment chat: %#v", forwarded.Attachments[0].ChatID)
+	}
+	if forwarded.Attachments[0].ThumbnailObjectKey == nil || *forwarded.Attachments[0].ThumbnailObjectKey == thumbnailKey {
+		t.Fatalf("forwarded thumbnail key = %#v, want a cloned key", forwarded.Attachments[0].ThumbnailObjectKey)
+	}
+	thumbnail, err := server.storage.Read(*forwarded.Attachments[0].ThumbnailObjectKey)
+	if err != nil || string(thumbnail) != "forward-thumbnail" {
+		t.Fatalf("forwarded thumbnail = %q, %v; want cloned thumbnail", thumbnail, err)
 	}
 
 	downloadResp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/files/"+forwarded.Attachments[0].ID+"/download", owner.AccessToken, nil)

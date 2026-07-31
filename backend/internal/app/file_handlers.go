@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"family-messenger/backend/internal/storage"
+
 	"github.com/google/uuid"
 )
 
@@ -264,8 +266,15 @@ func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request, user u
 		s.detail(w, http.StatusInternalServerError, "Could not delete file")
 		return
 	}
-	_ = s.storage.Delete(objectKey)
+	deleteFileObjects(s.storage, objectKey, file.ThumbnailObjectKey)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func deleteFileObjects(store storage.ObjectStore, objectKey string, thumbnailObjectKey *string) {
+	_ = store.Delete(objectKey)
+	if thumbnailObjectKey != nil {
+		_ = store.Delete(*thumbnailObjectKey)
+	}
 }
 
 func (s *Server) buildFilePublic(fileID, viewerID string) (filePublic, error) {
