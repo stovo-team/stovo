@@ -435,6 +435,7 @@ func (s *Server) initSchema() error {
 			access_scope TEXT NOT NULL,
 			storage_provider TEXT NOT NULL,
 			object_key TEXT NOT NULL,
+			thumbnail_object_key TEXT,
 			original_name TEXT NOT NULL,
 			mime_type TEXT NOT NULL,
 			size_bytes INTEGER NOT NULL,
@@ -553,6 +554,7 @@ func (s *Server) initSchema() error {
 			FOREIGN KEY (pinned_by)  REFERENCES users(id)
 		);`,
 		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS pin_permission TEXT NOT NULL DEFAULT 'everyone';`,
+		`ALTER TABLE files ADD COLUMN IF NOT EXISTS thumbnail_object_key TEXT;`,
 	}
 	for _, statement := range statements {
 		if _, err := s.db.Exec(statement); err != nil {

@@ -64,11 +64,20 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request, user u
 		s.detail(w, http.StatusInternalServerError, "Could not save file")
 		return
 	}
+	var thumbnailObjectKey *string
+	if strings.HasPrefix(mimeType, "video/") {
+		if thumbnail, err := generateVideoThumbnail(r.Context(), data); err == nil {
+			key := objectKey + ".thumbnail.jpg"
+			if err := s.storage.Save(key, thumbnail); err == nil {
+				thumbnailObjectKey = &key
+			}
+		}
+	}
 	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
 		_, err := s.txExec(tx, `
-			INSERT INTO files (id, family_id, uploaded_by, chat_id, access_scope, storage_provider, object_key, original_name, mime_type, size_bytes, checksum, created_at)
-			VALUES (?, ?, ?, ?, ?, 'local', ?, ?, ?, ?, ?, ?)
-		`, fileID, user.FamilyID, user.ID, nullIfEmpty(chatID), accessScope, objectKey, sanitizeFilename(header.Filename), mimeType, len(data), checksum, now)
+			INSERT INTO files (id, family_id, uploaded_by, chat_id, access_scope, storage_provider, object_key, thumbnail_object_key, original_name, mime_type, size_bytes, checksum, created_at)
+			VALUES (?, ?, ?, ?, ?, 'local', ?, ?, ?, ?, ?, ?, ?)
+		`, fileID, user.FamilyID, user.ID, nullIfEmpty(chatID), accessScope, objectKey, thumbnailObjectKey, sanitizeFilename(header.Filename), mimeType, len(data), checksum, now)
 		return err
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not record file")
@@ -281,7 +290,7 @@ func (s *Server) validateImageFileForFamily(fileID string, user userPublic, miss
 func (s *Server) loadFileRecord(fileID, viewerID string) (filePublic, string, error) {
 	row := s.queryRow(`
 		SELECT f.id, f.family_id, f.uploaded_by, f.chat_id, c.title, c.type, f.access_scope, f.storage_provider,
-		       f.object_key, f.original_name, f.mime_type, f.size_bytes, f.checksum, f.created_at, f.deleted_at,
+		       f.object_key, f.thumbnail_object_key, f.original_name, f.mime_type, f.size_bytes, f.checksum, f.created_at, f.deleted_at,
 		       fp.is_favorite
 		FROM files f
 		LEFT JOIN chats c ON c.id = f.chat_id
@@ -289,7 +298,7 @@ func (s *Server) loadFileRecord(fileID, viewerID string) (filePublic, string, er
 		WHERE f.id = ?
 	`, viewerID, fileID)
 	var file filePublic
-	var chatID, chatTitle, chatType, checksum, deletedAt sql.NullString
+	var chatID, chatTitle, chatType, thumbnailObjectKey, checksum, deletedAt sql.NullString
 	var favorite sql.NullBool
 	var objectKey string
 	var createdAt string
@@ -303,6 +312,7 @@ func (s *Server) loadFileRecord(fileID, viewerID string) (filePublic, string, er
 		&file.AccessScope,
 		&file.StorageProvider,
 		&objectKey,
+		&thumbnailObjectKey,
 		&file.OriginalName,
 		&file.MimeType,
 		&file.SizeBytes,
@@ -316,6 +326,7 @@ func (s *Server) loadFileRecord(fileID, viewerID string) (filePublic, string, er
 	file.ChatID = stringPtrFromNull(chatID)
 	file.ChatTitle = stringPtrFromNull(chatTitle)
 	file.ChatType = stringPtrFromNull(chatType)
+	file.ThumbnailObjectKey = stringPtrFromNull(thumbnailObjectKey)
 	file.Checksum = stringPtrFromNull(checksum)
 	file.CreatedAt = parseTime(createdAt)
 	if deletedAt.Valid {
