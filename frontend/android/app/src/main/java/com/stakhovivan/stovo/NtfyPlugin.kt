@@ -113,13 +113,31 @@ class NtfyPlugin : Plugin() {
         call.resolve()
     }
 
-    /** Dismiss the notification posted for a chat after the user opens it. */
+    /** Dismiss all chat-specific notifications after the user opens its chat. */
     @PluginMethod
-    fun dismissMessageNotification(call: PluginCall) {
+    fun dismissChatNotifications(call: PluginCall) {
         val chatId = call.getString("chatId")?.trim()
         if (!chatId.isNullOrEmpty()) {
-            NotificationManagerCompat.from(context).cancel(messageNotificationId(chatId))
+            NotificationManagerCompat.from(context).apply {
+                cancel(messageNotificationId(chatId))
+                cancel(missedCallNotificationId(chatId))
+            }
         }
         call.resolve()
+    }
+
+    /** Return and remove the pending notification action so it cannot be replayed. */
+    @PluginMethod
+    fun consumePendingNotificationAction(call: PluginCall) {
+        val action = NotificationActionReceiver.readAndClearPendingAction(context)
+        val response = JSObject()
+        if (action != null) {
+            val actionJson = JSObject()
+                .put("type", action.type)
+                .put("chatId", action.chatId)
+            action.text?.let { actionJson.put("text", it) }
+            response.put("action", actionJson)
+        }
+        call.resolve(response)
     }
 }

@@ -1,47 +1,38 @@
 import { describe, expect, it } from "vitest";
 
-import { getAudioPlaybackAppLinkPath, getInviteAppLinkPath } from "./appLinks";
+import { getNotificationAppLink } from "./appLinks";
 
-describe("getInviteAppLinkPath", () => {
-  it("maps a production HTTPS invite URL to the existing invite route", () => {
-    expect(getInviteAppLinkPath("https://stovo-cloud.stovo.ru/invite/invite-token")).toBe(
-      "/invite/invite-token"
-    );
+describe("getNotificationAppLink", () => {
+  it("routes a chat notification to its exact chat", () => {
+    expect(getNotificationAppLink("stovo://chat/chat-a")).toEqual({
+      path: "/app/chats/chat-a"
+    });
   });
 
-  it("preserves the API URL query used by shared invite links", () => {
-    expect(
-      getInviteAppLinkPath(
-        "https://stovo-cloud.stovo.ru/invite/invite-token?apiUrl=https%3A%2F%2Ffamily.example"
-      )
-    ).toBe("/invite/invite-token?apiUrl=https%3A%2F%2Ffamily.example");
+  it("routes a missed-call tap without starting a call", () => {
+    expect(getNotificationAppLink("stovo://call/missed/chat-a")).toEqual({
+      path: "/app/chats/chat-a"
+    });
   });
 
-  it("rejects non-invite, non-HTTPS, and foreign-host URLs", () => {
-    expect(getInviteAppLinkPath("https://stovo-cloud.stovo.ru/app/chats")).toBeNull();
-    expect(getInviteAppLinkPath("http://stovo-cloud.stovo.ru/invite/invite-token")).toBeNull();
-    expect(getInviteAppLinkPath("https://other.example/invite/invite-token")).toBeNull();
-  });
-});
-
-describe("getAudioPlaybackAppLinkPath", () => {
-  it("accepts only the generic production audio return URL", () => {
-    expect(getAudioPlaybackAppLinkPath("https://stovo-cloud.stovo.ru/app/audio")).toBe(
-      "/app/chats?restoreAudio=1"
-    );
+  it("keeps callback intent separate from an ordinary chat tap", () => {
+    expect(getNotificationAppLink("stovo://call/callback/chat-a")).toEqual({
+      path: "/app/chats/chat-a",
+      action: "callback"
+    });
   });
 
   it.each([
-    "http://stovo-cloud.stovo.ru/app/audio",
-    "https://other.example/app/audio",
-    "https://stovo-cloud.stovo.ru/app/audio/next",
-    "https://stovo-cloud.stovo.ru/app%2Faudio",
-    "https://user@stovo-cloud.stovo.ru/app/audio",
-    "https://stovo-cloud.stovo.ru:444/app/audio",
-    "https://stovo-cloud.stovo.ru/app/audio?file=secret",
-    "https://stovo-cloud.stovo.ru/app/audio#fragment",
-    "not a URL"
-  ])("rejects unsafe or non-exact audio app links: %s", (url) => {
-    expect(getAudioPlaybackAppLinkPath(url)).toBeNull();
+    "stovo://chat/",
+    "stovo://chat/chat-a/extra",
+    "stovo://call/missed/",
+    "stovo://call/callback/chat-a/extra",
+    "stovo://evil/chat-a",
+    "https://stovo-cloud.stovo.ru/app/chats/chat-a",
+    "stovo://chat/chat%2Fa",
+    "stovo://chat/chat-a?callback=1",
+    "stovo://chat/chat-a#fragment"
+  ])("rejects malformed or unrelated links: %s", (url) => {
+    expect(getNotificationAppLink(url)).toBeNull();
   });
 });

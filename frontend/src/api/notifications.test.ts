@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const nativePlugin = {
-  dismissMessageNotification: vi.fn()
+  dismissChatNotifications: vi.fn(),
+  consumePendingNotificationAction: vi.fn()
 };
 
 vi.mock("@capacitor/core", () => ({
@@ -12,18 +13,46 @@ vi.mock("@capacitor/core", () => ({
   registerPlugin: () => nativePlugin
 }));
 
-describe("dismissMessageNotification", () => {
+describe("dismissChatNotifications", () => {
   afterEach(() => {
-    nativePlugin.dismissMessageNotification.mockReset();
+    nativePlugin.dismissChatNotifications.mockReset();
     vi.unstubAllGlobals();
   });
 
   it("clears the Android notification for the chat the user opens", async () => {
     vi.stubGlobal("localStorage", { getItem: () => null });
-    const { dismissMessageNotification } = await import("./notifications");
+    const { dismissChatNotifications } = await import("./notifications");
 
-    await dismissMessageNotification("family-chat");
+    await dismissChatNotifications("family-chat");
 
-    expect(nativePlugin.dismissMessageNotification).toHaveBeenCalledWith({ chatId: "family-chat" });
+    expect(nativePlugin.dismissChatNotifications).toHaveBeenCalledWith({ chatId: "family-chat" });
+  });
+});
+
+describe("consumePendingNotificationAction", () => {
+  afterEach(() => {
+    nativePlugin.consumePendingNotificationAction.mockReset();
+  });
+
+  it("returns a valid one-shot reply from Android", async () => {
+    nativePlugin.consumePendingNotificationAction.mockResolvedValue({
+      action: { type: "reply", chatId: "chat-a", text: "On my way" }
+    });
+    const { consumePendingNotificationAction } = await import("./notifications");
+
+    await expect(consumePendingNotificationAction()).resolves.toEqual({
+      type: "reply",
+      chatId: "chat-a",
+      text: "On my way"
+    });
+  });
+
+  it("ignores malformed native actions", async () => {
+    nativePlugin.consumePendingNotificationAction.mockResolvedValue({
+      action: { type: "reply", chatId: "chat-a", text: "   " }
+    });
+    const { consumePendingNotificationAction } = await import("./notifications");
+
+    await expect(consumePendingNotificationAction()).resolves.toBeNull();
   });
 });

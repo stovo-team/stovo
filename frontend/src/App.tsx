@@ -3,12 +3,21 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 
-import { bootstrapNotifications, ensureFullScreenIntentPermission } from "./api/notifications";
+import {
+  bootstrapNotifications,
+  consumePendingNotificationAction,
+  ensureFullScreenIntentPermission
+} from "./api/notifications";
 import { AppearanceProvider } from "./appearance/AppearanceContext";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { useReducedMotion } from "./hooks/useReducedMotion";
 import { navigateWithMotion } from "./motion/navigation";
-import { getAudioPlaybackAppLinkPath, getInviteAppLinkPath } from "./appLinks";
+import {
+  getAudioPlaybackAppLinkPath,
+  getInviteAppLinkPath,
+  getNotificationAppLink
+} from "./appLinks";
+import { queuePendingNotificationAction } from "./notificationActions";
 import AdminPage from "./pages/AdminPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
@@ -19,6 +28,10 @@ import RootRedirect from "./pages/RootRedirect";
 import ServerSetupPage from "./pages/ServerSetupPage";
 import SettingsPage from "./pages/SettingsPage";
 import SetupPage from "./pages/SetupPage";
+
+if (typeof document !== "undefined") {
+  document.documentElement.dataset.platform = Capacitor.isNativePlatform() ? "native" : "web";
+}
 
 /**
  * Starts NtfyService whenever a session is available — covers both login and
@@ -109,6 +122,8 @@ function AndroidBackOrchestrator() {
 
 function NativeAppLinkRouter() {
   const navigate = useNavigate();
+  const { currentUser, isLoading } = useAuth();
+  const lastCallbackLinkChatIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) {
@@ -119,7 +134,21 @@ function NativeAppLinkRouter() {
     let listener: { remove: () => Promise<void> } | null = null;
 
     const openAppLink = (url: string) => {
-      const path = getAudioPlaybackAppLinkPath(url) ?? getInviteAppLinkPath(url);
+      const notificationLink = getNotificationAppLink(url);
+      if (notificationLink?.action === "callback") {
+        const chatId = notificationLink.path.split("/").pop();
+        if (chatId) {
+          lastCallbackLinkChatIdRef.current = chatId;
+          queuePendingNotificationAction({ type: "callback", chatId });
+        }
+      }
+      const path = notificationLink
+        ? `${notificationLink.path}${
+            notificationLink.action
+              ? `?notificationAction=${notificationLink.action}&notificationActionId=${Date.now()}`
+              : ""
+          }`
+        : getAudioPlaybackAppLinkPath(url) ?? getInviteAppLinkPath(url);
       if (path) {
         navigate(path);
       }
@@ -141,6 +170,33 @@ function NativeAppLinkRouter() {
       void listener?.remove();
     };
   }, [navigate]);
+
+  useEffect(() => {
+    if (isLoading || !currentUser || !Capacitor.isNativePlatform()) {
+      return;
+    }
+    let cancelled = false;
+    void consumePendingNotificationAction().then((action) => {
+      if (!action || cancelled) {
+        return;
+      }
+      if (
+        action.type === "callback" &&
+        lastCallbackLinkChatIdRef.current === action.chatId
+      ) {
+        lastCallbackLinkChatIdRef.current = null;
+        return;
+      }
+      queuePendingNotificationAction(action);
+      navigate(
+        `/app/chats/${encodeURIComponent(action.chatId)}?notificationAction=${action.type}` +
+          `&notificationActionId=${Date.now()}`
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, isLoading, navigate]);
 
   return null;
 }

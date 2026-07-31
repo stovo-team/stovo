@@ -11,4 +11,12 @@ class MessageNotificationTest {
             messageNotificationId("family-chat")
         )
     }
+
+    @Test
+    fun `missed-call notification ID is stable for the opened chat`() {
+        assertEquals(
+            "stovo://call/missed/family-chat".hashCode(),
+            missedCallNotificationId("family-chat")
+        )
+    }
 }
