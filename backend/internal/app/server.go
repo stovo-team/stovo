@@ -242,6 +242,7 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/files", s.authenticated(s.handleGetFiles))
 	router.Get("/api/files/{fileId}", s.authenticated(s.handleGetFile))
 	router.Get("/api/files/{fileId}/download", s.authenticated(s.handleDownloadFile))
+	router.Get("/api/files/{fileId}/thumbnail", s.authenticated(s.handleGetFileThumbnail))
 	router.Post("/api/files/{fileId}/playback-token", s.authenticated(s.handleCreateMediaPlaybackToken))
 	router.Patch("/api/files/{fileId}/preferences", s.authenticated(s.handleUpdateFilePreferences))
 	router.Delete("/api/files/{fileId}", s.authenticated(s.handleDeleteFile))
