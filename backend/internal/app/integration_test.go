@@ -215,7 +215,11 @@ func createInvitedUser(t *testing.T, ownerClient *http.Client, serverURL string,
 		t.Fatalf("invite status = %d", inviteResp.StatusCode)
 	}
 	invite := decodeJSON[createInviteResponse](t, inviteResp)
-	token := invite.InviteURL[strings.LastIndex(invite.InviteURL, "/")+1:]
+	parsedInvite, err := url.Parse(invite.InviteURL)
+	if err != nil {
+		t.Fatalf("parse invite URL: %v", err)
+	}
+	token := strings.TrimPrefix(parsedInvite.Path, "/invite/")
 	memberJar, _ := cookiejar.New(nil)
 	memberClient := &http.Client{Jar: memberJar}
 	resp := jsonRequest(t, memberClient, http.MethodPost, serverURL+"/api/invites/"+token+"/accept", "", map[string]any{

@@ -155,6 +155,22 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request, user
 	_, _ = w.Write(data)
 }
 
+func (s *Server) handleGetFileThumbnail(w http.ResponseWriter, r *http.Request, user userPublic) {
+	file, _, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
+	if err != nil || file.DeletedAt != nil || file.ThumbnailObjectKey == nil || !s.fileVisibleToUser(file, user) {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	data, err := s.storage.Read(*file.ThumbnailObjectKey)
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
 func (s *Server) handleCreateMediaPlaybackToken(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, _, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
 	if err != nil || file.DeletedAt != nil || !isStreamableMediaMime(file.MimeType) || !s.fileVisibleToUser(file, user) {
