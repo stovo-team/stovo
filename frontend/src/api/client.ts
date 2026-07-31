@@ -34,7 +34,11 @@ function readStoredApiUrl() {
   if (typeof window === "undefined") {
     return null;
   }
-  return normalizeApiUrl(window.localStorage.getItem(API_URL_STORAGE_KEY));
+  try {
+    return normalizeApiUrl(window.localStorage?.getItem(API_URL_STORAGE_KEY));
+  } catch {
+    return null;
+  }
 }
 
 function storeApiUrlFromInviteLink() {
@@ -63,6 +67,9 @@ function deriveApiUrlFromBrowser() {
 
   const defaultHost = new URL(defaultUrl).hostname;
   const browserHost = window.location.hostname;
+  if (isLoopbackHost(defaultHost) && isLoopbackHost(browserHost) && window.location.port !== "5173") {
+    return window.location.origin;
+  }
   if (!isLoopbackHost(defaultHost) || isLoopbackHost(browserHost)) {
     return null;
   }
@@ -75,19 +82,19 @@ function deriveApiUrlFromBrowser() {
 }
 
 export function getApiUrl() {
+  const configuredApiUrl = storeApiUrlFromInviteLink() ?? readStoredApiUrl();
   // On native (Android), the server URL is user-configured and stored.
   // On web, the API is always at the same origin — ignore any stored override
   // to prevent stale or malformed URLs from breaking requests.
   if (Capacitor.isNativePlatform()) {
     return (
-      storeApiUrlFromInviteLink() ??
-      readStoredApiUrl() ??
+      configuredApiUrl ??
       normalizeApiUrl(DEFAULT_API_URL) ??
       "http://localhost:8000"
     );
   }
   return (
-    storeApiUrlFromInviteLink() ??
+    configuredApiUrl ??
     deriveApiUrlFromBrowser() ??
     normalizeApiUrl(DEFAULT_API_URL) ??
     "http://localhost:8000"
@@ -120,7 +127,7 @@ export function getStoredRefreshToken(): string | null {
 }
 
 export function setApiUrlOverride(apiUrl: string | null) {
-  if (typeof window === "undefined" || !Capacitor.isNativePlatform()) {
+  if (typeof window === "undefined") {
     return;
   }
   const normalized = normalizeApiUrl(apiUrl);

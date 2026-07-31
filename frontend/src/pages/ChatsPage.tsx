@@ -34,8 +34,10 @@ import {
   MicOff,
   Phone,
   Pin,
+  Paperclip,
   Reply,
   RotateCcw,
+  Settings,
   SlidersHorizontal,
   Smartphone,
   Video,
@@ -46,7 +48,6 @@ import {
   Home,
   Megaphone,
   Pencil,
-  ShieldCheck,
   Shirt,
   Smile,
   Star,
@@ -88,7 +89,11 @@ import {
 } from "../api/chats";
 import { Family } from "../api/family";
 import { ApiError, getApiUrl, isTunnelHost } from "../api/client";
-import { dismissMessageNotification } from "../api/notifications";
+import {
+  dismissChatNotifications,
+  type PendingNotificationAction
+} from "../api/notifications";
+import { takePendingNotificationAction } from "../notificationActions";
 import {
   decryptMessage,
   decryptMessages,
@@ -138,6 +143,7 @@ import type {
   ToolbarAnchor
 } from "../composerFormatting";
 import { MessageMarkdown } from "../messageMarkdown";
+import { messageMatchesSearch } from "../messageSearch";
 import { VoiceRecordButton } from "../components/VoiceRecordButton";
 import {
   AUDIO_ATTACHMENT_ACCEPT,
@@ -316,6 +322,32 @@ type NewChatScreen = "pick" | "group" | "channel";
 type ChatFilter = "all" | "unread" | "groups" | "direct" | "muted";
 type ChatSectionKey = "archive" | "dms" | "groups" | "channels";
 type SharedContentTab = "media" | "files" | "links";
+type ChatInfoControl = "name" | "permissions" | null;
+
+export type NotificationActionCommand =
+  | { type: "reply"; text: string }
+  | { type: "callback" }
+  | { type: "discard" };
+
+export function notificationActionCommand(
+  action: PendingNotificationAction,
+  chat: Pick<Chat, "id" | "type">
+): NotificationActionCommand | null {
+  if (action.chatId !== chat.id) {
+    return null;
+  }
+  if (action.type === "reply") {
+    return { type: "reply", text: action.text };
+  }
+  return chat.type === "direct" ? { type: "callback" } : { type: "discard" };
+}
+
+export function chatInfoControlVisibility(activeControl: ChatInfoControl) {
+  return {
+    nameEditor: activeControl === "name",
+    permissions: activeControl === "permissions"
+  };
+}
 
 const CHAT_FILTERS: Array<{ label: string; value: ChatFilter }> = [
   { label: "All", value: "all" },
@@ -907,6 +939,7 @@ function AttachmentCard({
         disabledReason={disabledReason}
         onBeforePlay={onBeforeAudioPlay}
         resolveDurationUrl={resolveAudioDurationUrl}
+        hideTitle={file.originalName.startsWith("voice-")}
       />
     );
   }
@@ -1312,6 +1345,8 @@ export default function ChatsPage() {
   const [chatFilter, setChatFilter] = useState<ChatFilter>("all");
   const [messageSearch, setMessageSearch] = useState("");
   const [isMessageSearchOpen, setIsMessageSearchOpen] = useState(false);
+  const [wholeWordSearch, setWholeWordSearch] = useState(false);
+  const [caseSensitiveSearch, setCaseSensitiveSearch] = useState(false);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [copySheetContent, setCopySheetContent] = useState<string | null>(null);
@@ -1457,11 +1492,12 @@ export default function ChatsPage() {
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null);
   const voiceRecordingPointerIdRef = useRef<number | null>(null);
-  const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
+  const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerDockRef = useRef<HTMLDivElement | null>(null);
   const sendInFlightRef = useRef(false);
+  const handledNotificationActionRef = useRef<string | null>(null);
   const saveAudioSettingsTimerRef = useRef<number | null>(null);
   const soundDisabledRef = useRef(callAudioSettings.soundDisabled);
   const callSettingsButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -1957,17 +1993,19 @@ export default function ChatsPage() {
     [detailsTab, sharedAttachments]
   );
   const searchedMessages = useMemo(() => {
-    const query = messageSearch.trim().toLowerCase();
+    const query = messageSearch.trim();
     if (!query) {
       return messages;
     }
     return messages.filter((message) => {
       const attachmentText = message.attachments.map((file) => file.originalName).join(" ");
-      return `${message.content ?? ""} ${message.senderDisplayName ?? ""} ${attachmentText}`
-        .toLowerCase()
-        .includes(query);
+      return messageMatchesSearch(
+        `${message.content ?? ""} ${message.senderDisplayName ?? ""} ${attachmentText}`,
+        query,
+        { wholeWord: wholeWordSearch, caseSensitive: caseSensitiveSearch }
+      );
     });
-  }, [messageSearch, messages]);
+  }, [caseSensitiveSearch, messageSearch, messages, wholeWordSearch]);
   const memberLookup = useMemo(() => {
     const lookup = new Map<string, { displayName: string; username?: string }>();
     for (const member of members) {
@@ -2401,7 +2439,7 @@ export default function ChatsPage() {
   useEffect(() => {
     activeChatIdRef.current = chatId;
     if (chatId) {
-      void dismissMessageNotification(chatId);
+      void dismissChatNotifications(chatId);
     }
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
       void App.getState()
@@ -2411,6 +2449,49 @@ export default function ChatsPage() {
         .catch(() => undefined);
     }
   }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId || selectedChat?.id !== chatId) {
+      return;
+    }
+    const searchParams = new URLSearchParams(location.search);
+    const requestedAction = searchParams.get("notificationAction");
+    if (requestedAction !== "reply" && requestedAction !== "callback") {
+      return;
+    }
+    const action = takePendingNotificationAction(chatId);
+    if (!action || action.type !== requestedAction) {
+      return;
+    }
+    const command = notificationActionCommand(action, selectedChat);
+    if (!command) {
+      return;
+    }
+    const actionId =
+      searchParams.get("notificationActionId") ??
+      `${requestedAction}:${chatId}:${action.type === "reply" ? action.text : ""}`;
+    if (handledNotificationActionRef.current === actionId) {
+      return;
+    }
+    handledNotificationActionRef.current = actionId;
+
+    searchParams.delete("notificationAction");
+    searchParams.delete("notificationActionId");
+    navigate(
+      {
+        pathname: location.pathname,
+        search: searchParams.toString() ? `?${searchParams.toString()}` : ""
+      },
+      { replace: true }
+    );
+
+    if (command.type === "reply") {
+      void sendQueuedNotificationReply(command.text);
+    } else if (command.type === "callback") {
+      void startDirectCall("audio");
+    }
+  }, [chatId, location.pathname, location.search, navigate, selectedChat]);
+
   useEffect(() => {
     activeCallChatIdRef.current = activeCallChatId;
   }, [activeCallChatId]);
@@ -2761,7 +2842,6 @@ export default function ChatsPage() {
       setIsChatMenuOpen(false);
       closeEmojiPicker();
       setIsMessageSearchOpen(false);
-      setIsDetailsOpen(false);
       if (isNewChatOpen) {
         closeNewChatScreen();
       }
@@ -2982,13 +3062,13 @@ export default function ChatsPage() {
           if (!appStateCancelled) {
             socket.emit("app:state", androidAppStatePayload(currentState.isActive, activeChatIdRef.current));
             if (currentState.isActive && activeChatIdRef.current) {
-              void dismissMessageNotification(activeChatIdRef.current);
+              void dismissChatNotifications(activeChatIdRef.current);
             }
           }
           const listener = await App.addListener("appStateChange", (state: AppState) => {
             socket.emit("app:state", androidAppStatePayload(state.isActive, activeChatIdRef.current));
             if (state.isActive && activeChatIdRef.current) {
-              void dismissMessageNotification(activeChatIdRef.current);
+              void dismissChatNotifications(activeChatIdRef.current);
             }
           });
           if (appStateCancelled) {
@@ -4191,7 +4271,21 @@ export default function ChatsPage() {
   function openMessageSearch() {
     clearSelectedMessages();
     setIsMessageSearchOpen(true);
-    setIsChatMenuOpen(false);
+  }
+
+  function toggleMessageSearch() {
+    if (isMessageSearchOpen) {
+      closeMessageSearch();
+      return;
+    }
+    openMessageSearch();
+  }
+
+  function closeMessageSearch() {
+    setMessageSearch("");
+    setWholeWordSearch(false);
+    setCaseSensitiveSearch(false);
+    setIsMessageSearchOpen(false);
   }
 
   function openPinnedMessages() {
@@ -5062,6 +5156,49 @@ export default function ChatsPage() {
     }
   }
 
+  async function sendQueuedNotificationReply(text: string) {
+    const content = text.trim();
+    if (!content || !accessToken || !currentUser || !selectedChat) {
+      return;
+    }
+    if (selectedChat.type === "channel" && !canPostInSelectedChannel) {
+      setError("You do not have permission to post in this channel");
+      return;
+    }
+    try {
+      const encrypted = await encryptMessageContent(selectedChat, content, currentUser.id);
+      const message = await sendMessage(
+        accessToken,
+        selectedChat.id,
+        encrypted.content,
+        [],
+        null,
+        null,
+        encrypted.encryption
+      );
+      const displayMessage = await decryptMessage(
+        selectedChat.id,
+        message,
+        currentUser.id
+      );
+      applyMessagesForChat(selectedChat.id, (current) =>
+        mergeIncomingMessage(current, displayMessage)
+      );
+      setChats((current) =>
+        current.map((chat) =>
+          chat.id === selectedChat.id
+            ? {
+                ...applyMessagePreviewToChat(chat, displayMessage),
+                unreadCount: 0
+              }
+            : chat
+        )
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Message failed");
+    }
+  }
+
   function cancelVoiceRecording() {
     voiceRecordingPointerIdRef.current = null;
     voiceRecorderRef.current?.cancel();
@@ -5189,7 +5326,15 @@ export default function ChatsPage() {
                   onChange={(event) => setChatSearch(event.target.value)}
                 />
               </label>
-              <div className="filter-chip-row chat-list-filters" aria-label="Chat filters">
+              <div
+                className="filter-chip-row chat-list-filters"
+                aria-label="Chat filters"
+                onWheel={(event) => {
+                  if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+                  event.currentTarget.scrollLeft += event.deltaY;
+                  event.preventDefault();
+                }}
+              >
                 {CHAT_FILTERS.map((filter) => (
                   <button
                     type="button"
@@ -5379,10 +5524,6 @@ export default function ChatsPage() {
                       </small>
                     </span>
                   </button>
-                  <span className="encryption-pill chat-header-encryption-pill">
-                    <ShieldCheck aria-hidden="true" size={13} />
-                    {encryptionProtocolLabel(selectedChat.encryptionProtocol)}
-                  </span>
                   <div className="chat-header-actions">
                     {selectedChat.type === "direct" && (
                       <>
@@ -5412,7 +5553,16 @@ export default function ChatsPage() {
                         </button>
                       </>
                     )}
-                    <div className={isChatMenuOpen ? "menu-anchor menu-anchor--open" : "menu-anchor"} ref={chatMenuRef}>
+                    <button
+                      type="button"
+                      className="chat-header-search-button"
+                      aria-label="Search messages"
+                      title="Search messages"
+                      onClick={toggleMessageSearch}
+                    >
+                      <span className="ms-icon ms-icon--20" aria-hidden={true}>search</span>
+                    </button>
+                    {false && <div className={isChatMenuOpen ? "menu-anchor menu-anchor--open" : "menu-anchor"} ref={chatMenuRef}>
                       <button
                         type="button"
                         className="icon-button subtle icon-button--plain"
@@ -5453,39 +5603,39 @@ export default function ChatsPage() {
                             type="button"
                             role="menuitem"
                             onClick={() =>
-                              void handleChatPreferenceChange({ isPinned: !selectedChat.isPinned })
+                              void handleChatPreferenceChange({ isPinned: !selectedChat!.isPinned })
                             }
                           >
                             <Pin aria-hidden="true" size={16} />
-                            {selectedChat.isPinned ? "Unpin chat" : "Pin chat"}
+                            {selectedChat!.isPinned ? "Unpin chat" : "Pin chat"}
                           </button>
                           <button
                             type="button"
                             role="menuitem"
                             onClick={() =>
-                              void handleChatPreferenceChange({ isMuted: !selectedChat.isMuted })
+                              void handleChatPreferenceChange({ isMuted: !selectedChat!.isMuted })
                             }
                           >
-                            {selectedChat.isMuted ? (
+                            {selectedChat!.isMuted ? (
                               <Bell aria-hidden="true" size={16} />
                             ) : (
                               <BellOff aria-hidden="true" size={16} />
                             )}
-                            {selectedChat.isMuted ? "Unmute" : "Mute"}
+                            {selectedChat!.isMuted ? "Unmute" : "Mute"}
                           </button>
                           <button
                             type="button"
                             role="menuitem"
                             onClick={() =>
-                              void handleChatPreferenceChange({ isFavorite: !selectedChat.isFavorite })
+                              void handleChatPreferenceChange({ isFavorite: !selectedChat!.isFavorite })
                             }
                           >
                             <Star aria-hidden="true" size={16} />
-                            {selectedChat.isFavorite ? "Remove favorite" : "Favorite"}
+                            {selectedChat!.isFavorite ? "Remove favorite" : "Favorite"}
                           </button>
                         </div>
                       )}
-                    </div>
+                    </div>}
                   </div>
                 </div>
                 {callPhase !== "idle" && isCallMinimized && isMobileViewport && chatId && (
@@ -5513,12 +5663,30 @@ export default function ChatsPage() {
                     />
                     <button
                       type="button"
-                      className="icon-button subtle clear-search-button"
+                      className="message-search-option"
+                      aria-label="Match whole words"
+                      aria-pressed={wholeWordSearch}
+                      title="Match whole words"
+                      onClick={() => setWholeWordSearch((value) => !value)}
+                    >
+                      W
+                    </button>
+                    <button
+                      type="button"
+                      className="message-search-option"
+                      aria-label="Match case"
+                      aria-pressed={caseSensitiveSearch}
+                      title="Match case"
+                      onClick={() => setCaseSensitiveSearch((value) => !value)}
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 9 5l5 13M6 13h6M14 18l3-8 3 8M15.3 14h3.4" /></svg>
+                    </button>
+                    <span className="message-search-results" aria-live="polite">{visibleMessages.length} results</span>
+                    <button
+                      type="button"
+                      className="message-search-option message-search-close"
                       aria-label="Close message search"
-                      onClick={() => {
-                        setMessageSearch("");
-                        setIsMessageSearchOpen(false);
-                      }}
+                      onClick={closeMessageSearch}
                     >
                       <span className="ms-icon ms-icon--20" aria-hidden={true}>
                         close
@@ -6077,9 +6245,7 @@ export default function ChatsPage() {
                       disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
                       onClick={handleAttachButtonClick}
                     >
-                      <span className="ms-icon ms-icon--28" aria-hidden={true}>
-                        attach_file
-                      </span>
+                      <Paperclip aria-hidden="true" size={22} />
                     </button>
                     <div className="emoji-picker-shell" ref={emojiPickerRef}>
                       <button
@@ -6090,10 +6256,8 @@ export default function ChatsPage() {
                         title="Add emoji"
                         disabled={channelCommentsDisabledForViewer || missingCommentThread}
                         onClick={toggleEmojiPicker}
-                      >
-                        <span className="ms-icon ms-icon--22" aria-hidden={true}>
-                          sentiment_satisfied
-                        </span>
+                    >
+                      <Smile aria-hidden="true" size={22} />
                       </button>
                       {!showDockedEmojiPicker && isEmojiPickerOpen && (
                         <div
@@ -6757,22 +6921,26 @@ export default function ChatsPage() {
         )}
         {isNewChatOpen &&
           createPortal(
-            <NewChatScreen
-              accessToken={accessToken}
-              screen={newChatScreen}
-              members={filteredNewChatMembers}
-              memberSearch={newChatMemberSearch}
-              groupTitle={groupTitle}
-              groupMemberIds={groupMemberIds}
-              onMemberSearchChange={setNewChatMemberSearch}
-              onScreenChange={setNewChatScreen}
-              onClose={closeNewChatScreen}
-              onStartDirect={(userId) => void startDirectChatWith(userId)}
-              onGroupTitleChange={setGroupTitle}
-              onToggleGroupMember={toggleGroupMember}
-              onCreateGroup={(event) => void handleCreateGroupChat(event)}
-              onCreateChannel={(event) => void handleCreateChannelChat(event)}
-            />,
+            <div className="new-chat-modal-backdrop" onMouseDown={closeNewChatScreen}>
+              <div onMouseDown={(event) => event.stopPropagation()}>
+                <NewChatScreen
+                  accessToken={accessToken}
+                  screen={newChatScreen}
+                  members={filteredNewChatMembers}
+                  memberSearch={newChatMemberSearch}
+                  groupTitle={groupTitle}
+                  groupMemberIds={groupMemberIds}
+                  onMemberSearchChange={setNewChatMemberSearch}
+                  onScreenChange={setNewChatScreen}
+                  onClose={closeNewChatScreen}
+                  onStartDirect={(userId) => void startDirectChatWith(userId)}
+                  onGroupTitleChange={setGroupTitle}
+                  onToggleGroupMember={toggleGroupMember}
+                  onCreateGroup={(event) => void handleCreateGroupChat(event)}
+                  onCreateChannel={(event) => void handleCreateChannelChat(event)}
+                />
+              </div>
+            </div>,
             document.body
           )}
 
@@ -7591,6 +7759,8 @@ function ChatInfoPanel({
   onTitleDraftChange: (value: string) => void;
 }) {
   const chatName = displayChatName(chat, currentUserId);
+  const [activeControl, setActiveControl] = useState<ChatInfoControl>(null);
+  const { nameEditor, permissions } = chatInfoControlVisibility(activeControl);
   const canRename =
     canManageChat && chat.type !== "direct" && chatTitleDraft.trim() !== chatName.trim();
 
@@ -7610,6 +7780,54 @@ function ChatInfoPanel({
         <h2 id="chat-info-title" className="visually-hidden">
           {chatName}
         </h2>
+        {canManageChat && chat.type !== "direct" && (
+          <div className="chat-info-settings-menu">
+            <button
+              type="button"
+              className="chat-info-topbar-action"
+              aria-controls="chat-info-permissions"
+              aria-expanded={permissions}
+              aria-label="Chat permissions"
+              title="Chat permissions"
+              onClick={() => setActiveControl((current) => (current === "permissions" ? null : "permissions"))}
+            >
+              <Settings aria-hidden="true" size={22} />
+            </button>
+            {permissions && (
+              <section
+                id="chat-info-permissions"
+                className="chat-info-permissions-popup"
+                role="dialog"
+                aria-label="Chat permissions"
+              >
+                <div className="chat-info-permissions-heading">
+                  <strong>Permissions</strong>
+                  <small>Who can pin messages</small>
+                </div>
+                <label className="chat-info-permission-option">
+                  <input
+                    type="radio"
+                    name="pinPermission"
+                    value="everyone"
+                    checked={(chat.pinPermission ?? "everyone") === "everyone"}
+                    onChange={() => void onPinPermissionChange("everyone")}
+                  />
+                  <span>Everyone</span>
+                </label>
+                <label className="chat-info-permission-option">
+                  <input
+                    type="radio"
+                    name="pinPermission"
+                    value="admins_only"
+                    checked={(chat.pinPermission ?? "everyone") === "admins_only"}
+                    onChange={() => void onPinPermissionChange("admins_only")}
+                  />
+                  <span>Admins only</span>
+                </label>
+              </section>
+            )}
+          </div>
+        )}
       </header>
 
       <div className="chat-info-body">
@@ -7647,7 +7865,47 @@ function ChatInfoPanel({
               </>
             )}
           </div>
-          <h3>{chatName}</h3>
+          <div className="chat-info-title-row">
+            {nameEditor ? (
+              <form className="chat-info-title-inline-editor" onSubmit={onChatSettingsSubmit}>
+                <input
+                  id="chat-info-name"
+                  className="chat-info-inline-input"
+                  aria-label="Chat name"
+                  autoFocus
+                  maxLength={255}
+                  value={chatTitleDraft}
+                  onChange={(event) => onTitleDraftChange(event.target.value)}
+                />
+                <button type="submit" className="chat-info-title-save" disabled={!canRename}>
+                  Save
+                </button>
+                <button
+                  type="button"
+                  className="chat-info-title-cancel"
+                  aria-label="Cancel editing chat name"
+                  onClick={() => setActiveControl(null)}
+                >
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <h3>{chatName}</h3>
+            )}
+            {!nameEditor && canManageChat && chat.type !== "direct" && (
+              <button
+                type="button"
+                className="chat-info-title-edit"
+                aria-controls="chat-info-name-editor"
+                aria-expanded={nameEditor}
+                aria-label="Edit chat name"
+                title="Edit chat name"
+                onClick={() => setActiveControl((current) => (current === "name" ? null : "name"))}
+              >
+                <Pencil aria-hidden="true" size={18} />
+              </button>
+            )}
+          </div>
           <p className="chat-info-subtitle">
             {chat.type === "direct"
               ? "Direct message"
@@ -7703,24 +7961,6 @@ function ChatInfoPanel({
         {showSettingsIsland && (
           <div className="chat-info-section">
             <div className="chat-info-island">
-              {canManageChat && chat.type !== "direct" && (
-                <form className="chat-info-row chat-info-row--editable" onSubmit={onChatSettingsSubmit}>
-                  <label className="chat-info-row-copy" htmlFor="chat-info-name">
-                    <input
-                      id="chat-info-name"
-                      className="chat-info-inline-input"
-                      maxLength={255}
-                      value={chatTitleDraft}
-                      onChange={(event) => onTitleDraftChange(event.target.value)}
-                    />
-                    <small>Chat name</small>
-                  </label>
-                  <button type="submit" className="chat-info-row-action" disabled={!canRename}>
-                    Save
-                  </button>
-                </form>
-              )}
-
               {chat.type !== "family" && (
                 <label className="chat-info-row chat-info-row--toggle">
                   <span className="chat-info-row-copy">
@@ -7762,39 +8002,6 @@ function ChatInfoPanel({
                   </span>
                 </label>
               )}
-            </div>
-          </div>
-        )}
-
-        {chat.type !== "direct" && canManageChat && (
-          <div className="chat-info-section">
-            <div className="chat-info-island">
-              <div className="chat-info-row">
-                <div className="chat-info-row-copy">
-                  <strong>Permissions</strong>
-                  <small>Who can pin messages</small>
-                </div>
-              </div>
-              <label className="chat-info-row chat-info-row--radio">
-                <input
-                  type="radio"
-                  name="pinPermission"
-                  value="everyone"
-                  checked={(chat.pinPermission ?? "everyone") === "everyone"}
-                  onChange={() => void onPinPermissionChange("everyone")}
-                />
-                <span>Everyone</span>
-              </label>
-              <label className="chat-info-row chat-info-row--radio">
-                <input
-                  type="radio"
-                  name="pinPermission"
-                  value="admins_only"
-                  checked={(chat.pinPermission ?? "everyone") === "admins_only"}
-                  onChange={() => void onPinPermissionChange("admins_only")}
-                />
-                <span>Admins only</span>
-              </label>
             </div>
           </div>
         )}
@@ -7987,8 +8194,10 @@ function NewChatScreen({
   return (
     <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-title">
       <header className="new-chat-screen-header">
-        <button type="button" className="new-chat-screen-cancel" onClick={onClose}>
-          Cancel
+        <button type="button" className="new-chat-screen-close" aria-label="Close new message" onClick={onClose}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
         </button>
         <h2 id="new-chat-title">New Message</h2>
         <span className="new-chat-screen-spacer" aria-hidden={true} />

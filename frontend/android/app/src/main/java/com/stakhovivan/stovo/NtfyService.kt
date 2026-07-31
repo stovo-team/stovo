@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.RemoteInput
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
@@ -102,9 +103,10 @@ class NtfyService : Service() {
             val isRinging = tags.contains("phone")
             val isMissed = tags.contains("telephone_receiver")
             val isMessage = !isRinging && !isMissed
-            if (isMessage && click.startsWith("stovo://chat/")) {
-                notificationId = messageNotificationId(click.removePrefix("stovo://chat/"))
-            }
+            val messageChatId = if (isMessage) chatIdFromAppLink(click, "stovo://chat/") else null
+            val missedCallChatId = if (isMissed) chatIdFromAppLink(click, "stovo://call/missed/") else null
+            if (messageChatId != null) notificationId = messageNotificationId(messageChatId)
+            if (missedCallChatId != null) notificationId = missedCallNotificationId(missedCallChatId)
 
             // Guard: POST_NOTIFICATIONS required on API 33+. Foreground service
             // notifications bypass this check, but regular notify() calls do not.
@@ -151,7 +153,7 @@ class NtfyService : Service() {
                 }
                 isMissed -> {
                     val pendingIntent = buildPendingIntent(click, notificationId)
-                    NotificationCompat.Builder(applicationContext, "stovo_calls")
+                    val builder = NotificationCompat.Builder(applicationContext, "stovo_calls")
                         .setSmallIcon(R.drawable.ic_notification_call)
                         .setLargeIcon(appIcon)
                         .setContentTitle(title)           // caller name
@@ -160,11 +162,21 @@ class NtfyService : Service() {
                         .setContentIntent(pendingIntent)
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
                         .setCategory(NotificationCompat.CATEGORY_MISSED_CALL)
-                        .build()
+                    if (missedCallChatId != null) {
+                        builder.addAction(
+                            R.drawable.ic_notification_call,
+                            "Call back",
+                            NotificationActionReceiver.callbackPendingIntent(
+                                applicationContext,
+                                missedCallChatId
+                            )
+                        )
+                    }
+                    builder.build()
                 }
                 else -> {
                     val pendingIntent = buildPendingIntent(click, notificationId)
-                    NotificationCompat.Builder(applicationContext, "stovo_messages")
+                    val builder = NotificationCompat.Builder(applicationContext, "stovo_messages")
                         .setSmallIcon(R.drawable.ic_notification)
                         .setLargeIcon(appIcon)
                         .setContentTitle(title)           // sender name
@@ -172,7 +184,23 @@ class NtfyService : Service() {
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
-                        .build()
+                    if (messageChatId != null) {
+                        val replyInput = RemoteInput.Builder(NotificationActionReceiver.REPLY_TEXT_KEY)
+                            .setLabel("Reply")
+                            .build()
+                        val replyAction = NotificationCompat.Action.Builder(
+                            R.drawable.ic_notification,
+                            "Reply",
+                            NotificationActionReceiver.replyPendingIntent(
+                                applicationContext,
+                                messageChatId
+                            )
+                        )
+                            .addRemoteInput(replyInput)
+                            .build()
+                        builder.addAction(replyAction)
+                    }
+                    builder.build()
                 }
             }
 
@@ -298,4 +326,10 @@ class NtfyService : Service() {
         webSocket?.cancel()
         serviceScope.cancel()
     }
+}
+
+internal fun chatIdFromAppLink(link: String, prefix: String): String? {
+    if (!link.startsWith(prefix)) return null
+    return link.removePrefix(prefix)
+        .takeIf { it.isNotEmpty() && !it.contains('/') && !it.contains('?') && !it.contains('#') }
 }
