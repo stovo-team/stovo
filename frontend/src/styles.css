@@ -2803,7 +2803,9 @@ h2 {
 
 /* Voice messages need room for their controls, not a second wide frame. */
 .message-bubble:has(.message-audio-attachment) {
+  min-width: min(272px, calc(100vw - 48px));
   padding-inline: 6px;
+  width: min(272px, calc(100vw - 48px));
 }
 
 .call-history-message {
@@ -7618,6 +7620,113 @@ span.message-spoiler.is-revealed {
   background: var(--surface-hover);
 }
 
+/* Web composer picker polish. Keep the controls visibly actionable without
+   competing with the send action, and give both menus a deliberate surface. */
+:root[data-platform="web"] .message-composer .file-picker,
+:root[data-platform="web"] .message-composer .emoji-picker-button {
+  background: var(--background-tertiary);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  height: 36px;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 150ms ease-out;
+  width: 36px;
+}
+
+:root[data-platform="web"] .message-composer .file-picker:hover,
+:root[data-platform="web"] .message-composer .emoji-picker-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+:root[data-platform="web"] .message-composer .file-picker:focus-visible,
+:root[data-platform="web"] .message-composer .emoji-picker-button:focus-visible {
+  background: var(--surface-hover);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+:root[data-platform="web"] .message-composer .file-picker:active,
+:root[data-platform="web"] .message-composer .emoji-picker-button:active {
+  background: var(--accent-soft);
+  transform: scale(0.94);
+}
+
+:root[data-platform="web"] .message-composer .emoji-picker-button[aria-expanded="true"] {
+  background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent-primary) 28%, transparent);
+  color: var(--accent-primary);
+}
+
+:root[data-platform="web"] .attachment-picker-backdrop {
+  align-items: flex-end;
+  background: rgba(15, 23, 42, 0.22);
+  padding: 24px;
+}
+
+:root[data-platform="web"] .attachment-picker-sheet {
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  margin: 0 auto;
+  max-width: 420px;
+  padding-top: 10px;
+  width: min(100%, 420px);
+}
+
+:root[data-platform="web"] .attachment-picker-sheet-title {
+  color: var(--text-primary);
+  font-size: 0.86rem;
+  letter-spacing: 0;
+  padding-bottom: 8px;
+  text-transform: none;
+}
+
+:root[data-platform="web"] .attachment-picker-sheet-item {
+  border-radius: 12px;
+  margin: 0 8px;
+  padding: 10px 12px;
+  width: calc(100% - 16px);
+}
+
+:root[data-platform="web"] .attachment-picker-sheet-item:hover,
+:root[data-platform="web"] .attachment-picker-sheet-item:focus-visible {
+  background: var(--surface-hover);
+  outline: none;
+}
+
+:root[data-platform="web"] .attachment-picker-sheet-item:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-primary);
+}
+
+:root[data-platform="web"] .attachment-picker-sheet-icon {
+  height: 38px;
+  width: 38px;
+}
+
+:root[data-platform="web"] .attachment-picker-sheet-cancel {
+  margin-top: 8px;
+  padding-block: 11px;
+}
+
+:root[data-platform="web"] .emoji-picker {
+  border-color: var(--border-default);
+  box-shadow: var(--float-shadow);
+}
+
+:root[data-platform="web"] .emoji-picker::after {
+  border: 8px solid transparent;
+  border-top-color: var(--island-surface);
+  bottom: -16px;
+  content: "";
+  left: 50%;
+  position: absolute;
+  transform: translateX(-50%);
+}
+
 /* ── Speaker output sheet ───────────────────────────────────────── */
 .call-speaker-sheet-backdrop {
   position: fixed;
@@ -9633,7 +9742,7 @@ span.message-spoiler.is-revealed {
     border-color 150ms ease-out,
     box-shadow 180ms ease-out,
     color 150ms ease-out;
-  width: min(268px, 100%);
+  width: 100%;
 }
 
 /* Outgoing bubble: blend into purple — no nested dark card. */
@@ -9887,6 +9996,117 @@ span.message-spoiler.is-revealed {
   }
 }
 
+/* Capacitor renders the same narrow chat layout as the mobile browser. */
+@media (max-width: 960px) {
+  :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar {
+    --web-chat-sidebar-header-height: 182px;
+    position: relative;
+  }
+
+  :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar-header {
+    left: 0;
+    margin: 0;
+    padding: var(--mobile-edge-inset-y) var(--mobile-edge-inset-x) 0 !important;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 12;
+  }
+
+  :root[data-platform="native"] .messenger-shell.chat-list-view .chat-list {
+    margin-top: 0;
+    padding-top: calc(var(--web-chat-sidebar-header-height) + var(--chat-list-chrome-gap, 16px));
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .chat-detail-header--floating {
+    background: color-mix(in oklab, var(--mobile-glass-surface-strong) 72%, transparent);
+    border: 1px solid var(--mobile-glass-border);
+    box-shadow: var(--mobile-glass-shadow), inset 0 1px 0 var(--mobile-glass-highlight);
+    -webkit-backdrop-filter: blur(var(--mobile-glass-blur)) saturate(135%);
+    backdrop-filter: blur(var(--mobile-glass-blur)) saturate(135%);
+  }
+
+  :root[data-platform="native"] .pinned-banner {
+    background: color-mix(in oklab, var(--mobile-glass-surface-strong) 72%, transparent);
+    border: 1px solid var(--mobile-glass-border);
+    box-shadow: var(--mobile-glass-shadow), inset 0 1px 0 var(--mobile-glass-highlight);
+    margin-inline: var(--mobile-edge-inset-x);
+    -webkit-backdrop-filter: blur(var(--mobile-glass-blur)) saturate(135%);
+    backdrop-filter: blur(var(--mobile-glass-blur)) saturate(135%);
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .chat-detail {
+    position: relative;
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .messages-panel {
+    margin-bottom: 0;
+    padding-bottom: 96px;
+    scroll-padding-bottom: 96px;
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .message-composer {
+    background: transparent;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    isolation: isolate;
+    left: var(--active-chat-message-inset-x);
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    right: var(--active-chat-message-inset-x);
+    z-index: 13;
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .message-composer::before {
+    background: linear-gradient(to bottom, transparent 0%, #000000 100%);
+    content: "";
+    inset: -48px -16px -8px;
+    pointer-events: none;
+    position: absolute;
+    z-index: -1;
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .message-composer-row {
+    align-items: center;
+    background: var(--background-secondary);
+    border-radius: 28px;
+    column-gap: 12px;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    padding: 6px 8px;
+  }
+
+  :root[data-platform="native"] .message-composer-row > .file-picker,
+  :root[data-platform="native"] .message-composer-row > .emoji-picker-shell,
+  :root[data-platform="native"] .message-composer-row > .message-composer-actions {
+    align-self: center;
+  }
+
+  :root[data-platform="native"] .message-composer-row > .emoji-picker-shell {
+    margin-right: 8px;
+  }
+
+  :root[data-platform="native"] .message-composer .file-picker,
+  :root[data-platform="native"] .message-composer .emoji-picker-button,
+  :root[data-platform="native"] .message-composer .file-picker:hover,
+  :root[data-platform="native"] .message-composer .emoji-picker-button:hover,
+  :root[data-platform="native"] .message-composer .file-picker:active,
+  :root[data-platform="native"] .message-composer .emoji-picker-button:active,
+  :root[data-platform="native"] .message-composer .file-picker:focus-visible,
+  :root[data-platform="native"] .message-composer .emoji-picker-button:focus-visible {
+    appearance: none;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0;
+    box-shadow: none !important;
+    height: auto;
+    min-height: 0;
+    min-width: 0;
+    outline: none !important;
+    padding: 0;
+    width: auto;
+  }
+}
+
 .message-bubble.mine .audio-player-eq span,
 .message-bubble.mine .audio-player-wave-fill {
   background: #ffffff;
@@ -9987,7 +10207,7 @@ span.message-spoiler.is-revealed {
   background: transparent;
   border-radius: 999px;
   cursor: pointer;
-  height: 18px;
+  height: 22px;
   overflow: visible;
   position: relative;
   touch-action: none;
@@ -9998,7 +10218,7 @@ span.message-spoiler.is-revealed {
   background: color-mix(in oklab, var(--border-default) 70%, transparent);
   border-radius: 999px;
   content: "";
-  height: 3px;
+  height: 5px;
   left: 0;
   position: absolute;
   right: 0;
@@ -10018,14 +10238,34 @@ span.message-spoiler.is-revealed {
     var(--accent-primary)
   );
   border-radius: 999px;
+  color: var(--accent-primary);
   display: block;
-  height: 3px;
+  height: 5px;
   max-width: 100%;
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   transition: width 80ms linear;
   z-index: 1;
+}
+
+.audio-player-wave-fill::after {
+  background: currentColor;
+  border: 2px solid var(--surface-card);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px color-mix(in oklab, #000000 28%, transparent);
+  content: "";
+  height: 8px;
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+}
+
+.message-bubble.mine .audio-player-wave-fill::after {
+  border-color: color-mix(in oklab, var(--bubble-outgoing) 88%, #000000);
+  color: #ffffff;
 }
 
 .audio-player-meta-row {
@@ -10666,4 +10906,44 @@ span.message-spoiler.is-revealed {
 
 .document-preview-truncated {
   margin: 8px 2px 0;
+}
+
+/* These rules intentionally follow the legacy plain-icon overrides above. */
+:root[data-platform="web"] .message-composer .file-picker,
+:root[data-platform="web"] .message-composer .emoji-picker-button {
+  background: var(--background-tertiary);
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  height: 36px;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  width: 36px;
+}
+
+:root[data-platform="web"] .message-composer .file-picker:hover,
+:root[data-platform="web"] .message-composer .emoji-picker-button:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-default);
+  color: var(--text-primary);
+}
+
+:root[data-platform="web"] .message-composer .file-picker:focus-visible,
+:root[data-platform="web"] .message-composer .emoji-picker-button:focus-visible {
+  background: var(--surface-hover);
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+:root[data-platform="web"] .message-composer .file-picker:active,
+:root[data-platform="web"] .message-composer .emoji-picker-button:active {
+  background: var(--accent-soft);
+  transform: scale(0.94);
+}
+
+:root[data-platform="web"] .message-composer .emoji-picker-button[aria-expanded="true"] {
+  background: var(--accent-soft);
+  border-color: color-mix(in oklab, var(--accent-primary) 28%, transparent);
+  color: var(--accent-primary);
 }

@@ -133,11 +133,11 @@ afterEach(() => {
 });
 
 describe("AudioPlayer", () => {
-  it("shows cached duration before the session is attached", () => {
+  it("shows elapsed and total duration before the session is attached", () => {
     setCachedAudioDuration(descriptor.identity.fileId, 125);
     const { container } = renderPlayer();
     expect(container.querySelector('output[aria-label="Audio time"]')?.textContent)
-      .toBe("2:05");
+      .toBe("0:00 / 2:05");
     expect(container.querySelector(".audio-player")?.getAttribute("data-session-active"))
       .toBe("false");
   });
