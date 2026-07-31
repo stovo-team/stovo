@@ -12,6 +12,14 @@ const lastRule = (selector: string) => {
   const start = styles.lastIndexOf(`${selector} {`);
   return styles.slice(start, styles.indexOf("}", start));
 };
+const desktopRule = (selector: string) => {
+  const desktopMedia = styles.indexOf(
+    "@media (min-width: 961px) {",
+    styles.indexOf("/* Desktop conversation chrome")
+  );
+  const start = styles.indexOf(`${selector} {`, desktopMedia);
+  return styles.slice(start, styles.indexOf("}", start));
+};
 const mobileChatRule = (selector: string) => {
   const firstMobileMedia = styles.indexOf("@media (max-width: 960px) {");
   const chatMobileMedia = styles.indexOf("@media (max-width: 960px) {", firstMobileMedia + 1);
@@ -151,17 +159,17 @@ describe("expanded video player", () => {
 
 describe("desktop chat refinements", () => {
   it("keeps the sidebar chrome above a full-height scrollable chat list", () => {
-    expect(lastRule(".chat-sidebar-header")).toContain("margin: 0;");
-    expect(lastRule(".chat-sidebar-header")).toContain("position: sticky;");
-    expect(lastRule(".chat-list")).toContain("margin-top: var(--chat-list-chrome-gap, 16px);");
-    expect(lastRule(".chat-list-filters")).toContain("overflow-x: auto;");
+    expect(desktopRule(".chat-sidebar-header")).toContain("margin: 0;");
+    expect(desktopRule(".chat-sidebar-header")).toContain("position: sticky;");
+    expect(desktopRule(".chat-list")).toContain("margin-top: var(--chat-list-chrome-gap, 16px);");
+    expect(desktopRule(".chat-list-filters")).toContain("overflow-x: auto;");
   });
 
   it("uses a rounded grey composer and leaves room below the final message", () => {
-    expect(lastRule(".messenger-shell.has-active-chat .message-composer")).toContain(
+    expect(desktopRule(".messenger-shell.has-active-chat .message-composer")).toContain(
       "background: var(--background-secondary);"
     );
-    expect(lastRule(".messenger-shell.has-active-chat .messages-panel")).toContain("padding-bottom: 88px;");
+    expect(desktopRule(".messenger-shell.has-active-chat .messages-panel")).toContain("padding-bottom: 18px;");
   });
 
   it("keeps landscape video messages large and permits media right-clicks to reach the message menu", () => {
@@ -176,10 +184,12 @@ describe("desktop chat refinements", () => {
     expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("opacity: 0.72;");
   });
 
-  it("applies the narrow-layout refinements to browser rendering without changing native chrome", () => {
+  it("applies the narrow-layout refinements to browser and native rendering", () => {
     expect(styles).toContain(':root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header');
     expect(styles).toContain(':root[data-platform="web"] .messenger-shell.has-active-chat .message-composer');
     expect(styles).toContain(':root[data-platform="web"] .app-frame > .app-nav.app-nav--active-variant-a');
+    expect(styles).toContain(':root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar-header');
+    expect(styles).toContain(':root[data-platform="native"] .messenger-shell.has-active-chat .message-composer');
   });
 });
 
