@@ -4418,11 +4418,7 @@ export default function ChatsPage() {
 
   function handleAttachButtonClick() {
     closeEmojiPicker();
-    if (Capacitor.isNativePlatform()) {
-      setIsAttachmentSheetOpen(true);
-      return;
-    }
-    attachmentInputRef.current?.click();
+    setIsAttachmentSheetOpen(true);
   }
 
   function handleAttachmentSheetPick(option: AttachmentPickerOption) {
@@ -6289,46 +6285,42 @@ export default function ChatsPage() {
                       type="file"
                       onChange={handleFileSelect}
                     />
-                    {Capacitor.isNativePlatform() && (
-                      <>
-                        <input
-                          ref={galleryAttachmentInputRef}
-                          accept={GALLERY_ATTACHMENT_ACCEPT}
-                          className="visually-hidden"
-                          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
-                          multiple
-                          type="file"
-                          onChange={handleFileSelect}
-                        />
-                        <input
-                          ref={cameraAttachmentInputRef}
-                          accept={CAMERA_ATTACHMENT_ACCEPT}
-                          capture="environment"
-                          className="visually-hidden"
-                          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
-                          type="file"
-                          onChange={handleFileSelect}
-                        />
-                        <input
-                          ref={audioAttachmentInputRef}
-                          accept={AUDIO_ATTACHMENT_ACCEPT}
-                          className="visually-hidden"
-                          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
-                          multiple
-                          type="file"
-                          onChange={handleFileSelect}
-                        />
-                        <input
-                          ref={documentAttachmentInputRef}
-                          accept={DOCUMENT_ATTACHMENT_ACCEPT}
-                          className="visually-hidden"
-                          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
-                          multiple
-                          type="file"
-                          onChange={handleFileSelect}
-                        />
-                      </>
-                    )}
+                    <input
+                      ref={galleryAttachmentInputRef}
+                      accept={GALLERY_ATTACHMENT_ACCEPT}
+                      className="visually-hidden"
+                      disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
+                      multiple
+                      type="file"
+                      onChange={handleFileSelect}
+                    />
+                    <input
+                      ref={cameraAttachmentInputRef}
+                      accept={CAMERA_ATTACHMENT_ACCEPT}
+                      capture="environment"
+                      className="visually-hidden"
+                      disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
+                      type="file"
+                      onChange={handleFileSelect}
+                    />
+                    <input
+                      ref={audioAttachmentInputRef}
+                      accept={AUDIO_ATTACHMENT_ACCEPT}
+                      className="visually-hidden"
+                      disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
+                      multiple
+                      type="file"
+                      onChange={handleFileSelect}
+                    />
+                    <input
+                      ref={documentAttachmentInputRef}
+                      accept={DOCUMENT_ATTACHMENT_ACCEPT}
+                      className="visually-hidden"
+                      disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
+                      multiple
+                      type="file"
+                      onChange={handleFileSelect}
+                    />
                     <AttachmentPickerSheet
                       open={isAttachmentSheetOpen}
                       onClose={() => setIsAttachmentSheetOpen(false)}

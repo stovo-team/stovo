@@ -397,6 +397,7 @@ export function AudioPlayer({
       data-session-active={isActive ? "true" : "false"}
       data-playing={isPlaying ? "true" : "false"}
       onClick={stopInteraction}
+      onContextMenu={stopInteraction}
       onPointerDown={stopInteraction}
       onKeyDown={stopActivationPropagation}
     >
@@ -443,8 +444,8 @@ export function AudioPlayer({
           </div>
           <div className="audio-player-meta-row">
             <output data-control="time" className="audio-player-time" aria-label="Audio time">
-              {isActive ? formatAudioTime(position) : formatAudioTime(duration || 0)}
-              {isActive && duration > 0 ? ` / ${formatAudioTime(duration)}` : ""}
+              {formatAudioTime(position)}
+              {duration > 0 ? ` / ${formatAudioTime(duration)}` : ""}
             </output>
             {!hideTitle && (
               <span className="audio-player-title" title={descriptor.title}>
