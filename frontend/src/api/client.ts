@@ -93,12 +93,7 @@ export function getApiUrl() {
       "http://localhost:8000"
     );
   }
-  return (
-    configuredApiUrl ??
-    deriveApiUrlFromBrowser() ??
-    normalizeApiUrl(DEFAULT_API_URL) ??
-    "http://localhost:8000"
-  );
+  return deriveApiUrlFromBrowser() ?? normalizeApiUrl(DEFAULT_API_URL) ?? "http://localhost:8000";
 }
 
 export function isServerUrlConfigured(): boolean {
