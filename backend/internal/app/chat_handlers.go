@@ -1261,13 +1261,14 @@ func (s *Server) cloneForwardAttachments(ctx context.Context, user userPublic, t
 	}
 
 	type clonedFile struct {
-		ID              string
-		ObjectKey       string
-		StorageProvider string
-		OriginalName    string
-		MimeType        string
-		SizeBytes       int64
-		Checksum        *string
+		ID                 string
+		ObjectKey          string
+		ThumbnailObjectKey *string
+		StorageProvider    string
+		OriginalName       string
+		MimeType           string
+		SizeBytes          int64
+		Checksum           *string
 	}
 
 	now := nowString()
@@ -1293,18 +1294,28 @@ func (s *Server) cloneForwardAttachments(ctx context.Context, user userPublic, t
 		)
 		if err := s.storage.Save(objectKey, data); err != nil {
 			for _, clone := range clones {
-				_ = s.storage.Delete(clone.ObjectKey)
+				deleteFileObjects(s.storage, clone.ObjectKey, clone.ThumbnailObjectKey)
 			}
 			return nil, func() {}, err
 		}
+		var thumbnailObjectKey *string
+		if file.ThumbnailObjectKey != nil {
+			if thumbnail, err := s.storage.Read(*file.ThumbnailObjectKey); err == nil {
+				key := objectKey + ".thumbnail.jpg"
+				if err := s.storage.Save(key, thumbnail); err == nil {
+					thumbnailObjectKey = &key
+				}
+			}
+		}
 		clones = append(clones, clonedFile{
-			ID:              uuid.NewString(),
-			ObjectKey:       objectKey,
-			StorageProvider: file.StorageProvider,
-			OriginalName:    file.OriginalName,
-			MimeType:        file.MimeType,
-			SizeBytes:       int64(len(data)),
-			Checksum:        file.Checksum,
+			ID:                 uuid.NewString(),
+			ObjectKey:          objectKey,
+			ThumbnailObjectKey: thumbnailObjectKey,
+			StorageProvider:    file.StorageProvider,
+			OriginalName:       file.OriginalName,
+			MimeType:           file.MimeType,
+			SizeBytes:          int64(len(data)),
+			Checksum:           file.Checksum,
 		})
 	}
 
@@ -1313,17 +1324,17 @@ func (s *Server) cloneForwardAttachments(ctx context.Context, user userPublic, t
 			if _, err := s.txExec(tx, `
 				INSERT INTO files (
 					id, family_id, uploaded_by, chat_id, access_scope, storage_provider,
-					object_key, original_name, mime_type, size_bytes, checksum, created_at
+					object_key, thumbnail_object_key, original_name, mime_type, size_bytes, checksum, created_at
 				)
-				VALUES (?, ?, ?, ?, 'chat', ?, ?, ?, ?, ?, ?, ?)
-			`, clone.ID, targetChat.FamilyID, user.ID, targetChat.ID, clone.StorageProvider, clone.ObjectKey, clone.OriginalName, clone.MimeType, clone.SizeBytes, clone.Checksum, now); err != nil {
+				VALUES (?, ?, ?, ?, 'chat', ?, ?, ?, ?, ?, ?, ?, ?)
+			`, clone.ID, targetChat.FamilyID, user.ID, targetChat.ID, clone.StorageProvider, clone.ObjectKey, clone.ThumbnailObjectKey, clone.OriginalName, clone.MimeType, clone.SizeBytes, clone.Checksum, now); err != nil {
 				return err
 			}
 		}
 		return nil
 	}); err != nil {
 		for _, clone := range clones {
-			_ = s.storage.Delete(clone.ObjectKey)
+			deleteFileObjects(s.storage, clone.ObjectKey, clone.ThumbnailObjectKey)
 		}
 		return nil, func() {}, err
 	}
@@ -1335,7 +1346,7 @@ func (s *Server) cloneForwardAttachments(ctx context.Context, user userPublic, t
 	cleanup := func() {
 		for _, clone := range clones {
 			_, _ = s.exec(`DELETE FROM files WHERE id = ?`, clone.ID)
-			_ = s.storage.Delete(clone.ObjectKey)
+			deleteFileObjects(s.storage, clone.ObjectKey, clone.ThumbnailObjectKey)
 		}
 	}
 	return fileIDs, cleanup, nil
