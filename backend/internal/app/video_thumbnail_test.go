@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+
+	"family-messenger/backend/internal/storage"
 )
 
 func TestGenerateVideoThumbnailProducesJPEG(t *testing.T) {
@@ -54,5 +56,28 @@ func TestVideoUploadSucceedsWithoutThumbnailWhenExtractionFails(t *testing.T) {
 	file := decodeJSON[filePublic](t, response)
 	if file.ThumbnailObjectKey != nil {
 		t.Fatalf("thumbnail key = %q, want nil after failed extraction", *file.ThumbnailObjectKey)
+	}
+}
+
+func TestDeleteFileObjectsDeletesThumbnailDerivative(t *testing.T) {
+	store, err := storage.NewLocalStorage(t.TempDir())
+	if err != nil {
+		t.Fatalf("new storage: %v", err)
+	}
+	thumbnailKey := "family/test/video.mp4.thumbnail.jpg"
+	if err := store.Save("family/test/video.mp4", []byte("video")); err != nil {
+		t.Fatalf("save video: %v", err)
+	}
+	if err := store.Save(thumbnailKey, []byte("thumbnail")); err != nil {
+		t.Fatalf("save thumbnail: %v", err)
+	}
+
+	deleteFileObjects(store, "family/test/video.mp4", &thumbnailKey)
+
+	if _, err := store.Read("family/test/video.mp4"); err == nil {
+		t.Fatal("original object remains after deletion")
+	}
+	if _, err := store.Read(thumbnailKey); err == nil {
+		t.Fatal("thumbnail derivative remains after deletion")
 	}
 }
