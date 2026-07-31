@@ -20,3 +20,8 @@ if ($workflow -notmatch 'api/health' -or
 if ($workflow -notmatch 'uploads logs') {
     throw "Deployment must grant the backend user access to both local storage and logs."
 }
+
+if ($workflow -notmatch 'sudo install -d -m 0750 -o 100 -g 100 uploads logs' -or
+    $workflow -notmatch 'sudo chown -R 100:100 uploads logs') {
+    throw "Deployment must grant the Alpine backend user (UID/GID 100) access to local storage and logs."
+}
