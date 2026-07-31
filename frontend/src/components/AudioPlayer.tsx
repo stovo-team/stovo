@@ -2,7 +2,6 @@ import {
   AlertCircle,
   Pause,
   Play,
-  RotateCcw,
 } from "lucide-react";
 import {
   useCallback,
@@ -39,6 +38,8 @@ export interface AudioPlayerProps {
   session?: AudioPlaybackSession;
   /** Resolves a playable URL (typically a cached blob:) for metadata duration probe. */
   resolveDurationUrl?: () => Promise<string | null>;
+  /** Recorder-generated filenames add no useful context to a voice message. */
+  hideTitle?: boolean;
 }
 
 function isFiniteTime(value: number): boolean {
@@ -142,6 +143,7 @@ export function AudioPlayer({
   onBeforePlay,
   session = audioPlaybackSession,
   resolveDurationUrl,
+  hideTitle = false,
 }: AudioPlayerProps) {
   const getOwnSnapshot = useCallback(
     () => initialSnapshotFor(session, descriptor),
@@ -169,6 +171,14 @@ export function AudioPlayer({
       dragRevision.current = null;
     }
   }, [previewPosition, snapshot?.revision]);
+
+  // Finished audio returns to the same idle state as an unplayed attachment.
+  // Keeping an ended native session alive exposed a replay/reset control and
+  // could leave the Android service attached to a completed decoder.
+  useEffect(() => {
+    if (snapshot?.status !== "ended") return;
+    void session.clear("reset");
+  }, [session, snapshot?.revision, snapshot?.status]);
 
   useEffect(() => {
     const status = snapshot?.status;
@@ -236,16 +246,13 @@ export function AudioPlayer({
   const sessionPlaying =
     snapshot?.status === "playing" || snapshot?.status === "buffering";
   const isPlaying = sessionPlaying || playIntent;
-  const isEnded = snapshot?.status === "ended" && !playIntent;
   // Icon follows optimistic intent; only a live playing/buffering session pauses on tap
   // so a second tap can recover a stuck load instead of calling pause().
-  const isPauseAction = isPlaying && !isEnded;
+  const isPauseAction = isPlaying;
   const isCallDisabled = Boolean(disabledReason);
-  const primaryLabel = sessionPlaying || (playIntent && !isEnded)
+  const primaryLabel = sessionPlaying || playIntent
     ? "Pause audio"
-    : isEnded
-      ? "Replay audio"
-      : "Play audio";
+    : "Play audio";
   // Keep the control clickable while loading so a stuck load cannot trap replay.
   // prepareCurrent still gates concurrent work; only calls disable the button.
   const playbackDisabled = isCallDisabled;
@@ -383,7 +390,7 @@ export function AudioPlayer({
 
   return (
     <article
-      className={`message-audio-attachment audio-player audio-player--compact${isActive ? " is-session-active" : ""}${isPlaying ? " is-playing" : ""}${isEnded ? " is-ended" : ""}`}
+      className={`message-audio-attachment audio-player audio-player--compact${isActive ? " is-session-active" : ""}${isPlaying ? " is-playing" : ""}`}
       data-audio-chat-id={descriptor.identity.chatId}
       data-audio-message-id={descriptor.identity.messageId}
       data-audio-file-id={descriptor.identity.fileId}
@@ -391,7 +398,6 @@ export function AudioPlayer({
       data-playing={isPlaying ? "true" : "false"}
       onClick={stopInteraction}
       onPointerDown={stopInteraction}
-      onContextMenu={stopInteraction}
       onKeyDown={stopActivationPropagation}
     >
       <div className="audio-player-controls">
@@ -407,8 +413,6 @@ export function AudioPlayer({
           <span className="audio-player-play-pulse" aria-hidden="true" />
           {isPauseAction ? (
             <Pause size={14} aria-hidden="true" />
-          ) : isEnded ? (
-            <RotateCcw size={14} aria-hidden="true" />
           ) : (
             <Play size={14} aria-hidden="true" />
           )}
@@ -442,9 +446,11 @@ export function AudioPlayer({
               {isActive ? formatAudioTime(position) : formatAudioTime(duration || 0)}
               {isActive && duration > 0 ? ` / ${formatAudioTime(duration)}` : ""}
             </output>
-            <span className="audio-player-title" title={descriptor.title}>
-              {descriptor.title}
-            </span>
+            {!hideTitle && (
+              <span className="audio-player-title" title={descriptor.title}>
+                {descriptor.title}
+              </span>
+            )}
           </div>
         </div>
       </div>
