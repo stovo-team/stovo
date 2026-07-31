@@ -367,10 +367,10 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     /**
-     * Natural end: publish ENDED for in-app replay. Keep the service process alive
-     * (no stopSelf) so MediaController reconnect does not race a dying session.
-     * Clear the media item so system media controls dismiss; JS Android replay
-     * reloads via prepareCurrent() with a fresh credentialed source.
+     * Natural end: publish ENDED for in-app replay, then stop the media session
+     * service. A live MediaSessionService owns Android's system media card, so
+     * clearing only its media item does not reliably dismiss that card.
+     * Android replay reloads through a new service session with a fresh source.
      */
     private fun handlePlaybackEnded() {
         if (identity == null) return
@@ -395,6 +395,7 @@ class AudioPlaybackService : MediaSessionService() {
         } finally {
             suppressPlayerEvents = false
         }
+        stopSelf()
     }
 
     private fun clearPlayback(reason: AudioPlaybackCleanupReason) {

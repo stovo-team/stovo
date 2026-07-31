@@ -273,8 +273,11 @@ class AudioPlaybackPlugin : Plugin() {
 
     private fun emitSnapshot(bundle: Bundle) {
         notifyListeners("stateChanged", snapshotObject(bundle))
-        // Natural end keeps the service + media item alive for seek+play replay.
-        // Only explicit clear() releases the controller (service stopSelf).
+        // Natural end stops the service to dismiss Android's media notification.
+        // Drop this controller so a replay connects to the new service session.
+        if (bundle.getString(AudioPlaybackService.KEY_STATUS) == AudioPlaybackStatus.ENDED.wireValue) {
+            releaseController()
+        }
     }
 
     /**

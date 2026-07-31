@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import * as chatsPageModule from "./pages/ChatsPage";
 
 type ChatsPageLogic = {
+  chatInfoControlVisibility?: (
+    activeControl: "name" | "permissions" | null
+  ) => { nameEditor: boolean; permissions: boolean };
   emojiSizeClass?: (content: string | null | undefined) => string;
   shouldShowMessageSender?: (
     chatType: "family" | "direct" | "group" | "channel" | "archive",
@@ -64,5 +67,21 @@ describe("ChatsPage lifecycle decisions", () => {
     expect(logic.callTerminationEvent).toBeTypeOf("function");
     expect(logic.callTerminationEvent?.("connecting")).toBe("call:end");
     expect(logic.callTerminationEvent?.("in-call")).toBe("call:end");
+  });
+
+  it("shows only the chat-details control requested by its icon", () => {
+    expect(logic.chatInfoControlVisibility).toBeTypeOf("function");
+    expect(logic.chatInfoControlVisibility?.(null)).toEqual({
+      nameEditor: false,
+      permissions: false
+    });
+    expect(logic.chatInfoControlVisibility?.("name")).toEqual({
+      nameEditor: true,
+      permissions: false
+    });
+    expect(logic.chatInfoControlVisibility?.("permissions")).toEqual({
+      nameEditor: false,
+      permissions: true
+    });
   });
 });

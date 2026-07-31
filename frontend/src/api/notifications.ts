@@ -9,10 +9,15 @@ interface NtfyPlugin {
   stopService(): Promise<void>;
   checkFullScreenIntent(): Promise<void>;
   requestNotificationPermission(): Promise<{ granted: boolean }>;
-  dismissMessageNotification(options: { chatId: string }): Promise<void>;
+  dismissChatNotifications(options: { chatId: string }): Promise<void>;
+  consumePendingNotificationAction(): Promise<{ action?: unknown }>;
 }
 
 const NtfyPlugin = registerPlugin<NtfyPlugin>("NtfyPlugin");
+
+export type PendingNotificationAction =
+  | { type: "reply"; chatId: string; text: string }
+  | { type: "callback"; chatId: string };
 
 // --- Topic API ---
 
@@ -67,15 +72,44 @@ export async function ensureFullScreenIntentPermission(): Promise<void> {
   }
 }
 
-/** Dismiss the Android notification for a chat once its messages are visible. */
-export async function dismissMessageNotification(chatId: string): Promise<void> {
+/** Dismiss Android message and missed-call notifications once a chat is visible. */
+export async function dismissChatNotifications(chatId: string): Promise<void> {
   if (!chatId || !Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
     return;
   }
   try {
-    await NtfyPlugin.dismissMessageNotification({ chatId });
+    await NtfyPlugin.dismissChatNotifications({ chatId });
   } catch {
     // The native bridge is absent in browser and older app builds.
+  }
+}
+
+/** Read Android's private one-shot action handoff after session restore. */
+export async function consumePendingNotificationAction(): Promise<PendingNotificationAction | null> {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
+    return null;
+  }
+  try {
+    const result = await NtfyPlugin.consumePendingNotificationAction();
+    const action = result?.action;
+    if (!action || typeof action !== "object") {
+      return null;
+    }
+    const candidate = action as Record<string, unknown>;
+    const chatId = typeof candidate.chatId === "string" ? candidate.chatId.trim() : "";
+    if (!chatId) {
+      return null;
+    }
+    if (candidate.type === "callback") {
+      return { type: "callback", chatId };
+    }
+    if (candidate.type === "reply" && typeof candidate.text === "string") {
+      const text = candidate.text.trim();
+      return text ? { type: "reply", chatId, text } : null;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 

@@ -142,6 +142,19 @@ describe("AudioPlayer", () => {
       .toBe("false");
   });
 
+  it("omits the title for recorder-originated audio", () => {
+    const { container } = renderPlayer({ hideTitle: true });
+
+    expect(container.querySelector(".audio-player-title")).toBeNull();
+    expect(container.querySelector('output[aria-label="Audio time"]')).not.toBeNull();
+  });
+
+  it("keeps the title for uploaded audio files", () => {
+    const { container } = renderPlayer();
+
+    expect(container.querySelector(".audio-player-title")?.textContent).toBe("Family note.mp3");
+  });
+
   it("renders exact controls, time formats, active identity, and seek semantics", () => {
     const { container } = renderPlayer();
     const player = container.querySelector<HTMLElement>(".audio-player")!;
@@ -175,7 +188,7 @@ describe("AudioPlayer", () => {
     expect(formatAudioTime(3661)).toBe("1:01:01");
   });
 
-  it("renders exact loading, buffering, interruption, call, error, retry, and replay states", () => {
+  it("renders exact loading, buffering, interruption, call, and error states", () => {
     const { container, root } = renderPlayer();
 
     emit(snapshot({ revision: 2, status: "loading", duration: 0, canSeek: false }));
@@ -249,9 +262,19 @@ describe("AudioPlayer", () => {
       .toBe("This audio message is no longer available.");
     expect(container.querySelector('button[aria-label="Retry audio"]')).toBeNull();
 
-    emit(snapshot({ revision: 7, status: "ended", position: 75 }));
-    expect(container.querySelector('button[aria-label="Replay audio"]')).not.toBeNull();
-    expect(container.querySelector(".audio-player.is-ended")).not.toBeNull();
+  });
+
+  it("resets to an unplayed audio control when playback ends", async () => {
+    const { container } = renderPlayer();
+
+    emit(snapshot({ revision: 2, status: "ended", position: 75, duration: 75 }));
+    await settle();
+
+    expect(backend.clear).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('button[aria-label="Replay audio"]')).toBeNull();
+    expect(container.querySelector('button[aria-label="Play audio"]')).not.toBeNull();
+    expect(container.querySelector(".audio-player")?.getAttribute("data-session-active"))
+      .toBe("false");
   });
 
   it("shows pause chrome optimistically on tap and reloads when stuck loading", async () => {
@@ -275,32 +298,6 @@ describe("AudioPlayer", () => {
     expect(backend.pause).not.toHaveBeenCalled();
     expect(backend.load).toHaveBeenCalled();
     expect(backend.play).toHaveBeenCalled();
-  });
-
-  it("replays after natural end without staying stuck on loading", async () => {
-    const { container } = renderPlayer();
-    emit(snapshot({
-      revision: 2,
-      status: "ended",
-      position: 75,
-      duration: 75,
-      platform: "web",
-    }));
-
-    backend.load.mockImplementationOnce(async () => {
-      backend.emit(snapshot({ revision: 3, status: "ready", position: 0 }));
-    });
-
-    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Replay audio"]')?.click());
-    await settle();
-
-    expect(backend.load).toHaveBeenCalledWith(
-      descriptor,
-      expect.any(Object),
-      0,
-    );
-    expect(backend.play).toHaveBeenCalledTimes(1);
-    expect(session.getSnapshot().status).not.toBe("loading");
   });
 
   it("loads only on explicit play, runs arbitration first, and has no mount lifecycle effects", async () => {
