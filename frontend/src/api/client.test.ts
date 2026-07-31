@@ -27,9 +27,9 @@ describe("getApiUrl", () => {
     expect(getApiUrl()).toBe(window.location.origin);
   });
 
-  it("uses the server address saved by the browser setup screen", () => {
-    setApiUrlOverride("http://192.168.0.108");
+  it("ignores a saved browser URL with a route path", () => {
+    setApiUrlOverride("https://stovo-cloud.stovo.ru/server-setup");
 
-    expect(getApiUrl()).toBe("http://192.168.0.108");
+    expect(getApiUrl()).toBe(window.location.origin);
   });
 });
