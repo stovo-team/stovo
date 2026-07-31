@@ -2218,7 +2218,7 @@ h2 {
   }
 
   .chat-sidebar .compose-fab {
-    display: none;
+    display: inline-flex;
   }
 
   .chat-sidebar-header {
