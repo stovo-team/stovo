@@ -208,21 +208,22 @@ type updateChatPreferencesRequest struct {
 }
 
 type filePublic struct {
-	ID              string     `json:"id"`
-	FamilyID        string     `json:"familyId"`
-	UploadedBy      string     `json:"uploadedBy"`
-	ChatID          *string    `json:"chatId"`
-	ChatTitle       *string    `json:"chatTitle"`
-	ChatType        *string    `json:"chatType"`
-	AccessScope     string     `json:"accessScope"`
-	StorageProvider string     `json:"storageProvider"`
-	OriginalName    string     `json:"originalName"`
-	MimeType        string     `json:"mimeType"`
-	SizeBytes       int64      `json:"sizeBytes"`
-	Checksum        *string    `json:"checksum"`
-	CreatedAt       time.Time  `json:"createdAt"`
-	DeletedAt       *time.Time `json:"deletedAt"`
-	IsFavorite      bool       `json:"isFavorite"`
+	ID                 string     `json:"id"`
+	FamilyID           string     `json:"familyId"`
+	UploadedBy         string     `json:"uploadedBy"`
+	ChatID             *string    `json:"chatId"`
+	ChatTitle          *string    `json:"chatTitle"`
+	ChatType           *string    `json:"chatType"`
+	AccessScope        string     `json:"accessScope"`
+	StorageProvider    string     `json:"storageProvider"`
+	ThumbnailObjectKey *string    `json:"thumbnailObjectKey"`
+	OriginalName       string     `json:"originalName"`
+	MimeType           string     `json:"mimeType"`
+	SizeBytes          int64      `json:"sizeBytes"`
+	Checksum           *string    `json:"checksum"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	DeletedAt          *time.Time `json:"deletedAt"`
+	IsFavorite         bool       `json:"isFavorite"`
 }
 
 type updateFilePreferencesRequest struct {

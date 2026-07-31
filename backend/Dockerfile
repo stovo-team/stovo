@@ -9,12 +9,14 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /family-messenger ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /storage-migrate ./cmd/storage-migrate
 
-FROM gcr.io/distroless/static-debian12:nonroot@sha256:f5b485ea962d9bd1186b2f6b3a061191539b905b82ec395de78cbfae51f20e35
+FROM alpine:3.21
+
+RUN apk add --no-cache ffmpeg && addgroup -S app && adduser -S -G app app
 
 COPY --from=builder /family-messenger /usr/local/bin/family-messenger
 COPY --from=builder /storage-migrate /usr/local/bin/storage-migrate
 
-USER nonroot
+USER app
 
 EXPOSE 8000
 
