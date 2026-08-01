@@ -425,6 +425,7 @@ export function AudioPlayer({
               ref={waveRef}
               className="audio-player-wave"
               data-control="seek"
+              data-idle={!isActive ? "true" : "false"}
               role="slider"
               tabIndex={seekable && !isCallDisabled ? 0 : -1}
               aria-label="Seek audio"
