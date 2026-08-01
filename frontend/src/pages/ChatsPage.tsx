@@ -247,6 +247,10 @@ export function callTerminationEvent(phase: CallPhase): "call:cancel" | "call:en
   return phase === "outgoing" ? "call:cancel" : "call:end";
 }
 
+export function chatListLayoutClass(minimizedChatLayout: boolean) {
+  return minimizedChatLayout ? " messenger-shell--minimized-chat-layout" : "";
+}
+
 type CallTrackStatus = {
   echoCancellation: boolean | null;
   noiseSuppression: boolean | null;
@@ -364,7 +368,9 @@ const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> = [
 ];
 const MESSAGE_REACTION_CHOICES = ["👍", "❤️", "😂", "😮", "🙏"];
 const MESSAGE_CONTEXT_MENU_WIDTH = 236;
-const MESSAGE_CONTEXT_MENU_HEIGHT = 220;
+const MESSAGE_CONTEXT_MENU_HEIGHT = 360;
+const MESSAGE_CONTEXT_MENU_EDGE_INSET = 8;
+const MOBILE_MESSAGE_CONTEXT_MENU_EDGE_INSET = 24;
 const SWIPE_REPLY_MAX_OFFSET = 84;
 const SWIPE_REPLY_TRIGGER_OFFSET = 56;
 const SWIPE_REPLY_DIRECTION_LOCK = 12;
@@ -373,6 +379,31 @@ const MESSAGE_LONG_PRESS_MOVE_TOLERANCE = 10;
 const SWIPE_REPLY_VERTICAL_TOLERANCE = 14;
 const CHAT_EXIT_SWIPE_EDGE_THRESHOLD = 32;
 const CHAT_EXIT_SWIPE_TRIGGER_OFFSET = 78;
+
+export function messageContextMenuPosition(
+  x: number,
+  y: number,
+  viewportWidth: number,
+  viewportHeight: number,
+  isMobile: boolean
+) {
+  const horizontalInset = isMobile
+    ? MOBILE_MESSAGE_CONTEXT_MENU_EDGE_INSET
+    : MESSAGE_CONTEXT_MENU_EDGE_INSET;
+  const maxX = Math.max(
+    horizontalInset,
+    viewportWidth - MESSAGE_CONTEXT_MENU_WIDTH - horizontalInset
+  );
+  const opensAbove =
+    y + MESSAGE_CONTEXT_MENU_HEIGHT > viewportHeight - MESSAGE_CONTEXT_MENU_EDGE_INSET;
+
+  return {
+    x: Math.max(horizontalInset, Math.min(x, maxX)),
+    y: opensAbove
+      ? Math.max(MESSAGE_CONTEXT_MENU_EDGE_INSET, y - MESSAGE_CONTEXT_MENU_HEIGHT)
+      : Math.max(MESSAGE_CONTEXT_MENU_EDGE_INSET, y)
+  };
+}
 
 const COMPOSER_EMOJIS = [
   "😀",
@@ -579,16 +610,44 @@ function messageDeliveryLabel(message: Message, mine: boolean) {
   if (message.deliveryState === "failed") {
     return "Failed";
   }
-  if (mine && message.statuses.some((status) => status.status === "read")) {
-    return "Read";
-  }
-  if (mine && message.statuses.some((status) => status.status === "delivered")) {
-    return "Delivered";
-  }
   return new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+export function messageReceiptState(
+  message: Pick<Message, "statuses" | "deliveryState">,
+  mine: boolean
+): "sent" | "delivered" | "read" | null {
+  if (!mine || message.deliveryState === "failed") {
+    return null;
+  }
+  if (message.statuses.some((status) => status.status === "read")) {
+    return "read";
+  }
+  if (message.statuses.some((status) => status.status === "delivered")) {
+    return "delivered";
+  }
+  return "sent";
+}
+
+export function messageOriginChatId(
+  chats: Array<Pick<Chat, "id" | "type" | "members">>,
+  forwardedChatId: string | null | undefined,
+  replySenderId: string | null | undefined
+): string | null {
+  if (forwardedChatId) {
+    return chats.find((chat) => chat.id === forwardedChatId)?.id ?? null;
+  }
+  if (!replySenderId) {
+    return null;
+  }
+  return (
+    chats.find(
+      (chat) => chat.type === "direct" && chat.members.some((member) => member.id === replySenderId)
+    )?.id ?? null
+  );
 }
 
 function isGroupedMessage(
@@ -1649,11 +1708,21 @@ export default function ChatsPage() {
       setIsChatMenuOpen(false);
       setMessageContextMenu({
         message,
-        x: Math.max(8, Math.min(x, window.innerWidth - MESSAGE_CONTEXT_MENU_WIDTH)),
-        y: Math.max(8, Math.min(y, window.innerHeight - MESSAGE_CONTEXT_MENU_HEIGHT))
+        ...messageContextMenuPosition(
+          x,
+          y,
+          window.innerWidth,
+          window.innerHeight,
+          isMobileViewport
+        )
       });
     },
-    [clearMessageLongPressGesture, clearSelectedMessages, resetSwipeReplyState]
+    [
+      clearMessageLongPressGesture,
+      clearSelectedMessages,
+      isMobileViewport,
+      resetSwipeReplyState
+    ]
   );
 
   const requestCloseActiveChatSurface = useCallback(() => {
@@ -5289,7 +5358,7 @@ export default function ChatsPage() {
 
   return (
     <main
-      className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}${isVideoPictureInPictureActive ? " messenger-shell--video-pip" : ""}`}
+      className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}${chatListLayoutClass(family?.minimizedChatLayout ?? false)}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}${isVideoPictureInPictureActive ? " messenger-shell--video-pip" : ""}`}
     >
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
@@ -5343,19 +5412,19 @@ export default function ChatsPage() {
                   </button>
                 ))}
               </div>
-            </div>
 
-            {callPhase !== "idle" && isCallMinimized && isMobileViewport && !chatId && (
-              <MobileMinimizedCallBar
-                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
-                callPhase={callPhase}
-                callTimer={callTimer}
-                micMuted={callAudioSettings.micMuted}
-                onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-                onEnd={() => void endActiveCall()}
-                onExpand={() => setIsCallMinimized(false)}
-              />
-            )}
+              {callPhase !== "idle" && isCallMinimized && isMobileViewport && !chatId && (
+                <MobileMinimizedCallBar
+                  peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
+                  callPhase={callPhase}
+                  callTimer={callTimer}
+                  micMuted={callAudioSettings.micMuted}
+                  onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
+                  onEnd={() => void endActiveCall()}
+                  onExpand={() => setIsCallMinimized(false)}
+                />
+              )}
+            </div>
 
             <div className="chat-list" aria-busy={isLoading}>
               {isLoading
@@ -5806,11 +5875,34 @@ export default function ChatsPage() {
                             } as CSSProperties)
                           : undefined;
                         const isSelected = selectedMessageIds.includes(message.id);
+                        const originChatId = messageOriginChatId(
+                          chats,
+                          message.forwardedFrom?.chatId,
+                          repliedMessage?.senderId
+                        );
+                        const originChat = originChatId
+                          ? chats.find((chat) => chat.id === originChatId) ?? null
+                          : null;
+                        const receiptState = messageReceiptState(message, mine);
                         const messageMeta = (
                           <span className="message-meta">
                             {messageDeliveryLabel(message, mine)}
-                            {mine && message.deliveryState !== "failed" && (
-                              <CheckCheck aria-hidden="true" size={14} />
+                            {receiptState && (
+                              <svg
+                                aria-label={`${receiptState} message`}
+                                className={`message-receipt message-receipt--${receiptState}`}
+                                role="img"
+                                viewBox="0 0 24 24"
+                              >
+                                {receiptState === "sent" ? (
+                                  <path d="m4 12 4 4L20 5" />
+                                ) : (
+                                  <>
+                                    <path d="m2 12 4 4 9-10" />
+                                    <path d="m9 12 4 4 9-10" />
+                                  </>
+                                )}
+                              </svg>
                             )}
                           </span>
                         );
@@ -5863,25 +5955,47 @@ export default function ChatsPage() {
                                 </strong>
                               </div>
                             )}
-                            {repliedMessage && (
-                              <button
-                                type="button"
-                                className="message-reference message-reference-button"
-                                onClick={() =>
-                                  focusMessageInPanel({
-                                    messageId: repliedMessage.id,
-                                    highlightClassName: "message-context-flash",
-                                  })
-                                }
-                              >
-                                Reply to {repliedMessage.senderDisplayName ?? "Family member"}:{" "}
-                                {messageActionSummary(repliedMessage)}
-                              </button>
-                            )}
-                            {message.forwardedFrom && (
-                              <span className="message-reference">
-                                Forwarded from {message.forwardedFrom.senderDisplayName ?? "Family member"}
-                              </span>
+                            {(repliedMessage || message.forwardedFrom) && (
+                              <div className="message-origin-card">
+                                <span className="message-origin-label">
+                                  {repliedMessage ? "Reply to " : "Forwarded from "}
+                                  {originChat ? (
+                                    <button
+                                      type="button"
+                                      className="message-origin-name"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        openChat(originChat);
+                                      }}
+                                    >
+                                      {repliedMessage?.senderDisplayName ??
+                                        message.forwardedFrom?.senderDisplayName ??
+                                        "Family member"}
+                                    </button>
+                                  ) : (
+                                    <span>
+                                      {repliedMessage?.senderDisplayName ??
+                                        message.forwardedFrom?.senderDisplayName ??
+                                        "Family member"}
+                                    </span>
+                                  )}
+                                </span>
+                                {repliedMessage && (
+                                  <button
+                                    type="button"
+                                    className="message-origin-preview"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      focusMessageInPanel({
+                                        messageId: repliedMessage.id,
+                                        highlightClassName: "message-context-flash",
+                                      });
+                                    }}
+                                  >
+                                    {messageActionSummary(repliedMessage)}
+                                  </button>
+                                )}
+                              </div>
                             )}
                             {message.attachments.length > 0 && (() => {
                               const { media, other } = partitionMessageAttachments(message.attachments);
@@ -6178,23 +6292,23 @@ export default function ChatsPage() {
                     )}
                   </div>
                 )}
-                {pendingAttachments.length > 0 && (
-                  <div className="composer-attachments-strip" aria-label="Attachments to send">
-                    <div className="pending-attachments">
-                      {pendingAttachments.map((pending) => (
-                        <PendingAttachmentCard
-                          key={pending.localId}
-                          pending={pending}
-                          onRemove={() => removePendingAttachment(pending.localId)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <form
                   className={`message-composer${isDockedEmojiPicker ? " message-composer--emoji-docked" : ""}${showDockedEmojiPicker ? " message-composer--emoji-open" : ""}`}
                   onSubmit={handleSendMessage}
                 >
+                  {pendingAttachments.length > 0 && (
+                    <div className="composer-attachments-strip" aria-label="Attachments to send">
+                      <div className="pending-attachments">
+                        {pendingAttachments.map((pending) => (
+                          <PendingAttachmentCard
+                            key={pending.localId}
+                            pending={pending}
+                            onRemove={() => removePendingAttachment(pending.localId)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {selectedChat?.type === "channel" && channelCommentsDisabledForViewer && (
                     <p className="muted-copy">Comments are disabled in this channel.</p>
                   )}
@@ -6554,6 +6668,7 @@ export default function ChatsPage() {
               !(isCallMinimized && isMobileViewport) && (
             <div className="call-popup-header">
                 <>
+                  {!(callPhase === "in-call" && callType === "video") && (
                   <strong className="call-popup-status">
                     {callPhase === "incoming"
                       ? (callType === "video" ? "Incoming video call" : "Incoming call")
@@ -6561,10 +6676,9 @@ export default function ChatsPage() {
                       ? "Ringing…"
                       : callPhase === "connecting"
                       ? "Connecting…"
-                      : callType === "video"
-                      ? "Video call"
                       : "Audio call"}
                   </strong>
+                  )}
                   {callNotice && <span className="call-popup-notice">{callNotice}</span>}
                 </>
               <div className="call-popup-header-actions">
@@ -7449,6 +7563,60 @@ function MobileActiveScreen({
   // so the UI reacts as soon as the stream is available without timing fragility.
   const mobileRemoteRef = useRef<HTMLVideoElement>(null);
   const mobileLocalRef = useRef<HTMLVideoElement>(null);
+  const videoStageRef = useRef<HTMLDivElement>(null);
+  const pipDragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number; moved: boolean } | null>(null);
+  const [areControlsVisible, setAreControlsVisible] = useState(true);
+  const [isSelfViewFullscreen, setIsSelfViewFullscreen] = useState(false);
+  const [pipPosition, setPipPosition] = useState<{ left: number; top: number } | null>(null);
+  const CALL_CONTROLS_HIDE_DELAY_MS = 15_000;
+
+  const showControls = useCallback(() => setAreControlsVisible(true), []);
+  const toggleControls = useCallback(() => setAreControlsVisible((visible) => !visible), []);
+  const swapVideoViews = useCallback(() => {
+    if (!pipDragRef.current?.moved) {
+      setIsSelfViewFullscreen((fullscreen) => !fullscreen);
+      showControls();
+    }
+  }, [showControls]);
+  const beginPipDrag = useCallback((event: ReactPointerEvent<HTMLVideoElement>) => {
+    event.stopPropagation();
+    const stage = videoStageRef.current;
+    const pip = event.currentTarget;
+    if (!stage) return;
+    const stageRect = stage.getBoundingClientRect();
+    const pipRect = pip.getBoundingClientRect();
+    pipDragRef.current = {
+      pointerId: event.pointerId,
+      offsetX: event.clientX - pipRect.left,
+      offsetY: event.clientY - pipRect.top,
+      moved: false,
+    };
+    setPipPosition({ left: pipRect.left - stageRect.left, top: pipRect.top - stageRect.top });
+    pip.setPointerCapture(event.pointerId);
+  }, []);
+  const movePip = useCallback((event: ReactPointerEvent<HTMLVideoElement>) => {
+    const drag = pipDragRef.current;
+    const stage = videoStageRef.current;
+    if (!drag || drag.pointerId !== event.pointerId || !stage) return;
+    const stageRect = stage.getBoundingClientRect();
+    const pipRect = event.currentTarget.getBoundingClientRect();
+    drag.moved ||= Math.abs(event.movementX) > 2 || Math.abs(event.movementY) > 2;
+    setPipPosition({
+      left: Math.max(0, Math.min(event.clientX - stageRect.left - drag.offsetX, stageRect.width - pipRect.width)),
+      top: Math.max(0, Math.min(event.clientY - stageRect.top - drag.offsetY, stageRect.height - pipRect.height)),
+    });
+  }, []);
+  const endPipDrag = useCallback((event: ReactPointerEvent<HTMLVideoElement>) => {
+    if (pipDragRef.current?.pointerId === event.pointerId) {
+      window.setTimeout(() => { pipDragRef.current = null; }, 0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!areControlsVisible) return;
+    const timerId = window.setTimeout(() => setAreControlsVisible(false), CALL_CONTROLS_HIDE_DELAY_MS);
+    return () => window.clearTimeout(timerId);
+  }, [areControlsVisible]);
 
   useEffect(() => {
     const dst = mobileRemoteRef.current;
@@ -7498,7 +7666,10 @@ function MobileActiveScreen({
     isProximityNear &&
     (callType === "audio" || !isCameraEnabled || !showRemoteVideo);
   return (
-    <div className={`mobile-active-screen${(showVideo || showRemoteVideo || (callType === "video" && isCameraEnabled)) ? " mobile-active-screen--video" : ""}`}>
+    <div
+      className={`mobile-active-screen${(showVideo || showRemoteVideo || (callType === "video" && isCameraEnabled)) ? " mobile-active-screen--video" : ""}`}
+      onPointerDown={toggleControls}
+    >
       {showProximityBlank && (
         <div className="mobile-active-proximity-blank" aria-hidden="true" />
       )}
@@ -7522,27 +7693,36 @@ function MobileActiveScreen({
 
       {/* Case 2: Remote video active — show remote fullscreen, local as PiP */}
       {showRemoteVideo && remoteVideoStream && (
-        <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
+        <div ref={videoStageRef} className="mobile-active-video-stage">
           <video
             ref={mobileRemoteRef}
+            className={isSelfViewFullscreen ? "mobile-active-pip" : "mobile-active-fullscreen-video"}
             autoPlay
             playsInline
             muted
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={isSelfViewFullscreen ? pipPosition ?? undefined : undefined}
+            onPointerDown={isSelfViewFullscreen ? beginPipDrag : undefined}
+            onPointerMove={isSelfViewFullscreen ? movePip : undefined}
+            onPointerUp={isSelfViewFullscreen ? endPipDrag : undefined}
+            onPointerCancel={isSelfViewFullscreen ? endPipDrag : undefined}
+            onClick={isSelfViewFullscreen ? swapVideoViews : undefined}
           />
           {isCameraEnabled && (
             <video
               ref={mobileLocalRef}
+              className={isSelfViewFullscreen ? "mobile-active-fullscreen-video" : "mobile-active-pip"}
               autoPlay
               playsInline
               muted
               style={{
-                position: 'absolute', bottom: 8, right: 8,
-                width: 88, height: 120, objectFit: 'cover',
-                borderRadius: 8, border: '2px solid rgba(255,255,255,0.35)',
                 transform: mirrorLocalVideo && cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none',
-                zIndex: 2,
+                ...(isSelfViewFullscreen ? undefined : pipPosition ?? undefined),
               }}
+              onPointerDown={isSelfViewFullscreen ? undefined : beginPipDrag}
+              onPointerMove={isSelfViewFullscreen ? undefined : movePip}
+              onPointerUp={isSelfViewFullscreen ? undefined : endPipDrag}
+              onPointerCancel={isSelfViewFullscreen ? undefined : endPipDrag}
+              onClick={isSelfViewFullscreen ? undefined : swapVideoViews}
             />
           )}
         </div>
@@ -7572,7 +7752,10 @@ function MobileActiveScreen({
           })()}
         </>
       )}
-      <div className="mobile-active-controls">
+      <div
+        className={`mobile-active-controls${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
         {/* Mic */}
         <div className="mobile-active-ctrl">
           <button

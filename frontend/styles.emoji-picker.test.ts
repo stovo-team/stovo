@@ -82,6 +82,14 @@ describe("docked emoji picker styles", () => {
 });
 
 describe("active chat message spacing", () => {
+  it("keeps pending attachments inside the floating composer", () => {
+    const attachmentStrip = chatsPage.indexOf('className="composer-attachments-strip"');
+    const composerForm = chatsPage.lastIndexOf('<form', attachmentStrip);
+
+    expect(attachmentStrip).toBeGreaterThan(composerForm);
+    expect(chatsPage.slice(composerForm, attachmentStrip)).toContain('className={`message-composer');
+  });
+
   it("does not restore an opaque surface behind the active-chat composer", () => {
     expect(rule(".messenger-shell.has-active-chat .message-composer")).not.toContain(
       "background: var(--island-surface);"
@@ -112,6 +120,16 @@ describe("active chat message spacing", () => {
   it("does not apply Markdown list indentation to the chat message list", () => {
     expect(styles).not.toMatch(/(?:^|\n)\.message-list \{\r?\n  margin: 0.35em 0;/);
     expect(styles).toContain(".message-body .message-list {");
+  });
+});
+
+describe("message context menu glass treatment", () => {
+  it("uses a rounded, 90 percent opaque liquid-glass surface", () => {
+    expect(rule(".message-context-menu")).toContain("background: rgba(15, 23, 42, 0.9);");
+    expect(rule(".message-context-menu")).toContain("backdrop-filter: blur(24px) saturate(1.35);");
+    expect(rule(".message-context-menu")).toContain("border-radius: 24px;");
+    expect(rule(".message-context-menu button")).toContain("border-radius: 14px;");
+    expect(rule(".message-context-reactions button")).toContain("border-radius: 50%;");
   });
 });
 
@@ -182,6 +200,12 @@ describe("desktop chat refinements", () => {
   it("removes the desktop active-nav border while retaining a subtle selection", () => {
     expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("border: 0;");
     expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("opacity: 0.72;");
+  });
+
+  it("shows a circular hover target behind inactive sidebar navigation icons", () => {
+    expect(desktopRule(".app-frame > .app-nav a:not(.active):hover::before")).toContain("border-radius: 50%;");
+    expect(desktopRule(".app-frame > .app-nav a:not(.active):hover::before")).toContain("height: 44px;");
+    expect(desktopRule(".app-frame > .app-nav a:not(.active):hover::before")).toContain("width: 44px;");
   });
 
   it("applies the narrow-layout refinements to browser and native rendering", () => {

@@ -5,6 +5,7 @@ export interface Family {
   id: string;
   name: string;
   storageLimitMb?: number | null;
+  minimizedChatLayout: boolean;
 }
 
 export interface InvitePreview {
@@ -38,7 +39,7 @@ export function getFamily(accessToken: string) {
   return apiRequest<Family>("/api/family", { accessToken });
 }
 
-export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number }) {
+export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean }) {
   return apiRequest<Family>("/api/family", {
     method: "PATCH",
     accessToken,

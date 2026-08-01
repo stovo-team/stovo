@@ -26,7 +26,7 @@ import AppNav from "./AppNav";
 const LOG_LEVELS: Array<LogLevel | ""> = ["","DEBUG","INFO","WARNING","ERROR","CRITICAL"];
 type TunnelProvider = "cloudflare" | "localtunnel";
 type MediaType = MediaQualityRule["mediaType"];
-type AdminMobileSection = "menu" | "public-access" | "encryption" | "media-quality";
+type AdminMobileSection = "menu" | "appearance" | "public-access" | "encryption" | "media-quality";
 const MEDIA_TYPES: MediaType[] = ["image","video","audio"];
 
 function isLoopbackHost(hostname: string) {
@@ -101,6 +101,7 @@ export default function AdminPage() {
   const [isStoppingTunnel,setIsStoppingTunnel] = useState(false);
   const [isLinkingDomain,setIsLinkingDomain] = useState(false);
   const [isSavingEncryption,setIsSavingEncryption] = useState(false);
+  const [isSavingAppearance,setIsSavingAppearance] = useState(false);
   const [isStartingPublicAccess, setIsStartingPublicAccess] = useState(false);
   const [isStartingPublicIPAccess, setIsStartingPublicIPAccess] = useState(false);
   const [inviteLinks, setInviteLinks] = useState<PublicInviteLink[]>([]);
@@ -350,6 +351,25 @@ export default function AdminPage() {
     }
   }
 
+  async function updateMinimizedChatLayout(minimizedChatLayout: boolean) {
+    if (!accessToken) return;
+    setError(null);
+    setNotice(null);
+    setIsSavingAppearance(true);
+    try {
+      const updated = await authRequest<Family>("/api/family", {
+        method: "PATCH",
+        body: { minimizedChatLayout }
+      });
+      setFamily(updated);
+      setNotice("Chat layout saved for everyone");
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not save chat layout");
+    } finally {
+      setIsSavingAppearance(false);
+    }
+  }
+
   function useBrowserUrls() {
     setPublicAccessForm({ appUrl: window.location.origin,apiUrl: getApiUrl() });
     setPublicAccessCheck(null);
@@ -477,7 +497,9 @@ export default function AdminPage() {
             <span className="ms-icon ms-icon--22" aria-hidden="true">arrow_back</span>
           </button>
           <strong>
-            {mobileSection === "public-access"
+            {mobileSection === "appearance"
+              ? "Appearance"
+              : mobileSection === "public-access"
               ? "Public access"
               : mobileSection === "encryption"
                 ? "Message encryption"
@@ -486,6 +508,16 @@ export default function AdminPage() {
         </div>
 
         <nav className="admin-mobile-menu" aria-label="Admin settings">
+          <button type="button" onClick={() => setMobileSection("appearance")}>
+            <span className="settings-row-icon">
+              <span className="ms-icon ms-icon--22" aria-hidden="true">palette</span>
+            </span>
+            <span>
+              <strong>Appearance</strong>
+              <small>Shared chat-list layout for all frontends</small>
+            </span>
+            <span className="ms-icon ms-icon--20" aria-hidden="true">chevron_right</span>
+          </button>
           <button type="button" onClick={() => setMobileSection("public-access")}>
             <span className="settings-row-icon">
               <span className="ms-icon ms-icon--22" aria-hidden="true">public</span>
@@ -524,6 +556,24 @@ export default function AdminPage() {
 
         {canViewAdmin && (
           <>
+            <section className={`appearance-settings-panel admin-mobile-section admin-mobile-section--appearance${mobileSection === "appearance" ? " is-mobile-active" : ""}`}>
+              <div className="public-access-header">
+                <h2>Appearance</h2>
+                <strong>{family?.minimizedChatLayout ? "Minimized" : "Full"}</strong>
+              </div>
+              <label className="appearance-setting-row">
+                <span>
+                  <strong>Minimized chat layout</strong>
+                  <small>Shows avatars or chat icons and names, without the latest-message preview. This applies to every frontend on this server.</small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={family?.minimizedChatLayout ?? false}
+                  disabled={!family || isSavingAppearance}
+                  onChange={(event) => void updateMinimizedChatLayout(event.target.checked)}
+                />
+              </label>
+            </section>
             <section className={`public-access-panel admin-mobile-section admin-mobile-section--public-access${mobileSection === "public-access" ? " is-mobile-active" : ""}`}>
               <div className="public-access-header">
                 <h2>Public access</h2>

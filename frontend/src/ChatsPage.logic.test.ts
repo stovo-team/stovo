@@ -18,11 +18,37 @@ type ChatsPageLogic = {
   callTerminationEvent?: (
     phase: "idle" | "outgoing" | "incoming" | "connecting" | "in-call"
   ) => "call:cancel" | "call:end";
+  messageContextMenuPosition?: (
+    x: number,
+    y: number,
+    viewportWidth: number,
+    viewportHeight: number,
+    isMobile: boolean
+  ) => { x: number; y: number };
+  messageReceiptState?: (
+    message: {
+      statuses: Array<{ status: "sent" | "delivered" | "read" }>;
+      deliveryState?: "sending" | "failed";
+    },
+    mine: boolean
+  ) => "sent" | "delivered" | "read" | null;
+  messageOriginChatId?: (
+    chats: Array<{ id: string; type: "direct" | "group"; members: Array<{ id: string }> }>,
+    forwardedChatId: string | null | undefined,
+    replySenderId: string | null | undefined
+  ) => string | null;
+  chatListLayoutClass?: (minimizedChatLayout: boolean) => string;
 };
 
 const logic = chatsPageModule as ChatsPageLogic;
 
 describe("ChatsPage lifecycle decisions", () => {
+  it("selects the minimized chat-list class only when the family setting is enabled", () => {
+    expect(logic.chatListLayoutClass).toBeTypeOf("function");
+    expect(logic.chatListLayoutClass?.(true)).toBe(" messenger-shell--minimized-chat-layout");
+    expect(logic.chatListLayoutClass?.(false)).toBe("");
+  });
+
   it("grades emoji-only messages and returns standard styling for four or more emoji", () => {
     expect(logic.emojiSizeClass).toBeTypeOf("function");
     expect(logic.emojiSizeClass?.("🥰")).toBe("emoji-only-xl");
@@ -83,5 +109,43 @@ describe("ChatsPage lifecycle decisions", () => {
       nameEditor: false,
       permissions: true
     });
+  });
+
+  it("opens a desktop message menu above a trigger that is near the viewport bottom", () => {
+    expect(logic.messageContextMenuPosition).toBeTypeOf("function");
+    expect(logic.messageContextMenuPosition?.(320, 720, 1440, 800, false)).toEqual({
+      x: 320,
+      y: 360
+    });
+  });
+
+  it("leaves a phone-sized right inset for the message menu", () => {
+    expect(logic.messageContextMenuPosition?.(340, 380, 375, 812, true)).toEqual({
+      x: 115,
+      y: 380
+    });
+  });
+  it("uses the most advanced recipient state for an outgoing receipt", () => {
+    expect(logic.messageReceiptState).toBeTypeOf("function");
+    expect(logic.messageReceiptState?.({ statuses: [{ status: "sent" }] }, true)).toBe("sent");
+    expect(logic.messageReceiptState?.({ statuses: [{ status: "delivered" }] }, true)).toBe("delivered");
+    expect(
+      logic.messageReceiptState?.(
+        { statuses: [{ status: "delivered" }, { status: "read" }] },
+        true
+      )
+    ).toBe("read");
+    expect(logic.messageReceiptState?.({ statuses: [{ status: "read" }] }, false)).toBeNull();
+  });
+
+  it("opens a forwarded group or a reply sender's direct chat", () => {
+    expect(logic.messageOriginChatId).toBeTypeOf("function");
+    const chats = [
+      { id: "dm-tester", type: "direct" as const, members: [{ id: "tester" }] },
+      { id: "group-video", type: "group" as const, members: [{ id: "tester" }] }
+    ];
+    expect(logic.messageOriginChatId?.(chats, "group-video", "tester")).toBe("group-video");
+    expect(logic.messageOriginChatId?.(chats, null, "tester")).toBe("dm-tester");
+    expect(logic.messageOriginChatId?.(chats, null, "unknown")).toBeNull();
   });
 });

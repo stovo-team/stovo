@@ -341,6 +341,7 @@ func (s *Server) initSchema() error {
 			id TEXT PRIMARY KEY,
 			name TEXT NOT NULL,
 			storage_limit_mb INTEGER,
+			minimized_chat_layout BOOLEAN NOT NULL DEFAULT FALSE,
 			default_message_encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest',
 			public_app_url TEXT,
 			public_api_url TEXT,
@@ -505,6 +506,7 @@ func (s *Server) initSchema() error {
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_message_id TEXT;`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_chat_id TEXT;`,
 		`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_message_encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest';`,
+		`ALTER TABLE families ADD COLUMN IF NOT EXISTS minimized_chat_layout BOOLEAN NOT NULL DEFAULT FALSE;`,
 		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest';`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS encryption_protocol TEXT NOT NULL DEFAULT 'legacy_plaintext';`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS ciphertext TEXT;`,
@@ -818,14 +820,14 @@ func (s *Server) requireFamilyMember(familyID string, user userPublic) error {
 
 func (s *Server) getFamily(familyID string) (familyPublic, error) {
 	row := s.queryRow(`
-		SELECT id, name, storage_limit_mb, default_message_encryption_protocol, public_app_url, public_api_url
+		SELECT id, name, storage_limit_mb, minimized_chat_layout, default_message_encryption_protocol, public_app_url, public_api_url
 		FROM families
 		WHERE id = ?
 	`, familyID)
 	var family familyPublic
 	var storageLimit sql.NullInt64
 	var publicApp, publicAPI sql.NullString
-	if err := row.Scan(&family.ID, &family.Name, &storageLimit, &family.DefaultMessageEncryptionProtocol, &publicApp, &publicAPI); err != nil {
+	if err := row.Scan(&family.ID, &family.Name, &storageLimit, &family.MinimizedChatLayout, &family.DefaultMessageEncryptionProtocol, &publicApp, &publicAPI); err != nil {
 		return familyPublic{}, err
 	}
 	if family.DefaultMessageEncryptionProtocol == "" {
