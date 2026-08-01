@@ -19,6 +19,7 @@ type familyPublic struct {
 	ID                               string  `json:"id"`
 	Name                             string  `json:"name"`
 	StorageLimitMB                   *int64  `json:"storageLimitMb"`
+	MinimizedChatLayout              bool    `json:"minimizedChatLayout"`
 	DefaultMessageEncryptionProtocol string  `json:"defaultMessageEncryptionProtocol"`
 	PublicAppURL                     *string `json:"-"`
 	PublicAPIURL                     *string `json:"-"`
@@ -111,8 +112,9 @@ type updateMeRequest struct {
 }
 
 type updateFamilyRequest struct {
-	Name           *string `json:"name"`
-	StorageLimitMB *int64  `json:"storageLimitMb"`
+	Name                *string `json:"name"`
+	StorageLimitMB      *int64  `json:"storageLimitMb"`
+	MinimizedChatLayout *bool   `json:"minimizedChatLayout"`
 }
 
 type changeRoleRequest struct {
