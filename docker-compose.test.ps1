@@ -7,3 +7,11 @@ if ($compose -match './uploads:/app/uploads:ro') {
 if ($compose -notmatch './logs:/app/logs') {
     throw "Local storage mode requires a writable log mount."
 }
+
+if ($compose -notmatch '(?s)caddy:.*?healthcheck:') {
+    throw "Caddy must expose a health check so unhealthy proxies are detected."
+}
+
+if ($compose -notmatch 'http://localhost:2019/config/') {
+    throw "Caddy health check must verify Caddy's responsive admin endpoint."
+}
