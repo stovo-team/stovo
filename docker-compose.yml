@@ -167,6 +167,15 @@ services:
       - "443:443"
     environment:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    healthcheck:
+      # Caddy's localhost-only admin endpoint proves its running process is
+      # responsive; the scheduled HTTPS watchdog also verifies its public TLS
+      # listener and restarts this service if the listener stops responding.
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:2019/config/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

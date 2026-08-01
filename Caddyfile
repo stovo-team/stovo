@@ -37,7 +37,9 @@ http://localhost {
 {$APP_DOMAIN} {
 	# Keep an HTTPS document from accepting an accidental HTTP subresource.
 	header {
-		Content-Security-Policy "upgrade-insecure-requests"
+		# A valid TLS certificate alone is not enough: block active or passive HTTP
+		# resources so browsers never downgrade this HTTPS page to "Not secure".
+		Content-Security-Policy "upgrade-insecure-requests; block-all-mixed-content"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	}
 
