@@ -136,6 +136,11 @@ describe("AudioPlayer", () => {
   it("shows elapsed and total duration before the session is attached", () => {
     setCachedAudioDuration(descriptor.identity.fileId, 125);
     const { container } = renderPlayer();
+    const seek = container.querySelector<HTMLElement>('[data-control="seek"]');
+
+    expect(seek?.getAttribute("data-idle")).toBe("true");
+    expect(seek?.querySelector<HTMLElement>(".audio-player-wave-fill")?.style.width)
+      .toBe("0%");
     expect(container.querySelector('output[aria-label="Audio time"]')?.textContent)
       .toBe("0:00 / 2:05");
     expect(container.querySelector(".audio-player")?.getAttribute("data-session-active"))
