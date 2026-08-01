@@ -5849,9 +5849,7 @@ export default function ChatsPage() {
                                 <CheckCheck size={14} />
                               </span>
                             )}
-                            <span className="message-swipe-affordance" aria-hidden="true">
-                              <Reply size={16} />
-                            </span>
+                            <span className="message-swipe-affordance" aria-hidden="true" />
                             {showSenderIdentity && (
                               <div className="message-sender-row">
                                 <RealAvatar
