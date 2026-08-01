@@ -144,6 +144,39 @@ func decodeJSON[T any](t *testing.T, resp *http.Response) T {
 	return payload
 }
 
+func TestFamilyMinimizedChatLayout(t *testing.T) {
+	_, serverURL, client := newTestServer(t)
+	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
+		"familyName":  "Layout Family",
+		"username":    "layout-owner",
+		"password":    "secure-password",
+		"displayName": "Layout Owner",
+	})
+	if setupResp.StatusCode != http.StatusCreated {
+		t.Fatalf("setup status = %d", setupResp.StatusCode)
+	}
+	owner := decodeJSON[authResponse](t, setupResp)
+
+	updateResp := jsonRequest(t, client, http.MethodPatch, serverURL.URL+"/api/family", owner.AccessToken, map[string]any{
+		"minimizedChatLayout": true,
+	})
+	if updateResp.StatusCode != http.StatusOK {
+		t.Fatalf("update family status = %d", updateResp.StatusCode)
+	}
+	updated := decodeJSON[familyPublic](t, updateResp)
+	if !updated.MinimizedChatLayout {
+		t.Fatal("expected minimized chat layout to be enabled")
+	}
+
+	getResp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/family", owner.AccessToken, nil)
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("get family status = %d", getResp.StatusCode)
+	}
+	if family := decodeJSON[familyPublic](t, getResp); !family.MinimizedChatLayout {
+		t.Fatal("expected minimized chat layout to persist")
+	}
+}
+
 func uploadFileRequest(t *testing.T, client *http.Client, target, token, chatID, filename string, data []byte) *http.Response {
 	t.Helper()
 	body := &bytes.Buffer{}
