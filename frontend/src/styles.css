@@ -10205,6 +10205,10 @@ span.message-spoiler.is-revealed {
   opacity: 0.5;
 }
 
+.audio-player-wave[aria-disabled="true"][data-idle="true"] {
+  opacity: 1;
+}
+
 .audio-player-wave-fill {
   background: linear-gradient(
     90deg,
