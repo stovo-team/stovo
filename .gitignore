@@ -47,6 +47,7 @@ AGENTS.md
 CLAUDE.md
 skills-lock.json
 DESIGN.md
+/frontend/DESIGN.md
 app_spec.txt
 init.sh
 docs/

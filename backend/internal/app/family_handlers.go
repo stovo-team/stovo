@@ -54,6 +54,11 @@ func (s *Server) handleUpdateFamily(w http.ResponseWriter, r *http.Request, user
 				return err
 			}
 		}
+		if payload.MinimizedChatLayout != nil {
+			if _, err := s.txExec(tx, `UPDATE families SET minimized_chat_layout = ?, updated_at = ? WHERE id = ?`, *payload.MinimizedChatLayout, nowString(), user.FamilyID); err != nil {
+				return err
+			}
+		}
 		return nil
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update family")
