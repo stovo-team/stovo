@@ -171,7 +171,7 @@ services:
       # Caddy's localhost-only admin endpoint proves its running process is
       # responsive; the scheduled HTTPS watchdog also verifies its public TLS
       # listener and restarts this service if the listener stops responding.
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:2019/config/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:2019/config/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 3

@@ -239,6 +239,16 @@ export function parseStovoMarkdown(
 ): StovoMarkdownNode[] {
   if (!source) return [];
 
+  // Never reinterpret a potentially unsafe mixed payload as block Markdown.
+  // Keeping it literal preserves the sender's text and prevents markup-like
+  // fragments from changing the surrounding message structure.
+  if (
+    source.includes("\n") &&
+    (/<\/?[a-z][^>]*>/i.test(source) || /\]\(\s*javascript:/i.test(source))
+  ) {
+    return [{ type: "text", value: source }];
+  }
+
   const lines = source.split("\n");
   const hasBlockMarkup = lines.some((line) => {
     const kind = classifyLine(line).kind;

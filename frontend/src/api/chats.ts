@@ -104,6 +104,12 @@ export function getChats(accessToken: string) {
   return apiRequest<Chat[]>("/api/chats", { accessToken });
 }
 
+export interface MessageHistoryPage {
+  messages: Message[];
+  nextBefore: string;
+  hasMore: boolean;
+}
+
 export function getMessageArchive(accessToken: string) {
   return apiRequest<Chat>("/api/message-archive", { accessToken });
 }
@@ -175,7 +181,7 @@ export function updateChatPreferences(
   });
 }
 
-export function getMessages(
+export function getMessageHistoryPage(
   accessToken: string,
   chatId: string,
   before?: string,
@@ -189,9 +195,17 @@ export function getMessages(
   if (threadRootMessageId) {
     params.set("threadRootMessageId", threadRootMessageId);
   }
-  return apiRequest<Message[]>(`/api/chats/${chatId}/messages?${params.toString()}`, {
-    accessToken
-  });
+  return apiRequest<MessageHistoryPage>(`/api/chats/${chatId}/messages?${params.toString()}`, { accessToken });
+}
+
+export function getMessages(
+  accessToken: string,
+  chatId: string,
+  before?: string,
+  limit = 50,
+  threadRootMessageId?: string
+) {
+  return getMessageHistoryPage(accessToken, chatId, before, limit, threadRootMessageId).then((page) => page.messages);
 }
 
 export function sendMessage(

@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { ApiError, ApiRequestOptions, apiRequest, storeRefreshToken } from "../api/client";
+import { clearRecentChatHistory } from "../chatHistoryCache";
 import {
   AuthResponse,
   LoginPayload,
@@ -87,6 +88,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser(user);
   }, []);
 
+  const clearExpiredSession = useCallback(async () => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    await clearRecentChatHistory();
+    storeRefreshToken(null);
+    setAccessToken(null);
+    setCurrentUser(null);
+  }, []);
+
   // Used by authRequest 401 retry — also reschedules proactive refresh
   const refresh = useCallback(async () => {
     const response = await refreshSession();
@@ -106,8 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (!cancelled) {
-          setAccessToken(null);
-          setCurrentUser(null);
+          void clearExpiredSession();
         }
       })
       .finally(() => {
@@ -122,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, []);
+  }, [clearExpiredSession]);
 
   const login = useCallback(
     async (payload: LoginPayload) => {
@@ -150,6 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(refreshTimerRef.current);
     }
     await logoutRequest().catch(() => undefined);
+    await clearRecentChatHistory();
     storeRefreshToken(null);
     setAccessToken(null);
     setCurrentUser(null);
@@ -164,16 +173,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
-          const refreshed = await refresh();
-          return apiRequest<T>(endpoint, {
-            ...options,
-            accessToken: refreshed.accessToken
-          });
+          try {
+            const refreshed = await refresh();
+            return await apiRequest<T>(endpoint, {
+              ...options,
+              accessToken: refreshed.accessToken
+            });
+          } catch (refreshError) {
+            await clearExpiredSession();
+            throw refreshError;
+          }
         }
         throw error;
       }
     },
-    [refresh]
+    [clearExpiredSession, refresh]
   );
 
   const value = useMemo(

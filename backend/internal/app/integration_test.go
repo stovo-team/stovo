@@ -80,6 +80,29 @@ func newTestServer(t *testing.T) (*Server, *httptest.Server, *http.Client) {
 	return server, httpServer, client
 }
 
+func TestPostgresPrivacyPreferencesDoNotBreakLogin(t *testing.T) {
+	_, serverURL, client := newTestServer(t)
+	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
+		"familyName":  "Privacy Login Family",
+		"username":    "privacy-login-owner",
+		"password":    "secure-password",
+		"displayName": "Privacy Login Owner",
+	})
+	if setupResp.StatusCode != http.StatusCreated {
+		t.Fatalf("setup status = %d, want %d", setupResp.StatusCode, http.StatusCreated)
+	}
+	_ = setupResp.Body.Close()
+
+	loginResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/login", "", map[string]any{
+		"username": "privacy-login-owner",
+		"password": "secure-password",
+	})
+	if loginResp.StatusCode != http.StatusOK {
+		t.Fatalf("login status = %d, want %d", loginResp.StatusCode, http.StatusOK)
+	}
+	_ = loginResp.Body.Close()
+}
+
 func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 	t.Helper()
 
@@ -1061,8 +1084,8 @@ func TestMessageValidationHistoryAndReadParity(t *testing.T) {
 	if historyResp.StatusCode != http.StatusOK {
 		t.Fatalf("history limit status = %d", historyResp.StatusCode)
 	}
-	history := decodeJSON[[]messagePublic](t, historyResp)
-	if len(history) != 1 || history[0].ID != secondMessage.ID {
+	history := decodeJSON[messageHistoryPage](t, historyResp)
+	if len(history.Messages) != 1 || history.Messages[0].ID != secondMessage.ID || history.NextBefore != secondMessage.ID || !history.HasMore {
 		t.Fatalf("unexpected latest history payload: %#v", history)
 	}
 
@@ -1070,8 +1093,8 @@ func TestMessageValidationHistoryAndReadParity(t *testing.T) {
 	if paginatedResp.StatusCode != http.StatusOK {
 		t.Fatalf("history before status = %d", paginatedResp.StatusCode)
 	}
-	paginated := decodeJSON[[]messagePublic](t, paginatedResp)
-	if len(paginated) != 1 || paginated[0].ID != firstMessage.ID {
+	paginated := decodeJSON[messageHistoryPage](t, paginatedResp)
+	if len(paginated.Messages) != 1 || paginated.Messages[0].ID != firstMessage.ID || paginated.NextBefore != "" || paginated.HasMore {
 		t.Fatalf("unexpected paginated history payload: %#v", paginated)
 	}
 
@@ -1577,8 +1600,8 @@ func TestMessageReactionsAreInlineAndIdempotent(t *testing.T) {
 	}
 
 	historyResp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/chats/"+directChat.ID+"/messages", member.AccessToken, nil)
-	history := decodeJSON[[]messagePublic](t, historyResp)
-	if len(history) != 1 || len(history[0].Reactions) != 1 || history[0].Reactions[0].Count != 2 || !history[0].Reactions[0].Reacted {
+	history := decodeJSON[messageHistoryPage](t, historyResp)
+	if len(history.Messages) != 1 || len(history.Messages[0].Reactions) != 1 || history.Messages[0].Reactions[0].Count != 2 || !history.Messages[0].Reactions[0].Reacted {
 		t.Fatalf("unexpected message history reactions: %#v", history)
 	}
 
