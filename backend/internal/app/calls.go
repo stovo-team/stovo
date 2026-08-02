@@ -61,6 +61,11 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	if calleeUserID == "" {
 		return nil, fmt.Errorf("could not determine call participant")
 	}
+	if blocked, err := s.directContactBlocked(callerUserID, calleeUserID); err != nil {
+		return nil, fmt.Errorf("could not check privacy settings")
+	} else if blocked {
+		return nil, fmt.Errorf("calls are unavailable for this member")
+	}
 
 	s.callMu.Lock()
 	defer s.callMu.Unlock()
@@ -169,6 +174,7 @@ func (s *Server) recordCallHistory(session *callSession, reason string) {
 	if _, err := s.exec(`UPDATE chats SET updated_at = ? WHERE id = ?`, now, session.ChatID); err != nil {
 		s.logger.Warnf("realtime.call", "call history chat update failed chat_id=%s error=%v", session.ChatID, err)
 	}
+	s.bumpChatHistoryRevision(context.Background(), session.ChatID)
 	caller, err := s.getUserByID(session.CallerUserID)
 	if err != nil {
 		s.logger.Warnf("realtime.call", "call history caller lookup failed caller_id=%s error=%v", session.CallerUserID, err)

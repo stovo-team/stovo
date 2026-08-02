@@ -3,16 +3,19 @@ package app
 import "time"
 
 type userPublic struct {
-	ID           string      `json:"id"`
-	FamilyID     string      `json:"familyId"`
-	Username     string      `json:"username"`
-	DisplayName  string      `json:"displayName"`
-	Role         string      `json:"role"`
-	IsActive     bool        `json:"isActive"`
-	PublicKey    *string     `json:"publicKey"`
-	ProfilePhoto *filePublic `json:"profilePhoto"`
-	CreatedAt    *time.Time  `json:"createdAt,omitempty"`
-	LastSeenAt   *time.Time  `json:"lastSeenAt"`
+	ID                  string      `json:"id"`
+	FamilyID            string      `json:"familyId"`
+	Username            string      `json:"username"`
+	DisplayName         string      `json:"displayName"`
+	Role                string      `json:"role"`
+	IsActive            bool        `json:"isActive"`
+	PublicKey           *string     `json:"publicKey"`
+	ProfilePhoto        *filePublic `json:"profilePhoto"`
+	CreatedAt           *time.Time  `json:"createdAt,omitempty"`
+	LastSeenAt          *time.Time  `json:"lastSeenAt"`
+	ProfileVisibility   string      `json:"profileVisibility"`
+	LastSeenVisibility  string      `json:"lastSeenVisibility"`
+	ReadReceiptsEnabled bool        `json:"readReceiptsEnabled"`
 }
 
 type familyPublic struct {
@@ -106,9 +109,12 @@ type loginRequest struct {
 }
 
 type updateMeRequest struct {
-	DisplayName        *string `json:"displayName"`
-	PublicKey          *string `json:"publicKey"`
-	ProfilePhotoFileID *string `json:"profilePhotoFileId"`
+	DisplayName         *string `json:"displayName"`
+	PublicKey           *string `json:"publicKey"`
+	ProfilePhotoFileID  *string `json:"profilePhotoFileId"`
+	ProfileVisibility   *string `json:"profileVisibility"`
+	LastSeenVisibility  *string `json:"lastSeenVisibility"`
+	ReadReceiptsEnabled *bool   `json:"readReceiptsEnabled"`
 }
 
 type updateFamilyRequest struct {

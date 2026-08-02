@@ -10,12 +10,16 @@ import {
 import {
   Bell,
   Camera,
+  Clock3,
   ChevronLeft,
   ChevronRight,
   Database,
   HelpCircle,
   Laptop,
   LockKeyhole,
+  Mail,
+  UserRound,
+  UserRoundX,
   LogOut,
   Palette,
   RotateCcw,
@@ -43,6 +47,11 @@ import { Family, getMembers } from "../api/family";
 import { FamilyFile, uploadFile } from "../api/files";
 import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
+import {
+  DevicePreferences,
+  readDevicePreferences,
+  writeDevicePreferences
+} from "../settings/devicePreferences";
 import AppNav from "./AppNav";
 
 function initials(name: string | undefined) {
@@ -77,26 +86,12 @@ function ProfileAvatar({
 
 const settingsGroups = [
   {
-    title: "Account",
+    title: "Your space",
     items: [
-      { label: "Family", helper: "Members, invites, roles, and shared calendar access", icon: Users },
-      { label: "Privacy and Security", helper: "Last seen, profile visibility, passcode", icon: LockKeyhole },
-      { label: "Notifications", helper: "Messages, groups, sounds, previews", icon: Bell },
-      { label: "Appearance", helper: "Themes, colors, wallpaper, bubbles", icon: Palette }
-    ]
-  },
-  {
-    title: "Storage",
-    items: [
-      { label: "Data and Storage", helper: "Auto-download, cache, upload behavior", icon: Database },
-      { label: "Devices and Sessions", helper: "Current device and active sessions", icon: Laptop }
-    ]
-  },
-  {
-    title: "Support",
-    items: [
-      { label: "Help and Support", helper: "FAQ, report a bug, contact support", icon: HelpCircle },
-      { label: "About", helper: "Version, legal, licenses", icon: Shield }
+      { label: "Appearance", helper: "AMOLED · Blue · Comfortable", icon: Palette },
+      { label: "Notifications", helper: "Messages, calls, and quiet hours", icon: Bell },
+      { label: "Privacy and Security", helper: "Profile visibility and read receipts", icon: LockKeyhole },
+      { label: "Help and About", helper: "Version and support", icon: HelpCircle }
     ]
   }
 ];
@@ -213,7 +208,7 @@ function AppearanceEditor({
           <section className="appearance-section-card">
             <p className="appearance-section-label">Theme</p>
             <div className="appearance-segment" role="tablist" aria-label="Theme mode">
-              {THEME_MODE_OPTIONS.map((option) => (
+              {THEME_MODE_OPTIONS.filter((option) => option.value !== "light").map((option) => (
                 <button
                   type="button"
                   role="tab"
@@ -232,7 +227,7 @@ function AppearanceEditor({
           </section>
 
           <section className="appearance-section-card">
-            <p className="appearance-section-label">Accent color</p>
+            <p className="appearance-section-label">Accent colour</p>
             <div className="appearance-swatch-row">
               {ACCENT_OPTIONS.map((accent) => (
                 <button
@@ -459,7 +454,12 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [activeSettingsItem, setActiveSettingsItem] = useState<string | null>(() => new URLSearchParams(location.search).has("family") ? "Family" : null);
+  const [devicePreferences, setDevicePreferences] = useState<DevicePreferences>(() =>
+    readDevicePreferences()
+  );
   const [members, setMembers] = useState<User[]>([]);
+  const [blockedMemberIds, setBlockedMemberIds] = useState<string[]>([]);
+  const [privacyDetail, setPrivacyDetail] = useState<"overview" | "profile" | "lastSeen" | "blocked">("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
@@ -475,8 +475,10 @@ export default function SettingsPage() {
     try {
       const familyResult = await authRequest<Family>("/api/family");
       const memberResult = await getMembers(accessToken ?? "");
+      const blockedResult = await authRequest<User[]>("/api/privacy/blocks");
       setFamily(familyResult);
       setMembers(memberResult);
+      setBlockedMemberIds(blockedResult.map((member) => member.id));
       setProfileForm({
         displayName: currentUser?.displayName ?? "",
         familyName: familyResult.name
@@ -491,6 +493,41 @@ export default function SettingsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  function updateDevicePreferences(patch: Partial<DevicePreferences>) {
+    const next = writeDevicePreferences(patch);
+    setDevicePreferences(next);
+  }
+
+  async function updatePrivacy(patch: Partial<Pick<User, "profileVisibility" | "lastSeenVisibility" | "readReceiptsEnabled">>) {
+    if (!currentUser) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const updated = await authRequest<User>("/api/auth/me", { method: "PATCH", body: patch });
+      updateCurrentUser(updated);
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not update privacy settings");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function toggleBlock(member: User) {
+    const isBlocked = blockedMemberIds.includes(member.id);
+    setIsSaving(true);
+    setError(null);
+    try {
+      await authRequest(isBlocked ? `/api/privacy/blocks/${member.id}` : `/api/privacy/blocks/${member.id}`, {
+        method: isBlocked ? "DELETE" : "POST"
+      });
+      setBlockedMemberIds((current) => isBlocked ? current.filter((id) => id !== member.id) : [...current, member.id]);
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not update blocked members");
+    } finally {
+      setIsSaving(false);
+    }
+  }
 
   async function handleProfileSubmit(event: FormEvent) {
     event.preventDefault();
@@ -573,6 +610,8 @@ export default function SettingsPage() {
           />
         ) : (
           <>
+            {!activeSettingsItem && (
+              <>
             <header className="section-header">
               <div>
                 <p className="eyebrow">{family?.name ?? "Stovo"}</p>
@@ -583,7 +622,10 @@ export default function SettingsPage() {
             {error && <p className="error-text" role="alert">{error}</p>}
             {notice && <p className="success-text" role="status">{notice}</p>}
 
-            <section className="profile-card">
+            <div className="settings-dashboard">
+            <section
+              className="profile-card settings-profile-tile"
+            >
               <div className="profile-photo-control">
                 <ProfileAvatar
                   accessToken={accessToken}
@@ -609,14 +651,22 @@ export default function SettingsPage() {
                   onChange={handleProfilePhotoSelect}
                 />
               </div>
-              <div>
-                <h2>{profileForm.displayName || "Family member"}</h2>
-                <p>@{currentUser?.username}</p>
-                <span className="role-pill">{currentUser?.role}</span>
-              </div>
+              <button
+                type="button"
+                className="settings-profile-open"
+                aria-label="Open profile settings"
+                onClick={() => setActiveSettingsItem("Profile")}
+              >
+                <span>
+                  <h2>{profileForm.displayName || "Family member"}</h2>
+                  <p>@{currentUser?.username}</p>
+                  <span className="role-pill">{currentUser?.role}</span>
+                </span>
+                <ChevronRight aria-hidden="true" size={22} />
+              </button>
             </section>
 
-            <form className="settings-form" onSubmit={handleProfileSubmit}>
+            {activeSettingsItem === "Profile" && <form className="settings-form" onSubmit={handleProfileSubmit}>
               <label>
                 Avatar display name
                 <input
@@ -647,7 +697,7 @@ export default function SettingsPage() {
               <button type="submit" disabled={isSaving || !profileForm.displayName.trim()}>
                 {isSaving ? "Saving" : "Save profile"}
               </button>
-            </form>
+            </form>}
 
             <div className="settings-groups">
               {settingsGroups.map((group) => (
@@ -659,9 +709,10 @@ export default function SettingsPage() {
                       return (
                         <button
                           type="button"
-                          className={`settings-row${activeSettingsItem === item.label ? " is-active" : ""}`}
+                          className={`settings-row settings-tile settings-tile--${item.label.toLowerCase().replaceAll(" ", "-")}${activeSettingsItem === item.label ? " is-active" : ""}`}
                           key={item.label}
                           aria-expanded={activeSettingsItem === item.label}
+                          aria-label={`Open ${item.label.toLowerCase()} settings`}
                           onClick={() => setActiveSettingsItem(item.label)}
                         >
                           <span className="settings-row-icon">
@@ -679,6 +730,24 @@ export default function SettingsPage() {
                 </section>
               ))}
             </div>
+            <section className="settings-server-tile">
+              <button
+                type="button"
+                className="settings-row settings-tile--server"
+                onClick={async () => {
+                  await logout();
+                  setApiUrlOverride(null);
+                  navigate("/server-setup", { replace: true });
+                }}
+              >
+                <span className="settings-row-icon"><Server aria-hidden="true" size={20} /></span>
+                <span><strong>Change server address</strong><small>{currentServerUrl}</small></span>
+                <ChevronRight aria-hidden="true" size={18} />
+              </button>
+            </section>
+            </div>
+              </>
+            )}
 
             {activeSettingsItem && activeSettingsItem !== "Appearance" && (
               <section
@@ -687,24 +756,107 @@ export default function SettingsPage() {
                 aria-label={activeSettingsItem}
               >
                 <div className="section-title-row">
-                  <h2>{activeSettingsItem}</h2>
                   <button
                     type="button"
                     className="icon-button subtle"
                     aria-label="Close settings panel"
-                    onClick={() => setActiveSettingsItem(null)}
+                    onClick={() => activeSettingsItem === "Privacy and Security" && privacyDetail !== "overview" ? setPrivacyDetail("overview") : setActiveSettingsItem(null)}
                   >
-                    <X aria-hidden="true" size={18} />
+                    <ChevronLeft aria-hidden="true" size={22} />
                   </button>
+                  <h2>{activeSettingsItem}</h2>
                 </div>
-                {activeSettingsItem === "Data and Storage" ? (
-                  <p className="muted-copy">
-                    Storage files can be uploaded, downloaded, favorited, and deleted from the Storage screen.
-                  </p>
+                {activeSettingsItem === "Profile" ? (
+                  <div className="profile-detail-screen">
+                    <section className="profile-detail-hero">
+                      <div className="profile-detail-avatar-wrap">
+                        <ProfileAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName} size="lg" />
+                        <button type="button" className="avatar-edit-button" aria-label="Change profile photo" disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><Camera aria-hidden="true" size={16} /></button>
+                        <input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} />
+                      </div>
+                      <div><h3>{profileForm.displayName || "Family member"}</h3><p>@{currentUser?.username}</p><span className="role-pill">{currentUser?.role}</span></div>
+                    </section>
+                    <form className="profile-detail-form" onSubmit={handleProfileSubmit}>
+                      <label><span><UserRound aria-hidden="true" size={21} />Display name</span><input maxLength={255} value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} /></label>
+                      <label><span><Users aria-hidden="true" size={21} />Family</span><input disabled={!canManageFamily} maxLength={255} value={profileForm.familyName} onChange={(event) => setProfileForm((current) => ({ ...current, familyName: event.target.value }))} /></label>
+                      <button type="submit" disabled={isSaving || !profileForm.displayName.trim()}>{isSaving ? "Saving" : "Save profile"}</button>
+                    </form>
+                  </div>
                 ) : activeSettingsItem === "Notifications" ? (
-                  <p className="muted-copy">
-                    Notification preferences are managed per chat with the mute button in chat details.
-                  </p>
+                  <div className="settings-toggle-groups">
+                    <section>
+                      <h3>Messages</h3>
+                      {([
+                        ["messageNotifications", "Message notifications"],
+                        ["messagePreview", "Message preview"],
+                        ["messageSound", "Sound"]
+                      ] as const).map(([key, label]) => (
+                        <label className="appearance-toggle-row" key={key}>
+                          <strong>{label}</strong>
+                          <input
+                            type="checkbox"
+                            checked={devicePreferences[key]}
+                            onChange={(event) => updateDevicePreferences({ [key]: event.target.checked })}
+                          />
+                        </label>
+                      ))}
+                    </section>
+                    <section>
+                      <h3>Calls</h3>
+                      {([
+                        ["callNotifications", "Call notifications"],
+                        ["ringtoneEnabled", "Ringtone"]
+                      ] as const).map(([key, label]) => (
+                        <label className="appearance-toggle-row" key={key}>
+                          <strong>{label}</strong>
+                          <input
+                            type="checkbox"
+                            checked={devicePreferences[key]}
+                            onChange={(event) => updateDevicePreferences({ [key]: event.target.checked })}
+                          />
+                        </label>
+                      ))}
+                    </section>
+                    <section>
+                      <h3>Quiet hours</h3>
+                      <label className="appearance-toggle-row">
+                        <span><strong>Mute notifications</strong><span className="appearance-toggle-help">{devicePreferences.quietHoursStart} — {devicePreferences.quietHoursEnd}</span></span>
+                        <input type="checkbox" checked={devicePreferences.quietHoursEnabled} onChange={(event) => updateDevicePreferences({ quietHoursEnabled: event.target.checked })} />
+                      </label>
+                      <div className="quiet-hours-times">
+                        <label>
+                          Start
+                          <input
+                            aria-label="Quiet hours start"
+                            type="time"
+                            value={devicePreferences.quietHoursStart}
+                            onChange={(event) => updateDevicePreferences({ quietHoursStart: event.target.value })}
+                          />
+                        </label>
+                        <label>
+                          End
+                          <input
+                            aria-label="Quiet hours end"
+                            type="time"
+                            value={devicePreferences.quietHoursEnd}
+                            onChange={(event) => updateDevicePreferences({ quietHoursEnd: event.target.value })}
+                          />
+                        </label>
+                      </div>
+                    </section>
+                  </div>
+                ) : activeSettingsItem === "Privacy and Security" && privacyDetail === "overview" ? (
+                  <div className="settings-toggle-groups">
+                    <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("profile")}><UserRound aria-hidden="true" /><span><strong>Profile visibility</strong><small>{currentUser?.profileVisibility === "nobody" ? "Nobody" : "Family"}</small></span><ChevronRight aria-hidden="true" /></button>
+                    <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("lastSeen")}><Clock3 aria-hidden="true" /><span><strong>Last seen</strong><small>{currentUser?.lastSeenVisibility === "nobody" ? "Nobody" : "Family"}</small></span><ChevronRight aria-hidden="true" /></button>
+                    <label className="privacy-row"><Mail aria-hidden="true" /><span><strong>Read receipts</strong><small>Let people know when you have read their messages</small></span><input type="checkbox" checked={currentUser?.readReceiptsEnabled ?? true} disabled={isSaving} onChange={(event) => void updatePrivacy({ readReceiptsEnabled: event.target.checked })} /></label>
+                    <button type="button" className="privacy-row" onClick={() => setNotice("App lock needs a device PIN or biometric bridge")}><LockKeyhole aria-hidden="true" /><span><strong>App lock</strong><small>Off</small></span><ChevronRight aria-hidden="true" /></button>
+                    <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("blocked")}><UserRoundX aria-hidden="true" /><span><strong>Blocked members</strong></span><ChevronRight aria-hidden="true" /></button>
+                  </div>
+                ) : activeSettingsItem === "Privacy and Security" ? (
+                  <div className="settings-toggle-groups">
+                    {privacyDetail === "blocked" ? <section className="blocked-members-page"><h3>Blocked members</h3>{members.filter((member) => member.id !== currentUser?.id).map((member) => { const isBlocked = blockedMemberIds.includes(member.id); return <div className="settings-row" key={member.id}><ProfileAvatar accessToken={accessToken} file={member.profilePhoto} label={member.displayName} size="default" /><span><strong>{member.displayName}</strong><small>@{member.username}</small></span><button type="button" disabled={isSaving} onClick={() => void toggleBlock(member)}>{isBlocked ? "Unblock" : "Block"}</button></div>; })}</section> : <section className="choice-page"><h3>{privacyDetail === "profile" ? "Profile visibility" : "Last seen"}</h3>{(["family", "nobody"] as const).map((value) => <button type="button" className="privacy-choice" key={value} onClick={() => void updatePrivacy(privacyDetail === "profile" ? { profileVisibility: value } : { lastSeenVisibility: value })}><span><strong>{value === "family" ? "Family" : "Nobody"}</strong><small>{value === "family" ? "Visible to everyone in your family" : "Hidden from other members"}</small></span>{(privacyDetail === "profile" ? currentUser?.profileVisibility : currentUser?.lastSeenVisibility) === value && <span className="privacy-choice-check">✓</span>}</button>)}</section>}
+                  </div>
                 ) : activeSettingsItem === "Family" ? (
                   <div className="family-settings-members">
                     <p className="muted-copy">Your shared family space. Calendar permissions follow each member’s role.</p>
@@ -733,34 +885,14 @@ export default function SettingsPage() {
               </section>
             )}
 
-            <section className="settings-group">
-              <h2>Server</h2>
-              <div className="settings-list">
-                <button
-                  type="button"
-                  className="settings-row"
-                  onClick={async () => {
-                    await logout();
-                    setApiUrlOverride(null);
-                    navigate("/server-setup", { replace: true });
-                  }}
-                >
-                  <span className="settings-row-icon">
-                    <Server aria-hidden="true" size={20} />
-                  </span>
-                  <span>
-                    <strong>Change server address</strong>
-                    <small>{currentServerUrl}</small>
-                  </span>
-                  <ChevronRight aria-hidden="true" size={18} />
-                </button>
-              </div>
-            </section>
-
+            {!activeSettingsItem && (
+              <>
             <button className="logout-row" type="button" onClick={() => void logout()}>
               <LogOut aria-hidden="true" size={20} />
               Log out
             </button>
+              </>
+            )}
           </>
         )}
       </section>

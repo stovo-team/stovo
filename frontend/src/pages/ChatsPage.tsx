@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
+  Archive,
   Bell,
   BellOff,
   Bus,
@@ -26,6 +27,7 @@ import {
   Forward,
   Flag,
   History,
+  Hash,
   Image,
   Info,
   MessageCircle,
@@ -46,6 +48,7 @@ import {
   Volume2,
   Maximize2,
   Minimize2,
+  LockKeyhole,
   Home,
   Megaphone,
   Pencil,
@@ -66,6 +69,7 @@ import { User } from "../api/auth";
 import {
   Chat,
   Message,
+  MessageHistoryPage,
   PinnedMessage,
   addMessageReaction,
 	archiveMessage,
@@ -77,6 +81,7 @@ import {
   forwardMessage,
   getChat,
   getChats,
+  getMessageHistoryPage,
   getMessages,
   getPinnedMessages,
   markMessageRead,
@@ -112,6 +117,7 @@ import {
   uploadFile
 } from "../api/files";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
+import { loadRecentChatHistory, saveRecentChatHistory } from "../chatHistoryCache";
 import { useAuth } from "../auth/AuthContext";
 import { useAppearance } from "../appearance/AppearanceContext";
 import { takeQueuedSharedFiles, type QueuedSharedFiles } from "../sharedFileQueue";
@@ -253,6 +259,21 @@ export function callTerminationEvent(phase: CallPhase): "call:cancel" | "call:en
 
 export function chatListLayoutClass(minimizedChatLayout: boolean) {
   return minimizedChatLayout ? " messenger-shell--minimized-chat-layout" : "";
+}
+
+export function compactChatListLeadingVisual(
+  chatType: Chat["type"]
+): "lock" | "hash" | "archive" | "avatar" {
+  if (chatType === "group" || chatType === "family") {
+    return "lock";
+  }
+  if (chatType === "channel") {
+    return "hash";
+  }
+  if (chatType === "archive") {
+    return "archive";
+  }
+  return "avatar";
 }
 
 type CallTrackStatus = {
@@ -1531,6 +1552,8 @@ export default function ChatsPage() {
   const chatsRef = useRef<Chat[]>([]);
   const messagesRef = useRef<Message[]>([]);
   const messageCacheRef = useRef<Record<string, Message[]>>({});
+  const historyCursorRef = useRef<Record<string, string | null>>({});
+  const historyLoadingRef = useRef<Record<string, boolean>>({});
   const hasLoadedOverviewRef = useRef(false);
   const typingStopTimerRef = useRef<number | null>(null);
   const messagesPanelRef = useRef<HTMLDivElement | null>(null);
@@ -2265,6 +2288,39 @@ export default function ChatsPage() {
     [applyMessagesForChat, authRequest, currentUser?.id]
   );
 
+  const loadOlderMessages = useCallback(async (targetChatId?: string) => {
+    const chatIdToLoad = targetChatId ?? selectedChat?.id;
+    const token = accessToken;
+    if (!chatIdToLoad || !token || historyLoadingRef.current[chatIdToLoad]) return;
+    const before = historyCursorRef.current[chatIdToLoad];
+    if (!before) return;
+
+    historyLoadingRef.current[chatIdToLoad] = true;
+    const panel = messagesPanelRef.current;
+    const previousHeight = panel?.scrollHeight ?? 0;
+    const previousTop = panel?.scrollTop ?? 0;
+    try {
+      const page = await getMessageHistoryPage(token, chatIdToLoad, before, 50);
+      if (activeChatIdRef.current !== chatIdToLoad) return;
+      const decrypted = await decryptMessages(chatIdToLoad, page.messages, currentUser?.id);
+      if (activeChatIdRef.current !== chatIdToLoad) return;
+      applyMessagesForChat(chatIdToLoad, (current) => mergeMessageLists(current, decrypted));
+      historyCursorRef.current[chatIdToLoad] = page.hasMore ? page.nextBefore : null;
+      window.requestAnimationFrame(() => {
+        if (panel) panel.scrollTop = panel.scrollHeight - previousHeight + previousTop;
+      });
+    } catch {
+      // Loading older history is retried the next time the user scrolls here.
+    } finally {
+      historyLoadingRef.current[chatIdToLoad] = false;
+    }
+  }, [accessToken, applyMessagesForChat, currentUser?.id, selectedChat]);
+
+  const handleHistoryScroll = useCallback(() => {
+    const panel = messagesPanelRef.current;
+    if (panel && panel.scrollTop < 160) void loadOlderMessages();
+  }, [loadOlderMessages]);
+
   const loadOverview = useCallback(async () => {
     if (!accessTokenRef.current) {
       return;
@@ -2347,21 +2403,41 @@ export default function ChatsPage() {
 
       setPinIndex(0);
 
+      let historyRequestResolved = false;
+      if (currentUser?.id) {
+        void loadRecentChatHistory<Message>(currentUser.id, requestedChatId).then(async (cached) => {
+          if (!cached || historyRequestResolved || !isCurrentRequest()) return;
+          const decrypted = await decryptMessages(requestedChatId, cached, currentUser.id);
+          if (!historyRequestResolved && isCurrentRequest()) {
+            applyMessagesForChat(requestedChatId, decrypted);
+            setIsChatLoading(false);
+          }
+        }).catch(() => undefined);
+      }
+
       try {
         const [chat, messageResult, pinsResult] = await Promise.all([
           authRequest<Chat>(`/api/chats/${requestedChatId}`),
-          authRequest<Message[]>(`/api/chats/${requestedChatId}/messages?limit=50`),
+          authRequest<MessageHistoryPage>(`/api/chats/${requestedChatId}/messages?limit=20`),
           authRequest<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`).catch(() => [] as PinnedMessage[])
         ]);
+        historyRequestResolved = true;
         if (!isCurrentRequest()) {
           return;
         }
-        const decryptedMessages = await decryptMessages(requestedChatId, messageResult, currentUser?.id);
+        const decryptedMessages = await decryptMessages(requestedChatId, messageResult.messages, currentUser?.id);
         if (!isCurrentRequest()) {
           return;
         }
         setSelectedChat(chat);
         applyMessagesForChat(requestedChatId, decryptedMessages);
+        historyCursorRef.current[requestedChatId] = messageResult.hasMore ? messageResult.nextBefore : null;
+        if (currentUser?.id) {
+          void saveRecentChatHistory(currentUser.id, requestedChatId, messageResult.messages);
+        }
+        if (messageResult.hasMore) {
+          window.setTimeout(() => void loadOlderMessages(requestedChatId), 0);
+        }
         const sortedPins = sortPinsByPosition(pinsResult);
         setPinnedMessages(sortedPins);
         setPinIndex(Math.max(0, sortedPins.length - 1));
@@ -5551,6 +5627,10 @@ export default function ChatsPage() {
                         {sectionChats.map((chat) => {
                           const chatName = displayChatName(chat, currentUser?.id);
                           const hasUnread = chat.unreadCount > 0;
+                          const compactLeadingVisual = compactChatListLeadingVisual(chat.type);
+                          const chatListLeadingVisual = family?.minimizedChatLayout || chat.type === "archive"
+                            ? compactLeadingVisual
+                            : "avatar";
                           const isTransitionSource = selectedChat?.id === chat.id;
                           const avatarTransitionStyle = transitionAnchorStyle(
                             isTransitionSource ? chatTransitionName(chat.id, "avatar") : undefined
@@ -5567,14 +5647,35 @@ export default function ChatsPage() {
                               onPointerDown={() => setSelectedChat(chat)}
                               onClick={() => openChat(chat)}
                             >
-                              <RealAvatar
-                                accessToken={accessToken}
-                                className={`avatar chat-avatar ${chatAvatarTypeClass(chat)}`}
-                                fallbackKind={chatAvatarFallbackKind(chat)}
-                                file={chatAvatarFile(chat, currentUser?.id)}
-                                label={chatName}
-                                style={avatarTransitionStyle}
-                              />
+                              {chatListLeadingVisual !== "avatar" ? (
+                                <span
+                                  className={`chat-list-type-marker${
+                                    chatListLeadingVisual === "archive" ? " chat-list-type-marker--archive" : ""
+                                  }`}
+                                  aria-hidden="true"
+                                >
+                                  {chatListLeadingVisual === "lock" ? (
+                                    <LockKeyhole size={16} strokeWidth={2} />
+                                  ) : chatListLeadingVisual === "hash" ? (
+                                    <Hash size={16} strokeWidth={2} />
+                                  ) : (
+                                    <Archive size={16} strokeWidth={2} />
+                                  )}
+                                </span>
+                              ) : (
+                                <RealAvatar
+                                  accessToken={accessToken}
+                                  className={`avatar chat-avatar ${chatAvatarTypeClass(chat)}${
+                                    family?.minimizedChatLayout && chatListLeadingVisual === "avatar"
+                                      ? " chat-avatar--compact"
+                                      : ""
+                                  }`}
+                                  fallbackKind={chatAvatarFallbackKind(chat)}
+                                  file={chatAvatarFile(chat, currentUser?.id)}
+                                  label={chatName}
+                                  style={avatarTransitionStyle}
+                                />
+                              )}
                               <span className="chat-list-copy">
                                 <span className="chat-list-topline">
                                   <strong style={titleTransitionStyle}>{chatName}</strong>
@@ -5906,6 +6007,7 @@ export default function ChatsPage() {
                   }
                   aria-busy={isChatLoading}
                   ref={messagesPanelRef}
+                  onScroll={handleHistoryScroll}
                 >
                   {isChatLoading && messages.length === 0 ? (
                     <>

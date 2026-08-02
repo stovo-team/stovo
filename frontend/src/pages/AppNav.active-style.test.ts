@@ -10,11 +10,11 @@ const desktopNavigationStyles = styles.slice(
 );
 
 describe("desktop app navigation active state", () => {
-  it("centers one 56px circular highlight behind the navigation icon", () => {
-    expect(desktopNavigationStyles).toContain("--app-nav-state-circle-size: 56px;");
+  it("centers one 60px circular highlight behind the navigation icon", () => {
+    expect(desktopNavigationStyles).toContain("--app-nav-state-circle-size: 60px;");
 
     expect(desktopNavigationStyles).toContain(
-      ".app-frame > .app-nav a:is(.active, :not(.active):hover)::before {\n    background: color-mix(in oklab, var(--stovo-primary) 10%, transparent);\n    border-radius: 50%;\n    content: \"\";\n    height: var(--app-nav-state-circle-size);\n    left: 50%;\n    pointer-events: none;\n    position: absolute;\n    top: -2px;\n    transform: translateX(-50%);\n    width: var(--app-nav-state-circle-size);"
+      ".app-frame > .app-nav a:is(.active, :not(.active):hover)::before {\n    background: color-mix(in oklab, var(--stovo-primary) 10%, transparent);\n    border-radius: 50%;\n    content: \"\";\n    height: var(--app-nav-state-circle-size);\n    left: 50%;\n    pointer-events: none;\n    position: absolute;\n    top: 1px;\n    transform: translateX(-50%);\n    width: var(--app-nav-state-circle-size);"
     );
   });
 

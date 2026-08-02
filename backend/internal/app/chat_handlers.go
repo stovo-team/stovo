@@ -58,6 +58,13 @@ func (s *Server) handleCreateDirectChat(w http.ResponseWriter, r *http.Request, 
 		s.detail(w, http.StatusBadRequest, "You cannot start a direct chat with yourself")
 		return
 	}
+	if blocked, err := s.directContactBlocked(user.ID, target.ID); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not check privacy settings")
+		return
+	} else if blocked {
+		s.detail(w, http.StatusForbidden, "Direct messages are unavailable for this member")
+		return
+	}
 
 	if existingID, err := s.findDirectChat(user.ID, target.ID); err == nil {
 		chat, _ := s.buildChatPublic(existingID, user)
@@ -338,7 +345,7 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request, user 
 		s.detail(w, http.StatusNotFound, "Chat not found")
 		return
 	}
-	limit := 50
+	limit := 20
 	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
 		value, err := strconv.Atoi(raw)
 		if err != nil || value < 1 || value > 100 {
@@ -349,12 +356,24 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request, user 
 	}
 	before := strings.TrimSpace(r.URL.Query().Get("before"))
 	threadRootMessageID := strings.TrimSpace(r.URL.Query().Get("threadRootMessageId"))
-	messages, err := s.listMessages(chatID, user, before, limit, threadRootMessageID)
+	var cacheRevision historyCacheRevision
+	if before == "" && threadRootMessageID == "" && limit == 20 {
+		cacheRevision = s.chatHistoryRevisions(r.Context(), chatID, user.ID)
+		if cached, ok := s.loadCachedLatestHistory(r.Context(), chatID, user.ID, cacheRevision); ok {
+			s.json(w, http.StatusOK, cached)
+			return
+		}
+	}
+	messages, hasMore, err := s.listMessagesPage(chatID, user, before, limit, threadRootMessageID)
 	if err != nil {
 		s.detail(w, domainErrorStatus(err), "Could not load messages")
 		return
 	}
-	s.json(w, http.StatusOK, messages)
+	page := newMessageHistoryPage(messages, hasMore)
+	if before == "" && threadRootMessageID == "" && limit == 20 {
+		s.cacheLatestHistory(r.Context(), chatID, user.ID, cacheRevision, page)
+	}
+	s.json(w, http.StatusOK, page)
 }
 
 func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, user userPublic) {
@@ -374,6 +393,7 @@ func (s *Server) handleMarkMessageRead(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	s.emitMessageRead(chatID, message.ID, user.ID)
+	s.bumpChatHistoryRevision(r.Context(), chatID)
 	s.json(w, http.StatusOK, message)
 }
 
@@ -444,6 +464,7 @@ func (s *Server) handleAddMessageReaction(w http.ResponseWriter, r *http.Request
 		return
 	}
 	s.emitMessageUpdated(message.ChatID, message)
+	s.bumpChatHistoryRevision(r.Context(), message.ChatID)
 	s.json(w, http.StatusOK, message)
 }
 
@@ -454,6 +475,7 @@ func (s *Server) handleRemoveMessageReaction(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	s.emitMessageUpdated(message.ChatID, message)
+	s.bumpChatHistoryRevision(r.Context(), message.ChatID)
 	s.json(w, http.StatusOK, message)
 }
 
@@ -895,6 +917,11 @@ func (s *Server) updateChatMediaVisibility(ctx context.Context, chatID string, d
 }
 
 func (s *Server) listMessages(chatID string, user userPublic, before string, limit int, threadRootMessageID string) ([]messagePublic, error) {
+	messages, _, err := s.listMessagesPage(chatID, user, before, limit, threadRootMessageID)
+	return messages, err
+}
+
+func (s *Server) listMessagesPage(chatID string, user userPublic, before string, limit int, threadRootMessageID string) ([]messagePublic, bool, error) {
 	baseQuery := `
 		SELECT id
 		FROM messages
@@ -904,7 +931,7 @@ func (s *Server) listMessages(chatID string, user userPublic, before string, lim
 	args := []any{chatID, user.ID}
 	if threadRootMessageID != "" {
 		if err := s.validateReplyTarget(chatID, threadRootMessageID); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		baseQuery += " AND (id = ? OR thread_root_message_id = ?)"
 		args = append(args, threadRootMessageID, threadRootMessageID)
@@ -915,17 +942,17 @@ func (s *Server) listMessages(chatID string, user userPublic, before string, lim
 		row := s.queryRow(`SELECT created_at FROM messages WHERE id = ? AND chat_id = ?`, before, chatID)
 		var createdAt string
 		if err := row.Scan(&createdAt); err != nil {
-			return nil, errBadRequest
+			return nil, false, errBadRequest
 		}
 		baseQuery += " AND created_at < ?"
 		args = append(args, createdAt)
 	}
 	baseQuery += " ORDER BY created_at DESC LIMIT ?"
-	args = append(args, limit)
+	args = append(args, limit+1)
 
 	rows, err := s.query(baseQuery, args...)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	defer rows.Close()
 
@@ -933,20 +960,24 @@ func (s *Server) listMessages(chatID string, user userPublic, before string, lim
 	for rows.Next() {
 		var messageID string
 		if err := rows.Scan(&messageID); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		ids = append(ids, messageID)
 	}
 	slices.Reverse(ids)
+	hasMore := len(ids) > limit
+	if hasMore {
+		ids = ids[1:]
+	}
 	messages := make([]messagePublic, 0, len(ids))
 	for _, messageID := range ids {
 		message, err := s.buildMessage(messageID, user.ID)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		messages = append(messages, message)
 	}
-	return messages, nil
+	return messages, hasMore, nil
 }
 
 func (s *Server) createMessage(ctx context.Context, user userPublic, chatID string, clientMessageID *string, r *http.Request) (messagePublic, error) {
@@ -1473,6 +1504,7 @@ func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request, user 
 		return
 	}
 	s.emitMessageUpdated(chatID, message)
+	s.bumpChatHistoryRevision(r.Context(), chatID)
 	s.json(w, http.StatusOK, message)
 }
 
@@ -1500,6 +1532,7 @@ func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request, use
 			s.detail(w, http.StatusInternalServerError, "Failed to delete message")
 			return
 		}
+		s.bumpUserChatHistoryRevision(r.Context(), user.ID, chatID)
 	} else {
 		if _, err := s.exec(`
 			UPDATE messages SET deleted_at = ? WHERE id = ?
@@ -1508,6 +1541,7 @@ func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request, use
 			return
 		}
 		s.emitMessageDeleted(chatID, messageID)
+		s.bumpChatHistoryRevision(r.Context(), chatID)
 	}
 
 	s.json(w, http.StatusOK, map[string]string{"messageId": messageID, "chatId": chatID})

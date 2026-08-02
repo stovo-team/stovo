@@ -87,7 +87,9 @@ describe("formatComposerSelection boundary behavior", () => {
       italic: "_",
       underline: "__",
       strikethrough: "~~",
-      spoiler: "||"
+      spoiler: "||",
+      code: "`",
+      quote: "> "
     });
   });
 
