@@ -117,6 +117,60 @@ type updateFamilyRequest struct {
 	MinimizedChatLayout *bool   `json:"minimizedChatLayout"`
 }
 
+type planPublic struct {
+	ID           string               `json:"id"`
+	FamilyID     string               `json:"familyId"`
+	Title        string               `json:"title"`
+	Notes        *string              `json:"notes"`
+	Location     *string              `json:"location"`
+	StartsAt     time.Time            `json:"startsAt"`
+	EndsAt       time.Time            `json:"endsAt"`
+	AllDay       bool                 `json:"allDay"`
+	TimeZone     string               `json:"timeZone"`
+	Recurrence   *string              `json:"recurrence"`
+	CreatedBy    string               `json:"createdBy"`
+	SourceChatID *string              `json:"sourceChatId"`
+	Revision     int                  `json:"revision"`
+	CreatedAt    time.Time            `json:"createdAt"`
+	UpdatedAt    time.Time            `json:"updatedAt"`
+	Attendees    []planAttendeePublic `json:"attendees"`
+}
+
+type planAttendeePublic struct {
+	UserID string `json:"userId"`
+	Status string `json:"status"`
+}
+
+type createPlanRequest struct {
+	Title        string    `json:"title"`
+	Notes        *string   `json:"notes"`
+	Location     *string   `json:"location"`
+	StartsAt     time.Time `json:"startsAt"`
+	EndsAt       time.Time `json:"endsAt"`
+	AllDay       bool      `json:"allDay"`
+	TimeZone     string    `json:"timeZone"`
+	Recurrence   *string   `json:"recurrence"`
+	AttendeeIDs  []string  `json:"attendeeIds"`
+	SourceChatID *string   `json:"sourceChatId"`
+}
+
+type updatePlanRequest struct {
+	Title       *string    `json:"title"`
+	Notes       *string    `json:"notes"`
+	Location    *string    `json:"location"`
+	StartsAt    *time.Time `json:"startsAt"`
+	EndsAt      *time.Time `json:"endsAt"`
+	AllDay      *bool      `json:"allDay"`
+	TimeZone    *string    `json:"timeZone"`
+	Recurrence  *string    `json:"recurrence"`
+	AttendeeIDs *[]string  `json:"attendeeIds"`
+	Revision    int        `json:"revision"`
+}
+
+type planRSVPRequest struct {
+	Status string `json:"status"`
+}
+
 type changeRoleRequest struct {
 	Role string `json:"role"`
 }
@@ -216,6 +270,7 @@ type filePublic struct {
 	ChatID             *string    `json:"chatId"`
 	ChatTitle          *string    `json:"chatTitle"`
 	ChatType           *string    `json:"chatType"`
+	OriginMessageID    *string    `json:"originMessageId"`
 	AccessScope        string     `json:"accessScope"`
 	StorageProvider    string     `json:"storageProvider"`
 	ThumbnailObjectKey *string    `json:"thumbnailObjectKey"`

@@ -17,7 +17,11 @@ export const initialStorageSelection: StorageSelectionState = {
 };
 
 export function shouldOpenStorageTilePreview(hasPreview: boolean, isMobileViewport: boolean) {
-  return hasPreview && !isMobileViewport;
+  return false;
+}
+
+export function storageTileSelectionAction(isMobileViewport: boolean, fileId: string): StorageSelectionAction {
+  return isMobileViewport ? { type: "open", fileId } : { type: "select", fileId };
 }
 
 export function storageSelectionReducer(
@@ -26,9 +30,7 @@ export function storageSelectionReducer(
 ): StorageSelectionState {
   switch (action.type) {
     case "load-default":
-      return state.selectedFileId
-        ? state
-        : { selectedFileId: action.fileId, mobileDetailsOpen: false };
+      return { selectedFileId: state.selectedFileId, mobileDetailsOpen: false };
     case "open":
       return { selectedFileId: action.fileId, mobileDetailsOpen: true };
     case "select":

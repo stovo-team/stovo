@@ -209,6 +209,9 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/family/members", s.authenticated(s.handleGetMembers))
 	router.Patch("/api/family/members/{userId}/role", s.authenticated(s.handleChangeRole))
 	router.Delete("/api/family/members/{userId}", s.authenticated(s.handleRemoveMember))
+	router.Get("/api/plans", s.authenticated(s.handleGetPlans))
+	router.Post("/api/plans", s.authenticated(s.handleCreatePlan))
+	router.Post("/api/plans/{planId}/rsvp", s.authenticated(s.handlePlanRSVP))
 
 	router.Post("/api/invites", s.authenticated(s.handleCreateInvite))
 	router.Get("/api/invites/{token}", s.handlePreviewInvite)
@@ -555,6 +558,20 @@ func (s *Server) initSchema() error {
 			FOREIGN KEY (chat_id)    REFERENCES chats(id),
 			FOREIGN KEY (message_id) REFERENCES messages(id),
 			FOREIGN KEY (pinned_by)  REFERENCES users(id)
+		);`,
+		`CREATE TABLE IF NOT EXISTS plans (
+			id TEXT PRIMARY KEY, family_id TEXT NOT NULL, title TEXT NOT NULL, notes TEXT, location TEXT,
+			starts_at TEXT NOT NULL, ends_at TEXT NOT NULL, all_day BOOLEAN NOT NULL DEFAULT FALSE,
+			time_zone TEXT NOT NULL DEFAULT 'UTC', recurrence TEXT, created_by TEXT NOT NULL,
+			source_chat_id TEXT, revision INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL,
+			updated_at TEXT NOT NULL, deleted_at TEXT,
+			FOREIGN KEY (family_id) REFERENCES families(id), FOREIGN KEY (created_by) REFERENCES users(id),
+			FOREIGN KEY (source_chat_id) REFERENCES chats(id)
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_plans_family_range ON plans(family_id, starts_at) WHERE deleted_at IS NULL;`,
+		`CREATE TABLE IF NOT EXISTS plan_attendees (
+			plan_id TEXT NOT NULL, user_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'going', updated_at TEXT NOT NULL,
+			PRIMARY KEY(plan_id, user_id), FOREIGN KEY(plan_id) REFERENCES plans(id), FOREIGN KEY(user_id) REFERENCES users(id)
 		);`,
 		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS pin_permission TEXT NOT NULL DEFAULT 'everyone';`,
 		`ALTER TABLE files ADD COLUMN IF NOT EXISTS thumbnail_object_key TEXT;`,

@@ -29,6 +29,7 @@ import {
   Image,
   Info,
   MessageCircle,
+  MoreVertical,
   Music,
   Mic,
   MicOff,
@@ -113,6 +114,7 @@ import {
 import { peekCachedObjectUrl } from "../mediaBlobCache";
 import { useAuth } from "../auth/AuthContext";
 import { useAppearance } from "../appearance/AppearanceContext";
+import { takeQueuedSharedFiles, type QueuedSharedFiles } from "../sharedFileQueue";
 import AttachmentPickerSheet, {
   AttachmentPickerOption
 } from "../components/AttachmentPickerSheet";
@@ -166,6 +168,8 @@ import CallController, {
   CallDevice,
   CallSettings,
 } from "../realtime/CallController";
+import { waitForSocketConnection } from "../realtime/socketConnection";
+import { parseScheduleCommand } from "../plans/scheduleCommand";
 import { createCallSoundPlayer } from "../realtime/callSounds";
 import {
   getAudioSettings,
@@ -693,12 +697,26 @@ function mediaVisibilityToggleChecked(chat: Chat) {
   return chat.mediaVisibility === "family" || chat.myMediaVisibilityApproval;
 }
 
-function attachmentMatchesTab(file: FamilyFile, tab: SharedContentTab) {
-  if (tab === "links") {
-    return false;
+type SharedContentItem =
+  | { kind: "attachment"; file: FamilyFile; messageId: string }
+  | { kind: "link"; url: string; messageId: string };
+
+function extractMessageLinks(content: string | null): string[] {
+  if (!content) {
+    return [];
   }
-  const isMedia = file.mimeType.startsWith("image/") || file.mimeType.startsWith("video/");
-  return tab === "media" ? isMedia : !isMedia;
+  const matches = content.match(/https?:\/\/[^\s<>"'`\]]+/gi) ?? [];
+  return Array.from(new Set(matches.map((url) => url.replace(/[.,!?;:]+$/, ""))));
+}
+
+function sharedContentItemMatchesTab(item: SharedContentItem, tab: SharedContentTab) {
+  if (item.kind === "link") {
+    return tab === "links";
+  }
+  if (tab === "files") {
+    return !item.file.mimeType.startsWith("image/") && !item.file.mimeType.startsWith("video/");
+  }
+  return tab === "media";
 }
 
 function createClientMessageId() {
@@ -1077,20 +1095,30 @@ function AttachmentCard({
 function SharedContentThumb({
   accessToken,
   file,
+  onFocusMessage,
   onOpenImage
 }: {
   accessToken: string | null;
   file: FamilyFile;
-  onOpenImage: (file: FamilyFile, previewUrl: string) => void;
+  onFocusMessage: () => void;
+  onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
 }) {
   const isImage = file.mimeType.startsWith("image/");
+  const isVideo = file.mimeType.startsWith("video/");
+  const isAudio = file.mimeType.startsWith("audio/");
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
 
   if (!isImage) {
     return (
-      <span className="media-thumb" title={file.originalName}>
-        <FileText aria-hidden="true" size={20} />
-      </span>
+      <button
+        type="button"
+        className="media-thumb"
+        title={`Open the message containing ${file.originalName}`}
+        aria-label={`Open the message containing ${file.originalName}`}
+        onClick={onFocusMessage}
+      >
+        {isVideo ? <Video aria-hidden="true" size={20} /> : isAudio ? <Music aria-hidden="true" size={20} /> : <FileText aria-hidden="true" size={20} />}
+      </button>
     );
   }
 
@@ -1144,28 +1172,6 @@ type PendingLocalAttachment = {
   file: File;
   previewUrl: string | null;
 };
-
-async function ensureSocketConnected(socket: Socket, timeoutMs = 4000) {
-  if (socket.connected) {
-    return true;
-  }
-  socket.connect();
-  return await new Promise<boolean>((resolve) => {
-    const timer = window.setTimeout(() => {
-      cleanup();
-      resolve(socket.connected);
-    }, timeoutMs);
-    const onConnect = () => {
-      cleanup();
-      resolve(true);
-    };
-    const cleanup = () => {
-      window.clearTimeout(timer);
-      socket.off("connect", onConnect);
-    };
-    socket.on("connect", onConnect);
-  });
-}
 
 function chatAvatarFile(chat: Chat, currentUserId: string | undefined) {
   if (chat.chatPhoto) {
@@ -1399,6 +1405,7 @@ export default function ChatsPage() {
   const [formattingToolbarAnchor, setFormattingToolbarAnchor] =
     useState<ToolbarAnchor | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<PendingLocalAttachment[]>([]);
+  const [incomingSharedFiles, setIncomingSharedFiles] = useState<QueuedSharedFiles | null>(null);
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [chatSearch, setChatSearch] = useState("");
   const [chatFilter, setChatFilter] = useState<ChatFilter>("all");
@@ -1420,6 +1427,7 @@ export default function ChatsPage() {
   const [fullViewImage, setFullViewImage] = useState<{
     file: FamilyFile;
     previewUrl: string;
+    messageId?: string;
   } | null>(null);
   const [isFullViewImageClosing, setIsFullViewImageClosing] = useState(false);
   const [composerEnlargeOpen, setComposerEnlargeOpen] = useState(false);
@@ -1626,6 +1634,16 @@ export default function ChatsPage() {
     [clearMessageMotionState, prefersReducedMotion]
   );
 
+  useEffect(() => {
+    const messageId = new URLSearchParams(location.search).get("message");
+    if (!messageId || !messages.some((message) => message.id === messageId)) {
+      return;
+    }
+    if (focusMessageInPanel({ messageId, highlightClassName: "message-context-flash" })) {
+      navigate(location.pathname, { replace: true });
+    }
+  }, [focusMessageInPanel, location.pathname, location.search, messages, navigate]);
+
   const finishCloseFullViewImage = useCallback(() => {
     setFullViewImage(null);
     setIsFullViewImageClosing(false);
@@ -1642,10 +1660,22 @@ export default function ChatsPage() {
     setIsFullViewImageClosing(true);
   }, [finishCloseFullViewImage, fullViewImage, prefersReducedMotion]);
 
-  const openFullViewImage = useCallback((file: FamilyFile, previewUrl: string) => {
+  const openFullViewImage = useCallback((file: FamilyFile, previewUrl: string, messageId?: string) => {
     setIsFullViewImageClosing(false);
-    setFullViewImage({ file, previewUrl });
+    setFullViewImage({ file, previewUrl, messageId });
   }, []);
+
+  const handleGoToFullViewImageMessage = useCallback(() => {
+    const messageId = fullViewImage?.messageId;
+    if (!messageId) {
+      return;
+    }
+    finishCloseFullViewImage();
+    setIsDetailsOpen(false);
+    window.requestAnimationFrame(() => {
+      focusMessageInPanel({ messageId, highlightClassName: "message-context-flash" });
+    });
+  }, [finishCloseFullViewImage, focusMessageInPanel, fullViewImage?.messageId]);
 
   const resetSwipeReplyState = useCallback(() => {
     swipeReplyGestureRef.current = null;
@@ -2053,13 +2083,24 @@ export default function ChatsPage() {
     return sections;
   }, [filteredChats]);
 
-  const sharedAttachments = useMemo(
-    () => messages.flatMap((message) => message.attachments).slice(-18).reverse(),
-    [messages]
-  );
   const sharedContentItems = useMemo(
-    () => sharedAttachments.filter((file) => attachmentMatchesTab(file, detailsTab)),
-    [detailsTab, sharedAttachments]
+    () =>
+      messages
+        .flatMap((message): SharedContentItem[] => [
+          ...message.attachments.map((file) => ({
+            kind: "attachment" as const,
+            file,
+            messageId: message.id
+          })),
+          ...extractMessageLinks(message.content).map((url) => ({
+            kind: "link" as const,
+            url,
+            messageId: message.id
+          }))
+        ])
+        .filter((item) => sharedContentItemMatchesTab(item, detailsTab))
+        .reverse(),
+    [detailsTab, messages]
   );
   const searchedMessages = useMemo(() => {
     const query = messageSearch.trim();
@@ -2860,6 +2901,35 @@ export default function ChatsPage() {
     const draft = chatId ? (window.localStorage.getItem(`stovo:draft:${chatId}`) ?? "") : "";
     setComposer(draft);
   }, [chatId]);
+
+  useEffect(() => {
+    if (chatId) {
+      return;
+    }
+    const queued = takeQueuedSharedFiles();
+    if (!queued) {
+      return;
+    }
+    setIncomingSharedFiles(queued);
+    if (queued.skippedCount > 0) {
+      setError(
+        `${queued.skippedCount} unsupported ${queued.skippedCount === 1 ? "file was" : "files were"} skipped.`
+      );
+    }
+  }, [chatId]);
+
+  useEffect(() => {
+    if (!chatId || !incomingSharedFiles) {
+      return;
+    }
+    const next = incomingSharedFiles.files.map((file) => ({
+      localId: `local:${crypto.randomUUID()}`,
+      file,
+      previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null
+    }));
+    setPendingAttachments((current) => [...current, ...next]);
+    setIncomingSharedFiles(null);
+  }, [chatId, incomingSharedFiles]);
 
   // Auto-minimize the call popup when the user opens a different chat
   useEffect(() => {
@@ -3773,7 +3843,7 @@ export default function ChatsPage() {
       return;
     }
     console.log("[CALL] startDirectCall: ensuring socket connected, socket.connected=", socket.connected);
-    const connected = await ensureSocketConnected(socket, 4500);
+    const connected = await waitForSocketConnection(socket, { attemptTimeoutMs: 4500 });
     console.log("[CALL] startDirectCall: socket connected=", connected);
     if (!connected) {
       setError("Realtime connection is offline. Please refresh and try again.");
@@ -3839,7 +3909,8 @@ export default function ChatsPage() {
   }
 
   async function acceptIncomingCall() {
-    if (!socketRef.current || !activeCallChatId || !callPeerUserId) {
+    const socket = socketRef.current;
+    if (!socket || !activeCallChatId || !callPeerUserId) {
       return;
     }
     dismissNativeCallNotification();
@@ -3856,7 +3927,19 @@ export default function ChatsPage() {
       // If this fails the call stays ringing — we must not emit call:accept then
       // call:end, which kills the session for both parties.
       await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
-      socketRef.current.emit("call:accept", { chatId: activeCallChatId });
+      const connected = await waitForSocketConnection(socket, {
+        onAttempt: (attempt, totalAttempts) => {
+          setCallNotice(
+            attempt === 1
+              ? "Connecting to the call…"
+              : `Reconnecting to the call… (${attempt}/${totalAttempts})`,
+          );
+        },
+      });
+      if (!connected) {
+        throw new Error("Realtime connection is still unavailable. Please try accepting again.");
+      }
+      socket.emit("call:accept", { chatId: activeCallChatId });
     } catch (err) {
       await audioCallRef.current?.cleanup(true).catch(() => undefined);
       setCallPhase("incoming");
@@ -5073,6 +5156,21 @@ export default function ChatsPage() {
     if (!accessToken || !currentUser || !selectedChat || (!content && localAttachments.length === 0)) {
       return;
     }
+    const scheduleDraft = localAttachments.length === 0 ? parseScheduleCommand(content) : null;
+    if (scheduleDraft) {
+      window.sessionStorage.setItem(
+        "stovo:plan-draft",
+        JSON.stringify({
+          title: scheduleDraft.title,
+          durationMinutes: scheduleDraft.durationMinutes,
+          sourceChatId: selectedChat.id
+        })
+      );
+      setComposer("");
+      resetComposerHeight();
+      navigate("/app/plans");
+      return;
+    }
     if (channelCommentsDisabledForViewer) {
       setError("Comments are disabled for this channel");
       return;
@@ -5381,6 +5479,11 @@ export default function ChatsPage() {
                   <h1 tabIndex={-1}>Chats</h1>
                 </div>
               </div>
+              {!chatId && incomingSharedFiles && incomingSharedFiles.files.length > 0 && (
+                <p className="muted-copy" role="status">
+                  Choose a chat to send {incomingSharedFiles.files.length} shared {incomingSharedFiles.files.length === 1 ? "file" : "files"}.
+                </p>
+              )}
               <label className="search-field chat-list-search">
                 <span className="ms-icon ms-icon--20" aria-hidden={true}>
                   search
@@ -6582,6 +6685,12 @@ export default function ChatsPage() {
               onCommentsEnabledChange={handleCommentsEnabledChange}
               onDetailsTabChange={setDetailsTab}
               onFocusComposer={focusComposer}
+              onFocusMessage={(messageId) => {
+                setIsDetailsOpen(false);
+                window.requestAnimationFrame(() => {
+                  focusMessageInPanel({ messageId, highlightClassName: "message-context-flash" });
+                });
+              }}
               onMediaVisibilityChange={handleMediaVisibilityChange}
               onOpenImage={openFullViewImage}
               onPinPermissionChange={handlePinPermissionChange}
@@ -7152,6 +7261,7 @@ export default function ChatsPage() {
             title={fullViewImage.file.originalName}
             subtitle={`${fullViewImage.file.mimeType} / ${formatFileSize(fullViewImage.file.sizeBytes)}`}
             onClose={finishCloseFullViewImage}
+            onGoToMessage={fullViewImage.messageId ? handleGoToFullViewImageMessage : undefined}
             onDownload={
               accessToken ? () => void saveFileToDisk(accessToken, fullViewImage.file) : undefined
             }
@@ -7900,6 +8010,7 @@ function ChatInfoPanel({
   onCommentsEnabledChange,
   onDetailsTabChange,
   onFocusComposer,
+  onFocusMessage,
   onMediaVisibilityChange,
   onOpenImage,
   onPinPermissionChange,
@@ -7915,15 +8026,16 @@ function ChatInfoPanel({
   currentUserId: string | undefined;
   detailsTab: SharedContentTab;
   isUploading: boolean;
-  sharedContentItems: FamilyFile[];
+  sharedContentItems: SharedContentItem[];
   onChatPhotoSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onChatSettingsSubmit: (event: FormEvent) => void;
   onClose: () => void;
   onCommentsEnabledChange: (enabled: boolean) => void;
   onDetailsTabChange: (tab: SharedContentTab) => void;
   onFocusComposer: () => void;
+  onFocusMessage: (messageId: string) => void;
   onMediaVisibilityChange: (enabled: boolean) => void;
-  onOpenImage: (file: FamilyFile, previewUrl: string) => void;
+  onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onPinPermissionChange: (permission: "everyone" | "admins_only") => void;
   onPreferenceChange: (
     payload: { isMuted?: boolean; isPinned?: boolean; isFavorite?: boolean },
@@ -8194,15 +8306,29 @@ function ChatInfoPanel({
             ))}
           </div>
           {sharedContentItems.length > 0 ? (
-            <div className="details-media-grid chat-info-media-grid">
-              {sharedContentItems.map((file) => (
-                <SharedContentThumb
-                  accessToken={accessToken}
-                  file={file}
-                  key={file.id}
-                  onOpenImage={onOpenImage}
-                />
-              ))}
+            <div className={detailsTab === "links" ? "chat-info-link-list" : "details-media-grid chat-info-media-grid"}>
+              {sharedContentItems.map((item) =>
+                item.kind === "link" ? (
+                  <a
+                    className="chat-info-link"
+                    href={item.url}
+                    key={`${item.messageId}-${item.url}`}
+                    rel="noreferrer"
+                    target="_blank"
+                    title={item.url}
+                  >
+                    {item.url}
+                  </a>
+                ) : (
+                  <SharedContentThumb
+                    accessToken={accessToken}
+                    file={item.file}
+                    key={`${item.messageId}-${item.file.id}`}
+                    onFocusMessage={() => onFocusMessage(item.messageId)}
+                    onOpenImage={(file, previewUrl) => onOpenImage(file, previewUrl, item.messageId)}
+                  />
+                )
+              )}
             </div>
           ) : (
             <p className="chat-info-empty">
