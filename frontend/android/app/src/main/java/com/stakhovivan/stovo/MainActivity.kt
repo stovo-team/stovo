@@ -8,7 +8,15 @@ class MainActivity : BridgeActivity() {
         registerPlugin(NtfyPlugin::class.java)
         registerPlugin(CallPlugin::class.java)
         registerPlugin(AudioPlaybackPlugin::class.java)
+        registerPlugin(ShareReceiverPlugin::class.java)
         super.onCreate(savedInstanceState)
+        ShareReceiverPlugin.captureIntent(this, intent)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        ShareReceiverPlugin.captureIntent(this, intent)
     }
 
     override fun onUserLeaveHint() {

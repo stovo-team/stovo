@@ -147,6 +147,35 @@ describe("AudioPlayer", () => {
       .toBe("false");
   });
 
+  it("loads metadata duration before playback begins", async () => {
+    const listeners = new Map<string, EventListener>();
+    const element = {
+      preload: "",
+      duration: 91,
+      src: "",
+      addEventListener: (type: string, listener: EventListener) => listeners.set(type, listener),
+      removeAttribute: vi.fn(),
+      load: vi.fn(),
+    };
+    function AudioMock(this: typeof element) {
+      Object.assign(this, element);
+      return this;
+    }
+    vi.stubGlobal("Audio", AudioMock as unknown as typeof Audio);
+    const resolveDurationUrl = vi.fn(async () => "blob:audio-metadata");
+
+    const { container } = renderPlayer({ resolveDurationUrl });
+    await settle();
+    listeners.get("loadedmetadata")?.(new Event("loadedmetadata"));
+    await settle();
+
+    expect(resolveDurationUrl).toHaveBeenCalledTimes(1);
+    expect(sourceFactory).not.toHaveBeenCalled();
+    expect(container.querySelector('output[aria-label="Audio time"]')?.textContent)
+      .toBe("0:00 / 1:31");
+    vi.unstubAllGlobals();
+  });
+
   it("omits the title for recorder-originated audio", () => {
     const { container } = renderPlayer({ hideTitle: true });
 

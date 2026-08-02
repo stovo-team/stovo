@@ -1,17 +1,23 @@
 import { ChangeEvent, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Download,
+  Archive,
   FileAudio,
   FileText,
   Heart,
+  Home,
   Image,
   Info,
   Maximize2,
   MoreVertical,
+  MessageCircle,
+  Megaphone,
   RefreshCw,
   Search,
   Trash2,
   Upload,
+  Users,
   Video,
   X
 } from "lucide-react";
@@ -19,28 +25,33 @@ import {
 import { ApiError } from "../api/client";
 import {
   FamilyFile,
+  createStreamingMediaUrl,
   formatFileSize,
   saveFileToDisk,
   updateFilePreferences,
   uploadFile
 } from "../api/files";
 import { Family } from "../api/family";
+import { getChats, type Chat } from "../api/chats";
 import { useAuth } from "../auth/AuthContext";
+import { AudioPlayer } from "../components/AudioPlayer";
 import ImageLightbox from "../components/ImageLightbox";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
+import { buildAudioSourceFactory } from "./ChatsPage";
 import {
   initialStorageSelection,
   shouldOpenStorageTilePreview,
+  storageTileSelectionAction,
   storageSelectionReducer
 } from "./storageSelection";
-
-type StorageFilter = "all" | "photos" | "videos" | "documents" | "favorites";
+import { buildStorageSources, matchesStorageFilter, storageFileKind, type StorageAvatarKind, type StorageFilter } from "./storageLibrary";
 
 const storageFilters: Array<{ label: string; value: StorageFilter }> = [
   { label: "All", value: "all" },
   { label: "Photos", value: "photos" },
   { label: "Videos", value: "videos" },
+  { label: "Audio", value: "audio" },
   { label: "Documents", value: "documents" },
   { label: "Favorites", value: "favorites" }
 ];
@@ -49,18 +60,7 @@ function canDeleteFile(file: FamilyFile, currentUserId: string | undefined, role
   return file.uploadedBy === currentUserId || role === "owner" || role === "admin";
 }
 
-function fileKind(file: FamilyFile) {
-  if (file.mimeType.startsWith("image/")) {
-    return "photos";
-  }
-  if (file.mimeType.startsWith("video/")) {
-    return "videos";
-  }
-  if (file.mimeType.startsWith("audio/")) {
-    return "audio";
-  }
-  return "documents";
-}
+function fileKind(file: FamilyFile) { return storageFileKind(file); }
 
 function fileIcon(file: FamilyFile) {
   const kind = fileKind(file);
@@ -103,6 +103,39 @@ function accessLabel(file: FamilyFile) {
   return file.accessScope === "family" ? "Family storage" : "Chat members";
 }
 
+function chatInitials(name: string) {
+  const parts = name.split(" ").filter(Boolean);
+  return parts.length > 1
+    ? parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("")
+    : (parts[0] ?? name).slice(0, 2).toUpperCase();
+}
+
+function StorageSourceAvatar({
+  accessToken,
+  file,
+  kind,
+  label
+}: {
+  accessToken: string | null;
+  file: FamilyFile | null;
+  kind: StorageAvatarKind;
+  label: string;
+}) {
+  const previewUrl = useFilePreviewUrl(accessToken, file, Boolean(file));
+  const [imageBroken, setImageBroken] = useState(false);
+
+  useEffect(() => setImageBroken(false), [file?.id, previewUrl]);
+
+  if (previewUrl && !imageBroken) {
+    return <img src={previewUrl} alt="" onError={() => setImageBroken(true)} />;
+  }
+  if (kind === "family") return <Home aria-hidden="true" size={20} />;
+  if (kind === "group") return <Users aria-hidden="true" size={20} />;
+  if (kind === "channel") return <Megaphone aria-hidden="true" size={20} />;
+  if (kind === "archive") return <Archive aria-hidden="true" size={20} />;
+  return <span aria-hidden="true">{chatInitials(label)}</span>;
+}
+
 function StorageTile({
   accessToken,
   file,
@@ -117,7 +150,20 @@ function StorageTile({
   onOpenImage: (file: FamilyFile, previewUrl: string) => void;
 }) {
   const previewUrl = useFilePreviewUrl(accessToken, file);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const Icon = fileIcon(file);
+
+  useEffect(() => {
+    if (!accessToken || fileKind(file) !== "videos") {
+      setVideoPreviewUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void createStreamingMediaUrl(accessToken, file.id).then((url) => {
+      if (!cancelled) setVideoPreviewUrl(url);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [accessToken, file]);
 
   return (
     <button
@@ -138,7 +184,9 @@ function StorageTile({
           <Heart aria-hidden="true" size={13} />
         </small>
       )}
-      {previewUrl ? <img src={previewUrl} alt={file.originalName} /> : <Icon aria-hidden="true" size={28} />}
+      {fileKind(file) === "videos" && videoPreviewUrl ? (
+        <video muted preload="metadata" src={videoPreviewUrl} />
+      ) : previewUrl ? <img src={previewUrl} alt={file.originalName} /> : <Icon aria-hidden="true" size={28} />}
       <span>
         <strong>{file.originalName}</strong>
         <small>{formatFileSize(file.sizeBytes)}</small>
@@ -148,9 +196,11 @@ function StorageTile({
 }
 
 export default function FilesPage() {
+  const navigate = useNavigate();
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [files, setFiles] = useState<FamilyFile[]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [selection, dispatchSelection] = useReducer(
     storageSelectionReducer,
     initialStorageSelection
@@ -162,6 +212,7 @@ export default function FilesPage() {
   } | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StorageFilter>("all");
+  const [sourceChatId, setSourceChatId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -189,12 +240,14 @@ export default function FilesPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [familyResult, filesResult] = await Promise.all([
+      const [familyResult, filesResult, chatsResult] = await Promise.all([
         authRequest<Family>("/api/family"),
-        authRequest<FamilyFile[]>("/api/files")
+        authRequest<FamilyFile[]>("/api/files"),
+        getChats(accessToken)
       ]);
       setFamily(familyResult);
       setFiles(filesResult);
+      setChats(chatsResult);
       dispatchSelection({ type: "load-default", fileId: filesResult[0]?.id ?? null });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not load storage");
@@ -252,10 +305,7 @@ export default function FilesPage() {
   const filteredFiles = useMemo(() => {
     const query = search.trim().toLowerCase();
     return files.filter((file) => {
-      if (filter !== "all" && filter !== "favorites" && fileKind(file) !== filter) {
-        return false;
-      }
-      if (filter === "favorites" && !file.isFavorite) {
+      if (!matchesStorageFilter(file, filter) || (sourceChatId && file.chatId !== sourceChatId)) {
         return false;
       }
       return (
@@ -263,11 +313,23 @@ export default function FilesPage() {
         `${file.originalName} ${file.mimeType} ${chatFolderLabel(file)}`.toLowerCase().includes(query)
       );
     });
-  }, [files, filter, search]);
+  }, [files, filter, search, sourceChatId]);
 
-  const selectedFile =
-    filteredFiles.find((file) => file.id === selectedFileId) ?? filteredFiles[0] ?? files[0] ?? null;
+  const selectedFile = filteredFiles.find((file) => file.id === selectedFileId) ?? null;
   const selectedFilePreviewUrl = useFilePreviewUrl(accessToken, selectedFile);
+  const [selectedMediaUrl, setSelectedMediaUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!accessToken || !selectedFile || !["audio", "videos"].includes(fileKind(selectedFile))) {
+      setSelectedMediaUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void createStreamingMediaUrl(accessToken, selectedFile.id).then((url) => {
+      if (!cancelled) setSelectedMediaUrl(url);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [accessToken, selectedFile]);
 
   const groupedFiles = useMemo(() => {
     return filteredFiles.reduce<
@@ -284,6 +346,9 @@ export default function FilesPage() {
       return groups;
     }, []);
   }, [filteredFiles]);
+  const sourceGroups = useMemo(() => {
+    return buildStorageSources(files, chats, currentUser?.id);
+  }, [chats, currentUser?.id, files]);
 
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(event.target.files ?? []);
@@ -350,80 +415,44 @@ export default function FilesPage() {
     <main className={`app-shell app-frame storage-page${mobileDetailsOpen ? " has-storage-selection" : ""}`}>
       <AppNav />
       <section className="page-surface storage-layout" aria-busy={isLoading || isUploading}>
-        <div className="storage-main">
-          <header className="section-header">
-            <div>
-              <p className="eyebrow">{family?.name ?? "Stovo"}</p>
-              <h1>Storage</h1>
-            </div>
-            <div className="section-actions">
-              <button
-                type="button"
-                className="primary-upload-button"
-                disabled={isUploading}
-                onClick={() => uploadInputRef.current?.click()}
-              >
-                <Upload aria-hidden="true" size={18} />
-                {isUploading ? "Uploading" : "Upload"}
-              </button>
-              <input
-                ref={uploadInputRef}
-                className="visually-hidden"
-                multiple
-                type="file"
-                onChange={handleUpload}
-              />
-              <div className="menu-anchor" ref={moreMenuRef}>
+        <aside className="storage-source-sidebar" aria-label="Chat file sources">
+          <p className="eyebrow">{family?.name ?? "Stovo"}</p>
+          <h1>Storage</h1>
+          <button
+            type="button"
+            className={!sourceChatId ? "storage-source active" : "storage-source"}
+            onClick={() => setSourceChatId(null)}
+          >
+            <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={19} /></span>
+            <span className="storage-source-copy"><strong>All chats</strong><small>{files.length} files</small></span>
+          </button>
+          {sourceGroups.map((group) => (
+            <section className="storage-source-group" key={group.label}>
+              <h2>{group.label}</h2>
+              {group.sources.map((source) => (
                 <button
                   type="button"
-                  className="icon-button subtle"
-                  aria-label="More storage actions"
-                  aria-expanded={isMoreMenuOpen}
-                  aria-haspopup="menu"
-                  title="More storage actions"
-                  onClick={() => setIsMoreMenuOpen((value) => !value)}
+                  className={sourceChatId === source.chatId ? "storage-source active" : "storage-source"}
+                  key={source.chatId}
+                  onClick={() => setSourceChatId(source.chatId)}
                 >
-                  <MoreVertical aria-hidden="true" size={20} />
+                  <span className="storage-source-avatar">
+                    <StorageSourceAvatar
+                      accessToken={accessToken}
+                      file={source.avatarFile}
+                      kind={source.avatarKind}
+                      label={source.label}
+                    />
+                  </span>
+                  <span className="storage-source-copy"><strong>{source.label}</strong><small>{source.fileCount} files</small></span>
                 </button>
-                {isMoreMenuOpen && (
-                  <div className="action-menu" role="menu">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        uploadInputRef.current?.click();
-                        setIsMoreMenuOpen(false);
-                      }}
-                    >
-                      <Upload aria-hidden="true" size={16} />
-                      Upload files
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        void load();
-                        setIsMoreMenuOpen(false);
-                      }}
-                    >
-                      <RefreshCw aria-hidden="true" size={16} />
-                      Refresh
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setFilter("favorites");
-                        setIsMoreMenuOpen(false);
-                      }}
-                    >
-                      <Heart aria-hidden="true" size={16} />
-                      Show favorites
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+              ))}
+            </section>
+          ))}
+        </aside>
+        <div className="storage-main">
+          <header className="section-header">
+            <div aria-hidden="true" />
           </header>
 
           {error && <p className="error-text">{error}</p>}
@@ -458,44 +487,26 @@ export default function FilesPage() {
                 <span className="storage-tile skeleton-tile" key={index} />
               ))}
             </div>
-          ) : groupedFiles.length === 0 ? (
+          ) : filteredFiles.length === 0 ? (
             <div className="empty-state storage-empty-state">
               <HardDriveIcon />
               <strong>{filter === "favorites" ? "No favorites yet" : "No files saved yet"}</strong>
-              <p>Files saved from chats and direct uploads will appear here.</p>
-              <button
-                type="button"
-                className="primary-upload-button"
-                disabled={isUploading}
-                onClick={() => uploadInputRef.current?.click()}
-              >
-                <Upload aria-hidden="true" size={18} />
-                Upload files
-              </button>
+              <p>Files shared in chats will appear here.</p>
             </div>
           ) : (
-            <div className="storage-timeline">
-              {groupedFiles.map((group) => (
-                <section className="storage-month" key={group.id}>
-                  <div className="storage-folder-heading">
-                    <h2>{group.label}</h2>
-                    <span>{group.access}</span>
-                  </div>
-                  <div className="storage-grid">
-                    {group.items.map((file) => (
-                      <StorageTile
-                        accessToken={accessToken}
-                        file={file}
-                        isSelected={selectedFile?.id === file.id}
-                        key={file.id}
-                        onOpenImage={(imageFile, previewUrl) =>
-                          setFullViewImage({ file: imageFile, previewUrl })
-                        }
-                        onSelect={() => dispatchSelection({ type: "open", fileId: file.id })}
-                      />
-                    ))}
-                  </div>
-                </section>
+            <div className="storage-grid">
+              {filteredFiles.map((file) => (
+                <StorageTile
+                  accessToken={accessToken}
+                  file={file}
+                  isSelected={selectedFile?.id === file.id}
+                  key={file.id}
+                  onOpenImage={(imageFile, previewUrl) => setFullViewImage({ file: imageFile, previewUrl })}
+                  onSelect={() => dispatchSelection(storageTileSelectionAction(
+                    window.matchMedia("(max-width: 960px)").matches,
+                    file.id
+                  ))}
+                />
               ))}
             </div>
           )}
@@ -531,7 +542,22 @@ export default function FilesPage() {
                 </button>
               </div>
               <div className="storage-preview storage-preview-frame">
-                {selectedFilePreviewUrl ? (
+                {fileKind(selectedFile) === "audio" && accessToken ? (
+                  <AudioPlayer
+                    descriptor={{
+                      identity: {
+                        chatId: selectedFile.chatId ?? "storage",
+                        messageId: selectedFile.originMessageId ?? selectedFile.id,
+                        fileId: selectedFile.id
+                      },
+                      title: selectedFile.originalName
+                    }}
+                    sourceFactory={buildAudioSourceFactory(accessToken)}
+                    hideTitle
+                  />
+                ) : fileKind(selectedFile) === "videos" && selectedMediaUrl ? (
+                  <video controls src={selectedMediaUrl} />
+                ) : selectedFilePreviewUrl ? (
                   <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
                 ) : (
                   (() => {
@@ -572,6 +598,17 @@ export default function FilesPage() {
                       <Maximize2 aria-hidden="true" size={20} />
                     </button>
                   )}
+                  {canDeleteFile(selectedFile, currentUser?.id, currentUser?.role) && (
+                    <button
+                      type="button"
+                      className="storage-delete-icon"
+                      aria-label="Move to trash"
+                      title="Move to trash"
+                      onClick={() => void handleDelete(selectedFile.id)}
+                    >
+                      <Trash2 aria-hidden="true" size={20} />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="storage-details-copy">
@@ -594,14 +631,13 @@ export default function FilesPage() {
                   </dd>
                 </div>
               </dl>
-              {canDeleteFile(selectedFile, currentUser?.id, currentUser?.role) && (
+              {selectedFile.chatId && selectedFile.originMessageId && (
                 <button
                   type="button"
-                  className="danger-action"
-                  onClick={() => void handleDelete(selectedFile.id)}
+                  className="storage-jump-message"
+                  onClick={() => navigate(`/app/chats/${selectedFile.chatId}?message=${selectedFile.originMessageId}`)}
                 >
-                  <Trash2 aria-hidden="true" size={18} />
-                  Move to trash
+                  Jump to message
                 </button>
               )}
             </>
