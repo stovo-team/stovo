@@ -1,4 +1,4 @@
-import { ReactElement, useEffect, useRef } from "react";
+import { ReactElement, useEffect, useRef, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
@@ -18,12 +18,14 @@ import {
   getNotificationAppLink
 } from "./appLinks";
 import { queuePendingNotificationAction } from "./notificationActions";
+import { addNativeShareListener, consumeNativeSharedFiles } from "./native/shareReceiverPlugin";
+import { queueSharedFiles } from "./sharedFileQueue";
 import AdminPage from "./pages/AdminPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
 import InvitePage from "./pages/InvitePage";
 import LoginPage from "./pages/LoginPage";
-import MembersPage from "./pages/MembersPage";
+import PlansPage from "./pages/PlansPage";
 import RootRedirect from "./pages/RootRedirect";
 import ServerSetupPage from "./pages/ServerSetupPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -201,6 +203,44 @@ function NativeAppLinkRouter() {
   return null;
 }
 
+function NativeShareRouter() {
+  const navigate = useNavigate();
+  const { currentUser, isLoading } = useAuth();
+  const [shareRevision, setShareRevision] = useState(0);
+
+  useEffect(() => {
+    let disposed = false;
+    let remove: () => void = () => undefined;
+    void addNativeShareListener(() => setShareRevision((current) => current + 1)).then((cleanup) => {
+      remove = cleanup;
+      if (disposed) remove();
+    });
+    return () => {
+      disposed = true;
+      remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || !currentUser) {
+      return;
+    }
+    let cancelled = false;
+    void consumeNativeSharedFiles().then((received) => {
+      if (cancelled || (received.files.length === 0 && received.skippedCount === 0)) {
+        return;
+      }
+      queueSharedFiles(received);
+      navigate("/app/chats");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser, isLoading, navigate, shareRevision]);
+
+  return null;
+}
+
 function App() {
   useEffect(() => {
     void ensureFullScreenIntentPermission();
@@ -213,6 +253,7 @@ function App() {
           <NotificationsBootstrapper />
           <AndroidBackOrchestrator />
           <NativeAppLinkRouter />
+          <NativeShareRouter />
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/server-setup" element={<ServerSetupPage />} />
@@ -239,7 +280,15 @@ function App() {
               path="/app/members"
               element={
                 <RequireAuth>
-                  <MembersPage />
+                  <Navigate to="/app/settings?family=1" replace />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/app/plans"
+              element={
+                <RequireAuth>
+                  <PlansPage />
                 </RequireAuth>
               }
             />

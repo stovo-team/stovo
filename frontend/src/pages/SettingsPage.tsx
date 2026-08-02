@@ -22,9 +22,10 @@ import {
   Server,
   Shield,
   Type,
+  Users,
   X
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   ACCENT_OPTIONS,
@@ -38,7 +39,7 @@ import {
 } from "../appearance/AppearanceContext";
 import { ApiError, getApiUrl, setApiUrlOverride } from "../api/client";
 import { User } from "../api/auth";
-import { Family } from "../api/family";
+import { Family, getMembers } from "../api/family";
 import { FamilyFile, uploadFile } from "../api/files";
 import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
@@ -78,6 +79,7 @@ const settingsGroups = [
   {
     title: "Account",
     items: [
+      { label: "Family", helper: "Members, invites, roles, and shared calendar access", icon: Users },
       { label: "Privacy and Security", helper: "Last seen, profile visibility, passcode", icon: LockKeyhole },
       { label: "Notifications", helper: "Messages, groups, sounds, previews", icon: Bell },
       { label: "Appearance", helper: "Themes, colors, wallpaper, bubbles", icon: Palette }
@@ -446,6 +448,7 @@ function AppearanceEditor({
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { accessToken, authRequest, currentUser, logout, updateCurrentUser } = useAuth();
   const [currentServerUrl] = useState(() => getApiUrl());
   const [family, setFamily] = useState<Family | null>(null);
@@ -455,7 +458,8 @@ export default function SettingsPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [activeSettingsItem, setActiveSettingsItem] = useState<string | null>(null);
+  const [activeSettingsItem, setActiveSettingsItem] = useState<string | null>(() => new URLSearchParams(location.search).has("family") ? "Family" : null);
+  const [members, setMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
@@ -470,7 +474,9 @@ export default function SettingsPage() {
     setError(null);
     try {
       const familyResult = await authRequest<Family>("/api/family");
+      const memberResult = await getMembers(accessToken ?? "");
       setFamily(familyResult);
+      setMembers(memberResult);
       setProfileForm({
         displayName: currentUser?.displayName ?? "",
         familyName: familyResult.name
@@ -480,7 +486,7 @@ export default function SettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [authRequest, currentUser?.displayName]);
+  }, [accessToken, authRequest, currentUser?.displayName]);
 
   useEffect(() => {
     void load();
@@ -699,6 +705,17 @@ export default function SettingsPage() {
                   <p className="muted-copy">
                     Notification preferences are managed per chat with the mute button in chat details.
                   </p>
+                ) : activeSettingsItem === "Family" ? (
+                  <div className="family-settings-members">
+                    <p className="muted-copy">Your shared family space. Calendar permissions follow each member’s role.</p>
+                    {members.map((member) => (
+                      <div className="settings-row family-settings-member" key={member.id}>
+                        <span className="settings-row-icon">{initials(member.displayName)}</span>
+                        <span><strong>{member.displayName}</strong><small>@{member.username} · {member.role}</small></span>
+                      </div>
+                    ))}
+                    {canManageFamily && <p className="muted-copy">Invitation and role management remains available here as the Family controls expand.</p>}
+                  </div>
                 ) : (
                   <p className="muted-copy">
                     This area is ready for Stovo controls as they are added.

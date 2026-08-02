@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Download } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Download, MoreVertical } from "lucide-react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
 interface ImageLightboxProps {
@@ -9,6 +10,7 @@ interface ImageLightboxProps {
   isExternallyClosing?: boolean;
   onClose: () => void;
   onDownload?: () => void;
+  onGoToMessage?: () => void;
 }
 
 export default function ImageLightbox({
@@ -17,11 +19,13 @@ export default function ImageLightbox({
   subtitle,
   isExternallyClosing = false,
   onClose,
-  onDownload
+  onDownload,
+  onGoToMessage
 }: ImageLightboxProps) {
   const prefersReducedMotion = useReducedMotion();
   const [isClosing, setIsClosing] = useState(false);
   const [isReady, setIsReady] = useState(prefersReducedMotion);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
 
   const requestClose = useCallback(() => {
     if (isClosing) {
@@ -81,7 +85,7 @@ export default function ImageLightbox({
     return () => window.clearTimeout(timeout);
   }, [isClosing, onClose, prefersReducedMotion]);
 
-  return (
+  return createPortal(
     <div
       className={`image-lightbox-backdrop${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
       role="presentation"
@@ -106,18 +110,41 @@ export default function ImageLightbox({
           <strong>{title}</strong>
           {subtitle && <span>{subtitle}</span>}
         </div>
-        {onDownload ? (
-          <button type="button" className="image-lightbox-download" onClick={onDownload}>
-            <Download aria-hidden="true" size={18} />
-            <span>Download</span>
-          </button>
-        ) : (
-          <span className="image-lightbox-toolbar-spacer" aria-hidden={true} />
-        )}
+        <div className="image-lightbox-actions">
+          {onDownload && (
+            <button type="button" className="image-lightbox-download" onClick={onDownload}>
+              <Download aria-hidden="true" size={18} />
+              <span>Download</span>
+            </button>
+          )}
+          {onGoToMessage && (
+            <div className="image-lightbox-more-wrap">
+              <button
+                type="button"
+                className="image-lightbox-more"
+                aria-label="More image actions"
+                aria-expanded={isActionsOpen}
+                onClick={() => setIsActionsOpen((open) => !open)}
+              >
+                <MoreVertical aria-hidden="true" size={22} />
+              </button>
+              {isActionsOpen && (
+                <button
+                  type="button"
+                  className="image-lightbox-action-menu"
+                  onClick={onGoToMessage}
+                >
+                  Go to message
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </header>
       <div className="image-lightbox-stage" role="dialog" aria-modal="true" aria-label={`Full view of ${title}`}>
         <img src={imageUrl} alt={title} />
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
