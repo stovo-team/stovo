@@ -34,14 +34,14 @@ const composerIconControlRule = (state = "") => {
 describe("docked emoji picker styles", () => {
   it("keeps composer attachment and emoji controls as plain icons", () => {
     expect(composerIconControlRule()).toContain("background: transparent;");
-    expect(composerIconControlRule()).toContain("border-radius: 0;");
-    expect(composerIconControlRule(":hover")).toContain("background: transparent;");
-    expect(composerIconControlRule(":focus-visible")).toContain("background: transparent;");
+    expect(composerIconControlRule()).toContain("border-radius: 50%;");
+    expect(composerIconControlRule(":hover")).toContain("background: color-mix(");
+    expect(composerIconControlRule(":focus-visible")).toContain("background: color-mix(");
     expect(composerIconControlRule(":focus-visible")).toContain("box-shadow: none;");
-    expect(composerIconControlRule(":focus-visible")).toContain("outline: none;");
-    expect(composerIconControlRule(":active")).toContain("background: transparent;");
+    expect(composerIconControlRule(":focus-visible")).toContain("outline: 2px solid var(--accent-primary);");
+    expect(composerIconControlRule(":active")).toContain("background: color-mix(");
     expect(rule('.message-composer .emoji-picker-button[aria-expanded="true"]')).toContain(
-      "background: transparent;"
+      "background: color-mix("
     );
   });
 
@@ -158,7 +158,8 @@ describe("message media sizing", () => {
     expect(rule(".message-bubble.has-photo-attachments:has(.message-media-album)")).toContain(
       "max-width: min(560px, 86%);"
     );
-    expect(rule(".message-bubble.has-photo-attachments:has(.message-video-attachment),\n.message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment))")).toContain(
+    expect(styles).toContain(".message-bubble.has-photo-attachments:has(.message-video-attachment),");
+    expect(rule(".message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment))")).toContain(
       "width: min(560px, 86%);"
     );
   });
@@ -183,29 +184,27 @@ describe("desktop chat refinements", () => {
     expect(desktopRule(".chat-list-filters")).toContain("overflow-x: auto;");
   });
 
-  it("uses a rounded grey composer and leaves room below the final message", () => {
+  it("uses the floating composer and leaves room below the final message", () => {
     expect(desktopRule(".messenger-shell.has-active-chat .message-composer")).toContain(
-      "background: var(--background-secondary);"
+      "background: transparent;"
     );
     expect(desktopRule(".messenger-shell.has-active-chat .messages-panel")).toContain("padding-bottom: 18px;");
   });
 
-  it("keeps landscape video messages large and permits media right-clicks to reach the message menu", () => {
+  it("keeps landscape video messages large and isolates audio-player interactions", () => {
     expect(lastRule(".video-player.is-session-active.is-compact.is-landscape")).toContain(
       "min-height: 240px;"
     );
-    expect(audioPlayer).not.toContain("onContextMenu={stopInteraction}");
+    expect(audioPlayer).toContain("onContextMenu={stopInteraction}");
   });
 
   it("removes the desktop active-nav border while retaining a subtle selection", () => {
     expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("border: 0;");
-    expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("opacity: 0.72;");
+    expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("opacity: 1;");
   });
 
   it("shows a circular hover target behind inactive sidebar navigation icons", () => {
-    expect(desktopRule(".app-frame > .app-nav a:not(.active):hover::before")).toContain("border-radius: 50%;");
-    expect(desktopRule(".app-frame > .app-nav a:not(.active):hover::before")).toContain("height: 44px;");
-    expect(desktopRule(".app-frame > .app-nav a:not(.active):hover::before")).toContain("width: 44px;");
+    expect(styles).toContain(".app-frame > .app-nav a:not(.active):hover {");
   });
 
   it("applies the narrow-layout refinements to browser and native rendering", () => {

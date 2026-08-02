@@ -38,6 +38,9 @@ type ChatsPageLogic = {
     replySenderId: string | null | undefined
   ) => string | null;
   chatListLayoutClass?: (minimizedChatLayout: boolean) => string;
+  compactChatListLeadingVisual?: (
+    chatType: "family" | "direct" | "group" | "channel" | "archive"
+  ) => "lock" | "hash" | "archive" | "avatar";
 };
 
 const logic = chatsPageModule as ChatsPageLogic;
@@ -47,6 +50,15 @@ describe("ChatsPage lifecycle decisions", () => {
     expect(logic.chatListLayoutClass).toBeTypeOf("function");
     expect(logic.chatListLayoutClass?.(true)).toBe(" messenger-shell--minimized-chat-layout");
     expect(logic.chatListLayoutClass?.(false)).toBe("");
+  });
+
+  it("uses compact type markers for groups and channels while retaining DM avatars", () => {
+    expect(logic.compactChatListLeadingVisual).toBeTypeOf("function");
+    expect(logic.compactChatListLeadingVisual?.("group")).toBe("lock");
+    expect(logic.compactChatListLeadingVisual?.("family")).toBe("lock");
+    expect(logic.compactChatListLeadingVisual?.("channel")).toBe("hash");
+    expect(logic.compactChatListLeadingVisual?.("direct")).toBe("avatar");
+    expect(logic.compactChatListLeadingVisual?.("archive")).toBe("archive");
   });
 
   it("grades emoji-only messages and returns standard styling for four or more emoji", () => {

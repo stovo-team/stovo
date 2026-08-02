@@ -118,6 +118,7 @@ export function VideoPlayer({
   const rootRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const expandedVideoRef = useRef<HTMLVideoElement>(null);
+  const isExpandingRef = useRef(false);
   const registrationRef = useRef<VideoPlaybackRegistration | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -338,7 +339,7 @@ export function VideoPlayer({
     });
     setIsLoading(false);
     setLocalError(null);
-    if (snapshot?.playIntent && !disabledReason && !expanded) {
+    if (snapshot?.playIntent && !disabledReason && !expanded && !isExpandingRef.current) {
       void play({ silent: autoplayEnabled });
     }
   }, [autoplayEnabled, disabledReason, expanded, identity, play, updateSession]);
@@ -372,7 +373,7 @@ export function VideoPlayer({
         const nextVisible = Boolean(entry?.isIntersecting && entry.intersectionRatio >= 0.35);
         if (nextVisible === visible) return;
         visible = nextVisible;
-        if (nextVisible) void playRef.current({ silent: true });
+        if (nextVisible && !isExpandingRef.current) void playRef.current({ silent: true });
         else pauseRef.current();
       },
       { threshold: [0, 0.35, 0.6, 1] },
@@ -382,6 +383,7 @@ export function VideoPlayer({
   }, [autoplayEnabled, disabledReason, expanded, sourceUrl]);
 
   const openExpanded = useCallback(() => {
+    isExpandingRef.current = true;
     const inline = videoRef.current;
     const registration = registrationRef.current;
     if (inline) {
@@ -413,6 +415,7 @@ export function VideoPlayer({
         // A detached media element may reject an imperative pause.
       }
     }
+    isExpandingRef.current = false;
     setExpanded(false);
     const registration = registrationRef.current;
     const inline = videoRef.current;

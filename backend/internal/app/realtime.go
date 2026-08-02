@@ -222,6 +222,7 @@ func (s *Server) configureSockets() {
 				return
 			}
 			s.emitMessageRead(chatID, message.ID, user.ID)
+			s.bumpChatHistoryRevision(context.Background(), chatID)
 		})
 
 		socket.On("typing:start", func(event *socketio.EventPayload) {
@@ -460,6 +461,20 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	if err != nil {
 		return messagePublic{}, errNotFound
 	}
+	if chat.Type == "direct" {
+		for _, member := range chat.Members {
+			if member.ID == user.ID {
+				continue
+			}
+			blocked, blockErr := s.directContactBlocked(user.ID, member.ID)
+			if blockErr != nil {
+				return messagePublic{}, newStatusError(500, "could not check privacy settings")
+			}
+			if blocked {
+				return messagePublic{}, newStatusError(403, "direct messages are unavailable for this member")
+			}
+		}
+	}
 	canPost := s.canSendToChat(chat, user)
 	threadRootMessageID := trimStringPointer(payload.ThreadRootMessageID)
 	if !canPost {
@@ -586,6 +601,7 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 		return messagePublic{}, err
 	}
 	message.ClientMessageID = clientMessageID
+	s.bumpChatHistoryRevision(ctx, chatID)
 	if err := s.broker.Publish(context.Background(), brokerChannelMessages, broker.BrokerEvent{
 		"event_id":   uuid.NewString(),
 		"type":       "message.created",

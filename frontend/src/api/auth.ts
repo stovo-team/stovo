@@ -1,5 +1,3 @@
-import { Capacitor } from "@capacitor/core";
-
 import { ApiError, apiRequest, getStoredRefreshToken } from "./client";
 import { FamilyFile } from "./files";
 
@@ -16,6 +14,9 @@ export interface User {
   profilePhoto: FamilyFile | null;
   createdAt?: string;
   lastSeenAt?: string | null;
+  profileVisibility: "family" | "nobody";
+  lastSeenVisibility: "family" | "nobody";
+  readReceiptsEnabled: boolean;
 }
 
 export interface AuthResponse {
@@ -81,9 +82,9 @@ export function refreshSession() {
     return refreshSessionInFlight;
   }
   const storedToken = getStoredRefreshToken();
-  // Native clients cannot rely on cross-origin cookies. With no persisted
-  // token there is no session to restore, so avoid a guaranteed 401 request.
-  if (Capacitor.isNativePlatform() && !storedToken) {
+  // Login and refresh responses persist the token for both web and native
+  // clients. Without one, a refresh request is guaranteed to be rejected.
+  if (!storedToken) {
     return Promise.reject(new ApiError(401, "Refresh token is missing"));
   }
   refreshSessionInFlight = (async () => {

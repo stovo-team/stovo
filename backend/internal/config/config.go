@@ -27,6 +27,8 @@ type Config struct {
 	PostgresUser                 string
 	PostgresPassword             string
 	PostgresDB                   string
+	DatabaseMaxOpenConns         int
+	DatabaseMaxIdleConns         int
 	RedisURL                     string
 	RedisHost                    string
 	RedisPort                    int
@@ -87,6 +89,15 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("parse POSTGRES_PORT: %w", err)
 	}
 
+	databaseMaxOpenConns, err := atoi(getenv("DATABASE_MAX_OPEN_CONNS", "10"))
+	if err != nil || databaseMaxOpenConns < 1 {
+		return Config{}, fmt.Errorf("parse DATABASE_MAX_OPEN_CONNS: must be a positive integer")
+	}
+	databaseMaxIdleConns, err := atoi(getenv("DATABASE_MAX_IDLE_CONNS", "10"))
+	if err != nil || databaseMaxIdleConns < 0 || databaseMaxIdleConns > databaseMaxOpenConns {
+		return Config{}, fmt.Errorf("parse DATABASE_MAX_IDLE_CONNS: must be between 0 and DATABASE_MAX_OPEN_CONNS")
+	}
+
 	redisPort, err := atoi(getenv("REDIS_PORT", "6379"))
 	if err != nil {
 		return Config{}, fmt.Errorf("parse REDIS_PORT: %w", err)
@@ -122,6 +133,8 @@ func Load() (Config, error) {
 		PostgresUser:                 getenv("POSTGRES_USER", "family_user"),
 		PostgresPassword:             getenv("POSTGRES_PASSWORD", "family_password"),
 		PostgresDB:                   getenv("POSTGRES_DB", "family_messenger"),
+		DatabaseMaxOpenConns:         databaseMaxOpenConns,
+		DatabaseMaxIdleConns:         databaseMaxIdleConns,
 		RedisURL:                     strings.TrimSpace(os.Getenv("REDIS_URL")),
 		RedisHost:                    getenv("REDIS_HOST", "localhost"),
 		RedisPort:                    redisPort,
