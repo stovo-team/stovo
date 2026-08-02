@@ -314,16 +314,17 @@ func (s *Server) validateImageFileForFamily(fileID string, user userPublic, miss
 
 func (s *Server) loadFileRecord(fileID, viewerID string) (filePublic, string, error) {
 	row := s.queryRow(`
-		SELECT f.id, f.family_id, f.uploaded_by, f.chat_id, c.title, c.type, f.access_scope, f.storage_provider,
+		SELECT f.id, f.family_id, f.uploaded_by, f.chat_id, c.title, c.type, ma.message_id, f.access_scope, f.storage_provider,
 		       f.object_key, f.thumbnail_object_key, f.original_name, f.mime_type, f.size_bytes, f.checksum, f.created_at, f.deleted_at,
 		       fp.is_favorite
 		FROM files f
 		LEFT JOIN chats c ON c.id = f.chat_id
+		LEFT JOIN message_attachments ma ON ma.file_id = f.id
 		LEFT JOIN file_preferences fp ON fp.file_id = f.id AND fp.user_id = ?
 		WHERE f.id = ?
 	`, viewerID, fileID)
 	var file filePublic
-	var chatID, chatTitle, chatType, thumbnailObjectKey, checksum, deletedAt sql.NullString
+	var chatID, chatTitle, chatType, originMessageID, thumbnailObjectKey, checksum, deletedAt sql.NullString
 	var favorite sql.NullBool
 	var objectKey string
 	var createdAt string
@@ -334,6 +335,7 @@ func (s *Server) loadFileRecord(fileID, viewerID string) (filePublic, string, er
 		&chatID,
 		&chatTitle,
 		&chatType,
+		&originMessageID,
 		&file.AccessScope,
 		&file.StorageProvider,
 		&objectKey,
@@ -351,6 +353,7 @@ func (s *Server) loadFileRecord(fileID, viewerID string) (filePublic, string, er
 	file.ChatID = stringPtrFromNull(chatID)
 	file.ChatTitle = stringPtrFromNull(chatTitle)
 	file.ChatType = stringPtrFromNull(chatType)
+	file.OriginMessageID = stringPtrFromNull(originMessageID)
 	file.ThumbnailObjectKey = stringPtrFromNull(thumbnailObjectKey)
 	file.Checksum = stringPtrFromNull(checksum)
 	file.CreatedAt = parseTime(createdAt)

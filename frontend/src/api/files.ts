@@ -8,6 +8,7 @@ export interface FamilyFile {
   chatId: string | null;
   chatTitle: string | null;
   chatType: "family" | "direct" | "group" | "channel" | null;
+  originMessageId: string | null;
   accessScope: "family" | "chat";
   storageProvider: "local" | string;
   originalName: string;

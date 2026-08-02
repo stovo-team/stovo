@@ -22,4 +22,16 @@ describe("chat details controls", () => {
     expect(styles).toContain(".chat-info-topbar-action:hover,");
     expect(styles).toContain(".chat-info-title-edit:hover {");
   });
+
+  it("collects links and every attachment type with its source message", () => {
+    expect(chatsPage).toContain("function extractMessageLinks");
+    expect(chatsPage).toContain("message.attachments.map((file) => ({");
+    expect(chatsPage).toContain('kind: "link"');
+    expect(chatsPage).toContain('return tab === "media";');
+  });
+
+  it("lets shared attachments return to their source message", () => {
+    expect(chatsPage).toContain("onGoToMessage={fullViewImage.messageId ? handleGoToFullViewImageMessage : undefined}");
+    expect(chatsPage).toContain("onFocusMessage={() => onFocusMessage(item.messageId)}");
+  });
 });

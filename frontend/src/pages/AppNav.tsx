@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { CalendarDays, Folder, MessageCircle } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 import { useReducedMotion } from "../hooks/useReducedMotion";
@@ -46,48 +47,21 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
       </div>
       <div className="app-nav-links">
         <NavLink to="/app/chats" title="Chats" aria-label="Chats" viewTransition={enableViewTransitions}>
-          {({ isActive }) => (
-            <>
-              <span
-                className={`ms-icon ms-icon--22${isActive ? " ms-icon--filled" : ""}`}
-                aria-hidden={true}
-              >
-                chat
-              </span>
-              <span>Chats</span>
-              {unreadTotal > 0 && (
-                <small className="nav-badge" aria-label={`${unreadTotal} unread messages`}>
-                  {unreadTotal > 99 ? "99+" : unreadTotal}
-                </small>
-              )}
-            </>
+          <MessageCircle aria-hidden={true} />
+          <span>Chats</span>
+          {unreadTotal > 0 && (
+            <small className="nav-badge" aria-label={`${unreadTotal} unread messages`}>
+              {unreadTotal > 99 ? "99+" : unreadTotal}
+            </small>
           )}
         </NavLink>
         <NavLink to="/app/files" title="Storage" aria-label="Storage" viewTransition={enableViewTransitions}>
-          {({ isActive }) => (
-            <>
-              <span
-                className={`ms-icon ms-icon--22${isActive ? " ms-icon--filled" : ""}`}
-                aria-hidden={true}
-              >
-                folder
-              </span>
-              <span>Storage</span>
-            </>
-          )}
+          <Folder aria-hidden={true} />
+          <span>Storage</span>
         </NavLink>
-        <NavLink to="/app/members" title="Contacts" aria-label="Contacts" viewTransition={enableViewTransitions}>
-          {({ isActive }) => (
-            <>
-              <span
-                className={`ms-icon ms-icon--22${isActive ? " ms-icon--filled" : ""}`}
-                aria-hidden={true}
-              >
-                contacts
-              </span>
-              <span>Contacts</span>
-            </>
-          )}
+        <NavLink to="/app/plans" title="Plans" aria-label="Plans" viewTransition={enableViewTransitions}>
+          <CalendarDays aria-hidden={true} />
+          <span>Plans</span>
         </NavLink>
         <NavLink to="/app/settings" title="Settings" aria-label="Settings" viewTransition={enableViewTransitions}>
           {({ isActive }) => (
