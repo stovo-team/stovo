@@ -10,6 +10,8 @@ import {
   Image,
   Info,
   Maximize2,
+  Hash,
+  LockKeyhole,
   MoreVertical,
   MessageCircle,
   Megaphone,
@@ -45,7 +47,14 @@ import {
   storageTileSelectionAction,
   storageSelectionReducer
 } from "./storageSelection";
-import { buildStorageSources, matchesStorageFilter, storageFileKind, type StorageAvatarKind, type StorageFilter } from "./storageLibrary";
+import {
+  buildStorageSources,
+  matchesStorageFilter,
+  storageFileKind,
+  storageSourceLeadingVisual,
+  type StorageAvatarKind,
+  type StorageFilter
+} from "./storageLibrary";
 
 const storageFilters: Array<{ label: string; value: StorageFilter }> = [
   { label: "All", value: "all" },
@@ -114,25 +123,31 @@ function StorageSourceAvatar({
   accessToken,
   file,
   kind,
-  label
+  label,
+  minimizedLayout
 }: {
   accessToken: string | null;
   file: FamilyFile | null;
   kind: StorageAvatarKind;
   label: string;
+  minimizedLayout: boolean;
 }) {
   const previewUrl = useFilePreviewUrl(accessToken, file, Boolean(file));
   const [imageBroken, setImageBroken] = useState(false);
 
   useEffect(() => setImageBroken(false), [file?.id, previewUrl]);
 
+  const leadingVisual = storageSourceLeadingVisual(kind, minimizedLayout);
+
+  if (leadingVisual === "lock") return <LockKeyhole aria-hidden="true" size={16} strokeWidth={2} />;
+  if (leadingVisual === "hash") return <Hash aria-hidden="true" size={16} strokeWidth={2} />;
+  if (leadingVisual === "archive") return <Archive aria-hidden="true" size={16} strokeWidth={2} />;
   if (previewUrl && !imageBroken) {
     return <img src={previewUrl} alt="" onError={() => setImageBroken(true)} />;
   }
   if (kind === "family") return <Home aria-hidden="true" size={20} />;
   if (kind === "group") return <Users aria-hidden="true" size={20} />;
   if (kind === "channel") return <Megaphone aria-hidden="true" size={20} />;
-  if (kind === "archive") return <Archive aria-hidden="true" size={20} />;
   return <span aria-hidden="true">{chatInitials(label)}</span>;
 }
 
@@ -412,7 +427,7 @@ export default function FilesPage() {
   }
 
   return (
-    <main className={`app-shell app-frame storage-page${mobileDetailsOpen ? " has-storage-selection" : ""}`}>
+    <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${mobileDetailsOpen ? " has-storage-selection" : ""}`}>
       <AppNav />
       <section className="page-surface storage-layout" aria-busy={isLoading || isUploading}>
         <aside className="storage-source-sidebar" aria-label="Chat file sources">
@@ -423,7 +438,7 @@ export default function FilesPage() {
             className={!sourceChatId ? "storage-source active" : "storage-source"}
             onClick={() => setSourceChatId(null)}
           >
-            <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={19} /></span>
+            <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={family?.minimizedChatLayout ? 16 : 19} /></span>
             <span className="storage-source-copy"><strong>All chats</strong><small>{files.length} files</small></span>
           </button>
           {sourceGroups.map((group) => (
@@ -436,12 +451,13 @@ export default function FilesPage() {
                   key={source.chatId}
                   onClick={() => setSourceChatId(source.chatId)}
                 >
-                  <span className="storage-source-avatar">
+                  <span className={`storage-source-avatar${source.avatarKind === "archive" ? " storage-source-avatar--archive" : ""}`}>
                     <StorageSourceAvatar
                       accessToken={accessToken}
                       file={source.avatarFile}
                       kind={source.avatarKind}
                       label={source.label}
+                      minimizedLayout={Boolean(family?.minimizedChatLayout)}
                     />
                   </span>
                   <span className="storage-source-copy"><strong>{source.label}</strong><small>{source.fileCount} files</small></span>

@@ -91,8 +91,8 @@ func New(cfg config.Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(5)
-	db.SetMaxIdleConns(5)
+	db.SetMaxOpenConns(cfg.DatabaseMaxOpenConns)
+	db.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
 	db.SetConnMaxLifetime(30 * time.Minute)
 	if err := db.Ping(); err != nil {
 		_ = logBuffer.Close()
@@ -200,6 +200,9 @@ func (s *Server) Routes() http.Handler {
 	router.Post("/api/auth/logout", s.handleLogout)
 	router.Get("/api/auth/me", s.authenticated(s.handleMe))
 	router.Patch("/api/auth/me", s.authenticated(s.handleUpdateMe))
+	router.Get("/api/privacy/blocks", s.authenticated(s.handleListBlocks))
+	router.Post("/api/privacy/blocks/{userId}", s.authenticated(s.handleBlockUser))
+	router.Delete("/api/privacy/blocks/{userId}", s.authenticated(s.handleUnblockUser))
 	router.Get("/api/auth/audio-settings", s.authenticated(s.handleGetAudioSettings))
 	router.Put("/api/auth/audio-settings", s.authenticated(s.handlePutAudioSettings))
 	router.Get("/api/notifications/topic", s.authenticated(s.handleGetNotificationTopic))
@@ -366,6 +369,17 @@ func (s *Server) initSchema() error {
 			FOREIGN KEY (family_id) REFERENCES families(id)
 		);`,
 		`ALTER TABLE users DROP COLUMN IF EXISTS email;`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_visibility TEXT NOT NULL DEFAULT 'family';`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_visibility TEXT NOT NULL DEFAULT 'family';`,
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS read_receipts_enabled BOOLEAN NOT NULL DEFAULT TRUE;`,
+		`CREATE TABLE IF NOT EXISTS user_blocks (
+			blocker_user_id TEXT NOT NULL,
+			blocked_user_id TEXT NOT NULL,
+			created_at TEXT NOT NULL,
+			PRIMARY KEY (blocker_user_id, blocked_user_id),
+			FOREIGN KEY (blocker_user_id) REFERENCES users(id),
+			FOREIGN KEY (blocked_user_id) REFERENCES users(id)
+		);`,
 		`CREATE TABLE IF NOT EXISTS refresh_tokens (
 			id TEXT PRIMARY KEY,
 			user_id TEXT NOT NULL,
@@ -528,6 +542,11 @@ func (s *Server) initSchema() error {
 		`UPDATE chats SET encryption_protocol = 'server_at_rest' WHERE encryption_protocol = 'end_to_end';`,
 		`UPDATE messages SET encryption_protocol = 'legacy_plaintext' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
+		`CREATE INDEX IF NOT EXISTS idx_messages_chat_created_active ON messages(chat_id, created_at DESC) WHERE deleted_at IS NULL;`,
+		`CREATE INDEX IF NOT EXISTS idx_message_user_deletions_user_message ON message_user_deletions(user_id, message_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_message_attachments_message ON message_attachments(message_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_message_statuses_message ON message_statuses(message_id);`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS audio_call_settings TEXT;`,
 		`ALTER TABLE users ADD COLUMN IF NOT EXISTS ntfy_topic_token TEXT DEFAULT NULL;`,
 		`CREATE TABLE IF NOT EXISTS call_sessions (
@@ -784,7 +803,7 @@ func parseTime(value string) time.Time {
 
 func (s *Server) getUserByID(userID string) (userPublic, error) {
 	row := s.queryRow(`
-		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at
+		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at, profile_visibility, last_seen_visibility, read_receipts_enabled
 		FROM users
 		WHERE id = ?
 	`, userID)
@@ -792,7 +811,7 @@ func (s *Server) getUserByID(userID string) (userPublic, error) {
 	var user userPublic
 	var createdAt string
 	var publicKey, profilePhotoFileID, lastSeen sql.NullString
-	var active int
+	var active, readReceiptsEnabled bool
 	if err := row.Scan(
 		&user.ID,
 		&user.FamilyID,
@@ -804,12 +823,16 @@ func (s *Server) getUserByID(userID string) (userPublic, error) {
 		&profilePhotoFileID,
 		&createdAt,
 		&lastSeen,
+		&user.ProfileVisibility,
+		&user.LastSeenVisibility,
+		&readReceiptsEnabled,
 	); err != nil {
 		return userPublic{}, err
 	}
 
 	created := parseTime(createdAt)
-	user.IsActive = active == 1
+	user.IsActive = active
+	user.ReadReceiptsEnabled = readReceiptsEnabled
 	user.PublicKey = stringPtrFromNull(publicKey)
 	if profilePhotoFileID.Valid {
 		if file, err := s.buildFilePublic(profilePhotoFileID.String, user.ID); err == nil && file.DeletedAt == nil {

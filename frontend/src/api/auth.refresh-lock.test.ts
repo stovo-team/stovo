@@ -15,6 +15,7 @@ describe("refreshSession", () => {
   beforeEach(() => {
     storage.clear();
     storage.set("familyMessenger.refreshLock", String(Date.now()));
+    storage.set("familyMessenger.refreshToken", "active-refresh-token");
     Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: {

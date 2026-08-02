@@ -27,6 +27,17 @@ export type StorageSource<TFile = StorageFileLike> = {
 
 export type StorageFilter = "all" | "photos" | "videos" | "audio" | "documents" | "favorites";
 
+export function storageSourceLeadingVisual(
+  kind: StorageAvatarKind,
+  minimizedLayout: boolean
+): "lock" | "hash" | "archive" | "avatar" {
+  if (kind === "archive") return "archive";
+  if (!minimizedLayout) return "avatar";
+  if (kind === "group" || kind === "family") return "lock";
+  if (kind === "channel") return "hash";
+  return "avatar";
+}
+
 export function storageFileKind(file: Pick<StorageFileLike, "mimeType">) {
   if (file.mimeType.startsWith("image/")) return "photos";
   if (file.mimeType.startsWith("video/")) return "videos";

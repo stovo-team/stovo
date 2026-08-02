@@ -1,8 +1,21 @@
 import { describe, expect, it } from "vitest";
 
-import { buildStorageSources, groupStorageSources, matchesStorageFilter } from "./storageLibrary";
+import {
+  buildStorageSources,
+  groupStorageSources,
+  matchesStorageFilter,
+  storageSourceLeadingVisual
+} from "./storageLibrary";
 
 describe("storage library helpers", () => {
+  it("uses compact markers for group and channel sources while keeping archives icon-only", () => {
+    expect(storageSourceLeadingVisual("group", true)).toBe("lock");
+    expect(storageSourceLeadingVisual("channel", true)).toBe("hash");
+    expect(storageSourceLeadingVisual("direct", true)).toBe("avatar");
+    expect(storageSourceLeadingVisual("archive", true)).toBe("archive");
+    expect(storageSourceLeadingVisual("archive", false)).toBe("archive");
+  });
+
   const audio = {
     id: "audio",
     chatId: "chat-1",

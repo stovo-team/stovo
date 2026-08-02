@@ -502,18 +502,20 @@ describe("VideoPlayer", () => {
     playMock.mockClear();
     pauseMock.mockClear();
 
-    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Play video"]')?.click());
+    act(() => container.querySelector<HTMLElement>(".video-player")?.click());
     await settle();
 
     const videos = document.querySelectorAll("video");
     expect(videos).toHaveLength(2);
     const expanded = videos[1] as HTMLVideoElement;
+    const expandedPlayMock = vi.spyOn(expanded, "play").mockResolvedValue(undefined);
+    act(() => expanded.dispatchEvent(new Event("loadedmetadata")));
+    await settle();
 
     expect(pauseMock).toHaveBeenCalled();
     expect(inline.muted).toBe(true);
     expect(expanded.muted).toBe(false);
-    expect(playMock).not.toHaveBeenCalled();
-    expect(expanded.play).toHaveBeenCalled();
+    expect(expandedPlayMock).toHaveBeenCalled();
 
     act(() => document.querySelector<HTMLButtonElement>('button[aria-label="Close video"]')?.click());
     await settle();

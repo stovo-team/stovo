@@ -17,15 +17,18 @@ describe("compact audio message styling", () => {
     );
   });
 
-  it("fills the message bubble without forcing a fixed audio width", () => {
+  it("fills a compact message bubble without widening it to the message list", () => {
     expect(styles).toMatch(
-      /\.message-audio-attachment,[\s\S]*?\.audio-player \{[^}]*width: 100%;/
+      /\.message-audio-attachment,[\s\S]*?\.audio-player \{[^}]*box-sizing: border-box;[^}]*width: 100%;/
     );
     expect(styles).toMatch(
-      /\.message-bubble:has\(\.message-audio-attachment\) \{[^}]*width: 100%;/
+      /\.message-bubble:has\(\.message-audio-attachment\) \{[^}]*max-width: min\(236px, calc\(100vw - 48px\)\);[^}]*width: min\(236px, calc\(100vw - 48px\)\);/
     );
-    expect(styles).not.toMatch(
-      /\.message-bubble:has\(\.message-audio-attachment\) \{[^}]*max-width: min\(236px, calc\(100vw - 48px\)\);/
+  });
+
+  it("gives the audio attachment wrapper the bubble width", () => {
+    expect(styles).toMatch(
+      /\.message-bubble:has\(\.message-audio-attachment\) \.message-attachments,[\s\S]*?\.message-bubble:has\(\.message-audio-attachment\) \.message-attachments > div \{[^}]*min-width: 0;[^}]*width: 100%;/
     );
   });
 });

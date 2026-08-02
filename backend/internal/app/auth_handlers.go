@@ -290,8 +290,8 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 	displayName := trimStringPointer(payload.DisplayName)
 	publicKey := trimStringPointer(payload.PublicKey)
 	profilePhotoFileID := trimStringPointer(payload.ProfilePhotoFileID)
-	if displayName == nil && publicKey == nil && profilePhotoFileID == nil {
-		s.detail(w, http.StatusUnprocessableEntity, "displayName, publicKey, or profilePhotoFileId is required")
+	if displayName == nil && publicKey == nil && profilePhotoFileID == nil && payload.ProfileVisibility == nil && payload.LastSeenVisibility == nil && payload.ReadReceiptsEnabled == nil {
+		s.detail(w, http.StatusUnprocessableEntity, "A profile or privacy setting is required")
 		return
 	}
 	if displayName != nil && *displayName == "" {
@@ -301,6 +301,12 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 	if profilePhotoFileID != nil && *profilePhotoFileID != "" {
 		if err := s.validateImageFileForFamily(*profilePhotoFileID, user, "Profile photo not found"); err != nil {
 			s.detail(w, domainErrorStatus(err), err.Error())
+			return
+		}
+	}
+	for _, value := range []*string{payload.ProfileVisibility, payload.LastSeenVisibility} {
+		if value != nil && *value != "family" && *value != "nobody" {
+			s.detail(w, http.StatusUnprocessableEntity, "Visibility must be family or nobody")
 			return
 		}
 	}
@@ -325,6 +331,21 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 				return err
 			}
 		}
+		if payload.ProfileVisibility != nil {
+			if _, err := s.txExec(tx, `UPDATE users SET profile_visibility = ? WHERE id = ?`, *payload.ProfileVisibility, user.ID); err != nil {
+				return err
+			}
+		}
+		if payload.LastSeenVisibility != nil {
+			if _, err := s.txExec(tx, `UPDATE users SET last_seen_visibility = ? WHERE id = ?`, *payload.LastSeenVisibility, user.ID); err != nil {
+				return err
+			}
+		}
+		if payload.ReadReceiptsEnabled != nil {
+			if _, err := s.txExec(tx, `UPDATE users SET read_receipts_enabled = ? WHERE id = ?`, *payload.ReadReceiptsEnabled, user.ID); err != nil {
+				return err
+			}
+		}
 		return nil
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update profile")
@@ -341,7 +362,7 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 
 func (s *Server) getUserForLogin(username string) (userPublic, string, error) {
 	row := s.queryRow(`
-		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at, password_hash
+		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at, profile_visibility, last_seen_visibility, read_receipts_enabled, password_hash
 		FROM users
 		WHERE lower(username) = lower(?)
 		LIMIT 1
@@ -350,7 +371,7 @@ func (s *Server) getUserForLogin(username string) (userPublic, string, error) {
 	var user userPublic
 	var createdAt string
 	var publicKey, profilePhotoFileID, lastSeen sql.NullString
-	var active int
+	var active, readReceiptsEnabled bool
 	var passwordHash string
 	if err := row.Scan(
 		&user.ID,
@@ -363,12 +384,16 @@ func (s *Server) getUserForLogin(username string) (userPublic, string, error) {
 		&profilePhotoFileID,
 		&createdAt,
 		&lastSeen,
+		&user.ProfileVisibility,
+		&user.LastSeenVisibility,
+		&readReceiptsEnabled,
 		&passwordHash,
 	); err != nil {
 		return userPublic{}, "", err
 	}
 	created := parseTime(createdAt)
-	user.IsActive = active == 1
+	user.IsActive = active
+	user.ReadReceiptsEnabled = readReceiptsEnabled
 	user.PublicKey = stringPtrFromNull(publicKey)
 	if profilePhotoFileID.Valid {
 		if file, err := s.buildFilePublic(profilePhotoFileID.String, user.ID); err == nil && file.DeletedAt == nil {
