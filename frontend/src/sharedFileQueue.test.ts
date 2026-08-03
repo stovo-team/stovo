@@ -1,6 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { clearQueuedSharedFiles, queueSharedFiles, takeQueuedSharedFiles } from "./sharedFileQueue";
+import {
+  clearQueuedSharedFiles,
+  onSharedFilesQueued,
+  queueSharedFiles,
+  takeQueuedSharedFiles
+} from "./sharedFileQueue";
 
 describe("shared file queue", () => {
   beforeEach(() => clearQueuedSharedFiles());
@@ -17,5 +22,17 @@ describe("shared file queue", () => {
       skippedCount: 3
     });
     expect(takeQueuedSharedFiles()).toBeNull();
+  });
+
+  it("notifies an active chat screen when Android shares a new batch", () => {
+    const received = vi.fn();
+    const unsubscribe = onSharedFilesQueued(received);
+    const shared = new File(["a"], "photo.jpg", { type: "image/jpeg" });
+
+    queueSharedFiles({ files: [shared], skippedCount: 0 });
+
+    expect(received).toHaveBeenCalledTimes(1);
+    expect(received).toHaveBeenCalledWith({ files: [shared], skippedCount: 0 });
+    unsubscribe();
   });
 });

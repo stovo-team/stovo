@@ -15,6 +15,11 @@ class PictureInPictureCoordinatorTest {
         )
     }
 
+    @Test
+    fun `call PiP deliberately supplies no media actions`() {
+        assertEquals(emptyList<PiPAction>(), pictureInPictureActions(PiPOwner.CALL, null))
+    }
+
     private fun video(
         active: Boolean = true,
         playing: Boolean = true,
