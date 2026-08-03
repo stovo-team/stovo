@@ -68,27 +68,13 @@ func (s *Server) configureSockets() {
 		// reconnects (e.g. app foregrounded from a notification) after the original
 		// call:ringing event was already sent to the previous socket.
 		if ringing := s.getRingingSessionForUser(user.ID); ringing != nil {
-			payloadMap := map[string]any{
-				"chatId":    ringing.ChatID,
-				"callerId":  ringing.CallerUserID,
-				"calleeId":  ringing.CalleeUserID,
-				"callType":  ringing.CallType,
-				"state":     string(ringing.State),
-				"createdAt": ringing.CreatedAt.Format(time.RFC3339Nano),
-				"expiresAt": ringing.ExpiresAt.Format(time.RFC3339Nano),
-			}
+			payloadMap := ringing.publicPayload()
 			s.logger.Infof("realtime.call", "call:ringing re-emitted on reconnect user_id=%s chat_id=%s socket_id=%s", user.ID, ringing.ChatID, socket.Id)
 			_ = socket.Emit("call:ringing", payloadMap)
 		} else if active := s.getActiveCallSessionForUser(user.ID); active != nil {
 			// Re-sync an in-progress call after a socket reconnect so WebRTC signaling
 			// can resume instead of leaving the client stuck on "Connecting…".
-			payloadMap := map[string]any{
-				"chatId":   active.ChatID,
-				"callerId": active.CallerUserID,
-				"calleeId": active.CalleeUserID,
-				"callType": active.CallType,
-				"state":    string(active.State),
-			}
+			payloadMap := active.publicPayload()
 			s.logger.Infof("realtime.call", "call:sync re-emitted on reconnect user_id=%s chat_id=%s state=%s", user.ID, active.ChatID, active.State)
 			_ = socket.Emit("call:sync", payloadMap)
 		}
@@ -126,16 +112,11 @@ func (s *Server) configureSockets() {
 					}
 					if ended, ok := s.endCallForUser(userID); ok {
 						s.recordCallHistory(ended, "disconnected")
-						payload := map[string]any{
-							"chatId":           ended.ChatID,
-							"callerId":         ended.CallerUserID,
-							"calleeId":         ended.CalleeUserID,
-							"reason":           "disconnected",
-							"endedAt":          nowString(),
-							"sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano),
-						}
-						s.emitCallToUser(ended.CallerUserID, "call:ended", payload)
-						s.emitCallToUser(ended.CalleeUserID, "call:ended", payload)
+						payload := ended.actionPayload(map[string]any{
+							"reason":  "disconnected",
+							"endedAt": nowString(),
+						})
+						s.emitCallToParticipants(ended, "call:ended", payload)
 					}
 				}()
 			}
@@ -247,188 +228,7 @@ func (s *Server) configureSockets() {
 			}
 		})
 
-		socket.On("call:start", func(event *socketio.EventPayload) {
-			var payload socketCallStartRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" {
-				s.logger.Warnf("realtime.call", "call:start invalid payload user_id=%s socket_id=%s", user.ID, socket.Id)
-				_ = socket.Emit("call:error", map[string]any{"message": "Invalid call start payload"})
-				return
-			}
-			s.logger.Infof("realtime.call", "call:start requested user_id=%s chat_id=%s socket_id=%s", user.ID, payload.ChatID, socket.Id)
-			if _, err := cache.NewRateLimitService(s.cache).CheckFixedWindow(context.Background(), "rate-limit:call-start:"+user.ID, 10, 60); err != nil {
-				s.logger.Warnf("realtime.call", "call:start rate-limited user_id=%s chat_id=%s error=%v", user.ID, payload.ChatID, err)
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Rate limit exceeded"})
-				return
-			}
-			chat, err := s.buildChatPublic(payload.ChatID, user)
-			if err != nil {
-				s.logger.Warnf("realtime.call", "call:start chat lookup failed user_id=%s chat_id=%s error=%v", user.ID, payload.ChatID, err)
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Chat not found"})
-				return
-			}
-			callType := strings.TrimSpace(payload.CallType)
-			if callType == "" {
-				callType = "audio"
-			}
-			session, err := s.startCallSession(chat, user.ID, callType)
-			if err != nil {
-				s.logger.Warnf("realtime.call", "call:start session creation failed user_id=%s chat_id=%s error=%v", user.ID, payload.ChatID, err)
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": err.Error()})
-				return
-			}
-			payloadMap := map[string]any{
-				"chatId":    session.ChatID,
-				"callerId":  session.CallerUserID,
-				"calleeId":  session.CalleeUserID,
-				"callType":  session.CallType,
-				"state":     string(session.State),
-				"createdAt": session.CreatedAt.Format(time.RFC3339Nano),
-				"expiresAt": session.ExpiresAt.Format(time.RFC3339Nano),
-			}
-			s.logger.Infof("realtime.call", "call:ringing emitted chat_id=%s caller=%s callee=%s", session.ChatID, session.CallerUserID, session.CalleeUserID)
-			s.emitCallToUser(session.CallerUserID, "call:ringing", payloadMap)
-			s.emitCallToUser(session.CalleeUserID, "call:ringing", payloadMap)
-			s.scheduleCallTimeout(session.ChatID, session.ExpiresAt, user.DisplayName)
-			go s.notifyCallRinging(session.CalleeUserID, user.DisplayName, session.ChatID)
-		})
-
-		socket.On("call:accept", func(event *socketio.EventPayload) {
-			var payload socketCallActionRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" {
-				_ = socket.Emit("call:error", map[string]any{"message": "Invalid call accept payload"})
-				return
-			}
-			session, ok := s.getCallSession(payload.ChatID)
-			if !ok || !callParticipant(session, user.ID) || session.CalleeUserID != user.ID {
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Call not available"})
-				return
-			}
-			session, _ = s.setCallSessionState(payload.ChatID, callStateConnecting)
-			payloadMap := map[string]any{
-				"chatId":           session.ChatID,
-				"callerId":         session.CallerUserID,
-				"calleeId":         session.CalleeUserID,
-				"callType":         session.CallType,
-				"state":            string(session.State),
-				"sessionStartedAt": session.CreatedAt.Format(time.RFC3339Nano),
-			}
-			s.emitCallToUser(session.CallerUserID, "call:accepted", payloadMap)
-			s.emitCallToUser(session.CalleeUserID, "call:accepted", payloadMap)
-		})
-
-		socket.On("call:decline", func(event *socketio.EventPayload) {
-			var payload socketCallActionRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" {
-				_ = socket.Emit("call:error", map[string]any{"message": "Invalid call decline payload"})
-				return
-			}
-			session, ok := s.getCallSession(payload.ChatID)
-			if !ok || !callParticipant(session, user.ID) || session.CalleeUserID != user.ID {
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Call not available"})
-				return
-			}
-			ended, endedOK := s.endCallSession(payload.ChatID)
-			if !endedOK {
-				return
-			}
-			s.recordCallHistory(ended, "declined")
-			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "declined", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
-			s.emitCallToUser(ended.CallerUserID, "call:declined", payloadMap)
-			s.emitCallToUser(ended.CalleeUserID, "call:declined", payloadMap)
-			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
-			s.emitCallToUser(ended.CalleeUserID, "call:ended", payloadMap)
-		})
-
-		socket.On("call:cancel", func(event *socketio.EventPayload) {
-			var payload socketCallActionRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" {
-				_ = socket.Emit("call:error", map[string]any{"message": "Invalid call cancel payload"})
-				return
-			}
-			session, ok := s.getCallSession(payload.ChatID)
-			if !ok || !callParticipant(session, user.ID) || session.CallerUserID != user.ID {
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Call not available"})
-				return
-			}
-			wasRinging := session.State == callStateRinging
-			ended, endedOK := s.endCallSession(payload.ChatID)
-			if !endedOK {
-				return
-			}
-			s.recordCallHistory(ended, "canceled")
-			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "canceled", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
-			s.emitCallToUser(ended.CallerUserID, "call:canceled", payloadMap)
-			s.emitCallToUser(ended.CalleeUserID, "call:canceled", payloadMap)
-			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
-			s.emitCallToUser(ended.CalleeUserID, "call:ended", payloadMap)
-			if wasRinging {
-				go s.notifyCallMissed(ended.CalleeUserID, user.DisplayName, ended.ChatID)
-			}
-		})
-
-		socket.On("call:end", func(event *socketio.EventPayload) {
-			var payload socketCallActionRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" {
-				_ = socket.Emit("call:error", map[string]any{"message": "Invalid call end payload"})
-				return
-			}
-			session, ok := s.getCallSession(payload.ChatID)
-			if !ok || !callParticipant(session, user.ID) {
-				// Idempotent: client may race call:end after server already cleared the session.
-				return
-			}
-			ended, endedOK := s.endCallSession(payload.ChatID)
-			if !endedOK {
-				return
-			}
-			s.recordCallHistory(ended, "ended")
-			s.logger.Infof("realtime.call", "call:end user_id=%s chat_id=%s caller=%s callee=%s", user.ID, ended.ChatID, ended.CallerUserID, ended.CalleeUserID)
-			payloadMap := map[string]any{"chatId": ended.ChatID, "callerId": ended.CallerUserID, "calleeId": ended.CalleeUserID, "reason": "ended", "endedAt": nowString(), "sessionStartedAt": ended.CreatedAt.Format(time.RFC3339Nano)}
-			s.emitCallToUser(ended.CallerUserID, "call:ended", payloadMap)
-			s.emitCallToUser(ended.CalleeUserID, "call:ended", payloadMap)
-		})
-
-		socket.On("call:signal", func(event *socketio.EventPayload) {
-			var payload socketCallSignalRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" || payload.Data == nil {
-				_ = socket.Emit("call:error", map[string]any{"message": "Invalid call signal payload"})
-				return
-			}
-			session, ok := s.getCallSession(payload.ChatID)
-			if !ok || !callParticipant(session, user.ID) {
-				// Session already ended — tell the sender to reset instead of silently
-				// dropping (which leaves the UI stuck on "Connecting…" forever).
-				// sessionStartedAt is omitted intentionally: the session is gone so we
-				// have no CreatedAt. The client's session guard will treat a missing
-				// sessionStartedAt as stale when a live session is active, but here
-				// there IS no live session (callPhaseRef will be idle or the chatId
-				// won't match), so the event is still processed correctly.
-				_ = socket.Emit("call:ended", map[string]any{
-					"chatId": payload.ChatID,
-					"reason": "session_gone",
-				})
-				return
-			}
-			targetUserID := session.CallerUserID
-			if targetUserID == user.ID {
-				targetUserID = session.CalleeUserID
-			}
-			if payload.TargetUserID != nil && strings.TrimSpace(*payload.TargetUserID) != "" {
-				targetUserID = strings.TrimSpace(*payload.TargetUserID)
-			}
-			if !callParticipant(session, targetUserID) {
-				_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Invalid call signal target"})
-				return
-			}
-			if session.State == callStateConnecting {
-				_, _ = s.setCallSessionState(payload.ChatID, callStateConnected)
-			}
-			s.emitCallToUser(targetUserID, "call:signal", map[string]any{
-				"chatId":     payload.ChatID,
-				"fromUserId": user.ID,
-				"data":       payload.Data,
-			})
-		})
+		s.registerCallSocketHandlers(socket, user)
 	})
 }
 
@@ -612,7 +412,7 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 		s.logger.Warnf("realtime", "broker publish failed channel=%s chat_id=%s error=%v", brokerChannelMessages, chatID, err)
 		s.emitMessageNew(chat, message)
 	}
-	go s.notifyMessageRecipients(chatID, user.ID, user.DisplayName, truncatePreview(message.Content))
+	go s.notifyMessageRecipients(chatID, chat.Type, chat.Title, user.ID, user.DisplayName, truncatePreview(message.Content))
 	return message, nil
 }
 

@@ -18,10 +18,15 @@ describe("desktop app navigation active state", () => {
     );
   });
 
-  it("uses rounded outline icons for Chats, Storage, and Plans", () => {
-    expect(appNav).toContain('import { CalendarDays, Folder, MessageCircle } from "lucide-react";');
+  it("uses rounded outline Lucide icons for all nav destinations", () => {
+    expect(appNav).toContain(
+      'import { CalendarDays, Folder, LogOut, MessageCircle, Settings, ShieldCheck } from "lucide-react";'
+    );
     expect(appNav).toContain("<MessageCircle aria-hidden={true} />");
     expect(appNav).toContain("<Folder aria-hidden={true} />");
     expect(appNav).toContain("<CalendarDays aria-hidden={true} />");
+    expect(appNav).toContain("<Settings aria-hidden={true} />");
+    expect(appNav).toContain("<ShieldCheck aria-hidden={true} />");
+    expect(appNav).not.toContain("ms-icon");
   });
 });

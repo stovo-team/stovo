@@ -71,7 +71,23 @@ func (s *Server) publishToNtfyWithRetry(ctx context.Context, userID string, payl
 	}
 }
 
-func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderName string, messagePreview string) {
+func formatMessageNotification(chatType string, chatTitle *string, senderName string, messagePreview string) (title string, message string, tags []string) {
+	tags = []string{"speech_balloon"}
+	if chatType == "direct" {
+		tags = append(tags, "direct")
+		return senderName, messagePreview, tags
+	}
+	title = "Chat"
+	if chatTitle != nil {
+		if trimmed := strings.TrimSpace(*chatTitle); trimmed != "" {
+			title = trimmed
+		}
+	}
+	return title, senderName + ": " + messagePreview, tags
+}
+
+func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string) {
+	title, message, tags := formatMessageNotification(chatType, chatTitle, senderName, messagePreview)
 	rows, err := s.query(`SELECT user_id FROM chat_members WHERE chat_id = ?`, chatID)
 	if err != nil {
 		s.logger.Warnf("ntfy", "failed to query chat members for chat_id=%s: %v", chatID, err)
@@ -99,10 +115,10 @@ func (s *Server) notifyMessageRecipients(chatID string, senderID string, senderN
 			defer cancel()
 			p := ntfyPayload{
 				Topic:    topic,
-				Title:    senderName,
-				Message:  messagePreview,
+				Title:    title,
+				Message:  message,
 				Priority: 3,
-				Tags:     []string{"speech_balloon"},
+				Tags:     tags,
 				Click:    "stovo://chat/" + chatID,
 			}
 			s.publishToNtfyWithRetry(ctx, recipientID, p)

@@ -43,6 +43,7 @@ import {
   Settings,
   SlidersHorizontal,
   Smartphone,
+  UserPlus,
   Video,
   VideoOff,
   Volume2,
@@ -95,6 +96,7 @@ import {
 } from "../api/chats";
 import { Family } from "../api/family";
 import { ApiError, getApiUrl, isTunnelHost } from "../api/client";
+import InviteModal from "../components/InviteModal";
 import {
   dismissChatNotifications,
   type PendingNotificationAction
@@ -120,7 +122,11 @@ import { peekCachedObjectUrl } from "../mediaBlobCache";
 import { loadRecentChatHistory, saveRecentChatHistory } from "../chatHistoryCache";
 import { useAuth } from "../auth/AuthContext";
 import { useAppearance } from "../appearance/AppearanceContext";
-import { takeQueuedSharedFiles, type QueuedSharedFiles } from "../sharedFileQueue";
+import {
+  onSharedFilesQueued,
+  takeQueuedSharedFiles,
+  type QueuedSharedFiles
+} from "../sharedFileQueue";
 import AttachmentPickerSheet, {
   AttachmentPickerOption
 } from "../components/AttachmentPickerSheet";
@@ -173,7 +179,10 @@ import CallController, {
   CallCapabilities,
   CallDevice,
   CallSettings,
+  type RemoteMedia,
+  type CallTopology,
 } from "../realtime/CallController";
+import CallParticipantGrid from "../components/CallParticipantGrid";
 import { waitForSocketConnection } from "../realtime/socketConnection";
 import { parseScheduleCommand } from "../plans/scheduleCommand";
 import { createCallSoundPlayer } from "../realtime/callSounds";
@@ -1518,6 +1527,14 @@ export default function ChatsPage() {
   const [isProximityNear, setIsProximityNear] = useState(false);
   const [isSpeakerSheetOpen, setIsSpeakerSheetOpen] = useState(false);
   const [callPeerDisplayName, setCallPeerDisplayName] = useState<string | null>(null);
+  const [callRoomId, setCallRoomId] = useState<string | null>(null);
+  const [callTopology, setCallTopology] = useState<CallTopology>("mesh");
+  const [callRemoteMedia, setCallRemoteMedia] = useState<RemoteMedia[]>([]);
+  const [callParticipantIds, setCallParticipantIds] = useState<string[]>([]);
+  const [isCallInviteOpen, setIsCallInviteOpen] = useState(false);
+  const [callInviteSelection, setCallInviteSelection] = useState<string[]>([]);
+  const [isFamilyInviteOpen, setIsFamilyInviteOpen] = useState(false);
+  const callRoomIdRef = useRef<string | null>(null);
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
@@ -2151,6 +2168,8 @@ export default function ChatsPage() {
   }, [currentUser, members]);
 
   const canManageSelectedChat = selectedChat ? canManageChat(selectedChat, currentUser) : false;
+  const canCreateFamilyInvite =
+    currentUser?.role === "owner" || currentUser?.role === "admin";
   const activeCallChat = useMemo(
     () => (activeCallChatId ? chats.find((chat) => chat.id === activeCallChatId) ?? null : null),
     [activeCallChatId, chats]
@@ -2978,21 +2997,32 @@ export default function ChatsPage() {
     setComposer(draft);
   }, [chatId]);
 
-  useEffect(() => {
-    if (chatId) {
-      return;
-    }
-    const queued = takeQueuedSharedFiles();
-    if (!queued) {
-      return;
-    }
+  const receiveSharedFiles = useCallback((queued: QueuedSharedFiles) => {
     setIncomingSharedFiles(queued);
     if (queued.skippedCount > 0) {
       setError(
         `${queued.skippedCount} unsupported ${queued.skippedCount === 1 ? "file was" : "files were"} skipped.`
       );
     }
-  }, [chatId]);
+  }, []);
+
+  useEffect(() => {
+    const queued = takeQueuedSharedFiles();
+    if (queued) {
+      receiveSharedFiles(queued);
+    }
+  }, [receiveSharedFiles]);
+
+  useEffect(
+    () =>
+      onSharedFilesQueued(() => {
+        const queued = takeQueuedSharedFiles();
+        if (queued) {
+          receiveSharedFiles(queued);
+        }
+      }),
+    [receiveSharedFiles]
+  );
 
   useEffect(() => {
     if (!chatId || !incomingSharedFiles) {
@@ -3221,19 +3251,23 @@ export default function ChatsPage() {
     });
     socketRef.current = socket;
     const audioController = new CallController(socket, accessToken);
+    if (currentUser?.id) {
+      audioController.setLocalUserId(currentUser.id);
+    }
     audioController.attachRemoteAudioElement(remoteAudioRef.current);
     audioController.onVideoUnavailable = () => {
       setCallType("audio");
       setCallNotice("Camera not available — continuing with audio only");
     };
-    audioController.onConnectionFailed = () => {
-      console.error("[CALL] onConnectionFailed fired callPhase=", callPhaseRef.current, "activeSession=", activeCallSessionIdRef.current);
+    audioController.onConnectionReconnecting = () => {
       if (callPhaseRef.current === "idle") return;
-      void resetCallState("Call connection lost");
+      setCallPhase("connecting");
+      setCallNotice("Reconnecting to call…");
     };
     audioController.onConnectionEstablished = () => {
       console.log("[CALL] onConnectionEstablished fired callPhase=", callPhaseRef.current);
       setCallPhase("in-call");
+      setCallNotice(null);
       if (callTypeRef.current === "video") {
         void applyCallAudioPatch({ speakerMode: "large" });
       }
@@ -3248,6 +3282,20 @@ export default function ChatsPage() {
     audioController.onLocalStreamReady = (stream: MediaStream) => {
       if (hasLiveLocalVideo(stream)) {
         setLocalVideoStream(stream);
+      }
+    };
+    audioController.onRemoteMediaChange = (media) => {
+      setCallRemoteMedia(media);
+      const withVideo = media.find((m) => m.hasVideo);
+      if (withVideo) {
+        setHasRemoteVideo(true);
+        setRemoteVideoStream(withVideo.stream);
+      }
+    };
+    audioController.onTopologyChange = (topology) => {
+      setCallTopology(topology);
+      if (topology === "sfu") {
+        setCallNotice("Switching to group media…");
       }
     };
     audioController.onSpeakingChange(setIsPeerSpeaking);
@@ -3542,41 +3590,21 @@ export default function ChatsPage() {
 
     socket.on(
       "call:ringing",
-      (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; expiresAt?: string; createdAt?: string }) => {
+      (payload: {
+        chatId: string;
+        roomId?: string;
+        callerId: string;
+        calleeId: string;
+        callType?: string;
+        topology?: CallTopology;
+        expiresAt?: string;
+        createdAt?: string;
+        participants?: Array<{ userId: string; state: string; role: string }>;
+      }) => {
         console.log("[call:ringing] received", payload, "selfId=", currentUser?.id);
         const selfUserId = currentUser?.id ?? null;
         const isCaller = selfUserId !== null && payload.callerId === selfUserId;
-        // Guard against stale queued call:ringing events from previous sessions
-        // overwriting the active session state. Without this guard, a stale
-        // call:ringing (from a session where Android was callee while offline) can
-        // corrupt activeCallSessionIdRef.current, causing the subsequent stale
-        // call:timeout in the same drain batch to pass the session guard and
-        // kill the current call.
-        //
-        // Allow through if:
-        //   (a) No active call (idle) — always process incoming call:ringing
-        //   (b) isCaller=true AND activeCallSessionIdRef.current === "pending"
-        //       → This is our own outgoing call:ringing being confirmed; update session ID
-        //   (c) payload.createdAt matches the current activeCallSessionIdRef.current
-        //       → Re-emit of the current session on socket reconnect; safe to process
         if (callPhaseRef.current !== "idle") {
-          // (b) Confirm this is our own outgoing call:ringing: must be isCaller=true,
-          // session ID must still be "pending" (not yet assigned), AND the chatId must
-          // match the current call's chatId.
-          //
-          // The chatId check is an extra defence: without it, a stale call:ringing from
-          // a DIFFERENT chat (where Android was caller and the event was queued via the
-          // polling→WebSocket upgrade transport race) would also satisfy
-          // (isCaller=true && ref==="pending") and corrupt the session ID.
-          //
-          // Limitation: a stale caller call:ringing for the SAME chatId still passes
-          // this guard, because we have no per-session identifier until call:ringing
-          // provides one. That scenario (same chat, same caller, queued via transport race)
-          // is mitigated by the fact that drainPendingEvents completes before the server
-          // processes the new call:start — so the real call:ringing for the new session
-          // always arrives AFTER the drain. If the stale event does corrupt the ref, the
-          // real call:ringing will be blocked; the call will time out naturally on the
-          // server and resetCallState will handle cleanup.
           const isPendingOutgoingConfirm =
             isCaller &&
             activeCallSessionIdRef.current === "pending" &&
@@ -3595,15 +3623,30 @@ export default function ChatsPage() {
         const incomingCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
         setCallType(incomingCallType);
         setActiveCallChatId(payload.chatId);
-        // Sync ref immediately so call:accepted guard sees the chatId before React re-renders
         activeCallChatIdRef.current = payload.chatId;
-        // Store per-session identifier so termination events from a previous call session
-        // for the same chatId (stale events queued while Android was offline) can be
-        // rejected without affecting the current session.
+        if (payload.roomId) {
+          setCallRoomId(payload.roomId);
+          callRoomIdRef.current = payload.roomId;
+          audioController.setRoomId(payload.roomId);
+        }
+        audioController.setChatId(payload.chatId);
+        if (payload.topology) {
+          setCallTopology(payload.topology);
+          audioController.setTopology(payload.topology);
+        }
+        if (selfUserId) {
+          audioController.setLocalUserId(selfUserId);
+        }
+        if (payload.participants) {
+          setCallParticipantIds(payload.participants.map((p) => p.userId));
+        }
         if (payload.createdAt) {
           activeCallSessionIdRef.current = payload.createdAt;
         }
-        setCallPeerUserId(isCaller ? payload.calleeId : payload.callerId);
+        const peerId = isCaller
+          ? (payload.participants?.find((p) => p.userId !== selfUserId)?.userId ?? payload.calleeId)
+          : payload.callerId;
+        setCallPeerUserId(peerId);
         if (isCaller) {
           console.log("[CALL] call:ringing: isCaller=true — transitioning to outgoing, sessionId=", payload.createdAt);
           setCallPhase("outgoing");
@@ -3616,36 +3659,126 @@ export default function ChatsPage() {
       }
     );
 
-    socket.on("call:accepted", (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; sessionStartedAt?: string }) => {
+    socket.on("call:accepted", (payload: {
+      chatId: string;
+      roomId?: string;
+      callerId: string;
+      calleeId: string;
+      callType?: string;
+      topology?: CallTopology;
+      sessionStartedAt?: string;
+      participants?: Array<{ userId: string; state: string; role: string }>;
+    }) => {
       console.log("[call:accepted] chatId=", payload.chatId, "ref=", activeCallChatIdRef.current, "currentUser=", currentUser?.id);
       if (!currentUser || payload.chatId !== activeCallChatIdRef.current) {
         console.warn("[call:accepted] GUARD FAILED — bailing. currentUser=", !!currentUser, "chatMatch=", payload.chatId === activeCallChatIdRef.current);
         return;
       }
       stopCallRingtone();
-      const peerId = payload.callerId === currentUser.id ? payload.calleeId : payload.callerId;
+      const mediaPeers = (payload.participants ?? [])
+        .filter((p) => p.userId !== currentUser.id && (p.state === "connecting" || p.state === "connected"))
+        .map((p) => p.userId);
+      const peerId = mediaPeers[0]
+        ?? (payload.callerId === currentUser.id ? payload.calleeId : payload.callerId);
       const acceptedCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
       if (payload.sessionStartedAt) {
         activeCallSessionIdRef.current = payload.sessionStartedAt;
       }
+      if (payload.roomId) {
+        setCallRoomId(payload.roomId);
+        callRoomIdRef.current = payload.roomId;
+        audioController.setRoomId(payload.roomId);
+      }
+      audioController.setChatId(payload.chatId);
+      if (payload.topology) {
+        setCallTopology(payload.topology);
+        audioController.setTopology(payload.topology);
+      }
+      audioController.setLocalUserId(currentUser.id);
       setCallPeerUserId(peerId);
       setCallType(acceptedCallType);
       callTypeRef.current = acceptedCallType;
+      setCallParticipantIds((payload.participants ?? []).map((p) => p.userId));
       setCallPhase("connecting");
-      if (payload.callerId === currentUser.id) {
-        console.log("[call:accepted] caller path — calling startOutgoing");
-        void audioController
-          .startOutgoing(payload.chatId, peerId, acceptedCallType)
-          .then(() => { console.log("[call:accepted] startOutgoing resolved — waiting for ICE"); })
-          .catch(async (err) => {
-            console.error("[call:accepted] startOutgoing threw:", err);
-            if (socket.connected) socket.emit("call:end", { chatId: payload.chatId });
-            // We already emitted call:end above; cleanup should not re-emit.
-            await resetCallState("Camera/mic permission or device failed", true, false);
-            setError(err instanceof Error ? err.message : "Could not start call");
+
+      const joinMedia = async () => {
+        if (payload.topology === "sfu") {
+          await audioController.switchToSfu();
+          return;
+        }
+        if (mediaPeers.length > 1) {
+          await audioController.syncMeshPeers([currentUser.id, ...mediaPeers]);
+          return;
+        }
+        if (payload.callerId === currentUser.id) {
+          await audioController.startOutgoing(payload.chatId, peerId, acceptedCallType);
+        }
+      };
+
+      void joinMedia()
+        .then(() => { console.log("[call:accepted] media join resolved — waiting for ICE/SFU"); })
+        .catch(async (err) => {
+          console.error("[call:accepted] media join threw:", err);
+          if (socket.connected) socket.emit("call:end", { chatId: payload.chatId, roomId: payload.roomId });
+          await resetCallState("Camera/mic permission or device failed", true, false);
+          setError(err instanceof Error ? err.message : "Could not start call");
+        });
+    });
+
+    socket.on("call:participant-updated", (payload: {
+      chatId?: string;
+      roomId?: string;
+      topology?: CallTopology;
+      participants?: Array<{ userId: string; state: string; role: string }>;
+    }) => {
+      if (!currentUser || callPhaseRef.current === "idle") return;
+      if (payload.chatId && payload.chatId !== activeCallChatIdRef.current) return;
+      const participants = payload.participants ?? [];
+      setCallParticipantIds(participants.map((p) => p.userId));
+      if (payload.roomId) {
+        setCallRoomId(payload.roomId);
+        callRoomIdRef.current = payload.roomId;
+        audioController.setRoomId(payload.roomId);
+      }
+      if (payload.topology === "sfu") {
+        setCallTopology("sfu");
+        void audioController.switchToSfu().catch((err) => {
+          setError(err instanceof Error ? err.message : "Could not switch to group media");
+        });
+        return;
+      }
+      const mediaPeers = participants
+        .filter((p) => p.userId !== currentUser.id && (p.state === "connecting" || p.state === "connected"))
+        .map((p) => p.userId);
+      if (mediaPeers.length > 0 && callPhaseRef.current !== "incoming" && callPhaseRef.current !== "outgoing") {
+        void audioController.syncMeshPeers([currentUser.id, ...mediaPeers]).catch((err) => {
+          console.error("[call:participant-updated] syncMeshPeers failed", err);
+        });
+      }
+    });
+
+    socket.on("call:topology", (payload: {
+      chatId?: string;
+      roomId?: string;
+      topology?: CallTopology;
+      sfuUrl?: string;
+      roomName?: string;
+    }) => {
+      if (!currentUser || callPhaseRef.current === "idle") return;
+      if (payload.chatId && payload.chatId !== activeCallChatIdRef.current) return;
+      if (payload.roomId) {
+        setCallRoomId(payload.roomId);
+        callRoomIdRef.current = payload.roomId;
+        audioController.setRoomId(payload.roomId);
+      }
+      if (payload.topology === "sfu") {
+        setCallTopology("sfu");
+        setCallNotice("Switching to group media…");
+        void audioController.switchToSfu()
+          .then(() => setCallNotice(null))
+          .catch((err) => {
+            setError(err instanceof Error ? err.message : "Could not switch to group media");
           });
-      } else {
-        console.log("[call:accepted] callee path — waiting for ICE");
       }
     });
 
@@ -3893,6 +4026,13 @@ export default function ChatsPage() {
     setActiveCallChatId(null);
     setCallPeerUserId(null);
     setCallPeerDisplayName(null);
+    setCallRoomId(null);
+    callRoomIdRef.current = null;
+    setCallTopology("mesh");
+    setCallRemoteMedia([]);
+    setCallParticipantIds([]);
+    setIsCallInviteOpen(false);
+    setCallInviteSelection([]);
     setHasRemoteVideo(false);
     setLocalVideoStream(null);
     setRemoteVideoStream(null);
@@ -3907,9 +4047,13 @@ export default function ChatsPage() {
     setCallNotice(notice ?? null);
   }
 
-  async function startDirectCall(type: "audio" | "video") {
+  async function startDirectCall(type: "audio" | "video", inviteUserIds?: string[]) {
     console.log("[CALL] startDirectCall: entered type=", type, "callPhase=", callPhaseRef.current, "chatId=", selectedChat?.id, "socketConnected=", socketRef.current?.connected);
-    if (!selectedChat || selectedChat.type !== "direct" || !currentUser) {
+    const canCall =
+      selectedChat &&
+      currentUser &&
+      (selectedChat.type === "direct" || selectedChat.type === "group" || selectedChat.type === "family");
+    if (!canCall || !selectedChat || !currentUser) {
       console.warn("[CALL] startDirectCall: guard failed — selectedChat=", !!selectedChat, "type=", selectedChat?.type, "currentUser=", !!currentUser);
       return;
     }
@@ -3925,12 +4069,19 @@ export default function ChatsPage() {
       setError("Realtime connection is offline. Please refresh and try again.");
       return;
     }
-    const peer = selectedChat.members.find((member) => member.id !== currentUser.id);
-    if (!peer) {
+    const peers = selectedChat.members.filter((member) => member.id !== currentUser.id);
+    if (peers.length === 0) {
       console.warn("[CALL] startDirectCall: no peer member found in chat");
       return;
     }
-    console.log("[CALL] startDirectCall: peer=", peer.id, "setting callPhase=outgoing");
+    const selectedInvitees =
+      inviteUserIds && inviteUserIds.length > 0
+        ? inviteUserIds
+        : selectedChat.type === "direct"
+          ? [peers[0].id]
+          : peers.map((p) => p.id);
+    const primaryPeer = peers.find((p) => selectedInvitees.includes(p.id)) ?? peers[0];
+    console.log("[CALL] startDirectCall: peer=", primaryPeer.id, "invitees=", selectedInvitees, "setting callPhase=outgoing");
     setError(null);
     setCallNotice(null);
     setCallType(type);
@@ -3939,34 +4090,21 @@ export default function ChatsPage() {
       void applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
     }
     setCallPhase("outgoing");
-    // Update callPhaseRef synchronously so socket event handlers that fire before
-    // the useEffect runs (e.g. stale queued events drained on reconnect) see the
-    // correct phase and don't prematurely kill the just-started call.
     callPhaseRef.current = "outgoing";
-    // Set a "pending" placeholder so the session guard rejects ALL termination events
-    // that arrive before call:ringing is received (which provides the real session ID).
-    // This prevents stale same-chatId events from previous sessions slipping through
-    // in the window between callPhaseRef = "outgoing" and call:ringing arriving.
     activeCallSessionIdRef.current = "pending";
     setActiveCallChatId(selectedChat.id);
-    setCallPeerUserId(peer.id);
-    setCallPeerDisplayName(peer.displayName ?? null);
-    // Update ref synchronously so call:accepted handler sees it before next render
+    setCallPeerUserId(primaryPeer.id);
+    setCallPeerDisplayName(primaryPeer.displayName ?? null);
+    setCallParticipantIds([currentUser.id, ...selectedInvitees]);
+    setCallTopology("mesh");
     activeCallChatIdRef.current = selectedChat.id;
-    // Pre-acquire media NOW while we are still inside the user gesture (button click).
-    // On iOS Safari, getUserMedia fails when called from an async socket callback
-    // (not a user gesture). prepareForCall stores the stream so that startOutgoing's
-    // ensurePeer() can reuse it without needing a new user gesture.
+    audioCallRef.current?.setLocalUserId(currentUser.id);
     console.log("[CALL] startDirectCall: calling prepareForCall type=", type);
     try {
       await audioCallRef.current?.prepareForCall(type);
       console.log("[CALL] startDirectCall: prepareForCall resolved OK");
     } catch (err) {
       console.error("[CALL] startDirectCall: prepareForCall threw:", err instanceof Error ? err.name + ": " + err.message : err);
-      // Stop the ringtone that may have started via the callPhase="outgoing" useEffect
-      // while getUserMedia was pending. Without this the ringtone keeps playing after the
-      // call screen disappears. call:start has NOT been emitted yet so there is no server
-      // session to end — pass serverAlreadyNotified=true so cleanup() doesn't emit call:end.
       stopCallRingtone();
       void audioCallRef.current?.cleanup(true).catch(() => undefined);
       setCallPhase("idle");
@@ -3980,8 +4118,22 @@ export default function ChatsPage() {
       return;
     }
     console.log("[CALL] startDirectCall: emitting call:start chatId=", selectedChat.id, "callType=", type);
-    socket.emit("call:start", { chatId: selectedChat.id, callType: type });
+    socket.emit("call:start", {
+      chatId: selectedChat.id,
+      callType: type,
+      inviteUserIds: selectedInvitees,
+    });
     console.log("[CALL] startDirectCall: call:start emitted — waiting for call:ringing from server");
+  }
+
+  function sendCallInvites() {
+    if (!callInviteSelection.length) {
+      setIsCallInviteOpen(false);
+      return;
+    }
+    audioCallRef.current?.inviteUsers(callInviteSelection);
+    setIsCallInviteOpen(false);
+    setCallInviteSelection([]);
   }
 
   async function acceptIncomingCall() {
@@ -4002,7 +4154,17 @@ export default function ChatsPage() {
       // Acquire mic and create the peer BEFORE telling the server we accepted.
       // If this fails the call stays ringing — we must not emit call:accept then
       // call:end, which kills the session for both parties.
-      await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
+      if (callRoomIdRef.current) {
+        audioCallRef.current?.setRoomId(callRoomIdRef.current);
+      }
+      if (currentUser?.id) {
+        audioCallRef.current?.setLocalUserId(currentUser.id);
+      }
+      if (callTopology === "sfu") {
+        await audioCallRef.current?.prepareForCall(callType);
+      } else {
+        await audioCallRef.current?.acceptIncoming(activeCallChatId, callPeerUserId, callType);
+      }
       const connected = await waitForSocketConnection(socket, {
         onAttempt: (attempt, totalAttempts) => {
           setCallNotice(
@@ -4015,7 +4177,10 @@ export default function ChatsPage() {
       if (!connected) {
         throw new Error("Realtime connection is still unavailable. Please try accepting again.");
       }
-      socket.emit("call:accept", { chatId: activeCallChatId });
+      socket.emit("call:accept", { chatId: activeCallChatId, roomId: callRoomIdRef.current ?? undefined });
+      if (callTopology === "sfu") {
+        await audioCallRef.current?.switchToSfu();
+      }
     } catch (err) {
       await audioCallRef.current?.cleanup(true).catch(() => undefined);
       setCallPhase("incoming");
@@ -5554,11 +5719,28 @@ export default function ChatsPage() {
                   <p className="eyebrow">{family?.name ?? "Stovo"}</p>
                   <h1 tabIndex={-1}>Chats</h1>
                 </div>
+                {canCreateFamilyInvite && (
+                  <div className="sidebar-actions">
+                    <button
+                      type="button"
+                      className="icon-button subtle"
+                      aria-label="Create invitation"
+                      title="Invite"
+                      onClick={() => setIsFamilyInviteOpen(true)}
+                    >
+                      <UserPlus aria-hidden="true" size={20} />
+                    </button>
+                  </div>
+                )}
               </div>
               {!chatId && incomingSharedFiles && incomingSharedFiles.files.length > 0 && (
-                <p className="muted-copy" role="status">
-                  Choose a chat to send {incomingSharedFiles.files.length} shared {incomingSharedFiles.files.length === 1 ? "file" : "files"}.
-                </p>
+                <div className="shared-files-ready" role="status">
+                  <Paperclip aria-hidden="true" size={20} />
+                  <span>
+                    <strong>Shared {incomingSharedFiles.files.length === 1 ? "file" : "files"} ready to send</strong>
+                    <small>Select a chat to add {incomingSharedFiles.files.length === 1 ? "it" : "them"}.</small>
+                  </span>
+                </div>
               )}
               <label className="search-field chat-list-search">
                 <span className="ms-icon ms-icon--20" aria-hidden={true}>
@@ -5794,7 +5976,7 @@ export default function ChatsPage() {
                     </span>
                   </button>
                   <div className="chat-header-actions">
-                    {selectedChat.type === "direct" && (
+                    {(selectedChat.type === "direct" || selectedChat.type === "group" || selectedChat.type === "family") && (
                       <>
                         <button
                           type="button"
@@ -6867,9 +7049,12 @@ export default function ChatsPage() {
                     void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
                   }
                 }}
-                onToggleFlip={() => void applyCallAudioPatch({
-                  cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user",
-                })}
+                onToggleFlip={() =>
+                  applyCallAudioPatch({
+                    cameraFacingMode:
+                      callAudioSettings.cameraFacingMode === "user" ? "environment" : "user",
+                  })
+                }
                 onOpenSpeakerSheet={() => setIsSpeakerSheetOpen(true)}
                 onEnd={() => void endActiveCall()}
               />
@@ -6912,25 +7097,73 @@ export default function ChatsPage() {
             )}
 
             {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
-            <div className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo)) ? " call-popup-video-area-hidden" : ""}`}>
-              <video
-                ref={remoteVideoRef}
-                className={`call-popup-remote-video${(callType === "video" || hasRemoteVideo) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? " visible" : ""}`}
-                autoPlay
-                playsInline
-              />
-              <video
-                ref={localVideoRef}
-                className={[
-                  "call-popup-local-video",
-                  callType === "video" && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? "visible" : "",
-                  callAudioSettings.mirrorLocalVideo ? "mirrored" : "",
-                ].filter(Boolean).join(" ")}
-                autoPlay
-                playsInline
-                muted
-              />
+            <div className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
+              {callRemoteMedia.length > 1 && callPhase === "in-call" && !isCallMinimized ? (
+                <CallParticipantGrid
+                  localStream={localVideoStream}
+                  remoteMedia={callRemoteMedia}
+                  localUserLabel={currentUser?.displayName ?? "You"}
+                  mirrorLocal={
+                    callAudioSettings.mirrorLocalVideo &&
+                    callAudioSettings.cameraFacingMode === "user"
+                  }
+                  callType={callType}
+                />
+              ) : (
+                <>
+                  <video
+                    ref={remoteVideoRef}
+                    className={`call-popup-remote-video${(callType === "video" || hasRemoteVideo) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? " visible" : ""}`}
+                    autoPlay
+                    playsInline
+                  />
+                  <video
+                    ref={localVideoRef}
+                    className={[
+                      "call-popup-local-video",
+                      callType === "video" && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? "visible" : "",
+                      callAudioSettings.mirrorLocalVideo &&
+                      callAudioSettings.cameraFacingMode === "user"
+                        ? "mirrored"
+                        : "",
+                    ].filter(Boolean).join(" ")}
+                    autoPlay
+                    playsInline
+                    muted
+                  />
+                </>
+              )}
             </div>
+
+            {isCallInviteOpen && callPhase === "in-call" && !isCallMinimized && (
+              <div className="call-invite-panel" style={{ padding: "8px 12px", maxHeight: 180, overflow: "auto" }}>
+                <strong style={{ display: "block", marginBottom: 8 }}>Add people</strong>
+                {members
+                  .filter((m) => m.id !== currentUser?.id && !callParticipantIds.includes(m.id))
+                  .map((m) => (
+                    <label key={m.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={callInviteSelection.includes(m.id)}
+                        onChange={(e) => {
+                          setCallInviteSelection((cur) =>
+                            e.target.checked ? [...cur, m.id] : cur.filter((id) => id !== m.id),
+                          );
+                        }}
+                      />
+                      <span>{m.displayName}</span>
+                    </label>
+                  ))}
+                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                  <button type="button" className="primary-button" onClick={sendCallInvites}>
+                    Invite
+                  </button>
+                  <button type="button" className="secondary-button" onClick={() => setIsCallInviteOpen(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ── Peer name (incoming) ── */}
             {!isCallMinimized && callPhase === "incoming" && !(isMobileViewport && !isCallMinimized) && (
@@ -7047,6 +7280,20 @@ export default function ChatsPage() {
                       </button>
                       <span>Settings</span>
                     </div>
+                    {callPhase === "in-call" && (
+                      <div className="call-ctrl-wrap">
+                        <button
+                          type="button"
+                          className={`call-ctrl-btn${isCallInviteOpen ? " is-active" : ""}`}
+                          aria-label="Invite people"
+                          title="Invite people"
+                          onClick={() => setIsCallInviteOpen((v) => !v)}
+                        >
+                          <span className="ms-icon ms-icon--20" aria-hidden={true}>person_add</span>
+                        </button>
+                        <span>Invite</span>
+                      </div>
+                    )}
                     {callPhase === "in-call" && (
                       <>
                         <div className="call-ctrl-wrap">
@@ -7258,6 +7505,15 @@ export default function ChatsPage() {
             </div>,
             document.body
           )}
+
+        {accessToken && canCreateFamilyInvite && (
+          <InviteModal
+            accessToken={accessToken}
+            familyName={family?.name ?? "Stovo"}
+            open={isFamilyInviteOpen}
+            onClose={() => setIsFamilyInviteOpen(false)}
+          />
+        )}
 
         {forwardTarget && (
           <div className="modal-backdrop" role="presentation">
@@ -7767,7 +8023,7 @@ function MobileActiveScreen({
   mirrorLocalVideo: boolean;
   onToggleMic: () => void;
   onToggleCamera: () => void;
-  onToggleFlip: () => void;
+  onToggleFlip: () => void | Promise<void>;
   onOpenSpeakerSheet: () => void;
   onEnd: () => void;
 }) {
@@ -7775,54 +8031,51 @@ function MobileActiveScreen({
   // so the UI reacts as soon as the stream is available without timing fragility.
   const mobileRemoteRef = useRef<HTMLVideoElement>(null);
   const mobileLocalRef = useRef<HTMLVideoElement>(null);
-  const videoStageRef = useRef<HTMLDivElement>(null);
-  const pipDragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number; moved: boolean } | null>(null);
   const [areControlsVisible, setAreControlsVisible] = useState(true);
   const [isSelfViewFullscreen, setIsSelfViewFullscreen] = useState(false);
-  const [pipPosition, setPipPosition] = useState<{ left: number; top: number } | null>(null);
+  const [selfViewSide, setSelfViewSide] = useState<"left" | "right">("right");
+  // Lag mirroring behind the camera switch so scaleX doesn't flip while the old
+  // front-camera frame is still visible — change it only during the black gap.
+  const [previewFacingMode, setPreviewFacingMode] = useState(cameraFacingMode);
+  const [isCameraFlipping, setIsCameraFlipping] = useState(false);
   const CALL_CONTROLS_HIDE_DELAY_MS = 15_000;
 
   const showControls = useCallback(() => setAreControlsVisible(true), []);
   const toggleControls = useCallback(() => setAreControlsVisible((visible) => !visible), []);
-  const swapVideoViews = useCallback(() => {
-    if (!pipDragRef.current?.moved) {
-      setIsSelfViewFullscreen((fullscreen) => !fullscreen);
-      showControls();
-    }
+  const selfViewVerticalPosition = areControlsVisible ? "top" : "bottom";
+  const compactPipClassName = `mobile-active-pip mobile-active-pip--${selfViewVerticalPosition} mobile-active-pip--${selfViewSide}`;
+  const cycleSelfViewSide = useCallback(() => {
+    setSelfViewSide((side) => side === "right" ? "left" : "right");
+    showControls();
   }, [showControls]);
-  const beginPipDrag = useCallback((event: ReactPointerEvent<HTMLVideoElement>) => {
-    event.stopPropagation();
-    const stage = videoStageRef.current;
-    const pip = event.currentTarget;
-    if (!stage) return;
-    const stageRect = stage.getBoundingClientRect();
-    const pipRect = pip.getBoundingClientRect();
-    pipDragRef.current = {
-      pointerId: event.pointerId,
-      offsetX: event.clientX - pipRect.left,
-      offsetY: event.clientY - pipRect.top,
-      moved: false,
-    };
-    setPipPosition({ left: pipRect.left - stageRect.left, top: pipRect.top - stageRect.top });
-    pip.setPointerCapture(event.pointerId);
-  }, []);
-  const movePip = useCallback((event: ReactPointerEvent<HTMLVideoElement>) => {
-    const drag = pipDragRef.current;
-    const stage = videoStageRef.current;
-    if (!drag || drag.pointerId !== event.pointerId || !stage) return;
-    const stageRect = stage.getBoundingClientRect();
-    const pipRect = event.currentTarget.getBoundingClientRect();
-    drag.moved ||= Math.abs(event.movementX) > 2 || Math.abs(event.movementY) > 2;
-    setPipPosition({
-      left: Math.max(0, Math.min(event.clientX - stageRect.left - drag.offsetX, stageRect.width - pipRect.width)),
-      top: Math.max(0, Math.min(event.clientY - stageRect.top - drag.offsetY, stageRect.height - pipRect.height)),
-    });
-  }, []);
-  const endPipDrag = useCallback((event: ReactPointerEvent<HTMLVideoElement>) => {
-    if (pipDragRef.current?.pointerId === event.pointerId) {
-      window.setTimeout(() => { pipDragRef.current = null; }, 0);
+
+  useEffect(() => {
+    if (!isCameraFlipping) {
+      setPreviewFacingMode(cameraFacingMode);
     }
-  }, []);
+  }, [cameraFacingMode, isCameraFlipping]);
+
+  const handleFlipCamera = useCallback(async () => {
+    if (isCameraFlipping) return;
+    const nextFacing = cameraFacingMode === "user" ? "environment" : "user";
+    setIsCameraFlipping(true);
+    // Let the blackout paint before facingMode/mirror state updates.
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+    try {
+      await onToggleFlip();
+    } finally {
+      setPreviewFacingMode(nextFacing);
+      requestAnimationFrame(() => setIsCameraFlipping(false));
+    }
+  }, [cameraFacingMode, isCameraFlipping, onToggleFlip]);
+
+  const localVideoMirrorTransform =
+    mirrorLocalVideo && previewFacingMode === "user" ? "scaleX(-1)" : "none";
+  const localVideoSwitchStyle = isCameraFlipping
+    ? { opacity: 0 as const, transform: localVideoMirrorTransform }
+    : { transform: localVideoMirrorTransform };
 
   useEffect(() => {
     if (!areControlsVisible) return;
@@ -7865,10 +8118,15 @@ function MobileActiveScreen({
 
   useEffect(() => {
     const dst = mobileLocalRef.current;
-    if (!dst || !localVideoStream) return;
+    if (!dst) return;
+    if (isCameraFlipping) {
+      dst.srcObject = null;
+      return;
+    }
+    if (!localVideoStream) return;
     dst.srcObject = localVideoStream;
     void dst.play().catch(() => undefined);
-  }, [localVideoStream, hasRemoteVideo, isCameraEnabled, callType]);
+  }, [localVideoStream, hasRemoteVideo, isCameraEnabled, callType, isCameraFlipping]);
 
   const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
   const showRemoteVideo = hasRemoteVideo || remoteVideoStream !== null;
@@ -7897,7 +8155,7 @@ function MobileActiveScreen({
               width: '100%',
               height: '100%',
               objectFit: 'cover',
-              transform: mirrorLocalVideo && cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none',
+              ...localVideoSwitchStyle,
             }}
           />
         </div>
@@ -7905,37 +8163,49 @@ function MobileActiveScreen({
 
       {/* Case 2: Remote video active — show remote fullscreen, local as PiP */}
       {showRemoteVideo && remoteVideoStream && (
-        <div ref={videoStageRef} className="mobile-active-video-stage">
+        <div className="mobile-active-video-stage">
           <video
             ref={mobileRemoteRef}
-            className={isSelfViewFullscreen ? "mobile-active-pip" : "mobile-active-fullscreen-video"}
+            className={isSelfViewFullscreen ? compactPipClassName : "mobile-active-fullscreen-video"}
             autoPlay
             playsInline
             muted
-            style={isSelfViewFullscreen ? pipPosition ?? undefined : undefined}
-            onPointerDown={isSelfViewFullscreen ? beginPipDrag : undefined}
-            onPointerMove={isSelfViewFullscreen ? movePip : undefined}
-            onPointerUp={isSelfViewFullscreen ? endPipDrag : undefined}
-            onPointerCancel={isSelfViewFullscreen ? endPipDrag : undefined}
-            onClick={isSelfViewFullscreen ? swapVideoViews : undefined}
+            onClick={isSelfViewFullscreen ? cycleSelfViewSide : undefined}
           />
           {isCameraEnabled && (
-            <video
-              ref={mobileLocalRef}
-              className={isSelfViewFullscreen ? "mobile-active-fullscreen-video" : "mobile-active-pip"}
-              autoPlay
-              playsInline
-              muted
-              style={{
-                transform: mirrorLocalVideo && cameraFacingMode === 'user' ? 'scaleX(-1)' : 'none',
-                ...(isSelfViewFullscreen ? undefined : pipPosition ?? undefined),
-              }}
-              onPointerDown={isSelfViewFullscreen ? undefined : beginPipDrag}
-              onPointerMove={isSelfViewFullscreen ? undefined : movePip}
-              onPointerUp={isSelfViewFullscreen ? undefined : endPipDrag}
-              onPointerCancel={isSelfViewFullscreen ? undefined : endPipDrag}
-              onClick={isSelfViewFullscreen ? undefined : swapVideoViews}
-            />
+            isSelfViewFullscreen ? (
+              <video
+                ref={mobileLocalRef}
+                className="mobile-active-fullscreen-video"
+                autoPlay
+                playsInline
+                muted
+                style={localVideoSwitchStyle}
+              />
+            ) : (
+              <div className={compactPipClassName} onClick={cycleSelfViewSide}>
+                <video
+                  ref={mobileLocalRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  style={localVideoSwitchStyle}
+                />
+                <button
+                  type="button"
+                  className="mobile-active-pip-flip"
+                  aria-label="Flip camera"
+                  disabled={isCameraFlipping}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleFlipCamera();
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg>
+                </button>
+              </div>
+            )
           )}
         </div>
       )}
@@ -8018,14 +8288,6 @@ function MobileActiveScreen({
           <span className="mobile-active-ctrl-lbl">{isCameraEnabled ? "Camera" : "Camera off"}</span>
         </div>
         {/* Flip camera — only during video */}
-        {callType === "video" && isCameraEnabled && (
-          <div className="mobile-active-ctrl">
-            <button type="button" className="mobile-active-ctrl-btn" aria-label="Flip camera" onClick={onToggleFlip}>
-              <svg viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg>
-            </button>
-            <span className="mobile-active-ctrl-lbl">Flip</span>
-          </div>
-        )}
         {/* End */}
         <div className="mobile-active-ctrl">
           <button type="button" className="mobile-active-ctrl-btn end" aria-label="End call" onClick={onEnd}>

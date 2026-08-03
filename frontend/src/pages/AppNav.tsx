@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { CalendarDays, Folder, MessageCircle } from "lucide-react";
+import { CalendarDays, Folder, LogOut, MessageCircle, Settings, ShieldCheck } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 import { useReducedMotion } from "../hooks/useReducedMotion";
@@ -64,38 +64,18 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
           <span>Plans</span>
         </NavLink>
         <NavLink to="/app/settings" title="Settings" aria-label="Settings" viewTransition={enableViewTransitions}>
-          {({ isActive }) => (
-            <>
-              <span
-                className={`ms-icon ms-icon--22${isActive ? " ms-icon--filled" : ""}`}
-                aria-hidden={true}
-              >
-                settings
-              </span>
-              <span>Settings</span>
-            </>
-          )}
+          <Settings aria-hidden={true} />
+          <span>Settings</span>
         </NavLink>
         {canViewAdmin && (
           <NavLink to="/app/admin" title="Admin" aria-label="Admin" viewTransition={enableViewTransitions}>
-            {({ isActive }) => (
-              <>
-                <span
-                  className={`ms-icon ms-icon--22${isActive ? " ms-icon--filled" : ""}`}
-                  aria-hidden={true}
-                >
-                  verified_user
-                </span>
-                <span>Admin</span>
-              </>
-            )}
+            <ShieldCheck aria-hidden={true} />
+            <span>Admin</span>
           </NavLink>
         )}
       </div>
       <button className="app-nav-logout" type="button" aria-label="Log out" title="Log out" onClick={logout}>
-        <span className="ms-icon ms-icon--20" aria-hidden={true}>
-          logout
-        </span>
+        <LogOut aria-hidden={true} size={20} />
         <span>Log out</span>
       </button>
     </nav>
