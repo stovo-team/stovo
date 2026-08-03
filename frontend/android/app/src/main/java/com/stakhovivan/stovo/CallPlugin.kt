@@ -296,9 +296,9 @@ class CallPlugin : Plugin() {
         val builder = PictureInPictureParams.Builder()
         pictureInPictureAspectRatio(snapshot.activeOwner, snapshot.videoState)
             ?.let { ratio -> builder.setAspectRatio(Rational(ratio.width, ratio.height)) }
-        if (snapshot.activeOwner == PiPOwner.VIDEO) {
-            builder.setActions(buildRemoteActions(hostActivity))
-        }
+        // An explicit empty list replaces Android's media-session defaults for calls.
+        // The system still provides its built-in expand and close affordances.
+        builder.setActions(buildRemoteActions(hostActivity))
         return builder.build()
     }
 

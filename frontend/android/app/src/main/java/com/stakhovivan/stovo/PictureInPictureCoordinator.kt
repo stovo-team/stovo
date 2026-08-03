@@ -26,6 +26,19 @@ fun pictureInPictureAspectRatio(
     )
 }
 
+fun pictureInPictureActions(
+    owner: PiPOwner,
+    videoState: VideoPiPState?
+): List<PiPAction> {
+    if (owner != PiPOwner.VIDEO) return emptyList()
+    val state = videoState ?: return emptyList()
+    return listOf(
+        PiPAction.SEEK_BACKWARD,
+        if (state.playing) PiPAction.PAUSE else PiPAction.PLAY,
+        PiPAction.SEEK_FORWARD
+    )
+}
+
 enum class PiPOwner(val wireValue: String) {
     NONE("none"),
     CALL("call"),
@@ -146,13 +159,7 @@ class PictureInPictureCoordinator {
 
     fun availableActions(): List<PiPAction> {
         val captured = activePictureInPicture ?: return emptyList()
-        if (captured.activeOwner != PiPOwner.VIDEO) return emptyList()
-        val state = captured.videoState ?: return emptyList()
-        return listOf(
-            PiPAction.SEEK_BACKWARD,
-            if (state.playing) PiPAction.PAUSE else PiPAction.PLAY,
-            PiPAction.SEEK_FORWARD
-        )
+        return pictureInPictureActions(captured.activeOwner, captured.videoState)
     }
 
     fun performAction(action: PiPAction): VideoPiPState? {

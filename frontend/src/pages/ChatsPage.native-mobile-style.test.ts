@@ -22,4 +22,22 @@ describe("native mobile chat styling", () => {
       /:root\[data-platform="native"\] \.pinned-banner[\s\S]*?background:\s*color-mix\(in oklab, var\(--mobile-glass-surface-strong\) 72%, transparent\);/
     );
   });
+
+  it("hides chat rows behind the mobile filter chrome with an opaque black fade", () => {
+    expect(stylesSource).toMatch(
+      /\.messenger-shell\.chat-list-view \.chat-sidebar-header::after \{[\s\S]*?background:\s*linear-gradient\(to bottom, #000 0%, #000 90%, transparent 100%\);/
+    );
+    expect(stylesSource).toMatch(
+      /\.messenger-shell\.chat-list-view \.chat-sidebar-header \{[\s\S]*?isolation:\s*isolate;/
+    );
+  });
+
+  it("keeps mobile chat-list side inset tight without soft side shadows", () => {
+    expect(stylesSource).toMatch(
+      /\.messenger-shell\.chat-list-view \.chat-list \{[\s\S]*?padding:\s*var\(--chat-list-chrome-gap, 16px\) 4px var\(--chat-list-bottom-inset\);/
+    );
+    expect(stylesSource).toMatch(
+      /\.messenger-shell\.chat-list-view \.chat-list-filters \.filter-chip \{[\s\S]*?box-shadow:\s*none;/
+    );
+  });
 });

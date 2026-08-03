@@ -25,7 +25,7 @@ describe("storageSelectionReducer", () => {
     const closed = storageSelectionReducer(opened, { type: "close" });
 
     expect(opened).toEqual({ selectedFileId: "chosen-file", mobileDetailsOpen: true });
-    expect(closed).toEqual({ selectedFileId: "chosen-file", mobileDetailsOpen: false });
+    expect(closed).toEqual({ selectedFileId: null, mobileDetailsOpen: false });
   });
 
   it("resets a previously opened preview when Storage is entered again", () => {

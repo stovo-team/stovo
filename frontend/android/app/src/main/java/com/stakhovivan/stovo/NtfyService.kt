@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
 import androidx.core.app.RemoteInput
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -176,15 +177,57 @@ class NtfyService : Service() {
                 }
                 else -> {
                     val pendingIntent = buildPendingIntent(click, notificationId)
+                    val parsed = parseMessageNotification(title, body, tags)
+                    val history = if (messageChatId != null) {
+                        MessageNotificationStack.append(
+                            messageChatId,
+                            parsed.senderName,
+                            parsed.text
+                        )
+                    } else {
+                        listOf(
+                            StackedChatMessage(
+                                parsed.senderName,
+                                parsed.text,
+                                System.currentTimeMillis()
+                            )
+                        )
+                    }
+                    val localUser = Person.Builder()
+                        .setName("You")
+                        .setKey("local")
+                        .build()
+                    val messagingStyle = NotificationCompat.MessagingStyle(localUser)
+                    if (!parsed.isDirect) {
+                        messagingStyle
+                            .setConversationTitle(parsed.conversationTitle ?: title)
+                            .setGroupConversation(true)
+                    }
+                    for (entry in history) {
+                        val sender = Person.Builder()
+                            .setName(entry.senderName)
+                            .setKey(entry.senderName)
+                            .build()
+                        messagingStyle.addMessage(entry.text, entry.timestamp, sender)
+                    }
                     val builder = NotificationCompat.Builder(applicationContext, "stovo_messages")
                         .setSmallIcon(R.drawable.ic_notification)
                         .setLargeIcon(appIcon)
-                        .setContentTitle(title)           // sender name
-                        .setContentText(body)             // message text
+                        .setContentTitle(title)
+                        .setContentText(body)
+                        .setStyle(messagingStyle)
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent)
                         .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setOnlyAlertOnce(history.size > 1)
+                        .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                     if (messageChatId != null) {
+                        builder.setDeleteIntent(
+                            NotificationActionReceiver.dismissPendingIntent(
+                                applicationContext,
+                                messageChatId
+                            )
+                        )
                         val replyInput = RemoteInput.Builder(NotificationActionReceiver.REPLY_TEXT_KEY)
                             .setLabel("Reply")
                             .build()

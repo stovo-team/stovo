@@ -9,4 +9,10 @@ describe("Storage audio preview", () => {
     expect(page).toContain("<AudioPlayer");
     expect(page).not.toMatch(/<audio controls src=\{selectedMediaUrl\}/);
   });
+
+  it("uses the app video player for storage video details", () => {
+    expect(page).toContain("<VideoPlayer");
+    expect(page).toContain('className="storage-preview-media"');
+    expect(page).not.toMatch(/<video controls src=\{selectedMediaUrl\}/);
+  });
 });
