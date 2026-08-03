@@ -51,7 +51,8 @@ type Server struct {
 	userSockets    map[string]map[string]*socketio.Socket
 	callMu         sync.Mutex
 	callByChat     map[string]*callSession
-	userActiveCall map[string]string
+	callByRoom     map[string]*callSession
+	userActiveCall map[string]string // userID → roomID
 	callTimeout    time.Duration
 	frontendClient *http.Client
 	frontendTarget *url.URL
@@ -130,6 +131,7 @@ func New(cfg config.Config) (*Server, error) {
 		socketUsers:    make(map[string]socketSession),
 		userSockets:    make(map[string]map[string]*socketio.Socket),
 		callByChat:     make(map[string]*callSession),
+		callByRoom:     make(map[string]*callSession),
 		userActiveCall: make(map[string]string),
 		callTimeout:    30 * time.Second,
 		recentEvents:   make(map[string]time.Time),
@@ -188,6 +190,7 @@ func (s *Server) Routes() http.Handler {
 	router.Method(http.MethodGet, "/socket.io/*", s.sockets.HttpHandler())
 	router.Method(http.MethodPost, "/socket.io/*", s.sockets.HttpHandler())
 	router.Get("/api/calls/ice-servers", s.authenticated(s.handleGetIceServers))
+	router.Post("/api/calls/{roomId}/sfu-token", s.authenticated(s.handleCreateCallSFUToken))
 
 	router.Get("/api/health", s.handleHealth)
 	router.Get("/api/health/db", s.handleHealthDB)
@@ -558,6 +561,17 @@ func (s *Server) initSchema() error {
 			created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 			ended_at    TIMESTAMPTZ,
 			duration_s  INTEGER
+		);`,
+		`ALTER TABLE call_sessions ADD COLUMN IF NOT EXISTS chat_id TEXT;`,
+		`ALTER TABLE call_sessions ADD COLUMN IF NOT EXISTS topology TEXT NOT NULL DEFAULT 'mesh';`,
+		`UPDATE call_sessions SET chat_id = id WHERE chat_id IS NULL OR chat_id = '';`,
+		`CREATE TABLE IF NOT EXISTS call_participants (
+			room_id   TEXT NOT NULL,
+			user_id   TEXT NOT NULL,
+			role      TEXT NOT NULL,
+			state     TEXT NOT NULL,
+			joined_at TIMESTAMPTZ,
+			PRIMARY KEY (room_id, user_id)
 		);`,
 		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_edited BOOLEAN NOT NULL DEFAULT FALSE;`,
 		`CREATE TABLE IF NOT EXISTS message_user_deletions (

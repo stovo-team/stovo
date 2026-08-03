@@ -117,6 +117,9 @@ services:
       TURN_PASSWORD: ${TURN_PASSWORD:?Set TURN_PASSWORD in .env}
       NTFY_BASE_URL: ${NTFY_BASE_URL:-http://ntfy:80}
       NTFY_PUBLISH_TOKEN: ${NTFY_PUBLISH_TOKEN:-}
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
     expose:
       - "8000"
     volumes:
@@ -205,6 +208,19 @@ services:
       - --min-port=49160
       - --max-port=49200
       - --external-ip=${PUBLIC_IP}
+
+  livekit:
+    image: livekit/livekit-server:v1.8.4
+    restart: unless-stopped
+    command: ["--config", "/etc/livekit.yaml"]
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
+    environment:
+      LIVEKIT_KEYS: "${LIVEKIT_KEYS:-devkey: secret}"
 
 volumes:
   postgres-data:

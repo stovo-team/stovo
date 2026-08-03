@@ -36,7 +36,7 @@ export function storageSelectionReducer(
     case "select":
       return { ...state, selectedFileId: action.fileId };
     case "close":
-      return { ...state, mobileDetailsOpen: false };
+      return { selectedFileId: null, mobileDetailsOpen: false };
     case "reset-gallery":
       return initialStorageSelection;
     case "remove":

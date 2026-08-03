@@ -15,6 +15,7 @@ export type AccentChoice = "blue" | "green" | "purple" | "rose" | "amber" | "cus
 export type DensityChoice = "comfortable" | "compact";
 export type WallpaperChoice = "dots" | "paper" | "aurora" | "plain";
 export type BubbleShapeChoice = "rounded" | "soft" | "square";
+export type MessageFontChoice = "system" | "sans" | "serif" | "rounded" | "mono";
 
 export interface AppearanceSettings {
   themeMode: ThemeMode;
@@ -23,6 +24,9 @@ export interface AppearanceSettings {
   density: DensityChoice;
   wallpaper: WallpaperChoice;
   bubbleShape: BubbleShapeChoice;
+  /** Corner radius for chat bubbles, in px (4–24). */
+  bubbleRadius: number;
+  messageFont: MessageFontChoice;
   messageScale: number;
   avatarColor: string;
   /** Muted inline video autoplay in chat (Telegram-style). */
@@ -62,6 +66,8 @@ export const ACCENT_OPTIONS: Array<{
   { label: "Custom", value: "custom", swatchClassName: "custom" }
 ];
 
+export const PRESET_ACCENT_OPTIONS = ACCENT_OPTIONS.filter((option) => option.value !== "custom");
+
 export const DENSITY_OPTIONS: Array<{ label: string; value: DensityChoice }> = [
   { label: "Comfortable", value: "comfortable" },
   { label: "Compact", value: "compact" }
@@ -74,6 +80,8 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   density: "comfortable",
   wallpaper: "dots",
   bubbleShape: "rounded",
+  bubbleRadius: 18,
+  messageFont: "system",
   messageScale: 1,
   avatarColor: "#0ea5e9",
   videoAutoplay: true,
@@ -93,6 +101,65 @@ export const BUBBLE_SHAPE_OPTIONS: Array<{ label: string; value: BubbleShapeChoi
   { label: "Soft", value: "soft" },
   { label: "Square", value: "square" }
 ];
+
+export const MESSAGE_FONT_OPTIONS: Array<{
+  label: string;
+  value: MessageFontChoice;
+  family: string;
+}> = [
+  {
+    label: "System",
+    value: "system",
+    family: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+  },
+  {
+    label: "Sans",
+    value: "sans",
+    family: "Inter, ui-sans-serif, system-ui, sans-serif"
+  },
+  {
+    label: "Serif",
+    value: "serif",
+    family: 'Georgia, "Times New Roman", serif'
+  },
+  {
+    label: "Rounded",
+    value: "rounded",
+    family: '"Nunito", "Segoe UI Rounded", "SF Pro Rounded", system-ui, sans-serif'
+  },
+  {
+    label: "Mono",
+    value: "mono",
+    family: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+  }
+];
+
+export function bubbleRadiusFromShape(shape: BubbleShapeChoice) {
+  if (shape === "square") {
+    return 6;
+  }
+  if (shape === "soft") {
+    return 12;
+  }
+  return 18;
+}
+
+export function bubbleShapeFromRadius(radius: number): BubbleShapeChoice {
+  if (radius <= 8) {
+    return "square";
+  }
+  if (radius <= 14) {
+    return "soft";
+  }
+  return "rounded";
+}
+
+export function messageFontFamily(font: MessageFontChoice) {
+  return (
+    MESSAGE_FONT_OPTIONS.find((option) => option.value === font)?.family ??
+    MESSAGE_FONT_OPTIONS[0].family
+  );
+}
 
 const AppearanceContext = createContext<AppearanceContextValue | null>(null);
 
@@ -122,6 +189,17 @@ function readAppearanceSettings(): AppearanceSettings {
       parsed.bubbleShape === "soft" || parsed.bubbleShape === "square"
         ? parsed.bubbleShape
         : "rounded";
+    const bubbleRadius =
+      typeof parsed.bubbleRadius === "number"
+        ? Math.min(24, Math.max(4, Math.round(parsed.bubbleRadius)))
+        : bubbleRadiusFromShape(bubbleShape);
+    const messageFont =
+      parsed.messageFont === "sans" ||
+      parsed.messageFont === "serif" ||
+      parsed.messageFont === "rounded" ||
+      parsed.messageFont === "mono"
+        ? parsed.messageFont
+        : "system";
     const messageScale =
       typeof parsed.messageScale === "number"
         ? Math.min(1.18, Math.max(0.9, parsed.messageScale))
@@ -140,7 +218,9 @@ function readAppearanceSettings(): AppearanceSettings {
           : DEFAULT_APPEARANCE.customAccent,
       density: parsed.density === "compact" ? "compact" : "comfortable",
       wallpaper,
-      bubbleShape,
+      bubbleShape: typeof parsed.bubbleRadius === "number" ? bubbleShapeFromRadius(bubbleRadius) : bubbleShape,
+      bubbleRadius,
+      messageFont,
       messageScale,
       avatarColor:
         typeof parsed.avatarColor === "string" && /^#[0-9a-f]{6}$/i.test(parsed.avatarColor)
@@ -221,7 +301,11 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     root.dataset.density = appearance.density;
     root.dataset.wallpaper = appearance.wallpaper;
     root.dataset.bubbleShape = appearance.bubbleShape;
+    root.dataset.messageFont = appearance.messageFont;
     root.style.setProperty("--message-scale", String(appearance.messageScale));
+    root.style.setProperty("--radius-bubble", `${appearance.bubbleRadius}px`);
+    root.style.setProperty("--float-radius-bubble", `${appearance.bubbleRadius}px`);
+    root.style.setProperty("--message-font-family", messageFontFamily(appearance.messageFont));
     root.style.setProperty("--avatar-custom-bg", appearance.avatarColor);
     if (appearance.accent === "custom") {
       root.style.setProperty("--accent-primary-light", appearance.customAccent);
@@ -249,7 +333,11 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       delete root.dataset.density;
       delete root.dataset.wallpaper;
       delete root.dataset.bubbleShape;
+      delete root.dataset.messageFont;
       root.style.removeProperty("--message-scale");
+      root.style.removeProperty("--radius-bubble");
+      root.style.removeProperty("--float-radius-bubble");
+      root.style.removeProperty("--message-font-family");
       root.style.removeProperty("--avatar-custom-bg");
       root.style.removeProperty("--accent-primary-light");
       root.style.removeProperty("--accent-primary-hover-light");
@@ -272,7 +360,16 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       resolvedThemeMode,
       setAppearance,
       updateAppearance(patch) {
-        setAppearance((current) => ({ ...current, ...patch }));
+        setAppearance((current) => {
+          const next = { ...current, ...patch };
+          if (typeof patch.bubbleRadius === "number" && patch.bubbleShape === undefined) {
+            next.bubbleShape = bubbleShapeFromRadius(patch.bubbleRadius);
+          }
+          if (patch.bubbleShape !== undefined && patch.bubbleRadius === undefined) {
+            next.bubbleRadius = bubbleRadiusFromShape(patch.bubbleShape);
+          }
+          return next;
+        });
       }
     }),
     [appearance, resolvedThemeMode]

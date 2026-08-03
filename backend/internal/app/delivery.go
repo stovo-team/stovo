@@ -10,7 +10,7 @@ import (
 
 // ---- Call session Redis TTL helpers ----
 
-func callSessionKey(chatID string) string { return "call:session:" + chatID }
+func callSessionKey(id string) string { return "call:session:" + id }
 
 func (s *Server) persistCallSession(ctx context.Context, session *callSession, ttl time.Duration) {
 	data, err := json.Marshal(session)
@@ -18,24 +18,28 @@ func (s *Server) persistCallSession(ctx context.Context, session *callSession, t
 		s.logger.Warnf("delivery", "persistCallSession marshal error: %v", err)
 		return
 	}
-	if err := s.redis.Set(ctx, callSessionKey(session.ChatID), data, ttl).Err(); err != nil {
-		s.logger.Warnf("delivery", "persistCallSession redis error chat_id=%s: %v", session.ChatID, err)
+	if err := s.redis.Set(ctx, callSessionKey(session.ID), data, ttl).Err(); err != nil {
+		s.logger.Warnf("delivery", "persistCallSession redis error room_id=%s: %v", session.ID, err)
+	}
+	// Keep chat-keyed copy for reconnect helpers that still look up by chat.
+	if session.ChatID != "" && session.ChatID != session.ID {
+		_ = s.redis.Set(ctx, callSessionKey(session.ChatID), data, ttl).Err()
 	}
 }
 
-func (s *Server) deleteCallSession(ctx context.Context, chatID string) {
-	if err := s.redis.Del(ctx, callSessionKey(chatID)).Err(); err != nil {
-		s.logger.Warnf("delivery", "deleteCallSession redis error chat_id=%s: %v", chatID, err)
+func (s *Server) deleteCallSession(ctx context.Context, id string) {
+	if err := s.redis.Del(ctx, callSessionKey(id)).Err(); err != nil {
+		s.logger.Warnf("delivery", "deleteCallSession redis error id=%s: %v", id, err)
 	}
 }
 
-func (s *Server) loadCallSessionFromRedis(ctx context.Context, chatID string) *callSession {
-	data, err := s.redis.Get(ctx, callSessionKey(chatID)).Bytes()
+func (s *Server) loadCallSessionFromRedis(ctx context.Context, id string) *callSession {
+	data, err := s.redis.Get(ctx, callSessionKey(id)).Bytes()
 	if err == redis.Nil {
 		return nil
 	}
 	if err != nil {
-		s.logger.Warnf("delivery", "loadCallSession redis error chat_id=%s: %v", chatID, err)
+		s.logger.Warnf("delivery", "loadCallSession redis error id=%s: %v", id, err)
 		return nil
 	}
 	var session callSession
@@ -47,7 +51,7 @@ func (s *Server) loadCallSessionFromRedis(ctx context.Context, chatID string) *c
 
 func (s *Server) restoreCallSessions(ctx context.Context) {
 	rows, err := s.query(`
-		SELECT id, caller_id, callee_id, call_type, state, created_at
+		SELECT id, COALESCE(chat_id, id), caller_id, callee_id, call_type, COALESCE(topology, 'mesh'), state, created_at
 		FROM call_sessions
 		WHERE ended_at IS NULL AND created_at > NOW() - INTERVAL '1 hour'
 	`)
@@ -61,17 +65,46 @@ func (s *Server) restoreCallSessions(ctx context.Context) {
 	for rows.Next() {
 		var sess callSession
 		var createdAt string
-		if err := rows.Scan(&sess.ChatID, &sess.CallerUserID, &sess.CalleeUserID, &sess.CallType, &sess.State, &createdAt); err != nil {
+		var topology string
+		if err := rows.Scan(&sess.ID, &sess.ChatID, &sess.CallerUserID, &sess.CalleeUserID, &sess.CallType, &topology, &sess.State, &createdAt); err != nil {
 			continue
+		}
+		sess.Topology = callTopology(topology)
+		if sess.Topology == "" {
+			sess.Topology = callTopologyMesh
 		}
 		sess.CreatedAt = parseTime(createdAt)
 		sess.ExpiresAt = sess.CreatedAt.Add(s.callTimeout)
+		sess.Participants = map[string]*callParticipant{
+			sess.CallerUserID: {UserID: sess.CallerUserID, Role: "host", State: participantRinging},
+			sess.CalleeUserID: {UserID: sess.CalleeUserID, Role: "member", State: participantRinging},
+		}
+		partRows, err := s.query(`SELECT user_id, role, state, joined_at FROM call_participants WHERE room_id = ?`, sess.ID)
+		if err == nil {
+			for partRows.Next() {
+				var userID, role, state string
+				var joinedAt *time.Time
+				if scanErr := partRows.Scan(&userID, &role, &state, &joinedAt); scanErr != nil {
+					continue
+				}
+				p := &callParticipant{UserID: userID, Role: role, State: callParticipantState(state)}
+				if joinedAt != nil {
+					p.JoinedAt = joinedAt.UTC()
+				}
+				sess.Participants[userID] = p
+			}
+			partRows.Close()
+		}
 		ptr := &sess
+		s.callByRoom[sess.ID] = ptr
 		s.callByChat[sess.ChatID] = ptr
-		s.userActiveCall[sess.CallerUserID] = sess.ChatID
-		s.userActiveCall[sess.CalleeUserID] = sess.ChatID
+		for userID, p := range sess.Participants {
+			if p != nil && p.State != participantLeft && p.State != participantDeclined {
+				s.userActiveCall[userID] = sess.ID
+			}
+		}
 	}
-	count := len(s.callByChat)
+	count := len(s.callByRoom)
 	if count > 0 {
 		s.logger.Infof("delivery", "restoreCallSessions restored %d active sessions", count)
 	}

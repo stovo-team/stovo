@@ -118,6 +118,7 @@ class NtfyPlugin : Plugin() {
     fun dismissChatNotifications(call: PluginCall) {
         val chatId = call.getString("chatId")?.trim()
         if (!chatId.isNullOrEmpty()) {
+            MessageNotificationStack.clear(chatId)
             NotificationManagerCompat.from(context).apply {
                 cancel(messageNotificationId(chatId))
                 cancel(missedCallNotificationId(chatId))

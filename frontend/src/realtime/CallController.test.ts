@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import CallController from './CallController'
 
-const makeSocket = () => ({ emit: vi.fn() } as any)
+const makeSocket = () => ({ emit: vi.fn(), connected: true } as any)
 
 describe('CallController — default settings', () => {
   let ctrl: CallController
@@ -35,8 +35,6 @@ describe('CallController — cleanup', () => {
   it('does not emit call:end when serverAlreadyNotified is true', async () => {
     const socket = makeSocket()
     const ctrl = new CallController(socket, 'test-token')
-    // Simulate an active call chatId via startOutgoing path is heavy; cleanup with
-    // serverAlreadyNotified skips emit regardless.
     await ctrl.cleanup(true)
     expect(socket.emit).not.toHaveBeenCalledWith('call:end', expect.anything())
   })
@@ -54,8 +52,39 @@ describe('CallController — cleanup', () => {
     const ctrl = new CallController(socket, 'test-token')
     ;(ctrl as any).chatId = 'chat-1'
     ;(ctrl as any).tearingDown = true
-    ;(ctrl as any).emitSignal({ chatId: 'chat-1', data: { type: 'ice-candidate' } })
+    // Mesh engine also must not signal while session is tearing down.
+    await ctrl.handleSignal({
+      chatId: 'chat-1',
+      fromUserId: 'u2',
+      data: { type: 'ice-candidate', candidate: {} },
+    })
     expect(socket.emit).not.toHaveBeenCalledWith('call:signal', expect.anything())
+  })
+})
+
+describe('CallController — multi-party surface', () => {
+  it('exposes inviteUsers / leaveCall socket emits', () => {
+    const socket = makeSocket()
+    const ctrl = new CallController(socket, 'test-token')
+    ctrl.setLocalUserId('u1')
+    ctrl.setRoomId('room-1')
+    ;(ctrl as any).chatId = 'chat-1'
+    ctrl.inviteUsers(['u2', 'u3'])
+    expect(socket.emit).toHaveBeenCalledWith('call:invite', {
+      chatId: 'chat-1',
+      roomId: 'room-1',
+      inviteUserIds: ['u2', 'u3'],
+    })
+    ctrl.leaveCall()
+    expect(socket.emit).toHaveBeenCalledWith('call:leave', {
+      chatId: 'chat-1',
+      roomId: 'room-1',
+    })
+  })
+
+  it('getRemoteMedia starts empty', () => {
+    const ctrl = new CallController(makeSocket(), 'test-token')
+    expect(ctrl.getRemoteMedia()).toEqual([])
   })
 })
 

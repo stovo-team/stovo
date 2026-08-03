@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, MoreVertical } from "lucide-react";
+import { Download, MoreVertical, X } from "lucide-react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
 interface ImageLightboxProps {
@@ -102,9 +102,7 @@ export default function ImageLightbox({
           aria-label="Close image preview"
           onClick={requestClose}
         >
-          <span className="ms-icon ms-icon--24" aria-hidden={true}>
-            close
-          </span>
+          <X aria-hidden="true" size={24} strokeWidth={2.25} />
         </button>
         <div className="image-lightbox-copy">
           <strong>{title}</strong>

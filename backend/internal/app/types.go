@@ -314,11 +314,14 @@ type messageReactionPublic struct {
 }
 
 type callHistoryPublic struct {
-	Status          string `json:"status"`
-	CallType        string `json:"callType"`
-	CallerID        string `json:"callerId"`
-	CalleeID        string `json:"calleeId"`
-	DurationSeconds *int   `json:"durationSeconds,omitempty"`
+	Status          string   `json:"status"`
+	CallType        string   `json:"callType"`
+	CallerID        string   `json:"callerId"`
+	CalleeID        string   `json:"calleeId"`
+	DurationSeconds *int     `json:"durationSeconds,omitempty"`
+	ParticipantIDs  []string `json:"participantIds,omitempty"`
+	Topology        string   `json:"topology,omitempty"`
+	RoomID          string   `json:"roomId,omitempty"`
 }
 
 type messagePublic struct {
@@ -496,16 +499,25 @@ type socketTypingRequest struct {
 }
 
 type socketCallStartRequest struct {
-	ChatID   string `json:"chatId"`
-	CallType string `json:"callType"`
+	ChatID        string   `json:"chatId"`
+	CallType      string   `json:"callType"`
+	InviteUserIDs []string `json:"inviteUserIds"`
 }
 
 type socketCallActionRequest struct {
 	ChatID string `json:"chatId"`
+	RoomID string `json:"roomId"`
+}
+
+type socketCallInviteRequest struct {
+	ChatID        string   `json:"chatId"`
+	RoomID        string   `json:"roomId"`
+	InviteUserIDs []string `json:"inviteUserIds"`
 }
 
 type socketCallSignalRequest struct {
 	ChatID       string         `json:"chatId"`
+	RoomID       string         `json:"roomId"`
 	TargetUserID *string        `json:"targetUserId"`
 	Data         map[string]any `json:"data"`
 }

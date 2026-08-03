@@ -1,9 +1,19 @@
 package com.stakhovivan.stovo
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class MessageNotificationTest {
+    @Before
+    fun clearStacks() {
+        MessageNotificationStack.clear("family-chat")
+        MessageNotificationStack.clear("dm-chat")
+    }
+
     @Test
     fun `message notification ID is stable for the opened chat`() {
         assertEquals(
@@ -18,5 +28,45 @@ class MessageNotificationTest {
             "stovo://call/missed/family-chat".hashCode(),
             missedCallNotificationId("family-chat")
         )
+    }
+
+    @Test
+    fun `parses direct message notifications`() {
+        val parsed = parseMessageNotification("Alice", "hello there", listOf("speech_balloon", "direct"))
+        assertTrue(parsed.isDirect)
+        assertNull(parsed.conversationTitle)
+        assertEquals("Alice", parsed.senderName)
+        assertEquals("hello there", parsed.text)
+    }
+
+    @Test
+    fun `parses group message notifications with chat title`() {
+        val parsed = parseMessageNotification(
+            "Family Chat",
+            "Alice: hello there",
+            listOf("speech_balloon")
+        )
+        assertFalse(parsed.isDirect)
+        assertEquals("Family Chat", parsed.conversationTitle)
+        assertEquals("Alice", parsed.senderName)
+        assertEquals("hello there", parsed.text)
+    }
+
+    @Test
+    fun `stacks messages from one chat and caps history`() {
+        repeat(12) { index ->
+            MessageNotificationStack.append("family-chat", "Alice", "msg-$index", index.toLong())
+        }
+        val stacked = MessageNotificationStack.snapshot("family-chat")
+        assertEquals(MessageNotificationStack.MAX_MESSAGES, stacked.size)
+        assertEquals("msg-2", stacked.first().text)
+        assertEquals("msg-11", stacked.last().text)
+    }
+
+    @Test
+    fun `clear removes stacked messages for a chat`() {
+        MessageNotificationStack.append("dm-chat", "Bob", "hi")
+        MessageNotificationStack.clear("dm-chat")
+        assertTrue(MessageNotificationStack.snapshot("dm-chat").isEmpty())
     }
 }

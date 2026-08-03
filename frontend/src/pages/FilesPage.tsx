@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Download,
   Archive,
+  ChevronDown,
   FileAudio,
   FileText,
   Heart,
@@ -38,6 +39,7 @@ import { getChats, type Chat } from "../api/chats";
 import { useAuth } from "../auth/AuthContext";
 import { AudioPlayer } from "../components/AudioPlayer";
 import ImageLightbox from "../components/ImageLightbox";
+import { VideoPlayer } from "../components/VideoPlayer";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "./ChatsPage";
@@ -232,13 +234,14 @@ export default function FilesPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
-  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const sourceMenuRef = useRef<HTMLDivElement | null>(null);
   const storageDetailsCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const closeMobileDetails = useCallback(() => {
     const fileIdToRestore = selectedFileId;
+    setFullViewImage(null);
     dispatchSelection({ type: "close" });
     window.requestAnimationFrame(() => {
       const selectedTile = Array.from(
@@ -300,13 +303,13 @@ export default function FilesPage() {
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {
-      if (!moreMenuRef.current?.contains(event.target as Node)) {
-        setIsMoreMenuOpen(false);
+      if (!sourceMenuRef.current?.contains(event.target as Node)) {
+        setIsSourceMenuOpen(false);
       }
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setIsMoreMenuOpen(false);
+        setIsSourceMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleDocumentMouseDown);
@@ -332,19 +335,6 @@ export default function FilesPage() {
 
   const selectedFile = filteredFiles.find((file) => file.id === selectedFileId) ?? null;
   const selectedFilePreviewUrl = useFilePreviewUrl(accessToken, selectedFile);
-  const [selectedMediaUrl, setSelectedMediaUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!accessToken || !selectedFile || !["audio", "videos"].includes(fileKind(selectedFile))) {
-      setSelectedMediaUrl(null);
-      return;
-    }
-    let cancelled = false;
-    void createStreamingMediaUrl(accessToken, selectedFile.id).then((url) => {
-      if (!cancelled) setSelectedMediaUrl(url);
-    }).catch(() => undefined);
-    return () => { cancelled = true; };
-  }, [accessToken, selectedFile]);
 
   const groupedFiles = useMemo(() => {
     return filteredFiles.reduce<
@@ -364,6 +354,8 @@ export default function FilesPage() {
   const sourceGroups = useMemo(() => {
     return buildStorageSources(files, chats, currentUser?.id);
   }, [chats, currentUser?.id, files]);
+  const selectedSource = sourceGroups.flatMap((group) => group.sources)
+    .find((source) => source.chatId === sourceChatId);
 
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(event.target.files ?? []);
@@ -431,6 +423,67 @@ export default function FilesPage() {
       <AppNav />
       <section className="page-surface storage-layout" aria-busy={isLoading || isUploading}>
         <aside className="storage-source-sidebar" aria-label="Chat file sources">
+          <div className="storage-mobile-source-picker" ref={sourceMenuRef}>
+            <button
+              type="button"
+              className="storage-mobile-source-trigger"
+              aria-expanded={isSourceMenuOpen}
+              aria-haspopup="listbox"
+              onClick={() => setIsSourceMenuOpen((isOpen) => !isOpen)}
+            >
+              <span className="storage-mobile-source-copy">
+                <strong>{selectedSource?.label ?? "All chats"}</strong>
+                <small>{selectedSource?.fileCount ?? files.length} files</small>
+              </span>
+              <ChevronDown aria-hidden="true" size={20} />
+            </button>
+            {isSourceMenuOpen && (
+              <div className="storage-mobile-source-menu" role="listbox" aria-label="Storage source">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={!sourceChatId}
+                  className={!sourceChatId ? "active" : undefined}
+                  onClick={() => {
+                    setSourceChatId(null);
+                    setIsSourceMenuOpen(false);
+                  }}
+                >
+                  <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={19} /></span>
+                  <span><strong>All chats</strong><small>{files.length} files</small></span>
+                </button>
+                {sourceGroups.map((group) => (
+                  <section className="storage-mobile-source-group" key={group.label}>
+                    <h2>{group.label}</h2>
+                    {group.sources.map((source) => (
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={sourceChatId === source.chatId}
+                        className={sourceChatId === source.chatId ? "active" : undefined}
+                        key={source.chatId}
+                        onClick={() => {
+                          setSourceChatId(source.chatId);
+                          setIsSourceMenuOpen(false);
+                        }}
+                      >
+                        <span className={`storage-source-avatar${source.avatarKind === "archive" ? " storage-source-avatar--archive" : ""}`}>
+                          <StorageSourceAvatar
+                            accessToken={accessToken}
+                            file={source.avatarFile}
+                            kind={source.avatarKind}
+                            label={source.label}
+                            minimizedLayout={Boolean(family?.minimizedChatLayout)}
+                          />
+                        </span>
+                        <span><strong>{source.label}</strong><small>{source.fileCount} files</small></span>
+                      </button>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            )}
+          </div>
           <p className="eyebrow">{family?.name ?? "Stovo"}</p>
           <h1>Storage</h1>
           <button
@@ -557,30 +610,11 @@ export default function FilesPage() {
                   <X aria-hidden="true" size={20} />
                 </button>
               </div>
+              <div className="storage-details-copy">
+                <h2>{selectedFile.originalName}</h2>
+                <p>{selectedFile.mimeType}</p>
+              </div>
               <div className="storage-preview storage-preview-frame">
-                {fileKind(selectedFile) === "audio" && accessToken ? (
-                  <AudioPlayer
-                    descriptor={{
-                      identity: {
-                        chatId: selectedFile.chatId ?? "storage",
-                        messageId: selectedFile.originMessageId ?? selectedFile.id,
-                        fileId: selectedFile.id
-                      },
-                      title: selectedFile.originalName
-                    }}
-                    sourceFactory={buildAudioSourceFactory(accessToken)}
-                    hideTitle
-                  />
-                ) : fileKind(selectedFile) === "videos" && selectedMediaUrl ? (
-                  <video controls src={selectedMediaUrl} />
-                ) : selectedFilePreviewUrl ? (
-                  <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
-                ) : (
-                  (() => {
-                    const Icon = fileIcon(selectedFile);
-                    return <Icon aria-hidden="true" size={42} />;
-                  })()
-                )}
                 <div className="storage-preview-actions">
                   {accessToken && (
                     <button
@@ -626,10 +660,40 @@ export default function FilesPage() {
                     </button>
                   )}
                 </div>
-              </div>
-              <div className="storage-details-copy">
-                <h2>{selectedFile.originalName}</h2>
-                <p>{selectedFile.mimeType}</p>
+                <div className="storage-preview-media">
+                  {fileKind(selectedFile) === "audio" && accessToken ? (
+                    <AudioPlayer
+                      descriptor={{
+                        identity: {
+                          chatId: selectedFile.chatId ?? "storage",
+                          messageId: selectedFile.originMessageId ?? selectedFile.id,
+                          fileId: selectedFile.id
+                        },
+                        title: selectedFile.originalName
+                      }}
+                      sourceFactory={buildAudioSourceFactory(accessToken)}
+                      hideTitle
+                    />
+                  ) : fileKind(selectedFile) === "videos" && accessToken ? (
+                    <VideoPlayer
+                      file={selectedFile}
+                      accessToken={accessToken}
+                      identity={{
+                        chatId: selectedFile.chatId ?? "storage",
+                        messageId: selectedFile.originMessageId ?? selectedFile.id,
+                        fileId: selectedFile.id
+                      }}
+                      autoplay={false}
+                    />
+                  ) : selectedFilePreviewUrl ? (
+                    <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
+                  ) : (
+                    (() => {
+                      const Icon = fileIcon(selectedFile);
+                      return <Icon aria-hidden="true" size={42} />;
+                    })()
+                  )}
+                </div>
               </div>
               <dl className="file-detail-list">
                 <div>
