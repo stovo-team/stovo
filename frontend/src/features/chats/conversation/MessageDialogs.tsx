@@ -57,6 +57,7 @@ export function MessageDialogs({
   currentUserId,
   chats,
   forwardTarget,
+  forwardCount = 1,
   onForwardMessage,
   onCloseForward,
   deleteTarget,
@@ -73,6 +74,7 @@ export function MessageDialogs({
   currentUserId?: string;
   chats: Chat[];
   forwardTarget: Message | null;
+  forwardCount?: number;
   onForwardMessage: (chatId: string) => void;
   onCloseForward: () => void;
   deleteTarget: Message | null;
@@ -91,7 +93,9 @@ export function MessageDialogs({
         <div className="modal-backdrop" role="presentation">
           <section className="messenger-modal" role="dialog" aria-modal="true" aria-labelledby="forward-title">
             <div className="modal-header">
-              <h2 id="forward-title">Forward message</h2>
+              <h2 id="forward-title">
+                {forwardCount > 1 ? `Forward ${forwardCount} messages` : "Forward message"}
+              </h2>
               <button
                 type="button"
                 className="icon-button subtle"
@@ -102,7 +106,11 @@ export function MessageDialogs({
                 <X aria-hidden="true" size={18} />
               </button>
             </div>
-            <p className="forward-preview">{messageActionSummary(forwardTarget)}</p>
+            <p className="forward-preview">
+              {forwardCount > 1
+                ? `${forwardCount} messages selected`
+                : messageActionSummary(forwardTarget)}
+            </p>
             <div className="forward-chat-list">
               {chats.map((chat) => (
                 <button type="button" key={chat.id} onClick={() => onForwardMessage(chat.id)}>
