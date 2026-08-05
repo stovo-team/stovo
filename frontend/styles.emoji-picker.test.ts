@@ -2,7 +2,19 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const styles = readFileSync("src/styles.css", "utf8");
-const chatsPage = readFileSync("src/pages/ChatsPage.tsx", "utf8");
+const composer = readFileSync("src/features/chats/composer/Composer.tsx", "utf8");
+const useMessageComposerSource = readFileSync(
+  "src/features/chats/composer/useMessageComposer.ts",
+  "utf8"
+);
+const useChatsPageControllerSource = readFileSync(
+  "src/features/chats/useChatsPageController.ts",
+  "utf8"
+);
+const useChatSurfaceDismissalSource = readFileSync(
+  "src/features/chats/useChatSurfaceDismissal.ts",
+  "utf8"
+);
 const audioPlayer = readFileSync("src/components/AudioPlayer.tsx", "utf8");
 const rule = (selector: string) => {
   const start = styles.indexOf(`${selector} {`);
@@ -66,15 +78,15 @@ describe("docked emoji picker styles", () => {
   });
 
   it("uses the picker's own dark sprite theme", () => {
-    expect(chatsPage).toContain('theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}');
-    expect(chatsPage).toContain("categoryIcons={EMOJI_CATEGORY_ICONS}");
+    expect(composer).toContain('theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}');
+    expect(composer).toContain("categoryIcons={EMOJI_CATEGORY_ICONS}");
     expect(styles).not.toContain(':root[data-theme-mode="dark"] .emoji-picker .epr-cat-btn');
   });
 
   it("docks the mobile web picker under the composer", () => {
-    expect(chatsPage).toContain("const isDockedEmojiPicker = isMobileViewport;");
-    expect(chatsPage).toContain("const emojiPickerDockRef = useRef<HTMLDivElement | null>(null);");
-    expect(chatsPage).toContain("!emojiPickerDockRef.current?.contains(event.target as Node)");
+    expect(useChatsPageControllerSource).toContain("const isDockedEmojiPicker = isMobileViewport;");
+    expect(useMessageComposerSource).toContain("const emojiPickerDockRef = useRef<HTMLDivElement | null>(null);");
+    expect(useChatSurfaceDismissalSource).toContain("!emojiPickerDockRef.current?.contains(event.target as Node)");
     expect(rule(".messenger-shell.has-active-chat .message-composer--emoji-docked .emoji-picker-dock")).toContain(
       "margin-inline: calc(-1 * (var(--mobile-edge-inset-x) + 8px));"
     );
@@ -83,11 +95,11 @@ describe("docked emoji picker styles", () => {
 
 describe("active chat message spacing", () => {
   it("keeps pending attachments inside the floating composer", () => {
-    const attachmentStrip = chatsPage.indexOf('className="composer-attachments-strip"');
-    const composerForm = chatsPage.lastIndexOf('<form', attachmentStrip);
+    const attachmentStrip = composer.indexOf('className="composer-attachments-strip"');
+    const composerForm = composer.lastIndexOf('<form', attachmentStrip);
 
     expect(attachmentStrip).toBeGreaterThan(composerForm);
-    expect(chatsPage.slice(composerForm, attachmentStrip)).toContain('className={`message-composer');
+    expect(composer.slice(composerForm, attachmentStrip)).toContain('className={`message-composer');
   });
 
   it("does not restore an opaque surface behind the active-chat composer", () => {
@@ -162,6 +174,14 @@ describe("message media sizing", () => {
     expect(rule(".message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment))")).toContain(
       "width: min(560px, 86%);"
     );
+  });
+
+  it("narrows portrait-only video bubbles relative to landscape", () => {
+    expect(
+      rule(
+        ".message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)):not(:has(.message-media-album)):has(.video-player.is-portrait)"
+      )
+    ).toContain("width: min(400px, 68%);");
   });
 });
 

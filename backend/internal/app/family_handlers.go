@@ -1,7 +1,7 @@
 package app
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,6 +9,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"family-messenger/backend/ent"
+	"family-messenger/backend/internal/repository"
 
 	"github.com/google/uuid"
 )
@@ -43,23 +46,11 @@ func (s *Server) handleUpdateFamily(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if name != nil {
-			if _, err := s.txExec(tx, `UPDATE families SET name = ?, updated_at = ? WHERE id = ?`, *name, nowString(), user.FamilyID); err != nil {
-				return err
-			}
-		}
-		if payload.StorageLimitMB != nil {
-			if _, err := s.txExec(tx, `UPDATE families SET storage_limit_mb = ?, updated_at = ? WHERE id = ?`, *payload.StorageLimitMB, nowString(), user.FamilyID); err != nil {
-				return err
-			}
-		}
-		if payload.MinimizedChatLayout != nil {
-			if _, err := s.txExec(tx, `UPDATE families SET minimized_chat_layout = ?, updated_at = ? WHERE id = ?`, *payload.MinimizedChatLayout, nowString(), user.FamilyID); err != nil {
-				return err
-			}
-		}
-		return nil
+	if err := s.store.UpdateFamily(r.Context(), user.FamilyID, repository.UpdateFamilyParams{
+		Name:                name,
+		StorageLimitMB:      payload.StorageLimitMB,
+		MinimizedChatLayout: payload.MinimizedChatLayout,
+		UpdatedAt:           nowString(),
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update family")
 		return
@@ -73,51 +64,16 @@ func (s *Server) handleUpdateFamily(w http.ResponseWriter, r *http.Request, user
 	s.json(w, http.StatusOK, family)
 }
 
-func (s *Server) handleGetMembers(w http.ResponseWriter, _ *http.Request, user userPublic) {
-	rows, err := s.query(`
-		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at
-		FROM users
-		WHERE family_id = ? AND is_active = 1
-		ORDER BY created_at ASC
-	`, user.FamilyID)
+func (s *Server) handleGetMembers(w http.ResponseWriter, r *http.Request, user userPublic) {
+	rows, err := s.store.ListActiveFamilyMembers(r.Context(), user.FamilyID, connectorRole)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not load members")
 		return
 	}
-	defer rows.Close()
 
-	members := make([]userPublic, 0)
-	for rows.Next() {
-		var member userPublic
-		var createdAt string
-		var publicKey, profilePhotoFileID, lastSeen sql.NullString
-		var active int
-		if err := rows.Scan(
-			&member.ID,
-			&member.FamilyID,
-			&member.Username,
-			&member.DisplayName,
-			&member.Role,
-			&active,
-			&publicKey,
-			&profilePhotoFileID,
-			&createdAt,
-			&lastSeen,
-		); err != nil {
-			s.detail(w, http.StatusInternalServerError, "Could not load members")
-			return
-		}
-		created := parseTime(createdAt)
-		member.CreatedAt = &created
-		member.LastSeenAt = timePtrFromNull(sql.NullTime{Time: parseTime(lastSeen.String), Valid: lastSeen.Valid})
-		member.IsActive = active == 1
-		member.PublicKey = stringPtrFromNull(publicKey)
-		if profilePhotoFileID.Valid {
-			if file, err := s.buildFilePublic(profilePhotoFileID.String, member.ID); err == nil && file.DeletedAt == nil {
-				member.ProfilePhoto = &file
-			}
-		}
-		members = append(members, member)
+	members := make([]userPublic, 0, len(rows))
+	for _, row := range rows {
+		members = append(members, s.userPublicFromEnt(row))
 	}
 	s.json(w, http.StatusOK, members)
 }
@@ -144,10 +100,7 @@ func (s *Server) handleChangeRole(w http.ResponseWriter, r *http.Request, user u
 		return
 	}
 
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `UPDATE users SET role = ? WHERE id = ?`, payload.Role, target.ID)
-		return err
-	}); err != nil {
+	if err := s.store.UpdateUserRole(r.Context(), target.ID, payload.Role); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update role")
 		return
 	}
@@ -172,11 +125,11 @@ func (s *Server) handleRemoveMember(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `UPDATE users SET is_active = 0 WHERE id = ?`, target.ID); err != nil {
+	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
+		if err := s.store.DeactivateUser(r.Context(), tx, target.ID); err != nil {
 			return err
 		}
-		return s.revokeUserSessions(r.Context(), tx, target.ID)
+		return s.store.RevokeUserSessions(r.Context(), tx, target.ID, nowString())
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not remove member")
 		return
@@ -223,18 +176,21 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request, user
 	}
 	inviteID := uuid.NewString()
 	expiresAt := time.Now().Add(time.Duration(expiresHours) * time.Hour).UTC()
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `
-			INSERT INTO invites (id, family_id, token_hash, role, expires_at, max_uses, used_count, created_by, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
-		`, inviteID, user.FamilyID, tokenHash(s.cfg.InviteTokenSecret, rawToken), role, expiresAt.Format(time.RFC3339Nano), maxUses, user.ID, nowString())
-		return err
+	if err := s.store.CreateInviteTx(r.Context(), repository.CreateInviteParams{
+		ID:        inviteID,
+		FamilyID:  user.FamilyID,
+		TokenHash: tokenHash(s.cfg.InviteTokenSecret, rawToken),
+		Role:      role,
+		ExpiresAt: expiresAt.Format(time.RFC3339Nano),
+		MaxUses:   maxUses,
+		CreatedBy: user.ID,
+		CreatedAt: nowString(),
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create invite")
 		return
 	}
 
-	invite, err := s.getInviteByID(inviteID)
+	invite, err := s.getInviteByID(r.Context(), inviteID)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not load invite")
 		return
@@ -253,7 +209,7 @@ func (s *Server) handleCreateInvite(w http.ResponseWriter, r *http.Request, user
 }
 
 func (s *Server) handlePreviewInvite(w http.ResponseWriter, r *http.Request) {
-	invite, family, err := s.findInviteByToken(inviteTokenFromURL(r))
+	invite, family, err := s.findInviteByToken(r.Context(), inviteTokenFromURL(r))
 	if err != nil {
 		s.detail(w, http.StatusNotFound, "Invite not found")
 		return
@@ -281,7 +237,7 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	invite, family, err := s.findInviteByToken(inviteTokenFromURL(r))
+	invite, family, err := s.findInviteByToken(r.Context(), inviteTokenFromURL(r))
 	if err != nil {
 		s.detail(w, http.StatusNotFound, "Invite not found")
 		return
@@ -301,43 +257,26 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	familyChatID, err := s.familyChatID(family.ID)
+	familyChatID, err := s.store.FamilyChatID(r.Context(), family.ID)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not load family chat")
 		return
 	}
 
-	err = s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `
-			INSERT INTO users (id, family_id, username, password_hash, display_name, role, is_active, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-		`, userID, family.ID, payload.Username, passwordHash, payload.DisplayName, invite.Role, now); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			UPDATE invites SET used_count = used_count + 1 WHERE id = ?
-		`, invite.ID); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO chat_members (chat_id, user_id, created_at)
-			VALUES (?, ?, ?)
-		`, familyChatID, userID, now); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO chat_preferences (chat_id, user_id)
-			VALUES (?, ?)
-		`, familyChatID, userID); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at, ip_address)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, uuid.NewString(), userID, refreshHash, refreshExpires, now, s.getClientIP(r)); err != nil {
-			return err
-		}
-		return nil
+	err = s.store.AcceptInvite(r.Context(), repository.AcceptInviteParams{
+		UserID:         userID,
+		FamilyID:       family.ID,
+		Username:       payload.Username,
+		PasswordHash:   passwordHash,
+		DisplayName:    payload.DisplayName,
+		Role:           invite.Role,
+		InviteID:       invite.ID,
+		FamilyChatID:   familyChatID,
+		RefreshTokenID: uuid.NewString(),
+		TokenHash:      refreshHash,
+		ExpiresAt:      refreshExpires,
+		CreatedAt:      now,
+		IPAddress:      s.getClientIP(r),
 	})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
@@ -372,41 +311,33 @@ func (s *Server) handleDeleteInvite(w http.ResponseWriter, r *http.Request, user
 		s.detail(w, http.StatusForbidden, "Owner or admin access required")
 		return
 	}
-	invite, err := s.getInviteByID(inviteIDFromURL(r))
+	invite, err := s.getInviteByID(r.Context(), inviteIDFromURL(r))
 	if err != nil || invite.FamilyID != user.FamilyID {
 		s.detail(w, http.StatusNotFound, "Invite not found")
 		return
 	}
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `UPDATE invites SET revoked_at = ? WHERE id = ?`, nowString(), invite.ID)
-		return err
-	}); err != nil {
+	if err := s.store.RevokeInvite(r.Context(), invite.ID, nowString()); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not revoke invite")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) getInviteByID(inviteID string) (invitePublic, error) {
-	row := s.queryRow(`
-		SELECT id, family_id, role, expires_at, max_uses, used_count, created_by, created_at, revoked_at
-		FROM invites
-		WHERE id = ?
-	`, inviteID)
-	return scanInvite(row)
+func (s *Server) getInviteByID(ctx context.Context, inviteID string) (invitePublic, error) {
+	inv, err := s.store.InviteByID(ctx, inviteID)
+	if err != nil {
+		return invitePublic{}, err
+	}
+	return invitePublicFromEnt(inv), nil
 }
 
-func (s *Server) findInviteByToken(rawToken string) (invitePublic, familyPublic, error) {
+func (s *Server) findInviteByToken(ctx context.Context, rawToken string) (invitePublic, familyPublic, error) {
 	hashed := tokenHash(s.cfg.InviteTokenSecret, rawToken)
-	row := s.queryRow(`
-		SELECT id, family_id, role, expires_at, max_uses, used_count, created_by, created_at, revoked_at
-		FROM invites
-		WHERE token_hash = ?
-	`, hashed)
-	invite, err := scanInvite(row)
+	inv, err := s.store.InviteByTokenHash(ctx, hashed)
 	if err != nil {
 		return invitePublic{}, familyPublic{}, err
 	}
+	invite := invitePublicFromEnt(inv)
 	if invite.RevokedAt != nil || invite.UsedCount >= invite.MaxUses || invite.ExpiresAt.Before(time.Now()) {
 		return invitePublic{}, familyPublic{}, errNotFound
 	}
@@ -417,39 +348,22 @@ func (s *Server) findInviteByToken(rawToken string) (invitePublic, familyPublic,
 	return invite, family, nil
 }
 
-func (s *Server) familyChatID(familyID string) (string, error) {
-	row := s.queryRow(`SELECT id FROM chats WHERE family_id = ? AND type = 'family' LIMIT 1`, familyID)
-	var chatID string
-	if err := row.Scan(&chatID); err != nil {
-		return "", err
+func invitePublicFromEnt(inv *ent.Invite) invitePublic {
+	invite := invitePublic{
+		ID:        inv.ID,
+		FamilyID:  inv.FamilyID,
+		Role:      inv.Role,
+		ExpiresAt: parseTime(inv.ExpiresAt),
+		MaxUses:   inv.MaxUses,
+		UsedCount: inv.UsedCount,
+		CreatedBy: inv.CreatedBy,
+		CreatedAt: parseTime(inv.CreatedAt),
 	}
-	return chatID, nil
-}
-
-func scanInvite(row *sql.Row) (invitePublic, error) {
-	var invite invitePublic
-	var expiresAt, createdAt string
-	var revokedAt sql.NullString
-	if err := row.Scan(
-		&invite.ID,
-		&invite.FamilyID,
-		&invite.Role,
-		&expiresAt,
-		&invite.MaxUses,
-		&invite.UsedCount,
-		&invite.CreatedBy,
-		&createdAt,
-		&revokedAt,
-	); err != nil {
-		return invitePublic{}, err
-	}
-	invite.ExpiresAt = parseTime(expiresAt)
-	invite.CreatedAt = parseTime(createdAt)
-	if revokedAt.Valid {
-		revoked := parseTime(revokedAt.String)
+	if inv.RevokedAt != nil {
+		revoked := parseTime(*inv.RevokedAt)
 		invite.RevokedAt = &revoked
 	}
-	return invite, nil
+	return invite
 }
 
 func buildInviteURL(family familyPublic, defaultAppURL, defaultAPIURL, rawToken string) string {

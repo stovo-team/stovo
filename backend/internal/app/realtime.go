@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 
 	"family-messenger/backend/internal/broker"
 	"family-messenger/backend/internal/cache"
+	"family-messenger/backend/internal/repository"
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/google/uuid"
@@ -346,51 +346,39 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 
 	messageID := uuid.NewString()
 	now := nowString()
-	forwardedMessageID := any(nil)
-	forwardedChatID := any(nil)
+	var forwardedMessageID *string
+	var forwardedChatID *string
 	if forwarded != nil {
-		forwardedMessageID = forwarded.MessageID
-		forwardedChatID = forwarded.ChatID
+		forwardedMessageID = &forwarded.MessageID
+		forwardedChatID = &forwarded.ChatID
 	}
 	messageKind := "chat"
 	if payload.ThreadRootMessageID != nil {
 		messageKind = "thread"
 	}
-	err = s.withTx(ctx, func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `
-			INSERT INTO messages (
-				id, chat_id, sender_id, type, content, encryption_protocol, ciphertext, nonce,
-				key_version, encryption_metadata, reply_to_message_id, thread_root_message_id, message_kind,
-				forwarded_from_message_id, forwarded_from_chat_id, created_at, updated_at
-			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, messageID, chatID, user.ID, messageType, content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, payload.ReplyToMessageID, payload.ThreadRootMessageID, messageKind, forwardedMessageID, forwardedChatID, now, now); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO message_statuses (message_id, user_id, status, created_at)
-			VALUES (?, ?, 'sent', ?)
-		`, messageID, user.ID, now); err != nil {
-			return err
-		}
-		for _, file := range attachments {
-			if _, err := s.txExec(tx, `INSERT INTO message_attachments (message_id, file_id) VALUES (?, ?)`, messageID, file.ID); err != nil {
-				return err
-			}
-		}
-		if _, err := s.txExec(tx, `UPDATE chats SET updated_at = ? WHERE id = ?`, now, chatID); err != nil {
-			return err
-		}
-		for _, recipientID := range onlineRecipients {
-			if _, err := s.txExec(tx, `
-				INSERT INTO message_statuses (message_id, user_id, status, created_at)
-				VALUES (?, ?, 'delivered', ?)
-				ON CONFLICT (message_id, user_id, status) DO NOTHING
-			`, messageID, recipientID, now); err != nil {
-				return err
-			}
-		}
-		return nil
+	attachmentFileIDs := make([]string, 0, len(attachments))
+	for _, file := range attachments {
+		attachmentFileIDs = append(attachmentFileIDs, file.ID)
+	}
+	err = s.store.CreateMessageBundle(ctx, repository.CreateMessageBundleParams{
+		MessageID:              messageID,
+		ChatID:                 chatID,
+		SenderID:               user.ID,
+		Type:                   messageType,
+		Content:                content,
+		EncryptionProtocol:     encryptionProtocol,
+		Ciphertext:             ciphertext,
+		Nonce:                  nonce,
+		KeyVersion:             keyVersion,
+		EncryptionMetadata:     metadata,
+		ReplyToMessageID:       payload.ReplyToMessageID,
+		ThreadRootMessageID:    payload.ThreadRootMessageID,
+		MessageKind:            messageKind,
+		ForwardedFromMessageID: forwardedMessageID,
+		ForwardedFromChatID:    forwardedChatID,
+		CreatedAt:              now,
+		AttachmentFileIDs:      attachmentFileIDs,
+		DeliveredRecipientIDs:  onlineRecipients,
 	})
 	if err != nil {
 		return messagePublic{}, err
@@ -417,13 +405,11 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 }
 
 func (s *Server) validateReplyTarget(chatID, replyToMessageID string) error {
-	row := s.queryRow(`
-		SELECT id
-		FROM messages
-		WHERE id = ? AND chat_id = ? AND deleted_at IS NULL
-	`, replyToMessageID, chatID)
-	var id string
-	if err := row.Scan(&id); err != nil {
+	ok, err := s.store.ActiveMessageExistsInChat(context.Background(), replyToMessageID, chatID)
+	if err != nil {
+		return err
+	}
+	if !ok {
 		return newStatusError(422, "invalid reply target")
 	}
 	return nil

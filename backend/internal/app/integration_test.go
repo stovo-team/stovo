@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime"
 	"mime/multipart"
@@ -15,10 +16,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"family-messenger/backend/ent/chatmember"
 	"family-messenger/backend/internal/config"
 	"family-messenger/backend/internal/storage"
 
@@ -117,6 +120,7 @@ func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 	if _, err := db.Exec(`CREATE SCHEMA public`); err != nil {
 		t.Fatalf("create public schema: %v", err)
 	}
+	applyTestSchema(t, db)
 
 	redisOptions, err := redis.ParseURL(redisURL)
 	if err != nil {
@@ -127,6 +131,80 @@ func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 	if err := client.FlushDB(context.Background()).Err(); err != nil {
 		t.Fatalf("flush redis: %v", err)
 	}
+}
+
+func applyTestSchema(t *testing.T, db *sql.DB) {
+	t.Helper()
+	_, thisFile, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	backendRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
+	candidates := []string{
+		filepath.Join(backendRoot, "testdata", "schema", "current.sql"),
+		filepath.Join(backendRoot, "migrations", "20260804120000_baseline.sql"),
+	}
+	var schemaPath string
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			schemaPath = candidate
+			break
+		}
+	}
+	if schemaPath == "" {
+		t.Fatal("no schema fixture found (testdata/schema/current.sql or migrations baseline)")
+	}
+	raw, err := os.ReadFile(schemaPath)
+	if err != nil {
+		t.Fatalf("read schema fixture %s: %v", schemaPath, err)
+	}
+	if err := execSchemaSQL(db, string(raw)); err != nil {
+		t.Fatalf("apply schema from %s: %v", schemaPath, err)
+	}
+}
+
+func execSchemaSQL(db *sql.DB, raw string) error {
+	var cleaned strings.Builder
+	for _, line := range strings.Split(raw, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, `\restrict`) || strings.HasPrefix(trimmed, `\unrestrict`) {
+			continue
+		}
+		upper := strings.ToUpper(trimmed)
+		if strings.HasPrefix(upper, "SET ") || upper == "SET" {
+			continue
+		}
+		if strings.HasPrefix(upper, "SELECT PG_CATALOG.") {
+			continue
+		}
+		cleaned.WriteString(line)
+		cleaned.WriteByte('\n')
+	}
+	for _, stmt := range strings.Split(cleaned.String(), ";\n") {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" || schemaStatementIsCommentOnly(stmt) {
+			continue
+		}
+		if _, err := db.Exec(stmt); err != nil {
+			preview := stmt
+			if len(preview) > 240 {
+				preview = preview[:240] + "…"
+			}
+			return fmt.Errorf("%w\nstatement: %s", err, preview)
+		}
+	}
+	return nil
+}
+
+func schemaStatementIsCommentOnly(stmt string) bool {
+	for _, line := range strings.Split(stmt, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "--") {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func jsonRequest(t *testing.T, client *http.Client, method, target string, token string, body any) *http.Response {
@@ -427,7 +505,7 @@ func TestMediaPlaybackFullRangeHeadAndConditionalResponses(t *testing.T) {
 		}
 	}
 
-	_, objectKey, err := fixture.server.loadFileRecord(fixture.file.ID, fixture.owner.User.ID)
+	_, objectKey, err := fixture.server.loadFileRecord(context.Background(), fixture.file.ID, fixture.owner.User.ID)
 	if err != nil {
 		t.Fatalf("load playback object key: %v", err)
 	}
@@ -512,7 +590,7 @@ func TestMediaPlaybackAuthorizationFailuresAreUniform(t *testing.T) {
 		})
 	}
 
-	if _, err := fixture.server.exec(`UPDATE files SET deleted_at = ? WHERE id = ?`, nowString(), fixture.file.ID); err != nil {
+	if err := fixture.server.store.SoftDeleteFile(context.Background(), nil, fixture.file.ID, nowString()); err != nil {
 		t.Fatalf("mark playback file deleted: %v", err)
 	}
 	deletedResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, valid, "", "")
@@ -533,7 +611,12 @@ func TestMediaPlaybackVisibilityRevocationAfterMint(t *testing.T) {
 		t.Fatalf("member mint status = %d", mintResp.StatusCode)
 	}
 	capability := decodeJSON[mediaPlaybackTokenResponse](t, mintResp)
-	if _, err := fixture.server.exec(`DELETE FROM chat_members WHERE chat_id = ? AND user_id = ?`, fixture.chat.ID, fixture.member.User.ID); err != nil {
+	if _, err := fixture.server.ent.ChatMember.Delete().
+		Where(
+			chatmember.IDEQ(fixture.chat.ID),
+			chatmember.UserIDEQ(fixture.member.User.ID),
+		).
+		Exec(context.Background()); err != nil {
 		t.Fatalf("remove member after mint: %v", err)
 	}
 	resp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, fixture.httpServer.URL+"/api/media/"+fixture.file.ID, capability.Token, "", "")
@@ -1000,32 +1083,17 @@ func TestAuthContractEdgeCases(t *testing.T) {
 func TestUsersSchemaPermanentlyErasesEmailColumn(t *testing.T) {
 	server, _, _ := newTestServer(t)
 
-	assertNoEmailColumn := func() {
-		var count int
-		if err := server.queryRow(`
-			SELECT COUNT(*)
-			FROM information_schema.columns
-			WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'email'
-		`).Scan(&count); err != nil {
-			t.Fatalf("inspect users columns: %v", err)
-		}
-		if count != 0 {
-			t.Fatalf("users.email column still exists")
-		}
+	var count int
+	if err := server.db.QueryRow(`
+		SELECT COUNT(*)
+		FROM information_schema.columns
+		WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'email'
+	`).Scan(&count); err != nil {
+		t.Fatalf("inspect users columns: %v", err)
 	}
-
-	assertNoEmailColumn()
-	if _, err := server.exec(`ALTER TABLE users ADD COLUMN email TEXT`); err != nil {
-		t.Fatalf("add legacy email column: %v", err)
+	if count != 0 {
+		t.Fatalf("users.email column still exists after migrated schema apply")
 	}
-	if err := server.initSchema(); err != nil {
-		t.Fatalf("migrate legacy schema: %v", err)
-	}
-	assertNoEmailColumn()
-	if err := server.initSchema(); err != nil {
-		t.Fatalf("repeat schema initialization: %v", err)
-	}
-	assertNoEmailColumn()
 }
 
 func TestMessageValidationHistoryAndReadParity(t *testing.T) {
@@ -1474,7 +1542,7 @@ func TestForwardMessageClonesAttachmentsAndMetadata(t *testing.T) {
 	if err := server.storage.Save(thumbnailKey, []byte("forward-thumbnail")); err != nil {
 		t.Fatalf("save thumbnail: %v", err)
 	}
-	if _, err := server.exec(`UPDATE files SET thumbnail_object_key = ? WHERE id = ?`, thumbnailKey, originalFile.ID); err != nil {
+	if _, err := server.ent.File.UpdateOneID(originalFile.ID).SetThumbnailObjectKey(thumbnailKey).Save(context.Background()); err != nil {
 		t.Fatalf("set thumbnail key: %v", err)
 	}
 

@@ -230,6 +230,7 @@ type chatPublic struct {
 	IsMuted                         bool               `json:"isMuted"`
 	IsPinned                        bool               `json:"isPinned"`
 	IsFavorite                      bool               `json:"isFavorite"`
+	Wallpaper                       *filePublic        `json:"wallpaper"`
 	PinPermission                   string             `json:"pinPermission"`
 }
 
@@ -264,9 +265,10 @@ type pinnedMessagePublic struct {
 }
 
 type updateChatPreferencesRequest struct {
-	IsMuted    *bool `json:"isMuted"`
-	IsPinned   *bool `json:"isPinned"`
-	IsFavorite *bool `json:"isFavorite"`
+	IsMuted         *bool   `json:"isMuted"`
+	IsPinned        *bool   `json:"isPinned"`
+	IsFavorite      *bool   `json:"isFavorite"`
+	WallpaperFileID *string `json:"wallpaperFileId"`
 }
 
 type filePublic struct {

@@ -1,0 +1,1 @@
+export { SharedContentThumb } from "./ChatDetailsPanel";

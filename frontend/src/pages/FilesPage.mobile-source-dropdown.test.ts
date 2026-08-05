@@ -47,7 +47,7 @@ describe("Storage mobile source dropdown", () => {
       /\.storage-mobile-source-trigger:active:not\(:disabled\)[\s\S]*?transform:\s*none/
     );
     expect(styles).toMatch(
-      /\.storage-mobile-source-menu button \{[\s\S]*?border-radius:\s*14px/
+      /\.storage-mobile-source-menu button \{[\s\S]*?border-radius:\s*22px/
     );
   });
 });

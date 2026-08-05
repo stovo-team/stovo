@@ -9,6 +9,8 @@ import {
   ensureFullScreenIntentPermission
 } from "./api/notifications";
 import { AppearanceProvider } from "./appearance/AppearanceContext";
+import WallpaperCustomImageBridge from "./appearance/WallpaperCustomImageBridge";
+import AppLockGate from "./AppLockGate";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { useReducedMotion } from "./hooks/useReducedMotion";
 import { navigateWithMotion } from "./motion/navigation";
@@ -21,6 +23,10 @@ import { queuePendingNotificationAction } from "./notificationActions";
 import { addNativeShareListener, consumeNativeSharedFiles } from "./native/shareReceiverPlugin";
 import { queueSharedFiles } from "./sharedFileQueue";
 import AdminPage from "./pages/AdminPage";
+import AdminAppearancePage from "./pages/AdminAppearancePage";
+import AdminEncryptionPage from "./pages/AdminEncryptionPage";
+import AdminMcpPage from "./pages/AdminMcpPage";
+import AdminMembersPage from "./pages/AdminMembersPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
 import InvitePage from "./pages/InvitePage";
@@ -250,10 +256,12 @@ function App() {
     <BrowserRouter>
       <AppearanceProvider>
         <AuthProvider>
+          <WallpaperCustomImageBridge />
           <NotificationsBootstrapper />
           <AndroidBackOrchestrator />
           <NativeAppLinkRouter />
           <NativeShareRouter />
+          <AppLockGate />
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/server-setup" element={<ServerSetupPage />} />
@@ -305,6 +313,38 @@ function App() {
               element={
                 <RequireAuth>
                   <AdminPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/app/admin/appearance"
+              element={
+                <RequireAuth>
+                  <AdminAppearancePage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/app/admin/encryption"
+              element={
+                <RequireAuth>
+                  <AdminEncryptionPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/app/admin/mcp"
+              element={
+                <RequireAuth>
+                  <AdminMcpPage />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/app/admin/members"
+              element={
+                <RequireAuth>
+                  <AdminMembersPage />
                 </RequireAuth>
               }
             />

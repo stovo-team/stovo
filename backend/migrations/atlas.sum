@@ -1,0 +1,5 @@
+h1:4I85/pWuzYhmJ9rgaUgiGVG5B6QsCpTwnjDCSgsn0Eg=
+20260804120000_baseline.sql h1:ZBL2p2xb4Uk+nyQ7NNGlauGC32ENMMmERNujiiuzzDQ=
+20260804170000_add_mcp_connectors.sql h1:p47EvNuGhCtkhUUa58Wk7GFN8ZmPJeSvS8meGDIc2cI=
+20260804180000_add_mcp_connector_provider.sql h1:9/o9G0fVczelOg6yu1aiu8+sJCTETy8lOUf9FJpun18=
+20260804190000_add_mcp_connector_alias_auth_mode.sql h1:uli4t/5wkabrLRCXuuMYoD5/26ZmXYJ54sUnq2mKZRQ=

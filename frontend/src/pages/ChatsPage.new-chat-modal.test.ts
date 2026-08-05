@@ -1,13 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const chatsPage = readFileSync("src/pages/ChatsPage.tsx", "utf8");
+const chatOverlays = readFileSync("src/features/chats/ChatOverlays.tsx", "utf8");
+const newChatDialog = readFileSync("src/features/chats/sidebar/NewChatDialog.tsx", "utf8");
 const styles = readFileSync("src/styles.css", "utf8");
 
 describe("new message dialog on web", () => {
   it("places the new-chat flow inside a dismissible desktop modal backdrop", () => {
-    expect(chatsPage).toContain('className="new-chat-modal-backdrop"');
-    expect(chatsPage).toContain('onMouseDown={closeNewChatScreen}');
+    expect(chatOverlays).toContain('className="new-chat-modal-backdrop"');
+    expect(chatOverlays).toContain('onMouseDown={closeNewChatScreen}');
   });
 
   it("uses a centered dialog on web and retains the full-screen mobile layout", () => {
@@ -18,8 +19,8 @@ describe("new message dialog on web", () => {
   });
 
   it("uses an icon-only close button instead of a highlighted Cancel control", () => {
-    expect(chatsPage).toContain('className="new-chat-screen-close"');
-    expect(chatsPage).toContain('aria-label="Close new message"');
-    expect(chatsPage).not.toContain(">\n          Cancel\n        </button>");
+    expect(newChatDialog).toContain('className="new-chat-screen-close"');
+    expect(newChatDialog).toContain('aria-label="Close new message"');
+    expect(newChatDialog).not.toContain(">\n          Cancel\n        </button>");
   });
 });

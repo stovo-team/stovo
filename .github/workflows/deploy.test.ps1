@@ -12,9 +12,20 @@ if ($workflow -notmatch 'ensure_env\(\) \{' -or
     throw "Deployment must initialize missing MinIO credentials before Docker Compose runs."
 }
 
+if ($workflow -match '(?m)^\s*sudo docker compose down\s*$') {
+    throw "Deployment must not run a full 'docker compose down' (blue/green keeps shared deps up)."
+}
+
+if ($workflow -notmatch 'ACTIVE_BACKEND' -or
+    $workflow -notmatch 'backend-blue' -or
+    $workflow -notmatch 'backend-green' -or
+    $workflow -notmatch 'docker compose up -d --build --no-deps') {
+    throw "Deployment must perform blue/green cutover via ACTIVE_BACKEND and --no-deps backend builds."
+}
+
 if ($workflow -notmatch 'api/health' -or
-    $workflow -notmatch 'docker compose logs --tail=100 backend caddy minio minio-init') {
-    throw "Deployment must check the public health endpoint and print startup logs on failure."
+    $workflow -notmatch 'docker compose logs --tail=100') {
+    throw "Deployment must check the health endpoint and print startup logs on failure."
 }
 
 if ($workflow -notmatch 'uploads logs') {

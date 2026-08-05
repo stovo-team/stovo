@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
-	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -284,24 +283,6 @@ func normalizeUploadMime(contentType, filename string) (string, bool) {
 		return "", false
 	}
 	return inferredType, true
-}
-
-func boolFromNull(value sql.NullBool) bool {
-	return value.Valid && value.Bool
-}
-
-func stringPtrFromNull(value sql.NullString) *string {
-	if !value.Valid {
-		return nil
-	}
-	return &value.String
-}
-
-func timePtrFromNull(value sql.NullTime) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	return &value.Time
 }
 
 func checkURL(target string, timeout time.Duration) (bool, *int, string) {
