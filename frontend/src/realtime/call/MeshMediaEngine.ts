@@ -14,6 +14,9 @@ type PeerState = {
   pendingCandidates: RTCIceCandidateInit[];
   signalQueue: Promise<void>;
   remoteStream: MediaStream | null;
+  screenStream: MediaStream | null;
+  expectedScreenStreamId: string | null;
+  screenSender: RTCRtpSender | null;
 };
 
 /**
@@ -26,12 +29,15 @@ export default class MeshMediaEngine {
   private roomId: string | null = null;
   private localUserId: string | null = null;
   private localStream: MediaStream | null = null;
+  private localScreenStream: MediaStream | null = null;
+  private localScreenTrack: MediaStreamTrack | null = null;
   private peers = new Map<string, PeerState>();
   private iceServersCache: RTCIceServer[] | null = null;
   private globalSignalQueue: Promise<void> = Promise.resolve();
   private tearingDown = false;
 
   onRemoteStream?: (userId: string, stream: MediaStream) => void;
+  onRemoteScreenStream?: (userId: string, stream: MediaStream | null) => void;
   onRemoteStreamRemoved?: (userId: string) => void;
   onConnectionState?: (userId: string, state: RTCPeerConnectionState) => void;
   onIceConnected?: () => void;
@@ -63,13 +69,47 @@ export default class MeshMediaEngine {
     if (!stream) return;
 
     for (const [peerId, state] of this.peers) {
-      void this.replaceTracksOnPeer(state.pc, stream).catch((err) => {
+      void this.replaceTracksOnPeer(state.pc, stream, state).catch((err) => {
         console.error("[mesh] replaceTracks failed for", peerId, err);
       });
     }
 
     // Keep previous stream ownership with the caller; mesh only publishes tracks.
     void previous;
+  }
+
+  async setScreenTrack(track: MediaStreamTrack, stream: MediaStream): Promise<void> {
+    this.localScreenTrack = track;
+    this.localScreenStream = stream;
+    // Announce stream id before renegotiation so remotes can classify ontrack.
+    this.broadcastScreenShareSignal(true, stream.id);
+    for (const [userId, state] of this.peers) {
+      await this.applyScreenTrackToPeer(userId, state);
+    }
+    await this.renegotiateAll();
+  }
+
+  async clearScreenTrack(): Promise<void> {
+    const hadScreen = Boolean(this.localScreenTrack) || [...this.peers.values()].some((p) => p.screenSender);
+    for (const [userId, state] of this.peers) {
+      await this.removeScreenTrackFromPeer(userId, state);
+    }
+    this.localScreenTrack = null;
+    this.localScreenStream = null;
+    if (hadScreen) {
+      this.broadcastScreenShareSignal(false, null);
+      await this.renegotiateAll();
+    }
+  }
+
+  broadcastScreenShareSignal(active: boolean, streamId: string | null) {
+    for (const peerId of this.peers.keys()) {
+      this.emitSignal(peerId, {
+        type: "screen-share",
+        active,
+        streamId: streamId ?? undefined,
+      });
+    }
   }
 
   getRemoteStreams(): Map<string, MediaStream> {
@@ -96,11 +136,26 @@ export default class MeshMediaEngine {
       pendingCandidates: [],
       signalQueue: Promise.resolve(),
       remoteStream: null,
+      screenStream: null,
+      expectedScreenStreamId: null,
+      screenSender: null,
     };
     this.peers.set(userId, state);
 
+    if (this.localScreenTrack && this.localScreenStream) {
+      await this.applyScreenTrackToPeer(userId, state);
+    }
+
     if (asOfferer) {
       await this.enqueuePeer(userId, () => this.createAndSendOffer(userId, state));
+    }
+
+    if (this.localScreenTrack && this.localScreenStream) {
+      this.emitSignal(userId, {
+        type: "screen-share",
+        active: true,
+        streamId: this.localScreenStream.id,
+      });
     }
   }
 
@@ -142,6 +197,8 @@ export default class MeshMediaEngine {
     }
     this.peers.clear();
     this.localStream = null;
+    this.localScreenTrack = null;
+    this.localScreenStream = null;
     this.globalSignalQueue = Promise.resolve();
     this.tearingDown = false;
   }
@@ -150,7 +207,7 @@ export default class MeshMediaEngine {
   async republishLocalTracks(): Promise<void> {
     if (!this.localStream) return;
     for (const [, state] of this.peers) {
-      await this.replaceTracksOnPeer(state.pc, this.localStream);
+      await this.replaceTracksOnPeer(state.pc, this.localStream, state);
     }
   }
 
@@ -205,20 +262,7 @@ export default class MeshMediaEngine {
     pc.ontrack = (e) => {
       const state = this.peers.get(userId);
       if (!state) return;
-      const stream = e.streams[0] ?? new MediaStream([e.track]);
-      // Merge tracks into a stable per-peer MediaStream.
-      if (!state.remoteStream) {
-        state.remoteStream = new MediaStream();
-      }
-      const existing = state.remoteStream.getTracks().find((t) => t.id === e.track.id);
-      if (!existing) {
-        state.remoteStream.addTrack(e.track);
-      }
-      // Prefer browser-provided stream if it already has more tracks.
-      if (e.streams[0] && e.streams[0].getTracks().length >= state.remoteStream.getTracks().length) {
-        state.remoteStream = e.streams[0];
-      }
-      this.onRemoteStream?.(userId, state.remoteStream);
+      this.handleRemoteTrack(userId, state, e);
     };
 
     pc.onconnectionstatechange = () => {
@@ -233,6 +277,51 @@ export default class MeshMediaEngine {
     };
 
     return pc;
+  }
+
+  private handleRemoteTrack(userId: string, state: PeerState, e: RTCTrackEvent) {
+    const inboundStream = e.streams[0];
+    const isScreenVideo =
+      e.track.kind === "video" &&
+      Boolean(
+        state.expectedScreenStreamId &&
+          inboundStream &&
+          inboundStream.id === state.expectedScreenStreamId,
+      );
+
+    if (isScreenVideo) {
+      if (!state.screenStream) {
+        state.screenStream = new MediaStream();
+      }
+      if (!state.screenStream.getTracks().some((t) => t.id === e.track.id)) {
+        state.screenStream.addTrack(e.track);
+      }
+      if (inboundStream && inboundStream.getTracks().length >= state.screenStream.getTracks().length) {
+        state.screenStream = inboundStream;
+      }
+      this.onRemoteScreenStream?.(userId, state.screenStream);
+      return;
+    }
+
+    if (!state.remoteStream) {
+      state.remoteStream = new MediaStream();
+    }
+    const existing = state.remoteStream.getTracks().find((t) => t.id === e.track.id);
+    if (!existing) {
+      state.remoteStream.addTrack(e.track);
+    }
+    if (inboundStream && inboundStream.getTracks().length >= state.remoteStream.getTracks().length) {
+      // Avoid overwriting camera/audio stream with a dedicated screen stream.
+      if (
+        !(
+          state.expectedScreenStreamId &&
+          inboundStream.id === state.expectedScreenStreamId
+        )
+      ) {
+        state.remoteStream = inboundStream;
+      }
+    }
+    this.onRemoteStream?.(userId, state.remoteStream);
   }
 
   private async createAndSendOffer(
@@ -257,6 +346,47 @@ export default class MeshMediaEngine {
   ): Promise<void> {
     const { chatId, data } = payload;
     const signalType = data.type;
+
+    if (signalType === "screen-share") {
+      const active = Boolean(data.active);
+      const streamId = typeof data.streamId === "string" ? data.streamId : null;
+      state.expectedScreenStreamId = active ? streamId : null;
+      if (!active) {
+        state.screenStream = null;
+        this.onRemoteScreenStream?.(userId, null);
+      } else if (streamId && state.remoteStream) {
+        // Track may have arrived before the signal; reclassify matching video.
+        const match = state.remoteStream
+          .getVideoTracks()
+          .find((_t) => {
+            // Remote MediaStreamTrack ids differ; rely on stream association only.
+            return false;
+          });
+        void match;
+        // If remoteStream was replaced wholesale with the screen inbound stream,
+        // move it when ids match.
+        if (state.remoteStream.id === streamId) {
+          state.screenStream = state.remoteStream;
+          state.remoteStream = new MediaStream(
+            state.screenStream.getAudioTracks().length
+              ? state.screenStream.getAudioTracks()
+              : [],
+          );
+          // Screen streams should be video-only; keep audio on remoteStream if any leaked.
+          for (const t of state.screenStream.getAudioTracks()) {
+            state.screenStream.removeTrack(t);
+            if (!state.remoteStream.getTracks().some((x) => x.id === t.id)) {
+              state.remoteStream.addTrack(t);
+            }
+          }
+          this.onRemoteScreenStream?.(userId, state.screenStream);
+          if (state.remoteStream.getTracks().length > 0) {
+            this.onRemoteStream?.(userId, state.remoteStream);
+          }
+        }
+      }
+      return;
+    }
 
     if (signalType === "offer" && typeof data.sdp === "string") {
       if (state.pc.signalingState === "have-local-offer") return;
@@ -298,9 +428,52 @@ export default class MeshMediaEngine {
     }
   }
 
-  private async replaceTracksOnPeer(pc: RTCPeerConnection, stream: MediaStream) {
+  private async applyScreenTrackToPeer(userId: string, state: PeerState): Promise<void> {
+    const track = this.localScreenTrack;
+    const stream = this.localScreenStream;
+    if (!track || !stream) return;
+
+    if (state.screenSender) {
+      await state.screenSender.replaceTrack(track);
+      return;
+    }
+
+    const existing = state.pc
+      .getSenders()
+      .find((s) => s.track?.id === track.id);
+    if (existing) {
+      state.screenSender = existing;
+      return;
+    }
+
+    state.screenSender = state.pc.addTrack(track, stream);
+    void userId;
+  }
+
+  private async removeScreenTrackFromPeer(_userId: string, state: PeerState): Promise<void> {
+    if (!state.screenSender) {
+      const screenId = this.localScreenTrack?.id;
+      const sender = state.pc
+        .getSenders()
+        .find((s) => s.track?.kind === "video" && s.track.id === screenId);
+      if (sender) {
+        state.pc.removeTrack(sender);
+      }
+      state.screenSender = null;
+      return;
+    }
+    state.pc.removeTrack(state.screenSender);
+    state.screenSender = null;
+  }
+
+  private async replaceTracksOnPeer(
+    pc: RTCPeerConnection,
+    stream: MediaStream,
+    state: PeerState,
+  ) {
     const audioTrack = stream.getAudioTracks()[0] ?? null;
     const videoTrack = stream.getVideoTracks()[0] ?? null;
+    const screenTrackId = this.localScreenTrack?.id ?? state.screenSender?.track?.id;
 
     const audioSender = pc.getSenders().find((s) => s.track?.kind === "audio");
     if (audioTrack) {
@@ -308,13 +481,21 @@ export default class MeshMediaEngine {
       else pc.addTrack(audioTrack, stream);
     }
 
-    const videoSender = pc.getSenders().find((s) => s.track?.kind === "video");
+    const cameraSender = pc
+      .getSenders()
+      .find(
+        (s) =>
+          s.track?.kind === "video" &&
+          s !== state.screenSender &&
+          s.track.id !== screenTrackId,
+      );
+
     if (videoTrack) {
-      if (videoSender) await videoSender.replaceTrack(videoTrack);
+      if (cameraSender) await cameraSender.replaceTrack(videoTrack);
       else pc.addTrack(videoTrack, stream);
-    } else if (videoSender?.track) {
-      videoSender.track.stop();
-      pc.removeTrack(videoSender);
+    } else if (cameraSender) {
+      // Do not stop the track here — ownership stays with CallSessionController.
+      pc.removeTrack(cameraSender);
     }
   }
 
@@ -326,6 +507,9 @@ export default class MeshMediaEngine {
     state.pc.close();
     state.pendingCandidates = [];
     state.remoteStream = null;
+    state.screenStream = null;
+    state.expectedScreenStreamId = null;
+    state.screenSender = null;
     state.signalQueue = Promise.resolve();
   }
 

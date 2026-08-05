@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { CalendarDays, Folder, LogOut, MessageCircle, Settings, ShieldCheck } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
-import VeloLogo from "../components/VeloLogo";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
 export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: number }) {
@@ -36,15 +35,6 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
 
   return (
     <nav className="app-nav app-nav--active-variant-a" aria-label="Application navigation">
-      <div className="app-brand" aria-label="Stovo">
-        <span className="app-brand-mark">
-          <VeloLogo className="app-brand-logo" title="Stovo" />
-        </span>
-        <span>
-          <strong>Stovo</strong>
-          <small>Private space</small>
-        </span>
-      </div>
       <div className="app-nav-links">
         <NavLink to="/app/chats" title="Chats" aria-label="Chats" viewTransition={enableViewTransitions}>
           <MessageCircle aria-hidden={true} />

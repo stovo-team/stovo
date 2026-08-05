@@ -7,6 +7,7 @@ export interface DevicePreferences {
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
+  appLockEnabled: boolean;
 }
 
 export const DEVICE_PREFERENCES_STORAGE_KEY = "familyMessenger.devicePreferences";
@@ -19,7 +20,8 @@ export const DEFAULT_DEVICE_PREFERENCES: DevicePreferences = {
   ringtoneEnabled: true,
   quietHoursEnabled: false,
   quietHoursStart: "22:00",
-  quietHoursEnd: "07:00"
+  quietHoursEnd: "07:00",
+  appLockEnabled: false
 };
 
 function isTime(value: unknown): value is string {
@@ -38,7 +40,8 @@ export function readDevicePreferences(): DevicePreferences {
       ringtoneEnabled: stored.ringtoneEnabled !== false,
       quietHoursEnabled: stored.quietHoursEnabled === true,
       quietHoursStart: isTime(stored.quietHoursStart) ? stored.quietHoursStart : DEFAULT_DEVICE_PREFERENCES.quietHoursStart,
-      quietHoursEnd: isTime(stored.quietHoursEnd) ? stored.quietHoursEnd : DEFAULT_DEVICE_PREFERENCES.quietHoursEnd
+      quietHoursEnd: isTime(stored.quietHoursEnd) ? stored.quietHoursEnd : DEFAULT_DEVICE_PREFERENCES.quietHoursEnd,
+      appLockEnabled: stored.appLockEnabled === true
     };
   } catch {
     return DEFAULT_DEVICE_PREFERENCES;

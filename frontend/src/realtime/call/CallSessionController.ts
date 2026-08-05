@@ -33,7 +33,9 @@ export default class CallSessionController {
 
   private localStream: MediaStream | null = null;
   private sourceStream: MediaStream | null = null;
-  /** First remote stream with video (1:1 UI compat). */
+  /** Dedicated display-media stream (simultaneous with camera). */
+  private screenStream: MediaStream | null = null;
+  /** First remote stream with video (1:1 UI compat). Prefers screen when present. */
   private remoteStream: MediaStream | null = null;
   private remoteMedia = new Map<string, RemoteMedia>();
 
@@ -71,6 +73,8 @@ export default class CallSessionController {
   onLocalStreamReady?: (stream: MediaStream) => void;
   onRemoteMediaChange?: (media: RemoteMedia[]) => void;
   onTopologyChange?: (topology: CallTopology) => void;
+  /** Fired when local screen share ends (button stop or browser chrome stop). */
+  onScreenShareEnded?: () => void;
 
   constructor(socket: Socket, accessToken: string) {
     this.socket = socket;
@@ -122,13 +126,15 @@ export default class CallSessionController {
   }
 
   syncRemoteVideoToUI() {
-    if (!this.remoteStream) return;
-    const hasLiveVideo = this.remoteStream.getVideoTracks().some(
+    const primary = this.pickPrimaryVideoStream() ?? this.remoteStream;
+    if (!primary) return;
+    this.remoteStream = primary;
+    const hasLiveVideo = primary.getVideoTracks().some(
       (track) => track.readyState !== "ended",
     );
     if (!hasLiveVideo) return;
     this.reattachRemoteVideo();
-    this.onRemoteVideoTrack?.(this.remoteStream);
+    this.onRemoteVideoTrack?.(primary);
   }
 
   attachLocalVideoElement(element: HTMLVideoElement | null) {
@@ -291,6 +297,10 @@ export default class CallSessionController {
       this.sfu.setMicMuted(this.settings.micMuted);
       this.sfu.setCameraEnabled(this.settings.cameraEnabled);
     }
+    const screenTrack = this.screenStream?.getVideoTracks().find((t) => t.readyState !== "ended");
+    if (screenTrack) {
+      await this.sfu.publishScreenShare(screenTrack);
+    }
     this.setTopology("sfu");
     this.markMediaConnected();
   }
@@ -395,6 +405,60 @@ export default class CallSessionController {
     }
   }
 
+  async toggleScreenShare(enable: boolean): Promise<void> {
+    if (!enable) {
+      await this.stopScreenShare(true);
+      return;
+    }
+
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
+      throw new Error("Screen sharing is not supported in this browser");
+    }
+
+    let display: MediaStream;
+    try {
+      display = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    } catch (err) {
+      const name = (err as DOMException)?.name ?? "";
+      if (
+        name === "NotAllowedError" ||
+        name === "PermissionDeniedError" ||
+        name === "NotFoundError" ||
+        name === "AbortError"
+      ) {
+        throw err;
+      }
+      throw err;
+    }
+
+    const track = display.getVideoTracks()[0];
+    if (!track) {
+      this.stopStream(display);
+      throw new Error("No screen video track available");
+    }
+
+    try {
+      track.contentHint = "detail";
+    } catch {
+      /* ignore unsupported contentHint */
+    }
+
+    // Stop any previous share without notifying (we're replacing).
+    await this.stopScreenShare(false);
+
+    this.screenStream = display;
+    this.settings = { ...this.settings, screenSharing: true };
+    track.onended = () => {
+      void this.stopScreenShare(true);
+    };
+
+    if (this.topology === "sfu") {
+      await this.sfu.publishScreenShare(track);
+    } else {
+      await this.mesh.setScreenTrack(track, display);
+    }
+  }
+
   // ─── Settings ────────────────────────────────────────────────────────────────
 
   getSettings(): CallSettings {
@@ -411,6 +475,7 @@ export default class CallSessionController {
       canUseAutoGainControl: has,
       canUseVoiceEnhancement: typeof window !== "undefined" && "AudioContext" in window,
       canUseCamera: has,
+      canShareScreen: has && typeof navigator.mediaDevices.getDisplayMedia === "function",
     };
   }
 
@@ -498,8 +563,10 @@ export default class CallSessionController {
 
     this.stopStream(this.localStream);
     if (this.localStream !== this.sourceStream) this.stopStream(this.sourceStream);
+    this.stopStream(this.screenStream);
     this.localStream = null;
     this.sourceStream = null;
+    this.screenStream = null;
     this.remoteStream = null;
     this.remoteMedia.clear();
     this.onRemoteMediaChange?.([]);
@@ -532,25 +599,21 @@ export default class CallSessionController {
 
   private wireMeshCallbacks() {
     this.mesh.onRemoteStream = (userId, stream) => {
-      this.upsertRemoteMedia(userId, stream);
+      this.upsertRemoteMedia(userId, { stream });
       this.syncRemoteAudioPlayback();
-      if (stream.getVideoTracks().some((t) => t.readyState !== "ended")) {
-        this.remoteStream = stream;
-        this.syncRemoteVideoToUI();
-      }
+      this.refreshPrimaryRemoteVideo();
       if (!this.speakingCallback) return;
       if (stream.getAudioTracks().length > 0) this.startSpeakingDetection(stream);
+    };
+    this.mesh.onRemoteScreenStream = (userId, screenStream) => {
+      this.upsertRemoteMedia(userId, { screenStream });
+      this.refreshPrimaryRemoteVideo();
     };
     this.mesh.onRemoteStreamRemoved = (userId) => {
       this.remoteMedia.delete(userId);
       this.removeExtraAudio(userId);
       this.notifyRemoteMediaChange();
-      if (this.remoteStream && ![...this.remoteMedia.values()].some((m) => m.stream === this.remoteStream)) {
-        this.remoteStream = this.pickPrimaryVideoStream();
-        if (this.remoteVideoEl) {
-          this.remoteVideoEl.srcObject = this.remoteStream;
-        }
-      }
+      this.refreshPrimaryRemoteVideo();
     };
     this.mesh.onIceConnected = () => this.markMediaConnected();
     this.mesh.onConnectionState = (_userId, state) => {
@@ -563,17 +626,19 @@ export default class CallSessionController {
 
   private wireSfuCallbacks() {
     this.sfu.onRemoteStream = (userId, stream) => {
-      this.upsertRemoteMedia(userId, stream);
+      this.upsertRemoteMedia(userId, { stream });
       this.syncRemoteAudioPlayback();
-      if (stream.getVideoTracks().some((t) => t.readyState !== "ended")) {
-        this.remoteStream = stream;
-        this.syncRemoteVideoToUI();
-      }
+      this.refreshPrimaryRemoteVideo();
+    };
+    this.sfu.onRemoteScreenStream = (userId, screenStream) => {
+      this.upsertRemoteMedia(userId, { screenStream });
+      this.refreshPrimaryRemoteVideo();
     };
     this.sfu.onRemoteStreamRemoved = (userId) => {
       this.remoteMedia.delete(userId);
       this.removeExtraAudio(userId);
       this.notifyRemoteMediaChange();
+      this.refreshPrimaryRemoteVideo();
     };
     this.sfu.onConnected = () => this.markMediaConnected();
     this.sfu.onDisconnected = () => {
@@ -581,12 +646,23 @@ export default class CallSessionController {
     };
   }
 
-  private upsertRemoteMedia(userId: string, stream: MediaStream) {
+  private upsertRemoteMedia(
+    userId: string,
+    patch: { stream?: MediaStream; screenStream?: MediaStream | null },
+  ) {
+    const prev = this.remoteMedia.get(userId);
+    const stream = patch.stream ?? prev?.stream ?? new MediaStream();
+    const screenStream =
+      patch.screenStream !== undefined ? patch.screenStream : (prev?.screenStream ?? null);
+    const liveScreen =
+      screenStream?.getVideoTracks().some((t) => t.readyState !== "ended") ?? false;
     this.remoteMedia.set(userId, {
       userId,
       stream,
+      screenStream: liveScreen ? screenStream : null,
       hasVideo: stream.getVideoTracks().some((t) => t.readyState !== "ended"),
       hasAudio: stream.getAudioTracks().length > 0,
+      hasScreenShare: liveScreen,
     });
     this.notifyRemoteMediaChange();
   }
@@ -595,12 +671,39 @@ export default class CallSessionController {
     this.onRemoteMediaChange?.(this.getRemoteMedia());
   }
 
+  private refreshPrimaryRemoteVideo() {
+    this.remoteStream = this.pickPrimaryVideoStream();
+    if (this.remoteStream) {
+      this.syncRemoteVideoToUI();
+    } else if (this.remoteVideoEl) {
+      this.remoteVideoEl.srcObject = null;
+    }
+  }
+
   private pickPrimaryVideoStream(): MediaStream | null {
+    for (const m of this.remoteMedia.values()) {
+      if (m.hasScreenShare && m.screenStream) return m.screenStream;
+    }
     for (const m of this.remoteMedia.values()) {
       if (m.hasVideo) return m.stream;
     }
     const first = this.remoteMedia.values().next().value as RemoteMedia | undefined;
     return first?.stream ?? null;
+  }
+
+  private async stopScreenShare(notifyUi: boolean): Promise<void> {
+    const wasSharing = Boolean(this.screenStream) || this.settings.screenSharing;
+    if (this.topology === "sfu") {
+      await this.sfu.unpublishScreenShare();
+    } else {
+      await this.mesh.clearScreenTrack();
+    }
+    this.stopStream(this.screenStream);
+    this.screenStream = null;
+    this.settings = { ...this.settings, screenSharing: false };
+    if (wasSharing && notifyUi) {
+      this.onScreenShareEnded?.();
+    }
   }
 
   private markMediaConnected() {

@@ -2,11 +2,15 @@
 	encode gzip
 
 	handle /api/* {
-		reverse_proxy backend:8000
+		reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000
+	}
+
+	handle /mcp* {
+		reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000
 	}
 
 	handle /socket.io* {
-		reverse_proxy backend:8000
+		reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000
 	}
 
 	handle_path /ntfy/* {

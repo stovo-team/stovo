@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -21,15 +20,14 @@ type ntfyPayload struct {
 }
 
 func (s *Server) getUserNtfyTopic(ctx context.Context, userID string) (string, error) {
-	var token sql.NullString
-	row := s.queryRow(`SELECT ntfy_topic_token FROM users WHERE id = ?`, userID)
-	if err := row.Scan(&token); err != nil {
+	token, err := s.store.NtfyTopicToken(ctx, userID)
+	if err != nil {
 		return "", err
 	}
-	if !token.Valid || token.String == "" {
+	if token == nil || *token == "" {
 		return "", nil
 	}
-	return token.String, nil
+	return *token, nil
 }
 
 func (s *Server) publishToNtfy(ctx context.Context, payload ntfyPayload) error {
@@ -88,17 +86,12 @@ func formatMessageNotification(chatType string, chatTitle *string, senderName st
 
 func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string) {
 	title, message, tags := formatMessageNotification(chatType, chatTitle, senderName, messagePreview)
-	rows, err := s.query(`SELECT user_id FROM chat_members WHERE chat_id = ?`, chatID)
+	memberIDs, err := s.store.ListChatMemberUserIDs(context.Background(), chatID)
 	if err != nil {
 		s.logger.Warnf("ntfy", "failed to query chat members for chat_id=%s: %v", chatID, err)
 		return
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var recipientID string
-		if err := rows.Scan(&recipientID); err != nil {
-			continue
-		}
+	for _, recipientID := range memberIDs {
 		if recipientID == senderID {
 			continue
 		}

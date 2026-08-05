@@ -1,3 +1,77 @@
+# Blue/green backends share the same build and env. Caddy routes API and
+# Socket.IO to ACTIVE_BACKEND (default backend-blue). Local `compose up` starts
+# only backend-blue; deploy builds the inactive color (profile bluegreen),
+# health-checks it, flips ACTIVE_BACKEND, then stops the old.
+# Shared deps (postgres/redis/minio/caddy) stay up across cutovers.
+x-backend: &backend
+  build:
+    context: ./backend
+  environment:
+    APP_ENV: ${APP_ENV:-production}
+    APP_URL: ${APP_URL:-http://localhost:8000}
+    API_URL: ${API_URL:-http://localhost:8000}
+    FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:8080}
+    PUBLIC_REACHABILITY_CHECKER_URL: ${PUBLIC_REACHABILITY_CHECKER_URL:-}
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: 5432
+    POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+    JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+    JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+    REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:?Set REFRESH_TOKEN_SECRET in .env}
+    INVITE_TOKEN_SECRET: ${INVITE_TOKEN_SECRET:?Set INVITE_TOKEN_SECRET in .env}
+    REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-family_refresh_token}
+    MESSAGE_ENCRYPTION_KEY: ${MESSAGE_ENCRYPTION_KEY:?Set MESSAGE_ENCRYPTION_KEY in .env}
+    STORAGE_PROVIDER: ${STORAGE_PROVIDER:-minio}
+    LOCAL_STORAGE_PATH: /app/uploads
+    MINIO_ENDPOINT: minio:9000
+    MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
+    MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+    MINIO_SECURE: "false"
+    MINIO_FILES_BUCKET: stovo-files
+    MINIO_LOGS_BUCKET: stovo-logs
+    MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-100}
+    LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    LOG_FILE_PATH: /app/logs/backend.log
+    LOG_BUFFER_MAX_RECORDS: ${LOG_BUFFER_MAX_RECORDS:-2000}
+    TURN_ENABLED: ${TURN_ENABLED:-true}
+    TURN_HOST: ${TURN_HOST:-}
+    TURN_PORT: ${TURN_PORT:-3478}
+    TURN_REALM: ${TURN_REALM:-family-messenger}
+    TURN_USERNAME: ${TURN_USERNAME:?Set TURN_USERNAME in .env}
+    TURN_PASSWORD: ${TURN_PASSWORD:?Set TURN_PASSWORD in .env}
+    NTFY_BASE_URL: ${NTFY_BASE_URL:-http://ntfy:80}
+    NTFY_PUBLISH_TOKEN: ${NTFY_PUBLISH_TOKEN:-}
+    LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
+    LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
+    LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
+  expose:
+    - "8000"
+  volumes:
+    # Local storage remains supported for existing installations that have
+    # not yet migrated their uploads to MinIO.
+    - ./uploads:/app/uploads
+    - ./logs:/app/logs
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    ntfy:
+      condition: service_healthy
+    minio-init:
+      condition: service_completed_successfully
+
 services:
   postgres:
     image: postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
@@ -41,20 +115,26 @@ services:
 
   minio:
     image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    command: server /data --console-address ":9001"
+    # Console UI is unused in-compose; keep API only. Cap Go heap so MinIO does
+    # not treat the host's free RAM as its budget (defaults to ~75% of cgroup).
+    command: server /data --address ":9000" --quiet
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+      MINIO_BROWSER: "off"
+      MINIO_MEMLIMIT: ${MINIO_MEMLIMIT:-256MiB}
     volumes:
       - minio-data:/data
     expose:
       - "9000"
-      - "9001"
+    mem_limit: ${MINIO_CONTAINER_MEM_LIMIT:-384m}
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      # Live probe is cheaper than `mc ready` and does not need an mc alias.
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
       interval: 5s
-      timeout: 5s
-      retries: 20
+      timeout: 3s
+      retries: 12
+      start_period: 10s
 
   minio-init:
     image: minio/mc:RELEASE.2025-04-16T18-13-26Z
@@ -71,76 +151,20 @@ services:
       mc mb --ignore-existing local/stovo-files && mc mb --ignore-existing local/stovo-logs &&
       mc admin user add local $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY || true &&
       mc admin policy attach local readwrite --user $$MINIO_ACCESS_KEY &&
-      (mc ilm rule add --expire-days 90 local/stovo-logs || true)"
+      (mc ilm rule add --expire-days 14 local/stovo-logs || true)"
 
-  backend:
-    build:
-      context: ./backend
-    environment:
-      APP_ENV: ${APP_ENV:-production}
-      APP_URL: ${APP_URL:-http://localhost:8000}
-      API_URL: ${API_URL:-http://localhost:8000}
-      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:8080}
-      PUBLIC_REACHABILITY_CHECKER_URL: ${PUBLIC_REACHABILITY_CHECKER_URL:-}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
-      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
-      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
-      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET:?Set REFRESH_TOKEN_SECRET in .env}
-      INVITE_TOKEN_SECRET: ${INVITE_TOKEN_SECRET:?Set INVITE_TOKEN_SECRET in .env}
-      REFRESH_COOKIE_NAME: ${REFRESH_COOKIE_NAME:-family_refresh_token}
-      MESSAGE_ENCRYPTION_KEY: ${MESSAGE_ENCRYPTION_KEY:?Set MESSAGE_ENCRYPTION_KEY in .env}
-      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-minio}
-      LOCAL_STORAGE_PATH: /app/uploads
-      MINIO_ENDPOINT: minio:9000
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
-      MINIO_SECURE: "false"
-      MINIO_FILES_BUCKET: stovo-files
-      MINIO_LOGS_BUCKET: stovo-logs
-      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-100}
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      LOG_FILE_PATH: /app/logs/backend.log
-      LOG_BUFFER_MAX_RECORDS: ${LOG_BUFFER_MAX_RECORDS:-2000}
-      TURN_ENABLED: ${TURN_ENABLED:-true}
-      TURN_HOST: ${TURN_HOST:-}
-      TURN_PORT: ${TURN_PORT:-3478}
-      TURN_REALM: ${TURN_REALM:-family-messenger}
-      TURN_USERNAME: ${TURN_USERNAME:?Set TURN_USERNAME in .env}
-      TURN_PASSWORD: ${TURN_PASSWORD:?Set TURN_PASSWORD in .env}
-      NTFY_BASE_URL: ${NTFY_BASE_URL:-http://ntfy:80}
-      NTFY_PUBLISH_TOKEN: ${NTFY_PUBLISH_TOKEN:-}
-      LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
-    expose:
-      - "8000"
-    volumes:
-      # Local storage remains supported for existing installations that have
-      # not yet migrated their uploads to MinIO.
-      - ./uploads:/app/uploads
-      - ./logs:/app/logs
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      ntfy:
-        condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
+  backend-blue:
+    <<: *backend
+    restart: unless-stopped
+
+  # Inactive color for zero-downtime deploy cutovers. Opt-in via profile so a
+  # plain `docker compose up` only runs backend-blue. Deploy starts it explicitly
+  # with `docker compose up -d --no-deps backend-green` (profile bypass).
+  backend-green:
+    <<: *backend
+    restart: unless-stopped
+    profiles:
+      - bluegreen
 
   frontend:
     build:
@@ -150,7 +174,7 @@ services:
     expose:
       - "8080"
     depends_on:
-      - backend
+      - backend-blue
     read_only: true
     tmpfs:
       - /tmp
@@ -164,12 +188,14 @@ services:
     restart: unless-stopped
     depends_on:
       - frontend
-      - backend
+      - backend-blue
     ports:
       - "80:80"
       - "443:443"
     environment:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      # ACTIVE_BACKEND selects which color Caddy proxies for /api and /socket.io.
+      ACTIVE_BACKEND: ${ACTIVE_BACKEND:-backend-blue}
     healthcheck:
       # Caddy's localhost-only admin endpoint proves its running process is
       # responsive; the scheduled HTTPS watchdog also verifies its public TLS

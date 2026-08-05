@@ -10,10 +10,13 @@ type LiveKitModule = typeof import("livekit-client");
 export default class LiveKitMediaEngine {
   private room: import("livekit-client").Room | null = null;
   private remoteStreams: RemoteStreamMap = new Map();
+  private remoteScreenStreams: RemoteStreamMap = new Map();
   private livekit: LiveKitModule | null = null;
   private publishedStream: MediaStream | null = null;
+  private screenPublication: import("livekit-client").LocalTrackPublication | null = null;
 
   onRemoteStream?: (userId: string, stream: MediaStream) => void;
+  onRemoteScreenStream?: (userId: string, stream: MediaStream | null) => void;
   onRemoteStreamRemoved?: (userId: string) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
@@ -32,6 +35,20 @@ export default class LiveKitMediaEngine {
 
     room.on(lk.RoomEvent.TrackSubscribed, (track, _publication, participant) => {
       const userId = participant.identity;
+      if (track.source === lk.Track.Source.ScreenShare) {
+        let stream = this.remoteScreenStreams.get(userId);
+        if (!stream) {
+          stream = new MediaStream();
+          this.remoteScreenStreams.set(userId, stream);
+        }
+        if (track.mediaStreamTrack) {
+          const already = stream.getTracks().some((t) => t.id === track.mediaStreamTrack.id);
+          if (!already) stream.addTrack(track.mediaStreamTrack);
+        }
+        this.onRemoteScreenStream?.(userId, stream);
+        return;
+      }
+
       let stream = this.remoteStreams.get(userId);
       if (!stream) {
         stream = new MediaStream();
@@ -46,6 +63,20 @@ export default class LiveKitMediaEngine {
 
     room.on(lk.RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
       const userId = participant.identity;
+      if (track.source === lk.Track.Source.ScreenShare) {
+        const stream = this.remoteScreenStreams.get(userId);
+        if (stream && track.mediaStreamTrack) {
+          stream.removeTrack(track.mediaStreamTrack);
+          if (stream.getTracks().length === 0) {
+            this.remoteScreenStreams.delete(userId);
+            this.onRemoteScreenStream?.(userId, null);
+          } else {
+            this.onRemoteScreenStream?.(userId, stream);
+          }
+        }
+        return;
+      }
+
       const stream = this.remoteStreams.get(userId);
       if (stream && track.mediaStreamTrack) {
         stream.removeTrack(track.mediaStreamTrack);
@@ -64,10 +95,15 @@ export default class LiveKitMediaEngine {
         this.remoteStreams.delete(userId);
         this.onRemoteStreamRemoved?.(userId);
       }
+      if (this.remoteScreenStreams.has(userId)) {
+        this.remoteScreenStreams.delete(userId);
+        this.onRemoteScreenStream?.(userId, null);
+      }
     });
 
     room.on(lk.RoomEvent.Disconnected, () => {
       this.remoteStreams.clear();
+      this.remoteScreenStreams.clear();
       this.onDisconnected?.();
     });
 
@@ -98,6 +134,29 @@ export default class LiveKitMediaEngine {
     }
   }
 
+  async publishScreenShare(track: MediaStreamTrack): Promise<void> {
+    if (!this.room) throw new Error("LiveKit room not connected");
+    const lk = await this.loadLiveKit();
+    await this.unpublishScreenShare();
+    this.screenPublication = await this.room.localParticipant.publishTrack(track, {
+      source: lk.Track.Source.ScreenShare,
+    });
+  }
+
+  async unpublishScreenShare(): Promise<void> {
+    const pub = this.screenPublication;
+    this.screenPublication = null;
+    if (!pub || !this.room) return;
+    try {
+      const track = pub.track;
+      if (track) {
+        await this.room.localParticipant.unpublishTrack(track);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   setMicMuted(muted: boolean) {
     const tracks =
       this.publishedStream?.getAudioTracks() ??
@@ -120,11 +179,17 @@ export default class LiveKitMediaEngine {
     return new Map(this.remoteStreams);
   }
 
+  getRemoteScreenStreams(): RemoteStreamMap {
+    return new Map(this.remoteScreenStreams);
+  }
+
   async disconnect(): Promise<void> {
     const room = this.room;
     this.room = null;
     this.publishedStream = null;
+    this.screenPublication = null;
     this.remoteStreams.clear();
+    this.remoteScreenStreams.clear();
     if (room) {
       try {
         await room.disconnect();

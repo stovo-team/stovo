@@ -50,10 +50,80 @@ export default function PlansPage() {
   const calendarStart = addDays(selectedDay, (selectedDay.getDay() + 6) % 7 * -1);
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(calendarStart, index));
   return <main className="app-shell app-frame plans-page"><AppNav /><section className="plans-layout" aria-busy={loading}>
-    <aside className="plans-sidebar"><p className="eyebrow">Family plans</p><h1>Plans</h1><label className="plans-search"><Search size={17}/><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a plan" aria-label="Find a plan" /></label><div className="plans-tabs">{(["today", "week", "month"] as View[]).map((item) => <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>{item === "week" ? "This week" : item[0].toUpperCase() + item.slice(1)}</button>)}</div><p className="plans-list-label">{view === "today" ? "Today" : "Upcoming"}</p>{visiblePlans.map((plan) => <button className="plans-sidebar-row" key={plan.id} onClick={() => setSelectedDay(dayStart(new Date(plan.startsAt)))}><time>{new Intl.DateTimeFormat(undefined,{weekday:"short",day:"numeric"}).format(new Date(plan.startsAt))}</time><span>{plan.title}</span></button>)}{!loading && visiblePlans.length === 0 && <p className="plans-muted">No plans in this range.</p>}</aside>
+    <aside className="plans-sidebar"><label className="plans-search"><Search size={17}/><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a plan" aria-label="Find a plan" /></label><div className="plans-tabs">{(["today", "week", "month"] as View[]).map((item) => <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>{item === "week" ? "This week" : item[0].toUpperCase() + item.slice(1)}</button>)}</div><p className="plans-list-label">{view === "today" ? "Today" : "Upcoming"}</p>{visiblePlans.map((plan) => <button className="plans-sidebar-row" key={plan.id} onClick={() => setSelectedDay(dayStart(new Date(plan.startsAt)))}><time>{new Intl.DateTimeFormat(undefined,{weekday:"short",day:"numeric"}).format(new Date(plan.startsAt))}</time><span>{plan.title}</span></button>)}{!loading && visiblePlans.length === 0 && <p className="plans-muted">No plans in this range.</p>}</aside>
     <section className={`plans-content plans-content--${view}`}><header className="plans-header"><button aria-label="Previous" onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? -30 : -1))}><ChevronLeft /></button><h2>{view === "month" ? new Intl.DateTimeFormat(undefined,{month:"long",year:"numeric"}).format(selectedDay) : formatDay(selectedDay)}</h2><button aria-label="Next" onClick={() => setSelectedDay(addDays(selectedDay, view === "month" ? 30 : 1))}><ChevronRight /></button></header><nav className="plans-mobile-tabs" aria-label="Plan view"><button className={view === "today" ? "active" : ""} onClick={() => setView("today")}>Today</button><button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>This week</button><button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>Month</button></nav>{error && <p className="error-text" role="alert">{error}</p>}
     {view === "month" ? <div className="plans-month" role="grid">{Array.from({length:31},(_,index)=>addDays(new Date(selectedDay.getFullYear(),selectedDay.getMonth(),1),index)).filter((date)=>date.getMonth()===selectedDay.getMonth()).map((date)=><button key={date.toISOString()} className={sameDay(date,selectedDay)?"selected":""} onClick={()=>{setSelectedDay(date);setView("today");}}><time>{date.getDate()}</time>{plans.some((plan)=>sameDay(new Date(plan.startsAt),date))&&<i/>}</button>)}</div> : <div className="plans-agenda"><div className="plans-week-strip" aria-label="Week calendar">{weekDays.map((day)=><button className={sameDay(day,selectedDay)?"active":""} key={day.toISOString()} onClick={()=>setSelectedDay(day)}><small>{new Intl.DateTimeFormat(undefined,{weekday:"short"}).format(day)}</small>{day.getDate()}</button>)}</div>{loading ? <p className="plans-empty">Loading plans…</p> : visiblePlans.map((plan)=><article className="plan-row" key={plan.id}><time>{plan.allDay?"All day":formatTime(plan.startsAt)}</time><div><strong>{plan.title}</strong>{plan.location&&<small>{plan.location}</small>}{plan.sourceChatId&&<button className="plan-chat-link" onClick={()=>navigate(`/app/chats/${plan.sourceChatId}`)}>Open chat</button>}</div><div className="plan-rsvp"><span>{plan.attendees.filter((entry)=>entry.status==="going").length} going</span><button onClick={()=>void rsvp(plan,"going")}>Going</button><button onClick={()=>void rsvp(plan,"maybe")}>Maybe</button></div></article>)}</div>}
     {view === "today" && !loading && visiblePlans.length === 0 && <p className="plans-today-empty">No plans yet</p>}
-    <div className="plans-composer"><span>Create a plan</span><button disabled={!canCreate} onClick={()=>setDialogOpen(true)} aria-label="Create plan"><CirclePlus /></button></div></section>
-  </section>{dialogOpen && <div className="plans-dialog-backdrop" role="presentation" onMouseDown={()=>setDialogOpen(false)}><form className="plans-dialog" onSubmit={submit} onMouseDown={(event)=>event.stopPropagation()}><button type="button" className="plans-dialog-close" onClick={()=>setDialogOpen(false)} aria-label="Close"><X /></button><h2>New plan</h2><label>Title<input autoFocus required value={draft.title} onChange={(e)=>setDraft({...draft,title:e.target.value})}/></label><label>Starts<input required type="datetime-local" value={draft.startsAt} onChange={(e)=>setDraft({...draft,startsAt:e.target.value})}/></label><label>Ends<input required type="datetime-local" value={draft.endsAt} onChange={(e)=>setDraft({...draft,endsAt:e.target.value})}/></label><label>Location<input value={draft.location??""} onChange={(e)=>setDraft({...draft,location:e.target.value})}/></label><button type="submit">Create plan</button></form></div>}</main>;
+    <button type="button" className="plans-create-fab" disabled={!canCreate} onClick={() => setDialogOpen(true)} aria-label="Create plan"><CirclePlus size={28} aria-hidden="true" /></button></section>
+  </section>
+  {dialogOpen && (
+    <div
+      className="modal-backdrop plans-dialog-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setDialogOpen(false);
+      }}
+    >
+      <form
+        className="messenger-modal modal-form plans-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-plan-title"
+        onSubmit={submit}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="modal-header">
+          <h2 id="new-plan-title">New plan</h2>
+          <button
+            type="button"
+            className="icon-button subtle icon-button--plain"
+            aria-label="Close"
+            onClick={() => setDialogOpen(false)}
+          >
+            <X aria-hidden="true" size={20} />
+          </button>
+        </div>
+        <label>
+          Title
+          <input
+            autoFocus
+            required
+            value={draft.title}
+            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+          />
+        </label>
+        <div className="plans-dialog-times">
+          <label>
+            Starts
+            <input
+              required
+              type="datetime-local"
+              value={draft.startsAt}
+              onChange={(e) => setDraft({ ...draft, startsAt: e.target.value })}
+            />
+          </label>
+          <label>
+            Ends
+            <input
+              required
+              type="datetime-local"
+              value={draft.endsAt}
+              onChange={(e) => setDraft({ ...draft, endsAt: e.target.value })}
+            />
+          </label>
+        </div>
+        <label>
+          Location
+          <input
+            value={draft.location ?? ""}
+            onChange={(e) => setDraft({ ...draft, location: e.target.value })}
+          />
+        </label>
+        <button type="submit" className="primary-button">
+          Create plan
+        </button>
+      </form>
+    </div>
+  )}
+  </main>;
 }

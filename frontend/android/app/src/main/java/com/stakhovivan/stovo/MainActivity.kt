@@ -9,6 +9,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(CallPlugin::class.java)
         registerPlugin(AudioPlaybackPlugin::class.java)
         registerPlugin(ShareReceiverPlugin::class.java)
+        registerPlugin(AppLockPlugin::class.java)
         super.onCreate(savedInstanceState)
         ShareReceiverPlugin.captureIntent(this, intent)
     }

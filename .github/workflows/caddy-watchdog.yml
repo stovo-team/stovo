@@ -52,5 +52,5 @@ jobs:
             done
 
             sudo docker compose ps
-            sudo docker compose logs --tail=150 caddy frontend backend
+            sudo docker compose logs --tail=150 caddy frontend backend-blue backend-green
             exit 1

@@ -85,7 +85,7 @@ export function orientationStyle(width: number, height: number): CSSProperties {
     };
   }
   const isPortrait = height > width;
-  // Both orientations share the landscape bubble width. Portrait grows taller via
+  // Portrait fills its bubble (CSS narrows portrait-only bubbles). Height comes from
   // aspect-ratio — never share landscape's height budget (that squashes verticals).
   if (isPortrait) {
     return {

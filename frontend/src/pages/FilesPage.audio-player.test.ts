@@ -15,4 +15,10 @@ describe("Storage audio preview", () => {
     expect(page).toContain('className="storage-preview-media"');
     expect(page).not.toMatch(/<video controls src=\{selectedMediaUrl\}/);
   });
+
+  it("uses the document attachment preview for storage documents", () => {
+    expect(page).toContain("detectDocumentPreviewKind");
+    expect(page).toContain("<DocumentAttachmentPreview");
+    expect(page).toContain('selectedDocumentKind !== "unsupported"');
+  });
 });
