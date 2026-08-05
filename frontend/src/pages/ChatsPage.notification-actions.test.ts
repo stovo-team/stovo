@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   notificationActionCommand,
   type NotificationActionCommand
-} from "./ChatsPage";
+} from "../features/chats/shared/callLifecycle";
 
 describe("ChatsPage notification actions", () => {
   it("waits until the action's linked chat is loaded", () => {

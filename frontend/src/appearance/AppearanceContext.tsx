@@ -13,7 +13,7 @@ export type ThemeMode = "system" | "light" | "dark" | "amoled";
 export type ResolvedThemeMode = "light" | "dark" | "amoled";
 export type AccentChoice = "blue" | "green" | "purple" | "rose" | "amber" | "custom";
 export type DensityChoice = "comfortable" | "compact";
-export type WallpaperChoice = "dots" | "paper" | "aurora" | "plain";
+export type WallpaperChoice = "dots" | "paper" | "aurora" | "plain" | "custom";
 export type BubbleShapeChoice = "rounded" | "soft" | "square";
 export type MessageFontChoice = "system" | "sans" | "serif" | "rounded" | "mono";
 
@@ -23,6 +23,8 @@ export interface AppearanceSettings {
   customAccent: string;
   density: DensityChoice;
   wallpaper: WallpaperChoice;
+  /** Uploaded image file id used when wallpaper is "custom". */
+  customWallpaperFileId: string | null;
   bubbleShape: BubbleShapeChoice;
   /** Corner radius for chat bubbles, in px (4–24). */
   bubbleRadius: number;
@@ -45,6 +47,8 @@ interface AppearanceContextValue {
 }
 
 export const APPEARANCE_STORAGE_KEY = "familyMessenger.appearance";
+/** One-time migration: legacy default was Enter=newline; web default is now Enter=send. */
+const SEND_ON_ENTER_DEFAULT_V2_KEY = "familyMessenger.appearance.sendOnEnterDefaultV2";
 
 export const THEME_MODE_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
   { label: "System", value: "system" },
@@ -79,6 +83,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   customAccent: "#2aabee",
   density: "comfortable",
   wallpaper: "dots",
+  customWallpaperFileId: null,
   bubbleShape: "rounded",
   bubbleRadius: 18,
   messageFont: "system",
@@ -86,14 +91,15 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   avatarColor: "#0ea5e9",
   videoAutoplay: true,
   renderMarkdown: true,
-  sendOnEnter: false
+  sendOnEnter: true
 };
 
 export const WALLPAPER_OPTIONS: Array<{ label: string; value: WallpaperChoice }> = [
   { label: "Dots", value: "dots" },
   { label: "Paper", value: "paper" },
   { label: "Aurora", value: "aurora" },
-  { label: "Plain", value: "plain" }
+  { label: "Plain", value: "plain" },
+  { label: "Custom", value: "custom" }
 ];
 
 export const BUBBLE_SHAPE_OPTIONS: Array<{ label: string; value: BubbleShapeChoice }> = [
@@ -182,9 +188,14 @@ function readAppearanceSettings(): AppearanceSettings {
     const wallpaper =
       parsed.wallpaper === "paper" ||
       parsed.wallpaper === "aurora" ||
-      parsed.wallpaper === "plain"
+      parsed.wallpaper === "plain" ||
+      parsed.wallpaper === "custom"
         ? parsed.wallpaper
         : "dots";
+    const customWallpaperFileId =
+      typeof parsed.customWallpaperFileId === "string" && parsed.customWallpaperFileId.trim()
+        ? parsed.customWallpaperFileId.trim()
+        : null;
     const bubbleShape =
       parsed.bubbleShape === "soft" || parsed.bubbleShape === "square"
         ? parsed.bubbleShape
@@ -204,6 +215,17 @@ function readAppearanceSettings(): AppearanceSettings {
       typeof parsed.messageScale === "number"
         ? Math.min(1.18, Math.max(0.9, parsed.messageScale))
         : DEFAULT_APPEARANCE.messageScale;
+    let sendOnEnter =
+      typeof parsed.sendOnEnter === "boolean"
+        ? parsed.sendOnEnter
+        : DEFAULT_APPEARANCE.sendOnEnter;
+    // Promote legacy default (false) to Enter-to-send once, then respect user choice.
+    if (!window.localStorage.getItem(SEND_ON_ENTER_DEFAULT_V2_KEY)) {
+      window.localStorage.setItem(SEND_ON_ENTER_DEFAULT_V2_KEY, "1");
+      if (parsed.sendOnEnter !== true) {
+        sendOnEnter = true;
+      }
+    }
     return {
       themeMode:
         parsed.themeMode === "light" ||
@@ -217,7 +239,8 @@ function readAppearanceSettings(): AppearanceSettings {
           ? parsed.customAccent
           : DEFAULT_APPEARANCE.customAccent,
       density: parsed.density === "compact" ? "compact" : "comfortable",
-      wallpaper,
+      wallpaper: wallpaper === "custom" && !customWallpaperFileId ? "dots" : wallpaper,
+      customWallpaperFileId,
       bubbleShape: typeof parsed.bubbleRadius === "number" ? bubbleShapeFromRadius(bubbleRadius) : bubbleShape,
       bubbleRadius,
       messageFont,
@@ -234,10 +257,7 @@ function readAppearanceSettings(): AppearanceSettings {
         typeof parsed.renderMarkdown === "boolean"
           ? parsed.renderMarkdown
           : DEFAULT_APPEARANCE.renderMarkdown,
-      sendOnEnter:
-        typeof parsed.sendOnEnter === "boolean"
-          ? parsed.sendOnEnter
-          : DEFAULT_APPEARANCE.sendOnEnter
+      sendOnEnter
     };
   } catch {
     return DEFAULT_APPEARANCE;
@@ -307,6 +327,9 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     root.style.setProperty("--float-radius-bubble", `${appearance.bubbleRadius}px`);
     root.style.setProperty("--message-font-family", messageFontFamily(appearance.messageFont));
     root.style.setProperty("--avatar-custom-bg", appearance.avatarColor);
+    if (appearance.wallpaper !== "custom") {
+      root.style.removeProperty("--wallpaper-custom-image");
+    }
     if (appearance.accent === "custom") {
       root.style.setProperty("--accent-primary-light", appearance.customAccent);
       root.style.setProperty("--accent-primary-hover-light", appearance.customAccent);
@@ -339,6 +362,7 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
       root.style.removeProperty("--float-radius-bubble");
       root.style.removeProperty("--message-font-family");
       root.style.removeProperty("--avatar-custom-bg");
+      root.style.removeProperty("--wallpaper-custom-image");
       root.style.removeProperty("--accent-primary-light");
       root.style.removeProperty("--accent-primary-hover-light");
       root.style.removeProperty("--accent-soft-light");

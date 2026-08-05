@@ -38,6 +38,7 @@ export interface Chat {
   isMuted: boolean;
   isPinned: boolean;
   isFavorite: boolean;
+  wallpaper?: FamilyFile | null;
   pinPermission?: "everyone" | "admins_only";
 }
 
@@ -172,7 +173,12 @@ export function updateChat(
 export function updateChatPreferences(
   accessToken: string,
   chatId: string,
-  payload: { isMuted?: boolean; isPinned?: boolean; isFavorite?: boolean }
+  payload: {
+    isMuted?: boolean;
+    isPinned?: boolean;
+    isFavorite?: boolean;
+    wallpaperFileId?: string | null;
+  }
 ) {
   return apiRequest<Chat>(`/api/chats/${chatId}/preferences`, {
     method: "PATCH",

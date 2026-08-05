@@ -2,16 +2,20 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const chatsPage = readFileSync(resolve(process.cwd(), "src/pages/ChatsPage.tsx"), "utf8");
+const chatSidebar = readFileSync(
+  resolve(process.cwd(), "src/features/chats/sidebar/ChatSidebar.tsx"),
+  "utf8"
+);
+const chatOverlays = readFileSync(resolve(process.cwd(), "src/features/chats/ChatOverlays.tsx"), "utf8");
 const inviteModal = readFileSync(resolve(process.cwd(), "src/components/InviteModal.tsx"), "utf8");
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 describe("chats page family invitation", () => {
   it("shows an invite button in the chats list header for admins", () => {
-    expect(chatsPage).toContain('aria-label="Create invitation"');
-    expect(chatsPage).toContain("canCreateFamilyInvite");
-    expect(chatsPage).toContain("<InviteModal");
-    expect(chatsPage).toContain("isFamilyInviteOpen");
+    expect(chatSidebar).toContain('aria-label="Create invitation"');
+    expect(chatSidebar).toContain("canCreateFamilyInvite");
+    expect(chatOverlays).toContain("<InviteModal");
+    expect(chatOverlays).toContain("isFamilyInviteOpen");
   });
 
   it("creates a link and QR with copy and share for both", () => {

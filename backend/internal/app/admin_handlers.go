@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"family-messenger/backend/internal/repository"
 	"family-messenger/backend/internal/tunnel"
 
 	"github.com/google/uuid"
@@ -111,14 +111,7 @@ func (s *Server) handleUpdatePublicAccess(w http.ResponseWriter, r *http.Request
 		s.detail(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `
-			UPDATE families
-			SET public_app_url = ?, public_api_url = ?, updated_at = ?
-			WHERE id = ?
-		`, appURL, apiURL, nowString(), user.FamilyID)
-		return err
-	}); err != nil {
+	if err := s.store.UpdateFamilyPublicURLs(r.Context(), user.FamilyID, appURL, apiURL, nowString()); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update public access")
 		return
 	}
@@ -268,14 +261,7 @@ func (s *Server) handleDomainLink(w http.ResponseWriter, r *http.Request, user u
 	}
 	appURL := "https://" + domain
 	apiURL := "https://" + apiDomain
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, execErr := s.txExec(tx, `
-			UPDATE families
-			SET public_app_url = ?, public_api_url = ?, updated_at = ?
-			WHERE id = ?
-		`, appURL, apiURL, nowString(), user.FamilyID)
-		return execErr
-	}); err != nil {
+	if err := s.store.UpdateFamilyPublicURLs(r.Context(), user.FamilyID, &appURL, &apiURL, nowString()); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update public access")
 		return
 	}
@@ -309,22 +295,15 @@ func (s *Server) handleTunnelStop(w http.ResponseWriter, r *http.Request, user u
 			shouldClearApp := family.PublicAppURL != nil && *family.PublicAppURL == *current.URL
 			shouldClearAPI := family.PublicAPIURL != nil && *family.PublicAPIURL == *current.URL
 			if shouldClearApp || shouldClearAPI {
-				_ = s.withTx(r.Context(), func(tx *sql.Tx) error {
-					var appURL any = family.PublicAppURL
-					var apiURL any = family.PublicAPIURL
-					if shouldClearApp {
-						appURL = nil
-					}
-					if shouldClearAPI {
-						apiURL = nil
-					}
-					_, err := s.txExec(tx, `
-						UPDATE families
-						SET public_app_url = ?, public_api_url = ?, updated_at = ?
-						WHERE id = ?
-					`, appURL, apiURL, nowString(), user.FamilyID)
-					return err
-				})
+				var appURL *string
+				var apiURL *string
+				if !shouldClearApp {
+					appURL = family.PublicAppURL
+				}
+				if !shouldClearAPI {
+					apiURL = family.PublicAPIURL
+				}
+				_ = s.store.UpdateFamilyPublicURLs(r.Context(), user.FamilyID, appURL, apiURL, nowString())
 			}
 		}
 	}
@@ -367,14 +346,7 @@ func (s *Server) handleUpdateEncryptionSettings(w http.ResponseWriter, r *http.R
 		s.detail(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `
-			UPDATE families
-			SET default_message_encryption_protocol = ?, updated_at = ?
-			WHERE id = ?
-		`, protocol, nowString(), user.FamilyID)
-		return err
-	}); err != nil {
+	if err := s.store.UpdateFamilyEncryptionProtocol(r.Context(), user.FamilyID, protocol, nowString()); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update encryption settings")
 		return
 	}
@@ -547,15 +519,7 @@ func (s *Server) backendTunnelOrigin() string {
 func (s *Server) saveFamilyPublicURLs(ctx context.Context, familyID string, appURL string, apiURL string) error {
 	appURL = strings.TrimRight(strings.TrimSpace(appURL), "/")
 	apiURL = strings.TrimRight(strings.TrimSpace(apiURL), "/")
-
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `
-			UPDATE families
-			SET public_app_url = ?, public_api_url = ?, updated_at = ?
-			WHERE id = ?
-		`, appURL, apiURL, nowString(), familyID)
-		return err
-	})
+	return s.store.UpdateFamilyPublicURLs(ctx, familyID, &appURL, &apiURL, nowString())
 }
 
 func (s *Server) validatePublicBackendURL(publicURL string) error {
@@ -648,12 +612,15 @@ func (s *Server) createPublicInviteLinks(ctx context.Context, user userPublic, f
 	maxUses := 10
 	role := memberRole
 
-	err = s.withTx(ctx, func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `
-			INSERT INTO invites (id, family_id, token_hash, role, expires_at, max_uses, used_count, created_by, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
-		`, inviteID, user.FamilyID, tokenHash(s.cfg.InviteTokenSecret, rawToken), role, expiresAt.Format(time.RFC3339Nano), maxUses, user.ID, nowString())
-		return err
+	err = s.store.CreateInviteTx(ctx, repository.CreateInviteParams{
+		ID:        inviteID,
+		FamilyID:  user.FamilyID,
+		TokenHash: tokenHash(s.cfg.InviteTokenSecret, rawToken),
+		Role:      role,
+		ExpiresAt: expiresAt.Format(time.RFC3339Nano),
+		MaxUses:   maxUses,
+		CreatedBy: user.ID,
+		CreatedAt: nowString(),
 	})
 	if err != nil {
 		return nil, err

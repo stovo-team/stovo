@@ -4,6 +4,11 @@
 # Optional: DEPLOY_SSH_PORT (default 22)
 #
 # DEPLOY_PATH example: /home/user1/Stovo
+#
+# Blue/green: ACTIVE_BACKEND in .env (backend-blue | backend-green) selects
+# which color Caddy proxies. Deploy builds the inactive color, health-checks
+# it, flips ACTIVE_BACKEND, recreates caddy, then drains the old color.
+# Postgres/redis/minio stay up — never `docker compose down` the whole stack.
 
 name: Deploy Web
 
@@ -62,24 +67,109 @@ jobs:
             ensure_env MINIO_ROOT_PASSWORD "$(openssl rand -hex 32)"
             ensure_env MINIO_ACCESS_KEY stovo_backend
             ensure_env MINIO_SECRET_KEY "$(openssl rand -hex 32)"
+            ensure_env ACTIVE_BACKEND backend-blue
             sudo docker compose version
             # The backend runs as Alpine's non-root app user (UID/GID 100).
             # Keep the read-only migration source accessible until cutover is accepted.
             sudo install -d -m 0750 -o 100 -g 100 uploads logs
             sudo chown -R 100:100 uploads logs
-            sudo docker compose down
-            sudo docker compose up -d --build
-            app_domain="$(sed -n 's/^APP_DOMAIN=//p' .env | tail -n 1)"
-            healthy=false
+
+            active="$(sed -n 's/^ACTIVE_BACKEND=//p' .env | tail -n 1)"
+            active="${active:-backend-blue}"
+            case "$active" in
+              backend-blue) inactive=backend-green ;;
+              backend-green) inactive=backend-blue ;;
+              *)
+                echo "ACTIVE_BACKEND must be backend-blue or backend-green, got: $active" >&2
+                exit 1
+                ;;
+            esac
+
+            # Keep shared deps up; do not docker compose down the whole stack.
+            sudo docker compose up -d postgres redis ntfy minio minio-init
+            # Wait for postgres healthy, then apply expand-only Atlas migrations.
             for _ in $(seq 1 30); do
-              if curl --fail --silent --resolve "$app_domain:443:127.0.0.1" "https://$app_domain/api/health" > /dev/null; then
-                healthy=true
+              if sudo docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-family_user}" >/dev/null 2>&1; then
                 break
               fi
               sleep 2
             done
-            if [ "$healthy" != true ]; then
+            set -a
+            # shellcheck disable=SC1091
+            . ./.env
+            set +a
+            db_url="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+            # Compose project network is typically <directory>_default.
+            compose_net="$(sudo docker compose ps -q postgres | xargs -r sudo docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' | head -n1)"
+            if [ -z "$compose_net" ]; then
+              compose_net="$(basename "$(pwd)")_default"
+            fi
+            sudo docker run --rm --network "$compose_net" \
+              -v "$(pwd)/backend/migrations:/migrations:ro" \
+              arigaio/atlas:latest \
+              migrate apply --dir file://migrations --url "$db_url" || {
+                # First production cutover: stamp baseline when schema already matches.
+                echo "migrate apply failed; attempting baseline stamp for existing schema"
+                sudo docker run --rm --network "$compose_net" \
+                  -v "$(pwd)/backend/migrations:/migrations:ro" \
+                  arigaio/atlas:latest \
+                  migrate set 20260804120000 --dir file://migrations --url "$db_url"
+              }
+
+            sudo docker compose up -d --build --no-deps frontend
+            # Cold start / first blue-green cutover: ensure the current active color is up.
+            sudo docker compose up -d --build --no-deps "$active"
+            # Build and start the inactive color with the new image (no shared-dep recreate).
+            # backend-green is behind the bluegreen profile; explicit service name still starts it.
+            sudo docker compose --profile bluegreen up -d --build --no-deps "$inactive"
+            # Caddy is needed as a network peer to health-check the inactive hostname.
+            sudo docker compose up -d --no-deps caddy
+
+            inactive_healthy=false
+            for _ in $(seq 1 30); do
+              if sudo docker compose exec -T caddy wget -qO- "http://${inactive}:8000/api/health" > /dev/null 2>&1; then
+                inactive_healthy=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$inactive_healthy" != true ]; then
               sudo docker compose ps
-              sudo docker compose logs --tail=100 backend caddy minio minio-init
+              sudo docker compose logs --tail=100 "$inactive" caddy minio minio-init
               exit 1
             fi
+
+            # Flip only after inactive health succeeds.
+            if grep -q '^ACTIVE_BACKEND=' .env; then
+              sed -i "s/^ACTIVE_BACKEND=.*/ACTIVE_BACKEND=${inactive}/" .env
+            else
+              printf '\nACTIVE_BACKEND=%s\n' "$inactive" >> .env
+            fi
+            # Recreate caddy so ACTIVE_BACKEND env is picked up for Caddyfile placeholders.
+            sudo docker compose up -d --no-deps --force-recreate caddy
+
+            app_domain="$(sed -n 's/^APP_DOMAIN=//p' .env | tail -n 1)"
+            public_healthy=false
+            for _ in $(seq 1 30); do
+              if curl --fail --silent --resolve "$app_domain:443:127.0.0.1" "https://$app_domain/api/health" > /dev/null; then
+                public_healthy=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$public_healthy" != true ]; then
+              # Roll ACTIVE_BACKEND back so the next attempt starts from the previous color.
+              if grep -q '^ACTIVE_BACKEND=' .env; then
+                sed -i "s/^ACTIVE_BACKEND=.*/ACTIVE_BACKEND=${active}/" .env
+              fi
+              sudo docker compose up -d --no-deps --force-recreate caddy
+              sudo docker compose ps
+              sudo docker compose logs --tail=100 "$inactive" caddy minio minio-init
+              exit 1
+            fi
+
+            # Drain old color after Socket.IO disconnect grace (> call reconnect window).
+            sleep 15
+            sudo docker compose stop "$active" || true
+            # Remove legacy single-backend service name if still present.
+            sudo docker compose stop backend 2>/dev/null || true

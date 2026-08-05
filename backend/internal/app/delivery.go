@@ -13,6 +13,9 @@ import (
 func callSessionKey(id string) string { return "call:session:" + id }
 
 func (s *Server) persistCallSession(ctx context.Context, session *callSession, ttl time.Duration) {
+	if s.redis == nil || session == nil {
+		return
+	}
 	data, err := json.Marshal(session)
 	if err != nil {
 		s.logger.Warnf("delivery", "persistCallSession marshal error: %v", err)
@@ -28,12 +31,18 @@ func (s *Server) persistCallSession(ctx context.Context, session *callSession, t
 }
 
 func (s *Server) deleteCallSession(ctx context.Context, id string) {
+	if s.redis == nil || id == "" {
+		return
+	}
 	if err := s.redis.Del(ctx, callSessionKey(id)).Err(); err != nil {
 		s.logger.Warnf("delivery", "deleteCallSession redis error id=%s: %v", id, err)
 	}
 }
 
 func (s *Server) loadCallSessionFromRedis(ctx context.Context, id string) *callSession {
+	if s.redis == nil || id == "" {
+		return nil
+	}
 	data, err := s.redis.Get(ctx, callSessionKey(id)).Bytes()
 	if err == redis.Nil {
 		return nil
@@ -50,50 +59,52 @@ func (s *Server) loadCallSessionFromRedis(ctx context.Context, id string) *callS
 }
 
 func (s *Server) restoreCallSessions(ctx context.Context) {
-	rows, err := s.query(`
-		SELECT id, COALESCE(chat_id, id), caller_id, callee_id, call_type, COALESCE(topology, 'mesh'), state, created_at
-		FROM call_sessions
-		WHERE ended_at IS NULL AND created_at > NOW() - INTERVAL '1 hour'
-	`)
+	if s.store == nil {
+		return
+	}
+	sessions, err := s.store.ListActiveCallSessions(ctx, time.Hour)
 	if err != nil {
 		s.logger.Warnf("delivery", "restoreCallSessions query error: %v", err)
 		return
 	}
-	defer rows.Close()
 	s.callMu.Lock()
 	defer s.callMu.Unlock()
-	for rows.Next() {
+	for _, row := range sessions {
 		var sess callSession
-		var createdAt string
-		var topology string
-		if err := rows.Scan(&sess.ID, &sess.ChatID, &sess.CallerUserID, &sess.CalleeUserID, &sess.CallType, &topology, &sess.State, &createdAt); err != nil {
-			continue
+		sess.ID = row.ID
+		if row.ChatID != nil {
+			sess.ChatID = *row.ChatID
+		} else {
+			sess.ChatID = row.ID
 		}
+		sess.CallerUserID = row.CallerID
+		sess.CalleeUserID = row.CalleeID
+		sess.CallType = row.CallType
+		sess.State = callState(row.State)
+		topology := row.Topology
 		sess.Topology = callTopology(topology)
 		if sess.Topology == "" {
 			sess.Topology = callTopologyMesh
 		}
-		sess.CreatedAt = parseTime(createdAt)
+		sess.CreatedAt = row.CreatedAt.UTC()
 		sess.ExpiresAt = sess.CreatedAt.Add(s.callTimeout)
 		sess.Participants = map[string]*callParticipant{
 			sess.CallerUserID: {UserID: sess.CallerUserID, Role: "host", State: participantRinging},
 			sess.CalleeUserID: {UserID: sess.CalleeUserID, Role: "member", State: participantRinging},
 		}
-		partRows, err := s.query(`SELECT user_id, role, state, joined_at FROM call_participants WHERE room_id = ?`, sess.ID)
+		partRows, err := s.store.ListCallParticipants(ctx, sess.ID)
 		if err == nil {
-			for partRows.Next() {
-				var userID, role, state string
-				var joinedAt *time.Time
-				if scanErr := partRows.Scan(&userID, &role, &state, &joinedAt); scanErr != nil {
-					continue
+			for _, part := range partRows {
+				p := &callParticipant{
+					UserID: part.UserID,
+					Role:   part.Role,
+					State:  callParticipantState(part.State),
 				}
-				p := &callParticipant{UserID: userID, Role: role, State: callParticipantState(state)}
-				if joinedAt != nil {
-					p.JoinedAt = joinedAt.UTC()
+				if part.JoinedAt != nil {
+					p.JoinedAt = part.JoinedAt.UTC()
 				}
-				sess.Participants[userID] = p
+				sess.Participants[part.UserID] = p
 			}
-			partRows.Close()
 		}
 		ptr := &sess
 		s.callByRoom[sess.ID] = ptr

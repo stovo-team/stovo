@@ -2,14 +2,18 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const styles = readFileSync("src/styles.css", "utf8");
-const chatsPage = readFileSync("src/pages/ChatsPage.tsx", "utf8");
+const composerSource = readFileSync("src/features/chats/composer/Composer.tsx", "utf8");
+const useMessageComposerSource = readFileSync(
+  "src/features/chats/composer/useMessageComposer.ts",
+  "utf8"
+);
 
 describe("web composer pickers", () => {
   it("opens the attachment choice panel before selecting a file", () => {
-    expect(chatsPage).toMatch(
+    expect(useMessageComposerSource).toMatch(
       /function handleAttachButtonClick\(\) \{\s+closeEmojiPicker\(\);\s+setIsAttachmentSheetOpen\(true\);/s
     );
-    expect(chatsPage).not.toContain("{Capacitor.isNativePlatform() && (");
+    expect(composerSource).not.toContain("{Capacitor.isNativePlatform() && (");
   });
 
   it("uses a light hover highlight without transform scaling", () => {
@@ -21,10 +25,11 @@ describe("web composer pickers", () => {
     expect(styles).toContain("transition: background-color 120ms ease-out, color 120ms ease-out;");
   });
 
-  it("keeps attach/emoji controls on one vertically centered line in the pill", () => {
+  it("keeps attach/emoji controls vertically centered in the pill", () => {
     expect(styles).toContain(
       ":root[data-platform=\"web\"] .messenger-shell.has-active-chat .message-composer-row"
     );
+    expect(styles).toContain("align-items: center;");
     expect(styles).toContain("min-height: 48px;");
     expect(styles).toContain(
       ":root[data-platform=\"web\"] .messenger-shell.has-active-chat .message-composer textarea"

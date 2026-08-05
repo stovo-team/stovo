@@ -1,8 +1,12 @@
 package app
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/alicebob/miniredis/v2"
+	"github.com/redis/go-redis/v9"
 )
 
 func TestCallHistoryStatus(t *testing.T) {
@@ -285,5 +289,53 @@ func TestLeaveCallKeepsRoomAlive(t *testing.T) {
 	}
 	if _, still := server.getCallSession(session.ChatID); !still {
 		t.Fatal("room should remain for remaining participants")
+	}
+}
+
+func TestResolveCallSessionLoadsFromRedis(t *testing.T) {
+	mr := miniredis.RunT(t)
+	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+
+	server := newTestCallServer()
+	server.redis = rdb
+
+	now := time.Now().UTC()
+	session := &callSession{
+		ID:           "room-redis-1",
+		ChatID:       "chat-redis-1",
+		CallerUserID: "user-1",
+		CalleeUserID: "user-2",
+		CallType:     "audio",
+		Topology:     callTopologyMesh,
+		State:        callStateRinging,
+		Participants: map[string]*callParticipant{
+			"user-1": {UserID: "user-1", Role: "host", State: participantRinging},
+			"user-2": {UserID: "user-2", Role: "member", State: participantRinging},
+		},
+		CreatedAt: now,
+		ExpiresAt: now.Add(30 * time.Second),
+	}
+	server.persistCallSession(context.Background(), session, time.Minute)
+
+	server.callMu.Lock()
+	server.callByRoom = make(map[string]*callSession)
+	server.callByChat = make(map[string]*callSession)
+	server.userActiveCall = make(map[string]string)
+	server.callMu.Unlock()
+
+	got, ok := server.resolveCallSession("chat-redis-1", "room-redis-1")
+	if !ok || got == nil {
+		t.Fatal("expected resolveCallSession to hydrate from Redis after memory miss")
+	}
+	if got.ID != session.ID || got.ChatID != session.ChatID || got.State != callStateRinging {
+		t.Fatalf("unexpected session after Redis hydrate: id=%q chat=%q state=%q", got.ID, got.ChatID, got.State)
+	}
+	server.callMu.Lock()
+	_, inRoom := server.callByRoom[session.ID]
+	_, inChat := server.callByChat[session.ChatID]
+	server.callMu.Unlock()
+	if !inRoom || !inChat {
+		t.Fatal("expected hydrated session to be re-indexed into local maps")
 	}
 }

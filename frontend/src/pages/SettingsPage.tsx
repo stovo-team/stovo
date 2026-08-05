@@ -9,7 +9,6 @@ import {
 } from "react";
 import {
   Bell,
-  Camera,
   Clock3,
   ChevronLeft,
   ChevronRight,
@@ -29,6 +28,12 @@ import {
   X
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+
+import {
+  authenticateAppLock,
+  getAppLockAvailability,
+  isAndroidAppLockAvailablePlatform
+} from "../native/appLockPlugin";
 
 import {
   ACCENT_OPTIONS,
@@ -115,20 +120,26 @@ const wallpaperTileMeta: Array<{ value: WallpaperChoice; label: string; thumbCla
   { value: "dots", label: "Dots", thumbClass: "appearance-wallpaper-thumb--dots" },
   { value: "paper", label: "Paper", thumbClass: "appearance-wallpaper-thumb--paper" },
   { value: "aurora", label: "Aurora", thumbClass: "appearance-wallpaper-thumb--aurora" },
-  { value: "plain", label: "Plain", thumbClass: "appearance-wallpaper-thumb--plain" }
+  { value: "plain", label: "Plain", thumbClass: "appearance-wallpaper-thumb--plain" },
+  { value: "custom", label: "Custom", thumbClass: "appearance-wallpaper-thumb--custom" }
 ];
 
 function AppearanceEditor({
+  accessToken,
   displayName,
   onBack,
   backButtonRef
 }: {
+  accessToken: string | null;
   displayName: string;
   onBack: () => void;
   backButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
   const { appearance, setAppearance, updateAppearance } = useAppearance();
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [wallpaperUploadError, setWallpaperUploadError] = useState<string | null>(null);
+  const [isUploadingWallpaper, setIsUploadingWallpaper] = useState(false);
+  const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const baselineRef = useRef(appearance);
   const committedRef = useRef(false);
 
@@ -151,6 +162,45 @@ function AppearanceEditor({
   function handleResetConfirm() {
     updateAppearance(DEFAULT_APPEARANCE);
     setResetConfirmOpen(false);
+  }
+
+  async function handleCustomWallpaperSelect(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!accessToken || !file) {
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setWallpaperUploadError("Choose an image file (JPEG, PNG, GIF, or WebP).");
+      return;
+    }
+    setIsUploadingWallpaper(true);
+    setWallpaperUploadError(null);
+    try {
+      const uploaded = await uploadFile(accessToken, file);
+      updateAppearance({
+        wallpaper: "custom",
+        customWallpaperFileId: uploaded.id
+      });
+    } catch (err) {
+      setWallpaperUploadError(
+        err instanceof ApiError ? String(err.message) : "Could not upload wallpaper"
+      );
+    } finally {
+      setIsUploadingWallpaper(false);
+    }
+  }
+
+  function selectWallpaper(value: WallpaperChoice) {
+    if (value === "custom") {
+      if (appearance.customWallpaperFileId) {
+        updateAppearance({ wallpaper: "custom" });
+        return;
+      }
+      wallpaperInputRef.current?.click();
+      return;
+    }
+    updateAppearance({ wallpaper: value });
   }
 
   const previewHero = (
@@ -258,10 +308,53 @@ function AppearanceEditor({
                   aria-label={tile.label}
                   title={tile.label}
                   key={tile.value}
-                  onClick={() => updateAppearance({ wallpaper: tile.value })}
-                />
+                  disabled={isUploadingWallpaper && tile.value === "custom"}
+                  onClick={() => selectWallpaper(tile.value)}
+                >
+                  {tile.value === "custom" ? (
+                    <span>{appearance.customWallpaperFileId ? "Photo" : "Upload"}</span>
+                  ) : null}
+                </button>
               ))}
             </div>
+            <input
+              ref={wallpaperInputRef}
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="visually-hidden"
+              type="file"
+              onChange={(event) => void handleCustomWallpaperSelect(event)}
+            />
+            <div className="appearance-wallpaper-upload-row">
+              <button
+                type="button"
+                className="button-secondary"
+                disabled={isUploadingWallpaper || !accessToken}
+                onClick={() => wallpaperInputRef.current?.click()}
+              >
+                {isUploadingWallpaper ? "Uploading…" : "Upload image"}
+              </button>
+              {appearance.customWallpaperFileId && (
+                <button
+                  type="button"
+                  className="button-secondary"
+                  disabled={isUploadingWallpaper}
+                  onClick={() =>
+                    updateAppearance({
+                      wallpaper:
+                        appearance.wallpaper === "custom" ? "dots" : appearance.wallpaper,
+                      customWallpaperFileId: null
+                    })
+                  }
+                >
+                  Remove custom
+                </button>
+              )}
+            </div>
+            {wallpaperUploadError && (
+              <p className="error-text" role="alert">
+                {wallpaperUploadError}
+              </p>
+            )}
           </section>
 
           <section className="appearance-section-card appearance-section-card--stack">
@@ -371,7 +464,8 @@ function AppearanceEditor({
               <span>
                 <strong>Enter to send</strong>
                 <span className="appearance-toggle-help">
-                  Off: Enter adds a new line, Ctrl/Cmd+Enter sends
+                  On: Enter sends, Shift+Enter adds a new line. Off: Enter adds a
+                  new line, Ctrl/Cmd+Enter sends
                 </span>
               </span>
               <input
@@ -497,6 +591,35 @@ export default function SettingsPage() {
     setDevicePreferences(next);
   }
 
+  async function handleAppLockToggle(enabled: boolean) {
+    setError(null);
+    setNotice(null);
+    if (!isAndroidAppLockAvailablePlatform()) return;
+
+    setIsSaving(true);
+    try {
+      if (enabled) {
+        const availability = await getAppLockAvailability();
+        if (!availability.available) {
+          setError("Set a device PIN, pattern, password, or biometric in Android settings first.");
+          return;
+        }
+        const confirmed = await authenticateAppLock("Confirm to enable App lock");
+        if (!confirmed) return;
+        updateDevicePreferences({ appLockEnabled: true });
+        return;
+      }
+
+      const confirmed = await authenticateAppLock("Confirm to disable App lock");
+      if (!confirmed) return;
+      updateDevicePreferences({ appLockEnabled: false });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update App lock");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function updatePrivacy(patch: Partial<Pick<User, "profileVisibility" | "lastSeenVisibility" | "readReceiptsEnabled">>) {
     if (!currentUser) return;
     setIsSaving(true);
@@ -618,6 +741,7 @@ export default function SettingsPage() {
       >
         {isAppearanceEditor ? (
           <AppearanceEditor
+            accessToken={accessToken}
             displayName={profileForm.displayName}
             backButtonRef={appearanceBackRef}
             onBack={() => setActiveSettingsItem(null)}
@@ -626,12 +750,7 @@ export default function SettingsPage() {
           <>
             {!activeSettingsItem && (
               <>
-            <header className="section-header">
-              <div>
-                <p className="eyebrow">{family?.name ?? "Stovo"}</p>
-                <h1>Settings</h1>
-              </div>
-            </header>
+
 
             {error && <p className="error-text" role="alert">{error}</p>}
             {notice && <p className="success-text" role="status">{notice}</p>}
@@ -654,7 +773,9 @@ export default function SettingsPage() {
                   disabled={isSaving}
                   onClick={() => profilePhotoInputRef.current?.click()}
                 >
-                  <Camera aria-hidden="true" size={16} />
+                  <span className="ms-icon ms-icon--24" aria-hidden={true}>
+                    add_a_photo
+                  </span>
                 </button>
                 <input
                   ref={profilePhotoInputRef}
@@ -673,10 +794,9 @@ export default function SettingsPage() {
               >
                 <span>
                   <h2>{profileForm.displayName || "Family member"}</h2>
-                  <p>@{currentUser?.username}</p>
                   <span className="role-pill">{currentUser?.role}</span>
                 </span>
-                <ChevronRight aria-hidden="true" size={22} />
+                <ChevronRight aria-hidden="true" size={18} />
               </button>
             </section>
 
@@ -828,10 +948,10 @@ export default function SettingsPage() {
                     <section className="profile-detail-hero">
                       <div className="profile-detail-avatar-wrap">
                         <ProfileAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName} size="lg" />
-                        <button type="button" className="avatar-edit-button" aria-label="Change profile photo" disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><Camera aria-hidden="true" size={16} /></button>
+                        <button type="button" className="avatar-edit-button" aria-label="Change profile photo" disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><span className="ms-icon ms-icon--24" aria-hidden={true}>add_a_photo</span></button>
                         <input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} />
                       </div>
-                      <div><h3>{profileForm.displayName || "Family member"}</h3><p>@{currentUser?.username}</p><span className="role-pill">{currentUser?.role}</span></div>
+                      <div><h3>{profileForm.displayName || "Family member"}</h3><span className="role-pill">{currentUser?.role}</span></div>
                     </section>
                     <form className="profile-detail-form" onSubmit={handleProfileSubmit}>
                       <label><span><UserRound aria-hidden="true" size={21} />Display name</span><input maxLength={255} value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} /></label>
@@ -906,7 +1026,21 @@ export default function SettingsPage() {
                     <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("profile")}><UserRound aria-hidden="true" /><span><strong>Profile visibility</strong><small>{currentUser?.profileVisibility === "nobody" ? "Nobody" : "Family"}</small></span><ChevronRight aria-hidden="true" /></button>
                     <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("lastSeen")}><Clock3 aria-hidden="true" /><span><strong>Last seen</strong><small>{currentUser?.lastSeenVisibility === "nobody" ? "Nobody" : "Family"}</small></span><ChevronRight aria-hidden="true" /></button>
                     <label className="privacy-row"><Mail aria-hidden="true" /><span><strong>Read receipts</strong><small>Let people know when you have read their messages</small></span><input type="checkbox" checked={currentUser?.readReceiptsEnabled ?? true} disabled={isSaving} onChange={(event) => void updatePrivacy({ readReceiptsEnabled: event.target.checked })} /></label>
-                    <button type="button" className="privacy-row" onClick={() => setNotice("App lock needs a device PIN or biometric bridge")}><LockKeyhole aria-hidden="true" /><span><strong>App lock</strong><small>Off</small></span><ChevronRight aria-hidden="true" /></button>
+                    {isAndroidAppLockAvailablePlatform() && (
+                      <label className="privacy-row">
+                        <LockKeyhole aria-hidden="true" />
+                        <span>
+                          <strong>App lock</strong>
+                          <small>{devicePreferences.appLockEnabled ? "On" : "Off"}</small>
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={devicePreferences.appLockEnabled}
+                          disabled={isSaving}
+                          onChange={(event) => void handleAppLockToggle(event.target.checked)}
+                        />
+                      </label>
+                    )}
                     <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("blocked")}><UserRoundX aria-hidden="true" /><span><strong>Blocked members</strong></span><ChevronRight aria-hidden="true" /></button>
                   </div>
                 ) : activeSettingsItem === "Privacy and Security" ? (

@@ -10,18 +10,21 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"family-messenger/backend/ent"
 	"family-messenger/backend/internal/broker"
 	"family-messenger/backend/internal/cache"
 	"family-messenger/backend/internal/config"
 	"family-messenger/backend/internal/logging"
+	"family-messenger/backend/internal/repository"
 	"family-messenger/backend/internal/storage"
 	"family-messenger/backend/internal/tunnel"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -37,6 +40,8 @@ type socketSession struct {
 type Server struct {
 	cfg       config.Config
 	db        *sql.DB
+	ent       *ent.Client
+	store     *repository.Store
 	redis     *redis.Client
 	logger    *logging.Logger
 	logBuffer *logging.Buffer
@@ -63,6 +68,7 @@ type Server struct {
 	recentEventMu  sync.Mutex
 	recentEvents   map[string]time.Time
 	ntfyRetryCh    chan ntfyRetryItem
+	mcpHTTP        http.Handler
 }
 
 func New(cfg config.Config) (*Server, error) {
@@ -117,9 +123,14 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, err
 	}
 
+	drv := entsql.OpenDB(dialect.Postgres, db)
+	entClient := ent.NewClient(ent.Driver(drv))
+
 	app := &Server{
 		cfg:            cfg,
 		db:             db,
+		ent:            entClient,
+		store:          repository.New(entClient),
 		redis:          redisClient,
 		logger:         logging.NewLogger(logBuffer),
 		logBuffer:      logBuffer,
@@ -136,12 +147,6 @@ func New(cfg config.Config) (*Server, error) {
 		callTimeout:    30 * time.Second,
 		recentEvents:   make(map[string]time.Time),
 		ntfyRetryCh:    make(chan ntfyRetryItem, 100),
-	}
-
-	if err := app.initSchema(); err != nil {
-		_ = logBuffer.Close()
-		_ = db.Close()
-		return nil, err
 	}
 
 	frontendURL, err := url.Parse(cfg.FrontendOrigin)
@@ -161,6 +166,7 @@ func New(cfg config.Config) (*Server, error) {
 	app.tunnel.ConfigureLocalTunnelHealth(app.validatePublicBackendURL, 5*time.Second, 3)
 	app.startBrokerConsumers()
 	app.restoreCallSessions(context.Background())
+	app.initMCP()
 	app.realtimeWG.Add(1)
 	go func() {
 		defer app.realtimeWG.Done()
@@ -177,6 +183,9 @@ func (s *Server) Close() error {
 	s.sockets.Close()
 	_ = s.redis.Close()
 	_ = s.logBuffer.Close()
+	if s.ent != nil {
+		_ = s.ent.Close()
+	}
 	return s.db.Close()
 }
 
@@ -268,6 +277,19 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/admin/encryption-settings", s.authenticated(s.handleGetEncryptionSettings))
 	router.Put("/api/admin/encryption-settings", s.authenticated(s.handleUpdateEncryptionSettings))
 
+	router.Get("/api/admin/mcp-connectors", s.authenticated(s.handleListMCPConnectors))
+	router.Post("/api/admin/mcp-connectors", s.authenticated(s.handleCreateMCPConnector))
+	router.Get("/api/admin/mcp-connectors/{connectorId}", s.authenticated(s.handleGetMCPConnector))
+	router.Patch("/api/admin/mcp-connectors/{connectorId}", s.authenticated(s.handleUpdateMCPConnector))
+	router.Post("/api/admin/mcp-connectors/{connectorId}/regenerate-token", s.authenticated(s.handleRegenerateMCPConnectorToken))
+	router.Post("/api/admin/mcp-connectors/{connectorId}/revoke", s.authenticated(s.handleRevokeMCPConnector))
+	router.Get("/api/admin/mcp-connectors/{connectorId}/audit", s.authenticated(s.handleListMCPConnectorAudit))
+
+	if s.mcpHTTP != nil {
+		router.Handle("/mcp", s.mcpAuthMiddleware(s.mcpHTTP))
+		router.Handle("/mcp/", s.mcpAuthMiddleware(s.mcpHTTP))
+	}
+
 	router.MethodFunc(http.MethodGet, "/*", s.handleFrontendProxy)
 	router.MethodFunc(http.MethodHead, "/*", s.handleFrontendProxy)
 	return router
@@ -342,279 +364,6 @@ func (s *statusRecorder) Push(target string, opts *http.PushOptions) error {
 
 func (s *statusRecorder) Unwrap() http.ResponseWriter {
 	return s.ResponseWriter
-}
-
-func (s *Server) initSchema() error {
-	statements := []string{
-		`CREATE TABLE IF NOT EXISTS families (
-			id TEXT PRIMARY KEY,
-			name TEXT NOT NULL,
-			storage_limit_mb INTEGER,
-			minimized_chat_layout BOOLEAN NOT NULL DEFAULT FALSE,
-			default_message_encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest',
-			public_app_url TEXT,
-			public_api_url TEXT,
-			created_at TEXT NOT NULL,
-			updated_at TEXT NOT NULL
-		);`,
-		`CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
-			family_id TEXT NOT NULL,
-			username TEXT NOT NULL UNIQUE,
-			password_hash TEXT NOT NULL,
-			display_name TEXT NOT NULL,
-			role TEXT NOT NULL,
-			is_active INTEGER NOT NULL DEFAULT 1,
-			public_key TEXT,
-			profile_photo_file_id TEXT,
-			created_at TEXT NOT NULL,
-			last_seen_at TEXT,
-			FOREIGN KEY (family_id) REFERENCES families(id)
-		);`,
-		`ALTER TABLE users DROP COLUMN IF EXISTS email;`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_visibility TEXT NOT NULL DEFAULT 'family';`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_visibility TEXT NOT NULL DEFAULT 'family';`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS read_receipts_enabled BOOLEAN NOT NULL DEFAULT TRUE;`,
-		`CREATE TABLE IF NOT EXISTS user_blocks (
-			blocker_user_id TEXT NOT NULL,
-			blocked_user_id TEXT NOT NULL,
-			created_at TEXT NOT NULL,
-			PRIMARY KEY (blocker_user_id, blocked_user_id),
-			FOREIGN KEY (blocker_user_id) REFERENCES users(id),
-			FOREIGN KEY (blocked_user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS refresh_tokens (
-			id TEXT PRIMARY KEY,
-			user_id TEXT NOT NULL,
-			token_hash TEXT NOT NULL UNIQUE,
-			expires_at TEXT NOT NULL,
-			created_at TEXT NOT NULL,
-			revoked_at TEXT,
-			ip_address TEXT,
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS invites (
-			id TEXT PRIMARY KEY,
-			family_id TEXT NOT NULL,
-			token_hash TEXT NOT NULL UNIQUE,
-			role TEXT NOT NULL,
-			expires_at TEXT NOT NULL,
-			max_uses INTEGER NOT NULL,
-			used_count INTEGER NOT NULL DEFAULT 0,
-			created_by TEXT NOT NULL,
-			created_at TEXT NOT NULL,
-			revoked_at TEXT,
-			FOREIGN KEY (family_id) REFERENCES families(id),
-			FOREIGN KEY (created_by) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS chats (
-			id TEXT PRIMARY KEY,
-			family_id TEXT NOT NULL,
-			type TEXT NOT NULL,
-			title TEXT,
-			created_by TEXT,
-			chat_photo_file_id TEXT,
-			media_visibility TEXT NOT NULL,
-			comments_enabled BOOLEAN NOT NULL DEFAULT TRUE,
-			encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest',
-			created_at TEXT NOT NULL,
-			updated_at TEXT NOT NULL,
-			FOREIGN KEY (family_id) REFERENCES families(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS chat_members (
-			chat_id TEXT NOT NULL,
-			user_id TEXT NOT NULL,
-			created_at TEXT NOT NULL,
-			PRIMARY KEY (chat_id, user_id),
-			FOREIGN KEY (chat_id) REFERENCES chats(id),
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS chat_preferences (
-			chat_id TEXT NOT NULL,
-			user_id TEXT NOT NULL,
-			is_muted BOOLEAN NOT NULL DEFAULT FALSE,
-			is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
-			is_favorite BOOLEAN NOT NULL DEFAULT FALSE,
-			last_read_message_id TEXT,
-			last_read_at TEXT,
-			PRIMARY KEY (chat_id, user_id),
-			FOREIGN KEY (chat_id) REFERENCES chats(id),
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS chat_media_approvals (
-			chat_id TEXT NOT NULL,
-			user_id TEXT NOT NULL,
-			created_at TEXT NOT NULL,
-			PRIMARY KEY (chat_id, user_id),
-			FOREIGN KEY (chat_id) REFERENCES chats(id),
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS files (
-			id TEXT PRIMARY KEY,
-			family_id TEXT NOT NULL,
-			uploaded_by TEXT NOT NULL,
-			chat_id TEXT,
-			access_scope TEXT NOT NULL,
-			storage_provider TEXT NOT NULL,
-			object_key TEXT NOT NULL,
-			thumbnail_object_key TEXT,
-			original_name TEXT NOT NULL,
-			mime_type TEXT NOT NULL,
-			size_bytes INTEGER NOT NULL,
-			checksum TEXT,
-			created_at TEXT NOT NULL,
-			deleted_at TEXT,
-			FOREIGN KEY (family_id) REFERENCES families(id),
-			FOREIGN KEY (uploaded_by) REFERENCES users(id),
-			FOREIGN KEY (chat_id) REFERENCES chats(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS file_preferences (
-			file_id TEXT NOT NULL,
-			user_id TEXT NOT NULL,
-			is_favorite BOOLEAN NOT NULL DEFAULT FALSE,
-			PRIMARY KEY (file_id, user_id),
-			FOREIGN KEY (file_id) REFERENCES files(id),
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS messages (
-			id TEXT PRIMARY KEY,
-			chat_id TEXT NOT NULL,
-			sender_id TEXT NOT NULL,
-			type TEXT NOT NULL,
-			content TEXT,
-			encryption_protocol TEXT NOT NULL DEFAULT 'legacy_plaintext',
-			ciphertext TEXT,
-			nonce TEXT,
-			key_version INTEGER,
-			encryption_metadata TEXT,
-			reply_to_message_id TEXT,
-			thread_root_message_id TEXT,
-			message_kind TEXT NOT NULL DEFAULT 'chat',
-			forwarded_from_message_id TEXT,
-			forwarded_from_chat_id TEXT,
-			created_at TEXT NOT NULL,
-			updated_at TEXT NOT NULL,
-			deleted_at TEXT,
-			FOREIGN KEY (chat_id) REFERENCES chats(id),
-			FOREIGN KEY (sender_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS message_statuses (
-			message_id TEXT NOT NULL,
-			user_id TEXT NOT NULL,
-			status TEXT NOT NULL,
-			created_at TEXT NOT NULL,
-			PRIMARY KEY (message_id, user_id, status),
-			FOREIGN KEY (message_id) REFERENCES messages(id),
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS message_attachments (
-			message_id TEXT NOT NULL,
-			file_id TEXT NOT NULL,
-			PRIMARY KEY (message_id, file_id),
-			FOREIGN KEY (message_id) REFERENCES messages(id),
-			FOREIGN KEY (file_id) REFERENCES files(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS message_reactions (
-			message_id TEXT NOT NULL,
-			user_id TEXT NOT NULL,
-			emoji TEXT NOT NULL,
-			created_at TEXT NOT NULL,
-			PRIMARY KEY (message_id, user_id, emoji),
-			FOREIGN KEY (message_id) REFERENCES messages(id),
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_message_id TEXT;`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS forwarded_from_chat_id TEXT;`,
-		`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_message_encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest';`,
-		`ALTER TABLE families ADD COLUMN IF NOT EXISTS minimized_chat_layout BOOLEAN NOT NULL DEFAULT FALSE;`,
-		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest';`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS encryption_protocol TEXT NOT NULL DEFAULT 'legacy_plaintext';`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS ciphertext TEXT;`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS nonce TEXT;`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS key_version INTEGER;`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS encryption_metadata TEXT;`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS thread_root_message_id TEXT;`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_kind TEXT NOT NULL DEFAULT 'chat';`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS public_key TEXT;`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photo_file_id TEXT;`,
-		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS chat_photo_file_id TEXT;`,
-		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS comments_enabled BOOLEAN NOT NULL DEFAULT TRUE;`,
-		`UPDATE families SET default_message_encryption_protocol = 'server_at_rest' WHERE default_message_encryption_protocol IS NULL OR default_message_encryption_protocol = '';`,
-		`UPDATE families SET default_message_encryption_protocol = 'server_at_rest' WHERE default_message_encryption_protocol = 'end_to_end';`,
-		`UPDATE chats SET encryption_protocol = 'server_at_rest' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
-		`UPDATE chats SET encryption_protocol = 'server_at_rest' WHERE encryption_protocol = 'end_to_end';`,
-		`UPDATE messages SET encryption_protocol = 'legacy_plaintext' WHERE encryption_protocol IS NULL OR encryption_protocol = '';`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
-		`CREATE INDEX IF NOT EXISTS idx_messages_chat_created_active ON messages(chat_id, created_at DESC) WHERE deleted_at IS NULL;`,
-		`CREATE INDEX IF NOT EXISTS idx_message_user_deletions_user_message ON message_user_deletions(user_id, message_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_message_attachments_message ON message_attachments(message_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id);`,
-		`CREATE INDEX IF NOT EXISTS idx_message_statuses_message ON message_statuses(message_id);`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS audio_call_settings TEXT;`,
-		`ALTER TABLE users ADD COLUMN IF NOT EXISTS ntfy_topic_token TEXT DEFAULT NULL;`,
-		`CREATE TABLE IF NOT EXISTS call_sessions (
-			id          TEXT PRIMARY KEY,
-			caller_id   TEXT NOT NULL,
-			callee_id   TEXT NOT NULL,
-			call_type   TEXT NOT NULL,
-			state       TEXT NOT NULL,
-			created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			ended_at    TIMESTAMPTZ,
-			duration_s  INTEGER
-		);`,
-		`ALTER TABLE call_sessions ADD COLUMN IF NOT EXISTS chat_id TEXT;`,
-		`ALTER TABLE call_sessions ADD COLUMN IF NOT EXISTS topology TEXT NOT NULL DEFAULT 'mesh';`,
-		`UPDATE call_sessions SET chat_id = id WHERE chat_id IS NULL OR chat_id = '';`,
-		`CREATE TABLE IF NOT EXISTS call_participants (
-			room_id   TEXT NOT NULL,
-			user_id   TEXT NOT NULL,
-			role      TEXT NOT NULL,
-			state     TEXT NOT NULL,
-			joined_at TIMESTAMPTZ,
-			PRIMARY KEY (room_id, user_id)
-		);`,
-		`ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_edited BOOLEAN NOT NULL DEFAULT FALSE;`,
-		`CREATE TABLE IF NOT EXISTS message_user_deletions (
-			message_id TEXT NOT NULL,
-			user_id    TEXT NOT NULL,
-			deleted_at TEXT NOT NULL,
-			PRIMARY KEY (message_id, user_id),
-			FOREIGN KEY (message_id) REFERENCES messages(id),
-			FOREIGN KEY (user_id) REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS pinned_messages (
-			chat_id    TEXT NOT NULL,
-			message_id TEXT NOT NULL,
-			pinned_by  TEXT NOT NULL,
-			pinned_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			PRIMARY KEY (chat_id, message_id),
-			FOREIGN KEY (chat_id)    REFERENCES chats(id),
-			FOREIGN KEY (message_id) REFERENCES messages(id),
-			FOREIGN KEY (pinned_by)  REFERENCES users(id)
-		);`,
-		`CREATE TABLE IF NOT EXISTS plans (
-			id TEXT PRIMARY KEY, family_id TEXT NOT NULL, title TEXT NOT NULL, notes TEXT, location TEXT,
-			starts_at TEXT NOT NULL, ends_at TEXT NOT NULL, all_day BOOLEAN NOT NULL DEFAULT FALSE,
-			time_zone TEXT NOT NULL DEFAULT 'UTC', recurrence TEXT, created_by TEXT NOT NULL,
-			source_chat_id TEXT, revision INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL,
-			updated_at TEXT NOT NULL, deleted_at TEXT,
-			FOREIGN KEY (family_id) REFERENCES families(id), FOREIGN KEY (created_by) REFERENCES users(id),
-			FOREIGN KEY (source_chat_id) REFERENCES chats(id)
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_plans_family_range ON plans(family_id, starts_at) WHERE deleted_at IS NULL;`,
-		`CREATE TABLE IF NOT EXISTS plan_attendees (
-			plan_id TEXT NOT NULL, user_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'going', updated_at TEXT NOT NULL,
-			PRIMARY KEY(plan_id, user_id), FOREIGN KEY(plan_id) REFERENCES plans(id), FOREIGN KEY(user_id) REFERENCES users(id)
-		);`,
-		`ALTER TABLE chats ADD COLUMN IF NOT EXISTS pin_permission TEXT NOT NULL DEFAULT 'everyone';`,
-		`ALTER TABLE files ADD COLUMN IF NOT EXISTS thumbnail_object_key TEXT;`,
-	}
-	for _, statement := range statements {
-		if _, err := s.db.Exec(statement); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (s *Server) handleFrontendProxy(w http.ResponseWriter, r *http.Request) {
@@ -750,58 +499,6 @@ func (s *Server) currentUser(r *http.Request) (userPublic, error) {
 	return user, nil
 }
 
-func (s *Server) withTx(ctx context.Context, fn func(*sql.Tx) error) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	if err := fn(tx); err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-	return tx.Commit()
-}
-
-func (s *Server) query(query string, args ...any) (*sql.Rows, error) {
-	return s.db.Query(s.rebind(query), args...)
-}
-
-func (s *Server) queryRow(query string, args ...any) *sql.Row {
-	return s.db.QueryRow(s.rebind(query), args...)
-}
-
-func (s *Server) exec(query string, args ...any) (sql.Result, error) {
-	return s.db.Exec(s.rebind(query), args...)
-}
-
-func (s *Server) txQuery(tx *sql.Tx, query string, args ...any) (*sql.Rows, error) {
-	return tx.Query(s.rebind(query), args...)
-}
-
-func (s *Server) txQueryRow(tx *sql.Tx, query string, args ...any) *sql.Row {
-	return tx.QueryRow(s.rebind(query), args...)
-}
-
-func (s *Server) txExec(tx *sql.Tx, query string, args ...any) (sql.Result, error) {
-	return tx.Exec(s.rebind(query), args...)
-}
-
-func (s *Server) rebind(query string) string {
-	var builder strings.Builder
-	builder.Grow(len(query) + 16)
-	index := 1
-	for _, char := range query {
-		if char == '?' {
-			builder.WriteByte('$')
-			builder.WriteString(strconv.Itoa(index))
-			index++
-			continue
-		}
-		builder.WriteRune(char)
-	}
-	return builder.String()
-}
-
 func nowString() string {
 	return time.Now().UTC().Format(time.RFC3339Nano)
 }
@@ -816,46 +513,41 @@ func parseTime(value string) time.Time {
 }
 
 func (s *Server) getUserByID(userID string) (userPublic, error) {
-	row := s.queryRow(`
-		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at, profile_visibility, last_seen_visibility, read_receipts_enabled
-		FROM users
-		WHERE id = ?
-	`, userID)
-
-	var user userPublic
-	var createdAt string
-	var publicKey, profilePhotoFileID, lastSeen sql.NullString
-	var active, readReceiptsEnabled bool
-	if err := row.Scan(
-		&user.ID,
-		&user.FamilyID,
-		&user.Username,
-		&user.DisplayName,
-		&user.Role,
-		&active,
-		&publicKey,
-		&profilePhotoFileID,
-		&createdAt,
-		&lastSeen,
-		&user.ProfileVisibility,
-		&user.LastSeenVisibility,
-		&readReceiptsEnabled,
-	); err != nil {
+	u, err := s.store.UserByID(context.Background(), userID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return userPublic{}, sql.ErrNoRows
+		}
 		return userPublic{}, err
 	}
+	return s.userPublicFromEnt(u), nil
+}
 
-	created := parseTime(createdAt)
-	user.IsActive = active
-	user.ReadReceiptsEnabled = readReceiptsEnabled
-	user.PublicKey = stringPtrFromNull(publicKey)
-	if profilePhotoFileID.Valid {
-		if file, err := s.buildFilePublic(profilePhotoFileID.String, user.ID); err == nil && file.DeletedAt == nil {
+func (s *Server) userPublicFromEnt(u *ent.User) userPublic {
+	user := userPublic{
+		ID:                  u.ID,
+		FamilyID:            u.FamilyID,
+		Username:            u.Username,
+		DisplayName:         u.DisplayName,
+		Role:                u.Role,
+		IsActive:            u.IsActive == 1,
+		PublicKey:           u.PublicKey,
+		ProfileVisibility:   u.ProfileVisibility,
+		LastSeenVisibility:  u.LastSeenVisibility,
+		ReadReceiptsEnabled: u.ReadReceiptsEnabled,
+	}
+	created := parseTime(u.CreatedAt)
+	user.CreatedAt = &created
+	if u.LastSeenAt != nil {
+		t := parseTime(*u.LastSeenAt)
+		user.LastSeenAt = &t
+	}
+	if u.ProfilePhotoFileID != nil {
+		if file, err := s.buildFilePublic(*u.ProfilePhotoFileID, user.ID); err == nil && file.DeletedAt == nil {
 			user.ProfilePhoto = &file
 		}
 	}
-	user.CreatedAt = &created
-	user.LastSeenAt = timePtrFromNull(sql.NullTime{Time: parseTime(lastSeen.String), Valid: lastSeen.Valid})
-	return user, nil
+	return user
 }
 
 func (s *Server) requireAdmin(user userPublic) error {
@@ -873,32 +565,38 @@ func (s *Server) requireFamilyMember(familyID string, user userPublic) error {
 }
 
 func (s *Server) getFamily(familyID string) (familyPublic, error) {
-	row := s.queryRow(`
-		SELECT id, name, storage_limit_mb, minimized_chat_layout, default_message_encryption_protocol, public_app_url, public_api_url
-		FROM families
-		WHERE id = ?
-	`, familyID)
-	var family familyPublic
-	var storageLimit sql.NullInt64
-	var publicApp, publicAPI sql.NullString
-	if err := row.Scan(&family.ID, &family.Name, &storageLimit, &family.MinimizedChatLayout, &family.DefaultMessageEncryptionProtocol, &publicApp, &publicAPI); err != nil {
+	f, err := s.store.FamilyByID(context.Background(), familyID)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return familyPublic{}, sql.ErrNoRows
+		}
 		return familyPublic{}, err
+	}
+	return familyPublicFromEnt(f), nil
+}
+
+func familyPublicFromEnt(f *ent.Family) familyPublic {
+	family := familyPublic{
+		ID:                               f.ID,
+		Name:                             f.Name,
+		MinimizedChatLayout:              f.MinimizedChatLayout,
+		DefaultMessageEncryptionProtocol: f.DefaultMessageEncryptionProtocol,
+		PublicAppURL:                     f.PublicAppURL,
+		PublicAPIURL:                     f.PublicAPIURL,
 	}
 	if family.DefaultMessageEncryptionProtocol == "" {
 		family.DefaultMessageEncryptionProtocol = encryptionProtocolServerAtRest
 	}
-	if storageLimit.Valid {
-		family.StorageLimitMB = &storageLimit.Int64
+	if f.StorageLimitMB != nil {
+		limit := int64(*f.StorageLimitMB)
+		family.StorageLimitMB = &limit
 	}
-	family.PublicAppURL = stringPtrFromNull(publicApp)
-	family.PublicAPIURL = stringPtrFromNull(publicAPI)
-	return family, nil
+	return family
 }
 
 func (s *Server) getChatType(chatID string) (*string, error) {
-	row := s.queryRow(`SELECT type FROM chats WHERE id = ?`, chatID)
-	var chatType string
-	if err := row.Scan(&chatType); err != nil {
+	chatType, err := s.store.ChatType(context.Background(), chatID)
+	if err != nil {
 		return nil, err
 	}
 	return &chatType, nil
@@ -915,5 +613,5 @@ func (s *Server) getClientIP(r *http.Request) string {
 }
 
 func isMissing(err error) bool {
-	return errors.Is(err, sql.ErrNoRows) || errors.Is(err, errNotFound)
+	return errors.Is(err, sql.ErrNoRows) || errors.Is(err, errNotFound) || ent.IsNotFound(err)
 }
