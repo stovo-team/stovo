@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"family-messenger/backend/ent"
+	"family-messenger/backend/internal/repository"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -75,22 +77,16 @@ func (s *Server) handleCreateDirectChat(w http.ResponseWriter, r *http.Request, 
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
 	chatID := uuid.NewString()
 	now := nowString()
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `
-			INSERT INTO chats (id, family_id, type, title, created_by, media_visibility, encryption_protocol, created_at, updated_at)
-			VALUES (?, ?, 'direct', NULL, ?, 'members', ?, ?, ?)
-		`, chatID, user.FamilyID, user.ID, encryptionProtocol, now, now); err != nil {
-			return err
-		}
-		for _, memberID := range []string{user.ID, target.ID} {
-			if _, err := s.txExec(tx, `INSERT INTO chat_members (chat_id, user_id, created_at) VALUES (?, ?, ?)`, chatID, memberID, now); err != nil {
-				return err
-			}
-			if _, err := s.txExec(tx, `INSERT INTO chat_preferences (chat_id, user_id) VALUES (?, ?)`, chatID, memberID); err != nil {
-				return err
-			}
-		}
-		return nil
+	if err := s.store.CreateChatWithMembers(r.Context(), repository.CreateChatParams{
+		ID:                 chatID,
+		FamilyID:           user.FamilyID,
+		Type:               "direct",
+		CreatedBy:          user.ID,
+		MediaVisibility:    "members",
+		EncryptionProtocol: encryptionProtocol,
+		CreatedAt:          now,
+		MemberIDs:          []string{user.ID, target.ID},
+		CreatePreferences:  true,
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create direct chat")
 		return
@@ -120,22 +116,18 @@ func (s *Server) handleCreateGroupChat(w http.ResponseWriter, r *http.Request, u
 	chatID := uuid.NewString()
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
 	now := nowString()
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `
-			INSERT INTO chats (id, family_id, type, title, created_by, media_visibility, encryption_protocol, created_at, updated_at)
-			VALUES (?, ?, 'group', ?, ?, 'family', ?, ?, ?)
-		`, chatID, user.FamilyID, payload.Title, user.ID, encryptionProtocol, now, now); err != nil {
-			return err
-		}
-		for _, memberID := range memberIDs {
-			if _, err := s.txExec(tx, `INSERT INTO chat_members (chat_id, user_id, created_at) VALUES (?, ?, ?)`, chatID, memberID, now); err != nil {
-				return err
-			}
-			if _, err := s.txExec(tx, `INSERT INTO chat_preferences (chat_id, user_id) VALUES (?, ?)`, chatID, memberID); err != nil {
-				return err
-			}
-		}
-		return nil
+	title := payload.Title
+	if err := s.store.CreateChatWithMembers(r.Context(), repository.CreateChatParams{
+		ID:                 chatID,
+		FamilyID:           user.FamilyID,
+		Type:               "group",
+		Title:              &title,
+		CreatedBy:          user.ID,
+		MediaVisibility:    "family",
+		EncryptionProtocol: encryptionProtocol,
+		CreatedAt:          now,
+		MemberIDs:          memberIDs,
+		CreatePreferences:  true,
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create group chat")
 		return
@@ -171,22 +163,20 @@ func (s *Server) handleCreateChannelChat(w http.ResponseWriter, r *http.Request,
 	chatID := uuid.NewString()
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
 	now := nowString()
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `
-			INSERT INTO chats (id, family_id, type, title, created_by, media_visibility, comments_enabled, encryption_protocol, created_at, updated_at)
-			VALUES (?, ?, 'channel', ?, ?, 'members', TRUE, ?, ?, ?)
-		`, chatID, user.FamilyID, payload.Title, user.ID, encryptionProtocol, now, now); err != nil {
-			return err
-		}
-		for _, memberID := range memberIDs {
-			if _, err := s.txExec(tx, `INSERT INTO chat_members (chat_id, user_id, created_at) VALUES (?, ?, ?)`, chatID, memberID, now); err != nil {
-				return err
-			}
-			if _, err := s.txExec(tx, `INSERT INTO chat_preferences (chat_id, user_id) VALUES (?, ?)`, chatID, memberID); err != nil {
-				return err
-			}
-		}
-		return nil
+	title := payload.Title
+	commentsEnabled := true
+	if err := s.store.CreateChatWithMembers(r.Context(), repository.CreateChatParams{
+		ID:                 chatID,
+		FamilyID:           user.FamilyID,
+		Type:               "channel",
+		Title:              &title,
+		CreatedBy:          user.ID,
+		MediaVisibility:    "members",
+		CommentsEnabled:    &commentsEnabled,
+		EncryptionProtocol: encryptionProtocol,
+		CreatedAt:          now,
+		MemberIDs:          memberIDs,
+		CreatePreferences:  true,
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create channel chat")
 		return
@@ -220,10 +210,7 @@ func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user u
 			s.detail(w, http.StatusForbidden, "Permission denied")
 			return
 		}
-		if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-			_, err := s.txExec(tx, `UPDATE chats SET title = ?, updated_at = ? WHERE id = ?`, title, nowString(), chatID)
-			return err
-		}); err != nil {
+		if err := s.store.UpdateChatTitle(r.Context(), chatID, title, nowString()); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Could not update chat")
 			return
 		}
@@ -248,14 +235,11 @@ func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user u
 				return
 			}
 		}
-		if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-			if chatPhotoFileID == "" {
-				_, err := s.txExec(tx, `UPDATE chats SET chat_photo_file_id = NULL, updated_at = ? WHERE id = ?`, nowString(), chatID)
-				return err
-			}
-			_, err := s.txExec(tx, `UPDATE chats SET chat_photo_file_id = ?, updated_at = ? WHERE id = ?`, chatPhotoFileID, nowString(), chatID)
-			return err
-		}); err != nil {
+		var photoPtr *string
+		if chatPhotoFileID != "" {
+			photoPtr = &chatPhotoFileID
+		}
+		if err := s.store.UpdateChatPhoto(r.Context(), chatID, photoPtr, nowString()); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Could not update chat")
 			return
 		}
@@ -270,10 +254,7 @@ func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user u
 			s.detail(w, http.StatusForbidden, "Permission denied")
 			return
 		}
-		if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-			_, err := s.txExec(tx, `UPDATE chats SET comments_enabled = ?, updated_at = ? WHERE id = ?`, *payload.CommentsEnabled, nowString(), chatID)
-			return err
-		}); err != nil {
+		if err := s.store.UpdateChatCommentsEnabled(r.Context(), chatID, *payload.CommentsEnabled, nowString()); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Could not update chat")
 			return
 		}
@@ -289,10 +270,7 @@ func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user u
 			s.detail(w, http.StatusUnprocessableEntity, "pinPermission must be 'everyone' or 'admins_only'")
 			return
 		}
-		if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-			_, err := s.txExec(tx, `UPDATE chats SET pin_permission = ?, updated_at = ? WHERE id = ?`, perm, nowString(), chatID)
-			return err
-		}); err != nil {
+		if err := s.store.UpdateChatPinPermission(r.Context(), chatID, perm, nowString()); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Could not update chat")
 			return
 		}
@@ -314,24 +292,31 @@ func (s *Server) handleUpdateChatPreferences(w http.ResponseWriter, r *http.Requ
 		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
 		return
 	}
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if payload.IsMuted != nil {
-			if _, err := s.txExec(tx, `UPDATE chat_preferences SET is_muted = ? WHERE chat_id = ? AND user_id = ?`, *payload.IsMuted, chatID, user.ID); err != nil {
-				return err
+	if payload.WallpaperFileID != nil {
+		wallpaperFileID := strings.TrimSpace(*payload.WallpaperFileID)
+		if wallpaperFileID != "" {
+			if err := s.validateImageFileForFamily(wallpaperFileID, user, "Wallpaper not found"); err != nil {
+				s.detail(w, domainErrorStatus(err), err.Error())
+				return
 			}
 		}
-		if payload.IsPinned != nil {
-			if _, err := s.txExec(tx, `UPDATE chat_preferences SET is_pinned = ? WHERE chat_id = ? AND user_id = ?`, *payload.IsPinned, chatID, user.ID); err != nil {
-				return err
-			}
+	}
+	prefParams := repository.UpdateChatPreferencesParams{
+		ChatID:     chatID,
+		UserID:     user.ID,
+		IsMuted:    payload.IsMuted,
+		IsPinned:   payload.IsPinned,
+		IsFavorite: payload.IsFavorite,
+	}
+	if payload.WallpaperFileID != nil {
+		wallpaperFileID := strings.TrimSpace(*payload.WallpaperFileID)
+		if wallpaperFileID == "" {
+			prefParams.ClearWallpaper = true
+		} else {
+			prefParams.WallpaperFileID = &wallpaperFileID
 		}
-		if payload.IsFavorite != nil {
-			if _, err := s.txExec(tx, `UPDATE chat_preferences SET is_favorite = ? WHERE chat_id = ? AND user_id = ?`, *payload.IsFavorite, chatID, user.ID); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
+	}
+	if err := s.store.UpdateChatPreferences(r.Context(), prefParams); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update chat preferences")
 		return
 	}
@@ -432,8 +417,7 @@ func (s *Server) handleArchiveMessage(w http.ResponseWriter, r *http.Request, us
 		s.detail(w, http.StatusInternalServerError, "Could not load Message Archive")
 		return
 	}
-	var existingID string
-	err = s.queryRow(`SELECT id FROM messages WHERE chat_id = ? AND forwarded_from_message_id = ? AND deleted_at IS NULL`, archive.ID, messageIDFromURL(r)).Scan(&existingID)
+	existingID, err := s.store.FindActiveForwardInChat(r.Context(), archive.ID, messageIDFromURL(r))
 	if err == nil {
 		message, buildErr := s.buildMessage(existingID, user.ID)
 		if buildErr != nil {
@@ -441,6 +425,10 @@ func (s *Server) handleArchiveMessage(w http.ResponseWriter, r *http.Request, us
 			return
 		}
 		s.json(w, http.StatusOK, message)
+		return
+	}
+	if !isMissing(err) {
+		s.detail(w, http.StatusInternalServerError, "Could not save message")
 		return
 	}
 	message, err := s.forwardMessage(r.Context(), user, messageIDFromURL(r), archive.ID)
@@ -493,6 +481,9 @@ func (s *Server) canSendToChat(chat chatPublic, user userPublic) bool {
 	if chat.Type != "channel" {
 		return true
 	}
+	if user.Role == connectorRole {
+		return true
+	}
 	return isAdmin(user.Role) || (chat.CreatedBy != nil && *chat.CreatedBy == user.ID)
 }
 
@@ -529,21 +520,14 @@ func (s *Server) listChats(user userPublic) ([]chatPublic, error) {
 	if _, err := s.ensureMessageArchive(user); err != nil {
 		return nil, err
 	}
-	rows, err := s.query(`
-		SELECT chat_id FROM chat_members WHERE user_id = ?
-	`, user.ID)
+	rows, err := s.store.ListChatsForUser(context.Background(), user.ID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	chats := make([]chatPublic, 0)
-	for rows.Next() {
-		var chatID string
-		if err := rows.Scan(&chatID); err != nil {
-			return nil, err
-		}
-		chat, err := s.buildChatPublic(chatID, user)
+	chats := make([]chatPublic, 0, len(rows))
+	for _, row := range rows {
+		chat, err := s.buildChatPublicFromRow(row, user)
 		if err == nil {
 			chats = append(chats, chat)
 		}
@@ -574,19 +558,27 @@ func (s *Server) listChats(user userPublic) ([]chatPublic, error) {
 }
 
 func (s *Server) ensureMessageArchive(user userPublic) (chatPublic, error) {
-	row := s.queryRow(`SELECT c.id FROM chats c JOIN chat_members cm ON cm.chat_id = c.id WHERE c.family_id = ? AND c.type = 'archive' AND cm.user_id = ?`, user.FamilyID, user.ID)
-	var chatID string
-	if err := row.Scan(&chatID); err == nil {
+	chatID, err := s.store.FindArchiveChatID(context.Background(), user.FamilyID, user.ID)
+	if err == nil {
 		return s.buildChatPublic(chatID, user)
+	}
+	if !isMissing(err) {
+		return chatPublic{}, err
 	}
 	chatID = uuid.NewString()
 	now := nowString()
-	if err := s.withTx(context.Background(), func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `INSERT INTO chats (id, family_id, type, title, created_by, media_visibility, encryption_protocol, created_at, updated_at) VALUES (?, ?, 'archive', 'Message Archive', ?, 'members', ?, ?, ?)`, chatID, user.FamilyID, user.ID, s.defaultMessageEncryptionProtocol(user.FamilyID), now, now); err != nil {
-			return err
-		}
-		_, err := s.txExec(tx, `INSERT INTO chat_members (chat_id, user_id, created_at) VALUES (?, ?, ?)`, chatID, user.ID, now)
-		return err
+	title := "Message Archive"
+	if err := s.store.CreateChatWithMembers(context.Background(), repository.CreateChatParams{
+		ID:                 chatID,
+		FamilyID:           user.FamilyID,
+		Type:               "archive",
+		Title:              &title,
+		CreatedBy:          user.ID,
+		MediaVisibility:    "members",
+		EncryptionProtocol: s.defaultMessageEncryptionProtocol(user.FamilyID),
+		CreatedAt:          now,
+		MemberIDs:          []string{user.ID},
+		CreatePreferences:  false,
 	}); err != nil {
 		return chatPublic{}, err
 	}
@@ -594,61 +586,47 @@ func (s *Server) ensureMessageArchive(user userPublic) (chatPublic, error) {
 }
 
 func (s *Server) buildChatPublic(chatID string, user userPublic) (chatPublic, error) {
-	row := s.queryRow(`
-		SELECT c.id, c.family_id, c.type, c.title, c.created_by, c.chat_photo_file_id, c.media_visibility, c.comments_enabled, c.encryption_protocol, c.pin_permission, c.created_at, c.updated_at,
-		       cp.is_muted, cp.is_pinned, cp.is_favorite
-		FROM chats c
-		JOIN chat_members cm ON cm.chat_id = c.id AND cm.user_id = ?
-		LEFT JOIN chat_preferences cp ON cp.chat_id = c.id AND cp.user_id = ?
-		WHERE c.id = ?
-	`, user.ID, user.ID, chatID)
-
-	var chat chatPublic
-	var title, createdBy, chatPhotoFileID sql.NullString
-	var createdAt, updatedAt string
-	var commentsEnabled sql.NullBool
-	var isMuted, isPinned, isFavorite sql.NullBool
-	var pinPermission sql.NullString
-	if err := row.Scan(
-		&chat.ID,
-		&chat.FamilyID,
-		&chat.Type,
-		&title,
-		&createdBy,
-		&chatPhotoFileID,
-		&chat.MediaVisibility,
-		&commentsEnabled,
-		&chat.EncryptionProtocol,
-		&pinPermission,
-		&createdAt,
-		&updatedAt,
-		&isMuted,
-		&isPinned,
-		&isFavorite,
-	); err != nil {
+	row, err := s.store.GetChatForMember(context.Background(), chatID, user.ID)
+	if err != nil {
 		return chatPublic{}, err
 	}
-	if chat.FamilyID != user.FamilyID {
+	return s.buildChatPublicFromRow(row, user)
+}
+
+func (s *Server) buildChatPublicFromRow(row *repository.ChatForMember, user userPublic) (chatPublic, error) {
+	c := row.Chat
+	if c.FamilyID != user.FamilyID {
 		return chatPublic{}, errNotFound
 	}
-	chat.Title = stringPtrFromNull(title)
-	chat.CreatedBy = stringPtrFromNull(createdBy)
-	if chatPhotoFileID.Valid {
-		if file, err := s.buildFilePublic(chatPhotoFileID.String, user.ID); err == nil && file.DeletedAt == nil {
+
+	var chat chatPublic
+	chat.ID = c.ID
+	chat.FamilyID = c.FamilyID
+	chat.Type = c.Type
+	chat.Title = c.Title
+	chat.CreatedBy = c.CreatedBy
+	chat.MediaVisibility = c.MediaVisibility
+	chat.EncryptionProtocol = c.EncryptionProtocol
+	chat.CreatedAt = parseTime(c.CreatedAt)
+	chat.UpdatedAt = parseTime(c.UpdatedAt)
+	chat.CommentsEnabled = c.CommentsEnabled
+	if c.ChatPhotoFileID != nil && *c.ChatPhotoFileID != "" {
+		if file, err := s.buildFilePublic(*c.ChatPhotoFileID, user.ID); err == nil && file.DeletedAt == nil {
 			chat.ChatPhoto = &file
 		}
 	}
-	chat.CreatedAt = parseTime(createdAt)
-	chat.UpdatedAt = parseTime(updatedAt)
-	chat.CommentsEnabled = true
-	if commentsEnabled.Valid {
-		chat.CommentsEnabled = commentsEnabled.Bool
+	if row.Preference != nil {
+		chat.IsMuted = row.Preference.IsMuted
+		chat.IsPinned = row.Preference.IsPinned
+		chat.IsFavorite = row.Preference.IsFavorite
+		if row.Preference.WallpaperFileID != nil && *row.Preference.WallpaperFileID != "" {
+			if file, err := s.buildFilePublic(*row.Preference.WallpaperFileID, user.ID); err == nil && file.DeletedAt == nil {
+				chat.Wallpaper = &file
+			}
+		}
 	}
-	chat.IsMuted = boolFromNull(isMuted)
-	chat.IsPinned = boolFromNull(isPinned)
-	chat.IsFavorite = boolFromNull(isFavorite)
-	if pinPermission.Valid && pinPermission.String != "" {
-		chat.PinPermission = pinPermission.String
+	if c.PinPermission != "" {
+		chat.PinPermission = c.PinPermission
 	} else {
 		chat.PinPermission = "everyone"
 	}
@@ -688,45 +666,30 @@ func (s *Server) buildChatPublic(chatID string, user userPublic) (chatPublic, er
 }
 
 func (s *Server) populateLastMessagePreview(chat *chatPublic) error {
-	row := s.queryRow(`
-		SELECT m.id, m.sender_id, u.display_name, m.type, m.content, m.created_at, COUNT(ma.file_id) AS attachment_count
-		FROM messages m
-		JOIN users u ON u.id = m.sender_id
-		LEFT JOIN message_attachments ma ON ma.message_id = m.id
-		WHERE m.chat_id = ? AND m.deleted_at IS NULL AND m.message_kind = 'chat'
-		GROUP BY m.id, m.sender_id, u.display_name, m.type, m.content, m.created_at
-		ORDER BY m.created_at DESC
-		LIMIT 1
-	`, chat.ID)
-	var (
-		id              string
-		senderID        string
-		senderName      sql.NullString
-		messageType     string
-		content         sql.NullString
-		createdAt       string
-		attachmentCount int
-	)
-	if err := row.Scan(&id, &senderID, &senderName, &messageType, &content, &createdAt, &attachmentCount); err != nil {
+	preview, err := s.store.GetLastMessagePreview(context.Background(), chat.ID)
+	if err != nil {
 		if isMissing(err) {
 			return nil
 		}
 		return err
 	}
-	chat.LastMessageID = &id
-	chat.LastMessageSenderID = &senderID
-	chat.LastMessageSenderDisplayName = stringPtrFromNull(senderName)
-	chat.LastMessageType = &messageType
-	preview := deriveMessagePreview(content, messageType, attachmentCount)
-	chat.LastMessageContent = &preview
-	timestamp := parseTime(createdAt)
+	chat.LastMessageID = &preview.ID
+	chat.LastMessageSenderID = &preview.SenderID
+	chat.LastMessageSenderDisplayName = preview.SenderName
+	chat.LastMessageType = &preview.Type
+	derived := deriveMessagePreview(preview.Content, preview.Type, preview.AttachmentCount)
+	chat.LastMessageContent = &derived
+	timestamp := parseTime(preview.CreatedAt)
 	chat.LastMessageCreatedAt = &timestamp
 	return nil
 }
 
-func deriveMessagePreview(content sql.NullString, messageType string, attachmentCount int) string {
-	trimmed := strings.TrimSpace(content.String)
-	if content.Valid && trimmed != "" {
+func deriveMessagePreview(content *string, messageType string, attachmentCount int) string {
+	trimmed := ""
+	if content != nil {
+		trimmed = strings.TrimSpace(*content)
+	}
+	if trimmed != "" {
 		return trimmed
 	}
 	if attachmentCount > 1 {
@@ -764,28 +727,22 @@ func (s *Server) defaultMessageEncryptionProtocol(familyID string) string {
 }
 
 func (s *Server) chatMembers(chatID string) ([]chatMemberPublic, error) {
-	rows, err := s.query(`
-		SELECT u.id, u.display_name, u.username, u.role, u.public_key, u.profile_photo_file_id
-		FROM chat_members cm
-		JOIN users u ON u.id = cm.user_id
-		WHERE cm.chat_id = ? AND u.is_active = 1
-		ORDER BY u.display_name ASC
-	`, chatID)
+	users, err := s.store.ListActiveChatMemberUsers(context.Background(), chatID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
-	members := make([]chatMemberPublic, 0)
-	for rows.Next() {
-		var member chatMemberPublic
-		var publicKey, profilePhotoFileID sql.NullString
-		if err := rows.Scan(&member.ID, &member.DisplayName, &member.Username, &member.Role, &publicKey, &profilePhotoFileID); err != nil {
-			return nil, err
+	members := make([]chatMemberPublic, 0, len(users))
+	for _, u := range users {
+		member := chatMemberPublic{
+			ID:          u.ID,
+			DisplayName: u.DisplayName,
+			Username:    u.Username,
+			Role:        u.Role,
+			PublicKey:   u.PublicKey,
 		}
-		member.PublicKey = stringPtrFromNull(publicKey)
-		if profilePhotoFileID.Valid {
-			if file, err := s.buildFilePublic(profilePhotoFileID.String, member.ID); err == nil && file.DeletedAt == nil {
+		if u.ProfilePhotoFileID != nil {
+			if file, err := s.buildFilePublic(*u.ProfilePhotoFileID, member.ID); err == nil && file.DeletedAt == nil {
 				member.ProfilePhoto = &file
 			}
 		}
@@ -795,58 +752,33 @@ func (s *Server) chatMembers(chatID string) ([]chatMemberPublic, error) {
 }
 
 func (s *Server) unreadCount(chatID, userID string) (int, error) {
-	row := s.queryRow(`
-		SELECT COUNT(*)
-		FROM messages m
-		LEFT JOIN chat_preferences cp ON cp.chat_id = m.chat_id AND cp.user_id = ?
-		WHERE m.chat_id = ?
-		  AND m.sender_id <> ?
-		  AND m.deleted_at IS NULL
-		  AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
-	`, userID, chatID, userID)
-	var count int
-	return count, row.Scan(&count)
+	return s.store.UnreadMessageCount(context.Background(), chatID, userID)
 }
 
 func (s *Server) directApprovalStatus(chatID, userID string) (int, bool, error) {
-	rows, err := s.query(`SELECT user_id FROM chat_media_approvals WHERE chat_id = ?`, chatID)
+	ids, err := s.store.ListMediaApprovalUserIDs(context.Background(), chatID)
 	if err != nil {
 		return 0, false, err
 	}
-	defer rows.Close()
-	count := 0
 	approved := false
-	for rows.Next() {
-		var actorID string
-		if err := rows.Scan(&actorID); err != nil {
-			return 0, false, err
-		}
-		count++
+	for _, actorID := range ids {
 		if actorID == userID {
 			approved = true
+			break
 		}
 	}
-	return count, approved, nil
+	return len(ids), approved, nil
 }
 
 func (s *Server) findDirectChat(userA, userB string) (string, error) {
-	rows, err := s.query(`
-		SELECT c.id
-		FROM chats c
-		WHERE c.type = 'direct'
-	`)
+	chatIDs, err := s.store.ListDirectChatIDs(context.Background())
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
 
 	target := []string{userA, userB}
 	slices.Sort(target)
-	for rows.Next() {
-		var chatID string
-		if err := rows.Scan(&chatID); err != nil {
-			return "", err
-		}
+	for _, chatID := range chatIDs {
 		members, err := s.chatMembers(chatID)
 		if err != nil || len(members) != 2 {
 			continue
@@ -871,46 +803,12 @@ func (s *Server) updateChatMediaVisibility(ctx context.Context, chatID string, d
 		if !s.canManageChat(chat, user) {
 			return errForbidden
 		}
-		return s.withTx(ctx, func(tx *sql.Tx) error {
-			if _, err := s.txExec(tx, `UPDATE chats SET media_visibility = ?, updated_at = ? WHERE id = ?`, desired, nowString(), chatID); err != nil {
-				return err
-			}
-			_, err := s.txExec(tx, `DELETE FROM chat_media_approvals WHERE chat_id = ?`, chatID)
-			return err
-		})
+		return s.store.SetChatMediaVisibility(ctx, chatID, desired, nowString())
 	case "direct":
 		if desired == "members" {
-			return s.withTx(ctx, func(tx *sql.Tx) error {
-				if _, err := s.txExec(tx, `UPDATE chats SET media_visibility = 'members', updated_at = ? WHERE id = ?`, nowString(), chatID); err != nil {
-					return err
-				}
-				_, err := s.txExec(tx, `DELETE FROM chat_media_approvals WHERE chat_id = ?`, chatID)
-				return err
-			})
+			return s.store.SetChatMediaVisibility(ctx, chatID, "members", nowString())
 		}
-		return s.withTx(ctx, func(tx *sql.Tx) error {
-			if _, err := s.txExec(tx, `
-				INSERT INTO chat_media_approvals (chat_id, user_id, created_at)
-				VALUES (?, ?, ?)
-				ON CONFLICT (chat_id, user_id) DO NOTHING
-			`, chatID, user.ID, nowString()); err != nil {
-				return err
-			}
-			var approvalCount int
-			if err := s.txQueryRow(tx, `SELECT COUNT(*) FROM chat_media_approvals WHERE chat_id = ?`, chatID).Scan(&approvalCount); err != nil {
-				return err
-			}
-			if approvalCount >= 2 {
-				if _, err := s.txExec(tx, `UPDATE chats SET media_visibility = 'family', updated_at = ? WHERE id = ?`, nowString(), chatID); err != nil {
-					return err
-				}
-			} else {
-				if _, err := s.txExec(tx, `UPDATE chats SET media_visibility = 'members', updated_at = ? WHERE id = ?`, nowString(), chatID); err != nil {
-					return err
-				}
-			}
-			return nil
-		})
+		return s.store.ApproveDirectMediaVisibility(ctx, chatID, user.ID, nowString(), nowString())
 	default:
 		return errBadRequest
 	}
@@ -922,47 +820,28 @@ func (s *Server) listMessages(chatID string, user userPublic, before string, lim
 }
 
 func (s *Server) listMessagesPage(chatID string, user userPublic, before string, limit int, threadRootMessageID string) ([]messagePublic, bool, error) {
-	baseQuery := `
-		SELECT id
-		FROM messages
-		WHERE chat_id = ? AND deleted_at IS NULL
-		AND id NOT IN (SELECT message_id FROM message_user_deletions WHERE user_id = ?)
-	`
-	args := []any{chatID, user.ID}
 	if threadRootMessageID != "" {
 		if err := s.validateReplyTarget(chatID, threadRootMessageID); err != nil {
 			return nil, false, err
 		}
-		baseQuery += " AND (id = ? OR thread_root_message_id = ?)"
-		args = append(args, threadRootMessageID, threadRootMessageID)
-	} else {
-		baseQuery += " AND message_kind = 'chat'"
 	}
+	beforeCreatedAt := ""
 	if before != "" {
-		row := s.queryRow(`SELECT created_at FROM messages WHERE id = ? AND chat_id = ?`, before, chatID)
-		var createdAt string
-		if err := row.Scan(&createdAt); err != nil {
+		createdAt, err := s.store.MessageCreatedAtInChat(context.Background(), before, chatID)
+		if err != nil {
 			return nil, false, errBadRequest
 		}
-		baseQuery += " AND created_at < ?"
-		args = append(args, createdAt)
+		beforeCreatedAt = createdAt
 	}
-	baseQuery += " ORDER BY created_at DESC LIMIT ?"
-	args = append(args, limit+1)
-
-	rows, err := s.query(baseQuery, args...)
+	ids, err := s.store.ListMessageIDsPage(context.Background(), repository.ListMessageIDsPageParams{
+		ChatID:              chatID,
+		ViewerID:            user.ID,
+		BeforeCreatedAt:     beforeCreatedAt,
+		ThreadRootMessageID: threadRootMessageID,
+		Limit:               limit + 1,
+	})
 	if err != nil {
 		return nil, false, err
-	}
-	defer rows.Close()
-
-	ids := make([]string, 0)
-	for rows.Next() {
-		var messageID string
-		if err := rows.Scan(&messageID); err != nil {
-			return nil, false, err
-		}
-		ids = append(ids, messageID)
 	}
 	slices.Reverse(ids)
 	hasMore := len(ids) > limit
@@ -991,67 +870,39 @@ func (s *Server) createMessage(ctx context.Context, user userPublic, chatID stri
 }
 
 func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error) {
-	row := s.queryRow(`
-		SELECT m.id, m.chat_id, c.family_id, m.sender_id, u.display_name, m.type, m.content,
-		       m.encryption_protocol, m.ciphertext, m.nonce, m.key_version, m.encryption_metadata,
-		       m.reply_to_message_id, m.thread_root_message_id, m.message_kind, m.forwarded_from_message_id, m.forwarded_from_chat_id,
-		       m.created_at, m.updated_at, m.deleted_at, m.is_edited
-		FROM messages m
-		JOIN chats c ON c.id = m.chat_id
-		JOIN users u ON u.id = m.sender_id
-		WHERE m.id = ?
-	`, messageID)
-	var message messagePublic
-	var senderName sql.NullString
-	var familyID string
-	var content, encryptionProtocol, ciphertext, nonce, metadata, replyTo, threadRootMessageID, messageKind, forwardedFromMessageID, forwardedFromChatID, deletedAt sql.NullString
-	var keyVersion sql.NullInt64
-	var createdAt, updatedAt string
-	var isEdited bool
-	if err := row.Scan(
-		&message.ID,
-		&message.ChatID,
-		&familyID,
-		&message.SenderID,
-		&senderName,
-		&message.Type,
-		&content,
-		&encryptionProtocol,
-		&ciphertext,
-		&nonce,
-		&keyVersion,
-		&metadata,
-		&replyTo,
-		&threadRootMessageID,
-		&messageKind,
-		&forwardedFromMessageID,
-		&forwardedFromChatID,
-		&createdAt,
-		&updatedAt,
-		&deletedAt,
-		&isEdited,
-	); err != nil {
+	m, err := s.store.LoadMessage(context.Background(), messageID)
+	if err != nil {
 		return messagePublic{}, err
 	}
-	message.SenderDisplayName = stringPtrFromNull(senderName)
-	message.Content = stringPtrFromNull(content)
-	message.EncryptionProtocol = encryptionProtocolLegacyPlain
-	if encryptionProtocol.Valid && encryptionProtocol.String != "" {
-		message.EncryptionProtocol = encryptionProtocol.String
+	if m.Edges.Chat == nil {
+		return messagePublic{}, errNotFound
 	}
-	message.Ciphertext = stringPtrFromNull(ciphertext)
-	message.Nonce = stringPtrFromNull(nonce)
-	message.EncryptionMetadata = stringPtrFromNull(metadata)
-	if message.Type == "call" && metadata.Valid {
+	familyID := m.Edges.Chat.FamilyID
+
+	var message messagePublic
+	message.ID = m.ID
+	message.ChatID = m.ChatID
+	message.SenderID = m.SenderID
+	if m.Edges.Sender != nil {
+		name := m.Edges.Sender.DisplayName
+		message.SenderDisplayName = &name
+	}
+	message.Type = m.Type
+	message.Content = m.Content
+	message.EncryptionProtocol = encryptionProtocolLegacyPlain
+	if m.EncryptionProtocol != "" {
+		message.EncryptionProtocol = m.EncryptionProtocol
+	}
+	message.Ciphertext = m.Ciphertext
+	message.Nonce = m.Nonce
+	message.EncryptionMetadata = m.EncryptionMetadata
+	if message.Type == "call" && m.EncryptionMetadata != nil {
 		var call callHistoryPublic
-		if err := json.Unmarshal([]byte(metadata.String), &call); err == nil {
+		if err := json.Unmarshal([]byte(*m.EncryptionMetadata), &call); err == nil {
 			message.Call = &call
 		}
 	}
-	if keyVersion.Valid {
-		value := int(keyVersion.Int64)
-		message.KeyVersion = &value
-	}
+	message.KeyVersion = m.KeyVersion
 	if message.EncryptionProtocol == encryptionProtocolServerAtRest && message.Ciphertext != nil && message.Nonce != nil {
 		decrypted, err := s.decryptServerAtRest(familyID, *message.Ciphertext, *message.Nonce)
 		if err == nil {
@@ -1061,106 +912,73 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 		message.Nonce = nil
 		message.EncryptionMetadata = nil
 	}
-	message.ReplyToMessageID = stringPtrFromNull(replyTo)
-	message.ThreadRootMessageID = stringPtrFromNull(threadRootMessageID)
+	message.ReplyToMessageID = m.ReplyToMessageID
+	message.ThreadRootMessageID = m.ThreadRootMessageID
 	message.MessageKind = "chat"
-	if messageKind.Valid && strings.TrimSpace(messageKind.String) != "" {
-		message.MessageKind = messageKind.String
+	if strings.TrimSpace(m.MessageKind) != "" {
+		message.MessageKind = m.MessageKind
 	}
-	message.CreatedAt = parseTime(createdAt)
-	message.UpdatedAt = parseTime(updatedAt)
-	if forwardedFromMessageID.Valid && forwardedFromChatID.Valid {
+	message.CreatedAt = parseTime(m.CreatedAt)
+	message.UpdatedAt = parseTime(m.UpdatedAt)
+	if m.ForwardedFromMessageID != nil && m.ForwardedFromChatID != nil {
 		message.ForwardedFrom = &messageForwardPublic{
-			MessageID: forwardedFromMessageID.String,
-			ChatID:    forwardedFromChatID.String,
+			MessageID: *m.ForwardedFromMessageID,
+			ChatID:    *m.ForwardedFromChatID,
 		}
-		forwardedRow := s.queryRow(`
-			SELECT m.sender_id, u.display_name
-			FROM messages m
-			JOIN users u ON u.id = m.sender_id
-			WHERE m.id = ?
-		`, forwardedFromMessageID.String)
-		var forwardedSenderID string
-		var forwardedSenderName sql.NullString
-		if err := forwardedRow.Scan(&forwardedSenderID, &forwardedSenderName); err == nil {
-			message.ForwardedFrom.SenderID = forwardedSenderID
-			message.ForwardedFrom.SenderDisplayName = stringPtrFromNull(forwardedSenderName)
+		senderID, senderName, err := s.store.LoadMessageSender(context.Background(), *m.ForwardedFromMessageID)
+		if err == nil {
+			message.ForwardedFrom.SenderID = senderID
+			message.ForwardedFrom.SenderDisplayName = senderName
 		}
 	}
-	if deletedAt.Valid {
-		deleted := parseTime(deletedAt.String)
+	if m.DeletedAt != nil {
+		deleted := parseTime(*m.DeletedAt)
 		message.DeletedAt = &deleted
 	}
-	message.IsEdited = isEdited
+	message.IsEdited = m.IsEdited
 
-	statusRows, err := s.query(`
-		SELECT user_id, status, created_at
-		FROM message_statuses
-		WHERE message_id = ?
-		ORDER BY created_at ASC
-	`, messageID)
+	statuses, err := s.store.ListMessageStatuses(context.Background(), messageID)
 	if err != nil {
 		return messagePublic{}, err
 	}
-	defer statusRows.Close()
-	message.Statuses = make([]messageStatusPublic, 0)
-	for statusRows.Next() {
-		var status messageStatusPublic
-		var created string
-		if err := statusRows.Scan(&status.UserID, &status.Status, &created); err != nil {
-			return messagePublic{}, err
-		}
-		status.CreatedAt = parseTime(created)
-		message.Statuses = append(message.Statuses, status)
+	message.Statuses = make([]messageStatusPublic, 0, len(statuses))
+	for _, status := range statuses {
+		message.Statuses = append(message.Statuses, messageStatusPublic{
+			UserID:    status.UserID,
+			Status:    status.Status,
+			CreatedAt: parseTime(status.CreatedAt),
+		})
 	}
 
-	reactionRows, err := s.query(`
-		SELECT emoji, user_id
-		FROM message_reactions
-		WHERE message_id = ?
-		ORDER BY emoji ASC, created_at ASC
-	`, messageID)
+	reactions, err := s.store.ListMessageReactions(context.Background(), messageID)
 	if err != nil {
 		return messagePublic{}, err
 	}
-	defer reactionRows.Close()
 	message.Reactions = make([]messageReactionPublic, 0)
 	reactionIndex := make(map[string]int)
-	for reactionRows.Next() {
-		var emoji string
-		var userID string
-		if err := reactionRows.Scan(&emoji, &userID); err != nil {
-			return messagePublic{}, err
-		}
-		index, ok := reactionIndex[emoji]
+	for _, reaction := range reactions {
+		index, ok := reactionIndex[reaction.Emoji]
 		if !ok {
-			reactionIndex[emoji] = len(message.Reactions)
+			reactionIndex[reaction.Emoji] = len(message.Reactions)
 			message.Reactions = append(message.Reactions, messageReactionPublic{
-				Emoji:   emoji,
+				Emoji:   reaction.Emoji,
 				UserIDs: make([]string, 0, 1),
 			})
 			index = len(message.Reactions) - 1
 		}
 		message.Reactions[index].Count++
-		message.Reactions[index].UserIDs = append(message.Reactions[index].UserIDs, userID)
-		if userID == viewerID {
+		message.Reactions[index].UserIDs = append(message.Reactions[index].UserIDs, reaction.UserID)
+		if reaction.UserID == viewerID {
 			message.Reactions[index].Reacted = true
 		}
 	}
 
-	attachmentRows, err := s.query(`
-		SELECT file_id FROM message_attachments WHERE message_id = ?
-	`, messageID)
+	fileIDs, err := s.store.ListMessageAttachmentFileIDs(context.Background(), messageID)
 	if err != nil {
 		return messagePublic{}, err
 	}
-	defer attachmentRows.Close()
-	message.Attachments = make([]filePublic, 0)
-	for attachmentRows.Next() {
-		var fileID string
-		if err := attachmentRows.Scan(&fileID); err != nil {
-			return messagePublic{}, err
-		}
+	message.Attachments = make([]filePublic, 0, len(fileIDs))
+	for _, fileID := range fileIDs {
 		file, err := s.buildFilePublic(fileID, viewerID)
 		if err == nil {
 			message.Attachments = append(message.Attachments, file)
@@ -1185,58 +1003,15 @@ func (s *Server) loadAttachmentsForMessage(fileIDs []string, user userPublic, ch
 }
 
 func (s *Server) markMessageRead(ctx context.Context, user userPublic, messageID string) (messagePublic, string, error) {
-	row := s.queryRow(`
-		SELECT id, chat_id, sender_id, created_at
-		FROM messages
-		WHERE id = ? AND deleted_at IS NULL
-	`, messageID)
-	var id, chatID, senderID, createdAt string
-	if err := row.Scan(&id, &chatID, &senderID, &createdAt); err != nil {
+	meta, err := s.store.GetActiveMessageMeta(ctx, messageID)
+	if err != nil {
 		return messagePublic{}, "", errNotFound
 	}
-	if _, err := s.buildChatPublic(chatID, user); err != nil {
+	if _, err := s.buildChatPublic(meta.ChatID, user); err != nil {
 		return messagePublic{}, "", errNotFound
 	}
 
-	err := s.withTx(ctx, func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `
-			UPDATE chat_preferences
-			SET last_read_message_id = ?, last_read_at = ?
-			WHERE chat_id = ? AND user_id = ? AND (last_read_at IS NULL OR last_read_at < ?)
-		`, id, createdAt, chatID, user.ID, createdAt); err != nil {
-			return err
-		}
-		if senderID == user.ID {
-			return nil
-		}
-		rows, err := s.txQuery(tx, `
-			SELECT id FROM messages
-			WHERE chat_id = ? AND deleted_at IS NULL AND created_at <= ? AND sender_id <> ?
-		`, chatID, createdAt, user.ID)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-		messageIDs := make([]string, 0)
-		for rows.Next() {
-			var itemID string
-			if err := rows.Scan(&itemID); err != nil {
-				return err
-			}
-			messageIDs = append(messageIDs, itemID)
-		}
-		for _, itemID := range messageIDs {
-			if _, err := s.txExec(tx, `
-				INSERT INTO message_statuses (message_id, user_id, status, created_at)
-				VALUES (?, ?, 'read', ?)
-				ON CONFLICT (message_id, user_id, status) DO NOTHING
-			`, itemID, user.ID, nowString()); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
+	if err := s.store.MarkMessagesRead(ctx, meta.ChatID, user.ID, meta.ID, meta.CreatedAt, nowString(), meta.SenderID == user.ID); err != nil {
 		return messagePublic{}, "", err
 	}
 
@@ -1244,7 +1019,7 @@ func (s *Server) markMessageRead(ctx context.Context, user userPublic, messageID
 	if err != nil {
 		return messagePublic{}, "", err
 	}
-	return message, chatID, nil
+	return message, meta.ChatID, nil
 }
 
 func (s *Server) forwardMessage(ctx context.Context, user userPublic, sourceMessageID, targetChatID string) (messagePublic, error) {
@@ -1305,7 +1080,7 @@ func (s *Server) cloneForwardAttachments(ctx context.Context, user userPublic, t
 	now := nowString()
 	clones := make([]clonedFile, 0, len(sourceMessage.Attachments))
 	for _, attachment := range sourceMessage.Attachments {
-		file, sourceObjectKey, err := s.loadFileRecord(attachment.ID, user.ID)
+		file, sourceObjectKey, err := s.loadFileRecord(ctx, attachment.ID, user.ID)
 		if err != nil || file.DeletedAt != nil {
 			return nil, func() {}, fmt.Errorf("invalid file attachment")
 		}
@@ -1350,15 +1125,24 @@ func (s *Server) cloneForwardAttachments(ctx context.Context, user userPublic, t
 		})
 	}
 
-	if err := s.withTx(ctx, func(tx *sql.Tx) error {
+	if err := s.store.WithTx(ctx, func(tx *ent.Tx) error {
 		for _, clone := range clones {
-			if _, err := s.txExec(tx, `
-				INSERT INTO files (
-					id, family_id, uploaded_by, chat_id, access_scope, storage_provider,
-					object_key, thumbnail_object_key, original_name, mime_type, size_bytes, checksum, created_at
-				)
-				VALUES (?, ?, ?, ?, 'chat', ?, ?, ?, ?, ?, ?, ?, ?)
-			`, clone.ID, targetChat.FamilyID, user.ID, targetChat.ID, clone.StorageProvider, clone.ObjectKey, clone.ThumbnailObjectKey, clone.OriginalName, clone.MimeType, clone.SizeBytes, clone.Checksum, now); err != nil {
+			chatID := targetChat.ID
+			if err := s.store.CreateFile(ctx, tx, repository.CreateFileParams{
+				ID:                 clone.ID,
+				FamilyID:           targetChat.FamilyID,
+				UploadedBy:         user.ID,
+				ChatID:             &chatID,
+				AccessScope:        "chat",
+				StorageProvider:    clone.StorageProvider,
+				ObjectKey:          clone.ObjectKey,
+				ThumbnailObjectKey: clone.ThumbnailObjectKey,
+				OriginalName:       clone.OriginalName,
+				MimeType:           clone.MimeType,
+				SizeBytes:          int(clone.SizeBytes),
+				Checksum:           clone.Checksum,
+				CreatedAt:          now,
+			}); err != nil {
 				return err
 			}
 		}
@@ -1376,7 +1160,7 @@ func (s *Server) cloneForwardAttachments(ctx context.Context, user userPublic, t
 	}
 	cleanup := func() {
 		for _, clone := range clones {
-			_, _ = s.exec(`DELETE FROM files WHERE id = ?`, clone.ID)
+			_ = s.store.HardDeleteFile(context.Background(), clone.ID)
 			deleteFileObjects(s.storage, clone.ObjectKey, clone.ThumbnailObjectKey)
 		}
 	}
@@ -1389,40 +1173,19 @@ func (s *Server) setMessageReaction(ctx context.Context, user userPublic, messag
 		return messagePublic{}, newStatusError(http.StatusUnprocessableEntity, "emoji is required")
 	}
 
-	row := s.queryRow(`
-		SELECT chat_id
-		FROM messages
-		WHERE id = ? AND deleted_at IS NULL
-	`, messageID)
-	var chatID string
-	if err := row.Scan(&chatID); err != nil {
+	meta, err := s.store.GetActiveMessageMeta(ctx, messageID)
+	if err != nil {
 		return messagePublic{}, errNotFound
 	}
-	if _, err := s.buildChatPublic(chatID, user); err != nil {
+	if _, err := s.buildChatPublic(meta.ChatID, user); err != nil {
 		return messagePublic{}, errNotFound
 	}
 
-	if err := s.withTx(ctx, func(tx *sql.Tx) error {
-		if add {
-			if _, err := s.txExec(tx, `
-				DELETE FROM message_reactions
-				WHERE message_id = ? AND user_id = ? AND emoji <> ?
-			`, messageID, user.ID, emoji); err != nil {
-				return err
-			}
-			_, err := s.txExec(tx, `
-				INSERT INTO message_reactions (message_id, user_id, emoji, created_at)
-				VALUES (?, ?, ?, ?)
-				ON CONFLICT (message_id, user_id, emoji) DO NOTHING
-			`, messageID, user.ID, emoji, nowString())
-			return err
+	if add {
+		if err := s.store.SetMessageReaction(ctx, messageID, user.ID, emoji, nowString()); err != nil {
+			return messagePublic{}, err
 		}
-		_, err := s.txExec(tx, `
-			DELETE FROM message_reactions
-			WHERE message_id = ? AND user_id = ? AND emoji = ?
-		`, messageID, user.ID, emoji)
-		return err
-	}); err != nil {
+	} else if err := s.store.RemoveMessageReaction(ctx, messageID, user.ID, emoji); err != nil {
 		return messagePublic{}, err
 	}
 
@@ -1452,18 +1215,17 @@ func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request, user 
 		return
 	}
 
-	row := s.queryRow(`SELECT sender_id, chat_id FROM messages WHERE id = ? AND deleted_at IS NULL`, messageID)
-	var senderID, chatID string
-	if err := row.Scan(&senderID, &chatID); err != nil {
+	meta, err := s.store.GetActiveMessageMeta(r.Context(), messageID)
+	if err != nil {
 		s.detail(w, http.StatusNotFound, "Message not found")
 		return
 	}
-	if senderID != user.ID {
+	if meta.SenderID != user.ID {
 		s.detail(w, http.StatusForbidden, "You can only edit your own messages")
 		return
 	}
 
-	chat, err := s.buildChatPublic(chatID, user)
+	chat, err := s.buildChatPublic(meta.ChatID, user)
 	if err != nil {
 		s.detail(w, http.StatusNotFound, "Chat not found")
 		return
@@ -1476,26 +1238,20 @@ func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request, user 
 			s.detail(w, http.StatusInternalServerError, "Encryption failed")
 			return
 		}
-		keyVersion := 1
-		metadata := messageEncryptionMetadataServer
-		if _, err := s.exec(`
-			UPDATE messages
-			SET ciphertext = ?, nonce = ?, key_version = ?, encryption_metadata = ?, content = NULL,
-			    is_edited = TRUE, updated_at = ?
-			WHERE id = ?
-		`, ciphertext, nonce, keyVersion, metadata, now, messageID); err != nil {
+		if err := s.store.UpdateMessageEncryptedContent(r.Context(), repository.UpdateMessageEncryptedContentParams{
+			MessageID:          messageID,
+			Ciphertext:         ciphertext,
+			Nonce:              nonce,
+			KeyVersion:         1,
+			EncryptionMetadata: messageEncryptionMetadataServer,
+			UpdatedAt:          now,
+		}); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Failed to update message")
 			return
 		}
-	} else {
-		if _, err := s.exec(`
-			UPDATE messages
-			SET content = ?, is_edited = TRUE, updated_at = ?
-			WHERE id = ?
-		`, content, now, messageID); err != nil {
-			s.detail(w, http.StatusInternalServerError, "Failed to update message")
-			return
-		}
+	} else if err := s.store.UpdateMessagePlainContent(r.Context(), messageID, content, now); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Failed to update message")
+		return
 	}
 
 	message, err := s.buildMessage(messageID, user.ID)
@@ -1503,8 +1259,8 @@ func (s *Server) handleEditMessage(w http.ResponseWriter, r *http.Request, user 
 		s.detail(w, http.StatusInternalServerError, "Failed to load updated message")
 		return
 	}
-	s.emitMessageUpdated(chatID, message)
-	s.bumpChatHistoryRevision(r.Context(), chatID)
+	s.emitMessageUpdated(meta.ChatID, message)
+	s.bumpChatHistoryRevision(r.Context(), meta.ChatID)
 	s.json(w, http.StatusOK, message)
 }
 
@@ -1512,37 +1268,30 @@ func (s *Server) handleDeleteMessage(w http.ResponseWriter, r *http.Request, use
 	messageID := messageIDFromURL(r)
 	scope := r.URL.Query().Get("scope")
 
-	row := s.queryRow(`SELECT sender_id, chat_id FROM messages WHERE id = ? AND deleted_at IS NULL`, messageID)
-	var senderID, chatID string
-	if err := row.Scan(&senderID, &chatID); err != nil {
+	meta, err := s.store.GetActiveMessageMeta(r.Context(), messageID)
+	if err != nil {
 		s.detail(w, http.StatusNotFound, "Message not found")
 		return
 	}
-	if senderID != user.ID {
+	if meta.SenderID != user.ID {
 		s.detail(w, http.StatusForbidden, "You can only delete your own messages")
 		return
 	}
 
 	if scope == "me" {
-		if _, err := s.exec(`
-			INSERT INTO message_user_deletions (message_id, user_id, deleted_at)
-			VALUES (?, ?, ?)
-			ON CONFLICT (message_id, user_id) DO NOTHING
-		`, messageID, user.ID, nowString()); err != nil {
+		if err := s.store.UpsertMessageUserDeletion(r.Context(), messageID, user.ID, nowString()); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Failed to delete message")
 			return
 		}
-		s.bumpUserChatHistoryRevision(r.Context(), user.ID, chatID)
+		s.bumpUserChatHistoryRevision(r.Context(), user.ID, meta.ChatID)
 	} else {
-		if _, err := s.exec(`
-			UPDATE messages SET deleted_at = ? WHERE id = ?
-		`, nowString(), messageID); err != nil {
+		if err := s.store.SoftDeleteMessage(r.Context(), messageID, nowString()); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Failed to delete message")
 			return
 		}
-		s.emitMessageDeleted(chatID, messageID)
-		s.bumpChatHistoryRevision(r.Context(), chatID)
+		s.emitMessageDeleted(meta.ChatID, messageID)
+		s.bumpChatHistoryRevision(r.Context(), meta.ChatID)
 	}
 
-	s.json(w, http.StatusOK, map[string]string{"messageId": messageID, "chatId": chatID})
+	s.json(w, http.StatusOK, map[string]string{"messageId": messageID, "chatId": meta.ChatID})
 }

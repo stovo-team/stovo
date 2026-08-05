@@ -1,7 +1,7 @@
 package app
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"family-messenger/backend/ent"
+	"family-messenger/backend/internal/repository"
 	"family-messenger/backend/internal/storage"
 
 	"github.com/google/uuid"
@@ -75,12 +77,26 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request, user u
 			}
 		}
 	}
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `
-			INSERT INTO files (id, family_id, uploaded_by, chat_id, access_scope, storage_provider, object_key, thumbnail_object_key, original_name, mime_type, size_bytes, checksum, created_at)
-			VALUES (?, ?, ?, ?, ?, 'local', ?, ?, ?, ?, ?, ?, ?)
-		`, fileID, user.FamilyID, user.ID, nullIfEmpty(chatID), accessScope, objectKey, thumbnailObjectKey, sanitizeFilename(header.Filename), mimeType, len(data), checksum, now)
-		return err
+	var chatIDPtr *string
+	if chatID != "" {
+		chatIDPtr = &chatID
+	}
+	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
+		return s.store.CreateFile(r.Context(), tx, repository.CreateFileParams{
+			ID:                 fileID,
+			FamilyID:           user.FamilyID,
+			UploadedBy:         user.ID,
+			ChatID:             chatIDPtr,
+			AccessScope:        accessScope,
+			StorageProvider:    "local",
+			ObjectKey:          objectKey,
+			ThumbnailObjectKey: thumbnailObjectKey,
+			OriginalName:       sanitizeFilename(header.Filename),
+			MimeType:           mimeType,
+			SizeBytes:          len(data),
+			Checksum:           &checksum,
+			CreatedAt:          now,
+		})
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not record file")
 		return
@@ -94,35 +110,16 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request, user u
 	s.json(w, http.StatusCreated, file)
 }
 
-func (s *Server) handleGetFiles(w http.ResponseWriter, _ *http.Request, user userPublic) {
-	rows, err := s.query(`
-		SELECT id
-		FROM files
-		WHERE family_id = ? AND deleted_at IS NULL
-		  AND (
-			chat_id IS NULL
-			OR EXISTS (
-				SELECT 1
-				FROM message_attachments ma
-				WHERE ma.file_id = files.id
-			)
-		  )
-		ORDER BY created_at DESC
-	`, user.FamilyID)
+func (s *Server) handleGetFiles(w http.ResponseWriter, r *http.Request, user userPublic) {
+	fileIDs, err := s.store.ListVisibleFamilyFileIDs(r.Context(), user.FamilyID)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not load files")
 		return
 	}
-	defer rows.Close()
 	files := make([]filePublic, 0)
-	for rows.Next() {
-		var fileID string
-		if err := rows.Scan(&fileID); err != nil {
-			s.detail(w, http.StatusInternalServerError, "Could not load files")
-			return
-		}
+	for _, fileID := range fileIDs {
 		file, err := s.buildFilePublic(fileID, user.ID)
-		if err == nil && file.DeletedAt == nil && s.fileVisibleToUser(file, user) {
+		if err == nil && file.DeletedAt == nil && s.fileVisibleToUser(r.Context(), file, user) {
 			files = append(files, file)
 		}
 	}
@@ -131,7 +128,7 @@ func (s *Server) handleGetFiles(w http.ResponseWriter, _ *http.Request, user use
 
 func (s *Server) handleGetFile(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, err := s.buildFilePublic(fileIDFromURL(r), user.ID)
-	if err != nil || !s.fileVisibleToUser(file, user) || file.DeletedAt != nil {
+	if err != nil || !s.fileVisibleToUser(r.Context(), file, user) || file.DeletedAt != nil {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -139,8 +136,8 @@ func (s *Server) handleGetFile(w http.ResponseWriter, r *http.Request, user user
 }
 
 func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request, user userPublic) {
-	file, objectKey, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(file, user) {
+	file, objectKey, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
+	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -156,8 +153,8 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request, user
 }
 
 func (s *Server) handleGetFileThumbnail(w http.ResponseWriter, r *http.Request, user userPublic) {
-	file, _, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || file.ThumbnailObjectKey == nil || !s.fileVisibleToUser(file, user) {
+	file, _, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
+	if err != nil || file.DeletedAt != nil || file.ThumbnailObjectKey == nil || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -172,8 +169,8 @@ func (s *Server) handleGetFileThumbnail(w http.ResponseWriter, r *http.Request, 
 }
 
 func (s *Server) handleCreateMediaPlaybackToken(w http.ResponseWriter, r *http.Request, user userPublic) {
-	file, _, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !isStreamableMediaMime(file.MimeType) || !s.fileVisibleToUser(file, user) {
+	file, _, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
+	if err != nil || file.DeletedAt != nil || !isStreamableMediaMime(file.MimeType) || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -198,13 +195,23 @@ func (s *Server) handleStreamMediaPlaybackFile(w http.ResponseWriter, r *http.Re
 		return
 	}
 	user, err := s.getUserByID(claims.UserID)
-	if err != nil || !user.IsActive || user.FamilyID != claims.FamilyID {
+	if err != nil || user.FamilyID != claims.FamilyID {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
-	file, objectKey, err := s.loadFileRecord(fileID, user.ID)
+	if !user.IsActive && user.Role != connectorRole {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	file, objectKey, err := s.loadFileRecord(r.Context(), fileID, user.ID)
 	if err != nil || file.ID != claims.FileID || file.FamilyID != claims.FamilyID || file.DeletedAt != nil ||
-		!isStreamableMediaMime(file.MimeType) || !s.fileVisibleToUser(file, user) {
+		!s.fileVisibleToUser(r.Context(), file, user) {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	// Media playback tokens are primarily for streamable media; connector download links may
+	// also use them for other MIME types scoped by connector policy.
+	if user.Role != connectorRole && !isStreamableMediaMime(file.MimeType) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -215,7 +222,11 @@ func (s *Server) handleStreamMediaPlaybackFile(w http.ResponseWriter, r *http.Re
 	}
 	defer handle.Close()
 	w.Header().Set("Content-Type", file.MimeType)
-	w.Header().Set("Content-Disposition", "inline")
+	if user.Role == connectorRole && !isStreamableMediaMime(file.MimeType) {
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename*=UTF-8''%s`, url.QueryEscape(file.OriginalName)))
+	} else {
+		w.Header().Set("Content-Disposition", "inline")
+	}
 	w.Header().Set("Accept-Ranges", "bytes")
 	http.ServeContent(w, r, "", time.Time{}, handle)
 }
@@ -236,8 +247,8 @@ func mediaPlaybackTokenFromRequest(r *http.Request) string {
 }
 
 func (s *Server) handleUpdateFilePreferences(w http.ResponseWriter, r *http.Request, user userPublic) {
-	file, _, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(file, user) {
+	file, _, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
+	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -250,13 +261,8 @@ func (s *Server) handleUpdateFilePreferences(w http.ResponseWriter, r *http.Requ
 		s.detail(w, http.StatusUnprocessableEntity, "isFavorite is required")
 		return
 	}
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `
-			INSERT INTO file_preferences (file_id, user_id, is_favorite)
-			VALUES (?, ?, ?)
-			ON CONFLICT (file_id, user_id) DO UPDATE SET is_favorite = EXCLUDED.is_favorite
-		`, file.ID, user.ID, *payload.IsFavorite)
-		return err
+	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
+		return s.store.UpsertFileFavorite(r.Context(), tx, file.ID, user.ID, *payload.IsFavorite)
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update file preferences")
 		return
@@ -266,8 +272,8 @@ func (s *Server) handleUpdateFilePreferences(w http.ResponseWriter, r *http.Requ
 }
 
 func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request, user userPublic) {
-	file, objectKey, err := s.loadFileRecord(fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(file, user) {
+	file, objectKey, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
+	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -275,9 +281,8 @@ func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request, user u
 		s.detail(w, http.StatusForbidden, "Only owner, admin, or uploader can delete")
 		return
 	}
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `UPDATE files SET deleted_at = ? WHERE id = ?`, nowString(), file.ID)
-		return err
+	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
+		return s.store.SoftDeleteFile(r.Context(), tx, file.ID, nowString())
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not delete file")
 		return
@@ -294,13 +299,13 @@ func deleteFileObjects(store storage.ObjectStore, objectKey string, thumbnailObj
 }
 
 func (s *Server) buildFilePublic(fileID, viewerID string) (filePublic, error) {
-	file, _, err := s.loadFileRecord(fileID, viewerID)
+	file, _, err := s.loadFileRecord(context.Background(), fileID, viewerID)
 	return file, err
 }
 
 func (s *Server) validateImageFileForFamily(fileID string, user userPublic, missingMessage string) error {
 	file, err := s.buildFilePublic(fileID, user.ID)
-	if err != nil || file.DeletedAt != nil || file.FamilyID != user.FamilyID || !s.fileVisibleToUser(file, user) {
+	if err != nil || file.DeletedAt != nil || file.FamilyID != user.FamilyID || !s.fileVisibleToUser(context.Background(), file, user) {
 		return newStatusError(http.StatusNotFound, missingMessage)
 	}
 	if !strings.HasPrefix(file.MimeType, "image/") {
@@ -312,89 +317,59 @@ func (s *Server) validateImageFileForFamily(fileID string, user userPublic, miss
 	return nil
 }
 
-func (s *Server) loadFileRecord(fileID, viewerID string) (filePublic, string, error) {
-	row := s.queryRow(`
-		SELECT f.id, f.family_id, f.uploaded_by, f.chat_id, c.title, c.type, ma.message_id, f.access_scope, f.storage_provider,
-		       f.object_key, f.thumbnail_object_key, f.original_name, f.mime_type, f.size_bytes, f.checksum, f.created_at, f.deleted_at,
-		       fp.is_favorite
-		FROM files f
-		LEFT JOIN chats c ON c.id = f.chat_id
-		LEFT JOIN message_attachments ma ON ma.file_id = f.id
-		LEFT JOIN file_preferences fp ON fp.file_id = f.id AND fp.user_id = ?
-		WHERE f.id = ?
-	`, viewerID, fileID)
-	var file filePublic
-	var chatID, chatTitle, chatType, originMessageID, thumbnailObjectKey, checksum, deletedAt sql.NullString
-	var favorite sql.NullBool
-	var objectKey string
-	var createdAt string
-	if err := row.Scan(
-		&file.ID,
-		&file.FamilyID,
-		&file.UploadedBy,
-		&chatID,
-		&chatTitle,
-		&chatType,
-		&originMessageID,
-		&file.AccessScope,
-		&file.StorageProvider,
-		&objectKey,
-		&thumbnailObjectKey,
-		&file.OriginalName,
-		&file.MimeType,
-		&file.SizeBytes,
-		&checksum,
-		&createdAt,
-		&deletedAt,
-		&favorite,
-	); err != nil {
-		return filePublic{}, "", err
+func filePublicFromDetail(d *repository.FileDetail) (filePublic, string) {
+	f := d.File
+	file := filePublic{
+		ID:                 f.ID,
+		FamilyID:           f.FamilyID,
+		UploadedBy:         f.UploadedBy,
+		ChatID:             f.ChatID,
+		ChatTitle:          d.ChatTitle,
+		ChatType:           d.ChatType,
+		OriginMessageID:    d.OriginMessageID,
+		AccessScope:        f.AccessScope,
+		StorageProvider:    f.StorageProvider,
+		ThumbnailObjectKey: f.ThumbnailObjectKey,
+		OriginalName:       f.OriginalName,
+		MimeType:           f.MimeType,
+		SizeBytes:          int64(f.SizeBytes),
+		Checksum:           f.Checksum,
+		CreatedAt:          parseTime(f.CreatedAt),
+		IsFavorite:         d.IsFavorite,
 	}
-	file.ChatID = stringPtrFromNull(chatID)
-	file.ChatTitle = stringPtrFromNull(chatTitle)
-	file.ChatType = stringPtrFromNull(chatType)
-	file.OriginMessageID = stringPtrFromNull(originMessageID)
-	file.ThumbnailObjectKey = stringPtrFromNull(thumbnailObjectKey)
-	file.Checksum = stringPtrFromNull(checksum)
-	file.CreatedAt = parseTime(createdAt)
-	if deletedAt.Valid {
-		deleted := parseTime(deletedAt.String)
+	if f.DeletedAt != nil {
+		deleted := parseTime(*f.DeletedAt)
 		file.DeletedAt = &deleted
 	}
-	file.IsFavorite = boolFromNull(favorite)
+	return file, f.ObjectKey
+}
+
+func (s *Server) loadFileRecord(ctx context.Context, fileID, viewerID string) (filePublic, string, error) {
+	detail, err := s.store.LoadFileDetail(ctx, fileID, viewerID)
+	if err != nil {
+		return filePublic{}, "", err
+	}
+	file, objectKey := filePublicFromDetail(detail)
 	return file, objectKey, nil
 }
 
-func (s *Server) fileVisibleToUser(file filePublic, user userPublic) bool {
+func (s *Server) fileVisibleToUser(ctx context.Context, file filePublic, user userPublic) bool {
 	if file.FamilyID != user.FamilyID {
 		return false
 	}
 	if file.ChatID == nil {
 		return true
 	}
-	row := s.queryRow(`SELECT media_visibility FROM chats WHERE id = ?`, *file.ChatID)
-	var mediaVisibility string
-	if err := row.Scan(&mediaVisibility); err != nil {
+	mediaVisibility, err := s.store.ChatMediaVisibility(ctx, *file.ChatID)
+	if err != nil {
 		return false
 	}
 	if mediaVisibility == "family" {
 		return true
 	}
-	memberRow := s.queryRow(`
-		SELECT COUNT(*)
-		FROM chat_members
-		WHERE chat_id = ? AND user_id = ?
-	`, *file.ChatID, user.ID)
-	var count int
-	if err := memberRow.Scan(&count); err != nil {
+	member, err := s.store.IsChatMember(ctx, *file.ChatID, user.ID)
+	if err != nil {
 		return false
 	}
-	return count > 0
-}
-
-func nullIfEmpty(value string) any {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return value
+	return member
 }

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"family-messenger/backend/internal/repository"
+
 	"github.com/google/uuid"
 )
 
@@ -339,17 +341,23 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		ExpiresAt:    now.Add(s.callTimeout),
 	}
 	s.indexCallSession(session)
-	if s.db != nil {
-		go func(sess *callSession) {
-			ctx := context.Background()
-			s.exec(`INSERT INTO call_sessions (id, chat_id, caller_id, callee_id, call_type, topology, state, created_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-				ON CONFLICT (id) DO NOTHING`,
-				sess.ID, sess.ChatID, sess.CallerUserID, sess.CalleeUserID, sess.CallType, string(sess.Topology), string(sess.State))
+	go func(sess *callSession) {
+		ctx := context.Background()
+		if s.store != nil {
+			_ = s.store.CreateCallSession(ctx, repository.CreateCallSessionParams{
+				ID:        sess.ID,
+				ChatID:    sess.ChatID,
+				CallerID:  sess.CallerUserID,
+				CalleeID:  sess.CalleeUserID,
+				CallType:  sess.CallType,
+				Topology:  string(sess.Topology),
+				State:     string(sess.State),
+				CreatedAt: sess.CreatedAt,
+			})
 			s.persistCallParticipants(ctx, sess)
-			s.persistCallSession(ctx, sess, 60*time.Second)
-		}(session)
-	}
+		}
+		s.persistCallSession(ctx, sess, 60*time.Second)
+	}(session)
 	return session, nil
 }
 
@@ -393,16 +401,54 @@ func (s *Server) getCallSessionByRoom(roomID string) (*callSession, bool) {
 
 func (s *Server) resolveCallSession(chatID, roomID string) (*callSession, bool) {
 	s.callMu.Lock()
-	defer s.callMu.Unlock()
 	if roomID != "" {
 		if session, ok := s.callByRoom[roomID]; ok {
+			s.callMu.Unlock()
 			return session, true
 		}
 	}
 	if chatID != "" {
 		if session, ok := s.callByChat[chatID]; ok {
+			s.callMu.Unlock()
 			return session, true
 		}
+	}
+	s.callMu.Unlock()
+
+	// Memory miss: Redis is live call-state authority across instances.
+	lookupIDs := make([]string, 0, 2)
+	if roomID != "" {
+		lookupIDs = append(lookupIDs, roomID)
+	}
+	if chatID != "" && chatID != roomID {
+		lookupIDs = append(lookupIDs, chatID)
+	}
+	ctx := context.Background()
+	for _, id := range lookupIDs {
+		loaded := s.loadCallSessionFromRedis(ctx, id)
+		if loaded == nil {
+			continue
+		}
+		s.callMu.Lock()
+		if roomID != "" {
+			if existing, ok := s.callByRoom[roomID]; ok {
+				s.callMu.Unlock()
+				return existing, true
+			}
+		}
+		if chatID != "" {
+			if existing, ok := s.callByChat[chatID]; ok {
+				s.callMu.Unlock()
+				return existing, true
+			}
+		}
+		if existing, ok := s.callByRoom[loaded.ID]; ok {
+			s.callMu.Unlock()
+			return existing, true
+		}
+		s.indexCallSession(loaded)
+		s.callMu.Unlock()
+		return loaded, true
 	}
 	return nil, false
 }
@@ -420,7 +466,9 @@ func (s *Server) setCallSessionState(chatID string, state callState) (*callSessi
 	}
 	go func(sess *callSession, st callState) {
 		ctx := context.Background()
-		s.exec(`UPDATE call_sessions SET state = ? WHERE id = ?`, string(st), sess.ID)
+		if s.store != nil {
+			_ = s.store.UpdateCallSessionState(ctx, sess.ID, string(st))
+		}
 		ttl := 60 * time.Second
 		if st == callStateConnecting || st == callStateConnected {
 			ttl = 3600 * time.Second
@@ -528,11 +576,10 @@ func (s *Server) maybePromoteToSFULocked(session *callSession) (bool, error) {
 	}
 	session.Topology = callTopologySFU
 	go func(sess *callSession) {
-		if s.db == nil {
-			return
-		}
 		ctx := context.Background()
-		s.exec(`UPDATE call_sessions SET topology = ? WHERE id = ?`, string(callTopologySFU), sess.ID)
+		if s.store != nil {
+			_ = s.store.UpdateCallSessionTopology(ctx, sess.ID, string(callTopologySFU))
+		}
 		s.persistCallSession(ctx, sess, 3600*time.Second)
 	}(session)
 	return true, nil
@@ -574,18 +621,18 @@ func (s *Server) recordCallHistory(session *callSession, reason string) {
 	}
 	messageID := uuid.NewString()
 	now := nowString()
-	if _, err := s.exec(`
-		INSERT INTO messages (id, chat_id, sender_id, type, content, encryption_protocol, encryption_metadata, message_kind, created_at, updated_at)
-		VALUES (?, ?, ?, 'call', NULL, 'legacy_plaintext', ?, 'chat', ?, ?)
-	`, messageID, session.ChatID, session.CallerUserID, string(metadata), now, now); err != nil {
-		s.logger.Warnf("realtime.call", "call history insert failed chat_id=%s error=%v", session.ChatID, err)
-		return
-	}
-	if _, err := s.exec(`INSERT INTO message_statuses (message_id, user_id, status, created_at) VALUES (?, ?, 'sent', ?)`, messageID, session.CallerUserID, now); err != nil {
-		s.logger.Warnf("realtime.call", "call history status insert failed message_id=%s error=%v", messageID, err)
-	}
-	if _, err := s.exec(`UPDATE chats SET updated_at = ? WHERE id = ?`, now, session.ChatID); err != nil {
-		s.logger.Warnf("realtime.call", "call history chat update failed chat_id=%s error=%v", session.ChatID, err)
+	if s.store != nil {
+		if err := s.store.RecordCallHistory(context.Background(), repository.RecordCallHistoryParams{
+			MessageID:          messageID,
+			ChatID:             session.ChatID,
+			SenderID:           session.CallerUserID,
+			EncryptionMetadata: string(metadata),
+			CreatedAt:          now,
+			UpdatedAt:          now,
+		}); err != nil {
+			s.logger.Warnf("realtime.call", "call history insert failed chat_id=%s error=%v", session.ChatID, err)
+			return
+		}
 	}
 	s.bumpChatHistoryRevision(context.Background(), session.ChatID)
 	caller, err := s.getUserByID(session.CallerUserID)
@@ -614,15 +661,15 @@ func (s *Server) endCallSession(chatID string) (*callSession, bool) {
 		return nil, false
 	}
 	s.unindexCallSession(session)
-	if s.db != nil {
-		go func(sess *callSession) {
-			ctx := context.Background()
+	go func(sess *callSession) {
+		ctx := context.Background()
+		if s.store != nil {
 			dur := int(time.Since(sess.CreatedAt).Seconds())
-			s.exec(`UPDATE call_sessions SET state = 'ended', ended_at = NOW(), duration_s = ? WHERE id = ?`, dur, sess.ID)
-			s.deleteCallSession(ctx, sess.ID)
-			s.deleteCallSession(ctx, sess.ChatID)
-		}(session)
-	}
+			_ = s.store.EndCallSession(ctx, sess.ID, dur, time.Now().UTC())
+		}
+		s.deleteCallSession(ctx, sess.ID)
+		s.deleteCallSession(ctx, sess.ChatID)
+	}(session)
 	return session, true
 }
 
@@ -637,19 +684,21 @@ func (s *Server) leaveCallSession(chatID, userID string) (*callSession, bool, bo
 	ended := !session.hasLiveParticipants()
 	if ended {
 		s.unindexCallSession(session)
-		if s.db != nil {
-			go func(sess *callSession) {
-				ctx := context.Background()
-				dur := int(time.Since(sess.CreatedAt).Seconds())
-				s.exec(`UPDATE call_sessions SET state = 'ended', ended_at = NOW(), duration_s = ? WHERE id = ?`, dur, sess.ID)
-				s.deleteCallSession(ctx, sess.ID)
-				s.deleteCallSession(ctx, sess.ChatID)
-			}(session)
-		}
-	} else if s.db != nil {
 		go func(sess *callSession) {
 			ctx := context.Background()
-			s.persistCallParticipants(ctx, sess)
+			if s.store != nil {
+				dur := int(time.Since(sess.CreatedAt).Seconds())
+				_ = s.store.EndCallSession(ctx, sess.ID, dur, time.Now().UTC())
+			}
+			s.deleteCallSession(ctx, sess.ID)
+			s.deleteCallSession(ctx, sess.ChatID)
+		}(session)
+	} else {
+		go func(sess *callSession) {
+			ctx := context.Background()
+			if s.store != nil {
+				s.persistCallParticipants(ctx, sess)
+			}
 			s.persistCallSession(ctx, sess, 3600*time.Second)
 		}(session)
 	}
@@ -767,20 +816,24 @@ func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time, callerN
 }
 
 func (s *Server) persistCallParticipants(ctx context.Context, session *callSession) {
-	if s.db == nil || session == nil {
+	if s.store == nil || session == nil {
 		return
 	}
 	for _, p := range session.Participants {
 		if p == nil {
 			continue
 		}
-		joined := interface{}(nil)
+		var joinedAt *time.Time
 		if !p.JoinedAt.IsZero() {
-			joined = p.JoinedAt.UTC()
+			t := p.JoinedAt.UTC()
+			joinedAt = &t
 		}
-		s.exec(`INSERT INTO call_participants (room_id, user_id, role, state, joined_at)
-			VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT (room_id, user_id) DO UPDATE SET role = EXCLUDED.role, state = EXCLUDED.state, joined_at = COALESCE(EXCLUDED.joined_at, call_participants.joined_at)`,
-			session.ID, p.UserID, p.Role, string(p.State), joined)
+		_ = s.store.UpsertCallParticipant(ctx, repository.UpsertCallParticipantParams{
+			RoomID:   session.ID,
+			UserID:   p.UserID,
+			Role:     p.Role,
+			State:    string(p.State),
+			JoinedAt: joinedAt,
+		})
 	}
 }

@@ -1,0 +1,461 @@
+import { RefObject } from "react";
+import { MessageCircle, X } from "lucide-react";
+
+import type { User } from "../../../api/auth";
+import type { Chat } from "../../../api/chats";
+import type { FamilyFile } from "../../../api/files";
+import { Composer } from "../composer/Composer";
+import type { CallPhase } from "../shared/types";
+import { messageActionSummary } from "../shared/messagePresentation";
+import { ChatHeader } from "./ChatHeader";
+import { MessageContextMenu } from "./MessageContextMenu";
+import { MessageDialogs } from "./MessageDialogs";
+import { MessageList } from "./MessageList";
+import type { ComposerController, ConversationController } from "./types";
+
+export type ConversationPanelProps = {
+  thread: ConversationController;
+  composer: ComposerController;
+  accessToken: string | null;
+  currentUser: User | null;
+  selectedChat: Chat | null;
+  chats: Chat[];
+  memberLookup: Map<string, { displayName: string; username?: string }>;
+  isChatLoading: boolean;
+  typingNames: string[];
+  callPhase: CallPhase;
+  activeCallChatId: string | null;
+  isChatMenuOpen: boolean;
+  chatMenuRef: RefObject<HTMLDivElement | null>;
+  onToggleChatMenu: () => void;
+  onBack: () => void;
+  onOpenDetails: () => void;
+  onStartAudioCall: () => void;
+  onStartVideoCall: () => void;
+  onMarkRead: () => void;
+  onTogglePinned: () => void;
+  onToggleMuted: () => void;
+  onToggleFavorite: () => void;
+  channelCommentsDisabledForViewer: boolean;
+  missingCommentThread: boolean;
+  canPostInSelectedChannel: boolean;
+  resolvedThemeMode: "light" | "dark";
+  videoAutoplay: boolean;
+  renderMarkdown: boolean;
+  isDockedEmojiPicker: boolean;
+  showDockedEmojiPicker: boolean;
+  onOpenChat: (chat: Chat) => void;
+  onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
+  onOpenNewChat: () => void;
+};
+
+export function ConversationPanel({
+  thread,
+  composer,
+  accessToken,
+  currentUser,
+  selectedChat,
+  chats,
+  memberLookup,
+  isChatLoading,
+  typingNames,
+  callPhase,
+  activeCallChatId,
+  isChatMenuOpen,
+  chatMenuRef,
+  onToggleChatMenu,
+  onBack,
+  onOpenDetails,
+  onStartAudioCall,
+  onStartVideoCall,
+  onMarkRead,
+  onTogglePinned,
+  onToggleMuted,
+  onToggleFavorite,
+  channelCommentsDisabledForViewer,
+  missingCommentThread,
+  canPostInSelectedChannel,
+  resolvedThemeMode,
+  videoAutoplay,
+  renderMarkdown,
+  isDockedEmojiPicker,
+  showDockedEmojiPicker,
+  onOpenChat,
+  onOpenImage,
+  onOpenNewChat
+}: ConversationPanelProps) {
+  const {
+    messages,
+    visibleMessages,
+    threadRootMessage,
+    threadRootMessageId,
+    setThreadRootMessageId,
+    messageSearch,
+    setMessageSearch,
+    isMessageSearchOpen,
+    wholeWordSearch,
+    setWholeWordSearch,
+    caseSensitiveSearch,
+    setCaseSensitiveSearch,
+    openMessageSearch,
+    toggleMessageSearch,
+    closeMessageSearch,
+    showScrollToBottom,
+    pendingNewBelowCount,
+    selectedMessageIds,
+    isMessageSelectionMode,
+    clearSelectedMessages,
+    replyTarget,
+    setReplyTarget,
+    forwardTarget,
+    setForwardTarget,
+    editTargetMessage,
+    swipeReplyState,
+    pinnedMessages,
+    pinIndex,
+    deleteTarget,
+    setDeleteTarget,
+    deleteForMe,
+    setDeleteForMe,
+    deleteForEveryone,
+    setDeleteForEveryone,
+    messageContextMenu,
+    setMessageContextMenu,
+    copySheetContent,
+    setCopySheetContent,
+    computeContextMenuSeenBy,
+    messagesPanelRef,
+    focusMessageInPanel,
+    handleHistoryScroll,
+    scrollMessagesToBottom,
+    openPinnedMessages,
+    handleReplyToMessage,
+    handleConfirmDelete,
+    handleForwardMessage,
+    handlePinMessage,
+    handleUnpinMessage,
+    handleArchiveMessage,
+    handleMessageReaction,
+    handleOpenThread,
+    handleMessageBubbleClick,
+    openMessageContextMenu,
+    beginSwipeReplyGesture,
+    handleSwipeReplyMove,
+    endSwipeReplyGesture,
+    threadReplyCounts
+  } = thread;
+
+  const {
+    composer: composerText,
+    formattingToolbarAnchor,
+    pendingAttachments,
+    composerIsMultiline,
+    setComposerEnlargeOpen,
+    isAttachmentSheetOpen,
+    setIsAttachmentSheetOpen,
+    isEmojiPickerOpen,
+    isVoiceRecording,
+    isUploading,
+    isSendingMessage,
+    composerInputRef,
+    composerFormattingSelectionRef,
+    attachmentInputRef,
+    galleryAttachmentInputRef,
+    cameraAttachmentInputRef,
+    audioAttachmentInputRef,
+    documentAttachmentInputRef,
+    emojiPickerRef,
+    emojiPickerDockRef,
+    updateComposerFormattingSelection,
+    toggleEmojiPicker,
+    handleComposerChange,
+    handleComposerKeyDown,
+    handleAttachButtonClick,
+    handleAttachmentSheetPick,
+    handleFileSelect,
+    removePendingAttachment,
+    handleComposerCut,
+    handleComposerCopy,
+    handleComposerPaste,
+    handleComposerFormat,
+    handleComposerEmojiPick,
+    handleComposerFocus,
+    handleEditMessage,
+    cancelEditMode,
+    handleSendMessage,
+    handleVoicePressStart,
+    handleVoicePressEnd,
+    handleVoicePressCancel
+  } = composer;
+
+  if (!selectedChat) {
+    return (
+      <div className="empty-state chat-empty-state">
+        <MessageCircle aria-hidden="true" size={42} />
+        <strong>Select a chat</strong>
+        <p>Choose a conversation on the left, or start a new small-circle chat.</p>
+        <button type="button" onClick={onOpenNewChat}>
+          New message
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ChatHeader
+        accessToken={accessToken}
+        currentUser={currentUser}
+        selectedChat={selectedChat}
+        typingNames={typingNames}
+        callPhase={callPhase}
+        activeCallChatId={activeCallChatId}
+        isChatMenuOpen={isChatMenuOpen}
+        chatMenuRef={chatMenuRef}
+        onToggleChatMenu={onToggleChatMenu}
+        onBack={onBack}
+        onOpenDetails={onOpenDetails}
+        onStartAudioCall={onStartAudioCall}
+        onStartVideoCall={onStartVideoCall}
+        isMessageSearchOpen={isMessageSearchOpen}
+        onToggleMessageSearch={toggleMessageSearch}
+        onOpenMessageSearch={openMessageSearch}
+        onMarkRead={onMarkRead}
+        onTogglePinned={onTogglePinned}
+        onToggleMuted={onToggleMuted}
+        onToggleFavorite={onToggleFavorite}
+      />
+      {isMessageSearchOpen && (
+        <div className="search-field message-search-field" role="search">
+          <span className="ms-icon ms-icon--20" aria-hidden={true}>
+            search
+          </span>
+          <input
+            autoFocus
+            aria-label="Search this chat"
+            placeholder="Search this chat"
+            value={messageSearch}
+            onChange={(event) => setMessageSearch(event.target.value)}
+          />
+          <button
+            type="button"
+            className="message-search-option"
+            aria-label="Match whole words"
+            aria-pressed={wholeWordSearch}
+            title="Match whole words"
+            onClick={() => setWholeWordSearch((value) => !value)}
+          >
+            W
+          </button>
+          <button
+            type="button"
+            className="message-search-option"
+            aria-label="Match case"
+            aria-pressed={caseSensitiveSearch}
+            title="Match case"
+            onClick={() => setCaseSensitiveSearch((value) => !value)}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 9 5l5 13M6 13h6M14 18l3-8 3 8M15.3 14h3.4" /></svg>
+          </button>
+          <span className="message-search-results" aria-live="polite">{visibleMessages.length} results</span>
+          <button
+            type="button"
+            className="message-search-option message-search-close"
+            aria-label="Close message search"
+            onClick={closeMessageSearch}
+          >
+            <span className="ms-icon ms-icon--20" aria-hidden={true}>
+              close
+            </span>
+          </button>
+        </div>
+      )}
+      {isMessageSelectionMode && (
+        <div className="message-selection-banner" role="status" aria-live="polite">
+          <span>
+            {selectedMessageIds.length} message{selectedMessageIds.length === 1 ? "" : "s"} selected
+          </span>
+          <button
+            type="button"
+            className="icon-button subtle"
+            aria-label="Exit message selection mode"
+            onClick={clearSelectedMessages}
+          >
+            <X aria-hidden="true" size={18} />
+          </button>
+        </div>
+      )}
+      {pinnedMessages.length > 0 && (
+        <div className="pinned-banner" role="status">
+          <button
+            type="button"
+            className="pinned-banner-click-area"
+            aria-label="Go to pinned message"
+            onClick={openPinnedMessages}
+          >
+            <span className="pinned-banner-eyebrow" aria-live="polite">
+              {pinnedMessages.length === 1
+                ? "Pinned message"
+                : `Pinned message · ${pinnedMessages.length - pinIndex} of ${pinnedMessages.length}`}
+            </span>
+            <span className="pinned-banner-preview">
+              {messageActionSummary(
+                pinnedMessages[pinIndex]?.message ?? pinnedMessages[0].message
+              )}
+            </span>
+          </button>
+        </div>
+      )}
+      <MessageList
+        accessToken={accessToken}
+        currentUser={currentUser}
+        selectedChat={selectedChat}
+        chats={chats}
+        messages={messages}
+        visibleMessages={visibleMessages}
+        threadRootMessage={threadRootMessage}
+        threadRootMessageId={threadRootMessageId}
+        memberLookup={memberLookup}
+        isChatLoading={isChatLoading}
+        videoAutoplay={videoAutoplay}
+        renderMarkdown={renderMarkdown}
+        callActive={callPhase !== "idle"}
+        messageSearchActive={Boolean(messageSearch.trim())}
+        selectedMessageIds={selectedMessageIds}
+        isMessageSelectionMode={isMessageSelectionMode}
+        swipeReplyState={swipeReplyState}
+        threadReplyCounts={threadReplyCounts}
+        showScrollToBottom={showScrollToBottom}
+        pendingNewBelowCount={pendingNewBelowCount}
+        messagesPanelRef={messagesPanelRef}
+        showDockedEmojiPicker={showDockedEmojiPicker}
+        onScroll={handleHistoryScroll}
+        onScrollToBottomClick={() => scrollMessagesToBottom("smooth")}
+        onBackFromThread={() => {
+          setThreadRootMessageId(null);
+          setReplyTarget(null);
+        }}
+        onBubbleClick={handleMessageBubbleClick}
+        onContextMenu={openMessageContextMenu}
+        onSwipePointerDown={(event, message) => beginSwipeReplyGesture(event, message, missingCommentThread)}
+        onSwipePointerMove={handleSwipeReplyMove}
+        onSwipePointerUp={(event, message) => endSwipeReplyGesture(event, message)}
+        onSwipePointerCancel={(event, message) => endSwipeReplyGesture(event, message, { commit: false })}
+        onOpenImage={onOpenImage}
+        onFocusRepliedMessage={(messageId) =>
+          focusMessageInPanel({ messageId, highlightClassName: "message-context-flash" })
+        }
+        onOpenOriginChat={onOpenChat}
+        onReact={(message, emoji) => void handleMessageReaction(message, emoji)}
+        onOpenThread={(message) => void handleOpenThread(message)}
+      />
+      {messageContextMenu && (
+        <MessageContextMenu
+          menu={messageContextMenu}
+          currentUser={currentUser}
+          selectedChat={selectedChat}
+          channelCommentsDisabledForViewer={channelCommentsDisabledForViewer}
+          isPinned={pinnedMessages.some((p) => p.messageId === messageContextMenu.message.id)}
+          seenBy={computeContextMenuSeenBy(memberLookup)}
+          onReact={(emoji) => {
+            setMessageContextMenu(null);
+            void handleMessageReaction(messageContextMenu.message, emoji);
+          }}
+          onReply={() => handleReplyToMessage(messageContextMenu.message)}
+          onCopy={() => {
+            setCopySheetContent(messageContextMenu.message.content ?? "");
+            setMessageContextMenu(null);
+          }}
+          onTogglePin={() => {
+            if (pinnedMessages.some((p) => p.messageId === messageContextMenu.message.id)) {
+              void handleUnpinMessage(messageContextMenu.message);
+            } else {
+              void handlePinMessage(messageContextMenu.message);
+            }
+          }}
+          onForward={() => {
+            setForwardTarget(messageContextMenu.message);
+            setMessageContextMenu(null);
+          }}
+          onArchive={() => void handleArchiveMessage(messageContextMenu.message)}
+          onEdit={() => handleEditMessage(messageContextMenu.message)}
+          onDelete={() => {
+            setDeleteForMe(true);
+            setDeleteForEveryone(true);
+            setDeleteTarget(messageContextMenu.message);
+            setMessageContextMenu(null);
+          }}
+        />
+      )}
+      <Composer
+        accessToken={accessToken}
+        selectedChat={selectedChat}
+        resolvedThemeMode={resolvedThemeMode}
+        channelCommentsDisabledForViewer={channelCommentsDisabledForViewer}
+        missingCommentThread={missingCommentThread}
+        canPostInSelectedChannel={canPostInSelectedChannel}
+        replyTarget={replyTarget}
+        onCancelReply={() => setReplyTarget(null)}
+        editTargetMessage={editTargetMessage}
+        onCancelEdit={cancelEditMode}
+        composer={composerText}
+        onComposerChange={handleComposerChange}
+        onComposerKeyDown={handleComposerKeyDown}
+        onComposerFocus={handleComposerFocus}
+        onComposerSelectionUpdate={updateComposerFormattingSelection}
+        onComposerFormat={handleComposerFormat}
+        onComposerCut={handleComposerCut}
+        onComposerCopy={handleComposerCopy}
+        onComposerPaste={handleComposerPaste}
+        composerInputRef={composerInputRef}
+        composerFormattingSelectionRef={composerFormattingSelectionRef}
+        formattingToolbarAnchor={formattingToolbarAnchor}
+        composerIsMultiline={composerIsMultiline}
+        onEnlargeComposer={() => setComposerEnlargeOpen(true)}
+        pendingAttachments={pendingAttachments}
+        onRemovePendingAttachment={removePendingAttachment}
+        isAttachmentSheetOpen={isAttachmentSheetOpen}
+        onAttachButtonClick={handleAttachButtonClick}
+        onAttachmentSheetPick={handleAttachmentSheetPick}
+        onCloseAttachmentSheet={() => setIsAttachmentSheetOpen(false)}
+        onFileSelect={handleFileSelect}
+        attachmentInputRef={attachmentInputRef}
+        galleryAttachmentInputRef={galleryAttachmentInputRef}
+        cameraAttachmentInputRef={cameraAttachmentInputRef}
+        audioAttachmentInputRef={audioAttachmentInputRef}
+        documentAttachmentInputRef={documentAttachmentInputRef}
+        isEmojiPickerOpen={isEmojiPickerOpen}
+        emojiPickerRef={emojiPickerRef}
+        emojiPickerDockRef={emojiPickerDockRef}
+        isDockedEmojiPicker={isDockedEmojiPicker}
+        showDockedEmojiPicker={showDockedEmojiPicker}
+        onToggleEmojiPicker={toggleEmojiPicker}
+        onEmojiPick={handleComposerEmojiPick}
+        isUploading={isUploading}
+        isSendingMessage={isSendingMessage}
+        isVoiceRecording={isVoiceRecording}
+        onVoicePressStart={(event) => void handleVoicePressStart(event)}
+        onVoicePressEnd={(event) => void handleVoicePressEnd(event)}
+        onVoicePressCancel={handleVoicePressCancel}
+        onSubmit={handleSendMessage}
+      />
+      <MessageDialogs
+        accessToken={accessToken}
+        currentUserId={currentUser?.id}
+        chats={chats}
+        forwardTarget={forwardTarget}
+        onForwardMessage={(targetChatId) => void handleForwardMessage(targetChatId, chats)}
+        onCloseForward={() => setForwardTarget(null)}
+        deleteTarget={deleteTarget}
+        deleteForMe={deleteForMe}
+        deleteForEveryone={deleteForEveryone}
+        onDeleteForMeChange={setDeleteForMe}
+        onDeleteForEveryoneChange={setDeleteForEveryone}
+        onConfirmDelete={() => void handleConfirmDelete()}
+        onCloseDelete={() => setDeleteTarget(null)}
+        copySheetContent={copySheetContent}
+        onCloseCopySheet={() => setCopySheetContent(null)}
+      />
+    </>
+  );
+}

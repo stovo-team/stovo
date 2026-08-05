@@ -3212,7 +3212,6 @@ export default function ChatsPage() {
                 </span>
                 <div>
                   <p className="eyebrow">{family?.name ?? "Stovo"}</p>
-                  <h1>Chats</h1>
                 </div>
                 <div className="sidebar-actions">
                   <button

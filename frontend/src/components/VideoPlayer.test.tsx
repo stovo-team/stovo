@@ -382,7 +382,7 @@ describe("VideoPlayer", () => {
     roots.splice(roots.indexOf(root), 1);
   });
 
-  it("sizes portrait videos to the landscape bubble width without a landscape height cap", async () => {
+  it("sizes portrait videos to fill their bubble without a landscape height cap", async () => {
     expect(orientationStyle(720, 1280)).toMatchObject({
       aspectRatio: "720 / 1280",
       width: "100%",

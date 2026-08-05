@@ -118,6 +118,9 @@ Start the full stack from the repository root:
 docker compose up --build
 ```
 
+Local compose starts a single backend (`backend-blue`). The second color
+(`backend-green`, profile `bluegreen`) is only started by deploy cutovers.
+
 ### Migrating Existing Local Uploads
 
 After MinIO starts and before removing the legacy `uploads` directory, run the checksum-verified migration while uploads are paused:

@@ -27,12 +27,24 @@ const tileStyle: CSSProperties = {
   aspectRatio: "4 / 3",
 };
 
+const presenterTileStyle: CSSProperties = {
+  ...tileStyle,
+  aspectRatio: "16 / 9",
+  minHeight: "180px",
+  gridColumn: "1 / -1",
+};
+
 const videoStyle: CSSProperties = {
   width: "100%",
   height: "100%",
   objectFit: "cover",
   display: "block",
   background: "#000",
+};
+
+const screenVideoStyle: CSSProperties = {
+  ...videoStyle,
+  objectFit: "contain",
 };
 
 const avatarStyle: CSSProperties = {
@@ -62,6 +74,56 @@ function initial(label: string): string {
   return t ? t.charAt(0).toUpperCase() : "?";
 }
 
+function bindStream(el: HTMLVideoElement | HTMLAudioElement | null, stream: MediaStream | null) {
+  if (el && stream && el.srcObject !== stream) {
+    el.srcObject = stream;
+  }
+}
+
+function ParticipantTile({
+  label,
+  stream,
+  showVideo,
+  mirror,
+  isScreen,
+  className,
+  style,
+}: {
+  label: string;
+  stream: MediaStream | null;
+  showVideo: boolean;
+  mirror?: boolean;
+  isScreen?: boolean;
+  className: string;
+  style: CSSProperties;
+}) {
+  return (
+    <div className={className} style={style}>
+      {showVideo && stream ? (
+        <video
+          className="call-grid__video"
+          style={{
+            ...(isScreen ? screenVideoStyle : videoStyle),
+            transform: mirror ? "scaleX(-1)" : undefined,
+          }}
+          autoPlay
+          playsInline
+          muted
+          ref={(el) => bindStream(el, stream)}
+        />
+      ) : (
+        <div className="call-grid__avatar" style={avatarStyle}>
+          {initial(label)}
+        </div>
+      )}
+      <span className="call-grid__label" style={labelStyle}>
+        {label}
+        {isScreen ? " · Screen" : ""}
+      </span>
+    </div>
+  );
+}
+
 export default function CallParticipantGrid({
   localStream,
   remoteMedia,
@@ -73,59 +135,70 @@ export default function CallParticipantGrid({
     callType === "video" &&
     Boolean(localStream?.getVideoTracks().some((t) => t.readyState !== "ended" && t.enabled));
 
+  const presenter = remoteMedia.find(
+    (m) =>
+      m.hasScreenShare &&
+      m.screenStream &&
+      m.screenStream.getVideoTracks().some((t) => t.readyState !== "ended"),
+  );
+  const isPresenting = Boolean(presenter);
+
   const count = 1 + remoteMedia.length;
   const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
 
   return (
     <div
-      className="call-grid"
-      style={{ ...gridStyle, gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+      className={`call-grid${isPresenting ? " call-grid--presenting" : ""}`}
+      style={{
+        ...gridStyle,
+        gridTemplateColumns: isPresenting
+          ? "repeat(auto-fit, minmax(120px, 1fr))"
+          : `repeat(${columns}, minmax(0, 1fr))`,
+      }}
     >
-      <div className="call-grid__tile call-grid__tile--local" style={tileStyle}>
-        {localHasVideo && localStream ? (
-          <video
-            className="call-grid__video"
-            style={{
-              ...videoStyle,
-              transform: mirrorLocal ? "scaleX(-1)" : undefined,
-            }}
-            autoPlay
-            playsInline
-            muted
-            ref={(el) => {
-              if (el && el.srcObject !== localStream) el.srcObject = localStream;
-            }}
-          />
-        ) : (
-          <div className="call-grid__avatar" style={avatarStyle}>
-            {initial(localUserLabel)}
-          </div>
-        )}
-        <span className="call-grid__label" style={labelStyle}>
-          {localUserLabel}
-        </span>
-      </div>
+      {presenter?.screenStream ? (
+        <ParticipantTile
+          className="call-grid__tile call-grid__tile--screen"
+          style={presenterTileStyle}
+          label={presenter.userId}
+          stream={presenter.screenStream}
+          showVideo
+          isScreen
+        />
+      ) : null}
+
+      <ParticipantTile
+        className="call-grid__tile call-grid__tile--local"
+        style={tileStyle}
+        label={localUserLabel}
+        stream={localStream}
+        showVideo={localHasVideo}
+        mirror={mirrorLocal}
+      />
 
       {remoteMedia.map((remote) => {
-        const showVideo =
+        const preferScreen =
+          !isPresenting &&
+          remote.hasScreenShare &&
+          Boolean(
+            remote.screenStream?.getVideoTracks().some((t) => t.readyState !== "ended"),
+          );
+        const cameraVideo =
           remote.hasVideo &&
           remote.stream.getVideoTracks().some((t) => t.readyState !== "ended");
+        const showVideo = preferScreen || cameraVideo;
+        const stream = preferScreen ? remote.screenStream : remote.stream;
+
         return (
-          <div
-            key={remote.userId}
-            className="call-grid__tile call-grid__tile--remote"
-            style={tileStyle}
-          >
-            {showVideo ? (
+          <div key={remote.userId} className="call-grid__tile call-grid__tile--remote" style={tileStyle}>
+            {showVideo && stream ? (
               <video
                 className="call-grid__video"
-                style={videoStyle}
+                style={preferScreen ? screenVideoStyle : videoStyle}
                 autoPlay
                 playsInline
                 muted
-                ref={(el) => {
-                  if (el && el.srcObject !== remote.stream) el.srcObject = remote.stream;
-                }}
+                ref={(el) => bindStream(el, stream)}
               />
             ) : (
               <div className="call-grid__avatar" style={avatarStyle}>
@@ -134,16 +207,13 @@ export default function CallParticipantGrid({
             )}
             <span className="call-grid__label" style={labelStyle}>
               {remote.userId}
+              {preferScreen ? " · Screen" : ""}
             </span>
-            {/* Audio plays via CallSessionController-managed elements; keep a hidden
-                track sink only if this tile is video-muted but has audio for debugging. */}
             {!showVideo && remote.hasAudio ? (
               <audio
                 className="call-grid__audio"
                 autoPlay
-                ref={(el) => {
-                  if (el && el.srcObject !== remote.stream) el.srcObject = remote.stream;
-                }}
+                ref={(el) => bindStream(el, remote.stream)}
               />
             ) : null}
           </div>

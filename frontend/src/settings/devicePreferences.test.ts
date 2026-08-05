@@ -28,12 +28,13 @@ describe("device preferences", () => {
   });
 
   it("persists a partial device preference update", () => {
-    writeDevicePreferences({ messagePreview: false, quietHoursStart: "21:30" });
+    writeDevicePreferences({ messagePreview: false, quietHoursStart: "21:30", appLockEnabled: true });
 
     expect(readDevicePreferences()).toMatchObject({
       messagePreview: false,
       quietHoursStart: "21:30",
-      quietHoursEnd: "07:00"
+      quietHoursEnd: "07:00",
+      appLockEnabled: true
     });
   });
 

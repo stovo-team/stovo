@@ -2,14 +2,15 @@ package app
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 	"time"
 
+	"family-messenger/backend/ent"
 	"family-messenger/backend/internal/cache"
+	"family-messenger/backend/internal/repository"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -24,10 +25,8 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	})
 }
 
-func (s *Server) handleHealthDB(w http.ResponseWriter, _ *http.Request) {
-	row := s.queryRow(`SELECT 1`)
-	var value int
-	if err := row.Scan(&value); err != nil {
+func (s *Server) handleHealthDB(w http.ResponseWriter, r *http.Request) {
+	if err := s.store.Ping(r.Context()); err != nil {
 		s.detail(w, http.StatusServiceUnavailable, "PostgreSQL health check failed")
 		return
 	}
@@ -42,9 +41,9 @@ func (s *Server) handleHealthRedis(w http.ResponseWriter, _ *http.Request) {
 	s.json(w, http.StatusOK, map[string]string{"status": "ok", "service": "redis"})
 }
 
-func (s *Server) handleSetupStatus(w http.ResponseWriter, _ *http.Request) {
-	var count int
-	if err := s.queryRow(`SELECT COUNT(*) FROM users WHERE is_active = 1`).Scan(&count); err != nil {
+func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
+	count, err := s.store.CountActiveUsers(r.Context())
+	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not load setup status")
 		return
 	}
@@ -72,8 +71,8 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var setupCount int
-	if err := s.queryRow(`SELECT COUNT(*) FROM users WHERE is_active = 1`).Scan(&setupCount); err != nil {
+	setupCount, err := s.store.CountActiveUsers(r.Context())
+	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not verify setup status")
 		return
 	}
@@ -98,44 +97,21 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `
-			INSERT INTO families (id, name, created_at, updated_at)
-			VALUES (?, ?, ?, ?)
-		`, familyID, payload.FamilyName, now, now); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO users (id, family_id, username, password_hash, display_name, role, is_active, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-		`, userID, familyID, payload.Username, passwordHash, payload.DisplayName, ownerRole, now); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO chats (id, family_id, type, title, created_by, media_visibility, encryption_protocol, created_at, updated_at)
-			VALUES (?, ?, 'family', ?, ?, 'family', 'end_to_end', ?, ?)
-		`, chatID, familyID, "General Family Chat", userID, now, now); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO chat_members (chat_id, user_id, created_at)
-			VALUES (?, ?, ?)
-		`, chatID, userID, now); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO chat_preferences (chat_id, user_id)
-			VALUES (?, ?)
-		`, chatID, userID); err != nil {
-			return err
-		}
-		if _, err := s.txExec(tx, `
-			INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at, ip_address)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, uuid.NewString(), userID, tokenHash, expiresAt, now, s.getClientIP(r)); err != nil {
-			return err
-		}
-		return nil
+	err = s.store.CompleteSetup(r.Context(), repository.SetupParams{
+		FamilyID:       familyID,
+		FamilyName:     payload.FamilyName,
+		UserID:         userID,
+		Username:       payload.Username,
+		PasswordHash:   passwordHash,
+		DisplayName:    payload.DisplayName,
+		Role:           ownerRole,
+		ChatID:         chatID,
+		ChatTitle:      "General Family Chat",
+		RefreshTokenID: uuid.NewString(),
+		TokenHash:      tokenHash,
+		ExpiresAt:      expiresAt,
+		CreatedAt:      now,
+		IPAddress:      s.getClientIP(r),
 	})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
@@ -185,7 +161,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, passwordHash, err := s.getUserForLogin(strings.TrimSpace(payload.Username))
+	user, passwordHash, err := s.getUserForLogin(r.Context(), strings.TrimSpace(payload.Username))
 	if err != nil || !verifyPassword(payload.Password, passwordHash) || !user.IsActive {
 		s.detail(w, http.StatusUnauthorized, "Invalid credentials")
 		return
@@ -196,12 +172,15 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		s.detail(w, http.StatusInternalServerError, "Could not create session")
 		return
 	}
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `
-			INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at, ip_address)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, uuid.NewString(), user.ID, tokenHash, expiresAt, nowString(), clientIP)
-		return err
+	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
+		return s.store.CreateRefreshToken(r.Context(), tx, repository.CreateRefreshTokenParams{
+			ID:        uuid.NewString(),
+			UserID:    user.ID,
+			TokenHash: tokenHash,
+			ExpiresAt: expiresAt,
+			CreatedAt: nowString(),
+			IPAddress: clientIP,
+		})
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not save session")
 		return
@@ -311,43 +290,21 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 		}
 	}
 
-	if err := s.withTx(r.Context(), func(tx *sql.Tx) error {
-		if displayName != nil {
-			if _, err := s.txExec(tx, `UPDATE users SET display_name = ? WHERE id = ?`, *displayName, user.ID); err != nil {
-				return err
-			}
+	params := repository.UpdateUserProfileParams{
+		DisplayName:         displayName,
+		PublicKey:           publicKey,
+		ProfileVisibility:   payload.ProfileVisibility,
+		LastSeenVisibility:  payload.LastSeenVisibility,
+		ReadReceiptsEnabled: payload.ReadReceiptsEnabled,
+	}
+	if profilePhotoFileID != nil {
+		if *profilePhotoFileID == "" {
+			params.ClearProfilePhoto = true
+		} else {
+			params.ProfilePhotoFileID = profilePhotoFileID
 		}
-		if publicKey != nil {
-			if _, err := s.txExec(tx, `UPDATE users SET public_key = ? WHERE id = ?`, *publicKey, user.ID); err != nil {
-				return err
-			}
-		}
-		if profilePhotoFileID != nil {
-			if *profilePhotoFileID == "" {
-				if _, err := s.txExec(tx, `UPDATE users SET profile_photo_file_id = NULL WHERE id = ?`, user.ID); err != nil {
-					return err
-				}
-			} else if _, err := s.txExec(tx, `UPDATE users SET profile_photo_file_id = ? WHERE id = ?`, *profilePhotoFileID, user.ID); err != nil {
-				return err
-			}
-		}
-		if payload.ProfileVisibility != nil {
-			if _, err := s.txExec(tx, `UPDATE users SET profile_visibility = ? WHERE id = ?`, *payload.ProfileVisibility, user.ID); err != nil {
-				return err
-			}
-		}
-		if payload.LastSeenVisibility != nil {
-			if _, err := s.txExec(tx, `UPDATE users SET last_seen_visibility = ? WHERE id = ?`, *payload.LastSeenVisibility, user.ID); err != nil {
-				return err
-			}
-		}
-		if payload.ReadReceiptsEnabled != nil {
-			if _, err := s.txExec(tx, `UPDATE users SET read_receipts_enabled = ? WHERE id = ?`, *payload.ReadReceiptsEnabled, user.ID); err != nil {
-				return err
-			}
-		}
-		return nil
-	}); err != nil {
+	}
+	if err := s.store.UpdateUserProfile(r.Context(), user.ID, params); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update profile")
 		return
 	}
@@ -360,49 +317,12 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 	s.json(w, http.StatusOK, updated)
 }
 
-func (s *Server) getUserForLogin(username string) (userPublic, string, error) {
-	row := s.queryRow(`
-		SELECT id, family_id, username, display_name, role, is_active, public_key, profile_photo_file_id, created_at, last_seen_at, profile_visibility, last_seen_visibility, read_receipts_enabled, password_hash
-		FROM users
-		WHERE lower(username) = lower(?)
-		LIMIT 1
-	`, username)
-
-	var user userPublic
-	var createdAt string
-	var publicKey, profilePhotoFileID, lastSeen sql.NullString
-	var active, readReceiptsEnabled bool
-	var passwordHash string
-	if err := row.Scan(
-		&user.ID,
-		&user.FamilyID,
-		&user.Username,
-		&user.DisplayName,
-		&user.Role,
-		&active,
-		&publicKey,
-		&profilePhotoFileID,
-		&createdAt,
-		&lastSeen,
-		&user.ProfileVisibility,
-		&user.LastSeenVisibility,
-		&readReceiptsEnabled,
-		&passwordHash,
-	); err != nil {
+func (s *Server) getUserForLogin(ctx context.Context, username string) (userPublic, string, error) {
+	u, err := s.store.UserByUsernameFold(ctx, username)
+	if err != nil {
 		return userPublic{}, "", err
 	}
-	created := parseTime(createdAt)
-	user.IsActive = active
-	user.ReadReceiptsEnabled = readReceiptsEnabled
-	user.PublicKey = stringPtrFromNull(publicKey)
-	if profilePhotoFileID.Valid {
-		if file, err := s.buildFilePublic(profilePhotoFileID.String, user.ID); err == nil && file.DeletedAt == nil {
-			user.ProfilePhoto = &file
-		}
-	}
-	user.CreatedAt = &created
-	user.LastSeenAt = timePtrFromNull(sql.NullTime{Time: parseTime(lastSeen.String), Valid: lastSeen.Valid})
-	return user, passwordHash, nil
+	return s.userPublicFromEnt(u), u.PasswordHash, nil
 }
 
 func (s *Server) issueRefreshToken(userID string) (raw string, hashed string, expiresAt string, err error) {
@@ -415,41 +335,33 @@ func (s *Server) issueRefreshToken(userID string) (raw string, hashed string, ex
 
 func (s *Server) rotateRefreshToken(ctx context.Context, rawToken string, ip string) (userPublic, string, error) {
 	hashed := tokenHash(s.cfg.RefreshTokenSecret, rawToken)
-	row := s.db.QueryRowContext(ctx, s.rebind(`
-		SELECT user_id, expires_at, revoked_at
-		FROM refresh_tokens
-		WHERE token_hash = ?
-	`), hashed)
-
-	var userID string
-	var expiresAt string
-	var revokedAt sql.NullString
-	if err := row.Scan(&userID, &expiresAt, &revokedAt); err != nil {
+	token, err := s.store.RefreshTokenByHash(ctx, hashed)
+	if err != nil {
 		return userPublic{}, "", errUnauthorized
 	}
-	if revokedAt.Valid || parseTime(expiresAt).Before(time.Now()) {
+	if token.RevokedAt != nil || parseTime(token.ExpiresAt).Before(time.Now()) {
 		return userPublic{}, "", errUnauthorized
 	}
 
-	nextRaw, nextHash, nextExpires, err := s.issueRefreshToken(userID)
+	nextRaw, nextHash, nextExpires, err := s.issueRefreshToken(token.UserID)
 	if err != nil {
 		return userPublic{}, "", err
 	}
 
-	if err := s.withTx(ctx, func(tx *sql.Tx) error {
-		if _, err := s.txExec(tx, `UPDATE refresh_tokens SET revoked_at = ? WHERE token_hash = ?`, nowString(), hashed); err != nil {
-			return err
-		}
-		_, err := s.txExec(tx, `
-			INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at, ip_address)
-			VALUES (?, ?, ?, ?, ?, ?)
-		`, uuid.NewString(), userID, nextHash, nextExpires, nowString(), ip)
-		return err
+	if err := s.store.RotateRefreshToken(ctx, repository.RotateRefreshTokenParams{
+		OldTokenHash: hashed,
+		NewID:        uuid.NewString(),
+		UserID:       token.UserID,
+		NewTokenHash: nextHash,
+		NewExpiresAt: nextExpires,
+		CreatedAt:    nowString(),
+		IPAddress:    ip,
+		RevokedAt:    nowString(),
 	}); err != nil {
 		return userPublic{}, "", err
 	}
 
-	user, err := s.getUserByID(userID)
+	user, err := s.getUserByID(token.UserID)
 	if err != nil || !user.IsActive {
 		return userPublic{}, "", errUnauthorized
 	}
@@ -459,15 +371,7 @@ func (s *Server) rotateRefreshToken(ctx context.Context, rawToken string, ip str
 
 func (s *Server) revokeRefreshToken(ctx context.Context, rawToken string) error {
 	hashed := tokenHash(s.cfg.RefreshTokenSecret, rawToken)
-	return s.withTx(ctx, func(tx *sql.Tx) error {
-		_, err := s.txExec(tx, `UPDATE refresh_tokens SET revoked_at = COALESCE(revoked_at, ?) WHERE token_hash = ?`, nowString(), hashed)
-		return err
-	})
-}
-
-func (s *Server) revokeUserSessions(ctx context.Context, tx *sql.Tx, userID string) error {
-	_, err := s.txExec(tx, `UPDATE refresh_tokens SET revoked_at = COALESCE(revoked_at, ?) WHERE user_id = ?`, nowString(), userID)
-	return err
+	return s.store.RevokeRefreshTokenByHash(ctx, hashed, nowString())
 }
 
 func applyNicknameRegistrationDefaults(familyName *string, username *string, displayName *string, nickname string) {
@@ -558,41 +462,36 @@ func defaultAudioSettings() audioCallSettings {
 	}
 }
 
-func (s *Server) handleGetAudioSettings(w http.ResponseWriter, _ *http.Request, user userPublic) {
-	var raw sql.NullString
-	err := s.queryRow(`SELECT audio_call_settings FROM users WHERE id = ?`, user.ID).Scan(&raw)
+func (s *Server) handleGetAudioSettings(w http.ResponseWriter, r *http.Request, user userPublic) {
+	raw, err := s.store.AudioCallSettings(r.Context(), user.ID)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not load audio settings")
 		return
 	}
-	if !raw.Valid || strings.TrimSpace(raw.String) == "" {
+	if raw == nil || strings.TrimSpace(*raw) == "" {
 		s.json(w, http.StatusOK, defaultAudioSettings())
 		return
 	}
 	var settings audioCallSettings
-	if err := json.Unmarshal([]byte(raw.String), &settings); err != nil {
+	if err := json.Unmarshal([]byte(*raw), &settings); err != nil {
 		s.json(w, http.StatusOK, defaultAudioSettings())
 		return
 	}
 	s.json(w, http.StatusOK, settings)
 }
 
-func (s *Server) handleGetNotificationTopic(w http.ResponseWriter, _ *http.Request, user userPublic) {
-	var tokenStr string
-	row := s.queryRow(`SELECT ntfy_topic_token FROM users WHERE id = ?`, user.ID)
-	var token sql.NullString
-	if err := row.Scan(&token); err != nil {
+func (s *Server) handleGetNotificationTopic(w http.ResponseWriter, r *http.Request, user userPublic) {
+	token, err := s.store.NtfyTopicToken(r.Context(), user.ID)
+	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not load notification topic")
 		return
 	}
-	if token.Valid && token.String != "" {
-		tokenStr = token.String
+	tokenStr := ""
+	if token != nil && *token != "" {
+		tokenStr = *token
 	} else {
 		tokenStr = "stovo-user-" + uuid.NewString()
-		if _, err := s.exec(
-			`UPDATE users SET ntfy_topic_token = ? WHERE id = ?`,
-			tokenStr, user.ID,
-		); err != nil {
+		if err := s.store.SetNtfyTopicToken(r.Context(), user.ID, tokenStr); err != nil {
 			s.detail(w, http.StatusInternalServerError, "Could not persist notification topic")
 			return
 		}
@@ -642,7 +541,7 @@ func (s *Server) handlePutAudioSettings(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	if _, err := s.exec(`UPDATE users SET audio_call_settings = ? WHERE id = ?`, string(blob), user.ID); err != nil {
+	if err := s.store.SetAudioCallSettings(r.Context(), user.ID, string(blob)); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not save audio settings")
 		return
 	}

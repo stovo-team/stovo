@@ -18,14 +18,17 @@ export type CallParticipantInfo = {
 export type RemoteMedia = {
   userId: string;
   stream: MediaStream;
+  screenStream: MediaStream | null;
   hasVideo: boolean;
   hasAudio: boolean;
+  hasScreenShare: boolean;
 };
 
 export type CallSettings = {
   micMuted: boolean;
   soundDisabled: boolean;
   cameraEnabled: boolean;
+  screenSharing: boolean;
   cameraFacingMode: "user" | "environment";
   speakerMode: "small" | "large";
   inputDeviceId: string;
@@ -56,12 +59,14 @@ export type CallCapabilities = {
   canUseAutoGainControl: boolean;
   canUseVoiceEnhancement: boolean;
   canUseCamera: boolean;
+  canShareScreen: boolean;
 };
 
 export const DEFAULT_CALL_SETTINGS: CallSettings = {
   micMuted: false,
   soundDisabled: false,
   cameraEnabled: false,
+  screenSharing: false,
   cameraFacingMode: "user",
   speakerMode: "small",
   inputDeviceId: "",

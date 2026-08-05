@@ -38,11 +38,15 @@ import { Family } from "../api/family";
 import { getChats, type Chat } from "../api/chats";
 import { useAuth } from "../auth/AuthContext";
 import { AudioPlayer } from "../components/AudioPlayer";
+import {
+  DocumentAttachmentPreview,
+  detectDocumentPreviewKind
+} from "../components/DocumentAttachmentPreview";
 import ImageLightbox from "../components/ImageLightbox";
 import { VideoPlayer } from "../components/VideoPlayer";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
-import { buildAudioSourceFactory } from "./ChatsPage";
+import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
 import {
   initialStorageSelection,
   shouldOpenStorageTilePreview,
@@ -335,6 +339,7 @@ export default function FilesPage() {
 
   const selectedFile = filteredFiles.find((file) => file.id === selectedFileId) ?? null;
   const selectedFilePreviewUrl = useFilePreviewUrl(accessToken, selectedFile);
+  const selectedDocumentKind = selectedFile ? detectDocumentPreviewKind(selectedFile) : "unsupported";
 
   const groupedFiles = useMemo(() => {
     return filteredFiles.reduce<
@@ -484,8 +489,7 @@ export default function FilesPage() {
               </div>
             )}
           </div>
-          <p className="eyebrow">{family?.name ?? "Stovo"}</p>
-          <h1>Storage</h1>
+
           <button
             type="button"
             className={!sourceChatId ? "storage-source active" : "storage-source"}
@@ -685,6 +689,8 @@ export default function FilesPage() {
                       }}
                       autoplay={false}
                     />
+                  ) : selectedDocumentKind !== "unsupported" && accessToken ? (
+                    <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} />
                   ) : selectedFilePreviewUrl ? (
                     <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
                   ) : (
