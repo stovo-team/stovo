@@ -1,11 +1,12 @@
-import { RefObject } from "react";
-import { MessageCircle, X } from "lucide-react";
+import { RefObject, useMemo, useState } from "react";
+import { Forward, MessageCircle, Reply } from "lucide-react";
 
 import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
 import { Composer } from "../composer/Composer";
 import type { CallPhase } from "../shared/types";
+import type { Message } from "../shared/types";
 import { messageActionSummary } from "../shared/messagePresentation";
 import { ChatHeader } from "./ChatHeader";
 import { MessageContextMenu } from "./MessageContextMenu";
@@ -135,6 +136,8 @@ export function ConversationPanel({
     handlePinMessage,
     handleUnpinMessage,
     handleArchiveMessage,
+    handleArchiveSelectedMessages,
+    handleCopySelectedMessages,
     handleMessageReaction,
     handleOpenThread,
     handleMessageBubbleClick,
@@ -188,6 +191,21 @@ export function ConversationPanel({
     handleVoicePressCancel
   } = composer;
 
+  const selectedMessages = useMemo(
+    () => messages.filter((message) => selectedMessageIds.includes(message.id)),
+    [messages, selectedMessageIds]
+  );
+  const singleSelectedMessage = selectedMessages.length === 1 ? selectedMessages[0] : null;
+  const canEditSelected =
+    Boolean(singleSelectedMessage) &&
+    singleSelectedMessage?.senderId === currentUser?.id &&
+    Boolean(singleSelectedMessage?.content?.trim()) &&
+    !singleSelectedMessage?.id.startsWith("pending:");
+  const canDeleteSelected = selectedMessages.some(
+    (message) => message.senderId === currentUser?.id && !message.id.startsWith("pending:")
+  );
+  const [pendingBulkForward, setPendingBulkForward] = useState<Message[]>([]);
+
   if (!selectedChat) {
     return (
       <div className="empty-state chat-empty-state">
@@ -213,7 +231,7 @@ export function ConversationPanel({
         isChatMenuOpen={isChatMenuOpen}
         chatMenuRef={chatMenuRef}
         onToggleChatMenu={onToggleChatMenu}
-        onBack={onBack}
+        onBack={isMessageSelectionMode ? clearSelectedMessages : onBack}
         onOpenDetails={onOpenDetails}
         onStartAudioCall={onStartAudioCall}
         onStartVideoCall={onStartVideoCall}
@@ -224,6 +242,26 @@ export function ConversationPanel({
         onTogglePinned={onTogglePinned}
         onToggleMuted={onToggleMuted}
         onToggleFavorite={onToggleFavorite}
+        isMessageSelectionMode={isMessageSelectionMode}
+        selectedCount={selectedMessageIds.length}
+        canEditSelected={canEditSelected}
+        canDeleteSelected={canDeleteSelected}
+        onSelectionCopy={handleCopySelectedMessages}
+        onSelectionDelete={() => {
+          const owned = selectedMessages.find(
+            (message) => message.senderId === currentUser?.id && !message.id.startsWith("pending:")
+          );
+          if (!owned) return;
+          setDeleteForMe(true);
+          setDeleteForEveryone(true);
+          setDeleteTarget(owned);
+        }}
+        onSelectionArchive={() => void handleArchiveSelectedMessages()}
+        onSelectionEdit={() => {
+          if (!singleSelectedMessage || !canEditSelected) return;
+          handleEditMessage(singleSelectedMessage);
+          clearSelectedMessages();
+        }}
       />
       {isMessageSearchOpen && (
         <div className="search-field message-search-field" role="search">
@@ -267,21 +305,6 @@ export function ConversationPanel({
             <span className="ms-icon ms-icon--20" aria-hidden={true}>
               close
             </span>
-          </button>
-        </div>
-      )}
-      {isMessageSelectionMode && (
-        <div className="message-selection-banner" role="status" aria-live="polite">
-          <span>
-            {selectedMessageIds.length} message{selectedMessageIds.length === 1 ? "" : "s"} selected
-          </span>
-          <button
-            type="button"
-            className="icon-button subtle"
-            aria-label="Exit message selection mode"
-            onClick={clearSelectedMessages}
-          >
-            <X aria-hidden="true" size={18} />
           </button>
         </div>
       )}
@@ -374,6 +397,7 @@ export function ConversationPanel({
             }
           }}
           onForward={() => {
+            setPendingBulkForward([]);
             setForwardTarget(messageContextMenu.message);
             setMessageContextMenu(null);
           }}
@@ -387,65 +411,105 @@ export function ConversationPanel({
           }}
         />
       )}
-      <Composer
-        accessToken={accessToken}
-        selectedChat={selectedChat}
-        resolvedThemeMode={resolvedThemeMode}
-        channelCommentsDisabledForViewer={channelCommentsDisabledForViewer}
-        missingCommentThread={missingCommentThread}
-        canPostInSelectedChannel={canPostInSelectedChannel}
-        replyTarget={replyTarget}
-        onCancelReply={() => setReplyTarget(null)}
-        editTargetMessage={editTargetMessage}
-        onCancelEdit={cancelEditMode}
-        composer={composerText}
-        onComposerChange={handleComposerChange}
-        onComposerKeyDown={handleComposerKeyDown}
-        onComposerFocus={handleComposerFocus}
-        onComposerSelectionUpdate={updateComposerFormattingSelection}
-        onComposerFormat={handleComposerFormat}
-        onComposerCut={handleComposerCut}
-        onComposerCopy={handleComposerCopy}
-        onComposerPaste={handleComposerPaste}
-        composerInputRef={composerInputRef}
-        composerFormattingSelectionRef={composerFormattingSelectionRef}
-        formattingToolbarAnchor={formattingToolbarAnchor}
-        composerIsMultiline={composerIsMultiline}
-        onEnlargeComposer={() => setComposerEnlargeOpen(true)}
-        pendingAttachments={pendingAttachments}
-        onRemovePendingAttachment={removePendingAttachment}
-        isAttachmentSheetOpen={isAttachmentSheetOpen}
-        onAttachButtonClick={handleAttachButtonClick}
-        onAttachmentSheetPick={handleAttachmentSheetPick}
-        onCloseAttachmentSheet={() => setIsAttachmentSheetOpen(false)}
-        onFileSelect={handleFileSelect}
-        attachmentInputRef={attachmentInputRef}
-        galleryAttachmentInputRef={galleryAttachmentInputRef}
-        cameraAttachmentInputRef={cameraAttachmentInputRef}
-        audioAttachmentInputRef={audioAttachmentInputRef}
-        documentAttachmentInputRef={documentAttachmentInputRef}
-        isEmojiPickerOpen={isEmojiPickerOpen}
-        emojiPickerRef={emojiPickerRef}
-        emojiPickerDockRef={emojiPickerDockRef}
-        isDockedEmojiPicker={isDockedEmojiPicker}
-        showDockedEmojiPicker={showDockedEmojiPicker}
-        onToggleEmojiPicker={toggleEmojiPicker}
-        onEmojiPick={handleComposerEmojiPick}
-        isUploading={isUploading}
-        isSendingMessage={isSendingMessage}
-        isVoiceRecording={isVoiceRecording}
-        onVoicePressStart={(event) => void handleVoicePressStart(event)}
-        onVoicePressEnd={(event) => void handleVoicePressEnd(event)}
-        onVoicePressCancel={handleVoicePressCancel}
-        onSubmit={handleSendMessage}
-      />
+      {isMessageSelectionMode ? (
+        <div className="message-selection-actions" role="toolbar" aria-label="Selected message actions">
+          {selectedMessageIds.length === 1 && (
+            <button
+              type="button"
+              className="message-selection-action"
+              disabled={channelCommentsDisabledForViewer || missingCommentThread}
+              onClick={() => {
+                if (!singleSelectedMessage) return;
+                handleReplyToMessage(singleSelectedMessage);
+                clearSelectedMessages();
+              }}
+            >
+              <Reply aria-hidden="true" size={22} />
+              <span>{selectedChat.type === "channel" ? "Comment" : "Reply"}</span>
+            </button>
+          )}
+          <button
+            type="button"
+            className="message-selection-action"
+            onClick={() => {
+              if (selectedMessages.length === 0) return;
+              setPendingBulkForward(selectedMessages);
+              setForwardTarget(selectedMessages[0]);
+            }}
+          >
+            <Forward aria-hidden="true" size={22} />
+            <span>Forward</span>
+          </button>
+        </div>
+      ) : (
+        <Composer
+          accessToken={accessToken}
+          selectedChat={selectedChat}
+          resolvedThemeMode={resolvedThemeMode}
+          channelCommentsDisabledForViewer={channelCommentsDisabledForViewer}
+          missingCommentThread={missingCommentThread}
+          canPostInSelectedChannel={canPostInSelectedChannel}
+          replyTarget={replyTarget}
+          onCancelReply={() => setReplyTarget(null)}
+          editTargetMessage={editTargetMessage}
+          onCancelEdit={cancelEditMode}
+          composer={composerText}
+          onComposerChange={handleComposerChange}
+          onComposerKeyDown={handleComposerKeyDown}
+          onComposerFocus={handleComposerFocus}
+          onComposerSelectionUpdate={updateComposerFormattingSelection}
+          onComposerFormat={handleComposerFormat}
+          onComposerCut={handleComposerCut}
+          onComposerCopy={handleComposerCopy}
+          onComposerPaste={handleComposerPaste}
+          composerInputRef={composerInputRef}
+          composerFormattingSelectionRef={composerFormattingSelectionRef}
+          formattingToolbarAnchor={formattingToolbarAnchor}
+          composerIsMultiline={composerIsMultiline}
+          onEnlargeComposer={() => setComposerEnlargeOpen(true)}
+          pendingAttachments={pendingAttachments}
+          onRemovePendingAttachment={removePendingAttachment}
+          isAttachmentSheetOpen={isAttachmentSheetOpen}
+          onAttachButtonClick={handleAttachButtonClick}
+          onAttachmentSheetPick={handleAttachmentSheetPick}
+          onCloseAttachmentSheet={() => setIsAttachmentSheetOpen(false)}
+          onFileSelect={handleFileSelect}
+          attachmentInputRef={attachmentInputRef}
+          galleryAttachmentInputRef={galleryAttachmentInputRef}
+          cameraAttachmentInputRef={cameraAttachmentInputRef}
+          audioAttachmentInputRef={audioAttachmentInputRef}
+          documentAttachmentInputRef={documentAttachmentInputRef}
+          isEmojiPickerOpen={isEmojiPickerOpen}
+          emojiPickerRef={emojiPickerRef}
+          emojiPickerDockRef={emojiPickerDockRef}
+          isDockedEmojiPicker={isDockedEmojiPicker}
+          showDockedEmojiPicker={showDockedEmojiPicker}
+          onToggleEmojiPicker={toggleEmojiPicker}
+          onEmojiPick={handleComposerEmojiPick}
+          isUploading={isUploading}
+          isSendingMessage={isSendingMessage}
+          isVoiceRecording={isVoiceRecording}
+          onVoicePressStart={(event) => void handleVoicePressStart(event)}
+          onVoicePressEnd={(event) => void handleVoicePressEnd(event)}
+          onVoicePressCancel={handleVoicePressCancel}
+          onSubmit={handleSendMessage}
+        />
+      )}
       <MessageDialogs
         accessToken={accessToken}
         currentUserId={currentUser?.id}
         chats={chats}
         forwardTarget={forwardTarget}
-        onForwardMessage={(targetChatId) => void handleForwardMessage(targetChatId, chats)}
-        onCloseForward={() => setForwardTarget(null)}
+        forwardCount={pendingBulkForward.length > 0 ? pendingBulkForward.length : forwardTarget ? 1 : 0}
+        onForwardMessage={(targetChatId) => {
+          const bulk = pendingBulkForward;
+          setPendingBulkForward([]);
+          void handleForwardMessage(targetChatId, chats, bulk.length > 0 ? bulk : undefined);
+        }}
+        onCloseForward={() => {
+          setPendingBulkForward([]);
+          setForwardTarget(null);
+        }}
         deleteTarget={deleteTarget}
         deleteForMe={deleteForMe}
         deleteForEveryone={deleteForEveryone}

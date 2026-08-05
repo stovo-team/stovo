@@ -777,31 +777,87 @@ export function useMessageThread({
     }
   }
 
-     async function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!accessToken || !deleteTarget) return;
     const scope = deleteForEveryone ? "everyone" : "me";
-    const deletedId = deleteTarget.id;
-    const deletedChatId = deleteTarget.chatId;
+    const targets =
+      selectedMessageIds.length > 0 && selectedMessageIds.includes(deleteTarget.id)
+        ? messages.filter(
+            (message) =>
+              selectedMessageIds.includes(message.id) && message.senderId === currentUser?.id
+          )
+        : [deleteTarget];
+    if (targets.length === 0) return;
+
     try {
-      await deleteMessage(accessToken, deletedId, scope);
-      applyMessagesForChat(deletedChatId, (current) => current.filter((m) => m.id !== deletedId));
-      onChatsUpdate((current) =>
-        current.map((chat) => {
-          if (chat.id !== deletedChatId || chat.lastMessageId !== deletedId) return chat;
-          return {
-            ...chat,
-            lastMessageId: null,
-            lastMessageSenderId: null,
-            lastMessageSenderDisplayName: null,
-            lastMessageContent: null,
-            lastMessageType: null,
-            lastMessageCreatedAt: null
-          };
-        })
-      );
+      for (const target of targets) {
+        await deleteMessage(accessToken, target.id, scope);
+        applyMessagesForChat(target.chatId, (current) => current.filter((m) => m.id !== target.id));
+        onChatsUpdate((current) =>
+          current.map((chat) => {
+            if (chat.id !== target.chatId || chat.lastMessageId !== target.id) return chat;
+            return {
+              ...chat,
+              lastMessageId: null,
+              lastMessageSenderId: null,
+              lastMessageSenderDisplayName: null,
+              lastMessageContent: null,
+              lastMessageType: null,
+              lastMessageCreatedAt: null
+            };
+          })
+        );
+      }
       setDeleteTarget(null);
+      clearSelectedMessages();
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : "Could not delete message");
+    }
+  }
+
+  async function handleForwardMessage(targetChatId: string, chats: Chat[], messagesToForward?: Message[]) {
+    if (!accessToken) return;
+    const targets = messagesToForward?.length
+      ? messagesToForward
+      : forwardTarget
+        ? [forwardTarget]
+        : [];
+    if (targets.length === 0) return;
+
+    try {
+      for (const message of targets) {
+        const targetChat = chats.find((chat) => chat.id === targetChatId);
+        const shouldForwardLocally =
+          targetChat &&
+          message.encryptionProtocol === "end_to_end" &&
+          Boolean(message.content?.trim()) &&
+          message.attachments.length === 0;
+        const forwarded = shouldForwardLocally
+          ? await (async () => {
+              const encrypted = await encryptMessageContent(targetChat, message.content, currentUser?.id);
+              const created = await sendMessage(
+                accessToken,
+                targetChatId,
+                encrypted.content,
+                [],
+                null,
+                null,
+                encrypted.encryption
+              );
+              return decryptMessage(targetChatId, created, currentUser?.id);
+            })()
+          : await forwardMessage(accessToken, message.id, targetChatId);
+        if (targetChatId === selectedChat?.id) {
+          applyMessagesForChat(targetChatId, (current) => mergeIncomingMessage(current, forwarded));
+        }
+        onChatsUpdate((current) =>
+          current.map((chat) => (chat.id === targetChatId ? applyMessagePreviewToChat(chat, forwarded) : chat))
+        );
+      }
+      setForwardTarget(null);
+      clearSelectedMessages();
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not forward message");
     }
   }
 
@@ -816,42 +872,6 @@ export function useMessageThread({
       applyMessagesForChat(selectedChat.id, (current) => mergeMessageLists(current, decrypted));
     } catch {
       // Best-effort: keep local view if thread fetch fails.
-    }
-  }
-
-  async function handleForwardMessage(targetChatId: string, chats: Chat[]) {
-    if (!accessToken || !forwardTarget) return;
-    try {
-      const targetChat = chats.find((chat) => chat.id === targetChatId);
-      const shouldForwardLocally =
-        targetChat &&
-        forwardTarget.encryptionProtocol === "end_to_end" &&
-        Boolean(forwardTarget.content?.trim()) &&
-        forwardTarget.attachments.length === 0;
-      const forwarded = shouldForwardLocally
-        ? await (async () => {
-            const encrypted = await encryptMessageContent(targetChat, forwardTarget.content, currentUser?.id);
-            const created = await sendMessage(
-              accessToken,
-              targetChatId,
-              encrypted.content,
-              [],
-              null,
-              null,
-              encrypted.encryption
-            );
-            return decryptMessage(targetChatId, created, currentUser?.id);
-          })()
-        : await forwardMessage(accessToken, forwardTarget.id, targetChatId);
-      if (targetChatId === selectedChat?.id) {
-        applyMessagesForChat(targetChatId, (current) => mergeIncomingMessage(current, forwarded));
-      }
-      onChatsUpdate((current) =>
-        current.map((chat) => (chat.id === targetChatId ? applyMessagePreviewToChat(chat, forwarded) : chat))
-      );
-      setForwardTarget(null);
-    } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not forward message");
     }
   }
 
@@ -894,6 +914,31 @@ export function useMessageThread({
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : "Could not save message");
     }
+  }
+
+  async function handleArchiveSelectedMessages() {
+    if (!accessToken || selectedMessageIds.length === 0) return;
+    const targets = messages.filter((message) => selectedMessageIds.includes(message.id));
+    try {
+      for (const message of targets) {
+        await archiveMessage(accessToken, message.id);
+      }
+      clearSelectedMessages();
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not save message");
+    }
+  }
+
+  function handleCopySelectedMessages() {
+    const contents = messages
+      .filter((message) => selectedMessageIds.includes(message.id))
+      .map((message) => message.content?.trim() ?? "")
+      .filter(Boolean);
+    if (contents.length === 0) {
+      onError("Nothing to copy");
+      return;
+    }
+    setCopySheetContent(contents.join("\n\n"));
   }
 
   async function handleMessageReaction(message: Message, emoji: string) {
@@ -1030,6 +1075,8 @@ export function useMessageThread({
     handlePinMessage,
     handleUnpinMessage,
     handleArchiveMessage,
+    handleArchiveSelectedMessages,
+    handleCopySelectedMessages,
     handleMessageReaction,
     handleOpenThread,
     handleMessageBubbleClick,

@@ -1,5 +1,5 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent } from "react";
-import { CheckCheck, Phone, Video } from "lucide-react";
+import { Check, Phone, Video } from "lucide-react";
 
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
 import type { Chat } from "../../../api/chats";
@@ -157,7 +157,7 @@ export function MessageBubble({
     >
       {isSelected && (
         <span className="message-selection-indicator" aria-hidden="true">
-          <CheckCheck size={14} />
+          <Check size={14} />
         </span>
       )}
       <span className="message-swipe-affordance" aria-hidden="true" />
