@@ -2030,24 +2030,67 @@ h2 {
   padding: 10px 8px 4px;
 }
 
-.message-selection-banner {
-  align-items: center;
-  background: color-mix(in oklab, var(--island-surface) 94%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-radius: var(--float-radius-pill);
-  box-shadow: var(--float-shadow-soft);
-  color: var(--text-primary);
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  margin: 8px var(--message-gutter-x) 0;
-  padding: 8px 10px;
+.message-selection-actions {
+  align-items: stretch;
+  background: transparent;
+  border: none;
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  padding: 0;
+  position: relative;
+  width: 100%;
 }
 
-.message-selection-banner span {
-  font-size: 0.92rem;
+.message-selection-action {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 1rem;
   font-weight: 700;
+  gap: 10px;
+  height: 48px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+  width: 100%;
+}
+
+.message-selection-action:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--accent-soft) 55%, var(--background-secondary));
+}
+
+.message-selection-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.message-selection-action svg {
+  flex-shrink: 0;
+}
+
+.chat-title-group--selection {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  justify-content: flex-start;
+  min-width: 0;
+  padding: 0 4px;
+}
+
+.chat-title-group--selection strong {
+  font-size: 1rem;
+}
+
+.chat-header-selection-button {
+  color: var(--text-primary);
 }
 
 .thread-header {
@@ -3173,13 +3216,14 @@ h2 {
 
   .messenger-shell.has-active-chat .chat-detail-header--floating,
   .messenger-shell.has-active-chat .message-composer,
+  .messenger-shell.has-active-chat .message-selection-actions,
   .messenger-shell.has-active-chat .composer-attachments-strip,
   .messenger-shell.has-active-chat .pinned-banner {
     z-index: 3;
   }
 
   .messenger-shell.has-active-chat {
-    --chat-floating-header-overlap: 48px;
+    --chat-floating-header-overlap: 56px;
     --chat-messages-top-gap: 8px;
   }
 
@@ -3189,9 +3233,9 @@ h2 {
     gap: 4px;
     margin-block: 0;
     margin-inline: var(--active-chat-message-inset-x);
-    min-height: 38px;
+    min-height: 48px;
     min-width: 0;
-    padding: 1px 4px 2px;
+    padding: 4px;
     top: 0;
     width: auto;
   }
@@ -3208,8 +3252,9 @@ h2 {
   }
 
   .messenger-shell.has-active-chat .chat-header-actions {
-    gap: 4px;
-    padding-right: 2px;
+    gap: 2px;
+    margin-left: auto;
+    padding-right: 0;
   }
 
   .messenger-shell.has-active-chat .chat-header-actions .icon-button,
@@ -3228,14 +3273,14 @@ h2 {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: none;
-  border-radius: 28px;
+  border-radius: 999px;
   box-shadow: 0 -10px 22px rgba(0, 0, 0, 0.45);
   box-sizing: border-box;
   margin-block: 0;
   margin-inline: var(--active-chat-message-inset-x);
-  min-height: 44px;
+  min-height: 48px;
   min-width: 0;
-  padding: 2px 6px 4px;
+  padding: 4px;
   position: sticky;
   top: 0;
   width: auto;
@@ -3265,6 +3310,17 @@ h2 {
   margin-inline: var(--active-chat-message-inset-x);
   margin-block: 0 8px;
   padding: 6px 8px;
+}
+
+.messenger-shell.has-active-chat .message-selection-actions {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin-inline: var(--active-chat-message-inset-x);
+  margin-block: 0 8px;
+  padding: 0;
+  width: auto;
 }
 
 .chat-title-group {
@@ -3313,9 +3369,27 @@ h2 {
 .chat-header-actions {
   align-items: center;
   display: flex;
+  flex-shrink: 0;
   gap: 12px;
+  justify-content: flex-end;
   margin-left: auto;
-  padding-right: 6px;
+  padding-right: 0;
+}
+
+.chat-header-selection-button.icon-button.subtle {
+  align-items: center;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-primary);
+  display: inline-flex;
+  flex: 0 0 34px;
+  height: 34px;
+  justify-content: center;
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0;
+  width: 34px;
 }
 
 .chat-header-search-button {
@@ -3640,9 +3714,7 @@ h2 {
 }
 
 .message-bubble.is-selected {
-  box-shadow:
-    0 0 0 2px color-mix(in oklab, var(--accent-primary) 40%, transparent),
-    0 14px 28px color-mix(in oklab, var(--accent-primary) 16%, transparent);
+  box-shadow: none;
 }
 
 .message-selection-indicator {
@@ -3653,11 +3725,17 @@ h2 {
   display: inline-flex;
   height: 22px;
   justify-content: center;
+  left: auto;
   position: absolute;
   right: -7px;
   top: -7px;
   width: 22px;
   z-index: 6;
+}
+
+.message-bubble.mine .message-selection-indicator {
+  left: -7px;
+  right: auto;
 }
 
 .message-swipe-affordance {
@@ -4080,14 +4158,15 @@ span.message-spoiler.is-revealed {
 .message-origin-card {
   align-items: start;
   background: color-mix(in oklab, #07111f 72%, var(--bubble-incoming));
-  border-radius: var(--radius-bubble);
+  /* Same corner family as the bubble: inset so a short strip does not become a pill. */
+  border-radius: max(6px, calc(var(--radius-bubble) - 10px));
   display: grid;
   gap: 0;
   justify-items: start;
   justify-self: start;
   max-width: 100%;
   min-width: 0;
-  padding: 2px 7px 3px;
+  padding: 4px 8px;
   text-align: left;
   width: 100%;
 }
@@ -4229,6 +4308,48 @@ span.message-spoiler.is-revealed {
 .message-context-reactions {
   margin-bottom: 4px;
   margin-top: 0;
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.message-context-reactions-grid {
+  align-items: center;
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  justify-items: center;
+}
+
+.message-context-reactions--expanded .message-context-reactions-grid {
+  /* Exactly 3 rows of reaction buttons; scroll for the rest. */
+  max-height: calc((34px * 3) + (5px * 2));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 1px;
+  scrollbar-gutter: stable;
+}
+
+.message-context-reactions-expand {
+  align-items: center;
+  display: inline-flex !important;
+  justify-content: center;
+  padding: 0 !important;
+}
+
+.message-context-reactions-expand svg {
+  transition: transform 160ms ease;
+}
+
+.message-context-reactions-expand.active svg {
+  transform: rotate(180deg);
+}
+
+.message-context-menu--reactions-expanded {
+  max-height: min(78vh, 560px);
+  overflow: auto;
 }
 
 .reaction-pill,
@@ -4241,10 +4362,14 @@ span.message-spoiler.is-revealed {
   padding: 0 7px;
 }
 
-.message-context-reactions button {
+.message-context-reactions-grid button {
   font-size: 0.96rem;
+  height: 34px;
   justify-content: center;
-  min-width: 30px;
+  min-height: 34px;
+  min-width: 34px;
+  padding: 0;
+  width: 34px;
 }
 
 .reaction-pill.active,
@@ -4756,21 +4881,21 @@ span.message-spoiler.is-revealed {
   box-shadow: none;
   color: var(--text-secondary);
   display: inline-flex;
-  height: 32px;
+  height: 28px;
   justify-content: center;
-  min-height: 32px;
-  min-width: 32px;
+  min-height: 28px;
+  min-width: 28px;
   padding: 0;
   transition: background-color 120ms ease-out, color 120ms ease-out;
-  width: 32px;
+  width: 28px;
 }
 
 .message-composer .file-picker svg,
 .message-composer .emoji-picker-button svg {
   display: block;
   flex-shrink: 0;
-  height: 26px;
-  width: 26px;
+  height: 22px;
+  width: 22px;
 }
 
 /* Real pointer hover only — sticky :hover on Android was leaving buttons “stuck” highlighted. */
@@ -9435,19 +9560,19 @@ span.message-spoiler.is-revealed {
 
   .messenger-shell.has-active-chat .chat-detail-header--floating {
     box-shadow: 0 -10px 22px rgba(0, 0, 0, 0.45);
-    gap: 10px;
+    gap: 8px;
     margin: calc(var(--mobile-edge-inset-y) + env(safe-area-inset-top)) var(--active-chat-message-inset-x) 0;
-    min-height: 38px;
+    min-height: 42px;
     min-width: 0;
-    padding: 1px 4px 2px;
+    padding: 4px;
     top: calc(var(--mobile-edge-inset-y) + env(safe-area-inset-top));
     width: auto;
   }
 
   .messenger-shell.has-active-chat .chat-detail-header {
-    border-radius: 28px;
+    border-radius: 999px;
     gap: 10px;
-    min-height: 40px;
+    min-height: 42px;
   }
 
   .messenger-shell.has-active-chat .mobile-back-button {
@@ -9498,7 +9623,7 @@ span.message-spoiler.is-revealed {
   }
 
   .messenger-shell.has-active-chat {
-    --chat-floating-header-overlap: 44px;
+    --chat-floating-header-overlap: 52px;
   }
 
   .messenger-shell.has-active-chat .messages-panel {
@@ -9551,10 +9676,10 @@ span.message-spoiler.is-revealed {
 
   .messenger-shell.has-active-chat .message-composer .file-picker,
   .messenger-shell.has-active-chat .message-composer .emoji-picker-button {
-    height: 32px;
-    min-height: 32px;
-    min-width: 32px;
-    width: 32px;
+    height: 28px;
+    min-height: 28px;
+    min-width: 28px;
+    width: 28px;
   }
 
   .messenger-shell.has-active-chat .message-composer button[type="submit"],
@@ -9678,13 +9803,21 @@ span.message-spoiler.is-revealed {
     border: 0;
   }
 
-  .message-selection-banner {
-    margin: 8px var(--mobile-edge-inset-x) 0;
-    padding: 7px 8px 7px 12px;
+  .message-selection-actions {
+    margin-inline: var(--active-chat-message-inset-x);
+    padding: 0;
+  }
+
+  .message-selection-action {
+    font-size: 0.95rem;
+    height: 42px;
+    min-height: 42px;
   }
 
   .chat-header-actions {
-    gap: 6px;
+    gap: 2px;
+    margin-left: auto;
+    padding-right: 0;
   }
 
   .chat-header-actions .icon-button {
@@ -12932,6 +13065,33 @@ span.message-spoiler.is-revealed {
   z-index: 13;
 }
 
+:root[data-platform="web"] .messenger-shell.has-active-chat .message-selection-actions {
+  bottom: 8px;
+  isolation: isolate;
+  left: var(--active-chat-message-inset-x);
+  margin: 0;
+  position: absolute;
+  right: var(--active-chat-message-inset-x);
+  width: auto;
+  z-index: 13;
+}
+
+:root[data-platform="web"] .messenger-shell.has-active-chat .message-selection-actions::before {
+  background: linear-gradient(to bottom, transparent 0%, #000000 100%);
+  content: "";
+  inset: -48px -16px -8px;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+
+:root[data-platform="web"] .messenger-shell.has-active-chat .message-selection-action {
+  background: var(--background-secondary);
+  border-radius: 999px;
+  height: 48px;
+  min-height: 48px;
+}
+
 :root[data-platform="web"] .messenger-shell.has-active-chat .scroll-to-bottom-fab {
   bottom: 72px;
   z-index: 14;
@@ -13046,6 +13206,15 @@ span.message-spoiler.is-revealed {
     bottom: max(8px, env(safe-area-inset-bottom));
   }
 
+  :root[data-platform="web"] .messenger-shell.has-active-chat .message-selection-actions {
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+
+  :root[data-platform="web"] .messenger-shell.has-active-chat .message-selection-action {
+    height: 42px;
+    min-height: 42px;
+  }
+
   :root[data-platform="web"] .messenger-shell.has-active-chat .chat-detail-header--floating {
     left: var(--active-chat-message-inset-x);
     margin: 0;
@@ -13097,7 +13266,8 @@ span.message-spoiler.is-revealed {
     box-shadow: 0 -10px 22px rgba(0, 0, 0, 0.45);
     left: var(--active-chat-message-inset-x);
     margin-inline: 0;
-    padding: 1px 4px 2px;
+    min-height: 42px;
+    padding: 4px;
     position: absolute;
     right: var(--active-chat-message-inset-x);
     top: calc(var(--mobile-edge-inset-y) + env(safe-area-inset-top));
@@ -13136,6 +13306,35 @@ span.message-spoiler.is-revealed {
     position: absolute;
     right: var(--active-chat-message-inset-x);
     z-index: 13;
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .message-selection-actions {
+    background: transparent;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    isolation: isolate;
+    left: var(--active-chat-message-inset-x);
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    right: var(--active-chat-message-inset-x);
+    width: auto;
+    z-index: 13;
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .message-selection-actions::before {
+    background: linear-gradient(to bottom, transparent 0%, #000000 100%);
+    content: "";
+    inset: -48px -16px -8px;
+    pointer-events: none;
+    position: absolute;
+    z-index: -1;
+  }
+
+  :root[data-platform="native"] .messenger-shell.has-active-chat .message-selection-action {
+    background: var(--background-secondary);
+    border-radius: 999px;
+    height: 42px;
+    min-height: 42px;
   }
 
   :root[data-platform="native"] .messenger-shell.has-active-chat .scroll-to-bottom-fab {
@@ -13191,10 +13390,10 @@ span.message-spoiler.is-revealed {
 
   :root[data-platform="native"] .messenger-shell.has-active-chat .message-composer .file-picker,
   :root[data-platform="native"] .messenger-shell.has-active-chat .message-composer .emoji-picker-button {
-    height: 32px;
-    min-height: 32px;
-    min-width: 32px;
-    width: 32px;
+    height: 28px;
+    min-height: 28px;
+    min-width: 28px;
+    width: 28px;
   }
 
   :root[data-platform="native"] .messenger-shell.has-active-chat .message-composer button[type="submit"],

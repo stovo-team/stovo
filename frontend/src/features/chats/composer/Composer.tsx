@@ -175,7 +175,7 @@ export function Composer({
             disabled={channelCommentsDisabledForViewer || missingCommentThread}
             onClick={onToggleEmojiPicker}
           >
-            <Smile aria-hidden="true" size={26} />
+            <Smile aria-hidden="true" size={22} />
           </button>
           {!showDockedEmojiPicker && isEmojiPickerOpen && (
             <div className="emoji-picker" role="menu" aria-label="Choose emoji">

@@ -45,7 +45,7 @@ export function AttachmentControls({
         disabled={disabled}
         onClick={onAttachButtonClick}
       >
-        <Paperclip aria-hidden="true" size={26} />
+        <Paperclip aria-hidden="true" size={22} />
       </button>
       <input
         ref={attachmentInputRef}
