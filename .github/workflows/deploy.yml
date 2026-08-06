@@ -85,20 +85,35 @@ jobs:
                 ;;
             esac
 
+            get_env() {
+              key="$1"
+              default="${2:-}"
+              val="$(sed -n "s/^${key}=//p" .env 2>/dev/null | tail -n 1 | tr -d '\r')"
+              val="${val%\"}"
+              val="${val#\"}"
+              val="${val%\'}"
+              val="${val#\'}"
+              if [ -n "$val" ]; then
+                printf '%s' "$val"
+              else
+                printf '%s' "$default"
+              fi
+            }
+
+            pg_user="$(get_env POSTGRES_USER family_user)"
+            pg_pass="$(get_env POSTGRES_PASSWORD)"
+            pg_db="$(get_env POSTGRES_DB family)"
+
             # Keep shared deps up; do not docker compose down the whole stack.
             sudo docker compose up -d postgres redis ntfy minio minio-init
             # Wait for postgres healthy, then apply expand-only Atlas migrations.
             for _ in $(seq 1 30); do
-              if sudo docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-family_user}" >/dev/null 2>&1; then
+              if sudo docker compose exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then
                 break
               fi
               sleep 2
             done
-            set -a
-            # shellcheck disable=SC1091
-            . ./.env
-            set +a
-            db_url="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+            db_url="postgres://${pg_user}:${pg_pass}@postgres:5432/${pg_db}?sslmode=disable"
             # Compose project network is typically <directory>_default.
             compose_net="$(sudo docker compose ps -q postgres | xargs -r sudo docker inspect --format '{{json .NetworkSettings.Networks}}' | grep -o '"[^"]*"' | head -n1 | tr -d '"')"
             if [ -z "$compose_net" ]; then
