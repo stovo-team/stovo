@@ -95,5 +95,15 @@ func (s *LocalStorage) SaveToBucket(_ context.Context, _ string, objectKey strin
 }
 
 func (s *LocalStorage) StatObject(_ context.Context, _ string, objectKey string) (ObjectInfo, error) {
-	return ObjectInfo{}, fmt.Errorf("StatObject not supported with local storage")
+	path, err := s.resolve(objectKey)
+	if err != nil {
+		return ObjectInfo{}, err
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return ObjectInfo{}, err
+	}
+	return ObjectInfo{
+		Size: info.Size(),
+	}, nil
 }
