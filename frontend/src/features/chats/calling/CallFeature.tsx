@@ -1,10 +1,13 @@
 import type { User } from "../../../api/auth";
+import type { Chat } from "../../../api/chats";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
 import { CallSettingsContextMenu } from "./CallSettingsContextMenu";
 import { CallSpeakerSheet } from "./CallSpeakerSheet";
 import { CallVideoSettingsPopup } from "./CallVideoSettingsPopup";
 import { DesktopCallControls } from "./DesktopCallControls";
+import { GroupCallActiveBanner } from "./GroupCallActiveBanner";
+import { GroupCallPreJoinModal } from "./GroupCallPreJoinModal";
 import { MobileActiveScreen } from "./MobileActiveScreen";
 import { MobileIncomingScreen } from "./MobileIncomingScreen";
 import { MobileMinimizedCallBar } from "./MobileMinimizedCallBar";
@@ -19,6 +22,8 @@ export {
   MobileActiveScreen,
   MobileMinimizedCallBar,
   MobileIncomingScreen,
+  GroupCallActiveBanner,
+  GroupCallPreJoinModal,
   useCallTimer
 };
 
@@ -27,6 +32,7 @@ export type CallFeatureProps = {
   isMobileViewport: boolean;
   members: User[];
   currentUser: User | null;
+  chats?: Chat[];
 };
 
 /**
@@ -37,7 +43,7 @@ export type CallFeatureProps = {
  * element stays in ChatsPage since CallController needs it attached even
  * before a call starts.
  */
-export function CallFeature({ session, isMobileViewport, members, currentUser }: CallFeatureProps) {
+export function CallFeature({ session, isMobileViewport, members, currentUser, chats = [] }: CallFeatureProps) {
   const {
     callPhase,
     callType,
@@ -72,137 +78,151 @@ export function CallFeature({ session, isMobileViewport, members, currentUser }:
     toggleScreenShare,
     acceptIncomingCall,
     declineIncomingCall,
-    endActiveCall
+    endActiveCall,
+    activeGroupCalls,
+    preJoinChatId,
+    closePreJoinModal,
+    joinOngoingGroupCall
   } = session;
 
-  if (callPhase === "idle") {
+  const preJoinChat = preJoinChatId ? chats.find((c) => c.id === preJoinChatId) ?? null : null;
+  const preJoinActiveCall = preJoinChatId ? activeGroupCalls[preJoinChatId] : null;
+
+  if (callPhase === "idle" && !preJoinChatId) {
     return null;
   }
 
   return (
     <>
-      {!isCallMinimized && !isMobileViewport && (
-        <div className="call-popup-backdrop-overlay" aria-hidden="true" />
-      )}
-      <section
-        className={[
-          "call-popup",
-          isCallMinimized ? "call-popup-minimized" : "",
-          isMobileViewport ? "call-popup-fullscreen" : "",
-          isCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
-        ].filter(Boolean).join(" ")}
-        role="dialog"
-        aria-modal="false"
-        aria-label={
-          callPhase === "incoming"
-            ? "Incoming call"
-            : callPhase === "outgoing"
-            ? "Outgoing call"
-            : "Active call"
-        }
-      >
-        {/* Mobile incoming call full-screen */}
-        {isMobileViewport && !isCallMinimized && callPhase === "incoming" && (
-          <MobileIncomingScreen
-            peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
-            callType={callType}
-            onAccept={() => void acceptIncomingCall()}
-            onDecline={declineIncomingCall}
-          />
-        )}
-        {/* Mobile active call full-screen */}
-        {isMobileViewport && !isCallMinimized && callPhase !== "incoming" && (
-          <MobileActiveScreen
-            peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
-            callType={callType}
-            callPhase={callPhase}
-            isPeerSpeaking={isPeerSpeaking}
-            isProximityNear={isProximityNear}
-            isMicMuted={callAudioSettings.micMuted}
-            isCameraEnabled={callAudioSettings.cameraEnabled}
-            isScreenSharing={callAudioSettings.screenSharing}
-            canShareScreen={callAudioCapabilities.canShareScreen}
-            cameraFacingMode={callAudioSettings.cameraFacingMode}
-            speakerMode={callAudioSettings.speakerMode}
-            timer={callTimer}
-            hasRemoteVideo={hasRemoteVideo}
-            localVideoStream={localVideoStream}
-            remoteVideoStream={remoteVideoStream}
-            mirrorLocalVideo={callAudioSettings.mirrorLocalVideo}
-            onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-            onToggleCamera={() => {
-              if (!hasLiveLocalVideo(localVideoStream)) {
-                // Camera not yet open — start it. Set callType to "video"
-                // immediately so the mobile video element mounts before
-                // onLocalStreamReady fires (prevents black screen on
-                // first camera enable on iOS/Android). We check live video
-                // tracks (not callType) because callType can already be
-                // "video" while the stream is still audio-only (e.g.
-                // Android prepareForCall raced ahead of accept).
-                setCallType("video");
-                void audioCallRef.current?.toggleVideo(true);
-              } else {
-                void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
-              }
-            }}
-            onToggleScreenShare={() => void toggleScreenShare()}
-            onToggleFlip={() =>
-              applyCallAudioPatch({
-                cameraFacingMode:
-                  callAudioSettings.cameraFacingMode === "user" ? "environment" : "user",
-              })
-            }
-            onOpenSpeakerSheet={() => setIsSpeakerSheetOpen(true)}
-            onEnd={() => void endActiveCall()}
-          />
-        )}
-
-        <DesktopCallControls
-          session={session}
-          members={members}
-          currentUser={currentUser}
-          isMobileViewport={isMobileViewport}
+      {preJoinChatId && preJoinActiveCall && preJoinChat && (
+        <GroupCallPreJoinModal
+          chatTitle={preJoinChat.title ?? "Group Chat"}
+          callType={(preJoinActiveCall.callType as "audio" | "video") || "audio"}
+          onClose={closePreJoinModal}
+          onJoin={(settings) => {
+            void joinOngoingGroupCall(preJoinChat, preJoinActiveCall, settings);
+          }}
         />
+      )}
+      {callPhase !== "idle" && (
+        <>
+          {!isCallMinimized && !isMobileViewport && (
+            <div className="call-popup-backdrop-overlay" aria-hidden="true" />
+          )}
+          <section
+            className={[
+              "call-popup",
+              isCallMinimized ? "call-popup-minimized" : "",
+              isMobileViewport ? "call-popup-fullscreen" : "",
+              isCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
+            ].filter(Boolean).join(" ")}
+            role="dialog"
+            aria-modal="false"
+            aria-label={
+              callPhase === "incoming"
+                ? "Incoming call"
+                : callPhase === "outgoing"
+                ? "Outgoing call"
+                : "Active call"
+            }
+          >
+            {/* Mobile incoming call full-screen */}
+            {isMobileViewport && !isCallMinimized && callPhase === "incoming" && (
+              <MobileIncomingScreen
+                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
+                callType={callType}
+                onAccept={() => void acceptIncomingCall()}
+                onDecline={declineIncomingCall}
+              />
+            )}
+            {/* Mobile active call full-screen */}
+            {isMobileViewport && !isCallMinimized && callPhase !== "incoming" && (
+              <MobileActiveScreen
+                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
+                callType={callType}
+                callPhase={callPhase}
+                isPeerSpeaking={isPeerSpeaking}
+                isProximityNear={isProximityNear}
+                isMicMuted={callAudioSettings.micMuted}
+                isCameraEnabled={callAudioSettings.cameraEnabled}
+                isScreenSharing={callAudioSettings.screenSharing}
+                canShareScreen={callAudioCapabilities.canShareScreen}
+                cameraFacingMode={callAudioSettings.cameraFacingMode}
+                speakerMode={callAudioSettings.speakerMode}
+                timer={callTimer}
+                hasRemoteVideo={hasRemoteVideo}
+                localVideoStream={localVideoStream}
+                remoteVideoStream={remoteVideoStream}
+                mirrorLocalVideo={callAudioSettings.mirrorLocalVideo}
+                onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
+                onToggleCamera={() => {
+                  if (!hasLiveLocalVideo(localVideoStream)) {
+                    setCallType("video");
+                    void audioCallRef.current?.toggleVideo(true);
+                  } else {
+                    void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
+                  }
+                }}
+                onToggleScreenShare={() => void toggleScreenShare()}
+                onToggleFlip={() =>
+                  applyCallAudioPatch({
+                    cameraFacingMode:
+                      callAudioSettings.cameraFacingMode === "user" ? "environment" : "user",
+                  })
+                }
+                onOpenSpeakerSheet={() => setIsSpeakerSheetOpen(true)}
+                onEnd={() => void endActiveCall()}
+              />
+            )}
 
-        {/* Settings menus (rendered inside popup) */}
-        {isCallSettingsMenuOpen && (
-          <CallSettingsContextMenu
-            anchorRef={callSettingsButtonRef}
-            menuRef={callSettingsMenuRef}
-            onOpenAudioSettings={() => {
-              setIsCallSettingsMenuOpen(false);
-              setIsCallAudioPopupOpen(true);
-            }}
-            onOpenVideoSettings={() => {
-              setIsCallSettingsMenuOpen(false);
-              setIsCallVideoPopupOpen(true);
-            }}
-          />
-        )}
-        {isCallAudioPopupOpen && (
-          <CallAudioSettingsPopup
-            popupRef={callAudioPopupRef}
-            isMobile={isMobileViewport}
-            settings={callAudioSettings}
-            capabilities={callAudioCapabilities}
-            devices={callAudioDevices}
-            trackStatus={callTrackStatus}
-            warning={callAudioWarning}
-            onPatch={(patch) => void applyCallAudioPatch(patch)}
-            onClose={() => setIsCallAudioPopupOpen(false)}
-          />
-        )}
-        {isCallVideoPopupOpen && (
-          <CallVideoSettingsPopup
-            settings={callAudioSettings}
-            capabilities={callAudioCapabilities}
-            devices={callAudioDevices}
-            isMobile={isMobileViewport}
-            onPatch={(patch) => void applyCallAudioPatch(patch)}
-            onClose={() => setIsCallVideoPopupOpen(false)}
-          />
-        )}
-      </section>
+            <DesktopCallControls
+              session={session}
+              members={members}
+              currentUser={currentUser}
+              isMobileViewport={isMobileViewport}
+            />
+
+            {/* Settings menus (rendered inside popup) */}
+            {isCallSettingsMenuOpen && (
+              <CallSettingsContextMenu
+                anchorRef={callSettingsButtonRef}
+                menuRef={callSettingsMenuRef}
+                onOpenAudioSettings={() => {
+                  setIsCallSettingsMenuOpen(false);
+                  setIsCallAudioPopupOpen(true);
+                }}
+                onOpenVideoSettings={() => {
+                  setIsCallSettingsMenuOpen(false);
+                  setIsCallVideoPopupOpen(true);
+                }}
+              />
+            )}
+            {isCallAudioPopupOpen && (
+              <CallAudioSettingsPopup
+                popupRef={callAudioPopupRef}
+                isMobile={isMobileViewport}
+                settings={callAudioSettings}
+                capabilities={callAudioCapabilities}
+                devices={callAudioDevices}
+                trackStatus={callTrackStatus}
+                warning={callAudioWarning}
+                onPatch={(patch) => void applyCallAudioPatch(patch)}
+                onClose={() => setIsCallAudioPopupOpen(false)}
+              />
+            )}
+            {isCallVideoPopupOpen && (
+              <CallVideoSettingsPopup
+                settings={callAudioSettings}
+                capabilities={callAudioCapabilities}
+                devices={callAudioDevices}
+                isMobile={isMobileViewport}
+                onPatch={(patch) => void applyCallAudioPatch(patch)}
+                onClose={() => setIsCallVideoPopupOpen(false)}
+              />
+            )}
+          </section>
+        </>
+      )}
       {isSpeakerSheetOpen && (
         <CallSpeakerSheet
           devices={callAudioDevices}
@@ -221,3 +241,4 @@ export function CallFeature({ session, isMobileViewport, members, currentUser }:
     </>
   );
 }
+

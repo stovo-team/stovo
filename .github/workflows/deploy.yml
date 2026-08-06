@@ -100,7 +100,7 @@ jobs:
             set +a
             db_url="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
             # Compose project network is typically <directory>_default.
-            compose_net="$(sudo docker compose ps -q postgres | xargs -r sudo docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' | head -n1)"
+            compose_net="$(sudo docker compose ps -q postgres | xargs -r sudo docker inspect -f '{{range $net, $conf := .NetworkSettings.Networks}}{{ $net }}{{end}}' | head -n1)"
             if [ -z "$compose_net" ]; then
               compose_net="$(basename "$(pwd)")_default"
             fi

@@ -200,6 +200,15 @@ func (s *Server) Routes() http.Handler {
 	router.Method(http.MethodPost, "/socket.io/*", s.sockets.HttpHandler())
 	router.Get("/api/calls/ice-servers", s.authenticated(s.handleGetIceServers))
 	router.Post("/api/calls/{roomId}/sfu-token", s.authenticated(s.handleCreateCallSFUToken))
+	// AI call transcription routes
+	router.Post("/api/calls/{roomId}/transcription/start", s.authenticated(s.handleStartTranscription))
+	router.Post("/api/calls/{roomId}/transcription/stop", s.authenticated(s.handleStopTranscription))
+	router.Get("/api/calls/{roomId}/transcription/status", s.authenticated(s.handleGetTranscriptionStatus))
+	router.Get("/api/calls/{roomId}/transcript", s.authenticated(s.handleGetTranscript))
+	router.Post("/api/calls/{roomId}/transcription/uploads", s.authenticated(s.handleRequestUploadURL))
+	router.Post("/api/calls/{roomId}/transcription/uploads/{chunkId}/complete", s.authenticated(s.handleCompleteUpload))
+	router.Patch("/api/calls/{roomId}/transcript/segments/{segmentId}", s.authenticated(s.handleUpdateTranscriptSegment))
+	router.Get("/api/calls/{roomId}/transcript/artifacts/{artifactType}", s.authenticated(s.handleGetTranscriptArtifact))
 
 	router.Get("/api/health", s.handleHealth)
 	router.Get("/api/health/db", s.handleHealthDB)

@@ -662,6 +662,10 @@ func (s *Server) buildChatPublicFromRow(row *repository.ChatForMember, user user
 		chat.MediaVisibilityPendingApproval = false
 	}
 
+	if sess, ok := s.getCallSession(chat.ID); ok && sess != nil {
+		chat.ActiveCall = sess.publicPayload()
+	}
+
 	return chat, nil
 }
 

@@ -232,6 +232,7 @@ type chatPublic struct {
 	IsFavorite                      bool               `json:"isFavorite"`
 	Wallpaper                       *filePublic        `json:"wallpaper"`
 	PinPermission                   string             `json:"pinPermission"`
+	ActiveCall                      map[string]any     `json:"activeCall,omitempty"`
 }
 
 type createDirectChatRequest struct {
