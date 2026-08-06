@@ -148,13 +148,13 @@ describe("message context menu glass treatment", () => {
 describe("mobile chat chrome", () => {
   it("uses canvas fades and glass surfaces without moving the chat list start", () => {
     expect(rule(".messenger-shell.chat-list-view .chat-sidebar-header")).toContain(
-      "background: linear-gradient(to bottom, var(--chat-layout-background), transparent);"
+      "background: transparent;"
     );
     expect(rule(".messenger-shell.chat-list-view .chat-list")).toContain(
-      "mask-image: linear-gradient(to bottom, transparent, #000 20px);"
+      "mask-image: linear-gradient(to bottom, transparent 0%, #000 12px);"
     );
     expect(mobileChatRule(".app-frame > .app-nav")).toContain(
-      "background: var(--mobile-glass-surface-strong);"
+      "background: transparent;"
     );
     expect(rule(".messenger-shell.chat-list-view .chat-list-filters .filter-chip")).toContain(
       "background: var(--mobile-glass-surface);"
@@ -200,7 +200,7 @@ describe("desktop chat refinements", () => {
   it("keeps the sidebar chrome above a full-height scrollable chat list", () => {
     expect(desktopRule(".chat-sidebar-header")).toContain("margin: 0;");
     expect(desktopRule(".chat-sidebar-header")).toContain("position: sticky;");
-    expect(desktopRule(".chat-list")).toContain("margin-top: var(--chat-list-chrome-gap, 16px);");
+    expect(desktopRule(".chat-list")).toContain("margin-top: 4px;");
     expect(desktopRule(".chat-list-filters")).toContain("overflow-x: auto;");
   });
 

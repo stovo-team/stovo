@@ -116,7 +116,7 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
             {callNotice && <span className="call-popup-notice">{callNotice}</span>}
           </>
         <div className="call-popup-header-actions">
-          {callPhase !== "incoming" && !isCallMinimized && (
+          {callPhase !== "incoming" && !isCallMinimized && (session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
             <button
               type="button"
               className="icon-button subtle"
@@ -472,7 +472,7 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
       )}
 
       {/* Minimized state: single-line chip controls (desktop only — mobile bar is in header) */}
-      {isCallMinimized && !isMobileViewport && (
+      {isCallMinimized && !isMobileViewport && (session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
         <div className="call-status-chip-controls">
           {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
             <button

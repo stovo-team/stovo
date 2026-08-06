@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -375,6 +376,10 @@ func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, user 
 func (s *Server) handleMarkMessageRead(w http.ResponseWriter, r *http.Request, user userPublic) {
 	message, chatID, err := s.markMessageRead(r.Context(), user, messageIDFromURL(r))
 	if err != nil {
+		if errors.Is(err, errNotFound) {
+			s.json(w, http.StatusOK, map[string]any{"status": "ok"})
+			return
+		}
 		s.detail(w, domainErrorStatus(err), err.Error())
 		return
 	}

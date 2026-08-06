@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 
 import { acceptInvite, previewInvite, InvitePreview } from "../api/family";
-import { ApiError } from "../api/client";
+import { ApiError, storeApiUrlFromInviteLink } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 
@@ -19,6 +19,7 @@ export default function InvitePage() {
   });
 
   useEffect(() => {
+    storeApiUrlFromInviteLink();
     if (!token) {
       return;
     }

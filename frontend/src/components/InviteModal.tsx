@@ -114,7 +114,6 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
     try {
       await copyText(inviteUrl);
       setCopiedLink(true);
-      setStatus("Invite link copied");
       window.setTimeout(() => setCopiedLink(false), 1600);
     } catch {
       setError("Could not copy invite link");
@@ -127,16 +126,20 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       if (navigator.share) {
         await navigator.share({
           title: `Join ${familyName} on Stovo`,
-          text: `Join ${familyName} on Stovo`,
           url: inviteUrl
         });
-        setStatus("Invite share opened");
         return;
       }
       await copyText(inviteUrl);
-      setStatus("Invite link copied");
+      setCopiedLink(true);
+      window.setTimeout(() => setCopiedLink(false), 1600);
     } catch {
-      // User dismissed share sheet — ignore.
+      // Share cancelled or unavailable — fallback to clipboard copy
+      try {
+        await copyText(inviteUrl);
+        setCopiedLink(true);
+        window.setTimeout(() => setCopiedLink(false), 1600);
+      } catch {}
     }
   }
 
@@ -147,12 +150,12 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       if (navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
         await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
         setCopiedQr(true);
-        setStatus("QR code copied");
         window.setTimeout(() => setCopiedQr(false), 1600);
         return;
       }
       await copyText(inviteUrl ?? "");
-      setStatus("Invite link copied (QR clipboard unsupported)");
+      setCopiedQr(true);
+      window.setTimeout(() => setCopiedQr(false), 1600);
     } catch {
       setError("Could not copy QR code");
     }
@@ -166,24 +169,20 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           title: `Join ${familyName} on Stovo`,
-          text: inviteUrl,
           files: [file]
         });
-        setStatus("QR share opened");
         return;
       }
       if (navigator.share) {
         await navigator.share({
           title: `Join ${familyName} on Stovo`,
-          text: `Join ${familyName} on Stovo`,
           url: inviteUrl
         });
-        setStatus("Invite share opened");
         return;
       }
       await handleCopyQr();
     } catch {
-      // User dismissed share sheet — ignore.
+      // User cancelled share
     }
   }
 
@@ -216,11 +215,6 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
         {error && (
           <p className="error-text" role="alert">
             {error}
-          </p>
-        )}
-        {status && !error && (
-          <p className="success-text" role="status">
-            {status}
           </p>
         )}
 

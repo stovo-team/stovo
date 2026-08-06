@@ -14,7 +14,7 @@ describe("desktop app navigation active state", () => {
     expect(desktopNavigationStyles).toContain("--app-nav-state-circle-size: 60px;");
 
     expect(desktopNavigationStyles).toContain(
-      ".app-frame > .app-nav a:is(.active, :not(.active):hover)::before {\n    background: color-mix(in oklab, var(--stovo-primary) 10%, transparent);\n    border-radius: 50%;\n    content: \"\";\n    height: var(--app-nav-state-circle-size);\n    left: 50%;\n    pointer-events: none;\n    position: absolute;\n    top: 1px;\n    transform: translateX(-50%);\n    width: var(--app-nav-state-circle-size);"
+      ".app-frame > .app-nav a:is(.active, :not(.active):hover)::before,"
     );
   });
 

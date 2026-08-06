@@ -2555,6 +2555,7 @@ h2 {
   display: grid;
   gap: 1px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 24px;
   margin-bottom: 18px;
   overflow: hidden;
 }
@@ -3956,7 +3957,7 @@ h2 {
   height: 36px;
   justify-content: center;
   left: 12px;
-  opacity: calc(0.16 + (var(--message-swipe-progress) * 0.84));
+  opacity: var(--message-swipe-progress, 0);
   pointer-events: none;
   position: absolute;
   top: 50%;
@@ -3977,7 +3978,7 @@ h2 {
   border-radius: 999px;
   content: "";
   inset: 0;
-  opacity: calc(0.1 + (var(--message-swipe-progress) * 0.5));
+  opacity: calc(var(--message-swipe-progress, 0) * 0.6);
   position: absolute;
   transform: scale(calc(0.88 + (var(--message-swipe-progress) * 0.12)));
   transition:
@@ -4008,10 +4009,6 @@ h2 {
   margin-top: 2px;
 }
 
-.message-bubble.grouped:not(.mine) {
-  border-radius: calc(var(--radius-bubble) * 0.22) var(--radius-bubble) var(--radius-bubble) calc(var(--radius-bubble) * 0.22);
-}
-
 .message-sender-row {
   align-items: center;
   display: flex;
@@ -4030,10 +4027,6 @@ h2 {
   border-radius: var(--radius-bubble) var(--radius-bubble) calc(var(--radius-bubble) * 0.22) var(--radius-bubble);
   color: #ffffff;
   justify-self: end;
-}
-
-.message-bubble.mine.grouped {
-  border-radius: var(--radius-bubble) calc(var(--radius-bubble) * 0.22) calc(var(--radius-bubble) * 0.22) var(--radius-bubble);
 }
 
 .message-bubble.sending {
@@ -6345,8 +6338,8 @@ span.message-spoiler.is-revealed {
 .messenger-modal {
   background: var(--surface-card);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow);
+  border-radius: 28px;
+  box-shadow: none;
   display: grid;
   gap: 14px;
   max-height: min(720px, calc(100vh - 36px));
@@ -8474,7 +8467,15 @@ span.message-spoiler.is-revealed {
   padding: 14px 16px;
 }
 
+.invite-modal-backdrop {
+  background: rgba(0, 0, 0, 0.88);
+}
+
 .invite-modal {
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  box-shadow: none !important;
   gap: 16px;
   max-width: 420px;
 }
@@ -8516,7 +8517,7 @@ span.message-spoiler.is-revealed {
 .invite-modal-qr {
   align-items: center;
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: 20px;
   display: flex;
   justify-content: center;
   margin: 0 auto;
@@ -10042,16 +10043,8 @@ span.message-spoiler.is-revealed {
     max-width: 88%;
   }
 
-  .message-bubble.grouped:not(.mine) {
-    border-radius: calc(var(--radius-bubble) * 0.22) var(--radius-bubble) var(--radius-bubble) calc(var(--radius-bubble) * 0.33);
-  }
-
   .message-bubble.mine {
     border-radius: var(--radius-bubble) var(--radius-bubble) calc(var(--radius-bubble) * 0.33) var(--radius-bubble);
-  }
-
-  .message-bubble.mine.grouped {
-    border-radius: var(--radius-bubble) calc(var(--radius-bubble) * 0.22) calc(var(--radius-bubble) * 0.22) var(--radius-bubble);
   }
 
   .message-composer {
@@ -13082,6 +13075,18 @@ span.message-spoiler.is-revealed {
 .message-bubble.mine .audio-player-play-pause {
   background: #ffffff;
   color: var(--accent-primary);
+}
+
+.group-call-pulse-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: group-call-pulse-ring 1.8s infinite;
+  display: inline-block;
+  flex-shrink: 0;
+  margin-right: 4px;
 }
 
 /* Browser header is edge-to-edge at every viewport width; native owns its mobile inset. */
