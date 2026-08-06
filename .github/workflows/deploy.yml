@@ -100,21 +100,21 @@ jobs:
             set +a
             db_url="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
             # Compose project network is typically <directory>_default.
-            compose_net="$(sudo docker compose ps -q postgres | xargs -r sudo docker inspect -f '{{range $net, $conf := .NetworkSettings.Networks}}{{ $net }}{{end}}' | head -n1)"
+            compose_net="$(sudo docker compose ps -q postgres | xargs -r sudo docker inspect --format '{{json .NetworkSettings.Networks}}' | grep -o '"[^"]*"' | head -n1 | tr -d '"')"
             if [ -z "$compose_net" ]; then
               compose_net="$(basename "$(pwd)")_default"
             fi
-            sudo docker run --rm --network "$compose_net" \
+            if ! sudo docker run --rm --network "$compose_net" \
               -v "$(pwd)/backend/migrations:/migrations:ro" \
               arigaio/atlas:latest \
-              migrate apply --dir file://migrations --url "$db_url" || {
-                # First production cutover: stamp baseline when schema already matches.
-                echo "migrate apply failed; attempting baseline stamp for existing schema"
-                sudo docker run --rm --network "$compose_net" \
-                  -v "$(pwd)/backend/migrations:/migrations:ro" \
-                  arigaio/atlas:latest \
-                  migrate set 20260804120000 --dir file://migrations --url "$db_url"
-              }
+              migrate apply --dir file://migrations --url "$db_url"; then
+              # First production cutover: stamp baseline when schema already matches.
+              echo "migrate apply failed; attempting baseline stamp for existing schema"
+              sudo docker run --rm --network "$compose_net" \
+                -v "$(pwd)/backend/migrations:/migrations:ro" \
+                arigaio/atlas:latest \
+                migrate set 20260804120000 --dir file://migrations --url "$db_url"
+            fi
 
             sudo docker compose up -d --build --no-deps frontend
             # Cold start / first blue-green cutover: ensure the current active color is up.
