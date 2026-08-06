@@ -4,7 +4,6 @@ import { Forward, MessageCircle, Reply } from "lucide-react";
 import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
-import { GroupCallActiveBanner } from "../calling/GroupCallActiveBanner";
 import type { CallSessionApi } from "../calling/useCallSession";
 import { Composer } from "../composer/Composer";
 import type { CallPhase } from "../shared/types";
@@ -267,17 +266,6 @@ export function ConversationPanel({
           clearSelectedMessages();
         }}
       />
-      {selectedChat &&
-        callSession &&
-        callSession.activeGroupCalls[selectedChat.id] &&
-        (callSession.callPhase === "idle" || callSession.activeCallChatId !== selectedChat.id) && (
-          <GroupCallActiveBanner
-            chatTitle={selectedChat.title}
-            activeCall={callSession.activeGroupCalls[selectedChat.id]}
-            members={selectedChat.members as any}
-            onOpenPreJoin={() => callSession.openPreJoinModal(selectedChat.id)}
-          />
-        )}
       {isMessageSearchOpen && (
         <div className="search-field message-search-field" role="search">
           <span className="ms-icon ms-icon--20" aria-hidden={true}>

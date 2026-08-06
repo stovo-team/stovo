@@ -86,7 +86,7 @@ export default function ChatsPage() {
             onSelectChat={setSelectedChat}
             onOpenChat={openChat}
             mobileCallStrip={
-              callPhase !== "idle" && isCallMinimized && isMobileViewport && !chatId ? (
+              callPhase !== "idle" && isCallMinimized && isMobileViewport && !chatId && (selectedChat?.type === "group" || selectedChat?.type === "family") ? (
                 <MobileMinimizedCallBar
                   peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
                   callPhase={callPhase}
@@ -108,7 +108,7 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {selectedChat && callPhase !== "idle" && isCallMinimized && isMobileViewport && chatId && (
+            {selectedChat && callPhase !== "idle" && isCallMinimized && isMobileViewport && chatId && (selectedChat.type === "group" || selectedChat.type === "family") && (
               <MobileMinimizedCallBar
                 peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
                 callPhase={callPhase}
