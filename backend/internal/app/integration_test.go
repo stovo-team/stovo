@@ -164,6 +164,9 @@ func applyTestSchema(t *testing.T, db *sql.DB) {
 }
 
 func execSchemaSQL(db *sql.DB, raw string) error {
+	raw = strings.TrimPrefix(raw, "\xef\xbb\xbf")
+	raw = strings.ReplaceAll(raw, "\r\n", "\n")
+	raw = strings.ReplaceAll(raw, "\r", "\n")
 	var cleaned strings.Builder
 	for _, line := range strings.Split(raw, "\n") {
 		trimmed := strings.TrimSpace(line)

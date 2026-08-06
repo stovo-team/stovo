@@ -61,6 +61,13 @@ type Config struct {
 	LiveKitURL                   string
 	LiveKitAPIKey                string
 	LiveKitAPISecret             string
+	GroqAPIKey                 string
+	GroqSTTModel               string
+	GroqChatModel              string
+	GroqSTTCostPerHourUSD      float64
+	AICallTranscriptionEnabled bool
+	AICallMaxDurationMinutes   int
+	MinIOCallsBucket           string
 }
 
 func Load() (Config, error) {
@@ -170,6 +177,13 @@ func Load() (Config, error) {
 		LiveKitURL:                   envString("LIVEKIT_URL", ""),
 		LiveKitAPIKey:                envString("LIVEKIT_API_KEY", ""),
 		LiveKitAPISecret:             envString("LIVEKIT_API_SECRET", ""),
+		GroqAPIKey:                 strings.TrimSpace(os.Getenv("GROQ_API_KEY")),
+		GroqSTTModel:               getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo"),
+		GroqChatModel:              getenv("GROQ_CHAT_MODEL", ""),
+		GroqSTTCostPerHourUSD:      envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
+		AICallTranscriptionEnabled: envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
+		AICallMaxDurationMinutes:   envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
+		MinIOCallsBucket:           getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
 	}
 
 	return cfg, nil
@@ -197,6 +211,18 @@ func envInt(key string, fallback int) int {
 		return fallback
 	}
 	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return fallback
+	}
+	return parsed
+}
+
+func envFloat64(key string, fallback float64) float64 {
+	value := strings.TrimSpace(os.Getenv(key))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
 	if err != nil {
 		return fallback
 	}
