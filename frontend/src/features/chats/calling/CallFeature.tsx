@@ -88,6 +88,10 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
   const preJoinChat = preJoinChatId ? chats.find((c) => c.id === preJoinChatId) ?? null : null;
   const preJoinActiveCall = preJoinChatId ? activeGroupCalls[preJoinChatId] : null;
 
+  const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
+  const isGroupCall = activeChat ? activeChat.type === "group" || activeChat.type === "family" : false;
+  const effectiveIsCallMinimized = isCallMinimized && isGroupCall;
+
   if (callPhase === "idle" && !preJoinChatId) {
     return null;
   }
@@ -106,15 +110,15 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
       )}
       {callPhase !== "idle" && (
         <>
-          {!isCallMinimized && !isMobileViewport && (
+          {!effectiveIsCallMinimized && !isMobileViewport && (
             <div className="call-popup-backdrop-overlay" aria-hidden="true" />
           )}
           <section
             className={[
               "call-popup",
-              isCallMinimized ? "call-popup-minimized" : "",
+              effectiveIsCallMinimized ? "call-popup-minimized" : "",
               isMobileViewport ? "call-popup-fullscreen" : "",
-              isCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
+              effectiveIsCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
             ].filter(Boolean).join(" ")}
             role="dialog"
             aria-modal="false"
