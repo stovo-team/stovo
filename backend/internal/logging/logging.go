@@ -97,6 +97,12 @@ func (b *Buffer) Clear() {
 }
 
 func (b *Buffer) append(record Record) {
+	fmt.Fprintf(os.Stdout, "%s %-7s [%s] %s\n", record.Timestamp.Format(time.RFC3339), record.Level, record.Logger, record.Message)
+	if b.logFile != nil {
+		if line, err := recordJSONL(record); err == nil {
+			_, _ = b.logFile.Write(line)
+		}
+	}
 	if b.archive != nil {
 		b.archive.Enqueue(record)
 	}
