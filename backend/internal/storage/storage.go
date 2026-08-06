@@ -41,7 +41,16 @@ func New(cfg Config) (ObjectStore, error) {
 	case "", "local":
 		return NewLocalStorage(cfg.LocalPath)
 	case "minio":
-		return NewMinIOStorage(cfg.Endpoint, cfg.AccessKey, cfg.SecretKey, cfg.Secure, cfg.Bucket)
+		store, err := NewMinIOStorage(cfg.Endpoint, cfg.AccessKey, cfg.SecretKey, cfg.Secure, cfg.Bucket)
+		if err != nil {
+			return nil, err
+		}
+		if cfg.LocalPath != "" {
+			if local, err := NewLocalStorage(cfg.LocalPath); err == nil {
+				store.SetFallback(local)
+			}
+		}
+		return store, nil
 	default:
 		return nil, fmt.Errorf("unsupported storage provider %q", cfg.Provider)
 	}
