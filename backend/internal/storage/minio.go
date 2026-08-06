@@ -14,8 +14,13 @@ import (
 )
 
 type MinIOStorage struct {
-	client *minio.Client
-	bucket string
+	client   *minio.Client
+	bucket   string
+	fallback ObjectStore
+}
+
+func (s *MinIOStorage) SetFallback(fallback ObjectStore) {
+	s.fallback = fallback
 }
 
 func NewMinIOStorage(endpoint, accessKey, secretKey string, secure bool, bucket string) (*MinIOStorage, error) {
@@ -78,14 +83,16 @@ func (s *MinIOStorage) Read(key string) ([]byte, error) {
 
 func (s *MinIOStorage) Open(key string) (io.ReadSeekCloser, error) {
 	object, err := s.client.GetObject(context.Background(), s.bucket, key, minio.GetObjectOptions{})
-	if err != nil {
-		return nil, err
-	}
-	if _, err := object.Stat(); err != nil {
+	if err == nil {
+		if _, statErr := object.Stat(); statErr == nil {
+			return object, nil
+		}
 		_ = object.Close()
-		return nil, err
 	}
-	return object, nil
+	if s.fallback != nil {
+		return s.fallback.Open(key)
+	}
+	return nil, err
 }
 
 func (s *MinIOStorage) Delete(key string) error {
@@ -122,13 +129,19 @@ func (s *MinIOStorage) SaveToBucket(ctx context.Context, bucket, objectKey strin
 }
 
 func (s *MinIOStorage) StatObject(ctx context.Context, bucket, objectKey string) (ObjectInfo, error) {
-	info, err := s.client.StatObject(ctx, bucket, objectKey, minio.StatObjectOptions{})
-	if err != nil {
-		return ObjectInfo{}, err
+	if bucket == "" {
+		bucket = s.bucket
 	}
-	return ObjectInfo{
-		Size:        info.Size,
-		ContentType: info.ContentType,
-		ETag:        info.ETag,
-	}, nil
+	info, err := s.client.StatObject(ctx, bucket, objectKey, minio.StatObjectOptions{})
+	if err == nil {
+		return ObjectInfo{
+			Size:        info.Size,
+			ContentType: info.ContentType,
+			ETag:        info.ETag,
+		}, nil
+	}
+	if s.fallback != nil {
+		return s.fallback.StatObject(ctx, bucket, objectKey)
+	}
+	return ObjectInfo{}, err
 }
