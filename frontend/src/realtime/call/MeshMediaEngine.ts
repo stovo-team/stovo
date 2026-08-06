@@ -267,6 +267,9 @@ export default class MeshMediaEngine {
 
     pc.onconnectionstatechange = () => {
       this.onConnectionState?.(userId, pc.connectionState);
+      if (pc.connectionState === "connected") {
+        this.onIceConnected?.();
+      }
     };
 
     pc.oniceconnectionstatechange = () => {
@@ -280,6 +283,7 @@ export default class MeshMediaEngine {
   }
 
   private handleRemoteTrack(userId: string, state: PeerState, e: RTCTrackEvent) {
+    this.onIceConnected?.();
     const inboundStream = e.streams[0];
     const isScreenVideo =
       e.track.kind === "video" &&

@@ -74,14 +74,12 @@ export function getAudioPlaybackAppLinkPath(rawUrl: string): string | null {
 export function getInviteAppLinkPath(rawUrl: string): string | null {
   try {
     const url = new URL(rawUrl);
-    if (
-      url.protocol !== "https:" ||
-      url.hostname.toLowerCase() !== APP_LINK_HOST ||
-      !/^\/invite\/[^/]+$/.test(url.pathname)
-    ) {
+    const isSupportedProtocol = url.protocol === "http:" || url.protocol === "https:" || url.protocol === "stovo:";
+    const pathname = url.protocol === "stovo:" ? `/${url.hostname}${url.pathname}` : url.pathname;
+    if (!isSupportedProtocol || !/^\/invite\/[^/]+$/.test(pathname)) {
       return null;
     }
-    return `${url.pathname}${url.search}`;
+    return `${pathname}${url.search}`;
   } catch {
     return null;
   }

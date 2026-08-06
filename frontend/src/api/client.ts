@@ -41,13 +41,24 @@ function readStoredApiUrl() {
   }
 }
 
-function storeApiUrlFromInviteLink() {
+export function storeApiUrlFromInviteLink() {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const params = new URLSearchParams(window.location.search);
-  const apiUrl = normalizeApiUrl(params.get("apiUrl"));
+  let apiUrl: string | null = null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    apiUrl = normalizeApiUrl(params.get("apiUrl"));
+  } catch {}
+
+  if (!apiUrl) {
+    try {
+      const hrefUrl = new URL(window.location.href);
+      apiUrl = normalizeApiUrl(hrefUrl.searchParams.get("apiUrl"));
+    } catch {}
+  }
+
   if (apiUrl) {
     window.localStorage.setItem(API_URL_STORAGE_KEY, apiUrl);
     return apiUrl;

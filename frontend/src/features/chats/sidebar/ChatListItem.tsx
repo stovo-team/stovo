@@ -103,6 +103,13 @@ export function ChatListItem({
         })()}
       </span>
       <span className="chat-row-meta">
+        {(chat.type === "group" || chat.type === "family") && chat.activeCall && (
+          <span
+            className="group-call-pulse-dot"
+            title="Group call in progress"
+            aria-label="Group call in progress"
+          />
+        )}
         {chat.isMuted && <BellOff aria-label="Muted" size={14} />}
         {chat.isFavorite && <Star aria-label="Favorite" size={14} />}
         {(chat.isPinned || chat.type === "family") && (

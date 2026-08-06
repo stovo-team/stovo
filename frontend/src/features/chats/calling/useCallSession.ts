@@ -444,6 +444,38 @@ export function useCallSession({
     }
   }, [callPhase]);
 
+  // Watchdog timer for "connecting" phase: prevents eternal connecting state
+  useEffect(() => {
+    if (callPhase !== "connecting" || !activeCallChatId || !callPeerUserId) {
+      return;
+    }
+    const timerId = setTimeout(() => {
+      if (callPhaseRef.current === "connecting") {
+        console.warn("[CALL] Connecting watchdog triggered — attempting signaling retry");
+        if (audioCallRef.current && activeCallChatIdRef.current && callPeerUserId) {
+          void audioCallRef.current.resumeSignaling(
+            activeCallChatIdRef.current,
+            callPeerUserId,
+            callTypeRef.current,
+            true
+          );
+        }
+      }
+    }, 6000);
+
+    const timeoutId = setTimeout(() => {
+      if (callPhaseRef.current === "connecting") {
+        console.error("[CALL] Connecting watchdog timeout — connection failed");
+        void resetCallState("Call connection timed out. Please try again.", false, true);
+      }
+    }, 15000);
+
+    return () => {
+      clearTimeout(timerId);
+      clearTimeout(timeoutId);
+    };
+  }, [callPhase, activeCallChatId, callPeerUserId]);
+
   // Re-attach video refs to the controller whenever a call becomes active.
   // startOutgoing / acceptIncoming await getUserMedia (hundreds of ms), giving
   // React time to render the popup and populate the refs before they're needed.
@@ -1074,6 +1106,8 @@ export function useCallSession({
           }
           if (payload.callerId === currentUser.id) {
             await audioController.startOutgoing(payload.chatId, peerId, acceptedCallType);
+          } else {
+            await audioController.acceptIncoming(payload.chatId, peerId, acceptedCallType);
           }
         };
 
