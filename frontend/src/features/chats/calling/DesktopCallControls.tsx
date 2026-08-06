@@ -1,4 +1,5 @@
 import {
+  FileText,
   Maximize2,
   Mic,
   MicOff,
@@ -13,6 +14,8 @@ import {
   VideoOff,
   Volume2
 } from "lucide-react";
+import { TranscriptPanel } from "./TranscriptPanel";
+import { useTranscription } from "./useTranscription";
 
 import type { User } from "../../../api/auth";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
@@ -68,8 +71,29 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
     toggleScreenShare,
     acceptIncomingCall,
     declineIncomingCall,
-    endActiveCall
+    endActiveCall,
+    callRoomId,
+    accessToken,
+    socketRef
   } = session;
+
+  const transcription = useTranscription({
+    accessToken: accessToken ?? null,
+    roomId: callRoomId,
+    currentUserId: currentUser?.id ?? null,
+    socketRef,
+    localVideoStream,
+    enabled: true,
+  });
+
+  const {
+    transcriptState,
+    transcriptData,
+    isTranscriptPanelOpen,
+    toggleTranscriptPanel,
+    startTranscription,
+    stopTranscription,
+  } = transcription;
 
   return (
     <>
@@ -379,6 +403,48 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
                   )}
                 </>
               )}
+              {/* ── AI Transcript button — always visible in primary controls during in-call ── */}
+              <div className="call-ctrl-wrap">
+                <button
+                  id="call-ctrl-ai-transcript"
+                  type="button"
+                  className={`call-ctrl-btn call-ctrl-btn--transcript${
+                    transcriptState === "recording" ? " is-recording" :
+                    transcriptState === "stopping" || transcriptState === "processing" ? " is-processing" :
+                    isTranscriptPanelOpen ? " is-active" : ""
+                  }`}
+                  aria-label={
+                    transcriptState === "recording" ? "Stop transcription" :
+                    transcriptState === "stopping" || transcriptState === "processing" ? "Processing transcript" :
+                    transcriptState === "ready" ? "View AI Transcript" :
+                    "Start AI Transcript"
+                  }
+                  title={
+                    transcriptState === "recording" ? "Click to stop transcription" :
+                    transcriptState === "stopping" || transcriptState === "processing" ? "Transcript is being processed…" :
+                    transcriptState === "ready" ? "View AI Transcript" :
+                    "Start AI Transcript"
+                  }
+                  disabled={transcriptState === "stopping" || transcriptState === "processing" || transcriptState === "starting"}
+                  onClick={() => {
+                    if (transcriptState === "idle" || transcriptState === "failed") {
+                      void startTranscription();
+                    } else if (transcriptState === "recording") {
+                      void stopTranscription();
+                    } else if (transcriptState === "ready") {
+                      toggleTranscriptPanel();
+                    }
+                  }}
+                >
+                  <FileText aria-hidden="true" size={20} />
+                </button>
+                <span>
+                  {transcriptState === "recording" ? "Stop" :
+                   transcriptState === "stopping" || transcriptState === "processing" ? "Processing" :
+                   transcriptState === "ready" ? "Transcript" :
+                   isMobileViewport ? "AI" : "AI Transcript"}
+                </span>
+              </div>
               <div className="call-ctrl-wrap">
                 <button
                   type="button"
@@ -392,6 +458,14 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
                 </button>
                 <span>End</span>
               </div>
+              {/* Transcript side panel */}
+              {isTranscriptPanelOpen && (
+                <TranscriptPanel
+                  data={transcriptData}
+                  isLoading={transcriptState === "processing" || transcriptState === "stopping"}
+                  onClose={toggleTranscriptPanel}
+                />
+              )}
             </>
           )}
         </div>

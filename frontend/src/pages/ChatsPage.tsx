@@ -1,4 +1,4 @@
-﻿import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
@@ -150,6 +150,7 @@ export default function ChatsPage() {
               renderMarkdown={appearance.renderMarkdown}
               isDockedEmojiPicker={isDockedEmojiPicker}
               showDockedEmojiPicker={showDockedEmojiPicker}
+              callSession={callSession}
               onOpenChat={openChat}
               onOpenImage={openFullViewImage}
               onOpenNewChat={openNewChatScreen}
@@ -192,7 +193,7 @@ export default function ChatsPage() {
         </div>
         {audioRestoreStatus && <p className="audio-restore-status" role="status">{audioRestoreStatus}</p>}
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
-        <CallFeature session={callSession} isMobileViewport={isMobileViewport} members={members} currentUser={currentUser} />
+        <CallFeature session={callSession} isMobileViewport={isMobileViewport} members={members} currentUser={currentUser} chats={chats} />
         <ChatOverlays
           accessToken={accessToken}
           family={family}

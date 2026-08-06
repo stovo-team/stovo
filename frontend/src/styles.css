@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --background-primary: #ffffff;
   --background-secondary: #f6f7f9;
   --background-tertiary: #eef1f5;
@@ -656,6 +656,217 @@
   background: #b91c1c;
   opacity: 1;
 }
+
+/* ── AI Transcript control button ── */
+.call-ctrl-btn--transcript {
+  border-color: color-mix(in oklab, var(--accent-primary) 40%, var(--border-default));
+}
+
+.call-ctrl-btn--transcript.is-recording {
+  background: color-mix(in oklab, #dc2626 18%, transparent);
+  border-color: #dc2626;
+  color: #dc2626;
+  animation: transcript-recording-pulse 1.6s ease-in-out infinite;
+}
+
+.call-ctrl-btn--transcript.is-processing {
+  background: color-mix(in oklab, #a855f7 14%, transparent);
+  border-color: color-mix(in oklab, #a855f7 60%, transparent);
+  color: #a855f7;
+  pointer-events: none;
+}
+
+@keyframes transcript-recording-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+}
+
+[data-theme-mode="dark"] .call-ctrl-btn--transcript.is-recording {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+}
+
+/* ── Transcript panel overlay ── */
+.transcript-panel {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: min(340px, 90vw);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 50;
+  animation: transcript-panel-in 0.2s ease-out;
+}
+
+@keyframes transcript-panel-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.transcript-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 10px 14px;
+  border-bottom: 1px solid var(--border-default);
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.transcript-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.transcript-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.transcript-panel__icon-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.transcript-panel__icon-btn:hover {
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+}
+
+.transcript-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.transcript-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 24px;
+}
+
+.transcript-panel__spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border-default);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.transcript-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transcript-panel__section-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.transcript-panel__summary-text {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--surface-subtle);
+  border-radius: 8px;
+}
+
+.transcript-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.transcript-panel__list-item {
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  padding: 7px 10px;
+  background: var(--surface-subtle);
+  border-radius: 6px;
+  border-left: 3px solid var(--accent-primary);
+}
+
+.transcript-panel__segments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transcript-panel__segment {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.transcript-panel__segment-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.transcript-panel__speaker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.transcript-panel__timestamp {
+  font-size: 0.72rem;
+  color: var(--text-tertiary, var(--text-secondary));
+  font-variant-numeric: tabular-nums;
+}
+
+.transcript-panel__segment-text {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin: 0;
+}
+
 
 /* ── Call settings icon button ── */
 .call-settings-icon-btn {
@@ -15468,3 +15679,226 @@ span.message-spoiler.is-revealed {
     max-width: none;
   }
 }
+
+/* --- Group Call Active Banner & Pre-Join Modal Styles --- */
+.group-call-active-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.16), rgba(16, 185, 129, 0.08));
+  border-bottom: 1px solid rgba(34, 197, 94, 0.3);
+  backdrop-filter: blur(12px);
+  color: var(--text-primary);
+  z-index: 20;
+}
+
+.group-call-banner-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.group-call-banner-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: group-call-pulse-ring 1.8s infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes group-call-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.group-call-banner-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.group-call-banner-title {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #22c55e;
+}
+
+.group-call-banner-subtitle {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-call-banner-join-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #22c55e;
+  color: #ffffff;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+}
+
+.group-call-banner-join-btn:hover {
+  background: #16a34a;
+  transform: translateY(-1px);
+}
+
+.group-call-join-svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Pre-Join Approval Modal */
+.group-call-prejoin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  padding: 16px;
+}
+
+.group-call-prejoin-card {
+  background: var(--surface-card, #1c1c1e);
+  border: 1px solid var(--border-default, #2c2c2e);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.group-call-prejoin-header {
+  text-align: center;
+}
+
+.group-call-prejoin-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+}
+
+.group-call-prejoin-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.group-call-prejoin-preview {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  background: #09090b;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.group-call-prejoin-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.group-call-prejoin-avatar-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.group-call-prejoin-controls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.group-call-prejoin-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-default, #3f3f46);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary, #ffffff);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.15s ease;
+}
+
+.group-call-prejoin-btn.is-off {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.group-call-prejoin-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.group-call-prejoin-cancel-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-default, #3f3f46);
+  background: transparent;
+  color: var(--text-primary, #ffffff);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.group-call-prejoin-confirm-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 0;
+  background: #22c55e;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.group-call-prejoin-confirm-btn:hover {
+  background: #16a34a;
+}
+
