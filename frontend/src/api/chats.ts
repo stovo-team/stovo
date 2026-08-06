@@ -40,6 +40,7 @@ export interface Chat {
   isFavorite: boolean;
   wallpaper?: FamilyFile | null;
   pinPermission?: "everyone" | "admins_only";
+  activeCall?: Record<string, any> | null;
 }
 
 export type MessageEncryptionProtocol = "end_to_end" | "server_at_rest" | "legacy_plaintext";

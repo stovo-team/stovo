@@ -153,6 +153,33 @@ export function useCallSession({
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const callTimer = useCallTimer(callPhase === "in-call");
 
+  const [activeGroupCalls, setActiveGroupCalls] = useState<Record<string, Record<string, any>>>({});
+  const [preJoinChatId, setPreJoinChatId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveGroupCalls((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const c of chats) {
+        if (c.activeCall) {
+          if (!next[c.id] || JSON.stringify(next[c.id]) !== JSON.stringify(c.activeCall)) {
+            next[c.id] = c.activeCall;
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [chats]);
+
+  const openPreJoinModal = useCallback((chatId: string) => {
+    setPreJoinChatId(chatId);
+  }, []);
+
+  const closePreJoinModal = useCallback(() => {
+    setPreJoinChatId(null);
+  }, []);
+
   const callRoomIdRef = useRef<string | null>(null);
   const audioCallRef = useRef<CallController | null>(null);
   const callSoundPlayerRef = useRef(createCallSoundPlayer());
@@ -688,6 +715,79 @@ export function useCallSession({
       setCallNotice(
         callType === "video" ? "Incoming video call" : "Incoming audio call"
       );
+      setError(err instanceof Error ? err.message : "Could not join call");
+    }
+  }
+
+  async function joinOngoingGroupCall(
+    targetChat: Chat,
+    activeCall: Record<string, any>,
+    settings: { micMuted: boolean; cameraEnabled: boolean }
+  ) {
+    const socket = socketRef.current;
+    if (!socket || !targetChat.id) {
+      return;
+    }
+    setPreJoinChatId(null);
+    const targetRoomId = activeCall.roomId;
+    const targetTopology = (activeCall.topology as CallTopology) || "sfu";
+    const targetCallType = (activeCall.callType || "audio") as "audio" | "video";
+
+    dismissNativeCallNotification();
+    stopCallRingtone();
+    setCallNotice(null);
+    setActiveCallChatId(targetChat.id);
+    activeCallChatIdRef.current = targetChat.id;
+    setCallRoomId(targetRoomId);
+    callRoomIdRef.current = targetRoomId;
+    setCallTopology(targetTopology);
+    setCallType(targetCallType);
+    callTypeRef.current = targetCallType;
+
+    setCallPhase("connecting");
+    callPhaseRef.current = "connecting";
+
+    try {
+      await applyCallAudioPatch({
+        micMuted: settings.micMuted,
+        cameraEnabled: settings.cameraEnabled,
+        speakerMode: targetCallType === "video" ? "large" : "small",
+      });
+
+      if (targetRoomId) {
+        audioCallRef.current?.setRoomId(targetRoomId);
+      }
+      if (currentUser?.id) {
+        audioCallRef.current?.setLocalUserId(currentUser.id);
+      }
+
+      if (targetTopology === "sfu") {
+        await audioCallRef.current?.prepareForCall(targetCallType);
+      } else {
+        const callerId = activeCall.callerId || currentUser?.id || "";
+        await audioCallRef.current?.acceptIncoming(targetChat.id, callerId, targetCallType);
+      }
+
+      const connected = await waitForSocketConnection(socket, {
+        onAttempt: (attempt, totalAttempts) => {
+          setCallNotice(
+            attempt === 1
+              ? "Connecting to the call…"
+              : `Reconnecting to the call… (${attempt}/${totalAttempts})`
+          );
+        }
+      });
+      if (!connected) {
+        throw new Error("Realtime connection is still unavailable. Please try joining again.");
+      }
+
+      socket.emit("call:accept", { chatId: targetChat.id, roomId: targetRoomId });
+      if (targetTopology === "sfu") {
+        await audioCallRef.current?.switchToSfu();
+      }
+    } catch (err) {
+      await audioCallRef.current?.cleanup(true).catch(() => undefined);
+      void resetCallState("Could not join call", true, false);
       setError(err instanceof Error ? err.message : "Could not join call");
     }
   }
@@ -1243,9 +1343,19 @@ export function useCallSession({
     acceptIncomingCall,
     declineIncomingCall,
     endActiveCall,
+    activeGroupCalls,
+    preJoinChatId,
+    openPreJoinModal,
+    closePreJoinModal,
+    joinOngoingGroupCall,
 
     // Socket wiring (called by ChatsPage's socket-owning effect)
-    attachToSocket
+    attachToSocket,
+
+    // Transcription prerequisites — provided so sub-components (e.g.
+    // DesktopCallControls) can use useTranscription without extra prop drilling.
+    accessToken,
+    socketRef
   };
 }
 
