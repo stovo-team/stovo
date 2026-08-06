@@ -26,6 +26,7 @@ type messageForwardSource struct {
 func (s *Server) handleGetChats(w http.ResponseWriter, _ *http.Request, user userPublic) {
 	chats, err := s.listChats(user)
 	if err != nil {
+		s.logger.Errorf("chats", "list chats failed user_id=%s error=%v", user.ID, err)
 		s.detail(w, http.StatusInternalServerError, "Could not load chats")
 		return
 	}
