@@ -61,6 +61,7 @@ export type UseMessageComposerParams = {
   navigate: (path: string) => void;
   socketRef: RefObject<Socket | null>;
   composerInputRef: RefObject<HTMLTextAreaElement | null>;
+  onComposerFocus?: () => void;
 };
 
 const COMPOSER_MAX_LINES = 3;
@@ -87,12 +88,14 @@ export function useMessageComposer({
   onError,
   navigate,
   socketRef,
-  composerInputRef
+  composerInputRef,
+  onComposerFocus
 }: UseMessageComposerParams) {
   const [composer, setComposer] = useState("");
   const [formattingToolbarAnchor, setFormattingToolbarAnchor] = useState<ToolbarAnchor | null>(null);
   const [pendingAttachments, setPendingAttachments] = useState<PendingLocalAttachment[]>([]);
   const [composerIsMultiline, setComposerIsMultiline] = useState(false);
+  const [composerLineCount, setComposerLineCount] = useState(1);
   const [composerEnlargeOpen, setComposerEnlargeOpen] = useState(false);
   const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -147,15 +150,22 @@ export function useMessageComposer({
   const adjustComposerHeight = useCallback(() => {
     const textarea = composerInputRef.current;
     if (!textarea) return;
-    const { minHeight, maxHeight } = getComposerHeightLimits(textarea);
+    const { minHeight, maxHeight, lineHeight, verticalChrome } = getComposerHeightLimits(textarea);
     textarea.style.height = "auto";
     const scrollHeight = textarea.scrollHeight;
     const nextHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
     textarea.style.height = `${nextHeight}px`;
     textarea.style.overflowY = scrollHeight > maxHeight ? "auto" : "hidden";
-    setComposerIsMultiline(scrollHeight >= maxHeight - 2);
+
+    const contentHeight = Math.max(0, scrollHeight - verticalChrome);
+    const lineCountFromHeight = Math.max(1, Math.round(contentHeight / lineHeight));
+    const newlineCount = composer.split("\n").length;
+    const lineCount = Math.max(lineCountFromHeight, newlineCount);
+
+    setComposerLineCount(lineCount);
+    setComposerIsMultiline(lineCount > 1);
     applyComposerActionInsets(textarea, nextHeight, minHeight);
-  }, [applyComposerActionInsets, getComposerHeightLimits]);
+  }, [composer, applyComposerActionInsets, getComposerHeightLimits]);
 
   const resetComposerHeight = useCallback(() => {
     const textarea = composerInputRef.current;
@@ -164,12 +174,13 @@ export function useMessageComposer({
     textarea.style.height = `${minHeight}px`;
     textarea.style.overflowY = "hidden";
     setComposerIsMultiline(false);
+    setComposerLineCount(1);
     clearComposerActionInsets(textarea);
   }, [clearComposerActionInsets, getComposerHeightLimits]);
 
   useLayoutEffect(() => {
     adjustComposerHeight();
-  }, [composer, adjustComposerHeight]);
+  }, [composer, composerEnlargeOpen, adjustComposerHeight]);
 
   function clearComposerFormattingSelection() {
     composerFormattingSelectionRef.current = null;
@@ -329,6 +340,22 @@ export function useMessageComposer({
     });
   }
 
+  function updatePendingAttachment(localId: string, updatedFile: File) {
+    setPendingAttachments((current) =>
+      current.map((item) => {
+        if (item.localId !== localId) return item;
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+        return {
+          ...item,
+          file: updatedFile,
+          previewUrl: URL.createObjectURL(updatedFile)
+        };
+      })
+    );
+  }
+
   function handleComposerCut() {
     const textarea = composerInputRef.current;
     const selection = composerFormattingSelectionRef.current;
@@ -434,6 +461,7 @@ export function useMessageComposer({
   }
 
   function handleComposerFocus() {
+    onComposerFocus?.();
     if (Capacitor.isNativePlatform() && isEmojiPickerOpen) {
       closeEmojiPicker();
     }
@@ -444,19 +472,12 @@ export function useMessageComposer({
   }
 
   function handleEditMessage(message: Message) {
-    draftBeforeEditRef.current = composer;
-    clearComposerFormattingSelection();
-    setComposer(message.content ?? "");
     setEditTargetMessage(message);
     setMessageContextMenu(null);
-    requestAnimationFrame(() => composerInputRef.current?.focus());
   }
 
   function cancelEditMode() {
-    clearComposerFormattingSelection();
-    setComposer(draftBeforeEditRef.current ?? "");
     setEditTargetMessage(null);
-    draftBeforeEditRef.current = "";
   }
 
   async function handleSendMessage(event?: { preventDefault?: () => void }, attachmentOverride?: PendingLocalAttachment[]) {
@@ -488,34 +509,6 @@ export function useMessageComposer({
     }
     if (missingCommentThread) {
       onError("Choose a post thread before commenting");
-      return;
-    }
-
-    if (editTargetMessage !== null) {
-      if (editInFlightRef.current) return;
-      const editTarget = editTargetMessage;
-      const savedDraft = draftBeforeEditRef.current;
-      try {
-        editInFlightRef.current = true;
-        setIsSendingMessage(true);
-        const updated = await editMessage(accessToken, editTarget.id, content);
-        const displayMessage = await decryptMessage(editTarget.chatId, updated, currentUser.id);
-        applyMessagesForChat(editTarget.chatId, (current) => replaceMessage(current, displayMessage));
-        clearComposerFormattingSelection();
-        setEditTargetMessage(null);
-        setComposer(savedDraft);
-        draftBeforeEditRef.current = "";
-        resetComposerHeight();
-        requestAnimationFrame(() => composerInputRef.current?.focus());
-      } catch (err) {
-        clearComposerFormattingSelection();
-        setEditTargetMessage(null);
-        draftBeforeEditRef.current = "";
-        onError(err instanceof ApiError ? String(err.message) : "Could not edit message");
-      } finally {
-        editInFlightRef.current = false;
-        setIsSendingMessage(false);
-      }
       return;
     }
 
@@ -731,6 +724,7 @@ export function useMessageComposer({
     formattingToolbarAnchor,
     pendingAttachments,
     composerIsMultiline,
+    composerLineCount,
     composerEnlargeOpen,
     setComposerEnlargeOpen,
     isAttachmentSheetOpen,
@@ -760,6 +754,7 @@ export function useMessageComposer({
     handleFileSelect,
     addSharedFileAttachments,
     removePendingAttachment,
+    updatePendingAttachment,
     handleComposerCut,
     handleComposerCopy,
     handleComposerPaste,

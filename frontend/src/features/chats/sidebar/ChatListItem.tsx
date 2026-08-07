@@ -52,9 +52,10 @@ export function ChatListItem({
     <button
       type="button"
       className={`chat-list-item ${isActive ? "active" : ""}`}
-      onMouseDown={() => onSelect(chat)}
-      onPointerDown={() => onSelect(chat)}
-      onClick={() => onOpen(chat)}
+      onClick={() => {
+        onSelect(chat);
+        onOpen(chat);
+      }}
     >
       {chatListLeadingVisual !== "avatar" ? (
         <span

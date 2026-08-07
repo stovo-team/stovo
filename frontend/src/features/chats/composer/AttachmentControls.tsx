@@ -21,7 +21,8 @@ export function AttachmentControls({
   onAttachButtonClick,
   onFileSelect,
   onCloseSheet,
-  onPickOption
+  onPickOption,
+  onSelectDirectFiles
 }: {
   disabled: boolean;
   isAttachmentSheetOpen: boolean;
@@ -34,6 +35,7 @@ export function AttachmentControls({
   onFileSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onCloseSheet: () => void;
   onPickOption: (option: AttachmentPickerOption) => void;
+  onSelectDirectFiles?: (files: File[]) => void;
 }) {
   return (
     <>
@@ -92,7 +94,12 @@ export function AttachmentControls({
         type="file"
         onChange={onFileSelect}
       />
-      <AttachmentPickerSheet open={isAttachmentSheetOpen} onClose={onCloseSheet} onPick={onPickOption} />
+      <AttachmentPickerSheet
+        open={isAttachmentSheetOpen}
+        onClose={onCloseSheet}
+        onPick={onPickOption}
+        onSelectFiles={onSelectDirectFiles}
+      />
     </>
   );
 }

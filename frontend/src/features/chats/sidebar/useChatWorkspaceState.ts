@@ -22,6 +22,7 @@ export function useChatWorkspaceState({ accessToken }: UseChatWorkspaceStatePara
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedOverview, setHasLoadedOverview] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine
@@ -63,6 +64,8 @@ export function useChatWorkspaceState({ accessToken }: UseChatWorkspaceStatePara
     setSelectedChat,
     isLoading,
     setIsLoading,
+    hasLoadedOverview,
+    setHasLoadedOverview,
     isChatLoading,
     setIsChatLoading,
     isOnline,

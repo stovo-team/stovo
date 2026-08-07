@@ -1,10 +1,11 @@
-import { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject } from "react";
+import { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject, useState } from "react";
 import EmojiPicker, { Categories, EmojiClickData, Theme } from "emoji-picker-react";
 import { Bus, Cat, Flag, History, Music, Paperclip, Pencil, Reply, Shirt, Smile, Trophy, Utensils, X } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
 import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
 import { FormattingToolbar } from "../../../components/FormattingToolbar";
+import { ImageEditorModal } from "../../../components/ImageEditorModal";
 import { MessageEnlargeButton } from "../../../components/MessageEnlargeModal";
 import { VoiceRecordButton } from "../../../components/VoiceRecordButton";
 import type { FormattingKind, TextSelection, ToolbarAnchor } from "../../../composerFormatting";
@@ -51,14 +52,17 @@ export function Composer({
   composerFormattingSelectionRef,
   formattingToolbarAnchor,
   composerIsMultiline,
+  composerLineCount,
   onEnlargeComposer,
   pendingAttachments,
   onRemovePendingAttachment,
+  onUpdatePendingAttachment,
   isAttachmentSheetOpen,
   onAttachButtonClick,
   onAttachmentSheetPick,
   onCloseAttachmentSheet,
   onFileSelect,
+  onAddSharedFileAttachments,
   attachmentInputRef,
   galleryAttachmentInputRef,
   cameraAttachmentInputRef,
@@ -102,14 +106,17 @@ export function Composer({
   composerFormattingSelectionRef: RefObject<TextSelection | null>;
   formattingToolbarAnchor: ToolbarAnchor | null;
   composerIsMultiline: boolean;
+  composerLineCount?: number;
   onEnlargeComposer: () => void;
   pendingAttachments: PendingLocalAttachment[];
   onRemovePendingAttachment: (localId: string) => void;
+  onUpdatePendingAttachment?: (localId: string, updatedFile: File) => void;
   isAttachmentSheetOpen: boolean;
   onAttachButtonClick: () => void;
   onAttachmentSheetPick: (option: AttachmentPickerOption) => void;
   onCloseAttachmentSheet: () => void;
   onFileSelect: (event: ChangeEvent<HTMLInputElement>) => void;
+  onAddSharedFileAttachments?: (files: File[]) => void;
   attachmentInputRef: RefObject<HTMLInputElement | null>;
   galleryAttachmentInputRef: RefObject<HTMLInputElement | null>;
   cameraAttachmentInputRef: RefObject<HTMLInputElement | null>;
@@ -130,6 +137,8 @@ export function Composer({
   onVoicePressCancel: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onSubmit: (event: { preventDefault: () => void }) => void;
 }) {
+  const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
+
   return (
     <form
       className={`message-composer${isDockedEmojiPicker ? " message-composer--emoji-docked" : ""}${showDockedEmojiPicker ? " message-composer--emoji-open" : ""}`}
@@ -143,13 +152,52 @@ export function Composer({
                 key={pending.localId}
                 pending={pending}
                 onRemove={() => onRemovePendingAttachment(pending.localId)}
+                onEdit={() => setEditingAttachment(pending)}
               />
             ))}
           </div>
         </div>
       )}
+      {editingAttachment && (
+        <ImageEditorModal
+          pending={editingAttachment}
+          onClose={() => setEditingAttachment(null)}
+          onSave={(updatedFile) => {
+            if (onUpdatePendingAttachment) {
+              onUpdatePendingAttachment(editingAttachment.localId, updatedFile);
+            }
+            setEditingAttachment(null);
+          }}
+        />
+      )}
       {selectedChat?.type === "channel" && channelCommentsDisabledForViewer && (
         <p className="muted-copy">Comments are disabled in this channel.</p>
+      )}
+      {replyTarget && (
+        <div
+          className={`reply-composer-preview${
+            firstImageAttachment(replyTarget) ? "" : " reply-composer-preview--no-thumb"
+          }`}
+        >
+          <Reply className="reply-composer-icon" aria-hidden="true" size={16} />
+          <span className="reply-composer-bar" aria-hidden="true" />
+          <ComposerContextThumb accessToken={accessToken} file={firstImageAttachment(replyTarget)} />
+          <div className="reply-composer-copy">
+            <span className="reply-composer-who">
+              Reply to {replyTarget.senderDisplayName ?? "Family member"}
+            </span>
+            <span className="reply-composer-snip">{messageActionSummary(replyTarget)}</span>
+          </div>
+          <button
+            type="button"
+            className="reply-composer-dismiss"
+            aria-label="Cancel reply"
+            title="Cancel reply"
+            onClick={onCancelReply}
+          >
+            <X aria-hidden="true" size={14} />
+          </button>
+        </div>
       )}
       <div className={`message-composer-row${composerIsMultiline ? " message-composer-row--multiline" : ""}`}>
         <AttachmentControls
@@ -164,6 +212,7 @@ export function Composer({
           onFileSelect={onFileSelect}
           onCloseSheet={onCloseAttachmentSheet}
           onPickOption={onAttachmentSheetPick}
+          onSelectDirectFiles={onAddSharedFileAttachments}
         />
         <div className="emoji-picker-shell" ref={emojiPickerRef}>
           <button
@@ -194,57 +243,7 @@ export function Composer({
             </div>
           )}
         </div>
-        <div
-          className={`message-composer-shell${
-            replyTarget || editTargetMessage ? " message-composer-shell--context" : ""
-          }`}
-        >
-          {replyTarget && (
-            <div
-              className={`reply-composer-preview${
-                firstImageAttachment(replyTarget) ? "" : " reply-composer-preview--no-thumb"
-              }`}
-            >
-              <Reply className="reply-composer-icon" aria-hidden="true" size={16} />
-              <span className="reply-composer-bar" aria-hidden="true" />
-              <ComposerContextThumb accessToken={accessToken} file={firstImageAttachment(replyTarget)} />
-              <div className="reply-composer-copy">
-                <span className="reply-composer-who">
-                  {selectedChat?.type === "channel" ? "Commenting on " : "Reply to "}
-                  {replyTarget.senderDisplayName ?? "Family member"}
-                </span>
-                <span className="reply-composer-snip">{messageActionSummary(replyTarget)}</span>
-              </div>
-              <button
-                type="button"
-                className="reply-composer-dismiss"
-                aria-label="Cancel reply"
-                title="Cancel reply"
-                onClick={onCancelReply}
-              >
-                <X aria-hidden="true" size={14} />
-              </button>
-            </div>
-          )}
-          {editTargetMessage && (
-            <div className="editing-indicator">
-              <Pencil className="reply-composer-icon" aria-hidden="true" size={16} />
-              <span className="reply-composer-bar" aria-hidden="true" />
-              <div className="reply-composer-copy">
-                <span className="reply-composer-who">Editing message</span>
-                <span className="reply-composer-snip">{messageActionSummary(editTargetMessage)}</span>
-              </div>
-              <button
-                type="button"
-                className="reply-composer-dismiss"
-                aria-label="Cancel edit"
-                title="Cancel edit"
-                onClick={onCancelEdit}
-              >
-                <X aria-hidden="true" size={14} />
-              </button>
-            </div>
-          )}
+        <div className="message-composer-shell">
           <div className="message-composer-input-wrap">
             <textarea
               ref={composerInputRef}
@@ -292,7 +291,9 @@ export function Composer({
           onPaste={() => onComposerPaste()}
         />
         <div className="message-composer-actions">
-          {composerIsMultiline && <MessageEnlargeButton onClick={onEnlargeComposer} />}
+          {((composerLineCount ?? composer.split("\n").length) >= 3) && (
+            <MessageEnlargeButton onClick={onEnlargeComposer} />
+          )}
           {(!composer.trim() && pendingAttachments.length === 0 && isVoiceRecordingSupported()) || isVoiceRecording ? (
             <VoiceRecordButton
               isRecording={isVoiceRecording}

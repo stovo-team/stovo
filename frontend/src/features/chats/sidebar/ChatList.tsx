@@ -7,6 +7,7 @@ import { ChatListItem } from "./ChatListItem";
 
 type ChatListProps = {
   isLoading: boolean;
+  hasLoadedOverview?: boolean;
   chatsBySection: Record<ChatSectionKey, Chat[]>;
   filteredChats: Chat[];
   chatFilter: ChatFilter;
@@ -22,6 +23,7 @@ type ChatListProps = {
 
 export function ChatList({
   isLoading,
+  hasLoadedOverview = true,
   chatsBySection,
   filteredChats,
   chatFilter,
@@ -34,9 +36,11 @@ export function ChatList({
   onOpenChat,
   onStartNewChat
 }: ChatListProps) {
+  const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
+
   return (
-    <div className="chat-list" aria-busy={isLoading}>
-      {isLoading
+    <div className="chat-list" aria-busy={isLoading || !hasLoadedOverview}>
+      {showSkeleton
         ? Array.from({ length: 5 }).map((_, index) => (
             <div className="chat-list-item skeleton-row" key={index}>
               <span className="skeleton-avatar" />
@@ -70,7 +74,7 @@ export function ChatList({
               </section>
             );
           })}
-      {!isLoading && filteredChats.length === 0 && (
+      {!showSkeleton && filteredChats.length === 0 && (
         <div className="empty-state compact-empty">
           <MessageCircle aria-hidden="true" size={28} />
           <strong>
