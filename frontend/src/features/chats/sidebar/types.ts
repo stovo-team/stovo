@@ -36,6 +36,7 @@ export type ChatSidebarProps = {
   activeChatId?: string;
   incomingSharedFiles: QueuedSharedFiles | null;
   isLoading: boolean;
+  hasLoadedOverview?: boolean;
   accessToken: string | null;
   currentUserId?: string;
   minimizedChatLayout?: boolean;

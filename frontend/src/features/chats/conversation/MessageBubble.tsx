@@ -1,4 +1,4 @@
-import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent } from "react";
+import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
 import { Check, Phone, Video } from "lucide-react";
 
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
@@ -42,6 +42,9 @@ export function MessageBubble({
   isSelected,
   swipeReplyState,
   threadReplyCount,
+  isEditing = false,
+  onSaveEdit,
+  onCancelEdit,
   onBubbleClick,
   onContextMenu,
   onSwipePointerDown,
@@ -69,6 +72,9 @@ export function MessageBubble({
   isSelected: boolean;
   swipeReplyState: SwipeReplyState | null;
   threadReplyCount: number;
+  isEditing?: boolean;
+  onSaveEdit?: (message: Message, newContent: string) => Promise<void>;
+  onCancelEdit?: () => void;
   onBubbleClick: (event: ReactMouseEvent<HTMLElement>, message: Message) => void;
   onContextMenu: (event: ReactMouseEvent<HTMLElement>, message: Message) => void;
   onSwipePointerDown: (event: ReactPointerEvent<HTMLElement>, message: Message) => void;
@@ -82,6 +88,25 @@ export function MessageBubble({
   onOpenThread: (message: Message) => void;
 }) {
   const mine = message.senderId === currentUserId;
+  const [inlineContent, setInlineContent] = useState(message.content ?? "");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  useEffect(() => {
+    if (isEditing) {
+      setInlineContent(message.content ?? "");
+      setIsSavingEdit(false);
+    }
+  }, [isEditing, message.content]);
+
+  const handleInlineSave = async () => {
+    if (!onSaveEdit || !inlineContent.trim() || isSavingEdit) return;
+    try {
+      setIsSavingEdit(true);
+      await onSaveEdit(message, inlineContent.trim());
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   if (message.type === "call" && message.call) {
     const isVideoCall = message.call.callType === "video";
@@ -160,7 +185,7 @@ export function MessageBubble({
           <Check size={14} />
         </span>
       )}
-      <span className="message-swipe-affordance" aria-hidden="true" />
+      {swipeStateForMessage && <span className="message-swipe-affordance" aria-hidden="true" />}
       {showSenderIdentity && (
         <div className="message-sender-row">
           <RealAvatar
@@ -272,20 +297,71 @@ export function MessageBubble({
             </div>
           );
         })()}
-      {(hasCaption || message.deliveryError || !mediaOnlyMessage) && (
+      {(hasCaption || message.deliveryError || !mediaOnlyMessage || isEditing) && (
         <div className="message-bubble-inner">
-          {hasCaption ? (
-            <div className="message-body">
-              {renderMarkdown ? <MessageMarkdown source={message.content} /> : message.content}
-              {message.isEdited && (
-                <span className="message-edited-label" aria-label="Edited">
-                  (edited)
-                </span>
-              )}
+          {isEditing ? (
+            <div
+              className="message-inline-editor"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <textarea
+                className="message-inline-editor-textarea"
+                value={inlineContent}
+                onChange={(e) => setInlineContent(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void handleInlineSave();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    onCancelEdit?.();
+                  }
+                }}
+                autoFocus
+                rows={Math.max(2, inlineContent.split("\n").length)}
+              />
+              <div className="message-inline-editor-actions">
+                <button
+                  type="button"
+                  className="message-inline-editor-btn cancel"
+                  disabled={isSavingEdit}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCancelEdit?.();
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="message-inline-editor-btn save"
+                  disabled={isSavingEdit || !inlineContent.trim()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleInlineSave();
+                  }}
+                >
+                  {isSavingEdit ? "Saving..." : "Save"}
+                </button>
+              </div>
             </div>
-          ) : null}
-          {message.deliveryError ? <p className="encrypted-message-unavailable">{message.deliveryError}</p> : null}
-          {(!mediaOnlyMessage || hasCaption) && messageMeta}
+          ) : (
+            <>
+              {hasCaption ? (
+                <div className="message-body">
+                  {renderMarkdown ? <MessageMarkdown source={message.content} /> : message.content}
+                  {message.isEdited && (
+                    <span className="message-edited-label" aria-label="Edited">
+                      (edited)
+                    </span>
+                  )}
+                </div>
+              ) : null}
+              {message.deliveryError ? <p className="encrypted-message-unavailable">{message.deliveryError}</p> : null}
+              {(!mediaOnlyMessage || hasCaption) && messageMeta}
+            </>
+          )}
         </div>
       )}
       {message.reactions.length > 0 && (

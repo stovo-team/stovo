@@ -1,5 +1,5 @@
 import { CSSProperties, useEffect, useState } from "react";
-import { Home, Megaphone, Users } from "lucide-react";
+import { Archive, Home, Megaphone, Users } from "lucide-react";
 
 import { FamilyFile } from "../../../api/files";
 import useFilePreviewUrl from "../../../hooks/useFilePreviewUrl";
@@ -32,6 +32,9 @@ export function RealAvatar({
     const isXl = className.includes("avatar-xl");
     const iconSize = isXl ? 56 : 24;
 
+    if (fallbackKind === "archive") {
+      return <Archive aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
+    }
     if (fallbackKind === "group") {
       return <Users aria-hidden className="avatar-fallback-svg" size={iconSize} strokeWidth={1.75} />;
     }
@@ -45,9 +48,10 @@ export function RealAvatar({
   }
 
   const showImage = Boolean(previewUrl) && !imageBroken;
+  const avatarClass = `${className}${fallbackKind && !className.includes(fallbackKind) ? ` ${fallbackKind}` : ""}`;
 
   return (
-    <span className={className} style={style}>
+    <span className={avatarClass} style={style}>
       {showImage ? (
         <img
           src={previewUrl ?? undefined}

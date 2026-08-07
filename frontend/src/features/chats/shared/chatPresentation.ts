@@ -52,12 +52,8 @@ export function chatTransitionName(chatId: string, part: "avatar" | "title") {
   return `chat-${chatId}-${part}`;
 }
 
-export function transitionAnchorStyle(name?: string): CSSProperties | undefined {
-  if (!name) {
-    return undefined;
-  }
-
-  return { viewTransitionName: name };
+export function transitionAnchorStyle(_name?: string): CSSProperties | undefined {
+  return undefined;
 }
 
 export function chatInitials(name: string) {
@@ -73,6 +69,9 @@ export function chatInitials(name: string) {
 }
 
 export function chatAvatarFallbackKind(chat: Chat): ChatAvatarFallbackKind {
+  if (chat.type === "archive") {
+    return "archive";
+  }
   if (chat.type === "family") {
     return "family";
   }
@@ -144,6 +143,9 @@ export function chatAvatarTypeClass(chat: Chat) {
   }
   if (chat.type === "group" || chat.type === "channel") {
     return "group";
+  }
+  if (chat.type === "archive") {
+    return "archive chat-avatar--archive";
   }
   return "";
 }

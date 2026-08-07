@@ -113,10 +113,16 @@ export function ChatHeader({
           />
           <span>
             <strong style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "title"))}>
-              {displayChatName(selectedChat, currentUser?.id)}
+              <span>{displayChatName(selectedChat, currentUser?.id)}</span>
+              {typingNames.length > 0 && (
+                <span className="typing-dots" title={`${typingNames.join(", ")} typing`} aria-label="typing">
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                  <span className="typing-dot" />
+                </span>
+              )}
             </strong>
-            {(typingNames.length > 0 ||
-              (selectedChat.type !== "archive" && selectedChat.type !== "direct")) && (
+            {selectedChat.type !== "archive" && selectedChat.type !== "direct" && (
               <small>
                 {typingNames.length > 0
                   ? `${typingNames.join(", ")} typing...`

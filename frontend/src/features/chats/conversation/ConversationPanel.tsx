@@ -13,6 +13,7 @@ import { ChatHeader } from "./ChatHeader";
 import { MessageContextMenu } from "./MessageContextMenu";
 import { MessageDialogs } from "./MessageDialogs";
 import { MessageList } from "./MessageList";
+import { copyToClipboard } from "../../../utils/clipboard";
 import type { ComposerController, ConversationController } from "./types";
 
 export type ConversationPanelProps = {
@@ -125,8 +126,6 @@ export function ConversationPanel({
     setDeleteForEveryone,
     messageContextMenu,
     setMessageContextMenu,
-    copySheetContent,
-    setCopySheetContent,
     computeContextMenuSeenBy,
     messagesPanelRef,
     focusMessageInPanel,
@@ -141,6 +140,7 @@ export function ConversationPanel({
     handleArchiveMessage,
     handleArchiveSelectedMessages,
     handleCopySelectedMessages,
+    handleSaveEditMessage,
     handleMessageReaction,
     handleOpenThread,
     handleMessageBubbleClick,
@@ -179,7 +179,9 @@ export function ConversationPanel({
     handleAttachButtonClick,
     handleAttachmentSheetPick,
     handleFileSelect,
+    addSharedFileAttachments,
     removePendingAttachment,
+    updatePendingAttachment,
     handleComposerCut,
     handleComposerCopy,
     handleComposerPaste,
@@ -349,6 +351,7 @@ export function ConversationPanel({
         messageSearchActive={Boolean(messageSearch.trim())}
         selectedMessageIds={selectedMessageIds}
         isMessageSelectionMode={isMessageSelectionMode}
+        editTargetMessage={editTargetMessage}
         swipeReplyState={swipeReplyState}
         threadReplyCounts={threadReplyCounts}
         showScrollToBottom={showScrollToBottom}
@@ -374,6 +377,8 @@ export function ConversationPanel({
         onOpenOriginChat={onOpenChat}
         onReact={(message, emoji) => void handleMessageReaction(message, emoji)}
         onOpenThread={(message) => void handleOpenThread(message)}
+        onSaveEdit={handleSaveEditMessage}
+        onCancelEdit={cancelEditMode}
       />
       {messageContextMenu && (
         <MessageContextMenu
@@ -389,7 +394,9 @@ export function ConversationPanel({
           }}
           onReply={() => handleReplyToMessage(messageContextMenu.message)}
           onCopy={() => {
-            setCopySheetContent(messageContextMenu.message.content ?? "");
+            if (messageContextMenu.message.content) {
+              copyToClipboard(messageContextMenu.message.content);
+            }
             setMessageContextMenu(null);
           }}
           onTogglePin={() => {
@@ -469,14 +476,17 @@ export function ConversationPanel({
           composerFormattingSelectionRef={composerFormattingSelectionRef}
           formattingToolbarAnchor={formattingToolbarAnchor}
           composerIsMultiline={composerIsMultiline}
+          composerLineCount={composer.composerLineCount}
           onEnlargeComposer={() => setComposerEnlargeOpen(true)}
           pendingAttachments={pendingAttachments}
           onRemovePendingAttachment={removePendingAttachment}
+          onUpdatePendingAttachment={updatePendingAttachment}
           isAttachmentSheetOpen={isAttachmentSheetOpen}
           onAttachButtonClick={handleAttachButtonClick}
           onAttachmentSheetPick={handleAttachmentSheetPick}
           onCloseAttachmentSheet={() => setIsAttachmentSheetOpen(false)}
           onFileSelect={handleFileSelect}
+          onAddSharedFileAttachments={addSharedFileAttachments}
           attachmentInputRef={attachmentInputRef}
           galleryAttachmentInputRef={galleryAttachmentInputRef}
           cameraAttachmentInputRef={cameraAttachmentInputRef}
@@ -520,8 +530,6 @@ export function ConversationPanel({
         onDeleteForEveryoneChange={setDeleteForEveryone}
         onConfirmDelete={() => void handleConfirmDelete()}
         onCloseDelete={() => setDeleteTarget(null)}
-        copySheetContent={copySheetContent}
-        onCloseCopySheet={() => setCopySheetContent(null)}
       />
     </>
   );

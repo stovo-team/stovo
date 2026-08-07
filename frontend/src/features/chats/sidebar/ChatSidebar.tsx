@@ -14,6 +14,7 @@ export function ChatSidebar({
   activeChatId,
   incomingSharedFiles,
   isLoading,
+  hasLoadedOverview,
   accessToken,
   currentUserId,
   minimizedChatLayout,
@@ -168,6 +169,7 @@ export function ChatSidebar({
 
       <ChatList
         isLoading={isLoading}
+        hasLoadedOverview={hasLoadedOverview}
         chatsBySection={chatsBySection}
         filteredChats={filteredChats}
         chatFilter={chatFilter}
