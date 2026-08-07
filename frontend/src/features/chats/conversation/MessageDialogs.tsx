@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
@@ -11,46 +10,6 @@ import {
 } from "../shared/chatPresentation";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import type { Message } from "../shared/types";
-
-function CopySheetTextarea({
-  content,
-  onCopy,
-  onClose
-}: {
-  content: string;
-  onCopy: () => void;
-  onClose: () => void;
-}) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    ref.current?.focus();
-    ref.current?.select();
-  }, []);
-  function handleCopy() {
-    if (ref.current) {
-      ref.current.focus();
-      ref.current.select();
-    }
-    const ok = document.execCommand("copy");
-    if (!ok) {
-      void navigator.clipboard.writeText(ref.current?.value ?? content);
-    }
-    onCopy();
-  }
-  return (
-    <>
-      <textarea ref={ref} defaultValue={content} readOnly={false} className="copy-sheet-textarea" />
-      <div className="copy-sheet-actions">
-        <button type="button" className="copy-sheet-cancel-btn" onClick={onClose}>
-          Cancel
-        </button>
-        <button type="button" className="copy-sheet-copy-btn" onClick={handleCopy}>
-          Copy
-        </button>
-      </div>
-    </>
-  );
-}
 
 export function MessageDialogs({
   accessToken,
@@ -66,9 +25,7 @@ export function MessageDialogs({
   onDeleteForMeChange,
   onDeleteForEveryoneChange,
   onConfirmDelete,
-  onCloseDelete,
-  copySheetContent,
-  onCloseCopySheet
+  onCloseDelete
 }: {
   accessToken: string | null;
   currentUserId?: string;
@@ -84,8 +41,6 @@ export function MessageDialogs({
   onDeleteForEveryoneChange: (value: boolean) => void;
   onConfirmDelete: () => void;
   onCloseDelete: () => void;
-  copySheetContent: string | null;
-  onCloseCopySheet: () => void;
 }) {
   return (
     <>
@@ -181,20 +136,6 @@ export function MessageDialogs({
               </button>
             </div>
           </section>
-        </div>
-      )}
-
-      {copySheetContent !== null && (
-        <div className="copy-sheet-backdrop" role="presentation" onMouseDown={onCloseCopySheet}>
-          <div
-            className="copy-sheet"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Copy message text"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <CopySheetTextarea content={copySheetContent} onCopy={onCloseCopySheet} onClose={onCloseCopySheet} />
-          </div>
         </div>
       )}
     </>

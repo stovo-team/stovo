@@ -25,7 +25,7 @@ export default function ChatsPage() {
     chatId, location, navigate, prefersReducedMotion, accessToken, currentUser, authRequest, updateCurrentUser, appearance
   });
   const {
-    family, members, chats, selectedChat, setSelectedChat, isLoading, isChatLoading, isOnline,
+    family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
     chatTitleDraft, setChatTitleDraft, fullViewImage, isFullViewImageClosing, isFamilyInviteOpen,
     setIsFamilyInviteOpen, isMobileViewport, chatMenuRef, unreadTotal, canPostInSelectedChannel,
@@ -40,7 +40,17 @@ export default function ChatsPage() {
     callPhase, activeCallChatId, callAudioSettings, isCallMinimized, setIsCallMinimized, callPeerDisplayName,
     callTimer, remoteAudioRef, activeCallPeerName, applyCallAudioPatch, startDirectCall, endActiveCall
   } = callSession;
-  const { composer, composerEnlargeOpen, setComposerEnlargeOpen, handleComposerChange } = composerApi;
+  const {
+    composer,
+    composerEnlargeOpen,
+    setComposerEnlargeOpen,
+    handleComposerChange,
+    pendingAttachments,
+    removePendingAttachment,
+    updatePendingAttachment,
+    addSharedFileAttachments,
+    handleSendMessage
+  } = composerApi;
 
   // Only bounce unknown/missing chats after overview + chat load settle.
   // Avoid bouncing during selection transitions (selectedChat can briefly
@@ -78,6 +88,7 @@ export default function ChatsPage() {
             activeChatId={chatId}
             incomingSharedFiles={incomingSharedFiles}
             isLoading={isLoading}
+            hasLoadedOverview={hasLoadedOverview}
             accessToken={accessToken}
             currentUserId={currentUser?.id}
             minimizedChatLayout={family?.minimizedChatLayout}
@@ -210,6 +221,13 @@ export default function ChatsPage() {
           renderMarkdown={appearance.renderMarkdown}
           onCloseComposerEnlarge={() => setComposerEnlargeOpen(false)}
           onComposerEnlargeChange={handleComposerChange}
+          pendingAttachments={pendingAttachments}
+          onRemovePendingAttachment={removePendingAttachment}
+          onUpdatePendingAttachment={updatePendingAttachment}
+          onAddAttachments={addSharedFileAttachments}
+          onSendMessage={() => {
+            handleSendMessage({ preventDefault: () => {} });
+          }}
         />
       </section>
     </main>

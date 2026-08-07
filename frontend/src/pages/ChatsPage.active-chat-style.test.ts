@@ -16,4 +16,15 @@ describe("active chat list item styling", () => {
     expect(activeRule).toContain("border-radius: 22px;");
     expect(activeRule).not.toContain("border-left");
   });
+
+  it("does not clear selectedChat synchronously in closeActiveChat to avoid flashing empty state", () => {
+    const controllerSource = readFileSync(
+      resolve(process.cwd(), "src/features/chats/useChatsPageController.ts"),
+      "utf8"
+    );
+    const closeActiveChatBody = controllerSource.match(/function closeActiveChat\(\)\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+    expect(closeActiveChatBody).not.toContain("setSelectedChat(null)");
+    expect(closeActiveChatBody).toContain("navigateToChatList()");
+  });
 });
+

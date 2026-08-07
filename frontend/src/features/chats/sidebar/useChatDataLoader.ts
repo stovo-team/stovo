@@ -5,7 +5,7 @@ import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../../../
 import { ApiError } from "../../../api/client";
 import type { Family } from "../../../api/family";
 import { decryptMessages } from "../../../api/messageCrypto";
-import { loadRecentChatHistory, saveRecentChatHistory } from "../../../chatHistoryCache";
+import { loadCachedChatList, loadRecentChatHistory, loadRecentChatHistoryFromLocalStorage, saveCachedChatList, saveRecentChatHistory } from "../../../chatHistoryCache";
 import { applyMessagePreviewToChat, sortPinsByPosition } from "../shared/chatPresentation";
 import type { MessageStateUpdate } from "../shared/types";
 
@@ -20,6 +20,7 @@ export type UseChatDataLoaderParams = {
   setChats: Dispatch<SetStateAction<Chat[]>>;
   setSelectedChat: Dispatch<SetStateAction<Chat | null>>;
   setIsLoading: Dispatch<SetStateAction<boolean>>;
+  setHasLoadedOverview: Dispatch<SetStateAction<boolean>>;
   setIsChatLoading: Dispatch<SetStateAction<boolean>>;
   activeChatIdRef: RefObject<string | undefined>;
   chatsRef: RefObject<Chat[]>;
@@ -53,6 +54,7 @@ export function useChatDataLoader({
   setChats,
   setSelectedChat,
   setIsLoading,
+  setHasLoadedOverview,
   setIsChatLoading,
   activeChatIdRef,
   chatsRef,
@@ -104,7 +106,7 @@ export function useChatDataLoader({
     loadOverviewRequestRef.current = requestId;
     const isCurrentRequest = () => loadOverviewRequestRef.current === requestId;
 
-    if (!hasLoadedOverviewRef.current) {
+    if (!hasLoadedOverviewRef.current && chatsRef.current.length === 0) {
       setIsLoading(true);
     }
     try {
@@ -120,6 +122,10 @@ export function useChatDataLoader({
       setMembers(memberResult);
       setChats(chatResult);
       hasLoadedOverviewRef.current = true;
+      setHasLoadedOverview(true);
+      if (currentUserIdRef.current) {
+        void saveCachedChatList(currentUserIdRef.current, chatResult);
+      }
 
       const currentChatId = activeChatIdRef.current;
       if (currentChatId) {
@@ -139,7 +145,7 @@ export function useChatDataLoader({
         setIsLoading(false);
       }
     }
-  }, [accessTokenRef, activeChatIdRef, setChats, setFamily, setIsLoading, setMembers, setSelectedChat]);
+  }, [accessTokenRef, activeChatIdRef, chatsRef, setChats, setFamily, setHasLoadedOverview, setIsLoading, setMembers, setSelectedChat]);
 
   const loadSelectedChat = useCallback(
     async (requestedChatId: string | undefined, preserveVisibleMessages = false) => {
@@ -152,7 +158,9 @@ export function useChatDataLoader({
       const isCurrentRequest = () => loadChatRequestRef.current === requestId;
 
       if (!requestedChatId) {
-        setSelectedChat(null);
+        if (chatsRef.current.length === 0) {
+          setSelectedChat(null);
+        }
         setMessages([]);
         setPinnedMessages([]);
         setPinIndex(0);
@@ -167,7 +175,18 @@ export function useChatDataLoader({
         );
       }
 
-      const cachedMessages = messageCacheRef.current[requestedChatId];
+      let cachedMessages = messageCacheRef.current[requestedChatId];
+      if (!cachedMessages && currentUserIdRef.current) {
+        const localCached = loadRecentChatHistoryFromLocalStorage<Message>(
+          currentUserIdRef.current,
+          requestedChatId
+        );
+        if (localCached && localCached.length > 0) {
+          cachedMessages = localCached;
+          messageCacheRef.current[requestedChatId] = localCached;
+        }
+      }
+
       if (cachedMessages) {
         setMessages(cachedMessages);
       } else if (!preserveVisibleMessages) {
@@ -268,13 +287,22 @@ export function useChatDataLoader({
     void syncCurrentViewRef.current();
   }, []);
 
-  // Mount / auth-token arrival: load overview once per access-token presence.
+  // Mount / auth-token arrival: load cached chats first, then overview once per access-token presence.
   useEffect(() => {
     if (!accessTokenRef.current) {
       return;
     }
+    const userId = currentUser?.id;
+    if (userId && chatsRef.current.length === 0) {
+      void loadCachedChatList<Chat>(userId).then((cached) => {
+        if (cached && cached.length > 0 && chatsRef.current.length === 0) {
+          setChats(cached);
+          setIsLoading(false);
+        }
+      }).catch(() => undefined);
+    }
     void loadOverview();
-  }, [accessTokenRef, currentUser?.id, loadOverview]);
+  }, [accessTokenRef, currentUser?.id, loadOverview, setChats, setIsLoading]);
 
   // Route chat changes only — never re-fire because callback identity churned.
   useEffect(() => {
@@ -301,3 +329,4 @@ export function useChatDataLoader({
 }
 
 export type ChatDataLoader = ReturnType<typeof useChatDataLoader>;
+

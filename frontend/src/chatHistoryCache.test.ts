@@ -1,8 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { mergeLatestHistory, trimRecentChatHistory } from "./chatHistoryCache";
+import { loadCachedChatList, loadRecentChatHistoryFromLocalStorage, mergeLatestHistory, saveCachedChatList, saveRecentChatHistoryToLocalStorage, trimRecentChatHistory } from "./chatHistoryCache";
 
 describe("chat history cache helpers", () => {
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    Object.defineProperty(window, "localStorage", {
+      value: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => store.set(key, value),
+        removeItem: (key: string) => store.delete(key),
+        clear: () => store.clear()
+      },
+      writable: true,
+      configurable: true
+    });
+  });
+
   it("replaces cached messages with their fresh versions without duplicating IDs", () => {
     const merged = mergeLatestHistory(
       [{ id: "one", content: "cached" }],
@@ -28,4 +42,24 @@ describe("chat history cache helpers", () => {
     expect(trimmed.some((entry) => entry.chatId === "chat-0")).toBe(false);
     expect(trimmed.at(-1)?.messages).toHaveLength(50);
   });
+
+  it("saves and restores cached chat list for a user", async () => {
+    const sampleChats = [
+      { id: "chat-1", title: "General", type: "group", unreadCount: 0 },
+      { id: "chat-2", title: "Alice", type: "direct", unreadCount: 2 },
+    ];
+
+    await saveCachedChatList("user-123", sampleChats);
+    const restored = await loadCachedChatList("user-123");
+
+    expect(restored).toEqual(sampleChats);
+  });
+
+  it("saves and synchronously restores recent chat history from local storage", () => {
+    const messages = [{ id: "m-1", content: "Hello" }];
+    saveRecentChatHistoryToLocalStorage("user-1", "chat-1", messages);
+    const restored = loadRecentChatHistoryFromLocalStorage("user-1", "chat-1");
+    expect(restored).toEqual(messages);
+  });
 });
+

@@ -21,6 +21,7 @@ import {
   PinnedMessage,
   archiveMessage,
   deleteMessage,
+  editMessage,
   forwardMessage,
   getMessageHistoryPage,
   getMessages,
@@ -28,6 +29,7 @@ import {
   sendMessage,
   unpinMessage
 } from "../../../api/chats";
+import { copyToClipboard } from "../../../utils/clipboard";
 import { ApiError } from "../../../api/client";
 import { decryptMessage, decryptMessages, encryptMessageContent } from "../../../api/messageCrypto";
 import { addMessageReaction, removeMessageReaction } from "../../../api/chats";
@@ -124,7 +126,6 @@ export function useMessageThread({
   const [deleteForMe, setDeleteForMe] = useState(true);
   const [deleteForEveryone, setDeleteForEveryone] = useState(true);
   const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenuState | null>(null);
-  const [copySheetContent, setCopySheetContent] = useState<string | null>(null);
 
   const draftBeforeEditRef = useRef<string>("");
   const editInFlightRef = useRef(false);
@@ -356,6 +357,8 @@ export function useMessageThread({
   }, []);
 
   const prevChatIdRef = useRef<string | undefined>(undefined);
+  const prevThreadRootMessageIdRef = useRef<string | null>(null);
+  const prevReplyTargetIdRef = useRef<string | null>(null);
   const lastMessageId = messages.at(-1)?.id;
   useLayoutEffect(() => {
     if (!selectedChat || messageSearch.trim()) {
@@ -363,8 +366,13 @@ export function useMessageThread({
     }
     const panel = messagesPanelRef.current;
     const chatChanged = prevChatIdRef.current !== selectedChat.id;
-    if (chatChanged) {
+    const threadChanged = prevThreadRootMessageIdRef.current !== threadRootMessageId;
+    const replyTargetChanged = prevReplyTargetIdRef.current !== (replyTarget?.id ?? null);
+
+    if (chatChanged || threadChanged || replyTargetChanged) {
       prevChatIdRef.current = selectedChat.id;
+      prevThreadRootMessageIdRef.current = threadRootMessageId;
+      prevReplyTargetIdRef.current = replyTarget?.id ?? null;
       stickToBottomRef.current = true;
       forceScrollToBottomRef.current = true;
       bottomAnchorMessageIdRef.current = null;
@@ -391,7 +399,7 @@ export function useMessageThread({
     const pendingCount = countMessagesAfterAnchor(messagesRef.current, bottomAnchorMessageIdRef.current);
     setPendingNewBelowCount(pendingCount);
     setShowScrollToBottom(true);
-  }, [selectedChat?.id, messages.length, lastMessageId, messageSearch]);
+  }, [selectedChat?.id, threadRootMessageId, replyTarget?.id, messages.length, lastMessageId, messageSearch]);
 
   useEffect(() => {
     const panel = messagesPanelRef.current;
@@ -424,12 +432,21 @@ export function useMessageThread({
     if (messageList) {
       resizeObserver.observe(messageList);
     }
+    const handleViewportResize = () => {
+      keepPinnedToBottom();
+    };
+    if (typeof window !== "undefined" && window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleViewportResize);
+    }
     return () => {
       window.cancelAnimationFrame(outerFrame);
       window.cancelAnimationFrame(innerFrame);
       resizeObserver.disconnect();
+      if (typeof window !== "undefined" && window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleViewportResize);
+      }
     };
-  }, [selectedChat?.id, messages.length, lastMessageId]);
+  }, [selectedChat?.id, threadRootMessageId, replyTarget?.id, messages.length, lastMessageId]);
 
   const searchedMessages = useMemo(() => {
     const query = messageSearch.trim();
@@ -548,11 +565,13 @@ export function useMessageThread({
     }
     if (selectedChat?.type === "channel") {
       setThreadRootMessageId(message.id);
-      pendingMessageFocusRef.current = { messageId: message.id, highlightClassName: "message-context-flash" };
     }
     resetSwipeReplyState();
     setReplyTarget(message);
     setMessageContextMenu(null);
+    stickToBottomRef.current = true;
+    forceScrollToBottomRef.current = true;
+    scrollMessagesToBottom();
     requestAnimationFrame(() => focusComposerInput());
   }
 
@@ -863,13 +882,18 @@ export function useMessageThread({
 
   async function handleOpenThread(rootMessage: Message) {
     setThreadRootMessageId(rootMessage.id);
-    setReplyTarget(rootMessage);
-    pendingMessageFocusRef.current = { messageId: rootMessage.id, highlightClassName: "message-context-flash" };
+    setReplyTarget(null);
+    stickToBottomRef.current = true;
+    forceScrollToBottomRef.current = true;
+    scrollMessagesToBottom();
     if (!accessToken || !selectedChat) return;
     try {
       const threadMessages = await getMessages(accessToken, selectedChat.id, undefined, 100, rootMessage.id);
       const decrypted = await decryptMessages(selectedChat.id, threadMessages, currentUser?.id);
       applyMessagesForChat(selectedChat.id, (current) => mergeMessageLists(current, decrypted));
+      stickToBottomRef.current = true;
+      forceScrollToBottomRef.current = true;
+      scrollMessagesToBottom();
     } catch {
       // Best-effort: keep local view if thread fetch fails.
     }
@@ -938,7 +962,20 @@ export function useMessageThread({
       onError("Nothing to copy");
       return;
     }
-    setCopySheetContent(contents.join("\n\n"));
+    copyToClipboard(contents.join("\n\n"));
+    clearSelectedMessages();
+  }
+
+  async function handleSaveEditMessage(message: Message, newContent: string) {
+    if (!accessToken || !currentUser || !newContent.trim()) return;
+    try {
+      const updated = await editMessage(accessToken, message.id, newContent.trim());
+      const displayMessage = await decryptMessage(message.chatId, updated, currentUser.id);
+      applyMessagesForChat(message.chatId, (current) => replaceMessage(current, displayMessage));
+      setEditTargetMessage(null);
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not edit message");
+    }
   }
 
   async function handleMessageReaction(message: Message, emoji: string) {
@@ -1052,8 +1089,6 @@ export function useMessageThread({
     setDeleteForEveryone,
     messageContextMenu,
     setMessageContextMenu,
-    copySheetContent,
-    setCopySheetContent,
     contextMenuCurrentReaction,
     computeContextMenuSeenBy,
     messagesPanelRef,
@@ -1077,6 +1112,7 @@ export function useMessageThread({
     handleArchiveMessage,
     handleArchiveSelectedMessages,
     handleCopySelectedMessages,
+    handleSaveEditMessage,
     handleMessageReaction,
     handleOpenThread,
     handleMessageBubbleClick,

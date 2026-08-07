@@ -107,7 +107,7 @@ export function useChatsPageController({
     replyTarget, setReplyTarget, forwardTarget, setForwardTarget,
     editTargetMessage, setEditTargetMessage, draftBeforeEditRef, editInFlightRef,
     setPinnedMessages, setPinIndex, deleteTarget, setDeleteTarget,
-    messageContextMenu, setMessageContextMenu, copySheetContent, setCopySheetContent,
+    messageContextMenu, setMessageContextMenu,
     pendingMessageFocusRef, focusMessageInPanel, clearMessageMotionState,
     applyMessagesForChat, markChatRead, loadOlderMessages,
     resetSwipeReplyState, clearMessageLongPressGesture, resetChatExitSwipeGesture,
@@ -121,17 +121,27 @@ export function useChatsPageController({
   const dataLoader = useChatDataLoader({
     accessTokenRef, authRequest, currentUser, chatId, onError: setError,
     setFamily: workspace.setFamily, setMembers, setChats, setSelectedChat,
-    setIsLoading: workspace.setIsLoading, setIsChatLoading, activeChatIdRef, chatsRef,
+    setIsLoading: workspace.setIsLoading, setHasLoadedOverview: workspace.setHasLoadedOverview,
+    setIsChatLoading, activeChatIdRef, chatsRef,
     messageCacheRef, historyCursorRef, setMessages, setPinnedMessages, setPinIndex,
     applyMessagesForChat, markChatRead, loadOlderMessages
   });
+
+  const handleComposerFocusWithScroll = useCallback(() => {
+    thread.stickToBottomRef.current = true;
+    thread.forceScrollToBottomRef.current = true;
+    thread.scrollMessagesToBottom();
+    window.setTimeout(() => thread.scrollMessagesToBottom(), 100);
+    window.setTimeout(() => thread.scrollMessagesToBottom(), 300);
+  }, [thread]);
 
   const composerApi = useMessageComposer({
     chatId, accessToken, currentUser, selectedChat, sendOnEnter: appearance.sendOnEnter,
     channelCommentsDisabledForViewer, missingCommentThread, canPostInSelectedChannel, threadRootMessageId,
     replyTarget, setReplyTarget, editTargetMessage, setEditTargetMessage, setMessageContextMenu,
     draftBeforeEditRef, editInFlightRef, applyMessagesForChat, onChatsUpdate: setChats,
-    onError: setError, navigate, socketRef, composerInputRef
+    onError: setError, navigate, socketRef, composerInputRef,
+    onComposerFocus: handleComposerFocusWithScroll
   });
   const {
     composer, composerEnlargeOpen, setComposerEnlargeOpen, isEmojiPickerOpen,
@@ -324,13 +334,12 @@ export function useChatsPageController({
   function closeActiveChat() {
     clearSelectedMessages();
     setIsDetailsOpen(false);
-    setSelectedChat(null);
     navigateToChatList();
   }
 
   const { requestCloseActiveChatSurface } = useChatSurfaceDismissal({
     chatId, navigate, hasFullViewImage: Boolean(fullViewImage), requestCloseFullViewImage,
-    copySheetContent, setCopySheetContent, messageContextMenu, setMessageContextMenu,
+    messageContextMenu, setMessageContextMenu,
     isEmojiPickerOpen, closeEmojiPicker, isChatMenuOpen, setIsChatMenuOpen,
     isCallSettingsMenuOpen: callSession.isCallSettingsMenuOpen, setIsCallSettingsMenuOpen: callSession.setIsCallSettingsMenuOpen,
     isCallAudioPopupOpen: callSession.isCallAudioPopupOpen, setIsCallAudioPopupOpen: callSession.setIsCallAudioPopupOpen,
@@ -347,7 +356,7 @@ export function useChatsPageController({
   const showDockedEmojiPicker = isDockedEmojiPicker && isEmojiPickerOpen;
 
   return {
-    family, members, chats, selectedChat, setSelectedChat, isLoading, isChatLoading, isOnline,
+    family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview: workspace.hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
     chatTitleDraft, setChatTitleDraft, fullViewImage, isFullViewImageClosing, isFamilyInviteOpen,
     setIsFamilyInviteOpen, isMobileViewport, chatMenuRef, unreadTotal, canPostInSelectedChannel,

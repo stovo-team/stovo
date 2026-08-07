@@ -36,7 +36,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
   return (
     <nav className="app-nav app-nav--active-variant-a" aria-label="Application navigation">
       <div className="app-nav-links">
-        <NavLink to="/app/chats" title="Chats" aria-label="Chats" viewTransition={enableViewTransitions}>
+        <NavLink to="/app/chats" title="Chats" aria-label="Chats">
           <MessageCircle aria-hidden={true} />
           <span>Chats</span>
           {unreadTotal > 0 && (
@@ -45,20 +45,20 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
             </small>
           )}
         </NavLink>
-        <NavLink to="/app/files" title="Storage" aria-label="Storage" viewTransition={enableViewTransitions}>
+        <NavLink to="/app/files" title="Storage" aria-label="Storage">
           <Folder aria-hidden={true} />
           <span>Storage</span>
         </NavLink>
-        <NavLink to="/app/plans" title="Plans" aria-label="Plans" viewTransition={enableViewTransitions}>
+        <NavLink to="/app/plans" title="Plans" aria-label="Plans">
           <CalendarDays aria-hidden={true} />
           <span>Plans</span>
         </NavLink>
-        <NavLink to="/app/settings" title="Settings" aria-label="Settings" viewTransition={enableViewTransitions}>
+        <NavLink to="/app/settings" title="Settings" aria-label="Settings">
           <Settings aria-hidden={true} />
           <span>Settings</span>
         </NavLink>
         {canViewAdmin && (
-          <NavLink to="/app/admin" title="Admin" aria-label="Admin" viewTransition={enableViewTransitions}>
+          <NavLink to="/app/admin" title="Admin" aria-label="Admin">
             <ShieldCheck aria-hidden={true} />
             <span>Admin</span>
           </NavLink>

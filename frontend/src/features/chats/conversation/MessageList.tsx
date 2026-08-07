@@ -30,6 +30,7 @@ export function MessageList({
   messageSearchActive,
   selectedMessageIds,
   isMessageSelectionMode,
+  editTargetMessage,
   swipeReplyState,
   threadReplyCounts,
   showScrollToBottom,
@@ -49,7 +50,9 @@ export function MessageList({
   onFocusRepliedMessage,
   onOpenOriginChat,
   onReact,
-  onOpenThread
+  onOpenThread,
+  onSaveEdit,
+  onCancelEdit
 }: {
   accessToken: string | null;
   currentUser: User | null;
@@ -67,6 +70,7 @@ export function MessageList({
   messageSearchActive: boolean;
   selectedMessageIds: string[];
   isMessageSelectionMode: boolean;
+  editTargetMessage?: Message | null;
   swipeReplyState: SwipeReplyState | null;
   threadReplyCounts: Map<string, number>;
   showScrollToBottom: boolean;
@@ -87,25 +91,44 @@ export function MessageList({
   onOpenOriginChat: (chat: Chat) => void;
   onReact: (message: Message, emoji: string) => void;
   onOpenThread: (message: Message) => void;
+  onSaveEdit?: (message: Message, content: string) => Promise<void>;
+  onCancelEdit?: () => void;
 }) {
   return (
     <>
       <div
         className={
-          messages.length === 0
+          messages.length === 0 && !isChatLoading
             ? "phase-empty-state"
-            : `messages-panel${showDockedEmojiPicker ? " messages-panel--emoji-docked" : ""}`
+            : `messages-panel${showDockedEmojiPicker ? " messages-panel--emoji-docked" : ""}${
+                isChatLoading && messages.length === 0 ? " messages-panel--loading" : ""
+              }`
         }
         aria-busy={isChatLoading}
         ref={messagesPanelRef}
         onScroll={onScroll}
       >
         {isChatLoading && messages.length === 0 ? (
-          <>
-            <MessageCircle aria-hidden="true" size={36} />
-            <strong>Loading chat</strong>
-            <p>Syncing the latest messages...</p>
-          </>
+          <div className="message-list skeleton-message-list" aria-label="Loading chat messages">
+            <div className="chat-message-row message-incoming skeleton-message-row">
+              <span className="skeleton-avatar" />
+              <div className="message-bubble skeleton-bubble wide">
+                <span className="skeleton-line wide" />
+                <span className="skeleton-line" />
+              </div>
+            </div>
+            <div className="chat-message-row message-outgoing skeleton-message-row">
+              <div className="message-bubble skeleton-bubble medium">
+                <span className="skeleton-line wide" />
+              </div>
+            </div>
+            <div className="chat-message-row message-incoming skeleton-message-row">
+              <span className="skeleton-avatar" />
+              <div className="message-bubble skeleton-bubble short">
+                <span className="skeleton-line" />
+              </div>
+            </div>
+          </div>
         ) : messages.length === 0 ? (
           <>
             <MessageCircle aria-hidden="true" size={36} />
@@ -173,6 +196,9 @@ export function MessageList({
                   isSelected={selectedMessageIds.includes(message.id)}
                   swipeReplyState={swipeReplyState}
                   threadReplyCount={threadReplyCounts.get(message.id) ?? 0}
+                  isEditing={editTargetMessage?.id === message.id}
+                  onSaveEdit={onSaveEdit}
+                  onCancelEdit={onCancelEdit}
                   onBubbleClick={onBubbleClick}
                   onContextMenu={onContextMenu}
                   onSwipePointerDown={onSwipePointerDown}
