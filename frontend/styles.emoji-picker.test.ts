@@ -108,9 +108,9 @@ describe("active chat message spacing", () => {
     );
   });
 
-  it("uses a theme-aware bottom-to-top fade behind the composer", () => {
+  it("uses a transparent background without top shadow behind the composer", () => {
     expect(rule(".messenger-shell.has-active-chat .message-composer")).toContain(
-      "background: linear-gradient(to top, var(--chat-layout-background), transparent);"
+      "background: transparent;"
     );
   });
 

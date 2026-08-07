@@ -1,11 +1,7 @@
 import type { NavigateFunction, NavigateOptions, To } from "react-router-dom";
 
 export function supportsViewTransitions() {
-  if (typeof document === "undefined") {
-    return false;
-  }
-
-  return typeof (document as Document & { startViewTransition?: unknown }).startViewTransition === "function";
+  return false;
 }
 
 type MotionNavigateOptions = NavigateOptions & {
@@ -19,6 +15,6 @@ export function navigateWithMotion(
 ) {
   navigate(to, {
     ...options,
-    viewTransition: viewTransition ?? (supportsViewTransitions() && !reducedMotion)
+    viewTransition: false
   });
 }

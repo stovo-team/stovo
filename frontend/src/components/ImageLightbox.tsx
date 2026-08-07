@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, MoreVertical, X } from "lucide-react";
+import { Download, MoreVertical, Share2, X } from "lucide-react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 
 interface ImageLightboxProps {
@@ -10,6 +10,7 @@ interface ImageLightboxProps {
   isExternallyClosing?: boolean;
   onClose: () => void;
   onDownload?: () => void;
+  onShare?: () => void;
   onGoToMessage?: () => void;
 }
 
@@ -20,6 +21,7 @@ export default function ImageLightbox({
   isExternallyClosing = false,
   onClose,
   onDownload,
+  onShare,
   onGoToMessage
 }: ImageLightboxProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -39,6 +41,33 @@ export default function ImageLightbox({
 
     setIsClosing(true);
   }, [isClosing, onClose, prefersReducedMotion]);
+
+  const handleShare = useCallback(async () => {
+    if (onShare) {
+      onShare();
+      return;
+    }
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          url: imageUrl
+        });
+        return;
+      } catch {
+        // User cancelled or share rejected
+      }
+    }
+
+    if (typeof navigator !== "undefined" && navigator.clipboard && imageUrl) {
+      try {
+        await navigator.clipboard.writeText(imageUrl);
+      } catch {
+        // Clipboard fallback failed
+      }
+    }
+  }, [imageUrl, onShare, title]);
 
   useEffect(() => {
     if (prefersReducedMotion) {
@@ -110,11 +139,25 @@ export default function ImageLightbox({
         </div>
         <div className="image-lightbox-actions">
           {onDownload && (
-            <button type="button" className="image-lightbox-download" onClick={onDownload}>
+            <button
+              type="button"
+              className="image-lightbox-download"
+              title="Download"
+              aria-label="Download"
+              onClick={onDownload}
+            >
               <Download aria-hidden="true" size={18} />
-              <span>Download</span>
             </button>
           )}
+          <button
+            type="button"
+            className="image-lightbox-share"
+            title="Share"
+            aria-label="Share media"
+            onClick={() => void handleShare()}
+          >
+            <Share2 aria-hidden="true" size={18} />
+          </button>
           {onGoToMessage && (
             <div className="image-lightbox-more-wrap">
               <button

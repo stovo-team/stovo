@@ -25,11 +25,12 @@ describe("web composer pickers", () => {
     expect(styles).toContain("transition: background-color 120ms ease-out, color 120ms ease-out;");
   });
 
-  it("keeps attach/emoji controls vertically centered in the pill", () => {
+  it("keeps attach/emoji controls aligned to the bottom in the pill with bottom margin for file picker", () => {
     expect(styles).toContain(
       ":root[data-platform=\"web\"] .messenger-shell.has-active-chat .message-composer-row"
     );
-    expect(styles).toContain("align-items: center;");
+    expect(styles).toContain("align-items: end;");
+    expect(styles).toContain("margin-bottom: 4px;");
     expect(styles).toContain("min-height: 48px;");
     expect(styles).toContain(
       ":root[data-platform=\"web\"] .messenger-shell.has-active-chat .message-composer textarea"

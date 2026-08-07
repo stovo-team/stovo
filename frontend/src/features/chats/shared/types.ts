@@ -9,7 +9,7 @@ export type CallTrackStatus = {
   autoGainControl: boolean | null;
 };
 
-export type ChatAvatarFallbackKind = "direct" | "group" | "channel" | "family";
+export type ChatAvatarFallbackKind = "direct" | "group" | "channel" | "family" | "archive";
 
 export type NewChatScreen = "pick" | "group" | "channel";
 export type ChatFilter = "all" | "unread" | "groups" | "direct" | "muted";

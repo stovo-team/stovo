@@ -12,8 +12,6 @@ export type UseChatSurfaceDismissalParams = {
   navigate: NavigateFunction;
   hasFullViewImage: boolean;
   requestCloseFullViewImage: () => void;
-  copySheetContent: string | null;
-  setCopySheetContent: Dispatch<SetStateAction<string | null>>;
   messageContextMenu: MessageContextMenuState | null;
   setMessageContextMenu: Dispatch<SetStateAction<MessageContextMenuState | null>>;
   isEmojiPickerOpen: boolean;
@@ -59,8 +57,6 @@ export function useChatSurfaceDismissal({
   navigate,
   hasFullViewImage,
   requestCloseFullViewImage,
-  copySheetContent,
-  setCopySheetContent,
   messageContextMenu,
   setMessageContextMenu,
   isEmojiPickerOpen,
@@ -95,10 +91,6 @@ export function useChatSurfaceDismissal({
   closeNewChatScreen
 }: UseChatSurfaceDismissalParams) {
   const requestCloseActiveChatSurface = useCallback(() => {
-    if (copySheetContent !== null) {
-      setCopySheetContent(null);
-      return true;
-    }
     if (messageContextMenu) {
       setMessageContextMenu(null);
       return true;
@@ -150,18 +142,7 @@ export function useChatSurfaceDismissal({
     closeActiveChat,
     closeEmojiPicker,
     closeMessageSearch,
-    copySheetContent,
     deleteTarget,
-    forwardTarget,
-    isCallAudioPopupOpen,
-    isCallSettingsMenuOpen,
-    isChatMenuOpen,
-    isDetailsOpen,
-    isEmojiPickerOpen,
-    isMessageSearchOpen,
-    isMessageSelectionMode,
-    messageContextMenu,
-    setCopySheetContent,
     setDeleteTarget,
     setForwardTarget,
     setIsCallAudioPopupOpen,
@@ -268,10 +249,6 @@ export function useChatSurfaceDismissal({
           requestCloseFullViewImage();
           return;
         }
-        if (copySheetContent !== null) {
-          setCopySheetContent(null);
-          return;
-        }
         if (messageContextMenu) {
           setMessageContextMenu(null);
           return;
@@ -335,7 +312,6 @@ export function useChatSurfaceDismissal({
   }, [
     chatId,
     closeNewChatScreen,
-    copySheetContent,
     deleteTarget,
     forwardTarget,
     hasFullViewImage,

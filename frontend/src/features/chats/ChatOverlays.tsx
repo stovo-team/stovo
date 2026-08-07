@@ -9,6 +9,8 @@ import { MessageEnlargeModal } from "../../components/MessageEnlargeModal";
 import { NewChatDialog } from "./sidebar/NewChatDialog";
 import type { ChatOverviewController } from "./sidebar/types";
 
+import type { PendingLocalAttachment } from "./shared/types";
+
 export type FullViewImageState = { file: FamilyFile; previewUrl: string; messageId?: string };
 
 export type ChatOverlaysProps = {
@@ -27,6 +29,11 @@ export type ChatOverlaysProps = {
   renderMarkdown: boolean;
   onCloseComposerEnlarge: () => void;
   onComposerEnlargeChange: (value: string) => void;
+  pendingAttachments?: PendingLocalAttachment[];
+  onRemovePendingAttachment?: (localId: string) => void;
+  onUpdatePendingAttachment?: (localId: string, updatedFile: File) => void;
+  onAddAttachments?: (files: File[]) => void;
+  onSendMessage?: () => void;
 };
 
 /**
@@ -50,7 +57,12 @@ export function ChatOverlays({
   composerContent,
   renderMarkdown,
   onCloseComposerEnlarge,
-  onComposerEnlargeChange
+  onComposerEnlargeChange,
+  pendingAttachments,
+  onRemovePendingAttachment,
+  onUpdatePendingAttachment,
+  onAddAttachments,
+  onSendMessage
 }: ChatOverlaysProps) {
   const {
     isNewChatOpen, newChatScreen, filteredNewChatMembers, newChatMemberSearch, groupTitle, groupMemberIds,
@@ -111,8 +123,13 @@ export function ChatOverlays({
           content={composerContent}
           renderMarkdown={renderMarkdown}
           editable
+          pendingAttachments={pendingAttachments}
           onClose={onCloseComposerEnlarge}
           onChange={onComposerEnlargeChange}
+          onRemovePendingAttachment={onRemovePendingAttachment}
+          onUpdatePendingAttachment={onUpdatePendingAttachment}
+          onAddAttachments={onAddAttachments}
+          onSend={onSendMessage}
         />
       )}
     </>
