@@ -193,6 +193,48 @@ func (_c *UserCreate) SetNillableNtfyTopicToken(v *string) *UserCreate {
 	return _c
 }
 
+// SetEmail sets the "email" field.
+func (_c *UserCreate) SetEmail(v string) *UserCreate {
+	_c.mutation.SetEmail(v)
+	return _c
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_c *UserCreate) SetNillableEmail(v *string) *UserCreate {
+	if v != nil {
+		_c.SetEmail(*v)
+	}
+	return _c
+}
+
+// SetBio sets the "bio" field.
+func (_c *UserCreate) SetBio(v string) *UserCreate {
+	_c.mutation.SetBio(v)
+	return _c
+}
+
+// SetNillableBio sets the "bio" field if the given value is not nil.
+func (_c *UserCreate) SetNillableBio(v *string) *UserCreate {
+	if v != nil {
+		_c.SetBio(*v)
+	}
+	return _c
+}
+
+// SetTimezone sets the "timezone" field.
+func (_c *UserCreate) SetTimezone(v string) *UserCreate {
+	_c.mutation.SetTimezone(v)
+	return _c
+}
+
+// SetNillableTimezone sets the "timezone" field if the given value is not nil.
+func (_c *UserCreate) SetNillableTimezone(v *string) *UserCreate {
+	if v != nil {
+		_c.SetTimezone(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *UserCreate) SetID(v string) *UserCreate {
 	_c.mutation.SetID(v)
@@ -568,6 +610,18 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.NtfyTopicToken(); ok {
 		_spec.SetField(user.FieldNtfyTopicToken, field.TypeString, value)
 		_node.NtfyTopicToken = &value
+	}
+	if value, ok := _c.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
+		_node.Email = &value
+	}
+	if value, ok := _c.mutation.Bio(); ok {
+		_spec.SetField(user.FieldBio, field.TypeString, value)
+		_node.Bio = &value
+	}
+	if value, ok := _c.mutation.Timezone(); ok {
+		_spec.SetField(user.FieldTimezone, field.TypeString, value)
+		_node.Timezone = &value
 	}
 	if nodes := _c.mutation.FamilyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1014,6 +1068,60 @@ func (u *UserUpsert) ClearNtfyTopicToken() *UserUpsert {
 	return u
 }
 
+// SetEmail sets the "email" field.
+func (u *UserUpsert) SetEmail(v string) *UserUpsert {
+	u.Set(user.FieldEmail, v)
+	return u
+}
+
+// UpdateEmail sets the "email" field to the value that was provided on create.
+func (u *UserUpsert) UpdateEmail() *UserUpsert {
+	u.SetExcluded(user.FieldEmail)
+	return u
+}
+
+// ClearEmail clears the value of the "email" field.
+func (u *UserUpsert) ClearEmail() *UserUpsert {
+	u.SetNull(user.FieldEmail)
+	return u
+}
+
+// SetBio sets the "bio" field.
+func (u *UserUpsert) SetBio(v string) *UserUpsert {
+	u.Set(user.FieldBio, v)
+	return u
+}
+
+// UpdateBio sets the "bio" field to the value that was provided on create.
+func (u *UserUpsert) UpdateBio() *UserUpsert {
+	u.SetExcluded(user.FieldBio)
+	return u
+}
+
+// ClearBio clears the value of the "bio" field.
+func (u *UserUpsert) ClearBio() *UserUpsert {
+	u.SetNull(user.FieldBio)
+	return u
+}
+
+// SetTimezone sets the "timezone" field.
+func (u *UserUpsert) SetTimezone(v string) *UserUpsert {
+	u.Set(user.FieldTimezone, v)
+	return u
+}
+
+// UpdateTimezone sets the "timezone" field to the value that was provided on create.
+func (u *UserUpsert) UpdateTimezone() *UserUpsert {
+	u.SetExcluded(user.FieldTimezone)
+	return u
+}
+
+// ClearTimezone clears the value of the "timezone" field.
+func (u *UserUpsert) ClearTimezone() *UserUpsert {
+	u.SetNull(user.FieldTimezone)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -1311,6 +1419,69 @@ func (u *UserUpsertOne) UpdateNtfyTopicToken() *UserUpsertOne {
 func (u *UserUpsertOne) ClearNtfyTopicToken() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.ClearNtfyTopicToken()
+	})
+}
+
+// SetEmail sets the "email" field.
+func (u *UserUpsertOne) SetEmail(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetEmail(v)
+	})
+}
+
+// UpdateEmail sets the "email" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateEmail() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateEmail()
+	})
+}
+
+// ClearEmail clears the value of the "email" field.
+func (u *UserUpsertOne) ClearEmail() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearEmail()
+	})
+}
+
+// SetBio sets the "bio" field.
+func (u *UserUpsertOne) SetBio(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetBio(v)
+	})
+}
+
+// UpdateBio sets the "bio" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateBio() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateBio()
+	})
+}
+
+// ClearBio clears the value of the "bio" field.
+func (u *UserUpsertOne) ClearBio() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearBio()
+	})
+}
+
+// SetTimezone sets the "timezone" field.
+func (u *UserUpsertOne) SetTimezone(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetTimezone(v)
+	})
+}
+
+// UpdateTimezone sets the "timezone" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateTimezone() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateTimezone()
+	})
+}
+
+// ClearTimezone clears the value of the "timezone" field.
+func (u *UserUpsertOne) ClearTimezone() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearTimezone()
 	})
 }
 
@@ -1778,6 +1949,69 @@ func (u *UserUpsertBulk) UpdateNtfyTopicToken() *UserUpsertBulk {
 func (u *UserUpsertBulk) ClearNtfyTopicToken() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.ClearNtfyTopicToken()
+	})
+}
+
+// SetEmail sets the "email" field.
+func (u *UserUpsertBulk) SetEmail(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetEmail(v)
+	})
+}
+
+// UpdateEmail sets the "email" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateEmail() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateEmail()
+	})
+}
+
+// ClearEmail clears the value of the "email" field.
+func (u *UserUpsertBulk) ClearEmail() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearEmail()
+	})
+}
+
+// SetBio sets the "bio" field.
+func (u *UserUpsertBulk) SetBio(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetBio(v)
+	})
+}
+
+// UpdateBio sets the "bio" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateBio() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateBio()
+	})
+}
+
+// ClearBio clears the value of the "bio" field.
+func (u *UserUpsertBulk) ClearBio() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearBio()
+	})
+}
+
+// SetTimezone sets the "timezone" field.
+func (u *UserUpsertBulk) SetTimezone(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetTimezone(v)
+	})
+}
+
+// UpdateTimezone sets the "timezone" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateTimezone() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateTimezone()
+	})
+}
+
+// ClearTimezone clears the value of the "timezone" field.
+func (u *UserUpsertBulk) ClearTimezone() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearTimezone()
 	})
 }
 

@@ -47,6 +47,12 @@ type User struct {
 	AudioCallSettings *string `json:"audio_call_settings,omitempty"`
 	// NtfyTopicToken holds the value of the "ntfy_topic_token" field.
 	NtfyTopicToken *string `json:"ntfy_topic_token,omitempty"`
+	// Email holds the value of the "email" field.
+	Email *string `json:"email,omitempty"`
+	// Bio holds the value of the "bio" field.
+	Bio *string `json:"bio,omitempty"`
+	// Timezone holds the value of the "timezone" field.
+	Timezone *string `json:"timezone,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the UserQuery when eager-loading is set.
 	Edges        UserEdges `json:"edges"`
@@ -192,7 +198,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldIsActive:
 			values[i] = new(sql.NullInt64)
-		case user.FieldID, user.FieldFamilyID, user.FieldUsername, user.FieldPasswordHash, user.FieldDisplayName, user.FieldRole, user.FieldPublicKey, user.FieldProfilePhotoFileID, user.FieldCreatedAt, user.FieldLastSeenAt, user.FieldProfileVisibility, user.FieldLastSeenVisibility, user.FieldAudioCallSettings, user.FieldNtfyTopicToken:
+		case user.FieldID, user.FieldFamilyID, user.FieldUsername, user.FieldPasswordHash, user.FieldDisplayName, user.FieldRole, user.FieldPublicKey, user.FieldProfilePhotoFileID, user.FieldCreatedAt, user.FieldLastSeenAt, user.FieldProfileVisibility, user.FieldLastSeenVisibility, user.FieldAudioCallSettings, user.FieldNtfyTopicToken, user.FieldEmail, user.FieldBio, user.FieldTimezone:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -309,6 +315,27 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.NtfyTopicToken = new(string)
 				*_m.NtfyTopicToken = value.String
+			}
+		case user.FieldEmail:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field email", values[i])
+			} else if value.Valid {
+				_m.Email = new(string)
+				*_m.Email = value.String
+			}
+		case user.FieldBio:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field bio", values[i])
+			} else if value.Valid {
+				_m.Bio = new(string)
+				*_m.Bio = value.String
+			}
+		case user.FieldTimezone:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field timezone", values[i])
+			} else if value.Valid {
+				_m.Timezone = new(string)
+				*_m.Timezone = value.String
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -453,6 +480,21 @@ func (_m *User) String() string {
 	builder.WriteString(", ")
 	if v := _m.NtfyTopicToken; v != nil {
 		builder.WriteString("ntfy_topic_token=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.Email; v != nil {
+		builder.WriteString("email=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.Bio; v != nil {
+		builder.WriteString("bio=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.Timezone; v != nil {
+		builder.WriteString("timezone=")
 		builder.WriteString(*v)
 	}
 	builder.WriteByte(')')

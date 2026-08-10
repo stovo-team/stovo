@@ -48,7 +48,7 @@ import {
   useAppearance
 } from "../appearance/AppearanceContext";
 import { ApiError, getApiUrl, setApiUrlOverride } from "../api/client";
-import { User } from "../api/auth";
+import { changePassword, User } from "../api/auth";
 import { Family, getMembers } from "../api/family";
 import { FamilyFile, uploadFile } from "../api/files";
 import { useAuth } from "../auth/AuthContext";
@@ -538,9 +538,17 @@ export default function SettingsPage() {
   const { appearance, resolvedThemeMode } = useAppearance();
   const [currentServerUrl] = useState(() => getApiUrl());
   const [family, setFamily] = useState<Family | null>(null);
-  const [profileForm, setProfileForm] = useState({
+  const [profileForm, setProfileForm] = useState(() => ({
     displayName: currentUser?.displayName ?? "",
-    familyName: ""
+    familyName: "",
+    email: currentUser?.email ?? "",
+    bio: currentUser?.bio ?? "",
+    timezone: currentUser?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "")
+  }));
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmation: ""
   });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -571,16 +579,20 @@ export default function SettingsPage() {
       setFamily(familyResult);
       setMembers(memberResult);
       setBlockedMemberIds(blockedResult.map((member) => member.id));
+      const autoTz = currentUser?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "");
       setProfileForm({
         displayName: currentUser?.displayName ?? "",
-        familyName: familyResult.name
+        familyName: familyResult.name,
+        email: currentUser?.email ?? "",
+        bio: currentUser?.bio ?? "",
+        timezone: autoTz
       });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not load settings");
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, authRequest, currentUser?.displayName]);
+  }, [accessToken, authRequest, currentUser?.displayName, currentUser?.email, currentUser?.bio, currentUser?.timezone]);
 
   useEffect(() => {
     void load();
@@ -658,13 +670,21 @@ export default function SettingsPage() {
     setNotice(null);
     setIsSaving(true);
     try {
-      if (
-        profileForm.displayName.trim() &&
-        profileForm.displayName.trim() !== currentUser.displayName
-      ) {
+      const hasUserChanges =
+        profileForm.displayName.trim() !== (currentUser.displayName ?? "") ||
+        profileForm.email.trim() !== (currentUser.email ?? "") ||
+        profileForm.bio.trim() !== (currentUser.bio ?? "") ||
+        profileForm.timezone.trim() !== (currentUser.timezone ?? "");
+
+      if (hasUserChanges && profileForm.displayName.trim()) {
         const updatedUser = await authRequest<User>("/api/auth/me", {
           method: "PATCH",
-          body: { displayName: profileForm.displayName.trim() }
+          body: {
+            displayName: profileForm.displayName.trim(),
+            email: profileForm.email.trim() || "",
+            bio: profileForm.bio.trim() || "",
+            timezone: profileForm.timezone.trim() || ""
+          }
         });
         updateCurrentUser(updatedUser);
       }
@@ -725,6 +745,30 @@ export default function SettingsPage() {
       setNotice("Profile photo updated");
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not update profile photo");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handlePasswordSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!accessToken) return;
+    setError(null);
+    setNotice(null);
+    if (passwordForm.newPassword !== passwordForm.confirmation) {
+      setError("New password and confirmation do not match");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await changePassword(accessToken, {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmation: "" });
+      setNotice("Password changed. Other devices have been signed out.");
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not change password");
     } finally {
       setIsSaving(false);
     }
@@ -933,7 +977,10 @@ export default function SettingsPage() {
                       if (activeSettingsItem === "Profile") {
                         setProfileForm({
                           displayName: currentUser?.displayName ?? "",
-                          familyName: family?.name ?? ""
+                          familyName: family?.name ?? "",
+                          email: currentUser?.email ?? "",
+                          bio: currentUser?.bio ?? "",
+                          timezone: currentUser?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "")
                         });
                       }
                       setActiveSettingsItem(null);
@@ -955,7 +1002,19 @@ export default function SettingsPage() {
                     </section>
                     <form className="profile-detail-form" onSubmit={handleProfileSubmit}>
                       <label><span><UserRound aria-hidden="true" size={21} />Display name</span><input maxLength={255} value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} /></label>
+                      <label><span><Mail aria-hidden="true" size={21} />Email (optional)</span><input type="email" placeholder="e.g. alex@example.com" maxLength={255} value={profileForm.email} onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))} /></label>
+                      <label style={{ alignItems: "flex-start" }}><span style={{ paddingTop: "10px" }}><UserRound aria-hidden="true" size={21} />Bio (optional)</span><textarea placeholder="Tell family members a bit about yourself…" maxLength={500} rows={3} value={profileForm.bio} onChange={(event) => setProfileForm((current) => ({ ...current, bio: event.target.value }))} /></label>
+                      <label><span><Clock3 aria-hidden="true" size={21} />Timezone</span><select value={profileForm.timezone} onChange={(event) => setProfileForm((current) => ({ ...current, timezone: event.target.value }))}>{Intl.supportedValuesOf("timeZone").map((tz) => (<option key={tz} value={tz}>{tz}</option>))}</select></label>
                       <label><span><Users aria-hidden="true" size={21} />Family</span><input disabled={!canManageFamily} maxLength={255} value={profileForm.familyName} onChange={(event) => setProfileForm((current) => ({ ...current, familyName: event.target.value }))} /></label>
+                      <button type="submit" className="save-button primary-button" disabled={isSaving || !profileForm.displayName.trim()}>{isSaving ? "Saving…" : "Save profile"}</button>
+                    </form>
+                    <form className="profile-detail-form" onSubmit={handlePasswordSubmit}>
+                      <h3>Change password</h3>
+                      <p className="muted-copy">This applies only to the account on the currently selected server.</p>
+                      <label><span><LockKeyhole aria-hidden="true" size={21} />Current password</span><input type="password" autoComplete="current-password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))} required /></label>
+                      <label><span><LockKeyhole aria-hidden="true" size={21} />New password</span><input type="password" autoComplete="new-password" minLength={8} value={passwordForm.newPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))} required /></label>
+                      <label><span><LockKeyhole aria-hidden="true" size={21} />Confirm new password</span><input type="password" autoComplete="new-password" minLength={8} value={passwordForm.confirmation} onChange={(event) => setPasswordForm((current) => ({ ...current, confirmation: event.target.value }))} required /></label>
+                      <button type="submit" className="save-button primary-button" disabled={isSaving || !accessToken}>{isSaving ? "Changing…" : "Change password"}</button>
                     </form>
                   </div>
                 ) : activeSettingsItem === "Notifications" ? (
@@ -1128,16 +1187,7 @@ export default function SettingsPage() {
                     This area is ready for Stovo controls as they are added.
                   </p>
                 )}
-                {activeSettingsItem === "Profile" && (
-                  <button
-                    type="button"
-                    className="settings-done-button"
-                    disabled={isSaving || !profileForm.displayName.trim()}
-                    onClick={() => void handleProfileDone()}
-                  >
-                    {isSaving ? "Saving" : "Done"}
-                  </button>
-                )}
+
               </section>
             )}
 

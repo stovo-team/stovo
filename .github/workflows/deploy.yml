@@ -1,14 +1,7 @@
-# Deploy Stovo to Cloud.ru Evolution via SSH.
+# Deploy Stovo to production server via SSH.
 #
-# Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_PATH
+# Secrets required: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_PATH
 # Optional: DEPLOY_SSH_PORT (default 22)
-#
-# DEPLOY_PATH example: /home/user1/Stovo
-#
-# Blue/green: ACTIVE_BACKEND in .env (backend-blue | backend-green) selects
-# which color Caddy proxies. Deploy builds the inactive color, health-checks
-# it, flips ACTIVE_BACKEND, recreates caddy, then drains the old color.
-# Postgres/redis/minio stay up — never `docker compose down` the whole stack.
 
 name: Deploy Web
 
@@ -44,75 +37,86 @@ jobs:
           script: |
             set -eu
             cd '${{ secrets.DEPLOY_PATH }}'
-            # The running backend owns uploads. Give Git temporary access so it
-            # can restore the tracked placeholder during the working-tree sync.
-            sudo install -d -m 0750 -o "$(id -u)" -g "$(id -g)" uploads
-            sudo chown -R "$(id -u):$(id -g)" uploads
-            # Force-pushed / rewritten history is expected; sync exactly to remote.
+            
+            # Fetch latest git master
             git fetch origin master
             git checkout master
             git reset --hard origin/master
-            # Older production .env files predate the MinIO service. Preserve
-            # existing values and generate secrets only for keys that are absent.
-            test -f .env
+
+            test -f .env || touch .env
             umask 077
             ensure_env() { key="$1"; value="$2"; if ! grep -q "^${key}=." .env; then printf '\n%s=%s\n' "$key" "$value" >> .env; fi; }
             ensure_env MINIO_ROOT_USER stovo_minio_root
             ensure_env MINIO_ROOT_PASSWORD "$(openssl rand -hex 32)"
             ensure_env MINIO_ACCESS_KEY stovo_backend
             ensure_env MINIO_SECRET_KEY "$(openssl rand -hex 32)"
-            ensure_env ACTIVE_BACKEND backend-blue
-            sudo docker compose version
-            # The backend runs as Alpine's non-root app user (UID/GID 100).
-            # Keep the read-only migration source accessible until cutover is accepted.
-            sudo install -d -m 0750 -o 100 -g 100 uploads logs
-            sudo chown -R 100:100 uploads logs
-
-            active="$(sed -n 's/^ACTIVE_BACKEND=//p' .env | tail -n 1)"
-            active="${active:-backend-blue}"
-            case "$active" in backend-blue) inactive=backend-green ;; backend-green) inactive=backend-blue ;; *) echo "ACTIVE_BACKEND must be backend-blue or backend-green, got: $active" >&2; exit 1 ;; esac
+            ensure_env MASTER_ADMIN_USER admin
+            ensure_env MASTER_ADMIN_PASSWORD admin123
+            ensure_env MASTER_SYSTEM_SECRET super_secret_master_key_123
 
             get_env() { key="$1"; default="${2:-}"; val="$(sed -n "s/^${key}=//p" .env 2>/dev/null | tail -n 1 | tr -d '\r')"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"; if [ -n "$val" ]; then printf '%s' "$val"; else printf '%s' "$default"; fi; }
 
             pg_user="$(get_env POSTGRES_USER family_user)"
-            pg_pass="$(get_env POSTGRES_PASSWORD)"
-            pg_db="$(get_env POSTGRES_DB family)"
+            pg_pass="$(get_env POSTGRES_PASSWORD family_password)"
+            pg_db="$(get_env POSTGRES_DB family_messenger)"
 
-            # Keep shared deps up; do not docker compose down the whole stack.
-            sudo docker compose up -d postgres redis ntfy minio minio-init
-            # Wait for postgres healthy, then apply expand-only Atlas migrations.
-            for _ in $(seq 1 30); do if sudo docker compose exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
-            db_url="postgres://${pg_user}:${pg_pass}@postgres:5432/${pg_db}?sslmode=disable"
-            # Compose project network is typically <directory>_default.
-            compose_net="$(sudo docker compose ps -q postgres | xargs -r sudo docker inspect --format '{{json .NetworkSettings.Networks}}' | grep -o '"[^"]*"' | head -n1 | tr -d '"')"
-            if [ -z "$compose_net" ]; then compose_net="$(basename "$(pwd)")_default"; fi
-            if ! sudo docker run --rm --network "$compose_net" -v "$(pwd)/backend/migrations:/migrations:ro" arigaio/atlas:latest migrate apply --dir file://migrations --url "$db_url"; then echo "migrate apply failed; attempting baseline stamp for existing schema"; sudo docker run --rm --network "$compose_net" -v "$(pwd)/backend/migrations:/migrations:ro" arigaio/atlas:latest migrate set 20260804120000 --dir file://migrations --url "$db_url"; fi
+            # Ensure master database, cache & minio services are running
+            sudo docker compose -f docker-compose.master.yml up -d postgres redis minio
+            
+            # Wait for postgres to be healthy
+            for _ in $(seq 1 30); do if sudo docker compose -f docker-compose.master.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
 
-            sudo docker compose up -d --build --no-deps frontend
-            # Cold start / first blue-green cutover: ensure the current active color is up.
-            sudo docker compose up -d --build --no-deps "$active"
-            # Build and start the inactive color with the new image (no shared-dep recreate).
-            # backend-green is behind the bluegreen profile; explicit service name still starts it.
-            sudo docker compose --profile bluegreen up -d --build --no-deps "$inactive"
-            # Caddy is needed as a network peer to health-check the inactive hostname.
-            sudo docker compose up -d --no-deps caddy
+            # Apply master database migrations
+            cat migrations/master/001_create_servers.sql | sudo docker compose -f docker-compose.master.yml exec -T postgres psql -U "$pg_user" -d "$pg_db" || true
 
-            inactive_healthy=false
-            for _ in $(seq 1 30); do if sudo docker compose exec -T caddy wget -qO- "http://${inactive}:8000/api/health" > /dev/null 2>&1; then inactive_healthy=true; break; fi; sleep 2; done
-            if [ "$inactive_healthy" != true ]; then sudo docker compose ps; sudo docker compose logs --tail=100 "$inactive" caddy minio minio-init; exit 1; fi
+            # Build backend docker image for child servers
+            sudo docker build -t stovo-backend ./backend
 
-            # Flip only after inactive health succeeds.
-            if grep -q '^ACTIVE_BACKEND=' .env; then sed -i "s/^ACTIVE_BACKEND=.*/ACTIVE_BACKEND=${inactive}/" .env; else printf '\nACTIVE_BACKEND=%s\n' "$inactive" >> .env; fi
-            # Recreate caddy so ACTIVE_BACKEND env is picked up for Caddyfile placeholders.
-            sudo docker compose up -d --no-deps --force-recreate caddy
+            # Build and deploy frontend, orchestrator, and caddy gateway
+            sudo docker compose -f docker-compose.master.yml up -d --build frontend orchestrator caddy coturn
 
-            app_domain="$(sed -n 's/^APP_DOMAIN=//p' .env | tail -n 1)"
-            public_healthy=false
-            for _ in $(seq 1 30); do if curl --fail --silent --resolve "$app_domain:443:127.0.0.1" "https://$app_domain/api/health" > /dev/null; then public_healthy=true; break; fi; sleep 2; done
-            if [ "$public_healthy" != true ]; then if grep -q '^ACTIVE_BACKEND=' .env; then sed -i "s/^ACTIVE_BACKEND=.*/ACTIVE_BACKEND=${active}/" .env; fi; sudo docker compose up -d --no-deps --force-recreate caddy; sudo docker compose ps; sudo docker compose logs --tail=100 "$inactive" caddy minio minio-init; exit 1; fi
+            # Perform rolling container update for all running tenant server clusters
+            child_containers="$(sudo docker ps -q --filter label=stovo-server || true)"
+            if [ -n "$child_containers" ]; then
+                echo "Updating active tenant backend containers..."
+                for container_id in $child_containers; do
+                    server_slug="$(sudo docker inspect --format '{{index .Config.Labels "stovo-server"}}' "$container_id")"
+                    if [ -n "$server_slug" ]; then
+                        echo "Re-deploying container for server: $server_slug"
+                        sudo docker stop "$container_id" || true
+                        sudo docker rm "$container_id" || true
+                        master_secret="$(get_env MASTER_SYSTEM_SECRET super_secret_master_key_123)"
+                        minio_user="$(get_env MINIO_ROOT_USER stovo_minio_root)"
+                        minio_pass="$(get_env MINIO_ROOT_PASSWORD stovo_minio_pass)"
+                        turn_enabled="$(get_env TURN_ENABLED true)"
+                        turn_host="$(get_env TURN_HOST "$(get_env PUBLIC_HOST "$(get_env PUBLIC_IP stovo.local)")")"
+                        turn_port="$(get_env TURN_PORT 3478)"
+                        turn_realm="$(get_env TURN_REALM family-messenger)"
+                        turn_username="$(get_env TURN_USERNAME family)"
+                        turn_password="$(get_env TURN_PASSWORD change_me)"
+                        sudo docker run -d \
+                          --name "stovo-backend-${server_slug}" \
+                          --network stovo_default \
+                          --restart unless-stopped \
+                          -e "SERVER_ID=${server_slug}" \
+                          -e "DATABASE_URL=postgres://${pg_user}:${pg_pass}@postgres:5432/stovo_db_${server_slug}?sslmode=disable" \
+                          -e "REDIS_URL=redis://redis:6379/0" \
+                          -e "MINIO_ENDPOINT=minio:9000" \
+                          -e "MINIO_ACCESS_KEY=${minio_user}" \
+                          -e "MINIO_SECRET_KEY=${minio_pass}" \
+                          -e "MINIO_FILES_BUCKET=stovo-${server_slug}" \
+                          -e "JWT_SECRET=${master_secret}" \
+                          -e "MASTER_SYSTEM_SECRET=${master_secret}" \
+                          -e "TURN_ENABLED=${turn_enabled}" \
+                          -e "TURN_HOST=${turn_host}" \
+                          -e "TURN_PORT=${turn_port}" \
+                          -e "TURN_REALM=${turn_realm}" \
+                          -e "TURN_USERNAME=${turn_username}" \
+                          -e "TURN_PASSWORD=${turn_password}" \
+                          --label "stovo-server=${server_slug}" \
+                          stovo-backend || true
+                    fi
+                done
+            fi
 
-            # Drain old color after Socket.IO disconnect grace (> call reconnect window).
-            sleep 15
-            sudo docker compose stop "$active" || true
-            # Remove legacy single-backend service name if still present.
-            sudo docker compose stop backend 2>/dev/null || true
+            echo "Multi-server deployment finished successfully!"

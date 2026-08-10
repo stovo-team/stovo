@@ -21,6 +21,10 @@ func (s *PresenceService) MarkOffline(ctx context.Context, userID string) error 
 	return s.cache.Delete(ctx, fmt.Sprintf("presence:user:%s", userID))
 }
 
+func (s *PresenceService) IsOnline(ctx context.Context, userID string) (bool, error) {
+	return s.cache.Exists(ctx, fmt.Sprintf("presence:user:%s", userID))
+}
+
 type TypingService struct {
 	cache CachingService
 }
@@ -68,10 +72,10 @@ func (s *RateLimitService) CheckFixedWindow(ctx context.Context, key string, lim
 }
 
 func (s *RateLimitService) CheckLogin(ctx context.Context, ipAddress string) (int64, error) {
-	if ipAddress == "" {
-		ipAddress = "unknown"
+	if ipAddress == "" || ipAddress == "127.0.0.1" || ipAddress == "::1" || ipAddress == "localhost" || ipAddress == "unknown" {
+		return 0, nil
 	}
-	return s.CheckFixedWindow(ctx, fmt.Sprintf("rate-limit:login:%s", ipAddress), 10, 15*60)
+	return s.CheckFixedWindow(ctx, fmt.Sprintf("rate-limit:login:%s", ipAddress), 60, 60)
 }
 
 func (s *RateLimitService) CheckMessage(ctx context.Context, userID string) (int64, error) {
