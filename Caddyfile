@@ -1,6 +1,22 @@
 (stovo) {
 	encode gzip
 
+	handle /api/v1/master/* {
+		reverse_proxy orchestrator:8001
+	}
+
+	@clusterApi path_regexp clusterApi ^/s/([a-zA-Z0-9_-]+)/api/(.*)$
+	handle @clusterApi {
+		rewrite * /api/{re.clusterApi.2}
+		reverse_proxy stovo-backend-{re.clusterApi.1}:8000
+	}
+
+	@clusterSocket path_regexp clusterSocket ^/s/([a-zA-Z0-9_-]+)/socket.io/(.*)$
+	handle @clusterSocket {
+		rewrite * /socket.io/{re.clusterSocket.2}
+		reverse_proxy stovo-backend-{re.clusterSocket.1}:8000
+	}
+
 	handle /api/* {
 		reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000
 	}
@@ -20,32 +36,10 @@
 	}
 
 	handle {
-		reverse_proxy frontend:8080 {
-			@spa_miss status 404
-			handle_response @spa_miss {
-				rewrite * /
-				reverse_proxy frontend:8080
-			}
-		}
+		reverse_proxy frontend:8080
 	}
 }
 
-http://localhost {
-	import stovo
-}
-
-:80 {
-	import stovo
-}
-
-{$APP_DOMAIN} {
-	# Keep an HTTPS document from accepting an accidental HTTP subresource.
-	header {
-		# A valid TLS certificate alone is not enough: block active or passive HTTP
-		# resources so browsers never downgrade this HTTPS page to "Not secure".
-		Content-Security-Policy "upgrade-insecure-requests; block-all-mixed-content"
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
-	}
-
+:80, http://localhost {
 	import stovo
 }

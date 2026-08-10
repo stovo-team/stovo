@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 
 import { fetchSetupStatus } from "../api/auth";
-import { isServerUrlConfigured } from "../api/client";
+import { getClusterPrefix, isServerUrlConfigured } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 
 export default function RootRedirect() {
   const { currentUser, isLoading } = useAuth();
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
   const serverConfigured = isServerUrlConfigured();
+
+  const prefix = getClusterPrefix();
 
   useEffect(() => {
     if (!serverConfigured) {
@@ -19,8 +21,8 @@ export default function RootRedirect() {
       .catch(() => setSetupRequired(false));
   }, [serverConfigured]);
 
-  if (!serverConfigured) {
-    return <Navigate to="/server-setup" replace />;
+  if (!serverConfigured || !prefix) {
+    return <Navigate to="/multi-admin" replace />;
   }
 
   if (isLoading || setupRequired === null) {
@@ -28,8 +30,8 @@ export default function RootRedirect() {
   }
 
   if (currentUser) {
-    return <Navigate to="/app/chats" replace />;
+    return <Navigate to={`${prefix}/app/chats`} replace />;
   }
 
-  return <Navigate to={setupRequired ? "/setup" : "/login"} replace />;
+  return <Navigate to={setupRequired ? `${prefix}/setup` : `${prefix}/login`} replace />;
 }

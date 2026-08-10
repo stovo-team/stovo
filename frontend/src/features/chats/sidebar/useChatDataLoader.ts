@@ -8,6 +8,7 @@ import { decryptMessages } from "../../../api/messageCrypto";
 import { loadCachedChatList, loadRecentChatHistory, loadRecentChatHistoryFromLocalStorage, saveCachedChatList, saveRecentChatHistory } from "../../../chatHistoryCache";
 import { applyMessagePreviewToChat, sortPinsByPosition } from "../shared/chatPresentation";
 import type { MessageStateUpdate } from "../shared/types";
+import { getActiveServer, upsertServer } from "../../../api/serverRegistry";
 
 export type UseChatDataLoaderParams = {
   accessTokenRef: RefObject<string | null>;
@@ -117,6 +118,12 @@ export function useChatDataLoader({
       ]);
       if (!isCurrentRequest()) {
         return;
+      }
+      if (familyResult?.name) {
+        const active = getActiveServer();
+        if (active && active.name !== familyResult.name) {
+          upsertServer({ ...active, name: familyResult.name });
+        }
       }
       setFamily(familyResult);
       setMembers(memberResult);

@@ -16,6 +16,9 @@ type userPublic struct {
 	ProfileVisibility   string      `json:"profileVisibility"`
 	LastSeenVisibility  string      `json:"lastSeenVisibility"`
 	ReadReceiptsEnabled bool        `json:"readReceiptsEnabled"`
+	Email               *string     `json:"email"`
+	Bio                 *string     `json:"bio"`
+	Timezone            *string     `json:"timezone"`
 }
 
 type familyPublic struct {
@@ -91,8 +94,9 @@ type authResponse struct {
 }
 
 type setupStatusResponse struct {
-	SetupRequired bool `json:"setupRequired"`
-	SetupComplete bool `json:"setupComplete"`
+	SetupRequired bool    `json:"setupRequired"`
+	SetupComplete bool    `json:"setupComplete"`
+	FamilyName    *string `json:"familyName,omitempty"`
 }
 
 type setupRequest struct {
@@ -101,11 +105,17 @@ type setupRequest struct {
 	Username    string `json:"username"`
 	Password    string `json:"password"`
 	DisplayName string `json:"displayName"`
+	InviteToken string `json:"inviteToken"`
 }
 
 type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type changePasswordRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
 }
 
 type updateMeRequest struct {
@@ -115,6 +125,9 @@ type updateMeRequest struct {
 	ProfileVisibility   *string `json:"profileVisibility"`
 	LastSeenVisibility  *string `json:"lastSeenVisibility"`
 	ReadReceiptsEnabled *bool   `json:"readReceiptsEnabled"`
+	Email               *string `json:"email"`
+	Bio                 *string `json:"bio"`
+	Timezone            *string `json:"timezone"`
 }
 
 type updateFamilyRequest struct {
@@ -195,12 +208,15 @@ type acceptInviteRequest struct {
 }
 
 type chatMemberPublic struct {
-	ID           string      `json:"id"`
-	DisplayName  string      `json:"displayName"`
-	Username     string      `json:"username"`
-	Role         string      `json:"role"`
-	PublicKey    *string     `json:"publicKey"`
-	ProfilePhoto *filePublic `json:"profilePhoto"`
+	ID                 string      `json:"id"`
+	DisplayName        string      `json:"displayName"`
+	Username           string      `json:"username"`
+	Role               string      `json:"role"`
+	PublicKey          *string     `json:"publicKey"`
+	ProfilePhoto       *filePublic `json:"profilePhoto"`
+	IsOnline           bool        `json:"isOnline"`
+	LastSeenAt         *time.Time  `json:"lastSeenAt"`
+	LastSeenVisibility string      `json:"lastSeenVisibility"`
 }
 
 type chatPublic struct {

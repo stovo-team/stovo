@@ -15,6 +15,9 @@ FROM alpine:3.21
 
 RUN apk add --no-cache ffmpeg && addgroup -S app && adduser -S -G app app
 
+WORKDIR /app
+RUN mkdir -p /app/uploads /app/logs && chown -R app:app /app
+
 COPY --from=builder /family-messenger /usr/local/bin/family-messenger
 COPY --from=builder /storage-migrate /usr/local/bin/storage-migrate
 

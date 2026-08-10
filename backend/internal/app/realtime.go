@@ -124,6 +124,9 @@ func (s *Server) configureSockets() {
 				if err := cache.NewPresenceService(s.cache).MarkOffline(context.Background(), user.ID); err != nil {
 					s.logger.Warnf("realtime", "presence offline update failed user_id=%s error=%v", user.ID, err)
 				}
+				if err := s.store.UpdateUserLastSeen(context.Background(), user.ID, nowString()); err != nil {
+					s.logger.Warnf("realtime", "last seen update failed user_id=%s error=%v", user.ID, err)
+				}
 			}
 		})
 

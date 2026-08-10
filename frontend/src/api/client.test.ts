@@ -27,9 +27,9 @@ describe("getApiUrl", () => {
     expect(getApiUrl()).toBe(window.location.origin);
   });
 
-  it("ignores a saved browser URL with a route path", () => {
+  it("returns the configured server URL with subpath support", () => {
     setApiUrlOverride("https://stovo-cloud.stovo.ru/server-setup");
 
-    expect(getApiUrl()).toBe(window.location.origin);
+    expect(getApiUrl()).toBe("https://stovo-cloud.stovo.ru/server-setup");
   });
 });

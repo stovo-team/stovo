@@ -17836,6 +17836,9 @@ type UserMutation struct {
 	read_receipts_enabled         *bool
 	audio_call_settings           *string
 	ntfy_topic_token              *string
+	email                         *string
+	bio                           *string
+	timezone                      *string
 	clearedFields                 map[string]struct{}
 	family                        *string
 	clearedfamily                 bool
@@ -18603,6 +18606,153 @@ func (m *UserMutation) ResetNtfyTopicToken() {
 	delete(m.clearedFields, user.FieldNtfyTopicToken)
 }
 
+// SetEmail sets the "email" field.
+func (m *UserMutation) SetEmail(s string) {
+	m.email = &s
+}
+
+// Email returns the value of the "email" field in the mutation.
+func (m *UserMutation) Email() (r string, exists bool) {
+	v := m.email
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEmail returns the old "email" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldEmail(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEmail is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEmail requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEmail: %w", err)
+	}
+	return oldValue.Email, nil
+}
+
+// ClearEmail clears the value of the "email" field.
+func (m *UserMutation) ClearEmail() {
+	m.email = nil
+	m.clearedFields[user.FieldEmail] = struct{}{}
+}
+
+// EmailCleared returns if the "email" field was cleared in this mutation.
+func (m *UserMutation) EmailCleared() bool {
+	_, ok := m.clearedFields[user.FieldEmail]
+	return ok
+}
+
+// ResetEmail resets all changes to the "email" field.
+func (m *UserMutation) ResetEmail() {
+	m.email = nil
+	delete(m.clearedFields, user.FieldEmail)
+}
+
+// SetBio sets the "bio" field.
+func (m *UserMutation) SetBio(s string) {
+	m.bio = &s
+}
+
+// Bio returns the value of the "bio" field in the mutation.
+func (m *UserMutation) Bio() (r string, exists bool) {
+	v := m.bio
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldBio returns the old "bio" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldBio(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldBio is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldBio requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldBio: %w", err)
+	}
+	return oldValue.Bio, nil
+}
+
+// ClearBio clears the value of the "bio" field.
+func (m *UserMutation) ClearBio() {
+	m.bio = nil
+	m.clearedFields[user.FieldBio] = struct{}{}
+}
+
+// BioCleared returns if the "bio" field was cleared in this mutation.
+func (m *UserMutation) BioCleared() bool {
+	_, ok := m.clearedFields[user.FieldBio]
+	return ok
+}
+
+// ResetBio resets all changes to the "bio" field.
+func (m *UserMutation) ResetBio() {
+	m.bio = nil
+	delete(m.clearedFields, user.FieldBio)
+}
+
+// SetTimezone sets the "timezone" field.
+func (m *UserMutation) SetTimezone(s string) {
+	m.timezone = &s
+}
+
+// Timezone returns the value of the "timezone" field in the mutation.
+func (m *UserMutation) Timezone() (r string, exists bool) {
+	v := m.timezone
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimezone returns the old "timezone" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldTimezone(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimezone is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimezone requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimezone: %w", err)
+	}
+	return oldValue.Timezone, nil
+}
+
+// ClearTimezone clears the value of the "timezone" field.
+func (m *UserMutation) ClearTimezone() {
+	m.timezone = nil
+	m.clearedFields[user.FieldTimezone] = struct{}{}
+}
+
+// TimezoneCleared returns if the "timezone" field was cleared in this mutation.
+func (m *UserMutation) TimezoneCleared() bool {
+	_, ok := m.clearedFields[user.FieldTimezone]
+	return ok
+}
+
+// ResetTimezone resets all changes to the "timezone" field.
+func (m *UserMutation) ResetTimezone() {
+	m.timezone = nil
+	delete(m.clearedFields, user.FieldTimezone)
+}
+
 // ClearFamily clears the "family" edge to the Family entity.
 func (m *UserMutation) ClearFamily() {
 	m.clearedfamily = true
@@ -19204,7 +19354,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 18)
 	if m.family != nil {
 		fields = append(fields, user.FieldFamilyID)
 	}
@@ -19250,6 +19400,15 @@ func (m *UserMutation) Fields() []string {
 	if m.ntfy_topic_token != nil {
 		fields = append(fields, user.FieldNtfyTopicToken)
 	}
+	if m.email != nil {
+		fields = append(fields, user.FieldEmail)
+	}
+	if m.bio != nil {
+		fields = append(fields, user.FieldBio)
+	}
+	if m.timezone != nil {
+		fields = append(fields, user.FieldTimezone)
+	}
 	return fields
 }
 
@@ -19288,6 +19447,12 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.AudioCallSettings()
 	case user.FieldNtfyTopicToken:
 		return m.NtfyTopicToken()
+	case user.FieldEmail:
+		return m.Email()
+	case user.FieldBio:
+		return m.Bio()
+	case user.FieldTimezone:
+		return m.Timezone()
 	}
 	return nil, false
 }
@@ -19327,6 +19492,12 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldAudioCallSettings(ctx)
 	case user.FieldNtfyTopicToken:
 		return m.OldNtfyTopicToken(ctx)
+	case user.FieldEmail:
+		return m.OldEmail(ctx)
+	case user.FieldBio:
+		return m.OldBio(ctx)
+	case user.FieldTimezone:
+		return m.OldTimezone(ctx)
 	}
 	return nil, fmt.Errorf("unknown User field %s", name)
 }
@@ -19441,6 +19612,27 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetNtfyTopicToken(v)
 		return nil
+	case user.FieldEmail:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEmail(v)
+		return nil
+	case user.FieldBio:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetBio(v)
+		return nil
+	case user.FieldTimezone:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimezone(v)
+		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)
 }
@@ -19501,6 +19693,15 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldNtfyTopicToken) {
 		fields = append(fields, user.FieldNtfyTopicToken)
 	}
+	if m.FieldCleared(user.FieldEmail) {
+		fields = append(fields, user.FieldEmail)
+	}
+	if m.FieldCleared(user.FieldBio) {
+		fields = append(fields, user.FieldBio)
+	}
+	if m.FieldCleared(user.FieldTimezone) {
+		fields = append(fields, user.FieldTimezone)
+	}
 	return fields
 }
 
@@ -19529,6 +19730,15 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldNtfyTopicToken:
 		m.ClearNtfyTopicToken()
+		return nil
+	case user.FieldEmail:
+		m.ClearEmail()
+		return nil
+	case user.FieldBio:
+		m.ClearBio()
+		return nil
+	case user.FieldTimezone:
+		m.ClearTimezone()
 		return nil
 	}
 	return fmt.Errorf("unknown User nullable field %s", name)
@@ -19582,6 +19792,15 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldNtfyTopicToken:
 		m.ResetNtfyTopicToken()
+		return nil
+	case user.FieldEmail:
+		m.ResetEmail()
+		return nil
+	case user.FieldBio:
+		m.ResetBio()
+		return nil
+	case user.FieldTimezone:
+		m.ResetTimezone()
 		return nil
 	}
 	return fmt.Errorf("unknown User field %s", name)

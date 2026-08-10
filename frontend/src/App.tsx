@@ -1,5 +1,5 @@
 import { ReactElement, useEffect, useRef, useState } from "react";
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { App as CapacitorApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 
@@ -36,6 +36,7 @@ import RootRedirect from "./pages/RootRedirect";
 import ServerSetupPage from "./pages/ServerSetupPage";
 import SettingsPage from "./pages/SettingsPage";
 import SetupPage from "./pages/SetupPage";
+import MultiAdminPage from "./pages/MultiAdminPage";
 
 if (typeof document !== "undefined") {
   document.documentElement.dataset.platform = Capacitor.isNativePlatform() ? "native" : "web";
@@ -247,6 +248,110 @@ function NativeShareRouter() {
   return null;
 }
 
+function ClusterRoutes() {
+  const { slug } = useParams();
+  const prefix = slug ? `/s/${slug}` : "";
+
+  return (
+    <Routes>
+      <Route path="/" element={<RootRedirect />} />
+      <Route path="/server-setup" element={<ServerSetupPage />} />
+      <Route path="/setup" element={<SetupPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/invite/:token" element={<InvitePage />} />
+      <Route
+        path="/app/chats"
+        element={
+          <RequireAuth>
+            <ChatsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/chats/:chatId"
+        element={
+          <RequireAuth>
+            <ChatsPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/members"
+        element={
+          <RequireAuth>
+            <Navigate to={`${prefix}/app/settings?family=1`} replace />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/plans"
+        element={
+          <RequireAuth>
+            <PlansPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/files"
+        element={
+          <RequireAuth>
+            <FilesPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/admin"
+        element={
+          <RequireAuth>
+            <AdminPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/admin/appearance"
+        element={
+          <RequireAuth>
+            <AdminAppearancePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/admin/encryption"
+        element={
+          <RequireAuth>
+            <AdminEncryptionPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/admin/mcp"
+        element={
+          <RequireAuth>
+            <AdminMcpPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/admin/members"
+        element={
+          <RequireAuth>
+            <AdminMembersPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/app/settings"
+        element={
+          <RequireAuth>
+            <SettingsPage />
+          </RequireAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to={`${prefix}/app/chats`} replace />} />
+    </Routes>
+  );
+}
+
 function App() {
   useEffect(() => {
     void ensureFullScreenIntentPermission();
@@ -263,100 +368,9 @@ function App() {
           <NativeShareRouter />
           <AppLockGate />
           <Routes>
-            <Route path="/" element={<RootRedirect />} />
-            <Route path="/server-setup" element={<ServerSetupPage />} />
-            <Route path="/setup" element={<SetupPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/invite/:token" element={<InvitePage />} />
-            <Route
-              path="/app/chats"
-              element={
-                <RequireAuth>
-                  <ChatsPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/chats/:chatId"
-              element={
-                <RequireAuth>
-                  <ChatsPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/members"
-              element={
-                <RequireAuth>
-                  <Navigate to="/app/settings?family=1" replace />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/plans"
-              element={
-                <RequireAuth>
-                  <PlansPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/files"
-              element={
-                <RequireAuth>
-                  <FilesPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/admin"
-              element={
-                <RequireAuth>
-                  <AdminPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/admin/appearance"
-              element={
-                <RequireAuth>
-                  <AdminAppearancePage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/admin/encryption"
-              element={
-                <RequireAuth>
-                  <AdminEncryptionPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/admin/mcp"
-              element={
-                <RequireAuth>
-                  <AdminMcpPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/admin/members"
-              element={
-                <RequireAuth>
-                  <AdminMembersPage />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/app/settings"
-              element={
-                <RequireAuth>
-                  <SettingsPage />
-                </RequireAuth>
-              }
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/multi-admin" element={<MultiAdminPage />} />
+            <Route path="/s/:slug/*" element={<ClusterRoutes />} />
+            <Route path="/*" element={<ClusterRoutes />} />
           </Routes>
         </AuthProvider>
       </AppearanceProvider>
