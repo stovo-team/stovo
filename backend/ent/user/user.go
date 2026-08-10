@@ -42,6 +42,12 @@ const (
 	FieldAudioCallSettings = "audio_call_settings"
 	// FieldNtfyTopicToken holds the string denoting the ntfy_topic_token field in the database.
 	FieldNtfyTopicToken = "ntfy_topic_token"
+	// FieldEmail holds the string denoting the email field in the database.
+	FieldEmail = "email"
+	// FieldBio holds the string denoting the bio field in the database.
+	FieldBio = "bio"
+	// FieldTimezone holds the string denoting the timezone field in the database.
+	FieldTimezone = "timezone"
 	// EdgeFamily holds the string denoting the family edge name in mutations.
 	EdgeFamily = "family"
 	// EdgeRefreshTokens holds the string denoting the refresh_tokens edge name in mutations.
@@ -163,6 +169,9 @@ var Columns = []string{
 	FieldReadReceiptsEnabled,
 	FieldAudioCallSettings,
 	FieldNtfyTopicToken,
+	FieldEmail,
+	FieldBio,
+	FieldTimezone,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -281,6 +290,21 @@ func ByAudioCallSettings(opts ...sql.OrderTermOption) OrderOption {
 // ByNtfyTopicToken orders the results by the ntfy_topic_token field.
 func ByNtfyTopicToken(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNtfyTopicToken, opts...).ToFunc()
+}
+
+// ByEmail orders the results by the email field.
+func ByEmail(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmail, opts...).ToFunc()
+}
+
+// ByBio orders the results by the bio field.
+func ByBio(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldBio, opts...).ToFunc()
+}
+
+// ByTimezone orders the results by the timezone field.
+func ByTimezone(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTimezone, opts...).ToFunc()
 }
 
 // ByFamilyField orders the results by family field.

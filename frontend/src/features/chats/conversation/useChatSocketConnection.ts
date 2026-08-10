@@ -5,6 +5,7 @@ import { App, AppState } from "@capacitor/app";
 
 import type { User } from "../../../api/auth";
 import { getApiUrl } from "../../../api/client";
+import { getSocketConfigForUrl } from "../../../api/serverRegistry";
 import { dismissChatNotifications } from "../../../api/notifications";
 import {
   addPictureInPictureActionListener,
@@ -123,12 +124,15 @@ export function useChatSocketConnection({
       ? ["polling", "websocket"]
       : ["websocket", "polling"];
 
+    const apiUrl = getApiUrl();
+    const socketConfig = getSocketConfigForUrl(apiUrl);
+
     // Capture token at connect time; later refreshes update socket.auth via the
     // effect above. Do NOT put accessToken in this effect's deps — a refresh
     // would tear down/rebuild the socket, fire connect → reloadOverview, and
     // create an API storm against backend/Postgres.
-    const socket = io(getApiUrl(), {
-      path: "/socket.io",
+    const socket = io(socketConfig.origin, {
+      path: socketConfig.path,
       auth: { token },
       query: { token },
       transports,
@@ -242,5 +246,5 @@ export function useChatSocketConnection({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [hasSession, currentUser?.id, lastNativeVideoRevisionRef, socketRef]);
+  }, [hasSession, currentUser?.id, lastNativeVideoRevisionRef, socketRef, getApiUrl()]);
 }

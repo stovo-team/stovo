@@ -37,6 +37,9 @@ func (User) Fields() []ent.Field {
 		field.Bool("read_receipts_enabled").Default(true),
 		field.String("audio_call_settings").Optional().Nillable(),
 		field.String("ntfy_topic_token").Optional().Nillable(),
+		field.String("email").Optional().Nillable(),
+		field.String("bio").Optional().Nillable(),
+		field.String("timezone").Optional().Nillable(),
 	}
 }
 

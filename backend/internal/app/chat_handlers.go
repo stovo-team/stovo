@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"family-messenger/backend/ent"
+	"family-messenger/backend/internal/cache"
 	"family-messenger/backend/internal/repository"
 
 	"github.com/go-chi/chi/v5"
@@ -743,14 +744,21 @@ func (s *Server) chatMembers(chatID string) ([]chatMemberPublic, error) {
 	}
 
 	members := make([]chatMemberPublic, 0, len(users))
+	presence := cache.NewPresenceService(s.cache)
 	for _, u := range users {
 		member := chatMemberPublic{
-			ID:          u.ID,
-			DisplayName: u.DisplayName,
-			Username:    u.Username,
-			Role:        u.Role,
-			PublicKey:   u.PublicKey,
+			ID:                 u.ID,
+			DisplayName:        u.DisplayName,
+			Username:           u.Username,
+			Role:               u.Role,
+			PublicKey:          u.PublicKey,
+			LastSeenVisibility: u.LastSeenVisibility,
 		}
+		if u.LastSeenAt != nil {
+			lastSeen := parseTime(*u.LastSeenAt)
+			member.LastSeenAt = &lastSeen
+		}
+		member.IsOnline, _ = presence.IsOnline(context.Background(), u.ID)
 		if u.ProfilePhotoFileID != nil {
 			if file, err := s.buildFilePublic(*u.ProfilePhotoFileID, member.ID); err == nil && file.DeletedAt == nil {
 				member.ProfilePhoto = &file

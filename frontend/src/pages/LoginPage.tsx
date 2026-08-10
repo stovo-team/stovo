@@ -3,12 +3,13 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { fetchSetupStatus } from "../api/auth";
-import { ApiError, getApiUrl } from "../api/client";
+import { ApiError, getApiUrl, getClusterPrefix } from "../api/client";
+import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 
 export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | null }) {
-  if (setupRequired !== true) {
+  if (setupRequired === false) {
     return null;
   }
 
@@ -28,6 +29,10 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
 
+  const activeServer = getActiveServer();
+  const currentUrl = getApiUrl();
+  const serverName = activeServer?.name || deriveServerNameFromUrl(currentUrl);
+
   useEffect(() => {
     let cancelled = false;
     fetchSetupStatus()
@@ -46,8 +51,10 @@ export default function LoginPage() {
     };
   }, []);
 
+  const prefix = getClusterPrefix();
+
   if (currentUser) {
-    return <Navigate to="/app/chats" replace />;
+    return <Navigate to={`${prefix}/app/chats`} replace />;
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -56,10 +63,10 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login({ username: loginValue, password });
-      navigate("/app/chats", { replace: true });
+      navigate(`${prefix}/app/chats`, { replace: true });
     } catch (err) {
-      const detail = err instanceof ApiError ? `${err.status}: ${String(err.message)}` : String(err);
-      setError(`${detail}\n(${getApiUrl()})`);
+      const detail = err instanceof ApiError ? String(err.message) : "Invalid credentials";
+      setError(detail);
     } finally {
       setIsSubmitting(false);
     }
@@ -68,9 +75,13 @@ export default function LoginPage() {
   return (
     <main className="app-shell">
       <section className="auth-panel">
-        <p className="eyebrow">Private family space</p>
-        <VeloLogo className="app-brand-logo" title="Stovo" />
-        <h1>Stovo</h1>
+        <div className="auth-brand-header">
+          <VeloLogo className="auth-brand-logo" title="Stovo" />
+          <div className="auth-brand-info">
+            <h1 className="auth-brand-title">Stovo</h1>
+            {serverName && <span className="auth-server-name">{serverName}</span>}
+          </div>
+        </div>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             Nickname

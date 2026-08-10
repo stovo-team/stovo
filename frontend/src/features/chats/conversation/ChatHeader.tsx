@@ -27,6 +27,17 @@ import {
 import type { CallPhase } from "../shared/types";
 import { RealAvatar } from "../sidebar/RealAvatar";
 
+function directChatPresence(selectedChat: Chat, currentUser: User | null) {
+  const peer = selectedChat.members.find((member) => member.id !== currentUser?.id);
+  if (!peer) return null;
+  if (peer.isOnline) return "Online";
+  if (peer.lastSeenVisibility === "nobody" || !peer.lastSeenAt) return null;
+
+  const lastSeen = new Date(peer.lastSeenAt);
+  if (Number.isNaN(lastSeen.getTime())) return null;
+  return `last seen at ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(lastSeen)}`;
+}
+
 export function ChatHeader({
   accessToken,
   currentUser,
@@ -86,6 +97,7 @@ export function ChatHeader({
   onSelectionArchive?: () => void;
   onSelectionEdit?: () => void;
 }) {
+  const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
   return (
     <div className="chat-detail-header chat-detail-header--floating">
       <button type="button" className="mobile-back-button" aria-label="Back to chats" onClick={onBack}>
@@ -112,7 +124,7 @@ export function ChatHeader({
             style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "avatar"))}
           />
           <span>
-            <strong style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "title"))}>
+            <span className="chat-title-row" style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "title"))}>
               <span>{displayChatName(selectedChat, currentUser?.id)}</span>
               {typingNames.length > 0 && (
                 <span className="typing-dots" title={`${typingNames.join(", ")} typing`} aria-label="typing">
@@ -121,12 +133,14 @@ export function ChatHeader({
                   <span className="typing-dot" />
                 </span>
               )}
-            </strong>
-            {selectedChat.type !== "archive" && selectedChat.type !== "direct" && (
-              <small>
-                {typingNames.length > 0
-                  ? `${typingNames.join(", ")} typing...`
-                  : `${selectedChat.members.length} member${selectedChat.members.length === 1 ? "" : "s"}`}
+            </span>
+            {selectedChat.type !== "archive" && (
+              <small className="chat-presence">
+                {selectedChat.type === "direct"
+                  ? presence
+                  : typingNames.length > 0
+                    ? `${typingNames.join(", ")} typing...`
+                    : `${selectedChat.members.length} member${selectedChat.members.length === 1 ? "" : "s"}`}
               </small>
             )}
           </span>

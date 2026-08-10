@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 
 const styles = readFileSync("src/styles.css", "utf8");
 const composer = readFileSync("src/features/chats/composer/Composer.tsx", "utf8");
+const chatHeader = readFileSync("src/features/chats/conversation/ChatHeader.tsx", "utf8");
 const useMessageComposerSource = readFileSync(
   "src/features/chats/composer/useMessageComposer.ts",
   "utf8"
@@ -162,6 +163,28 @@ describe("mobile chat chrome", () => {
   });
 });
 
+describe("native conversation viewport and presence", () => {
+  it("locks the active Android conversation to the viewport and keeps the message list as its only scroller", () => {
+    expect(styles).toContain(':root[data-platform="native"] .messenger-shell.has-active-chat');
+    expect(styles).toContain("height: 100dvh;");
+    expect(styles).toContain("overflow: hidden;");
+    expect(
+      lastRule(':root[data-platform="native"] .messenger-shell.has-active-chat .messages-panel')
+    ).toContain("overflow-y: auto;");
+  });
+
+  it("uses a status-bar-safe black header gradient and shows typing next to the chat name", () => {
+    expect(
+      lastRule(':root[data-platform="native"] .messenger-shell.has-active-chat .chat-detail-header--floating::before')
+    ).toContain("linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0) 100%)");
+    expect(chatHeader).toContain('className="chat-title-row"');
+    expect(chatHeader).toContain('className="chat-presence"');
+    expect(chatHeader.indexOf('className="typing-dots"')).toBeGreaterThan(
+      chatHeader.indexOf('className="chat-title-row"')
+    );
+  });
+});
+
 describe("message media sizing", () => {
   it("gives videos and photo albums the wider media bubble width", () => {
     expect(rule(".message-bubble.has-photo-attachments")).toContain(
@@ -241,5 +264,26 @@ describe("emoji-only message sizes", () => {
     expect(rule(".message-bubble.emoji-only-xl .message-body")).toContain("font-size: 3rem;");
     expect(rule(".message-bubble.emoji-only-lg .message-body")).toContain("font-size: 2rem;");
     expect(rule(".message-bubble.emoji-only-md .message-body")).toContain("font-size: 1.25rem;");
+  });
+
+  it("keeps outgoing emoji-only messages flush with the right edge", () => {
+    expect(
+      rule(
+        ".message-bubble.mine:is(.emoji-only-xl, .emoji-only-lg, .emoji-only-md)"
+      )
+    ).toContain("justify-self: end;");
+    expect(
+      rule(
+        ".message-bubble.mine:is(.emoji-only-xl, .emoji-only-lg, .emoji-only-md)"
+      )
+    ).toContain("margin-inline-start: auto;");
+  });
+});
+
+describe("emoji picker backgrounds", () => {
+  it("uses a solid black surface throughout the picker", () => {
+    expect(rule(".emoji-picker")).toContain("background: #000;");
+    expect(rule(".emoji-picker .epr-category-nav")).toContain("background: #000;");
+    expect(rule(".emoji-picker .epr-emoji-category-label")).toContain("background: #000;");
   });
 });

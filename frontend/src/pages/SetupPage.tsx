@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import { fetchSetupStatus } from "../api/auth";
@@ -8,6 +8,8 @@ import VeloLogo from "../components/VeloLogo";
 
 export default function SetupPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("token");
   const { currentUser, setup } = useAuth();
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,12 +25,15 @@ export default function SetupPage() {
       .catch(() => setSetupRequired(true));
   }, []);
 
+  const match = typeof window !== "undefined" ? window.location.pathname.match(/^\/s\/([a-zA-Z0-9_-]+)/) : null;
+  const prefix = match ? `/s/${match[1]}` : "";
+
   if (currentUser) {
-    return <Navigate to="/app/chats" replace />;
+    return <Navigate to={`${prefix}/app/chats`} replace />;
   }
 
-  if (setupRequired === false) {
-    return <Navigate to="/login" replace />;
+  if (setupRequired === false && !inviteToken) {
+    return <Navigate to={`${prefix}/login`} replace />;
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -36,8 +41,8 @@ export default function SetupPage() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await setup(form);
-      navigate("/app/chats", { replace: true });
+      await setup({ ...form, inviteToken: inviteToken || undefined });
+      navigate(`${prefix}/app/chats`, { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Setup failed");
     } finally {
