@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Paperclip, Plus, Server, UserPlus } from "lucide-react";
+import { ChevronDown, Paperclip, Plus, Server, Trash2, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import VeloLogo from "../../../components/VeloLogo";
 import { CHAT_FILTERS } from "../shared/chatPresentation";
 import { ChatList } from "./ChatList";
 import type { ChatSidebarProps } from "./types";
+
+import { useAuth } from "../../../auth/AuthContext";
 
 export function ChatSidebar({
   familyName,
@@ -25,8 +27,12 @@ export function ChatSidebar({
   onOpenChat
 }: ChatSidebarProps) {
   const navigate = useNavigate();
+  const { activeServer, savedServers, hotSwapServer, removeServer } = useAuth();
   const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
   const serverMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const validServers = savedServers.filter((server) => server.url && server.url.includes("/s/"));
+  const displayFamilyName = activeServer?.name || familyName || "Stovo";
   const {
     chatSearch,
     setChatSearch,
@@ -80,18 +86,59 @@ export function ChatSidebar({
                 aria-haspopup="menu"
                 onClick={() => setIsServerMenuOpen((open) => !open)}
               >
-                <span className="server-switcher-name">{familyName}</span>
+                <span className="server-switcher-name">{displayFamilyName}</span>
                 <ChevronDown aria-hidden="true" size={18} className="server-switcher-caret" />
               </button>
               {isServerMenuOpen && (
                 <div className="action-menu server-switcher-menu" role="menu" aria-label="Servers">
-                  <button type="button" role="menuitem" className="server-switcher-item is-active" disabled>
-                    <Server aria-hidden="true" size={16} />
-                    <span>
-                      <strong>{familyName}</strong>
-                      <small>Current server</small>
-                    </span>
-                  </button>
+                  {validServers.length > 0 ? (
+                    validServers.map((server) => {
+                      const isActive = server.id === activeServer?.id;
+                      return (
+                        <div
+                          key={server.id}
+                          role="menuitem"
+                          className={`server-switcher-item${isActive ? " is-active" : ""}`}
+                          onClick={() => {
+                            setIsServerMenuOpen(false);
+                            if (!isActive) {
+                              void hotSwapServer(server.id);
+                            }
+                          }}
+                        >
+                          <Server aria-hidden="true" size={16} />
+                          <span className="server-switcher-details">
+                            <strong>{server.name}</strong>
+                            <small>{server.url}</small>
+                          </span>
+                          {server.unreadCount > 0 && (
+                            <span className="server-unread-badge">{server.unreadCount}</span>
+                          )}
+                          {!isActive && (
+                            <button
+                              type="button"
+                              className="server-switcher-delete-btn"
+                              title={`Remove ${server.name}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeServer(server.id);
+                              }}
+                            >
+                              <Trash2 size={18} aria-hidden="true" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <button type="button" role="menuitem" className="server-switcher-item is-active" disabled>
+                      <Server aria-hidden="true" size={16} />
+                      <span>
+                        <strong>{displayFamilyName}</strong>
+                        <small>Current server</small>
+                      </span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     role="menuitem"

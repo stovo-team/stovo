@@ -41,7 +41,9 @@ export default function ServerSetupPage() {
         setError(`Server replied with ${res.status} — check the URL`);
         return;
       }
-      setApiUrlOverride(normalized);
+      const data = await res.json().catch(() => null);
+      const familyName = typeof data?.familyName === "string" ? data.familyName : undefined;
+      setApiUrlOverride(normalized, familyName);
       navigate("/", { replace: true });
     } catch (err) {
       setError(`Cannot reach ${normalized} — ${String(err)}`);

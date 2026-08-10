@@ -9,7 +9,7 @@ import {
   useState
 } from "react";
 
-import { ApiError, ApiRequestOptions, apiRequest, storeRefreshToken } from "../api/client";
+import { ApiError, ApiRequestOptions, apiRequest, getApiUrl, setApiUrlOverride, storeRefreshToken } from "../api/client";
 import { clearRecentChatHistory } from "../chatHistoryCache";
 import {
   AuthResponse,
@@ -22,10 +22,24 @@ import {
   setupOwner
 } from "../api/auth";
 
+import {
+  ServerAccount,
+  getActiveServer,
+  loadServerState,
+  removeServerById,
+  setActiveServerId,
+  upsertServer
+} from "../api/serverRegistry";
+
 interface AuthState {
   accessToken: string | null;
   currentUser: User | null;
   isLoading: boolean;
+  activeServer: ServerAccount | null;
+  savedServers: ServerAccount[];
+  isOffline: boolean;
+  hotSwapServer: (serverId: string) => Promise<void>;
+  removeServer: (serverId: string) => void;
   login: (payload: LoginPayload) => Promise<void>;
   setup: (payload: SetupPayload) => Promise<void>;
   acceptAuthResponse: (response: AuthResponse) => void;
@@ -43,8 +57,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [serverState, setServerState] = useState(() => loadServerState());
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accessTokenRef = useRef<string | null>(null);
+
+  const activeServer = useMemo(() => {
+    if (!serverState.activeServerId) return null;
+    return serverState.servers[serverState.activeServerId] ?? null;
+  }, [serverState]);
+
+  const savedServers = useMemo(() => {
+    return Object.values(serverState.servers).filter((s) => {
+      if (!s.url || !s.url.includes("/s/")) return false;
+      const hasCreds = Boolean(s.accessToken || s.refreshToken || s.user);
+      const isActive = s.id === serverState.activeServerId;
+      return isActive || hasCreds;
+    });
+  }, [serverState]);
 
   useEffect(() => {
     accessTokenRef.current = accessToken;
@@ -68,9 +98,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (response: AuthResponse) => {
       setAccessToken(response.accessToken);
       setCurrentUser(response.user);
+      setIsOffline(false);
       scheduleProactiveRefresh(response.expiresInSeconds);
       if (response.refreshToken) {
         storeRefreshToken(response.refreshToken);
+      }
+      const currentUrl = getApiUrl();
+      if (currentUrl) {
+        setApiUrlOverride(currentUrl);
+      }
+      const active = getActiveServer();
+      if (active) {
+        upsertServer({
+          ...active,
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken ?? active.refreshToken,
+          user: response.user,
+          healthStatus: "online"
+        });
+        setServerState(loadServerState());
       }
     },
     [scheduleProactiveRefresh]
@@ -79,8 +125,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Keep the ref up to date with the latest applyAuthResponse
   useEffect(() => {
     doProactiveRefreshRef.current = async () => {
-      const response = await refreshSession();
-      applyAuthResponse(response);
+      try {
+        const response = await refreshSession();
+        applyAuthResponse(response);
+      } catch (err) {
+        setIsOffline(true);
+        throw err;
+      }
     };
   }, [applyAuthResponse]);
 
@@ -96,14 +147,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser(null);
   }, []);
 
-  // Used by authRequest 401 retry — also reschedules proactive refresh
   const refresh = useCallback(async () => {
-    const response = await refreshSession();
-    applyAuthResponse(response);
-    return response;
+    try {
+      const response = await refreshSession();
+      applyAuthResponse(response);
+      return response;
+    } catch (err) {
+      setIsOffline(true);
+      throw err;
+    }
   }, [applyAuthResponse]);
 
-  // On mount: attempt to restore session from the refresh cookie
+  const hotSwapServer = useCallback(
+    async (serverId: string) => {
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      const target = setActiveServerId(serverId);
+      if (!target) return;
+      setServerState(loadServerState());
+      setIsLoading(true);
+      setIsOffline(false);
+      setAccessToken(target.accessToken);
+      setCurrentUser(target.user ?? null);
+
+      try {
+        const response = await refreshSession();
+        applyAuthResponse(response);
+      } catch (err) {
+        // Target server is offline or refresh token expired — stay on target context with reconnecting state
+        setIsOffline(true);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [applyAuthResponse]
+  );
+
+  const removeServer = useCallback((serverId: string) => {
+    const nextState = removeServerById(serverId);
+    setServerState(nextState);
+    if (nextState.activeServerId) {
+      const nextActive = nextState.servers[nextState.activeServerId];
+      setAccessToken(nextActive?.accessToken ?? null);
+      setCurrentUser(nextActive?.user ?? null);
+    } else {
+      setAccessToken(null);
+      setCurrentUser(null);
+    }
+  }, []);
+
+  // On mount: attempt to restore session from the refresh token
   useEffect(() => {
     let cancelled = false;
 
@@ -130,7 +222,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, [clearExpiredSession]);
+  }, [applyAuthResponse, clearExpiredSession]);
 
   const login = useCallback(
     async (payload: LoginPayload) => {
@@ -167,10 +259,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authRequest = useCallback(
     async <T,>(endpoint: string, options: ApiRequestOptions = {}) => {
       try {
-        return await apiRequest<T>(endpoint, {
+        const res = await apiRequest<T>(endpoint, {
           ...options,
           accessToken: accessTokenRef.current
         });
+        setIsOffline(false);
+        return res;
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
           try {
@@ -184,6 +278,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw refreshError;
           }
         }
+        if (error instanceof TypeError) {
+          // Network connection error
+          setIsOffline(true);
+        }
         throw error;
       }
     },
@@ -195,6 +293,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accessToken,
       currentUser,
       isLoading,
+      activeServer,
+      savedServers,
+      isOffline,
+      hotSwapServer,
+      removeServer,
       login,
       setup,
       acceptAuthResponse,
@@ -206,6 +309,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       accessToken,
       currentUser,
       isLoading,
+      activeServer,
+      savedServers,
+      isOffline,
+      hotSwapServer,
+      removeServer,
       login,
       setup,
       acceptAuthResponse,

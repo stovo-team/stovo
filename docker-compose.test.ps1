@@ -12,6 +12,6 @@ if ($compose -notmatch '(?s)caddy:.*?healthcheck:') {
     throw "Caddy must expose a health check so unhealthy proxies are detected."
 }
 
-if ($compose -notmatch 'http://localhost:2019/config/') {
+if ($compose -notmatch 'http://(127\.0\.0\.1|localhost):2019/config/') {
     throw "Caddy health check must verify Caddy's responsive admin endpoint."
 }

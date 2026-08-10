@@ -17,6 +17,9 @@ export interface User {
   profileVisibility: "family" | "nobody";
   lastSeenVisibility: "family" | "nobody";
   readReceiptsEnabled: boolean;
+  email?: string | null;
+  bio?: string | null;
+  timezone?: string | null;
 }
 
 export interface AuthResponse {
@@ -30,17 +33,24 @@ export interface AuthResponse {
 export interface SetupStatus {
   setupRequired: boolean;
   setupComplete: boolean;
+  familyName?: string | null;
 }
 
 export interface SetupPayload {
   familyName?: string;
   nickname: string;
   password: string;
+  inviteToken?: string;
 }
 
 export interface LoginPayload {
-  username: string;
-  password: string;
+	username: string;
+	password: string;
+}
+
+export interface ChangePasswordPayload {
+	currentPassword: string;
+	newPassword: string;
 }
 
 export function fetchSetupStatus() {
@@ -59,6 +69,16 @@ export function login(payload: LoginPayload) {
     method: "POST",
     body: payload
   });
+}
+
+export function changePassword(accessToken: string, payload: ChangePasswordPayload) {
+	const refreshToken = getStoredRefreshToken();
+	return apiRequest<void>("/api/auth/change-password", {
+		method: "POST",
+		accessToken,
+		headers: refreshToken ? { "X-Refresh-Token": refreshToken } : undefined,
+		body: payload
+	});
 }
 
 let refreshSessionInFlight: Promise<AuthResponse> | null = null;
