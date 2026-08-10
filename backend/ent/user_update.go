@@ -283,6 +283,66 @@ func (_u *UserUpdate) ClearNtfyTopicToken() *UserUpdate {
 	return _u
 }
 
+// SetEmail sets the "email" field.
+func (_u *UserUpdate) SetEmail(v string) *UserUpdate {
+	_u.mutation.SetEmail(v)
+	return _u
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableEmail(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetEmail(*v)
+	}
+	return _u
+}
+
+// ClearEmail clears the value of the "email" field.
+func (_u *UserUpdate) ClearEmail() *UserUpdate {
+	_u.mutation.ClearEmail()
+	return _u
+}
+
+// SetBio sets the "bio" field.
+func (_u *UserUpdate) SetBio(v string) *UserUpdate {
+	_u.mutation.SetBio(v)
+	return _u
+}
+
+// SetNillableBio sets the "bio" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableBio(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetBio(*v)
+	}
+	return _u
+}
+
+// ClearBio clears the value of the "bio" field.
+func (_u *UserUpdate) ClearBio() *UserUpdate {
+	_u.mutation.ClearBio()
+	return _u
+}
+
+// SetTimezone sets the "timezone" field.
+func (_u *UserUpdate) SetTimezone(v string) *UserUpdate {
+	_u.mutation.SetTimezone(v)
+	return _u
+}
+
+// SetNillableTimezone sets the "timezone" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableTimezone(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetTimezone(*v)
+	}
+	return _u
+}
+
+// ClearTimezone clears the value of the "timezone" field.
+func (_u *UserUpdate) ClearTimezone() *UserUpdate {
+	_u.mutation.ClearTimezone()
+	return _u
+}
+
 // SetFamily sets the "family" edge to the Family entity.
 func (_u *UserUpdate) SetFamily(v *Family) *UserUpdate {
 	return _u.SetFamilyID(v.ID)
@@ -795,6 +855,24 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.NtfyTopicTokenCleared() {
 		_spec.ClearField(user.FieldNtfyTopicToken, field.TypeString)
+	}
+	if value, ok := _u.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
+	}
+	if _u.mutation.EmailCleared() {
+		_spec.ClearField(user.FieldEmail, field.TypeString)
+	}
+	if value, ok := _u.mutation.Bio(); ok {
+		_spec.SetField(user.FieldBio, field.TypeString, value)
+	}
+	if _u.mutation.BioCleared() {
+		_spec.ClearField(user.FieldBio, field.TypeString)
+	}
+	if value, ok := _u.mutation.Timezone(); ok {
+		_spec.SetField(user.FieldTimezone, field.TypeString, value)
+	}
+	if _u.mutation.TimezoneCleared() {
+		_spec.ClearField(user.FieldTimezone, field.TypeString)
 	}
 	if _u.mutation.FamilyCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1542,6 +1620,66 @@ func (_u *UserUpdateOne) ClearNtfyTopicToken() *UserUpdateOne {
 	return _u
 }
 
+// SetEmail sets the "email" field.
+func (_u *UserUpdateOne) SetEmail(v string) *UserUpdateOne {
+	_u.mutation.SetEmail(v)
+	return _u
+}
+
+// SetNillableEmail sets the "email" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableEmail(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetEmail(*v)
+	}
+	return _u
+}
+
+// ClearEmail clears the value of the "email" field.
+func (_u *UserUpdateOne) ClearEmail() *UserUpdateOne {
+	_u.mutation.ClearEmail()
+	return _u
+}
+
+// SetBio sets the "bio" field.
+func (_u *UserUpdateOne) SetBio(v string) *UserUpdateOne {
+	_u.mutation.SetBio(v)
+	return _u
+}
+
+// SetNillableBio sets the "bio" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableBio(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetBio(*v)
+	}
+	return _u
+}
+
+// ClearBio clears the value of the "bio" field.
+func (_u *UserUpdateOne) ClearBio() *UserUpdateOne {
+	_u.mutation.ClearBio()
+	return _u
+}
+
+// SetTimezone sets the "timezone" field.
+func (_u *UserUpdateOne) SetTimezone(v string) *UserUpdateOne {
+	_u.mutation.SetTimezone(v)
+	return _u
+}
+
+// SetNillableTimezone sets the "timezone" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableTimezone(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetTimezone(*v)
+	}
+	return _u
+}
+
+// ClearTimezone clears the value of the "timezone" field.
+func (_u *UserUpdateOne) ClearTimezone() *UserUpdateOne {
+	_u.mutation.ClearTimezone()
+	return _u
+}
+
 // SetFamily sets the "family" edge to the Family entity.
 func (_u *UserUpdateOne) SetFamily(v *Family) *UserUpdateOne {
 	return _u.SetFamilyID(v.ID)
@@ -2084,6 +2222,24 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if _u.mutation.NtfyTopicTokenCleared() {
 		_spec.ClearField(user.FieldNtfyTopicToken, field.TypeString)
+	}
+	if value, ok := _u.mutation.Email(); ok {
+		_spec.SetField(user.FieldEmail, field.TypeString, value)
+	}
+	if _u.mutation.EmailCleared() {
+		_spec.ClearField(user.FieldEmail, field.TypeString)
+	}
+	if value, ok := _u.mutation.Bio(); ok {
+		_spec.SetField(user.FieldBio, field.TypeString, value)
+	}
+	if _u.mutation.BioCleared() {
+		_spec.ClearField(user.FieldBio, field.TypeString)
+	}
+	if value, ok := _u.mutation.Timezone(); ok {
+		_spec.SetField(user.FieldTimezone, field.TypeString, value)
+	}
+	if _u.mutation.TimezoneCleared() {
+		_spec.ClearField(user.FieldTimezone, field.TypeString)
 	}
 	if _u.mutation.FamilyCleared() {
 		edge := &sqlgraph.EdgeSpec{

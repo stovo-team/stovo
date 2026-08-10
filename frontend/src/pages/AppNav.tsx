@@ -11,6 +11,9 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
   const prefersReducedMotion = useReducedMotion();
   const enableViewTransitions = !prefersReducedMotion;
 
+  const match = typeof window !== "undefined" ? window.location.pathname.match(/^\/s\/([a-zA-Z0-9_-]+)/) : null;
+  const prefix = match ? `/s/${match[1]}` : "";
+
   useEffect(() => {
     if (typeof unreadTotalOverride === "number") {
       setUnreadTotal(unreadTotalOverride);
@@ -36,7 +39,7 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
   return (
     <nav className="app-nav app-nav--active-variant-a" aria-label="Application navigation">
       <div className="app-nav-links">
-        <NavLink to="/app/chats" title="Chats" aria-label="Chats">
+        <NavLink to={`${prefix}/app/chats`} title="Chats" aria-label="Chats">
           <MessageCircle aria-hidden={true} />
           <span>Chats</span>
           {unreadTotal > 0 && (
@@ -45,20 +48,20 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
             </small>
           )}
         </NavLink>
-        <NavLink to="/app/files" title="Storage" aria-label="Storage">
+        <NavLink to={`${prefix}/app/files`} title="Storage" aria-label="Storage">
           <Folder aria-hidden={true} />
           <span>Storage</span>
         </NavLink>
-        <NavLink to="/app/plans" title="Plans" aria-label="Plans">
+        <NavLink to={`${prefix}/app/plans`} title="Plans" aria-label="Plans">
           <CalendarDays aria-hidden={true} />
           <span>Plans</span>
         </NavLink>
-        <NavLink to="/app/settings" title="Settings" aria-label="Settings">
+        <NavLink to={`${prefix}/app/settings`} title="Settings" aria-label="Settings">
           <Settings aria-hidden={true} />
           <span>Settings</span>
         </NavLink>
         {canViewAdmin && (
-          <NavLink to="/app/admin" title="Admin" aria-label="Admin">
+          <NavLink to={`${prefix}/app/admin`} title="Admin" aria-label="Admin">
             <ShieldCheck aria-hidden={true} />
             <span>Admin</span>
           </NavLink>

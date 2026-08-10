@@ -14,7 +14,7 @@ describe("new message dialog on web", () => {
   it("uses a centered dialog on web and retains the full-screen mobile layout", () => {
     expect(styles).toContain(".new-chat-modal-backdrop {");
     expect(styles).toContain(".new-chat-screen {");
-    expect(styles).toContain("width: min(100%, 640px);");
+    expect(styles).toContain("width: min(100%, 460px);");
     expect(styles).toContain("@media (max-width: 767px)");
   });
 

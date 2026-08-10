@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"family-messenger/backend/internal/repository"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -48,9 +50,16 @@ func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	required := count == 0
+	var familyName *string
+	if !required {
+		if family, err := s.store.Client.Family.Query().First(r.Context()); err == nil && family != nil {
+			familyName = &family.Name
+		}
+	}
 	s.json(w, http.StatusOK, setupStatusResponse{
 		SetupRequired: required,
 		SetupComplete: !required,
+		FamilyName:    familyName,
 	})
 }
 
@@ -65,10 +74,29 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	payload.Username = strings.TrimSpace(payload.Username)
 	payload.DisplayName = strings.TrimSpace(payload.DisplayName)
 	payload.Nickname = strings.TrimSpace(payload.Nickname)
+	payload.InviteToken = strings.TrimSpace(payload.InviteToken)
 	applyNicknameRegistrationDefaults(&payload.FamilyName, &payload.Username, &payload.DisplayName, payload.Nickname)
 	if payload.FamilyName == "" || payload.Username == "" || payload.DisplayName == "" || len(payload.Password) < 8 {
 		s.detail(w, http.StatusUnprocessableEntity, "Invalid setup payload")
 		return
+	}
+
+	var validInvite bool
+	if payload.InviteToken != "" {
+		masterSecret := []byte(os.Getenv("MASTER_SYSTEM_SECRET"))
+		if len(masterSecret) == 0 {
+			masterSecret = []byte(os.Getenv("JWT_SECRET"))
+		}
+		parsedToken, err := jwt.Parse(payload.InviteToken, func(token *jwt.Token) (interface{}, error) {
+			return masterSecret, nil
+		})
+		if err == nil && parsedToken.Valid {
+			if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
+				if claims["type"] == "admin_invite" {
+					validInvite = true
+				}
+			}
+		}
 	}
 
 	setupCount, err := s.store.CountActiveUsers(r.Context())
@@ -76,7 +104,7 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		s.detail(w, http.StatusInternalServerError, "Could not verify setup status")
 		return
 	}
-	if setupCount > 0 {
+	if setupCount > 0 && !validInvite {
 		s.detail(w, http.StatusConflict, "Setup already completed")
 		return
 	}
@@ -84,6 +112,57 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 	passwordHash, err := hashPassword(payload.Password)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not hash password")
+		return
+	}
+
+	if setupCount > 0 && validInvite {
+		userID := uuid.NewString()
+		token, tokenHash, expiresAt, err := s.issueRefreshToken(userID)
+		if err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not create session")
+			return
+		}
+		u, err := s.store.CreateAdminUser(r.Context(), repository.SetupParams{
+			FamilyName:     payload.FamilyName,
+			UserID:         userID,
+			Username:       payload.Username,
+			PasswordHash:   passwordHash,
+			DisplayName:    payload.DisplayName,
+			Role:           ownerRole,
+			ChatID:         uuid.NewString(),
+			RefreshTokenID: uuid.NewString(),
+			TokenHash:      tokenHash,
+			ExpiresAt:      expiresAt,
+			CreatedAt:      nowString(),
+			IPAddress:      s.getClientIP(r),
+		})
+		if err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "unique") {
+				s.detail(w, http.StatusConflict, "Username already exists")
+				return
+			}
+			s.detail(w, http.StatusInternalServerError, "Could not create admin account")
+			return
+		}
+
+		user, err := s.getUserByID(u.ID)
+		if err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not load user profile")
+			return
+		}
+		accessToken, expiresInSeconds, err := createAccessToken(s.cfg, user)
+		if err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not create access token")
+			return
+		}
+		s.setRefreshCookie(w, token)
+		s.json(w, http.StatusOK, authResponse{
+			AccessToken:      accessToken,
+			TokenType:        "Bearer",
+			ExpiresInSeconds: expiresInSeconds,
+			User:             user,
+			RefreshToken:     token,
+		})
 		return
 	}
 
@@ -269,7 +348,11 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 	displayName := trimStringPointer(payload.DisplayName)
 	publicKey := trimStringPointer(payload.PublicKey)
 	profilePhotoFileID := trimStringPointer(payload.ProfilePhotoFileID)
-	if displayName == nil && publicKey == nil && profilePhotoFileID == nil && payload.ProfileVisibility == nil && payload.LastSeenVisibility == nil && payload.ReadReceiptsEnabled == nil {
+	email := trimStringPointer(payload.Email)
+	bio := trimStringPointer(payload.Bio)
+	timezone := trimStringPointer(payload.Timezone)
+
+	if displayName == nil && publicKey == nil && profilePhotoFileID == nil && payload.ProfileVisibility == nil && payload.LastSeenVisibility == nil && payload.ReadReceiptsEnabled == nil && email == nil && bio == nil && timezone == nil {
 		s.detail(w, http.StatusUnprocessableEntity, "A profile or privacy setting is required")
 		return
 	}
@@ -296,6 +379,9 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 		ProfileVisibility:   payload.ProfileVisibility,
 		LastSeenVisibility:  payload.LastSeenVisibility,
 		ReadReceiptsEnabled: payload.ReadReceiptsEnabled,
+		Email:               email,
+		Bio:                 bio,
+		Timezone:            timezone,
 	}
 	if profilePhotoFileID != nil {
 		if *profilePhotoFileID == "" {
@@ -315,6 +401,57 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 		return
 	}
 	s.json(w, http.StatusOK, updated)
+}
+
+func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, user userPublic) {
+	var payload changePasswordRequest
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+	if len(payload.NewPassword) < 8 {
+		s.detail(w, http.StatusUnprocessableEntity, "New password must be at least 8 characters")
+		return
+	}
+	if payload.NewPassword == payload.CurrentPassword {
+		s.detail(w, http.StatusUnprocessableEntity, "New password must be different from the current password")
+		return
+	}
+
+	currentUser, currentPasswordHash, err := s.getUserForLogin(r.Context(), user.Username)
+	if err != nil || currentUser.ID != user.ID || !verifyPassword(payload.CurrentPassword, currentPasswordHash) {
+		s.detail(w, http.StatusUnauthorized, "Current password is incorrect")
+		return
+	}
+
+	rawToken := ""
+	if cookie, err := r.Cookie(s.cfg.RefreshCookieName); err == nil {
+		rawToken = strings.TrimSpace(cookie.Value)
+	}
+	if rawToken == "" {
+		rawToken = strings.TrimSpace(r.Header.Get("X-Refresh-Token"))
+	}
+	if rawToken == "" {
+		s.detail(w, http.StatusUnauthorized, "Current session is missing")
+		return
+	}
+	currentTokenHash := tokenHash(s.cfg.RefreshTokenSecret, rawToken)
+	currentSession, err := s.store.RefreshTokenByHash(r.Context(), currentTokenHash)
+	if err != nil || currentSession.UserID != user.ID || currentSession.RevokedAt != nil || parseTime(currentSession.ExpiresAt).Before(time.Now()) {
+		s.detail(w, http.StatusUnauthorized, "Current session is invalid")
+		return
+	}
+
+	newPasswordHash, err := hashPassword(payload.NewPassword)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not secure new password")
+		return
+	}
+	if err := s.store.UpdateUserPasswordAndRevokeOtherSessions(r.Context(), user.ID, newPasswordHash, currentTokenHash, nowString()); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not change password")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) getUserForLogin(ctx context.Context, username string) (userPublic, string, error) {

@@ -14,9 +14,11 @@ class MainActivity : BridgeActivity() {
         registerPlugin(AudioPlaybackPlugin::class.java)
         registerPlugin(ShareReceiverPlugin::class.java)
         registerPlugin(AppLockPlugin::class.java)
+        registerPlugin(MediaLibraryPlugin::class.java)
         super.onCreate(savedInstanceState)
         ShareReceiverPlugin.captureIntent(this, intent)
 
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         setupSystemBars()
     }
 
@@ -54,4 +56,3 @@ class MainActivity : BridgeActivity() {
         CallPlugin.handlePictureInPictureModeChanged(isInPictureInPictureMode)
     }
 }
-
