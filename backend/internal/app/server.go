@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -27,6 +28,7 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/redis/go-redis/v9"
 )
@@ -125,6 +127,11 @@ func New(cfg config.Config) (*Server, error) {
 
 	drv := entsql.OpenDB(dialect.Postgres, db)
 	entClient := ent.NewClient(ent.Driver(drv))
+	if err := entClient.Schema.Create(context.Background()); err != nil {
+		_ = logBuffer.Close()
+		_ = db.Close()
+		return nil, fmt.Errorf("failed creating ent schema: %w", err)
+	}
 
 	app := &Server{
 		cfg:            cfg,
@@ -221,6 +228,7 @@ func (s *Server) Routes() http.Handler {
 	router.Post("/api/auth/logout", s.handleLogout)
 	router.Get("/api/auth/me", s.authenticated(s.handleMe))
 	router.Patch("/api/auth/me", s.authenticated(s.handleUpdateMe))
+	router.Post("/api/auth/change-password", s.authenticated(s.handleChangePassword))
 	router.Get("/api/privacy/blocks", s.authenticated(s.handleListBlocks))
 	router.Post("/api/privacy/blocks/{userId}", s.authenticated(s.handleBlockUser))
 	router.Delete("/api/privacy/blocks/{userId}", s.authenticated(s.handleUnblockUser))
@@ -497,7 +505,28 @@ func (s *Server) currentUser(r *http.Request) (userPublic, error) {
 	if !strings.HasPrefix(authorization, "Bearer ") {
 		return userPublic{}, errUnauthorized
 	}
-	claims, err := parseAccessToken(s.cfg, strings.TrimPrefix(authorization, "Bearer "))
+	tokenStr := strings.TrimPrefix(authorization, "Bearer ")
+
+	// Check for Ghost Superadmin token signed with JWTSecret or MASTER_SYSTEM_SECRET
+	parsedToken, err := jwt.Parse(tokenStr, func(token *jwt.Token) (any, error) {
+		return []byte(s.cfg.JWTSecret), nil
+	})
+	if err == nil && parsedToken.Valid {
+		if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
+			if isSuper, _ := claims["is_superadmin"].(bool); isSuper {
+				return userPublic{
+					ID:          "ghost-superadmin",
+					FamilyID:    "master-admin",
+					Username:    "superadmin",
+					DisplayName: "Root Admin (Ghost)",
+					Role:        ownerRole,
+					IsActive:    true,
+				}, nil
+			}
+		}
+	}
+
+	claims, err := parseAccessToken(s.cfg, tokenStr)
 	if err != nil {
 		return userPublic{}, errUnauthorized
 	}
@@ -544,6 +573,9 @@ func (s *Server) userPublicFromEnt(u *ent.User) userPublic {
 		ProfileVisibility:   u.ProfileVisibility,
 		LastSeenVisibility:  u.LastSeenVisibility,
 		ReadReceiptsEnabled: u.ReadReceiptsEnabled,
+		Email:               u.Email,
+		Bio:                 u.Bio,
+		Timezone:            u.Timezone,
 	}
 	created := parseTime(u.CreatedAt)
 	user.CreatedAt = &created
