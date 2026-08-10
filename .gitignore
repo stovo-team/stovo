@@ -24,6 +24,7 @@ uploads/*
 .playwright-snapshot.txt
 
 # Local agent / editor / planning scratch
+scratch/
 .autoforge/
 .obsidian/
 .agents/

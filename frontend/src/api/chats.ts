@@ -9,6 +9,12 @@ export interface ChatMember {
   role: UserRole;
   publicKey: string | null;
   profilePhoto: FamilyFile | null;
+  email?: string | null;
+  bio?: string | null;
+  timezone?: string | null;
+  isOnline?: boolean;
+  lastSeenAt?: string | null;
+  lastSeenVisibility?: "family" | "nobody";
 }
 
 export interface Chat {

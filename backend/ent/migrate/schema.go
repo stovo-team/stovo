@@ -698,6 +698,9 @@ var (
 		{Name: "read_receipts_enabled", Type: field.TypeBool, Default: true},
 		{Name: "audio_call_settings", Type: field.TypeString, Nullable: true},
 		{Name: "ntfy_topic_token", Type: field.TypeString, Nullable: true},
+		{Name: "email", Type: field.TypeString, Nullable: true},
+		{Name: "bio", Type: field.TypeString, Nullable: true},
+		{Name: "timezone", Type: field.TypeString, Nullable: true},
 		{Name: "family_id", Type: field.TypeString},
 	}
 	// UsersTable holds the schema information for the "users" table.
@@ -708,7 +711,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "users_families_users",
-				Columns:    []*schema.Column{UsersColumns[15]},
+				Columns:    []*schema.Column{UsersColumns[18]},
 				RefColumns: []*schema.Column{FamiliesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

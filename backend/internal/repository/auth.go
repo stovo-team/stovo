@@ -4,18 +4,17 @@ import (
 	"context"
 
 	"family-messenger/backend/ent"
+	"family-messenger/backend/ent/chat"
 	"family-messenger/backend/ent/refreshtoken"
 	"family-messenger/backend/ent/user"
+
+	"github.com/google/uuid"
 )
 
 // Ping verifies database connectivity with the sole allowed application SQL probe.
 func (s *Store) Ping(ctx context.Context) error {
-	rows, err := s.Client.QueryContext(ctx, "SELECT 1")
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	return nil
+	_, err := s.Client.User.Query().Limit(1).Count(ctx)
+	return err
 }
 
 // CountActiveUsers returns the number of users with is_active = 1.
@@ -78,14 +77,14 @@ func (s *Store) CompleteSetup(ctx context.Context, p SetupParams) error {
 			return err
 		}
 		if _, err := tx.ChatMember.Create().
-			SetID(p.ChatID).
+			SetID(uuid.NewString()).
 			SetUserID(p.UserID).
 			SetCreatedAt(p.CreatedAt).
 			Save(ctx); err != nil {
 			return err
 		}
 		if _, err := tx.ChatPreference.Create().
-			SetID(p.ChatID).
+			SetID(uuid.NewString()).
 			SetUserID(p.UserID).
 			Save(ctx); err != nil {
 			return err
@@ -102,6 +101,87 @@ func (s *Store) CompleteSetup(ctx context.Context, p SetupParams) error {
 		_, err := create.Save(ctx)
 		return err
 	})
+}
+
+// CreateAdminUser creates an admin user for an existing or new family.
+func (s *Store) CreateAdminUser(ctx context.Context, p SetupParams) (*ent.User, error) {
+	var createdUser *ent.User
+	err := s.WithTx(ctx, func(tx *ent.Tx) error {
+		family, err := tx.Family.Query().First(ctx)
+		if err != nil || family == nil {
+			familyID := p.FamilyID
+			if familyID == "" {
+				familyID = p.UserID
+			}
+			familyName := p.FamilyName
+			if familyName == "" {
+				familyName = "Stovo Server"
+			}
+			family, err = tx.Family.Create().
+				SetID(familyID).
+				SetName(familyName).
+				SetCreatedAt(p.CreatedAt).
+				SetUpdatedAt(p.CreatedAt).
+				Save(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		u, err := tx.User.Create().
+			SetID(p.UserID).
+			SetFamilyID(family.ID).
+			SetUsername(p.Username).
+			SetPasswordHash(p.PasswordHash).
+			SetDisplayName(p.DisplayName).
+			SetRole(p.Role).
+			SetIsActive(1).
+			SetCreatedAt(p.CreatedAt).
+			Save(ctx)
+		if err != nil {
+			return err
+		}
+		createdUser = u
+
+		c, err := tx.Chat.Query().Where(chat.FamilyIDEQ(family.ID)).First(ctx)
+		if err != nil || c == nil {
+			c, err = tx.Chat.Create().
+				SetID(p.ChatID).
+				SetFamilyID(family.ID).
+				SetType("family").
+				SetTitle("General Family Chat").
+				SetCreatedBy(p.UserID).
+				SetMediaVisibility("family").
+				SetEncryptionProtocol("end_to_end").
+				SetCreatedAt(p.CreatedAt).
+				SetUpdatedAt(p.CreatedAt).
+				Save(ctx)
+		}
+		if err == nil && c != nil {
+			_, _ = tx.ChatMember.Create().
+				SetID(uuid.NewString()).
+				SetUserID(p.UserID).
+				SetCreatedAt(p.CreatedAt).
+				Save(ctx)
+			_, _ = tx.ChatPreference.Create().
+				SetID(uuid.NewString()).
+				SetUserID(p.UserID).
+				Save(ctx)
+		}
+
+		create := tx.RefreshToken.Create().
+			SetID(p.RefreshTokenID).
+			SetUserID(p.UserID).
+			SetTokenHash(p.TokenHash).
+			SetExpiresAt(p.ExpiresAt).
+			SetCreatedAt(p.CreatedAt)
+		if p.IPAddress != "" {
+			create.SetIPAddress(p.IPAddress)
+		}
+		_, err = create.Save(ctx)
+		return err
+	})
+	return createdUser, err
 }
 
 // UserByID loads a user by primary key.
@@ -206,6 +286,25 @@ func (s *Store) RevokeUserSessions(ctx context.Context, tx *ent.Tx, userID, revo
 	return err
 }
 
+// UpdateUserPasswordAndRevokeOtherSessions changes a user's password and invalidates every
+// refresh session other than the supplied current session in one transaction.
+func (s *Store) UpdateUserPasswordAndRevokeOtherSessions(ctx context.Context, userID, passwordHash, currentTokenHash, revokedAt string) error {
+	return s.WithTx(ctx, func(tx *ent.Tx) error {
+		if _, err := tx.User.UpdateOneID(userID).SetPasswordHash(passwordHash).Save(ctx); err != nil {
+			return err
+		}
+		_, err := tx.RefreshToken.Update().
+			Where(
+				refreshtoken.UserIDEQ(userID),
+				refreshtoken.TokenHashNEQ(currentTokenHash),
+				refreshtoken.RevokedAtIsNil(),
+			).
+			SetRevokedAt(revokedAt).
+			Save(ctx)
+		return err
+	})
+}
+
 // UpdateUserProfileParams holds optional profile/privacy updates.
 type UpdateUserProfileParams struct {
 	DisplayName         *string
@@ -215,6 +314,9 @@ type UpdateUserProfileParams struct {
 	ProfileVisibility   *string
 	LastSeenVisibility  *string
 	ReadReceiptsEnabled *bool
+	Email               *string
+	Bio                 *string
+	Timezone            *string
 }
 
 // UpdateUserProfile applies partial updates to a user inside a transaction.
@@ -241,6 +343,27 @@ func (s *Store) UpdateUserProfile(ctx context.Context, userID string, p UpdateUs
 		if p.ReadReceiptsEnabled != nil {
 			upd.SetReadReceiptsEnabled(*p.ReadReceiptsEnabled)
 		}
+		if p.Email != nil {
+			if *p.Email == "" {
+				upd.ClearEmail()
+			} else {
+				upd.SetEmail(*p.Email)
+			}
+		}
+		if p.Bio != nil {
+			if *p.Bio == "" {
+				upd.ClearBio()
+			} else {
+				upd.SetBio(*p.Bio)
+			}
+		}
+		if p.Timezone != nil {
+			if *p.Timezone == "" {
+				upd.ClearTimezone()
+			} else {
+				upd.SetTimezone(*p.Timezone)
+			}
+		}
 		_, err := upd.Save(ctx)
 		return err
 	})
@@ -260,6 +383,12 @@ func (s *Store) SetAudioCallSettings(ctx context.Context, userID, settingsJSON s
 	_, err := s.Client.User.UpdateOneID(userID).
 		SetAudioCallSettings(settingsJSON).
 		Save(ctx)
+	return err
+}
+
+// UpdateUserLastSeen records when the user's final active socket disconnected.
+func (s *Store) UpdateUserLastSeen(ctx context.Context, userID, lastSeenAt string) error {
+	_, err := s.Client.User.UpdateOneID(userID).SetLastSeenAt(lastSeenAt).Save(ctx)
 	return err
 }
 

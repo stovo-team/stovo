@@ -92,19 +92,55 @@ function deriveApiUrlFromBrowser() {
   return window.location.origin;
 }
 
-export function getApiUrl() {
-  const configuredApiUrl = storeApiUrlFromInviteLink() ?? readStoredApiUrl();
-  // On native (Android), the server URL is user-configured and stored.
-  // On web, the API is always at the same origin — ignore any stored override
-  // to prevent stale or malformed URLs from breaking requests.
-  if (Capacitor.isNativePlatform()) {
-    return (
-      configuredApiUrl ??
-      normalizeApiUrl(DEFAULT_API_URL) ??
-      "http://localhost:8000"
-    );
+import { deriveServerNameFromUrl, getActiveServer, hashServerUrl, loadServerState, normalizeApiUrl as registryNormalizeApiUrl, upsertServer } from "./serverRegistry";
+
+export function getApiUrl(): string {
+  if (typeof window !== "undefined") {
+    const match = window.location.pathname.match(/^\/s\/([a-zA-Z0-9_-]+)/);
+    if (match) {
+      const slug = match[1];
+      const clusterUrl = `${window.location.origin}/s/${slug}`;
+      try {
+        window.localStorage.setItem(API_URL_STORAGE_KEY, clusterUrl);
+      } catch {}
+      return clusterUrl;
+    }
   }
-  return deriveApiUrlFromBrowser() ?? normalizeApiUrl(DEFAULT_API_URL) ?? "http://localhost:8000";
+  const inviteUrl = storeApiUrlFromInviteLink();
+  if (inviteUrl) {
+    return inviteUrl;
+  }
+  const storedUrl = readStoredApiUrl();
+  if (storedUrl && storedUrl.includes("/s/")) {
+    return storedUrl;
+  }
+  const activeServer = getActiveServer();
+  if (activeServer?.url && activeServer.url.includes("/s/")) {
+    return activeServer.url;
+  }
+  const state = loadServerState();
+  const clusterServers = Object.values(state.servers).filter((s) => s.url && s.url.includes("/s/"));
+  if (clusterServers.length > 0) {
+    clusterServers.sort((a, b) => (b.lastActiveAt || "").localeCompare(a.lastActiveAt || ""));
+    const bestCluster = clusterServers[0].url;
+    try {
+      window.localStorage.setItem(API_URL_STORAGE_KEY, bestCluster);
+    } catch {}
+    return bestCluster;
+  }
+  if (storedUrl) {
+    return storedUrl;
+  }
+  if (activeServer?.url) {
+    return activeServer.url;
+  }
+  return deriveApiUrlFromBrowser() ?? registryNormalizeApiUrl(DEFAULT_API_URL) ?? "http://localhost:8000";
+}
+
+export function getClusterPrefix(): string {
+  const apiUrl = getApiUrl();
+  const match = apiUrl.match(/\/s\/([a-zA-Z0-9_-]+)/);
+  return match ? `/s/${match[1]}` : "";
 }
 
 export function isServerUrlConfigured(): boolean {
@@ -112,14 +148,21 @@ export function isServerUrlConfigured(): boolean {
     return true;
   }
   const params = new URLSearchParams(window.location.search);
-  if (normalizeApiUrl(params.get("apiUrl"))) {
+  if (registryNormalizeApiUrl(params.get("apiUrl"))) {
     return true;
   }
-  return readStoredApiUrl() !== null;
+  return getActiveServer() !== null || readStoredApiUrl() !== null;
 }
 
 export function storeRefreshToken(token: string | null) {
   if (typeof window === "undefined") return;
+  const activeServer = getActiveServer();
+  if (activeServer) {
+    upsertServer({
+      ...activeServer,
+      refreshToken: token
+    });
+  }
   if (token) {
     window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, token);
   } else {
@@ -129,15 +172,35 @@ export function storeRefreshToken(token: string | null) {
 
 export function getStoredRefreshToken(): string | null {
   if (typeof window === "undefined") return null;
+  const activeServer = getActiveServer();
+  if (activeServer?.refreshToken !== undefined) {
+    return activeServer.refreshToken;
+  }
   return window.localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
 }
 
-export function setApiUrlOverride(apiUrl: string | null) {
+export function setApiUrlOverride(apiUrl: string | null, familyName?: string) {
   if (typeof window === "undefined") {
     return;
   }
-  const normalized = normalizeApiUrl(apiUrl);
+  const normalized = registryNormalizeApiUrl(apiUrl);
   if (normalized) {
+    const existingStored = window.localStorage.getItem(API_URL_STORAGE_KEY);
+    if (existingStored && existingStored.includes("/s/") && !normalized.includes("/s/")) {
+      return;
+    }
+    const id = hashServerUrl(normalized);
+    const existing = getActiveServer();
+    const serverName = familyName || (existing?.url === normalized ? existing.name : deriveServerNameFromUrl(normalized));
+    upsertServer({
+      id,
+      url: normalized,
+      name: serverName,
+      accessToken: existing?.url === normalized ? existing.accessToken : null,
+      refreshToken: existing?.url === normalized ? existing.refreshToken : null,
+      healthStatus: "online",
+      unreadCount: existing?.url === normalized ? existing.unreadCount : 0
+    });
     window.localStorage.setItem(API_URL_STORAGE_KEY, normalized);
     return;
   }

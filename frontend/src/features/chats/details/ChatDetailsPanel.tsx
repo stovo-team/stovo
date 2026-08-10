@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, RefObject, useState } from "react";
-import { FileText, Image, Music, Pencil, Settings, Video } from "lucide-react";
+import { Clock3, FileText, Image, Mail, Music, Pencil, Settings, Video } from "lucide-react";
 
 import { User } from "../../../api/auth";
 import { Chat } from "../../../api/chats";
@@ -452,6 +452,30 @@ export function ChatDetailsPanel({
             <span>{chat.isFavorite ? "Saved" : "Favorite"}</span>
           </button>
         </section>
+
+        {(() => {
+          const otherMember = chat.type === "direct" ? chat.members.find((m) => m.id !== currentUserId) : null;
+          if (!otherMember || (!otherMember.bio && !otherMember.email && !otherMember.timezone)) return null;
+          return (
+            <div className="chat-info-section">
+              <div className="chat-info-island">
+                {otherMember.bio && <p className="user-bio-quote" style={{ fontStyle: "italic", marginBottom: "8px", opacity: 0.9 }}>“{otherMember.bio}”</p>}
+                {otherMember.email && (
+                  <div className="chat-info-row" style={{ gap: "8px", display: "flex", alignItems: "center" }}>
+                    <Mail aria-hidden="true" size={16} />
+                    <span className="chat-info-row-copy"><strong>Email</strong><small>{otherMember.email}</small></span>
+                  </div>
+                )}
+                {otherMember.timezone && (
+                  <div className="chat-info-row" style={{ gap: "8px", display: "flex", alignItems: "center" }}>
+                    <Clock3 aria-hidden="true" size={16} />
+                    <span className="chat-info-row-copy"><strong>Timezone</strong><small>{otherMember.timezone}</small></span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="chat-info-section chat-info-section--media">
           <div className="chat-info-tabs" role="tablist" aria-label="Shared content">
