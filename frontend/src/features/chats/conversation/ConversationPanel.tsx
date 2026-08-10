@@ -213,13 +213,19 @@ export function ConversationPanel({
 
   if (!selectedChat) {
     return (
-      <div className="empty-state chat-empty-state">
-        <MessageCircle aria-hidden="true" size={42} />
-        <strong>Select a chat</strong>
-        <p>Choose a conversation on the left, or start a new small-circle chat.</p>
-        <button type="button" onClick={onOpenNewChat}>
-          New message
-        </button>
+      <div className="chat-empty-state-wrapper">
+        <div className="chat-empty-state-card">
+          <div className="chat-empty-icon-pill">
+            <MessageCircle aria-hidden="true" size={38} />
+          </div>
+          <h2 className="chat-empty-title">Select a chat</h2>
+          <p className="chat-empty-subtitle">
+            Choose a conversation on the left, or start a new small-circle chat.
+          </p>
+          <button type="button" className="chat-empty-action-pill" onClick={onOpenNewChat}>
+            New message
+          </button>
+        </div>
       </div>
     );
   }

@@ -106,6 +106,70 @@ func TestPostgresPrivacyPreferencesDoNotBreakLogin(t *testing.T) {
 	_ = loginResp.Body.Close()
 }
 
+func TestChangePasswordUpdatesOnlyTheAuthenticatedUserAndRevokesOtherSessions(t *testing.T) {
+	_, serverURL, client := newTestServer(t)
+	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
+		"familyName":  "Password Change Family",
+		"username":    "password-owner",
+		"password":    "secure-password",
+		"displayName": "Password Owner",
+	})
+	if setupResp.StatusCode != http.StatusCreated {
+		t.Fatalf("setup status = %d, want %d", setupResp.StatusCode, http.StatusCreated)
+	}
+	owner := decodeJSON[authResponse](t, setupResp)
+
+	secondDeviceJar, _ := cookiejar.New(nil)
+	secondDevice := &http.Client{Jar: secondDeviceJar}
+	secondLoginResp := jsonRequest(t, secondDevice, http.MethodPost, serverURL.URL+"/api/auth/login", "", map[string]any{
+		"username": "password-owner",
+		"password": "secure-password",
+	})
+	if secondLoginResp.StatusCode != http.StatusOK {
+		t.Fatalf("second-device login status = %d, want %d", secondLoginResp.StatusCode, http.StatusOK)
+	}
+	_ = secondLoginResp.Body.Close()
+
+	changeResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/change-password", owner.AccessToken, map[string]any{
+		"currentPassword": "secure-password",
+		"newPassword":     "new-secure-password",
+	})
+	if changeResp.StatusCode != http.StatusNoContent {
+		t.Fatalf("change password status = %d, want %d", changeResp.StatusCode, http.StatusNoContent)
+	}
+	_ = changeResp.Body.Close()
+
+	currentRefresh := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/refresh", "", nil)
+	if currentRefresh.StatusCode != http.StatusOK {
+		t.Fatalf("current device refresh status = %d, want %d", currentRefresh.StatusCode, http.StatusOK)
+	}
+	_ = currentRefresh.Body.Close()
+
+	revokedRefresh := jsonRequest(t, secondDevice, http.MethodPost, serverURL.URL+"/api/auth/refresh", "", nil)
+	if revokedRefresh.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("other device refresh status = %d, want %d", revokedRefresh.StatusCode, http.StatusUnauthorized)
+	}
+	_ = revokedRefresh.Body.Close()
+
+	oldLogin := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/login", "", map[string]any{
+		"username": "password-owner",
+		"password": "secure-password",
+	})
+	if oldLogin.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("old-password login status = %d, want %d", oldLogin.StatusCode, http.StatusUnauthorized)
+	}
+	_ = oldLogin.Body.Close()
+
+	newLogin := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/login", "", map[string]any{
+		"username": "password-owner",
+		"password": "new-secure-password",
+	})
+	if newLogin.StatusCode != http.StatusOK {
+		t.Fatalf("new-password login status = %d, want %d", newLogin.StatusCode, http.StatusOK)
+	}
+	_ = newLogin.Body.Close()
+}
+
 func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 	t.Helper()
 

@@ -1,0 +1,106 @@
+export interface ServerRecord {
+  id: number;
+  slug: string;
+  name: string;
+  created_at: string;
+  status: string;
+}
+
+export interface CreateServerResponse {
+  id: number;
+  slug: string;
+  name: string;
+  invite_url: string;
+}
+
+const MASTER_API_URL = import.meta.env.VITE_MASTER_API_URL || "";
+
+export async function masterLogin(username: string, password: string): Promise<string> {
+  const res = await fetch(`${MASTER_API_URL}/api/v1/master/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Login failed");
+  }
+  const data = await res.json();
+  return data.access_token;
+}
+
+export async function fetchServers(token: string): Promise<ServerRecord[]> {
+  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch servers");
+  }
+  return res.json();
+}
+
+export interface CreateServerResponse {
+  id: number;
+  slug: string;
+  name: string;
+  admin_user?: string;
+  admin_password?: string;
+  cluster_url?: string;
+  invite_url: string;
+}
+
+export async function createServer(
+  token: string,
+  slug: string,
+  name: string,
+  adminUser?: string,
+  adminPassword?: string
+): Promise<CreateServerResponse> {
+  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ slug, name, admin_user: adminUser, admin_password: adminPassword }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to create server");
+  }
+  return res.json();
+}
+
+export async function deleteServer(token: string, slug: string): Promise<void> {
+  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to delete server");
+  }
+}
+
+export async function getGhostToken(token: string, slug: string): Promise<string> {
+  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}/ghost-token`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to generate Ghost Token");
+  }
+  const data = await res.json();
+  return data.ghost_token;
+}
+
+export async function createInviteLink(token: string, slug: string): Promise<string> {
+  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}/invite`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to generate invite link");
+  }
+  const data = await res.json();
+  return data.invite_url;
+}
