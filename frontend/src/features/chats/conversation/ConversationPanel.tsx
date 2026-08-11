@@ -257,6 +257,11 @@ export function ConversationPanel({
         selectedCount={selectedMessageIds.length}
         canEditSelected={canEditSelected}
         canDeleteSelected={canDeleteSelected}
+        threadRootMessage={threadRootMessage}
+        onBackFromThread={() => {
+          setThreadRootMessageId(null);
+          setReplyTarget(null);
+        }}
         onSelectionCopy={handleCopySelectedMessages}
         onSelectionDelete={() => {
           const owned = selectedMessages.find(
@@ -466,6 +471,7 @@ export function ConversationPanel({
           missingCommentThread={missingCommentThread}
           canPostInSelectedChannel={canPostInSelectedChannel}
           replyTarget={replyTarget}
+          isInThreadMode={Boolean(threadRootMessageId)}
           onCancelReply={() => setReplyTarget(null)}
           editTargetMessage={editTargetMessage}
           onCancelEdit={cancelEditMode}
