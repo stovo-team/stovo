@@ -92,7 +92,7 @@ function deriveApiUrlFromBrowser() {
   return window.location.origin;
 }
 
-import { deriveServerNameFromUrl, getActiveServer, hashServerUrl, loadServerState, normalizeApiUrl as registryNormalizeApiUrl, upsertServer } from "./serverRegistry";
+import { deriveServerNameFromUrl, getActiveServer, hashServerUrl, loadServerState, normalizeApiUrl as registryNormalizeApiUrl, setActiveServerId, upsertServer } from "./serverRegistry";
 
 export function getApiUrl(): string {
   if (typeof window !== "undefined") {
@@ -159,10 +159,11 @@ export function storeRefreshToken(token: string | null) {
   if (typeof window === "undefined") return;
   const activeServer = getActiveServer();
   if (activeServer) {
-    upsertServer({
+    const saved = upsertServer({
       ...activeServer,
       refreshToken: token
     });
+    setActiveServerId(saved.id);
   }
   if (token) {
     window.localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, token);
