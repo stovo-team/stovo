@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { FormEvent, useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { setApiUrlOverride } from "../api/client";
 import VeloLogo from "../components/VeloLogo";
@@ -20,9 +20,16 @@ function normalizeUrl(value: string): string | null {
 
 export default function ServerSetupPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isTesting, setIsTesting] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const server = normalizeUrl(params.get("server") ?? "");
+    if (server) setUrl(server);
+  }, [location.search]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -44,7 +51,13 @@ export default function ServerSetupPage() {
       const data = await res.json().catch(() => null);
       const familyName = typeof data?.familyName === "string" ? data.familyName : undefined;
       setApiUrlOverride(normalized, familyName);
-      navigate("/", { replace: true });
+      const loginParams = new URLSearchParams();
+      const supplied = new URLSearchParams(location.search);
+      const username = supplied.get("username");
+      const deviceLogin = supplied.get("deviceLogin");
+      if (username) loginParams.set("username", username);
+      if (deviceLogin === "1") loginParams.set("deviceLogin", "1");
+      navigate(`/login${loginParams.size ? `?${loginParams}` : ""}`, { replace: true });
     } catch (err) {
       setError(`Cannot reach ${normalized} — ${String(err)}`);
     } finally {

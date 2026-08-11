@@ -49,6 +49,7 @@ import {
 } from "../appearance/AppearanceContext";
 import { ApiError, getApiUrl, setApiUrlOverride } from "../api/client";
 import { changePassword, User } from "../api/auth";
+import { createConnectionLink } from "../connectionLink";
 import { Family, getMembers } from "../api/family";
 import { FamilyFile, uploadFile } from "../api/files";
 import { useAuth } from "../auth/AuthContext";
@@ -774,6 +775,15 @@ export default function SettingsPage() {
     }
   }
 
+  const connectionLink = currentUser ? createConnectionLink({ serverUrl: currentServerUrl, username: currentUser.username }) : "";
+
+  async function copyConnectionCredentials() {
+    if (!currentUser) return;
+    const text = `Server: ${currentServerUrl}\nLogin: ${currentUser.username}\n\nOpen in Stovo: ${connectionLink}`;
+    await navigator.clipboard?.writeText(text).catch(() => undefined);
+    setNotice("Connection link copied. The sign-in code will arrive in Message Archive.");
+  }
+
   return (
     <main
       className={`app-shell app-frame settings-page${hasDetailSurface ? " settings-detail-view" : ""}${isAppearanceEditor ? " settings-appearance-view" : ""}`}
@@ -1016,6 +1026,14 @@ export default function SettingsPage() {
                       <label><span><LockKeyhole aria-hidden="true" size={21} />Confirm new password</span><input type="password" autoComplete="new-password" minLength={8} value={passwordForm.confirmation} onChange={(event) => setPasswordForm((current) => ({ ...current, confirmation: event.target.value }))} required /></label>
                       <button type="submit" className="save-button primary-button" disabled={isSaving || !accessToken}>{isSaving ? "Changing…" : "Change password"}</button>
                     </form>
+                    <section className="profile-detail-form connection-export">
+                      <h3>Connect Android device</h3>
+                      <p className="muted-copy">The link contains no password. On the new device, request a code delivered to Message Archive on this signed-in account.</p>
+                      <label><span><Server aria-hidden="true" size={21} />Server</span><input readOnly value={currentServerUrl} /></label>
+                      <label><span><UserRound aria-hidden="true" size={21} />Login</span><input readOnly value={currentUser?.username ?? ""} /></label>
+                      {connectionLink && <label><span>Android link</span><input readOnly value={connectionLink} onFocus={(event) => event.currentTarget.select()} /></label>}
+                      <button type="button" className="save-button primary-button" onClick={() => void copyConnectionCredentials()}>Copy connection link</button>
+                    </section>
                   </div>
                 ) : activeSettingsItem === "Notifications" ? (
                   <div className="settings-toggle-groups">

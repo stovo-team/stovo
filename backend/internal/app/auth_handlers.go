@@ -2,8 +2,13 @@ package app
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -17,6 +22,23 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
+
+const deviceLoginCodeTTLSeconds = 10 * 60
+
+func deviceLoginCacheKey(userID string) string { return "device-login:" + userID }
+
+func newDeviceLoginCode() (string, error) {
+	var value uint32
+	if err := binary.Read(rand.Reader, binary.BigEndian, &value); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", value%1000000), nil
+}
+
+func deviceLoginCodeHash(code string) string {
+	sum := sha256.Sum256([]byte(code))
+	return fmt.Sprintf("%x", sum[:])
+}
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	s.json(w, http.StatusOK, map[string]string{
@@ -279,6 +301,97 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		User:             user,
 		RefreshToken:     token,
 	})
+}
+
+// handleDeviceLoginRequest sends a short-lived code to the account's private
+// Message Archive. The link itself contains no password or session secret.
+func (s *Server) handleDeviceLoginRequest(w http.ResponseWriter, r *http.Request) {
+	var payload deviceLoginRequest
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+	username := strings.TrimSpace(payload.Username)
+	if username == "" {
+		s.detail(w, http.StatusUnprocessableEntity, "Username is required")
+		return
+	}
+	if count, err := s.cache.Increment(r.Context(), "rate-limit:device-login:"+s.getClientIP(r), 60); err != nil || count > 5 {
+		s.detail(w, http.StatusTooManyRequests, "Please wait before requesting another code")
+		return
+	}
+	user, _, err := s.getUserForLogin(r.Context(), username)
+	// Keep the public response identical so usernames cannot be probed.
+	if err != nil || !user.IsActive {
+		s.json(w, http.StatusAccepted, map[string]string{"status": "If the account exists, a code was sent to Message Archive"})
+		return
+	}
+	code, err := newDeviceLoginCode()
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not create verification code")
+		return
+	}
+	if err := s.cache.Set(r.Context(), deviceLoginCacheKey(user.ID), map[string]string{"codeHash": deviceLoginCodeHash(code)}, deviceLoginCodeTTLSeconds); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not save verification code")
+		return
+	}
+	archive, err := s.ensureMessageArchive(user)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not open Message Archive")
+		return
+	}
+	content := fmt.Sprintf("New device sign-in code: %s\nIt expires in 10 minutes. Do not share this code.", code)
+	if _, err := s.createMessageWithPayloadContext(r.Context(), user, archive.ID, sendMessageRequest{Content: &content}, nil, nil); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not deliver verification code")
+		return
+	}
+	s.json(w, http.StatusAccepted, map[string]string{"status": "Verification code sent to Message Archive"})
+}
+
+func (s *Server) handleDeviceLoginVerify(w http.ResponseWriter, r *http.Request) {
+	var payload deviceLoginVerifyRequest
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+	user, _, err := s.getUserForLogin(r.Context(), strings.TrimSpace(payload.Username))
+	if err != nil || !user.IsActive {
+		s.detail(w, http.StatusUnauthorized, "Invalid verification code")
+		return
+	}
+	stored, err := s.cache.Get(r.Context(), deviceLoginCacheKey(user.ID))
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not verify code")
+		return
+	}
+	data, ok := stored.(map[string]any)
+	hash, okHash := data["codeHash"].(string)
+	if !ok || !okHash || subtle.ConstantTimeCompare([]byte(hash), []byte(deviceLoginCodeHash(strings.TrimSpace(payload.Code)))) != 1 {
+		s.detail(w, http.StatusUnauthorized, "Invalid or expired verification code")
+		return
+	}
+	if err := s.cache.Delete(r.Context(), deviceLoginCacheKey(user.ID)); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not complete verification")
+		return
+	}
+	token, tokenHash, expiresAt, err := s.issueRefreshToken(user.ID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not create session")
+		return
+	}
+	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
+		return s.store.CreateRefreshToken(r.Context(), tx, repository.CreateRefreshTokenParams{ID: uuid.NewString(), UserID: user.ID, TokenHash: tokenHash, ExpiresAt: expiresAt, CreatedAt: nowString(), IPAddress: s.getClientIP(r)})
+	}); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not save session")
+		return
+	}
+	accessToken, expiresInSeconds, err := createAccessToken(s.cfg, user)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not create access token")
+		return
+	}
+	s.setRefreshCookie(w, token)
+	s.json(w, http.StatusOK, authResponse{AccessToken: accessToken, TokenType: "Bearer", ExpiresInSeconds: expiresInSeconds, User: user, RefreshToken: token})
 }
 
 func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
