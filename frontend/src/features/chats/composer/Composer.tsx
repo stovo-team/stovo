@@ -36,6 +36,7 @@ export function Composer({
   missingCommentThread,
   canPostInSelectedChannel,
   replyTarget,
+  isInThreadMode = false,
   onCancelReply,
   editTargetMessage,
   onCancelEdit,
@@ -90,6 +91,7 @@ export function Composer({
   missingCommentThread: boolean;
   canPostInSelectedChannel: boolean;
   replyTarget: Message | null;
+  isInThreadMode?: boolean;
   onCancelReply: () => void;
   editTargetMessage: Message | null;
   onCancelEdit: () => void;
@@ -173,7 +175,7 @@ export function Composer({
       {selectedChat?.type === "channel" && channelCommentsDisabledForViewer && (
         <p className="muted-copy">Comments are disabled in this channel.</p>
       )}
-      {replyTarget && (
+      {replyTarget && !isInThreadMode && (
         <div
           className={`reply-composer-preview${
             firstImageAttachment(replyTarget) ? "" : " reply-composer-preview--no-thumb"

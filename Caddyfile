@@ -40,6 +40,16 @@
 	}
 }
 
-:80, http://localhost {
+
+{$APP_DOMAIN} {
+	header {
+		Content-Security-Policy "upgrade-insecure-requests; block-all-mixed-content"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+
+	import stovo
+}
+
+http://localhost {
 	import stovo
 }
