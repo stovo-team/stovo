@@ -3467,9 +3467,13 @@ h2 {
 .settings-row small,
 .storage-tile strong,
 .storage-tile small {
+  box-sizing: border-box;
+  display: block;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  width: 100%;
 }
 
 .chat-row-meta {
@@ -8485,13 +8489,17 @@ span.message-spoiler.is-revealed {
 
 .storage-tile span {
   background: var(--storage-tile-overlay);
+  box-sizing: border-box;
   color: #ffffff;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 1px;
+  inset: auto 0 0 0;
   min-width: 0;
   padding: 38px 10px 10px;
-  position: relative;
+  position: absolute;
   width: 100%;
+  z-index: 2;
 }
 
 .storage-tile:not(:has(img)) span {
@@ -10460,7 +10468,7 @@ span.message-spoiler.is-revealed {
 .storage-page .storage-grid { gap: 16px; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
 .storage-page .storage-tile { aspect-ratio: 1 / 1; background: #17191d; border-color: #242830; border-radius: 12px; min-height: 0; }
 .storage-page .storage-tile.videos, .storage-page .storage-tile.documents, .storage-page .storage-tile.audio { background: #17191d; color: var(--accent-primary); }
-.storage-page .storage-tile span, .storage-page .storage-tile:not(:has(img)) span { background: linear-gradient(transparent 25%, rgba(0,0,0,.9)); color: #fff; margin-top: auto; padding: 38px 10px 10px; }
+.storage-page .storage-tile span, .storage-page .storage-tile:not(:has(img)) span { background: linear-gradient(transparent 15%, rgba(0, 0, 0, 0.88) 100%); box-sizing: border-box; color: #fff; inset: auto 0 0 0; margin-top: 0; padding: 38px 10px 10px; position: absolute; width: 100%; z-index: 2; }
 .storage-page .storage-details-panel { background: #181a1e; border-color: #29384a; border-radius: 16px; display: none; padding: 16px; }
 .storage-page:has(.storage-tile.selected) .storage-details-panel { display: grid; }
 .storage-page .storage-preview { aspect-ratio: 1 / 1; background: #111317; }
@@ -11196,7 +11204,7 @@ span.message-spoiler.is-revealed {
     border-radius: 0;
     box-shadow: none;
     gap: var(--chat-list-chrome-gap, 16px);
-    margin: max(4px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0;
+    margin: max(12px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0;
     padding: 0;
     position: relative;
     isolation: isolate;
@@ -11206,7 +11214,7 @@ span.message-spoiler.is-revealed {
   .messenger-shell.chat-list-view .chat-sidebar-header::after {
     background: linear-gradient(to bottom, #000 0%, #000 90%, transparent 100%);
     content: "";
-    inset: calc(-1 * max(4px, env(safe-area-inset-top)))
+    inset: calc(-1 * max(12px, env(safe-area-inset-top)))
       calc(-1 * var(--mobile-edge-inset-x)) -12px;
     pointer-events: none;
     position: absolute;
@@ -11481,11 +11489,26 @@ span.message-spoiler.is-revealed {
     font-size: 1.35rem;
   }
 
+  .app-shell:not(.app-frame) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    min-height: 100dvh;
+    box-sizing: border-box;
+  }
+
   .auth-panel {
-    border-radius: 28px;
-    margin: 0;
-    min-height: 100vh;
-    padding: 30px 20px;
+    border-radius: 24px;
+    margin: auto 0;
+    min-height: auto;
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    width: 100%;
+    max-width: 440px;
+    padding: 24px 20px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
   }
 
   .summary-band,
@@ -14033,14 +14056,23 @@ span.message-spoiler.is-revealed {
   }
 
   .storage-page .storage-tile span {
+    box-sizing: border-box;
+    inset: auto 0 0 0;
     padding: 30px 8px 8px;
+    position: absolute;
+    width: 100%;
+    z-index: 2;
   }
 
   .storage-page .storage-tile strong,
   .storage-page .storage-tile small {
+    box-sizing: border-box;
+    display: block;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    width: 100%;
   }
 
   .storage-page:not(.has-storage-selection) .storage-details-panel {
@@ -15307,15 +15339,15 @@ span.message-spoiler.is-revealed {
 @media (max-width: 960px) {
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar:has(.mobile-call-strip),
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar:has(.mobile-call-strip) {
-    --web-chat-sidebar-header-height: 246px;
+    --web-chat-sidebar-header-height: 254px;
   }
 
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar {
-    --web-chat-sidebar-header-height: 182px;
+    --web-chat-sidebar-header-height: 190px;
   }
 
   :root[data-platform="web"] .messenger-shell.chat-list-view .chat-sidebar-header {
-    padding: max(4px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0 !important;
+    padding: max(12px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0 !important;
   }
 
   :root[data-platform="web"] .messenger-shell.has-active-chat .message-composer {
@@ -15357,14 +15389,14 @@ span.message-spoiler.is-revealed {
 /* Capacitor renders the same narrow chat layout as the mobile browser. */
 @media (max-width: 960px) {
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar {
-    --web-chat-sidebar-header-height: 182px;
+    --web-chat-sidebar-header-height: 190px;
     position: relative;
   }
 
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar-header {
     left: 0;
     margin: 0;
-    padding: max(4px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0 !important;
+    padding: max(12px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0 !important;
     position: absolute;
     right: 0;
     top: 0;
@@ -16401,7 +16433,7 @@ span.message-spoiler.is-revealed {
   width: 100%;
 }
 .storage-page .storage-tile video { height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
-.storage-page .storage-tile:has(video) span { background: linear-gradient(transparent 25%, rgba(0, 0, 0, .92)); color: #fff; }
+.storage-page .storage-tile:has(video) span { background: linear-gradient(transparent 15%, rgba(0, 0, 0, 0.92) 100%); box-sizing: border-box; color: #fff; inset: auto 0 0 0; position: absolute; width: 100%; z-index: 2; }
 .storage-page .storage-preview:has(.audio-player) {
   align-content: start;
   min-height: 240px;
