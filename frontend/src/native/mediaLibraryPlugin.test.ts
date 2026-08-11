@@ -37,7 +37,7 @@ describe("media library plugin", () => {
     nativePlugin.copyMedia.mockResolvedValue({
       files: [{ path: "file:///cache/photo.jpg", name: "photo.jpg", mimeType: "image/jpeg" }]
     });
-    const fetcher = vi.fn().mockResolvedValue(new Response(new Blob(["photo"], { type: "image/jpeg" })));
+    const fetcher = vi.fn().mockResolvedValue(new Response("photo", { headers: { "Content-Type": "image/jpeg" } }));
 
     const files = await selectNativeMediaFiles(["42"], fetcher);
 
