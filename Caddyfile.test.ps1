@@ -1,5 +1,9 @@
 $caddyfile = Get-Content -Raw (Join-Path $PSScriptRoot "Caddyfile")
 
+if ($caddyfile -notmatch '(?m)^\{\$APP_DOMAIN\}\s*\{') {
+    throw "Caddy must bind the configured public domain so it serves HTTPS on port 443."
+}
+
 if ($caddyfile -notmatch 'upgrade-insecure-requests') {
     throw "Caddy must upgrade insecure subresource requests to HTTPS."
 }
