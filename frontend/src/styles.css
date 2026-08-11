@@ -9019,7 +9019,9 @@ span.message-spoiler.is-revealed {
 .profile-detail-form button { border-radius: 999px; justify-self: end; padding: 12px 22px; }
 .password-input-wrap { display: block; position: relative; }
 .password-input-wrap input { padding-right: 48px; }
-.password-visibility-button { align-items: center; background: transparent; border: 0; color: var(--text-muted); cursor: pointer; display: flex; height: 38px; justify-content: center; padding: 0; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 38px; }
+.form-grid .password-visibility-button { align-items: center; background: transparent !important; border: 0 !important; box-shadow: none !important; color: var(--text-muted); cursor: pointer; display: flex; height: 38px; justify-content: center; padding: 0; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 38px; }
+.form-grid .password-visibility-button:hover, .form-grid .password-visibility-button:focus-visible { background: transparent !important; color: var(--text-primary); outline: 0; }
+.form-grid .password-visibility-button svg { fill: none; height: 20px; stroke: currentColor; width: 20px; }
 
 @media (max-width: 720px) {
   .profile-detail-hero { gap: 16px; min-height: 156px; padding: 20px; }

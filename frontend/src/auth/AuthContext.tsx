@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const savedServers = useMemo(() => {
     return Object.values(serverState.servers).filter((s) => {
-      if (!s.url || !s.url.includes("/s/")) return false;
+      if (!s.url) return false;
       const hasCreds = Boolean(s.accessToken || s.refreshToken || s.user);
       const isActive = s.id === serverState.activeServerId;
       return isActive || hasCreds;

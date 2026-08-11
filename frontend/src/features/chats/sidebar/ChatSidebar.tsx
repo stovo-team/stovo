@@ -31,7 +31,7 @@ export function ChatSidebar({
   const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
   const serverMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const validServers = savedServers.filter((server) => server.url && server.url.includes("/s/"));
+  const validServers = savedServers.filter((server) => Boolean(server.url));
   const displayFamilyName = activeServer?.name || familyName || "Stovo";
   const {
     chatSearch,
