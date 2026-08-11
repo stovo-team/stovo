@@ -40,7 +40,7 @@ describe("share receiver plugin", () => {
       skippedCount: 1
     });
     const fetcher = vi.fn().mockResolvedValue(
-      new Response(new Blob(["pdf"], { type: "application/pdf" }))
+      new Response("pdf", { headers: { "Content-Type": "application/pdf" } })
     );
 
     const received = await consumeNativeSharedFiles(fetcher);
@@ -70,7 +70,7 @@ describe("share receiver plugin", () => {
     nativePlugin.releasePendingShares.mockRejectedValue(new Error("cleanup failed"));
 
     const received = await consumeNativeSharedFiles(
-      vi.fn().mockResolvedValue(new Response(new Blob(["x"], { type: "image/jpeg" })))
+      vi.fn().mockResolvedValue(new Response("x", { headers: { "Content-Type": "image/jpeg" } }))
     );
 
     expect(received.files).toHaveLength(1);
