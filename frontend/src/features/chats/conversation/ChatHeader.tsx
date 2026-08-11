@@ -24,7 +24,7 @@ import {
   displayChatName,
   transitionAnchorStyle
 } from "../shared/chatPresentation";
-import type { CallPhase } from "../shared/types";
+import type { CallPhase, Message } from "../shared/types";
 import { RealAvatar } from "../sidebar/RealAvatar";
 
 function directChatPresence(selectedChat: Chat, currentUser: User | null) {
@@ -66,7 +66,9 @@ export function ChatHeader({
   onSelectionCopy,
   onSelectionDelete,
   onSelectionArchive,
-  onSelectionEdit
+  onSelectionEdit,
+  threadRootMessage = null,
+  onBackFromThread
 }: {
   accessToken: string | null;
   currentUser: User | null;
@@ -96,16 +98,44 @@ export function ChatHeader({
   onSelectionDelete?: () => void;
   onSelectionArchive?: () => void;
   onSelectionEdit?: () => void;
+  threadRootMessage?: Message | null;
+  onBackFromThread?: () => void;
 }) {
   const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
+  const handleBack = threadRootMessage && onBackFromThread ? onBackFromThread : onBack;
+
   return (
     <div className="chat-detail-header chat-detail-header--floating">
-      <button type="button" className="mobile-back-button" aria-label="Back to chats" onClick={onBack}>
+      <button
+        type="button"
+        className="mobile-back-button"
+        aria-label={threadRootMessage ? "Back to chat" : "Back to chats"}
+        onClick={handleBack}
+      >
         <span className="ms-icon ms-icon--20" aria-hidden={true}>
           arrow_back
         </span>
       </button>
-      {isMessageSelectionMode ? (
+      {threadRootMessage ? (
+        <div className="chat-title-group chat-title-group--thread" aria-live="polite">
+          <RealAvatar
+            accessToken={accessToken}
+            className={`avatar chat-avatar ${chatAvatarTypeClass(selectedChat)}`}
+            fallbackKind={chatAvatarFallbackKind(selectedChat)}
+            file={chatAvatarFile(selectedChat, currentUser?.id)}
+            label={displayChatName(selectedChat, currentUser?.id)}
+            style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "avatar"))}
+          />
+          <span>
+            <span className="chat-title-row">
+              <span>{selectedChat.type === "channel" ? "Comments" : "Thread"}</span>
+            </span>
+            <small className="chat-presence">
+              {displayChatName(selectedChat, currentUser?.id)}
+            </small>
+          </span>
+        </div>
+      ) : isMessageSelectionMode ? (
         <div className="chat-title-group chat-title-group--selection" aria-live="polite">
           <span>
             <strong>
