@@ -149,32 +149,6 @@ export function MessageList({
           </div>
         ) : (
           <div className="message-list">
-            {threadRootMessage && (
-              <div
-                className={`thread-header${firstImageAttachment(threadRootMessage) ? "" : " thread-header--no-thumb"}`}
-              >
-                <button
-                  type="button"
-                  className="thread-header-back"
-                  aria-label="Back to chat"
-                  title="Back to chat"
-                  onClick={onBackFromThread}
-                >
-                  <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                    arrow_back
-                  </span>
-                </button>
-                <div className="thread-header-copy">
-                  <span className="thread-header-eyebrow">
-                    {selectedChat.type === "channel" ? "Comments" : "Thread"}
-                  </span>
-                  <strong className="thread-header-title">
-                    {messageActionSummary(threadRootMessage)}
-                  </strong>
-                </div>
-                <ComposerContextThumb accessToken={accessToken} file={firstImageAttachment(threadRootMessage)} />
-              </div>
-            )}
             <div className="date-separator">{formatDateSeparator(visibleMessages[0]?.createdAt)}</div>
             {visibleMessages.map((message, messageIndex) => {
               const previousMessage = messageIndex > 0 ? visibleMessages[messageIndex - 1] : undefined;
