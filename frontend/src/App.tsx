@@ -19,6 +19,7 @@ import {
   getInviteAppLinkPath,
   getNotificationAppLink
 } from "./appLinks";
+import { parseConnectionLink } from "./connectionLink";
 import { queuePendingNotificationAction } from "./notificationActions";
 import { addNativeShareListener, consumeNativeSharedFiles } from "./native/shareReceiverPlugin";
 import { queueSharedFiles } from "./sharedFileQueue";
@@ -143,6 +144,13 @@ function NativeAppLinkRouter() {
     let listener: { remove: () => Promise<void> } | null = null;
 
     const openAppLink = (url: string) => {
+      const connection = parseConnectionLink(url);
+      if (connection) {
+        const params = new URLSearchParams({ server: connection.serverUrl, username: connection.username });
+        params.set("deviceLogin", "1");
+        navigate(`/server-setup?${params}`);
+        return;
+      }
       const notificationLink = getNotificationAppLink(url);
       if (notificationLink?.action === "callback") {
         const chatId = notificationLink.path.split("/").pop();

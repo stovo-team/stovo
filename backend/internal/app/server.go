@@ -224,6 +224,8 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/auth/setup-status", s.handleSetupStatus)
 	router.Post("/api/auth/setup", s.handleSetup)
 	router.Post("/api/auth/login", s.handleLogin)
+	router.Post("/api/auth/device-login/request", s.handleDeviceLoginRequest)
+	router.Post("/api/auth/device-login/verify", s.handleDeviceLoginVerify)
 	router.Post("/api/auth/refresh", s.handleRefresh)
 	router.Post("/api/auth/logout", s.handleLogout)
 	router.Get("/api/auth/me", s.authenticated(s.handleMe))
