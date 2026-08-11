@@ -4,6 +4,13 @@ import { Navigate } from "react-router-dom";
 import { fetchSetupStatus } from "../api/auth";
 import { getClusterPrefix, isServerUrlConfigured } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { Capacitor } from "@capacitor/core";
+
+export function getUnconfiguredRootPath(isNative: boolean): string {
+  // The browser root is intentionally the master console. A native install is
+  // a family-member client, so it must start with server connection instead.
+  return isNative ? "/server-setup" : "/multi-admin";
+}
 
 export default function RootRedirect() {
   const { currentUser, isLoading } = useAuth();
@@ -22,7 +29,7 @@ export default function RootRedirect() {
   }, [serverConfigured]);
 
   if (!serverConfigured || !prefix) {
-    return <Navigate to="/multi-admin" replace />;
+    return <Navigate to={getUnconfiguredRootPath(Capacitor.isNativePlatform())} replace />;
   }
 
   if (isLoading || setupRequired === null) {
