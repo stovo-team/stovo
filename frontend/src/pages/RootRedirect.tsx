@@ -19,6 +19,12 @@ export default function RootRedirect() {
 
   const prefix = getClusterPrefix();
 
+  // The browser root is the master multi-server console. Native clients use
+  // the currently configured family server instead.
+  if (!Capacitor.isNativePlatform()) {
+    return <Navigate to="/multi-admin" replace />;
+  }
+
   useEffect(() => {
     if (!serverConfigured) {
       return;
