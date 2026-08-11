@@ -59,6 +59,7 @@ jobs:
             pg_user="$(get_env POSTGRES_USER family_user)"
             pg_pass="$(get_env POSTGRES_PASSWORD family_password)"
             pg_db="$(get_env POSTGRES_DB family_messenger)"
+            app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
 
             # Ensure master database, cache & minio services are running
             sudo docker compose -f docker-compose.master.yml up -d postgres redis minio
@@ -74,6 +75,22 @@ jobs:
 
             # Build and deploy frontend, orchestrator, and caddy gateway
             sudo docker compose -f docker-compose.master.yml up -d --build frontend orchestrator caddy coturn
+
+            # A running container alone does not prove that Caddy opened its
+            # public TLS listener. Check it locally with the production host.
+            public_healthy=false
+            for _ in $(seq 1 30); do
+              if curl --fail --silent --show-error --resolve "$app_domain:443:127.0.0.1" "https://$app_domain/" > /dev/null; then
+                public_healthy=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$public_healthy" != true ]; then
+              sudo docker compose -f docker-compose.master.yml ps
+              sudo docker compose -f docker-compose.master.yml logs --tail=100 caddy frontend orchestrator
+              exit 1
+            fi
 
             # Perform rolling container update for all running tenant server clusters
             child_containers="$(sudo docker ps -q --filter label=stovo-server || true)"

@@ -1,9 +1,9 @@
 $workflow = Get-Content -Raw (Join-Path $PSScriptRoot "deploy.yml")
-$resetIndex = $workflow.IndexOf("git reset --hard origin/master")
-$ownershipIndex = $workflow.IndexOf('sudo chown -R "$(id -u):$(id -g)" uploads')
 
-if ($resetIndex -lt 0 -or $ownershipIndex -lt 0 -or $ownershipIndex -gt $resetIndex) {
-    throw "The deployment user must own uploads before Git resets the working tree."
+if ($workflow -notmatch 'APP_DOMAIN' -or
+    $workflow -notmatch 'https://\$app_domain/' -or
+    $workflow -notmatch '--resolve "\$app_domain:443:127\.0\.0\.1"') {
+    throw "Deployment must verify the public HTTPS listener after starting Caddy."
 }
 
 if ($workflow -notmatch 'ensure_env\(\) \{' -or
@@ -12,27 +12,17 @@ if ($workflow -notmatch 'ensure_env\(\) \{' -or
     throw "Deployment must initialize missing MinIO credentials before Docker Compose runs."
 }
 
-if ($workflow -match '(?m)^\s*sudo docker compose down\s*$') {
-    throw "Deployment must not run a full 'docker compose down' (blue/green keeps shared deps up)."
+if ($workflow -match '(?m)^\s*sudo docker compose(?:\s+-f\s+\S+)? down\s*$') {
+    throw "Deployment must not tear down the full production stack."
 }
 
-if ($workflow -notmatch 'ACTIVE_BACKEND' -or
-    $workflow -notmatch 'backend-blue' -or
-    $workflow -notmatch 'backend-green' -or
-    $workflow -notmatch 'docker compose up -d --build --no-deps') {
-    throw "Deployment must perform blue/green cutover via ACTIVE_BACKEND and --no-deps backend builds."
+if ($workflow -notmatch 'docker-compose\.master\.yml' -or
+    $workflow -notmatch 'up -d --build frontend orchestrator caddy coturn' -or
+    $workflow -notmatch 'docker build -t stovo-backend ./backend') {
+    throw "Deployment must start the master gateway and build the tenant backend image."
 }
 
-if ($workflow -notmatch 'api/health' -or
-    $workflow -notmatch 'docker compose logs --tail=100') {
-    throw "Deployment must check the health endpoint and print startup logs on failure."
-}
-
-if ($workflow -notmatch 'uploads logs') {
-    throw "Deployment must grant the backend user access to both local storage and logs."
-}
-
-if ($workflow -notmatch 'sudo install -d -m 0750 -o 100 -g 100 uploads logs' -or
-    $workflow -notmatch 'sudo chown -R 100:100 uploads logs') {
-    throw "Deployment must grant the Alpine backend user (UID/GID 100) access to local storage and logs."
+if ($workflow -notmatch '--filter label=stovo-server' -or
+    $workflow -notmatch '--network stovo_default') {
+    throw "Deployment must update tenant containers on the shared Stovo network."
 }
