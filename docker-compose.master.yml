@@ -45,7 +45,7 @@ services:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
+      - minio-data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -94,6 +94,10 @@ services:
     image: caddy:2-alpine
     container_name: stovo-caddy-gateway
     restart: always
+    environment:
+      # Supplying a hostname (rather than only :80) lets Caddy obtain a TLS
+      # certificate and listen on the published HTTPS port.
+      APP_DOMAIN: ${APP_DOMAIN:-stovo-cloud.stovo.ru}
     dns:
       - 1.1.1.1
       - 8.8.8.8
@@ -137,6 +141,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  minio-data:
+    external: true
+    name: stovo_minio-data
   caddy_data:
   caddy_config:
