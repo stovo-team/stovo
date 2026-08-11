@@ -24,6 +24,7 @@ export function callHistoryLabel(call: CallHistoryLabelInput) {
 export function callHistoryTimestamp(createdAt: string) {
   return new Date(createdAt).toLocaleTimeString([], {
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    hourCycle: "h23"
   });
 }
