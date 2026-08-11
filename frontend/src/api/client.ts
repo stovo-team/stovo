@@ -111,9 +111,10 @@ export function getApiUrl(): string {
     return inviteUrl;
   }
   const storedUrl = readStoredApiUrl();
-  if (storedUrl && storedUrl.includes("/s/")) {
-    return storedUrl;
-  }
+  // A manually configured URL is authoritative. Previously regular server
+  // URLs lost to an older /s/ cluster entry on Android, so requests went to
+  // a different server and appeared as "Invalid credentials".
+  if (storedUrl) return storedUrl;
   const activeServer = getActiveServer();
   if (activeServer?.url && activeServer.url.includes("/s/")) {
     return activeServer.url;

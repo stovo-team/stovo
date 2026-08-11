@@ -113,6 +113,15 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type deviceLoginRequest struct {
+	Username string `json:"username"`
+}
+
+type deviceLoginVerifyRequest struct {
+	Username string `json:"username"`
+	Code     string `json:"code"`
+}
+
 type changePasswordRequest struct {
 	CurrentPassword string `json:"currentPassword"`
 	NewPassword     string `json:"newPassword"`

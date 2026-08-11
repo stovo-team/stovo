@@ -28,7 +28,7 @@ export default function RootRedirect() {
       .catch(() => setSetupRequired(false));
   }, [serverConfigured]);
 
-  if (!serverConfigured || !prefix) {
+  if (!serverConfigured) {
     return <Navigate to={getUnconfiguredRootPath(Capacitor.isNativePlatform())} replace />;
   }
 

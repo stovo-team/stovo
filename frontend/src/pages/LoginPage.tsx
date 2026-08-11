@@ -1,8 +1,9 @@
 import { Capacitor } from "@capacitor/core";
+import { Eye, EyeOff } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
-import { fetchSetupStatus } from "../api/auth";
+import { fetchSetupStatus, requestDeviceLoginCode, verifyDeviceLoginCode } from "../api/auth";
 import { ApiError, getApiUrl, getClusterPrefix } from "../api/client";
 import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry";
 import { useAuth } from "../auth/AuthContext";
@@ -22,9 +23,13 @@ export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | n
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { currentUser, login } = useAuth();
+  const location = useLocation();
+  const { currentUser, login, acceptAuthResponse } = useAuth();
   const [loginValue, setLoginValue] = useState("");
   const [password, setPassword] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [deviceCode, setDeviceCode] = useState("");
+  const [codeRequested, setCodeRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
@@ -32,6 +37,13 @@ export default function LoginPage() {
   const activeServer = getActiveServer();
   const currentUrl = getApiUrl();
   const serverName = activeServer?.name || deriveServerNameFromUrl(currentUrl);
+  const isDeviceLogin = new URLSearchParams(location.search).get("deviceLogin") === "1";
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setLoginValue(params.get("username") ?? "");
+    setPassword(params.get("password") ?? "");
+  }, [location.search]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,6 +84,30 @@ export default function LoginPage() {
     }
   }
 
+  async function handleRequestDeviceCode() {
+    if (!loginValue.trim()) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await requestDeviceLoginCode(loginValue);
+      setCodeRequested(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not send verification code");
+    } finally { setIsSubmitting(false); }
+  }
+
+  async function handleVerifyDeviceCode(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      acceptAuthResponse(await verifyDeviceLoginCode(loginValue, deviceCode));
+      navigate(`${prefix}/app/chats`, { replace: true });
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Invalid verification code");
+    } finally { setIsSubmitting(false); }
+  }
+
   return (
     <main className="app-shell">
       <section className="auth-panel">
@@ -82,7 +118,7 @@ export default function LoginPage() {
             {serverName && <span className="auth-server-name">{serverName}</span>}
           </div>
         </div>
-        <form className="form-grid" onSubmit={handleSubmit}>
+        <form className="form-grid" onSubmit={isDeviceLogin && codeRequested ? handleVerifyDeviceCode : handleSubmit}>
           <label>
             Nickname
             <input
@@ -92,21 +128,22 @@ export default function LoginPage() {
               onChange={(event) => setLoginValue(event.target.value)}
             />
           </label>
-          <label>
+          {!isDeviceLogin && <label>
             Password
-            <input
-              required
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+            <span className="password-input-wrap">
+              <input required type={isPasswordVisible ? "text" : "password"} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              <button type="button" className="password-visibility-button" aria-label={isPasswordVisible ? "Hide password" : "Show password"} onClick={() => setIsPasswordVisible((value) => !value)}>
+                {isPasswordVisible ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </span>
+          </label>}
+          {isDeviceLogin && codeRequested && <label>Verification code<input required inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={deviceCode} onChange={(event) => setDeviceCode(event.target.value.replace(/\D/g, ""))} /></label>}
           {error && <p className="error-text">{error}</p>}
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Signing in" : "Log in"}
-          </button>
+          {isDeviceLogin ? (
+            codeRequested ? <button type="submit" disabled={isSubmitting || deviceCode.length !== 6}>{isSubmitting ? "Verifying…" : "Verify and log in"}</button> : <button type="button" disabled={isSubmitting || !loginValue.trim()} onClick={() => void handleRequestDeviceCode()}>{isSubmitting ? "Sending…" : "Send code to Message Archive"}</button>
+          ) : <button type="submit" disabled={isSubmitting}>{isSubmitting ? "Signing in" : "Log in"}</button>}
         </form>
+        {isDeviceLogin && <p className="muted-copy">Open Message Archive on a device where you are already signed in. The code is valid for 10 minutes.</p>}
         <OwnerSetupPrompt setupRequired={setupRequired} />
         {Capacitor.isNativePlatform() && (
           <p className="secondary-link">

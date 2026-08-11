@@ -71,6 +71,14 @@ export function login(payload: LoginPayload) {
   });
 }
 
+export function requestDeviceLoginCode(username: string) {
+  return apiRequest<{ status: string }>("/api/auth/device-login/request", { method: "POST", body: { username } });
+}
+
+export function verifyDeviceLoginCode(username: string, code: string) {
+  return apiRequest<AuthResponse>("/api/auth/device-login/verify", { method: "POST", body: { username, code } });
+}
+
 export function changePassword(accessToken: string, payload: ChangePasswordPayload) {
 	const refreshToken = getStoredRefreshToken();
 	return apiRequest<void>("/api/auth/change-password", {
