@@ -21,6 +21,9 @@ export interface MultiServerState {
 const SERVERS_STORAGE_KEY = "stovo.multiServerState";
 const LEGACY_API_URL_KEY = "familyMessenger.apiUrl";
 const LEGACY_REFRESH_TOKEN_KEY = "familyMessenger.refreshToken";
+// This is the public entry point for the multi-server installation.  It
+// routes a request to a cluster; it is not itself a member server.
+const CLUSTER_REDIRECTOR_HOST = "stovo-cloud.stovo.ru";
 
 export function normalizeApiUrl(value: string | null | undefined): string | null {
   if (!value?.trim()) {
@@ -75,7 +78,11 @@ export function isMasterOrchestratorUrl(url: string | null | undefined): boolean
   try {
     const parsed = new URL(url.trim());
     const pathname = parsed.pathname.replace(/\/$/, "");
-    return (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") && (pathname === "" || pathname === "/");
+    const isRootPath = pathname === "" || pathname === "/";
+    return (
+      ((parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") || parsed.hostname === CLUSTER_REDIRECTOR_HOST) &&
+      isRootPath
+    );
   } catch {
     return false;
   }
@@ -101,11 +108,15 @@ export function loadServerState(): MultiServerState {
           }
           cleanedServers[id] = s;
         }
+        const didRemoveRedirector = Object.keys(cleanedServers).length !== Object.keys(parsed.servers).length;
         parsed.servers = cleanedServers;
         if (parsed.activeServerId && !parsed.servers[parsed.activeServerId]) {
           const clusterKeys = Object.keys(parsed.servers);
           parsed.activeServerId = clusterKeys.length > 0 ? clusterKeys[0] : null;
         }
+        // Persist the migration so a redirector cannot reappear on the next
+        // launch and be mistaken for a selectable server.
+        if (didRemoveRedirector) saveServerState(parsed);
         return parsed;
       }
     }
@@ -162,6 +173,8 @@ export function saveServerState(state: MultiServerState): void {
       }
     } catch {}
   }
+
+  window.dispatchEvent(new Event("stovo:servers-changed"));
 }
 
 /**

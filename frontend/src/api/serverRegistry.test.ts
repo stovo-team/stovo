@@ -64,6 +64,21 @@ describe("serverRegistry", () => {
     expect(activeServer?.refreshToken).toBe("legacy-token-123");
   });
 
+  it("removes the cluster redirector root from saved servers", () => {
+    mockStorage.setItem("stovo.multiServerState", JSON.stringify({
+      activeServerId: "redirector",
+      servers: {
+        redirector: { id: "redirector", url: "https://stovo-cloud.stovo.ru", name: "Wrong server", healthStatus: "online", unreadCount: 0 },
+        cluster: { id: "cluster", url: "https://stovo-cloud.stovo.ru/s/5ae8bb18", name: "Stakhov Family", healthStatus: "online", unreadCount: 0 }
+      }
+    }));
+
+    const state = loadServerState();
+    expect(state.activeServerId).toBe("cluster");
+    expect(state.servers.redirector).toBeUndefined();
+    expect(getActiveServer()?.name).toBe("Stakhov Family");
+  });
+
   it("supports adding and hot-swapping multiple servers", () => {
     const s1 = upsertServer({
       id: "srv_family",
