@@ -4,6 +4,7 @@ import {
   chatInfoControlVisibility,
   chatListLayoutClass,
   chatPreview,
+  shouldShowChatRowMeta,
   compactChatListLeadingVisual
 } from "./chatPresentation";
 import {
@@ -51,6 +52,11 @@ describe("chat presentation helpers", () => {
 
   it("does not add a direct-message subtitle to Message Archive", () => {
     expect(chatPreview({ type: "archive" } as any)).toBe("");
+  });
+
+  it("removes the unused metadata container from Message Archive", () => {
+    expect(shouldShowChatRowMeta("archive")).toBe(false);
+    expect(shouldShowChatRowMeta("direct")).toBe(true);
   });
 });
 
