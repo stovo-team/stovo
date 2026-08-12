@@ -80,6 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessTokenRef.current = accessToken;
   }, [accessToken]);
 
+  // The registry is also updated by route discovery and background family
+  // loading. Keep this React view in sync with those storage updates.
+  useEffect(() => {
+    const syncServerState = () => setServerState(loadServerState());
+    window.addEventListener("stovo:servers-changed", syncServerState);
+    return () => window.removeEventListener("stovo:servers-changed", syncServerState);
+  }, []);
+
   // Use a ref so the scheduled callback always calls the latest version
   // without causing re-renders or stale closure issues.
   const doProactiveRefreshRef = useRef<() => Promise<void>>(async () => undefined);

@@ -2165,7 +2165,7 @@ h2 {
 }
 
 .menu-anchor--open {
-  z-index: 40;
+  z-index: 400;
 }
 
 .action-menu {
@@ -3062,6 +3062,12 @@ h2 {
   top: calc(100% + 10px);
   transform: translateX(-50%);
   z-index: 9999;
+}
+
+/* On narrow layouts the chat list/header form separate stacking contexts. */
+.chat-sidebar:has(.server-switcher.menu-anchor--open),
+.chat-sidebar-header:has(.server-switcher.menu-anchor--open) {
+  z-index: 400;
 }
 
 .server-switcher-menu button:not(.server-switcher-delete-btn) {
