@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   chatInfoControlVisibility,
   chatListLayoutClass,
+  chatPreview,
   compactChatListLeadingVisual
 } from "./chatPresentation";
 import {
@@ -46,6 +47,10 @@ describe("chat presentation helpers", () => {
       nameEditor: false,
       settings: true
     });
+  });
+
+  it("does not add a direct-message subtitle to Message Archive", () => {
+    expect(chatPreview({ type: "archive" } as any)).toBe("");
   });
 });
 
