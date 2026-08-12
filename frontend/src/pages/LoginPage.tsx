@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { fetchSetupStatus, requestDeviceLoginCode, verifyDeviceLoginCode } from "../api/auth";
-import { ApiError, getApiUrl, getClusterPrefix } from "../api/client";
+import { ApiError, getApiUrl, getClusterPrefix, setApiUrlOverride } from "../api/client";
 import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
@@ -51,6 +51,9 @@ export default function LoginPage() {
       .then((status) => {
         if (!cancelled) {
           setSetupRequired(status.setupRequired);
+          if (status.familyName) {
+            setApiUrlOverride(currentUrl, status.familyName);
+          }
         }
       })
       .catch(() => {
@@ -61,7 +64,7 @@ export default function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [currentUrl]);
 
   const prefix = getClusterPrefix();
 
