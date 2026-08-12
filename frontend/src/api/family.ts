@@ -1,6 +1,21 @@
 import { User, UserRole } from "./auth";
 import { apiRequest } from "./client";
 
+export function inviteUrlForServer(inviteUrl: string, serverUrl: string): string {
+  try {
+    const invite = new URL(inviteUrl);
+    const server = new URL(serverUrl);
+    const token = invite.pathname.split("/").filter(Boolean).at(-1);
+    if (!token) return inviteUrl;
+    server.pathname = `${server.pathname.replace(/\/$/, "")}/invite/${encodeURIComponent(token)}`;
+    server.search = "";
+    server.hash = "";
+    return server.toString();
+  } catch {
+    return inviteUrl;
+  }
+}
+
 export interface Family {
   id: string;
   name: string;
