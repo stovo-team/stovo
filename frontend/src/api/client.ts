@@ -97,7 +97,7 @@ import { deriveServerNameFromUrl, getActiveServer, hashServerUrl, loadServerStat
 export function getApiUrl(): string {
   if (typeof window !== "undefined") {
     const match = window.location.pathname.match(/^\/s\/([a-zA-Z0-9_-]+)/);
-    if (match) {
+    if (match && !Capacitor.isNativePlatform()) {
       const slug = match[1];
       const clusterUrl = `${window.location.origin}/s/${slug}`;
       try {
