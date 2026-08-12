@@ -268,13 +268,6 @@ export function useMessageComposer({
 
   function handleAttachButtonClick() {
     closeEmojiPicker();
-    // Desktop/web should use the platform file chooser directly. The attachment
-    // sheet is an Android-native interaction and otherwise obscures the normal
-    // system explorer behind an unnecessary mobile UI.
-    if (!Capacitor.isNativePlatform()) {
-      attachmentInputRef.current?.click();
-      return;
-    }
     setIsAttachmentSheetOpen(true);
   }
 
