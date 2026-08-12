@@ -36,6 +36,7 @@ export function ChatListItem({
   onOpen
 }: ChatListItemProps) {
   const chatName = displayChatName(chat, currentUserId);
+  const preview = chatPreview(chat);
   const hasUnread = chat.unreadCount > 0;
   const compactLeadingVisual = compactChatListLeadingVisual(chat.type);
   const chatListLeadingVisual = minimizedChatLayout || chat.type === "archive"
@@ -98,9 +99,7 @@ export function ChatListItem({
               <span className="chat-list-draft-label">Draft:</span>{" "}
               {draftText.slice(0, 40)}{draftText.length > 40 ? "…" : ""}
             </span>
-          ) : (
-            <span>{chatPreview(chat)}</span>
-          );
+          ) : preview ? <span>{preview}</span> : null;
         })()}
       </span>
       <span className="chat-row-meta">
