@@ -151,6 +151,9 @@ export function chatAvatarTypeClass(chat: Chat) {
 }
 
 export function chatPreview(chat: Chat) {
+  if (chat.type === "archive") {
+    return "";
+  }
   if (chat.lastMessageContent && chat.lastMessageSenderDisplayName) {
     return `${chat.lastMessageSenderDisplayName}: ${chat.lastMessageContent}`;
   }

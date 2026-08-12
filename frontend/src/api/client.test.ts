@@ -32,4 +32,11 @@ describe("getApiUrl", () => {
 
     expect(getApiUrl()).toBe("https://stovo-cloud.stovo.ru/server-setup");
   });
+
+  it("switches the active server when a member enters a non-cluster server address", () => {
+    setApiUrlOverride("https://stovo-cloud.stovo.ru/s/old-family");
+    setApiUrlOverride("https://family.example.com");
+
+    expect(getApiUrl()).toBe("https://family.example.com");
+  });
 });

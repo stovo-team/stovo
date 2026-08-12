@@ -187,14 +187,10 @@ export function setApiUrlOverride(apiUrl: string | null, familyName?: string) {
   }
   const normalized = registryNormalizeApiUrl(apiUrl);
   if (normalized) {
-    const existingStored = window.localStorage.getItem(API_URL_STORAGE_KEY);
-    if (existingStored && existingStored.includes("/s/") && !normalized.includes("/s/")) {
-      return;
-    }
     const id = hashServerUrl(normalized);
     const existing = getActiveServer();
     const serverName = familyName || (existing?.url === normalized ? existing.name : deriveServerNameFromUrl(normalized));
-    upsertServer({
+    const saved = upsertServer({
       id,
       url: normalized,
       name: serverName,
@@ -203,6 +199,7 @@ export function setApiUrlOverride(apiUrl: string | null, familyName?: string) {
       healthStatus: "online",
       unreadCount: existing?.url === normalized ? existing.unreadCount : 0
     });
+    setActiveServerId(saved.id);
     window.localStorage.setItem(API_URL_STORAGE_KEY, normalized);
     return;
   }
