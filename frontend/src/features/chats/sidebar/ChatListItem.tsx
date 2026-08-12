@@ -10,6 +10,7 @@ import {
   compactChatListLeadingVisual,
   displayChatName,
   formatChatTime,
+  shouldShowChatRowMeta,
   transitionAnchorStyle
 } from "../shared/chatPresentation";
 import { RealAvatar } from "./RealAvatar";
@@ -102,7 +103,7 @@ export function ChatListItem({
           ) : preview ? <span>{preview}</span> : null;
         })()}
       </span>
-      <span className="chat-row-meta">
+      {shouldShowChatRowMeta(chat.type) && <span className="chat-row-meta">
         {(chat.type === "group" || chat.type === "family") && chat.activeCall && (
           <span
             className="group-call-pulse-dot"
@@ -125,7 +126,7 @@ export function ChatListItem({
             {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
           </span>
         )}
-      </span>
+      </span>}
     </button>
   );
 }
