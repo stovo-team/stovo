@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Link2, QrCode, Share2, X } from "lucide-react";
 import QRCode from "qrcode";
 
-import { createInvite } from "../api/family";
-import { ApiError } from "../api/client";
+import { createInvite, inviteUrlForServer } from "../api/family";
+import { ApiError, getApiUrl } from "../api/client";
 
 type InviteModalProps = {
   accessToken: string;
@@ -72,8 +72,9 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
     })
       .then(async (response) => {
         if (cancelled) return;
-        setInviteUrl(response.inviteUrl);
-        const dataUrl = await QRCode.toDataURL(response.inviteUrl, {
+        const currentServerInviteUrl = inviteUrlForServer(response.inviteUrl, getApiUrl());
+        setInviteUrl(currentServerInviteUrl);
+        const dataUrl = await QRCode.toDataURL(currentServerInviteUrl, {
           margin: 2,
           width: 240,
           color: { dark: "#111827", light: "#ffffff" }
