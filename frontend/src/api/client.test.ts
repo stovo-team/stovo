@@ -1,18 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const platform = vi.hoisted(() => ({ native: false }));
 vi.mock("@capacitor/core", () => ({
   Capacitor: {
-    isNativePlatform: () => false
+    isNativePlatform: () => platform.native
   }
 }));
 
 import { getApiUrl, setApiUrlOverride } from "./client";
+import { getActiveServer } from "./serverRegistry";
 
 describe("getApiUrl", () => {
   const storage = new Map<string, string>();
 
   beforeEach(() => {
     storage.clear();
+    platform.native = false;
+    window.history.replaceState({}, "", "/");
     Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: {
@@ -38,5 +42,19 @@ describe("getApiUrl", () => {
     setApiUrlOverride("https://family.example.com");
 
     expect(getApiUrl()).toBe("https://family.example.com");
+  });
+
+  it("keeps the remote family API URL after native navigation to its visual route", () => {
+    setApiUrlOverride("https://stovo-cloud.stovo.ru/s/5ae8bb18", "Stakhov Family");
+    platform.native = true;
+    window.history.replaceState({}, "", "/s/5ae8bb18/app/chats");
+
+    expect(getApiUrl()).toBe("https://stovo-cloud.stovo.ru/s/5ae8bb18");
+  });
+
+  it("uses the family name returned by the server instead of its URL hash", () => {
+    setApiUrlOverride("https://stovo-cloud.stovo.ru/s/5ae8bb18", "Stakhov Family");
+
+    expect(getActiveServer()?.name).toBe("Stakhov Family");
   });
 });
