@@ -100,9 +100,9 @@ export function getApiUrl(): string {
     if (match && !Capacitor.isNativePlatform()) {
       const slug = match[1];
       const clusterUrl = `${window.location.origin}/s/${slug}`;
-      try {
-        window.localStorage.setItem(API_URL_STORAGE_KEY, clusterUrl);
-      } catch {}
+      // A /s/<slug> URL is the actual server.  Register it rather than the
+      // root host, which is only the orchestrator/redirector.
+      setApiUrlOverride(clusterUrl);
       return clusterUrl;
     }
   }
