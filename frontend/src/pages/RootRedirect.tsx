@@ -12,6 +12,10 @@ export function getUnconfiguredRootPath(isNative: boolean): string {
   return isNative ? "/server-setup" : "/multi-admin";
 }
 
+export function shouldOpenMasterConsole(isNative: boolean, clusterPrefix: string): boolean {
+  return !isNative && !clusterPrefix;
+}
+
 export default function RootRedirect() {
   const { currentUser, isLoading } = useAuth();
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
@@ -30,7 +34,7 @@ export default function RootRedirect() {
 
   // The browser root is the master multi-server console. Native clients use
   // the currently configured family server instead.
-  if (!Capacitor.isNativePlatform()) {
+  if (shouldOpenMasterConsole(Capacitor.isNativePlatform(), prefix)) {
     return <Navigate to="/multi-admin" replace />;
   }
 

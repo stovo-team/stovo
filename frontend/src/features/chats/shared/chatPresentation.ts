@@ -169,6 +169,10 @@ export function chatPreview(chat: Chat) {
   return "Direct message";
 }
 
+export function shouldShowChatRowMeta(chatType: Chat["type"]): boolean {
+  return chatType !== "archive";
+}
+
 export function applyMessagePreviewToChat(chat: Chat, message: Message) {
   return {
     ...chat,
