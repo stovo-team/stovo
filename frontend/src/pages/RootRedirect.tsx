@@ -19,12 +19,6 @@ export default function RootRedirect() {
 
   const prefix = getClusterPrefix();
 
-  // The browser root is the master multi-server console. Native clients use
-  // the currently configured family server instead.
-  if (!Capacitor.isNativePlatform()) {
-    return <Navigate to="/multi-admin" replace />;
-  }
-
   useEffect(() => {
     if (!serverConfigured) {
       return;
@@ -33,6 +27,12 @@ export default function RootRedirect() {
       .then((status) => setSetupRequired(status.setupRequired))
       .catch(() => setSetupRequired(false));
   }, [serverConfigured]);
+
+  // The browser root is the master multi-server console. Native clients use
+  // the currently configured family server instead.
+  if (!Capacitor.isNativePlatform()) {
+    return <Navigate to="/multi-admin" replace />;
+  }
 
   if (!serverConfigured) {
     return <Navigate to={getUnconfiguredRootPath(Capacitor.isNativePlatform())} replace />;
