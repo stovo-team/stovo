@@ -163,9 +163,6 @@ class MediaLibraryPlugin : Plugin() {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
                 granted(Manifest.permission.READ_MEDIA_IMAGES) || granted(Manifest.permission.READ_MEDIA_VIDEO)
             else -> granted(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-        } catch (_: SecurityException) {
-            // The system file picker remains available when scoped storage does not expose recents.
         }
     }
 
