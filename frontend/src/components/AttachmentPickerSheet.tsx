@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { AudioLines, Camera, Check, FileText, Image as ImageIcon, Music, X } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
+import { AudioLines, Camera, Check, FileText, Image as ImageIcon, Music } from "lucide-react";
 
 import {
   isNativeMediaLibraryAvailable,
@@ -42,14 +42,14 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
     onClose();
   };
 
-  const loadGallery = async () => {
+  const loadRecentItems = async (tab: AttachmentPickerTab) => {
     if (!isNativeMediaLibraryAvailable()) {
       setGalleryState("empty");
       return;
     }
     setGalleryState("loading");
     try {
-      const items = await listNativeMedia();
+      const items = await listNativeMedia(tab === "file" ? "documents" : tab);
       setMedia(items);
       setGalleryState(items.length > 0 ? "ready" : "empty");
     } catch {
@@ -61,8 +61,8 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
   useEffect(() => {
     if (!open) return;
     resetSheetState();
-    void loadGallery();
-  }, [open]);
+    void loadRecentItems(activeTab);
+  }, [open, activeTab]);
 
   if (!open) return null;
 
@@ -96,7 +96,7 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
           <div className="attachment-picker-header-title">
             {activeTab === "gallery" && selectedCount > 0 ? <span className="attachment-picker-selected-count">{selectedCount} selected</span> : <span>Attach</span>}
           </div>
-          <button type="button" className="attachment-picker-close-btn" aria-label="Close attachment menu" onClick={closeSheet}><X size={18} /></button>
+          <button type="button" className="attachment-picker-close-btn" aria-label="Close attachment menu" onClick={closeSheet}><span aria-hidden="true">×</span></button>
         </div>
 
         <div className="attachment-picker-body">
@@ -117,13 +117,13 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
               </div>
               {galleryState === "loading" && <p className="attachment-picker-gallery-status">Loading your gallery…</p>}
               {galleryState === "empty" && <p className="attachment-picker-gallery-status">No photos or videos found on this device.</p>}
-              {galleryState === "error" && <div className="attachment-picker-gallery-status"><p>Allow photo and video access to show your gallery.</p><button type="button" className="attachment-picker-secondary-btn" onClick={() => void loadGallery()}>Try again</button></div>}
+              {galleryState === "error" && <div className="attachment-picker-gallery-status"><p>Allow photo and video access to show your gallery.</p><button type="button" className="attachment-picker-secondary-btn" onClick={() => void loadRecentItems("gallery")}>Try again</button></div>}
               {!isNativeMediaLibraryAvailable() && <button type="button" className="attachment-picker-secondary-btn" onClick={() => { onPick("gallery"); closeSheet(); }}><ImageIcon size={18} />Choose photos</button>}
             </div>
           )}
 
-          {activeTab === "file" && <div className="attachment-picker-list-tab"><button type="button" className="attachment-picker-sheet-item" onClick={() => { onPick("file"); closeSheet(); }}><span className="attachment-picker-sheet-icon file-icon"><FileText size={22} /></span><span className="attachment-picker-sheet-copy"><strong>Document or file</strong><span>PDF, DOCX, ZIP, or any file</span></span></button></div>}
-          {activeTab === "audio" && <div className="attachment-picker-list-tab"><button type="button" className="attachment-picker-sheet-item" onClick={() => { onPick("audio"); closeSheet(); }}><span className="attachment-picker-sheet-icon audio-icon"><Music size={22} /></span><span className="attachment-picker-sheet-copy"><strong>Music or audio file</strong><span>MP3, WAV, FLAC, M4A, and more</span></span></button></div>}
+          {activeTab === "file" && <RecentFileList items={media} emptyLabel="No recent documents on this device." icon={<FileText size={22} />} onChoose={() => { onPick("file"); closeSheet(); }} />}
+          {activeTab === "audio" && <RecentFileList items={media} emptyLabel="No recent audio files on this device." icon={<Music size={22} />} onChoose={() => { onPick("audio"); closeSheet(); }} />}
         </div>
 
         {activeTab === "gallery" && selectedCount > 0 && <div className="attachment-picker-floating-bar"><button type="button" className="attachment-picker-send-btn" disabled={isSending} onClick={() => void handleSendSelected()}>Send {isSending ? "…" : `${selectedCount} item${selectedCount === 1 ? "" : "s"}`}</button></div>}
@@ -135,4 +135,11 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
       </div>
     </div>
   );
+}
+
+function RecentFileList({ items, emptyLabel, icon, onChoose }: { items: NativeMediaItem[]; emptyLabel: string; icon: ReactNode; onChoose: () => void }) {
+  return <div className="attachment-picker-list-tab">
+    <button type="button" className="attachment-picker-sheet-item" onClick={onChoose}><span className="attachment-picker-sheet-icon file-icon">{icon}</span><span className="attachment-picker-sheet-copy"><strong>Choose from device</strong><span>{items.length ? "Browse all files" : emptyLabel}</span></span></button>
+    {items.map((item) => <button key={item.id} type="button" className="attachment-picker-sheet-item attachment-picker-recent-item" onClick={onChoose}><span className="attachment-picker-sheet-icon file-icon">{icon}</span><span className="attachment-picker-sheet-copy"><strong>{item.name}</strong><span>{item.mimeType}</span></span></button>)}
+  </div>;
 }

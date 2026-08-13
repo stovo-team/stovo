@@ -84,8 +84,8 @@ describe("docked emoji picker styles", () => {
     expect(styles).not.toContain(':root[data-theme-mode="dark"] .emoji-picker .epr-cat-btn');
   });
 
-  it("docks the mobile web picker under the composer", () => {
-    expect(useChatsPageControllerSource).toContain("const isDockedEmojiPicker = isMobileViewport;");
+  it("docks the picker under the composer at every viewport size", () => {
+    expect(useChatsPageControllerSource).toContain("const isDockedEmojiPicker = true;");
     expect(useMessageComposerSource).toContain("const emojiPickerDockRef = useRef<HTMLDivElement | null>(null);");
     expect(useChatSurfaceDismissalSource).toContain("!emojiPickerDockRef.current?.contains(event.target as Node)");
     expect(rule(".messenger-shell.has-active-chat .message-composer--emoji-docked .emoji-picker-dock")).toContain(
@@ -277,6 +277,11 @@ describe("emoji-only message sizes", () => {
         ".message-bubble.mine:is(.emoji-only-xl, .emoji-only-lg, .emoji-only-md)"
       )
     ).toContain("margin-inline-start: auto;");
+    expect(
+      rule(
+        ".message-bubble.mine:is(.emoji-only-xl, .emoji-only-lg, .emoji-only-md)"
+      )
+    ).toContain("margin-inline-end: calc(-1 * var(--message-list-inline-end));");
   });
 });
 

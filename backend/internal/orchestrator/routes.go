@@ -322,9 +322,13 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 	minioPass := get("MINIO_ROOT_PASSWORD", "stovo_minio_pass")
 	masterSecret := get("MASTER_SYSTEM_SECRET", "")
 	turnHost := get("TURN_HOST", get("PUBLIC_HOST", get("PUBLIC_IP", "")))
+	appURL := strings.TrimRight(get("APP_URL", "http://localhost:8000"), "/")
+	serverURL := fmt.Sprintf("%s/s/%s", appURL, slug)
 
 	return []string{
 		fmt.Sprintf("SERVER_ID=%s", slug),
+		fmt.Sprintf("APP_URL=%s", serverURL),
+		fmt.Sprintf("API_URL=%s", serverURL),
 		fmt.Sprintf("DATABASE_URL=postgres://%s:%s@postgres:5432/stovo_db_%s?sslmode=disable", pgUser, pgPass, slug),
 		"REDIS_URL=redis://redis:6379/0",
 		"MINIO_ENDPOINT=minio:9000",

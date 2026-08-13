@@ -581,6 +581,9 @@ export function useMessageComposer({
       );
 
       const encrypted = await encryptMessageContent(selectedChat, draftContent || null, currentUser.id);
+		const mentionedUserIds = selectedChat.members
+			.filter((member) => member.id !== currentUser.id && new RegExp(`(^|\\s)@${member.username.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?=\\s|$|[.,!?])`, "i").test(draftContent))
+			.map((member) => member.id);
       const message = await sendMessage(
         accessToken,
         selectedChat.id,
@@ -588,7 +591,8 @@ export function useMessageComposer({
         uploadedAttachments.map((file) => file.id),
         replyToMessageId,
         threadRootForSend,
-        encrypted.encryption
+		encrypted.encryption,
+		mentionedUserIds
       );
       const displayMessage = await decryptMessage(selectedChat.id, message, currentUser.id);
       applyMessagesForChat(selectedChat.id, (current) =>

@@ -16,6 +16,7 @@ type Config struct {
 	AppEnv                       string
 	Host                         string
 	Port                         int
+	ServerID                     string
 	AppURL                       string
 	APIURL                       string
 	FrontendOrigin               string
@@ -61,13 +62,13 @@ type Config struct {
 	LiveKitURL                   string
 	LiveKitAPIKey                string
 	LiveKitAPISecret             string
-	GroqAPIKey                 string
-	GroqSTTModel               string
-	GroqChatModel              string
-	GroqSTTCostPerHourUSD      float64
-	AICallTranscriptionEnabled bool
-	AICallMaxDurationMinutes   int
-	MinIOCallsBucket           string
+	GroqAPIKey                   string
+	GroqSTTModel                 string
+	GroqChatModel                string
+	GroqSTTCostPerHourUSD        float64
+	AICallTranscriptionEnabled   bool
+	AICallMaxDurationMinutes     int
+	MinIOCallsBucket             string
 }
 
 func Load() (Config, error) {
@@ -132,6 +133,7 @@ func Load() (Config, error) {
 		AppEnv:                       getenv("APP_ENV", "development"),
 		Host:                         getenv("HOST", "0.0.0.0"),
 		Port:                         port,
+		ServerID:                     strings.TrimSpace(os.Getenv("SERVER_ID")),
 		AppURL:                       trimTrailingSlash(getenv("APP_URL", "http://localhost:8000")),
 		APIURL:                       trimTrailingSlash(getenv("API_URL", "http://localhost:8000")),
 		FrontendOrigin:               trimTrailingSlash(getenv("FRONTEND_ORIGIN", "http://frontend:5173")),
@@ -177,13 +179,13 @@ func Load() (Config, error) {
 		LiveKitURL:                   envString("LIVEKIT_URL", ""),
 		LiveKitAPIKey:                envString("LIVEKIT_API_KEY", ""),
 		LiveKitAPISecret:             envString("LIVEKIT_API_SECRET", ""),
-		GroqAPIKey:                 strings.TrimSpace(os.Getenv("GROQ_API_KEY")),
-		GroqSTTModel:               getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo"),
-		GroqChatModel:              getenv("GROQ_CHAT_MODEL", ""),
-		GroqSTTCostPerHourUSD:      envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
-		AICallTranscriptionEnabled: envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
-		AICallMaxDurationMinutes:   envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
-		MinIOCallsBucket:           getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
+		GroqAPIKey:                   strings.TrimSpace(os.Getenv("GROQ_API_KEY")),
+		GroqSTTModel:                 getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo"),
+		GroqChatModel:                getenv("GROQ_CHAT_MODEL", ""),
+		GroqSTTCostPerHourUSD:        envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
+		AICallTranscriptionEnabled:   envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
+		AICallMaxDurationMinutes:     envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
+		MinIOCallsBucket:             getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
 	}
 
 	return cfg, nil

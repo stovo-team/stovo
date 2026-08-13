@@ -390,6 +390,7 @@ type sendMessageRequest struct {
 	Nonce               *string  `json:"nonce"`
 	KeyVersion          *int     `json:"keyVersion"`
 	EncryptionMetadata  *string  `json:"encryptionMetadata"`
+	MentionedUserIDs    []string `json:"mentionedUserIds"`
 }
 
 type forwardMessageRequest struct {

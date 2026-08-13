@@ -57,7 +57,9 @@ describe("voiceRecording", () => {
     });
 
     const handle = await startVoiceRecording();
-    expect(recorder.start).toHaveBeenCalled();
+    // Voice notes are finalized as one container. Periodic WebM fragments from
+    // Android WebView can carry a bogus duration when joined together.
+    expect(recorder.start).toHaveBeenCalledWith();
     const file = await handle.stop();
     expect(file.name).toMatch(/^voice-.*\.webm$/);
     expect(file.type).toContain("audio/");
