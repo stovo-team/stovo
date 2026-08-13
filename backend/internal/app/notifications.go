@@ -84,8 +84,12 @@ func formatMessageNotification(chatType string, chatTitle *string, senderName st
 	return title, senderName + ": " + messagePreview, tags
 }
 
-func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string) {
+func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string, mentionedUserIDs []string) {
 	title, message, tags := formatMessageNotification(chatType, chatTitle, senderName, messagePreview)
+	mentioned := make(map[string]struct{}, len(mentionedUserIDs))
+	for _, userID := range mentionedUserIDs {
+		mentioned[userID] = struct{}{}
+	}
 	memberIDs, err := s.store.ListChatMemberUserIDs(context.Background(), chatID)
 	if err != nil {
 		s.logger.Warnf("ntfy", "failed to query chat members for chat_id=%s: %v", chatID, err)
@@ -103,19 +107,26 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 			s.logger.Warnf("ntfy", "no topic for user_id=%s: %v", recipientID, err)
 			continue
 		}
-		go func(recipientID, topic string) {
+		_, isMentioned := mentioned[recipientID]
+		go func(recipientID, topic string, isMentioned bool) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
+			priority := 3
+			payloadTags := tags
+			if isMentioned {
+				priority = 5
+				payloadTags = append(append([]string{}, tags...), "exclamation")
+			}
 			p := ntfyPayload{
 				Topic:    topic,
 				Title:    title,
 				Message:  message,
-				Priority: 3,
-				Tags:     tags,
+				Priority: priority,
+				Tags:     payloadTags,
 				Click:    "stovo://chat/" + chatID,
 			}
 			s.publishToNtfyWithRetry(ctx, recipientID, p)
-		}(recipientID, topic)
+		}(recipientID, topic, isMentioned)
 	}
 }
 

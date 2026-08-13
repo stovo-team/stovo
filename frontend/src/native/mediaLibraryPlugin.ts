@@ -8,10 +8,12 @@ export type NativeMediaItem = {
   durationMs: number;
 };
 
+export type NativeMediaCategory = "gallery" | "audio" | "documents";
+
 type CachedMediaFile = { path: string; name: string; mimeType: string };
 
 type NativeMediaLibraryPlugin = {
-  listMedia(options?: { limit?: number }): Promise<{ items: NativeMediaItem[] }>;
+  listMedia(options?: { limit?: number; category?: NativeMediaCategory }): Promise<{ items: NativeMediaItem[] }>;
   copyMedia(options: { ids: string[] }): Promise<{ files: CachedMediaFile[] }>;
 };
 
@@ -21,9 +23,9 @@ export function isNativeMediaLibraryAvailable(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
-export async function listNativeMedia(): Promise<NativeMediaItem[]> {
+export async function listNativeMedia(category: NativeMediaCategory = "gallery"): Promise<NativeMediaItem[]> {
   if (!isNativeMediaLibraryAvailable()) return [];
-  const result = await MediaLibraryPlugin.listMedia({ limit: 120 });
+  const result = await MediaLibraryPlugin.listMedia({ limit: 120, category });
   return (result.items ?? []).filter((item) => item.id && item.uri && item.mimeType);
 }
 

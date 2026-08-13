@@ -202,7 +202,7 @@ export default function MCPConnectorsPanel({
 
     try {
       const chatResult = await authRequest<Chat[]>("/api/chats");
-      setChats(chatResult.filter((chat) => chat.type !== "archive"));
+		setChats(chatResult);
     } catch {
       setChats([]);
     } finally {

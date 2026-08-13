@@ -4,7 +4,6 @@ import { Clock3, FileText, Image, Mail, Music, Pencil, Settings, Video } from "l
 import { User } from "../../../api/auth";
 import { Chat } from "../../../api/chats";
 import { FamilyFile } from "../../../api/files";
-import { encryptionProtocolLabel } from "../../../api/messageCrypto";
 import useFilePreviewUrl from "../../../hooks/useFilePreviewUrl";
 import {
   canUpdateMediaVisibility,
@@ -129,6 +128,7 @@ export function ChatDetailsPanel({
 }) {
   const chatName = displayChatName(chat, currentUserId);
   const [activeControl, setActiveControl] = useState<ChatInfoControl>(null);
+  const [tabDirection, setTabDirection] = useState<"forward" | "backward">("forward");
   const { nameEditor, settings } = chatInfoControlVisibility(activeControl);
   const canRename =
     canManageChat && chat.type !== "direct" && chatTitleDraft.trim() !== chatName.trim();
@@ -136,6 +136,14 @@ export function ChatDetailsPanel({
   const hasFamilyStorageSetting = chat.type !== "family";
   const hasCommentsSetting = chat.type === "channel";
   const hasPinPermissionSetting = canManageChat && chat.type !== "direct";
+  const sharedContentTabs = ["media", "files", "links"] as const;
+
+  function handleDetailsTabChange(tab: SharedContentTab) {
+    const currentIndex = sharedContentTabs.indexOf(detailsTab);
+    const nextIndex = sharedContentTabs.indexOf(tab);
+    setTabDirection(nextIndex > currentIndex ? "forward" : "backward");
+    onDetailsTabChange(tab);
+  }
 
   if (settings) {
     return (
@@ -399,14 +407,13 @@ export function ChatDetailsPanel({
               </button>
             )}
           </div>
-          <p className="chat-info-subtitle">
-            {chat.type === "direct" || chat.type === "archive"
-              ? chat.type === "archive"
-                ? "Saved messages"
-                : "Direct message"
-              : `${chat.members.length} member${chat.members.length === 1 ? "" : "s"}`}
-          </p>
-          <p className="chat-info-meta">{encryptionProtocolLabel(chat.encryptionProtocol)}</p>
+          {chat.type !== "archive" && (
+            <p className="chat-info-subtitle">
+              {chat.type === "direct"
+                ? "Direct message"
+                : `${chat.members.length} member${chat.members.length === 1 ? "" : "s"}`}
+            </p>
+          )}
         </section>
 
         <section className="chat-info-actions" aria-label="Chat actions">
@@ -479,20 +486,21 @@ export function ChatDetailsPanel({
 
         <div className="chat-info-section chat-info-section--media">
           <div className="chat-info-tabs" role="tablist" aria-label="Shared content">
-            {(["media", "files", "links"] as const).map((tab) => (
+            {sharedContentTabs.map((tab) => (
               <button
                 key={tab}
                 type="button"
                 className={`chat-info-tab${detailsTab === tab ? " active" : ""}`}
                 aria-pressed={detailsTab === tab}
-                onClick={() => onDetailsTabChange(tab)}
+                onClick={() => handleDetailsTabChange(tab)}
               >
                 {tab === "media" ? "Media" : tab === "files" ? "Files" : "Links"}
               </button>
             ))}
           </div>
-          {sharedContentItems.length > 0 ? (
-            <div className={detailsTab === "links" ? "chat-info-link-list" : "details-media-grid chat-info-media-grid"}>
+          <div key={detailsTab} className={`chat-info-tab-panel chat-info-tab-panel--${tabDirection}`}>
+            {sharedContentItems.length > 0 ? (
+              <div className={detailsTab === "links" ? "chat-info-link-list" : "details-media-grid chat-info-media-grid"}>
               {sharedContentItems.map((item) =>
                 item.kind === "link" ? (
                   <a
@@ -515,16 +523,17 @@ export function ChatDetailsPanel({
                   />
                 )
               )}
-            </div>
-          ) : (
-            <p className="chat-info-empty">
-              {detailsTab === "links"
-                ? "No links yet"
-                : detailsTab === "media"
-                  ? "No media yet"
-                  : "No files yet"}
-            </p>
-          )}
+              </div>
+            ) : (
+              <p className="chat-info-empty">
+                {detailsTab === "links"
+                  ? "No links yet"
+                  : detailsTab === "media"
+                    ? "No media yet"
+                    : "No files yet"}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="chat-info-section">

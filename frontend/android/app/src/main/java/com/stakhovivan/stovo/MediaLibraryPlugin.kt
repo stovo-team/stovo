@@ -1,11 +1,13 @@
 package com.stakhovivan.stovo
 
+import android.Manifest
 import android.content.ContentUris
+import android.content.pm.PackageManager
+import android.os.Build
 import android.net.Uri
 import android.provider.MediaStore
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
-import com.getcapacitor.PermissionState
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
@@ -22,6 +24,8 @@ import java.util.UUID
         strings = [
             "android.permission.READ_MEDIA_IMAGES",
             "android.permission.READ_MEDIA_VIDEO",
+            "android.permission.READ_MEDIA_AUDIO",
+            "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
             "android.permission.READ_EXTERNAL_STORAGE"
         ]
     )]
@@ -29,7 +33,8 @@ import java.util.UUID
 class MediaLibraryPlugin : Plugin() {
     @PluginMethod
     fun listMedia(call: PluginCall) {
-        if (getPermissionState("media") != PermissionState.GRANTED) {
+        val category = call.getString("category", "gallery") ?: "gallery"
+        if (category != "documents" && !hasMediaAccess()) {
             requestPermissionForAlias("media", call, "loadMedia")
             return
         }
@@ -38,7 +43,8 @@ class MediaLibraryPlugin : Plugin() {
 
     @PermissionCallback
     private fun loadMedia(call: PluginCall) {
-        if (getPermissionState("media") != PermissionState.GRANTED) {
+        val category = call.getString("category", "gallery") ?: "gallery"
+        if (category != "documents" && !hasMediaAccess()) {
             call.reject("Media library permission was not granted")
             return
         }
@@ -48,40 +54,50 @@ class MediaLibraryPlugin : Plugin() {
             return
         }
         val items = JSArray()
-        val collection = MediaStore.Files.getContentUri("external")
+        val collection = when (category) {
+            "audio" -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            "documents" -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            else -> MediaStore.Files.getContentUri("external")
+        }
         val projection = arrayOf(
             MediaStore.Files.FileColumns._ID,
             MediaStore.Files.FileColumns.DISPLAY_NAME,
             MediaStore.Files.FileColumns.MIME_TYPE,
             MediaStore.Files.FileColumns.DURATION
         )
-        val selection = "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
-        val arguments = arrayOf(
-            MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(),
-            MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString()
-        )
-        resolver.query(
-            collection,
-            projection,
-            selection,
-            arguments,
-            "${MediaStore.Files.FileColumns.DATE_ADDED} DESC LIMIT $limit"
-        )?.use { cursor ->
-            val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
-            val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
-            val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
-            val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
-            while (cursor.moveToNext()) {
-                val id = cursor.getLong(idIndex)
-                val uri = ContentUris.withAppendedId(collection, id)
-                items.put(JSObject().apply {
-                    put("id", id.toString())
-                    put("uri", uri.toString())
-                    put("name", cursor.getString(nameIndex) ?: "media-$id")
-                    put("mimeType", cursor.getString(mimeIndex) ?: "application/octet-stream")
-                    put("durationMs", cursor.getLong(durationIndex).coerceAtLeast(0))
-                })
+        val selection = when (category) {
+            "audio" -> "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
+            "documents" -> "${MediaStore.Files.FileColumns.MIME_TYPE} NOT LIKE ?"
+            else -> "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
+        }
+        val arguments = when (category) {
+            "audio" -> arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO.toString())
+            "documents" -> arrayOf("image/%")
+            else -> arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(), MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString())
+        }
+        try {
+            resolver.query(
+                collection, projection, selection, arguments,
+                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC LIMIT $limit"
+            )?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
+                val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
+                val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
+                while (cursor.moveToNext()) {
+                    val id = cursor.getLong(idIndex)
+                    val uri = ContentUris.withAppendedId(collection, id)
+                    items.put(JSObject().apply {
+                        put("id", id.toString())
+                        put("uri", uri.toString())
+                        put("name", cursor.getString(nameIndex) ?: "media-$id")
+                        put("mimeType", cursor.getString(mimeIndex) ?: "application/octet-stream")
+                        put("durationMs", cursor.getLong(durationIndex).coerceAtLeast(0))
+                    })
+                }
             }
+        } catch (_: SecurityException) {
+            // The system file picker remains available when scoped storage does not expose recents.
         }
         call.resolve(JSObject().put("items", items))
     }
@@ -128,6 +144,30 @@ class MediaLibraryPlugin : Plugin() {
     }
 
     private fun resolver() = (activity ?: bridge?.activity)?.contentResolver
+
+    /**
+     * Android 14 lets people grant access to only selected photos and videos.
+     * That is still sufficient for MediaStore to return the media we may show,
+     * but Capacitor's alias state reports it as denied because the broad media
+     * permissions themselves are not granted.
+     */
+    private fun hasMediaAccess(): Boolean {
+        val permissionContext = context ?: return false
+        fun granted(permission: String) = permissionContext.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+
+        return when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ->
+                granted(Manifest.permission.READ_MEDIA_IMAGES) ||
+                    granted(Manifest.permission.READ_MEDIA_VIDEO) ||
+                    granted(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                granted(Manifest.permission.READ_MEDIA_IMAGES) || granted(Manifest.permission.READ_MEDIA_VIDEO)
+            else -> granted(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        } catch (_: SecurityException) {
+            // The system file picker remains available when scoped storage does not expose recents.
+        }
+    }
 
     private fun sanitize(name: String): String =
         name.replace(Regex("[^A-Za-z0-9._ -]"), "_").take(180).ifBlank { "media" }
