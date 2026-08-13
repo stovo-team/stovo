@@ -2,19 +2,21 @@
  * Browser MediaRecorder helper for composer voice messages.
  */
 
+import { Capacitor } from "@capacitor/core";
+
 export type VoiceRecorderHandle = {
   stop: () => Promise<File>;
   cancel: () => void;
 };
 
 function preferredMimeType(): string {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-    "audio/ogg;codecs=opus",
-    "audio/ogg"
-  ];
+  // Android's MediaRecorder can advertise WebM while writing fragmented WebM
+  // chunks with an unreliable duration.  Media3 subsequently treats some of
+  // those recordings as hours long (or completes them immediately). Prefer a
+  // finalized MP4/AAC recording there whenever the WebView supports it.
+  const candidates = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android"
+    ? ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg"]
+    : ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus", "audio/ogg"];
   if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") {
     return "audio/webm";
   }
@@ -79,7 +81,10 @@ export async function startVoiceRecording(): Promise<VoiceRecorderHandle> {
     settle = null;
   });
 
-  recorder.start(250);
+  // Do not request periodic chunks. On Android WebView they are WebM
+  // fragments, and joining them produces malformed/mis-timed metadata. A
+  // single final dataavailable event has a valid end timestamp and duration.
+  recorder.start();
 
   return {
     stop: () =>

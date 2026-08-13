@@ -21,6 +21,24 @@ describe("chat details controls", () => {
   it("edits a chat name inline in its title row", () => {
     expect(chatDetailsPanel).toContain('className="chat-info-title-inline-editor"');
     expect(chatDetailsPanel).not.toContain('id="chat-info-name-editor"');
+    expect(styles).toContain(".chat-info-title-row {");
+    expect(styles).toContain("justify-content: center;");
+    expect(styles).toContain(".chat-info-title-edit {");
+    expect(styles).toContain("inset-inline-end: 0;");
+    expect(styles).toContain("position: absolute;");
+  });
+
+  it("does not show archive or encryption labels in the chat details hero", () => {
+    expect(chatDetailsPanel).not.toContain("Saved messages");
+    expect(chatDetailsPanel).not.toContain("encryptionProtocolLabel");
+  });
+
+  it("slides detail pages and shared-content tabs in the expected direction", () => {
+    expect(chatDetailsPanel).toContain('className={`chat-info-tab-panel chat-info-tab-panel--${tabDirection}`}');
+    expect(chatDetailsPanel).toContain("handleDetailsTabChange(tab)");
+    expect(styles).toContain("@keyframes chat-info-screen-enter");
+    expect(styles).toContain("@keyframes chat-info-tab-enter-from-right");
+    expect(styles).toContain("@keyframes chat-info-tab-enter-from-left");
   });
 
   it("opens a chat settings page from the settings button", () => {

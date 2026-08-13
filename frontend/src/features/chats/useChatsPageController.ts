@@ -352,7 +352,9 @@ export function useChatsPageController({
   });
 
   const visibleError = error && !isSuppressedUserError(error) ? error : null;
-  const isDockedEmojiPicker = isMobileViewport;
+  // Keep the picker in the conversation flow at every viewport size. This lets
+  // the message list shrink above it instead of being covered by a popup.
+  const isDockedEmojiPicker = true;
   const showDockedEmojiPicker = isDockedEmojiPicker && isEmojiPickerOpen;
 
   return {
