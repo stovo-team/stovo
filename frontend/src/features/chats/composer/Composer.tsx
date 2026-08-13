@@ -140,6 +140,15 @@ export function Composer({
   onSubmit: (event: { preventDefault: () => void }) => void;
 }) {
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
+  const mentionMatch = /(?:^|\s)@([\w-]*)$/.exec(composer);
+  const mentionCandidates = mentionMatch && selectedChat
+    ? selectedChat.members.filter((member) => member.username.toLowerCase().startsWith(mentionMatch[1].toLowerCase())).slice(0, 6)
+    : [];
+
+  function insertMention(username: string) {
+    if (!mentionMatch) return;
+    onComposerChange(composer.slice(0, mentionMatch.index) + mentionMatch[0].replace(/@[\w-]*$/, `@${username} `));
+  }
 
   return (
     <form
@@ -282,6 +291,15 @@ export function Composer({
                 }
               }}
             />
+            {mentionCandidates.length > 0 && (
+              <div className="composer-mention-menu" role="listbox" aria-label="Mention a member">
+                {mentionCandidates.map((member) => (
+                  <button type="button" key={member.id} role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => insertMention(member.username)}>
+                    <strong>@{member.username}</strong><span>{member.displayName}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <FormattingToolbar

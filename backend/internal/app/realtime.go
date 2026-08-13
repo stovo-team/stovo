@@ -403,7 +403,7 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 		s.logger.Warnf("realtime", "broker publish failed channel=%s chat_id=%s error=%v", brokerChannelMessages, chatID, err)
 		s.emitMessageNew(chat, message)
 	}
-	go s.notifyMessageRecipients(chatID, chat.Type, chat.Title, user.ID, user.DisplayName, truncatePreview(message.Content))
+	go s.notifyMessageRecipients(chatID, chat.Type, chat.Title, user.ID, user.DisplayName, truncatePreview(message.Content), payload.MentionedUserIDs)
 	return message, nil
 }
 

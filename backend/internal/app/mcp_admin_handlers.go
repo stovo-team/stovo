@@ -152,7 +152,7 @@ func (s *Server) handleCreateMCPConnector(w http.ResponseWriter, r *http.Request
 		s.detail(w, http.StatusInternalServerError, "Could not load created connector")
 		return
 	}
-	mcpURL, command, setupPrompt := s.mcpConnectArtifacts(user.FamilyID, provider, authMode, alias, name, rawToken)
+	mcpURL, command, setupPrompt := s.mcpConnectArtifactsForURL(s.mcpBaseURLForRequest(r), provider, authMode, alias, name, rawToken)
 	s.recordMCPAudit(r.Context(), connector, "connector.create", nil, nil, true, nil, map[string]any{
 		"name":     name,
 		"provider": provider,
@@ -314,7 +314,7 @@ func (s *Server) handleRegenerateMCPConnectorToken(w http.ResponseWriter, r *htt
 		s.detail(w, http.StatusInternalServerError, "Could not load connector")
 		return
 	}
-	mcpURL, command, setupPrompt := s.mcpConnectArtifacts(user.FamilyID, updated.Provider, updated.AuthMode, updated.Alias, updated.Name, rawToken)
+	mcpURL, command, setupPrompt := s.mcpConnectArtifactsForURL(s.mcpBaseURLForRequest(r), updated.Provider, updated.AuthMode, updated.Alias, updated.Name, rawToken)
 	s.recordMCPAudit(r.Context(), updated, "connector.regenerate_token", nil, nil, true, nil, nil)
 	s.json(w, http.StatusOK, mcpConnectorTokenResponse{
 		Connector:     updated.toPublic(),
@@ -391,15 +391,12 @@ func (s *Server) validateMCPAllowedChats(familyID string, chatIDs []string) ([]s
 		if _, ok := seen[chatID]; ok {
 			continue
 		}
-		chatFamilyID, chatType, err := s.store.GetChatFamilyAndType(context.Background(), chatID)
+		chatFamilyID, _, err := s.store.GetChatFamilyAndType(context.Background(), chatID)
 		if err != nil {
 			return nil, fmt.Errorf("chat not found: %s", chatID)
 		}
 		if chatFamilyID != familyID {
 			return nil, fmt.Errorf("chat not found: %s", chatID)
-		}
-		if chatType == "archive" {
-			return nil, fmt.Errorf("archive chats cannot be allowed: %s", chatID)
 		}
 		seen[chatID] = struct{}{}
 		out = append(out, chatID)
@@ -421,11 +418,34 @@ func (s *Server) mcpBaseURL(familyID string) string {
 			base = settings.AppURL
 		}
 	}
-	return strings.TrimRight(base, "/") + "/mcp"
+	return mcpURLForServer(base, s.cfg.ServerID)
+}
+
+func (s *Server) mcpBaseURLForRequest(r *http.Request) string {
+	host := strings.TrimSpace(r.Host)
+	if host == "" {
+		return s.mcpBaseURL("")
+	}
+	scheme := "http"
+	if r.TLS != nil || strings.EqualFold(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")), "https") {
+		scheme = "https"
+	}
+	return mcpURLForServer(scheme+"://"+host, s.cfg.ServerID)
+}
+
+func mcpURLForServer(baseURL, serverID string) string {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if serverID = strings.TrimSpace(serverID); serverID != "" && !strings.Contains(baseURL, "/s/") {
+		baseURL += "/s/" + serverID
+	}
+	return baseURL + "/mcp"
 }
 
 func (s *Server) mcpConnectArtifacts(familyID, provider, authMode, alias, connectorName, rawToken string) (mcpURL, cliCommand, setupPrompt string) {
-	mcpURL = s.mcpBaseURL(familyID)
+	return s.mcpConnectArtifactsForURL(s.mcpBaseURL(familyID), provider, authMode, alias, connectorName, rawToken)
+}
+
+func (s *Server) mcpConnectArtifactsForURL(mcpURL, provider, authMode, alias, connectorName, rawToken string) (string, string, string) {
 	name := strings.TrimSpace(connectorName)
 	if name == "" {
 		name = "stovo"
@@ -436,8 +456,8 @@ func (s *Server) mcpConnectArtifacts(familyID, provider, authMode, alias, connec
 	if authMode == "" {
 		authMode = mcpAuthModeSubscription
 	}
-	cliCommand = mcpCLICommandForProvider(provider, name, mcpURL, rawToken)
-	setupPrompt = mcpSetupPromptForProvider(provider, authMode, alias, name, mcpURL, rawToken)
+	cliCommand := mcpCLICommandForProvider(provider, name, mcpURL, rawToken)
+	setupPrompt := mcpSetupPromptForProvider(provider, authMode, alias, name, mcpURL, rawToken)
 	return mcpURL, cliCommand, setupPrompt
 }
 

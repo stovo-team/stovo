@@ -89,6 +89,15 @@ func TestNormalizeMCPAliasAndAuthMode(t *testing.T) {
 	}
 }
 
+func TestMCPBaseURLUsesCurrentClusterServer(t *testing.T) {
+	if got, want := mcpURLForServer("https://stovo.example", "family-123"), "https://stovo.example/s/family-123/mcp"; got != want {
+		t.Fatalf("mcpURLForServer() = %q, want %q", got, want)
+	}
+	if got, want := mcpURLForServer("https://stovo.example/s/family-123", "family-123"), "https://stovo.example/s/family-123/mcp"; got != want {
+		t.Fatalf("mcpURLForServer() duplicated server route: got %q, want %q", got, want)
+	}
+}
+
 func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 	server, httpServer, client := newTestServer(t)
 	owner := setupOwner(t, client, httpServer.URL, "mcp-auth-owner", "MCP Auth Family")

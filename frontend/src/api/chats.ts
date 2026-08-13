@@ -228,13 +228,14 @@ export function sendMessage(
   fileIds: string[] = [],
   replyToMessageId: string | null = null,
   threadRootMessageId: string | null = null,
-  encryption?: {
+	  encryption?: {
     encryptionProtocol: MessageEncryptionProtocol;
     ciphertext?: string | null;
     nonce?: string | null;
     keyVersion?: number | null;
     encryptionMetadata?: string | null;
-  }
+	  },
+	  mentionedUserIds: string[] = []
 ) {
   return apiRequest<Message>(`/api/chats/${chatId}/messages`, {
     method: "POST",
@@ -245,7 +246,8 @@ export function sendMessage(
       fileIds,
       replyToMessageId,
       threadRootMessageId,
-      ...encryption
+		...encryption,
+		mentionedUserIds
     }
   });
 }
