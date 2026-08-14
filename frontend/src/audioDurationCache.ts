@@ -47,7 +47,23 @@ export function readAudioDurationFromUrl(url: string): Promise<number | null> {
     element.preload = "metadata";
     element.addEventListener("loadedmetadata", () => {
       const duration = element.duration;
-      finish(Number.isFinite(duration) && duration > 0 ? duration : null);
+      // Some WebViews report a container's declared duration (occasionally many
+      // times the playable length) before their seekable range is finalized.
+      // The end of that range is the duration that the user can actually seek to.
+      const seekableEnd = (() => {
+        try {
+          const ranges = element.seekable;
+          return ranges.length > 0 ? ranges.end(ranges.length - 1) : 0;
+        } catch {
+          return 0;
+        }
+      })();
+      const hasSeekableEnd = Number.isFinite(seekableEnd) && seekableEnd > 0;
+      const resolvedDuration =
+        hasSeekableEnd && (!Number.isFinite(duration) || duration <= 0 || seekableEnd < duration)
+          ? seekableEnd
+          : duration;
+      finish(Number.isFinite(resolvedDuration) && resolvedDuration > 0 ? resolvedDuration : null);
     });
     element.addEventListener("error", () => finish(null));
     element.src = url;

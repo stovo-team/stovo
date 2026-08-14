@@ -96,8 +96,10 @@ class MediaLibraryPlugin : Plugin() {
                     })
                 }
             }
-        } catch (_: SecurityException) {
-            // The system file picker remains available when scoped storage does not expose recents.
+        } catch (_: Exception) {
+            // MediaStore implementations vary between Android releases and vendors.
+            // A malformed/stale provider row must not take down the WebView activity;
+            // returning an empty list keeps the system picker available as a fallback.
         }
         call.resolve(JSObject().put("items", items))
     }

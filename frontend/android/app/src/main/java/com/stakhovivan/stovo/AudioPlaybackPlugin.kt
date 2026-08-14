@@ -80,7 +80,10 @@ class AudioPlaybackPlugin : Plugin() {
             putBoolean(AudioPlaybackService.KEY_PLAY_WHEN_READY, false)
         }
         withController(call) {
-            sendCommand(it, AudioPlaybackService.COMMAND_LOAD, args, call, resolveState = false)
+            // Return the initial snapshot too.  Some Android builds do not deliver
+            // the first broadcast to a controller that has only just connected,
+            // which left the in-app player stuck on its optimistic loading state.
+            sendCommand(it, AudioPlaybackService.COMMAND_LOAD, args, call, resolveState = true)
         }
     }
 
