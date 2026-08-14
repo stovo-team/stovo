@@ -12,6 +12,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(NtfyPlugin::class.java)
         registerPlugin(CallPlugin::class.java)
         registerPlugin(AudioPlaybackPlugin::class.java)
+        registerPlugin(VoiceRecordingPlugin::class.java)
         registerPlugin(ShareReceiverPlugin::class.java)
         registerPlugin(AppLockPlugin::class.java)
         registerPlugin(MediaLibraryPlugin::class.java)
