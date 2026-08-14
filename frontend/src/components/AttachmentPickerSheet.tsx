@@ -61,6 +61,10 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
   useEffect(() => {
     if (!open) return;
     resetSheetState();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
     void loadRecentItems(activeTab);
   }, [open, activeTab]);
 
@@ -116,8 +120,8 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
                 })}
               </div>
               {galleryState === "loading" && <p className="attachment-picker-gallery-status">Loading your gallery…</p>}
-              {galleryState === "empty" && <p className="attachment-picker-gallery-status">No photos or videos found on this device.</p>}
-              {galleryState === "error" && <div className="attachment-picker-gallery-status"><p>Allow photo and video access to show your gallery.</p><button type="button" className="attachment-picker-secondary-btn" onClick={() => void loadRecentItems("gallery")}>Try again</button></div>}
+              {galleryState === "empty" && <div className="attachment-picker-gallery-status"><p>No photos or videos found in the in-app gallery.</p><button type="button" className="attachment-picker-secondary-btn" onClick={() => { onPick("gallery"); closeSheet(); }}><ImageIcon size={18} />Choose photos</button></div>}
+              {galleryState === "error" && <div className="attachment-picker-gallery-status"><p>Unable to load the in-app gallery.</p><button type="button" className="attachment-picker-secondary-btn" onClick={() => { onPick("gallery"); closeSheet(); }}><ImageIcon size={18} />Choose photos</button><button type="button" className="attachment-picker-secondary-btn" onClick={() => void loadRecentItems("gallery")}>Try again</button></div>}
               {!isNativeMediaLibraryAvailable() && <button type="button" className="attachment-picker-secondary-btn" onClick={() => { onPick("gallery"); closeSheet(); }}><ImageIcon size={18} />Choose photos</button>}
             </div>
           )}
