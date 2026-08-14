@@ -122,7 +122,8 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 
 	createResp := jsonRequest(t, client, http.MethodPost, httpServer.URL+"/api/admin/mcp-connectors", owner.AccessToken, map[string]any{
 		"name":               "Auth Connector",
-		"provider":           mcpProviderClaudeCode,
+		"provider":           mcpProviderCodex,
+		"alias":              "codex",
 		"allowedChatIds":     []string{chat.ID},
 		"maxHistoryMessages": 10,
 		"permissions": map[string]bool{
@@ -135,17 +136,17 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 		t.Fatalf("create connector status = %d body=%s", createResp.StatusCode, readBody(t, createResp))
 	}
 	created := decodeJSON[mcpConnectorCreateResponse](t, createResp)
-	if created.Token == "" || created.ClaudeCommand == "" || !strings.Contains(created.ClaudeCommand, created.Token) {
-		t.Fatalf("expected one-time token and claude command, got %+v", created)
+	if created.Token == "" || created.CLICommand == "" || !strings.Contains(created.CLICommand, created.Token) {
+		t.Fatalf("expected one-time token and Codex command, got %+v", created)
 	}
 	if created.SetupPrompt == "" || !strings.Contains(created.SetupPrompt, created.MCPURL) {
 		t.Fatalf("expected setup prompt with MCP URL, got %+v", created)
 	}
-	if created.Connector.Provider != mcpProviderClaudeCode {
-		t.Fatalf("provider = %q, want %q", created.Connector.Provider, mcpProviderClaudeCode)
+	if created.Connector.Provider != mcpProviderCodex {
+		t.Fatalf("provider = %q, want %q", created.Connector.Provider, mcpProviderCodex)
 	}
-	if created.Connector.Alias != "claude" {
-		t.Fatalf("alias = %q, want claude", created.Connector.Alias)
+	if created.Connector.Alias != "codex" {
+		t.Fatalf("alias = %q, want codex", created.Connector.Alias)
 	}
 	if created.Connector.AuthMode != mcpAuthModeSubscription {
 		t.Fatalf("authMode = %q, want %q", created.Connector.AuthMode, mcpAuthModeSubscription)
@@ -153,6 +154,25 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 	if created.Connector.Permissions.Has(mcpPermMessagesDelete) {
 		t.Fatal("delete permission should remain disabled by default")
 	}
+
+	t.Run("connector is visible by mention alias", func(t *testing.T) {
+		chatsResp := jsonRequest(t, client, http.MethodGet, httpServer.URL+"/api/chats", owner.AccessToken, nil)
+		if chatsResp.StatusCode != http.StatusOK {
+			t.Fatalf("list chats status = %d body=%s", chatsResp.StatusCode, readBody(t, chatsResp))
+		}
+		chats := decodeJSON[[]chatPublic](t, chatsResp)
+		for _, listed := range chats {
+			if listed.ID != chat.ID {
+				continue
+			}
+			for _, member := range listed.Members {
+				if member.ID == created.Connector.ActorUserID && member.Username == "codex" {
+					return
+				}
+			}
+		}
+		t.Fatal("Codex connector actor was not returned as @codex in allowed chat members")
+	})
 
 	t.Run("invalid token", func(t *testing.T) {
 		status, _ := mcpJSONRPC(t, httpServer.URL, "bad-token", mcpInitializeBody())

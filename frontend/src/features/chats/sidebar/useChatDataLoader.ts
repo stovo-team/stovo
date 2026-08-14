@@ -139,7 +139,9 @@ export function useChatDataLoader({
         const fallbackChat = chatResult.find((chat) => chat.id === currentChatId) ?? null;
         if (fallbackChat) {
           setSelectedChat((current) =>
-            current?.id === fallbackChat.id ? { ...fallbackChat, ...current } : fallbackChat
+            // The server copy owns member data so connector aliases added from
+            // the admin page immediately become available to the mention picker.
+            current?.id === fallbackChat.id ? { ...current, ...fallbackChat } : fallbackChat
           );
         }
       }
@@ -178,7 +180,7 @@ export function useChatDataLoader({
       const fallbackChat = chatsRef.current.find((chat) => chat.id === requestedChatId) ?? null;
       if (fallbackChat) {
         setSelectedChat((current) =>
-          current?.id === fallbackChat.id ? { ...fallbackChat, ...current } : fallbackChat
+          current?.id === fallbackChat.id ? { ...current, ...fallbackChat } : fallbackChat
         );
       }
 
