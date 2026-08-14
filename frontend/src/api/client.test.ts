@@ -58,10 +58,10 @@ describe("getApiUrl", () => {
     expect(getActiveServer()?.name).toBe("Stakhov Family");
   });
 
-  it("registers the routed cluster instead of its root redirector", () => {
+  it("returns the routed cluster without mutating the server registry", () => {
     window.history.replaceState({}, "", "/s/5ae8bb18/app/chats");
 
     expect(getApiUrl()).toBe(`${window.location.origin}/s/5ae8bb18`);
-    expect(getActiveServer()?.url).toBe(`${window.location.origin}/s/5ae8bb18`);
+    expect(getActiveServer()).toBeNull();
   });
 });
