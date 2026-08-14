@@ -54,6 +54,20 @@ class MediaLibraryPlugin : Plugin() {
             return
         }
         val items = JSArray()
+        if (category == "gallery") {
+            try {
+                // Do not query MediaStore.Files for visual media.  On some Android 13+
+                // devices (especially with "selected photos" access) that collection can
+                // legitimately return no rows even though the image and video collections
+                // are readable.  Query the collections that own the permissions instead.
+                appendVisualMedia(items, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, limit)
+                appendVisualMedia(items, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, limit)
+                call.resolve(JSObject().put("items", items))
+            } catch (error: Exception) {
+                call.reject("Unable to read the media library", error)
+            }
+            return
+        }
         val collection = when (category) {
             "audio" -> MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
             "documents" -> MediaStore.Downloads.EXTERNAL_CONTENT_URI
@@ -96,10 +110,9 @@ class MediaLibraryPlugin : Plugin() {
                     })
                 }
             }
-        } catch (_: Exception) {
-            // MediaStore implementations vary between Android releases and vendors.
-            // A malformed/stale provider row must not take down the WebView activity;
-            // returning an empty list keeps the system picker available as a fallback.
+        } catch (error: Exception) {
+            call.reject("Unable to read the media library", error)
+            return
         }
         call.resolve(JSObject().put("items", items))
     }
@@ -114,10 +127,15 @@ class MediaLibraryPlugin : Plugin() {
         }
         val destinationDirectory = File(context.cacheDir, "media-library").apply { mkdirs() }
         for (index in 0 until ids.length()) {
-            val id = ids.optString(index).toLongOrNull() ?: continue
-            val uri = ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), id)
+            val value = ids.optString(index)
+            // Gallery entries use their source collection URI.  Keeping that URI is
+            // essential for Android's partial photo permission, where a generic Files
+            // URI may not be readable for an otherwise permitted photo.
+            val uri = Uri.parse(value).takeIf { it.scheme == "content" && it.authority == "media" }
+                ?: value.toLongOrNull()?.let { ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), it) }
+                ?: continue
             try {
-                val name = displayName(uri) ?: "media-$id"
+                val name = displayName(uri) ?: "media-$index"
                 val mimeType = resolver.getType(uri) ?: "application/octet-stream"
                 val destination = File(destinationDirectory, "${UUID.randomUUID()}-${sanitize(name)}")
                 resolver.openInputStream(uri)?.use { input ->
@@ -133,6 +151,43 @@ class MediaLibraryPlugin : Plugin() {
             }
         }
         call.resolve(JSObject().put("files", files))
+    }
+
+    private fun appendVisualMedia(items: JSArray, collection: Uri, limit: Int) {
+        val resolver = resolver() ?: return
+        val projection = arrayOf(
+            MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.MediaColumns.DURATION
+        )
+        resolver.query(
+            collection,
+            projection,
+            null,
+            null,
+            "${MediaStore.MediaColumns.DATE_ADDED} DESC"
+        )?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
+            val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
+            val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
+            val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DURATION)
+            var count = 0
+            while (count < limit && cursor.moveToNext()) {
+                val id = cursor.getLong(idIndex)
+                val uri = ContentUris.withAppendedId(collection, id)
+                items.put(JSObject().apply {
+                    // The URI, rather than an unscoped numeric id, is stable across the
+                    // image/video collections and can be copied with partial access.
+                    put("id", uri.toString())
+                    put("uri", uri.toString())
+                    put("name", cursor.getString(nameIndex) ?: "media-$id")
+                    put("mimeType", cursor.getString(mimeIndex) ?: "application/octet-stream")
+                    put("durationMs", cursor.getLong(durationIndex).coerceAtLeast(0))
+                })
+                count++
+            }
+        }
     }
 
     private fun displayName(uri: Uri): String? = resolver()?.query(

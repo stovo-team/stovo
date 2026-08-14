@@ -173,6 +173,12 @@ describe("native conversation viewport and presence", () => {
     ).toContain("overflow-y: auto;");
   });
 
+  it("ends the native message scroller above an open docked emoji picker", () => {
+    expect(
+      lastRule(':root[data-platform="native"] .messenger-shell.has-active-chat .messages-panel--emoji-docked')
+    ).toContain("margin-bottom: calc(min(320px, 42vh) + 56px + max(8px, env(safe-area-inset-bottom)));");
+  });
+
   it("uses a status-bar-safe black header gradient and shows typing next to the chat name", () => {
     expect(
       lastRule(':root[data-platform="native"] .messenger-shell.has-active-chat .chat-detail-header--floating::before')

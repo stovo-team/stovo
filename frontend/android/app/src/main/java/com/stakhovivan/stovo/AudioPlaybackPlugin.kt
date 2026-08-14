@@ -338,22 +338,28 @@ class AudioPlaybackPlugin : Plugin() {
         if (fileId.isBlank()) return false
         val uri = Uri.parse(sourceUrl)
         val scheme = uri.scheme?.lowercase()
-        val segments = uri.pathSegments
-        val pathFileId = if (
-            segments.size == 3 &&
-            segments[0] == "api" &&
-            segments[1] == "media"
-        ) {
-            Uri.decode(segments[2])
-        } else {
-            null
-        }
-        // Accept the configured API origin (http/https). Auth is the short-lived playback token.
+        val pathFileId = mediaFileIdFromPath(uri)
+        // The configured API can be either its root or a routed cluster server
+        // (/s/<server>/api). Auth is the short-lived playback token.
         return (scheme == "https" || scheme == "http") &&
             !uri.host.isNullOrBlank() &&
             uri.userInfo == null &&
             uri.query == null &&
             uri.fragment == null &&
             pathFileId == fileId
+    }
+
+    private fun mediaFileIdFromPath(uri: Uri): String? {
+        val segments = uri.pathSegments
+        val fileSegment = when {
+            segments.size == 3 && segments[0] == "api" && segments[1] == "media" -> segments[2]
+            segments.size == 5 &&
+                segments[0] == "s" &&
+                segments[1].isNotBlank() &&
+                segments[2] == "api" &&
+                segments[3] == "media" -> segments[4]
+            else -> return null
+        }
+        return Uri.decode(fileSegment)
     }
 }

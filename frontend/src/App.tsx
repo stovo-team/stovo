@@ -259,9 +259,39 @@ function NativeShareRouter() {
 function ClusterRoutes() {
   const { slug } = useParams();
   const prefix = slug ? `/s/${slug}` : "";
+  const location = useLocation();
+  const previousPathRef = useRef(location.pathname);
+
+  // These are deliberately ordered by their position in the bottom bar.  Do
+  // not use a circular distance here: Chats -> Settings is a forward movement
+  // and Settings -> Chats is a backward movement.
+  const tabIndex = (pathname: string) => {
+    if (pathname.startsWith(`${prefix}/app/chats`) || pathname.startsWith("/app/chats")) return 0;
+    if (pathname.startsWith(`${prefix}/app/files`) || pathname.startsWith("/app/files")) return 1;
+    if (pathname.startsWith(`${prefix}/app/plans`) || pathname.startsWith("/app/plans")) return 2;
+    if (pathname.startsWith(`${prefix}/app/settings`) || pathname.startsWith("/app/settings")) return 3;
+    return null;
+  };
+  const previousIndex = tabIndex(previousPathRef.current);
+  const currentIndex = tabIndex(location.pathname);
+  const routeDirection =
+    previousIndex !== null && currentIndex !== null && previousIndex !== currentIndex
+      ? currentIndex > previousIndex
+        ? "forward"
+        : "back"
+      : "none";
+
+  useEffect(() => {
+    previousPathRef.current = location.pathname;
+  }, [location.pathname]);
 
   return (
-    <Routes>
+    <div
+      key={location.pathname}
+      className={`app-route-layer app-route-layer--${routeDirection}`}
+      aria-live="off"
+    >
+    <Routes location={location}>
       <Route path="/" element={<RootRedirect />} />
       <Route path="/server-setup" element={<ServerSetupPage />} />
       <Route path="/setup" element={<SetupPage />} />
@@ -357,6 +387,7 @@ function ClusterRoutes() {
       />
       <Route path="*" element={<Navigate to={`${prefix}/app/chats`} replace />} />
     </Routes>
+    </div>
   );
 }
 
