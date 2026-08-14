@@ -3,6 +3,7 @@
  */
 
 import { Capacitor } from "@capacitor/core";
+import { isNativeVoiceRecordingAvailable, startNativeVoiceRecording } from "./native/voiceRecordingPlugin";
 
 export type VoiceRecorderHandle = {
   stop: () => Promise<File>;
@@ -30,6 +31,7 @@ function extensionForMime(mimeType: string): string {
 }
 
 export function isVoiceRecordingSupported(): boolean {
+  if (isNativeVoiceRecordingAvailable()) return true;
   return (
     typeof navigator !== "undefined" &&
     Boolean(navigator.mediaDevices?.getUserMedia) &&
@@ -42,6 +44,9 @@ export async function startVoiceRecording(): Promise<VoiceRecorderHandle> {
     throw new Error("Voice recording is not supported on this device");
   }
 
+  if (isNativeVoiceRecordingAvailable()) {
+    return startNativeVoiceRecording();
+  }
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const mimeType = preferredMimeType();
   const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);

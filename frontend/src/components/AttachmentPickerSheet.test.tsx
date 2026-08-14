@@ -22,6 +22,18 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).toContain("attachment-picker-send-btn");
   });
 
+  it("does not reset the selected tab while loading its media", () => {
+    expect(attachmentSheetSource).toMatch(/useEffect\(\(\) => \{[\s\S]*?resetSheetState\(\);[\s\S]*?\}, \[open\]\);/);
+    expect(attachmentSheetSource).toMatch(/useEffect\(\(\) => \{[\s\S]*?loadRecentItems\(activeTab\)[\s\S]*?\}, \[open, activeTab\]\);/);
+  });
+
+  it("falls back to Android's picker when the in-app media query is empty or fails", () => {
+    expect(attachmentSheetSource).toContain('No photos or videos found in the in-app gallery.');
+    expect(attachmentSheetSource).toContain('Unable to load the in-app gallery.');
+    expect(attachmentSheetSource).toMatch(/galleryState === "empty"[\s\S]*?onPick\("gallery"\)/);
+    expect(attachmentSheetSource).toMatch(/galleryState === "error"[\s\S]*?onPick\("gallery"\)/);
+  });
+
   it("defines CSS rules for TG-style attachment sheet, grid layout, floating send button, and bottom nav", () => {
     expect(styles).toContain(".attachment-picker-sheet.tg-style");
     expect(styles).toContain(".attachment-picker-grid");
@@ -29,5 +41,13 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(styles).toContain(".attachment-picker-send-btn");
     expect(styles).toContain(".attachment-picker-bottom-nav");
     expect(styles).toContain(".attachment-nav-item.active");
+  });
+
+  it("keeps the close control circular despite the global button minimum size", () => {
+    const rule = styles.match(/\.attachment-picker-close-btn \{[\s\S]*?\n\}/)?.[0] ?? "";
+    expect(rule).toContain("flex: 0 0 36px;");
+    expect(rule).toContain("min-width: 36px;");
+    expect(rule).toContain("min-height: 36px;");
+    expect(rule).toContain("border-radius: 999px;");
   });
 });
