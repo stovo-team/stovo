@@ -46,4 +46,30 @@ describe("audioDurationCache", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("prefers the playable seekable range over an inflated container duration", async () => {
+    const listeners = new Map<string, EventListener>();
+    const element = {
+      preload: "",
+      duration: 13_200,
+      seekable: { length: 1, end: () => 220 },
+      src: "",
+      addEventListener: (type: string, listener: EventListener) => {
+        listeners.set(type, listener);
+      },
+      removeAttribute: vi.fn(),
+      load: vi.fn(),
+    };
+    function AudioMock(this: typeof element) {
+      Object.assign(this, element);
+      return this;
+    }
+    vi.stubGlobal("Audio", AudioMock as unknown as typeof Audio);
+
+    const pending = readAudioDurationFromUrl("blob:audio-1");
+    listeners.get("loadedmetadata")?.(new Event("loadedmetadata"));
+    await expect(pending).resolves.toBe(220);
+
+    vi.unstubAllGlobals();
+  });
 });

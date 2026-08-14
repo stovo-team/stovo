@@ -4433,17 +4433,16 @@ h2 {
 }
 
 .message-body {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   margin: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
   position: relative;
   white-space: pre-wrap;
-  width: 100%;
 }
 
 .message-bubble p,
 .message-body {
-  flex: 1 1 auto;
   margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
@@ -11418,8 +11417,10 @@ span.message-spoiler.is-revealed {
   }
 
   .messenger-shell.has-active-chat .messages-panel--emoji-docked {
-    padding-bottom: 18px;
-    scroll-padding-bottom: 18px;
+    /* The picker is part of the composer on native screens. Reserve its full
+       footprint so the last sent message never sits underneath it. */
+    padding-bottom: min(320px, 42vh);
+    scroll-padding-bottom: min(320px, 42vh);
   }
 
   .messenger-shell.has-active-chat .message-composer {
@@ -11492,6 +11493,8 @@ span.message-spoiler.is-revealed {
   .messenger-shell.has-active-chat .message-composer--emoji-docked .emoji-picker-dock {
     margin-inline: calc(-1 * (var(--mobile-edge-inset-x) + 8px));
     width: calc(100% + (var(--mobile-edge-inset-x) + 8px) * 2);
+    position: relative;
+    z-index: 2;
   }
 
   .messenger-shell.has-active-chat .emoji-picker--docked {

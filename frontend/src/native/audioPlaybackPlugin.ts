@@ -24,7 +24,7 @@ export type AudioPlaybackPluginState = NativeAudioPlaybackState;
 
 export interface AudioPlaybackPluginNative {
   getState(): Promise<unknown>;
-  load(options: AudioPlaybackPluginLoadOptions): Promise<void>;
+  load(options: AudioPlaybackPluginLoadOptions): Promise<unknown>;
   play(): Promise<void>;
   pause(): Promise<void>;
   seek(options: { position: number }): Promise<void>;
@@ -201,7 +201,7 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
       return;
     }
     try {
-      await this.plugin.load({
+      const initialState = await this.plugin.load({
         chatId: descriptor.identity.chatId,
         messageId: descriptor.identity.messageId,
         fileId: descriptor.identity.fileId,
@@ -209,6 +209,9 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
         token: source.token,
         startPosition: Math.max(0, position),
       });
+      // Do not depend solely on a MediaSession custom-command broadcast: the
+      // first one can be missed while Android establishes a new controller.
+      this.accept(initialState);
     } catch {
       this.publishUnavailable("android");
     }
