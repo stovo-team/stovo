@@ -326,11 +326,18 @@ func (s *Store) GetLastMessagePreview(ctx context.Context, chatID string) (*Last
 	return preview, nil
 }
 
-// ListActiveChatMemberUsers returns active users who are members of the chat.
+// ListActiveChatMemberUsers returns regular active users and MCP connector actors
+// who are members of the chat. Connector actors cannot sign in, so they remain
+// inactive while still needing to be visible to people who can mention them.
 func (s *Store) ListActiveChatMemberUsers(ctx context.Context, chatID string) ([]*ent.User, error) {
 	return s.Client.User.Query().
 		Where(
-			user.IsActiveEQ(1),
+			predicate.User(func(sel *sql.Selector) {
+				sel.Where(sql.Or(
+					sql.EQ(sel.C(user.FieldIsActive), 1),
+					sql.EQ(sel.C(user.FieldRole), "connector"),
+				))
+			}),
 			predicate.User(func(sel *sql.Selector) {
 				cm := sql.Table(chatmember.Table)
 				sel.Join(cm).On(sel.C(user.FieldID), cm.C(chatmember.FieldUserID))

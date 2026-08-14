@@ -1662,6 +1662,35 @@ h2 {
   min-height: 100dvh;
 }
 
+/* Bottom-bar screens move like a linear carousel on Android.  The direction
+   comes from the fixed tab order, so jumping between the first and last tab
+   never wraps around. */
+:root[data-platform="native"] .app-route-layer--forward,
+:root[data-platform="native"] .app-route-layer--back {
+  animation-duration: 340ms;
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 0.82, 0.24, 1);
+  will-change: opacity, transform;
+}
+
+:root[data-platform="native"] .app-route-layer--forward {
+  animation-name: app-tab-carousel-forward;
+}
+
+:root[data-platform="native"] .app-route-layer--back {
+  animation-name: app-tab-carousel-back;
+}
+
+@keyframes app-tab-carousel-forward {
+  from { opacity: 0.72; transform: translate3d(14%, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes app-tab-carousel-back {
+  from { opacity: 0.72; transform: translate3d(-14%, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
 .auth-panel {
   background: #151b26;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -9774,22 +9803,26 @@ span.message-spoiler.is-revealed {
 .image-lightbox-download,
 .image-lightbox-share {
   align-items: center;
-  background: color-mix(in oklab, #ffffff 10%, transparent);
-  border: none;
-  border-radius: 50%;
+  /* Keep the action affordance circular in Android WebView as well as desktop. */
+  background: color-mix(in oklab, #000000 48%, transparent);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
   color: #ffffff;
   cursor: pointer;
   display: inline-flex;
-  height: 36px;
+  flex: 0 0 44px;
+  height: 44px;
   justify-content: center;
+  min-height: 44px;
   padding: 0;
-  width: 36px;
+  touch-action: manipulation;
+  width: 44px;
   transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .image-lightbox-download:hover,
 .image-lightbox-share:hover {
-  background: color-mix(in oklab, #ffffff 20%, transparent);
+  background: color-mix(in oklab, #ffffff 22%, #000000 38%);
 }
 
 .image-lightbox-download:active,
@@ -13174,17 +13207,17 @@ span.message-spoiler.is-revealed {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  animation: chat-info-screen-enter 320ms var(--motion-route-ease) both;
+  animation: chat-info-screen-enter 420ms cubic-bezier(0.22, 0.82, 0.24, 1) both;
 }
 
 @keyframes chat-info-screen-enter {
   from {
-    opacity: 0;
-    transform: translateX(28px);
+    opacity: 0.01;
+    transform: translate3d(18px, 0, 0);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
@@ -15565,6 +15598,15 @@ span.message-spoiler.is-revealed {
     margin-top: 0;
     padding-bottom: 72px;
     scroll-padding-bottom: 72px;
+  }
+
+  /* The composer is absolutely positioned. When its docked picker is open,
+     remove that whole footprint from the message scroller so messages stop
+     above the picker instead of continuing behind it. */
+  :root[data-platform="native"] .messenger-shell.has-active-chat .messages-panel--emoji-docked {
+    margin-bottom: calc(min(320px, 42vh) + 56px + max(8px, env(safe-area-inset-bottom)));
+    padding-bottom: 10px;
+    scroll-padding-bottom: 10px;
   }
 
   :root[data-platform="native"] .messenger-shell.has-active-chat .message-composer {

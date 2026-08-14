@@ -29,6 +29,17 @@ func (s *Store) GetMCPConnectorByID(ctx context.Context, familyID, connectorID s
 		Only(ctx)
 }
 
+// MCPConnectorAliasForActor returns the configured mention alias for an actor.
+func (s *Store) MCPConnectorAliasForActor(ctx context.Context, actorUserID string) (string, error) {
+	connector, err := s.Client.McpConnector.Query().
+		Where(mcpconnector.ActorUserIDEQ(actorUserID), mcpconnector.RevokedAtIsNil()).
+		Only(ctx)
+	if err != nil {
+		return "", err
+	}
+	return connector.Alias, nil
+}
+
 // ListMCPConnectors returns connectors for a family ordered by created_at desc.
 func (s *Store) ListMCPConnectors(ctx context.Context, familyID string) ([]*ent.McpConnector, error) {
 	return s.Client.McpConnector.Query().

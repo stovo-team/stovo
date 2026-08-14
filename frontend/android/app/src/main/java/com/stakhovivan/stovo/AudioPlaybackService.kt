@@ -455,23 +455,29 @@ class AudioPlaybackService : MediaSessionService() {
     private fun isExactMediaUrl(uri: Uri, fileId: String?): Boolean {
         if (fileId.isNullOrBlank()) return false
         val scheme = uri.scheme?.lowercase()
-        val segments = uri.pathSegments
-        val pathFileId = if (
-            segments.size == 3 &&
-            segments[0] == "api" &&
-            segments[1] == "media"
-        ) {
-            Uri.decode(segments[2])
-        } else {
-            null
-        }
-        // Path-shaped media URLs from the configured API origin; credential is the playback token.
+        val pathFileId = mediaFileIdFromPath(uri)
+        // The configured API can have an optional /s/<server> routing prefix;
+        // credential is the playback token.
         return (scheme == "https" || scheme == "http") &&
             !uri.host.isNullOrBlank() &&
             uri.userInfo == null &&
             uri.query == null &&
             uri.fragment == null &&
             pathFileId == fileId
+    }
+
+    private fun mediaFileIdFromPath(uri: Uri): String? {
+        val segments = uri.pathSegments
+        val fileSegment = when {
+            segments.size == 3 && segments[0] == "api" && segments[1] == "media" -> segments[2]
+            segments.size == 5 &&
+                segments[0] == "s" &&
+                segments[1].isNotBlank() &&
+                segments[2] == "api" &&
+                segments[3] == "media" -> segments[4]
+            else -> return null
+        }
+        return Uri.decode(fileSegment)
     }
 
     private fun mapPlaybackError(error: PlaybackException): AudioPlaybackErrorCode =
