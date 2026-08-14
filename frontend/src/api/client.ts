@@ -100,9 +100,9 @@ export function getApiUrl(): string {
     if (match && !Capacitor.isNativePlatform()) {
       const slug = match[1];
       const clusterUrl = `${window.location.origin}/s/${slug}`;
-      // A /s/<slug> URL is the actual server.  Register it rather than the
-      // root host, which is only the orchestrator/redirector.
-      setApiUrlOverride(clusterUrl);
+      // A /s/<slug> URL is the actual server. Keep this lookup pure: this
+      // function is called while React renders, and updating the registry
+      // here emits a change event that causes an infinite render loop.
       return clusterUrl;
     }
   }
