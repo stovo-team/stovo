@@ -261,6 +261,11 @@ function ClusterRoutes() {
   const prefix = slug ? `/s/${slug}` : "";
   const location = useLocation();
   const previousPathRef = useRef(location.pathname);
+  // A transformed ancestor becomes the containing block for `position: fixed`
+  // in Android WebView.  The tab-transition class must therefore exist only
+  // while its animation is actually playing; leaving it on the route layer
+  // makes the bottom navigation scroll away with the page.
+  const [motionFinishedForPath, setMotionFinishedForPath] = useState<string | null>(null);
 
   // These are deliberately ordered by their position in the bottom bar.  Do
   // not use a circular distance here: Chats -> Settings is a forward movement
@@ -285,11 +290,21 @@ function ClusterRoutes() {
     previousPathRef.current = location.pathname;
   }, [location.pathname]);
 
+  const routeMotionClass =
+    routeDirection !== "none" && motionFinishedForPath !== location.pathname
+      ? ` app-route-layer--${routeDirection}`
+      : "";
+
   return (
     <div
       key={location.pathname}
-      className={`app-route-layer app-route-layer--${routeDirection}`}
+      className={`app-route-layer${routeMotionClass}`}
       aria-live="off"
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) {
+          setMotionFinishedForPath(location.pathname);
+        }
+      }}
     >
     <Routes location={location}>
       <Route path="/" element={<RootRedirect />} />

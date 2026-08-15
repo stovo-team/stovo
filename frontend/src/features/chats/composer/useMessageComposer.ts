@@ -479,10 +479,10 @@ export function useMessageComposer({
     setEditTargetMessage(null);
   }
 
-  async function handleSendMessage(event?: { preventDefault?: () => void }, attachmentOverride?: PendingLocalAttachment[]) {
+  async function handleSendMessage(event?: { preventDefault?: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) {
     event?.preventDefault?.();
     if (sendInFlightRef.current) return;
-    const content = composer.trim();
+    const content = (contentOverride ?? composer).trim();
     const localAttachments = attachmentOverride ?? pendingAttachments;
     if (!accessToken || !currentUser || !selectedChat || (!content && localAttachments.length === 0)) {
       return;

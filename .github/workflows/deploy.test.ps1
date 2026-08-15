@@ -34,6 +34,7 @@ if ($workflow -notmatch 'Refusing to redeploy.*MinIO bucket' -or
 
 if ($workflow -notmatch 'active_file_count=' -or
     $workflow -notmatch 'object_count=' -or
-    $workflow -notmatch 'MinIO has \$object_count objects but the database has \$active_file_count active files') {
-    throw "Deployment must refuse a tenant rollout when MinIO objects are missing."
+    $workflow -notmatch 'WARNING: MinIO has \$object_count objects but the database has \$active_file_count active files' -or
+    $workflow -notmatch 'Deploying backend; restore or reconcile missing media separately') {
+    throw "Deployment must warn about a MinIO/database mismatch while allowing a backend rollout."
 }
