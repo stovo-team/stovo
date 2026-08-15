@@ -161,6 +161,7 @@ export function AudioPlayer({
   // Optimistic chrome so the control reacts on tap even if the native bridge
   // briefly lags (or used to drop playing snapshots entirely).
   const [playIntent, setPlayIntent] = useState(false);
+  const [startDiagnostic, setStartDiagnostic] = useState<string | null>(null);
   const [knownDuration, setKnownDuration] = useState(
     () => getCachedAudioDuration(descriptor.identity.fileId) ?? 0,
   );
@@ -195,6 +196,26 @@ export function AudioPlayer({
       setPlayIntent(false);
     }
   }, [snapshot, snapshot?.status]);
+
+  // Native Media3 can remain in a loading state without surfacing a WebView
+  // exception. Do not leave that indistinguishable from a successful start.
+  useEffect(() => {
+    setStartDiagnostic(null);
+    if (
+      !playIntent ||
+      snapshot?.platform !== "android" ||
+      (snapshot.status !== "loading" && snapshot.status !== "buffering")
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const error = snapshot.error ?? "none";
+      setStartDiagnostic(
+        `Android playback did not start (state: ${snapshot.status}, position: ${Math.floor(snapshot.position)}s, duration: ${Math.floor(snapshot.duration)}s, error: ${error}).`,
+      );
+    }, 6_000);
+    return () => window.clearTimeout(timer);
+  }, [playIntent, snapshot?.duration, snapshot?.error, snapshot?.platform, snapshot?.position, snapshot?.status]);
 
   useEffect(() => {
     const sessionDuration = snapshot?.duration ?? 0;
@@ -473,6 +494,12 @@ export function AudioPlayer({
               Retry
             </button>
           )}
+        </div>
+      )}
+      {startDiagnostic && (
+        <div className="audio-player-error" role="alert" data-control="start-diagnostic">
+          <AlertCircle size={14} aria-hidden="true" />
+          {startDiagnostic}
         </div>
       )}
     </article>

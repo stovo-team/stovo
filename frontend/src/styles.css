@@ -11368,7 +11368,10 @@ span.message-spoiler.is-revealed {
     min-height: 0;
     opacity: 1;
     pointer-events: auto;
-    transform: translateX(0);
+    /* A transformed ancestor corrupts Android WebView's native text-selection
+       handles, leaving black tiles around the cursor. Keep the resting chat
+       surface untransformed; the hidden list state still supplies the slide. */
+    transform: none;
     visibility: visible;
   }
 

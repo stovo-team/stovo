@@ -275,10 +275,14 @@ func (s *Store) CreateMessageBundle(ctx context.Context, p CreateMessageBundlePa
 			return err
 		}
 		for _, fileID := range p.AttachmentFileIDs {
-			if _, err := tx.MessageAttachment.Create().
+			if err := tx.MessageAttachment.Create().
 				SetID(p.MessageID).
 				SetFileID(fileID).
-				Save(ctx); err != nil {
+				// File associations are a set, not a list. Keep message creation
+				// idempotent if a client supplies a repeated attachment ID.
+				OnConflictColumns(messageattachment.FieldID, messageattachment.FieldFileID).
+				DoNothing().
+				Exec(ctx); err != nil {
 				return err
 			}
 		}
@@ -292,6 +296,24 @@ func (s *Store) CreateMessageBundle(ctx context.Context, p CreateMessageBundlePa
 				SetStatus("delivered").
 				SetCreatedAt(p.CreatedAt).
 				OnConflictColumns(messagestatus.FieldID, messagestatus.FieldUserID, messagestatus.FieldStatus).
+				DoNothing().
+				Exec(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// AddMessageAttachments associates uploaded files with an existing message. It
+// is deliberately idempotent so a client can safely retry a background upload.
+func (s *Store) AddMessageAttachments(ctx context.Context, messageID string, fileIDs []string) error {
+	return s.WithTx(ctx, func(tx *ent.Tx) error {
+		for _, fileID := range fileIDs {
+			if err := tx.MessageAttachment.Create().
+				SetID(messageID).
+				SetFileID(fileID).
+				OnConflictColumns(messageattachment.FieldID, messageattachment.FieldFileID).
 				DoNothing().
 				Exec(ctx); err != nil {
 				return err
