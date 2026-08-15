@@ -1,5 +1,5 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
-import { Check, Phone, Video } from "lucide-react";
+import { Check, Clock3, Phone, Video } from "lucide-react";
 
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
 import type { Chat } from "../../../api/chats";
@@ -148,21 +148,26 @@ export function MessageBubble({
     <span className="message-meta">
       {messageDeliveryLabel(message, mine)}
       {receiptState && (
+        receiptState === "sent" ? (
+          <Clock3
+            aria-label="message queued for delivery"
+            className="message-receipt message-receipt--sent"
+            role="img"
+            size={14}
+          />
+        ) : (
         <svg
           aria-label={`${receiptState} message`}
           className={`message-receipt message-receipt--${receiptState}`}
           role="img"
           viewBox="0 0 24 24"
         >
-          {receiptState === "sent" ? (
-            <path d="m4 12 4 4L20 5" />
-          ) : (
-            <>
-              <path d="m2 12 4 4 9-10" />
-              <path d="m9 12 4 4 9-10" />
-            </>
-          )}
+          <>
+            <path d="m2 12 4 4 9-10" />
+            <path d="m9 12 4 4 9-10" />
+          </>
         </svg>
+        )
       )}
     </span>
   );

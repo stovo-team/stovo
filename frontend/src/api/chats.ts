@@ -235,7 +235,8 @@ export function sendMessage(
     keyVersion?: number | null;
     encryptionMetadata?: string | null;
 	  },
-	  mentionedUserIds: string[] = []
+	  mentionedUserIds: string[] = [],
+	  attachmentsPending = false
 ) {
   return apiRequest<Message>(`/api/chats/${chatId}/messages`, {
     method: "POST",
@@ -250,8 +251,17 @@ export function sendMessage(
       replyToMessageId,
       threadRootMessageId,
 		...encryption,
-		mentionedUserIds
+		mentionedUserIds,
+		attachmentsPending
     }
+  });
+}
+
+export function attachMessageFiles(accessToken: string, messageId: string, fileIds: string[]) {
+  return apiRequest<Message>(`/api/messages/${messageId}/attachments`, {
+    method: "POST",
+    accessToken,
+    body: { fileIds: [...new Set(fileIds)] }
   });
 }
 

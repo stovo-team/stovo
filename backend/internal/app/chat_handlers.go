@@ -35,6 +35,42 @@ func (s *Server) handleGetChats(w http.ResponseWriter, _ *http.Request, user use
 	s.json(w, http.StatusOK, chats)
 }
 
+// handleAttachMessageFiles finishes an attachment upload after the message has
+// already been accepted. This keeps message submission independent from slow
+// media transfers.
+func (s *Server) handleAttachMessageFiles(w http.ResponseWriter, r *http.Request, user userPublic) {
+	var payload attachMessageFilesRequest
+	if err := s.decodeJSON(r, &payload); err != nil || len(payload.FileIDs) == 0 {
+		s.detail(w, http.StatusUnprocessableEntity, "fileIds are required")
+		return
+	}
+	meta, err := s.store.GetActiveMessageMeta(r.Context(), messageIDFromURL(r))
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	if meta.SenderID != user.ID {
+		s.detail(w, http.StatusForbidden, "Only the sender can attach files")
+		return
+	}
+	if _, err := s.loadAttachmentsForMessage(payload.FileIDs, user, meta.ChatID); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if err := s.store.AddMessageAttachments(r.Context(), meta.ID, uniqueAttachmentFileIDs(payload.FileIDs)); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not attach files")
+		return
+	}
+	message, err := s.buildMessage(meta.ID, user.ID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load message")
+		return
+	}
+	s.emitMessageUpdated(meta.ChatID, message)
+	s.bumpChatHistoryRevision(r.Context(), meta.ChatID)
+	s.json(w, http.StatusOK, message)
+}
+
 func (s *Server) handleGetChat(w http.ResponseWriter, r *http.Request, user userPublic) {
 	chat, err := s.buildChatPublic(chatIDFromURL(r), user)
 	if err != nil {

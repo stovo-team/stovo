@@ -14,8 +14,7 @@ import { EmojiClickData } from "emoji-picker-react";
 import { Capacitor } from "@capacitor/core";
 import type { Socket } from "socket.io-client";
 
-import { Chat, Message, editMessage, sendMessage } from "../../../api/chats";
-import type { FamilyFile } from "../../../api/files";
+import { Chat, Message, attachMessageFiles, editMessage, sendMessage } from "../../../api/chats";
 import { ApiError } from "../../../api/client";
 import { decryptMessage } from "../../../api/messageCrypto";
 import { encryptMessageContent } from "../../../api/messageCrypto";
@@ -522,14 +521,10 @@ export function useMessageComposer({
     try {
       sendInFlightRef.current = true;
       setIsSendingMessage(true);
-      setIsUploading(localAttachments.length > 0);
-      onError(null);
-
-      const uploadedAttachments: FamilyFile[] = [];
-      for (const pending of localAttachments) {
-        uploadedAttachments.push(await uploadFile(accessToken, pending.file, selectedChat.id));
-      }
+      // Sending is intentionally independent of attachment transfer. Clear the
+      // composer and enqueue the message first; uploads finish in the background.
       setIsUploading(false);
+      onError(null);
 
       clearComposerFormattingSelection();
       setComposer("");
@@ -550,7 +545,7 @@ export function useMessageComposer({
         chatId: selectedChat.id,
         senderId: currentUser.id,
         senderDisplayName: currentUser.displayName,
-        type: inferOptimisticMessageType(uploadedAttachments, draftContent || null),
+        type: localAttachments.length ? "mixed" : inferOptimisticMessageType([], draftContent || null),
         content: draftContent || null,
         encryptionProtocol: selectedChat.encryptionProtocol,
         ciphertext: null,
@@ -567,7 +562,7 @@ export function useMessageComposer({
         forwardedFrom: null,
         statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
         reactions: [],
-        attachments: uploadedAttachments,
+        attachments: [],
         clientMessageId,
         deliveryState: "sending"
       };
@@ -588,16 +583,35 @@ export function useMessageComposer({
         accessToken,
         selectedChat.id,
         encrypted.content,
-        uploadedAttachments.map((file) => file.id),
+        [],
         replyToMessageId,
         threadRootForSend,
-		encrypted.encryption,
-		mentionedUserIds
+        encrypted.encryption,
+		mentionedUserIds,
+		localAttachments.length > 0
       );
       const displayMessage = await decryptMessage(selectedChat.id, message, currentUser.id);
       applyMessagesForChat(selectedChat.id, (current) =>
         mergeIncomingMessage(current, { ...displayMessage, clientMessageId })
       );
+      if (localAttachments.length > 0) {
+        void (async () => {
+          try {
+            const uploadedAttachments = await Promise.all(
+              localAttachments.map((pending) => uploadFile(accessToken, pending.file, selectedChat.id))
+            );
+            const updated = await attachMessageFiles(
+              accessToken,
+              message.id,
+              uploadedAttachments.map((file) => file.id)
+            );
+            const displayUpdated = await decryptMessage(selectedChat.id, updated, currentUser.id);
+            applyMessagesForChat(selectedChat.id, (current) => replaceMessage(current, displayUpdated));
+          } catch (uploadErr) {
+            onError(uploadErr instanceof ApiError ? String(uploadErr.message) : "Attachment upload failed");
+          }
+        })();
+      }
     } catch (err) {
       applyMessagesForChat(selectedChat.id, (current) => {
         const hasOptimistic = current.some(

@@ -323,7 +323,7 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	if err != nil {
 		return messagePublic{}, err
 	}
-	if content == nil && ciphertext == nil && len(payload.FileIDs) == 0 {
+	if content == nil && ciphertext == nil && len(payload.FileIDs) == 0 && !payload.AttachmentsPending {
 		return messagePublic{}, errBadRequest
 	}
 	attachments, err := s.loadAttachmentsForMessage(payload.FileIDs, user, chatID)
@@ -333,6 +333,9 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	messageType := payload.Type
 	if messageType == "" {
 		messageType = chooseMessageType(content, attachments)
+		if payload.AttachmentsPending && len(attachments) == 0 {
+			messageType = "mixed"
+		}
 	}
 	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" {
 		return messagePublic{}, errBadRequest
@@ -393,16 +396,22 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	}
 	message.ClientMessageID = clientMessageID
 	s.bumpChatHistoryRevision(ctx, chatID)
-	if err := s.broker.Publish(context.Background(), brokerChannelMessages, broker.BrokerEvent{
+	brokerEvent := broker.BrokerEvent{
 		"event_id":   uuid.NewString(),
 		"type":       "message.created",
 		"chat_id":    chatID,
 		"message_id": message.ID,
 		"payload":    toMap(message),
-	}); err != nil {
-		s.logger.Warnf("realtime", "broker publish failed channel=%s chat_id=%s error=%v", brokerChannelMessages, chatID, err)
-		s.emitMessageNew(chat, message)
 	}
+	// Redis fan-out is deliberately off the request path. Once the message is
+	// durable, the sender is acknowledged; delivery is then best-effort and
+	// tracked separately by receipt statuses.
+	go func() {
+		if err := s.broker.Publish(context.Background(), brokerChannelMessages, brokerEvent); err != nil {
+			s.logger.Warnf("realtime", "broker publish failed channel=%s chat_id=%s error=%v", brokerChannelMessages, chatID, err)
+			s.emitMessageNew(chat, message)
+		}
+	}()
 	go s.notifyMessageRecipients(chatID, chat.Type, chat.Title, user.ID, user.DisplayName, truncatePreview(message.Content), payload.MentionedUserIDs)
 	return message, nil
 }
