@@ -252,7 +252,9 @@ export function sendMessage(
       threadRootMessageId,
 		...encryption,
 		mentionedUserIds,
-		attachmentsPending
+		// Omit the flag for normal messages so clients remain compatible with a
+		// server that has not yet rolled out background attachments.
+		...(attachmentsPending ? { attachmentsPending: true } : {})
     }
   });
 }

@@ -15,11 +15,13 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).not.toContain("SAMPLE_GALLERY_ITEMS");
   });
 
-  it("resets selection and keeps a multi-select add CTA for every attachment type", () => {
+  it("returns selected files to the normal composer instead of sending them", () => {
     expect(attachmentSheetSource).toContain("resetSheetState");
     expect(attachmentSheetSource).toContain("selectedCount > 0 && <div className=\"attachment-picker-floating-bar\"");
     expect(attachmentSheetSource).toContain("media-tile-checkbox");
     expect(attachmentSheetSource).toContain("attachment-picker-send-btn");
+    expect(attachmentSheetSource).toContain("Continue to message");
+    expect(attachmentSheetSource).toContain("handleComposeWithSelected");
   });
 
   it("uses cached media immediately and refreshes the device library for new captures", () => {

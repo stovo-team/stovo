@@ -22,6 +22,7 @@ export type ConversationPanelProps = {
   accessToken: string | null;
   currentUser: User | null;
   selectedChat: Chat | null;
+  activeChatId?: string;
   chats: Chat[];
   memberLookup: Map<string, { displayName: string; username?: string }>;
   isChatLoading: boolean;
@@ -59,6 +60,7 @@ export function ConversationPanel({
   accessToken,
   currentUser,
   selectedChat,
+  activeChatId,
   chats,
   memberLookup,
   isChatLoading,
@@ -212,6 +214,31 @@ export function ConversationPanel({
   const [pendingBulkForward, setPendingBulkForward] = useState<Message[]>([]);
 
   if (!selectedChat) {
+    if (activeChatId) {
+      return (
+        <div className="chat-loading-surface" aria-busy="true" aria-label="Loading chat">
+          <div className="chat-loading-header">
+            <span className="skeleton-avatar" />
+            <span className="chat-list-copy">
+              <span className="skeleton-line wide" />
+              <span className="skeleton-line" />
+            </span>
+          </div>
+          <div className="messages-panel messages-panel--loading">
+            <div className="message-list skeleton-message-list">
+              <div className="chat-message-row message-incoming skeleton-message-row">
+                <span className="skeleton-avatar" />
+                <div className="message-bubble skeleton-bubble wide"><span className="skeleton-line wide" /></div>
+              </div>
+              <div className="chat-message-row message-outgoing skeleton-message-row">
+                <div className="message-bubble skeleton-bubble medium"><span className="skeleton-line" /></div>
+              </div>
+            </div>
+          </div>
+          <div className="chat-loading-composer"><span className="skeleton-line wide" /></div>
+        </div>
+      );
+    }
     return (
       <div className="chat-empty-state-wrapper">
         <div className="chat-empty-state-card">

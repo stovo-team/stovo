@@ -136,6 +136,7 @@ export default function ChatsPage() {
               accessToken={accessToken}
               currentUser={currentUser}
               selectedChat={selectedChat}
+              activeChatId={chatId}
               chats={chats}
               memberLookup={memberLookup}
               isChatLoading={isChatLoading}
