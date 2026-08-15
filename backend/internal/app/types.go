@@ -391,6 +391,11 @@ type sendMessageRequest struct {
 	KeyVersion          *int     `json:"keyVersion"`
 	EncryptionMetadata  *string  `json:"encryptionMetadata"`
 	MentionedUserIDs    []string `json:"mentionedUserIds"`
+	AttachmentsPending  bool     `json:"attachmentsPending"`
+}
+
+type attachMessageFilesRequest struct {
+	FileIDs []string `json:"fileIds"`
 }
 
 type forwardMessageRequest struct {
