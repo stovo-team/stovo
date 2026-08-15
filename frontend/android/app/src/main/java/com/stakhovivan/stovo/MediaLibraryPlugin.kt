@@ -3,9 +3,11 @@ package com.stakhovivan.stovo
 import android.Manifest
 import android.content.ContentUris
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Build
 import android.net.Uri
 import android.provider.MediaStore
+import android.util.Size
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
@@ -184,6 +186,7 @@ class MediaLibraryPlugin : Plugin() {
                     put("name", cursor.getString(nameIndex) ?: "media-$id")
                     put("mimeType", cursor.getString(mimeIndex) ?: "application/octet-stream")
                     put("durationMs", cursor.getLong(durationIndex).coerceAtLeast(0))
+                    createPreview(uri)?.let { put("thumbnailPath", it) }
                 })
                 count++
             }
@@ -198,6 +201,21 @@ class MediaLibraryPlugin : Plugin() {
         null
     )?.use { cursor ->
         if (cursor.moveToFirst()) cursor.getString(0)?.takeIf { it.isNotBlank() } else null
+    }
+
+    /** Exports a small preview because the WebView cannot render content:// URIs. */
+    private fun createPreview(uri: Uri): String? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val resolver = resolver() ?: return null
+        return try {
+            val bitmap = resolver.loadThumbnail(uri, Size(320, 320), null)
+            val directory = File(context.cacheDir, "media-library-previews").apply { mkdirs() }
+            val destination = File(directory, "${uri.toString().hashCode().toUInt().toString(16)}.jpg")
+            destination.outputStream().use { output -> bitmap.compress(Bitmap.CompressFormat.JPEG, 82, output) }
+            Uri.fromFile(destination).toString()
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun resolver() = (activity ?: bridge?.activity)?.contentResolver
