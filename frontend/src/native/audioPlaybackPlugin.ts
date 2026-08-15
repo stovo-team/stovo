@@ -26,7 +26,8 @@ export type AudioPlaybackPluginState = NativeAudioPlaybackState;
 export interface AudioPlaybackPluginNative {
   getState(): Promise<unknown>;
   load(options: AudioPlaybackPluginLoadOptions): Promise<unknown>;
-  play(): Promise<void>;
+  /** Returns the service snapshot so playback start does not rely on a broadcast. */
+  play(): Promise<unknown>;
   pause(): Promise<void>;
   seek(options: { position: number }): Promise<void>;
   clear(): Promise<void>;
@@ -220,7 +221,19 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
   }
 
   async play(): Promise<void> {
-    await this.command(() => this.plugin.play());
+    if (!this.isAvailable()) {
+      this.publishUnavailable("unavailable");
+      return;
+    }
+    await this.connect();
+    try {
+      // A freshly connected MediaController can miss its first custom-command
+      // broadcast. Accept the command result as the authoritative immediate
+      // state, then continue receiving subsequent listener updates.
+      this.accept(await this.plugin.play());
+    } catch {
+      this.publishUnavailable("android");
+    }
   }
 
   async pause(): Promise<void> {

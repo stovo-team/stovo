@@ -137,7 +137,7 @@ export function Composer({
   onVoicePressStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onVoicePressEnd: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onVoicePressCancel: (event: ReactPointerEvent<HTMLButtonElement>) => void;
-  onSubmit: (event: { preventDefault: () => void }) => void;
+  onSubmit: (event: { preventDefault: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) => void;
 }) {
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
   const mentionMatch = /(?:^|\s)@([\w-]*)$/.exec(composer);
@@ -228,6 +228,14 @@ export function Composer({
             // The picker only stages attachments. Focus the ordinary composer
             // once it closes so the next action is writing the message/caption.
             requestAnimationFrame(() => composerInputRef.current?.focus());
+          }}
+          onSendSelectedFiles={(files, message) => {
+            const attachments = files.map((file) => ({
+              localId: `local:${crypto.randomUUID()}`,
+              file,
+              previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null
+            }));
+            onSubmit({ preventDefault: () => undefined }, attachments, message);
           }}
         />
         <div className="emoji-picker-shell" ref={emojiPickerRef}>

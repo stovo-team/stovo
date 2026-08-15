@@ -133,6 +133,23 @@ describe("native audio playback plugin", () => {
     );
   });
 
+  it("accepts the play command snapshot when the controller misses its broadcast", async () => {
+    const backend = new NativeAudioPlaybackBackend();
+    await backend.load(descriptor, source, 0);
+    nativePlugin.play.mockResolvedValue(
+      nativeState({ revision: 8, status: "buffering", playWhenReady: true }),
+    );
+
+    await backend.play();
+
+    expect(backend.getSnapshot()).toMatchObject({
+      revision: 8,
+      status: "buffering",
+      playWhenReady: true,
+      platform: "android",
+    });
+  });
+
   it("accepts only newer validated listener state and removes its handle idempotently", async () => {
     let listener: ((value: unknown) => void) | undefined;
     const remove = vi.fn().mockResolvedValue(undefined);

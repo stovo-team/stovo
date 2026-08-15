@@ -15,13 +15,14 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).not.toContain("SAMPLE_GALLERY_ITEMS");
   });
 
-  it("returns selected files to the normal composer instead of sending them", () => {
+  it("shows an inline message box and sends selected files from the picker", () => {
     expect(attachmentSheetSource).toContain("resetSheetState");
-    expect(attachmentSheetSource).toContain("selectedCount > 0 && <div className=\"attachment-picker-floating-bar\"");
+    expect(attachmentSheetSource).toContain("selectedCount > 0 && (");
     expect(attachmentSheetSource).toContain("media-tile-checkbox");
-    expect(attachmentSheetSource).toContain("attachment-picker-send-btn");
-    expect(attachmentSheetSource).toContain("Continue to message");
-    expect(attachmentSheetSource).toContain("handleComposeWithSelected");
+    expect(attachmentSheetSource).toContain("attachment-picker-message-box");
+    expect(attachmentSheetSource).toContain('placeholder="Message"');
+    expect(attachmentSheetSource).toContain("onSendSelectedFiles?.(files, message)");
+    expect(attachmentSheetSource).toContain("handleSendSelected");
   });
 
   it("uses cached media immediately and refreshes the device library for new captures", () => {
@@ -47,11 +48,11 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).toMatch(/galleryState === "error"[\s\S]*?onPick\("gallery"\)/);
   });
 
-  it("defines CSS rules for TG-style attachment sheet, grid layout, floating send button, and bottom nav", () => {
+  it("defines CSS rules for TG-style attachment sheet, grid layout, inline message box, and bottom nav", () => {
     expect(styles).toContain(".attachment-picker-sheet.tg-style");
     expect(styles).toContain(".attachment-picker-grid");
     expect(styles).toContain(".media-tile-checkbox");
-    expect(styles).toContain(".attachment-picker-send-btn");
+    expect(styles).toContain(".attachment-picker-message-box");
     expect(styles).toContain(".attachment-picker-bottom-nav");
     expect(styles).toContain(".attachment-nav-item.active");
   });

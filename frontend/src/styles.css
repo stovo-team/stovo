@@ -1668,7 +1668,7 @@ h2 {
 :root[data-platform="native"] .app-route-layer--forward,
 :root[data-platform="native"] .app-route-layer--back {
   animation-duration: 340ms;
-  animation-fill-mode: both;
+  animation-fill-mode: backwards;
   animation-timing-function: cubic-bezier(0.22, 0.82, 0.24, 1);
   will-change: opacity, transform;
 }
@@ -12670,26 +12670,52 @@ span.message-spoiler.is-revealed {
   filter: brightness(1.08);
 }
 
-/* Floating "Send N photos" Bar */
-.attachment-picker-floating-bar {
-  padding: 8px 16px 4px;
+/* Inline chat composer for selected attachments. */
+.attachment-picker-message-box {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  background: var(--surface-card, #131822);
 }
 
-.attachment-picker-send-btn {
-  width: 100%;
-  padding: 12px;
-  border-radius: 999px;
-  border: none;
+.attachment-picker-message-box textarea {
+  flex: 1;
+  min-height: 42px;
+  max-height: 120px;
+  resize: none;
+  padding: 10px 14px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 22px;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary, #fff);
+  font: inherit;
+}
+
+.attachment-picker-message-box textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary, #a855f7);
+}
+
+.attachment-picker-message-send {
+  display: grid;
+  flex: 0 0 42px;
+  place-items: center;
+  width: 42px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
-  color: #ffffff;
-  font-size: 0.94rem;
-  font-weight: 700;
+  color: #fff;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.4);
 }
 
-.attachment-picker-send-btn:hover {
-  filter: brightness(1.1);
+.attachment-picker-message-send:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 /* Telegram Bottom Category Navigation Bar */

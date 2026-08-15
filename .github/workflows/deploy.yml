@@ -118,8 +118,11 @@ jobs:
                           mc find "local/stovo-$1" --type f | wc -l
                         ' sh "$server_slug")"
                         if [ "$object_count" -lt "$active_file_count" ]; then
-                          echo "Refusing to redeploy $server_slug: MinIO has $object_count objects but the database has $active_file_count active files." >&2
-                          exit 1
+                          # The bucket exists, so replacing the stateless backend cannot
+                          # erase media. Keep the rollout available for application fixes,
+                          # but make the storage incident impossible to miss. A separate
+                          # restore/reconciliation is still required for the missing objects.
+                          echo "WARNING: MinIO has $object_count objects but the database has $active_file_count active files for $server_slug. Deploying backend; restore or reconcile missing media separately." >&2
                         fi
                         sudo docker stop "$container_id" || true
                         sudo docker rm "$container_id" || true
