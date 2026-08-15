@@ -213,11 +213,17 @@ export function useChatDataLoader({
       }
 
       try {
-        const [chat, messageResult, pinsResult] = await Promise.all([
-          authRequestRef.current<Chat>(`/api/chats/${requestedChatId}`),
-          authRequestRef.current<MessageHistoryPage>(`/api/chats/${requestedChatId}/messages?limit=10`),
-          authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`).catch(() => [] as PinnedMessage[])
-        ]);
+        // Start auxiliary requests at the same time, but never hold the
+        // conversation's first paint behind them. Pins and refreshed chat
+        // metadata are enhancements; the first ten messages are the primary
+        // content the user came here to read.
+        const chatRequest = authRequestRef.current<Chat>(`/api/chats/${requestedChatId}`)
+          .catch(() => null as Chat | null);
+        const pinsRequest = authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`)
+          .catch(() => [] as PinnedMessage[]);
+        const messageResult = await authRequestRef.current<MessageHistoryPage>(
+          `/api/chats/${requestedChatId}/messages?limit=10`
+        );
         historyRequestResolved = true;
         if (!isCurrentRequest()) {
           return;
@@ -226,17 +232,24 @@ export function useChatDataLoader({
         if (!isCurrentRequest()) {
           return;
         }
-        setSelectedChat(chat);
         applyMessagesForChatRef.current(requestedChatId, decryptedMessages);
         historyCursorRef.current[requestedChatId] = messageResult.hasMore ? messageResult.nextBefore : null;
         if (currentUserIdRef.current) {
           void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, messageResult.messages);
         }
-        // Keep the first paint small and responsive. Older history is loaded
-        // when the user scrolls to the top of the message list.
-        const sortedPins = sortPinsByPosition(pinsResult);
-        setPinnedMessages(sortedPins);
-        setPinIndex(Math.max(0, sortedPins.length - 1));
+        setIsChatLoading(false);
+
+        void Promise.all([chatRequest, pinsRequest]).then(([chat, pinsResult]) => {
+          if (!isCurrentRequest()) return;
+          if (chat) {
+            setSelectedChat((current) =>
+              current?.id === requestedChatId ? { ...current, ...chat } : chat
+            );
+          }
+          const sortedPins = sortPinsByPosition(pinsResult);
+          setPinnedMessages(sortedPins);
+          setPinIndex(Math.max(0, sortedPins.length - 1));
+        }).catch(() => undefined);
 
         const latestMessage = decryptedMessages.at(-1);
         if (latestMessage) {
@@ -250,7 +263,7 @@ export function useChatDataLoader({
               ? { ...applyMessagePreviewToChat(current, latestMessage), unreadCount: 0 }
               : current
           );
-          await markChatReadRef.current(requestedChatId, latestMessage.id);
+          void markChatReadRef.current(requestedChatId, latestMessage.id);
         }
       } catch (err) {
         if (isCurrentRequest()) {

@@ -223,7 +223,12 @@ export function Composer({
           onFileSelect={onFileSelect}
           onCloseSheet={onCloseAttachmentSheet}
           onPickOption={onAttachmentSheetPick}
-          onSelectDirectFiles={onAddSharedFileAttachments}
+          onSelectDirectFiles={(files) => {
+            onAddSharedFileAttachments?.(files);
+            // The picker only stages attachments. Focus the ordinary composer
+            // once it closes so the next action is writing the message/caption.
+            requestAnimationFrame(() => composerInputRef.current?.focus());
+          }}
         />
         <div className="emoji-picker-shell" ref={emojiPickerRef}>
           <button
