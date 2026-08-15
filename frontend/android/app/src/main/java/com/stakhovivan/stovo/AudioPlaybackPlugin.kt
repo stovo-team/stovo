@@ -92,17 +92,10 @@ class AudioPlaybackPlugin : Plugin() {
 
     @PluginMethod
     fun play(call: PluginCall) {
-        withController(call) { controller ->
-            try {
-                // ExoPlayer.play() is a no-op at STATE_ENDED unless we rewind first.
-                if (controller.playbackState == Player.STATE_ENDED) {
-                    controller.seekTo(0L)
-                }
-                controller.play()
-                call.resolve()
-            } catch (_: Exception) {
-                call.reject("Audio play unavailable")
-            }
+        withController(call) {
+            // A controller play() call can be silently ignored when its player command
+            // set is stale. Route play through the service that owns ExoPlayer instead.
+            sendCommand(it, AudioPlaybackService.COMMAND_PLAY, Bundle.EMPTY, call, resolveState = false)
         }
     }
 

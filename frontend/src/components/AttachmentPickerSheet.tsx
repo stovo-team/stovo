@@ -3,6 +3,7 @@ import { AudioLines, Camera, Check, FileText, Image as ImageIcon, Music } from "
 
 import {
   isNativeMediaLibraryAvailable,
+  getCachedNativeMedia,
   listNativeMedia,
   nativeMediaPreviewUrl,
   selectNativeMediaFiles,
@@ -43,14 +44,22 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
     onClose();
   };
 
+  const mediaCategory = (tab: AttachmentPickerTab) => tab === "file" ? "documents" : tab;
+
   const loadRecentItems = async (tab: AttachmentPickerTab) => {
     if (!isNativeMediaLibraryAvailable()) {
       setGalleryState("empty");
       return;
     }
-    setGalleryState("loading");
+    const cached = getCachedNativeMedia(mediaCategory(tab));
+    if (cached.length > 0) {
+      setMedia(cached);
+      setGalleryState("ready");
+    } else {
+      setGalleryState("loading");
+    }
     try {
-      const items = await listNativeMedia(tab === "file" ? "documents" : tab);
+      const items = await listNativeMedia(mediaCategory(tab));
       setMedia(items);
       setGalleryState(items.length > 0 ? "ready" : "empty");
     } catch {
@@ -78,7 +87,7 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
   const handleSendSelected = async () => {
     if (selectedItemIds.length === 0 || isSending) return;
     if (!isNativeMediaLibraryAvailable()) {
-      onPick("gallery");
+      onPick(activeTab === "file" ? "file" : activeTab);
       closeSheet();
       return;
     }
@@ -99,7 +108,7 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
         <div className="attachment-picker-sheet-handle" aria-hidden="true" />
         <div className="attachment-picker-header">
           <div className="attachment-picker-header-title">
-            {activeTab === "gallery" && selectedCount > 0 ? <span className="attachment-picker-selected-count">{selectedCount} selected</span> : <span>Attach</span>}
+            {selectedCount > 0 ? <span className="attachment-picker-selected-count">{selectedCount} selected</span> : <span>Attach</span>}
           </div>
           <button type="button" className="attachment-picker-close-btn" aria-label="Close attachment menu" onClick={closeSheet}><span aria-hidden="true">×</span></button>
         </div>
@@ -127,11 +136,11 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
             </div>
           )}
 
-          {activeTab === "file" && <RecentFileList items={media} emptyLabel="No recent documents on this device." icon={<FileText size={22} />} onChoose={() => { onPick("file"); closeSheet(); }} />}
-          {activeTab === "audio" && <RecentFileList items={media} emptyLabel="No recent audio files on this device." icon={<Music size={22} />} onChoose={() => { onPick("audio"); closeSheet(); }} />}
+          {activeTab === "file" && <RecentFileList items={media} selectedItemIds={selectedItemIds} onToggle={toggleGridItemSelection} loading={galleryState === "loading"} emptyLabel="No recent documents on this device." icon={<FileText size={22} />} onChoose={() => { onPick("file"); closeSheet(); }} />}
+          {activeTab === "audio" && <RecentFileList items={media} selectedItemIds={selectedItemIds} onToggle={toggleGridItemSelection} loading={galleryState === "loading"} emptyLabel="No recent audio files on this device." icon={<Music size={22} />} onChoose={() => { onPick("audio"); closeSheet(); }} />}
         </div>
 
-        {activeTab === "gallery" && selectedCount > 0 && <div className="attachment-picker-floating-bar"><button type="button" className="attachment-picker-send-btn" disabled={isSending} onClick={() => void handleSendSelected()}>Send {isSending ? "…" : `${selectedCount} item${selectedCount === 1 ? "" : "s"}`}</button></div>}
+        {selectedCount > 0 && <div className="attachment-picker-floating-bar"><button type="button" className="attachment-picker-send-btn" disabled={isSending} onClick={() => void handleSendSelected()}>Add {isSending ? "…" : `${selectedCount} item${selectedCount === 1 ? "" : "s"}`}</button></div>}
         <nav className="attachment-picker-bottom-nav" aria-label="Attachment options">
           <button type="button" className={`attachment-nav-item ${activeTab === "gallery" ? "active" : ""}`} onClick={() => setActiveTab("gallery")}><span className="nav-item-icon"><ImageIcon size={20} /></span><span className="nav-item-label">Gallery</span></button>
           <button type="button" className={`attachment-nav-item ${activeTab === "file" ? "active" : ""}`} onClick={() => setActiveTab("file")}><span className="nav-item-icon"><FileText size={20} /></span><span className="nav-item-label">File</span></button>
@@ -142,9 +151,13 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
   );
 }
 
-function RecentFileList({ items, emptyLabel, icon, onChoose }: { items: NativeMediaItem[]; emptyLabel: string; icon: ReactNode; onChoose: () => void }) {
+function RecentFileList({ items, selectedItemIds, onToggle, loading, emptyLabel, icon, onChoose }: { items: NativeMediaItem[]; selectedItemIds: string[]; onToggle: (id: string) => void; loading: boolean; emptyLabel: string; icon: ReactNode; onChoose: () => void }) {
   return <div className="attachment-picker-list-tab">
     <button type="button" className="attachment-picker-sheet-item" onClick={onChoose}><span className="attachment-picker-sheet-icon file-icon">{icon}</span><span className="attachment-picker-sheet-copy"><strong>Choose from device</strong><span>{items.length ? "Browse all files" : emptyLabel}</span></span></button>
-    {items.map((item) => <button key={item.id} type="button" className="attachment-picker-sheet-item attachment-picker-recent-item" onClick={onChoose}><span className="attachment-picker-sheet-icon file-icon">{icon}</span><span className="attachment-picker-sheet-copy"><strong>{item.name}</strong><span>{item.mimeType}</span></span></button>)}
+    {loading && <p className="attachment-picker-gallery-status">Loading recent items…</p>}
+    {items.map((item) => {
+      const selected = selectedItemIds.includes(item.id);
+      return <button key={item.id} type="button" className={`attachment-picker-sheet-item attachment-picker-recent-item ${selected ? "selected" : ""}`} onClick={() => onToggle(item.id)}><span className="attachment-picker-sheet-icon file-icon">{icon}</span><span className="attachment-picker-sheet-copy"><strong>{item.name}</strong><span>{item.mimeType}</span></span><span className={`media-tile-checkbox ${selected ? "checked" : ""}`}>{selected && <Check size={12} strokeWidth={3} />}</span></button>;
+    })}
   </div>;
 }

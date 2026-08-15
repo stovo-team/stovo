@@ -15,11 +15,22 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).not.toContain("SAMPLE_GALLERY_ITEMS");
   });
 
-  it("resets gallery selection and keeps the send CTA in Gallery", () => {
+  it("resets selection and keeps a multi-select add CTA for every attachment type", () => {
     expect(attachmentSheetSource).toContain("resetSheetState");
-    expect(attachmentSheetSource).toContain('activeTab === "gallery" && selectedCount > 0');
+    expect(attachmentSheetSource).toContain("selectedCount > 0 && <div className=\"attachment-picker-floating-bar\"");
     expect(attachmentSheetSource).toContain("media-tile-checkbox");
     expect(attachmentSheetSource).toContain("attachment-picker-send-btn");
+  });
+
+  it("uses cached media immediately and refreshes the device library for new captures", () => {
+    expect(attachmentSheetSource).toContain("getCachedNativeMedia");
+    expect(attachmentSheetSource).toContain("const cached = getCachedNativeMedia");
+    expect(attachmentSheetSource).toContain("listNativeMedia(mediaCategory(tab))");
+  });
+
+  it("allows selecting multiple recent audio and document items", () => {
+    expect(attachmentSheetSource).toContain("selectedItemIds={selectedItemIds}");
+    expect(attachmentSheetSource).toContain("onToggle={toggleGridItemSelection}");
   });
 
   it("does not reset the selected tab while loading its media", () => {

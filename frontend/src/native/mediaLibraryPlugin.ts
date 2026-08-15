@@ -20,6 +20,8 @@ type NativeMediaLibraryPlugin = {
 
 const MediaLibraryPlugin = registerPlugin<NativeMediaLibraryPlugin>("MediaLibraryPlugin");
 
+const mediaCache = new Map<NativeMediaCategory, NativeMediaItem[]>();
+
 export function isNativeMediaLibraryAvailable(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
@@ -27,7 +29,14 @@ export function isNativeMediaLibraryAvailable(): boolean {
 export async function listNativeMedia(category: NativeMediaCategory = "gallery"): Promise<NativeMediaItem[]> {
   if (!isNativeMediaLibraryAvailable()) return [];
   const result = await MediaLibraryPlugin.listMedia({ limit: 120, category });
-  return (result.items ?? []).filter((item) => item.id && item.uri && item.mimeType);
+  const items = (result.items ?? []).filter((item) => item.id && item.uri && item.mimeType);
+  mediaCache.set(category, items);
+  return items;
+}
+
+/** Returns the last device query immediately while a fresh query runs in the background. */
+export function getCachedNativeMedia(category: NativeMediaCategory): NativeMediaItem[] {
+  return mediaCache.get(category) ?? [];
 }
 
 /** Maps an Android cache file to a URL that the Capacitor WebView can display. */

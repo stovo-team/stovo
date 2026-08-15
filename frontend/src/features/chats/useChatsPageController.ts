@@ -109,7 +109,7 @@ export function useChatsPageController({
     setPinnedMessages, setPinIndex, deleteTarget, setDeleteTarget,
     messageContextMenu, setMessageContextMenu,
     pendingMessageFocusRef, focusMessageInPanel, clearMessageMotionState,
-    applyMessagesForChat, markChatRead, loadOlderMessages,
+    applyMessagesForChat, markChatRead,
     resetSwipeReplyState, clearMessageLongPressGesture, resetChatExitSwipeGesture,
     beginChatExitSwipe, moveChatExitSwipe, endChatExitSwipe,
     stickToBottomRef, forceScrollToBottomRef, bottomAnchorMessageIdRef,
@@ -124,7 +124,7 @@ export function useChatsPageController({
     setIsLoading: workspace.setIsLoading, setHasLoadedOverview: workspace.setHasLoadedOverview,
     setIsChatLoading, activeChatIdRef, chatsRef,
     messageCacheRef, historyCursorRef, setMessages, setPinnedMessages, setPinIndex,
-    applyMessagesForChat, markChatRead, loadOlderMessages
+    applyMessagesForChat, markChatRead
   });
 
   const handleComposerFocusWithScroll = useCallback(() => {
@@ -326,7 +326,15 @@ export function useChatsPageController({
     setSelectedChat(chat);
     setError(null);
     const cachedMessages = messageCacheRef.current[chat.id];
-    if (cachedMessages) setMessages(cachedMessages);
+    if (cachedMessages) {
+      setMessages(cachedMessages);
+    } else {
+      // Navigation updates the route asynchronously. Mark the target chat as
+      // loading now so its message panel never briefly renders "No messages"
+      // before the route-driven loader starts its first request.
+      setMessages([]);
+      setIsChatLoading(true);
+    }
     if (chat.id === chatId) return;
     navigateToChat(chat);
   }
