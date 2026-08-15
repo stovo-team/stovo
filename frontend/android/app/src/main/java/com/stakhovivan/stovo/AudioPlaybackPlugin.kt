@@ -95,7 +95,10 @@ class AudioPlaybackPlugin : Plugin() {
         withController(call) {
             // A controller play() call can be silently ignored when its player command
             // set is stale. Route play through the service that owns ExoPlayer instead.
-            sendCommand(it, AudioPlaybackService.COMMAND_PLAY, Bundle.EMPTY, call, resolveState = false)
+            // Do not rely only on the custom-command broadcast: the first event after
+            // a controller connection can be dropped, leaving the WebView in a
+            // permanent loading state with no actionable error.
+            sendCommand(it, AudioPlaybackService.COMMAND_PLAY, Bundle.EMPTY, call, resolveState = true)
         }
     }
 

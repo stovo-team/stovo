@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { AudioLines, Camera, Check, FileText, Image as ImageIcon, Music } from "lucide-react";
+import { AudioLines, Camera, Check, FileText, Image as ImageIcon, Music, Send } from "lucide-react";
 
 import {
   isNativeMediaLibraryAvailable,
@@ -18,6 +18,7 @@ type AttachmentPickerSheetProps = {
   onClose: () => void;
   onPick: (option: AttachmentPickerOption) => void;
   onSelectFiles?: (files: File[]) => void;
+  onSendSelectedFiles?: (files: File[], message: string) => void;
 };
 
 function formatDuration(durationMs: number): string | null {
@@ -26,17 +27,19 @@ function formatDuration(durationMs: number): string | null {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectFiles }: AttachmentPickerSheetProps) {
+export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectFiles, onSendSelectedFiles }: AttachmentPickerSheetProps) {
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>("gallery");
   const [media, setMedia] = useState<NativeMediaItem[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [galleryState, setGalleryState] = useState<"loading" | "ready" | "empty" | "error">("loading");
   const [isSending, setIsSending] = useState(false);
+  const [message, setMessage] = useState("");
 
   const resetSheetState = () => {
     setActiveTab("gallery");
     setSelectedItemIds([]);
     setIsSending(false);
+    setMessage("");
   };
 
   const closeSheet = () => {
@@ -84,9 +87,7 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
     setSelectedItemIds((previous) => previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id]);
   };
 
-  // Selecting media is only the first step: return to the normal composer so
-  // the user can add a caption and explicitly send one message.
-  const handleComposeWithSelected = async () => {
+  const handleSendSelected = async () => {
     if (selectedItemIds.length === 0 || isSending) return;
     if (!isNativeMediaLibraryAvailable()) {
       onPick(activeTab === "file" ? "file" : activeTab);
@@ -96,7 +97,7 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
     setIsSending(true);
     try {
       const files = await selectNativeMediaFiles(selectedItemIds);
-      if (files.length > 0) onSelectFiles?.(files);
+      if (files.length > 0) onSendSelectedFiles?.(files, message);
       closeSheet();
     } catch {
       setIsSending(false);
@@ -142,7 +143,28 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
           {activeTab === "audio" && <RecentFileList items={media} selectedItemIds={selectedItemIds} onToggle={toggleGridItemSelection} loading={galleryState === "loading"} emptyLabel="No recent audio files on this device." icon={<Music size={22} />} onChoose={() => { onPick("audio"); closeSheet(); }} />}
         </div>
 
-        {selectedCount > 0 && <div className="attachment-picker-floating-bar"><button type="button" className="attachment-picker-send-btn" disabled={isSending} onClick={() => void handleComposeWithSelected()}>{isSending ? "Preparing…" : "Continue to message"}</button></div>}
+        {selectedCount > 0 && (
+          <form className="attachment-picker-message-box" onSubmit={(event) => { event.preventDefault(); void handleSendSelected(); }}>
+            <textarea
+              aria-label="Message with attachments"
+              placeholder="Message"
+              value={message}
+              maxLength={4000}
+              rows={1}
+              disabled={isSending}
+              onChange={(event) => setMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                  event.preventDefault();
+                  void handleSendSelected();
+                }
+              }}
+            />
+            <button type="submit" className="attachment-picker-message-send" aria-label="Send message" disabled={isSending}>
+              <Send size={20} aria-hidden="true" />
+            </button>
+          </form>
+        )}
         <nav className="attachment-picker-bottom-nav" aria-label="Attachment options">
           <button type="button" className={`attachment-nav-item ${activeTab === "gallery" ? "active" : ""}`} onClick={() => setActiveTab("gallery")}><span className="nav-item-icon"><ImageIcon size={20} /></span><span className="nav-item-label">Gallery</span></button>
           <button type="button" className={`attachment-nav-item ${activeTab === "file" ? "active" : ""}`} onClick={() => setActiveTab("file")}><span className="nav-item-icon"><FileText size={20} /></span><span className="nav-item-label">File</span></button>
