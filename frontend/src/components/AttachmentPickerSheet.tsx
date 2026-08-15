@@ -4,6 +4,7 @@ import { AudioLines, Camera, Check, FileText, Image as ImageIcon, Music } from "
 import {
   isNativeMediaLibraryAvailable,
   listNativeMedia,
+  nativeMediaPreviewUrl,
   selectNativeMediaFiles,
   type NativeMediaItem
 } from "../native/mediaLibraryPlugin";
@@ -113,7 +114,7 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
                 {media.map((item) => {
                   const selected = selectedItemIds.includes(item.id);
                   return <button key={item.id} type="button" className={`attachment-picker-grid-tile media-tile ${selected ? "selected" : ""}`} onClick={() => toggleGridItemSelection(item.id)} aria-label={`Select ${item.name}`}>
-                    <img src={item.uri} alt="" />
+                    <img src={nativeMediaPreviewUrl(item)} alt="" />
                     {formatDuration(item.durationMs) && <span className="media-tile-badge">{formatDuration(item.durationMs)}</span>}
                     <span className={`media-tile-checkbox ${selected ? "checked" : ""}`}>{selected && <Check size={12} strokeWidth={3} />}</span>
                   </button>;

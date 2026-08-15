@@ -17,6 +17,7 @@ export interface AudioPlaybackPluginLoadOptions {
   fileId: string;
   sourceUrl: string;
   token?: string;
+  mimeType?: string;
   startPosition: number;
 }
 
@@ -207,6 +208,7 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
         fileId: descriptor.identity.fileId,
         sourceUrl: source.url,
         token: source.token,
+        mimeType: source.mimeType,
         startPosition: Math.max(0, position),
       });
       // Do not depend solely on a MediaSession custom-command broadcast: the

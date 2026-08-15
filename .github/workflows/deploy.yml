@@ -100,6 +100,27 @@ jobs:
                     server_slug="$(sudo docker inspect --format '{{index .Config.Labels "stovo-server"}}' "$container_id")"
                     if [ -n "$server_slug" ]; then
                         echo "Re-deploying container for server: $server_slug"
+                        # A missing bucket means the tenant's media history has been
+                        # lost or the MinIO volume is wrong. Do not hide that incident
+                        # by restarting the backend, which would recreate an empty bucket.
+                        if ! sudo docker exec stovo-master-minio sh -ec '
+                          mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
+                          mc stat "local/stovo-$1" >/dev/null
+                        ' sh "$server_slug"; then
+                          echo "Refusing to redeploy $server_slug: MinIO bucket stovo-$server_slug is missing." >&2
+                          exit 1
+                        fi
+                        active_file_count="$(sudo docker exec stovo-master-db sh -ec '
+                          psql -U "$POSTGRES_USER" -d "stovo_db_$1" -tAc "SELECT count(*) FROM files WHERE deleted_at IS NULL"
+                        ' sh "$server_slug")"
+                        object_count="$(sudo docker exec stovo-master-minio sh -ec '
+                          mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
+                          mc find "local/stovo-$1" --type f | wc -l
+                        ' sh "$server_slug")"
+                        if [ "$object_count" -lt "$active_file_count" ]; then
+                          echo "Refusing to redeploy $server_slug: MinIO has $object_count objects but the database has $active_file_count active files." >&2
+                          exit 1
+                        fi
                         sudo docker stop "$container_id" || true
                         sudo docker rm "$container_id" || true
                         master_secret="$(get_env MASTER_SYSTEM_SECRET super_secret_master_key_123)"

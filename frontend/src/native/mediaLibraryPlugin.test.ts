@@ -15,7 +15,7 @@ vi.mock("@capacitor/core", () => ({
   registerPlugin: () => nativePlugin
 }));
 
-import { isNativeMediaLibraryAvailable, selectNativeMediaFiles } from "./mediaLibraryPlugin";
+import { isNativeMediaLibraryAvailable, nativeMediaPreviewUrl, selectNativeMediaFiles } from "./mediaLibraryPlugin";
 
 describe("media library plugin", () => {
   beforeEach(() => {
@@ -45,5 +45,9 @@ describe("media library plugin", () => {
     expect(fetcher).toHaveBeenCalledWith("webview://file:///cache/photo.jpg");
     expect(files).toHaveLength(1);
     expect(files[0]).toMatchObject({ name: "photo.jpg", type: "image/jpeg" });
+  });
+
+  it("uses a Capacitor-safe URL for native gallery previews", () => {
+    expect(nativeMediaPreviewUrl({ id: "1", uri: "content://media/image/1", name: "photo.jpg", mimeType: "image/jpeg", durationMs: 0, thumbnailPath: "file:///cache/preview.jpg" })).toBe("webview://file:///cache/preview.jpg");
   });
 });

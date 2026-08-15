@@ -57,12 +57,14 @@ class AudioPlaybackPlugin : Plugin() {
         val fileId = call.getString(AudioPlaybackService.KEY_FILE_ID).orEmpty()
         val sourceUrl = call.getString(AudioPlaybackService.KEY_SOURCE_URL).orEmpty()
         val token = call.getString(AudioPlaybackService.KEY_TOKEN).orEmpty()
+        val mimeType = call.getString(AudioPlaybackService.KEY_MIME_TYPE).orEmpty()
         val startPosition = call.getDouble("startPosition") ?: Double.NaN
         if (
             chatId.isBlank() ||
             messageId.isBlank() ||
             fileId.isBlank() ||
             token.isBlank() ||
+            !mimeType.startsWith("audio/") ||
             !startPosition.isFinite() ||
             startPosition < 0.0 ||
             !isExactMediaUrl(sourceUrl, fileId)
@@ -76,6 +78,7 @@ class AudioPlaybackPlugin : Plugin() {
             putString(AudioPlaybackService.KEY_FILE_ID, fileId)
             putString(AudioPlaybackService.KEY_SOURCE_URL, sourceUrl)
             putString(AudioPlaybackService.KEY_TOKEN, token)
+            putString(AudioPlaybackService.KEY_MIME_TYPE, mimeType)
             putDouble(AudioPlaybackService.KEY_POSITION, startPosition)
             putBoolean(AudioPlaybackService.KEY_PLAY_WHEN_READY, false)
         }

@@ -37,11 +37,14 @@ export type AudioPlaybackErrorCode =
 export interface AudioDescriptor {
   identity: AudioIdentity;
   title: string;
+  /** Original attachment MIME type. Required by Media3 for extensionless media URLs. */
+  mimeType?: string;
 }
 
 export interface AudioPlaybackSource {
   url: string;
   token?: string;
+  mimeType?: string;
   objectUrl?: boolean;
 }
 
@@ -262,6 +265,7 @@ export class AudioPlaybackSession {
     this.descriptor = {
       identity: { ...descriptor.identity },
       title: descriptor.title,
+      mimeType: descriptor.mimeType,
     };
     await this.prepareCurrent(clampPosition(position, 0));
   }
