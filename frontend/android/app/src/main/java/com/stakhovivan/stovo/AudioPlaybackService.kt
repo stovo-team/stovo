@@ -271,6 +271,7 @@ class AudioPlaybackService : MediaSessionService() {
         )
         val sourceUrl = args.getString(KEY_SOURCE_URL).orEmpty()
         val token = args.getString(KEY_TOKEN).orEmpty()
+        val mimeType = args.getString(KEY_MIME_TYPE).orEmpty()
         val positionSeconds = args.getDouble(KEY_POSITION, Double.NaN)
         val requestedPlay = args.getBoolean(KEY_PLAY_WHEN_READY, false)
         val decision = coordinator.evaluateLoad(
@@ -280,7 +281,7 @@ class AudioPlaybackService : MediaSessionService() {
             startPosition = positionSeconds,
             requestedPlay = requestedPlay
         )
-        if (!decision.accepted || !isExactMediaUrl(sourceUrl.toUri(), requestedIdentity.fileId)) {
+        if (!decision.accepted || !mimeType.startsWith("audio/") || !isExactMediaUrl(sourceUrl.toUri(), requestedIdentity.fileId)) {
             return SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
         }
 
@@ -294,6 +295,7 @@ class AudioPlaybackService : MediaSessionService() {
         val item = MediaItem.Builder()
             .setMediaId(GENERIC_MEDIA_ID)
             .setUri(sourceUrl)
+            .setMimeType(mimeType)
             .setMediaMetadata(metadata)
             .build()
         player.setMediaItem(item, (decision.startPosition * 1000.0).toLong())
@@ -526,6 +528,7 @@ class AudioPlaybackService : MediaSessionService() {
         const val KEY_FILE_ID = "fileId"
         const val KEY_SOURCE_URL = "sourceUrl"
         const val KEY_TOKEN = "token"
+        const val KEY_MIME_TYPE = "mimeType"
         const val KEY_POSITION = "position"
         const val KEY_DURATION = "duration"
         const val KEY_BUFFERED_POSITION = "bufferedPosition"

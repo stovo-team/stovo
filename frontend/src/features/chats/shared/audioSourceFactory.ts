@@ -23,7 +23,8 @@ export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory
       const capability = await createMediaPlaybackToken(accessToken, fileId);
       return {
         url: getMediaPlaybackUrl(fileId),
-        token: capability.token
+        token: capability.token,
+        mimeType: descriptor.mimeType
       };
     }
 

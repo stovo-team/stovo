@@ -83,7 +83,11 @@ export function useAudioMessageRestore({
 
         if (snapshot.status === "authorization-required") {
           await audioPlaybackSession.load(
-            { identity: authorized, title: targetFile.originalName },
+            {
+              identity: authorized,
+              title: targetFile.originalName,
+              mimeType: targetFile.mimeType,
+            },
             Math.max(0, Number.isFinite(snapshot.position) ? snapshot.position : 0)
           );
         }

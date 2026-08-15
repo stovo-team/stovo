@@ -43,6 +43,9 @@ func NewMinIOStorage(endpoint, accessKey, secretKey string, secure bool, bucket 
 			return nil, err
 		}
 	}
+	if err := enableBucketVersioning(context.Background(), client, bucket); err != nil {
+		return nil, err
+	}
 	return store, nil
 }
 
@@ -60,7 +63,16 @@ func NewMinIOStorageForBucket(client *minio.Client, bucket string) (*MinIOStorag
 			return nil, err
 		}
 	}
+	if err := enableBucketVersioning(context.Background(), client, bucket); err != nil {
+		return nil, err
+	}
 	return &MinIOStorage{client: client, bucket: bucket}, nil
+}
+
+// enableBucketVersioning ensures deletion creates a recoverable delete marker
+// rather than irreversibly removing a user's attachment.
+func enableBucketVersioning(ctx context.Context, client *minio.Client, bucket string) error {
+	return client.SetBucketVersioning(ctx, bucket, minio.BucketVersioningConfiguration{Status: "Enabled"})
 }
 
 func (s *MinIOStorage) Provider() string { return "minio" }
@@ -86,6 +98,8 @@ func (s *MinIOStorage) Open(key string) (io.ReadSeekCloser, error) {
 	if err == nil {
 		if _, statErr := object.Stat(); statErr == nil {
 			return object, nil
+		} else {
+			err = statErr
 		}
 		_ = object.Close()
 	}

@@ -6,6 +6,7 @@ export type NativeMediaItem = {
   name: string;
   mimeType: string;
   durationMs: number;
+  thumbnailPath?: string;
 };
 
 export type NativeMediaCategory = "gallery" | "audio" | "documents";
@@ -27,6 +28,11 @@ export async function listNativeMedia(category: NativeMediaCategory = "gallery")
   if (!isNativeMediaLibraryAvailable()) return [];
   const result = await MediaLibraryPlugin.listMedia({ limit: 120, category });
   return (result.items ?? []).filter((item) => item.id && item.uri && item.mimeType);
+}
+
+/** Maps an Android cache file to a URL that the Capacitor WebView can display. */
+export function nativeMediaPreviewUrl(item: NativeMediaItem): string {
+  return item.thumbnailPath ? Capacitor.convertFileSrc(item.thumbnailPath) : item.uri;
 }
 
 export async function selectNativeMediaFiles(

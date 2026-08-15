@@ -104,7 +104,8 @@ export function AttachmentCard({
   if (isAudio) {
     const descriptor: AudioDescriptor = {
       identity: { chatId, messageId, fileId: file.id },
-      title: file.originalName
+      title: file.originalName,
+      mimeType: file.mimeType
     };
     return (
       <AudioPlayer

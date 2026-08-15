@@ -673,7 +673,8 @@ export default function FilesPage() {
                           messageId: selectedFile.originMessageId ?? selectedFile.id,
                           fileId: selectedFile.id
                         },
-                        title: selectedFile.originalName
+                        title: selectedFile.originalName,
+                        mimeType: selectedFile.mimeType
                       }}
                       sourceFactory={buildAudioSourceFactory(accessToken)}
                       hideTitle

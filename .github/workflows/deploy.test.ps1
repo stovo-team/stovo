@@ -26,3 +26,14 @@ if ($workflow -notmatch '--filter label=stovo-server' -or
     $workflow -notmatch '--network stovo_default') {
     throw "Deployment must update tenant containers on the shared Stovo network."
 }
+
+if ($workflow -notmatch 'Refusing to redeploy.*MinIO bucket' -or
+    $workflow -notmatch 'mc stat "local/stovo-\$1"') {
+    throw "Deployment must refuse to restart a tenant whose MinIO bucket is missing."
+}
+
+if ($workflow -notmatch 'active_file_count=' -or
+    $workflow -notmatch 'object_count=' -or
+    $workflow -notmatch 'MinIO has \$object_count objects but the database has \$active_file_count active files') {
+    throw "Deployment must refuse a tenant rollout when MinIO objects are missing."
+}

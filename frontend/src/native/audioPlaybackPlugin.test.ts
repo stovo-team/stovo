@@ -40,11 +40,13 @@ const descriptor: AudioDescriptor = {
     fileId: "file/opaque%2Fid",
   },
   title: "Private filename.mp3",
+  mimeType: "audio/mpeg",
 };
 
 const source: AudioPlaybackSource = {
   url: "https://stovo-local.stovo.ru/api/media/file%2Fopaque%252Fid",
   token: "playback-secret",
+  mimeType: "audio/mpeg",
 };
 
 function nativeState(
@@ -119,6 +121,7 @@ describe("native audio playback plugin", () => {
       fileId: descriptor.identity.fileId,
       sourceUrl: source.url,
       token: source.token,
+      mimeType: source.mimeType,
       startPosition: 12,
     });
     expect(nativePlugin.play).toHaveBeenCalledWith();
