@@ -57,4 +57,14 @@ describe("mobile active video call UI", () => {
   it("uses compact spacing for the bottom app navigation", () => {
     expect(styles).toContain(".app-frame > .app-nav .app-nav-links {\n    display: flex;\n    flex: 1;\n    gap: 0;");
   });
+
+  it("keeps app navigation fixed above the system bottom inset on every mobile section", () => {
+    expect(styles).toContain(".app-frame:not(.has-active-chat) > .app-nav {\n    bottom: var(--nav-pill-inset-bottom);\n    display: flex;\n    position: fixed;\n    z-index: 100;");
+    expect(styles).toContain(".plans-page .plans-layout,");
+    expect(styles).toContain(".settings-page > .page-surface,");
+    expect(styles).toContain(".admin-page > .page-surface,");
+    expect(styles).toContain(
+      "padding-bottom: calc(var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 32px);",
+    );
+  });
 });

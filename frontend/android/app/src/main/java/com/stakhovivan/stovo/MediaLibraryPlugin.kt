@@ -104,7 +104,9 @@ class MediaLibraryPlugin : Plugin() {
                     val id = cursor.getLong(idIndex)
                     val uri = ContentUris.withAppendedId(collection, id)
                     items.put(JSObject().apply {
-                        put("id", id.toString())
+                        // Preserve the owning collection for audio and downloads too.
+                        // Numeric ids are not portable between MediaStore collections.
+                        put("id", uri.toString())
                         put("uri", uri.toString())
                         put("name", cursor.getString(nameIndex) ?: "media-$id")
                         put("mimeType", cursor.getString(mimeIndex) ?: "application/octet-stream")
@@ -208,9 +210,12 @@ class MediaLibraryPlugin : Plugin() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val resolver = resolver() ?: return null
         return try {
-            val bitmap = resolver.loadThumbnail(uri, Size(320, 320), null)
             val directory = File(context.cacheDir, "media-library-previews").apply { mkdirs() }
             val destination = File(directory, "${uri.toString().hashCode().toUInt().toString(16)}.jpg")
+            // Reuse previews across picker openings; loading 120 thumbnails from MediaStore
+            // on every open delays the first usable gallery frame substantially.
+            if (destination.exists() && destination.length() > 0) return Uri.fromFile(destination).toString()
+            val bitmap = resolver.loadThumbnail(uri, Size(320, 320), null)
             destination.outputStream().use { output -> bitmap.compress(Bitmap.CompressFormat.JPEG, 82, output) }
             Uri.fromFile(destination).toString()
         } catch (_: Exception) {

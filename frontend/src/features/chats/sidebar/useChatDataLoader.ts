@@ -32,7 +32,6 @@ export type UseChatDataLoaderParams = {
   setPinIndex: Dispatch<SetStateAction<number>>;
   applyMessagesForChat: (chatId: string, next: MessageStateUpdate) => void;
   markChatRead: (chatId: string, messageId: string) => Promise<void>;
-  loadOlderMessages: (chatId?: string) => Promise<void>;
 };
 
 /**
@@ -65,8 +64,7 @@ export function useChatDataLoader({
   setPinnedMessages,
   setPinIndex,
   applyMessagesForChat,
-  markChatRead,
-  loadOlderMessages
+  markChatRead
 }: UseChatDataLoaderParams) {
   const loadOverviewRequestRef = useRef(0);
   const loadChatRequestRef = useRef(0);
@@ -76,7 +74,6 @@ export function useChatDataLoader({
   const onErrorRef = useRef(onError);
   const applyMessagesForChatRef = useRef(applyMessagesForChat);
   const markChatReadRef = useRef(markChatRead);
-  const loadOlderMessagesRef = useRef(loadOlderMessages);
   const currentUserIdRef = useRef(currentUser?.id);
 
   useEffect(() => {
@@ -91,9 +88,6 @@ export function useChatDataLoader({
   useEffect(() => {
     markChatReadRef.current = markChatRead;
   }, [markChatRead]);
-  useEffect(() => {
-    loadOlderMessagesRef.current = loadOlderMessages;
-  }, [loadOlderMessages]);
   useEffect(() => {
     currentUserIdRef.current = currentUser?.id;
   }, [currentUser?.id]);
@@ -221,7 +215,7 @@ export function useChatDataLoader({
       try {
         const [chat, messageResult, pinsResult] = await Promise.all([
           authRequestRef.current<Chat>(`/api/chats/${requestedChatId}`),
-          authRequestRef.current<MessageHistoryPage>(`/api/chats/${requestedChatId}/messages?limit=20`),
+          authRequestRef.current<MessageHistoryPage>(`/api/chats/${requestedChatId}/messages?limit=10`),
           authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`).catch(() => [] as PinnedMessage[])
         ]);
         historyRequestResolved = true;
@@ -238,9 +232,8 @@ export function useChatDataLoader({
         if (currentUserIdRef.current) {
           void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, messageResult.messages);
         }
-        if (messageResult.hasMore) {
-          window.setTimeout(() => void loadOlderMessagesRef.current(requestedChatId), 0);
-        }
+        // Keep the first paint small and responsive. Older history is loaded
+        // when the user scrolls to the top of the message list.
         const sortedPins = sortPinsByPosition(pinsResult);
         setPinnedMessages(sortedPins);
         setPinIndex(Math.max(0, sortedPins.length - 1));
