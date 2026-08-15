@@ -3093,6 +3093,47 @@ h2 {
   z-index: 9999;
 }
 
+/* A route can be active before its chat metadata has arrived. Keep the
+   conversation silhouette visible during that short transition. */
+.chat-loading-surface {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--background-secondary);
+}
+
+.chat-loading-header,
+.chat-loading-composer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.chat-loading-header .skeleton-avatar {
+  flex: 0 0 auto;
+}
+
+.chat-loading-header .chat-list-copy {
+  display: grid;
+  gap: 7px;
+  min-width: 150px;
+}
+
+.chat-loading-composer {
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 0;
+}
+
+.chat-loading-composer .skeleton-line {
+  width: 100%;
+  height: 38px;
+  border-radius: 20px;
+}
+
 /* On narrow layouts the chat list/header form separate stacking contexts. */
 .chat-sidebar:has(.server-switcher.menu-anchor--open),
 .chat-sidebar-header:has(.server-switcher.menu-anchor--open) {
@@ -18065,5 +18106,60 @@ span.message-spoiler.is-revealed {
   .contacts-page > .page-surface {
     padding-bottom: calc(var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 32px);
   }
+}
+
+/* Capacitor reports a native viewport independently of its CSS-pixel width.
+   Keep its section navigation in its mobile form even when Android WebView
+   reports a width greater than the responsive breakpoint. */
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--float-radius-pill);
+  bottom: var(--nav-pill-inset-bottom);
+  box-shadow: var(--nav-pill-shadow);
+  display: flex !important;
+  flex-direction: row;
+  gap: 6px;
+  height: var(--nav-pill-height);
+  justify-content: space-around;
+  left: var(--nav-pill-inset-x);
+  min-height: auto;
+  padding: 6px 8px;
+  position: fixed;
+  right: var(--nav-pill-inset-x);
+  top: auto;
+  width: auto;
+  z-index: 100;
+}
+
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav .app-nav-links {
+  display: flex;
+  flex: 1;
+  gap: 0;
+}
+
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav .app-nav-links > a {
+  flex: 1;
+}
+
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav a {
+  display: grid;
+  justify-items: center;
+  max-height: none;
+  max-width: none;
+  min-height: 56px;
+}
+
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav .app-brand,
+:root[data-platform="native"] .app-frame:not(.has-active-chat) > .app-nav .app-nav-logout {
+  display: none;
+}
+
+:root[data-platform="native"] .storage-page .storage-layout,
+:root[data-platform="native"] .plans-page .plans-layout,
+:root[data-platform="native"] .settings-page > .page-surface,
+:root[data-platform="native"] .admin-page > .page-surface {
+  padding-bottom: calc(var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 32px);
 }
 

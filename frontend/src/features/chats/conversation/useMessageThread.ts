@@ -737,7 +737,9 @@ export function useMessageThread({
       lastOffset: 0,
       lock: "pending"
     };
-    setSwipeReplyState({ messageId: message.id, offset: 0, activated: false });
+    // Do not create the swipe transform until a horizontal drag is confirmed.
+    // A long press starts text selection, and a translate3d(0, 0, 0) on the
+    // selected bubble makes Android WebView paint black tiles by its handles.
     beginMessageLongPressGesture(event, message);
   }
 

@@ -63,6 +63,7 @@ describe("mobile active video call UI", () => {
     expect(styles).toContain(".plans-page .plans-layout,");
     expect(styles).toContain(".settings-page > .page-surface,");
     expect(styles).toContain(".admin-page > .page-surface,");
+    expect(styles).toContain(":root[data-platform=\"native\"] .app-frame:not(.has-active-chat) > .app-nav {");
     expect(styles).toContain(
       "padding-bottom: calc(var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 32px);",
     );
