@@ -243,7 +243,10 @@ export function sendMessage(
     body: {
       type: fileIds.length ? "mixed" : "text",
       content,
-      fileIds,
+      // A duplicated ID cannot represent two message attachments: the backend
+      // stores one association per (message, file). Preserve selection order
+      // while making retry/cache merges harmless.
+      fileIds: [...new Set(fileIds)],
       replyToMessageId,
       threadRootMessageId,
 		...encryption,

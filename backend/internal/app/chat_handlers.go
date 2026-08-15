@@ -1014,8 +1014,9 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 }
 
 func (s *Server) loadAttachmentsForMessage(fileIDs []string, user userPublic, chatID string) ([]filePublic, error) {
-	files := make([]filePublic, 0, len(fileIDs))
-	for _, fileID := range fileIDs {
+	uniqueFileIDs := uniqueAttachmentFileIDs(fileIDs)
+	files := make([]filePublic, 0, len(uniqueFileIDs))
+	for _, fileID := range uniqueFileIDs {
 		file, err := s.buildFilePublic(fileID, user.ID)
 		if err != nil || file.DeletedAt != nil {
 			return nil, fmt.Errorf("invalid file attachment")
@@ -1026,6 +1027,23 @@ func (s *Server) loadAttachmentsForMessage(fileIDs []string, user userPublic, ch
 		files = append(files, file)
 	}
 	return files, nil
+}
+
+// uniqueAttachmentFileIDs prevents a repeated file reference from creating the
+// same (message_id, file_id) association more than once. This can happen when a
+// client retries or merges gallery selections, and must not prevent the message
+// from being sent with its distinct attachments.
+func uniqueAttachmentFileIDs(fileIDs []string) []string {
+	seen := make(map[string]struct{}, len(fileIDs))
+	unique := make([]string, 0, len(fileIDs))
+	for _, fileID := range fileIDs {
+		if _, ok := seen[fileID]; ok {
+			continue
+		}
+		seen[fileID] = struct{}{}
+		unique = append(unique, fileID)
+	}
+	return unique
 }
 
 func (s *Server) markMessageRead(ctx context.Context, user userPublic, messageID string) (messagePublic, string, error) {

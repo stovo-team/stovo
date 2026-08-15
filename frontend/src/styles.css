@@ -4106,11 +4106,9 @@ h2 {
 @keyframes messageBubblePopIn {
   0% {
     opacity: 0;
-    transform: translate3d(var(--message-swipe-offset), 6px, 0) scale(0.98);
   }
   100% {
     opacity: 1;
-    transform: translate3d(var(--message-swipe-offset), 0, 0) scale(1);
   }
 }
 
@@ -4131,15 +4129,22 @@ h2 {
   padding: 6px 10px 5px 12px;
   position: relative;
   touch-action: pan-y;
-  transform: translate3d(var(--message-swipe-offset), 0, 0);
   animation: messageBubblePopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-  will-change: transform, opacity;
+  /* Keep selectable text out of a composited transform layer. Android WebView
+     can otherwise paint black artifacts around native selection handles. */
+  transform: none;
+  will-change: auto;
   transition:
     transform var(--motion-surface-duration) var(--motion-route-ease),
     box-shadow var(--motion-surface-duration) var(--motion-route-ease);
   user-select: text;
   -webkit-user-select: text;
   -webkit-touch-callout: default;
+}
+
+.message-bubble.is-swipe-active {
+  transform: translate3d(var(--message-swipe-offset), 0, 0);
+  will-change: transform;
 }
 
 .message-body {
@@ -16620,7 +16625,13 @@ span.message-spoiler.is-revealed {
 }
 .storage-page .storage-details-backdrop { background: rgba(3, 7, 18, .5); border: 0; inset: 0; padding: 0; position: fixed; z-index: 70; }
 @media (max-width: 960px) {
-  .storage-page .storage-layout, .storage-page:has(.storage-tile.selected) .storage-layout { display: block; padding-bottom: calc(var(--nav-pill-height) + 40px); }
+  /* Keep Storage content clear of the persistent bottom navigation, including
+     the device gesture/safe-area inset. */
+  .storage-page .storage-layout,
+  .storage-page:has(.storage-tile.selected) .storage-layout {
+    display: block;
+    padding-bottom: calc(var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 32px);
+  }
   .storage-page .storage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   /* Mobile uses the source dropdown only — never the desktop chat source list. */
   .storage-page .storage-source-sidebar { display: block; overflow: visible; padding: 0 0 12px; position: relative; }
@@ -18031,6 +18042,25 @@ span.message-spoiler.is-revealed {
   :root[data-platform="native"] .messenger-shell.has-active-chat .messages-panel {
     overflow-y: auto;
     overscroll-behavior-y: contain;
+  }
+}
+
+/* Persistent bottom navigation for every mobile app section. Active chats are
+   intentionally excluded: their conversation controls own the full screen. */
+@media (max-width: 960px) {
+  .app-frame:not(.has-active-chat) > .app-nav {
+    bottom: var(--nav-pill-inset-bottom);
+    display: flex;
+    position: fixed;
+    z-index: 100;
+  }
+
+  .storage-page .storage-layout,
+  .plans-page .plans-layout,
+  .settings-page > .page-surface,
+  .admin-page > .page-surface,
+  .contacts-page > .page-surface {
+    padding-bottom: calc(var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 32px);
   }
 }
 

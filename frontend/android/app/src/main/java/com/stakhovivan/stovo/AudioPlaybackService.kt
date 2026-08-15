@@ -226,6 +226,7 @@ class AudioPlaybackService : MediaSessionService() {
             if (!ownPackage) return base
             val commands = base.availableSessionCommands.buildUpon()
                 .add(COMMAND_LOAD)
+                .add(COMMAND_PLAY)
                 .add(COMMAND_GET_STATE)
                 .add(COMMAND_CLEAR)
                 .add(COMMAND_SET_CALL_ACTIVE)
@@ -247,6 +248,7 @@ class AudioPlaybackService : MediaSessionService() {
             }
             val result = when (customCommand.customAction) {
                 COMMAND_LOAD.customAction -> load(args)
+                COMMAND_PLAY.customAction -> play()
                 COMMAND_GET_STATE.customAction ->
                     SessionResult(SessionResult.RESULT_SUCCESS, snapshotBundle())
                 COMMAND_CLEAR.customAction -> {
@@ -468,6 +470,18 @@ class AudioPlaybackService : MediaSessionService() {
             pathFileId == fileId
     }
 
+    private fun play(): SessionResult {
+        if (!coordinator.requestPlay()) {
+            return SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
+        }
+        if (player.playbackState == Player.STATE_ENDED) {
+            player.seekTo(0L)
+        }
+        player.play()
+        publishPlayerState()
+        return SessionResult(SessionResult.RESULT_SUCCESS, snapshotBundle())
+    }
+
     private fun mediaFileIdFromPath(uri: Uri): String? {
         val segments = uri.pathSegments
         val fileSegment = when {
@@ -547,6 +561,7 @@ class AudioPlaybackService : MediaSessionService() {
         private const val PROGRESS_INTERVAL_MS = 250L
 
         val COMMAND_LOAD = SessionCommand(AudioPlaybackCustomCommand.LOAD.wireValue, Bundle.EMPTY)
+        val COMMAND_PLAY = SessionCommand("com.stakhovivan.stovo.audio.PLAY", Bundle.EMPTY)
         val COMMAND_GET_STATE =
             SessionCommand(AudioPlaybackCustomCommand.GET_STATE.wireValue, Bundle.EMPTY)
         val COMMAND_CLEAR = SessionCommand(AudioPlaybackCustomCommand.CLEAR.wireValue, Bundle.EMPTY)
