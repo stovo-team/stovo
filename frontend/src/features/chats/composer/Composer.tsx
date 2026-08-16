@@ -137,7 +137,7 @@ export function Composer({
   onVoicePressStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onVoicePressEnd: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onVoicePressCancel: (event: ReactPointerEvent<HTMLButtonElement>) => void;
-  onSubmit: (event: { preventDefault: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) => void;
+  onSubmit: (event: { preventDefault: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) => void | Promise<void>;
 }) {
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
   const mentionMatch = /(?:^|\s)@([\w-]*)$/.exec(composer);
@@ -235,7 +235,7 @@ export function Composer({
               file,
               previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null
             }));
-            onSubmit({ preventDefault: () => undefined }, attachments, message);
+            return onSubmit({ preventDefault: () => undefined }, attachments, message);
           }}
         />
         <div className="emoji-picker-shell" ref={emojiPickerRef}>

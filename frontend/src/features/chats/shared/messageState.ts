@@ -44,7 +44,19 @@ export function mergeIncomingMessage(current: Message[], incoming: Message) {
       (existing) => existing.clientMessageId === clientMessageId
     );
     if (pendingIndex !== -1) {
-      const replaced = current.map((existing, index) => (index === pendingIndex ? message : existing));
+      const pending = current[pendingIndex];
+      // `attachmentsPending` messages are broadcast once when their server row
+      // is created and again after files are attached. Keep the client id and
+      // sending state across the empty intermediate broadcast so the upload can
+      // still complete or fail the same bubble.
+      const replacement =
+        pending.deliveryState === "sending" &&
+        pending.type === "mixed" &&
+        message.type === "mixed" &&
+        message.attachments.length === 0
+          ? { ...message, clientMessageId, deliveryState: "sending" as const }
+          : message;
+      const replaced = current.map((existing, index) => (index === pendingIndex ? replacement : existing));
       const deduped = new Map<string, Message>();
       for (const item of replaced) {
         deduped.set(item.id, item);
