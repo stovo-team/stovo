@@ -13,6 +13,7 @@ import {
 const firstDescriptor: AudioDescriptor = {
   identity: { chatId: "chat|one", messageId: "message/two", fileId: "file%2Fthree" },
   title: "Family recording.mp3",
+  mimeType: "audio/mpeg",
 };
 
 function backendSnapshot(
@@ -200,6 +201,19 @@ describe("AudioPlaybackSession", () => {
       0
     );
     expect(JSON.stringify(session.getSnapshot())).not.toContain("live-only-token");
+  });
+
+  it("preserves the attachment MIME type through source resolution and backend loading", async () => {
+    await session.load(firstDescriptor);
+
+    expect(sourceFactory).toHaveBeenCalledWith(
+      expect.objectContaining({ mimeType: "audio/mpeg" }),
+    );
+    expect(backend.load).toHaveBeenCalledWith(
+      expect.objectContaining({ mimeType: "audio/mpeg" }),
+      expect.any(Object),
+      0,
+    );
   });
 
   it("retains position through video and call suppression without auto-resuming", async () => {

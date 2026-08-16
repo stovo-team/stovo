@@ -37,7 +37,7 @@ export function AttachmentControls({
   onCloseSheet: () => void;
   onPickOption: (option: AttachmentPickerOption) => void;
   onSelectDirectFiles?: (files: File[]) => void;
-  onSendSelectedFiles?: (files: File[], message: string) => void;
+  onSendSelectedFiles?: (files: File[], message: string) => void | Promise<void>;
 }) {
   return (
     <>
