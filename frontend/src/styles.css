@@ -1670,7 +1670,10 @@ h2 {
   animation-duration: 340ms;
   animation-fill-mode: backwards;
   animation-timing-function: cubic-bezier(0.22, 0.82, 0.24, 1);
-  will-change: opacity, transform;
+  /* A transformed route layer becomes the containing block for fixed children
+     in Android WebView. AppNav lives below this node, so a translate delayed
+     the bottom bar until the page transition finished. */
+  will-change: opacity;
 }
 
 :root[data-platform="native"] .app-route-layer--forward {
@@ -1682,13 +1685,13 @@ h2 {
 }
 
 @keyframes app-tab-carousel-forward {
-  from { opacity: 0.72; transform: translate3d(14%, 0, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+  from { opacity: 0.72; }
+  to { opacity: 1; }
 }
 
 @keyframes app-tab-carousel-back {
-  from { opacity: 0.72; transform: translate3d(-14%, 0, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+  from { opacity: 0.72; }
+  to { opacity: 1; }
 }
 
 .auth-panel {

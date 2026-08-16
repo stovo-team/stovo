@@ -18,7 +18,7 @@ type AttachmentPickerSheetProps = {
   onClose: () => void;
   onPick: (option: AttachmentPickerOption) => void;
   onSelectFiles?: (files: File[]) => void;
-  onSendSelectedFiles?: (files: File[], message: string) => void;
+  onSendSelectedFiles?: (files: File[], message: string) => void | Promise<void>;
 };
 
 function formatDuration(durationMs: number): string | null {
@@ -97,7 +97,7 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
     setIsSending(true);
     try {
       const files = await selectNativeMediaFiles(selectedItemIds);
-      if (files.length > 0) onSendSelectedFiles?.(files, message);
+      if (files.length > 0) await onSendSelectedFiles?.(files, message);
       closeSheet();
     } catch {
       setIsSending(false);

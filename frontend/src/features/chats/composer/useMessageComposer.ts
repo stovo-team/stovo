@@ -33,7 +33,6 @@ import {
   inferOptimisticMessageType,
   markPendingMessageFailed,
   mergeIncomingMessage,
-  replaceMessage
 } from "../shared/messageState";
 import type { MessageStateUpdate, PendingLocalAttachment } from "../shared/types";
 
@@ -591,9 +590,6 @@ export function useMessageComposer({
 		localAttachments.length > 0
       );
       const displayMessage = await decryptMessage(selectedChat.id, message, currentUser.id);
-      applyMessagesForChat(selectedChat.id, (current) =>
-        mergeIncomingMessage(current, { ...displayMessage, clientMessageId })
-      );
       if (localAttachments.length > 0) {
         void (async () => {
           try {
@@ -606,11 +602,28 @@ export function useMessageComposer({
               uploadedAttachments.map((file) => file.id)
             );
             const displayUpdated = await decryptMessage(selectedChat.id, updated, currentUser.id);
-            applyMessagesForChat(selectedChat.id, (current) => replaceMessage(current, displayUpdated));
+            // Keep the optimistic bubble authoritative until every selected file
+            // is uploaded and attached. Replacing it with the bare server message
+            // here used to clear `deliveryState` too early and made gallery sends
+            // look successful while they still had no attachments.
+            applyMessagesForChat(selectedChat.id, (current) =>
+              mergeIncomingMessage(current, { ...displayUpdated, clientMessageId })
+            );
           } catch (uploadErr) {
+            applyMessagesForChat(selectedChat.id, (current) =>
+              markPendingMessageFailed(
+                current,
+                clientMessageId,
+                uploadErr instanceof ApiError ? String(uploadErr.message) : "Attachment upload failed"
+              )
+            );
             onError(uploadErr instanceof ApiError ? String(uploadErr.message) : "Attachment upload failed");
           }
         })();
+      } else {
+        applyMessagesForChat(selectedChat.id, (current) =>
+          mergeIncomingMessage(current, { ...displayMessage, clientMessageId })
+        );
       }
     } catch (err) {
       applyMessagesForChat(selectedChat.id, (current) => {

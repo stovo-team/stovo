@@ -424,6 +424,7 @@ export class AudioPlaybackSession {
     const descriptor = {
       identity: { ...this.descriptor.identity },
       title: this.descriptor.title,
+      mimeType: this.descriptor.mimeType,
     };
     const generation = ++this.loadGeneration;
     // Android stopSelf() after natural end restarts the service with revision 0.

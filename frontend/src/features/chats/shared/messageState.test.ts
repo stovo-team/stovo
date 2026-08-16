@@ -65,6 +65,36 @@ describe("messageState", () => {
     expect(merged[0].clientMessageId).toBeUndefined();
   });
 
+  it("keeps attachment messages sending until the attachment broadcast arrives", () => {
+    const pending = baseMessage({
+      id: "temp",
+      type: "mixed",
+      clientMessageId: "client-attachment",
+      deliveryState: "sending"
+    });
+    const created = mergeIncomingMessage([pending], baseMessage({
+      id: "server-attachment",
+      type: "mixed",
+      clientMessageId: "client-attachment",
+      attachments: []
+    }));
+
+    expect(created[0]).toMatchObject({
+      id: "server-attachment",
+      clientMessageId: "client-attachment",
+      deliveryState: "sending"
+    });
+
+    const attached = mergeIncomingMessage(created, baseMessage({
+      id: "server-attachment",
+      type: "mixed",
+      clientMessageId: "client-attachment",
+      attachments: [{ id: "file-1" } as Message["attachments"][number]]
+    }));
+    expect(attached[0].deliveryState).toBeUndefined();
+    expect(attached[0].clientMessageId).toBeUndefined();
+  });
+
   it("merges message lists by id and sorts by createdAt", () => {
     const a = baseMessage({ id: "a", createdAt: "2024-01-01T00:00:00.000Z" });
     const b = baseMessage({ id: "b", createdAt: "2024-01-01T00:01:00.000Z" });
