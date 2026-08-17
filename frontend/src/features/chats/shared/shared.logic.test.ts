@@ -92,11 +92,14 @@ describe("message presentation helpers", () => {
 
   it("uses the most advanced recipient state for an outgoing receipt", () => {
     expect(messageReceiptState({ statuses: [{ status: "sent" }] }, true)).toBe("sent");
+    expect(messageReceiptState({ statuses: [] }, true)).toBe("sent");
     expect(messageReceiptState({ statuses: [{ status: "delivered" }] }, true)).toBe("delivered");
     expect(
       messageReceiptState({ statuses: [{ status: "delivered" }, { status: "read" }] }, true)
     ).toBe("read");
     expect(messageReceiptState({ statuses: [{ status: "read" }] }, false)).toBeNull();
+    expect(messageReceiptState({ statuses: [], deliveryState: "sending" }, true)).toBeNull();
+    expect(messageReceiptState({ statuses: [], deliveryState: "failed" }, true)).toBeNull();
   });
 
   it("opens a forwarded group or a reply sender's direct chat", () => {

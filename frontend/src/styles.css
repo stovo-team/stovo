@@ -5391,8 +5391,13 @@ span.message-spoiler.is-revealed {
   width: 16px;
 }
 
+.message-receipt--sent,
 .message-receipt--delivered {
   opacity: 0.76;
+}
+
+.message-receipt--sending {
+  opacity: 0.65;
 }
 
 .message-bubble.mine .message-receipt--read {
