@@ -220,9 +220,6 @@ export function formatDateSeparator(value: string | null | undefined) {
 }
 
 export function messageDeliveryLabel(message: Message, mine: boolean) {
-  if (message.deliveryState === "sending") {
-    return "Sending";
-  }
   if (message.deliveryState === "failed") {
     return "Failed";
   }

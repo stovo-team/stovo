@@ -21,6 +21,7 @@ import { useAudioMessageRestore } from "./conversation/useAudioMessageRestore";
 import { useMessageComposer } from "./composer/useMessageComposer";
 import { useSharedFileQueueBridge } from "./composer/useSharedFileQueueBridge";
 import { useAudioSessionLifecycle } from "./composer/useAudioSessionLifecycle";
+import { useMessageOutbox } from "./outbox/messageOutboxProcessor";
 import { useChatSurfaceDismissal } from "./useChatSurfaceDismissal";
 import { navigateWithMotion } from "../../motion/navigation";
 import { useCallSession } from "./calling/useCallSession";
@@ -135,13 +136,24 @@ export function useChatsPageController({
     window.setTimeout(() => thread.scrollMessagesToBottom(), 300);
   }, [thread]);
 
+  const outbox = useMessageOutbox({
+    accessToken,
+    currentUser,
+    chatsRef,
+    socketRef,
+    applyMessagesForChat,
+    onChatsUpdate: setChats,
+    onError: setError
+  });
+
   const composerApi = useMessageComposer({
     chatId, accessToken, currentUser, selectedChat, sendOnEnter: appearance.sendOnEnter,
     channelCommentsDisabledForViewer, missingCommentThread, canPostInSelectedChannel, threadRootMessageId,
     replyTarget, setReplyTarget, editTargetMessage, setEditTargetMessage, setMessageContextMenu,
     draftBeforeEditRef, editInFlightRef, applyMessagesForChat, onChatsUpdate: setChats,
     onError: setError, navigate, socketRef, composerInputRef,
-    onComposerFocus: handleComposerFocusWithScroll
+    onComposerFocus: handleComposerFocusWithScroll,
+    chatsRef, triggerDrain: outbox.triggerDrain
   });
   const {
     composer, composerEnlargeOpen, setComposerEnlargeOpen, isEmojiPickerOpen,

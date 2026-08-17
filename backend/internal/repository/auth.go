@@ -76,17 +76,21 @@ func (s *Store) CompleteSetup(ctx context.Context, p SetupParams) error {
 			Save(ctx); err != nil {
 			return err
 		}
-		if _, err := tx.ChatMember.Create().
-			SetID(uuid.NewString()).
+		if err := tx.ChatMember.Create().
+			SetID(p.ChatID).
 			SetUserID(p.UserID).
 			SetCreatedAt(p.CreatedAt).
-			Save(ctx); err != nil {
+			OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
+			DoNothing().
+			Exec(ctx); err != nil {
 			return err
 		}
-		if _, err := tx.ChatPreference.Create().
-			SetID(uuid.NewString()).
+		if err := tx.ChatPreference.Create().
+			SetID(p.ChatID).
 			SetUserID(p.UserID).
-			Save(ctx); err != nil {
+			OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
+			DoNothing().
+			Exec(ctx); err != nil {
 			return err
 		}
 		create := tx.RefreshToken.Create().
@@ -158,15 +162,19 @@ func (s *Store) CreateAdminUser(ctx context.Context, p SetupParams) (*ent.User, 
 				Save(ctx)
 		}
 		if err == nil && c != nil {
-			_, _ = tx.ChatMember.Create().
-				SetID(uuid.NewString()).
+			_ = tx.ChatMember.Create().
+				SetID(c.ID).
 				SetUserID(p.UserID).
 				SetCreatedAt(p.CreatedAt).
-				Save(ctx)
-			_, _ = tx.ChatPreference.Create().
-				SetID(uuid.NewString()).
+				OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
+				DoNothing().
+				Exec(ctx)
+			_ = tx.ChatPreference.Create().
+				SetID(c.ID).
 				SetUserID(p.UserID).
-				Save(ctx)
+				OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
+				DoNothing().
+				Exec(ctx)
 		}
 
 		create := tx.RefreshToken.Create().

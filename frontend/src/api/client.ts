@@ -41,16 +41,25 @@ function readStoredApiUrl() {
   }
 }
 
-export function storeApiUrlFromInviteLink() {
+export function storeApiUrlFromInviteLink(searchQuery?: string) {
   if (typeof window === "undefined") {
     return null;
   }
 
   let apiUrl: string | null = null;
-  try {
-    const params = new URLSearchParams(window.location.search);
-    apiUrl = normalizeApiUrl(params.get("apiUrl"));
-  } catch {}
+  if (searchQuery) {
+    try {
+      const params = new URLSearchParams(searchQuery);
+      apiUrl = normalizeApiUrl(params.get("apiUrl"));
+    } catch {}
+  }
+
+  if (!apiUrl) {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      apiUrl = normalizeApiUrl(params.get("apiUrl"));
+    } catch {}
+  }
 
   if (!apiUrl) {
     try {

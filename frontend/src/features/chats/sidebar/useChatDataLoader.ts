@@ -7,8 +7,79 @@ import type { Family } from "../../../api/family";
 import { decryptMessages } from "../../../api/messageCrypto";
 import { loadCachedChatList, loadRecentChatHistory, loadRecentChatHistoryFromLocalStorage, saveCachedChatList, saveRecentChatHistory } from "../../../chatHistoryCache";
 import { applyMessagePreviewToChat, sortPinsByPosition } from "../shared/chatPresentation";
+import { mergeMessageLists } from "../shared/messageState";
 import type { MessageStateUpdate } from "../shared/types";
 import { getActiveServer, upsertServer } from "../../../api/serverRegistry";
+import { getOutboxMessagesForChat, type QueuedOutboxMessage } from "../outbox/messageOutboxStore";
+
+export function mergeOutboxPendingMessages(
+  current: Message[],
+  outboxItems: QueuedOutboxMessage[],
+  currentUser: User | null
+): Message[] {
+  if (!outboxItems || outboxItems.length === 0) return current;
+  const pendingMessages: Message[] = outboxItems.map((item) => {
+    if (item.optimisticMessage) return item.optimisticMessage;
+    return {
+      id: `pending:${item.clientMessageId}`,
+      chatId: item.chatId,
+      senderId: item.userId,
+      senderDisplayName: currentUser?.displayName ?? "You",
+      type: item.attachments.length > 0 ? (item.attachments.some((a) => a.mimeType.startsWith("image/")) ? "image" : "file") : "text",
+      content: item.content,
+      encryptionProtocol: item.encryptionProtocol ?? "legacy_plaintext",
+      ciphertext: null,
+      nonce: null,
+      keyVersion: null,
+      encryptionMetadata: null,
+      replyToMessageId: item.replyToMessageId,
+      threadRootMessageId: item.threadRootMessageId,
+      messageKind: item.threadRootMessageId ? "thread" : "chat",
+      createdAt: item.createdAt,
+      updatedAt: item.createdAt,
+      deletedAt: null,
+      isEdited: false,
+      forwardedFrom: null,
+      statuses: [{ userId: item.userId, status: "sent", createdAt: item.createdAt }],
+      reactions: [],
+      attachments: item.attachments.map((a) => a.uploadedFile ?? ({
+        id: a.uploadedFileId ?? a.id,
+        familyId: "",
+        uploadedBy: item.userId,
+        chatId: item.chatId,
+        chatTitle: null,
+        chatType: null,
+        originMessageId: null,
+        accessScope: "chat" as const,
+        storageProvider: "local",
+        originalName: a.name,
+        mimeType: a.mimeType,
+        sizeBytes: a.size,
+        checksum: null,
+        createdAt: item.createdAt,
+        deletedAt: null,
+        isFavorite: false
+      })),
+      clientMessageId: item.clientMessageId,
+      deliveryState: item.status === "failed" ? "failed" : "sending",
+      deliveryError: item.deliveryError ?? undefined
+    };
+  });
+
+  const merged = [...current];
+  for (const pending of pendingMessages) {
+    if (
+      !merged.some(
+        (m) =>
+          m.id === pending.id ||
+          (pending.clientMessageId && m.clientMessageId === pending.clientMessageId)
+      )
+    ) {
+      merged.push(pending);
+    }
+  }
+  return merged.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
 
 export type UseChatDataLoaderParams = {
   accessTokenRef: RefObject<string | null>;
@@ -210,6 +281,13 @@ export function useChatDataLoader({
             setIsChatLoading(false);
           }
         }).catch(() => undefined);
+
+        void getOutboxMessagesForChat(userId, requestedChatId).then((outboxItems) => {
+          if (!outboxItems || outboxItems.length === 0 || !isCurrentRequest()) return;
+          applyMessagesForChatRef.current(requestedChatId, (current) =>
+            mergeOutboxPendingMessages(current, outboxItems, currentUser)
+          );
+        }).catch(() => undefined);
       }
 
       try {
@@ -238,6 +316,23 @@ export function useChatDataLoader({
           void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, messageResult.messages);
         }
         setIsChatLoading(false);
+
+        if (messageResult.hasMore && messageResult.nextBefore) {
+          const beforeCursor = messageResult.nextBefore;
+          void authRequestRef.current<MessageHistoryPage>(
+            `/api/chats/${requestedChatId}/messages?before=${encodeURIComponent(beforeCursor)}&limit=50`
+          ).then(async (morePage) => {
+            if (!isCurrentRequest()) return;
+            const moreDecrypted = await decryptMessages(requestedChatId, morePage.messages, currentUserIdRef.current);
+            if (!isCurrentRequest()) return;
+            applyMessagesForChatRef.current(requestedChatId, (current) => mergeMessageLists(current, moreDecrypted));
+            historyCursorRef.current[requestedChatId] = morePage.hasMore ? morePage.nextBefore : null;
+            if (currentUserIdRef.current) {
+              const allDecrypted = mergeMessageLists(decryptedMessages, moreDecrypted);
+              void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, allDecrypted);
+            }
+          }).catch(() => undefined);
+        }
 
         void Promise.all([chatRequest, pinsRequest]).then(([chat, pinsResult]) => {
           if (!isCurrentRequest()) return;
@@ -272,6 +367,14 @@ export function useChatDataLoader({
       } finally {
         if (isCurrentRequest()) {
           setIsChatLoading(false);
+          if (userId) {
+            void getOutboxMessagesForChat(userId, requestedChatId).then((outboxItems) => {
+              if (!outboxItems || outboxItems.length === 0 || !isCurrentRequest()) return;
+              applyMessagesForChatRef.current(requestedChatId, (current) =>
+                mergeOutboxPendingMessages(current, outboxItems, currentUser)
+              );
+            }).catch(() => undefined);
+          }
         }
       }
     },

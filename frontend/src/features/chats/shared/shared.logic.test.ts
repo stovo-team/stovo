@@ -16,6 +16,7 @@ import {
   countMessagesAfterAnchor,
   emojiSizeClass,
   isMessageListNearBottom,
+  messageDeliveryLabel,
   messageOriginChatId,
   messageReceiptState,
   shouldShowMessageSender
@@ -100,6 +101,26 @@ describe("message presentation helpers", () => {
     expect(messageReceiptState({ statuses: [{ status: "read" }] }, false)).toBeNull();
     expect(messageReceiptState({ statuses: [], deliveryState: "sending" }, true)).toBeNull();
     expect(messageReceiptState({ statuses: [], deliveryState: "failed" }, true)).toBeNull();
+  });
+
+  it("formats delivery labels without the word Sending for pending messages", () => {
+    const timestamp = "2026-08-17T12:34:00.000Z";
+    const expectedTime = new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+    expect(
+      messageDeliveryLabel(
+        { createdAt: timestamp, deliveryState: "sending" } as any,
+        true
+      )
+    ).toBe(expectedTime);
+    expect(
+      messageDeliveryLabel(
+        { createdAt: timestamp, deliveryState: "failed" } as any,
+        true
+      )
+    ).toBe("Failed");
   });
 
   it("opens a forwarded group or a reply sender's direct chat", () => {

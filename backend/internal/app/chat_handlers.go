@@ -58,6 +58,7 @@ func (s *Server) handleAttachMessageFiles(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := s.store.AddMessageAttachments(r.Context(), meta.ID, uniqueAttachmentFileIDs(payload.FileIDs)); err != nil {
+		s.logger.Errorf("chats", "add message attachments failed message_id=%s error=%v", meta.ID, err)
 		s.detail(w, http.StatusInternalServerError, "Could not attach files")
 		return
 	}
@@ -127,11 +128,17 @@ func (s *Server) handleCreateDirectChat(w http.ResponseWriter, r *http.Request, 
 		MemberIDs:          []string{user.ID, target.ID},
 		CreatePreferences:  true,
 	}); err != nil {
+		s.logger.Errorf("chats", "create direct chat failed user_id=%s target_id=%s error=%v", user.ID, payload.UserID, err)
 		s.detail(w, http.StatusInternalServerError, "Could not create direct chat")
 		return
 	}
 
-	chat, _ := s.buildChatPublic(chatID, user)
+	chat, err := s.buildChatPublic(chatID, user)
+	if err != nil {
+		s.logger.Errorf("chats", "create direct chat build failed chat_id=%s user_id=%s error=%v", chatID, user.ID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not load created chat")
+		return
+	}
 	s.json(w, http.StatusCreated, chat)
 }
 
@@ -168,11 +175,17 @@ func (s *Server) handleCreateGroupChat(w http.ResponseWriter, r *http.Request, u
 		MemberIDs:          memberIDs,
 		CreatePreferences:  true,
 	}); err != nil {
+		s.logger.Errorf("chats", "create group chat failed user_id=%s error=%v", user.ID, err)
 		s.detail(w, http.StatusInternalServerError, "Could not create group chat")
 		return
 	}
 
-	chat, _ := s.buildChatPublic(chatID, user)
+	chat, err := s.buildChatPublic(chatID, user)
+	if err != nil {
+		s.logger.Errorf("chats", "create group chat build failed chat_id=%s user_id=%s error=%v", chatID, user.ID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not load created chat")
+		return
+	}
 	s.json(w, http.StatusCreated, chat)
 }
 
@@ -217,11 +230,17 @@ func (s *Server) handleCreateChannelChat(w http.ResponseWriter, r *http.Request,
 		MemberIDs:          memberIDs,
 		CreatePreferences:  true,
 	}); err != nil {
+		s.logger.Errorf("chats", "create channel chat failed user_id=%s error=%v", user.ID, err)
 		s.detail(w, http.StatusInternalServerError, "Could not create channel chat")
 		return
 	}
 
-	chat, _ := s.buildChatPublic(chatID, user)
+	chat, err := s.buildChatPublic(chatID, user)
+	if err != nil {
+		s.logger.Errorf("chats", "create channel chat build failed chat_id=%s user_id=%s error=%v", chatID, user.ID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not load created chat")
+		return
+	}
 	s.json(w, http.StatusCreated, chat)
 }
 
@@ -531,9 +550,6 @@ func (s *Server) canSendToChat(chat chatPublic, user userPublic) bool {
 }
 
 func (s *Server) resolveChatMembers(user userPublic, rawMemberIDs []string) ([]string, error) {
-	if len(rawMemberIDs) == 0 {
-		return nil, errBadRequest
-	}
 	memberIDs := []string{user.ID}
 	seen := map[string]struct{}{user.ID: {}}
 	for _, memberID := range rawMemberIDs {
@@ -550,9 +566,6 @@ func (s *Server) resolveChatMembers(user userPublic, rawMemberIDs []string) ([]s
 		}
 		seen[memberID] = struct{}{}
 		memberIDs = append(memberIDs, memberID)
-	}
-	if len(memberIDs) == 1 {
-		return nil, errBadRequest
 	}
 	return memberIDs, nil
 }

@@ -65,6 +65,23 @@ func (s *Server) handleHealthRedis(w http.ResponseWriter, _ *http.Request) {
 	s.json(w, http.StatusOK, map[string]string{"status": "ok", "service": "redis"})
 }
 
+func (s *Server) handleAssetLinks(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.stakhovivan.stovo",
+      "sha256_cert_fingerprints": [
+        "18:7C:F4:A5:68:55:01:A0:87:C7:E4:09:59:B3:36:9C:2C:19:D9:D2:C3:00:87:72:08:92:44:81:40:91:37:F9"
+      ]
+    }
+  }
+]`))
+}
+
 func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 	count, err := s.store.CountActiveUsers(r.Context())
 	if err != nil {

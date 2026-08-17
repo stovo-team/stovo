@@ -448,6 +448,15 @@ export function useMessageThread({
     };
   }, [selectedChat?.id, threadRootMessageId, replyTarget?.id, messages.length, lastMessageId]);
 
+  useEffect(() => {
+    if (!selectedChat || threadRootMessageId || messageSearch.trim()) return;
+    const panel = messagesPanelRef.current;
+    if (!panel) return;
+    if (panel.scrollHeight <= panel.clientHeight && historyCursorRef.current[selectedChat.id]) {
+      void loadOlderMessages(selectedChat.id);
+    }
+  }, [selectedChat, threadRootMessageId, messageSearch, messages.length, loadOlderMessages]);
+
   const searchedMessages = useMemo(() => {
     const query = messageSearch.trim();
     if (!query) {
