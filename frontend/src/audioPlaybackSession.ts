@@ -499,6 +499,9 @@ export class AudioPlaybackSession {
       this.descriptor = {
         identity: { ...identity },
         title: typeof candidate.title === "string" ? candidate.title : "",
+        mimeType: sameAudioIdentity(this.descriptor?.identity, identity)
+          ? this.descriptor?.mimeType
+          : undefined,
       };
     }
     this.publish({
