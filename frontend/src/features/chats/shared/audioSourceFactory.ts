@@ -21,10 +21,14 @@ export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
       void downloadFileBlob(accessToken, fileId).catch(() => undefined);
       const capability = await createMediaPlaybackToken(accessToken, fileId);
+      const mimeType =
+        descriptor.mimeType?.trim() && descriptor.mimeType.startsWith("audio/")
+          ? descriptor.mimeType.trim()
+          : "audio/mpeg";
       return {
         url: getMediaPlaybackUrl(fileId),
         token: capability.token,
-        mimeType: descriptor.mimeType
+        mimeType
       };
     }
 

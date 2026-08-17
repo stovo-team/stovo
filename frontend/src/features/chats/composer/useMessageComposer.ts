@@ -18,7 +18,7 @@ import { Chat, Message, attachMessageFiles, editMessage, sendMessage } from "../
 import { ApiError } from "../../../api/client";
 import { decryptMessage } from "../../../api/messageCrypto";
 import { encryptMessageContent } from "../../../api/messageCrypto";
-import { uploadFile } from "../../../api/files";
+import { type FamilyFile, uploadFile } from "../../../api/files";
 import {
   applyFormattingToTextarea,
   measureTextareaSelectionAnchor
@@ -35,6 +35,12 @@ import {
   mergeIncomingMessage,
 } from "../shared/messageState";
 import type { MessageStateUpdate, PendingLocalAttachment } from "../shared/types";
+import {
+  enqueueOutboxMessage,
+  type QueuedOutboxAttachment,
+  type QueuedOutboxMessage
+} from "../outbox/messageOutboxStore";
+import { drainOutboxQueue } from "../outbox/messageOutboxProcessor";
 
 export type UseMessageComposerParams = {
   chatId: string | undefined;
@@ -60,6 +66,8 @@ export type UseMessageComposerParams = {
   socketRef: RefObject<Socket | null>;
   composerInputRef: RefObject<HTMLTextAreaElement | null>;
   onComposerFocus?: () => void;
+  chatsRef?: RefObject<Chat[]>;
+  triggerDrain?: () => Promise<void>;
 };
 
 const COMPOSER_MAX_LINES = 3;
@@ -87,7 +95,9 @@ export function useMessageComposer({
   navigate,
   socketRef,
   composerInputRef,
-  onComposerFocus
+  onComposerFocus,
+  chatsRef,
+  triggerDrain
 }: UseMessageComposerParams) {
   const [composer, setComposer] = useState("");
   const [formattingToolbarAnchor, setFormattingToolbarAnchor] = useState<ToolbarAnchor | null>(null);
@@ -517,14 +527,101 @@ export function useMessageComposer({
     const replyToMessageId = isChannelThreadMessage ? null : replyTarget?.id ?? null;
     const draftContent = content;
 
+    const outboxAttachments: QueuedOutboxAttachment[] = localAttachments.map((pending) => ({
+      id: pending.localId,
+      name: pending.file.name,
+      mimeType: pending.file.type,
+      size: pending.file.size,
+      blob: pending.file
+    }));
+
+    const previewAttachments: FamilyFile[] = localAttachments.map((pending) => ({
+      id: pending.localId,
+      familyId: "",
+      uploadedBy: currentUser.id,
+      chatId: selectedChat.id,
+      chatTitle: selectedChat.title ?? null,
+      chatType: (selectedChat.type === "archive" ? null : selectedChat.type) as "family" | "direct" | "group" | "channel" | null,
+      originMessageId: null,
+      accessScope: "chat" as const,
+      storageProvider: "local",
+      originalName: pending.file.name,
+      mimeType: pending.file.type,
+      sizeBytes: pending.file.size,
+      checksum: null,
+      createdAt,
+      deletedAt: null,
+      isFavorite: false
+    }));
+
+    const mentionedUserIds = selectedChat.members
+      .filter((member) => member.id !== currentUser.id && new RegExp(`(^|\\s)@${member.username.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?=\\s|$|[.,!?])`, "i").test(draftContent))
+      .map((member) => member.id);
+
+    const optimisticMessage: Message = {
+      id: `pending:${clientMessageId}`,
+      chatId: selectedChat.id,
+      senderId: currentUser.id,
+      senderDisplayName: currentUser.displayName,
+      type: inferOptimisticMessageType(previewAttachments, draftContent || null),
+      content: draftContent || null,
+      encryptionProtocol: selectedChat.encryptionProtocol,
+      ciphertext: null,
+      nonce: null,
+      keyVersion: null,
+      encryptionMetadata: null,
+      replyToMessageId,
+      threadRootMessageId: threadRootForSend,
+      messageKind: threadRootForSend ? "thread" : "chat",
+      createdAt,
+      updatedAt: createdAt,
+      deletedAt: null,
+      isEdited: false,
+      forwardedFrom: null,
+      statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
+      reactions: [],
+      attachments: previewAttachments,
+      clientMessageId,
+      deliveryState: "sending"
+    };
+
+    const outboxItem: QueuedOutboxMessage = {
+      id: clientMessageId,
+      clientMessageId,
+      chatId: selectedChat.id,
+      userId: currentUser.id,
+      content: draftContent || null,
+      replyToMessageId,
+      threadRootMessageId: threadRootForSend,
+      mentionedUserIds,
+      encryptionProtocol: selectedChat.encryptionProtocol,
+      attachments: outboxAttachments,
+      createdAt,
+      status: "queued",
+      attemptCount: 0,
+      optimisticMessage
+    };
+
     try {
       sendInFlightRef.current = true;
       setIsSendingMessage(true);
-      // Sending is intentionally independent of attachment transfer. Clear the
-      // composer and enqueue the message first; uploads finish in the background.
-      setIsUploading(false);
+      setIsUploading(localAttachments.length > 0);
       onError(null);
 
+      // Persist to local outbox queue first so it survives restarts/crashes
+      await enqueueOutboxMessage(outboxItem);
+
+      // Optimistically display in conversation
+      applyMessagesForChat(selectedChat.id, (current) => [...current, optimisticMessage]);
+      onChatsUpdate((current) =>
+        current.map((chat) =>
+          chat.id === selectedChat.id
+            ? { ...applyMessagePreviewToChat(chat, optimisticMessage), unreadCount: 0 }
+            : chat
+        )
+      );
+
+      // Clear composer state immediately
       clearComposerFormattingSelection();
       setComposer("");
       resetComposerHeight();
@@ -539,105 +636,21 @@ export function useMessageComposer({
       }
       socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
 
-      const optimisticMessage: Message = {
-        id: `pending:${clientMessageId}`,
-        chatId: selectedChat.id,
-        senderId: currentUser.id,
-        senderDisplayName: currentUser.displayName,
-        type: localAttachments.length ? "mixed" : inferOptimisticMessageType([], draftContent || null),
-        content: draftContent || null,
-        encryptionProtocol: selectedChat.encryptionProtocol,
-        ciphertext: null,
-        nonce: null,
-        keyVersion: null,
-        encryptionMetadata: null,
-        replyToMessageId,
-        threadRootMessageId: threadRootForSend,
-        messageKind: threadRootForSend ? "thread" : "chat",
-        createdAt,
-        updatedAt: createdAt,
-        deletedAt: null,
-        isEdited: false,
-        forwardedFrom: null,
-        statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
-        reactions: [],
-        attachments: [],
-        clientMessageId,
-        deliveryState: "sending"
-      };
-      applyMessagesForChat(selectedChat.id, (current) => [...current, optimisticMessage]);
-      onChatsUpdate((current) =>
-        current.map((chat) =>
-          chat.id === selectedChat.id
-            ? { ...applyMessagePreviewToChat(chat, optimisticMessage), unreadCount: 0 }
-            : chat
-        )
-      );
-
-      const encrypted = await encryptMessageContent(selectedChat, draftContent || null, currentUser.id);
-		const mentionedUserIds = selectedChat.members
-			.filter((member) => member.id !== currentUser.id && new RegExp(`(^|\\s)@${member.username.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?=\\s|$|[.,!?])`, "i").test(draftContent))
-			.map((member) => member.id);
-      const message = await sendMessage(
-        accessToken,
-        selectedChat.id,
-        encrypted.content,
-        [],
-        replyToMessageId,
-        threadRootForSend,
-        encrypted.encryption,
-		mentionedUserIds,
-		localAttachments.length > 0
-      );
-      const displayMessage = await decryptMessage(selectedChat.id, message, currentUser.id);
-      if (localAttachments.length > 0) {
-        void (async () => {
-          try {
-            const uploadedAttachments = await Promise.all(
-              localAttachments.map((pending) => uploadFile(accessToken, pending.file, selectedChat.id))
-            );
-            const updated = await attachMessageFiles(
-              accessToken,
-              message.id,
-              uploadedAttachments.map((file) => file.id)
-            );
-            const displayUpdated = await decryptMessage(selectedChat.id, updated, currentUser.id);
-            // Keep the optimistic bubble authoritative until every selected file
-            // is uploaded and attached. Replacing it with the bare server message
-            // here used to clear `deliveryState` too early and made gallery sends
-            // look successful while they still had no attachments.
-            applyMessagesForChat(selectedChat.id, (current) =>
-              mergeIncomingMessage(current, { ...displayUpdated, clientMessageId })
-            );
-          } catch (uploadErr) {
-            applyMessagesForChat(selectedChat.id, (current) =>
-              markPendingMessageFailed(
-                current,
-                clientMessageId,
-                uploadErr instanceof ApiError ? String(uploadErr.message) : "Attachment upload failed"
-              )
-            );
-            onError(uploadErr instanceof ApiError ? String(uploadErr.message) : "Attachment upload failed");
-          }
-        })();
-      } else {
-        applyMessagesForChat(selectedChat.id, (current) =>
-          mergeIncomingMessage(current, { ...displayMessage, clientMessageId })
-        );
+      // Trigger background outbox drain
+      if (triggerDrain) {
+        void triggerDrain();
+      } else if (accessToken && currentUser) {
+        void drainOutboxQueue({
+          accessToken,
+          currentUser: currentUser as any,
+          chats: chatsRef?.current ?? [selectedChat],
+          applyMessagesForChat,
+          onChatsUpdate,
+          onError: (err) => onError(err)
+        });
       }
     } catch (err) {
-      applyMessagesForChat(selectedChat.id, (current) => {
-        const hasOptimistic = current.some(
-          (item) => item.clientMessageId === clientMessageId || item.id === `pending:${clientMessageId}`
-        );
-        if (!hasOptimistic) return current;
-        return markPendingMessageFailed(
-          current,
-          clientMessageId,
-          err instanceof ApiError ? String(err.message) : "Message failed"
-        );
-      });
-      onError(err instanceof ApiError ? String(err.message) : "Message failed");
+      onError(err instanceof Error ? err.message : "Could not queue message");
     } finally {
       sendInFlightRef.current = false;
       setIsSendingMessage(false);

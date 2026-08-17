@@ -53,18 +53,22 @@ func (s *Store) CreateChatWithMembers(ctx context.Context, p CreateChatParams) e
 			return err
 		}
 		for _, memberID := range p.MemberIDs {
-			if _, err := tx.ChatMember.Create().
+			if err := tx.ChatMember.Create().
 				SetID(p.ID).
 				SetUserID(memberID).
 				SetCreatedAt(p.CreatedAt).
-				Save(ctx); err != nil {
+				OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
+				DoNothing().
+				Exec(ctx); err != nil {
 				return err
 			}
 			if p.CreatePreferences {
-				if _, err := tx.ChatPreference.Create().
+				if err := tx.ChatPreference.Create().
 					SetID(p.ID).
 					SetUserID(memberID).
-					Save(ctx); err != nil {
+					OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
+					DoNothing().
+					Exec(ctx); err != nil {
 					return err
 				}
 			}

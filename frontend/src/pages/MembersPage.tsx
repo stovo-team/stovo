@@ -11,6 +11,7 @@ import {
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
+import { shareContent } from "../native/nativeSharePlugin";
 import AppNav from "./AppNav";
 
 const ROLE_OPTIONS: UserRole[] = ["admin", "member", "child"];
@@ -190,12 +191,17 @@ export default function MembersPage() {
     if (!link) {
       return;
     }
-    if (navigator.share) {
-      await navigator.share({ title: family?.name ?? "Stovo", url: link }).catch(() => undefined);
-      setNotice("Invite share opened");
-    } else {
+    const result = await shareContent({
+      title: family?.name ?? "Stovo",
+      text: `Join our family "${family?.name ?? "Stovo"}" on Stovo!`,
+      url: link,
+      dialogTitle: `Invite to ${family?.name ?? "Stovo"}`
+    });
+    if (result.fallbackToCopy) {
       await navigator.clipboard?.writeText(link).catch(() => undefined);
       setNotice("Invite link copied");
+    } else if (result.shared) {
+      setNotice("Invite share opened");
     }
     setIsContactMenuOpen(false);
   }

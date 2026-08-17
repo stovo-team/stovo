@@ -89,9 +89,10 @@ export async function addAudioPlaybackStateListener(
 function unavailableSnapshot(
   revision: number,
   platform: "android" | "unavailable",
+  identity: AudioPlaybackSnapshot["identity"] = null,
 ): AudioPlaybackSnapshot {
   return Object.freeze({
-    identity: null,
+    identity: identity ? Object.freeze({ ...identity }) : null,
     title: "",
     position: 0,
     duration: 0,
@@ -191,7 +192,7 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
     position: number,
   ): Promise<void> {
     if (!this.isAvailable()) {
-      this.publishUnavailable("unavailable");
+      this.publishUnavailable("unavailable", descriptor.identity);
       return;
     }
     // Natural end stops the service and resets its revision counter. Accept the
@@ -199,7 +200,7 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
     this.acceptedRevision = -1;
     await this.connect();
     if (!source.url?.trim() || !Number.isFinite(position)) {
-      this.publishUnavailable("android");
+      this.publishUnavailable("android", descriptor.identity);
       return;
     }
     try {
@@ -216,13 +217,13 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
       // first one can be missed while Android establishes a new controller.
       this.accept(initialState);
     } catch {
-      this.publishUnavailable("android");
+      this.publishUnavailable("android", descriptor.identity);
     }
   }
 
   async play(): Promise<void> {
     if (!this.isAvailable()) {
-      this.publishUnavailable("unavailable");
+      this.publishUnavailable("unavailable", this.snapshot.identity);
       return;
     }
     await this.connect();
@@ -232,7 +233,7 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
       // state, then continue receiving subsequent listener updates.
       this.accept(await this.plugin.play());
     } catch {
-      this.publishUnavailable("android");
+      this.publishUnavailable("android", this.snapshot.identity);
     }
   }
 
@@ -274,14 +275,14 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
 
   private async command(command: () => Promise<void>): Promise<void> {
     if (!this.isAvailable()) {
-      this.publishUnavailable("unavailable");
+      this.publishUnavailable("unavailable", this.snapshot.identity);
       return;
     }
     await this.connect();
     try {
       await command();
     } catch {
-      this.publishUnavailable("android");
+      this.publishUnavailable("android", this.snapshot.identity);
     }
   }
 
@@ -293,8 +294,11 @@ export class NativeAudioPlaybackBackend implements AudioPlaybackBackend {
     this.emit();
   }
 
-  private publishUnavailable(platform: "android" | "unavailable"): void {
-    this.snapshot = unavailableSnapshot(this.snapshot.revision + 1, platform);
+  private publishUnavailable(
+    platform: "android" | "unavailable",
+    identity: AudioPlaybackSnapshot["identity"] = this.snapshot.identity,
+  ): void {
+    this.snapshot = unavailableSnapshot(this.snapshot.revision + 1, platform, identity);
     this.emit();
   }
 

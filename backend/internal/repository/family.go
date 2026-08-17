@@ -172,17 +172,21 @@ func (s *Store) AcceptInvite(ctx context.Context, p AcceptInviteParams) error {
 		if _, err := tx.Invite.UpdateOneID(p.InviteID).AddUsedCount(1).Save(ctx); err != nil {
 			return err
 		}
-		if _, err := tx.ChatMember.Create().
+		if err := tx.ChatMember.Create().
 			SetID(p.FamilyChatID).
 			SetUserID(p.UserID).
 			SetCreatedAt(p.CreatedAt).
-			Save(ctx); err != nil {
+			OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
+			DoNothing().
+			Exec(ctx); err != nil {
 			return err
 		}
-		if _, err := tx.ChatPreference.Create().
+		if err := tx.ChatPreference.Create().
 			SetID(p.FamilyChatID).
 			SetUserID(p.UserID).
-			Save(ctx); err != nil {
+			OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
+			DoNothing().
+			Exec(ctx); err != nil {
 			return err
 		}
 		return s.CreateRefreshToken(ctx, tx, CreateRefreshTokenParams{

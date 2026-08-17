@@ -293,6 +293,9 @@ export class AudioPlaybackSession {
       }
     }
     const afterPrepare = this.snapshot.status;
+    if (afterPrepare === "error") {
+      return;
+    }
     this.publish({
       playWhenReady: true,
       isPlaying: false,

@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 
 import { createInvite, inviteUrlForServer } from "../api/family";
 import { ApiError, getApiUrl } from "../api/client";
+import { shareContent } from "../native/nativeSharePlugin";
 
 type InviteModalProps = {
   accessToken: string;
@@ -123,24 +124,14 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
 
   async function handleShareLink() {
     if (!inviteUrl) return;
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `Join ${familyName} on Stovo`,
-          url: inviteUrl
-        });
-        return;
-      }
-      await copyText(inviteUrl);
-      setCopiedLink(true);
-      window.setTimeout(() => setCopiedLink(false), 1600);
-    } catch {
-      // Share cancelled or unavailable — fallback to clipboard copy
-      try {
-        await copyText(inviteUrl);
-        setCopiedLink(true);
-        window.setTimeout(() => setCopiedLink(false), 1600);
-      } catch {}
+    const result = await shareContent({
+      title: `Join ${familyName} on Stovo`,
+      text: `Join our family "${familyName}" on Stovo!`,
+      url: inviteUrl,
+      dialogTitle: `Invite to ${familyName}`
+    });
+    if (result.fallbackToCopy) {
+      await handleCopyLink();
     }
   }
 
@@ -164,26 +155,17 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
 
   async function handleShareQr() {
     if (!qrDataUrl || !inviteUrl) return;
-    try {
-      const blob = await dataUrlToBlob(qrDataUrl);
-      const file = new File([blob], "stovo-invite-qr.png", { type: blob.type || "image/png" });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: `Join ${familyName} on Stovo`,
-          files: [file]
-        });
-        return;
-      }
-      if (navigator.share) {
-        await navigator.share({
-          title: `Join ${familyName} on Stovo`,
-          url: inviteUrl
-        });
-        return;
-      }
+    const result = await shareContent({
+      title: `Join ${familyName} on Stovo`,
+      text: `Join our family "${familyName}" on Stovo!\n${inviteUrl}`,
+      url: inviteUrl,
+      dialogTitle: `Invite to ${familyName} (QR Code)`,
+      dataUrl: qrDataUrl,
+      filename: "stovo-invite-qr.png",
+      mimeType: "image/png"
+    });
+    if (result.fallbackToCopy) {
       await handleCopyQr();
-    } catch {
-      // User cancelled share
     }
   }
 
