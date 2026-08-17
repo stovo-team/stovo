@@ -236,7 +236,7 @@ export function messageReceiptState(
   message: Pick<Message, "statuses" | "deliveryState">,
   mine: boolean
 ): "sent" | "delivered" | "read" | null {
-  if (!mine || message.deliveryState === "failed") {
+  if (!mine || message.deliveryState === "failed" || message.deliveryState === "sending") {
     return null;
   }
   if (message.statuses.some((status) => status.status === "read")) {

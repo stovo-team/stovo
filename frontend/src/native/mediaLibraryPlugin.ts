@@ -52,10 +52,14 @@ export async function selectNativeMediaFiles(
   const result = await MediaLibraryPlugin.copyMedia({ ids });
   const files: File[] = [];
   for (const cached of result.files ?? []) {
-    const response = await fetcher(Capacitor.convertFileSrc(cached.path));
-    if (!response.ok) continue;
-    const blob = await response.blob();
-    files.push(new File([blob], cached.name, { type: cached.mimeType || blob.type }));
+    try {
+      const response = await fetcher(Capacitor.convertFileSrc(cached.path));
+      if (!response.ok) continue;
+      const blob = await response.blob();
+      files.push(new File([blob], cached.name, { type: cached.mimeType || blob.type }));
+    } catch {
+      // Ignore individual file errors to let other attachments succeed
+    }
   }
   return files;
 }
