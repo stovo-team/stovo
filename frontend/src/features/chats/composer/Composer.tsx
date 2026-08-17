@@ -12,6 +12,7 @@ import type { FormattingKind, TextSelection, ToolbarAnchor } from "../../../comp
 import { isVoiceRecordingSupported } from "../../../voiceRecording";
 import { firstImageAttachment, messageActionSummary } from "../shared/messagePresentation";
 import type { Message, PendingLocalAttachment } from "../shared/types";
+import { createClientMessageId } from "../shared/messageState";
 import { ComposerContextThumb } from "../conversation/MessageAttachmentThumbs";
 import { AttachmentControls } from "./AttachmentControls";
 import { PendingAttachmentCard } from "./PendingAttachmentCard";
@@ -231,7 +232,7 @@ export function Composer({
           }}
           onSendSelectedFiles={(files, message) => {
             const attachments = files.map((file) => ({
-              localId: `local:${crypto.randomUUID()}`,
+              localId: `local:${createClientMessageId()}`,
               file,
               previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null
             }));

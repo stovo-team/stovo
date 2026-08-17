@@ -144,7 +144,7 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
         </div>
 
         {selectedCount > 0 && (
-          <form className="attachment-picker-message-box" onSubmit={(event) => { event.preventDefault(); void handleSendSelected(); }}>
+          <div className="attachment-picker-message-box">
             <textarea
               aria-label="Message with attachments"
               placeholder="Message"
@@ -160,10 +160,10 @@ export default function AttachmentPickerSheet({ open, onClose, onPick, onSelectF
                 }
               }}
             />
-            <button type="submit" className="attachment-picker-message-send" aria-label="Send message" disabled={isSending}>
+            <button type="button" className="attachment-picker-message-send" aria-label="Send message" disabled={isSending} onClick={() => void handleSendSelected()}>
               <Send size={20} aria-hidden="true" />
             </button>
-          </form>
+          </div>
         )}
         <nav className="attachment-picker-bottom-nav" aria-label="Attachment options">
           <button type="button" className={`attachment-nav-item ${activeTab === "gallery" ? "active" : ""}`} onClick={() => setActiveTab("gallery")}><span className="nav-item-icon"><ImageIcon size={20} /></span><span className="nav-item-label">Gallery</span></button>

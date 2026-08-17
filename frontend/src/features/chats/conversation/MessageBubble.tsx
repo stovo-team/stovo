@@ -147,28 +147,30 @@ export function MessageBubble({
   const messageMeta = (
     <span className="message-meta">
       {messageDeliveryLabel(message, mine)}
-      {receiptState && (
-        receiptState === "sent" ? (
-          <Clock3
-            aria-label="message queued for delivery"
-            className="message-receipt message-receipt--sent"
-            role="img"
-            size={14}
-          />
-        ) : (
+      {mine && message.deliveryState === "sending" ? (
+        <Clock3
+          aria-label="message queued for delivery"
+          className="message-receipt message-receipt--sending"
+          role="img"
+          size={14}
+        />
+      ) : receiptState ? (
         <svg
           aria-label={`${receiptState} message`}
           className={`message-receipt message-receipt--${receiptState}`}
           role="img"
           viewBox="0 0 24 24"
         >
-          <>
+          {receiptState === "sent" ? (
             <path d="m2 12 4 4 9-10" />
-            <path d="m9 12 4 4 9-10" />
-          </>
+          ) : (
+            <>
+              <path d="m2 12 4 4 9-10" />
+              <path d="m9 12 4 4 9-10" />
+            </>
+          )}
         </svg>
-        )
-      )}
+      ) : null}
     </span>
   );
 

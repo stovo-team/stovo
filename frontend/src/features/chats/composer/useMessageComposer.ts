@@ -294,7 +294,7 @@ export function useMessageComposer({
     const next: PendingLocalAttachment[] = selectedFiles.map((file) => {
       const isImage = file.type.startsWith("image/");
       return {
-        localId: `local:${crypto.randomUUID()}`,
+        localId: `local:${createClientMessageId()}`,
         file,
         previewUrl: isImage ? URL.createObjectURL(file) : null
       };
@@ -321,7 +321,7 @@ export function useMessageComposer({
   function addSharedFileAttachments(files: File[]) {
     if (files.length === 0) return;
     const next: PendingLocalAttachment[] = files.map((file) => ({
-      localId: `local:${crypto.randomUUID()}`,
+      localId: `local:${createClientMessageId()}`,
       file,
       previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null
     }));
@@ -683,7 +683,7 @@ export function useMessageComposer({
     try {
       const file = await handle.stop();
       const pending: PendingLocalAttachment = {
-        localId: `local:${crypto.randomUUID()}`,
+        localId: `local:${createClientMessageId()}`,
         file,
         previewUrl: null
       };
