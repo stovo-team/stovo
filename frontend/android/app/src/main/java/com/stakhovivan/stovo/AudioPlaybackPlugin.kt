@@ -57,14 +57,14 @@ class AudioPlaybackPlugin : Plugin() {
         val fileId = call.getString(AudioPlaybackService.KEY_FILE_ID).orEmpty()
         val sourceUrl = call.getString(AudioPlaybackService.KEY_SOURCE_URL).orEmpty()
         val token = call.getString(AudioPlaybackService.KEY_TOKEN).orEmpty()
-        val mimeType = call.getString(AudioPlaybackService.KEY_MIME_TYPE).orEmpty()
-        val startPosition = call.getDouble("startPosition") ?: Double.NaN
+        val rawMimeType = call.getString(AudioPlaybackService.KEY_MIME_TYPE).orEmpty()
+        val mimeType = if (rawMimeType.isNotBlank() && rawMimeType.startsWith("audio/")) rawMimeType else "audio/mpeg"
+        val startPosition = call.getDouble("startPosition") ?: 0.0
         if (
             chatId.isBlank() ||
             messageId.isBlank() ||
             fileId.isBlank() ||
             token.isBlank() ||
-            !mimeType.startsWith("audio/") ||
             !startPosition.isFinite() ||
             startPosition < 0.0 ||
             !isExactMediaUrl(sourceUrl, fileId)
@@ -343,22 +343,20 @@ class AudioPlaybackPlugin : Plugin() {
         return (scheme == "https" || scheme == "http") &&
             !uri.host.isNullOrBlank() &&
             uri.userInfo == null &&
-            uri.query == null &&
             uri.fragment == null &&
-            pathFileId == fileId
+            (pathFileId == fileId || pathFileId == Uri.decode(fileId))
     }
 
     private fun mediaFileIdFromPath(uri: Uri): String? {
         val segments = uri.pathSegments
-        val fileSegment = when {
-            segments.size == 3 && segments[0] == "api" && segments[1] == "media" -> segments[2]
-            segments.size == 5 &&
-                segments[0] == "s" &&
-                segments[1].isNotBlank() &&
-                segments[2] == "api" &&
-                segments[3] == "media" -> segments[4]
-            else -> return null
+        if (segments.size < 3) return null
+        val apiIndex = segments.indexOf("api")
+        if (apiIndex != -1 && apiIndex + 2 < segments.size && segments[apiIndex + 1] == "media") {
+            return Uri.decode(segments[apiIndex + 2])
         }
-        return Uri.decode(fileSegment)
+        if (segments.size >= 3 && segments[segments.size - 2] == "media" && segments[segments.size - 3] == "api") {
+            return Uri.decode(segments.last())
+        }
+        return null
     }
 }

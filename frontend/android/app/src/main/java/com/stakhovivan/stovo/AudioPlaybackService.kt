@@ -127,7 +127,7 @@ class AudioPlaybackService : MediaSessionService() {
         resumeStore = PlaybackResumeStore(this)
 
         val httpFactory = DefaultHttpDataSource.Factory()
-            .setAllowCrossProtocolRedirects(false)
+            .setAllowCrossProtocolRedirects(true)
         val resolvingFactory = ResolvingDataSource.Factory(httpFactory) { dataSpec ->
             val source = credentials.sourceUrl
                 ?: throw IOException("Audio authorization required")
@@ -273,17 +273,18 @@ class AudioPlaybackService : MediaSessionService() {
         )
         val sourceUrl = args.getString(KEY_SOURCE_URL).orEmpty()
         val token = args.getString(KEY_TOKEN).orEmpty()
-        val mimeType = args.getString(KEY_MIME_TYPE).orEmpty()
-        val positionSeconds = args.getDouble(KEY_POSITION, Double.NaN)
+        val rawMimeType = args.getString(KEY_MIME_TYPE).orEmpty()
+        val mimeType = if (rawMimeType.isNotBlank() && rawMimeType.startsWith("audio/")) rawMimeType else "audio/mpeg"
+        val positionSeconds = args.getDouble(KEY_POSITION, 0.0)
         val requestedPlay = args.getBoolean(KEY_PLAY_WHEN_READY, false)
         val decision = coordinator.evaluateLoad(
             identity = requestedIdentity,
             itemCount = 1,
             hasScopedCredential = token.isNotBlank(),
-            startPosition = positionSeconds,
+            startPosition = if (positionSeconds.isFinite() && positionSeconds >= 0.0) positionSeconds else 0.0,
             requestedPlay = requestedPlay
         )
-        if (!decision.accepted || !mimeType.startsWith("audio/") || !isExactMediaUrl(sourceUrl.toUri(), requestedIdentity.fileId)) {
+        if (!decision.accepted || !isExactMediaUrl(sourceUrl.toUri(), requestedIdentity.fileId)) {
             return SessionResult(SessionResult.RESULT_ERROR_BAD_VALUE)
         }
 
@@ -465,9 +466,8 @@ class AudioPlaybackService : MediaSessionService() {
         return (scheme == "https" || scheme == "http") &&
             !uri.host.isNullOrBlank() &&
             uri.userInfo == null &&
-            uri.query == null &&
             uri.fragment == null &&
-            pathFileId == fileId
+            (pathFileId == fileId || pathFileId == Uri.decode(fileId))
     }
 
     private fun play(): SessionResult {
@@ -484,16 +484,15 @@ class AudioPlaybackService : MediaSessionService() {
 
     private fun mediaFileIdFromPath(uri: Uri): String? {
         val segments = uri.pathSegments
-        val fileSegment = when {
-            segments.size == 3 && segments[0] == "api" && segments[1] == "media" -> segments[2]
-            segments.size == 5 &&
-                segments[0] == "s" &&
-                segments[1].isNotBlank() &&
-                segments[2] == "api" &&
-                segments[3] == "media" -> segments[4]
-            else -> return null
+        if (segments.size < 3) return null
+        val apiIndex = segments.indexOf("api")
+        if (apiIndex != -1 && apiIndex + 2 < segments.size && segments[apiIndex + 1] == "media") {
+            return Uri.decode(segments[apiIndex + 2])
         }
-        return Uri.decode(fileSegment)
+        if (segments.size >= 3 && segments[segments.size - 2] == "media" && segments[segments.size - 3] == "api") {
+            return Uri.decode(segments.last())
+        }
+        return null
     }
 
     private fun mapPlaybackError(error: PlaybackException): AudioPlaybackErrorCode =
@@ -519,12 +518,16 @@ class AudioPlaybackService : MediaSessionService() {
             val opened = upstream.open(dataSpec)
             val finalUri = upstream.uri
             val expectedSource = credentials.sourceUrl?.let(Uri::parse)
+            val isAllowedHost = finalUri != null && expectedSource != null &&
+                finalUri.host.equals(expectedSource.host, ignoreCase = true)
+            val isAllowedSchemeAndPort = finalUri != null && expectedSource != null &&
+                ((finalUri.scheme == expectedSource.scheme && effectivePort(finalUri) == effectivePort(expectedSource)) ||
+                 (expectedSource.scheme == "http" && finalUri.scheme == "https" && effectivePort(finalUri) == 443))
             if (
                 finalUri == null ||
                 expectedSource == null ||
-                finalUri.scheme != expectedSource.scheme ||
-                finalUri.host != expectedSource.host ||
-                effectivePort(finalUri) != effectivePort(expectedSource)
+                !isAllowedHost ||
+                !isAllowedSchemeAndPort
             ) {
                 upstream.close()
                 throw IOException("Audio redirect rejected")

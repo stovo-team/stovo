@@ -1662,36 +1662,53 @@ h2 {
   min-height: 100dvh;
 }
 
-/* Bottom-bar screens move like a linear carousel on Android.  The direction
+/* Bottom-bar screens move like a linear carousel. The direction
    comes from the fixed tab order, so jumping between the first and last tab
-   never wraps around. */
-:root[data-platform="native"] .app-route-layer--forward,
-:root[data-platform="native"] .app-route-layer--back {
-  animation-duration: 340ms;
+   never wraps around. We animate the page content while keeping the fixed
+   bottom navigation bar untransformed. */
+.app-route-layer--forward .app-shell > :not(.app-nav),
+.app-route-layer--back .app-shell > :not(.app-nav) {
+  animation-duration: 280ms;
   animation-fill-mode: backwards;
   animation-timing-function: cubic-bezier(0.22, 0.82, 0.24, 1);
-  /* A transformed route layer becomes the containing block for fixed children
-     in Android WebView. AppNav lives below this node, so a translate delayed
-     the bottom bar until the page transition finished. */
-  will-change: opacity;
+  will-change: opacity, transform;
 }
 
-:root[data-platform="native"] .app-route-layer--forward {
+.app-route-layer--forward .app-shell > :not(.app-nav) {
   animation-name: app-tab-carousel-forward;
 }
 
-:root[data-platform="native"] .app-route-layer--back {
+.app-route-layer--back .app-shell > :not(.app-nav) {
   animation-name: app-tab-carousel-back;
 }
 
 @keyframes app-tab-carousel-forward {
-  from { opacity: 0.72; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.25;
+    transform: translate3d(28px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 @keyframes app-tab-carousel-back {
-  from { opacity: 0.72; }
-  to { opacity: 1; }
+  from {
+    opacity: 0.25;
+    transform: translate3d(-28px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-route-layer--forward .app-shell > :not(.app-nav),
+  .app-route-layer--back .app-shell > :not(.app-nav) {
+    animation: none;
+  }
 }
 
 .auth-panel {
@@ -4150,9 +4167,15 @@ h2 {
 @keyframes messageBubblePopIn {
   0% {
     opacity: 0;
+    transform: translate3d(0, 8px, 0) scale(0.96);
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(0, -1px, 0) scale(1.008);
   }
   100% {
     opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -4173,7 +4196,7 @@ h2 {
   padding: 6px 10px 5px 12px;
   position: relative;
   touch-action: pan-y;
-  animation: messageBubblePopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: messageBubblePopIn 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) both;
   /* Keep selectable text out of a composited transform layer. Android WebView
      can otherwise paint black artifacts around native selection handles. */
   transform: none;

@@ -315,10 +315,15 @@ export function AudioPlayer({
             : 0;
         await session.load(descriptor, resumeAt);
       }
+      if (session.getSnapshot().status === "error") {
+        setPlayIntent(false);
+        return;
+      }
       await session.play();
-    } catch {
+    } catch (err) {
       // The canonical session maps backend failures to its closed error vocabulary.
       setPlayIntent(false);
+      setStartDiagnostic(err instanceof Error ? err.message : "Audio couldn’t be played.");
     } finally {
       playInFlight.current = false;
     }
@@ -343,10 +348,15 @@ export function AudioPlayer({
       await onBeforePlay?.();
       session.setSourceFactory(sourceFactory);
       await session.retry();
+      if (session.getSnapshot().status === "error") {
+        setPlayIntent(false);
+        return;
+      }
       await session.play();
-    } catch {
+    } catch (err) {
       // Keep error presentation safe and generic.
       setPlayIntent(false);
+      setStartDiagnostic(err instanceof Error ? err.message : "Audio couldn’t be played.");
     } finally {
       playInFlight.current = false;
     }

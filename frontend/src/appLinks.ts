@@ -75,11 +75,40 @@ export function getInviteAppLinkPath(rawUrl: string): string | null {
   try {
     const url = new URL(rawUrl);
     const isSupportedProtocol = url.protocol === "http:" || url.protocol === "https:" || url.protocol === "stovo:";
-    const pathname = url.protocol === "stovo:" ? `/${url.hostname}${url.pathname}` : url.pathname;
-    if (!isSupportedProtocol || !/^\/invite\/[^/]+$/.test(pathname)) {
+    if (!isSupportedProtocol) {
       return null;
     }
-    return `${pathname}${url.search}`;
+
+    let token: string | null = null;
+
+    const queryToken = url.searchParams.get("token");
+    if (queryToken && /^[A-Za-z0-9_.-]+$/.test(queryToken)) {
+      token = queryToken;
+    }
+
+    if (!token) {
+      const fullPath = url.protocol === "stovo:" && url.hostname === "invite"
+        ? `/invite${url.pathname}`
+        : url.pathname;
+
+      const match = fullPath.match(/(?:^|\/)invite\/([A-Za-z0-9_.-]+)/);
+      if (match) {
+        token = match[1];
+      }
+    }
+
+    if (!token) {
+      return null;
+    }
+
+    const searchParams = new URLSearchParams(url.search);
+    if (queryToken) {
+      searchParams.delete("token");
+    }
+    const searchStr = searchParams.toString();
+    const query = searchStr ? `?${searchStr}` : "";
+
+    return `/invite/${encodeURIComponent(token)}${query}`;
   } catch {
     return null;
   }

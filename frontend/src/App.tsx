@@ -300,10 +300,8 @@ function ClusterRoutes() {
       key={location.pathname}
       className={`app-route-layer${routeMotionClass}`}
       aria-live="off"
-      onAnimationEnd={(event) => {
-        if (event.target === event.currentTarget) {
-          setMotionFinishedForPath(location.pathname);
-        }
+      onAnimationEnd={() => {
+        setMotionFinishedForPath(location.pathname);
       }}
     >
     <Routes location={location}>

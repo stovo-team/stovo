@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, MoreVertical, Share2, X } from "lucide-react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
+import { shareContent } from "../native/nativeSharePlugin";
 
 interface ImageLightboxProps {
   imageUrl: string;
@@ -48,19 +49,13 @@ export default function ImageLightbox({
       return;
     }
 
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({
-          title,
-          url: imageUrl
-        });
-        return;
-      } catch {
-        // User cancelled or share rejected
-      }
-    }
+    const result = await shareContent({
+      title,
+      url: imageUrl,
+      dialogTitle: title || "Share media"
+    });
 
-    if (typeof navigator !== "undefined" && navigator.clipboard && imageUrl) {
+    if (result.fallbackToCopy && typeof navigator !== "undefined" && navigator.clipboard && imageUrl) {
       try {
         await navigator.clipboard.writeText(imageUrl);
       } catch {
