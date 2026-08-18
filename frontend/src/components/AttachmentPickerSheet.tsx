@@ -11,6 +11,7 @@ import {
   selectNativeMediaFiles,
   type NativeMediaItem
 } from "../native/mediaLibraryPlugin";
+import { useReducedMotion } from "../hooks/useReducedMotion";
 import { EMOJI_CATEGORY_ICONS } from "../features/chats/composer/Composer";
 import ImageLightbox from "./ImageLightbox";
 import { MessageEnlargeButton } from "./MessageEnlargeModal";
@@ -51,6 +52,7 @@ export default function AttachmentPickerSheet({
   isUploading = false,
   isSendingMessage = false
 }: AttachmentPickerSheetProps) {
+  const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>("gallery");
   const [media, setMedia] = useState<NativeMediaItem[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
@@ -64,10 +66,14 @@ export default function AttachmentPickerSheet({
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [dragTranslateY, setDragTranslateY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const [isReady, setIsReady] = useState(prefersReducedMotion);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const bodyRef = useRef<HTMLDivElement | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const nextTranslateYRef = useRef(0);
   const dragStartRef = useRef<{
     startY: number;
     startIsFullScreen: boolean;
@@ -100,9 +106,41 @@ export default function AttachmentPickerSheet({
   };
 
   const closeSheet = () => {
-    resetSheetState();
-    onClose();
+    if (isClosing) return;
+    if (prefersReducedMotion) {
+      resetSheetState();
+      onClose();
+      return;
+    }
+    setIsClosing(true);
   };
+
+  useEffect(() => {
+    if (!isClosing || prefersReducedMotion) return;
+    const timer = window.setTimeout(() => {
+      resetSheetState();
+      setIsClosing(false);
+      onClose();
+    }, 240);
+    return () => window.clearTimeout(timer);
+  }, [isClosing, onClose, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!open) {
+      setIsReady(false);
+      setIsClosing(false);
+      return;
+    }
+    if (prefersReducedMotion) {
+      setIsReady(true);
+      return;
+    }
+    setIsReady(false);
+    const frame = window.requestAnimationFrame(() => {
+      setIsReady(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, prefersReducedMotion]);
 
   const handleZonePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if ((event.target as HTMLElement).closest("button")) {
@@ -129,18 +167,27 @@ export default function AttachmentPickerSheet({
       dragStartRef.current.isClickCandidate = false;
     }
 
+    let nextY = 0;
     if (!dragStartRef.current.startIsFullScreen) {
       if (deltaY > 0) {
-        setDragTranslateY(deltaY);
+        nextY = deltaY;
       } else {
-        setDragTranslateY(Math.max(deltaY, -120));
+        nextY = Math.max(deltaY, -120);
       }
     } else {
       if (deltaY > 0) {
-        setDragTranslateY(deltaY);
+        nextY = deltaY;
       } else {
-        setDragTranslateY(Math.max(deltaY * 0.25, -25));
+        nextY = Math.max(deltaY * 0.25, -25);
       }
+    }
+
+    nextTranslateYRef.current = nextY;
+    if (rafIdRef.current === null) {
+      rafIdRef.current = window.requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        setDragTranslateY(nextTranslateYRef.current);
+      });
     }
   };
 
@@ -152,6 +199,10 @@ export default function AttachmentPickerSheet({
       }
     } catch {
       // Ignore
+    }
+    if (rafIdRef.current !== null) {
+      window.cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
     }
     const deltaY = event.clientY - dragStartRef.current.startY;
     const startIsFullScreen = dragStartRef.current.startIsFullScreen;
@@ -355,9 +406,13 @@ export default function AttachmentPickerSheet({
 
   const selectedCount = selectedItemIds.length;
   const sheetContent = (
-    <div className="attachment-picker-backdrop" role="presentation" onClick={closeSheet}>
+    <div
+      className={`attachment-picker-backdrop${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
+      role="presentation"
+      onClick={closeSheet}
+    >
       <div
-        className={`attachment-picker-sheet tg-style ${isFullScreen ? "is-fullscreen" : ""}`}
+        className={`attachment-picker-sheet tg-style ${isFullScreen ? "is-fullscreen" : ""}${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label="Attach media and files"
@@ -430,7 +485,7 @@ export default function AttachmentPickerSheet({
                         onClick={() => setPreviewMediaItem(item)}
                         aria-label={`Preview ${item.name}`}
                       >
-                        <img src={nativeMediaPreviewUrl(item)} alt="" />
+                        <img src={nativeMediaPreviewUrl(item)} alt="" loading="lazy" decoding="async" />
                         {formatDuration(item.durationMs) && (
                           <span className="media-tile-badge">{formatDuration(item.durationMs)}</span>
                         )}

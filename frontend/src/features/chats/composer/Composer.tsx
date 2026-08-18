@@ -561,6 +561,7 @@ export function Composer({
             <div className="send-button-shell">
               <button
                 type="submit"
+                className={`composer-send-button${isSendingMessage ? " is-sending" : ""}`}
                 aria-label={messageDelayRemaining > 0 ? `Message delay: ${messageDelayRemaining}s` : "Send message"}
                 aria-busy={isUploading || isSendingMessage}
                 disabled={

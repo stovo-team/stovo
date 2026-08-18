@@ -174,7 +174,7 @@ export function ReminderModal({
         <div className="modal-card-body">
           <div className="reminder-preview-box">
             <span className="reminder-preview-label">Reminder Message:</span>
-            <span className="reminder-preview-text">"{previewSnippet}"</span>
+            <span className="reminder-preview-text">{previewSnippet}</span>
           </div>
 
           <div className="reminder-form-row">
