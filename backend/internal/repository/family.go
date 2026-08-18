@@ -7,6 +7,8 @@ import (
 
 	"family-messenger/backend/ent"
 	"family-messenger/backend/ent/chat"
+	"family-messenger/backend/ent/chatmember"
+	"family-messenger/backend/ent/chatpreference"
 	"family-messenger/backend/ent/invite"
 	"family-messenger/backend/ent/user"
 )

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { Family } from "../api/family";
-import { ApiError } from "../api/client";
+import { ApiError, getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useCallback, useEffect, useState } from "react";
 import AppNav from "./AppNav";
@@ -38,6 +38,7 @@ export default function AdminPage() {
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const prefix = getClusterPrefix();
 
   const load = useCallback(async () => {
     if (!accessToken || !canViewAdmin) return;
@@ -66,7 +67,7 @@ export default function AdminPage() {
         {canViewAdmin && (
           <nav className="admin-hub-tabs" aria-label="Admin sections">
             {ADMIN_TABS.map((tab) => (
-              <Link key={tab.to} to={tab.to} className="admin-hub-tab">
+              <Link key={tab.to} to={`${prefix}${tab.to}`} className="admin-hub-tab">
                 <span className="settings-row-icon">
                   <span className="ms-icon ms-icon--22" aria-hidden="true">
                     {tab.icon}

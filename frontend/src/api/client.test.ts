@@ -7,7 +7,7 @@ vi.mock("@capacitor/core", () => ({
   }
 }));
 
-import { getApiUrl, setApiUrlOverride } from "./client";
+import { getApiUrl, getClusterPrefix, isServerUrlConfigured, setApiUrlOverride } from "./client";
 import { getActiveServer } from "./serverRegistry";
 
 describe("getApiUrl", () => {
@@ -63,5 +63,36 @@ describe("getApiUrl", () => {
 
     expect(getApiUrl()).toBe(`${window.location.origin}/s/5ae8bb18`);
     expect(getActiveServer()).toBeNull();
+  });
+});
+
+describe("isServerUrlConfigured", () => {
+  const storage = new Map<string, string>();
+
+  beforeEach(() => {
+    storage.clear();
+    platform.native = false;
+    window.history.replaceState({}, "", "/");
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => storage.set(key, value),
+        removeItem: (key: string) => storage.delete(key)
+      }
+    });
+  });
+
+  it("treats cluster routes as a configured server without prior active server in registry", () => {
+    window.history.replaceState({}, "", "/s/5ae8bb18");
+
+    expect(getClusterPrefix()).toBe("/s/5ae8bb18");
+    expect(isServerUrlConfigured()).toBe(true);
+  });
+
+  it("returns false for root without active server", () => {
+    window.history.replaceState({}, "", "/");
+
+    expect(isServerUrlConfigured()).toBe(false);
   });
 });
