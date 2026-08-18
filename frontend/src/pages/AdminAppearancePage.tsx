@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { ApiError } from "../api/client";
+import { ApiError, getClusterPrefix } from "../api/client";
 import { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
@@ -13,6 +13,7 @@ export default function AdminAppearancePage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const prefix = getClusterPrefix();
 
   const load = useCallback(async () => {
     if (!accessToken || !canViewAdmin) return;
@@ -53,7 +54,7 @@ export default function AdminAppearancePage() {
       <AppNav />
       <section className="page-surface admin-surface">
         <div className="admin-detail-header">
-          <Link to="/app/admin" className="mobile-back-button" aria-label="Back to Admin">
+          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin">
             <span className="ms-icon ms-icon--22" aria-hidden="true">
               arrow_back
             </span>

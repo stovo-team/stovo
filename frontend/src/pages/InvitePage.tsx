@@ -4,7 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { ExternalLink, Smartphone } from "lucide-react";
 
 import { acceptInvite, previewInvite, InvitePreview } from "../api/family";
-import { ApiError, storeApiUrlFromInviteLink } from "../api/client";
+import { ApiError, getClusterPrefix, storeApiUrlFromInviteLink } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 
@@ -21,6 +21,7 @@ export default function InvitePage() {
     password: ""
   });
 
+  const prefix = getClusterPrefix();
   const isNative = Capacitor.isNativePlatform();
   const appDeepLink = token ? `stovo://invite/${encodeURIComponent(token)}${location.search}` : null;
 
@@ -43,7 +44,7 @@ export default function InvitePage() {
   }
 
   if (currentUser) {
-    return <Navigate to="/app/chats" replace />;
+    return <Navigate to={`${prefix}/app/chats`} replace />;
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -56,7 +57,7 @@ export default function InvitePage() {
     try {
       const response = await acceptInvite(token, form);
       acceptAuthResponse(response);
-      navigate("/app/chats", { replace: true });
+      navigate(`${prefix}/app/chats`, { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Invite acceptance failed");
     } finally {

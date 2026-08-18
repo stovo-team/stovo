@@ -13,10 +13,11 @@ export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | n
   if (setupRequired === false) {
     return null;
   }
+  const prefix = getClusterPrefix();
 
   return (
     <p className="secondary-link">
-      New server? <Link to="/setup">Create owner account</Link>
+      New server? <Link to={`${prefix}/setup`}>Create owner account</Link>
     </p>
   );
 }

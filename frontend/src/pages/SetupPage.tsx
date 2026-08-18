@@ -84,7 +84,7 @@ export default function SetupPage() {
           </button>
         </form>
         <p className="secondary-link">
-          Already set up? <Link to="/login">Log in</Link>
+          Already set up? <Link to={`${prefix}/login`}>Log in</Link>
         </p>
         <p className="secondary-link">
           <Link to="/server-setup">Change server address</Link>

@@ -161,7 +161,7 @@ export function isServerUrlConfigured(): boolean {
   if (registryNormalizeApiUrl(params.get("apiUrl"))) {
     return true;
   }
-  return getActiveServer() !== null || readStoredApiUrl() !== null;
+  return Boolean(getClusterPrefix()) || getActiveServer() !== null || readStoredApiUrl() !== null;
 }
 
 export function storeRefreshToken(token: string | null) {

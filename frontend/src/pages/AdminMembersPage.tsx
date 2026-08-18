@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { User, UserRole } from "../api/auth";
-import { ApiError } from "../api/client";
+import { ApiError, getClusterPrefix } from "../api/client";
 import { changeMemberRole, removeMember } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
@@ -58,6 +58,7 @@ export default function AdminMembersPage() {
   const [isSaving, setIsSaving] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const prefix = getClusterPrefix();
 
   const filteredMembers = useMemo(() => {
     const query = memberSearch.trim().toLowerCase();
@@ -154,7 +155,7 @@ export default function AdminMembersPage() {
       <AppNav />
       <section className="page-surface admin-surface">
         <div className="admin-detail-header">
-          <Link to="/app/admin" className="mobile-back-button" aria-label="Back to Admin">
+          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin">
             <span className="ms-icon ms-icon--22" aria-hidden="true">
               arrow_back
             </span>

@@ -9,6 +9,7 @@ import { ChatSidebar } from "../features/chats/sidebar/ChatSidebar";
 import { ConversationPanel } from "../features/chats/conversation/ConversationPanel";
 import { useChatsPageController } from "../features/chats/useChatsPageController";
 import { useReducedMotion } from "../hooks/useReducedMotion";
+import { getClusterPrefix } from "../api/client";
 import AppNav from "./AppNav";
 import { CallFeature, MobileMinimizedCallBar } from "../features/chats/calling/CallFeature";
 import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
@@ -64,7 +65,8 @@ export default function ChatsPage() {
     chats.length > 0 &&
     !chats.some((chat) => chat.id === chatId)
   ) {
-    return <Navigate to="/app/chats" replace />;
+    const prefix = getClusterPrefix();
+    return <Navigate to={`${prefix}/app/chats`} replace />;
   }
 
   return (

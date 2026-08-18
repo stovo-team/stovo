@@ -5,10 +5,10 @@ import (
 
 	"family-messenger/backend/ent"
 	"family-messenger/backend/ent/chat"
+	"family-messenger/backend/ent/chatmember"
+	"family-messenger/backend/ent/chatpreference"
 	"family-messenger/backend/ent/refreshtoken"
 	"family-messenger/backend/ent/user"
-
-	"github.com/google/uuid"
 )
 
 // Ping verifies database connectivity with the sole allowed application SQL probe.

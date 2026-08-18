@@ -12740,22 +12740,107 @@ span.message-spoiler.is-revealed {
 
 /* Inline chat composer in attachment picker sheet */
 .attachment-picker-message-box {
-  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
   background: var(--surface-card, #131822);
-  padding: 8px 12px;
+  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  padding: 4px 10px;
   position: relative;
 }
 
 .attachment-picker-message-box .message-composer-row {
-  min-height: 44px;
+  align-items: center;
+  background: var(--background-secondary, rgba(255, 255, 255, 0.06));
+  border-radius: 28px;
+  column-gap: 4px;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  min-height: 36px;
+  padding: 2px 6px;
+}
+
+.attachment-picker-message-box .message-composer-row--multiline {
+  align-items: end;
+}
+
+.attachment-picker-message-box .message-composer-row > .file-picker,
+.attachment-picker-message-box .message-composer-row > .emoji-picker-shell {
+  align-self: center;
+  margin-bottom: 0;
+  margin-inline: 0;
+}
+
+.attachment-picker-message-box .message-composer-row--multiline > .file-picker,
+.attachment-picker-message-box .message-composer-row--multiline > .emoji-picker-shell {
+  align-self: end;
+  margin-bottom: 2px;
+}
+
+.attachment-picker-message-box .message-composer-row > .message-composer-actions {
+  align-self: center;
+  margin-bottom: 0;
+  margin-inline: 0;
+}
+
+.attachment-picker-message-box .message-composer-row--multiline > .message-composer-actions {
+  align-self: end;
+  margin-bottom: 0;
+}
+
+.attachment-picker-message-box textarea {
+  background: transparent;
+  border: none;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  min-height: 24px;
+  max-height: 96px;
+  padding: 3px 6px;
+  resize: none;
+}
+
+.attachment-picker-message-box textarea:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+.attachment-picker-message-box .file-picker,
+.attachment-picker-message-box .emoji-picker-button {
+  height: 28px;
+  min-height: 28px;
+  min-width: 28px;
+  padding: 0;
+  width: 28px;
+}
+
+.attachment-picker-message-box .file-picker svg,
+.attachment-picker-message-box .emoji-picker-button svg {
+  height: 18px;
+  width: 18px;
+}
+
+.attachment-picker-message-box .attachment-picker-message-send {
+  height: 30px;
+  min-height: 30px;
+  min-width: 30px;
+  padding: 0;
+  width: 30px;
+}
+
+.attachment-picker-message-box .attachment-picker-message-send .ms-icon {
+  font-size: 18px;
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 18;
+}
+
+.attachment-picker-message-box .message-enlarge-button {
+  height: 28px;
+  min-height: 28px;
+  min-width: 28px;
+  width: 28px;
 }
 
 .attachment-picker-emoji-popover {
   bottom: calc(100% + 8px);
-  left: 12px;
+  left: 10px;
   position: absolute;
   transform: none;
-  max-width: calc(100% - 24px);
+  max-width: calc(100% - 20px);
   z-index: 50;
 }
 
@@ -13580,6 +13665,7 @@ span.message-spoiler.is-revealed {
 .chat-info-title-row {
   align-items: center;
   display: flex;
+  gap: 6px;
   max-width: 100%;
   position: relative;
   justify-content: center;
@@ -13603,10 +13689,8 @@ span.message-spoiler.is-revealed {
   display: inline-flex;
   flex: 0 0 auto;
   height: 32px;
-  inset-inline-start: 0;
   justify-content: center;
   padding: 0;
-  position: absolute;
   -webkit-tap-highlight-color: transparent;
   width: 32px;
 }
