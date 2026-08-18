@@ -1,18 +1,29 @@
 import type { ReminderRule } from "./messageOutboxStore";
 
 /**
- * Parses "YYYY-MM-DD" and "HH:mm" into a local Date object.
+ * Parses "YYYY-MM-DD" and "HH:mm" into a local Date object with safe fallbacks.
  */
-export function createLocalDateFromDateAndTime(dateStr: string, timeStr: string): Date {
+export function createLocalDateFromDateAndTime(dateStr?: string | null, timeStr?: string | null): Date {
+  const fallback = new Date();
+  fallback.setMinutes(fallback.getMinutes() + 60);
+
+  if (!dateStr || !timeStr) {
+    return fallback;
+  }
+
   const [yearStr, monthStr, dayStr] = dateStr.split("-");
   const [hourStr, minuteStr] = timeStr.split(":");
-  const year = Number(yearStr) || new Date().getFullYear();
+  const year = Number(yearStr) || fallback.getFullYear();
   const month = (Number(monthStr) || 1) - 1;
   const day = Number(dayStr) || 1;
   const hour = Number(hourStr) || 0;
   const minute = Number(minuteStr) || 0;
 
-  return new Date(year, month, day, hour, minute, 0, 0);
+  const result = new Date(year, month, day, hour, minute, 0, 0);
+  if (Number.isNaN(result.getTime())) {
+    return fallback;
+  }
+  return result;
 }
 
 /**
@@ -69,7 +80,13 @@ export function computeInitialReminderDate(rule: ReminderRule, now: Date = new D
  */
 export function computeNextReminderDate(currentScheduledFor: Date | string, rule: ReminderRule): Date {
   const prev = typeof currentScheduledFor === "string" ? new Date(currentScheduledFor) : new Date(currentScheduledFor);
-  const [hourStr, minuteStr] = rule.time.split(":");
+  if (Number.isNaN(prev.getTime())) {
+    const fallback = new Date();
+    fallback.setDate(fallback.getDate() + 1);
+    return fallback;
+  }
+
+  const [hourStr, minuteStr] = (rule.time || "09:00").split(":");
   const hour = Number(hourStr) || prev.getHours();
   const minute = Number(minuteStr) || prev.getMinutes();
 

@@ -100,4 +100,18 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(rule).toContain("min-height: 36px;");
     expect(rule).toContain("border-radius: 999px;");
   });
+
+  it("supports sliding up from top to open full screen, sliding down to restore default state, and sliding down more to close", () => {
+    expect(attachmentSheetSource).toContain("isFullScreen");
+    expect(attachmentSheetSource).toContain("setIsFullScreen(true)");
+    expect(attachmentSheetSource).toContain("setIsFullScreen(false)");
+    expect(attachmentSheetSource).toContain("attachment-picker-sheet-handle-zone");
+    expect(attachmentSheetSource).toContain("handleZonePointerDown");
+    expect(attachmentSheetSource).toContain("handleZonePointerMove");
+    expect(attachmentSheetSource).toContain("handleZonePointerUp");
+    expect(attachmentSheetSource).toContain("handleBodyTouchStart");
+    expect(attachmentSheetSource).toContain("handleBodyTouchEnd");
+    expect(styles).toContain(".attachment-picker-sheet.tg-style.is-fullscreen");
+    expect(styles).toContain(".attachment-picker-sheet-handle-zone");
+  });
 });

@@ -29,6 +29,7 @@ import {
   sendMessage,
   unpinMessage
 } from "../../../api/chats";
+import { prefetchFiles } from "../../../api/files";
 import { copyToClipboard } from "../../../utils/clipboard";
 import { ApiError } from "../../../api/client";
 import { decryptMessage, decryptMessages, encryptMessageContent } from "../../../api/messageCrypto";
@@ -313,6 +314,19 @@ export function useMessageThread({
         if (activeChatIdRef.current !== chatIdToLoad) return;
         applyMessagesForChat(chatIdToLoad, (current) => mergeMessageLists(current, decrypted));
         historyCursorRef.current[chatIdToLoad] = page.hasMore ? page.nextBefore : null;
+        if (token && decrypted.length > 0) {
+          const fileIds: string[] = [];
+          for (const m of decrypted) {
+            if (m.attachments?.length) {
+              for (const a of m.attachments) {
+                if (a.id) fileIds.push(a.id);
+              }
+            }
+          }
+          if (fileIds.length > 0) {
+            prefetchFiles(token, fileIds);
+          }
+        }
         window.requestAnimationFrame(() => {
           if (panel) panel.scrollTop = panel.scrollHeight - previousHeight + previousTop;
         });

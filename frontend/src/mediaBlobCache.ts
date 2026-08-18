@@ -4,9 +4,12 @@
  * Cache Storage keys must be http(s) URLs — `file:` schemes are rejected by the Cache API.
  */
 
-const CACHE_NAME = "stovo-media-v2";
-const LEGACY_CACHE_NAMES = ["stovo-media-v1"] as const;
-const MAX_MEMORY_ENTRIES = 64;
+export const CACHE_NAME = "stovo-media-v2";
+export const LEGACY_CACHE_NAMES = ["stovo-media-v1"] as const;
+export const MAX_MEMORY_ENTRIES = 64;
+export const MEDIA_CACHE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+export const CACHED_AT_HEADER = "X-Stovo-Cached-At";
+const MAX_CONCURRENT_FETCHES = 4;
 
 type CacheEntry = {
   blob: Blob;
@@ -16,7 +19,31 @@ type CacheEntry = {
 
 const memory = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<Blob>>();
-let legacyCleanupStarted = false;
+let maintenanceStarted = false;
+
+let activeFetches = 0;
+const fetchQueue: Array<() => void> = [];
+
+async function acquireFetchSlot(): Promise<() => void> {
+  if (activeFetches < MAX_CONCURRENT_FETCHES) {
+    activeFetches += 1;
+    return () => releaseFetchSlot();
+  }
+  return new Promise<() => void>((resolve) => {
+    fetchQueue.push(() => {
+      activeFetches += 1;
+      resolve(() => releaseFetchSlot());
+    });
+  });
+}
+
+function releaseFetchSlot(): void {
+  activeFetches -= 1;
+  if (fetchQueue.length > 0 && activeFetches < MAX_CONCURRENT_FETCHES) {
+    const next = fetchQueue.shift();
+    if (next) next();
+  }
+}
 
 function cacheKey(fileId: string): string {
   // Must be a valid http(s) Request URL. `file:${id}` becomes file:///… and Cache.put fails silently.
@@ -39,10 +66,11 @@ function evictIfNeeded(): void {
   }
 }
 
-function scheduleLegacyCacheCleanup(): void {
-  if (legacyCleanupStarted || typeof caches === "undefined") return;
-  legacyCleanupStarted = true;
+export function scheduleCacheMaintenance(): void {
+  if (maintenanceStarted || typeof caches === "undefined") return;
+  maintenanceStarted = true;
   void (async () => {
+    // 1. Delete legacy cache versions
     for (const name of LEGACY_CACHE_NAMES) {
       try {
         await caches.delete(name);
@@ -50,16 +78,52 @@ function scheduleLegacyCacheCleanup(): void {
         // Non-fatal.
       }
     }
+    // 2. Prune expired entries in the active cache (older than 14 days)
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      const requests = await cache.keys();
+      const now = Date.now();
+      for (const request of requests) {
+        try {
+          const response = await cache.match(request);
+          if (response) {
+            const cachedAtStr = response.headers.get(CACHED_AT_HEADER);
+            if (cachedAtStr) {
+              const cachedAt = Number(cachedAtStr);
+              if (Number.isFinite(cachedAt) && now - cachedAt > MEDIA_CACHE_TTL_MS) {
+                await cache.delete(request);
+              }
+            }
+          }
+        } catch {
+          // Non-fatal per-item error
+        }
+      }
+    } catch {
+      // Non-fatal.
+    }
   })();
 }
 
 async function readFromCacheStorage(fileId: string): Promise<Blob | null> {
   if (typeof caches === "undefined") return null;
-  scheduleLegacyCacheCleanup();
+  scheduleCacheMaintenance();
   try {
     const cache = await caches.open(CACHE_NAME);
-    const response = await cache.match(cacheKey(fileId));
+    const key = cacheKey(fileId);
+    const response = await cache.match(key);
     if (!response || !response.ok) return null;
+
+    const cachedAtStr = response.headers.get(CACHED_AT_HEADER);
+    if (cachedAtStr) {
+      const cachedAt = Number(cachedAtStr);
+      if (Number.isFinite(cachedAt) && Date.now() - cachedAt > MEDIA_CACHE_TTL_MS) {
+        // Expired after 14 days: delete and treat as cache miss
+        void cache.delete(key).catch(() => undefined);
+        return null;
+      }
+    }
+
     return response.blob();
   } catch {
     return null;
@@ -68,7 +132,7 @@ async function readFromCacheStorage(fileId: string): Promise<Blob | null> {
 
 async function writeToCacheStorage(fileId: string, blob: Blob): Promise<void> {
   if (typeof caches === "undefined") return;
-  scheduleLegacyCacheCleanup();
+  scheduleCacheMaintenance();
   try {
     const cache = await caches.open(CACHE_NAME);
     // Prefer ArrayBuffer body — some WebViews mishandle Blob Request bodies.
@@ -79,6 +143,7 @@ async function writeToCacheStorage(fileId: string, blob: Blob): Promise<void> {
         headers: {
           "Content-Type": blob.type || "application/octet-stream",
           "Content-Length": String(body.byteLength),
+          [CACHED_AT_HEADER]: String(Date.now()),
         },
       }),
     );
@@ -126,11 +191,16 @@ export async function getCachedFileBlob(
       remember(id, fromDisk);
       return fromDisk;
     }
-    const blob = await fetcher(accessToken, id);
-    if (blob.size === 0) throw new Error("Empty media blob");
-    remember(id, blob);
-    await writeToCacheStorage(id, blob);
-    return blob;
+    const release = await acquireFetchSlot();
+    try {
+      const blob = await fetcher(accessToken, id);
+      if (blob.size === 0) throw new Error("Empty media blob");
+      remember(id, blob);
+      await writeToCacheStorage(id, blob);
+      return blob;
+    } finally {
+      release();
+    }
   })();
 
   inflight.set(id, load);
@@ -165,6 +235,21 @@ export function seedMediaBlobCache(fileId: string, blob: Blob): string {
   return remember(fileId.trim(), blob).objectUrl;
 }
 
+/** Pre-cache media blobs in the background with controlled concurrency. */
+export function prefetchFileBlobs(
+  accessToken: string,
+  fileIds: string[],
+  fetcher: (accessToken: string, fileId: string) => Promise<Blob>,
+): void {
+  if (!accessToken?.trim() || !fileIds || fileIds.length === 0) return;
+  for (const rawId of fileIds) {
+    const id = rawId?.trim();
+    if (!id) continue;
+    if (memory.has(id) || inflight.has(id)) continue;
+    void getCachedFileBlob(accessToken, id, fetcher).catch(() => undefined);
+  }
+}
+
 /** Test helper: drop in-memory entries and revoke their object URLs. */
 export function clearMediaBlobCache(): void {
   for (const entry of memory.values()) {
@@ -172,6 +257,8 @@ export function clearMediaBlobCache(): void {
   }
   memory.clear();
   inflight.clear();
+  fetchQueue.length = 0;
+  activeFetches = 0;
 }
 
 /** Test helper — clears in-memory entries without touching Cache Storage. */
@@ -181,5 +268,7 @@ export function __resetMediaBlobMemoryForTests(): void {
   }
   memory.clear();
   inflight.clear();
-  legacyCleanupStarted = false;
+  fetchQueue.length = 0;
+  activeFetches = 0;
+  maintenanceStarted = false;
 }

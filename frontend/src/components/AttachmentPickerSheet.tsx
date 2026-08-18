@@ -61,9 +61,23 @@ export default function AttachmentPickerSheet({
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
   const [lineCount, setLineCount] = useState(1);
   const [isMultiline, setIsMultiline] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [dragTranslateY, setDragTranslateY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const dragStartRef = useRef<{
+    startY: number;
+    startIsFullScreen: boolean;
+    active: boolean;
+    isClickCandidate: boolean;
+  } | null>(null);
+  const bodyTouchStartRef = useRef<{
+    startY: number;
+    scrollTop: number;
+  } | null>(null);
 
   const messageText = composer !== undefined ? composer : localDraft;
   const handleMessageChange = (val: string) => {
@@ -80,11 +94,133 @@ export default function AttachmentPickerSheet({
     setPreviewMediaItem(null);
     setIsSending(false);
     setIsEmojiOpen(false);
+    setIsFullScreen(false);
+    setDragTranslateY(0);
+    setIsDragging(false);
   };
 
   const closeSheet = () => {
     resetSheetState();
     onClose();
+  };
+
+  const handleZonePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest("button")) {
+      return;
+    }
+    try {
+      (event.currentTarget as HTMLDivElement).setPointerCapture(event.pointerId);
+    } catch {
+      // Ignore if pointer capture is not supported/needed
+    }
+    dragStartRef.current = {
+      startY: event.clientY,
+      startIsFullScreen: isFullScreen,
+      active: true,
+      isClickCandidate: true
+    };
+    setIsDragging(true);
+  };
+
+  const handleZonePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStartRef.current?.active) return;
+    const deltaY = event.clientY - dragStartRef.current.startY;
+    if (Math.abs(deltaY) > 5) {
+      dragStartRef.current.isClickCandidate = false;
+    }
+
+    if (!dragStartRef.current.startIsFullScreen) {
+      if (deltaY > 0) {
+        setDragTranslateY(deltaY);
+      } else {
+        setDragTranslateY(Math.max(deltaY, -120));
+      }
+    } else {
+      if (deltaY > 0) {
+        setDragTranslateY(deltaY);
+      } else {
+        setDragTranslateY(Math.max(deltaY * 0.25, -25));
+      }
+    }
+  };
+
+  const handleZonePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStartRef.current?.active) return;
+    try {
+      if ((event.currentTarget as HTMLDivElement).hasPointerCapture(event.pointerId)) {
+        (event.currentTarget as HTMLDivElement).releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // Ignore
+    }
+    const deltaY = event.clientY - dragStartRef.current.startY;
+    const startIsFullScreen = dragStartRef.current.startIsFullScreen;
+    const isClick = dragStartRef.current.isClickCandidate && Math.abs(deltaY) < 6;
+
+    dragStartRef.current = null;
+    setIsDragging(false);
+    setDragTranslateY(0);
+
+    if (isClick) {
+      if ((event.target as HTMLElement).classList.contains("attachment-picker-sheet-handle")) {
+        setIsFullScreen((prev) => !prev);
+      }
+      return;
+    }
+
+    if (!startIsFullScreen) {
+      if (deltaY < -40) {
+        setIsFullScreen(true);
+      } else if (deltaY > 60) {
+        closeSheet();
+      }
+    } else {
+      if (deltaY > 50) {
+        setIsFullScreen(false);
+      }
+    }
+  };
+
+  const handleZonePointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStartRef.current?.active) return;
+    try {
+      if ((event.currentTarget as HTMLDivElement).hasPointerCapture(event.pointerId)) {
+        (event.currentTarget as HTMLDivElement).releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // Ignore
+    }
+    dragStartRef.current = null;
+    setIsDragging(false);
+    setDragTranslateY(0);
+  };
+
+  const handleBodyTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    const target = bodyRef.current;
+    if (!target) return;
+    bodyTouchStartRef.current = {
+      startY: event.touches[0].clientY,
+      scrollTop: target.scrollTop
+    };
+  };
+
+  const handleBodyTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (!bodyTouchStartRef.current) return;
+    const deltaY = event.changedTouches[0].clientY - bodyTouchStartRef.current.startY;
+    const initialScrollTop = bodyTouchStartRef.current.scrollTop;
+    bodyTouchStartRef.current = null;
+
+    if (!isFullScreen) {
+      if (deltaY < -45) {
+        setIsFullScreen(true);
+      } else if (deltaY > 70 && initialScrollTop <= 0) {
+        closeSheet();
+      }
+    } else {
+      if (deltaY > 60 && initialScrollTop <= 0) {
+        setIsFullScreen(false);
+      }
+    }
   };
 
   const mediaCategory = (tab: AttachmentPickerTab) => (tab === "file" ? "documents" : tab);
@@ -221,32 +357,49 @@ export default function AttachmentPickerSheet({
   const sheetContent = (
     <div className="attachment-picker-backdrop" role="presentation" onClick={closeSheet}>
       <div
-        className="attachment-picker-sheet tg-style"
+        className={`attachment-picker-sheet tg-style ${isFullScreen ? "is-fullscreen" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label="Attach media and files"
         onClick={(event) => event.stopPropagation()}
+        style={{
+          transform: dragTranslateY !== 0 ? `translateY(${dragTranslateY}px)` : undefined,
+          transition: isDragging ? "none" : undefined
+        }}
       >
-        <div className="attachment-picker-sheet-handle" aria-hidden="true" />
-        <div className="attachment-picker-header">
-          <div className="attachment-picker-header-title">
-            {selectedCount > 0 ? (
-              <span className="attachment-picker-selected-count">{selectedCount} selected</span>
-            ) : (
-              <span>Attach</span>
-            )}
+        <div
+          className="attachment-picker-sheet-handle-zone"
+          onPointerDown={handleZonePointerDown}
+          onPointerMove={handleZonePointerMove}
+          onPointerUp={handleZonePointerUp}
+          onPointerCancel={handleZonePointerCancel}
+        >
+          <div className="attachment-picker-sheet-handle" aria-hidden="true" />
+          <div className="attachment-picker-header">
+            <div className="attachment-picker-header-title">
+              {selectedCount > 0 ? (
+                <span className="attachment-picker-selected-count">{selectedCount} selected</span>
+              ) : (
+                <span>Attach</span>
+              )}
+            </div>
+            <button
+              type="button"
+              className="attachment-picker-close-btn"
+              aria-label="Close attachment menu"
+              onClick={closeSheet}
+            >
+              <span aria-hidden="true">×</span>
+            </button>
           </div>
-          <button
-            type="button"
-            className="attachment-picker-close-btn"
-            aria-label="Close attachment menu"
-            onClick={closeSheet}
-          >
-            <span aria-hidden="true">×</span>
-          </button>
         </div>
 
-        <div className="attachment-picker-body">
+        <div
+          className="attachment-picker-body"
+          ref={bodyRef}
+          onTouchStart={handleBodyTouchStart}
+          onTouchEnd={handleBodyTouchEnd}
+        >
           {activeTab === "gallery" && (
             <div className="attachment-picker-gallery-tab">
               <div className="attachment-picker-grid">

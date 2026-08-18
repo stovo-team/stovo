@@ -19,7 +19,8 @@ export type StovoMarkdownNode =
       level?: number;
       ordered?: boolean;
     }
-  | { type: "link"; href: string; children: StovoMarkdownNode[] };
+  | { type: "link"; href: string; children: StovoMarkdownNode[] }
+  | { type: "mention"; username: string; children: StovoMarkdownNode[] };
 
 const maxNestingDepth = 32;
 
@@ -119,6 +120,26 @@ function matchPlainLink(source: string, start: number): { end: number; href: str
   return { end: hrefEnd, href };
 }
 
+function matchMention(source: string, start: number): { end: number; username: string } | null {
+  if (source[start] !== "@") return null;
+  if (start > 0 && !/[\s([{"'<>]/.test(source[start - 1])) return null;
+
+  const rest = source.slice(start);
+  const match = /^@([a-zA-Z0-9_.-]+)/.exec(rest);
+  if (!match) return null;
+
+  let username = match[1];
+  let end = start + 1 + username.length;
+
+  while (username.length > 0 && trailingLinkPunctuation.has(username[username.length - 1])) {
+    username = username.slice(0, -1);
+    end -= 1;
+  }
+  if (!username) return null;
+
+  return { end, username };
+}
+
 function parseInline(source: string, depth: number): StovoMarkdownNode[] {
   if (!source) return [];
   if (depth >= maxNestingDepth) return [{ type: "text", value: source }];
@@ -157,6 +178,17 @@ function parseInline(source: string, depth: number): StovoMarkdownNode[] {
       continue;
     }
 
+    const mention = matchMention(source, index);
+    if (mention) {
+      nodes.push({
+        type: "mention",
+        username: mention.username,
+        children: [{ type: "text", value: `@${mention.username}` }]
+      });
+      index = mention.end;
+      continue;
+    }
+
     const format = formattingDelimiters.find(({ delimiter }) =>
       source.startsWith(delimiter, index)
     );
@@ -189,6 +221,7 @@ function parseInline(source: string, depth: number): StovoMarkdownNode[] {
     while (
       textEnd < source.length &&
       source[textEnd] !== "[" &&
+      (source[textEnd] !== "@" || !/[\s([{"'<>]/.test(source[textEnd - 1])) &&
       !formattingDelimiters.some(({ delimiter }) => source.startsWith(delimiter, textEnd)) &&
       !plainLinkPrefixes.some((prefix) => source.slice(textEnd).toLowerCase().startsWith(prefix))
     ) {
@@ -498,6 +531,12 @@ function renderNodes(
           <a key={key} href={node.href} rel="noopener noreferrer">
             {children}
           </a>
+        );
+      case "mention":
+        return (
+          <span key={key} className="message-mention" data-username={node.username}>
+            {children}
+          </span>
         );
     }
   });

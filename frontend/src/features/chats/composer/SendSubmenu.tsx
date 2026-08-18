@@ -51,12 +51,19 @@ export function SendSubmenu({
       role="menu"
       aria-label="Message send options"
       onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <button
         type="button"
         role="menuitem"
         className="action-menu-item send-submenu-item"
-        onClick={() => {
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
           onClose();
           onSelectSchedule();
         }}
@@ -69,7 +76,13 @@ export function SendSubmenu({
         type="button"
         role="menuitem"
         className="action-menu-item send-submenu-item"
-        onClick={() => {
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
           onClose();
           onSelectReminder();
         }}

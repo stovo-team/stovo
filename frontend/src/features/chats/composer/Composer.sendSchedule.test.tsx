@@ -78,18 +78,20 @@ describe("ScheduleMessageModal", () => {
       );
     });
 
-    expect(container.textContent).toContain("Schedule Message");
-    expect(container.textContent).toContain("Hello future!");
+    expect(document.body.textContent).toContain("Schedule Message");
+    expect(document.body.textContent).toContain("Hello future!");
 
     // Check presets
-    const presetButtons = container.querySelectorAll(".schedule-preset-chip");
+    const presetButtons = document.body.querySelectorAll(".schedule-preset-chip");
     expect(presetButtons.length).toBeGreaterThanOrEqual(4);
 
-    // Form submit
-    const form = container.querySelector("form");
-    expect(form).not.toBeNull();
+    // Click confirm button
+    const confirmBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (b) => b.textContent?.trim() === "Schedule Message"
+    );
+    expect(confirmBtn).toBeDefined();
     act(() => {
-      form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      confirmBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(onConfirmSchedule).toHaveBeenCalledTimes(1);
@@ -119,11 +121,11 @@ describe("ReminderModal", () => {
       );
     });
 
-    expect(container.textContent).toContain("Set Repeating Reminder");
-    expect(container.textContent).toContain("Don't forget the keys");
+    expect(document.body.textContent).toContain("Set Repeating Reminder");
+    expect(document.body.textContent).toContain("Don't forget the keys");
 
     // Switch to Weekly frequency
-    const weeklyTab = Array.from(container.querySelectorAll(".reminder-freq-tab")).find(
+    const weeklyTab = Array.from(document.body.querySelectorAll(".reminder-freq-tab")).find(
       (el) => el.textContent?.trim() === "Weekly"
     );
     expect(weeklyTab).toBeDefined();
@@ -132,21 +134,24 @@ describe("ReminderModal", () => {
     });
 
     // Custom days of week should now be visible
-    const dayChips = container.querySelectorAll(".reminder-day-chip");
+    const dayChips = document.body.querySelectorAll(".reminder-day-chip");
     expect(dayChips.length).toBe(7); // Mon..Sun
 
     // Pick 10 times preset
-    const preset10 = Array.from(container.querySelectorAll(".reminder-preset-chip")).find(
+    const preset10 = Array.from(document.body.querySelectorAll(".reminder-preset-chip")).find(
       (el) => el.textContent?.includes("10")
     );
     act(() => {
       preset10?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    // Submit form
-    const form = container.querySelector("form");
+    // Click Set Reminder button
+    const confirmBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (b) => b.textContent?.trim() === "Set Reminder"
+    );
+    expect(confirmBtn).toBeDefined();
     act(() => {
-      form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      confirmBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(onConfirmReminder).toHaveBeenCalledTimes(1);

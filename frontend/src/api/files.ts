@@ -1,5 +1,5 @@
 import { ApiError, apiRequest, getApiUrl } from "./client";
-import { getCachedFileBlob, seedMediaBlobCache } from "../mediaBlobCache";
+import { getCachedFileBlob, prefetchFileBlobs, seedMediaBlobCache } from "../mediaBlobCache";
 
 export interface FamilyFile {
   id: string;
@@ -123,6 +123,10 @@ async function fetchFileBlob(accessToken: string, fileId: string) {
 
 export async function downloadFileBlob(accessToken: string, fileId: string) {
   return getCachedFileBlob(accessToken, fileId, fetchFileBlob);
+}
+
+export function prefetchFiles(accessToken: string, fileIds: string[]) {
+  prefetchFileBlobs(accessToken, fileIds, fetchFileBlob);
 }
 
 export async function saveFileToDisk(accessToken: string, file: FamilyFile) {

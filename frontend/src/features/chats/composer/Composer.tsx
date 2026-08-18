@@ -5,6 +5,7 @@ import {
   PointerEvent as ReactPointerEvent,
   ReactNode,
   RefObject,
+  useMemo,
   useRef,
   useState
 } from "react";
@@ -225,14 +226,115 @@ export function Composer({
     longPressTriggeredRef.current = false;
     setIsSendSubmenuOpen(true);
   }
-  const mentionMatch = /(?:^|\s)@([\w-]*)$/.exec(composer);
-  const mentionCandidates = mentionMatch && selectedChat
-    ? selectedChat.members.filter((member) => member.username.toLowerCase().startsWith(mentionMatch[1].toLowerCase())).slice(0, 6)
-    : [];
+
+  const [cursorPos, setCursorPos] = useState<number>(composer.length);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [isMentionDismissed, setIsMentionDismissed] = useState(false);
+
+  const isTextareaFocused = typeof document !== "undefined" && composerInputRef.current && document.activeElement === composerInputRef.current;
+  const activeCursor = isTextareaFocused
+    ? (composerInputRef.current?.selectionStart ?? cursorPos)
+    : (cursorPos > 0 || composer.length === 0 ? cursorPos : composer.length);
+  const textBeforeCursor = composer.slice(0, activeCursor);
+  const mentionMatch = /(?:^|\s)@([a-zA-Z0-9_.-]*)$/.exec(textBeforeCursor);
+
+  const mentionCandidates = useMemo(() => {
+    if (!mentionMatch || isMentionDismissed || !selectedChat?.members?.length) {
+      return [];
+    }
+    const query = mentionMatch[1].toLowerCase();
+    const members = selectedChat.members.filter((member) => {
+      if (!member.username && !member.displayName) return false;
+      const username = (member.username ?? "").toLowerCase();
+      const displayName = (member.displayName ?? "").toLowerCase();
+      return username.includes(query) || displayName.includes(query);
+    });
+
+    members.sort((a, b) => {
+      const aUser = (a.username ?? "").toLowerCase();
+      const bUser = (b.username ?? "").toLowerCase();
+      const aName = (a.displayName ?? "").toLowerCase();
+      const bName = (b.displayName ?? "").toLowerCase();
+      const aStarts = aUser.startsWith(query) || aName.startsWith(query);
+      const bStarts = bUser.startsWith(query) || bName.startsWith(query);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return (a.displayName ?? a.username ?? "").localeCompare(b.displayName ?? b.username ?? "");
+    });
+
+    return members.slice(0, 8);
+  }, [mentionMatch, isMentionDismissed, selectedChat]);
+
+  function updateCursorPos() {
+    const textarea = composerInputRef.current;
+    if (textarea) {
+      setCursorPos(textarea.selectionStart ?? textarea.value.length);
+      setIsMentionDismissed(false);
+    }
+  }
 
   function insertMention(username: string) {
-    if (!mentionMatch) return;
-    onComposerChange(composer.slice(0, mentionMatch.index) + mentionMatch[0].replace(/@[\w-]*$/, `@${username} `));
+    const textarea = composerInputRef.current;
+    const isFocused = typeof document !== "undefined" && textarea && document.activeElement === textarea;
+    const currentCursor = isFocused
+      ? (textarea?.selectionStart ?? cursorPos)
+      : (cursorPos > 0 || composer.length === 0 ? cursorPos : composer.length);
+    const textBefore = composer.slice(0, currentCursor);
+    const textAfter = composer.slice(currentCursor);
+
+    const match = /(?:^|\s)@([a-zA-Z0-9_.-]*)$/.exec(textBefore);
+    if (!match) return;
+
+    const replaceStart = textBefore.slice(0, match.index);
+    const matchedToken = match[0];
+    const replacedToken = matchedToken.replace(/@[a-zA-Z0-9_.-]*$/, `@${username} `);
+    const prefix = replaceStart + replacedToken;
+    const nextValue = prefix + textAfter;
+
+    onComposerChange(nextValue);
+    setIsMentionDismissed(true);
+    setSelectedMentionIndex(0);
+
+    const nextPos = prefix.length;
+    setCursorPos(nextPos);
+    requestAnimationFrame(() => {
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(nextPos, nextPos);
+      }
+    });
+  }
+
+  function handleKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (mentionCandidates.length > 0) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSelectedMentionIndex((prev) => (prev + 1) % mentionCandidates.length);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedMentionIndex((prev) => (prev - 1 + mentionCandidates.length) % mentionCandidates.length);
+        return;
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
+          event.preventDefault();
+          const selected = mentionCandidates[selectedMentionIndex] ?? mentionCandidates[0];
+          if (selected) {
+            insertMention(selected.username || selected.displayName);
+          }
+          return;
+        }
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsMentionDismissed(true);
+        return;
+      }
+    }
+
+    onComposerKeyDown(event);
   }
 
   return (
@@ -380,30 +482,57 @@ export function Composer({
               value={composer}
               disabled={channelCommentsDisabledForViewer || missingCommentThread}
               onChange={(event) => {
+                updateCursorPos();
                 onComposerSelectionUpdate();
                 onComposerChange(event.target.value);
               }}
-              onFocus={onComposerFocus}
-              onKeyDown={onComposerKeyDown}
-              onKeyUp={onComposerSelectionUpdate}
-              onPointerUp={onComposerSelectionUpdate}
+              onFocus={() => {
+                updateCursorPos();
+                onComposerFocus?.();
+              }}
+              onKeyDown={handleKeyDown}
+              onKeyUp={(event) => {
+                updateCursorPos();
+                onComposerSelectionUpdate();
+              }}
+              onPointerUp={(event) => {
+                updateCursorPos();
+                onComposerSelectionUpdate();
+              }}
               onScroll={onComposerSelectionUpdate}
-              onSelect={onComposerSelectionUpdate}
+              onSelect={(event) => {
+                updateCursorPos();
+                onComposerSelectionUpdate();
+              }}
               onContextMenu={(event) => {
                 const textarea = event.currentTarget;
                 if (textarea.selectionStart !== textarea.selectionEnd) {
                   event.preventDefault();
                   onComposerSelectionUpdate();
                 }
+                updateCursorPos();
               }}
             />
             {mentionCandidates.length > 0 && (
               <div className="composer-mention-menu" role="listbox" aria-label="Mention a member">
-                {mentionCandidates.map((member) => (
-                  <button type="button" key={member.id} role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => insertMention(member.username)}>
-                    <strong>@{member.username}</strong><span>{member.displayName}</span>
-                  </button>
-                ))}
+                {mentionCandidates.map((member, index) => {
+                  const isSelected = index === selectedMentionIndex;
+                  return (
+                    <button
+                      type="button"
+                      key={member.id}
+                      role="option"
+                      aria-selected={isSelected}
+                      className={isSelected ? "active" : ""}
+                      onMouseEnter={() => setSelectedMentionIndex(index)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => insertMention(member.username || member.displayName)}
+                    >
+                      <strong>@{member.username || member.displayName}</strong>
+                      <span>{member.displayName}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
