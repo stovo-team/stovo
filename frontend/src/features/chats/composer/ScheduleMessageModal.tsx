@@ -90,6 +90,8 @@ export function ScheduleMessageModal({
       className="modal-backdrop schedule-modal-backdrop"
       onClick={onClose}
       onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
     >
       <div
         className="modal-card schedule-modal-card"
@@ -98,6 +100,8 @@ export function ScheduleMessageModal({
         aria-labelledby="schedule-modal-title"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
         <div className="modal-card-header">
           <div className="modal-card-title-wrap">
