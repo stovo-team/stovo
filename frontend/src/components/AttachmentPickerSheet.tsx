@@ -113,7 +113,7 @@ export default function AttachmentPickerSheet({
     }
   };
 
-  const resetSheetState = () => {
+  const resetSheetState = useCallback(() => {
     setActiveTab("gallery");
     setSelectedItemIds([]);
     setPreviewMediaItem(null);
@@ -122,9 +122,9 @@ export default function AttachmentPickerSheet({
     setIsFullScreen(false);
     setDragTranslateY(0);
     setIsDragging(false);
-  };
+  }, [setPreviewMediaItem]);
 
-  const closeSheet = () => {
+  const closeSheet = useCallback(() => {
     if (isClosing) return;
     if (prefersReducedMotion) {
       resetSheetState();
@@ -132,7 +132,7 @@ export default function AttachmentPickerSheet({
       return;
     }
     setIsClosing(true);
-  };
+  }, [isClosing, onClose, prefersReducedMotion, resetSheetState]);
 
   useEffect(() => {
     if (!isClosing || prefersReducedMotion) return;
@@ -142,7 +142,7 @@ export default function AttachmentPickerSheet({
       onClose();
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [isClosing, onClose, prefersReducedMotion]);
+  }, [isClosing, onClose, prefersReducedMotion, resetSheetState]);
 
   useEffect(() => {
     if (!open || !Capacitor.isNativePlatform()) return undefined;
@@ -391,6 +391,22 @@ export default function AttachmentPickerSheet({
     document.addEventListener("pointerdown", handleDocumentPointerDown);
     return () => document.removeEventListener("pointerdown", handleDocumentPointerDown);
   }, [isEmojiOpen]);
+
+  useEffect(() => {
+    if (!open || !previewMediaItem) {
+      setFullPreviewUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchNativeMediaFileUrl(previewMediaItem.id).then((url) => {
+      if (!cancelled && url) {
+        setFullPreviewUrl(url);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, previewMediaItem]);
 
   if (!open) return null;
 
@@ -762,22 +778,6 @@ export default function AttachmentPickerSheet({
       </div>
     </div>
   );
-
-  useEffect(() => {
-    if (!previewMediaItem) {
-      setFullPreviewUrl(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchNativeMediaFileUrl(previewMediaItem.id).then((url) => {
-      if (!cancelled && url) {
-        setFullPreviewUrl(url);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [previewMediaItem]);
 
   const fullContent = (
     <>

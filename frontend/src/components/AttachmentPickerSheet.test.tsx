@@ -142,8 +142,18 @@ describe("AttachmentPickerSheet Android gallery", () => {
   });
 
   it("fetches full resolution original media for ImageLightbox preview", () => {
-    expect(attachmentSheetSource).toContain("fetchNativeMediaFileUrl");
-    expect(attachmentSheetSource).toContain("fullPreviewUrl");
-    expect(attachmentSheetSource).toMatch(/imageUrl=\{fullPreviewUrl\s*\|\|\s*nativeMediaPreviewUrl\(previewMediaItem\)\}/);
+    const updatedSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
+    expect(updatedSource).toContain("fetchNativeMediaFileUrl");
+    expect(updatedSource).toContain("fullPreviewUrl");
+    expect(updatedSource).toMatch(/imageUrl=\{fullPreviewUrl\s*\|\|\s*nativeMediaPreviewUrl\(previewMediaItem\)\}/);
+  });
+
+  it("declares all hooks at top level before conditional return to prevent white screen crashes", () => {
+    const updatedSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
+    const [beforeEarlyReturn, afterEarlyReturn] = updatedSource.split("if (!open) return null;");
+    expect(beforeEarlyReturn).toContain("fetchNativeMediaFileUrl");
+    expect(beforeEarlyReturn).toContain("useEffect");
+    expect(afterEarlyReturn).toBeDefined();
+    expect(afterEarlyReturn).not.toMatch(/\buse(Effect|LayoutEffect|State|Memo|Callback|Ref)\s*\(/);
   });
 });
