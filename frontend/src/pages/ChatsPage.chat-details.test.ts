@@ -24,7 +24,7 @@ describe("chat details controls", () => {
     expect(styles).toContain(".chat-info-title-row {");
     expect(styles).toContain("justify-content: center;");
     expect(styles).toContain(".chat-info-title-edit {");
-    expect(styles).toContain("inset-inline-end: 0;");
+    expect(styles).toContain("inset-inline-start: 0;");
     expect(styles).toContain("position: absolute;");
   });
 
@@ -71,7 +71,7 @@ describe("chat details controls", () => {
     expect(messagePresentation).toContain("function extractMessageLinks");
     expect(chatPresentation).toContain("message.attachments.map((file) => ({");
     expect(chatPresentation).toContain('kind: "link"');
-    expect(chatPresentation).toContain('return tab === "media";');
+    expect(chatPresentation).toContain("return isImage || isVideo;");
   });
 
   it("lets shared attachments return to their source message", () => {

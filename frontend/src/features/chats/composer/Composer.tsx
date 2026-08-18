@@ -17,7 +17,7 @@ import { ComposerContextThumb } from "../conversation/MessageAttachmentThumbs";
 import { AttachmentControls } from "./AttachmentControls";
 import { PendingAttachmentCard } from "./PendingAttachmentCard";
 
-const EMOJI_CATEGORY_ICONS: Partial<Record<Categories, ReactNode>> = {
+export const EMOJI_CATEGORY_ICONS: Partial<Record<Categories, ReactNode>> = {
   [Categories.SUGGESTED]: <History aria-hidden="true" size={18} />,
   [Categories.SMILEYS_PEOPLE]: <Smile aria-hidden="true" size={18} />,
   [Categories.ANIMALS_NATURE]: <Cat aria-hidden="true" size={18} />,
@@ -238,6 +238,12 @@ export function Composer({
             }));
             return onSubmit({ preventDefault: () => undefined }, attachments, message);
           }}
+          composer={composer}
+          onComposerChange={onComposerChange}
+          resolvedThemeMode={resolvedThemeMode}
+          onEnlargeComposer={onEnlargeComposer}
+          isUploading={isUploading}
+          isSendingMessage={isSendingMessage}
         />
         <div className="emoji-picker-shell" ref={emojiPickerRef}>
           <button

@@ -135,9 +135,9 @@ export function useChatOverview({
         return;
       }
       const chat = await createDirectChat(accessToken, userId);
-      await refreshChats();
       closeNewChatScreen();
       onNavigateToChat(chat);
+      void refreshChats();
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : "Could not create chat");
     }
@@ -145,7 +145,7 @@ export function useChatOverview({
 
   async function handleCreateGroupChat(event: FormEvent) {
     event.preventDefault();
-    if (!accessToken || !groupTitle.trim() || groupMemberIds.length === 0) {
+    if (!accessToken || !groupTitle.trim()) {
       return;
     }
 
@@ -155,9 +155,9 @@ export function useChatOverview({
         title: groupTitle.trim(),
         memberIds: groupMemberIds
       });
-      await refreshChats();
       closeNewChatScreen();
       onNavigateToChat(chat);
+      void refreshChats();
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : "Could not create group");
     }
@@ -173,7 +173,7 @@ export function useChatOverview({
 
   async function handleCreateChannelChat(event: FormEvent) {
     event.preventDefault();
-    if (!accessToken || !groupTitle.trim() || groupMemberIds.length === 0) {
+    if (!accessToken || !groupTitle.trim()) {
       return;
     }
 
@@ -183,9 +183,9 @@ export function useChatOverview({
         title: groupTitle.trim(),
         memberIds: groupMemberIds
       });
-      await refreshChats();
       closeNewChatScreen();
       onNavigateToChat(chat);
+      void refreshChats();
     } catch (err) {
       onError(err instanceof ApiError ? String(err.message) : "Could not create channel");
     }

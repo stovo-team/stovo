@@ -78,4 +78,27 @@ describe("shareContent", () => {
     expect(result.shared).toBe(false);
     expect(result.fallbackToCopy).toBe(true);
   });
+
+  it("does not pass url separately if text already contains the url", async () => {
+    const mockShare = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(globalThis, "navigator", {
+      value: {
+        share: mockShare
+      },
+      writable: true,
+      configurable: true
+    });
+
+    const result = await shareContent({
+      title: "Join Family",
+      text: "Join Stovo!\nhttps://example.com/invite/123",
+      url: "https://example.com/invite/123"
+    });
+
+    expect(result.shared).toBe(true);
+    expect(mockShare).toHaveBeenCalledWith({
+      title: "Join Family",
+      text: "Join Stovo!\nhttps://example.com/invite/123"
+    });
+  });
 });
