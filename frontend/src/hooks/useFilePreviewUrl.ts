@@ -27,15 +27,27 @@ export default function useFilePreviewUrl(
     }
 
     setPreviewUrl(null);
-    void downloadFileBlob(accessToken, file.id)
-      .then(() => {
-        if (cancelled) return;
-        setPreviewUrl(peekCachedObjectUrl(file.id));
-      })
-      .catch(() => undefined);
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const tryDownload = (retryCount = 0) => {
+      downloadFileBlob(accessToken, file.id)
+        .then(() => {
+          if (cancelled) return;
+          setPreviewUrl(peekCachedObjectUrl(file.id));
+        })
+        .catch(() => {
+          if (cancelled || retryCount >= 1) return;
+          retryTimer = setTimeout(() => {
+            if (!cancelled) tryDownload(retryCount + 1);
+          }, 1200);
+        });
+    };
+
+    tryDownload();
 
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, [accessToken, enabled, file?.id, file?.mimeType]);
 

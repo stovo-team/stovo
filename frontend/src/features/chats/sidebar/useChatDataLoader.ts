@@ -3,6 +3,7 @@ import { Dispatch, RefObject, SetStateAction, useCallback, useEffect, useRef } f
 import type { User } from "../../../api/auth";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../../../api/chats";
 import { ApiError } from "../../../api/client";
+import { prefetchFiles } from "../../../api/files";
 import type { Family } from "../../../api/family";
 import { decryptMessages } from "../../../api/messageCrypto";
 import { loadCachedChatList, loadRecentChatHistory, loadRecentChatHistoryFromLocalStorage, saveCachedChatList, saveRecentChatHistory } from "../../../chatHistoryCache";
@@ -312,6 +313,19 @@ export function useChatDataLoader({
         }
         applyMessagesForChatRef.current(requestedChatId, decryptedMessages);
         historyCursorRef.current[requestedChatId] = messageResult.hasMore ? messageResult.nextBefore : null;
+        if (accessTokenRef.current && decryptedMessages.length > 0) {
+          const fileIds: string[] = [];
+          for (const m of decryptedMessages) {
+            if (m.attachments?.length) {
+              for (const a of m.attachments) {
+                if (a.id) fileIds.push(a.id);
+              }
+            }
+          }
+          if (fileIds.length > 0) {
+            prefetchFiles(accessTokenRef.current, fileIds);
+          }
+        }
         if (currentUserIdRef.current) {
           void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, messageResult.messages);
         }
@@ -327,6 +341,19 @@ export function useChatDataLoader({
             if (!isCurrentRequest()) return;
             applyMessagesForChatRef.current(requestedChatId, (current) => mergeMessageLists(current, moreDecrypted));
             historyCursorRef.current[requestedChatId] = morePage.hasMore ? morePage.nextBefore : null;
+            if (accessTokenRef.current && moreDecrypted.length > 0) {
+              const moreFileIds: string[] = [];
+              for (const m of moreDecrypted) {
+                if (m.attachments?.length) {
+                  for (const a of m.attachments) {
+                    if (a.id) moreFileIds.push(a.id);
+                  }
+                }
+              }
+              if (moreFileIds.length > 0) {
+                prefetchFiles(accessTokenRef.current, moreFileIds);
+              }
+            }
             if (currentUserIdRef.current) {
               const allDecrypted = mergeMessageLists(decryptedMessages, moreDecrypted);
               void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, allDecrypted);

@@ -2,6 +2,7 @@ import { Dispatch, RefObject, SetStateAction, useCallback } from "react";
 import type { Socket } from "socket.io-client";
 
 import type { Chat, Message, PinnedMessage } from "../../../api/chats";
+import { prefetchFiles } from "../../../api/files";
 import { decryptMessage } from "../../../api/messageCrypto";
 import { applyMessagePreviewToChat, isSuppressedUserError, sortPinsByPosition } from "../shared/chatPresentation";
 import {
@@ -16,6 +17,7 @@ import type { MessageContextMenuState } from "./MessageContextMenu";
 
 export type UseChatRealtimeParams = {
   currentUserId: string | undefined;
+  accessTokenRef?: RefObject<string | null>;
   chatsRef: RefObject<Chat[]>;
   activeChatIdRef: RefObject<string | undefined>;
   applyMessagesForChat: (chatId: string, next: MessageStateUpdate) => void;
@@ -40,6 +42,7 @@ export type UseChatRealtimeParams = {
  */
 export function useChatRealtime({
   currentUserId,
+  accessTokenRef,
   chatsRef,
   activeChatIdRef,
   applyMessagesForChat,
@@ -62,6 +65,12 @@ export function useChatRealtime({
           const hasKnownChat = chatsRef.current.some((chat) => chat.id === message.chatId);
           const isActiveChat = message.chatId === activeChatIdRef.current;
           const isMine = message.senderId === currentUserId;
+          if (displayMessage.attachments?.length && accessTokenRef?.current) {
+            prefetchFiles(
+              accessTokenRef.current,
+              displayMessage.attachments.map((a) => a.id).filter(Boolean)
+            );
+          }
           onChatsUpdate((current) =>
             current.map((chat) => {
               if (chat.id !== message.chatId) return chat;
@@ -90,6 +99,12 @@ export function useChatRealtime({
         void (async () => {
           if (message.chatId !== activeChatIdRef.current) return;
           const displayMessage = await decryptMessage(message.chatId, message, currentUserId);
+          if (displayMessage.attachments?.length && accessTokenRef?.current) {
+            prefetchFiles(
+              accessTokenRef.current,
+              displayMessage.attachments.map((a) => a.id).filter(Boolean)
+            );
+          }
           applyMessagesForChat(message.chatId, (current) => replaceMessage(current, displayMessage));
         })();
       };

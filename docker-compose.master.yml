@@ -73,6 +73,20 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-stovo_minio_root}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-stovo_minio_pass}
       DOCKER_NETWORK_NAME: stovo_default
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_STT_MODEL: ${GROQ_STT_MODEL:-whisper-large-v3-turbo}
+      GROQ_CHAT_MODEL: ${GROQ_CHAT_MODEL:-}
+      GROQ_STT_COST_PER_AUDIO_HOUR_USD: ${GROQ_STT_COST_PER_AUDIO_HOUR_USD:-0.04}
+      AI_CALL_TRANSCRIPTION_ENABLED: ${AI_CALL_TRANSCRIPTION_ENABLED:-true}
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      TURN_ENABLED: ${TURN_ENABLED:-true}
+      TURN_HOST: ${TURN_HOST:-}
+      TURN_PORT: ${TURN_PORT:-3478}
+      TURN_REALM: ${TURN_REALM:-family-messenger}
+      TURN_USERNAME: ${TURN_USERNAME:-family}
+      TURN_PASSWORD: ${TURN_PASSWORD:-change_me}
     ports:
       - "8001:8001"
     volumes:

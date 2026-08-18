@@ -19,6 +19,8 @@ func TestBackendContainerEnvIncludesTurnConfiguration(t *testing.T) {
 			"TURN_REALM":           "family-calls",
 			"TURN_USERNAME":        "turn-user",
 			"TURN_PASSWORD":        "turn-password",
+			"GROQ_API_KEY":         "gsk_test12345",
+			"GROQ_STT_MODEL":        "whisper-large-v3-turbo",
 		}
 		if value, ok := values[key]; ok {
 			return value
@@ -34,6 +36,8 @@ func TestBackendContainerEnvIncludesTurnConfiguration(t *testing.T) {
 		"\nTURN_REALM=family-calls\n",
 		"\nTURN_USERNAME=turn-user\n",
 		"\nTURN_PASSWORD=turn-password\n",
+		"\nGROQ_API_KEY=gsk_test12345\n",
+		"\nGROQ_STT_MODEL=whisper-large-v3-turbo\n",
 	} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("tenant backend is missing %q", strings.TrimSpace(want))
