@@ -215,10 +215,22 @@ export function sharedContentItemMatchesTab(item: SharedContentItem, tab: Shared
   if (item.kind === "link") {
     return tab === "links";
   }
-  if (tab === "files") {
-    return !item.file.mimeType.startsWith("image/") && !item.file.mimeType.startsWith("video/");
+  if (tab === "links") {
+    return false;
   }
-  return tab === "media";
+  const isImage = item.file.mimeType.startsWith("image/");
+  const isVideo = item.file.mimeType.startsWith("video/");
+  const isAudio = item.file.mimeType.startsWith("audio/");
+  if (tab === "media") {
+    return isImage || isVideo;
+  }
+  if (tab === "audio") {
+    return isAudio;
+  }
+  if (tab === "files") {
+    return !isImage && !isVideo && !isAudio;
+  }
+  return false;
 }
 
 export function computeSharedContentItems(messages: Message[], tab: SharedContentTab): SharedContentItem[] {

@@ -136,7 +136,7 @@ export function ChatDetailsPanel({
   const hasFamilyStorageSetting = chat.type !== "family";
   const hasCommentsSetting = chat.type === "channel";
   const hasPinPermissionSetting = canManageChat && chat.type !== "direct";
-  const sharedContentTabs = ["media", "files", "links"] as const;
+  const sharedContentTabs = ["media", "audio", "files", "links"] as const;
 
   function handleDetailsTabChange(tab: SharedContentTab) {
     const currentIndex = sharedContentTabs.indexOf(detailsTab);
@@ -391,20 +391,22 @@ export function ChatDetailsPanel({
                 </button>
               </form>
             ) : (
-              <h3>{chatName}</h3>
-            )}
-            {!nameEditor && canManageChat && chat.type !== "direct" && (
-              <button
-                type="button"
-                className="chat-info-title-edit"
-                aria-controls="chat-info-name-editor"
-                aria-expanded={nameEditor}
-                aria-label="Edit chat name"
-                title="Edit chat name"
-                onClick={() => setActiveControl((current) => (current === "name" ? null : "name"))}
-              >
-                <Pencil aria-hidden="true" size={18} />
-              </button>
+              <>
+                {canManageChat && chat.type !== "direct" && (
+                  <button
+                    type="button"
+                    className="chat-info-title-edit"
+                    aria-controls="chat-info-name-editor"
+                    aria-expanded={nameEditor}
+                    aria-label="Edit chat name"
+                    title="Edit chat name"
+                    onClick={() => setActiveControl((current) => (current === "name" ? null : "name"))}
+                  >
+                    <Pencil aria-hidden="true" size={18} />
+                  </button>
+                )}
+                <h3>{chatName}</h3>
+              </>
             )}
           </div>
           {chat.type !== "archive" && (
@@ -494,7 +496,7 @@ export function ChatDetailsPanel({
                 aria-pressed={detailsTab === tab}
                 onClick={() => handleDetailsTabChange(tab)}
               >
-                {tab === "media" ? "Media" : tab === "files" ? "Files" : "Links"}
+                {tab === "media" ? "Media" : tab === "audio" ? "Audio" : tab === "files" ? "Files" : "Links"}
               </button>
             ))}
           </div>
@@ -530,7 +532,9 @@ export function ChatDetailsPanel({
                   ? "No links yet"
                   : detailsTab === "media"
                     ? "No media yet"
-                    : "No files yet"}
+                    : detailsTab === "audio"
+                      ? "No audio yet"
+                      : "No files yet"}
               </p>
             )}
           </div>

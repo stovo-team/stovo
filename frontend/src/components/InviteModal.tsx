@@ -157,7 +157,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
     if (!qrDataUrl || !inviteUrl) return;
     const result = await shareContent({
       title: `Join ${familyName} on Stovo`,
-      text: `Join our family "${familyName}" on Stovo!\n${inviteUrl}`,
+      text: `Join our family "${familyName}" on Stovo!`,
       url: inviteUrl,
       dialogTitle: `Invite to ${familyName} (QR Code)`,
       dataUrl: qrDataUrl,

@@ -1030,6 +1030,96 @@ func (s *Server) initSchema() error {
 				END IF;
 			END IF;
 		END $$;`,
+		`DO $$ BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.table_constraints
+				WHERE table_name = 'message_attachments' AND constraint_type = 'PRIMARY KEY'
+			) THEN
+				IF (
+					SELECT count(*) FROM information_schema.key_column_usage
+					WHERE table_name = 'message_attachments'
+					  AND constraint_name = (
+						SELECT constraint_name FROM information_schema.table_constraints
+						WHERE table_name = 'message_attachments' AND constraint_type = 'PRIMARY KEY' LIMIT 1
+					  )
+				) < 2 THEN
+					ALTER TABLE message_attachments DROP CONSTRAINT IF EXISTS message_attachments_pkey;
+					ALTER TABLE message_attachments ADD CONSTRAINT message_attachments_pkey PRIMARY KEY (message_id, file_id);
+				END IF;
+			END IF;
+		END $$;`,
+		`DO $$ BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.table_constraints
+				WHERE table_name = 'message_reactions' AND constraint_type = 'PRIMARY KEY'
+			) THEN
+				IF (
+					SELECT count(*) FROM information_schema.key_column_usage
+					WHERE table_name = 'message_reactions'
+					  AND constraint_name = (
+						SELECT constraint_name FROM information_schema.table_constraints
+						WHERE table_name = 'message_reactions' AND constraint_type = 'PRIMARY KEY' LIMIT 1
+					  )
+				) < 3 THEN
+					ALTER TABLE message_reactions DROP CONSTRAINT IF EXISTS message_reactions_pkey;
+					ALTER TABLE message_reactions ADD CONSTRAINT message_reactions_pkey PRIMARY KEY (message_id, user_id, emoji);
+				END IF;
+			END IF;
+		END $$;`,
+		`DO $$ BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.table_constraints
+				WHERE table_name = 'message_statuses' AND constraint_type = 'PRIMARY KEY'
+			) THEN
+				IF (
+					SELECT count(*) FROM information_schema.key_column_usage
+					WHERE table_name = 'message_statuses'
+					  AND constraint_name = (
+						SELECT constraint_name FROM information_schema.table_constraints
+						WHERE table_name = 'message_statuses' AND constraint_type = 'PRIMARY KEY' LIMIT 1
+					  )
+				) < 3 THEN
+					ALTER TABLE message_statuses DROP CONSTRAINT IF EXISTS message_statuses_pkey;
+					ALTER TABLE message_statuses ADD CONSTRAINT message_statuses_pkey PRIMARY KEY (message_id, user_id, status);
+				END IF;
+			END IF;
+		END $$;`,
+		`DO $$ BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.table_constraints
+				WHERE table_name = 'message_user_deletions' AND constraint_type = 'PRIMARY KEY'
+			) THEN
+				IF (
+					SELECT count(*) FROM information_schema.key_column_usage
+					WHERE table_name = 'message_user_deletions'
+					  AND constraint_name = (
+						SELECT constraint_name FROM information_schema.table_constraints
+						WHERE table_name = 'message_user_deletions' AND constraint_type = 'PRIMARY KEY' LIMIT 1
+					  )
+				) < 2 THEN
+					ALTER TABLE message_user_deletions DROP CONSTRAINT IF EXISTS message_user_deletions_pkey;
+					ALTER TABLE message_user_deletions ADD CONSTRAINT message_user_deletions_pkey PRIMARY KEY (message_id, user_id);
+				END IF;
+			END IF;
+		END $$;`,
+		`DO $$ BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.table_constraints
+				WHERE table_name = 'pinned_messages' AND constraint_type = 'PRIMARY KEY'
+			) THEN
+				IF (
+					SELECT count(*) FROM information_schema.key_column_usage
+					WHERE table_name = 'pinned_messages'
+					  AND constraint_name = (
+						SELECT constraint_name FROM information_schema.table_constraints
+						WHERE table_name = 'pinned_messages' AND constraint_type = 'PRIMARY KEY' LIMIT 1
+					  )
+				) < 2 THEN
+					ALTER TABLE pinned_messages DROP CONSTRAINT IF EXISTS pinned_messages_pkey;
+					ALTER TABLE pinned_messages ADD CONSTRAINT pinned_messages_pkey PRIMARY KEY (chat_id, message_id);
+				END IF;
+			END IF;
+		END $$;`,
 	}
 	for _, statement := range repairStatements {
 		_, _ = s.db.Exec(statement)

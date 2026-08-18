@@ -36,7 +36,7 @@ export function NewChatDialog({
   onCreateChannel: (event: FormEvent) => void;
 }) {
   const composeFormId = screen === "channel" ? "new-channel-form" : "new-group-form";
-  const canCreateCompose = groupTitle.trim().length > 0 && groupMemberIds.length > 0;
+  const canCreateCompose = groupTitle.trim().length > 0;
 
   if (screen === "group" || screen === "channel") {
     const isChannel = screen === "channel";
@@ -54,6 +54,14 @@ export function NewChatDialog({
             form={composeFormId}
             className="new-chat-screen-action"
             disabled={!canCreateCompose}
+            onClick={(event) => {
+              event.preventDefault();
+              if (isChannel) {
+                onCreateChannel(event);
+              } else {
+                onCreateGroup(event);
+              }
+            }}
           >
             Create
           </button>

@@ -15,14 +15,38 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).not.toContain("SAMPLE_GALLERY_ITEMS");
   });
 
-  it("shows an inline message box and sends selected files from the picker", () => {
-    expect(attachmentSheetSource).toContain("resetSheetState");
-    expect(attachmentSheetSource).toContain("selectedCount > 0 && (");
-    expect(attachmentSheetSource).toContain("media-tile-checkbox");
+  it("shows the full message composer element with smile, file attachment, enlarge, and send buttons", () => {
     expect(attachmentSheetSource).toContain("attachment-picker-message-box");
+    expect(attachmentSheetSource).toContain("message-composer-row");
+    expect(attachmentSheetSource).toContain("file-picker");
+    expect(attachmentSheetSource).toContain("emoji-picker-shell");
+    expect(attachmentSheetSource).toContain("EmojiPicker");
+    expect(attachmentSheetSource).toContain("MessageEnlargeButton");
+    expect(attachmentSheetSource).toContain("attachment-picker-message-send");
     expect(attachmentSheetSource).toContain('placeholder="Message"');
-    expect(attachmentSheetSource).toContain("onSendSelectedFiles?.(files, message)");
     expect(attachmentSheetSource).toContain("handleSendSelected");
+  });
+
+  it("synchronizes message draft with parent composer and preserves draft state across openings", () => {
+    expect(attachmentSheetSource).toContain("composer !== undefined ? composer : localDraft");
+    expect(attachmentSheetSource).toContain("onComposerChange");
+    expect(attachmentSheetSource).toContain("resetSheetState");
+    // resetSheetState should not wipe the message text
+    const resetFnBody = attachmentSheetSource.match(/const resetSheetState = \(\) => \{([\s\S]*?)\};/)?.[1] ?? "";
+    expect(resetFnBody).not.toContain('setMessage("")');
+    expect(resetFnBody).not.toContain('setComposer("")');
+    expect(resetFnBody).not.toContain('setLocalDraft("")');
+  });
+
+  it("supports multiline text and auto-growing height in the gallery message box", () => {
+    expect(attachmentSheetSource).toContain("adjustTextareaHeight");
+    expect(attachmentSheetSource).toContain("isMultiline");
+    expect(attachmentSheetSource).toContain("message-composer-row--multiline");
+  });
+
+  it("sends selected files and message or text-only messages from the picker", () => {
+    expect(attachmentSheetSource).toContain("onSendSelectedFiles?.(files, messageText)");
+    expect(attachmentSheetSource).toContain("onSendSelectedFiles?.([], messageText)");
   });
 
   it("uses cached media immediately and refreshes the device library for new captures", () => {
@@ -42,8 +66,8 @@ describe("AttachmentPickerSheet Android gallery", () => {
   });
 
   it("falls back to Android's picker when the in-app media query is empty or fails", () => {
-    expect(attachmentSheetSource).toContain('No photos or videos found in the in-app gallery.');
-    expect(attachmentSheetSource).toContain('Unable to load the in-app gallery.');
+    expect(attachmentSheetSource).toContain("No photos or videos found in the in-app gallery.");
+    expect(attachmentSheetSource).toContain("Unable to load the in-app gallery.");
     expect(attachmentSheetSource).toMatch(/galleryState === "empty"[\s\S]*?onPick\("gallery"\)/);
     expect(attachmentSheetSource).toMatch(/galleryState === "error"[\s\S]*?onPick\("gallery"\)/);
   });

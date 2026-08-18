@@ -14,7 +14,7 @@ export type ChatAvatarFallbackKind = "direct" | "group" | "channel" | "family" |
 export type NewChatScreen = "pick" | "group" | "channel";
 export type ChatFilter = "all" | "unread" | "groups" | "direct" | "muted";
 export type ChatSectionKey = "archive" | "dms" | "groups" | "channels";
-export type SharedContentTab = "media" | "files" | "links";
+export type SharedContentTab = "media" | "audio" | "files" | "links";
 export type ChatInfoControl = "name" | "settings" | null;
 
 export type NotificationActionCommand =
