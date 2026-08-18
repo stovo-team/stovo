@@ -154,7 +154,7 @@ export function MessageList({
               const previousMessage = messageIndex > 0 ? visibleMessages[messageIndex - 1] : undefined;
               return (
                 <MessageBubble
-                  key={message.id}
+                  key={message.clientMessageId || message.id}
                   message={message}
                   previousMessage={previousMessage}
                   currentUserId={currentUser?.id}
