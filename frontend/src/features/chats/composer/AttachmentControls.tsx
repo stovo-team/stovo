@@ -23,7 +23,13 @@ export function AttachmentControls({
   onCloseSheet,
   onPickOption,
   onSelectDirectFiles,
-  onSendSelectedFiles
+  onSendSelectedFiles,
+  composer,
+  onComposerChange,
+  resolvedThemeMode,
+  onEnlargeComposer,
+  isUploading,
+  isSendingMessage
 }: {
   disabled: boolean;
   isAttachmentSheetOpen: boolean;
@@ -38,6 +44,12 @@ export function AttachmentControls({
   onPickOption: (option: AttachmentPickerOption) => void;
   onSelectDirectFiles?: (files: File[]) => void;
   onSendSelectedFiles?: (files: File[], message: string) => void | Promise<void>;
+  composer?: string;
+  onComposerChange?: (value: string) => void;
+  resolvedThemeMode?: "light" | "dark";
+  onEnlargeComposer?: () => void;
+  isUploading?: boolean;
+  isSendingMessage?: boolean;
 }) {
   return (
     <>
@@ -102,6 +114,12 @@ export function AttachmentControls({
         onPick={onPickOption}
         onSelectFiles={onSelectDirectFiles}
         onSendSelectedFiles={onSendSelectedFiles}
+        composer={composer}
+        onComposerChange={onComposerChange}
+        resolvedThemeMode={resolvedThemeMode}
+        onEnlargeComposer={onEnlargeComposer}
+        isUploading={isUploading}
+        isSendingMessage={isSendingMessage}
       />
     </>
   );

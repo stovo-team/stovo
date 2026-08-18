@@ -63,14 +63,29 @@ export async function shareContent(options: ShareContentOptions): Promise<ShareC
   // Web fallback using Web Share API if supported
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
     try {
+      const shareData: ShareData = {
+        title: title || undefined
+      };
+
+      if (url && text) {
+        if (text.includes(url)) {
+          shareData.text = text;
+        } else {
+          shareData.text = text;
+          shareData.url = url;
+        }
+      } else if (url) {
+        shareData.url = url;
+      } else if (text) {
+        shareData.text = text;
+      }
+
       if (dataUrl && filename && typeof navigator.canShare === "function") {
         try {
           const file = await dataUrlToFile(dataUrl, filename, mimeType || "image/png");
-          if (navigator.canShare({ files: [file] })) {
+          if (navigator.canShare({ ...shareData, files: [file] })) {
             await navigator.share({
-              title,
-              text,
-              url,
+              ...shareData,
               files: [file]
             });
             return { shared: true };
@@ -80,11 +95,7 @@ export async function shareContent(options: ShareContentOptions): Promise<ShareC
         }
       }
 
-      await navigator.share({
-        title,
-        text,
-        url
-      });
+      await navigator.share(shareData);
       return { shared: true };
     } catch (err: unknown) {
       if (err instanceof Error && (err.name === "AbortError" || err.message.includes("abort") || err.message.includes("cancel"))) {

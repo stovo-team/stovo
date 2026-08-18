@@ -5,7 +5,9 @@ import {
   chatListLayoutClass,
   chatPreview,
   shouldShowChatRowMeta,
-  compactChatListLeadingVisual
+  compactChatListLeadingVisual,
+  sharedContentItemMatchesTab,
+  computeSharedContentItems
 } from "./chatPresentation";
 import {
   androidAppStatePayload,
@@ -58,6 +60,46 @@ describe("chat presentation helpers", () => {
   it("removes the unused metadata container from Message Archive", () => {
     expect(shouldShowChatRowMeta("archive")).toBe(false);
     expect(shouldShowChatRowMeta("direct")).toBe(true);
+  });
+
+  it("filters shared content by media (photos/videos), audio, files, and links", () => {
+    const photoItem = { kind: "attachment" as const, file: { id: "1", originalName: "pic.jpg", mimeType: "image/jpeg" } as any, messageId: "m1" };
+    const videoItem = { kind: "attachment" as const, file: { id: "2", originalName: "clip.mp4", mimeType: "video/mp4" } as any, messageId: "m2" };
+    const audioItem = { kind: "attachment" as const, file: { id: "3", originalName: "song.mp3", mimeType: "audio/mpeg" } as any, messageId: "m3" };
+    const voiceItem = { kind: "attachment" as const, file: { id: "4", originalName: "voice.ogg", mimeType: "audio/ogg" } as any, messageId: "m4" };
+    const docItem = { kind: "attachment" as const, file: { id: "5", originalName: "doc.pdf", mimeType: "application/pdf" } as any, messageId: "m5" };
+    const zipItem = { kind: "attachment" as const, file: { id: "6", originalName: "archive.zip", mimeType: "application/zip" } as any, messageId: "m6" };
+    const linkItem = { kind: "link" as const, url: "https://example.com", messageId: "m7" };
+
+    // media tab: only image and video
+    expect(sharedContentItemMatchesTab(photoItem, "media")).toBe(true);
+    expect(sharedContentItemMatchesTab(videoItem, "media")).toBe(true);
+    expect(sharedContentItemMatchesTab(audioItem, "media")).toBe(false);
+    expect(sharedContentItemMatchesTab(docItem, "media")).toBe(false);
+    expect(sharedContentItemMatchesTab(linkItem, "media")).toBe(false);
+
+    // audio tab: only audio
+    expect(sharedContentItemMatchesTab(audioItem, "audio")).toBe(true);
+    expect(sharedContentItemMatchesTab(voiceItem, "audio")).toBe(true);
+    expect(sharedContentItemMatchesTab(photoItem, "audio")).toBe(false);
+    expect(sharedContentItemMatchesTab(videoItem, "audio")).toBe(false);
+    expect(sharedContentItemMatchesTab(docItem, "audio")).toBe(false);
+    expect(sharedContentItemMatchesTab(linkItem, "audio")).toBe(false);
+
+    // files tab: all other files (no photos, videos, audio, or links)
+    expect(sharedContentItemMatchesTab(docItem, "files")).toBe(true);
+    expect(sharedContentItemMatchesTab(zipItem, "files")).toBe(true);
+    expect(sharedContentItemMatchesTab(photoItem, "files")).toBe(false);
+    expect(sharedContentItemMatchesTab(videoItem, "files")).toBe(false);
+    expect(sharedContentItemMatchesTab(audioItem, "files")).toBe(false);
+    expect(sharedContentItemMatchesTab(linkItem, "files")).toBe(false);
+
+    // links tab: only links
+    expect(sharedContentItemMatchesTab(linkItem, "links")).toBe(true);
+    expect(sharedContentItemMatchesTab(photoItem, "links")).toBe(false);
+    expect(sharedContentItemMatchesTab(videoItem, "links")).toBe(false);
+    expect(sharedContentItemMatchesTab(audioItem, "links")).toBe(false);
+    expect(sharedContentItemMatchesTab(docItem, "links")).toBe(false);
   });
 });
 

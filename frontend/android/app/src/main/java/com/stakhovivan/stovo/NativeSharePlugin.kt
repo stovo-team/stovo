@@ -28,9 +28,11 @@ class NativeSharePlugin : Plugin() {
         try {
             val sendIntent = Intent(Intent.ACTION_SEND)
 
-            // Compose share text
+            // Compose share text without duplicating url
             val body = when {
-                !text.isNullOrBlank() && !url.isNullOrBlank() -> "$text\n$url"
+                !text.isNullOrBlank() && !url.isNullOrBlank() -> {
+                    if (text.contains(url)) text else "$text\n$url"
+                }
                 !url.isNullOrBlank() -> url
                 !text.isNullOrBlank() -> text
                 else -> ""
