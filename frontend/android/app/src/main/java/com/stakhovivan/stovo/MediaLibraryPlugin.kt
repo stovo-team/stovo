@@ -218,7 +218,7 @@ class MediaLibraryPlugin : Plugin() {
             val destination = File(directory, "${uri.toString().hashCode().toUInt().toString(16)}.jpg")
             if (destination.exists() && destination.length() > 0) return Uri.fromFile(destination).toString()
 
-            val bitmap: Bitmap? = if (mimeType.startsWith("video/")) {
+            val bitmap = if (mimeType.startsWith("video/")) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     try {
                         resolver.loadThumbnail(uri, Size(1600, 1600), null)

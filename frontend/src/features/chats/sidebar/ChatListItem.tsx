@@ -96,11 +96,11 @@ export function ChatListItem({
         {(() => {
           const draftText = window.localStorage.getItem(`stovo:draft:${chat.id}`);
           return draftText ? (
-            <span>
+            <span className="chat-list-preview">
               <span className="chat-list-draft-label">Draft:</span>{" "}
               {draftText.slice(0, 40)}{draftText.length > 40 ? "…" : ""}
             </span>
-          ) : preview ? <span>{preview}</span> : null;
+          ) : preview ? <span className="chat-list-preview">{preview}</span> : null;
         })()}
       </span>
       {shouldShowChatRowMeta(chat.type) && <span className="chat-row-meta">
