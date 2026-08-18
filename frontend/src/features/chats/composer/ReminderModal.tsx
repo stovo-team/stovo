@@ -146,6 +146,8 @@ export function ReminderModal({
       className="modal-backdrop reminder-modal-backdrop"
       onClick={onClose}
       onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
     >
       <div
         className="modal-card reminder-modal-card"
@@ -154,6 +156,8 @@ export function ReminderModal({
         aria-labelledby="reminder-modal-title"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
         <div className="modal-card-header">
           <div className="modal-card-title-wrap">
