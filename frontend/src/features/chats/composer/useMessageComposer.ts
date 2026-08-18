@@ -20,12 +20,14 @@ import { ApiError } from "../../../api/client";
 import { decryptMessage } from "../../../api/messageCrypto";
 import { encryptMessageContent } from "../../../api/messageCrypto";
 import { type FamilyFile, uploadFile } from "../../../api/files";
+import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
 import {
   applyFormattingToTextarea,
   measureTextareaSelectionAnchor
 } from "../../../composerFormatting";
 import type { FormattingKind, TextSelection, ToolbarAnchor } from "../../../composerFormatting";
 import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
+import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import { parseScheduleCommand } from "../../../plans/scheduleCommand";
 import { isVoiceRecordingSupported, startVoiceRecording, type VoiceRecorderHandle } from "../../../voiceRecording";
 import { applyMessagePreviewToChat } from "../shared/chatPresentation";
@@ -130,6 +132,7 @@ export function useMessageComposer({
   const [composerLineCount, setComposerLineCount] = useState(1);
   const [composerEnlargeOpen, setComposerEnlargeOpen] = useState(false);
   const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
+  const [galleryPreviewMediaItem, setGalleryPreviewMediaItem] = useState<NativeMediaItem | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -344,63 +347,65 @@ export function useMessageComposer({
     if (selectedFiles.length === 0) return;
 
     const next: PendingLocalAttachment[] = selectedFiles.map((file) => {
+      const localId = `local:${createClientMessageId()}`;
+      try {
+        seedMediaBlobCache(localId, file);
+      } catch {
+        // Non-fatal
+      }
       const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
       return {
-        localId: `local:${createClientMessageId()}`,
+        localId,
         file,
-        previewUrl: isImage ? URL.createObjectURL(file) : null
+        previewUrl: isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(file) : null
       };
     });
     setPendingAttachments((current) => [...current, ...next]);
-
-    const videoPending = next.filter((item) => item.file.type.startsWith("video/"));
-    if (videoPending.length === 0) return;
-    const schedule =
-      typeof window.requestIdleCallback === "function"
-        ? (cb: () => void) => window.requestIdleCallback(() => cb())
-        : (cb: () => void) => window.setTimeout(cb, 0);
-    schedule(() => {
-      setPendingAttachments((current) =>
-        current.map((item) => {
-          if (!videoPending.some((pending) => pending.localId === item.localId)) return item;
-          if (item.previewUrl) return item;
-          return { ...item, previewUrl: URL.createObjectURL(item.file) };
-        })
-      );
-    });
   }
 
   function addSharedFileAttachments(files: File[]) {
     if (files.length === 0) return;
-    const next: PendingLocalAttachment[] = files.map((file) => ({
-      localId: `local:${createClientMessageId()}`,
-      file,
-      previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null
-    }));
+    const next: PendingLocalAttachment[] = files.map((file) => {
+      const localId = `local:${createClientMessageId()}`;
+      try {
+        seedMediaBlobCache(localId, file);
+      } catch {
+        // Non-fatal
+      }
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      return {
+        localId,
+        file,
+        previewUrl: isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(file) : null
+      };
+    });
     setPendingAttachments((current) => [...current, ...next]);
   }
 
   function removePendingAttachment(localId: string) {
     setPendingAttachments((current) => {
-      const removed = current.find((item) => item.localId === localId);
-      if (removed?.previewUrl) {
-        URL.revokeObjectURL(removed.previewUrl);
-      }
       return current.filter((item) => item.localId !== localId);
     });
   }
 
   function updatePendingAttachment(localId: string, updatedFile: File) {
+    try {
+      seedMediaBlobCache(localId, updatedFile);
+    } catch {
+      // Non-fatal
+    }
+    const isImage = updatedFile.type.startsWith("image/");
+    const isVideo = updatedFile.type.startsWith("video/");
+    const previewUrl = isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(updatedFile) : null;
     setPendingAttachments((current) =>
       current.map((item) => {
         if (item.localId !== localId) return item;
-        if (item.previewUrl) {
-          URL.revokeObjectURL(item.previewUrl);
-        }
         return {
           ...item,
           file: updatedFile,
-          previewUrl: URL.createObjectURL(updatedFile)
+          previewUrl
         };
       })
     );
@@ -679,9 +684,6 @@ export function useMessageComposer({
       setComposer("");
       resetComposerHeight();
       requestAnimationFrame(() => composerInputRef.current?.focus());
-      for (const pending of localAttachments) {
-        if (pending.previewUrl) URL.revokeObjectURL(pending.previewUrl);
-      }
       setPendingAttachments([]);
       setReplyTarget(null);
       if (chatId) {
@@ -839,9 +841,6 @@ export function useMessageComposer({
       setComposer("");
       resetComposerHeight();
       requestAnimationFrame(() => composerInputRef.current?.focus());
-      for (const pending of localAttachments) {
-        if (pending.previewUrl) URL.revokeObjectURL(pending.previewUrl);
-      }
       setPendingAttachments([]);
       setReplyTarget(null);
       if (chatId) {
@@ -989,9 +988,6 @@ export function useMessageComposer({
       setComposer("");
       resetComposerHeight();
       requestAnimationFrame(() => composerInputRef.current?.focus());
-      for (const pending of localAttachments) {
-        if (pending.previewUrl) URL.revokeObjectURL(pending.previewUrl);
-      }
       setPendingAttachments([]);
       setReplyTarget(null);
       if (chatId) {
@@ -1044,8 +1040,14 @@ export function useMessageComposer({
     if (!handle) return;
     try {
       const file = await handle.stop();
+      const localId = `local:${createClientMessageId()}`;
+      try {
+        seedMediaBlobCache(localId, file);
+      } catch {
+        // Non-fatal
+      }
       const pending: PendingLocalAttachment = {
-        localId: `local:${createClientMessageId()}`,
+        localId,
         file,
         previewUrl: null
       };
@@ -1126,6 +1128,10 @@ export function useMessageComposer({
     setComposerEnlargeOpen,
     isAttachmentSheetOpen,
     setIsAttachmentSheetOpen,
+    closeAttachmentSheet: () => setIsAttachmentSheetOpen(false),
+    galleryPreviewMediaItem,
+    setGalleryPreviewMediaItem,
+    closeGalleryPreview: () => setGalleryPreviewMediaItem(null),
     isEmojiPickerOpen,
     isVoiceRecording,
     isUploading,

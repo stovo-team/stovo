@@ -8937,11 +8937,12 @@ span.message-spoiler.is-revealed {
   padding: 0;
   position: fixed;
   opacity: 0;
-  transform: translate3d(0, 0, 0) scale(1.01);
+  transform: translate3d(0, 0, 0);
   transition:
-    opacity var(--motion-surface-duration) var(--motion-route-ease),
-    transform var(--motion-surface-duration) var(--motion-route-ease);
+    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 1000;
+  will-change: opacity;
 }
 
 /* Settings redesign: keep Stovo's AMOLED canvas, add calm rounded islands. */
@@ -9932,7 +9933,7 @@ span.message-spoiler.is-revealed {
 
 .image-lightbox-backdrop.is-ready {
   opacity: 1;
-  transform: translate3d(0, 0, 0) scale(1);
+  transform: translate3d(0, 0, 0);
 }
 
 .image-lightbox-toolbar {
@@ -9948,11 +9949,12 @@ span.message-spoiler.is-revealed {
   right: 0;
   top: 0;
   opacity: 0;
-  transform: translateY(calc(-1 * var(--motion-route-distance-tight)));
+  transform: translateY(-12px);
   transition:
-    opacity var(--motion-surface-duration) var(--motion-route-ease),
-    transform var(--motion-surface-duration) var(--motion-route-ease);
+    opacity 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 300ms cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 10;
+  will-change: opacity, transform;
 }
 
 .image-lightbox-backdrop.is-ready .image-lightbox-toolbar {
@@ -10089,40 +10091,52 @@ span.message-spoiler.is-revealed {
     16px
     max(20px, env(safe-area-inset-bottom));
   opacity: 0;
-  transform: translateY(var(--motion-route-distance-tight)) scale(0.985);
+  transform: scale(0.88);
+  transform-origin: center center;
   transition:
-    opacity var(--motion-surface-duration) var(--motion-route-ease),
-    transform var(--motion-surface-duration) var(--motion-route-ease);
+    opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
   -webkit-overflow-scrolling: touch;
 }
 
 .image-lightbox-backdrop.is-ready .image-lightbox-stage {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: scale(1);
 }
 
 .image-lightbox-stage img {
-  border-radius: 10px;
+  border-radius: 12px;
   display: block;
   margin: auto;
   max-height: 100%;
   max-width: 100%;
   object-fit: contain;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
 }
 
 .image-lightbox-backdrop.is-closing .image-lightbox-toolbar {
   opacity: 0;
-  transform: translateY(calc(-1 * var(--motion-route-distance-tight)));
+  transform: translateY(-12px);
+  transition:
+    opacity 240ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    transform 240ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .image-lightbox-backdrop.is-closing {
   opacity: 0;
-  transform: translate3d(0, 0, 0) scale(1.01);
+  transform: translate3d(0, 0, 0);
+  transition:
+    opacity 280ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    transform 280ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .image-lightbox-backdrop.is-closing .image-lightbox-stage {
   opacity: 0;
-  transform: translateY(var(--motion-route-distance-tight)) scale(0.985);
+  transform: scale(0.88);
+  transition:
+    opacity 280ms cubic-bezier(0.25, 0.1, 0.25, 1),
+    transform 280ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 .skeleton-row,
@@ -12568,13 +12582,15 @@ span.message-spoiler.is-revealed {
   max-height: min(85vh, 620px);
   min-height: 380px;
   overflow: hidden;
+  padding: 0 !important;
+  box-sizing: border-box;
   background: var(--surface-card, #131822);
   border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
   border-radius: 20px 20px 0 0;
   transform: translate3d(0, 100%, 0);
   transition:
-    transform var(--motion-surface-duration) var(--motion-route-ease),
-    border-radius var(--motion-surface-duration) var(--motion-route-ease);
+    transform 320ms cubic-bezier(0.2, 0.9, 0.3, 1),
+    border-radius 320ms cubic-bezier(0.2, 0.9, 0.3, 1);
   will-change: transform;
 }
 
@@ -12694,7 +12710,7 @@ span.message-spoiler.is-revealed {
   padding: 0;
   margin: 0;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1), box-shadow 220ms ease;
 }
 
 .camera-tile:active {
@@ -12744,7 +12760,7 @@ span.message-spoiler.is-revealed {
   background: transparent;
   cursor: pointer;
   overflow: hidden;
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
 .media-tile-thumb-btn:active {
@@ -12811,12 +12827,20 @@ span.message-spoiler.is-revealed {
   flex: 0 0 24px;
   outline: none;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1), background-color 200ms ease;
 }
 
-.media-tile-checkbox:hover {
-  background: rgba(0, 0, 0, 0.55);
-  border-color: #ffffff;
+.media-tile-checkbox:hover,
+.media-tile-checkbox:active,
+.media-tile-checkbox:focus,
+.media-tile-checkbox:focus-visible,
+.media-tile-checkbox.checked:hover,
+.media-tile-checkbox.checked:active,
+.media-tile-checkbox.checked:focus,
+.media-tile-checkbox.checked:focus-visible {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.85);
+  color: #ffffff;
 }
 
 .media-tile-checkbox:active {
@@ -12984,10 +13008,6 @@ span.message-spoiler.is-revealed {
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
 }
 
-.attachment-picker-primary-action-btn:hover {
-  filter: brightness(1.08);
-}
-
 /* Inline chat composer in attachment picker sheet */
 .attachment-picker-message-box.message-composer,
 .attachment-picker-message-box {
@@ -12996,12 +13016,12 @@ span.message-spoiler.is-revealed {
   box-sizing: border-box;
   display: block;
   gap: 0;
-  padding: 6px 16px;
+  padding: 6px 12px;
   position: relative;
   width: 100%;
   max-width: 100%;
+  margin: 0;
 }
-
 
 .attachment-picker-message-box .message-composer-row {
   align-items: center;
@@ -13012,9 +13032,10 @@ span.message-spoiler.is-revealed {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   min-height: 40px;
-  padding: 4px 8px;
+  padding: 4px 6px 4px 6px;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
 }
 
 .attachment-picker-message-box .message-composer-row--multiline {
@@ -13024,29 +13045,29 @@ span.message-spoiler.is-revealed {
 .attachment-picker-message-box .message-composer-row > .file-picker,
 .attachment-picker-message-box .message-composer-row > .emoji-picker-shell {
   align-self: center;
-  margin-bottom: 0;
-  margin-inline: 0;
+  margin-bottom: 0 !important;
+  margin-inline: 0 !important;
 }
 
 .attachment-picker-message-box .message-composer-row > .emoji-picker-shell {
-  margin-right: 4px;
+  margin-right: 2px !important;
 }
 
 .attachment-picker-message-box .message-composer-row > .message-composer-actions {
   align-self: center;
-  margin-bottom: 0;
-  margin-inline: 0;
+  margin-bottom: 0 !important;
+  margin-inline: 0 !important;
 }
 
 .attachment-picker-message-box .message-composer-row--multiline > .file-picker,
 .attachment-picker-message-box .message-composer-row--multiline > .emoji-picker-shell {
   align-self: end;
-  margin-bottom: 4px;
+  margin-bottom: 4px !important;
 }
 
 .attachment-picker-message-box .message-composer-row--multiline > .message-composer-actions {
   align-self: end;
-  margin-bottom: 0;
+  margin-bottom: 0 !important;
 }
 
 .attachment-picker-message-box .message-composer-shell {
@@ -13079,10 +13100,10 @@ span.message-spoiler.is-revealed {
 }
 
 .attachment-picker-message-box textarea {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   box-sizing: border-box;
   color: var(--input-text);
   font-family: inherit;
@@ -13092,6 +13113,7 @@ span.message-spoiler.is-revealed {
   min-height: 26px;
   overflow-y: hidden;
   padding: 4px 6px;
+  margin: 0;
   resize: none;
   transition: color 150ms ease-out;
   width: 100%;
@@ -13099,9 +13121,9 @@ span.message-spoiler.is-revealed {
 
 .attachment-picker-message-box textarea:focus,
 .attachment-picker-message-box textarea:focus-visible {
-  border: 0;
-  box-shadow: none;
-  outline: none;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .attachment-picker-message-box textarea::placeholder {
@@ -13113,21 +13135,37 @@ span.message-spoiler.is-revealed {
 .attachment-picker-message-box .emoji-picker-button {
   align-items: center;
   appearance: none;
-  background: transparent;
-  border: 0;
-  border-radius: 50%;
-  box-shadow: none;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  box-shadow: none !important;
   color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex;
-  height: 28px;
+  height: 28px !important;
   justify-content: center;
-  margin: 0;
-  min-height: 28px;
-  min-width: 28px;
-  padding: 0;
+  margin: 0 !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  padding: 0 !important;
   transition: background-color 120ms ease-out, color 120ms ease-out;
-  width: 28px;
+  width: 28px !important;
+  flex: 0 0 28px !important;
+  box-sizing: border-box;
+}
+
+.attachment-picker-message-box .emoji-picker-shell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  flex: 0 0 28px !important;
 }
 
 .attachment-picker-message-box .file-picker svg,
@@ -13141,28 +13179,28 @@ span.message-spoiler.is-revealed {
 @media (hover: hover) and (pointer: fine) {
   .attachment-picker-message-box .file-picker:hover,
   .attachment-picker-message-box .emoji-picker-button:hover {
-    background: color-mix(in oklab, var(--text-primary) 10%, transparent);
+    background: color-mix(in oklab, var(--text-primary) 10%, transparent) !important;
     color: var(--text-primary);
   }
 }
 
 .attachment-picker-message-box .file-picker:focus-visible,
 .attachment-picker-message-box .emoji-picker-button:focus-visible {
-  background: color-mix(in oklab, var(--text-primary) 10%, transparent);
-  box-shadow: none;
+  background: color-mix(in oklab, var(--text-primary) 10%, transparent) !important;
+  box-shadow: none !important;
   color: var(--text-primary);
-  outline: 2px solid var(--accent-primary);
+  outline: 2px solid var(--accent-primary) !important;
   outline-offset: 2px;
 }
 
 .attachment-picker-message-box .file-picker:active,
 .attachment-picker-message-box .emoji-picker-button:active {
-  background: color-mix(in oklab, var(--text-primary) 14%, transparent);
+  background: color-mix(in oklab, var(--text-primary) 14%, transparent) !important;
   color: var(--text-primary);
 }
 
 .attachment-picker-message-box .emoji-picker-button[aria-expanded="true"] {
-  background: color-mix(in oklab, var(--accent-primary) 16%, transparent);
+  background: color-mix(in oklab, var(--accent-primary) 16%, transparent) !important;
   color: var(--accent-primary);
 }
 
@@ -13173,7 +13211,8 @@ span.message-spoiler.is-revealed {
   flex-direction: row;
   gap: 4px;
   justify-content: flex-end;
-  margin: 0;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .attachment-picker-message-box .message-composer-row--multiline .message-composer-actions {
@@ -13191,20 +13230,23 @@ span.message-spoiler.is-revealed {
 
 .attachment-picker-message-box .attachment-picker-message-send {
   align-items: center;
-  background: var(--accent-primary);
-  border: 0;
-  border-radius: 50%;
-  color: #ffffff;
+  background: var(--accent-primary) !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  color: #ffffff !important;
   cursor: pointer;
   display: inline-flex;
-  height: 32px;
+  height: 32px !important;
   justify-content: center;
-  margin: 0;
-  min-height: 32px;
-  min-width: 32px;
-  padding: 0;
-  width: 32px;
-  flex-shrink: 0;
+  margin: 0 !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  padding: 0 !important;
+  width: 32px !important;
+  flex: 0 0 32px !important;
+  box-sizing: border-box;
   transition: transform 120ms ease, opacity 120ms ease;
 }
 

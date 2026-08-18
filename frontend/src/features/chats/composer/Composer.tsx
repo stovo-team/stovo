@@ -14,6 +14,7 @@ import { Bus, Cat, Flag, History, Music, Paperclip, Pencil, Reply, Shirt, Smile,
 
 import type { Chat } from "../../../api/chats";
 import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
+import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import { FormattingToolbar } from "../../../components/FormattingToolbar";
 import { ImageEditorModal } from "../../../components/ImageEditorModal";
 import { MessageEnlargeButton } from "../../../components/MessageEnlargeModal";
@@ -23,6 +24,7 @@ import { isVoiceRecordingSupported } from "../../../voiceRecording";
 import { firstImageAttachment, messageActionSummary } from "../shared/messagePresentation";
 import type { Message, PendingLocalAttachment } from "../shared/types";
 import { createClientMessageId } from "../shared/messageState";
+import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
 import type { ReminderRule } from "../outbox/messageOutboxStore";
 import { ComposerContextThumb } from "../conversation/MessageAttachmentThumbs";
 import { AttachmentControls } from "./AttachmentControls";
@@ -74,6 +76,8 @@ export function Composer({
   onRemovePendingAttachment,
   onUpdatePendingAttachment,
   isAttachmentSheetOpen,
+  galleryPreviewMediaItem,
+  onGalleryPreviewMediaItemChange,
   onAttachButtonClick,
   onAttachmentSheetPick,
   onCloseAttachmentSheet,
@@ -132,6 +136,8 @@ export function Composer({
   onRemovePendingAttachment: (localId: string) => void;
   onUpdatePendingAttachment?: (localId: string, updatedFile: File) => void;
   isAttachmentSheetOpen: boolean;
+  galleryPreviewMediaItem?: NativeMediaItem | null;
+  onGalleryPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
   onAttachButtonClick: () => void;
   onAttachmentSheetPick: (option: AttachmentPickerOption) => void;
   onCloseAttachmentSheet: () => void;
@@ -401,6 +407,8 @@ export function Composer({
         <AttachmentControls
           disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
           isAttachmentSheetOpen={isAttachmentSheetOpen}
+          previewMediaItem={galleryPreviewMediaItem}
+          onPreviewMediaItemChange={onGalleryPreviewMediaItemChange}
           attachmentInputRef={attachmentInputRef}
           galleryAttachmentInputRef={galleryAttachmentInputRef}
           cameraAttachmentInputRef={cameraAttachmentInputRef}
@@ -417,11 +425,21 @@ export function Composer({
             requestAnimationFrame(() => composerInputRef.current?.focus());
           }}
           onSendSelectedFiles={(files, message) => {
-            const attachments = files.map((file) => ({
-              localId: `local:${createClientMessageId()}`,
-              file,
-              previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null
-            }));
+            const attachments = files.map((file) => {
+              const localId = `local:${createClientMessageId()}`;
+              try {
+                seedMediaBlobCache(localId, file);
+              } catch {
+                // Non-fatal
+              }
+              const isImage = file.type.startsWith("image/");
+              const isVideo = file.type.startsWith("video/");
+              return {
+                localId,
+                file,
+                previewUrl: isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(file) : null
+              };
+            });
             return onSubmit({ preventDefault: () => undefined }, attachments, message);
           }}
           composer={composer}

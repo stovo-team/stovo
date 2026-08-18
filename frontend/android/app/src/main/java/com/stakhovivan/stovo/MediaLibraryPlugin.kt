@@ -205,26 +205,18 @@ class MediaLibraryPlugin : Plugin() {
         if (cursor.moveToFirst()) cursor.getString(0)?.takeIf { it.isNotBlank() } else null
     }
 
-    /** Exports a small preview because the WebView cannot render content:// URIs. */
+    /** Exports a preview because the WebView cannot render content:// URIs. */
     private fun createPreview(uri: Uri): String? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val resolver = resolver() ?: return null
         return try {
-            val directory = File(context.cacheDir, "media-library-previews").apply { mkdirs() }
+            val directory = File(context.cacheDir, "media-library-previews-v2").apply { mkdirs() }
             val destination = File(directory, "${uri.toString().hashCode().toUInt().toString(16)}.jpg")
-            // Reuse previews across picker openings; loading 120 thumbnails from MediaStore
+            // Reuse previews across picker openings; loading previews from MediaStore
             // on every open delays the first usable gallery frame substantially.
             if (destination.exists() && destination.length() > 0) return Uri.fromFile(destination).toString()
-            val bitmap = resolver.loadThumbnail(uri, Size(320, 320), null)
-            val squareBitmap = if (bitmap.width == bitmap.height) {
-                bitmap
-            } else {
-                val size = minOf(bitmap.width, bitmap.height)
-                val x = (bitmap.width - size) / 2
-                val y = (bitmap.height - size) / 2
-                Bitmap.createBitmap(bitmap, x, y, size, size)
-            }
-            destination.outputStream().use { output -> squareBitmap.compress(Bitmap.CompressFormat.JPEG, 85, output) }
+            val bitmap = resolver.loadThumbnail(uri, Size(1600, 1600), null)
+            destination.outputStream().use { output -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, output) }
             Uri.fromFile(destination).toString()
         } catch (_: Exception) {
             null

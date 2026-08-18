@@ -6,6 +6,7 @@ import { ApiError } from "../../../api/client";
 import type { Chat, Message, MessageEncryptionProtocol } from "../../../api/chats";
 import { sendMessage } from "../../../api/chats";
 import { type FamilyFile, uploadFile } from "../../../api/files";
+import { seedMediaBlobCache } from "../../../mediaBlobCache";
 import { decryptMessage, encryptMessageContent } from "../../../api/messageCrypto";
 import type { User } from "../../../api/auth";
 import { applyMessagePreviewToChat } from "../shared/chatPresentation";
@@ -139,6 +140,11 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
             );
           } else {
             const file = reconstructFileFromQueuedAttachment(att);
+            try {
+              seedMediaBlobCache(att.id, file);
+            } catch {
+              // Non-fatal
+            }
             const uploaded = await uploadFile(accessToken, file, item.chatId);
             att.uploadedFileId = uploaded.id;
             att.uploadedFile = uploaded;

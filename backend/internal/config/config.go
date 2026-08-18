@@ -72,6 +72,8 @@ type Config struct {
 }
 
 func Load() (Config, error) {
+	_ = LoadEnv()
+
 	accessTTL, err := ParseFlexibleDuration(getenv("JWT_ACCESS_EXPIRES_IN", "15m"))
 	if err != nil {
 		return Config{}, fmt.Errorf("parse JWT_ACCESS_EXPIRES_IN: %w", err)

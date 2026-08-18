@@ -2,6 +2,7 @@ import { ChangeEvent, RefObject } from "react";
 import { Paperclip } from "lucide-react";
 
 import AttachmentPickerSheet, { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
+import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import {
   AUDIO_ATTACHMENT_ACCEPT,
   CAMERA_ATTACHMENT_ACCEPT,
@@ -13,6 +14,8 @@ import {
 export function AttachmentControls({
   disabled,
   isAttachmentSheetOpen,
+  previewMediaItem,
+  onPreviewMediaItemChange,
   attachmentInputRef,
   galleryAttachmentInputRef,
   cameraAttachmentInputRef,
@@ -33,6 +36,8 @@ export function AttachmentControls({
 }: {
   disabled: boolean;
   isAttachmentSheetOpen: boolean;
+  previewMediaItem?: NativeMediaItem | null;
+  onPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
   attachmentInputRef: RefObject<HTMLInputElement | null>;
   galleryAttachmentInputRef: RefObject<HTMLInputElement | null>;
   cameraAttachmentInputRef: RefObject<HTMLInputElement | null>;
@@ -110,6 +115,8 @@ export function AttachmentControls({
       />
       <AttachmentPickerSheet
         open={isAttachmentSheetOpen}
+        previewMediaItem={previewMediaItem}
+        onPreviewMediaItemChange={onPreviewMediaItemChange}
         onClose={onCloseSheet}
         onPick={onPickOption}
         onSelectFiles={onSelectDirectFiles}

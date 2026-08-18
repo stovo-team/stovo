@@ -358,7 +358,12 @@ export function useChatsPageController({
   }
 
   const { requestCloseActiveChatSurface } = useChatSurfaceDismissal({
-    chatId, navigate, hasFullViewImage: Boolean(fullViewImage), requestCloseFullViewImage,
+    chatId, navigate,
+    hasGalleryPreview: Boolean(composerApi.galleryPreviewMediaItem),
+    closeGalleryPreview: composerApi.closeGalleryPreview,
+    hasFullViewImage: Boolean(fullViewImage), requestCloseFullViewImage,
+    isAttachmentSheetOpen: composerApi.isAttachmentSheetOpen,
+    closeAttachmentSheet: composerApi.closeAttachmentSheet,
     messageContextMenu, setMessageContextMenu,
     isEmojiPickerOpen, closeEmojiPicker, isChatMenuOpen, setIsChatMenuOpen,
     isCallSettingsMenuOpen: callSession.isCallSettingsMenuOpen, setIsCallSettingsMenuOpen: callSession.setIsCallSettingsMenuOpen,
