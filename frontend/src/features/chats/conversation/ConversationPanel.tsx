@@ -193,9 +193,12 @@ export function ConversationPanel({
     handleEditMessage,
     cancelEditMode,
     handleSendMessage,
+    handleScheduleMessage,
+    handleSetReminder,
     handleVoicePressStart,
     handleVoicePressEnd,
-    handleVoicePressCancel
+    handleVoicePressCancel,
+    messageDelayRemaining
   } = composer;
 
   const selectedMessages = useMemo(
@@ -424,11 +427,17 @@ export function ConversationPanel({
           currentUser={currentUser}
           selectedChat={selectedChat}
           channelCommentsDisabledForViewer={channelCommentsDisabledForViewer}
+          isInThreadMode={Boolean(threadRootMessageId)}
           isPinned={pinnedMessages.some((p) => p.messageId === messageContextMenu.message.id)}
           seenBy={computeContextMenuSeenBy(memberLookup)}
           onReact={(emoji) => {
             setMessageContextMenu(null);
             void handleMessageReaction(messageContextMenu.message, emoji);
+          }}
+          onComment={() => {
+            const targetMessage = messageContextMenu.message;
+            setMessageContextMenu(null);
+            void handleOpenThread(targetMessage);
           }}
           onReply={() => handleReplyToMessage(messageContextMenu.message)}
           onCopy={() => {
@@ -462,19 +471,38 @@ export function ConversationPanel({
       {isMessageSelectionMode ? (
         <div className="message-selection-actions" role="toolbar" aria-label="Selected message actions">
           {selectedMessageIds.length === 1 && (
-            <button
-              type="button"
-              className="message-selection-action"
-              disabled={channelCommentsDisabledForViewer || missingCommentThread}
-              onClick={() => {
-                if (!singleSelectedMessage) return;
-                handleReplyToMessage(singleSelectedMessage);
-                clearSelectedMessages();
-              }}
-            >
-              <Reply aria-hidden="true" size={22} />
-              <span>{selectedChat.type === "channel" ? "Comment" : "Reply"}</span>
-            </button>
+            <>
+              {!threadRootMessageId && (
+                <button
+                  type="button"
+                  className="message-selection-action"
+                  disabled={channelCommentsDisabledForViewer}
+                  onClick={() => {
+                    if (!singleSelectedMessage) return;
+                    void handleOpenThread(singleSelectedMessage);
+                    clearSelectedMessages();
+                  }}
+                >
+                  <MessageCircle aria-hidden="true" size={22} />
+                  <span>Comment</span>
+                </button>
+              )}
+              {(!selectedChat || selectedChat.type !== "channel" || canPostInSelectedChannel || threadRootMessageId) && (
+                <button
+                  type="button"
+                  className="message-selection-action"
+                  disabled={channelCommentsDisabledForViewer || missingCommentThread}
+                  onClick={() => {
+                    if (!singleSelectedMessage) return;
+                    handleReplyToMessage(singleSelectedMessage);
+                    clearSelectedMessages();
+                  }}
+                >
+                  <Reply aria-hidden="true" size={22} />
+                  <span>Reply</span>
+                </button>
+              )}
+            </>
           )}
           <button
             type="button"
@@ -541,10 +569,13 @@ export function ConversationPanel({
           isUploading={isUploading}
           isSendingMessage={isSendingMessage}
           isVoiceRecording={isVoiceRecording}
+          messageDelayRemaining={messageDelayRemaining}
           onVoicePressStart={(event) => void handleVoicePressStart(event)}
           onVoicePressEnd={(event) => void handleVoicePressEnd(event)}
           onVoicePressCancel={handleVoicePressCancel}
           onSubmit={handleSendMessage}
+          onScheduleMessage={handleScheduleMessage}
+          onSetReminder={handleSetReminder}
         />
       )}
       <MessageDialogs

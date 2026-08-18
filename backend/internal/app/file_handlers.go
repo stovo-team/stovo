@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 	"family-messenger/backend/ent"
 	"family-messenger/backend/internal/repository"
 	"family-messenger/backend/internal/storage"
+	"family-messenger/backend/internal/transcription"
 
 	"github.com/google/uuid"
 )
@@ -373,3 +375,118 @@ func (s *Server) fileVisibleToUser(ctx context.Context, file filePublic, user us
 	}
 	return member
 }
+
+type fileTranscriptResponse struct {
+	FileID   string   `json:"fileId"`
+	Text     string   `json:"text"`
+	Language *string  `json:"language,omitempty"`
+	Duration *float64 `json:"duration,omitempty"`
+}
+
+func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, user userPublic) {
+	if strings.TrimSpace(s.cfg.GroqAPIKey) == "" {
+		s.detail(w, http.StatusServiceUnavailable, "Transcription service is not configured (GROQ_API_KEY missing)")
+		return
+	}
+
+	fileID := fileIDFromURL(r)
+	file, objectKey, err := s.loadFileRecord(r.Context(), fileID, user.ID)
+	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+
+	if !strings.HasPrefix(file.MimeType, "audio/") {
+		s.detail(w, http.StatusBadRequest, "File is not an audio file")
+		return
+	}
+
+	transcriptKey := objectKey + ".transcript.json"
+	if cachedData, err := s.storage.Read(transcriptKey); err == nil {
+		var cachedResp fileTranscriptResponse
+		if json.Unmarshal(cachedData, &cachedResp) == nil && cachedResp.Text != "" {
+			s.json(w, http.StatusOK, cachedResp)
+			return
+		}
+	}
+
+	audioData, err := s.storage.Read(objectKey)
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "Could not read audio file")
+		return
+	}
+
+	groqClient := transcription.NewGroqSTTClient(transcription.GroqSTTConfig{
+		APIKey:           s.cfg.GroqAPIKey,
+		Model:            s.cfg.GroqSTTModel,
+		CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD,
+	})
+
+	filename := file.OriginalName
+	if filename == "" {
+		filename = "audio.webm"
+	}
+	contentType := file.MimeType
+	if contentType == "" {
+		contentType = "audio/webm"
+	}
+
+	groqResp, err := groqClient.Transcribe(r.Context(), transcription.TranscribeRequest{
+		AudioData:   audioData,
+		Filename:    filename,
+		ContentType: contentType,
+	})
+	if err != nil {
+		s.logger.Warnf("transcription", "file transcribe failed file_id=%s error=%v", fileID, err)
+		s.detail(w, http.StatusInternalServerError, "Failed to transcribe audio: "+err.Error())
+		return
+	}
+
+	var lang *string
+	if groqResp.Language != "" {
+		lang = &groqResp.Language
+	}
+	var duration *float64
+	if groqResp.Duration > 0 {
+		dur := groqResp.Duration
+		duration = &dur
+	}
+
+	resp := fileTranscriptResponse{
+		FileID:   fileID,
+		Text:     strings.TrimSpace(groqResp.Text),
+		Language: lang,
+		Duration: duration,
+	}
+
+	if data, err := json.Marshal(resp); err == nil {
+		_ = s.storage.Save(transcriptKey, data)
+	}
+
+	s.json(w, http.StatusOK, resp)
+}
+
+func (s *Server) handleGetFileTranscript(w http.ResponseWriter, r *http.Request, user userPublic) {
+	fileID := fileIDFromURL(r)
+	file, objectKey, err := s.loadFileRecord(r.Context(), fileID, user.ID)
+	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+
+	transcriptKey := objectKey + ".transcript.json"
+	cachedData, err := s.storage.Read(transcriptKey)
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "Transcript not found")
+		return
+	}
+
+	var cachedResp fileTranscriptResponse
+	if err := json.Unmarshal(cachedData, &cachedResp); err != nil {
+		s.detail(w, http.StatusNotFound, "Transcript not found")
+		return
+	}
+
+	s.json(w, http.StatusOK, cachedResp)
+}
+

@@ -285,6 +285,8 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/files/{fileId}/thumbnail", s.authenticated(s.handleGetFileThumbnail))
 	router.Post("/api/files/{fileId}/playback-token", s.authenticated(s.handleCreateMediaPlaybackToken))
 	router.Patch("/api/files/{fileId}/preferences", s.authenticated(s.handleUpdateFilePreferences))
+	router.Post("/api/files/{fileId}/transcribe", s.authenticated(s.handleTranscribeFile))
+	router.Get("/api/files/{fileId}/transcript", s.authenticated(s.handleGetFileTranscript))
 	router.Delete("/api/files/{fileId}", s.authenticated(s.handleDeleteFile))
 	router.Get("/api/media/{fileId}", s.handleStreamMediaPlaybackFile)
 	router.Head("/api/media/{fileId}", s.handleStreamMediaPlaybackFile)
@@ -724,6 +726,7 @@ func (s *Server) initSchema() error {
 			created_at TEXT NOT NULL,
 			updated_at TEXT NOT NULL,
 			pin_permission TEXT NOT NULL DEFAULT 'everyone',
+			message_delay_seconds INTEGER NOT NULL DEFAULT 0,
 			FOREIGN KEY (family_id) REFERENCES families(id)
 		);`,
 		`CREATE TABLE IF NOT EXISTS chat_members (
@@ -1124,6 +1127,8 @@ func (s *Server) initSchema() error {
 	for _, statement := range repairStatements {
 		_, _ = s.db.Exec(statement)
 	}
+	_, _ = s.db.Exec(`ALTER TABLE chats ADD COLUMN IF NOT EXISTS message_delay_seconds INTEGER NOT NULL DEFAULT 0;`)
+	_, _ = s.db.Exec(`ALTER TABLE chats ADD COLUMN message_delay_seconds INTEGER NOT NULL DEFAULT 0;`)
 	return nil
 }
 

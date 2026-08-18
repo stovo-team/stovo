@@ -19,12 +19,13 @@ const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 describe("chat details controls", () => {
   it("edits a chat name inline in its title row", () => {
-    expect(chatDetailsPanel).toContain('className="chat-info-title-inline-editor"');
-    expect(chatDetailsPanel).not.toContain('id="chat-info-name-editor"');
+    expect(chatDetailsPanel).toContain('className="chat-info-title-wrap"');
     expect(styles).toContain(".chat-info-title-row {");
     expect(styles).toContain("justify-content: center;");
+    expect(styles).toContain(".chat-info-title-wrap {");
     expect(styles).toContain(".chat-info-title-edit {");
-    expect(styles).toContain("display: inline-flex;");
+    expect(styles).toContain("position: absolute;");
+    expect(styles).toContain("inset-inline-start: 100%;");
   });
 
   it("does not show archive or encryption labels in the chat details hero", () => {
@@ -76,5 +77,11 @@ describe("chat details controls", () => {
   it("lets shared attachments return to their source message", () => {
     expect(chatOverlays).toContain("onGoToMessage={fullViewImage.messageId ? onGoToFullViewImageMessage : undefined}");
     expect(chatDetailsPanel).toContain("onFocusMessage={() => onFocusMessage(item.messageId)}");
+  });
+
+  it("includes message delay setting in chat settings with cooldown counter styles", () => {
+    expect(chatDetailsPanel).toContain('aria-label="Message delay"');
+    expect(chatDetailsPanel).toContain('name="messageDelay"');
+    expect(styles).toContain(".composer-delay-counter {");
   });
 });

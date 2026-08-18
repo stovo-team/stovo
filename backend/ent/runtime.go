@@ -118,6 +118,10 @@ func init() {
 	chatDescPinPermission := chatFields[11].Descriptor()
 	// chat.DefaultPinPermission holds the default value on creation for the pin_permission field.
 	chat.DefaultPinPermission = chatDescPinPermission.Default.(string)
+	// chatDescMessageDelaySeconds is the schema descriptor for message_delay_seconds field.
+	chatDescMessageDelaySeconds := chatFields[12].Descriptor()
+	// chat.DefaultMessageDelaySeconds holds the default value on creation for the message_delay_seconds field.
+	chat.DefaultMessageDelaySeconds = chatDescMessageDelaySeconds.Default.(int)
 	// chatDescID is the schema descriptor for id field.
 	chatDescID := chatFields[0].Descriptor()
 	// chat.IDValidator is a validator for the "id" field. It is called by the builders before save.

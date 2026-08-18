@@ -119,6 +119,11 @@ func PinPermission(v string) predicate.Chat {
 	return predicate.Chat(sql.FieldEQ(FieldPinPermission, v))
 }
 
+// MessageDelaySeconds applies equality check predicate on the "message_delay_seconds" field. It's identical to MessageDelaySecondsEQ.
+func MessageDelaySeconds(v int) predicate.Chat {
+	return predicate.Chat(sql.FieldEQ(FieldMessageDelaySeconds, v))
+}
+
 // FamilyIDEQ applies the EQ predicate on the "family_id" field.
 func FamilyIDEQ(v string) predicate.Chat {
 	return predicate.Chat(sql.FieldEQ(FieldFamilyID, v))

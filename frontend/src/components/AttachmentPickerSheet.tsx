@@ -12,6 +12,7 @@ import {
   type NativeMediaItem
 } from "../native/mediaLibraryPlugin";
 import { EMOJI_CATEGORY_ICONS } from "../features/chats/composer/Composer";
+import ImageLightbox from "./ImageLightbox";
 import { MessageEnlargeButton } from "./MessageEnlargeModal";
 
 export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file";
@@ -54,6 +55,7 @@ export default function AttachmentPickerSheet({
   const [media, setMedia] = useState<NativeMediaItem[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [galleryState, setGalleryState] = useState<"loading" | "ready" | "empty" | "error">("loading");
+  const [previewMediaItem, setPreviewMediaItem] = useState<NativeMediaItem | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [localDraft, setLocalDraft] = useState("");
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
@@ -75,6 +77,7 @@ export default function AttachmentPickerSheet({
   const resetSheetState = () => {
     setActiveTab("gallery");
     setSelectedItemIds([]);
+    setPreviewMediaItem(null);
     setIsSending(false);
     setIsEmojiOpen(false);
   };
@@ -264,21 +267,34 @@ export default function AttachmentPickerSheet({
                 {media.map((item) => {
                   const selected = selectedItemIds.includes(item.id);
                   return (
-                    <button
+                    <div
                       key={item.id}
-                      type="button"
                       className={`attachment-picker-grid-tile media-tile ${selected ? "selected" : ""}`}
-                      onClick={() => toggleGridItemSelection(item.id)}
-                      aria-label={`Select ${item.name}`}
                     >
-                      <img src={nativeMediaPreviewUrl(item)} alt="" />
-                      {formatDuration(item.durationMs) && (
-                        <span className="media-tile-badge">{formatDuration(item.durationMs)}</span>
-                      )}
-                      <span className={`media-tile-checkbox ${selected ? "checked" : ""}`}>
+                      <button
+                        type="button"
+                        className="media-tile-thumb-btn"
+                        onClick={() => setPreviewMediaItem(item)}
+                        aria-label={`Preview ${item.name}`}
+                      >
+                        <img src={nativeMediaPreviewUrl(item)} alt="" />
+                        {formatDuration(item.durationMs) && (
+                          <span className="media-tile-badge">{formatDuration(item.durationMs)}</span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className={`media-tile-checkbox ${selected ? "checked" : ""}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleGridItemSelection(item.id);
+                        }}
+                        aria-label={selected ? `Deselect ${item.name}` : `Select ${item.name}`}
+                        aria-pressed={selected}
+                      >
                         {selected && <Check size={12} strokeWidth={3} />}
-                      </span>
-                    </button>
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -411,7 +427,7 @@ export default function AttachmentPickerSheet({
                     skinTonesDisabled
                     categoryIcons={EMOJI_CATEGORY_ICONS}
                     theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
-                    width={320}
+                    width={360}
                     height={320}
                   />
                 </div>
@@ -496,7 +512,21 @@ export default function AttachmentPickerSheet({
     </div>
   );
 
-  return typeof document !== "undefined" ? createPortal(sheetContent, document.body) : sheetContent;
+  const fullContent = (
+    <>
+      {sheetContent}
+      {previewMediaItem && (
+        <ImageLightbox
+          imageUrl={nativeMediaPreviewUrl(previewMediaItem)}
+          title={previewMediaItem.name}
+          subtitle={previewMediaItem.mimeType}
+          onClose={() => setPreviewMediaItem(null)}
+        />
+      )}
+    </>
+  );
+
+  return typeof document !== "undefined" ? createPortal(fullContent, document.body) : fullContent;
 }
 
 function RecentFileList({

@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Copy,
   Forward,
+  MessageCircle,
   Pencil,
   Pin,
   Reply,
@@ -17,6 +18,7 @@ import {
   MESSAGE_REACTION_EXTENDED,
   isMultiMemberChat
 } from "../shared/messagePresentation";
+import { canPostToChannel } from "../shared/chatPresentation";
 import type { Message } from "../shared/types";
 
 export type MessageContextMenuState = {
@@ -36,10 +38,12 @@ export function MessageContextMenu({
   currentUser,
   selectedChat,
   channelCommentsDisabledForViewer,
+  isInThreadMode = false,
   isPinned,
   seenBy,
   onReact,
   onReply,
+  onComment,
   onCopy,
   onTogglePin,
   onForward,
@@ -51,11 +55,13 @@ export function MessageContextMenu({
   currentUser: User | null;
   selectedChat: Chat | null;
   channelCommentsDisabledForViewer: boolean;
+  isInThreadMode?: boolean;
   isPinned: boolean;
   seenBy: ContextMenuSeenByEntry[];
   resolvedThemeMode?: "light" | "dark";
   onReact: (emoji: string) => void;
   onReply: () => void;
+  onComment?: () => void;
   onCopy: () => void;
   onTogglePin: () => void;
   onForward: () => void;
@@ -67,6 +73,12 @@ export function MessageContextMenu({
   const currentReaction = currentUser
     ? menu.message.reactions.find((reaction) => reaction.userIds.includes(currentUser.id)) ?? null
     : null;
+  const canPostInChannel = Boolean(
+    !selectedChat ||
+      selectedChat.type !== "channel" ||
+      canPostToChannel(selectedChat, currentUser)
+  );
+
   const canManagePins =
     !selectedChat ||
     selectedChat.pinPermission !== "admins_only" ||
@@ -135,10 +147,28 @@ export function MessageContextMenu({
             ))}
         </div>
       </div>
-      <button type="button" role="menuitem" disabled={channelCommentsDisabledForViewer} onClick={onReply}>
-        <Reply aria-hidden="true" size={16} />
-        {selectedChat?.type === "channel" ? "Comment" : "Reply"}
-      </button>
+      {!isInThreadMode && onComment && (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={channelCommentsDisabledForViewer || pending}
+          onClick={onComment}
+        >
+          <MessageCircle aria-hidden="true" size={16} />
+          Comment
+        </button>
+      )}
+      {(canPostInChannel || isInThreadMode) && (
+        <button
+          type="button"
+          role="menuitem"
+          disabled={channelCommentsDisabledForViewer || pending}
+          onClick={onReply}
+        >
+          <Reply aria-hidden="true" size={16} />
+          Reply
+        </button>
+      )}
       <button type="button" role="menuitem" disabled={!menu.message.content} onClick={onCopy}>
         <Copy aria-hidden="true" size={16} />
         Copy

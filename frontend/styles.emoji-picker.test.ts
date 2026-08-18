@@ -74,7 +74,7 @@ describe("docked emoji picker styles", () => {
     expect(rule(".emoji-picker")).not.toContain("--epr-horizontal-padding: 0px;");
     expect(rule(".emoji-picker")).not.toContain("--epr-category-padding: 0px;");
     expect(rule(".emoji-picker")).not.toContain("--epr-emoji-padding: 0px;");
-    expect(rule(".emoji-picker .epr-category-nav")).toContain("padding: 10px 12px;");
+    expect(rule(".emoji-picker .epr-category-nav")).toContain("padding: 6px 8px;");
     expect(rule(".emoji-picker .epr-cat-btn:focus::before")).toContain("display: none;");
   });
 

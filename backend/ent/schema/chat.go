@@ -34,6 +34,7 @@ func (Chat) Fields() []ent.Field {
 		field.String("created_at").NotEmpty(),
 		field.String("updated_at").NotEmpty(),
 		field.String("pin_permission").Default("everyone"),
+		field.Int("message_delay_seconds").Default(0),
 	}
 }
 

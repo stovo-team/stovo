@@ -46,6 +46,7 @@ export interface Chat {
   isFavorite: boolean;
   wallpaper?: FamilyFile | null;
   pinPermission?: "everyone" | "admins_only";
+  messageDelaySeconds?: number;
   activeCall?: Record<string, any> | null;
 }
 
@@ -105,7 +106,9 @@ export interface Message {
   clientMessageId?: string;
   call?: CallHistory | null;
   deliveryError?: string;
-  deliveryState?: "sending" | "failed";
+  deliveryState?: "sending" | "failed" | "scheduled";
+  scheduledFor?: string | null;
+  isReminder?: boolean;
 }
 
 export function getChats(accessToken: string) {
@@ -353,5 +356,17 @@ export function updateChatPinPermission(
     method: "PATCH",
     accessToken,
     body: { pinPermission }
+  });
+}
+
+export function updateChatMessageDelay(
+  accessToken: string,
+  chatId: string,
+  messageDelaySeconds: number
+) {
+  return apiRequest<Chat>(`/api/chats/${chatId}`, {
+    method: "PATCH",
+    accessToken,
+    body: { messageDelaySeconds }
   });
 }

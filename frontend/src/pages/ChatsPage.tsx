@@ -200,6 +200,7 @@ export default function ChatsPage() {
               onMediaVisibilityChange={detailsActions.handleMediaVisibilityChange}
               onOpenImage={openFullViewImage}
               onPinPermissionChange={detailsActions.handlePinPermissionChange}
+              onMessageDelayChange={detailsActions.handleMessageDelayChange}
               onPreferenceChange={(payload) => void detailsActions.handleChatPreferenceChange(payload)}
               onTitleDraftChange={setChatTitleDraft}
             />

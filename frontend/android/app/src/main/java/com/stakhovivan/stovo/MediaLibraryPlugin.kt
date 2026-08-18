@@ -216,7 +216,15 @@ class MediaLibraryPlugin : Plugin() {
             // on every open delays the first usable gallery frame substantially.
             if (destination.exists() && destination.length() > 0) return Uri.fromFile(destination).toString()
             val bitmap = resolver.loadThumbnail(uri, Size(320, 320), null)
-            destination.outputStream().use { output -> bitmap.compress(Bitmap.CompressFormat.JPEG, 82, output) }
+            val squareBitmap = if (bitmap.width == bitmap.height) {
+                bitmap
+            } else {
+                val size = minOf(bitmap.width, bitmap.height)
+                val x = (bitmap.width - size) / 2
+                val y = (bitmap.height - size) / 2
+                Bitmap.createBitmap(bitmap, x, y, size, size)
+            }
+            destination.outputStream().use { output -> squareBitmap.compress(Bitmap.CompressFormat.JPEG, 85, output) }
             Uri.fromFile(destination).toString()
         } catch (_: Exception) {
             null

@@ -89,6 +89,7 @@ export function ChatDetailsPanel({
   onMediaVisibilityChange,
   onOpenImage,
   onPinPermissionChange,
+  onMessageDelayChange,
   onPreferenceChange,
   onTitleDraftChange,
 }: {
@@ -115,6 +116,7 @@ export function ChatDetailsPanel({
   onMediaVisibilityChange: (enabled: boolean) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onPinPermissionChange: (permission: "everyone" | "admins_only") => void;
+  onMessageDelayChange: (delaySeconds: number) => void;
   onPreferenceChange: (
     payload: {
       isMuted?: boolean;
@@ -136,6 +138,7 @@ export function ChatDetailsPanel({
   const hasFamilyStorageSetting = chat.type !== "family";
   const hasCommentsSetting = chat.type === "channel";
   const hasPinPermissionSetting = canManageChat && chat.type !== "direct";
+  const hasMessageDelaySetting = canManageChat && chat.type !== "direct";
   const sharedContentTabs = ["media", "audio", "files", "links"] as const;
 
   function handleDetailsTabChange(tab: SharedContentTab) {
@@ -304,6 +307,35 @@ export function ChatDetailsPanel({
               </div>
             </div>
           )}
+
+          {hasMessageDelaySetting && (
+            <div className="chat-info-section">
+              <p className="chat-info-section-label">Message delay</p>
+              <div className="chat-info-island" role="radiogroup" aria-label="Message delay">
+                {[
+                  { label: "Off", value: 0 },
+                  { label: "5 seconds", value: 5 },
+                  { label: "10 seconds", value: 10 },
+                  { label: "15 seconds", value: 15 },
+                  { label: "30 seconds", value: 30 },
+                  { label: "1 minute", value: 60 },
+                  { label: "2 minutes", value: 120 },
+                  { label: "5 minutes", value: 300 }
+                ].map((option) => (
+                  <label key={option.value} className="chat-info-permission-option chat-info-permission-option--inline">
+                    <input
+                      type="radio"
+                      name="messageDelay"
+                      value={option.value}
+                      checked={(chat.messageDelaySeconds ?? 0) === option.value}
+                      onChange={() => void onMessageDelayChange(option.value)}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </aside>
     );
@@ -391,7 +423,8 @@ export function ChatDetailsPanel({
                 </button>
               </form>
             ) : (
-              <>
+              <div className="chat-info-title-wrap">
+                <h3>{chatName}</h3>
                 {canManageChat && chat.type !== "direct" && (
                   <button
                     type="button"
@@ -405,8 +438,7 @@ export function ChatDetailsPanel({
                     <Pencil aria-hidden="true" size={18} />
                   </button>
                 )}
-                <h3>{chatName}</h3>
-              </>
+              </div>
             )}
           </div>
           {chat.type !== "archive" && (

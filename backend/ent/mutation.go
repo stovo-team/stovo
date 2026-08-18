@@ -1613,6 +1613,7 @@ type ChatMutation struct {
 	created_at           *string
 	updated_at           *string
 	pin_permission       *string
+	message_delay_seconds *int
 	clearedFields        map[string]struct{}
 	family               *string
 	clearedfamily        bool
@@ -2174,6 +2175,42 @@ func (m *ChatMutation) ResetPinPermission() {
 	m.pin_permission = nil
 }
 
+// SetMessageDelaySeconds sets the "message_delay_seconds" field.
+func (m *ChatMutation) SetMessageDelaySeconds(i int) {
+	m.message_delay_seconds = &i
+}
+
+// MessageDelaySeconds returns the value of the "message_delay_seconds" field in the mutation.
+func (m *ChatMutation) MessageDelaySeconds() (r int, exists bool) {
+	v := m.message_delay_seconds
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessageDelaySeconds returns the old "message_delay_seconds" field's value of the Chat entity.
+// If the Chat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatMutation) OldMessageDelaySeconds(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessageDelaySeconds is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessageDelaySeconds requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessageDelaySeconds: %w", err)
+	}
+	return oldValue.MessageDelaySeconds, nil
+}
+
+// ResetMessageDelaySeconds resets all changes to the "message_delay_seconds" field.
+func (m *ChatMutation) ResetMessageDelaySeconds() {
+	m.message_delay_seconds = nil
+}
+
 // ClearFamily clears the "family" edge to the Family entity.
 func (m *ChatMutation) ClearFamily() {
 	m.clearedfamily = true
@@ -2525,6 +2562,9 @@ func (m *ChatMutation) Fields() []string {
 	if m.pin_permission != nil {
 		fields = append(fields, chat.FieldPinPermission)
 	}
+	if m.message_delay_seconds != nil {
+		fields = append(fields, chat.FieldMessageDelaySeconds)
+	}
 	return fields
 }
 
@@ -2555,6 +2595,8 @@ func (m *ChatMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case chat.FieldPinPermission:
 		return m.PinPermission()
+	case chat.FieldMessageDelaySeconds:
+		return m.MessageDelaySeconds()
 	}
 	return nil, false
 }
@@ -2586,6 +2628,8 @@ func (m *ChatMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldUpdatedAt(ctx)
 	case chat.FieldPinPermission:
 		return m.OldPinPermission(ctx)
+	case chat.FieldMessageDelaySeconds:
+		return m.OldMessageDelaySeconds(ctx)
 	}
 	return nil, fmt.Errorf("unknown Chat field %s", name)
 }
@@ -2671,6 +2715,13 @@ func (m *ChatMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPinPermission(v)
+		return nil
+	case chat.FieldMessageDelaySeconds:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessageDelaySeconds(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Chat field %s", name)
@@ -2774,6 +2825,9 @@ func (m *ChatMutation) ResetField(name string) error {
 		return nil
 	case chat.FieldPinPermission:
 		m.ResetPinPermission()
+		return nil
+	case chat.FieldMessageDelaySeconds:
+		m.ResetMessageDelaySeconds()
 		return nil
 	}
 	return fmt.Errorf("unknown Chat field %s", name)

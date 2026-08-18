@@ -205,6 +205,20 @@ func (_u *ChatUpdate) SetNillablePinPermission(v *string) *ChatUpdate {
 	return _u
 }
 
+// SetMessageDelaySeconds sets the "message_delay_seconds" field.
+func (_u *ChatUpdate) SetMessageDelaySeconds(v int) *ChatUpdate {
+	_u.mutation.SetMessageDelaySeconds(v)
+	return _u
+}
+
+// SetNillableMessageDelaySeconds sets the "message_delay_seconds" field if the given value is not nil.
+func (_u *ChatUpdate) SetNillableMessageDelaySeconds(v *int) *ChatUpdate {
+	if v != nil {
+		_u.SetMessageDelaySeconds(*v)
+	}
+	return _u
+}
+
 // SetFamily sets the "family" edge to the Family entity.
 func (_u *ChatUpdate) SetFamily(v *Family) *ChatUpdate {
 	return _u.SetFamilyID(v.ID)
@@ -921,6 +935,20 @@ func (_u *ChatUpdateOne) SetPinPermission(v string) *ChatUpdateOne {
 func (_u *ChatUpdateOne) SetNillablePinPermission(v *string) *ChatUpdateOne {
 	if v != nil {
 		_u.SetPinPermission(*v)
+	}
+	return _u
+}
+
+// SetMessageDelaySeconds sets the "message_delay_seconds" field.
+func (_u *ChatUpdateOne) SetMessageDelaySeconds(v int) *ChatUpdateOne {
+	_u.mutation.SetMessageDelaySeconds(v)
+	return _u
+}
+
+// SetNillableMessageDelaySeconds sets the "message_delay_seconds" field if the given value is not nil.
+func (_u *ChatUpdateOne) SetNillableMessageDelaySeconds(v *int) *ChatUpdateOne {
+	if v != nil {
+		_u.SetMessageDelaySeconds(*v)
 	}
 	return _u
 }
