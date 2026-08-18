@@ -384,7 +384,8 @@ type fileTranscriptResponse struct {
 }
 
 func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, user userPublic) {
-	if strings.TrimSpace(s.cfg.GroqAPIKey) == "" {
+	apiKey := s.getGroqAPIKey()
+	if apiKey == "" {
 		s.detail(w, http.StatusServiceUnavailable, "Transcription service is not configured (GROQ_API_KEY missing)")
 		return
 	}
@@ -417,7 +418,7 @@ func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, us
 	}
 
 	groqClient := transcription.NewGroqSTTClient(transcription.GroqSTTConfig{
-		APIKey:           s.cfg.GroqAPIKey,
+		APIKey:           apiKey,
 		Model:            s.cfg.GroqSTTModel,
 		CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD,
 	})

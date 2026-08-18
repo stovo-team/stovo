@@ -114,4 +114,29 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(styles).toContain(".attachment-picker-sheet.tg-style.is-fullscreen");
     expect(styles).toContain(".attachment-picker-sheet-handle-zone");
   });
+
+  it("closes only the preview when returning or clicking back from ImageLightbox, keeping the gallery open", () => {
+    // Closing ImageLightbox in AttachmentPickerSheet clears previewMediaItem without closing the sheet
+    expect(attachmentSheetSource).toContain("onClose={() => setPreviewMediaItem(null)}");
+    // Back button listener clears previewMediaItem when preview is open
+    expect(attachmentSheetSource).toMatch(/if\s*\(previewMediaItem\)\s*\{\s*setPreviewMediaItem\(null\);\s*return;\s*\}/);
+    expect(attachmentSheetSource).toContain("App.addListener(\"backButton\"");
+  });
+
+  it("integrates gallery preview and attachment sheet dismissal with useChatSurfaceDismissal", () => {
+    const dismissalSource = readFileSync("src/features/chats/useChatSurfaceDismissal.ts", "utf8");
+    expect(dismissalSource).toContain("hasGalleryPreview");
+    expect(dismissalSource).toContain("closeGalleryPreview");
+    expect(dismissalSource).toContain("isAttachmentSheetOpen");
+    expect(dismissalSource).toContain("closeAttachmentSheet");
+    // When gallery preview is open, back button / Escape dismisses only the preview
+    expect(dismissalSource).toMatch(/if\s*\(hasGalleryPreview\s*&&\s*closeGalleryPreview\)\s*\{\s*closeGalleryPreview\(\);\s*return;\s*\}/);
+  });
+
+  it("generates uncropped full-sized previews in native MediaLibraryPlugin", () => {
+    const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
+    // Does not perform square center cropping
+    expect(nativePluginSource).not.toContain("Bitmap.createBitmap(bitmap, x, y, size, size)");
+    expect(nativePluginSource).toContain("Size(1600, 1600)");
+  });
 });

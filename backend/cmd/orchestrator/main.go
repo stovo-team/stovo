@@ -7,12 +7,14 @@ import (
 	"os"
 	"time"
 
+	"family-messenger/backend/internal/config"
 	"family-messenger/backend/internal/orchestrator"
 	"github.com/docker/docker/client"
 	"github.com/go-chi/chi/v5"
 )
 
 func main() {
+	_ = config.LoadEnv()
 	// Initialize Docker client (uses /var/run/docker.sock mounted into the container)
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {

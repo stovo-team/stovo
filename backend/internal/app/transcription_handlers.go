@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"family-messenger/backend/internal/config"
 	"family-messenger/backend/internal/transcription"
 )
 
@@ -105,13 +106,37 @@ type audioChunkRow struct {
 // Handlers
 // ─────────────────────────────────────────────────────────────────────────────
 
+func (s *Server) getGroqAPIKey() string {
+	if strings.TrimSpace(s.cfg.GroqAPIKey) != "" {
+		return strings.TrimSpace(s.cfg.GroqAPIKey)
+	}
+	key := config.GetOrReloadEnv("GROQ_API_KEY")
+	if key != "" {
+		s.cfg.GroqAPIKey = key
+		return key
+	}
+	return ""
+}
+
+func (s *Server) getGroqChatModel() string {
+	if strings.TrimSpace(s.cfg.GroqChatModel) != "" {
+		return strings.TrimSpace(s.cfg.GroqChatModel)
+	}
+	model := config.GetOrReloadEnv("GROQ_CHAT_MODEL")
+	if model != "" {
+		s.cfg.GroqChatModel = model
+		return model
+	}
+	return ""
+}
+
 // handleStartTranscription starts a new transcription session for an active call.
 func (s *Server) handleStartTranscription(w http.ResponseWriter, r *http.Request, user userPublic) {
 	if !s.cfg.AICallTranscriptionEnabled {
 		s.detail(w, http.StatusServiceUnavailable, "AI call transcription is not enabled")
 		return
 	}
-	if strings.TrimSpace(s.cfg.GroqAPIKey) == "" {
+	if s.getGroqAPIKey() == "" {
 		s.detail(w, http.StatusServiceUnavailable, "Transcription service is not configured (GROQ_API_KEY missing)")
 		return
 	}
@@ -629,8 +654,9 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 		return
 	}
 
+	apiKey := s.getGroqAPIKey()
 	groqClient := transcription.NewGroqSTTClient(transcription.GroqSTTConfig{
-		APIKey:           s.cfg.GroqAPIKey,
+		APIKey:           apiKey,
 		Model:            s.cfg.GroqSTTModel,
 		TimeoutSeconds:   120,
 		CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD,
@@ -728,10 +754,11 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 	)
 
 	// LLM post-processing (optional — skipped if GROQ_CHAT_MODEL is empty).
-	if len(allSegments) > 0 && strings.TrimSpace(s.cfg.GroqAPIKey) != "" && strings.TrimSpace(s.cfg.GroqChatModel) != "" {
+	chatModel := s.getGroqChatModel()
+	if len(allSegments) > 0 && apiKey != "" && chatModel != "" {
 		llmClient := transcription.NewLLMClient(transcription.LLMConfig{
-			APIKey: s.cfg.GroqAPIKey,
-			Model:  s.cfg.GroqChatModel,
+			APIKey: apiKey,
+			Model:  chatModel,
 		})
 		ppResult, ppErr := llmClient.PostProcess(ctx, allSegments)
 		if ppErr == nil && ppResult != nil {

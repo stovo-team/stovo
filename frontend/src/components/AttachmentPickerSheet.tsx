@@ -2,6 +2,8 @@ import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { AudioLines, Camera, Check, FileText, Image as ImageIcon, Music, Paperclip, Smile } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 
 import {
   isNativeMediaLibraryAvailable,
@@ -31,6 +33,8 @@ type AttachmentPickerSheetProps = {
   onEnlargeComposer?: () => void;
   isUploading?: boolean;
   isSendingMessage?: boolean;
+  previewMediaItem?: NativeMediaItem | null;
+  onPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
 };
 
 function formatDuration(durationMs: number): string | null {
@@ -50,14 +54,27 @@ export default function AttachmentPickerSheet({
   resolvedThemeMode = "dark",
   onEnlargeComposer,
   isUploading = false,
-  isSendingMessage = false
+  isSendingMessage = false,
+  previewMediaItem: propPreviewMediaItem,
+  onPreviewMediaItemChange
 }: AttachmentPickerSheetProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>("gallery");
   const [media, setMedia] = useState<NativeMediaItem[]>([]);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [galleryState, setGalleryState] = useState<"loading" | "ready" | "empty" | "error">("loading");
-  const [previewMediaItem, setPreviewMediaItem] = useState<NativeMediaItem | null>(null);
+  const [internalPreviewMediaItem, setInternalPreviewMediaItem] = useState<NativeMediaItem | null>(null);
+  const previewMediaItem = propPreviewMediaItem !== undefined ? propPreviewMediaItem : internalPreviewMediaItem;
+  const setPreviewMediaItem = useCallback(
+    (item: NativeMediaItem | null) => {
+      if (onPreviewMediaItemChange) {
+        onPreviewMediaItemChange(item);
+      } else {
+        setInternalPreviewMediaItem(item);
+      }
+    },
+    [onPreviewMediaItemChange]
+  );
   const [isSending, setIsSending] = useState(false);
   const [localDraft, setLocalDraft] = useState("");
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
@@ -121,9 +138,31 @@ export default function AttachmentPickerSheet({
       resetSheetState();
       setIsClosing(false);
       onClose();
-    }, 240);
+    }, 300);
     return () => window.clearTimeout(timer);
   }, [isClosing, onClose, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (!open || !Capacitor.isNativePlatform()) return undefined;
+    let disposed = false;
+    let listener: { remove: () => Promise<void> } | null = null;
+    void (async () => {
+      listener = await App.addListener("backButton", () => {
+        if (previewMediaItem) {
+          setPreviewMediaItem(null);
+          return;
+        }
+        closeSheet();
+      });
+      if (disposed) {
+        void listener.remove();
+      }
+    })();
+    return () => {
+      disposed = true;
+      void listener?.remove();
+    };
+  }, [open, previewMediaItem, closeSheet, setPreviewMediaItem]);
 
   useEffect(() => {
     if (!open) {

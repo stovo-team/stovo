@@ -12,6 +12,8 @@ import { mergeMessageLists } from "../shared/messageState";
 import type { MessageStateUpdate } from "../shared/types";
 import { getActiveServer, upsertServer } from "../../../api/serverRegistry";
 import { getOutboxMessagesForChat, type QueuedOutboxMessage } from "../outbox/messageOutboxStore";
+import { reconstructFileFromQueuedAttachment } from "../outbox/messageOutboxProcessor";
+import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
 
 export function mergeOutboxPendingMessages(
   current: Message[],
@@ -19,6 +21,23 @@ export function mergeOutboxPendingMessages(
   currentUser: User | null
 ): Message[] {
   if (!outboxItems || outboxItems.length === 0) return current;
+
+  for (const item of outboxItems) {
+    for (const a of item.attachments) {
+      const fileId = a.uploadedFileId ?? a.id;
+      if (!peekCachedObjectUrl(fileId)) {
+        const reconstructed = reconstructFileFromQueuedAttachment(a);
+        if (reconstructed && reconstructed.size > 0) {
+          try {
+            seedMediaBlobCache(fileId, reconstructed);
+          } catch {
+            // Non-fatal
+          }
+        }
+      }
+    }
+  }
+
   const pendingMessages: Message[] = outboxItems.map((item) => {
     if (item.optimisticMessage) return item.optimisticMessage;
     return {
