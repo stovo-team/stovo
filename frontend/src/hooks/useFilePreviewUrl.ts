@@ -15,7 +15,7 @@ export default function useFilePreviewUrl(
   useEffect(() => {
     let cancelled = false;
 
-    if (!enabled || !accessToken || !file || !file.mimeType.startsWith("image/")) {
+    if (!enabled || !file || !file.mimeType.startsWith("image/")) {
       setPreviewUrl(null);
       return undefined;
     }
@@ -23,6 +23,11 @@ export default function useFilePreviewUrl(
     const cached = peekCachedObjectUrl(file.id);
     if (cached) {
       setPreviewUrl(cached);
+      return undefined;
+    }
+
+    if (!accessToken) {
+      setPreviewUrl(null);
       return undefined;
     }
 

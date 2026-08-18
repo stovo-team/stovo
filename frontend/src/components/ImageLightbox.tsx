@@ -105,7 +105,7 @@ export default function ImageLightbox({
       return;
     }
 
-    const timeout = window.setTimeout(() => onClose(), 220);
+    const timeout = window.setTimeout(() => onClose(), 280);
     return () => window.clearTimeout(timeout);
   }, [isClosing, onClose, prefersReducedMotion]);
 

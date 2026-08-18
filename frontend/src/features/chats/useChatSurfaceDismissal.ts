@@ -10,8 +10,12 @@ import type { MessageContextMenuState } from "./conversation/MessageContextMenu"
 export type UseChatSurfaceDismissalParams = {
   chatId: string | undefined;
   navigate: NavigateFunction;
+  hasGalleryPreview?: boolean;
+  closeGalleryPreview?: () => void;
   hasFullViewImage: boolean;
   requestCloseFullViewImage: () => void;
+  isAttachmentSheetOpen?: boolean;
+  closeAttachmentSheet?: () => void;
   messageContextMenu: MessageContextMenuState | null;
   setMessageContextMenu: Dispatch<SetStateAction<MessageContextMenuState | null>>;
   isEmojiPickerOpen: boolean;
@@ -55,8 +59,12 @@ export type UseChatSurfaceDismissalParams = {
 export function useChatSurfaceDismissal({
   chatId,
   navigate,
+  hasGalleryPreview = false,
+  closeGalleryPreview,
   hasFullViewImage,
   requestCloseFullViewImage,
+  isAttachmentSheetOpen = false,
+  closeAttachmentSheet,
   messageContextMenu,
   setMessageContextMenu,
   isEmojiPickerOpen,
@@ -91,6 +99,14 @@ export function useChatSurfaceDismissal({
   closeNewChatScreen
 }: UseChatSurfaceDismissalParams) {
   const requestCloseActiveChatSurface = useCallback(() => {
+    if (hasGalleryPreview && closeGalleryPreview) {
+      closeGalleryPreview();
+      return true;
+    }
+    if (isAttachmentSheetOpen && closeAttachmentSheet) {
+      closeAttachmentSheet();
+      return true;
+    }
     if (messageContextMenu) {
       setMessageContextMenu(null);
       return true;
@@ -140,9 +156,13 @@ export function useChatSurfaceDismissal({
     chatId,
     clearSelectedMessages,
     closeActiveChat,
+    closeAttachmentSheet,
     closeEmojiPicker,
+    closeGalleryPreview,
     closeMessageSearch,
     deleteTarget,
+    hasGalleryPreview,
+    isAttachmentSheetOpen,
     setDeleteTarget,
     setForwardTarget,
     setIsCallAudioPopupOpen,
@@ -183,6 +203,14 @@ export function useChatSurfaceDismissal({
       if (event.key !== "Escape") {
         return;
       }
+      if (hasGalleryPreview && closeGalleryPreview) {
+        closeGalleryPreview();
+        return;
+      }
+      if (isAttachmentSheetOpen && closeAttachmentSheet) {
+        closeAttachmentSheet();
+        return;
+      }
       if (isNewChatOpen && newChatScreen !== "pick") {
         setNewChatScreen("pick");
         setNewChatMemberSearch("");
@@ -217,11 +245,15 @@ export function useChatSurfaceDismissal({
     callSettingsMenuRef,
     chatMenuRef,
     clearSelectedMessages,
+    closeAttachmentSheet,
     closeEmojiPicker,
+    closeGalleryPreview,
     closeMessageSearch,
     closeNewChatScreen,
     emojiPickerDockRef,
     emojiPickerRef,
+    hasGalleryPreview,
+    isAttachmentSheetOpen,
     isMessageSelectionMode,
     isNewChatOpen,
     newChatScreen,
@@ -245,8 +277,16 @@ export function useChatSurfaceDismissal({
 
     void (async () => {
       listener = await App.addListener("backButton", ({ canGoBack }) => {
+        if (hasGalleryPreview && closeGalleryPreview) {
+          closeGalleryPreview();
+          return;
+        }
         if (hasFullViewImage) {
           requestCloseFullViewImage();
+          return;
+        }
+        if (isAttachmentSheetOpen && closeAttachmentSheet) {
+          closeAttachmentSheet();
           return;
         }
         if (messageContextMenu) {
@@ -311,10 +351,14 @@ export function useChatSurfaceDismissal({
     };
   }, [
     chatId,
+    closeAttachmentSheet,
+    closeGalleryPreview,
     closeNewChatScreen,
     deleteTarget,
     forwardTarget,
+    hasGalleryPreview,
     hasFullViewImage,
+    isAttachmentSheetOpen,
     isCallAudioPopupOpen,
     isCallSettingsMenuOpen,
     isChatMenuOpen,

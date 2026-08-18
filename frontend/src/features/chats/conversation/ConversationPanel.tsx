@@ -549,6 +549,8 @@ export function ConversationPanel({
           onRemovePendingAttachment={removePendingAttachment}
           onUpdatePendingAttachment={updatePendingAttachment}
           isAttachmentSheetOpen={isAttachmentSheetOpen}
+          galleryPreviewMediaItem={composer.galleryPreviewMediaItem}
+          onGalleryPreviewMediaItemChange={composer.setGalleryPreviewMediaItem}
           onAttachButtonClick={handleAttachButtonClick}
           onAttachmentSheetPick={handleAttachmentSheetPick}
           onCloseAttachmentSheet={() => setIsAttachmentSheetOpen(false)}

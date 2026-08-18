@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"family-messenger/backend/internal/config"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/go-chi/chi/v5"
@@ -290,7 +291,7 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 	cfg := &container.Config{
 		Image: "stovo-backend:latest",
 		Env: backendContainerEnv(slug, func(key, fallback string) string {
-			if value := os.Getenv(key); value != "" {
+			if value := config.GetOrReloadEnv(key); value != "" {
 				return value
 			}
 			return fallback

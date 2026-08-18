@@ -92,6 +92,8 @@ export function AttachmentCard({
   const documentKind = detectDocumentPreviewKind(file);
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
   const resolveAudioDurationUrl = useCallback(async () => {
+    const cached = peekCachedObjectUrl(file.id);
+    if (cached) return cached;
     if (!accessToken?.trim()) return null;
     try {
       await downloadFileBlob(accessToken, file.id);

@@ -204,9 +204,11 @@ describe("VideoPlayer", () => {
     await settle();
     expect(second.container.querySelector('[role="alert"]')?.textContent).toContain("Video download failed");
 
-    const invalid = renderPlayer(playerProps({ accessToken: "" }));
+    const invalid = renderPlayer(playerProps({ identity: identity({ messageId: "message-3", fileId: "file-invalid" }), file: familyFile({ id: "file-invalid" }), accessToken: "" }));
+    await settle();
     expect(invalid.container.querySelector('[role="alert"]')?.textContent).toContain("Video source is unavailable");
-    const unsupported = renderPlayer(playerProps({ file: familyFile({ mimeType: "application/pdf" }) }));
+    const unsupported = renderPlayer(playerProps({ identity: identity({ messageId: "message-4", fileId: "file-unsupported" }), file: familyFile({ id: "file-unsupported", mimeType: "application/pdf" }) }));
+    await settle();
     expect(unsupported.container.querySelector('[role="alert"]')?.textContent).toContain("Unsupported video format");
   });
 

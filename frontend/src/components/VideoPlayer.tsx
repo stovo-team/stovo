@@ -58,13 +58,15 @@ function validVideoSource(
   identity: VideoIdentity,
 ): "source" | "format" | null {
   if (
-    !accessToken.trim() ||
     !file.id?.trim() ||
     !identity.chatId?.trim() ||
     !identity.messageId?.trim() ||
     !identity.fileId?.trim() ||
     identity.fileId !== file.id
   ) {
+    return "source";
+  }
+  if (!accessToken.trim() && !peekCachedObjectUrl(file.id)) {
     return "source";
   }
   return /^video\/[^\s/]+$/i.test(file.mimeType.trim()) ? null : "format";

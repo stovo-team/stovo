@@ -10,15 +10,21 @@ import type { AudioSourceFactory } from "../../../audioPlaybackSession";
 
 export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory {
   return async (descriptor) => {
-    if (!accessToken.trim()) {
-      throw new Error("Audio playback requires authentication");
+    const fileId = descriptor.identity.fileId;
+    const localCachedUrl = peekCachedObjectUrl(fileId);
+    if (localCachedUrl && (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android")) {
+      return { url: localCachedUrl };
     }
 
-    const fileId = descriptor.identity.fileId;
+    if (!accessToken.trim()) {
+      if (localCachedUrl) return { url: localCachedUrl };
+      throw new Error("Audio playback requires authentication");
+    }
 
     // Android MediaService needs a credentialed stream URL. Warm the blob cache
     // in the background so later web/fallback playback is instant.
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+      if (localCachedUrl) return { url: localCachedUrl };
       void downloadFileBlob(accessToken, fileId).catch(() => undefined);
       const capability = await createMediaPlaybackToken(accessToken, fileId);
       const mimeType =
