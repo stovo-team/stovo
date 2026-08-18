@@ -223,6 +223,19 @@ export function messageDeliveryLabel(message: Message, mine: boolean) {
   if (message.deliveryState === "failed") {
     return "Failed";
   }
+  if (message.deliveryState === "scheduled") {
+    if (message.scheduledFor) {
+      const scheduledDate = new Date(message.scheduledFor);
+      if (!Number.isNaN(scheduledDate.getTime())) {
+        const isToday = new Date().toDateString() === scheduledDate.toDateString();
+        const timeStr = scheduledDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        return isToday
+          ? `Scheduled for ${timeStr}`
+          : `Scheduled for ${scheduledDate.toLocaleDateString([], { month: "short", day: "numeric" })}, ${timeStr}`;
+      }
+    }
+    return "Scheduled";
+  }
   return new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit"
@@ -233,7 +246,7 @@ export function messageReceiptState(
   message: Pick<Message, "statuses" | "deliveryState">,
   mine: boolean
 ): "sent" | "delivered" | "read" | null {
-  if (!mine || message.deliveryState === "failed" || message.deliveryState === "sending") {
+  if (!mine || message.deliveryState === "failed" || message.deliveryState === "sending" || message.deliveryState === "scheduled") {
     return null;
   }
   if (message.statuses.some((status) => status.status === "read")) {

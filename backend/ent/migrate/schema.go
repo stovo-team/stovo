@@ -81,6 +81,7 @@ var (
 		{Name: "created_at", Type: field.TypeString},
 		{Name: "updated_at", Type: field.TypeString},
 		{Name: "pin_permission", Type: field.TypeString, Default: "everyone"},
+		{Name: "message_delay_seconds", Type: field.TypeInt, Default: 0},
 		{Name: "family_id", Type: field.TypeString},
 		{Name: "created_by", Type: field.TypeString, Nullable: true},
 	}
@@ -92,13 +93,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "chats_families_chats",
-				Columns:    []*schema.Column{ChatsColumns[10]},
+				Columns:    []*schema.Column{ChatsColumns[11]},
 				RefColumns: []*schema.Column{FamiliesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "chats_users_chats_created",
-				Columns:    []*schema.Column{ChatsColumns[11]},
+				Columns:    []*schema.Column{ChatsColumns[12]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -107,10 +108,8 @@ var (
 			{
 				Name:    "uq_family_chat_per_family",
 				Unique:  true,
-				Columns: []*schema.Column{ChatsColumns[10]},
-				Annotation: &entsql.IndexAnnotation{
-					Where: "type = 'family'",
-				},
+				Columns: []*schema.Column{ChatsColumns[11]},
+				Annotation: entsql.IndexWhere("type = 'family'"),
 			},
 		},
 	}

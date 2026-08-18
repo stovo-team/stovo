@@ -102,6 +102,20 @@ export default function PlansPage() {
   useEffect(() => { void load(); }, [load]);
 
   useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void loadSilent();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleVisibility);
+    };
+  }, [loadSilent]);
+
+  useEffect(() => {
     const raw = window.sessionStorage.getItem("stovo:plan-draft");
     if (!raw) return;
     window.sessionStorage.removeItem("stovo:plan-draft");
@@ -281,10 +295,10 @@ export default function PlansPage() {
                   </button>
                 ))}
               </div>
-              {loading ? (
+              {loading && plans.length === 0 ? (
                 <p className="plans-empty">Loading plans…</p>
               ) : visiblePlans.length === 0 ? (
-                <p className="plans-today-empty">No plans yet</p>
+                <p className="plans-today-empty">{loading ? "Loading plans…" : "No plans yet"}</p>
               ) : (
                 visiblePlans.map((plan) => {
                   const myRsvp = plan.attendees?.find((a) => a.userId === currentUser?.id)?.status;

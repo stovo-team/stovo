@@ -306,13 +306,27 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		}
 	}
 
+	isGroupCall := chat.Type == "group" || chat.Type == "family"
 	now := time.Now().UTC()
 	roomID := uuid.NewString()
+
+	callerState := participantRinging
+	sessionState := callStateRinging
+	var connectedAt time.Time
+	var callerJoinedAt time.Time
+	if isGroupCall {
+		callerState = participantConnected
+		callerJoinedAt = now
+		sessionState = callStateConnected
+		connectedAt = now
+	}
+
 	participants := map[string]*callParticipant{
 		callerUserID: {
-			UserID: callerUserID,
-			Role:   "host",
-			State:  participantRinging,
+			UserID:   callerUserID,
+			Role:     "host",
+			State:    callerState,
+			JoinedAt: callerJoinedAt,
 		},
 	}
 	for _, invitee := range invitees {
@@ -323,10 +337,8 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		}
 	}
 
+	// Always start as Mesh; dynamically promote to SFU when active connected count > maxMeshParticipants.
 	topology := callTopologyMesh
-	if len(participants) > maxMeshParticipants {
-		topology = callTopologySFU
-	}
 
 	session := &callSession{
 		ID:           roomID,
@@ -335,9 +347,10 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		CalleeUserID: invitees[0],
 		CallType:     callType,
 		Topology:     topology,
-		State:        callStateRinging,
+		State:        sessionState,
 		Participants: participants,
 		CreatedAt:    now,
+		ConnectedAt:  connectedAt,
 		ExpiresAt:    now.Add(s.callTimeout),
 	}
 	s.indexCallSession(session)

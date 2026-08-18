@@ -678,6 +678,7 @@ export default function FilesPage() {
                       }}
                       sourceFactory={buildAudioSourceFactory(accessToken)}
                       hideTitle
+                      accessToken={accessToken}
                     />
                   ) : fileKind(selectedFile) === "videos" && accessToken ? (
                     <VideoPlayer

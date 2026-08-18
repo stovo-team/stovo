@@ -37,6 +37,7 @@ import { useReducedMotion } from "../../../hooks/useReducedMotion";
 import { messageMatchesSearch } from "../../../messageSearch";
 import {
   applyMessagePreviewToChat,
+  canPostToChannel,
   sortPinsByPosition
 } from "../shared/chatPresentation";
 import {
@@ -572,7 +573,12 @@ export function useMessageThread({
       setMessageContextMenu(null);
       return;
     }
-    if (selectedChat?.type === "channel") {
+    const canPostInChannel = Boolean(
+      !selectedChat ||
+        selectedChat.type !== "channel" ||
+        canPostToChannel(selectedChat, currentUser)
+    );
+    if (selectedChat?.type === "channel" && !canPostInChannel) {
       setThreadRootMessageId(message.id);
     }
     resetSwipeReplyState();

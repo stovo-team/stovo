@@ -140,10 +140,10 @@ export function MessageList({
             <span className="ms-icon ms-icon--20" aria-hidden={true}>
               search
             </span>
-            <strong>{threadRootMessageId ? "No messages in this thread" : "No matches"}</strong>
+            <strong>{threadRootMessageId ? "No comments yet" : "No matches"}</strong>
             <p>
               {threadRootMessageId
-                ? "Go back to the chat and open another thread."
+                ? "Be the first to leave a comment."
                 : "Try another word or close search to return to the full chat."}
             </p>
           </div>

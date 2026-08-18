@@ -166,4 +166,102 @@ describe("MessageBubble receipt status", () => {
     const receipt = container.querySelector(".message-receipt");
     expect(receipt).toBeNull();
   });
+
+  it("renders singular comment label when threadReplyCount is 1", () => {
+    const onOpenThread = vi.fn();
+    const message = createMockMessage();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+
+    const chat = createMockChat({ type: "direct" });
+    act(() => {
+      root.render(
+        <MessageBubble
+          message={message}
+          previousMessage={undefined}
+          currentUserId="user-1"
+          selectedChat={chat}
+          chats={[chat]}
+          messages={[message]}
+          memberLookup={new Map([["user-1", { displayName: "Self" }]])}
+          accessToken="token-123"
+          videoAutoplay={false}
+          renderMarkdown={false}
+          callActive={false}
+          isMessageSelectionMode={false}
+          isSelected={false}
+          swipeReplyState={null}
+          threadReplyCount={1}
+          onBubbleClick={vi.fn()}
+          onContextMenu={vi.fn()}
+          onSwipePointerDown={vi.fn()}
+          onSwipePointerMove={vi.fn()}
+          onSwipePointerUp={vi.fn()}
+          onSwipePointerCancel={vi.fn()}
+          onOpenImage={vi.fn()}
+          onFocusRepliedMessage={vi.fn()}
+          onOpenOriginChat={vi.fn()}
+          onReact={vi.fn()}
+          onOpenThread={onOpenThread}
+        />
+      );
+    });
+
+    const threadButton = container.querySelector(".thread-open-button");
+    expect(threadButton).not.toBeNull();
+    expect(threadButton?.textContent?.trim()).toBe("1 comment");
+
+    act(() => {
+      threadButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onOpenThread).toHaveBeenCalledWith(message);
+  });
+
+  it("renders plural comments label when threadReplyCount is > 1", () => {
+    const message = createMockMessage();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+
+    const chat = createMockChat({ type: "group" });
+    act(() => {
+      root.render(
+        <MessageBubble
+          message={message}
+          previousMessage={undefined}
+          currentUserId="user-1"
+          selectedChat={chat}
+          chats={[chat]}
+          messages={[message]}
+          memberLookup={new Map([["user-1", { displayName: "Self" }]])}
+          accessToken="token-123"
+          videoAutoplay={false}
+          renderMarkdown={false}
+          callActive={false}
+          isMessageSelectionMode={false}
+          isSelected={false}
+          swipeReplyState={null}
+          threadReplyCount={3}
+          onBubbleClick={vi.fn()}
+          onContextMenu={vi.fn()}
+          onSwipePointerDown={vi.fn()}
+          onSwipePointerMove={vi.fn()}
+          onSwipePointerUp={vi.fn()}
+          onSwipePointerCancel={vi.fn()}
+          onOpenImage={vi.fn()}
+          onFocusRepliedMessage={vi.fn()}
+          onOpenOriginChat={vi.fn()}
+          onReact={vi.fn()}
+          onOpenThread={vi.fn()}
+        />
+      );
+    });
+
+    const threadButton = container.querySelector(".thread-open-button");
+    expect(threadButton).not.toBeNull();
+    expect(threadButton?.textContent?.trim()).toBe("3 comments");
+  });
 });

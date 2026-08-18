@@ -334,6 +334,22 @@ func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user u
 		}
 	}
 
+	if payload.MessageDelaySeconds != nil {
+		if !s.canManageChat(chat, user) {
+			s.detail(w, http.StatusForbidden, "Permission denied")
+			return
+		}
+		delay := *payload.MessageDelaySeconds
+		if delay < 0 || delay > 86400 {
+			s.detail(w, http.StatusUnprocessableEntity, "messageDelaySeconds must be between 0 and 86400")
+			return
+		}
+		if err := s.store.UpdateChatMessageDelay(r.Context(), chatID, delay, nowString()); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not update chat")
+			return
+		}
+	}
+
 	updated, _ := s.buildChatPublic(chatID, user)
 	s.json(w, http.StatusOK, updated)
 }
@@ -686,6 +702,7 @@ func (s *Server) buildChatPublicFromRow(row *repository.ChatForMember, user user
 	} else {
 		chat.PinPermission = "everyone"
 	}
+	chat.MessageDelaySeconds = c.MessageDelaySeconds
 
 	members, err := s.chatMembers(chat.ID)
 	if err != nil {

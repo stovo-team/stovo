@@ -128,7 +128,7 @@ export function ChatHeader({
           />
           <span>
             <span className="chat-title-row">
-              <span>{selectedChat.type === "channel" ? "Comments" : "Thread"}</span>
+              <span>Comments</span>
             </span>
             <small className="chat-presence">
               {displayChatName(selectedChat, currentUser?.id)}

@@ -257,6 +257,7 @@ type chatPublic struct {
 	IsFavorite                      bool               `json:"isFavorite"`
 	Wallpaper                       *filePublic        `json:"wallpaper"`
 	PinPermission                   string             `json:"pinPermission"`
+	MessageDelaySeconds             int                `json:"messageDelaySeconds"`
 	ActiveCall                      map[string]any     `json:"activeCall,omitempty"`
 }
 
@@ -275,11 +276,12 @@ type createChannelChatRequest struct {
 }
 
 type updateChatRequest struct {
-	Title           *string `json:"title"`
-	MediaVisibility *string `json:"mediaVisibility"`
-	ChatPhotoFileID *string `json:"chatPhotoFileId"`
-	CommentsEnabled *bool   `json:"commentsEnabled"`
-	PinPermission   *string `json:"pinPermission"`
+	Title               *string `json:"title"`
+	MediaVisibility     *string `json:"mediaVisibility"`
+	ChatPhotoFileID     *string `json:"chatPhotoFileId"`
+	CommentsEnabled     *bool   `json:"commentsEnabled"`
+	PinPermission       *string `json:"pinPermission"`
+	MessageDelaySeconds *int    `json:"messageDelaySeconds"`
 }
 
 type pinnedMessagePublic struct {

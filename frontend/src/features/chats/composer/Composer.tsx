@@ -1,4 +1,13 @@
-import { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode, RefObject, useState } from "react";
+import {
+  ChangeEvent,
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+  RefObject,
+  useRef,
+  useState
+} from "react";
 import EmojiPicker, { Categories, EmojiClickData, Theme } from "emoji-picker-react";
 import { Bus, Cat, Flag, History, Music, Paperclip, Pencil, Reply, Shirt, Smile, Trophy, Utensils, X } from "lucide-react";
 
@@ -13,9 +22,13 @@ import { isVoiceRecordingSupported } from "../../../voiceRecording";
 import { firstImageAttachment, messageActionSummary } from "../shared/messagePresentation";
 import type { Message, PendingLocalAttachment } from "../shared/types";
 import { createClientMessageId } from "../shared/messageState";
+import type { ReminderRule } from "../outbox/messageOutboxStore";
 import { ComposerContextThumb } from "../conversation/MessageAttachmentThumbs";
 import { AttachmentControls } from "./AttachmentControls";
 import { PendingAttachmentCard } from "./PendingAttachmentCard";
+import { SendSubmenu } from "./SendSubmenu";
+import { ScheduleMessageModal } from "./ScheduleMessageModal";
+import { ReminderModal } from "./ReminderModal";
 
 export const EMOJI_CATEGORY_ICONS: Partial<Record<Categories, ReactNode>> = {
   [Categories.SUGGESTED]: <History aria-hidden="true" size={18} />,
@@ -80,10 +93,13 @@ export function Composer({
   isUploading,
   isSendingMessage,
   isVoiceRecording,
+  messageDelayRemaining = 0,
   onVoicePressStart,
   onVoicePressEnd,
   onVoicePressCancel,
-  onSubmit
+  onSubmit,
+  onScheduleMessage,
+  onSetReminder
 }: {
   accessToken: string | null;
   selectedChat: Chat | null;
@@ -99,12 +115,12 @@ export function Composer({
   composer: string;
   onComposerChange: (value: string) => void;
   onComposerKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
-  onComposerFocus: () => void;
+  onComposerFocus?: () => void;
   onComposerSelectionUpdate: () => void;
   onComposerFormat: (kind: FormattingKind) => void;
   onComposerCut: () => void;
   onComposerCopy: () => void;
-  onComposerPaste: () => void;
+  onComposerPaste: (text?: string) => void;
   composerInputRef: RefObject<HTMLTextAreaElement | null>;
   composerFormattingSelectionRef: RefObject<TextSelection | null>;
   formattingToolbarAnchor: ToolbarAnchor | null;
@@ -135,12 +151,80 @@ export function Composer({
   isUploading: boolean;
   isSendingMessage: boolean;
   isVoiceRecording: boolean;
+  messageDelayRemaining?: number;
   onVoicePressStart: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onVoicePressEnd: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onVoicePressCancel: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onSubmit: (event: { preventDefault: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) => void | Promise<void>;
+  onScheduleMessage?: (scheduledDate: Date) => void | Promise<void>;
+  onSetReminder?: (rule: ReminderRule) => void | Promise<void>;
 }) {
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
+  const [isSendSubmenuOpen, setIsSendSubmenuOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const sendPressTimerRef = useRef<number | null>(null);
+  const sendPressStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const longPressTriggeredRef = useRef(false);
+
+  function handleSendPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (event.button !== 0) return;
+    longPressTriggeredRef.current = false;
+    sendPressStartPosRef.current = { x: event.clientX, y: event.clientY };
+    if (sendPressTimerRef.current) {
+      window.clearTimeout(sendPressTimerRef.current);
+    }
+    sendPressTimerRef.current = window.setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setIsSendSubmenuOpen(true);
+    }, 450);
+  }
+
+  function handleSendPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!sendPressStartPosRef.current) return;
+    const dx = Math.abs(event.clientX - sendPressStartPosRef.current.x);
+    const dy = Math.abs(event.clientY - sendPressStartPosRef.current.y);
+    if (dx > 10 || dy > 10) {
+      if (sendPressTimerRef.current) {
+        window.clearTimeout(sendPressTimerRef.current);
+        sendPressTimerRef.current = null;
+      }
+      sendPressStartPosRef.current = null;
+    }
+  }
+
+  function handleSendPointerUp(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (sendPressTimerRef.current) {
+      window.clearTimeout(sendPressTimerRef.current);
+      sendPressTimerRef.current = null;
+    }
+    sendPressStartPosRef.current = null;
+    if (longPressTriggeredRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
+      longPressTriggeredRef.current = false;
+      return;
+    }
+  }
+
+  function handleSendPointerCancel() {
+    if (sendPressTimerRef.current) {
+      window.clearTimeout(sendPressTimerRef.current);
+      sendPressTimerRef.current = null;
+    }
+    sendPressStartPosRef.current = null;
+    longPressTriggeredRef.current = false;
+  }
+
+  function handleSendContextMenu(event: ReactMouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    if (sendPressTimerRef.current) {
+      window.clearTimeout(sendPressTimerRef.current);
+      sendPressTimerRef.current = null;
+    }
+    longPressTriggeredRef.current = false;
+    setIsSendSubmenuOpen(true);
+  }
   const mentionMatch = /(?:^|\s)@([\w-]*)$/.exec(composer);
   const mentionCandidates = mentionMatch && selectedChat
     ? selectedChat.members.filter((member) => member.username.toLowerCase().startsWith(mentionMatch[1].toLowerCase())).slice(0, 6)
@@ -268,7 +352,7 @@ export function Composer({
                 skinTonesDisabled
                 categoryIcons={EMOJI_CATEGORY_ICONS}
                 theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
-                width={320}
+                width={360}
                 height={380}
               />
             </div>
@@ -281,15 +365,17 @@ export function Composer({
               rows={1}
               maxLength={4000}
               placeholder={
-                selectedChat?.type === "channel"
-                  ? channelCommentsDisabledForViewer
-                    ? "Comments are disabled"
-                    : missingCommentThread
-                      ? "Comment…"
-                      : canPostInSelectedChannel
-                        ? "Post an update"
-                        : "Message"
-                  : "Message"
+                isInThreadMode
+                  ? "Write a comment…"
+                  : selectedChat?.type === "channel"
+                    ? channelCommentsDisabledForViewer
+                      ? "Comments are disabled"
+                      : missingCommentThread
+                        ? "Comment…"
+                        : canPostInSelectedChannel
+                          ? "Post an update"
+                          : "Message"
+                    : "Message"
               }
               value={composer}
               disabled={channelCommentsDisabledForViewer || missingCommentThread}
@@ -337,34 +423,51 @@ export function Composer({
           {(!composer.trim() && pendingAttachments.length === 0 && isVoiceRecordingSupported()) || isVoiceRecording ? (
             <VoiceRecordButton
               isRecording={isVoiceRecording}
-              disabled={isUploading || isSendingMessage || channelCommentsDisabledForViewer || missingCommentThread}
+              disabled={isUploading || isSendingMessage || channelCommentsDisabledForViewer || missingCommentThread || messageDelayRemaining > 0}
               onPressStart={(event) => onVoicePressStart(event)}
               onPressEnd={(event) => onVoicePressEnd(event)}
               onPressCancel={onVoicePressCancel}
             />
           ) : (
-            <button
-              type="submit"
-              aria-label="Send message"
-              aria-busy={isUploading || isSendingMessage}
-              disabled={
-                isUploading ||
-                isSendingMessage ||
-                channelCommentsDisabledForViewer ||
-                missingCommentThread ||
-                (!composer.trim() && pendingAttachments.length === 0)
-              }
-              onPointerDown={(event) => {
-                event.preventDefault();
-              }}
-            >
-              <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                send
-              </span>
-              {(isUploading || isSendingMessage) && (
-                <span className="visually-hidden">{isUploading ? "Uploading" : "Sending"}</span>
-              )}
-            </button>
+            <div className="send-button-shell">
+              <button
+                type="submit"
+                aria-label={messageDelayRemaining > 0 ? `Message delay: ${messageDelayRemaining}s` : "Send message"}
+                aria-busy={isUploading || isSendingMessage}
+                disabled={
+                  isUploading ||
+                  isSendingMessage ||
+                  channelCommentsDisabledForViewer ||
+                  missingCommentThread ||
+                  messageDelayRemaining > 0 ||
+                  (!composer.trim() && pendingAttachments.length === 0)
+                }
+                onPointerDown={handleSendPointerDown}
+                onPointerMove={handleSendPointerMove}
+                onPointerUp={handleSendPointerUp}
+                onPointerCancel={handleSendPointerCancel}
+                onContextMenu={handleSendContextMenu}
+              >
+                {messageDelayRemaining > 0 ? (
+                  <span className="composer-delay-counter" aria-hidden={true}>
+                    {messageDelayRemaining}s
+                  </span>
+                ) : (
+                  <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                    send
+                  </span>
+                )}
+                {(isUploading || isSendingMessage) && (
+                  <span className="visually-hidden">{isUploading ? "Uploading" : "Sending"}</span>
+                )}
+              </button>
+              <SendSubmenu
+                isOpen={isSendSubmenuOpen}
+                onClose={() => setIsSendSubmenuOpen(false)}
+                onSelectSchedule={() => setIsScheduleModalOpen(true)}
+                onSelectReminder={() => setIsReminderModalOpen(true)}
+              />
+            </div>
           )}
         </div>
       </div>
@@ -380,12 +483,32 @@ export function Composer({
               skinTonesDisabled
               categoryIcons={EMOJI_CATEGORY_ICONS}
               theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
-              width={320}
+              width="100%"
               height={380}
             />
           </div>
         </div>
       )}
+      <ScheduleMessageModal
+        isOpen={isScheduleModalOpen}
+        messageText={composer}
+        attachments={pendingAttachments}
+        onClose={() => setIsScheduleModalOpen(false)}
+        onConfirmSchedule={(scheduledDate) => {
+          setIsScheduleModalOpen(false);
+          void onScheduleMessage?.(scheduledDate);
+        }}
+      />
+      <ReminderModal
+        isOpen={isReminderModalOpen}
+        messageText={composer}
+        attachments={pendingAttachments}
+        onClose={() => setIsReminderModalOpen(false)}
+        onConfirmReminder={(rule) => {
+          setIsReminderModalOpen(false);
+          void onSetReminder?.(rule);
+        }}
+      />
     </form>
   );
 }

@@ -538,7 +538,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
                     searchDisabled
                     skinTonesDisabled
                     theme={Theme.DARK}
-                    width={320}
+                    width={360}
                     height={360}
                   />
                 </div>

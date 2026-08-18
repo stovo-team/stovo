@@ -34,6 +34,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// FieldPinPermission holds the string denoting the pin_permission field in the database.
 	FieldPinPermission = "pin_permission"
+	// FieldMessageDelaySeconds holds the string denoting the message_delay_seconds field in the database.
+	FieldMessageDelaySeconds = "message_delay_seconds"
 	// EdgeFamily holds the string denoting the family edge name in mutations.
 	EdgeFamily = "family"
 	// EdgeCreator holds the string denoting the creator edge name in mutations.
@@ -106,6 +108,7 @@ var Columns = []string{
 	FieldCreatedAt,
 	FieldUpdatedAt,
 	FieldPinPermission,
+	FieldMessageDelaySeconds,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -135,6 +138,8 @@ var (
 	UpdatedAtValidator func(string) error
 	// DefaultPinPermission holds the default value on creation for the "pin_permission" field.
 	DefaultPinPermission string
+	// DefaultMessageDelaySeconds holds the default value on creation for the "message_delay_seconds" field.
+	DefaultMessageDelaySeconds int
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
 	IDValidator func(string) error
 )
@@ -200,6 +205,11 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByPinPermission orders the results by the pin_permission field.
 func ByPinPermission(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPinPermission, opts...).ToFunc()
+}
+
+// ByMessageDelaySeconds orders the results by the message_delay_seconds field.
+func ByMessageDelaySeconds(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMessageDelaySeconds, opts...).ToFunc()
 }
 
 // ByFamilyField orders the results by family field.
