@@ -218,7 +218,7 @@ class MediaLibraryPlugin : Plugin() {
             val destination = File(directory, "${uri.toString().hashCode().toUInt().toString(16)}.jpg")
             if (destination.exists() && destination.length() > 0) return Uri.fromFile(destination).toString()
 
-            val bitmap = if (mimeType.startsWith("video/")) {
+            val decodedBitmap: Bitmap? = if (mimeType.startsWith("video/")) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     try {
                         resolver.loadThumbnail(uri, Size(1600, 1600), null)
@@ -239,34 +239,34 @@ class MediaLibraryPlugin : Plugin() {
                             val scale = maxOf(width.toFloat() / maxDimension, height.toFloat() / maxDimension)
                             decoder.setTargetSize((width / scale).toInt().coerceAtLeast(1), (height / scale).toInt().coerceAtLeast(1))
                         }
-                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                        decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE)
                     }
                 } catch (_: Exception) {
                     null
                 }
             } else {
                 null
-            } ?: run {
-                resolver.openInputStream(uri)?.use { stream ->
-                    val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    BitmapFactory.decodeStream(stream, null, boundsOptions)
-                    val width = boundsOptions.outWidth
-                    val height = boundsOptions.outHeight
-                    var sampleSize = 1
-                    val maxDimension = 2048
-                    if (width > maxDimension || height > maxDimension) {
-                        val maxSide = maxOf(width, height)
-                        while ((maxSide / sampleSize) > maxDimension * 2) {
-                            sampleSize *= 2
-                        }
+            }
+
+            val bitmap: Bitmap = decodedBitmap ?: resolver.openInputStream(uri)?.use { stream ->
+                val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeStream(stream, null, boundsOptions)
+                val width = boundsOptions.outWidth
+                val height = boundsOptions.outHeight
+                var sampleSize = 1
+                val maxDimension = 2048
+                if (width > maxDimension || height > maxDimension) {
+                    val maxSide = maxOf(width, height)
+                    while ((maxSide / sampleSize) > maxDimension * 2) {
+                        sampleSize *= 2
                     }
-                    resolver.openInputStream(uri)?.use { decodeStream ->
-                        val decodeOptions = BitmapFactory.Options().apply {
-                            inSampleSize = sampleSize
-                            inPreferredConfig = Bitmap.Config.ARGB_8888
-                        }
-                        BitmapFactory.decodeStream(decodeStream, null, decodeOptions)
+                }
+                resolver.openInputStream(uri)?.use { decodeStream ->
+                    val decodeOptions = BitmapFactory.Options().apply {
+                        inSampleSize = sampleSize
+                        inPreferredConfig = Bitmap.Config.ARGB_8888
                     }
+                    BitmapFactory.decodeStream(decodeStream, null, decodeOptions)
                 }
             } ?: return null
 
