@@ -660,16 +660,19 @@ export function useMessageComposer({
       setIsUploading(localAttachments.length > 0);
       onError(null);
 
-      // Persist to local outbox queue first so it survives restarts/crashes
-      await enqueueOutboxMessage(outboxItem);
-      if (delaySeconds > 0) {
-        setLastSentTimestampByChat((prev) => ({
-          ...prev,
-          [selectedChat.id]: Date.now()
-        }));
+      // Clear composer state immediately and keep focus synchronously so mobile keyboard never dismisses
+      clearComposerFormattingSelection();
+      setComposer("");
+      resetComposerHeight();
+      setPendingAttachments([]);
+      setReplyTarget(null);
+      if (chatId) {
+        window.localStorage.removeItem(`stovo:draft:${chatId}`);
       }
+      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+      composerInputRef.current?.focus({ preventScroll: true });
 
-      // Optimistically display in conversation
+      // Optimistically display in conversation immediately
       applyMessagesForChat(selectedChat.id, (current) => [...current, optimisticMessage]);
       onChatsUpdate((current) =>
         current.map((chat) =>
@@ -679,17 +682,17 @@ export function useMessageComposer({
         )
       );
 
-      // Clear composer state immediately
-      clearComposerFormattingSelection();
-      setComposer("");
-      resetComposerHeight();
-      requestAnimationFrame(() => composerInputRef.current?.focus());
-      setPendingAttachments([]);
-      setReplyTarget(null);
-      if (chatId) {
-        window.localStorage.removeItem(`stovo:draft:${chatId}`);
+      // Persist to local outbox queue
+      await enqueueOutboxMessage(outboxItem);
+      if (delaySeconds > 0) {
+        setLastSentTimestampByChat((prev) => ({
+          ...prev,
+          [selectedChat.id]: Date.now()
+        }));
       }
-      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+
+      // Ensure focus remains persistent after async queuing
+      composerInputRef.current?.focus({ preventScroll: true });
 
       // Trigger background outbox drain
       if (triggerDrain) {
@@ -824,6 +827,18 @@ export function useMessageComposer({
     };
 
     try {
+      // Clear composer state immediately
+      clearComposerFormattingSelection();
+      setComposer("");
+      resetComposerHeight();
+      composerInputRef.current?.focus({ preventScroll: true });
+      setPendingAttachments([]);
+      setReplyTarget(null);
+      if (chatId) {
+        window.localStorage.removeItem(`stovo:draft:${chatId}`);
+      }
+      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+
       await enqueueOutboxMessage(outboxItem);
 
       // Optimistically display in conversation
@@ -836,17 +851,7 @@ export function useMessageComposer({
         )
       );
 
-      // Clear composer state
-      clearComposerFormattingSelection();
-      setComposer("");
-      resetComposerHeight();
-      requestAnimationFrame(() => composerInputRef.current?.focus());
-      setPendingAttachments([]);
-      setReplyTarget(null);
-      if (chatId) {
-        window.localStorage.removeItem(`stovo:draft:${chatId}`);
-      }
-      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+      composerInputRef.current?.focus({ preventScroll: true });
 
       if (triggerDrain) {
         void triggerDrain();
@@ -880,7 +885,7 @@ export function useMessageComposer({
       return;
     }
 
-    const initialDate = computeInitialReminderDate(rule);
+    const initialDate = computeInitialReminderDate(rule, new Date());
     const scheduledFor = initialDate.toISOString();
     const clientMessageId = createClientMessageId();
     const createdAt = new Date().toISOString();
@@ -971,6 +976,18 @@ export function useMessageComposer({
     };
 
     try {
+      // Clear composer state immediately
+      clearComposerFormattingSelection();
+      setComposer("");
+      resetComposerHeight();
+      composerInputRef.current?.focus({ preventScroll: true });
+      setPendingAttachments([]);
+      setReplyTarget(null);
+      if (chatId) {
+        window.localStorage.removeItem(`stovo:draft:${chatId}`);
+      }
+      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+
       await enqueueOutboxMessage(outboxItem);
 
       // Optimistically display in conversation
@@ -983,17 +1000,7 @@ export function useMessageComposer({
         )
       );
 
-      // Clear composer state
-      clearComposerFormattingSelection();
-      setComposer("");
-      resetComposerHeight();
-      requestAnimationFrame(() => composerInputRef.current?.focus());
-      setPendingAttachments([]);
-      setReplyTarget(null);
-      if (chatId) {
-        window.localStorage.removeItem(`stovo:draft:${chatId}`);
-      }
-      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+      composerInputRef.current?.focus({ preventScroll: true });
 
       if (triggerDrain) {
         void triggerDrain();

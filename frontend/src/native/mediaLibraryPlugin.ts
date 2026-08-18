@@ -44,6 +44,17 @@ export function nativeMediaPreviewUrl(item: NativeMediaItem): string {
   return item.thumbnailPath ? Capacitor.convertFileSrc(item.thumbnailPath) : item.uri;
 }
 
+export async function fetchNativeMediaFileUrl(id: string): Promise<string | null> {
+  if (!isNativeMediaLibraryAvailable() || !id) return null;
+  try {
+    const result = await MediaLibraryPlugin.copyMedia({ ids: [id] });
+    const first = result.files?.[0];
+    return first?.path ? Capacitor.convertFileSrc(first.path) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function selectNativeMediaFiles(
   ids: string[],
   fetcher: typeof fetch = fetch

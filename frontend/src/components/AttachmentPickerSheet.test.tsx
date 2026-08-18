@@ -133,10 +133,17 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(dismissalSource).toMatch(/if\s*\(hasGalleryPreview\s*&&\s*closeGalleryPreview\)\s*\{\s*closeGalleryPreview\(\);\s*return;\s*\}/);
   });
 
-  it("generates uncropped full-sized previews in native MediaLibraryPlugin", () => {
+  it("generates uncropped high-quality previews in native MediaLibraryPlugin", () => {
     const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
     // Does not perform square center cropping
     expect(nativePluginSource).not.toContain("Bitmap.createBitmap(bitmap, x, y, size, size)");
-    expect(nativePluginSource).toContain("Size(1600, 1600)");
+    expect(nativePluginSource).toContain("ImageDecoder");
+    expect(nativePluginSource).toContain("maxDimension = 2048");
+  });
+
+  it("fetches full resolution original media for ImageLightbox preview", () => {
+    expect(attachmentSheetSource).toContain("fetchNativeMediaFileUrl");
+    expect(attachmentSheetSource).toContain("fullPreviewUrl");
+    expect(attachmentSheetSource).toMatch(/imageUrl=\{fullPreviewUrl\s*\|\|\s*nativeMediaPreviewUrl\(previewMediaItem\)\}/);
   });
 });

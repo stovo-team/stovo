@@ -567,7 +567,7 @@ export function Composer({
           {((composerLineCount ?? composer.split("\n").length) >= 3) && (
             <MessageEnlargeButton onClick={onEnlargeComposer} />
           )}
-          {(!composer.trim() && pendingAttachments.length === 0 && isVoiceRecordingSupported()) || isVoiceRecording ? (
+          {((!composer.trim() && pendingAttachments.length === 0 && !isSendingMessage && isVoiceRecordingSupported()) || isVoiceRecording) ? (
             <VoiceRecordButton
               isRecording={isVoiceRecording}
               disabled={isUploading || isSendingMessage || channelCommentsDisabledForViewer || missingCommentThread || messageDelayRemaining > 0}
@@ -590,7 +590,16 @@ export function Composer({
                   messageDelayRemaining > 0 ||
                   (!composer.trim() && pendingAttachments.length === 0)
                 }
-                onPointerDown={handleSendPointerDown}
+                onMouseDown={(event) => {
+                  // Prevent default focus steal so mobile virtual keyboard doesn't dismiss and reopen
+                  event.preventDefault();
+                }}
+                onPointerDown={(event) => {
+                  if (event.button === 0 && composerInputRef.current) {
+                    composerInputRef.current.focus({ preventScroll: true });
+                  }
+                  handleSendPointerDown(event);
+                }}
                 onPointerMove={handleSendPointerMove}
                 onPointerUp={handleSendPointerUp}
                 onPointerCancel={handleSendPointerCancel}
