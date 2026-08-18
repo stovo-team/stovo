@@ -115,24 +115,25 @@ export function ReminderModal({
     onClose();
   }
 
-  const previewSnippet = messageText.trim()
-    ? messageText.length > 80
-      ? `${messageText.slice(0, 80)}…`
-      : messageText
-    : attachments.length > 0
+  const previewText = (messageText ?? "").trim();
+  const previewSnippet = previewText
+    ? previewText.length > 80
+      ? `${previewText.slice(0, 80)}…`
+      : previewText
+    : attachments && attachments.length > 0
     ? `${attachments.length} attachment${attachments.length > 1 ? "s" : ""}`
     : "Empty message";
 
   const repeatSummary = useMemo(() => {
     let freqText = "daily";
     if (frequency === "weekly") {
-      const dayNames = selectedDaysOfWeek
+      const dayNames = (selectedDaysOfWeek || [])
         .map((val) => DAYS_OF_WEEK.find((d) => d.value === val)?.label)
         .filter(Boolean)
         .join(", ");
       freqText = `weekly on ${dayNames || "selected days"}`;
     } else if (frequency === "monthly") {
-      freqText = `monthly on day(s) ${selectedDaysOfMonth.join(", ")}`;
+      freqText = `monthly on day(s) ${(selectedDaysOfMonth || []).join(", ")}`;
     }
     const safeDate = startDate || "start date";
     const safeTime = startTime || "09:00";
@@ -140,7 +141,7 @@ export function ReminderModal({
     return `Starts on ${safeDate} at ${safeTime}, repeats ${freqText} for ${safeCount} time${safeCount > 1 ? "s" : ""}.`;
   }, [startDate, startTime, frequency, selectedDaysOfWeek, selectedDaysOfMonth, repeatCount]);
 
-  return createPortal(
+  const modalContent = (
     <div
       className="modal-backdrop reminder-modal-backdrop"
       onClick={onClose}
@@ -326,7 +327,12 @@ export function ReminderModal({
           </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
+
+  if (typeof document === "undefined" || !document.body) {
+    return modalContent;
+  }
+
+  return createPortal(modalContent, document.body);
 }

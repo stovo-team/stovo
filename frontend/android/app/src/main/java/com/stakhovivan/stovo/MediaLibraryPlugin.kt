@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.ContentUris
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.os.Build
 import android.net.Uri
 import android.provider.MediaStore
@@ -141,10 +143,12 @@ class MediaLibraryPlugin : Plugin() {
             try {
                 val name = displayName(uri) ?: "media-$index"
                 val mimeType = resolver.getType(uri) ?: "application/octet-stream"
-                val destination = File(destinationDirectory, "${UUID.randomUUID()}-${sanitize(name)}")
-                resolver.openInputStream(uri)?.use { input ->
-                    destination.outputStream().use { output -> input.copyTo(output) }
-                } ?: continue
+                val destination = File(destinationDirectory, "${uri.toString().hashCode().toUInt().toString(16)}-${sanitize(name)}")
+                if (!destination.exists() || destination.length() == 0L) {
+                    resolver.openInputStream(uri)?.use { input ->
+                        destination.outputStream().use { output -> input.copyTo(output) }
+                    } ?: continue
+                }
                 files.put(JSObject().apply {
                     put("path", Uri.fromFile(destination).toString())
                     put("name", name)
@@ -180,15 +184,16 @@ class MediaLibraryPlugin : Plugin() {
             while (count < limit && cursor.moveToNext()) {
                 val id = cursor.getLong(idIndex)
                 val uri = ContentUris.withAppendedId(collection, id)
+                val mimeType = cursor.getString(mimeIndex) ?: "application/octet-stream"
                 items.put(JSObject().apply {
                     // The URI, rather than an unscoped numeric id, is stable across the
                     // image/video collections and can be copied with partial access.
                     put("id", uri.toString())
                     put("uri", uri.toString())
                     put("name", cursor.getString(nameIndex) ?: "media-$id")
-                    put("mimeType", cursor.getString(mimeIndex) ?: "application/octet-stream")
+                    put("mimeType", mimeType)
                     put("durationMs", cursor.getLong(durationIndex).coerceAtLeast(0))
-                    createPreview(uri)?.let { put("thumbnailPath", it) }
+                    createPreview(uri, mimeType)?.let { put("thumbnailPath", it) }
                 })
                 count++
             }
@@ -206,17 +211,68 @@ class MediaLibraryPlugin : Plugin() {
     }
 
     /** Exports a preview because the WebView cannot render content:// URIs. */
-    private fun createPreview(uri: Uri): String? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+    private fun createPreview(uri: Uri, mimeType: String): String? {
         val resolver = resolver() ?: return null
         return try {
-            val directory = File(context.cacheDir, "media-library-previews-v2").apply { mkdirs() }
+            val directory = File(context.cacheDir, "media-library-previews-v4").apply { mkdirs() }
             val destination = File(directory, "${uri.toString().hashCode().toUInt().toString(16)}.jpg")
-            // Reuse previews across picker openings; loading previews from MediaStore
-            // on every open delays the first usable gallery frame substantially.
             if (destination.exists() && destination.length() > 0) return Uri.fromFile(destination).toString()
-            val bitmap = resolver.loadThumbnail(uri, Size(1600, 1600), null)
-            destination.outputStream().use { output -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, output) }
+
+            val bitmap: Bitmap? = if (mimeType.startsWith("video/")) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        resolver.loadThumbnail(uri, Size(1600, 1600), null)
+                    } catch (_: Exception) {
+                        null
+                    }
+                } else {
+                    null
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                try {
+                    val source = ImageDecoder.createSource(resolver, uri)
+                    ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                        val maxDimension = 2048
+                        val width = info.size.width
+                        val height = info.size.height
+                        if (width > maxDimension || height > maxDimension) {
+                            val scale = maxOf(width.toFloat() / maxDimension, height.toFloat() / maxDimension)
+                            decoder.setTargetSize((width / scale).toInt().coerceAtLeast(1), (height / scale).toInt().coerceAtLeast(1))
+                        }
+                        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                    }
+                } catch (_: Exception) {
+                    null
+                }
+            } else {
+                null
+            } ?: run {
+                resolver.openInputStream(uri)?.use { stream ->
+                    val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeStream(stream, null, boundsOptions)
+                    val width = boundsOptions.outWidth
+                    val height = boundsOptions.outHeight
+                    var sampleSize = 1
+                    val maxDimension = 2048
+                    if (width > maxDimension || height > maxDimension) {
+                        val maxSide = maxOf(width, height)
+                        while ((maxSide / sampleSize) > maxDimension * 2) {
+                            sampleSize *= 2
+                        }
+                    }
+                    resolver.openInputStream(uri)?.use { decodeStream ->
+                        val decodeOptions = BitmapFactory.Options().apply {
+                            inSampleSize = sampleSize
+                            inPreferredConfig = Bitmap.Config.ARGB_8888
+                        }
+                        BitmapFactory.decodeStream(decodeStream, null, decodeOptions)
+                    }
+                }
+            } ?: return null
+
+            destination.outputStream().use { output ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)
+            }
             Uri.fromFile(destination).toString()
         } catch (_: Exception) {
             null

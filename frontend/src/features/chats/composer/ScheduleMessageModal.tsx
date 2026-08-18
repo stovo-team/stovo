@@ -76,15 +76,16 @@ export function ScheduleMessageModal({
     onClose();
   }
 
-  const previewSnippet = messageText.trim()
-    ? messageText.length > 80
-      ? `${messageText.slice(0, 80)}…`
-      : messageText
-    : attachments.length > 0
+  const previewText = (messageText ?? "").trim();
+  const previewSnippet = previewText
+    ? previewText.length > 80
+      ? `${previewText.slice(0, 80)}…`
+      : previewText
+    : attachments && attachments.length > 0
     ? `${attachments.length} attachment${attachments.length > 1 ? "s" : ""}`
     : "Empty message";
 
-  return createPortal(
+  const modalContent = (
     <div
       className="modal-backdrop schedule-modal-backdrop"
       onClick={onClose}
@@ -186,7 +187,12 @@ export function ScheduleMessageModal({
           </div>
         </div>
       </div>
-    </div>,
-    document.body
+    </div>
   );
+
+  if (typeof document === "undefined" || !document.body) {
+    return modalContent;
+  }
+
+  return createPortal(modalContent, document.body);
 }
