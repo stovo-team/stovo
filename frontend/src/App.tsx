@@ -275,6 +275,7 @@ function ClusterRoutes() {
     if (pathname.startsWith(`${prefix}/app/files`) || pathname.startsWith("/app/files")) return 1;
     if (pathname.startsWith(`${prefix}/app/plans`) || pathname.startsWith("/app/plans")) return 2;
     if (pathname.startsWith(`${prefix}/app/settings`) || pathname.startsWith("/app/settings")) return 3;
+    if (pathname.startsWith(`${prefix}/app/admin`) || pathname.startsWith("/app/admin")) return 4;
     return null;
   };
   const previousIndex = tabIndex(previousPathRef.current);
