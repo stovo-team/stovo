@@ -1,5 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { BellRing, Calendar, Repeat, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { BellRing, Repeat, X } from "lucide-react";
 import type { ReminderRule } from "../outbox/messageOutboxStore";
 import type { PendingLocalAttachment } from "../shared/types";
 
@@ -78,7 +79,7 @@ export function ReminderModal({
   function toggleDayOfWeek(day: number) {
     setSelectedDaysOfWeek((current) => {
       if (current.includes(day)) {
-        if (current.length === 1) return current; // Keep at least 1
+        if (current.length === 1) return current;
         return current.filter((d) => d !== day);
       }
       return [...current, day].sort((a, b) => a - b);
@@ -88,23 +89,26 @@ export function ReminderModal({
   function toggleDayOfMonth(day: number) {
     setSelectedDaysOfMonth((current) => {
       if (current.includes(day)) {
-        if (current.length === 1) return current; // Keep at least 1
+        if (current.length === 1) return current;
         return current.filter((d) => d !== day);
       }
       return [...current, day].sort((a, b) => a - b);
     });
   }
 
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  function handleConfirm() {
+    const safeStartDate = startDate || formatDateToIsoString(new Date());
+    const safeStartTime = startTime || "09:00";
+    const safeCount = Math.max(1, Number(repeatCount) || 1);
+
     const rule: ReminderRule = {
       frequency,
-      startDate,
-      time: startTime,
-      repeatCount: Math.max(1, repeatCount),
-      remainingCount: Math.max(1, repeatCount),
-      ...(frequency === "weekly" ? { daysOfWeek: selectedDaysOfWeek } : {}),
-      ...(frequency === "monthly" ? { daysOfMonth: selectedDaysOfMonth } : {})
+      startDate: safeStartDate,
+      time: safeStartTime,
+      repeatCount: safeCount,
+      remainingCount: safeCount,
+      ...(frequency === "weekly" ? { daysOfWeek: selectedDaysOfWeek.length > 0 ? selectedDaysOfWeek : [1] } : {}),
+      ...(frequency === "monthly" ? { daysOfMonth: selectedDaysOfMonth.length > 0 ? selectedDaysOfMonth : [1] } : {})
     };
 
     onConfirmReminder(rule);
@@ -130,17 +134,25 @@ export function ReminderModal({
     } else if (frequency === "monthly") {
       freqText = `monthly on day(s) ${selectedDaysOfMonth.join(", ")}`;
     }
-    return `Starts on ${startDate} at ${startTime}, repeats ${freqText} for ${repeatCount} time${repeatCount > 1 ? "s" : ""}.`;
+    const safeDate = startDate || "start date";
+    const safeTime = startTime || "09:00";
+    const safeCount = Math.max(1, Number(repeatCount) || 1);
+    return `Starts on ${safeDate} at ${safeTime}, repeats ${freqText} for ${safeCount} time${safeCount > 1 ? "s" : ""}.`;
   }, [startDate, startTime, frequency, selectedDaysOfWeek, selectedDaysOfMonth, repeatCount]);
 
-  return (
-    <div className="modal-backdrop reminder-modal-backdrop" onClick={onClose}>
+  return createPortal(
+    <div
+      className="modal-backdrop reminder-modal-backdrop"
+      onClick={onClose}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <div
         className="modal-card reminder-modal-card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="reminder-modal-title"
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="modal-card-header">
           <div className="modal-card-title-wrap">
@@ -159,7 +171,7 @@ export function ReminderModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-card-body">
+        <div className="modal-card-body">
           <div className="reminder-preview-box">
             <span className="reminder-preview-label">Reminder Message:</span>
             <span className="reminder-preview-text">"{previewSnippet}"</span>
@@ -176,7 +188,6 @@ export function ReminderModal({
                 className="reminder-input"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                required
               />
             </div>
             <div className="reminder-form-group">
@@ -189,7 +200,6 @@ export function ReminderModal({
                 className="reminder-input"
                 value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
-                required
               />
             </div>
           </div>
@@ -310,12 +320,13 @@ export function ReminderModal({
             <button type="button" className="btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
+            <button type="button" className="btn-primary" onClick={handleConfirm}>
               Set Reminder
             </button>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -73,6 +73,27 @@ export type UseMessageComposerParams = {
   triggerDrain?: () => Promise<void>;
 };
 
+export function extractMentionedUserIds(
+  members: Chat["members"] | undefined,
+  currentUserId: string | undefined,
+  content: string | null | undefined
+): string[] {
+  if (!members || members.length === 0 || !content) return [];
+  const text = content.trim();
+  if (!text) return [];
+
+  return members
+    .filter((member) => {
+      const handle = (member.username || member.displayName || "").trim();
+      if (!handle) return false;
+      if (currentUserId && member.id === currentUserId) return false;
+      const escaped = handle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`(^|\\s)@${escaped}(?=\\s|$|[.,!?])`, "i");
+      return regex.test(text);
+    })
+    .map((member) => member.id);
+}
+
 const COMPOSER_MAX_LINES = 3;
 
 export function useMessageComposer({
@@ -582,9 +603,7 @@ export function useMessageComposer({
       isFavorite: false
     }));
 
-    const mentionedUserIds = selectedChat.members
-      .filter((member) => member.id !== currentUser.id && new RegExp(`(^|\\s)@${member.username.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?=\\s|$|[.,!?])`, "i").test(draftContent))
-      .map((member) => member.id);
+    const mentionedUserIds = extractMentionedUserIds(selectedChat.members, currentUser.id, draftContent);
 
     const optimisticMessage: Message = {
       id: `pending:${clientMessageId}`,
@@ -754,9 +773,7 @@ export function useMessageComposer({
       isFavorite: false
     }));
 
-    const mentionedUserIds = selectedChat.members
-      .filter((member) => member.id !== currentUser.id && new RegExp(`(^|\\s)@${member.username.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?=\\s|$|[.,!?])`, "i").test(draftContent))
-      .map((member) => member.id);
+    const mentionedUserIds = extractMentionedUserIds(selectedChat.members, currentUser.id, draftContent);
 
     const optimisticMessage: Message = {
       id: `pending:${clientMessageId}`,
@@ -903,9 +920,7 @@ export function useMessageComposer({
       isFavorite: false
     }));
 
-    const mentionedUserIds = selectedChat.members
-      .filter((member) => member.id !== currentUser.id && new RegExp(`(^|\\s)@${member.username.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?=\\s|$|[.,!?])`, "i").test(draftContent))
-      .map((member) => member.id);
+    const mentionedUserIds = extractMentionedUserIds(selectedChat.members, currentUser.id, draftContent);
 
     const optimisticMessage: Message = {
       id: `pending:${clientMessageId}`,

@@ -531,4 +531,23 @@ describe("MessageMarkdown", () => {
     expect(container.querySelector("h1")?.textContent).toBe("Hello");
     expect(container.querySelector("ul li")?.textContent).toBe("item");
   });
+
+  it("parses and renders @user mentions correctly", () => {
+    const nodes = parseStovoMarkdown("Hello @alex and @jane_doe! Also @bob.");
+    expect(nodes).toEqual([
+      text("Hello "),
+      { type: "mention", username: "alex", children: [text("@alex")] },
+      text(" and "),
+      { type: "mention", username: "jane_doe", children: [text("@jane_doe")] },
+      text("! Also "),
+      { type: "mention", username: "bob", children: [text("@bob")] },
+      text(".")
+    ]);
+
+    const container = renderMessage("Hey @alex check this out");
+    const mention = container.querySelector(".message-mention");
+    expect(mention).not.toBeNull();
+    expect(mention?.textContent).toBe("@alex");
+    expect(mention?.getAttribute("data-username")).toBe("alex");
+  });
 });

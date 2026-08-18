@@ -343,6 +343,14 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("TURN_REALM=%s", get("TURN_REALM", "family-messenger")),
 		fmt.Sprintf("TURN_USERNAME=%s", get("TURN_USERNAME", "family")),
 		fmt.Sprintf("TURN_PASSWORD=%s", get("TURN_PASSWORD", "change_me")),
+		fmt.Sprintf("GROQ_API_KEY=%s", get("GROQ_API_KEY", "")),
+		fmt.Sprintf("GROQ_STT_MODEL=%s", get("GROQ_STT_MODEL", "whisper-large-v3-turbo")),
+		fmt.Sprintf("GROQ_CHAT_MODEL=%s", get("GROQ_CHAT_MODEL", "")),
+		fmt.Sprintf("GROQ_STT_COST_PER_AUDIO_HOUR_USD=%s", get("GROQ_STT_COST_PER_AUDIO_HOUR_USD", "0.04")),
+		fmt.Sprintf("AI_CALL_TRANSCRIPTION_ENABLED=%s", get("AI_CALL_TRANSCRIPTION_ENABLED", "true")),
+		fmt.Sprintf("LIVEKIT_URL=%s", get("LIVEKIT_URL", "")),
+		fmt.Sprintf("LIVEKIT_API_KEY=%s", get("LIVEKIT_API_KEY", "")),
+		fmt.Sprintf("LIVEKIT_API_SECRET=%s", get("LIVEKIT_API_SECRET", "")),
 	}
 }
 

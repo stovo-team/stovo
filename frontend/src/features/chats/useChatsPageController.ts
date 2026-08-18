@@ -163,7 +163,7 @@ export function useChatsPageController({
   } = composerApi;
 
   const realtime = useChatRealtime({
-    currentUserId: currentUser?.id, chatsRef, activeChatIdRef, applyMessagesForChat,
+    currentUserId: currentUser?.id, accessTokenRef, chatsRef, activeChatIdRef, applyMessagesForChat,
     onChatsUpdate: setChats, onSelectedChatUpdate: setSelectedChat, onTypingNamesUpdate: setTypingNames,
     onPinnedMessagesUpdate: setPinnedMessages, onPinIndexUpdate: setPinIndex,
     onMessageContextMenuUpdate: setMessageContextMenu, onEditTargetMessageUpdate: setEditTargetMessage,

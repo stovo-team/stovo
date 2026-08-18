@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { CalendarClock, X } from "lucide-react";
 import type { PendingLocalAttachment } from "../shared/types";
 
@@ -69,8 +70,7 @@ export function ScheduleMessageModal({
     setSelectedDatetimeStr(toLocalDatetimeInputString(d));
   }
 
-  function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  function handleConfirm() {
     if (!isValidFuture) return;
     onConfirmSchedule(parsedDate);
     onClose();
@@ -84,14 +84,19 @@ export function ScheduleMessageModal({
     ? `${attachments.length} attachment${attachments.length > 1 ? "s" : ""}`
     : "Empty message";
 
-  return (
-    <div className="modal-backdrop schedule-modal-backdrop" onClick={onClose}>
+  return createPortal(
+    <div
+      className="modal-backdrop schedule-modal-backdrop"
+      onClick={onClose}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <div
         className="modal-card schedule-modal-card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="schedule-modal-title"
         onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="modal-card-header">
           <div className="modal-card-title-wrap">
@@ -110,7 +115,7 @@ export function ScheduleMessageModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-card-body">
+        <div className="modal-card-body">
           <div className="schedule-preview-box">
             <span className="schedule-preview-label">Message:</span>
             <span className="schedule-preview-text">"{previewSnippet}"</span>
@@ -159,7 +164,6 @@ export function ScheduleMessageModal({
               value={selectedDatetimeStr}
               min={nowMinStr}
               onChange={(e) => setSelectedDatetimeStr(e.target.value)}
-              required
             />
           </div>
 
@@ -172,15 +176,17 @@ export function ScheduleMessageModal({
               Cancel
             </button>
             <button
-              type="submit"
+              type="button"
               className="btn-primary"
               disabled={!isValidFuture}
+              onClick={handleConfirm}
             >
               Schedule Message
             </button>
           </div>
-        </form>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
