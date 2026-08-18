@@ -58,13 +58,13 @@
   --warning: #f59e0b;
   --shadow: 0 18px 44px rgba(15, 23, 42, 0.1);
   --shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.12);
-  --motion-route-duration: 220ms;
-  --motion-route-duration-fast: 160ms;
-  --motion-route-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --motion-route-distance: 24px;
-  --motion-route-distance-tight: 12px;
-  --motion-fade-duration: 140ms;
-  --motion-surface-duration: 200ms;
+  --motion-route-duration: 280ms;
+  --motion-route-duration-fast: 180ms;
+  --motion-route-ease: cubic-bezier(0.25, 1, 0.4, 1);
+  --motion-route-distance: 48px;
+  --motion-route-distance-tight: 16px;
+  --motion-fade-duration: 160ms;
+  --motion-surface-duration: 260ms;
   --radius-control: 8px;
   --radius-card: 8px;
   --radius-bubble: 18px;
@@ -4189,11 +4189,41 @@ h2 {
 @keyframes messageBubblePopIn {
   0% {
     opacity: 0;
-    transform: translate3d(0, 8px, 0) scale(0.96);
+    transform: translate3d(0, 14px, 0) scale(0.94);
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1.008);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes messageBubbleOutgoingPopIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0) scale(0.92);
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes messageBubbleIncomingPopIn {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.95);
   }
   70% {
     opacity: 1;
-    transform: translate3d(0, -1px, 0) scale(1.008);
+    transform: translate3d(0, -1px, 0) scale(1.004);
   }
   100% {
     opacity: 1;
@@ -4218,7 +4248,8 @@ h2 {
   padding: 6px 10px 5px 12px;
   position: relative;
   touch-action: pan-y;
-  animation: messageBubblePopIn 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  animation: messageBubbleIncomingPopIn 0.28s var(--motion-route-ease) both;
+  transform-origin: left bottom;
   /* Keep selectable text out of a composited transform layer. Android WebView
      can otherwise paint black artifacts around native selection handles. */
   transform: none;
@@ -4508,10 +4539,13 @@ h2 {
   border-radius: var(--radius-bubble) var(--radius-bubble) calc(var(--radius-bubble) * 0.22) var(--radius-bubble);
   color: #ffffff;
   justify-self: end;
+  animation: messageBubbleOutgoingPopIn 0.28s var(--motion-route-ease) both;
+  transform-origin: right bottom;
 }
 
 .message-bubble.sending {
-  opacity: 0.72;
+  opacity: 0.76;
+  transition: opacity 0.2s ease;
 }
 
 .message-bubble.failed {
@@ -6212,6 +6246,32 @@ span.message-spoiler.is-revealed {
   min-width: 44px;
   padding: 0;
   width: 44px;
+  transition:
+    transform var(--motion-surface-duration) var(--motion-route-ease),
+    background-color var(--motion-surface-duration) var(--motion-route-ease),
+    opacity var(--motion-surface-duration) var(--motion-route-ease),
+    box-shadow var(--motion-surface-duration) var(--motion-route-ease);
+}
+
+.message-composer button[type="submit"]:active,
+.message-composer .composer-send-button:active {
+  transform: scale(0.92);
+}
+
+.message-composer .composer-send-button.is-sending .ms-icon {
+  animation: composerSendIconPulse 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes composerSendIconPulse {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2px, -3px, 0) scale(0.88);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 .message-composer button[type="submit"]:disabled,
@@ -6230,6 +6290,22 @@ span.message-spoiler.is-revealed {
   50% {
     box-shadow: 0 0 0 8px color-mix(in srgb, var(--danger) 28%, transparent);
     transform: scale(1.06);
+  }
+}
+
+.send-button-shell,
+.message-composer .composer-voice-button {
+  animation: composerActionButtonEnter 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes composerActionButtonEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
@@ -11376,15 +11452,18 @@ span.message-spoiler.is-revealed {
     grid-row: 1;
     transition:
       opacity var(--motion-route-duration) var(--motion-route-ease),
-      transform var(--motion-route-duration) var(--motion-route-ease),
-      visibility var(--motion-route-duration) step-end;
+      transform var(--motion-route-duration) var(--motion-route-ease);
   }
 
   .messenger-shell.chat-list-view .chat-detail {
     opacity: 0;
     pointer-events: none;
-    transform: translateX(var(--motion-route-distance));
+    transform: translate3d(var(--motion-route-distance), 0, 0);
     visibility: hidden;
+    transition:
+      opacity var(--motion-route-duration) var(--motion-route-ease),
+      transform var(--motion-route-duration) var(--motion-route-ease),
+      visibility 0s var(--motion-route-duration);
   }
 
   .messenger-shell.chat-list-view .chat-sidebar {
@@ -11394,8 +11473,12 @@ span.message-spoiler.is-revealed {
     box-shadow: none;
     opacity: 1;
     pointer-events: auto;
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
     visibility: visible;
+    transition:
+      opacity var(--motion-route-duration) var(--motion-route-ease),
+      transform var(--motion-route-duration) var(--motion-route-ease),
+      visibility 0s 0s;
   }
 
   .messenger-shell.chat-list-view .chat-sidebar-header {
@@ -11491,13 +11574,21 @@ span.message-spoiler.is-revealed {
        surface untransformed; the hidden list state still supplies the slide. */
     transform: none;
     visibility: visible;
+    transition:
+      opacity var(--motion-route-duration) var(--motion-route-ease),
+      transform var(--motion-route-duration) var(--motion-route-ease),
+      visibility 0s 0s;
   }
 
   .messenger-shell.has-active-chat .chat-sidebar {
     opacity: 0;
     pointer-events: none;
-    transform: translateX(calc(-1 * var(--motion-route-distance-tight)));
+    transform: translate3d(calc(-1 * var(--motion-route-distance-tight)), 0, 0);
     visibility: hidden;
+    transition:
+      opacity var(--motion-route-duration) var(--motion-route-ease),
+      transform var(--motion-route-duration) var(--motion-route-ease),
+      visibility 0s var(--motion-route-duration);
   }
 
   .messenger-shell.has-active-chat .chat-detail-header--floating {
@@ -11763,6 +11854,15 @@ span.message-spoiler.is-revealed {
     height: 40px;
     flex-shrink: 0;
     border: 0;
+  }
+
+  .mobile-back-button:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--accent-soft) 72%, transparent);
+    border-color: transparent;
+  }
+
+  .mobile-back-button:active:not(:disabled) {
+    transform: none;
   }
 
   .message-selection-actions {
@@ -12290,6 +12390,17 @@ span.message-spoiler.is-revealed {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  opacity: 0;
+  transition: opacity var(--motion-surface-duration) var(--motion-route-ease);
+  will-change: opacity;
+}
+
+.attachment-picker-backdrop.is-ready {
+  opacity: 1;
+}
+
+.attachment-picker-backdrop.is-closing {
+  opacity: 0;
 }
 
 .attachment-picker-sheet {
@@ -12297,6 +12408,17 @@ span.message-spoiler.is-revealed {
   border-radius: 20px 20px 0 0;
   padding: 8px 0 max(env(safe-area-inset-bottom, 0px), 12px);
   box-shadow: var(--float-shadow);
+  transform: translate3d(0, 100%, 0);
+  transition: transform var(--motion-surface-duration) var(--motion-route-ease);
+  will-change: transform;
+}
+
+.attachment-picker-sheet.is-ready {
+  transform: translate3d(0, 0, 0);
+}
+
+.attachment-picker-sheet.is-closing {
+  transform: translate3d(0, 100%, 0);
 }
 
 .attachment-picker-sheet-handle {
@@ -12449,8 +12571,19 @@ span.message-spoiler.is-revealed {
   background: var(--surface-card, #131822);
   border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
   border-radius: 20px 20px 0 0;
-  transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), height 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), max-height 0.28s cubic-bezier(0.2, 0.9, 0.3, 1), border-radius 0.28s ease;
-  will-change: transform, height, max-height;
+  transform: translate3d(0, 100%, 0);
+  transition:
+    transform var(--motion-surface-duration) var(--motion-route-ease),
+    border-radius var(--motion-surface-duration) var(--motion-route-ease);
+  will-change: transform;
+}
+
+.attachment-picker-sheet.tg-style.is-ready {
+  transform: translate3d(0, 0, 0);
+}
+
+.attachment-picker-sheet.tg-style.is-closing {
+  transform: translate3d(0, 100%, 0);
 }
 
 .attachment-picker-sheet.tg-style.is-fullscreen {
@@ -12691,8 +12824,8 @@ span.message-spoiler.is-revealed {
 }
 
 .media-tile-checkbox.checked {
-  background: var(--accent-primary, #a855f7);
-  border-color: var(--accent-primary, #a855f7);
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.85);
   transform: scale(1.05);
 }
 
@@ -12863,18 +12996,19 @@ span.message-spoiler.is-revealed {
   box-sizing: border-box;
   display: block;
   gap: 0;
-  padding: 6px 12px;
+  padding: 6px 16px;
   position: relative;
   width: 100%;
   max-width: 100%;
 }
+
 
 .attachment-picker-message-box .message-composer-row {
   align-items: center;
   background: var(--background-secondary, rgba(255, 255, 255, 0.06));
   border-radius: 28px;
   box-sizing: border-box;
-  column-gap: 4px;
+  gap: 0 4px;
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   min-height: 40px;

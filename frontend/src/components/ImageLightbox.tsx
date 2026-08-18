@@ -178,7 +178,7 @@ export default function ImageLightbox({
         </div>
       </header>
       <div className="image-lightbox-stage" role="dialog" aria-modal="true" aria-label={`Full view of ${title}`}>
-        <img src={imageUrl} alt={title} />
+        <img src={imageUrl} alt={title} decoding="async" />
       </div>
     </div>,
     document.body
