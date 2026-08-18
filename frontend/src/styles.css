@@ -13016,7 +13016,7 @@ span.message-spoiler.is-revealed {
   box-sizing: border-box;
   display: block;
   gap: 0;
-  padding: 6px 12px;
+  padding: 8px 16px 12px;
   position: relative;
   width: 100%;
   max-width: 100%;
@@ -13031,8 +13031,8 @@ span.message-spoiler.is-revealed {
   gap: 0 4px;
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
-  min-height: 40px;
-  padding: 4px 6px 4px 6px;
+  min-height: 42px;
+  padding: 4px 8px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -13283,7 +13283,7 @@ span.message-spoiler.is-revealed {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 8px 12px max(env(safe-area-inset-bottom, 0px), 8px);
+  padding: 8px 16px max(env(safe-area-inset-bottom, 0px), 10px);
   border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
   background: var(--surface-card, #131822);
 }

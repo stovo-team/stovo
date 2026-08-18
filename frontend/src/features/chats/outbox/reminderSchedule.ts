@@ -13,11 +13,17 @@ export function createLocalDateFromDateAndTime(dateStr?: string | null, timeStr?
 
   const [yearStr, monthStr, dayStr] = dateStr.split("-");
   const [hourStr, minuteStr] = timeStr.split(":");
-  const year = Number(yearStr) || fallback.getFullYear();
-  const month = (Number(monthStr) || 1) - 1;
-  const day = Number(dayStr) || 1;
-  const hour = Number(hourStr) || 0;
-  const minute = Number(minuteStr) || 0;
+  const parsedYear = Number(yearStr);
+  const parsedMonth = Number(monthStr);
+  const parsedDay = Number(dayStr);
+  const parsedHour = Number(hourStr);
+  const parsedMinute = Number(minuteStr);
+
+  const year = !Number.isNaN(parsedYear) && parsedYear > 0 ? parsedYear : fallback.getFullYear();
+  const month = !Number.isNaN(parsedMonth) && parsedMonth > 0 ? parsedMonth - 1 : fallback.getMonth();
+  const day = !Number.isNaN(parsedDay) && parsedDay > 0 ? parsedDay : 1;
+  const hour = !Number.isNaN(parsedHour) ? parsedHour : 0;
+  const minute = !Number.isNaN(parsedMinute) ? parsedMinute : 0;
 
   const result = new Date(year, month, day, hour, minute, 0, 0);
   if (Number.isNaN(result.getTime())) {
@@ -87,8 +93,10 @@ export function computeNextReminderDate(currentScheduledFor: Date | string, rule
   }
 
   const [hourStr, minuteStr] = (rule.time || "09:00").split(":");
-  const hour = Number(hourStr) || prev.getHours();
-  const minute = Number(minuteStr) || prev.getMinutes();
+  const parsedHour = Number(hourStr);
+  const parsedMinute = Number(minuteStr);
+  const hour = !Number.isNaN(parsedHour) ? parsedHour : prev.getHours();
+  const minute = !Number.isNaN(parsedMinute) ? parsedMinute : prev.getMinutes();
 
   if (rule.frequency === "daily") {
     const next = new Date(prev);

@@ -10,6 +10,7 @@ import {
   getCachedNativeMedia,
   listNativeMedia,
   nativeMediaPreviewUrl,
+  fetchNativeMediaFileUrl,
   selectNativeMediaFiles,
   type NativeMediaItem
 } from "../native/mediaLibraryPlugin";
@@ -64,6 +65,7 @@ export default function AttachmentPickerSheet({
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [galleryState, setGalleryState] = useState<"loading" | "ready" | "empty" | "error">("loading");
   const [internalPreviewMediaItem, setInternalPreviewMediaItem] = useState<NativeMediaItem | null>(null);
+  const [fullPreviewUrl, setFullPreviewUrl] = useState<string | null>(null);
   const previewMediaItem = propPreviewMediaItem !== undefined ? propPreviewMediaItem : internalPreviewMediaItem;
   const setPreviewMediaItem = useCallback(
     (item: NativeMediaItem | null) => {
@@ -690,7 +692,6 @@ export default function AttachmentPickerSheet({
                   value={messageText}
                   maxLength={4000}
                   rows={1}
-                  disabled={isSending || isSendingMessage}
                   onChange={(event) => handleMessageChange(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -712,6 +713,9 @@ export default function AttachmentPickerSheet({
                 aria-label="Send message"
                 aria-busy={isSending || isSendingMessage}
                 disabled={isSending || isSendingMessage || (!messageText.trim() && selectedCount === 0)}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                }}
                 onClick={() => void handleSendSelected()}
               >
                 <span className="ms-icon ms-icon--20" aria-hidden={true}>
@@ -759,12 +763,28 @@ export default function AttachmentPickerSheet({
     </div>
   );
 
+  useEffect(() => {
+    if (!previewMediaItem) {
+      setFullPreviewUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchNativeMediaFileUrl(previewMediaItem.id).then((url) => {
+      if (!cancelled && url) {
+        setFullPreviewUrl(url);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [previewMediaItem]);
+
   const fullContent = (
     <>
       {sheetContent}
       {previewMediaItem && (
         <ImageLightbox
-          imageUrl={nativeMediaPreviewUrl(previewMediaItem)}
+          imageUrl={fullPreviewUrl || nativeMediaPreviewUrl(previewMediaItem)}
           title={previewMediaItem.name}
           subtitle={previewMediaItem.mimeType}
           onClose={() => setPreviewMediaItem(null)}
