@@ -24,8 +24,7 @@ describe("chat details controls", () => {
     expect(styles).toContain(".chat-info-title-row {");
     expect(styles).toContain("justify-content: center;");
     expect(styles).toContain(".chat-info-title-edit {");
-    expect(styles).toContain("inset-inline-start: 0;");
-    expect(styles).toContain("position: absolute;");
+    expect(styles).toContain("display: inline-flex;");
   });
 
   it("does not show archive or encryption labels in the chat details hero", () => {
