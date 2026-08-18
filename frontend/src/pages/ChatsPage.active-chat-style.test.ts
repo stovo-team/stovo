@@ -26,5 +26,20 @@ describe("active chat list item styling", () => {
     expect(closeActiveChatBody).not.toContain("setSelectedChat(null)");
     expect(closeActiveChatBody).toContain("navigateToChatList()");
   });
+
+  it("keeps chat-list-topline flex layout with non-wrapping time and distinct preview styling", () => {
+    expect(styles).toMatch(
+      /\.chat-list-topline \{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/
+    );
+    expect(styles).toMatch(
+      /\.chat-list-topline strong \{[\s\S]*?flex:\s*1 1 auto;[\s\S]*?text-overflow:\s*ellipsis;/
+    );
+    expect(styles).toMatch(
+      /\.chat-list-topline time \{[\s\S]*?flex-shrink:\s*0;[\s\S]*?white-space:\s*nowrap;/
+    );
+    expect(styles).toMatch(
+      /\.chat-list-preview,[\s\S]*?\.chat-list-copy > span:not\(\.chat-list-topline\)/
+    );
+  });
 });
 
