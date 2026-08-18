@@ -115,6 +115,7 @@ export function AttachmentCard({
         onBeforePlay={onBeforeAudioPlay}
         resolveDurationUrl={resolveAudioDurationUrl}
         hideTitle={file.originalName.startsWith("voice-")}
+        accessToken={accessToken}
       />
     );
   }

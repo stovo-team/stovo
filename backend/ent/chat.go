@@ -40,6 +40,8 @@ type Chat struct {
 	UpdatedAt string `json:"updated_at,omitempty"`
 	// PinPermission holds the value of the "pin_permission" field.
 	PinPermission string `json:"pin_permission,omitempty"`
+	// MessageDelaySeconds holds the value of the "message_delay_seconds" field.
+	MessageDelaySeconds int `json:"message_delay_seconds,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ChatQuery when eager-loading is set.
 	Edges        ChatEdges `json:"edges"`
@@ -130,6 +132,8 @@ func (*Chat) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case chat.FieldCommentsEnabled:
 			values[i] = new(sql.NullBool)
+		case chat.FieldMessageDelaySeconds:
+			values[i] = new(sql.NullInt64)
 		case chat.FieldID, chat.FieldFamilyID, chat.FieldType, chat.FieldTitle, chat.FieldCreatedBy, chat.FieldChatPhotoFileID, chat.FieldMediaVisibility, chat.FieldEncryptionProtocol, chat.FieldCreatedAt, chat.FieldUpdatedAt, chat.FieldPinPermission:
 			values[i] = new(sql.NullString)
 		default:
@@ -221,6 +225,12 @@ func (_m *Chat) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field pin_permission", values[i])
 			} else if value.Valid {
 				_m.PinPermission = value.String
+			}
+		case chat.FieldMessageDelaySeconds:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field message_delay_seconds", values[i])
+			} else if value.Valid {
+				_m.MessageDelaySeconds = int(value.Int64)
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -326,6 +336,9 @@ func (_m *Chat) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("pin_permission=")
 	builder.WriteString(_m.PinPermission)
+	builder.WriteString(", ")
+	builder.WriteString("message_delay_seconds=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MessageDelaySeconds))
 	builder.WriteByte(')')
 	return builder.String()
 }

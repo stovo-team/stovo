@@ -182,7 +182,7 @@ func TestPromoteToSFUWithConfig(t *testing.T) {
 	}
 }
 
-func TestStartWithMoreThanFourUsesSFU(t *testing.T) {
+func TestGroupCallStartsInConnectedStateAndMesh(t *testing.T) {
 	server := newTestCallServer()
 	group := chatPublic{
 		ID:   "group-big",
@@ -195,8 +195,19 @@ func TestStartWithMoreThanFourUsesSFU(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
-	if session.Topology != callTopologySFU {
-		t.Fatalf("expected SFU for 5 participants, got %s", session.Topology)
+	if session.Topology != callTopologyMesh {
+		t.Fatalf("expected initial Mesh topology, got %s", session.Topology)
+	}
+	if session.State != callStateConnected {
+		t.Fatalf("expected callStateConnected, got %s", session.State)
+	}
+	if host := session.Participants["u1"]; host == nil || host.State != participantConnected {
+		t.Fatalf("expected host to be connected, got %v", host)
+	}
+	for _, inviteeID := range []string{"u2", "u3", "u4", "u5"} {
+		if p := session.Participants[inviteeID]; p == nil || p.State != participantRinging {
+			t.Fatalf("expected invitee %s to be ringing, got %v", inviteeID, p)
+		}
 	}
 }
 

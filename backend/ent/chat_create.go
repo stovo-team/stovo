@@ -142,6 +142,20 @@ func (_c *ChatCreate) SetNillablePinPermission(v *string) *ChatCreate {
 	return _c
 }
 
+// SetMessageDelaySeconds sets the "message_delay_seconds" field.
+func (_c *ChatCreate) SetMessageDelaySeconds(v int) *ChatCreate {
+	_c.mutation.SetMessageDelaySeconds(v)
+	return _c
+}
+
+// SetNillableMessageDelaySeconds sets the "message_delay_seconds" field if the given value is not nil.
+func (_c *ChatCreate) SetNillableMessageDelaySeconds(v *int) *ChatCreate {
+	if v != nil {
+		_c.SetMessageDelaySeconds(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *ChatCreate) SetID(v string) *ChatCreate {
 	_c.mutation.SetID(v)
@@ -279,6 +293,10 @@ func (_c *ChatCreate) defaults() {
 		v := chat.DefaultPinPermission
 		_c.mutation.SetPinPermission(v)
 	}
+	if _, ok := _c.mutation.MessageDelaySeconds(); !ok {
+		v := chat.DefaultMessageDelaySeconds
+		_c.mutation.SetMessageDelaySeconds(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -331,6 +349,9 @@ func (_c *ChatCreate) check() error {
 	}
 	if _, ok := _c.mutation.PinPermission(); !ok {
 		return &ValidationError{Name: "pin_permission", err: errors.New(`ent: missing required field "Chat.pin_permission"`)}
+	}
+	if _, ok := _c.mutation.MessageDelaySeconds(); !ok {
+		return &ValidationError{Name: "message_delay_seconds", err: errors.New(`ent: missing required field "Chat.message_delay_seconds"`)}
 	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := chat.IDValidator(v); err != nil {
@@ -712,6 +733,18 @@ func (u *ChatUpsert) UpdatePinPermission() *ChatUpsert {
 	return u
 }
 
+// SetMessageDelaySeconds sets the "message_delay_seconds" field.
+func (u *ChatUpsert) SetMessageDelaySeconds(v int) *ChatUpsert {
+	u.Set(chat.FieldMessageDelaySeconds, v)
+	return u
+}
+
+// UpdateMessageDelaySeconds sets the "message_delay_seconds" field to the value that was provided on create.
+func (u *ChatUpsert) UpdateMessageDelaySeconds() *ChatUpsert {
+	u.SetExcluded(chat.FieldMessageDelaySeconds)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -932,6 +965,20 @@ func (u *ChatUpsertOne) SetPinPermission(v string) *ChatUpsertOne {
 func (u *ChatUpsertOne) UpdatePinPermission() *ChatUpsertOne {
 	return u.Update(func(s *ChatUpsert) {
 		s.UpdatePinPermission()
+	})
+}
+
+// SetMessageDelaySeconds sets the "message_delay_seconds" field.
+func (u *ChatUpsertOne) SetMessageDelaySeconds(v int) *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetMessageDelaySeconds(v)
+	})
+}
+
+// UpdateMessageDelaySeconds sets the "message_delay_seconds" field to the value that was provided on create.
+func (u *ChatUpsertOne) UpdateMessageDelaySeconds() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateMessageDelaySeconds()
 	})
 }
 
@@ -1322,6 +1369,20 @@ func (u *ChatUpsertBulk) SetPinPermission(v string) *ChatUpsertBulk {
 func (u *ChatUpsertBulk) UpdatePinPermission() *ChatUpsertBulk {
 	return u.Update(func(s *ChatUpsert) {
 		s.UpdatePinPermission()
+	})
+}
+
+// SetMessageDelaySeconds sets the "message_delay_seconds" field.
+func (u *ChatUpsertBulk) SetMessageDelaySeconds(v int) *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetMessageDelaySeconds(v)
+	})
+}
+
+// UpdateMessageDelaySeconds sets the "message_delay_seconds" field to the value that was provided on create.
+func (u *ChatUpsertBulk) UpdateMessageDelaySeconds() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateMessageDelaySeconds()
 	})
 }
 

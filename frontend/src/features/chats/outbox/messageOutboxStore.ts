@@ -12,6 +12,16 @@ export interface QueuedOutboxAttachment {
   uploadedFileId?: string;
 }
 
+export interface ReminderRule {
+  frequency: "daily" | "weekly" | "monthly";
+  daysOfWeek?: number[]; // 0 = Sun, 1 = Mon ... 6 = Sat
+  daysOfMonth?: number[]; // 1 .. 31
+  repeatCount: number; // total repeat count (e.g. 5)
+  remainingCount: number; // remaining times (starts at repeatCount)
+  startDate: string; // "YYYY-MM-DD"
+  time: string; // "HH:mm"
+}
+
 export interface QueuedOutboxMessage {
   id: string; // clientMessageId
   clientMessageId: string;
@@ -24,11 +34,14 @@ export interface QueuedOutboxMessage {
   encryptionProtocol?: MessageEncryptionProtocol;
   attachments: QueuedOutboxAttachment[];
   createdAt: string;
-  status: "queued" | "sending" | "failed";
+  status: "queued" | "sending" | "failed" | "scheduled";
   deliveryError?: string | null;
   attemptCount: number;
   lastAttemptAt?: number;
   optimisticMessage?: Message;
+  scheduledFor?: string | null;
+  isReminder?: boolean;
+  reminderRule?: ReminderRule | null;
 }
 
 const DATABASE_NAME = "stovo-outbox-v1";

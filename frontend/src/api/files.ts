@@ -137,6 +137,26 @@ export async function saveFileToDisk(accessToken: string, file: FamilyFile) {
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
+export interface FileTranscriptResponse {
+  fileId: string;
+  text: string;
+  language?: string;
+  duration?: number;
+}
+
+export function transcribeFile(accessToken: string, fileId: string) {
+  return apiRequest<FileTranscriptResponse>(`/api/files/${encodeURIComponent(fileId)}/transcribe`, {
+    method: "POST",
+    accessToken
+  });
+}
+
+export function getFileTranscript(accessToken: string, fileId: string) {
+  return apiRequest<FileTranscriptResponse>(`/api/files/${encodeURIComponent(fileId)}/transcript`, {
+    accessToken
+  });
+}
+
 export function formatFileSize(sizeBytes: number) {
   if (sizeBytes < 1024) {
     return `${sizeBytes} B`;

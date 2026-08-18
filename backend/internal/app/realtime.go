@@ -301,6 +301,21 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 		}
 		payload.ReplyToMessageID = replyToMessageID
 	}
+	if chat.MessageDelaySeconds > 0 && !s.canManageChat(chat, user) {
+		lastCreatedAt, err := s.store.GetLastUserMessageCreatedAt(ctx, chatID, user.ID)
+		if err == nil && lastCreatedAt != "" {
+			lastTime := parseTime(lastCreatedAt)
+			elapsed := time.Since(lastTime)
+			requiredDelay := time.Duration(chat.MessageDelaySeconds) * time.Second
+			if elapsed < requiredDelay {
+				remaining := int((requiredDelay - elapsed + 999*time.Millisecond) / time.Second)
+				if remaining <= 0 {
+					remaining = 1
+				}
+				return messagePublic{}, newStatusError(429, fmt.Sprintf("Message delay is active. Please wait %d second(s).", remaining))
+			}
+		}
+	}
 	if payload.ThreadRootMessageID != nil {
 		root := trimStringPointer(payload.ThreadRootMessageID)
 		if root == nil {

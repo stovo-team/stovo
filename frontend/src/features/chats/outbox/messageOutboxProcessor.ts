@@ -9,15 +9,17 @@ import { type FamilyFile, uploadFile } from "../../../api/files";
 import { decryptMessage, encryptMessageContent } from "../../../api/messageCrypto";
 import type { User } from "../../../api/auth";
 import { applyMessagePreviewToChat } from "../shared/chatPresentation";
-import { markPendingMessageFailed, mergeIncomingMessage } from "../shared/messageState";
+import { createClientMessageId, markPendingMessageFailed, mergeIncomingMessage } from "../shared/messageState";
 import type { MessageStateUpdate } from "../shared/types";
 import {
+  enqueueOutboxMessage,
   getOutboxMessages,
   removeOutboxMessage,
   updateOutboxMessage,
   type QueuedOutboxAttachment,
   type QueuedOutboxMessage
 } from "./messageOutboxStore";
+import { computeNextReminderDate } from "./reminderSchedule";
 
 export function isNetworkError(err: unknown): boolean {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -92,6 +94,12 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
     for (const item of queuedMessages) {
       if (item.status === "failed") {
         continue;
+      }
+      if (item.scheduledFor) {
+        const scheduledTime = new Date(item.scheduledFor).getTime();
+        if (!Number.isNaN(scheduledTime) && scheduledTime > Date.now()) {
+          continue;
+        }
       }
       if (typeof navigator !== "undefined" && !navigator.onLine) {
         break;
@@ -187,6 +195,27 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
 
         // 6. Delete from outbox store upon successful send
         await removeOutboxMessage(item.id, currentUser.id);
+
+        // 7. If this is a repeating reminder with remaining counts, enqueue next occurrence
+        if (item.isReminder && item.reminderRule && item.reminderRule.remainingCount > 1) {
+          const nextScheduled = computeNextReminderDate(item.scheduledFor ?? new Date(), item.reminderRule);
+          const nextClientMessageId = createClientMessageId();
+          const nextItem: QueuedOutboxMessage = {
+            ...item,
+            id: nextClientMessageId,
+            clientMessageId: nextClientMessageId,
+            createdAt: new Date().toISOString(),
+            status: "scheduled",
+            attemptCount: 0,
+            deliveryError: null,
+            scheduledFor: nextScheduled.toISOString(),
+            reminderRule: {
+              ...item.reminderRule,
+              remainingCount: item.reminderRule.remainingCount - 1
+            }
+          };
+          await enqueueOutboxMessage(nextItem);
+        }
       } catch (err) {
         if (isNetworkError(err)) {
           // Network failed: keep in queue for future retry
@@ -317,12 +346,12 @@ export function useMessageOutbox({
       currentSocket.on("connect", handleOnline);
     }
 
-    // Periodic watchdog timer for pending messages
+    // Periodic watchdog timer for pending and scheduled messages
     const interval = window.setInterval(() => {
       if (typeof navigator !== "undefined" && navigator.onLine && document.visibilityState === "visible") {
         void triggerDrain();
       }
-    }, 15000);
+    }, 5000);
 
     return () => {
       window.removeEventListener("online", handleOnline);

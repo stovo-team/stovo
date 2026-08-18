@@ -260,6 +260,9 @@ export default class CallSessionController {
 
     await this.ensureLocalMedia();
     this.peerReady = true;
+    if (this.localStream) {
+      this.markMediaConnected();
+    }
 
     for (const remoteId of remotes) {
       const asOfferer = localId ? shouldOfferToPeer(localId, remoteId) : false;

@@ -506,3 +506,19 @@ func (s *Store) ListEncryptedMessageCandidates(ctx context.Context, chatIDs []st
 	}
 	return out, nil
 }
+
+// GetLastUserMessageCreatedAt returns created_at of the most recent non-deleted message by userID in chatID.
+func (s *Store) GetLastUserMessageCreatedAt(ctx context.Context, chatID, userID string) (string, error) {
+	m, err := s.Client.Message.Query().
+		Where(
+			message.ChatIDEQ(chatID),
+			message.SenderIDEQ(userID),
+			message.DeletedAtIsNil(),
+		).
+		Order(message.ByCreatedAt(sql.OrderDesc())).
+		First(ctx)
+	if err != nil {
+		return "", err
+	}
+	return m.CreatedAt, nil
+}

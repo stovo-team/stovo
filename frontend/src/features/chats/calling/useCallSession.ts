@@ -159,12 +159,21 @@ export function useCallSession({
   useEffect(() => {
     setActiveGroupCalls((prev) => {
       let changed = false;
-      const next = { ...prev };
+      const next: Record<string, Record<string, any>> = {};
       for (const c of chats) {
         if (c.activeCall) {
-          if (!next[c.id] || JSON.stringify(next[c.id]) !== JSON.stringify(c.activeCall)) {
-            next[c.id] = c.activeCall;
+          next[c.id] = c.activeCall;
+        }
+      }
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (prevKeys.length !== nextKeys.length) {
+        changed = true;
+      } else {
+        for (const k of nextKeys) {
+          if (!prev[k] || JSON.stringify(prev[k]) !== JSON.stringify(next[k])) {
             changed = true;
+            break;
           }
         }
       }
@@ -641,20 +650,24 @@ export function useCallSession({
           ? [peers[0].id]
           : peers.map((p) => p.id);
     const primaryPeer = peers.find((p) => selectedInvitees.includes(p.id)) ?? peers[0];
-    console.log("[CALL] startDirectCall: peer=", primaryPeer.id, "invitees=", selectedInvitees, "setting callPhase=outgoing");
+    const isGroup = selectedChat.type === "group" || selectedChat.type === "family";
+    console.log("[CALL] startDirectCall: peer=", primaryPeer.id, "invitees=", selectedInvitees, "isGroup=", isGroup);
     setError(null);
     setCallNotice(null);
     setCallType(type);
     callTypeRef.current = type;
     if (type === "audio") {
       void applyCallAudioPatch({ cameraEnabled: false, speakerMode: "small" });
+    } else {
+      void applyCallAudioPatch({ cameraEnabled: true, speakerMode: "large" });
     }
-    setCallPhase("outgoing");
-    callPhaseRef.current = "outgoing";
+    const initialPhase: CallPhase = isGroup ? "connecting" : "outgoing";
+    setCallPhase(initialPhase);
+    callPhaseRef.current = initialPhase;
     activeCallSessionIdRef.current = "pending";
     setActiveCallChatId(selectedChat.id);
     setCallPeerUserId(primaryPeer.id);
-    setCallPeerDisplayName(primaryPeer.displayName ?? null);
+    setCallPeerDisplayName(isGroup ? (selectedChat.title ?? primaryPeer.displayName ?? null) : (primaryPeer.displayName ?? null));
     setCallParticipantIds([currentUser.id, ...selectedInvitees]);
     setCallTopology("mesh");
     activeCallChatIdRef.current = selectedChat.id;
@@ -1041,12 +1054,48 @@ export function useCallSession({
             ? (payload.participants?.find((p) => p.userId !== selfUserId)?.userId ?? payload.calleeId)
             : payload.callerId;
           setCallPeerUserId(peerId);
+
+          const chat = chatsRef.current.find((c) => c.id === payload.chatId) ?? selectedChat;
+          const isGroup = chat ? (chat.type === "group" || chat.type === "family") : (payload.participants ? payload.participants.length > 2 : false);
+          const selfParticipant = payload.participants?.find((p) => p.userId === selfUserId);
+          const isSelfConnected = selfParticipant?.state === "connected" || selfParticipant?.state === "connecting";
+
+          if (payload.chatId && isGroup) {
+            setActiveGroupCalls((prev) => ({
+              ...prev,
+              [payload.chatId]: {
+                roomId: payload.roomId,
+                chatId: payload.chatId,
+                callerId: payload.callerId,
+                callType: payload.callType,
+                topology: payload.topology,
+                participants: payload.participants,
+                createdAt: payload.createdAt,
+              },
+            }));
+          }
+
           if (isCaller) {
-            console.log("[CALL] call:ringing: isCaller=true — transitioning to outgoing, sessionId=", payload.createdAt);
-            setCallPhase("outgoing");
+            if (isGroup || isSelfConnected) {
+              console.log("[CALL] call:ringing: isCaller=true & isGroup/connected — transitioning immediately to in-call, sessionId=", payload.createdAt);
+              stopCallRingtone();
+              setCallPhase("in-call");
+              callPhaseRef.current = "in-call";
+              setCallNotice(null);
+              if (selfUserId) {
+                void audioController.syncMeshPeers([selfUserId]).catch((err) => {
+                  console.error("[CALL] syncMeshPeers for group host failed:", err);
+                });
+              }
+            } else {
+              console.log("[CALL] call:ringing: isCaller=true — transitioning to outgoing, sessionId=", payload.createdAt);
+              setCallPhase("outgoing");
+              callPhaseRef.current = "outgoing";
+            }
           } else {
             console.log("[CALL] call:ringing: isCaller=false — transitioning to incoming, sessionId=", payload.createdAt);
             setCallPhase("incoming");
+            callPhaseRef.current = "incoming";
             setCallNotice(incomingCallType === "video" ? "Incoming video call" : "Incoming audio call");
             startIncomingRingtone();
           }
@@ -1095,12 +1144,28 @@ export function useCallSession({
         setCallParticipantIds((payload.participants ?? []).map((p) => p.userId));
         setCallPhase("connecting");
 
+        if (payload.chatId) {
+          setActiveGroupCalls((prev) => {
+            const existing = prev[payload.chatId];
+            if (!existing) return prev;
+            return {
+              ...prev,
+              [payload.chatId]: {
+                ...existing,
+                ...(payload.roomId ? { roomId: payload.roomId } : {}),
+                ...(payload.topology ? { topology: payload.topology } : {}),
+                ...(payload.participants ? { participants: payload.participants } : {}),
+              },
+            };
+          });
+        }
+
         const joinMedia = async () => {
           if (payload.topology === "sfu") {
             await audioController.switchToSfu();
             return;
           }
-          if (mediaPeers.length > 1) {
+          if (mediaPeers.length > 0) {
             await audioController.syncMeshPeers([currentUser.id, ...mediaPeers]);
             return;
           }
@@ -1135,6 +1200,21 @@ export function useCallSession({
           setCallRoomId(payload.roomId);
           callRoomIdRef.current = payload.roomId;
           audioController.setRoomId(payload.roomId);
+        }
+        if (payload.chatId) {
+          setActiveGroupCalls((prev) => {
+            const existing = prev[payload.chatId!];
+            if (!existing) return prev;
+            return {
+              ...prev,
+              [payload.chatId!]: {
+                ...existing,
+                ...(payload.roomId ? { roomId: payload.roomId } : {}),
+                ...(payload.topology ? { topology: payload.topology } : {}),
+                ...(payload.participants ? { participants: payload.participants } : {}),
+              },
+            };
+          });
         }
         if (payload.topology === "sfu") {
           setCallTopology("sfu");
@@ -1189,6 +1269,14 @@ export function useCallSession({
 
       socket.on("call:declined", (payload: { chatId?: string; sessionStartedAt?: string }) => {
         console.log("[CALL] call:declined received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
+        if (payload?.chatId) {
+          setActiveGroupCalls((prev) => {
+            if (!prev[payload.chatId!]) return prev;
+            const next = { ...prev };
+            delete next[payload.chatId!];
+            return next;
+          });
+        }
         // Guard against stale queued events from previous calls being delivered
         // via drainPendingEvents on socket reconnect killing a newly started call.
         if (isSessionMismatch(payload)) {
@@ -1204,6 +1292,14 @@ export function useCallSession({
       });
       socket.on("call:canceled", (payload: { chatId?: string; sessionStartedAt?: string }) => {
         console.log("[CALL] call:canceled received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
+        if (payload?.chatId) {
+          setActiveGroupCalls((prev) => {
+            if (!prev[payload.chatId!]) return prev;
+            const next = { ...prev };
+            delete next[payload.chatId!];
+            return next;
+          });
+        }
         if (isSessionMismatch(payload)) {
           console.log("[CALL] call:canceled ignored — session mismatch or idle");
           return;
@@ -1214,6 +1310,14 @@ export function useCallSession({
       });
       socket.on("call:timeout", (payload: { chatId?: string; sessionStartedAt?: string }) => {
         console.log("[CALL] call:timeout received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
+        if (payload?.chatId) {
+          setActiveGroupCalls((prev) => {
+            if (!prev[payload.chatId!]) return prev;
+            const next = { ...prev };
+            delete next[payload.chatId!];
+            return next;
+          });
+        }
         if (isSessionMismatch(payload)) {
           console.log("[CALL] call:timeout ignored — session mismatch or idle");
           return;
@@ -1224,6 +1328,14 @@ export function useCallSession({
       });
       socket.on("call:ended", (payload: { chatId?: string; sessionStartedAt?: string }) => {
         console.log("[call:ended] received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current);
+        if (payload?.chatId) {
+          setActiveGroupCalls((prev) => {
+            if (!prev[payload.chatId!]) return prev;
+            const next = { ...prev };
+            delete next[payload.chatId!];
+            return next;
+          });
+        }
         if (isSessionMismatch(payload)) {
           console.log("[call:ended] ignoring — session mismatch or idle");
           return;

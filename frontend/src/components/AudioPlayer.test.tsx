@@ -13,6 +13,14 @@ import {
 import { clearCachedAudioDuration, setCachedAudioDuration } from "../audioDurationCache";
 import { AudioPlayer, formatAudioTime } from "./AudioPlayer";
 
+const mockGetFileTranscript = vi.fn();
+const mockTranscribeFile = vi.fn();
+
+vi.mock("../api/files", () => ({
+  getFileTranscript: (...args: unknown[]) => mockGetFileTranscript(...args),
+  transcribeFile: (...args: unknown[]) => mockTranscribeFile(...args),
+}));
+
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -119,6 +127,8 @@ beforeEach(() => {
     objectUrl: true,
   }));
   session = new AudioPlaybackSession(backend, sourceFactory);
+  mockGetFileTranscript.mockReset().mockResolvedValue(null);
+  mockTranscribeFile.mockReset().mockResolvedValue({ fileId: "file-1", text: "Transcribed voice message text" });
 });
 
 afterEach(() => {
@@ -453,4 +463,75 @@ describe("AudioPlayer", () => {
     expect(container.querySelector('output[aria-label="Audio time"]')?.hasAttribute("aria-live"))
       .toBe(false);
   });
+
+  it("renders transcribe button when accessToken is provided and handles transcription", async () => {
+    const { container } = renderPlayer({ accessToken: "token-123" });
+    const transcribeBtn = container.querySelector<HTMLButtonElement>(".audio-player-transcribe-btn");
+    expect(transcribeBtn).not.toBeNull();
+    expect(transcribeBtn?.textContent).toContain("Transcribe");
+
+    // Click transcribe button
+    act(() => transcribeBtn?.click());
+    await settle();
+
+    expect(mockTranscribeFile).toHaveBeenCalledWith("token-123", "file-1");
+
+    // Transcript box is shown with transcribed text
+    const transcriptBox = container.querySelector(".audio-player-transcript");
+    expect(transcriptBox).not.toBeNull();
+    expect(container.querySelector('[data-control="transcript-text"]')?.textContent)
+      .toBe("Transcribed voice message text");
+
+    // Button text updates to "Hide Text"
+    expect(container.querySelector(".audio-player-transcribe-btn")?.textContent).toContain("Hide Text");
+
+    // Toggle dropdown shrink
+    const toggleBtn = container.querySelector<HTMLButtonElement>(".audio-player-transcript-toggle");
+    expect(toggleBtn).not.toBeNull();
+    act(() => toggleBtn?.click());
+    await settle();
+
+    // Transcript content is collapsed
+    expect(container.querySelector('[data-control="transcript-text"]')).toBeNull();
+    expect(container.querySelector(".audio-player-transcribe-btn")?.textContent).toContain("Show Text");
+
+    // Toggle dropdown expand again
+    act(() => toggleBtn?.click());
+    await settle();
+    expect(container.querySelector('[data-control="transcript-text"]')?.textContent)
+      .toBe("Transcribed voice message text");
+  });
+
+  it("handles transcription errors and allows retry", async () => {
+    mockTranscribeFile.mockRejectedValueOnce(new Error("Groq API rate limited"));
+    const { container } = renderPlayer({ accessToken: "token-123" });
+    const transcribeBtn = container.querySelector<HTMLButtonElement>(".audio-player-transcribe-btn");
+
+    act(() => transcribeBtn?.click());
+    await settle();
+
+    const errorEl = container.querySelector(".audio-player-transcript-error");
+    expect(errorEl).not.toBeNull();
+    expect(errorEl?.textContent).toContain("Groq API rate limited");
+
+    // Retry
+    mockTranscribeFile.mockResolvedValueOnce({ fileId: "file-1", text: "Recovered transcription text" });
+    const retryBtn = container.querySelector<HTMLButtonElement>(".audio-player-transcript-retry");
+    expect(retryBtn).not.toBeNull();
+    act(() => retryBtn?.click());
+    await settle();
+
+    expect(container.querySelector('[data-control="transcript-text"]')?.textContent)
+      .toBe("Recovered transcription text");
+  });
+
+  it("loads cached transcript on mount if available", async () => {
+    mockGetFileTranscript.mockResolvedValueOnce({ fileId: "file-1", text: "Pre-existing transcript" });
+    const { container } = renderPlayer({ accessToken: "token-123" });
+    await settle();
+
+    expect(container.querySelector('[data-control="transcript-text"]')?.textContent)
+      .toBe("Pre-existing transcript");
+  });
 });
+

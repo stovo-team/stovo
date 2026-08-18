@@ -1,5 +1,9 @@
 import {
   AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Loader2,
   Pause,
   Play,
 } from "lucide-react";
@@ -19,6 +23,10 @@ import {
   readAudioDurationFromUrl,
   setCachedAudioDuration,
 } from "../audioDurationCache";
+import {
+  getFileTranscript,
+  transcribeFile,
+} from "../api/files";
 import {
   audioPlaybackSession,
   sameAudioIdentity,
@@ -40,6 +48,7 @@ export interface AudioPlayerProps {
   resolveDurationUrl?: () => Promise<string | null>;
   /** Recorder-generated filenames add no useful context to a voice message. */
   hideTitle?: boolean;
+  accessToken?: string | null;
 }
 
 function isFiniteTime(value: number): boolean {
@@ -144,6 +153,7 @@ export function AudioPlayer({
   session = audioPlaybackSession,
   resolveDurationUrl,
   hideTitle = false,
+  accessToken,
 }: AudioPlayerProps) {
   const getOwnSnapshot = useCallback(
     () => initialSnapshotFor(session, descriptor),
@@ -165,6 +175,46 @@ export function AudioPlayer({
   const [knownDuration, setKnownDuration] = useState(
     () => getCachedAudioDuration(descriptor.identity.fileId) ?? 0,
   );
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptError, setTranscriptError] = useState<string | null>(null);
+  const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(true);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    let cancelled = false;
+    getFileTranscript(accessToken, descriptor.identity.fileId)
+      .then((res) => {
+        if (!cancelled && res?.text) {
+          setTranscript(res.text);
+        }
+      })
+      .catch(() => {
+        // Silently ignore if not transcribed yet
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, descriptor.identity.fileId]);
+
+  const handleTranscribe = useCallback(async () => {
+    if (!accessToken || isTranscribing) return;
+    setIsTranscribing(true);
+    setTranscriptError(null);
+    try {
+      const res = await transcribeFile(accessToken, descriptor.identity.fileId);
+      if (res?.text) {
+        setTranscript(res.text);
+        setIsTranscriptExpanded(true);
+      } else {
+        setTranscriptError("No speech detected in audio.");
+      }
+    } catch (err) {
+      setTranscriptError(err instanceof Error ? err.message : "Transcription failed.");
+    } finally {
+      setIsTranscribing(false);
+    }
+  }, [accessToken, descriptor.identity.fileId, isTranscribing]);
 
   useEffect(() => {
     if (previewPosition !== null && dragRevision.current !== snapshot?.revision) {
@@ -484,10 +534,112 @@ export function AudioPlayer({
                 {descriptor.title}
               </span>
             )}
+            {accessToken && (
+              <button
+                type="button"
+                className={`audio-player-transcribe-btn${isTranscribing ? " is-loading" : ""}${transcript ? " has-transcript" : ""}`}
+                aria-label={
+                  transcript
+                    ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
+                    : "Transcribe voice message"
+                }
+                title={
+                  transcript
+                    ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
+                    : "Transcribe voice message"
+                }
+                disabled={isTranscribing}
+                onClick={(e) => {
+                  stopInteraction(e);
+                  if (transcript) {
+                    setIsTranscriptExpanded((prev) => !prev);
+                  } else {
+                    void handleTranscribe();
+                  }
+                }}
+              >
+                {isTranscribing ? (
+                  <Loader2 size={12} className="audio-player-spin" aria-hidden="true" />
+                ) : (
+                  <FileText size={12} aria-hidden="true" />
+                )}
+                <span>
+                  {isTranscribing
+                    ? "Transcribing..."
+                    : transcript
+                      ? (isTranscriptExpanded ? "Hide Text" : "Show Text")
+                      : "Transcribe"}
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </div>
       {statusCopy && <div className="audio-player-status" role="status">{statusCopy}</div>}
+      {isTranscribing && (
+        <div className="audio-player-transcript-loading" role="status">
+          <Loader2 size={13} className="audio-player-spin" aria-hidden="true" />
+          <span>Transcribing audio with AI...</span>
+        </div>
+      )}
+      {transcriptError && (
+        <div className="audio-player-transcript-error" role="alert">
+          <AlertCircle size={13} aria-hidden="true" />
+          <span>{transcriptError}</span>
+          <button
+            type="button"
+            className="audio-player-transcript-retry"
+            onClick={(e) => {
+              stopInteraction(e);
+              void handleTranscribe();
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {transcript && (
+        <div className={`audio-player-transcript${isTranscriptExpanded ? " is-expanded" : " is-collapsed"}`}>
+          <div
+            className="audio-player-transcript-header"
+            role="button"
+            tabIndex={0}
+            onClick={(e) => {
+              stopInteraction(e);
+              setIsTranscriptExpanded((prev) => !prev);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                stopActivationPropagation(e);
+                setIsTranscriptExpanded((prev) => !prev);
+              }
+            }}
+            aria-expanded={isTranscriptExpanded}
+          >
+            <div className="audio-player-transcript-header-left">
+              <FileText size={12} aria-hidden="true" />
+              <span className="audio-player-transcript-label">Transcript</span>
+            </div>
+            <button
+              type="button"
+              className="audio-player-transcript-toggle"
+              aria-label={isTranscriptExpanded ? "Collapse transcript" : "Expand transcript"}
+              title={isTranscriptExpanded ? "Collapse transcript" : "Expand transcript"}
+              onClick={(e) => {
+                stopInteraction(e);
+                setIsTranscriptExpanded((prev) => !prev);
+              }}
+            >
+              {isTranscriptExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </button>
+          </div>
+          {isTranscriptExpanded && (
+            <div className="audio-player-transcript-content" data-control="transcript-text">
+              {transcript}
+            </div>
+          )}
+        </div>
+      )}
       {snapshot?.status === "error" && (
         <div className="audio-player-error" role="alert">
           <AlertCircle size={14} aria-hidden="true" />

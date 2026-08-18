@@ -1,5 +1,5 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
-import { Check, Clock3, Phone, Video } from "lucide-react";
+import { CalendarClock, Check, Clock3, Phone, Video } from "lucide-react";
 
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
 import type { Chat } from "../../../api/chats";
@@ -151,6 +151,13 @@ export function MessageBubble({
         <Clock3
           aria-label="message queued for delivery"
           className="message-receipt message-receipt--sending"
+          role="img"
+          size={14}
+        />
+      ) : mine && message.deliveryState === "scheduled" ? (
+        <CalendarClock
+          aria-label="message scheduled"
+          className="message-receipt message-receipt--scheduled"
           role="img"
           size={14}
         />
@@ -416,7 +423,7 @@ export function MessageBubble({
             onOpenThread(message);
           }}
         >
-          {threadReplyCount} {selectedChat?.type === "channel" ? "comments" : "thread messages"}
+          {threadReplyCount} {threadReplyCount === 1 ? "comment" : "comments"}
         </button>
       )}
     </article>

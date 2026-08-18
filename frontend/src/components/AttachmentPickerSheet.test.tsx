@@ -72,10 +72,22 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).toMatch(/galleryState === "error"[\s\S]*?onPick\("gallery"\)/);
   });
 
+  it("opens ImageLightbox preview on photo thumbnail click and toggles selection on top-right checkbox click", () => {
+    expect(attachmentSheetSource).toContain("ImageLightbox");
+    expect(attachmentSheetSource).toContain("previewMediaItem");
+    expect(attachmentSheetSource).toContain("setPreviewMediaItem(item)");
+    expect(attachmentSheetSource).toContain("media-tile-thumb-btn");
+    expect(attachmentSheetSource).toContain("media-tile-checkbox");
+    expect(attachmentSheetSource).toContain("toggleGridItemSelection(item.id)");
+    expect(attachmentSheetSource).toContain("event.stopPropagation()");
+  });
+
   it("defines CSS rules for TG-style attachment sheet, grid layout, inline message box, and bottom nav", () => {
     expect(styles).toContain(".attachment-picker-sheet.tg-style");
     expect(styles).toContain(".attachment-picker-grid");
+    expect(styles).toContain(".media-tile-thumb-btn");
     expect(styles).toContain(".media-tile-checkbox");
+    expect(styles).toContain("object-fit: cover");
     expect(styles).toContain(".attachment-picker-message-box");
     expect(styles).toContain(".attachment-picker-bottom-nav");
     expect(styles).toContain(".attachment-nav-item.active");

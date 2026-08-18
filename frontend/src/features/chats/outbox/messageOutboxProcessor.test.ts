@@ -247,4 +247,170 @@ describe("messageOutboxProcessor", () => {
       []
     );
   });
+
+  it("skips scheduled message if scheduledFor is in the future", async () => {
+    const futureDate = new Date(Date.now() + 3600000).toISOString();
+    const scheduledMsg: QueuedOutboxMessage = {
+      id: "client-scheduled-1",
+      clientMessageId: "client-scheduled-1",
+      chatId: "chat-1",
+      userId: "user-1",
+      content: "Future scheduled message",
+      replyToMessageId: null,
+      threadRootMessageId: null,
+      mentionedUserIds: [],
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      status: "scheduled",
+      attemptCount: 0,
+      scheduledFor: futureDate
+    };
+    await enqueueOutboxMessage(scheduledMsg);
+
+    await drainOutboxQueue({
+      accessToken: "mock-token",
+      currentUser: mockUser,
+      chats: [mockChat],
+      applyMessagesForChat: vi.fn(),
+      onChatsUpdate: vi.fn()
+    });
+
+    expect(sendMessage).not.toHaveBeenCalled();
+    const remaining = await getOutboxMessages("user-1");
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe("client-scheduled-1");
+  });
+
+  it("sends scheduled message once scheduledFor is reached", async () => {
+    const pastDate = new Date(Date.now() - 1000).toISOString();
+    const scheduledMsg: QueuedOutboxMessage = {
+      id: "client-scheduled-due",
+      clientMessageId: "client-scheduled-due",
+      chatId: "chat-1",
+      userId: "user-1",
+      content: "Due scheduled message",
+      replyToMessageId: null,
+      threadRootMessageId: null,
+      mentionedUserIds: [],
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      status: "scheduled",
+      attemptCount: 0,
+      scheduledFor: pastDate
+    };
+    await enqueueOutboxMessage(scheduledMsg);
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      id: "server-msg-due",
+      chatId: "chat-1",
+      senderId: "user-1",
+      type: "text",
+      content: "Due scheduled message",
+      encryptionProtocol: "legacy_plaintext",
+      ciphertext: null,
+      nonce: null,
+      keyVersion: null,
+      encryptionMetadata: null,
+      replyToMessageId: null,
+      threadRootMessageId: null,
+      messageKind: "chat",
+      createdAt: scheduledMsg.createdAt,
+      updatedAt: scheduledMsg.createdAt,
+      deletedAt: null,
+      isEdited: false,
+      forwardedFrom: null,
+      statuses: [],
+      reactions: [],
+      attachments: []
+    });
+
+    await drainOutboxQueue({
+      accessToken: "mock-token",
+      currentUser: mockUser,
+      chats: [mockChat],
+      applyMessagesForChat: vi.fn(),
+      onChatsUpdate: vi.fn()
+    });
+
+    expect(sendMessage).toHaveBeenCalledWith(
+      "mock-token",
+      "chat-1",
+      "Due scheduled message",
+      [],
+      null,
+      null,
+      undefined,
+      []
+    );
+    const remaining = await getOutboxMessages("user-1");
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("advances recurring reminder to next occurrence when sent", async () => {
+    const pastDate = new Date(2026, 7, 18, 9, 0).toISOString();
+    const reminderMsg: QueuedOutboxMessage = {
+      id: "client-reminder-1",
+      clientMessageId: "client-reminder-1",
+      chatId: "chat-1",
+      userId: "user-1",
+      content: "Repeating daily reminder",
+      replyToMessageId: null,
+      threadRootMessageId: null,
+      mentionedUserIds: [],
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      status: "scheduled",
+      attemptCount: 0,
+      scheduledFor: pastDate,
+      isReminder: true,
+      reminderRule: {
+        frequency: "daily",
+        repeatCount: 3,
+        remainingCount: 3,
+        startDate: "2026-08-18",
+        time: "09:00"
+      }
+    };
+    await enqueueOutboxMessage(reminderMsg);
+
+    vi.mocked(sendMessage).mockResolvedValueOnce({
+      id: "server-msg-reminder",
+      chatId: "chat-1",
+      senderId: "user-1",
+      type: "text",
+      content: "Repeating daily reminder",
+      encryptionProtocol: "legacy_plaintext",
+      ciphertext: null,
+      nonce: null,
+      keyVersion: null,
+      encryptionMetadata: null,
+      replyToMessageId: null,
+      threadRootMessageId: null,
+      messageKind: "chat",
+      createdAt: reminderMsg.createdAt,
+      updatedAt: reminderMsg.createdAt,
+      deletedAt: null,
+      isEdited: false,
+      forwardedFrom: null,
+      statuses: [],
+      reactions: [],
+      attachments: []
+    });
+
+    await drainOutboxQueue({
+      accessToken: "mock-token",
+      currentUser: mockUser,
+      chats: [mockChat],
+      applyMessagesForChat: vi.fn(),
+      onChatsUpdate: vi.fn()
+    });
+
+    expect(sendMessage).toHaveBeenCalled();
+    const remaining = await getOutboxMessages("user-1");
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).not.toBe("client-reminder-1"); // New client ID
+    expect(remaining[0].isReminder).toBe(true);
+    expect(remaining[0].reminderRule?.remainingCount).toBe(2);
+    expect(new Date(remaining[0].scheduledFor!).getDate()).toBe(19);
+  });
 });

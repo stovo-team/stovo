@@ -1,7 +1,7 @@
 import { ChangeEvent, CSSProperties, Dispatch, FormEvent, SetStateAction, useMemo, useRef, useState } from "react";
 
 import type { User } from "../../../api/auth";
-import { Chat, Message, updateChat, updateChatPinPermission, updateChatPreferences } from "../../../api/chats";
+import { Chat, Message, updateChat, updateChatMessageDelay, updateChatPinPermission, updateChatPreferences } from "../../../api/chats";
 import { ApiError } from "../../../api/client";
 import { uploadFile } from "../../../api/files";
 import useFilePreviewUrl from "../../../hooks/useFilePreviewUrl";
@@ -144,6 +144,18 @@ export function useChatDetailsActions({
     } catch {}
   }
 
+  async function handleMessageDelayChange(delaySeconds: number) {
+    if (!accessToken || !selectedChat) {
+      return;
+    }
+    try {
+      const chat = await updateChatMessageDelay(accessToken, selectedChat.id, delaySeconds);
+      applyChatUpdate(chat);
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not update message delay");
+    }
+  }
+
   async function handleChatPreferenceChange(payload: {
     isMuted?: boolean;
     isPinned?: boolean;
@@ -214,6 +226,7 @@ export function useChatDetailsActions({
     handleMediaVisibilityChange,
     handleCommentsEnabledChange,
     handlePinPermissionChange,
+    handleMessageDelayChange,
     handleChatPreferenceChange,
     handleChatWallpaperSelect,
     handleMarkSelectedChatRead

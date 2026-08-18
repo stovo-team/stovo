@@ -6,6 +6,7 @@ import {
   RefObject,
   SetStateAction,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState
@@ -38,8 +39,10 @@ import type { MessageStateUpdate, PendingLocalAttachment } from "../shared/types
 import {
   enqueueOutboxMessage,
   type QueuedOutboxAttachment,
-  type QueuedOutboxMessage
+  type QueuedOutboxMessage,
+  type ReminderRule
 } from "../outbox/messageOutboxStore";
+import { computeInitialReminderDate } from "../outbox/reminderSchedule";
 import { drainOutboxQueue } from "../outbox/messageOutboxProcessor";
 
 export type UseMessageComposerParams = {
@@ -110,6 +113,24 @@ export function useMessageComposer({
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [lastSentTimestampByChat, setLastSentTimestampByChat] = useState<Record<string, number>>({});
+  const [, setCooldownTick] = useState<number>(0);
+
+  const activeChatId = selectedChat?.id ?? "";
+  const delaySeconds = selectedChat?.messageDelaySeconds ?? 0;
+  const lastSentAt = activeChatId ? (lastSentTimestampByChat[activeChatId] ?? 0) : 0;
+  const messageDelayRemaining =
+    delaySeconds > 0 && lastSentAt > 0
+      ? Math.max(0, Math.ceil((lastSentAt + delaySeconds * 1000 - Date.now()) / 1000))
+      : 0;
+
+  useEffect(() => {
+    if (messageDelayRemaining <= 0) return;
+    const interval = setInterval(() => {
+      setCooldownTick((tick) => tick + 1);
+    }, 250);
+    return () => clearInterval(interval);
+  }, [messageDelayRemaining]);
 
   const composerFormattingSelectionRef = useRef<TextSelection | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
@@ -519,12 +540,19 @@ export function useMessageComposer({
       onError("Choose a post thread before commenting");
       return;
     }
+    if (messageDelayRemaining > 0) {
+      onError(`Please wait ${messageDelayRemaining}s before sending another message`);
+      return;
+    }
 
     const clientMessageId = createClientMessageId();
     const createdAt = new Date().toISOString();
-    const isChannelThreadMessage = selectedChat.type === "channel" && Boolean(threadRootMessageId);
-    const threadRootForSend = isChannelThreadMessage ? threadRootMessageId : null;
-    const replyToMessageId = isChannelThreadMessage ? null : replyTarget?.id ?? null;
+    const threadRootForSend = threadRootMessageId ? threadRootMessageId : null;
+    const replyToMessageId = threadRootForSend
+      ? replyTarget && replyTarget.id !== threadRootForSend
+        ? replyTarget.id
+        : null
+      : replyTarget?.id ?? null;
     const draftContent = content;
 
     const outboxAttachments: QueuedOutboxAttachment[] = localAttachments.map((pending) => ({
@@ -610,6 +638,12 @@ export function useMessageComposer({
 
       // Persist to local outbox queue first so it survives restarts/crashes
       await enqueueOutboxMessage(outboxItem);
+      if (delaySeconds > 0) {
+        setLastSentTimestampByChat((prev) => ({
+          ...prev,
+          [selectedChat.id]: Date.now()
+        }));
+      }
 
       // Optimistically display in conversation
       applyMessagesForChat(selectedChat.id, (current) => [...current, optimisticMessage]);
@@ -655,6 +689,306 @@ export function useMessageComposer({
       sendInFlightRef.current = false;
       setIsSendingMessage(false);
       setIsUploading(false);
+    }
+  }
+
+  async function handleScheduleMessage(
+    scheduledDate: Date,
+    attachmentOverride?: PendingLocalAttachment[],
+    contentOverride?: string
+  ) {
+    if (sendInFlightRef.current) return;
+    const content = (contentOverride ?? composer).trim();
+    const localAttachments = attachmentOverride ?? pendingAttachments;
+    if (!accessToken || !currentUser || !selectedChat || (!content && localAttachments.length === 0)) {
+      return;
+    }
+    if (channelCommentsDisabledForViewer) {
+      onError("Comments are disabled for this channel");
+      return;
+    }
+    if (missingCommentThread) {
+      onError("Choose a post thread before commenting");
+      return;
+    }
+    if (messageDelayRemaining > 0) {
+      onError(`Please wait ${messageDelayRemaining}s before sending another message`);
+      return;
+    }
+
+    const clientMessageId = createClientMessageId();
+    const createdAt = new Date().toISOString();
+    const scheduledFor = scheduledDate.toISOString();
+    const threadRootForSend = threadRootMessageId ? threadRootMessageId : null;
+    const replyToMessageId = threadRootForSend
+      ? replyTarget && replyTarget.id !== threadRootForSend
+        ? replyTarget.id
+        : null
+      : replyTarget?.id ?? null;
+    const draftContent = content;
+
+    const outboxAttachments: QueuedOutboxAttachment[] = localAttachments.map((pending) => ({
+      id: pending.localId,
+      name: pending.file.name,
+      mimeType: pending.file.type,
+      size: pending.file.size,
+      blob: pending.file
+    }));
+
+    const previewAttachments: FamilyFile[] = localAttachments.map((pending) => ({
+      id: pending.localId,
+      familyId: "",
+      uploadedBy: currentUser.id,
+      chatId: selectedChat.id,
+      chatTitle: selectedChat.title ?? null,
+      chatType: (selectedChat.type === "archive" ? null : selectedChat.type) as "family" | "direct" | "group" | "channel" | null,
+      originMessageId: null,
+      accessScope: "chat" as const,
+      storageProvider: "local",
+      originalName: pending.file.name,
+      mimeType: pending.file.type,
+      sizeBytes: pending.file.size,
+      checksum: null,
+      createdAt,
+      deletedAt: null,
+      isFavorite: false
+    }));
+
+    const mentionedUserIds = selectedChat.members
+      .filter((member) => member.id !== currentUser.id && new RegExp(`(^|\\s)@${member.username.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?=\\s|$|[.,!?])`, "i").test(draftContent))
+      .map((member) => member.id);
+
+    const optimisticMessage: Message = {
+      id: `pending:${clientMessageId}`,
+      chatId: selectedChat.id,
+      senderId: currentUser.id,
+      senderDisplayName: currentUser.displayName,
+      type: inferOptimisticMessageType(previewAttachments, draftContent || null),
+      content: draftContent || null,
+      encryptionProtocol: selectedChat.encryptionProtocol,
+      ciphertext: null,
+      nonce: null,
+      keyVersion: null,
+      encryptionMetadata: null,
+      replyToMessageId,
+      threadRootMessageId: threadRootForSend,
+      messageKind: threadRootForSend ? "thread" : "chat",
+      createdAt,
+      updatedAt: createdAt,
+      deletedAt: null,
+      isEdited: false,
+      forwardedFrom: null,
+      statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
+      reactions: [],
+      attachments: previewAttachments,
+      clientMessageId,
+      deliveryState: "scheduled",
+      scheduledFor
+    };
+
+    const outboxItem: QueuedOutboxMessage = {
+      id: clientMessageId,
+      clientMessageId,
+      chatId: selectedChat.id,
+      userId: currentUser.id,
+      content: draftContent || null,
+      replyToMessageId,
+      threadRootMessageId: threadRootForSend,
+      mentionedUserIds,
+      encryptionProtocol: selectedChat.encryptionProtocol,
+      attachments: outboxAttachments,
+      createdAt,
+      status: "scheduled",
+      attemptCount: 0,
+      scheduledFor,
+      optimisticMessage
+    };
+
+    try {
+      await enqueueOutboxMessage(outboxItem);
+
+      // Optimistically display in conversation
+      applyMessagesForChat(selectedChat.id, (current) => [...current, optimisticMessage]);
+      onChatsUpdate((current) =>
+        current.map((chat) =>
+          chat.id === selectedChat.id
+            ? { ...applyMessagePreviewToChat(chat, optimisticMessage), unreadCount: 0 }
+            : chat
+        )
+      );
+
+      // Clear composer state
+      clearComposerFormattingSelection();
+      setComposer("");
+      resetComposerHeight();
+      requestAnimationFrame(() => composerInputRef.current?.focus());
+      for (const pending of localAttachments) {
+        if (pending.previewUrl) URL.revokeObjectURL(pending.previewUrl);
+      }
+      setPendingAttachments([]);
+      setReplyTarget(null);
+      if (chatId) {
+        window.localStorage.removeItem(`stovo:draft:${chatId}`);
+      }
+      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+
+      if (triggerDrain) {
+        void triggerDrain();
+      }
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not schedule message");
+    }
+  }
+
+  async function handleSetReminder(
+    rule: ReminderRule,
+    attachmentOverride?: PendingLocalAttachment[],
+    contentOverride?: string
+  ) {
+    if (sendInFlightRef.current) return;
+    const content = (contentOverride ?? composer).trim();
+    const localAttachments = attachmentOverride ?? pendingAttachments;
+    if (!accessToken || !currentUser || !selectedChat || (!content && localAttachments.length === 0)) {
+      return;
+    }
+    if (channelCommentsDisabledForViewer) {
+      onError("Comments are disabled for this channel");
+      return;
+    }
+    if (missingCommentThread) {
+      onError("Choose a post thread before commenting");
+      return;
+    }
+    if (messageDelayRemaining > 0) {
+      onError(`Please wait ${messageDelayRemaining}s before sending another message`);
+      return;
+    }
+
+    const initialDate = computeInitialReminderDate(rule);
+    const scheduledFor = initialDate.toISOString();
+    const clientMessageId = createClientMessageId();
+    const createdAt = new Date().toISOString();
+    const threadRootForSend = threadRootMessageId ? threadRootMessageId : null;
+    const replyToMessageId = threadRootForSend
+      ? replyTarget && replyTarget.id !== threadRootForSend
+        ? replyTarget.id
+        : null
+      : replyTarget?.id ?? null;
+    const draftContent = content;
+
+    const outboxAttachments: QueuedOutboxAttachment[] = localAttachments.map((pending) => ({
+      id: pending.localId,
+      name: pending.file.name,
+      mimeType: pending.file.type,
+      size: pending.file.size,
+      blob: pending.file
+    }));
+
+    const previewAttachments: FamilyFile[] = localAttachments.map((pending) => ({
+      id: pending.localId,
+      familyId: "",
+      uploadedBy: currentUser.id,
+      chatId: selectedChat.id,
+      chatTitle: selectedChat.title ?? null,
+      chatType: (selectedChat.type === "archive" ? null : selectedChat.type) as "family" | "direct" | "group" | "channel" | null,
+      originMessageId: null,
+      accessScope: "chat" as const,
+      storageProvider: "local",
+      originalName: pending.file.name,
+      mimeType: pending.file.type,
+      sizeBytes: pending.file.size,
+      checksum: null,
+      createdAt,
+      deletedAt: null,
+      isFavorite: false
+    }));
+
+    const mentionedUserIds = selectedChat.members
+      .filter((member) => member.id !== currentUser.id && new RegExp(`(^|\\s)@${member.username.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}(?=\\s|$|[.,!?])`, "i").test(draftContent))
+      .map((member) => member.id);
+
+    const optimisticMessage: Message = {
+      id: `pending:${clientMessageId}`,
+      chatId: selectedChat.id,
+      senderId: currentUser.id,
+      senderDisplayName: currentUser.displayName,
+      type: inferOptimisticMessageType(previewAttachments, draftContent || null),
+      content: draftContent || null,
+      encryptionProtocol: selectedChat.encryptionProtocol,
+      ciphertext: null,
+      nonce: null,
+      keyVersion: null,
+      encryptionMetadata: null,
+      replyToMessageId,
+      threadRootMessageId: threadRootForSend,
+      messageKind: threadRootForSend ? "thread" : "chat",
+      createdAt,
+      updatedAt: createdAt,
+      deletedAt: null,
+      isEdited: false,
+      forwardedFrom: null,
+      statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
+      reactions: [],
+      attachments: previewAttachments,
+      clientMessageId,
+      deliveryState: "scheduled",
+      scheduledFor,
+      isReminder: true
+    };
+
+    const outboxItem: QueuedOutboxMessage = {
+      id: clientMessageId,
+      clientMessageId,
+      chatId: selectedChat.id,
+      userId: currentUser.id,
+      content: draftContent || null,
+      replyToMessageId,
+      threadRootMessageId: threadRootForSend,
+      mentionedUserIds,
+      encryptionProtocol: selectedChat.encryptionProtocol,
+      attachments: outboxAttachments,
+      createdAt,
+      status: "scheduled",
+      attemptCount: 0,
+      scheduledFor,
+      isReminder: true,
+      reminderRule: rule,
+      optimisticMessage
+    };
+
+    try {
+      await enqueueOutboxMessage(outboxItem);
+
+      // Optimistically display in conversation
+      applyMessagesForChat(selectedChat.id, (current) => [...current, optimisticMessage]);
+      onChatsUpdate((current) =>
+        current.map((chat) =>
+          chat.id === selectedChat.id
+            ? { ...applyMessagePreviewToChat(chat, optimisticMessage), unreadCount: 0 }
+            : chat
+        )
+      );
+
+      // Clear composer state
+      clearComposerFormattingSelection();
+      setComposer("");
+      resetComposerHeight();
+      requestAnimationFrame(() => composerInputRef.current?.focus());
+      for (const pending of localAttachments) {
+        if (pending.previewUrl) URL.revokeObjectURL(pending.previewUrl);
+      }
+      setPendingAttachments([]);
+      setReplyTarget(null);
+      if (chatId) {
+        window.localStorage.removeItem(`stovo:draft:${chatId}`);
+      }
+      socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
+
+      if (triggerDrain) {
+        void triggerDrain();
+      }
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not set reminder");
     }
   }
 
@@ -708,6 +1042,10 @@ export function useMessageComposer({
 
   async function handleVoicePressStart(event: ReactPointerEvent<HTMLButtonElement>) {
     if (channelCommentsDisabledForViewer || missingCommentThread || isUploading || isSendingMessage) {
+      return;
+    }
+    if (messageDelayRemaining > 0) {
+      onError(`Please wait ${messageDelayRemaining}s before sending another message`);
       return;
     }
     if (event.pointerType === "mouse" && voiceRecordingPointerIdRef.current !== null) {
@@ -811,12 +1149,15 @@ export function useMessageComposer({
     cancelEditMode,
     resetComposerHeight,
     handleSendMessage,
+    handleScheduleMessage,
+    handleSetReminder,
     sendQueuedNotificationReply,
     cancelVoiceRecording,
     stopAndSendVoiceRecording,
     handleVoicePressStart,
     handleVoicePressEnd,
     handleVoicePressCancel,
+    messageDelayRemaining,
     resetForChatChange
   };
 }

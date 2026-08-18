@@ -31,4 +31,14 @@ describe("PlansPage week range logic", () => {
     expect(start.getDate()).toBe(3); // Monday Aug 3
     expect(end.getDate()).toBe(10); // Monday Aug 10
   });
+
+  it("includes AppNav navigation in the main page structure and handles background refetching", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
+    expect(source).toContain("<AppNav />");
+    expect(source).toContain('document.addEventListener("visibilitychange", handleVisibility)');
+    expect(source).toContain('window.addEventListener("focus", handleVisibility)');
+    expect(source).toContain("loading && plans.length === 0");
+  });
 });
