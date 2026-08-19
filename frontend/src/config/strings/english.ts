@@ -346,6 +346,7 @@ export const strings = {
       adminsOnly: "Admins only",
       messageDelay: "Message delay",
       off: "Off",
+      members: "Members",
       tabs: {
         media: "Media",
         audio: "Audio",
