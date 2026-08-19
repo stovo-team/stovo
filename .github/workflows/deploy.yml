@@ -155,6 +155,7 @@ jobs:
                           -e "API_URL=${server_url}" \
                           -e "DATABASE_URL=postgres://${pg_user}:${pg_pass}@postgres:5432/stovo_db_${server_slug}?sslmode=disable" \
                           -e "REDIS_URL=redis://redis:6379/0" \
+                          -e "STORAGE_PROVIDER=minio" \
                           -e "MINIO_ENDPOINT=minio:9000" \
                           -e "MINIO_ACCESS_KEY=${minio_user}" \
                           -e "MINIO_SECRET_KEY=${minio_pass}" \

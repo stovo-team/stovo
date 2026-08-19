@@ -382,6 +382,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("API_URL=%s", serverURL),
 		fmt.Sprintf("DATABASE_URL=postgres://%s:%s@postgres:5432/stovo_db_%s?sslmode=disable", pgUser, pgPass, slug),
 		"REDIS_URL=redis://redis:6379/0",
+		fmt.Sprintf("STORAGE_PROVIDER=%s", get("STORAGE_PROVIDER", "minio")),
 		"MINIO_ENDPOINT=minio:9000",
 		fmt.Sprintf("MINIO_ACCESS_KEY=%s", minioUser),
 		fmt.Sprintf("MINIO_SECRET_KEY=%s", minioPass),

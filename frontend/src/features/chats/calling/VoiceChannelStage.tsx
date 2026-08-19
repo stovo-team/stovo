@@ -66,6 +66,17 @@ export function VoiceChannelStage({
       role: "member"
     });
   }
+  if (isCurrentChannelActive && session.callParticipantIds?.length) {
+    for (const pid of session.callParticipantIds) {
+      if (!displayParticipants.some((p) => p.userId === pid)) {
+        displayParticipants.push({
+          userId: pid,
+          state: "connected",
+          role: "member"
+        });
+      }
+    }
+  }
 
   const channelName = displayChatName(chat, currentUser?.id);
   const chatMembers = (chat.members as unknown as User[]) || members || [];
@@ -130,10 +141,10 @@ export function VoiceChannelStage({
               {isConnecting
                 ? "Connecting to LiveKit SFU…"
                 : isCurrentChannelActive
-                  ? `Connected · ${callTimer || "00:00"} · ${displayParticipants.length} in voice`
+                  ? `Connected · ${callTimer || "00:00"} · ${displayParticipants.length} user${displayParticipants.length === 1 ? "" : "s"} in voice`
                   : displayParticipants.length > 0
-                    ? `${displayParticipants.length} member${displayParticipants.length === 1 ? "" : "s"} currently talking`
-                    : "No one connected · Join to start conversation"}
+                    ? `${displayParticipants.length} user${displayParticipants.length === 1 ? "" : "s"} in voice`
+                    : "No users · Join to start conversation"}
             </p>
           </div>
         </div>
@@ -149,7 +160,7 @@ export function VoiceChannelStage({
       {/* Main Stage / Participant Grid */}
       <div className="voice-room-stage">
         {displayParticipants.length > 0 ? (
-          <div className="voice-room-grid">
+          <div className="voice-room-grid" aria-label="Users in voice channel">
             {displayParticipants.map((p) => {
               const info = resolveMemberInfo(p.userId);
               const isSpeaking = !info.isSelf && isPeerSpeaking;
@@ -191,22 +202,12 @@ export function VoiceChannelStage({
             })}
           </div>
         ) : (
-          <div className="voice-room-empty-state">
+          <div className="voice-room-empty-state" data-testid="voice-room-empty-state">
             <div className="voice-room-empty-art">
               <Volume2 size={48} aria-hidden="true" />
             </div>
-            <h3>This Voice Channel is Quiet</h3>
-            <p>No active participants in this channel right now. Jump in and say hello!</p>
-            {!isCurrentChannelActive && (
-              <button
-                type="button"
-                className="voice-room-large-join-btn"
-                onClick={handleJoin}
-              >
-                <Volume2 size={20} aria-hidden="true" />
-                <span>Join Voice Channel</span>
-              </button>
-            )}
+            <h3>No users</h3>
+            <p>No users in this voice channel right now. Join to start talking!</p>
           </div>
         )}
       </div>

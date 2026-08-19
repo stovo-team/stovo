@@ -48,7 +48,7 @@ func (s *Server) handleCreateCallSFUToken(w http.ResponseWriter, r *http.Request
 		s.detail(w, http.StatusBadRequest, "roomId required")
 		return
 	}
-	if strings.TrimSpace(s.cfg.LiveKitURL) == "" || strings.TrimSpace(s.cfg.LiveKitAPIKey) == "" || strings.TrimSpace(s.cfg.LiveKitAPISecret) == "" {
+	if !s.isSFUConfigured() {
 		s.detail(w, http.StatusServiceUnavailable, "SFU is not configured")
 		return
 	}
