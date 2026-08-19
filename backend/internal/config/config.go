@@ -162,7 +162,12 @@ func Load() (Config, error) {
 		RefreshTokenTTL:              refreshTTL,
 		MediaPlaybackTokenTTL:        mediaPlaybackTTL,
 		MaxUploadSizeBytes:           int64(maxUploadMB) * 1024 * 1024,
-		StorageProvider:              strings.ToLower(getenv("STORAGE_PROVIDER", "local")),
+		StorageProvider:              strings.ToLower(getenv("STORAGE_PROVIDER", func() string {
+			if strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")) != "" {
+				return "minio"
+			}
+			return "local"
+		}())),
 		LocalStoragePath:             storagePath,
 		MinIOEndpoint:                getenv("MINIO_ENDPOINT", "minio:9000"),
 		MinIOAccessKey:               strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")),

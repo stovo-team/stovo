@@ -107,7 +107,27 @@ export default class LiveKitMediaEngine {
       this.onDisconnected?.();
     });
 
-    await room.connect(opts.url, opts.token);
+    let connectUrl = opts.url;
+    if (typeof window !== "undefined" && connectUrl) {
+      try {
+        const u = new URL(connectUrl, window.location.origin);
+        if (window.location.protocol === "https:" && u.protocol === "ws:") {
+          u.protocol = "wss:";
+        }
+        if (
+          (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "livekit") &&
+          window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1"
+        ) {
+          u.hostname = window.location.hostname;
+        }
+        connectUrl = u.toString();
+      } catch {
+        /* fallback to opts.url */
+      }
+    }
+
+    await room.connect(connectUrl, opts.token);
     this.onConnected?.();
   }
 
@@ -121,16 +141,32 @@ export default class LiveKitMediaEngine {
     const video = stream.getVideoTracks()[0];
 
     if (audio) {
-      const pub = await local.publishTrack(audio, {
-        source: lk.Track.Source.Microphone,
-      });
-      void pub;
+      try {
+        const hasAudio = Array.from(local.trackPublications.values()).some(
+          (p) => p.source === lk.Track.Source.Microphone
+        );
+        if (!hasAudio) {
+          await local.publishTrack(audio, {
+            source: lk.Track.Source.Microphone,
+          });
+        }
+      } catch (err) {
+        console.warn("[LiveKit] publish audio track error:", err);
+      }
     }
     if (video) {
-      const pub = await local.publishTrack(video, {
-        source: lk.Track.Source.Camera,
-      });
-      void pub;
+      try {
+        const hasVideo = Array.from(local.trackPublications.values()).some(
+          (p) => p.source === lk.Track.Source.Camera
+        );
+        if (!hasVideo) {
+          await local.publishTrack(video, {
+            source: lk.Track.Source.Camera,
+          });
+        }
+      } catch (err) {
+        console.warn("[LiveKit] publish video track error:", err);
+      }
     }
   }
 

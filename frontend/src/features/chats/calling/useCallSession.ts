@@ -1230,8 +1230,24 @@ export function useCallSession({
 
         const joinMedia = async () => {
           if (payload.topology === "sfu") {
-            await audioController.switchToSfu();
-            return;
+            try {
+              await audioController.switchToSfu();
+              return;
+            } catch (sfuErr) {
+              console.warn("[call:accepted] SFU join failed, attempting mesh fallback:", sfuErr);
+              setCallTopology("mesh");
+              audioController.setTopology("mesh");
+              if (mediaPeers.length > 0) {
+                await audioController.syncMeshPeers([currentUser.id, ...mediaPeers]);
+                return;
+              }
+              if (payload.callerId === currentUser.id) {
+                await audioController.startOutgoing(payload.chatId, peerId, acceptedCallType);
+              } else {
+                await audioController.acceptIncoming(payload.chatId, peerId, acceptedCallType);
+              }
+              return;
+            }
           }
           if (mediaPeers.length > 0) {
             await audioController.syncMeshPeers([currentUser.id, ...mediaPeers]);
@@ -1246,12 +1262,10 @@ export function useCallSession({
 
         void joinMedia()
           .then(() => {
-            console.log("[call:accepted] media join resolved — waiting for ICE/SFU");
-            if (payload.topology === "sfu") {
-              setCallPhase("in-call");
-              callPhaseRef.current = "in-call";
-              setCallNotice(null);
-            }
+            console.log("[call:accepted] media join resolved");
+            setCallPhase("in-call");
+            callPhaseRef.current = "in-call";
+            setCallNotice(null);
           })
           .catch(async (err) => {
             console.error("[call:accepted] media join threw:", err);
@@ -1291,6 +1305,9 @@ export function useCallSession({
             };
           });
         }
+        const mediaPeers = participants
+          .filter((p) => p.userId !== currentUser.id && (p.state === "connecting" || p.state === "connected"))
+          .map((p) => p.userId);
         if (payload.topology === "sfu") {
           setCallTopology("sfu");
           void audioController.switchToSfu()
@@ -1300,13 +1317,18 @@ export function useCallSession({
               callPhaseRef.current = "in-call";
             })
             .catch((err) => {
-              setError(err instanceof Error ? err.message : "Could not switch to group media");
+              console.warn("[call:participant-updated] switchToSfu failed, continuing with mesh:", err);
+              setCallTopology("mesh");
+              audioController.setTopology("mesh");
+              setCallNotice(null);
+              setCallPhase("in-call");
+              callPhaseRef.current = "in-call";
+              if (mediaPeers.length > 0) {
+                void audioController.syncMeshPeers([currentUser.id, ...mediaPeers]).catch(() => undefined);
+              }
             });
           return;
         }
-        const mediaPeers = participants
-          .filter((p) => p.userId !== currentUser.id && (p.state === "connecting" || p.state === "connected"))
-          .map((p) => p.userId);
         if (mediaPeers.length > 0 && callPhaseRef.current !== "incoming" && callPhaseRef.current !== "outgoing") {
           void audioController.syncMeshPeers([currentUser.id, ...mediaPeers]).catch((err) => {
             console.error("[call:participant-updated] syncMeshPeers failed", err);
@@ -1338,7 +1360,12 @@ export function useCallSession({
               callPhaseRef.current = "in-call";
             })
             .catch((err) => {
-              setError(err instanceof Error ? err.message : "Could not switch to group media");
+              console.warn("[call:topology] switchToSfu failed, keeping mesh:", err);
+              setCallTopology("mesh");
+              audioController.setTopology("mesh");
+              setCallNotice(null);
+              setCallPhase("in-call");
+              callPhaseRef.current = "in-call";
             });
         }
       });

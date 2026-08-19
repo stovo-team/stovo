@@ -22,8 +22,9 @@ export const strings = {
   // ── Navigation ─────────────────────────────────────────────────────
   nav: {
     chats: "Чаты",
-    storage: "Хранилище",
+    storage: "Файлы",
     plans: "Планы",
+
     settings: "Настройки",
     admin: "Админ",
     logOut: "Выйти",

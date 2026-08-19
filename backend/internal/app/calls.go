@@ -1,4 +1,4 @@
-﻿package app
+package app
 
 import (
 	"context"
@@ -283,7 +283,7 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	}
 
 	topology := callTopologyMesh
-	if isVoiceChannel {
+	if isVoiceChannel && s.isSFUConfigured() {
 		topology = callTopologySFU
 	}
 	calleeUserID := ""
@@ -437,7 +437,7 @@ func (s *Server) joinCallSession(chat chatPublic, userID string, callType string
 			}
 		}
 		s.userActiveCall[userID] = session.ID
-		if chat.Type == "voice" || session.connectedOrConnectingCount() > maxMeshParticipants {
+		if (chat.Type == "voice" || session.connectedOrConnectingCount() > maxMeshParticipants) && s.isSFUConfigured() {
 			session.Topology = callTopologySFU
 		}
 		s.callMu.Unlock()
@@ -663,6 +663,12 @@ func (s *Server) inviteUsersToCall(session *callSession, inviterUserID string, i
 	return added, nil
 }
 
+func (s *Server) isSFUConfigured() bool {
+	return strings.TrimSpace(s.cfg.LiveKitURL) != "" &&
+		strings.TrimSpace(s.cfg.LiveKitAPIKey) != "" &&
+		strings.TrimSpace(s.cfg.LiveKitAPISecret) != ""
+}
+
 func (s *Server) maybePromoteToSFULocked(session *callSession) (bool, error) {
 	if session.Topology == callTopologySFU {
 		return false, nil
@@ -670,7 +676,7 @@ func (s *Server) maybePromoteToSFULocked(session *callSession) (bool, error) {
 	if session.connectedOrConnectingCount() <= maxMeshParticipants {
 		return false, nil
 	}
-	if strings.TrimSpace(s.cfg.LiveKitURL) == "" || strings.TrimSpace(s.cfg.LiveKitAPIKey) == "" || strings.TrimSpace(s.cfg.LiveKitAPISecret) == "" {
+	if !s.isSFUConfigured() {
 		return false, fmt.Errorf("group call limit reached; SFU is not configured")
 	}
 	session.Topology = callTopologySFU

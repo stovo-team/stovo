@@ -101,7 +101,7 @@ const mockCurrentUser: User = {
 };
 
 describe("VoiceChannelStage", () => {
-  it("renders when disconnected and allows user to join", () => {
+  it("renders when disconnected with active participants and allows user to join with exactly one button", () => {
     const mockJoinVoiceChannel = vi.fn();
     const mockSession = {
       callPhase: "idle",
@@ -128,16 +128,68 @@ describe("VoiceChannelStage", () => {
     );
 
     expect(container.textContent).toContain("Gaming Voice");
-    expect(container.textContent).toContain("1 member currently talking");
+    expect(container.textContent).toContain("1 user in voice");
     expect(container.textContent).toContain("Bob");
 
-    const joinBtn = container.querySelector(".voice-room-primary-join-btn") as HTMLButtonElement;
-    expect(joinBtn).toBeDefined();
+    // Ensure there is only 1 join button
+    const joinButtons = container.querySelectorAll("button");
+    const joinVoiceButtons = Array.from(joinButtons).filter(
+      (b) => b.textContent?.includes("Join Voice Channel")
+    );
+    expect(joinVoiceButtons.length).toBe(1);
 
     act(() => {
-      joinBtn.click();
+      joinVoiceButtons[0].click();
     });
     expect(mockJoinVoiceChannel).toHaveBeenCalledWith(mockVoiceChat, { micMuted: false, cameraEnabled: false });
+  });
+
+  it("renders 'No users' when channel is empty with exactly one join button", () => {
+    const emptyVoiceChat: Chat = {
+      ...mockVoiceChat,
+      activeCall: undefined
+    };
+
+    const mockJoinVoiceChannel = vi.fn();
+    const mockSession = {
+      callPhase: "idle",
+      activeCallChatId: null,
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: mockJoinVoiceChannel,
+      isPeerSpeaking: false,
+      activeGroupCalls: {},
+      callTimer: "00:00",
+      setIsCallSettingsMenuOpen: vi.fn()
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={emptyVoiceChat}
+        session={mockSession}
+        members={emptyVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    expect(container.textContent).toContain("Gaming Voice");
+    expect(container.textContent).toContain("No users");
+    expect(container.textContent).toContain("No users in this voice channel right now.");
+
+    // Ensure there is only 1 join button on the whole screen (no duplicate button)
+    const joinButtons = container.querySelectorAll("button");
+    const joinVoiceButtons = Array.from(joinButtons).filter(
+      (b) => b.textContent?.includes("Join Voice Channel")
+    );
+    expect(joinVoiceButtons.length).toBe(1);
+
+    act(() => {
+      joinVoiceButtons[0].click();
+    });
+    expect(mockJoinVoiceChannel).toHaveBeenCalledWith(emptyVoiceChat, { micMuted: false, cameraEnabled: false });
   });
 
   it("renders connected controls when active in the voice channel", () => {
