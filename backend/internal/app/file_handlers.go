@@ -419,6 +419,7 @@ func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, us
 
 	groqClient := transcription.NewGroqSTTClient(transcription.GroqSTTConfig{
 		APIKey:           apiKey,
+		BaseURL:          s.getGroqBaseURL(),
 		Model:            s.cfg.GroqSTTModel,
 		CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD,
 	})

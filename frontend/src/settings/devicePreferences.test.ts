@@ -27,14 +27,15 @@ describe("device preferences", () => {
     expect(readDevicePreferences()).toEqual(DEFAULT_DEVICE_PREFERENCES);
   });
 
-  it("persists a partial device preference update", () => {
-    writeDevicePreferences({ messagePreview: false, quietHoursStart: "21:30", appLockEnabled: true });
+  it("persists a partial device preference update including language", () => {
+    writeDevicePreferences({ messagePreview: false, quietHoursStart: "21:30", appLockEnabled: true, language: "ru" });
 
     expect(readDevicePreferences()).toMatchObject({
       messagePreview: false,
       quietHoursStart: "21:30",
       quietHoursEnd: "07:00",
-      appLockEnabled: true
+      appLockEnabled: true,
+      language: "ru"
     });
   });
 
@@ -44,3 +45,4 @@ describe("device preferences", () => {
     expect(isWithinQuietHours("22:00", "07:00", new Date(2026, 0, 2, 12, 0))).toBe(false);
   });
 });
+

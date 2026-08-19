@@ -112,8 +112,15 @@ export const strings = {
     notificationsHelper: "Сообщения, звонки и тихие часы",
     privacyAndSecurity: "Конфиденциальность и безопасность",
     privacyHelper: "Видимость профиля и отчёты о прочтении",
+    language: "Язык",
+    languageHelper: "Язык приложения и перевод",
+    languageSystem: "Системный (авто)",
+    languageSystemSubtext: (current: string) => `Соответствует языку устройства (${current})`,
+    languageEnglish: "English",
+    languageRussian: "Русский",
     helpAndAbout: "Помощь и о приложении",
     helpHelper: "Версия и поддержка",
+
 
     changeServerAddress: "Сменить адрес сервера",
     tapToPersonalize: "Нажмите для персонализации",

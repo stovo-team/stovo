@@ -128,3 +128,48 @@ func containsRune(s, substr string) bool {
 	}
 	return false
 }
+
+func TestBuildEndpointURLs(t *testing.T) {
+	tests := []struct {
+		baseURL       string
+		wantAudioURL  string
+		wantChatURL   string
+	}{
+		{
+			baseURL:      "",
+			wantAudioURL: "https://api.groq.com/openai/v1/audio/transcriptions",
+			wantChatURL:  "https://api.groq.com/openai/v1/chat/completions",
+		},
+		{
+			baseURL:      "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+			wantAudioURL: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/audio/transcriptions",
+			wantChatURL:  "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
+		},
+		{
+			baseURL:      "https://dashscope.aliyuncs.com/compatible-mode/v1",
+			wantAudioURL: "https://dashscope.aliyuncs.com/compatible-mode/v1/audio/transcriptions",
+			wantChatURL:  "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+		},
+		{
+			baseURL:      "https://api.openai.com/v1",
+			wantAudioURL: "https://api.openai.com/v1/audio/transcriptions",
+			wantChatURL:  "https://api.openai.com/v1/chat/completions",
+		},
+		{
+			baseURL:      "http://whisper:8000/v1",
+			wantAudioURL: "http://whisper:8000/v1/audio/transcriptions",
+			wantChatURL:  "http://whisper:8000/v1/chat/completions",
+		},
+	}
+
+	for _, tt := range tests {
+		gotAudio := buildAudioTranscriptionsURL(tt.baseURL)
+		if gotAudio != tt.wantAudioURL {
+			t.Errorf("buildAudioTranscriptionsURL(%q) = %q, want %q", tt.baseURL, gotAudio, tt.wantAudioURL)
+		}
+		gotChat := buildChatCompletionsURL(tt.baseURL)
+		if gotChat != tt.wantChatURL {
+			t.Errorf("buildChatCompletionsURL(%q) = %q, want %q", tt.baseURL, gotChat, tt.wantChatURL)
+		}
+	}
+}

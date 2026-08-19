@@ -78,8 +78,6 @@ export function ReminderModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
   function toggleDayOfWeek(day: number) {
     setSelectedDaysOfWeek((current) => {
       const list = Array.isArray(current) ? current : [];
@@ -128,6 +126,8 @@ export function ReminderModal({
     onClose();
   }
 
+  if (!isOpen) return null;
+
   const rawText = typeof messageText === "string" ? messageText : String(messageText ?? "");
   const previewText = rawText.trim();
   const safeAttachments = Array.isArray(attachments) ? attachments : [];
@@ -139,24 +139,22 @@ export function ReminderModal({
     ? `${safeAttachments.length} attachment${safeAttachments.length > 1 ? "s" : ""}`
     : "Empty message";
 
-  const repeatSummary = useMemo(() => {
-    let freqText = "daily";
-    const daysWeekList = Array.isArray(selectedDaysOfWeek) ? selectedDaysOfWeek : [];
-    const daysMonthList = Array.isArray(selectedDaysOfMonth) ? selectedDaysOfMonth : [];
-    if (frequency === "weekly") {
-      const dayNames = daysWeekList
-        .map((val) => DAYS_OF_WEEK.find((d) => d.value === val)?.label)
-        .filter(Boolean)
-        .join(", ");
-      freqText = `weekly on ${dayNames || "selected days"}`;
-    } else if (frequency === "monthly") {
-      freqText = `monthly on day(s) ${daysMonthList.join(", ")}`;
-    }
-    const safeDate = startDate || "start date";
-    const safeTime = startTime || "09:00";
-    const safeCount = Math.max(1, Number(repeatCount) || 1);
-    return `Starts on ${safeDate} at ${safeTime}, repeats ${freqText} for ${safeCount} time${safeCount > 1 ? "s" : ""}.`;
-  }, [startDate, startTime, frequency, selectedDaysOfWeek, selectedDaysOfMonth, repeatCount]);
+  let freqText = "daily";
+  const daysWeekList = Array.isArray(selectedDaysOfWeek) ? selectedDaysOfWeek : [];
+  const daysMonthList = Array.isArray(selectedDaysOfMonth) ? selectedDaysOfMonth : [];
+  if (frequency === "weekly") {
+    const dayNames = daysWeekList
+      .map((val) => DAYS_OF_WEEK.find((d) => d.value === val)?.label)
+      .filter(Boolean)
+      .join(", ");
+    freqText = `weekly on ${dayNames || "selected days"}`;
+  } else if (frequency === "monthly") {
+    freqText = `monthly on day(s) ${daysMonthList.join(", ")}`;
+  }
+  const safeDate = startDate || "start date";
+  const safeTime = startTime || "09:00";
+  const safeCount = Math.max(1, Number(repeatCount) || 1);
+  const repeatSummary = `Starts on ${safeDate} at ${safeTime}, repeats ${freqText} for ${safeCount} time${safeCount > 1 ? "s" : ""}.`;
 
   const modalContent = (
     <div

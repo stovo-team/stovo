@@ -62,8 +62,9 @@ func (c *LLMClient) callChat(ctx context.Context, req chatCompletionRequest) (st
 	if err != nil {
 		return "", fmt.Errorf("llm: marshal request: %w", err)
 	}
+	endpointURL := buildChatCompletionsURL(c.cfg.BaseURL)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.cfg.BaseURL+"/openai/v1/chat/completions", bytes.NewReader(body))
+		endpointURL, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("llm: build request: %w", err)
 	}
@@ -89,6 +90,23 @@ func (c *LLMClient) callChat(ctx context.Context, req chatCompletionRequest) (st
 		return "", fmt.Errorf("llm: empty choices")
 	}
 	return cr.Choices[0].Message.Content, nil
+}
+
+func buildChatCompletionsURL(baseURL string) string {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if baseURL == "" {
+		return "https://api.groq.com/openai/v1/chat/completions"
+	}
+	if strings.HasSuffix(baseURL, "/chat/completions") {
+		return baseURL
+	}
+	if strings.HasSuffix(baseURL, "/v1") {
+		return baseURL + "/chat/completions"
+	}
+	if strings.Contains(baseURL, "groq.com") {
+		return baseURL + "/openai/v1/chat/completions"
+	}
+	return baseURL + "/v1/chat/completions"
 }
 
 // PostProcess generates summary, decisions, action items, and open questions from transcript segments.

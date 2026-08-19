@@ -212,8 +212,17 @@ export function useCallSession({
     [activeCallChatId, chats]
   );
   const activeCallPeerName = useMemo(() => {
+    if (activeCallChat?.type === "voice" || activeCallChat?.type === "group" || activeCallChat?.type === "family" || activeCallChat?.type === "channel") {
+      return activeCallChat.title || (activeCallChat.type === "voice" ? "Voice Channel" : "Group Call");
+    }
+    if (selectedChat && selectedChat.id === activeCallChatId && (selectedChat.type === "voice" || selectedChat.type === "group" || selectedChat.type === "family" || selectedChat.type === "channel")) {
+      return selectedChat.title || (selectedChat.type === "voice" ? "Voice Channel" : "Group Call");
+    }
     if (!currentUser || !callPeerUserId) {
-      return "Unknown contact";
+      if (activeCallChat) {
+        return activeCallChat.title || "Active Call";
+      }
+      return "Active Call";
     }
     // Try selectedChat.members first — most up-to-date when the caller initiates
     if (selectedChat && selectedChat.id === activeCallChatId) {
@@ -227,7 +236,7 @@ export function useCallSession({
       }
     }
     const member = members.find((candidate) => candidate.id === callPeerUserId);
-    return member?.displayName ?? "Unknown contact";
+    return member?.displayName ?? "Active Call";
   }, [activeCallChat, activeCallChatId, callPeerUserId, currentUser, members, selectedChat]);
 
   const syncNativePictureInPictureCallState = useCallback(() => {
@@ -1236,7 +1245,14 @@ export function useCallSession({
         };
 
         void joinMedia()
-          .then(() => { console.log("[call:accepted] media join resolved — waiting for ICE/SFU"); })
+          .then(() => {
+            console.log("[call:accepted] media join resolved — waiting for ICE/SFU");
+            if (payload.topology === "sfu") {
+              setCallPhase("in-call");
+              callPhaseRef.current = "in-call";
+              setCallNotice(null);
+            }
+          })
           .catch(async (err) => {
             console.error("[call:accepted] media join threw:", err);
             if (socket.connected) socket.emit("call:end", { chatId: payload.chatId, roomId: payload.roomId });
@@ -1277,9 +1293,15 @@ export function useCallSession({
         }
         if (payload.topology === "sfu") {
           setCallTopology("sfu");
-          void audioController.switchToSfu().catch((err) => {
-            setError(err instanceof Error ? err.message : "Could not switch to group media");
-          });
+          void audioController.switchToSfu()
+            .then(() => {
+              setCallNotice(null);
+              setCallPhase("in-call");
+              callPhaseRef.current = "in-call";
+            })
+            .catch((err) => {
+              setError(err instanceof Error ? err.message : "Could not switch to group media");
+            });
           return;
         }
         const mediaPeers = participants
@@ -1310,7 +1332,11 @@ export function useCallSession({
           setCallTopology("sfu");
           setCallNotice("Switching to group media…");
           void audioController.switchToSfu()
-            .then(() => setCallNotice(null))
+            .then(() => {
+              setCallNotice(null);
+              setCallPhase("in-call");
+              callPhaseRef.current = "in-call";
+            })
             .catch((err) => {
               setError(err instanceof Error ? err.message : "Could not switch to group media");
             });
