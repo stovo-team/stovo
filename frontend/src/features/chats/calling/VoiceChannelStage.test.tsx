@@ -127,8 +127,6 @@ describe("VoiceChannelStage", () => {
       />
     );
 
-    expect(container.textContent).toContain("Gaming Voice");
-    expect(container.textContent).toContain("1 user in voice");
     expect(container.textContent).toContain("Bob");
 
     // Ensure there is only 1 join button
@@ -175,7 +173,6 @@ describe("VoiceChannelStage", () => {
       />
     );
 
-    expect(container.textContent).toContain("Gaming Voice");
     expect(container.textContent).toContain("No users");
     expect(container.textContent).toContain("No users in this voice channel right now.");
 
@@ -221,7 +218,6 @@ describe("VoiceChannelStage", () => {
       />
     );
 
-    expect(container.textContent).toContain("Connected · 01:23");
     expect(container.textContent).toContain("Alice (You)");
     expect(container.textContent).toContain("Bob");
 

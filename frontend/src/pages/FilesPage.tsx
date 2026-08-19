@@ -47,6 +47,7 @@ import { VideoPlayer } from "../components/VideoPlayer";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
+import { useStrings } from "../i18n/LanguageContext";
 import {
   initialStorageSelection,
   shouldOpenStorageTilePreview,
@@ -61,6 +62,7 @@ import {
   type StorageAvatarKind,
   type StorageFilter
 } from "./storageLibrary";
+
 
 const storageFilters: Array<{ label: string; value: StorageFilter }> = [
   { label: "All", value: "all" },
@@ -217,6 +219,7 @@ function StorageTile({
 }
 
 export default function FilesPage() {
+  const strings = useStrings();
   const navigate = useNavigate();
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
@@ -242,6 +245,27 @@ export default function FilesPage() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const sourceMenuRef = useRef<HTMLDivElement | null>(null);
   const storageDetailsCloseRef = useRef<HTMLButtonElement | null>(null);
+
+  const storageFilters: Array<{ label: string; value: StorageFilter }> = [
+    { label: strings.files.filters.all, value: "all" },
+    { label: strings.files.filters.photos, value: "photos" },
+    { label: strings.files.filters.videos, value: "videos" },
+    { label: strings.files.filters.audio, value: "audio" },
+    { label: strings.files.filters.documents, value: "documents" },
+    { label: strings.files.filters.favorites, value: "favorites" }
+  ];
+
+  const sourceGroups = useMemo(() => {
+    return buildStorageSources(files, chats, currentUser?.id, {
+      archive: strings.files.categories.archive,
+      voice: strings.files.categories.voice,
+      family: strings.files.categories.family,
+      groups: strings.files.categories.groups,
+      channels: strings.files.categories.channels,
+      direct: strings.files.categories.direct
+    });
+  }, [files, chats, currentUser?.id, strings]);
+
 
   const closeMobileDetails = useCallback(() => {
     const fileIdToRestore = selectedFileId;
@@ -427,7 +451,7 @@ export default function FilesPage() {
     <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${mobileDetailsOpen ? " has-storage-selection" : ""}`}>
       <AppNav />
       <section className="page-surface storage-layout" aria-busy={isLoading || isUploading}>
-        <aside className="storage-source-sidebar" aria-label="Chat file sources">
+        <aside className="storage-source-sidebar" aria-label={strings.files.storageSource}>
           <div className="storage-mobile-source-picker" ref={sourceMenuRef}>
             <button
               type="button"
@@ -437,13 +461,13 @@ export default function FilesPage() {
               onClick={() => setIsSourceMenuOpen((isOpen) => !isOpen)}
             >
               <span className="storage-mobile-source-copy">
-                <strong>{selectedSource?.label ?? "All chats"}</strong>
+                <strong>{selectedSource?.label ?? strings.files.allChats}</strong>
                 <small>{selectedSource?.fileCount ?? files.length} files</small>
               </span>
               <ChevronDown aria-hidden="true" size={20} />
             </button>
             {isSourceMenuOpen && (
-              <div className="storage-mobile-source-menu" role="listbox" aria-label="Storage source">
+              <div className="storage-mobile-source-menu" role="listbox" aria-label={strings.files.storageSource}>
                 <button
                   type="button"
                   role="option"
@@ -455,7 +479,7 @@ export default function FilesPage() {
                   }}
                 >
                   <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={19} /></span>
-                  <span><strong>All chats</strong><small>{files.length} files</small></span>
+                  <span><strong>{strings.files.allChats}</strong><small>{files.length} files</small></span>
                 </button>
                 {sourceGroups.map((group) => (
                   <section className="storage-mobile-source-group" key={group.label}>
@@ -496,7 +520,7 @@ export default function FilesPage() {
             onClick={() => setSourceChatId(null)}
           >
             <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={family?.minimizedChatLayout ? 16 : 19} /></span>
-            <span className="storage-source-copy"><strong>All chats</strong><small>{files.length} files</small></span>
+            <span className="storage-source-copy"><strong>{strings.files.allChats}</strong><small>{files.length} files</small></span>
           </button>
           {sourceGroups.map((group) => (
             <section className="storage-source-group" key={group.label}>
@@ -534,13 +558,13 @@ export default function FilesPage() {
           <label className="search-field storage-search">
             <Search aria-hidden="true" size={18} />
             <input
-              placeholder="Search files, dates, people"
+              placeholder={strings.files.searchPlaceholder}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
 
-          <div className="filter-chip-row" aria-label="Storage filters">
+          <div className="filter-chip-row" aria-label={strings.files.storageFilters}>
             {storageFilters.map((item) => (
               <button
                 type="button"
@@ -563,8 +587,8 @@ export default function FilesPage() {
           ) : filteredFiles.length === 0 ? (
             <div className="empty-state storage-empty-state">
               <HardDriveIcon />
-              <strong>{filter === "favorites" ? "No favorites yet" : "No files saved yet"}</strong>
-              <p>Files shared in chats will appear here.</p>
+              <strong>{filter === "favorites" ? strings.files.noFilesInFilter : strings.files.empty}</strong>
+              <p>{strings.files.noFilesInFilter}</p>
             </div>
           ) : (
             <div className="storage-grid">
@@ -623,8 +647,8 @@ export default function FilesPage() {
                   {accessToken && (
                     <button
                       type="button"
-                      aria-label="Download file"
-                      title="Download"
+                      aria-label={strings.files.download}
+                      title={strings.files.download}
                       onClick={() => void saveFileToDisk(accessToken, selectedFile)}
                     >
                       <Download aria-hidden="true" size={20} />
@@ -633,9 +657,9 @@ export default function FilesPage() {
                   <button
                     type="button"
                     className={selectedFile.isFavorite ? "is-active" : undefined}
-                    aria-label={selectedFile.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                    aria-label={selectedFile.isFavorite ? strings.files.removeFavorite : strings.files.favorite}
                     aria-pressed={selectedFile.isFavorite}
-                    title={selectedFile.isFavorite ? "Favorited" : "Favorite"}
+                    title={selectedFile.isFavorite ? strings.files.removeFavorite : strings.files.favorite}
                     onClick={() => void handleFavoriteToggle(selectedFile)}
                   >
                     <Heart aria-hidden="true" size={20} />
@@ -656,8 +680,8 @@ export default function FilesPage() {
                     <button
                       type="button"
                       className="storage-delete-icon"
-                      aria-label="Move to trash"
-                      title="Move to trash"
+                      aria-label={strings.files.delete}
+                      title={strings.files.delete}
                       onClick={() => void handleDelete(selectedFile.id)}
                     >
                       <Trash2 aria-hidden="true" size={20} />
@@ -725,18 +749,19 @@ export default function FilesPage() {
                   className="storage-jump-message"
                   onClick={() => navigate(`/app/chats/${selectedFile.chatId}?message=${selectedFile.originMessageId}`)}
                 >
-                  Jump to message
+                  {strings.files.openInChat}
                 </button>
               )}
             </>
           ) : (
             <div className="empty-state compact-empty">
               <Info aria-hidden="true" size={28} />
-              <strong>Select an item</strong>
-              <p>Preview details, download, or organize files from here.</p>
+              <strong>{strings.files.empty}</strong>
+              <p>{strings.files.noFilesInFilter}</p>
             </div>
           )}
         </aside>
+
         {fullViewImage && (
           <ImageLightbox
             imageUrl={fullViewImage.previewUrl}

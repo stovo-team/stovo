@@ -303,7 +303,266 @@ export const strings = {
     pinRequired:
       "Сначала установите PIN-код, графический ключ, пароль или биометрию в настройках Android.",
   },
+
+  // ── Chats ────────────────────────────────────────────────────────────
+  chats: {
+    title: "Чаты",
+    searchPlaceholder: "Поиск по сообщениям или участникам",
+    filters: {
+      all: "Все",
+      unread: "Непрочитанные",
+      groups: "Группы",
+      direct: "Личные",
+      voice: "Голосовые",
+      muted: "Без звука",
+    },
+    sections: {
+      archive: "Архив сообщений",
+      voice: "Голосовые каналы",
+      channels: "Каналы",
+      groups: "Группы",
+      dms: "Личные сообщения",
+    },
+    types: {
+      familyChat: "Семейный чат",
+      voiceChannel: "Голосовой канал",
+      channel: "Канал",
+      groupChat: "Групповой чат",
+      directChat: "Личный чат",
+      generalFamilyChat: "Общий семейный чат",
+      directMessage: "Личное сообщение",
+      messageArchive: "Архив сообщений",
+      membersCount: (count: number) => {
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        if (mod100 >= 11 && mod100 <= 19) return `${count} участников`;
+        if (mod10 === 1) return `${count} участник`;
+        if (mod10 >= 2 && mod10 <= 4) return `${count} участника`;
+        return `${count} участников`;
+      },
+      inVoice: (count: number) => `${count} в голосовом / Голосовой канал`,
+      privateFamilyRoom: (count: number) => `${count} участников / семейная комната`,
+      readOnlyChannel: (count: number) => `${count} участников / информационный канал`,
+      groupChatPreview: (count: number) => `${count} участников / групповой чат`,
+    },
+    details: {
+      title: "Информация о чате",
+      settings: "Настройки чата",
+      name: "Название чата",
+      save: "Сохранить",
+      cancel: "Отмена",
+      message: "Написать",
+      mute: "Выключить звук",
+      unmute: "Включить звук",
+      favorite: "В избранное",
+      saved: "Сохранено",
+      wallpaper: "Фон чата",
+      uploadPhoto: "Загрузить фото",
+      changePhoto: "Изменить фото",
+      remove: "Удалить",
+      familyStorage: "Семейные файлы",
+      familyStorageHelp: "Показывать медиа в общих семейных файлах",
+      comments: "Комментарии",
+      commentsHelp: "Разрешить участникам комментировать публикации",
+      whoCanPin: "Кто может закреплять сообщения",
+      everyone: "Все участники",
+      adminsOnly: "Только администраторы",
+      messageDelay: "Задержка сообщений",
+      off: "Выкл",
+      tabs: {
+        media: "Медиа",
+        audio: "Аудио",
+        files: "Файлы",
+        links: "Ссылки",
+      },
+      empty: {
+        media: "Пока нет медиа",
+        audio: "Пока нет аудио",
+        files: "Пока нет файлов",
+        links: "Пока нет ссылок",
+      },
+      email: "Почта",
+      timezone: "Часовой пояс",
+      saveToArchive: "Сохранить в Архив сообщений",
+      savedToArchiveNotice: "Сохранено в Архив сообщений",
+      editChatName: "Изменить название чата",
+      changeChatPhoto: "Изменить фото чата",
+      backToChat: "Назад к чату",
+    },
+    newChat: {
+      title: "Новый чат",
+      newGroup: "Новая группа",
+      newChannel: "Новый канал",
+      newVoiceChannel: "Новый голосовой канал",
+      directMessage: "Личное сообщение",
+      directMessageHint: "Чат тет-а-тет с членом семьи",
+      groupHint: "Закрытый чат с выбранными участниками",
+      channelHint: "Информационный канал для объявлений",
+      groupTitlePlaceholder: "Название группы",
+      channelTitlePlaceholder: "Название канала",
+      voiceChannelTitlePlaceholder: "Название голосового канала",
+      create: "Создать",
+      creating: "Создание…",
+    },
+  },
+
+  // ── Files / Storage ──────────────────────────────────────────────────
+  files: {
+    title: "Файлы",
+    searchPlaceholder: "Поиск файлов",
+    uploadFile: "Загрузить файл",
+    uploading: "Загрузка…",
+    allChats: "Все чаты",
+    storageSource: "Источник файлов",
+    storageFilters: "Фильтры файлов",
+    filters: {
+      all: "Все",
+      photos: "Фото",
+      videos: "Видео",
+      audio: "Аудио",
+      documents: "Документы",
+      favorites: "Избранное",
+    },
+    categories: {
+      archive: "АРХИВ СООБЩЕНИЙ",
+      voice: "ГОЛОСОВЫЕ КАНАЛЫ",
+      family: "СЕМЕЙНЫЕ ЧАТЫ",
+      groups: "ГРУППЫ",
+      channels: "КАНАЛЫ",
+      direct: "ЛИЧНЫЕ ЧАТЫ",
+    },
+    empty: "Файлы не найдены",
+    noFilesInFilter: "В этой категории нет файлов",
+    download: "Скачать",
+    delete: "Удалить",
+    favorite: "В избранное",
+    removeFavorite: "Удалить из избранного",
+    openInChat: "Открыть в чате",
+    familyStorage: "Семейные файлы",
+    chatMembers: "Участники чата",
+  },
+
+  // ── Plans ────────────────────────────────────────────────────────────
+  plans: {
+    title: "Планы",
+    searchPlaceholder: "Найти событие",
+    today: "Сегодня",
+    thisWeek: "Эта неделя",
+    month: "Месяц",
+    upcoming: "Предстоящие",
+    noPlansRange: "Нет планов в этом периоде.",
+    noPlansYet: "Пока нет планов",
+    loadingPlans: "Загрузка планов…",
+    createPlan: "Создать план",
+    newPlan: "Новое событие",
+    planTitle: "Название",
+    starts: "Начало",
+    ends: "Конец",
+    allDay: "Весь день",
+    location: "Место",
+    locationOptional: "Место (необязательно)",
+    descriptionOrLink: "Описание / Ссылка",
+    descriptionPlaceholder: "Заметки или ссылка на звонок (например https://...)",
+    going: "Пойду",
+    maybe: "Возможно",
+    goingCount: (count: number) => {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      if (mod100 >= 11 && mod100 <= 19) return `${count} идут`;
+      if (mod10 === 1) return `${count} идёт`;
+      return `${count} идут`;
+    },
+    openChat: "Открыть чат",
+    close: "Закрыть",
+  },
+
+  // ── Admin ────────────────────────────────────────────────────────────
+  admin: {
+    title: "Администрирование",
+    adminAccessRequired: "Требуются права администратора.",
+    backToAdmin: "Назад в Админку",
+    hub: {
+      appearance: "Внешний вид",
+      appearanceDesc: "Общий вид списка чатов для всех клиентов",
+      encryption: "Шифрование сообщений",
+      encryptionDesc: "Протокол по умолчанию для новых чатов",
+      mcp: "MCP коннекторы",
+      mcpDesc: "Claude Code, Codex, OpenClaw, Hermes",
+      members: "Участники",
+      membersDesc: "Члены семьи, роли и управление аккаунтами",
+    },
+    appearance: {
+      title: "Внешний вид",
+      chatLayout: "Отображение списка чатов",
+      chatLayoutDesc: "Общий вид списка чатов для всех клиентов",
+      minimizedLayout: "Компактный вид",
+      minimizedLayoutDesc: "Однострочный компактный список чатов",
+      saved: "Настройки отображения сохранены для всех",
+    },
+    encryption: {
+      title: "Шифрование сообщений",
+      protocol: "Протокол шифрования по умолчанию",
+      protocolDesc: "Выберите режим шифрования для новых чатов в семейном пространстве.",
+      serverAtRest: "Шифрование на сервере (по умолчанию)",
+      serverAtRestDesc: "Хранятся зашифрованными на сервере, доступны на всех устройствах.",
+      e2ee: "Сквозное шифрование (E2EE)",
+      e2eeDesc: "Только устройства с приватными ключами могут расшифровать сообщения.",
+      save: "Сохранить настройки шифрования",
+      saved: "Настройки шифрования сохранены",
+    },
+    mcp: {
+      title: "MCP коннекторы",
+      description: "Управление коннекторами Model Context Protocol для ИИ-ассистентов.",
+    },
+    members: {
+      title: "Участники",
+      description: "Члены семьи, роли и управление аккаунтами",
+      inviteMember: "Пригласить участника",
+      roleOwner: "Владелец",
+      roleAdmin: "Админ",
+      roleAdult: "Взрослый",
+      roleChild: "Ребёнок",
+      removeMember: "Удалить участника",
+    },
+  },
+
+  // ── Invite Modal ─────────────────────────────────────────────────────
+  inviteModal: {
+    title: (familyName: string) => `Пригласить в ${familyName}`,
+    close: "Закрыть окно приглашения",
+    creating: "Создание приглашения…",
+    qrCode: "QR-код",
+    qrAlt: "QR-код приглашения",
+    generatingQr: "Генерация QR-кода…",
+    copy: "Копировать",
+    copied: "Скопировано",
+    share: "Поделиться",
+    inviteLink: "Ссылка-приглашение",
+    shareTitle: (familyName: string) => `Присоединяйтесь к ${familyName} в Stovo`,
+    shareText: (familyName: string) => `Присоединяйтесь к нашей семье "${familyName}" в Stovo!`,
+    shareDialogTitle: (familyName: string) => `Приглашение в ${familyName}`,
+  },
+
+  // ── Message Context Menu ─────────────────────────────────────────────
+  contextMenu: {
+    react: (emoji: string) => `Реакция ${emoji}`,
+    moreReactions: "Больше реакций",
+    hideMoreReactions: "Скрыть реакции",
+    comment: "Комментировать",
+    reply: "Ответить",
+    copy: "Копировать",
+    pinMessage: "Закрепить сообщение",
+    unpinMessage: "Открепить сообщение",
+    forward: "Переслать",
+    saveToArchive: "Сохранить в Архив сообщений",
+    edit: "Изменить",
+    delete: "Удалить",
+    seenBy: "Просмотрено",
+    noReaders: "Пока никто не прочитал",
+  },
 } as const;
+
+
 
 export const russianStrings = strings;
 export type RussianStrings = typeof strings;

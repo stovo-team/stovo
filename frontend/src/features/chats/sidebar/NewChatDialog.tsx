@@ -3,6 +3,7 @@ import { FormEvent } from "react";
 import type { User } from "../../../api/auth";
 import type { NewChatScreen } from "../shared/types";
 import { RealAvatar } from "./RealAvatar";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function NewChatDialog({
   accessToken,
@@ -37,6 +38,7 @@ export function NewChatDialog({
   onCreateChannel: (event: FormEvent) => void;
   onCreateVoiceChannel?: (event: FormEvent) => void;
 }) {
+  const strings = useStrings();
   const isChannel = screen === "channel";
   const isVoice = screen === "voice";
   const composeFormId = isVoice
@@ -59,15 +61,15 @@ export function NewChatDialog({
     };
 
     const titleLabel = isVoice
-      ? "New Voice Channel"
+      ? strings.chats.newChat.newVoiceChannel
       : isChannel
-        ? "New channel"
-        : "New group";
+        ? strings.chats.newChat.newChannel
+        : strings.chats.newChat.newGroup;
     const fieldPlaceholder = isVoice
-      ? "Voice channel name"
+      ? strings.chats.newChat.voiceChannelTitlePlaceholder
       : isChannel
-        ? "Channel name"
-        : "Group name";
+        ? strings.chats.newChat.channelTitlePlaceholder
+        : strings.chats.newChat.groupTitlePlaceholder;
 
     return (
       <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-compose-title">
@@ -85,7 +87,7 @@ export function NewChatDialog({
             disabled={!canCreateCompose}
             onClick={handleFormSubmit}
           >
-            Create
+            {strings.chats.newChat.create}
           </button>
         </header>
         <form
@@ -108,12 +110,12 @@ export function NewChatDialog({
               search
             </span>
             <input
-              placeholder="Search members"
+              placeholder={strings.chats.searchPlaceholder}
               value={memberSearch}
               onChange={(event) => onMemberSearchChange(event.target.value)}
             />
           </label>
-          <p className="new-chat-section-label">Members</p>
+          <p className="new-chat-section-label">{strings.chats.details.members}</p>
           <ul className="new-chat-contact-list">
             {members.map((member) => {
               const selected = groupMemberIds.includes(member.id);
@@ -160,7 +162,7 @@ export function NewChatDialog({
             <path d="M6 6l12 12M18 6 6 18" />
           </svg>
         </button>
-        <h2 id="new-chat-title">New Message</h2>
+        <h2 id="new-chat-title">{strings.chats.newChat.title}</h2>
         <span className="new-chat-screen-spacer" aria-hidden={true} />
       </header>
       <label className="search-field new-chat-screen-search">
@@ -169,7 +171,7 @@ export function NewChatDialog({
         </span>
         <input
           autoFocus
-          placeholder="Search contacts"
+          placeholder={strings.chats.searchPlaceholder}
           value={memberSearch}
           onChange={(event) => onMemberSearchChange(event.target.value)}
         />
@@ -180,8 +182,8 @@ export function NewChatDialog({
             <span className="ms-icon ms-icon--22 ms-icon--filled">group</span>
           </span>
           <span className="new-chat-action-copy">
-            <strong>New Group</strong>
-            <small>Chat with several family members</small>
+            <strong>{strings.chats.newChat.newGroup}</strong>
+            <small>{strings.chats.newChat.groupHint}</small>
           </span>
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
             chevron_right
@@ -192,8 +194,8 @@ export function NewChatDialog({
             <span className="ms-icon ms-icon--22 ms-icon--filled">campaign</span>
           </span>
           <span className="new-chat-action-copy">
-            <strong>New Channel</strong>
-            <small>Broadcast updates to members</small>
+            <strong>{strings.chats.newChat.newChannel}</strong>
+            <small>{strings.chats.newChat.channelHint}</small>
           </span>
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
             chevron_right
@@ -204,15 +206,15 @@ export function NewChatDialog({
             <span className="ms-icon ms-icon--22 ms-icon--filled">volume_up</span>
           </span>
           <span className="new-chat-action-copy">
-            <strong>New Voice Channel</strong>
-            <small>Persistent LiveKit voice room</small>
+            <strong>{strings.chats.newChat.newVoiceChannel}</strong>
+            <small>{strings.chats.newChat.directMessageHint}</small>
           </span>
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
             chevron_right
           </span>
         </button>
       </div>
-      <p className="new-chat-section-label">Contacts</p>
+      <p className="new-chat-section-label">{strings.chats.details.members}</p>
       <ul className="new-chat-contact-list">
         {members.length === 0 ? (
           <li className="new-chat-empty">No contacts match your search.</li>
@@ -242,3 +244,4 @@ export function NewChatDialog({
     </section>
   );
 }
+

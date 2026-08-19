@@ -5,6 +5,7 @@ import QRCode from "qrcode";
 import { createInvite, inviteUrlForServer } from "../api/family";
 import { ApiError, getApiUrl } from "../api/client";
 import { shareContent } from "../native/nativeSharePlugin";
+import { useStrings } from "../i18n/LanguageContext";
 
 type InviteModalProps = {
   accessToken: string;
@@ -35,6 +36,7 @@ async function dataUrlToBlob(dataUrl: string) {
 }
 
 export default function InviteModal({ accessToken, familyName, open, onClose }: InviteModalProps) {
+  const strings = useStrings();
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,10 +127,10 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
   async function handleShareLink() {
     if (!inviteUrl) return;
     const result = await shareContent({
-      title: `Join ${familyName} on Stovo`,
-      text: `Join our family "${familyName}" on Stovo!`,
+      title: strings.inviteModal.shareTitle(familyName),
+      text: strings.inviteModal.shareText(familyName),
       url: inviteUrl,
-      dialogTitle: `Invite to ${familyName}`
+      dialogTitle: strings.inviteModal.shareDialogTitle(familyName)
     });
     if (result.fallbackToCopy) {
       await handleCopyLink();
@@ -156,10 +158,10 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
   async function handleShareQr() {
     if (!qrDataUrl || !inviteUrl) return;
     const result = await shareContent({
-      title: `Join ${familyName} on Stovo`,
-      text: `Join our family "${familyName}" on Stovo!`,
+      title: strings.inviteModal.shareTitle(familyName),
+      text: strings.inviteModal.shareText(familyName),
       url: inviteUrl,
-      dialogTitle: `Invite to ${familyName} (QR Code)`,
+      dialogTitle: `${strings.inviteModal.shareDialogTitle(familyName)} (${strings.inviteModal.qrCode})`,
       dataUrl: qrDataUrl,
       filename: "stovo-invite-qr.png",
       mimeType: "image/png"
@@ -184,11 +186,11 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
         aria-labelledby="invite-modal-title"
       >
         <div className="modal-header">
-          <h2 id="invite-modal-title">Invite to {familyName}</h2>
+          <h2 id="invite-modal-title">{strings.inviteModal.title(familyName)}</h2>
           <button
             type="button"
             className="icon-button subtle icon-button--plain"
-            aria-label="Close invite dialog"
+            aria-label={strings.inviteModal.close}
             onClick={onClose}
           >
             <X aria-hidden="true" size={20} />
@@ -201,20 +203,20 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
           </p>
         )}
 
-        {isCreating && !inviteUrl && <p className="muted-copy">Creating invite…</p>}
+        {isCreating && !inviteUrl && <p className="muted-copy">{strings.inviteModal.creating}</p>}
 
         {inviteUrl && (
           <div className="invite-modal-sections">
             <div className="invite-modal-section">
               <div className="invite-modal-section-header">
                 <QrCode aria-hidden="true" size={18} />
-                <strong>QR code</strong>
+                <strong>{strings.inviteModal.qrCode}</strong>
               </div>
               <div className="invite-modal-qr">
                 {qrDataUrl ? (
-                  <img src={qrDataUrl} alt="Invite QR code" width={240} height={240} />
+                  <img src={qrDataUrl} alt={strings.inviteModal.qrAlt} width={240} height={240} />
                 ) : (
-                  <p className="muted-copy">Generating QR…</p>
+                  <p className="muted-copy">{strings.inviteModal.generatingQr}</p>
                 )}
               </div>
               <div className="invite-modal-actions">
@@ -225,7 +227,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
                   onClick={() => void handleCopyQr()}
                 >
                   {copiedQr ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
-                  {copiedQr ? "Copied" : "Copy"}
+                  {copiedQr ? strings.inviteModal.copied : strings.inviteModal.copy}
                 </button>
                 <button
                   type="button"
@@ -234,7 +236,7 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
                   onClick={() => void handleShareQr()}
                 >
                   <Share2 aria-hidden="true" size={16} />
-                  Share
+                  {strings.inviteModal.share}
                 </button>
               </div>
             </div>
@@ -242,17 +244,17 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
             <div className="invite-modal-section">
               <div className="invite-modal-section-header">
                 <Link2 aria-hidden="true" size={18} />
-                <strong>Invite link</strong>
+                <strong>{strings.inviteModal.inviteLink}</strong>
               </div>
               <code className="invite-modal-link">{inviteUrl}</code>
               <div className="invite-modal-actions">
                 <button type="button" className="secondary-button" onClick={() => void handleCopyLink()}>
                   {copiedLink ? <Check aria-hidden="true" size={16} /> : <Copy aria-hidden="true" size={16} />}
-                  {copiedLink ? "Copied" : "Copy"}
+                  {copiedLink ? strings.inviteModal.copied : strings.inviteModal.copy}
                 </button>
                 <button type="button" className="primary-button" onClick={() => void handleShareLink()}>
                   <Share2 aria-hidden="true" size={16} />
-                  Share
+                  {strings.inviteModal.share}
                 </button>
               </div>
             </div>
@@ -262,3 +264,4 @@ export default function InviteModal({ accessToken, familyName, open, onClose }: 
     </div>
   );
 }
+

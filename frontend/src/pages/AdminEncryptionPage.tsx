@@ -6,8 +6,10 @@ import { ApiError, getClusterPrefix } from "../api/client";
 import { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
+import { useStrings } from "../i18n/LanguageContext";
 
 export default function AdminEncryptionPage() {
+  const strings = useStrings();
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [encryptionSettings, setEncryptionSettings] = useState<EncryptionSettings | null>(null);
@@ -52,7 +54,7 @@ export default function AdminEncryptionPage() {
       });
       setEncryptionSettings(updated);
       setEncryptionProtocolDraft(updated.defaultMessageEncryptionProtocol);
-      setNotice("Encryption settings saved");
+      setNotice(strings.admin.encryption.saved);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not save encryption settings");
     } finally {
@@ -65,24 +67,24 @@ export default function AdminEncryptionPage() {
       <AppNav />
       <section className="page-surface admin-surface">
         <div className="admin-detail-header">
-          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin">
+          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label={strings.admin.backToAdmin}>
             <span className="ms-icon ms-icon--22" aria-hidden="true">
               arrow_back
             </span>
           </Link>
           <div>
-            <h1>Message encryption</h1>
+            <h1>{strings.admin.encryption.title}</h1>
           </div>
         </div>
 
-        {!canViewAdmin && <p className="error-text">Admin access required.</p>}
+        {!canViewAdmin && <p className="error-text">{strings.admin.adminAccessRequired}</p>}
         {error && <p className="error-text">{error}</p>}
         {notice && <p className="success-text">{notice}</p>}
 
         {canViewAdmin && (
           <section className="encryption-settings-panel admin-panel">
             <div className="public-access-header">
-              <h2>Default protocol</h2>
+              <h2>{strings.admin.encryption.protocol}</h2>
               <span className="admin-status-chip">
                 {encryptionSettings?.supportedProtocols.find((protocol) => protocol.value === encryptionProtocolDraft)
                   ?.label ?? "Server-side"}
@@ -90,7 +92,7 @@ export default function AdminEncryptionPage() {
             </div>
             <form className="encryption-settings-form" onSubmit={saveEncryptionSettings}>
               <label>
-                Default for new chats
+                {strings.admin.encryption.protocolDesc}
                 <select
                   value={encryptionProtocolDraft}
                   onChange={(event) =>
@@ -104,7 +106,7 @@ export default function AdminEncryptionPage() {
                   ))}
                 </select>
               </label>
-              <div className="encryption-protocol-list" role="listbox" aria-label="Encryption protocols">
+              <div className="encryption-protocol-list" role="listbox" aria-label={strings.admin.encryption.protocol}>
                 {(encryptionSettings?.supportedProtocols ?? []).map((protocol) => (
                   <button
                     type="button"
@@ -125,7 +127,7 @@ export default function AdminEncryptionPage() {
                 ))}
               </div>
               <button type="submit" className="encryption-save-button" disabled={isSaving}>
-                {isSaving ? "Saving…" : "Save encryption"}
+                {isSaving ? "Saving…" : strings.admin.encryption.save}
               </button>
             </form>
           </section>
@@ -134,3 +136,4 @@ export default function AdminEncryptionPage() {
     </main>
   );
 }
+

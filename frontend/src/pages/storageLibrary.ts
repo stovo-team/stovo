@@ -71,7 +71,15 @@ export function groupStorageSources(files: StorageFileLike[]) {
 export function buildStorageSources<TFile extends StorageFileLike>(
   files: TFile[],
   chats: StorageChatLike<TFile>[],
-  currentUserId: string | undefined
+  currentUserId: string | undefined,
+  categoryLabels?: {
+    archive?: string;
+    voice?: string;
+    family?: string;
+    groups?: string;
+    channels?: string;
+    direct?: string;
+  }
 ) {
   const filesByChat = new Map<string, TFile[]>();
   for (const file of files) {
@@ -98,12 +106,12 @@ export function buildStorageSources<TFile extends StorageFileLike>(
   };
 
   const labels: Array<{ label: string; types: StorageAvatarKind[] }> = [
-    { label: "MESSAGE ARCHIVE", types: ["archive"] },
-    { label: "VOICE CHANNELS", types: ["voice"] },
-    { label: "FAMILY CHATS", types: ["family"] },
-    { label: "GROUPS", types: ["group"] },
-    { label: "CHANNELS", types: ["channel"] },
-    { label: "DIRECT CHATS", types: ["direct"] }
+    { label: categoryLabels?.archive ?? "MESSAGE ARCHIVE", types: ["archive"] },
+    { label: categoryLabels?.voice ?? "VOICE CHANNELS", types: ["voice"] },
+    { label: categoryLabels?.family ?? "FAMILY CHATS", types: ["family"] },
+    { label: categoryLabels?.groups ?? "GROUPS", types: ["group"] },
+    { label: categoryLabels?.channels ?? "CHANNELS", types: ["channel"] },
+    { label: categoryLabels?.direct ?? "DIRECT CHATS", types: ["direct"] }
   ];
   return labels
     .map(({ label, types }) => ({
@@ -112,3 +120,4 @@ export function buildStorageSources<TFile extends StorageFileLike>(
     }))
     .filter((group) => group.sources.length > 0);
 }
+

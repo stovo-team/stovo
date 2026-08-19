@@ -1960,7 +1960,13 @@ h2 {
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.01em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
   }
+
 
   .app-frame > .app-nav a:hover,
   .app-frame > .app-nav .app-nav-logout:hover:not(:disabled) {
@@ -2069,7 +2075,13 @@ h2 {
   font-weight: 700;
   position: relative;
   z-index: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
 }
+
 
 .app-nav a:hover {
   background: color-mix(in oklab, var(--accent-soft) 12%, transparent);
@@ -19789,114 +19801,10 @@ span.message-spoiler.is-revealed {
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  background: radial-gradient(circle at 50% 15%, rgba(99, 102, 241, 0.08), transparent 70%), var(--canvas-primary, #0f172a);
+  background: #000000;
   color: var(--text-primary, #ffffff);
   position: relative;
   overflow: hidden;
-}
-
-.voice-room-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
-  background: rgba(15, 23, 42, 0.4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  z-index: 10;
-}
-
-.voice-room-status-cluster {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.voice-room-indicator-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #64748b;
-  flex: 0 0 auto;
-}
-
-.voice-room-indicator-dot.is-live {
-  background: #22c55e;
-  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-  animation: voice-room-live-pulse 1.8s infinite;
-}
-
-.voice-room-indicator-dot.is-connecting {
-  background: #eab308;
-  box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.7);
-  animation: voice-room-live-pulse 1.2s infinite;
-}
-
-@keyframes voice-room-live-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-  }
-}
-
-.voice-room-title-block {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.voice-room-heading-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.voice-room-icon {
-  color: #6366f1;
-}
-
-.voice-room-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-.voice-room-live-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
-  border: 1px solid rgba(34, 197, 94, 0.4);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.voice-room-status-text {
-  margin: 0;
-  font-size: 0.82rem;
-  opacity: 0.75;
-}
-
-.voice-room-member-count-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 0.82rem;
-  opacity: 0.85;
 }
 
 .voice-room-stage {
@@ -19907,6 +19815,7 @@ span.message-spoiler.is-revealed {
   padding: 24px;
   overflow-y: auto;
   min-height: 0;
+  background: #000000;
 }
 
 .voice-room-grid {
@@ -19926,15 +19835,15 @@ span.message-spoiler.is-revealed {
   gap: 12px;
   padding: 24px 16px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   position: relative;
   transition: all 0.2s ease;
 }
 
 .voice-participant-card:hover {
-  background: rgba(255, 255, 255, 0.07);
+  background: #0d0d0d;
+  border-color: rgba(255, 255, 255, 0.22);
   transform: translateY(-2px);
 }
 
@@ -19995,7 +19904,7 @@ span.message-spoiler.is-revealed {
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--canvas-primary, #0f172a);
+  border: 2px solid #000000;
 }
 
 .voice-participant-meta {
@@ -20057,36 +19966,13 @@ span.message-spoiler.is-revealed {
   margin: 0 0 12px 0;
 }
 
-.voice-room-large-join-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 28px;
-  border-radius: 999px;
-  background: #6366f1;
-  color: #ffffff;
-  border: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-  transition: all 0.2s ease;
-}
-
-.voice-room-large-join-btn:hover {
-  background: #4f46e5;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
-}
-
 .voice-room-bottom-bar {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 18px 24px;
-  background: rgba(15, 23, 42, 0.6);
+  background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px);
   z-index: 10;
 }
 
