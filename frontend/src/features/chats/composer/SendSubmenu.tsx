@@ -59,10 +59,8 @@ export function SendSubmenu({
         type="button"
         role="menuitem"
         className="action-menu-item send-submenu-item"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -78,10 +76,8 @@ export function SendSubmenu({
         type="button"
         role="menuitem"
         className="action-menu-item send-submenu-item"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

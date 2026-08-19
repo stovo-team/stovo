@@ -30,7 +30,7 @@ func LoadEnv() error {
 	return nil
 }
 
-// ReloadEnv forces re-reading candidate .env files and applying values to empty or unset variables.
+// ReloadEnv forces re-reading candidate .env files and applying values to environment variables.
 func ReloadEnv() {
 	envMu.Lock()
 	defer envMu.Unlock()
@@ -41,20 +41,43 @@ func ReloadEnv() {
 			continue
 		}
 		if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
-			_ = loadEnvFileInternal(path, false)
-			return
+			_ = loadEnvFileInternal(path, true)
 		}
 	}
 }
 
-// GetOrReloadEnv returns os.Getenv(key). If empty, it attempts to reload .env and returns the resulting value.
+// IsPlaceholderKey returns true if the value is a dummy/placeholder API key.
+func IsPlaceholderKey(val string) bool {
+	v := strings.TrimSpace(strings.ToLower(val))
+	if v == "" {
+		return true
+	}
+	if v == "gsk_your_groq_api_key_here" ||
+		v == "your_groq_api_key_here" ||
+		v == "change_me" ||
+		v == "change_me_too" ||
+		v == "your_api_key_here" ||
+		v == "xxx" ||
+		strings.HasPrefix(v, "gsk_your_") ||
+		strings.Contains(v, "<your_") ||
+		strings.Contains(v, "placeholder") {
+		return true
+	}
+	return false
+}
+
+// GetOrReloadEnv returns os.Getenv(key). If empty or placeholder, it attempts to reload .env and returns the resulting value.
 func GetOrReloadEnv(key string) string {
 	val := strings.TrimSpace(os.Getenv(key))
-	if val != "" {
+	if val != "" && !IsPlaceholderKey(val) {
 		return val
 	}
 	ReloadEnv()
-	return strings.TrimSpace(os.Getenv(key))
+	val = strings.TrimSpace(os.Getenv(key))
+	if IsPlaceholderKey(val) {
+		return ""
+	}
+	return val
 }
 
 func candidateEnvPaths() []string {
@@ -67,11 +90,26 @@ func candidateEnvPaths() []string {
 		paths = append(paths, strings.TrimSpace(custom))
 	}
 
-	// Check current directory and parents up to 4 levels
+	// Check current directory and parents up to 6 levels
 	dir, err := os.Getwd()
 	if err == nil {
 		current := dir
-		for i := 0; i < 4; i++ {
+		for i := 0; i < 6; i++ {
+			paths = append(paths, filepath.Join(current, ".env"))
+			paths = append(paths, filepath.Join(current, "backend", ".env"))
+			parent := filepath.Dir(current)
+			if parent == current {
+				break
+			}
+			current = parent
+		}
+	}
+
+	// Executable dir and parents up to 6 levels
+	if exePath, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exePath)
+		current := exeDir
+		for i := 0; i < 6; i++ {
 			paths = append(paths, filepath.Join(current, ".env"))
 			parent := filepath.Dir(current)
 			if parent == current {
@@ -81,15 +119,14 @@ func candidateEnvPaths() []string {
 		}
 	}
 
-	// Executable dir
-	if exePath, err := os.Executable(); err == nil {
-		exeDir := filepath.Dir(exePath)
-		paths = append(paths, filepath.Join(exeDir, ".env"))
-		paths = append(paths, filepath.Join(filepath.Dir(exeDir), ".env"))
+	// User home directory
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		paths = append(paths, filepath.Join(home, ".stovo", ".env"))
+		paths = append(paths, filepath.Join(home, ".env"))
 	}
 
 	// Common container and fallback paths
-	paths = append(paths, ".env", "../.env", "../../.env", "/app/.env")
+	paths = append(paths, ".env", "../.env", "../../.env", "../../../.env", "/app/.env", "/app/backend/.env", "/etc/stovo/.env")
 
 	// Deduplicate preserving order
 	seen := make(map[string]bool)
@@ -178,6 +215,33 @@ func parseEnvLine(line string) (string, string, bool) {
 }
 
 func unquoteEnvVal(val string) string {
+	val = strings.TrimSpace(val)
+	if len(val) == 0 {
+		return ""
+	}
+
+	// Handle inline comment if not starting with quote
+	if val[0] != '"' && val[0] != '\'' {
+		if hashIdx := strings.Index(val, " #"); hashIdx >= 0 {
+			val = strings.TrimSpace(val[:hashIdx])
+		} else if strings.HasPrefix(val, "#") {
+			return ""
+		}
+	} else {
+		// If quoted, find matching end quote and ignore any comment after it
+		q := val[0]
+		endQuote := -1
+		for i := 1; i < len(val); i++ {
+			if val[i] == q && val[i-1] != '\\' {
+				endQuote = i
+				break
+			}
+		}
+		if endQuote != -1 {
+			val = strings.TrimSpace(val[:endQuote+1])
+		}
+	}
+
 	if len(val) >= 2 {
 		if val[0] == '"' && val[len(val)-1] == '"' {
 			inner := val[1 : len(val)-1]
@@ -187,17 +251,12 @@ func unquoteEnvVal(val string) string {
 			inner = strings.ReplaceAll(inner, `\t`, "\t")
 			inner = strings.ReplaceAll(inner, `\"`, `"`)
 			inner = strings.ReplaceAll(inner, `\\`, `\`)
-			return inner
+			return strings.TrimSpace(inner)
 		}
 		if val[0] == '\'' && val[len(val)-1] == '\'' {
-			return val[1 : len(val)-1]
+			return strings.TrimSpace(val[1 : len(val)-1])
 		}
 	}
 
-	// For unquoted values, strip inline comments if separated by space
-	if hashIdx := strings.Index(val, " #"); hashIdx >= 0 {
-		val = strings.TrimSpace(val[:hashIdx])
-	}
-
-	return val
+	return strings.TrimSpace(val)
 }

@@ -19332,7 +19332,7 @@ span.message-spoiler.is-revealed {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
   padding: 16px;
   animation: fadeInBackdrop var(--motion-normal, 260ms) var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
   box-sizing: border-box;
@@ -19353,15 +19353,15 @@ span.message-spoiler.is-revealed {
   border: 1px solid var(--border-default);
   border-radius: 24px;
   width: 100%;
-  max-width: 440px;
-  max-height: min(92vh, 720px);
-  max-height: min(92dvh, 720px);
+  max-width: 460px;
+  max-height: min(90vh, 720px);
+  max-height: min(90dvh, 720px);
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   color: var(--text-primary);
-  animation: modalEnter var(--motion-normal, 260ms) var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1));
+  animation: modalEnter var(--motion-normal, 260ms) var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
 }
 
 @keyframes modalEnter {
@@ -19382,6 +19382,7 @@ span.message-spoiler.is-revealed {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-default);
   flex-shrink: 0;
+  background: var(--surface-card);
 }
 
 .modal-card-title-wrap {
@@ -19392,6 +19393,7 @@ span.message-spoiler.is-revealed {
 
 .modal-card-header-icon {
   color: var(--accent-primary);
+  flex-shrink: 0;
 }
 
 .modal-card-title {
@@ -19424,6 +19426,8 @@ span.message-spoiler.is-revealed {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -19520,7 +19524,18 @@ span.message-spoiler.is-revealed {
   font-size: 0.9375rem;
   width: 100%;
   box-sizing: border-box;
-  color-scheme: light dark;
+}
+
+:root[data-theme-mode="dark"] .schedule-datetime-input,
+:root[data-theme-mode="dark"] .reminder-input,
+:root[data-theme-mode="amoled"] .schedule-datetime-input,
+:root[data-theme-mode="amoled"] .reminder-input {
+  color-scheme: dark;
+}
+
+:root[data-theme-mode="light"] .schedule-datetime-input,
+:root[data-theme-mode="light"] .reminder-input {
+  color-scheme: light;
 }
 
 .schedule-datetime-input:focus,
@@ -19669,12 +19684,20 @@ span.message-spoiler.is-revealed {
   margin-top: 1px;
 }
 
+.modal-card-footer {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-default);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--surface-card);
+  flex-shrink: 0;
+}
+
 .modal-card-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 6px;
-  padding-top: 8px;
 }
 
 .btn-secondary {
@@ -19712,5 +19735,32 @@ span.message-spoiler.is-revealed {
 .btn-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .schedule-modal-backdrop,
+  .reminder-modal-backdrop {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .schedule-modal-card,
+  .reminder-modal-card {
+    max-height: 88dvh;
+    border-radius: 20px 20px 12px 12px;
+  }
+
+  .modal-card-header {
+    padding: 14px 16px;
+  }
+
+  .modal-card-body {
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .modal-card-footer {
+    padding: 12px 16px;
+  }
 }
 

@@ -90,6 +90,7 @@ export interface AudioPlaybackBackend {
   clear(): Promise<void>;
   setCallActive(active: boolean): Promise<void>;
   releaseSource?(source: AudioPlaybackSource): void;
+  updateIdentity?(from: AudioIdentity, to: AudioIdentity): void;
 }
 
 export type AudioPlaybackClearReason =
@@ -404,6 +405,21 @@ export class AudioPlaybackSession {
       canSeek: duration > 0,
       error: null,
     });
+  }
+
+  updateIdentity(from: AudioIdentity, to: AudioIdentity): void {
+    if (sameAudioIdentity(this.snapshot.identity, from)) {
+      if (this.descriptor && sameAudioIdentity(this.descriptor.identity, from)) {
+        this.descriptor = {
+          ...this.descriptor,
+          identity: { ...to },
+        };
+      }
+      this.publish({
+        identity: Object.freeze({ ...to }),
+      });
+      this.backend.updateIdentity?.(from, to);
+    }
   }
 
   async clear(_reason: AudioPlaybackClearReason): Promise<void> {
@@ -734,6 +750,20 @@ export class WebAudioPlaybackBackend implements AudioPlaybackBackend {
   releaseSource(source: AudioPlaybackSource): void {
     if (source.objectUrl && source.url) {
       this.revokeObjectUrl(source.url);
+    }
+  }
+
+  updateIdentity(from: AudioIdentity, to: AudioIdentity): void {
+    if (sameAudioIdentity(this.snapshot.identity, from)) {
+      if (this.descriptor && sameAudioIdentity(this.descriptor.identity, from)) {
+        this.descriptor = {
+          ...this.descriptor,
+          identity: { ...to },
+        };
+      }
+      this.publish({
+        identity: Object.freeze({ ...to }),
+      });
     }
   }
 
