@@ -1,9 +1,9 @@
-﻿package app
+package app
 
 // schemaStatements contains the CREATE TABLE / CREATE INDEX DDL statements
 // that establish the base schema. Each statement is idempotent (IF NOT EXISTS).
 var schemaStatements = []string{
-	`+"`"+`CREATE TABLE IF NOT EXISTS families (
+	`CREATE TABLE IF NOT EXISTS families (
 		id TEXT PRIMARY KEY,
 		name TEXT NOT NULL,
 		storage_limit_mb INTEGER,
@@ -13,8 +13,8 @@ var schemaStatements = []string{
 		public_api_url TEXT,
 		created_at TEXT NOT NULL,
 		updated_at TEXT NOT NULL
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS users (
+	);`,
+	`CREATE TABLE IF NOT EXISTS users (
 		id TEXT PRIMARY KEY,
 		family_id TEXT NOT NULL,
 		email TEXT NOT NULL UNIQUE,
@@ -29,8 +29,8 @@ var schemaStatements = []string{
 		last_seen_at TEXT,
 		last_seen_visibility TEXT NOT NULL DEFAULT 'everyone',
 		FOREIGN KEY (family_id) REFERENCES families(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS refresh_tokens (
+	);`,
+	`CREATE TABLE IF NOT EXISTS refresh_tokens (
 		id TEXT PRIMARY KEY,
 		user_id TEXT NOT NULL,
 		token_hash TEXT NOT NULL UNIQUE,
@@ -39,8 +39,8 @@ var schemaStatements = []string{
 		revoked_at TEXT,
 		ip_address TEXT,
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS invites (
+	);`,
+	`CREATE TABLE IF NOT EXISTS invites (
 		id TEXT PRIMARY KEY,
 		family_id TEXT NOT NULL,
 		token_hash TEXT NOT NULL UNIQUE,
@@ -53,8 +53,8 @@ var schemaStatements = []string{
 		revoked_at TEXT,
 		FOREIGN KEY (family_id) REFERENCES families(id),
 		FOREIGN KEY (created_by) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS chats (
+	);`,
+	`CREATE TABLE IF NOT EXISTS chats (
 		id TEXT PRIMARY KEY,
 		family_id TEXT NOT NULL,
 		type TEXT NOT NULL,
@@ -69,16 +69,16 @@ var schemaStatements = []string{
 		pin_permission TEXT NOT NULL DEFAULT 'everyone',
 		message_delay_seconds INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (family_id) REFERENCES families(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS chat_members (
+	);`,
+	`CREATE TABLE IF NOT EXISTS chat_members (
 		chat_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		created_at TEXT NOT NULL,
 		PRIMARY KEY (chat_id, user_id),
 		FOREIGN KEY (chat_id) REFERENCES chats(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS chat_preferences (
+	);`,
+	`CREATE TABLE IF NOT EXISTS chat_preferences (
 		chat_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		is_muted BOOLEAN NOT NULL DEFAULT FALSE,
@@ -90,16 +90,16 @@ var schemaStatements = []string{
 		PRIMARY KEY (chat_id, user_id),
 		FOREIGN KEY (chat_id) REFERENCES chats(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS chat_media_approvals (
+	);`,
+	`CREATE TABLE IF NOT EXISTS chat_media_approvals (
 		chat_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		created_at TEXT NOT NULL,
 		PRIMARY KEY (chat_id, user_id),
 		FOREIGN KEY (chat_id) REFERENCES chats(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS files (
+	);`,
+	`CREATE TABLE IF NOT EXISTS files (
 		id TEXT PRIMARY KEY,
 		family_id TEXT NOT NULL,
 		uploaded_by TEXT NOT NULL,
@@ -116,16 +116,16 @@ var schemaStatements = []string{
 		FOREIGN KEY (family_id) REFERENCES families(id),
 		FOREIGN KEY (uploaded_by) REFERENCES users(id),
 		FOREIGN KEY (chat_id) REFERENCES chats(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS file_preferences (
+	);`,
+	`CREATE TABLE IF NOT EXISTS file_preferences (
 		file_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		is_favorite BOOLEAN NOT NULL DEFAULT FALSE,
 		PRIMARY KEY (file_id, user_id),
 		FOREIGN KEY (file_id) REFERENCES files(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS media_quality_settings (
+	);`,
+	`CREATE TABLE IF NOT EXISTS media_quality_settings (
 		family_id TEXT NOT NULL,
 		media_type TEXT NOT NULL,
 		extension TEXT NOT NULL DEFAULT '',
@@ -133,8 +133,8 @@ var schemaStatements = []string{
 		updated_at TEXT NOT NULL,
 		PRIMARY KEY (family_id, media_type, extension),
 		FOREIGN KEY (family_id) REFERENCES families(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS messages (
+	);`,
+	`CREATE TABLE IF NOT EXISTS messages (
 		id TEXT PRIMARY KEY,
 		chat_id TEXT NOT NULL,
 		sender_id TEXT NOT NULL,
@@ -155,8 +155,8 @@ var schemaStatements = []string{
 		deleted_at TEXT,
 		FOREIGN KEY (chat_id) REFERENCES chats(id),
 		FOREIGN KEY (sender_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS message_statuses (
+	);`,
+	`CREATE TABLE IF NOT EXISTS message_statuses (
 		message_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		status TEXT NOT NULL,
@@ -164,15 +164,15 @@ var schemaStatements = []string{
 		PRIMARY KEY (message_id, user_id, status),
 		FOREIGN KEY (message_id) REFERENCES messages(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS message_attachments (
+	);`,
+	`CREATE TABLE IF NOT EXISTS message_attachments (
 		message_id TEXT NOT NULL,
 		file_id TEXT NOT NULL,
 		PRIMARY KEY (message_id, file_id),
 		FOREIGN KEY (message_id) REFERENCES messages(id),
 		FOREIGN KEY (file_id) REFERENCES files(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS message_reactions (
+	);`,
+	`CREATE TABLE IF NOT EXISTS message_reactions (
 		message_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		emoji TEXT NOT NULL,
@@ -180,16 +180,16 @@ var schemaStatements = []string{
 		PRIMARY KEY (message_id, user_id, emoji),
 		FOREIGN KEY (message_id) REFERENCES messages(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS message_user_deletions (
+	);`,
+	`CREATE TABLE IF NOT EXISTS message_user_deletions (
 		message_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		deleted_at TEXT NOT NULL,
 		PRIMARY KEY (message_id, user_id),
 		FOREIGN KEY (message_id) REFERENCES messages(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS pinned_messages (
+	);`,
+	`CREATE TABLE IF NOT EXISTS pinned_messages (
 		chat_id TEXT NOT NULL,
 		message_id TEXT NOT NULL,
 		pinned_by TEXT NOT NULL,
@@ -198,8 +198,8 @@ var schemaStatements = []string{
 		FOREIGN KEY (chat_id) REFERENCES chats(id),
 		FOREIGN KEY (message_id) REFERENCES messages(id),
 		FOREIGN KEY (pinned_by) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS plans (
+	);`,
+	`CREATE TABLE IF NOT EXISTS plans (
 		id TEXT PRIMARY KEY,
 		family_id TEXT NOT NULL,
 		title TEXT NOT NULL,
@@ -215,8 +215,8 @@ var schemaStatements = []string{
 		FOREIGN KEY (family_id) REFERENCES families(id),
 		FOREIGN KEY (created_by) REFERENCES users(id),
 		FOREIGN KEY (source_chat_id) REFERENCES chats(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS plan_attendees (
+	);`,
+	`CREATE TABLE IF NOT EXISTS plan_attendees (
 		plan_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		status TEXT NOT NULL DEFAULT 'going',
@@ -224,8 +224,8 @@ var schemaStatements = []string{
 		PRIMARY KEY (plan_id, user_id),
 		FOREIGN KEY (plan_id) REFERENCES plans(id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS call_sessions (
+	);`,
+	`CREATE TABLE IF NOT EXISTS call_sessions (
 		id TEXT PRIMARY KEY,
 		room_id TEXT NOT NULL UNIQUE,
 		chat_id TEXT NOT NULL,
@@ -236,8 +236,8 @@ var schemaStatements = []string{
 		created_at TEXT NOT NULL,
 		FOREIGN KEY (chat_id) REFERENCES chats(id),
 		FOREIGN KEY (caller_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS call_participants (
+	);`,
+	`CREATE TABLE IF NOT EXISTS call_participants (
 		room_id TEXT NOT NULL,
 		user_id TEXT NOT NULL,
 		status TEXT NOT NULL,
@@ -246,16 +246,16 @@ var schemaStatements = []string{
 		PRIMARY KEY (room_id, user_id),
 		FOREIGN KEY (room_id) REFERENCES call_sessions(room_id),
 		FOREIGN KEY (user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS user_blocks (
+	);`,
+	`CREATE TABLE IF NOT EXISTS user_blocks (
 		blocker_user_id TEXT NOT NULL,
 		blocked_user_id TEXT NOT NULL,
 		created_at TEXT NOT NULL,
 		PRIMARY KEY (blocker_user_id, blocked_user_id),
 		FOREIGN KEY (blocker_user_id) REFERENCES users(id),
 		FOREIGN KEY (blocked_user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS mcp_connectors (
+	);`,
+	`CREATE TABLE IF NOT EXISTS mcp_connectors (
 		id TEXT PRIMARY KEY,
 		family_id TEXT NOT NULL,
 		name TEXT NOT NULL,
@@ -272,15 +272,15 @@ var schemaStatements = []string{
 		updated_at TEXT NOT NULL,
 		FOREIGN KEY (family_id) REFERENCES families(id),
 		FOREIGN KEY (actor_user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS mcp_connector_chats (
+	);`,
+	`CREATE TABLE IF NOT EXISTS mcp_connector_chats (
 		connector_id TEXT NOT NULL,
 		chat_id TEXT NOT NULL,
 		PRIMARY KEY (connector_id, chat_id),
 		FOREIGN KEY (connector_id) REFERENCES mcp_connectors(id),
 		FOREIGN KEY (chat_id) REFERENCES chats(id)
-	);`+"`"+`,
-	`+"`"+`CREATE TABLE IF NOT EXISTS mcp_audit_events (
+	);`,
+	`CREATE TABLE IF NOT EXISTS mcp_audit_events (
 		id TEXT PRIMARY KEY,
 		family_id TEXT NOT NULL,
 		connector_id TEXT NOT NULL,
@@ -292,15 +292,15 @@ var schemaStatements = []string{
 		FOREIGN KEY (family_id) REFERENCES families(id),
 		FOREIGN KEY (connector_id) REFERENCES mcp_connectors(id),
 		FOREIGN KEY (actor_user_id) REFERENCES users(id)
-	);`+"`"+`,
-	`+"`"+`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`+"`"+`,
+	);`,
+	`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
 }
 
 // schemaRepairStatements are idempotent ALTER / DO $$ statements that fix
 // schema issues introduced in earlier versions of the application. They are
 // executed with errors ignored so they never block startup on a fresh database.
 var schemaRepairStatements = []string{
-	`+"`"+`DO $$ BEGIN
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'chat_members' AND constraint_type = 'PRIMARY KEY'
@@ -317,8 +317,8 @@ var schemaRepairStatements = []string{
 				ALTER TABLE chat_members ADD CONSTRAINT chat_members_pkey PRIMARY KEY (chat_id, user_id);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
-	`+"`"+`DO $$ BEGIN
+	END $$;`,
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'chat_preferences' AND constraint_type = 'PRIMARY KEY'
@@ -335,8 +335,8 @@ var schemaRepairStatements = []string{
 				ALTER TABLE chat_preferences ADD CONSTRAINT chat_preferences_pkey PRIMARY KEY (chat_id, user_id);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
-	`+"`"+`DO $$ BEGIN
+	END $$;`,
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'chat_media_approvals' AND constraint_type = 'PRIMARY KEY'
@@ -353,8 +353,8 @@ var schemaRepairStatements = []string{
 				ALTER TABLE chat_media_approvals ADD CONSTRAINT chat_media_approvals_pkey PRIMARY KEY (chat_id, user_id);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
-	`+"`"+`DO $$ BEGIN
+	END $$;`,
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'file_preferences' AND constraint_type = 'PRIMARY KEY'
@@ -371,8 +371,8 @@ var schemaRepairStatements = []string{
 				ALTER TABLE file_preferences ADD CONSTRAINT file_preferences_pkey PRIMARY KEY (file_id, user_id);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
-	`+"`"+`DO $$ BEGIN
+	END $$;`,
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'message_attachments' AND constraint_type = 'PRIMARY KEY'
@@ -389,8 +389,8 @@ var schemaRepairStatements = []string{
 				ALTER TABLE message_attachments ADD CONSTRAINT message_attachments_pkey PRIMARY KEY (message_id, file_id);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
-	`+"`"+`DO $$ BEGIN
+	END $$;`,
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'message_reactions' AND constraint_type = 'PRIMARY KEY'
@@ -407,8 +407,8 @@ var schemaRepairStatements = []string{
 				ALTER TABLE message_reactions ADD CONSTRAINT message_reactions_pkey PRIMARY KEY (message_id, user_id, emoji);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
-	`+"`"+`DO $$ BEGIN
+	END $$;`,
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'message_statuses' AND constraint_type = 'PRIMARY KEY'
@@ -425,8 +425,8 @@ var schemaRepairStatements = []string{
 				ALTER TABLE message_statuses ADD CONSTRAINT message_statuses_pkey PRIMARY KEY (message_id, user_id, status);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
-	`+"`"+`DO $$ BEGIN
+	END $$;`,
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'message_user_deletions' AND constraint_type = 'PRIMARY KEY'
@@ -443,8 +443,8 @@ var schemaRepairStatements = []string{
 				ALTER TABLE message_user_deletions ADD CONSTRAINT message_user_deletions_pkey PRIMARY KEY (message_id, user_id);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
-	`+"`"+`DO $$ BEGIN
+	END $$;`,
+	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints
 			WHERE table_name = 'pinned_messages' AND constraint_type = 'PRIMARY KEY'
@@ -461,5 +461,5 @@ var schemaRepairStatements = []string{
 				ALTER TABLE pinned_messages ADD CONSTRAINT pinned_messages_pkey PRIMARY KEY (chat_id, message_id);
 			END IF;
 		END IF;
-	END $$;`+"`"+`,
+	END $$;`,
 }
