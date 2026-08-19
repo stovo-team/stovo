@@ -533,5 +533,23 @@ describe("AudioPlayer", () => {
     expect(container.querySelector('[data-control="transcript-text"]')?.textContent)
       .toBe("Pre-existing transcript");
   });
+
+  it("does not request transcript or transcription for local/pending file IDs", async () => {
+    const localDescriptor = {
+      identity: { chatId: "chat-1", messageId: "pending:msg-1", fileId: "local:voice-1" },
+      title: "voice-note.webm",
+    };
+    const { container } = renderPlayer({ descriptor: localDescriptor, accessToken: "token-123" });
+    await settle();
+
+    expect(mockGetFileTranscript).not.toHaveBeenCalled();
+
+    const transcribeBtn = container.querySelector<HTMLButtonElement>(".audio-player-transcribe-btn");
+    act(() => transcribeBtn?.click());
+    await settle();
+
+    expect(mockTranscribeFile).not.toHaveBeenCalled();
+  });
 });
+
 

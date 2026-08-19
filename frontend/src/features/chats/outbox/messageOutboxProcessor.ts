@@ -7,6 +7,8 @@ import type { Chat, Message, MessageEncryptionProtocol } from "../../../api/chat
 import { sendMessage } from "../../../api/chats";
 import { type FamilyFile, uploadFile } from "../../../api/files";
 import { seedMediaBlobCache } from "../../../mediaBlobCache";
+import { audioPlaybackSession } from "../../../audioPlaybackSession";
+import { getCachedAudioDuration, setCachedAudioDuration } from "../../../audioDurationCache";
 import { decryptMessage, encryptMessageContent } from "../../../api/messageCrypto";
 import type { User } from "../../../api/auth";
 import { applyMessagePreviewToChat } from "../shared/chatPresentation";
@@ -188,6 +190,20 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
         applyMessagesForChat(item.chatId, (current) =>
           mergeIncomingMessage(current, { ...displayMessage, clientMessageId: item.clientMessageId })
         );
+
+        // Update active audio playback session identity and duration cache so listening to a just sent message is seamless
+        for (const att of item.attachments) {
+          if (att.uploadedFileId && att.id) {
+            audioPlaybackSession.updateIdentity(
+              { chatId: item.chatId, messageId: `pending:${item.clientMessageId}`, fileId: att.id },
+              { chatId: item.chatId, messageId: displayMessage.id, fileId: att.uploadedFileId }
+            );
+            const duration = getCachedAudioDuration(att.id);
+            if (duration) {
+              setCachedAudioDuration(att.uploadedFileId, duration);
+            }
+          }
+        }
 
         if (onChatsUpdate) {
           onChatsUpdate((currentChats) =>

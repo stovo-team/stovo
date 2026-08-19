@@ -20,6 +20,7 @@ func TestParseEnvLine(t *testing.T) {
 		{input: `GROQ_API_KEY="gsk_quoted_key"`, wantKey: "GROQ_API_KEY", wantVal: "gsk_quoted_key", wantOK: true},
 		{input: `GROQ_API_KEY='gsk_single_quoted'`, wantKey: "GROQ_API_KEY", wantVal: "gsk_single_quoted", wantOK: true},
 		{input: `GROQ_API_KEY=gsk_test # trailing comment`, wantKey: "GROQ_API_KEY", wantVal: "gsk_test", wantOK: true},
+		{input: `GROQ_API_KEY="gsk_quoted_with_comment" # comment here`, wantKey: "GROQ_API_KEY", wantVal: "gsk_quoted_with_comment", wantOK: true},
 		{input: `APP_NAME="Stovo\nMessenger"`, wantKey: "APP_NAME", wantVal: "Stovo\nMessenger", wantOK: true},
 		{input: "INVALID_NO_EQUALS", wantOK: false},
 	}
@@ -37,6 +38,35 @@ func TestParseEnvLine(t *testing.T) {
 			if v != tt.wantVal {
 				t.Errorf("parseEnvLine(%q) val = %q, want %q", tt.input, v, tt.wantVal)
 			}
+		}
+	}
+}
+
+func TestIsPlaceholderKey(t *testing.T) {
+	placeholders := []string{
+		"",
+		"   ",
+		"gsk_your_groq_api_key_here",
+		"your_groq_api_key_here",
+		"change_me",
+		"change_me_too",
+		"gsk_your_xxx",
+		"<your_api_key>",
+	}
+	for _, p := range placeholders {
+		if !IsPlaceholderKey(p) {
+			t.Errorf("IsPlaceholderKey(%q) = false, want true", p)
+		}
+	}
+
+	validKeys := []string{
+		"gsk_abcdef1234567890",
+		"gsk_9876543210abcdef",
+		"my-secret-key-12345",
+	}
+	for _, k := range validKeys {
+		if IsPlaceholderKey(k) {
+			t.Errorf("IsPlaceholderKey(%q) = true, want false", k)
 		}
 	}
 }

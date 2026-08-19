@@ -344,10 +344,11 @@ export function Composer({
   }
 
   return (
-    <form
-      className={`message-composer${isDockedEmojiPicker ? " message-composer--emoji-docked" : ""}${showDockedEmojiPicker ? " message-composer--emoji-open" : ""}`}
-      onSubmit={onSubmit}
-    >
+    <>
+      <form
+        className={`message-composer${isDockedEmojiPicker ? " message-composer--emoji-docked" : ""}${showDockedEmojiPicker ? " message-composer--emoji-open" : ""}`}
+        onSubmit={onSubmit}
+      >
       {pendingAttachments.length > 0 && (
         <div className="composer-attachments-strip" aria-label="Attachments to send">
           <div className="pending-attachments">
@@ -646,6 +647,7 @@ export function Composer({
           </div>
         </div>
       )}
+      </form>
       <ScheduleMessageModal
         isOpen={isScheduleModalOpen}
         messageText={composer}
@@ -666,6 +668,6 @@ export function Composer({
           void onSetReminder?.(rule);
         }}
       />
-    </form>
+    </>
   );
 }

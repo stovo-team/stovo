@@ -726,4 +726,22 @@ describe("WebAudioPlaybackBackend", () => {
     expect(backend.getSnapshot()).toEqual(cleared);
     expect(cleared).toMatchObject({ identity: null, status: "idle" });
   });
+
+  it("updates active playback identity seamlessly when pending message transitions to sent", async () => {
+    const pendingIdentity = { chatId: "chat-1", messageId: "pending:123", fileId: "local:abc" };
+    const sentIdentity = { chatId: "chat-1", messageId: "msg-456", fileId: "file-789" };
+
+    const session = new AudioPlaybackSession(backend, async () => ({ url: "blob:voice" }));
+    await session.load(
+      { identity: pendingIdentity, title: "voice.webm" },
+      0,
+    );
+    expect(session.getSnapshot().identity).toEqual(pendingIdentity);
+
+    session.updateIdentity(pendingIdentity, sentIdentity);
+
+    expect(session.getSnapshot().identity).toEqual(sentIdentity);
+    expect(backend.getSnapshot().identity).toEqual(sentIdentity);
+  });
 });
+

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, FormEvent, MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { BellRing, Repeat, X } from "lucide-react";
 import type { ReminderRule } from "../outbox/messageOutboxStore";
@@ -22,20 +22,22 @@ const DAYS_OF_WEEK = [
   { label: "Sun", value: 0 }
 ];
 
-function formatDateToIsoString(date: Date): string {
+function formatDateToIsoString(date?: Date | null): string {
+  const d = date && !Number.isNaN(date.getTime()) ? date : new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function formatTimeToTimeString(date: Date): string {
+function formatTimeToTimeString(date?: Date | null): string {
+  const d = date && !Number.isNaN(date.getTime()) ? date : new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function ReminderModal({
   isOpen,
-  messageText,
-  attachments,
+  messageText = "",
+  attachments = [],
   onClose,
   onConfirmReminder
 }: ReminderModalProps) {
@@ -67,6 +69,8 @@ export function ReminderModal({
     if (!isOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
         onClose();
       }
     }
@@ -78,28 +82,34 @@ export function ReminderModal({
 
   function toggleDayOfWeek(day: number) {
     setSelectedDaysOfWeek((current) => {
-      if (current.includes(day)) {
-        if (current.length === 1) return current;
-        return current.filter((d) => d !== day);
+      const list = current ?? [];
+      if (list.includes(day)) {
+        if (list.length === 1) return list;
+        return list.filter((d) => d !== day);
       }
-      return [...current, day].sort((a, b) => a - b);
+      return [...list, day].sort((a, b) => a - b);
     });
   }
 
   function toggleDayOfMonth(day: number) {
     setSelectedDaysOfMonth((current) => {
-      if (current.includes(day)) {
-        if (current.length === 1) return current;
-        return current.filter((d) => d !== day);
+      const list = current ?? [];
+      if (list.includes(day)) {
+        if (list.length === 1) return list;
+        return list.filter((d) => d !== day);
       }
-      return [...current, day].sort((a, b) => a - b);
+      return [...list, day].sort((a, b) => a - b);
     });
   }
 
-  function handleConfirm() {
+  function handleConfirm(event?: FormEvent | ReactMouseEvent) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     const safeStartDate = startDate || formatDateToIsoString(new Date());
     const safeStartTime = startTime || "09:00";
-    const safeCount = Math.max(1, Number(repeatCount) || 1);
+    const safeCount = Math.max(1, Math.min(999, Number(repeatCount) || 1));
 
     const rule: ReminderRule = {
       frequency,
@@ -107,8 +117,8 @@ export function ReminderModal({
       time: safeStartTime,
       repeatCount: safeCount,
       remainingCount: safeCount,
-      ...(frequency === "weekly" ? { daysOfWeek: selectedDaysOfWeek.length > 0 ? selectedDaysOfWeek : [1] } : {}),
-      ...(frequency === "monthly" ? { daysOfMonth: selectedDaysOfMonth.length > 0 ? selectedDaysOfMonth : [1] } : {})
+      ...(frequency === "weekly" ? { daysOfWeek: selectedDaysOfWeek && selectedDaysOfWeek.length > 0 ? selectedDaysOfWeek : [1] } : {}),
+      ...(frequency === "monthly" ? { daysOfMonth: selectedDaysOfMonth && selectedDaysOfMonth.length > 0 ? selectedDaysOfMonth : [1] } : {})
     };
 
     onConfirmReminder(rule);
@@ -312,6 +322,12 @@ export function ReminderModal({
                 className="reminder-input reminder-count-input"
                 value={repeatCount}
                 onChange={(e) => setRepeatCount(Math.max(1, Number(e.target.value) || 1))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleConfirm(e);
+                  }
+                }}
               />
             </div>
           </div>
@@ -320,15 +336,15 @@ export function ReminderModal({
             <Repeat size={16} className="reminder-summary-icon" aria-hidden="true" />
             <span className="reminder-summary-text">{repeatSummary}</span>
           </div>
+        </div>
 
-          <div className="modal-card-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="button" className="btn-primary" onClick={handleConfirm}>
-              Set Reminder
-            </button>
-          </div>
+        <div className="modal-card-footer modal-card-actions">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="btn-primary" onClick={handleConfirm}>
+            Set Reminder
+          </button>
         </div>
       </div>
     </div>

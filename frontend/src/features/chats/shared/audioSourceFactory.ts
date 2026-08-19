@@ -12,19 +12,14 @@ export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory
   return async (descriptor) => {
     const fileId = descriptor.identity.fileId;
     const localCachedUrl = peekCachedObjectUrl(fileId);
-    if (localCachedUrl && (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android")) {
-      return { url: localCachedUrl };
-    }
 
-    if (!accessToken.trim()) {
-      if (localCachedUrl) return { url: localCachedUrl };
-      throw new Error("Audio playback requires authentication");
-    }
-
-    // Android MediaService needs a credentialed stream URL. Warm the blob cache
-    // in the background so later web/fallback playback is instant.
+    // Android MediaService needs a credentialed stream URL with media token.
+    // In-memory WebView blob URLs cannot be opened by Android ExoPlayer.
     if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
-      if (localCachedUrl) return { url: localCachedUrl };
+      if (!accessToken.trim()) {
+        if (localCachedUrl) return { url: localCachedUrl };
+        throw new Error("Audio playback requires authentication");
+      }
       void downloadFileBlob(accessToken, fileId).catch(() => undefined);
       const capability = await createMediaPlaybackToken(accessToken, fileId);
       const mimeType =
@@ -36,6 +31,14 @@ export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory
         token: capability.token,
         mimeType
       };
+    }
+
+    if (localCachedUrl) {
+      return { url: localCachedUrl };
+    }
+
+    if (!accessToken.trim()) {
+      throw new Error("Audio playback requires authentication");
     }
 
     // Web: play from the shared media blob cache. Never mark objectUrl owned —

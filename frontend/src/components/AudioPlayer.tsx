@@ -181,9 +181,10 @@ export function AudioPlayer({
   const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(true);
 
   useEffect(() => {
-    if (!accessToken) return;
+    const fileId = descriptor?.identity?.fileId;
+    if (!accessToken || !fileId || fileId.startsWith("local:")) return;
     let cancelled = false;
-    getFileTranscript(accessToken, descriptor.identity.fileId)
+    getFileTranscript(accessToken, fileId)
       .then((res) => {
         if (!cancelled && res?.text) {
           setTranscript(res.text);
@@ -195,14 +196,15 @@ export function AudioPlayer({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, descriptor.identity.fileId]);
+  }, [accessToken, descriptor?.identity?.fileId]);
 
   const handleTranscribe = useCallback(async () => {
-    if (!accessToken || isTranscribing) return;
+    const fileId = descriptor?.identity?.fileId;
+    if (!accessToken || isTranscribing || !fileId || fileId.startsWith("local:")) return;
     setIsTranscribing(true);
     setTranscriptError(null);
     try {
-      const res = await transcribeFile(accessToken, descriptor.identity.fileId);
+      const res = await transcribeFile(accessToken, fileId);
       if (res?.text) {
         setTranscript(res.text);
         setIsTranscriptExpanded(true);
@@ -214,7 +216,7 @@ export function AudioPlayer({
     } finally {
       setIsTranscribing(false);
     }
-  }, [accessToken, descriptor.identity.fileId, isTranscribing]);
+  }, [accessToken, descriptor?.identity?.fileId, isTranscribing]);
 
   useEffect(() => {
     if (previewPosition !== null && dragRevision.current !== snapshot?.revision) {
