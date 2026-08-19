@@ -91,6 +91,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
   const preJoinActiveCall = preJoinChatId ? activeGroupCalls[preJoinChatId] : null;
 
   const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
+  const isVoiceChannel = activeChat?.type === "voice";
   const isGroupCall = activeChat ? activeChat.type === "group" || activeChat.type === "family" : false;
   const effectiveIsCallMinimized = isCallMinimized && isGroupCall;
 
@@ -110,7 +111,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
           }}
         />
       )}
-      {callPhase !== "idle" && (
+      {callPhase !== "idle" && !isVoiceChannel && (
         <>
           {!effectiveIsCallMinimized && !isMobileViewport && (
             <div className="call-popup-backdrop-overlay" aria-hidden="true" />
@@ -187,47 +188,46 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
               currentUser={currentUser}
               isMobileViewport={isMobileViewport}
             />
-
-            {/* Settings menus (rendered inside popup) */}
-            {isCallSettingsMenuOpen && (
-              <CallSettingsContextMenu
-                anchorRef={callSettingsButtonRef}
-                menuRef={callSettingsMenuRef}
-                onOpenAudioSettings={() => {
-                  setIsCallSettingsMenuOpen(false);
-                  setIsCallAudioPopupOpen(true);
-                }}
-                onOpenVideoSettings={() => {
-                  setIsCallSettingsMenuOpen(false);
-                  setIsCallVideoPopupOpen(true);
-                }}
-              />
-            )}
-            {isCallAudioPopupOpen && (
-              <CallAudioSettingsPopup
-                popupRef={callAudioPopupRef}
-                isMobile={isMobileViewport}
-                settings={callAudioSettings}
-                capabilities={callAudioCapabilities}
-                devices={callAudioDevices}
-                trackStatus={callTrackStatus}
-                warning={callAudioWarning}
-                onPatch={(patch) => void applyCallAudioPatch(patch)}
-                onClose={() => setIsCallAudioPopupOpen(false)}
-              />
-            )}
-            {isCallVideoPopupOpen && (
-              <CallVideoSettingsPopup
-                settings={callAudioSettings}
-                capabilities={callAudioCapabilities}
-                devices={callAudioDevices}
-                isMobile={isMobileViewport}
-                onPatch={(patch) => void applyCallAudioPatch(patch)}
-                onClose={() => setIsCallVideoPopupOpen(false)}
-              />
-            )}
           </section>
         </>
+      )}
+      {/* Settings menus & popups */}
+      {isCallSettingsMenuOpen && (
+        <CallSettingsContextMenu
+          anchorRef={callSettingsButtonRef}
+          menuRef={callSettingsMenuRef}
+          onOpenAudioSettings={() => {
+            setIsCallSettingsMenuOpen(false);
+            setIsCallAudioPopupOpen(true);
+          }}
+          onOpenVideoSettings={() => {
+            setIsCallSettingsMenuOpen(false);
+            setIsCallVideoPopupOpen(true);
+          }}
+        />
+      )}
+      {isCallAudioPopupOpen && (
+        <CallAudioSettingsPopup
+          popupRef={callAudioPopupRef}
+          isMobile={isMobileViewport}
+          settings={callAudioSettings}
+          capabilities={callAudioCapabilities}
+          devices={callAudioDevices}
+          trackStatus={callTrackStatus}
+          warning={callAudioWarning}
+          onPatch={(patch) => void applyCallAudioPatch(patch)}
+          onClose={() => setIsCallAudioPopupOpen(false)}
+        />
+      )}
+      {isCallVideoPopupOpen && (
+        <CallVideoSettingsPopup
+          settings={callAudioSettings}
+          capabilities={callAudioCapabilities}
+          devices={callAudioDevices}
+          isMobile={isMobileViewport}
+          onPatch={(patch) => void applyCallAudioPatch(patch)}
+          onClose={() => setIsCallVideoPopupOpen(false)}
+        />
       )}
       {isSpeakerSheetOpen && (
         <CallSpeakerSheet

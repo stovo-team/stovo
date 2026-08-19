@@ -3,10 +3,10 @@ import { ChevronDown, Paperclip, Plus, Server, Trash2, UserPlus } from "lucide-r
 import { useNavigate } from "react-router-dom";
 
 import VeloLogo from "../../../components/VeloLogo";
-import { CHAT_FILTERS } from "../shared/chatPresentation";
+import type { ChatFilter } from "../shared/types";
 import { ChatList } from "./ChatList";
 import type { ChatSidebarProps } from "./types";
-
+import { useStrings } from "../../../i18n/LanguageContext";
 import { useAuth } from "../../../auth/AuthContext";
 
 export function ChatSidebar({
@@ -26,6 +26,7 @@ export function ChatSidebar({
   onSelectChat,
   onOpenChat
 }: ChatSidebarProps) {
+  const strings = useStrings();
   const navigate = useNavigate();
   const { activeServer, savedServers, hotSwapServer, removeServer } = useAuth();
   const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
@@ -43,57 +44,60 @@ export function ChatSidebar({
     openNewChatScreen
   } = overview;
 
+  const chatFilters: Array<{ label: string; value: ChatFilter }> = [
+    { label: strings.chats.filters.all, value: "all" },
+    { label: strings.chats.filters.unread, value: "unread" },
+    { label: strings.chats.filters.groups, value: "groups" },
+    { label: strings.chats.filters.direct, value: "direct" },
+    { label: strings.chats.filters.voice, value: "voice" },
+    { label: strings.chats.filters.muted, value: "muted" }
+  ];
+
   useEffect(() => {
     if (!isServerMenuOpen) return;
 
     function handlePointerDown(event: MouseEvent | TouchEvent) {
       const target = event.target as Node | null;
-      if (!target || serverMenuRef.current?.contains(target)) return;
-      setIsServerMenuOpen(false);
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setIsServerMenuOpen(false);
+      if (serverMenuRef.current && !serverMenuRef.current.contains(target)) {
+        setIsServerMenuOpen(false);
+      }
     }
 
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("touchstart", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("touchstart", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isServerMenuOpen]);
 
   return (
-    <aside className="chat-sidebar">
+    <aside className="chat-sidebar" aria-label="Chats sidebar">
       <div className="chat-sidebar-header">
-        <div className="sidebar-title-row chat-list-title">
-          <span className="chat-list-brand-mark" aria-label="Stovo">
-            <VeloLogo className="chat-list-brand-logo" title="Stovo" />
-          </span>
-          <div className="chat-list-title-cluster">
-            <div
-              className={`menu-anchor server-switcher${isServerMenuOpen ? " menu-anchor--open" : ""}`}
-              ref={serverMenuRef}
-            >
+        <div className="chat-sidebar-hero">
+          <div className="chat-sidebar-brand-group">
+            <VeloLogo className="chat-sidebar-logo" />
+            <div className="server-switcher-container" ref={serverMenuRef}>
               <button
                 type="button"
-                className="server-switcher-trigger"
-                aria-label="Select server"
+                className={`server-switcher-trigger${isServerMenuOpen ? " is-open" : ""}`}
                 aria-expanded={isServerMenuOpen}
-                aria-haspopup="menu"
+                aria-haspopup="true"
                 onClick={() => setIsServerMenuOpen((open) => !open)}
               >
-                <span className="server-switcher-name">{displayFamilyName}</span>
-                <ChevronDown aria-hidden="true" size={18} className="server-switcher-caret" />
+                <span className="server-switcher-trigger-text">{displayFamilyName}</span>
+                <ChevronDown
+                  size={16}
+                  className={`server-switcher-chevron${isServerMenuOpen ? " is-open" : ""}`}
+                  aria-hidden="true"
+                />
               </button>
+
               {isServerMenuOpen && (
-                <div className="action-menu server-switcher-menu" role="menu" aria-label="Servers">
+                <div className="server-switcher-menu" role="menu">
                   {validServers.length > 0 ? (
                     validServers.map((server) => {
-                      const isActive = server.id === activeServer?.id;
+                      const isActive = activeServer?.id === server.id;
                       return (
                         <div
                           key={server.id}
@@ -142,10 +146,10 @@ export function ChatSidebar({
                   <button
                     type="button"
                     role="menuitem"
-                    className="server-switcher-connect"
+                    className="server-switcher-add-btn"
                     onClick={() => {
                       setIsServerMenuOpen(false);
-                      navigate("/server-setup");
+                      navigate("/auth/server");
                     }}
                   >
                     <Plus aria-hidden="true" size={16} />
@@ -184,21 +188,21 @@ export function ChatSidebar({
             search
           </span>
           <input
-            placeholder="Search chats"
+            placeholder={strings.chats.searchPlaceholder}
             value={chatSearch}
             onChange={(event) => setChatSearch(event.target.value)}
           />
         </label>
         <div
           className="filter-chip-row chat-list-filters"
-          aria-label="Chat filters"
+          aria-label={strings.chats.title}
           onWheel={(event) => {
             if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
             event.currentTarget.scrollLeft += event.deltaY;
             event.preventDefault();
           }}
         >
-          {CHAT_FILTERS.map((filter) => (
+          {chatFilters.map((filter) => (
             <button
               type="button"
               className={chatFilter === filter.value ? "filter-chip active" : "filter-chip"}

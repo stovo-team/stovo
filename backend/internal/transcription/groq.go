@@ -163,6 +163,10 @@ func (c *GroqSTTClient) transcribeOnce(ctx context.Context, req TranscribeReques
 		return nil, fmt.Errorf("groq: close multipart writer: %w", err)
 	}
 
+	if isDashScopeOrMaas(c.cfg.BaseURL) {
+		return c.transcribeViaChatAudio(ctx, req)
+	}
+
 	endpointURL := buildAudioTranscriptionsURL(c.cfg.BaseURL)
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpointURL, &buf)
 	if err != nil {
@@ -194,6 +198,10 @@ func (c *GroqSTTClient) transcribeOnce(ctx context.Context, req TranscribeReques
 	if httpResp.StatusCode >= 500 {
 		return nil, &TransientError{Err: fmt.Errorf("groq: server error %d: %s", httpResp.StatusCode, string(body))}
 	}
+	if httpResp.StatusCode == http.StatusNotFound {
+		// Fallback to chat completions with input_audio if /audio/transcriptions is not found
+		return c.transcribeViaChatAudio(ctx, req)
+	}
 	if httpResp.StatusCode != http.StatusOK {
 		var groqErr struct {
 			Error struct {
@@ -213,6 +221,108 @@ func (c *GroqSTTClient) transcribeOnce(ctx context.Context, req TranscribeReques
 		return nil, fmt.Errorf("groq: unmarshal response: %w", err)
 	}
 	return &result, nil
+}
+
+func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req TranscribeRequest) (*GroqTranscriptionResponse, error) {
+	mime := req.ContentType
+	if mime == "" {
+		mime = "audio/webm"
+	}
+	b64 := base64.StdEncoding.EncodeToString(req.AudioData)
+	dataURI := fmt.Sprintf("data:%s;base64,%s", mime, b64)
+
+	chatURL := buildChatCompletionsURL(c.cfg.BaseURL)
+	payload := map[string]any{
+		"model": c.cfg.Model,
+		"messages": []map[string]any{
+			{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type": "input_audio",
+						"input_audio": map[string]any{
+							"data": dataURI,
+						},
+					},
+					{
+						"type": "text",
+						"text": "Transcribe the audio speech word-for-word without translating or omitting words.",
+					},
+				},
+			},
+		},
+	}
+
+	bodyBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("marshal chat audio request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, chatURL, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("build chat audio request: %w", err)
+	}
+	httpReq.Header.Set("Authorization", "Bearer "+c.cfg.APIKey)
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	httpResp, err := c.client.Do(httpReq)
+	if err != nil {
+		return nil, &TransientError{Err: fmt.Errorf("chat audio http request: %w", err)}
+	}
+	defer httpResp.Body.Close()
+
+	respBody, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		return nil, &TransientError{Err: fmt.Errorf("read chat audio response: %w", err)}
+	}
+
+	if httpResp.StatusCode != http.StatusOK {
+		var apiErr struct {
+			Error struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+				Code    string `json:"code"`
+			} `json:"error"`
+			Message string `json:"message"`
+		}
+		_ = json.Unmarshal(respBody, &apiErr)
+		msg := apiErr.Error.Message
+		if msg == "" {
+			msg = apiErr.Message
+		}
+		if msg == "" {
+			msg = string(respBody)
+		}
+		return nil, fmt.Errorf("ASR API error (%d): %s", httpResp.StatusCode, msg)
+	}
+
+	var chatResp struct {
+		Choices []struct {
+			Message struct {
+				Content any `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.Unmarshal(respBody, &chatResp); err == nil && len(chatResp.Choices) > 0 {
+		text := ""
+		switch v := chatResp.Choices[0].Message.Content.(type) {
+		case string:
+			text = v
+		case []any:
+			for _, item := range v {
+				if m, ok := item.(map[string]any); ok {
+					if t, ok := m["text"].(string); ok {
+						text += t
+					}
+				}
+			}
+		}
+		return &GroqTranscriptionResponse{
+			Text: strings.TrimSpace(text),
+		}, nil
+	}
+
+	return nil, fmt.Errorf("could not parse transcription response: %s", string(respBody))
 }
 
 // EstimateCost calculates estimated cost based on audio duration.
@@ -235,6 +345,11 @@ func isTransientGroqError(err error) bool {
 	}
 	_, ok := err.(*TransientError)
 	return ok
+}
+
+func isDashScopeOrMaas(baseURL string) bool {
+	lower := strings.ToLower(baseURL)
+	return strings.Contains(lower, "aliyuncs.com") || strings.Contains(lower, "dashscope") || strings.Contains(lower, "maas")
 }
 
 func buildAudioTranscriptionsURL(baseURL string) string {

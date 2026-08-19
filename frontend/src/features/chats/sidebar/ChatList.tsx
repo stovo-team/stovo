@@ -1,9 +1,9 @@
 import { MessageCircle } from "lucide-react";
 
 import { Chat } from "../../../api/chats";
-import { CHAT_SECTION_ORDER } from "../shared/chatPresentation";
 import type { ChatFilter, ChatSectionKey } from "../shared/types";
 import { ChatListItem } from "./ChatListItem";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 type ChatListProps = {
   isLoading: boolean;
@@ -36,7 +36,16 @@ export function ChatList({
   onOpenChat,
   onStartNewChat
 }: ChatListProps) {
+  const strings = useStrings();
   const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
+
+  const chatSectionOrder: Array<{ key: ChatSectionKey; label: string }> = [
+    { key: "archive", label: strings.chats.sections.archive },
+    { key: "voice", label: strings.chats.sections.voice },
+    { key: "channels", label: strings.chats.sections.channels },
+    { key: "groups", label: strings.chats.sections.groups },
+    { key: "dms", label: strings.chats.sections.dms }
+  ];
 
   return (
     <div className="chat-list" aria-busy={isLoading || !hasLoadedOverview}>
@@ -50,7 +59,7 @@ export function ChatList({
               </span>
             </div>
           ))
-        : CHAT_SECTION_ORDER.map((section) => {
+        : chatSectionOrder.map((section) => {
             const sectionChats = chatsBySection[section.key];
             if (sectionChats.length === 0) {
               return null;
@@ -93,3 +102,4 @@ export function ChatList({
     </div>
   );
 }
+

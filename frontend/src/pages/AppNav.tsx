@@ -65,11 +65,21 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
           <span>{strings.nav.settings}</span>
         </NavLink>
         {canViewAdmin && (
-          <NavLink to={`${prefix}/app/admin`} title={strings.nav.admin} aria-label={strings.nav.admin}>
+          <NavLink
+            to={`${prefix}/app/admin`}
+            title={strings.nav.admin}
+            aria-label={strings.nav.admin}
+            className={({ isActive }) =>
+              isActive || (typeof window !== "undefined" && window.location.pathname.includes("/app/admin"))
+                ? "active"
+                : ""
+            }
+          >
             <ShieldCheck aria-hidden={true} />
             <span>{strings.nav.admin}</span>
           </NavLink>
         )}
+
       </div>
       <button className="app-nav-logout" type="button" aria-label={strings.nav.logOut} title={strings.nav.logOut} onClick={logout}>
         <LogOut aria-hidden={true} size={20} />

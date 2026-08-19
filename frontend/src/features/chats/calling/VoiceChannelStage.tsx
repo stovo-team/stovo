@@ -1,12 +1,9 @@
-import React from "react";
 import {
   Mic,
   MicOff,
   Monitor,
   PhoneOff,
-  Radio,
   Settings,
-  Users,
   Video,
   VideoOff,
   Volume2
@@ -16,7 +13,6 @@ import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
-import { displayChatName } from "../shared/chatPresentation";
 
 export type VoiceChannelStageProps = {
   chat: Chat;
@@ -43,7 +39,6 @@ export function VoiceChannelStage({
     joinVoiceChannel,
     isPeerSpeaking,
     activeGroupCalls,
-    callTimer,
     setIsCallSettingsMenuOpen
   } = session;
 
@@ -78,7 +73,6 @@ export function VoiceChannelStage({
     }
   }
 
-  const channelName = displayChatName(chat, currentUser?.id);
   const chatMembers = (chat.members as unknown as User[]) || members || [];
 
   const handleToggleMic = () => {
@@ -119,44 +113,6 @@ export function VoiceChannelStage({
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
-      {/* Top Voice Room Header Info */}
-      <div className="voice-room-topbar">
-        <div className="voice-room-status-cluster">
-          <span
-            className={`voice-room-indicator-dot${isCurrentChannelActive ? " is-live" : isConnecting ? " is-connecting" : ""}`}
-            aria-hidden="true"
-          />
-          <div className="voice-room-title-block">
-            <div className="voice-room-heading-row">
-              <Volume2 size={18} className="voice-room-icon" aria-hidden="true" />
-              <h2 className="voice-room-title">{channelName}</h2>
-              {isCurrentChannelActive && (
-                <span className="voice-room-live-pill">
-                  <Radio size={12} aria-hidden="true" />
-                  <span>LIVE</span>
-                </span>
-              )}
-            </div>
-            <p className="voice-room-status-text">
-              {isConnecting
-                ? "Connecting to LiveKit SFU…"
-                : isCurrentChannelActive
-                  ? `Connected · ${callTimer || "00:00"} · ${displayParticipants.length} user${displayParticipants.length === 1 ? "" : "s"} in voice`
-                  : displayParticipants.length > 0
-                    ? `${displayParticipants.length} user${displayParticipants.length === 1 ? "" : "s"} in voice`
-                    : "No users · Join to start conversation"}
-            </p>
-          </div>
-        </div>
-
-        <div className="voice-room-header-actions">
-          <span className="voice-room-member-count-badge">
-            <Users size={15} aria-hidden="true" />
-            <span>{chatMembers.length} members</span>
-          </span>
-        </div>
-      </div>
-
       {/* Main Stage / Participant Grid */}
       <div className="voice-room-stage">
         {displayParticipants.length > 0 ? (

@@ -20,6 +20,7 @@ import {
 } from "../shared/messagePresentation";
 import { canPostToChannel } from "../shared/chatPresentation";
 import type { Message } from "../shared/types";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export type MessageContextMenuState = {
   message: Message;
@@ -69,6 +70,7 @@ export function MessageContextMenu({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const strings = useStrings();
   const [reactionsExpanded, setReactionsExpanded] = useState(false);
   const currentReaction = currentUser
     ? menu.message.reactions.find((reaction) => reaction.userIds.includes(currentUser.id)) ?? null
@@ -111,8 +113,8 @@ export function MessageContextMenu({
             <button
               type="button"
               className={currentReaction?.emoji === emoji ? "active" : ""}
-              aria-label={`React with ${emoji}`}
-              title={`React with ${emoji}`}
+              aria-label={strings.contextMenu.react(emoji)}
+              title={strings.contextMenu.react(emoji)}
               key={emoji}
               disabled={pending}
               onClick={() => onReact(emoji)}
@@ -123,9 +125,9 @@ export function MessageContextMenu({
           <button
             type="button"
             className={`message-context-reactions-expand${reactionsExpanded ? " active" : ""}`}
-            aria-label={reactionsExpanded ? "Hide more reactions" : "Show more reactions"}
+            aria-label={reactionsExpanded ? strings.contextMenu.hideMoreReactions : strings.contextMenu.moreReactions}
             aria-expanded={reactionsExpanded}
-            title={reactionsExpanded ? "Hide more reactions" : "More reactions"}
+            title={reactionsExpanded ? strings.contextMenu.hideMoreReactions : strings.contextMenu.moreReactions}
             disabled={pending}
             onClick={() => setReactionsExpanded((open) => !open)}
           >
@@ -136,8 +138,8 @@ export function MessageContextMenu({
               <button
                 type="button"
                 className={currentReaction?.emoji === emoji ? "active" : ""}
-                aria-label={`React with ${emoji}`}
-                title={`React with ${emoji}`}
+                aria-label={strings.contextMenu.react(emoji)}
+                title={strings.contextMenu.react(emoji)}
                 key={emoji}
                 disabled={pending}
                 onClick={() => onReact(emoji)}
@@ -155,7 +157,7 @@ export function MessageContextMenu({
           onClick={onComment}
         >
           <MessageCircle aria-hidden="true" size={16} />
-          Comment
+          {strings.contextMenu.comment}
         </button>
       )}
       {(canPostInChannel || isInThreadMode) && (
@@ -166,12 +168,12 @@ export function MessageContextMenu({
           onClick={onReply}
         >
           <Reply aria-hidden="true" size={16} />
-          Reply
+          {strings.contextMenu.reply}
         </button>
       )}
       <button type="button" role="menuitem" disabled={!menu.message.content} onClick={onCopy}>
         <Copy aria-hidden="true" size={16} />
-        Copy
+        {strings.contextMenu.copy}
       </button>
       {selectedChat && canManagePins && (
         <button
@@ -181,7 +183,7 @@ export function MessageContextMenu({
           onClick={onTogglePin}
         >
           <Pin aria-hidden="true" size={16} />
-          {isPinned ? "Unpin message" : "Pin message"}
+          {isPinned ? strings.contextMenu.unpinMessage : strings.contextMenu.pinMessage}
         </button>
       )}
       <button
@@ -191,7 +193,7 @@ export function MessageContextMenu({
         onClick={onForward}
       >
         <Forward aria-hidden="true" size={16} />
-        Forward
+        {strings.contextMenu.forward}
       </button>
       <button
         type="button"
@@ -200,7 +202,7 @@ export function MessageContextMenu({
         onClick={onArchive}
       >
         <Archive aria-hidden="true" size={16} />
-        Save to Message Archive
+        {strings.contextMenu.saveToArchive}
       </button>
       {menu.message.senderId === currentUser?.id && Boolean(menu.message.content?.trim()) && (
         <button
@@ -210,7 +212,7 @@ export function MessageContextMenu({
           onClick={onEdit}
         >
           <Pencil aria-hidden="true" size={16} />
-          Edit
+          {strings.contextMenu.edit}
         </button>
       )}
       {menu.message.senderId === currentUser?.id && (
@@ -221,12 +223,12 @@ export function MessageContextMenu({
           onClick={onDelete}
         >
           <Trash2 aria-hidden="true" size={16} />
-          Delete
+          {strings.contextMenu.delete}
         </button>
       )}
       {isMultiMemberChat(selectedChat?.type ?? "direct") && (
         <div className="message-context-seen-by" aria-live="polite">
-          <strong>Seen by</strong>
+          <strong>{strings.contextMenu.seenBy}</strong>
           {seenBy.length > 0 ? (
             <ul>
               {seenBy.map((status) => (
@@ -242,10 +244,11 @@ export function MessageContextMenu({
               ))}
             </ul>
           ) : (
-            <p>No readers yet</p>
+            <p>{strings.contextMenu.noReaders}</p>
           )}
         </div>
       )}
     </div>
   );
 }
+
