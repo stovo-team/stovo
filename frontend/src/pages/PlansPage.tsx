@@ -5,6 +5,7 @@ import { ApiError } from "../api/client";
 import { createPlan, getPlans, Plan, PlanDraft, PlanRSVP, rsvpPlan } from "../api/plans";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
+import { useStrings } from "../i18n/LanguageContext";
 
 type View = "today" | "week" | "month";
 const dayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -44,9 +45,11 @@ function renderPlanNotes(text: string) {
 }
 
 export default function PlansPage() {
+  const strings = useStrings();
   const { accessToken, currentUser } = useAuth();
   const navigate = useNavigate();
   const [view, setView] = useState<View>("today");
+
   const [selectedDay, setSelectedDay] = useState(dayStart(new Date()));
   const [plans, setPlans] = useState<Plan[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -239,23 +242,23 @@ export default function PlansPage() {
         <aside className="plans-sidebar">
           <label className="plans-search">
             <Search size={17} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a plan" aria-label="Find a plan" />
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={strings.plans.searchPlaceholder} aria-label={strings.plans.searchPlaceholder} />
           </label>
           <div className="plans-tabs">
             {(["today", "week", "month"] as View[]).map((item) => (
               <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
-                {item === "week" ? "This week" : item[0].toUpperCase() + item.slice(1)}
+                {item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}
               </button>
             ))}
           </div>
-          <p className="plans-list-label">{view === "today" ? "Today" : "Upcoming"}</p>
+          <p className="plans-list-label">{view === "today" ? strings.plans.today : strings.plans.upcoming}</p>
           {visiblePlans.map((plan) => (
             <button className="plans-sidebar-row" key={plan.id} onClick={() => setSelectedDay(dayStart(new Date(plan.startsAt)))}>
               <time>{new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric" }).format(new Date(plan.startsAt))}</time>
               <span>{plan.title}</span>
             </button>
           ))}
-          {!loading && visiblePlans.length === 0 && <p className="plans-muted">No plans in this range.</p>}
+          {!loading && visiblePlans.length === 0 && <p className="plans-muted">{strings.plans.noPlansRange}</p>}
         </aside>
 
         <section className={`plans-content plans-content--${view}`}>
@@ -269,9 +272,9 @@ export default function PlansPage() {
             </button>
           </header>
           <nav className="plans-mobile-tabs" aria-label="Plan view">
-            <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}>Today</button>
-            <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>This week</button>
-            <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>Month</button>
+            <button className={view === "today" ? "active" : ""} onClick={() => setView("today")}>{strings.plans.today}</button>
+            <button className={view === "week" ? "active" : ""} onClick={() => setView("week")}>{strings.plans.thisWeek}</button>
+            <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>{strings.plans.month}</button>
           </nav>
           {error && <p className="error-text" role="alert">{error}</p>}
           {view === "month" ? (
@@ -296,39 +299,39 @@ export default function PlansPage() {
                 ))}
               </div>
               {loading && plans.length === 0 ? (
-                <p className="plans-empty">Loading plans…</p>
+                <p className="plans-empty">{strings.plans.loadingPlans}</p>
               ) : visiblePlans.length === 0 ? (
-                <p className="plans-today-empty">{loading ? "Loading plans…" : "No plans yet"}</p>
+                <p className="plans-today-empty">{loading ? strings.plans.loadingPlans : strings.plans.noPlansYet}</p>
               ) : (
                 visiblePlans.map((plan) => {
                   const myRsvp = plan.attendees?.find((a) => a.userId === currentUser?.id)?.status;
                   const goingCount = plan.attendees?.filter((entry) => entry.status === "going").length ?? 0;
                   return (
                     <article className="plan-row" key={plan.id}>
-                      <time>{plan.allDay ? "All day" : formatTime(plan.startsAt)}</time>
+                      <time>{plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)}</time>
                       <div>
                         <strong>{plan.title}</strong>
                         {plan.location && <small>{plan.location}</small>}
                         {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
                         {plan.sourceChatId && (
                           <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>
-                            Open chat
+                            {strings.plans.openChat}
                           </button>
                         )}
                       </div>
                       <div className="plan-rsvp">
-                        <span>{goingCount} going</span>
+                        <span>{strings.plans.goingCount(goingCount)}</span>
                         <button
                           className={myRsvp === "going" ? "active" : ""}
                           onClick={() => void rsvp(plan, "going")}
                         >
-                          Going
+                          {strings.plans.going}
                         </button>
                         <button
                           className={myRsvp === "maybe" ? "active" : ""}
                           onClick={() => void rsvp(plan, "maybe")}
                         >
-                          Maybe
+                          {strings.plans.maybe}
                         </button>
                       </div>
                     </article>
@@ -337,7 +340,7 @@ export default function PlansPage() {
               )}
             </div>
           )}
-          <button type="button" className="plans-create-fab" disabled={!canCreate} onClick={openCreateModal} aria-label="Create plan">
+          <button type="button" className="plans-create-fab" disabled={!canCreate} onClick={openCreateModal} aria-label={strings.plans.createPlan}>
             <Plus size={28} aria-hidden="true" />
           </button>
         </section>
@@ -362,11 +365,11 @@ export default function PlansPage() {
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-header">
-              <h2 id="new-plan-title">New plan</h2>
+              <h2 id="new-plan-title">{strings.plans.newPlan}</h2>
               <button
                 type="button"
                 className="icon-button subtle icon-button--plain"
-                aria-label="Close"
+                aria-label={strings.plans.close}
                 onClick={() => {
                   setDialogOpen(false);
                   setDialogError(null);
@@ -377,7 +380,7 @@ export default function PlansPage() {
             </div>
             {dialogError && <p className="error-text modal-error-text" role="alert">{dialogError}</p>}
             <label>
-              Title
+              {strings.plans.planTitle}
               <input
                 autoFocus
                 required
@@ -390,7 +393,7 @@ export default function PlansPage() {
             </label>
             <div className="plans-dialog-times">
               <label>
-                Starts
+                {strings.plans.starts}
                 <input
                   required
                   type="datetime-local"
@@ -402,7 +405,7 @@ export default function PlansPage() {
                 />
               </label>
               <label>
-                Ends
+                {strings.plans.ends}
                 <input
                   required
                   type="datetime-local"
@@ -424,32 +427,33 @@ export default function PlansPage() {
                 className={draft.allDay ? "active" : ""}
                 onClick={() => setDraft((current) => ({ ...current, allDay: !current.allDay }))}
               >
-                All day
+                {strings.plans.allDay}
               </button>
             </div>
             <label>
-              Location
+              {strings.plans.location}
               <input
                 value={draft.location ?? ""}
                 onChange={(e) => setDraft({ ...draft, location: e.target.value })}
-                placeholder="Location (optional)"
+                placeholder={strings.plans.locationOptional}
               />
             </label>
             <label>
-              Description / Link
+              {strings.plans.descriptionOrLink}
               <textarea
                 rows={2}
                 value={draft.notes ?? ""}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-                placeholder="Add notes or video call link (e.g. https://...)"
+                placeholder={strings.plans.descriptionPlaceholder}
               />
             </label>
             <button type="submit" className="primary-button">
-              Create plan
+              {strings.plans.createPlan}
             </button>
           </form>
         </div>
       )}
+
     </main>
   );
 }

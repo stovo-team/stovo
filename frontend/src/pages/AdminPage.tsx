@@ -1,44 +1,46 @@
 import { Link } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
 
 import { Family } from "../api/family";
 import { ApiError, getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import { useCallback, useEffect, useState } from "react";
 import AppNav from "./AppNav";
-
-const ADMIN_TABS = [
-  {
-    to: "/app/admin/appearance",
-    icon: "palette",
-    title: "Appearance",
-    description: "Shared chat-list layout for all frontends"
-  },
-  {
-    to: "/app/admin/encryption",
-    icon: "encrypted",
-    title: "Message encryption",
-    description: "Default protocol for new chats"
-  },
-  {
-    to: "/app/admin/mcp",
-    icon: "smart_toy",
-    title: "MCP connectors",
-    description: "Claude Code, Codex, OpenClaw, Hermes"
-  },
-  {
-    to: "/app/admin/members",
-    icon: "group",
-    title: "Members",
-    description: "Family members, roles, and account actions"
-  }
-] as const;
+import { useStrings } from "../i18n/LanguageContext";
 
 export default function AdminPage() {
+  const strings = useStrings();
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
   const prefix = getClusterPrefix();
+
+  const adminTabs = [
+    {
+      to: "/app/admin/appearance",
+      icon: "palette",
+      title: strings.admin.hub.appearance,
+      description: strings.admin.hub.appearanceDesc
+    },
+    {
+      to: "/app/admin/encryption",
+      icon: "encrypted",
+      title: strings.admin.hub.encryption,
+      description: strings.admin.hub.encryptionDesc
+    },
+    {
+      to: "/app/admin/mcp",
+      icon: "smart_toy",
+      title: strings.admin.hub.mcp,
+      description: strings.admin.hub.mcpDesc
+    },
+    {
+      to: "/app/admin/members",
+      icon: "group",
+      title: strings.admin.hub.members,
+      description: strings.admin.hub.membersDesc
+    }
+  ];
 
   const load = useCallback(async () => {
     if (!accessToken || !canViewAdmin) return;
@@ -59,14 +61,12 @@ export default function AdminPage() {
     <main className="app-shell app-frame admin-page admin-hub-page">
       <AppNav />
       <section className="page-surface admin-surface">
-
-
-        {!canViewAdmin && <p className="error-text">Admin access required.</p>}
+        {!canViewAdmin && <p className="error-text">{strings.admin.adminAccessRequired}</p>}
         {error && <p className="error-text">{error}</p>}
 
         {canViewAdmin && (
-          <nav className="admin-hub-tabs" aria-label="Admin sections">
-            {ADMIN_TABS.map((tab) => (
+          <nav className="admin-hub-tabs" aria-label={strings.admin.title}>
+            {adminTabs.map((tab) => (
               <Link key={tab.to} to={`${prefix}${tab.to}`} className="admin-hub-tab">
                 <span className="settings-row-icon">
                   <span className="ms-icon ms-icon--22" aria-hidden="true">
@@ -88,3 +88,4 @@ export default function AdminPage() {
     </main>
   );
 }
+

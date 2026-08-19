@@ -16,6 +16,7 @@ import {
 } from "../shared/chatPresentation";
 import type { ChatInfoControl, SharedContentItem, SharedContentTab } from "../shared/types";
 import { RealAvatar } from "../sidebar/RealAvatar";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function SharedContentThumb({
   accessToken,
@@ -128,6 +129,7 @@ export function ChatDetailsPanel({
   ) => void;
   onTitleDraftChange: (value: string) => void;
 }) {
+  const strings = useStrings();
   const chatName = displayChatName(chat, currentUserId);
   const [activeControl, setActiveControl] = useState<ChatInfoControl>(null);
   const [tabDirection, setTabDirection] = useState<"forward" | "backward">("forward");
@@ -160,7 +162,7 @@ export function ChatDetailsPanel({
           <button
             type="button"
             className="chat-info-back"
-            aria-label="Back to chat info"
+            aria-label={strings.chats.details.backToChat}
             onClick={() => setActiveControl(null)}
           >
             <span className="ms-icon ms-icon--24" aria-hidden={true}>
@@ -168,7 +170,7 @@ export function ChatDetailsPanel({
             </span>
           </button>
           <h2 id="chat-settings-title" className="chat-info-topbar-title">
-            Chat settings
+            {strings.chats.details.settings}
           </h2>
         </header>
 
@@ -176,8 +178,8 @@ export function ChatDetailsPanel({
           <div className="chat-info-section">
             <div className="chat-info-island chat-info-wallpaper">
               <div className="chat-info-wallpaper-copy">
-                <strong>Chat wallpaper</strong>
-                <small>Only visible to you in this chat</small>
+                <strong>{strings.chats.details.wallpaper}</strong>
+                <small>{strings.appearance.chatBackground}</small>
               </div>
               <div
                 className="chat-info-wallpaper-preview"
@@ -208,7 +210,7 @@ export function ChatDetailsPanel({
                   disabled={isUploading || !accessToken}
                   onClick={() => chatWallpaperInputRef.current?.click()}
                 >
-                  {isUploading ? "Uploading…" : chat.wallpaper ? "Change photo" : "Upload photo"}
+                  {isUploading ? strings.appearance.uploading : chat.wallpaper ? strings.chats.details.changePhoto : strings.chats.details.uploadPhoto}
                 </button>
                 {chat.wallpaper && (
                   <button
@@ -222,7 +224,7 @@ export function ChatDetailsPanel({
                       )
                     }
                   >
-                    Remove
+                    {strings.chats.details.remove}
                   </button>
                 )}
               </div>
@@ -235,8 +237,8 @@ export function ChatDetailsPanel({
                 {hasFamilyStorageSetting && (
                   <label className="chat-info-row chat-info-row--toggle">
                     <span className="chat-info-row-copy">
-                      <strong>Family storage</strong>
-                      <small>Show media in shared family storage</small>
+                      <strong>{strings.chats.details.familyStorage}</strong>
+                      <small>{strings.chats.details.familyStorageHelp}</small>
                     </span>
                     <span className="call-audio-toggle-switch">
                       <input
@@ -263,8 +265,8 @@ export function ChatDetailsPanel({
               <div className="chat-info-island">
                 <label className="chat-info-row chat-info-row--toggle">
                   <span className="chat-info-row-copy">
-                    <strong>Comments</strong>
-                    <small>Allow members to comment on posts</small>
+                    <strong>{strings.chats.details.comments}</strong>
+                    <small>{strings.chats.details.commentsHelp}</small>
                   </span>
                   <span className="call-audio-toggle-switch">
                     <input
@@ -282,8 +284,8 @@ export function ChatDetailsPanel({
 
           {hasPinPermissionSetting && (
             <div className="chat-info-section">
-              <p className="chat-info-section-label">Who can pin messages</p>
-              <div className="chat-info-island" role="radiogroup" aria-label="Who can pin messages">
+              <p className="chat-info-section-label">{strings.chats.details.whoCanPin}</p>
+              <div className="chat-info-island" role="radiogroup" aria-label={strings.chats.details.whoCanPin}>
                 <label className="chat-info-permission-option chat-info-permission-option--inline">
                   <input
                     type="radio"
@@ -292,7 +294,7 @@ export function ChatDetailsPanel({
                     checked={(chat.pinPermission ?? "everyone") === "everyone"}
                     onChange={() => void onPinPermissionChange("everyone")}
                   />
-                  <span>Everyone</span>
+                  <span>{strings.chats.details.everyone}</span>
                 </label>
                 <label className="chat-info-permission-option chat-info-permission-option--inline">
                   <input
@@ -302,7 +304,7 @@ export function ChatDetailsPanel({
                     checked={(chat.pinPermission ?? "everyone") === "admins_only"}
                     onChange={() => void onPinPermissionChange("admins_only")}
                   />
-                  <span>Admins only</span>
+                  <span>{strings.chats.details.adminsOnly}</span>
                 </label>
               </div>
             </div>
@@ -310,17 +312,17 @@ export function ChatDetailsPanel({
 
           {hasMessageDelaySetting && (
             <div className="chat-info-section">
-              <p className="chat-info-section-label">Message delay</p>
-              <div className="chat-info-island" role="radiogroup" aria-label="Message delay">
+              <p className="chat-info-section-label">{strings.chats.details.messageDelay}</p>
+              <div className="chat-info-island" role="radiogroup" aria-label={strings.chats.details.messageDelay}>
                 {[
-                  { label: "Off", value: 0 },
-                  { label: "5 seconds", value: 5 },
-                  { label: "10 seconds", value: 10 },
-                  { label: "15 seconds", value: 15 },
-                  { label: "30 seconds", value: 30 },
-                  { label: "1 minute", value: 60 },
-                  { label: "2 minutes", value: 120 },
-                  { label: "5 minutes", value: 300 }
+                  { label: strings.chats.details.off, value: 0 },
+                  { label: "5s", value: 5 },
+                  { label: "10s", value: 10 },
+                  { label: "15s", value: 15 },
+                  { label: "30s", value: 30 },
+                  { label: "1m", value: 60 },
+                  { label: "2m", value: 120 },
+                  { label: "5m", value: 300 }
                 ].map((option) => (
                   <label key={option.value} className="chat-info-permission-option chat-info-permission-option--inline">
                     <input
@@ -344,7 +346,7 @@ export function ChatDetailsPanel({
   return (
     <aside className="chat-details-panel chat-info-screen" role="dialog" aria-modal="true" aria-labelledby="chat-info-title">
       <header className="chat-info-topbar">
-        <button type="button" className="chat-info-back" aria-label="Back to chat" onClick={onClose}>
+        <button type="button" className="chat-info-back" aria-label={strings.chats.details.backToChat} onClick={onClose}>
           <span className="ms-icon ms-icon--24" aria-hidden={true}>
             arrow_back
           </span>
@@ -355,8 +357,8 @@ export function ChatDetailsPanel({
         <button
           type="button"
           className="chat-info-topbar-action"
-          aria-label="Chat settings"
-          title="Chat settings"
+          aria-label={strings.chats.details.settings}
+          title={strings.chats.details.settings}
           onClick={() => setActiveControl("settings")}
         >
           <Settings aria-hidden="true" size={22} />
@@ -378,8 +380,8 @@ export function ChatDetailsPanel({
                 <button
                   type="button"
                   className="chat-info-avatar-edit"
-                  aria-label="Change chat photo"
-                  title="Change chat photo"
+                  aria-label={strings.chats.details.changeChatPhoto}
+                  title={strings.chats.details.changeChatPhoto}
                   disabled={isUploading}
                   onClick={() => chatPhotoInputRef.current?.click()}
                 >
@@ -404,22 +406,22 @@ export function ChatDetailsPanel({
                 <input
                   id="chat-info-name"
                   className="chat-info-inline-input"
-                  aria-label="Chat name"
+                  aria-label={strings.chats.details.name}
                   autoFocus
                   maxLength={255}
                   value={chatTitleDraft}
                   onChange={(event) => onTitleDraftChange(event.target.value)}
                 />
                 <button type="submit" className="chat-info-title-save" disabled={!canRename}>
-                  Save
+                  {strings.chats.details.save}
                 </button>
                 <button
                   type="button"
                   className="chat-info-title-cancel"
-                  aria-label="Cancel editing chat name"
+                  aria-label={strings.chats.details.cancel}
                   onClick={() => setActiveControl(null)}
                 >
-                  Cancel
+                  {strings.chats.details.cancel}
                 </button>
               </form>
             ) : (
@@ -431,8 +433,8 @@ export function ChatDetailsPanel({
                     className="chat-info-title-edit"
                     aria-controls="chat-info-name-editor"
                     aria-expanded={nameEditor}
-                    aria-label="Edit chat name"
-                    title="Edit chat name"
+                    aria-label={strings.chats.details.editChatName}
+                    title={strings.chats.details.editChatName}
                     onClick={() => setActiveControl((current) => (current === "name" ? null : "name"))}
                   >
                     <Pencil aria-hidden="true" size={18} />
@@ -444,8 +446,8 @@ export function ChatDetailsPanel({
           {chat.type !== "archive" && (
             <p className="chat-info-subtitle">
               {chat.type === "direct"
-                ? "Direct message"
-                : `${chat.members.length} member${chat.members.length === 1 ? "" : "s"}`}
+                ? strings.chats.types.directMessage
+                : strings.chats.types.membersCount(chat.members.length)}
             </p>
           )}
         </section>
@@ -455,7 +457,7 @@ export function ChatDetailsPanel({
             <span className="ms-icon ms-icon--24" aria-hidden={true}>
               chat
             </span>
-            <span>Message</span>
+            <span>{strings.chats.details.message}</span>
           </button>
           <button
             type="button"
@@ -471,7 +473,7 @@ export function ChatDetailsPanel({
             <span className="ms-icon ms-icon--24" aria-hidden={true}>
               {chat.isMuted ? "notifications" : "notifications_off"}
             </span>
-            <span>{chat.isMuted ? "Unmute" : "Mute"}</span>
+            <span>{chat.isMuted ? strings.chats.details.unmute : strings.chats.details.mute}</span>
           </button>
           <button
             type="button"
@@ -490,7 +492,7 @@ export function ChatDetailsPanel({
             >
               star
             </span>
-            <span>{chat.isFavorite ? "Saved" : "Favorite"}</span>
+            <span>{chat.isFavorite ? strings.chats.details.saved : strings.chats.details.favorite}</span>
           </button>
         </section>
 
@@ -504,13 +506,13 @@ export function ChatDetailsPanel({
                 {otherMember.email && (
                   <div className="chat-info-row" style={{ gap: "8px", display: "flex", alignItems: "center" }}>
                     <Mail aria-hidden="true" size={16} />
-                    <span className="chat-info-row-copy"><strong>Email</strong><small>{otherMember.email}</small></span>
+                    <span className="chat-info-row-copy"><strong>{strings.chats.details.email}</strong><small>{otherMember.email}</small></span>
                   </div>
                 )}
                 {otherMember.timezone && (
                   <div className="chat-info-row" style={{ gap: "8px", display: "flex", alignItems: "center" }}>
                     <Clock3 aria-hidden="true" size={16} />
-                    <span className="chat-info-row-copy"><strong>Timezone</strong><small>{otherMember.timezone}</small></span>
+                    <span className="chat-info-row-copy"><strong>{strings.chats.details.timezone}</strong><small>{otherMember.timezone}</small></span>
                   </div>
                 )}
               </div>
@@ -528,7 +530,13 @@ export function ChatDetailsPanel({
                 aria-pressed={detailsTab === tab}
                 onClick={() => handleDetailsTabChange(tab)}
               >
-                {tab === "media" ? "Media" : tab === "audio" ? "Audio" : tab === "files" ? "Files" : "Links"}
+                {tab === "media"
+                  ? strings.chats.details.tabs.media
+                  : tab === "audio"
+                    ? strings.chats.details.tabs.audio
+                    : tab === "files"
+                      ? strings.chats.details.tabs.files
+                      : strings.chats.details.tabs.links}
               </button>
             ))}
           </div>
@@ -561,12 +569,12 @@ export function ChatDetailsPanel({
             ) : (
               <p className="chat-info-empty">
                 {detailsTab === "links"
-                  ? "No links yet"
+                  ? strings.chats.details.empty.links
                   : detailsTab === "media"
-                    ? "No media yet"
+                    ? strings.chats.details.empty.media
                     : detailsTab === "audio"
-                      ? "No audio yet"
-                      : "No files yet"}
+                      ? strings.chats.details.empty.audio
+                      : strings.chats.details.empty.files}
               </p>
             )}
           </div>
@@ -574,7 +582,7 @@ export function ChatDetailsPanel({
 
         <div className="chat-info-section">
           <p className="chat-info-section-label">
-            {chat.members.length} member{chat.members.length === 1 ? "" : "s"}
+            {strings.chats.types.membersCount(chat.members.length)}
           </p>
           <div className="chat-info-island">
             <ul className="chat-info-member-list">
@@ -602,3 +610,4 @@ export function ChatDetailsPanel({
     </aside>
   );
 }
+

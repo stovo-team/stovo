@@ -5,8 +5,10 @@ import { ApiError, getClusterPrefix } from "../api/client";
 import { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
+import { useStrings } from "../i18n/LanguageContext";
 
 export default function AdminAppearancePage() {
+  const strings = useStrings();
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function AdminAppearancePage() {
         body: { minimizedChatLayout }
       });
       setFamily(updated);
-      setNotice("Chat layout saved for everyone");
+      setNotice(strings.admin.appearance.saved);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not save chat layout");
     } finally {
@@ -54,32 +56,31 @@ export default function AdminAppearancePage() {
       <AppNav />
       <section className="page-surface admin-surface">
         <div className="admin-detail-header">
-          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin">
+          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label={strings.admin.backToAdmin}>
             <span className="ms-icon ms-icon--22" aria-hidden="true">
               arrow_back
             </span>
           </Link>
           <div>
-            <h1>Appearance</h1>
+            <h1>{strings.admin.appearance.title}</h1>
           </div>
         </div>
 
-        {!canViewAdmin && <p className="error-text">Admin access required.</p>}
+        {!canViewAdmin && <p className="error-text">{strings.admin.adminAccessRequired}</p>}
         {error && <p className="error-text">{error}</p>}
         {notice && <p className="success-text">{notice}</p>}
 
         {canViewAdmin && (
           <section className="appearance-settings-panel admin-panel">
             <div className="public-access-header">
-              <h2>Chat list</h2>
+              <h2>{strings.admin.appearance.chatLayout}</h2>
               <span className="admin-status-chip">{family?.minimizedChatLayout ? "Minimized" : "Full"}</span>
             </div>
             <label className="appearance-setting-row">
               <span>
-                <strong>Minimized chat layout</strong>
+                <strong>{strings.admin.appearance.minimizedLayout}</strong>
                 <small>
-                  Shows avatars or chat icons and names, without the latest-message preview. This applies to every
-                  frontend on this server.
+                  {strings.admin.appearance.minimizedLayoutDesc}
                 </small>
               </span>
               <input
@@ -95,3 +96,4 @@ export default function AdminAppearancePage() {
     </main>
   );
 }
+

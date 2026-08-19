@@ -42,10 +42,9 @@ describe("chat details controls", () => {
   });
 
   it("opens a chat settings page from the settings button", () => {
-    expect(chatDetailsPanel).toContain('aria-label="Chat settings"');
+    expect(chatDetailsPanel).toContain("strings.chats.details.settings");
     expect(chatDetailsPanel).toContain('id="chat-settings-title"');
-    expect(chatDetailsPanel).toContain("Chat settings");
-    expect(chatDetailsPanel).toContain("<strong>Family storage</strong>");
+    expect(chatDetailsPanel).toContain("strings.chats.details.familyStorage");
     expect(chatDetailsPanel).not.toContain('className="chat-info-permissions-popup"');
     expect(styles).toContain(".chat-info-screen--settings .chat-info-topbar");
   });
@@ -55,8 +54,8 @@ describe("chat details controls", () => {
     const infoStart = chatDetailsPanel.indexOf('id="chat-info-title"');
     expect(settingsStart).toBeGreaterThan(-1);
     expect(infoStart).toBeGreaterThan(settingsStart);
-    expect(chatDetailsPanel.slice(settingsStart, infoStart)).toContain("Chat wallpaper");
-    expect(chatDetailsPanel.slice(infoStart)).not.toContain("Chat wallpaper");
+    expect(chatDetailsPanel.slice(settingsStart, infoStart)).toContain("strings.chats.details.wallpaper");
+    expect(chatDetailsPanel.slice(infoStart)).not.toContain("strings.chats.details.wallpaper");
     expect(chatDetailsPanel).toContain('className="chat-info-wallpaper-upload"');
     expect(styles).toContain(".chat-info-wallpaper-upload {");
   });
@@ -80,8 +79,9 @@ describe("chat details controls", () => {
   });
 
   it("includes message delay setting in chat settings with cooldown counter styles", () => {
-    expect(chatDetailsPanel).toContain('aria-label="Message delay"');
+    expect(chatDetailsPanel).toContain("strings.chats.details.messageDelay");
     expect(chatDetailsPanel).toContain('name="messageDelay"');
     expect(styles).toContain(".composer-delay-counter {");
   });
 });
+

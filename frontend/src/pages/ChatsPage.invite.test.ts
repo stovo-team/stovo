@@ -30,9 +30,10 @@ describe("chats page family invitation", () => {
     expect(styles).toMatch(/\.invite-modal-link[\s\S]*white-space:\s*nowrap/);
     expect(styles).toMatch(/\.invite-modal-section[\s\S]*border:\s*0/);
     expect(styles).toMatch(/\.invite-modal-actions \.primary-button[\s\S]*border-radius:\s*999px/);
-    const qrIndex = inviteModal.indexOf("<strong>QR code</strong>");
-    const linkIndex = inviteModal.indexOf("<strong>Invite link</strong>");
+    const qrIndex = inviteModal.indexOf("strings.inviteModal.qrCode");
+    const linkIndex = inviteModal.indexOf("strings.inviteModal.inviteLink");
     expect(qrIndex).toBeGreaterThan(-1);
     expect(linkIndex).toBeGreaterThan(qrIndex);
   });
 });
+
