@@ -9,8 +9,10 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
+
 
 const (
 	groqAPIBase     = "https://api.groq.com"

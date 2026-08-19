@@ -1,4 +1,4 @@
-package app
+﻿package app
 
 import (
 	"context"
@@ -239,73 +239,24 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	if chat.Type != "direct" && chat.Type != "group" && chat.Type != "family" && chat.Type != "voice" {
 		return nil, fmt.Errorf("calls are only available in direct, group, and voice chats")
 	}
-
 	members := chatMemberSet(chat)
 	if !members[callerUserID] {
 		return nil, fmt.Errorf("you are not a member of this chat")
 	}
 
-	invitees := make([]string, 0)
-	seen := map[string]bool{callerUserID: true}
-	if len(inviteUserIDs) > 0 {
-		for _, id := range inviteUserIDs {
-			id = strings.TrimSpace(id)
-			if id == "" || seen[id] {
-				continue
-			}
-			if !members[id] {
-				return nil, fmt.Errorf("invitee is not a member of this chat")
-			}
-			seen[id] = true
-			invitees = append(invitees, id)
-		}
-	} else if chat.Type == "direct" {
-		for _, id := range memberIDs(chat) {
-			if id != callerUserID {
-				invitees = append(invitees, id)
-				break
-			}
-		}
-	} else if chat.Type == "voice" {
-		// Voice channels do not dial/ring all members on start by default
-	} else {
-		for _, id := range memberIDs(chat) {
-			if id != callerUserID {
-				invitees = append(invitees, id)
-			}
-		}
+	invitees, err := s.resolveCallInvitees(chat, callerUserID, inviteUserIDs, members)
+	if err != nil {
+		return nil, err
 	}
-	if len(invitees) == 0 && chat.Type != "voice" {
-		return nil, fmt.Errorf("could not determine call participants")
-	}
-
-	for _, invitee := range invitees {
-		if chat.Type == "direct" {
-			if blocked, err := s.directContactBlocked(callerUserID, invitee); err != nil {
-				return nil, fmt.Errorf("could not check privacy settings")
-			} else if blocked {
-				return nil, fmt.Errorf("calls are unavailable for this member")
-			}
-		}
+	if err := s.validateCallPrivacy(callerUserID, invitees, chat.Type); err != nil {
+		return nil, err
 	}
 
 	s.callMu.Lock()
 	defer s.callMu.Unlock()
 
-	if _, exists := s.callByChat[chat.ID]; exists {
-		return nil, fmt.Errorf("call already in progress for this chat")
-	}
-	if roomID, busy := s.userActiveCall[callerUserID]; busy {
-		if existing := s.callByRoom[roomID]; existing != nil && existing.ChatID != chat.ID {
-			return nil, fmt.Errorf("you are already in another call")
-		}
-	}
-	for _, invitee := range invitees {
-		if roomID, busy := s.userActiveCall[invitee]; busy {
-			if existing := s.callByRoom[roomID]; existing != nil && existing.ChatID != chat.ID {
-				return nil, fmt.Errorf("participant is busy in another call")
-			}
-		}
+	if err := s.checkCallConflicts(callerUserID, chat.ID, invitees); err != nil {
+		return nil, err
 	}
 
 	isGroupCall := chat.Type == "group" || chat.Type == "family" || chat.Type == "voice"
@@ -325,27 +276,16 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	}
 
 	participants := map[string]*callParticipant{
-		callerUserID: {
-			UserID:   callerUserID,
-			Role:     "host",
-			State:    callerState,
-			JoinedAt: callerJoinedAt,
-		},
+		callerUserID: {UserID: callerUserID, Role: "host", State: callerState, JoinedAt: callerJoinedAt},
 	}
 	for _, invitee := range invitees {
-		participants[invitee] = &callParticipant{
-			UserID: invitee,
-			Role:   "member",
-			State:  participantRinging,
-		}
+		participants[invitee] = &callParticipant{UserID: invitee, Role: "member", State: participantRinging}
 	}
 
-	// Voice channels always use SFU (LiveKit) topology; standard calls start as Mesh.
 	topology := callTopologyMesh
 	if isVoiceChannel {
 		topology = callTopologySFU
 	}
-
 	calleeUserID := ""
 	if len(invitees) > 0 {
 		calleeUserID = invitees[0]
@@ -383,6 +323,83 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		s.persistCallSession(ctx, sess, 60*time.Second)
 	}(session)
 	return session, nil
+}
+
+// resolveCallInvitees builds the list of users to invite to a call, handling
+// direct, group, voice, and explicit invite-list cases.
+func (s *Server) resolveCallInvitees(chat chatPublic, callerUserID string, inviteUserIDs []string, members map[string]bool) ([]string, error) {
+	invitees := make([]string, 0)
+	seen := map[string]bool{callerUserID: true}
+	if len(inviteUserIDs) > 0 {
+		for _, id := range inviteUserIDs {
+			id = strings.TrimSpace(id)
+			if id == "" || seen[id] {
+				continue
+			}
+			if !members[id] {
+				return nil, fmt.Errorf("invitee is not a member of this chat")
+			}
+			seen[id] = true
+			invitees = append(invitees, id)
+		}
+	} else if chat.Type == "direct" {
+		for _, id := range memberIDs(chat) {
+			if id != callerUserID {
+				invitees = append(invitees, id)
+				break
+			}
+		}
+	} else if chat.Type == "voice" {
+		// Voice channels do not dial/ring all members on start by default.
+	} else {
+		for _, id := range memberIDs(chat) {
+			if id != callerUserID {
+				invitees = append(invitees, id)
+			}
+		}
+	}
+	if len(invitees) == 0 && chat.Type != "voice" {
+		return nil, fmt.Errorf("could not determine call participants")
+	}
+	return invitees, nil
+}
+
+// validateCallPrivacy checks whether any direct-chat invitee has blocked the caller.
+func (s *Server) validateCallPrivacy(callerUserID string, invitees []string, chatType string) error {
+	if chatType != "direct" {
+		return nil
+	}
+	for _, invitee := range invitees {
+		blocked, err := s.directContactBlocked(callerUserID, invitee)
+		if err != nil {
+			return fmt.Errorf("could not check privacy settings")
+		}
+		if blocked {
+			return fmt.Errorf("calls are unavailable for this member")
+		}
+	}
+	return nil
+}
+
+// checkCallConflicts ensures no concurrent calls exist for the chat, caller, or invitees.
+// Must be called with s.callMu held.
+func (s *Server) checkCallConflicts(callerUserID, chatID string, invitees []string) error {
+	if _, exists := s.callByChat[chatID]; exists {
+		return fmt.Errorf("call already in progress for this chat")
+	}
+	if roomID, busy := s.userActiveCall[callerUserID]; busy {
+		if existing := s.callByRoom[roomID]; existing != nil && existing.ChatID != chatID {
+			return fmt.Errorf("you are already in another call")
+		}
+	}
+	for _, invitee := range invitees {
+		if roomID, busy := s.userActiveCall[invitee]; busy {
+			if existing := s.callByRoom[roomID]; existing != nil && existing.ChatID != chatID {
+				return fmt.Errorf("participant is busy in another call")
+			}
+		}
+	}
+	return nil
 }
 
 func (s *Server) joinCallSession(chat chatPublic, userID string, callType string) (*callSession, bool, error) {
