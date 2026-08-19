@@ -11,15 +11,16 @@ export interface ScheduleMessageModalProps {
   onConfirmSchedule: (scheduledDate: Date) => void;
 }
 
-function toLocalDatetimeInputString(date: Date): string {
+function toLocalDatetimeInputString(date?: Date | null): string {
+  const d = date && !Number.isNaN(date.getTime()) ? date : new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function ScheduleMessageModal({
   isOpen,
-  messageText,
-  attachments,
+  messageText = "",
+  attachments = [],
   onClose,
   onConfirmSchedule
 }: ScheduleMessageModalProps) {
@@ -45,6 +46,8 @@ export function ScheduleMessageModal({
     if (!isOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
         onClose();
       }
     }
@@ -70,31 +73,44 @@ export function ScheduleMessageModal({
     setSelectedDatetimeStr(toLocalDatetimeInputString(d));
   }
 
-  function handleConfirm() {
+  function handleConfirm(e?: React.FormEvent | React.MouseEvent) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!isValidFuture) return;
     onConfirmSchedule(parsedDate);
     onClose();
   }
 
-  const previewText = (messageText ?? "").trim();
+  const rawText = typeof messageText === "string" ? messageText : String(messageText ?? "");
+  const previewText = rawText.trim();
+  const safeAttachments = Array.isArray(attachments) ? attachments : [];
   const previewSnippet = previewText
     ? previewText.length > 80
       ? `${previewText.slice(0, 80)}…`
       : previewText
-    : attachments && attachments.length > 0
-    ? `${attachments.length} attachment${attachments.length > 1 ? "s" : ""}`
+    : safeAttachments.length > 0
+    ? `${safeAttachments.length} attachment${safeAttachments.length > 1 ? "s" : ""}`
     : "Empty message";
 
   const modalContent = (
     <div
       className="modal-backdrop schedule-modal-backdrop"
-      onClick={onClose}
-      onMouseDown={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          e.stopPropagation();
+        }
+      }}
     >
-      <div
-        className="modal-card schedule-modal-card"
+      <section
+        className="messenger-modal schedule-modal-card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="schedule-modal-title"
@@ -103,7 +119,7 @@ export function ScheduleMessageModal({
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
-        <div className="modal-card-header">
+        <div className="modal-card-header modal-header">
           <div className="modal-card-title-wrap">
             <CalendarClock size={20} className="modal-card-header-icon" aria-hidden="true" />
             <h2 id="schedule-modal-title" className="modal-card-title">
@@ -112,7 +128,7 @@ export function ScheduleMessageModal({
           </div>
           <button
             type="button"
-            className="modal-card-close-btn"
+            className="icon-button subtle icon-button--plain modal-card-close-btn"
             onClick={onClose}
             aria-label="Close schedule dialog"
           >
@@ -177,20 +193,20 @@ export function ScheduleMessageModal({
           )}
         </div>
 
-        <div className="modal-card-footer modal-card-actions">
-          <button type="button" className="btn-secondary" onClick={onClose}>
+        <div className="modal-card-footer modal-card-actions modal-actions">
+          <button type="button" className="secondary-button btn-secondary" onClick={onClose}>
             Cancel
           </button>
           <button
             type="button"
-            className="btn-primary"
+            className="primary-button btn-primary"
             disabled={!isValidFuture}
             onClick={handleConfirm}
           >
             Schedule Message
           </button>
         </div>
-      </div>
+      </section>
     </div>
   );
 

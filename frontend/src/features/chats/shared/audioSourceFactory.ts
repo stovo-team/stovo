@@ -41,13 +41,34 @@ export function buildAudioSourceFactory(accessToken: string): AudioSourceFactory
       throw new Error("Audio playback requires authentication");
     }
 
-    // Web: play from the shared media blob cache. Never mark objectUrl owned —
-    // the playback backend must not revoke cache URLs (that crashed second play).
-    await downloadFileBlob(accessToken, fileId);
-    const cachedUrl = peekCachedObjectUrl(fileId);
-    if (!cachedUrl) {
+    // Web: play from the shared media blob cache when available.
+    try {
+      await downloadFileBlob(accessToken, fileId);
+      const cachedUrl = peekCachedObjectUrl(fileId);
+      if (cachedUrl) {
+        return { url: cachedUrl };
+      }
+    } catch {
+      // Fallback to direct media streaming if blob download encounters an issue
+    }
+
+    try {
+      const capability = await createMediaPlaybackToken(accessToken, fileId);
+      const mimeType =
+        descriptor.mimeType?.trim() && descriptor.mimeType.startsWith("audio/")
+          ? descriptor.mimeType.trim()
+          : "audio/mpeg";
+      return {
+        url: getMediaPlaybackUrl(fileId, capability.token),
+        token: capability.token,
+        mimeType
+      };
+    } catch {
+      const cachedUrl = peekCachedObjectUrl(fileId);
+      if (cachedUrl) {
+        return { url: cachedUrl };
+      }
       throw new Error("Audio cache miss after download");
     }
-    return { url: cachedUrl };
   };
 }

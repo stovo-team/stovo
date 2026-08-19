@@ -258,6 +258,7 @@ func (s *Server) Routes() http.Handler {
 	router.Post("/api/chats/direct", s.authenticated(s.handleCreateDirectChat))
 	router.Post("/api/chats/group", s.authenticated(s.handleCreateGroupChat))
 	router.Post("/api/chats/channel", s.authenticated(s.handleCreateChannelChat))
+	router.Post("/api/chats/voice", s.authenticated(s.handleCreateVoiceChat))
 	router.Get("/api/chats/{chatId}", s.authenticated(s.handleGetChat))
 	router.Patch("/api/chats/{chatId}", s.authenticated(s.handleUpdateChat))
 	router.Patch("/api/chats/{chatId}/preferences", s.authenticated(s.handleUpdateChatPreferences))

@@ -50,8 +50,8 @@ export function ReminderModal({
   const [startDate, setStartDate] = useState(() => formatDateToIsoString(initialDate));
   const [startTime, setStartTime] = useState(() => formatTimeToTimeString(initialDate));
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly">("daily");
-  const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<number[]>([initialDate.getDay()]);
-  const [selectedDaysOfMonth, setSelectedDaysOfMonth] = useState<number[]>([initialDate.getDate()]);
+  const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<number[]>(() => [initialDate.getDay()]);
+  const [selectedDaysOfMonth, setSelectedDaysOfMonth] = useState<number[]>(() => [initialDate.getDate()]);
   const [repeatCount, setRepeatCount] = useState<number>(5);
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export function ReminderModal({
 
   function toggleDayOfWeek(day: number) {
     setSelectedDaysOfWeek((current) => {
-      const list = current ?? [];
+      const list = Array.isArray(current) ? current : [];
       if (list.includes(day)) {
         if (list.length === 1) return list;
         return list.filter((d) => d !== day);
@@ -93,7 +93,7 @@ export function ReminderModal({
 
   function toggleDayOfMonth(day: number) {
     setSelectedDaysOfMonth((current) => {
-      const list = current ?? [];
+      const list = Array.isArray(current) ? current : [];
       if (list.includes(day)) {
         if (list.length === 1) return list;
         return list.filter((d) => d !== day);
@@ -111,39 +111,46 @@ export function ReminderModal({
     const safeStartTime = startTime || "09:00";
     const safeCount = Math.max(1, Math.min(999, Number(repeatCount) || 1));
 
+    const safeDaysOfWeek = Array.isArray(selectedDaysOfWeek) && selectedDaysOfWeek.length > 0 ? selectedDaysOfWeek : [1];
+    const safeDaysOfMonth = Array.isArray(selectedDaysOfMonth) && selectedDaysOfMonth.length > 0 ? selectedDaysOfMonth : [1];
+
     const rule: ReminderRule = {
       frequency,
       startDate: safeStartDate,
       time: safeStartTime,
       repeatCount: safeCount,
       remainingCount: safeCount,
-      ...(frequency === "weekly" ? { daysOfWeek: selectedDaysOfWeek && selectedDaysOfWeek.length > 0 ? selectedDaysOfWeek : [1] } : {}),
-      ...(frequency === "monthly" ? { daysOfMonth: selectedDaysOfMonth && selectedDaysOfMonth.length > 0 ? selectedDaysOfMonth : [1] } : {})
+      ...(frequency === "weekly" ? { daysOfWeek: safeDaysOfWeek } : {}),
+      ...(frequency === "monthly" ? { daysOfMonth: safeDaysOfMonth } : {})
     };
 
     onConfirmReminder(rule);
     onClose();
   }
 
-  const previewText = (messageText ?? "").trim();
+  const rawText = typeof messageText === "string" ? messageText : String(messageText ?? "");
+  const previewText = rawText.trim();
+  const safeAttachments = Array.isArray(attachments) ? attachments : [];
   const previewSnippet = previewText
     ? previewText.length > 80
       ? `${previewText.slice(0, 80)}…`
       : previewText
-    : attachments && attachments.length > 0
-    ? `${attachments.length} attachment${attachments.length > 1 ? "s" : ""}`
+    : safeAttachments.length > 0
+    ? `${safeAttachments.length} attachment${safeAttachments.length > 1 ? "s" : ""}`
     : "Empty message";
 
   const repeatSummary = useMemo(() => {
     let freqText = "daily";
+    const daysWeekList = Array.isArray(selectedDaysOfWeek) ? selectedDaysOfWeek : [];
+    const daysMonthList = Array.isArray(selectedDaysOfMonth) ? selectedDaysOfMonth : [];
     if (frequency === "weekly") {
-      const dayNames = (selectedDaysOfWeek || [])
+      const dayNames = daysWeekList
         .map((val) => DAYS_OF_WEEK.find((d) => d.value === val)?.label)
         .filter(Boolean)
         .join(", ");
       freqText = `weekly on ${dayNames || "selected days"}`;
     } else if (frequency === "monthly") {
-      freqText = `monthly on day(s) ${(selectedDaysOfMonth || []).join(", ")}`;
+      freqText = `monthly on day(s) ${daysMonthList.join(", ")}`;
     }
     const safeDate = startDate || "start date";
     const safeTime = startTime || "09:00";
@@ -154,13 +161,20 @@ export function ReminderModal({
   const modalContent = (
     <div
       className="modal-backdrop reminder-modal-backdrop"
-      onClick={onClose}
-      onMouseDown={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          e.stopPropagation();
+        }
+      }}
     >
-      <div
-        className="modal-card reminder-modal-card"
+      <section
+        className="messenger-modal reminder-modal-card"
         role="dialog"
         aria-modal="true"
         aria-labelledby="reminder-modal-title"
@@ -169,7 +183,7 @@ export function ReminderModal({
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
-        <div className="modal-card-header">
+        <div className="modal-card-header modal-header">
           <div className="modal-card-title-wrap">
             <BellRing size={20} className="modal-card-header-icon" aria-hidden="true" />
             <h2 id="reminder-modal-title" className="modal-card-title">
@@ -178,7 +192,7 @@ export function ReminderModal({
           </div>
           <button
             type="button"
-            className="modal-card-close-btn"
+            className="icon-button subtle icon-button--plain modal-card-close-btn"
             onClick={onClose}
             aria-label="Close reminder dialog"
           >
@@ -257,7 +271,7 @@ export function ReminderModal({
               <label className="reminder-form-label">Custom Days of the Week:</label>
               <div className="reminder-days-week-grid">
                 {DAYS_OF_WEEK.map((day) => {
-                  const isSelected = selectedDaysOfWeek.includes(day.value);
+                  const isSelected = (Array.isArray(selectedDaysOfWeek) ? selectedDaysOfWeek : []).includes(day.value);
                   return (
                     <button
                       key={day.value}
@@ -279,7 +293,7 @@ export function ReminderModal({
               <label className="reminder-form-label">Custom Days of the Month:</label>
               <div className="reminder-days-month-grid">
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((dayNum) => {
-                  const isSelected = selectedDaysOfMonth.includes(dayNum);
+                  const isSelected = (Array.isArray(selectedDaysOfMonth) ? selectedDaysOfMonth : []).includes(dayNum);
                   return (
                     <button
                       key={dayNum}
@@ -338,15 +352,15 @@ export function ReminderModal({
           </div>
         </div>
 
-        <div className="modal-card-footer modal-card-actions">
-          <button type="button" className="btn-secondary" onClick={onClose}>
+        <div className="modal-card-footer modal-card-actions modal-actions">
+          <button type="button" className="secondary-button btn-secondary" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="btn-primary" onClick={handleConfirm}>
+          <button type="button" className="primary-button btn-primary" onClick={handleConfirm}>
             Set Reminder
           </button>
         </div>
-      </div>
+      </section>
     </div>
   );
 

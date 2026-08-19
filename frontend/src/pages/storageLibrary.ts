@@ -7,7 +7,7 @@ export type StorageFileLike = {
   isFavorite?: boolean;
 };
 
-export type StorageAvatarKind = "direct" | "family" | "group" | "channel" | "archive";
+export type StorageAvatarKind = "direct" | "family" | "group" | "channel" | "voice" | "archive";
 
 export type StorageChatLike<TFile = StorageFileLike> = {
   id: string;
@@ -30,11 +30,12 @@ export type StorageFilter = "all" | "photos" | "videos" | "audio" | "documents" 
 export function storageSourceLeadingVisual(
   kind: StorageAvatarKind,
   minimizedLayout: boolean
-): "lock" | "hash" | "archive" | "avatar" {
+): "lock" | "hash" | "archive" | "avatar" | "voice" {
   if (kind === "archive") return "archive";
   if (!minimizedLayout) return "avatar";
   if (kind === "group" || kind === "family") return "lock";
   if (kind === "channel") return "hash";
+  if (kind === "voice") return "voice";
   return "avatar";
 }
 
@@ -98,6 +99,7 @@ export function buildStorageSources<TFile extends StorageFileLike>(
 
   const labels: Array<{ label: string; types: StorageAvatarKind[] }> = [
     { label: "MESSAGE ARCHIVE", types: ["archive"] },
+    { label: "VOICE CHANNELS", types: ["voice"] },
     { label: "FAMILY CHATS", types: ["family"] },
     { label: "GROUPS", types: ["group"] },
     { label: "CHANNELS", types: ["channel"] },
