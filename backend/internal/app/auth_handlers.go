@@ -108,7 +108,6 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
 		return
 	}
-
 	payload.FamilyName = strings.TrimSpace(payload.FamilyName)
 	payload.Username = strings.TrimSpace(payload.Username)
 	payload.DisplayName = strings.TrimSpace(payload.DisplayName)
@@ -120,115 +119,116 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var validInvite bool
-	if payload.InviteToken != "" {
-		masterSecret := []byte(os.Getenv("MASTER_SYSTEM_SECRET"))
-		if len(masterSecret) == 0 {
-			masterSecret = []byte(os.Getenv("JWT_SECRET"))
-		}
-		parsedToken, err := jwt.Parse(payload.InviteToken, func(token *jwt.Token) (interface{}, error) {
-			return masterSecret, nil
-		})
-		if err == nil && parsedToken.Valid {
-			if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
-				if claims["type"] == "admin_invite" {
-					validInvite = true
-				}
-			}
-		}
-	}
-
 	setupCount, err := s.store.CountActiveUsers(r.Context())
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not verify setup status")
 		return
 	}
+	validInvite := s.validateAdminInviteToken(payload.InviteToken)
 	if setupCount > 0 && !validInvite {
 		s.detail(w, http.StatusConflict, "Setup already completed")
 		return
 	}
 
+	if setupCount > 0 && validInvite {
+		s.createAdditionalAdmin(w, r, payload)
+		return
+	}
+	s.performInitialSetup(w, r, payload)
+}
+
+// validateAdminInviteToken returns true if the given JWT is a valid admin_invite
+// token signed with the master system secret.
+func (s *Server) validateAdminInviteToken(token string) bool {
+	if token == "" {
+		return false
+	}
+	masterSecret := []byte(os.Getenv("MASTER_SYSTEM_SECRET"))
+	if len(masterSecret) == 0 {
+		masterSecret = []byte(os.Getenv("JWT_SECRET"))
+	}
+	parsed, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		return masterSecret, nil
+	})
+	if err != nil || !parsed.Valid {
+		return false
+	}
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	return ok && claims["type"] == "admin_invite"
+}
+
+// createAdditionalAdmin creates a new admin user within an existing family
+// (used when setup has already run once and a valid admin invite token is provided).
+func (s *Server) createAdditionalAdmin(w http.ResponseWriter, r *http.Request, payload setupRequest) {
 	passwordHash, err := hashPassword(payload.Password)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not hash password")
 		return
 	}
-
-	if setupCount > 0 && validInvite {
-		userID := uuid.NewString()
-		token, tokenHash, expiresAt, err := s.issueRefreshToken(userID)
-		if err != nil {
-			s.detail(w, http.StatusInternalServerError, "Could not create session")
-			return
-		}
-		u, err := s.store.CreateAdminUser(r.Context(), repository.SetupParams{
-			FamilyName:     payload.FamilyName,
-			UserID:         userID,
-			Username:       payload.Username,
-			PasswordHash:   passwordHash,
-			DisplayName:    payload.DisplayName,
-			Role:           ownerRole,
-			ChatID:         uuid.NewString(),
-			RefreshTokenID: uuid.NewString(),
-			TokenHash:      tokenHash,
-			ExpiresAt:      expiresAt,
-			CreatedAt:      nowString(),
-			IPAddress:      s.getClientIP(r),
-		})
-		if err != nil {
-			if strings.Contains(strings.ToLower(err.Error()), "unique") {
-				s.detail(w, http.StatusConflict, "Username already exists")
-				return
-			}
-			s.detail(w, http.StatusInternalServerError, "Could not create admin account")
-			return
-		}
-
-		user, err := s.getUserByID(u.ID)
-		if err != nil {
-			s.detail(w, http.StatusInternalServerError, "Could not load user profile")
-			return
-		}
-		accessToken, expiresInSeconds, err := createAccessToken(s.cfg, user)
-		if err != nil {
-			s.detail(w, http.StatusInternalServerError, "Could not create access token")
-			return
-		}
-		s.setRefreshCookie(w, token)
-		s.json(w, http.StatusOK, authResponse{
-			AccessToken:      accessToken,
-			TokenType:        "Bearer",
-			ExpiresInSeconds: expiresInSeconds,
-			User:             user,
-			RefreshToken:     token,
-		})
-		return
-	}
-
-	familyID := uuid.NewString()
 	userID := uuid.NewString()
-	chatID := uuid.NewString()
-	now := nowString()
 	token, tokenHash, expiresAt, err := s.issueRefreshToken(userID)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create session")
 		return
 	}
-
-	err = s.store.CompleteSetup(r.Context(), repository.SetupParams{
-		FamilyID:       familyID,
+	u, err := s.store.CreateAdminUser(r.Context(), repository.SetupParams{
 		FamilyName:     payload.FamilyName,
 		UserID:         userID,
 		Username:       payload.Username,
 		PasswordHash:   passwordHash,
 		DisplayName:    payload.DisplayName,
 		Role:           ownerRole,
-		ChatID:         chatID,
+		ChatID:         uuid.NewString(),
+		RefreshTokenID: uuid.NewString(),
+		TokenHash:      tokenHash,
+		ExpiresAt:      expiresAt,
+		CreatedAt:      nowString(),
+		IPAddress:      s.getClientIP(r),
+	})
+	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+			s.detail(w, http.StatusConflict, "Username already exists")
+			return
+		}
+		s.detail(w, http.StatusInternalServerError, "Could not create admin account")
+		return
+	}
+	user, err := s.getUserByID(u.ID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load user profile")
+		return
+	}
+	s.respondWithAuthTokens(w, http.StatusOK, user, token)
+}
+
+// performInitialSetup provisions the very first family, admin user, and family
+// chat during a fresh installation.
+func (s *Server) performInitialSetup(w http.ResponseWriter, r *http.Request, payload setupRequest) {
+	passwordHash, err := hashPassword(payload.Password)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not hash password")
+		return
+	}
+	userID := uuid.NewString()
+	token, tokenHash, expiresAt, err := s.issueRefreshToken(userID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not create session")
+		return
+	}
+	err = s.store.CompleteSetup(r.Context(), repository.SetupParams{
+		FamilyID:       uuid.NewString(),
+		FamilyName:     payload.FamilyName,
+		UserID:         userID,
+		Username:       payload.Username,
+		PasswordHash:   passwordHash,
+		DisplayName:    payload.DisplayName,
+		Role:           ownerRole,
+		ChatID:         uuid.NewString(),
 		ChatTitle:      "General Family Chat",
 		RefreshTokenID: uuid.NewString(),
 		TokenHash:      tokenHash,
 		ExpiresAt:      expiresAt,
-		CreatedAt:      now,
+		CreatedAt:      nowString(),
 		IPAddress:      s.getClientIP(r),
 	})
 	if err != nil {
@@ -239,27 +239,32 @@ func (s *Server) handleSetup(w http.ResponseWriter, r *http.Request) {
 		s.detail(w, http.StatusInternalServerError, "Could not complete setup")
 		return
 	}
-
 	user, err := s.getUserByID(userID)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not load user")
 		return
 	}
+	s.respondWithAuthTokens(w, http.StatusCreated, user, token)
+}
+
+// respondWithAuthTokens is a shared helper that mints an access token and writes
+// the standard auth response with a refresh cookie.
+func (s *Server) respondWithAuthTokens(w http.ResponseWriter, status int, user userPublic, refreshToken string) {
 	accessToken, expiresInSeconds, err := createAccessToken(s.cfg, user)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not create access token")
 		return
 	}
-
-	s.setRefreshCookie(w, token)
-	s.json(w, http.StatusCreated, authResponse{
+	s.setRefreshCookie(w, refreshToken)
+	s.json(w, status, authResponse{
 		AccessToken:      accessToken,
 		TokenType:        "Bearer",
 		ExpiresInSeconds: expiresInSeconds,
 		User:             user,
-		RefreshToken:     token,
+		RefreshToken:     refreshToken,
 	})
 }
+
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	var payload loginRequest

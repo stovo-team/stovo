@@ -40,4 +40,16 @@ ntfy/data/
 
 .env.production.bak
 *.bak
+*.bak-*
 features.db
+
+# Compiled binaries
+*.exe
+*.out
+
+# Merge / patch residue
+*.orig
+*.rej
+
+# Build / test output dumps
+*_output.txt

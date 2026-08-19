@@ -687,87 +687,102 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 		CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD,
 	})
 
-	var allSegments []transcription.TranscriptSegmentForLLM
-	var totalAudioMs int64
-	detectedLangs := make(map[string]bool)
-
-	// Group chunks by participant.
+	// Group chunks by participant and transcribe each group.
 	participantChunks := make(map[string][]audioChunkRow)
+	var totalAudioMs int64
 	for _, c := range chunks {
 		participantChunks[c.ParticipantID] = append(participantChunks[c.ParticipantID], c)
 		totalAudioMs += c.DurationMs
 	}
 
+	var allSegments []transcription.TranscriptSegmentForLLM
+	detectedLangs := make(map[string]bool)
 	for participantID, pChunks := range participantChunks {
-		for _, chunk := range pChunks {
-			audioData, readErr := s.storage.Read(chunk.ObjectKey)
-			if readErr != nil {
-				s.logger.Warnf("transcription", "read chunk failed chunk_id=%s error=%v", chunk.ID, readErr)
-				continue
-			}
-
-			contentType := "audio/webm"
-			filename := "audio.webm"
-			if chunk.Container == "ogg" {
-				contentType = "audio/ogg"
-				filename = "audio.ogg"
-			}
-
-			groqResp, transcribeErr := groqClient.Transcribe(ctx, transcription.TranscribeRequest{
-				AudioData:   audioData,
-				Filename:    filename,
-				ContentType: contentType,
-			})
-			if transcribeErr != nil {
-				s.logger.Warnf("transcription", "groq transcribe failed participant=%s chunk=%d error=%v",
-					participantID, chunk.Sequence, transcribeErr)
-				continue
-			}
-
-			if groqResp.Language != "" {
-				detectedLangs[groqResp.Language] = true
-			}
-
-			for i, seg := range groqResp.Segments {
-				exactText := strings.TrimSpace(seg.Text)
-				if exactText == "" {
-					continue
-				}
-				segID := uuid.NewString()
-				startMs := chunk.CallStartMs + int64(seg.Start*1000)
-				endMs := chunk.CallStartMs + int64(seg.End*1000)
-				lang := groqResp.Language
-				if seg.Language != "" {
-					lang = seg.Language
-				}
-				// Normalize avg_logprob to a rough 0–1 confidence score.
-				conf := 1.0 + seg.AvgLogProb
-				if conf < 0 {
-					conf = 0
-				}
-				if conf > 1 {
-					conf = 1
-				}
-
-				if insertErr := s.dbInsertTranscriptSegment(ctx, segID, callID, sessionID, participantID,
-					startMs, endMs, exactText, lang, conf, i); insertErr != nil {
-					s.logger.Warnf("transcription", "insert segment failed seg_id=%s error=%v", segID, insertErr)
-				}
-
-				allSegments = append(allSegments, transcription.TranscriptSegmentForLLM{
-					ID:              segID,
-					ParticipantName: participantID,
-					StartMs:         startMs,
-					EndMs:           endMs,
-					Text:            exactText,
-					Language:        lang,
-				})
-			}
+		segs, langs := s.transcribeParticipantChunks(ctx, callID, sessionID, participantID, pChunks, groqClient)
+		allSegments = append(allSegments, segs...)
+		for l := range langs {
+			detectedLangs[l] = true
 		}
 	}
 
-	// Update cost and detected languages.
-	cost := groqClient.EstimateCost(totalAudioMs)
+	s.updateTranscriptionMetadata(ctx, sessionID, totalAudioMs, detectedLangs, groqClient)
+	s.runLLMPostProcessing(ctx, sessionID, allSegments, apiKey)
+
+	completedAt := time.Now().UTC()
+	if err := s.dbUpdateTranscriptionStatus(ctx, sessionID, string(transcription.SessionStatusReady), nil, &completedAt); err != nil {
+		s.logger.Warnf("transcription", "final status update failed session_id=%s error=%v", sessionID, err)
+	}
+	s.broadcastTranscriptionStatus(chatID, callID, sessionID, string(transcription.SessionStatusReady))
+	s.logger.Infof("transcription", "processing completed session_id=%s call_id=%s segments=%d", sessionID, callID, len(allSegments))
+}
+
+// transcribeParticipantChunks downloads and transcribes all audio chunks for a
+// single participant. Returns the recognised segments and the set of detected languages.
+func (s *Server) transcribeParticipantChunks(ctx context.Context, callID, sessionID, participantID string, chunks []audioChunkRow, client *transcription.GroqSTTClient) ([]transcription.TranscriptSegmentForLLM, map[string]bool) {
+	var segments []transcription.TranscriptSegmentForLLM
+	langs := make(map[string]bool)
+	for _, chunk := range chunks {
+		audioData, err := s.storage.Read(chunk.ObjectKey)
+		if err != nil {
+			s.logger.Warnf("transcription", "read chunk failed chunk_id=%s error=%v", chunk.ID, err)
+			continue
+		}
+		contentType, filename := "audio/webm", "audio.webm"
+		if chunk.Container == "ogg" {
+			contentType, filename = "audio/ogg", "audio.ogg"
+		}
+		resp, err := client.Transcribe(ctx, transcription.TranscribeRequest{
+			AudioData:   audioData,
+			Filename:    filename,
+			ContentType: contentType,
+		})
+		if err != nil {
+			s.logger.Warnf("transcription", "groq transcribe failed participant=%s chunk=%d error=%v", participantID, chunk.Sequence, err)
+			continue
+		}
+		if resp.Language != "" {
+			langs[resp.Language] = true
+		}
+		for i, seg := range resp.Segments {
+			exactText := strings.TrimSpace(seg.Text)
+			if exactText == "" {
+				continue
+			}
+			segID := uuid.NewString()
+			startMs := chunk.CallStartMs + int64(seg.Start*1000)
+			endMs := chunk.CallStartMs + int64(seg.End*1000)
+			lang := resp.Language
+			if seg.Language != "" {
+				lang = seg.Language
+			}
+			// Normalize avg_logprob to a rough 0–1 confidence score.
+			conf := 1.0 + seg.AvgLogProb
+			if conf < 0 {
+				conf = 0
+			}
+			if conf > 1 {
+				conf = 1
+			}
+			if insertErr := s.dbInsertTranscriptSegment(ctx, segID, callID, sessionID, participantID, startMs, endMs, exactText, lang, conf, i); insertErr != nil {
+				s.logger.Warnf("transcription", "insert segment failed seg_id=%s error=%v", segID, insertErr)
+			}
+			segments = append(segments, transcription.TranscriptSegmentForLLM{
+				ID:              segID,
+				ParticipantName: participantID,
+				StartMs:         startMs,
+				EndMs:           endMs,
+				Text:            exactText,
+				Language:        lang,
+			})
+		}
+	}
+	return segments, langs
+}
+
+// updateTranscriptionMetadata persists total audio duration, estimated cost,
+// and detected languages for a completed transcription session.
+func (s *Server) updateTranscriptionMetadata(ctx context.Context, sessionID string, totalAudioMs int64, detectedLangs map[string]bool, client *transcription.GroqSTTClient) {
+	cost := client.EstimateCost(totalAudioMs)
 	langList := make([]string, 0, len(detectedLangs))
 	for lang := range detectedLangs {
 		langList = append(langList, lang)
@@ -777,35 +792,34 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 		`UPDATE call_transcription_sessions SET submitted_audio_ms=$1, estimated_cost_usd=$2, detected_languages=$3, updated_at=now() WHERE id=$4`,
 		totalAudioMs, cost, string(langJSON), sessionID,
 	)
-
-	// LLM post-processing (optional — skipped if GROQ_CHAT_MODEL is empty).
-	chatModel := s.getGroqChatModel()
-	if len(allSegments) > 0 && apiKey != "" && chatModel != "" {
-		llmClient := transcription.NewLLMClient(transcription.LLMConfig{
-			APIKey:  apiKey,
-			BaseURL: s.getGroqBaseURL(),
-			Model:   chatModel,
-		})
-		ppResult, ppErr := llmClient.PostProcess(ctx, allSegments)
-		if ppErr == nil && ppResult != nil {
-			summaryJSON, _ := json.Marshal(ppResult)
-			_, _ = s.db.ExecContext(ctx,
-				`UPDATE call_transcription_sessions SET summary_json=$1, updated_at=now() WHERE id=$2`,
-				string(summaryJSON), sessionID,
-			)
-		} else if ppErr != nil {
-			s.logger.Warnf("transcription", "post-processing failed session_id=%s error=%v", sessionID, ppErr)
-		}
-	}
-
-	// Mark session as ready.
-	completedAt := time.Now().UTC()
-	if err := s.dbUpdateTranscriptionStatus(ctx, sessionID, string(transcription.SessionStatusReady), nil, &completedAt); err != nil {
-		s.logger.Warnf("transcription", "final status update failed session_id=%s error=%v", sessionID, err)
-	}
-	s.broadcastTranscriptionStatus(chatID, callID, sessionID, string(transcription.SessionStatusReady))
-	s.logger.Infof("transcription", "processing completed session_id=%s call_id=%s segments=%d", sessionID, callID, len(allSegments))
 }
+
+// runLLMPostProcessing sends transcribed segments to the LLM for cleaning and
+// summarisation. It is a no-op when the Groq chat model is not configured.
+func (s *Server) runLLMPostProcessing(ctx context.Context, sessionID string, segments []transcription.TranscriptSegmentForLLM, apiKey string) {
+	chatModel := s.getGroqChatModel()
+	if len(segments) == 0 || apiKey == "" || chatModel == "" {
+		return
+	}
+	llmClient := transcription.NewLLMClient(transcription.LLMConfig{
+		APIKey:  apiKey,
+		BaseURL: s.getGroqBaseURL(),
+		Model:   chatModel,
+	})
+	ppResult, ppErr := llmClient.PostProcess(ctx, segments)
+	if ppErr != nil {
+		s.logger.Warnf("transcription", "post-processing failed session_id=%s error=%v", sessionID, ppErr)
+		return
+	}
+	if ppResult != nil {
+		summaryJSON, _ := json.Marshal(ppResult)
+		_, _ = s.db.ExecContext(ctx,
+			`UPDATE call_transcription_sessions SET summary_json=$1, updated_at=now() WHERE id=$2`,
+			string(summaryJSON), sessionID,
+		)
+	}
+}
+
 
 func (s *Server) markTranscriptionFailed(ctx context.Context, sessionID, chatID, callID, code, message string) {
 	_, _ = s.db.ExecContext(ctx,
