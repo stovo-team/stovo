@@ -64,8 +64,8 @@ func (s *Server) onSocketHealthPing(socket *socketio.Socket, event *socketio.Eve
 // and the active chat ID for the connected socket session.
 func (s *Server) onSocketAppState(socket *socketio.Socket, user userPublic, event *socketio.EventPayload) {
 	var payload struct {
-		Foreground   bool   +""+json:"foreground"+""+
-		ActiveChatID string +""+json:"activeChatId"+""+
+		Foreground   bool   `json:"foreground"`
+		ActiveChatID string `json:"activeChatId"`
 	}
 	if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil {
 		return
