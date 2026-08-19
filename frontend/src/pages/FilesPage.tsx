@@ -380,9 +380,6 @@ export default function FilesPage() {
       return groups;
     }, []);
   }, [filteredFiles]);
-  const sourceGroups = useMemo(() => {
-    return buildStorageSources(files, chats, currentUser?.id);
-  }, [chats, currentUser?.id, files]);
   const selectedSource = sourceGroups.flatMap((group) => group.sources)
     .find((source) => source.chatId === sourceChatId);
 

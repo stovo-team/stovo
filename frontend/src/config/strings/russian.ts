@@ -369,6 +369,7 @@ export const strings = {
       adminsOnly: "Только администраторы",
       messageDelay: "Задержка сообщений",
       off: "Выкл",
+      members: "Участники",
       tabs: {
         media: "Медиа",
         audio: "Аудио",
