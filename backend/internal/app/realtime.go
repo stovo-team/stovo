@@ -1,4 +1,4 @@
-package app
+﻿package app
 
 import (
 	"context"
@@ -38,7 +38,6 @@ func (s *Server) configureSockets() {
 			_ = socket.Disconnect()
 			return
 		}
-
 		claims, err := parseAccessToken(s.cfg, token)
 		if err != nil {
 			_ = socket.Disconnect()
@@ -73,7 +72,7 @@ func (s *Server) configureSockets() {
 			_ = socket.Emit("call:ringing", payloadMap)
 		} else if active := s.getActiveCallSessionForUser(user.ID); active != nil {
 			// Re-sync an in-progress call after a socket reconnect so WebRTC signaling
-			// can resume instead of leaving the client stuck on "Connecting…".
+			// can resume instead of leaving the client stuck on "ConnectingРІР‚В¦".
 			payloadMap := active.publicPayload()
 			s.logger.Infof("realtime.call", "call:sync re-emitted on reconnect user_id=%s chat_id=%s state=%s", user.ID, active.ChatID, active.State)
 			_ = socket.Emit("call:sync", payloadMap)
@@ -89,148 +88,13 @@ func (s *Server) configureSockets() {
 			_ = socket.Emit("sync:needed", map[string]any{"ts": time.Now().UTC().Format(time.RFC3339)})
 		}()
 
-		socket.On("disconnect", func(_ *socketio.EventPayload) {
-			s.unregisterSocket(user.ID, socket.Id)
-			// Only end the call when the user has no remaining sockets.
-			// A polling→WebSocket transport upgrade fires a disconnect for the
-			// old polling socket while the new WebSocket is already registered;
-			// ending the call in that window would silently kill every call on a
-			// non-localhost hostname. Debounce with a short grace period so a
-			// reconnecting socket is not treated as a full disconnect.
-			if !s.userOnline(user.ID) {
-				userID := user.ID
-				go func() {
-					grace := 2 * time.Second
-					if s.userHasActiveCall(userID) {
-						// Polling→WebSocket upgrade (or brief reconnect) during a call
-						// must not tear down the session before ICE can finish.
-						grace = 10 * time.Second
-					}
-					time.Sleep(grace)
-					if s.userOnline(userID) {
-						return
-					}
-					if ended, ok := s.endCallForUser(userID); ok {
-						s.recordCallHistory(ended, "disconnected")
-						payload := ended.actionPayload(map[string]any{
-							"reason":  "disconnected",
-							"endedAt": nowString(),
-						})
-						s.emitCallToParticipants(ended, "call:ended", payload)
-					}
-				}()
-			}
-			if !s.userOnline(user.ID) {
-				if err := cache.NewPresenceService(s.cache).MarkOffline(context.Background(), user.ID); err != nil {
-					s.logger.Warnf("realtime", "presence offline update failed user_id=%s error=%v", user.ID, err)
-				}
-				if err := s.store.UpdateUserLastSeen(context.Background(), user.ID, nowString()); err != nil {
-					s.logger.Warnf("realtime", "last seen update failed user_id=%s error=%v", user.ID, err)
-				}
-			}
-		})
-
-		socket.On("health:ping", func(event *socketio.EventPayload) {
-			payload := map[string]any{}
-			if len(event.Data) > 0 {
-				payload = toMap(event.Data[0])
-			}
-			_ = socket.Emit("health:pong", map[string]any{
-				"status": "ok",
-				"echo":   payload,
-			})
-		})
-
-		socket.On("app:state", func(event *socketio.EventPayload) {
-			var payload struct {
-				Foreground   bool   `json:"foreground"`
-				ActiveChatID string `json:"activeChatId"`
-			}
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil {
-				return
-			}
-			s.socketMu.Lock()
-			if session, ok := s.socketUsers[socket.Id]; ok {
-				session.Foreground = payload.Foreground
-				session.ActiveChatID = payload.ActiveChatID
-				s.socketUsers[socket.Id] = session
-			}
-			s.socketMu.Unlock()
-			s.logger.Debugf("realtime.app_state", "socket_id=%s user_id=%s foreground=%v", socket.Id, user.ID, payload.Foreground)
-		})
-
-		socket.On("message:send", func(event *socketio.EventPayload) {
-			payload := socketSendMessageRequest{}
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" {
-				s.emitSocketError(socket, payload.ClientMessageID, "Invalid message payload")
-				if event.Ack != nil {
-					event.Ack(map[string]any{"ok": false, "message": "Invalid message payload", "clientMessageId": payload.ClientMessageID})
-				}
-				return
-			}
-			if _, err := cache.NewRateLimitService(s.cache).CheckMessage(context.Background(), user.ID); err != nil {
-				message := "Could not verify rate limit"
-				var limitErr cache.RateLimitExceededError
-				if errors.As(err, &limitErr) {
-					message = "Rate limit exceeded"
-				}
-				s.emitSocketError(socket, payload.ClientMessageID, message)
-				if event.Ack != nil {
-					event.Ack(map[string]any{"ok": false, "message": message, "clientMessageId": payload.ClientMessageID})
-				}
-				return
-			}
-
-			message, err := s.createMessageFromSocket(user, payload)
-			if err != nil {
-				s.emitSocketError(socket, payload.ClientMessageID, err.Error())
-				if event.Ack != nil {
-					event.Ack(map[string]any{"ok": false, "message": err.Error(), "clientMessageId": payload.ClientMessageID})
-				}
-				return
-			}
-			if event.Ack != nil {
-				event.Ack(message)
-			}
-		})
-
-		socket.On("message:read", func(event *socketio.EventPayload) {
-			var payload socketReadRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.MessageID) == "" {
-				s.emitSocketError(socket, nil, "Invalid read payload")
-				return
-			}
-			message, chatID, err := s.markMessageRead(context.Background(), user, payload.MessageID)
-			if err != nil {
-				s.emitSocketError(socket, nil, err.Error())
-				return
-			}
-			s.emitMessageRead(chatID, message.ID, user.ID)
-			s.bumpChatHistoryRevision(context.Background(), chatID)
-		})
-
-		socket.On("typing:start", func(event *socketio.EventPayload) {
-			var payload socketTypingRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil {
-				s.emitSocketError(socket, nil, "Invalid typing payload")
-				return
-			}
-			if err := s.emitTyping(payload.ChatID, user, true); err != nil {
-				s.emitSocketError(socket, nil, err.Error())
-			}
-		})
-
-		socket.On("typing:stop", func(event *socketio.EventPayload) {
-			var payload socketTypingRequest
-			if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil {
-				s.emitSocketError(socket, nil, "Invalid typing payload")
-				return
-			}
-			if err := s.emitTyping(payload.ChatID, user, false); err != nil {
-				s.emitSocketError(socket, nil, err.Error())
-			}
-		})
-
+		socket.On("disconnect", func(_ *socketio.EventPayload) { s.onSocketDisconnect(socket, user) })
+		socket.On("health:ping", func(ev *socketio.EventPayload) { s.onSocketHealthPing(socket, ev) })
+		socket.On("app:state", func(ev *socketio.EventPayload) { s.onSocketAppState(socket, user, ev) })
+		socket.On("message:send", func(ev *socketio.EventPayload) { s.onSocketMessageSend(socket, user, ev) })
+		socket.On("message:read", func(ev *socketio.EventPayload) { s.onSocketMessageRead(socket, user, ev) })
+		socket.On("typing:start", func(ev *socketio.EventPayload) { s.onSocketTyping(socket, user, ev, true) })
+		socket.On("typing:stop", func(ev *socketio.EventPayload) { s.onSocketTyping(socket, user, ev, false) })
 		s.registerCallSocketHandlers(socket, user)
 	})
 }
@@ -264,111 +128,21 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	if err != nil {
 		return messagePublic{}, errNotFound
 	}
-	if chat.Type == "direct" {
-		for _, member := range chat.Members {
-			if member.ID == user.ID {
-				continue
-			}
-			blocked, blockErr := s.directContactBlocked(user.ID, member.ID)
-			if blockErr != nil {
-				return messagePublic{}, newStatusError(500, "could not check privacy settings")
-			}
-			if blocked {
-				return messagePublic{}, newStatusError(403, "direct messages are unavailable for this member")
-			}
-		}
-	}
-	canPost := s.canSendToChat(chat, user)
-	threadRootMessageID := trimStringPointer(payload.ThreadRootMessageID)
-	if !canPost {
-		if chat.Type != "channel" {
-			return messagePublic{}, errForbidden
-		}
-		if !chat.CommentsEnabled || threadRootMessageID == nil {
-			return messagePublic{}, errForbidden
-		}
-		if err := s.validateReplyTarget(chatID, *threadRootMessageID); err != nil {
-			return messagePublic{}, err
-		}
-		payload.ThreadRootMessageID = threadRootMessageID
-		payload.ReplyToMessageID = nil
-	} else if payload.ReplyToMessageID != nil {
-		replyToMessageID := trimStringPointer(payload.ReplyToMessageID)
-		if replyToMessageID != nil {
-			if err := s.validateReplyTarget(chatID, *replyToMessageID); err != nil {
-				return messagePublic{}, err
-			}
-		}
-		payload.ReplyToMessageID = replyToMessageID
-	}
-	if chat.MessageDelaySeconds > 0 && !s.canManageChat(chat, user) {
-		lastCreatedAt, err := s.store.GetLastUserMessageCreatedAt(ctx, chatID, user.ID)
-		if err == nil && lastCreatedAt != "" {
-			lastTime := parseTime(lastCreatedAt)
-			elapsed := time.Since(lastTime)
-			requiredDelay := time.Duration(chat.MessageDelaySeconds) * time.Second
-			if elapsed < requiredDelay {
-				remaining := int((requiredDelay - elapsed + 999*time.Millisecond) / time.Second)
-				if remaining <= 0 {
-					remaining = 1
-				}
-				return messagePublic{}, newStatusError(429, fmt.Sprintf("Message delay is active. Please wait %d second(s).", remaining))
-			}
-		}
-	}
-	if payload.ThreadRootMessageID != nil {
-		root := trimStringPointer(payload.ThreadRootMessageID)
-		if root == nil {
-			payload.ThreadRootMessageID = nil
-		} else {
-			if err := s.validateReplyTarget(chatID, *root); err != nil {
-				return messagePublic{}, err
-			}
-			payload.ThreadRootMessageID = root
-		}
-	}
-	content := trimStringPointer(payload.Content)
-	if content != nil && *content == "" {
-		content = nil
-	}
-	if content != nil && len(*content) > 4000 {
-		return messagePublic{}, newStatusError(422, "message content is too long")
-	}
-	encryptionProtocol, ciphertext, nonce, keyVersion, metadata, err := s.prepareMessageEncryption(chat, content, payload)
-	if err != nil {
+	if err := s.validateMessageSendPermissions(ctx, chat, user, &payload); err != nil {
 		return messagePublic{}, err
 	}
-	if content == nil && ciphertext == nil && len(payload.FileIDs) == 0 && !payload.AttachmentsPending {
-		return messagePublic{}, errBadRequest
-	}
-	attachments, err := s.loadAttachmentsForMessage(payload.FileIDs, user, chatID)
-	if err != nil {
+	if err := s.checkMessageDelay(ctx, chat, user, chatID); err != nil {
 		return messagePublic{}, err
 	}
-	messageType := payload.Type
-	if messageType == "" {
-		messageType = chooseMessageType(content, attachments)
-		if payload.AttachmentsPending && len(attachments) == 0 {
-			messageType = "mixed"
-		}
-	}
-	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" {
-		return messagePublic{}, errBadRequest
-	}
-	onlineRecipients := make([]string, 0)
-	for _, member := range chat.Members {
-		if member.ID == user.ID {
-			continue
-		}
-		if s.userOnline(member.ID) {
-			onlineRecipients = append(onlineRecipients, member.ID)
-		}
+	content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, attachments, messageType, err := s.resolveMessageContent(chat, user, chatID, payload)
+	if err != nil {
+		return messagePublic{}, err
 	}
 
+	onlineRecipients := s.onlineChatRecipients(chat, user.ID)
 	messageID := uuid.NewString()
 	now := nowString()
-	var forwardedMessageID *string
-	var forwardedChatID *string
+	var forwardedMessageID, forwardedChatID *string
 	if forwarded != nil {
 		forwardedMessageID = &forwarded.MessageID
 		forwardedChatID = &forwarded.ChatID
@@ -404,7 +178,6 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	if err != nil {
 		return messagePublic{}, err
 	}
-
 	message, err := s.buildMessage(messageID, user.ID)
 	if err != nil {
 		return messagePublic{}, err
@@ -429,6 +202,128 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	}()
 	go s.notifyMessageRecipients(chatID, chat.Type, chat.Title, user.ID, user.DisplayName, truncatePreview(message.Content), payload.MentionedUserIDs)
 	return message, nil
+}
+
+// validateMessageSendPermissions checks block lists, channel post permissions,
+// and reply-target validity. It also normalises the payload's reply/thread fields.
+func (s *Server) validateMessageSendPermissions(ctx context.Context, chat chatPublic, user userPublic, payload *sendMessageRequest) error {
+	if chat.Type == "direct" {
+		for _, member := range chat.Members {
+			if member.ID == user.ID {
+				continue
+			}
+			blocked, err := s.directContactBlocked(user.ID, member.ID)
+			if err != nil {
+				return newStatusError(500, "could not check privacy settings")
+			}
+			if blocked {
+				return newStatusError(403, "direct messages are unavailable for this member")
+			}
+		}
+	}
+	canPost := s.canSendToChat(chat, user)
+	threadRootMessageID := trimStringPointer(payload.ThreadRootMessageID)
+	if !canPost {
+		if chat.Type != "channel" || !chat.CommentsEnabled || threadRootMessageID == nil {
+			return errForbidden
+		}
+		if err := s.validateReplyTarget(chat.ID, *threadRootMessageID); err != nil {
+			return err
+		}
+		payload.ThreadRootMessageID = threadRootMessageID
+		payload.ReplyToMessageID = nil
+		return nil
+	}
+	if payload.ReplyToMessageID != nil {
+		replyToMessageID := trimStringPointer(payload.ReplyToMessageID)
+		if replyToMessageID != nil {
+			if err := s.validateReplyTarget(chat.ID, *replyToMessageID); err != nil {
+				return err
+			}
+		}
+		payload.ReplyToMessageID = replyToMessageID
+	}
+	if payload.ThreadRootMessageID != nil {
+		root := trimStringPointer(payload.ThreadRootMessageID)
+		if root == nil {
+			payload.ThreadRootMessageID = nil
+		} else {
+			if err := s.validateReplyTarget(chat.ID, *root); err != nil {
+				return err
+			}
+			payload.ThreadRootMessageID = root
+		}
+	}
+	return nil
+}
+
+// checkMessageDelay enforces per-chat slow-mode rate limiting for non-managers.
+func (s *Server) checkMessageDelay(ctx context.Context, chat chatPublic, user userPublic, chatID string) error {
+	if chat.MessageDelaySeconds <= 0 || s.canManageChat(chat, user) {
+		return nil
+	}
+	lastCreatedAt, err := s.store.GetLastUserMessageCreatedAt(ctx, chatID, user.ID)
+	if err != nil || lastCreatedAt == "" {
+		return nil
+	}
+	elapsed := time.Since(parseTime(lastCreatedAt))
+	requiredDelay := time.Duration(chat.MessageDelaySeconds) * time.Second
+	if elapsed < requiredDelay {
+		remaining := int((requiredDelay-elapsed+999*time.Millisecond) / time.Second)
+		if remaining <= 0 {
+			remaining = 1
+		}
+		return newStatusError(429, fmt.Sprintf("Message delay is active. Please wait %d second(s).", remaining))
+	}
+	return nil
+}
+
+// resolveMessageContent validates and prepares all message content fields:
+// text, encryption, attachments, and message type.
+func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID string, payload sendMessageRequest) (
+	content *string, encryptionProtocol string, ciphertext, nonce *string, keyVersion *int, metadata *string,
+	attachments []filePublic, messageType string, err error,
+) {
+	content = trimStringPointer(payload.Content)
+	if content != nil && *content == "" {
+		content = nil
+	}
+	if content != nil && len(*content) > 4000 {
+		return nil, "", nil, nil, nil, nil, nil, "", newStatusError(422, "message content is too long")
+	}
+	encryptionProtocol, ciphertext, nonce, keyVersion, metadata, err = s.prepareMessageEncryption(chat, content, payload)
+	if err != nil {
+		return nil, "", nil, nil, nil, nil, nil, "", err
+	}
+	if content == nil && ciphertext == nil && len(payload.FileIDs) == 0 && !payload.AttachmentsPending {
+		return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
+	}
+	attachments, err = s.loadAttachmentsForMessage(payload.FileIDs, user, chatID)
+	if err != nil {
+		return nil, "", nil, nil, nil, nil, nil, "", err
+	}
+	messageType = payload.Type
+	if messageType == "" {
+		messageType = chooseMessageType(content, attachments)
+		if payload.AttachmentsPending && len(attachments) == 0 {
+			messageType = "mixed"
+		}
+	}
+	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" {
+		return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
+	}
+	return content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, attachments, messageType, nil
+}
+
+// onlineChatRecipients returns a slice of IDs of chat members (excluding sender) who are currently online.
+func (s *Server) onlineChatRecipients(chat chatPublic, senderID string) []string {
+	recipients := make([]string, 0)
+	for _, member := range chat.Members {
+		if member.ID != senderID && s.userOnline(member.ID) {
+			recipients = append(recipients, member.ID)
+		}
+	}
+	return recipients
 }
 
 func (s *Server) validateReplyTarget(chatID, replyToMessageID string) error {
@@ -637,7 +532,7 @@ func (s *Server) emitCallToUser(userID, event string, payload any) {
 	}
 	s.socketMu.RUnlock()
 	if len(targets) == 0 {
-		s.logger.Warnf("realtime.call", "emitCallToUser: no sockets for user_id=%s event=%s — queueing", userID, event)
+		s.logger.Warnf("realtime.call", "emitCallToUser: no sockets for user_id=%s event=%s РІР‚вЂќ queueing", userID, event)
 		if strings.HasPrefix(event, "call:") {
 			go s.enqueueEventForUser(context.Background(), userID, event, payload)
 		}
@@ -749,7 +644,7 @@ func (s *Server) handleGetIceServers(w http.ResponseWriter, r *http.Request, use
 }
 
 func (s *Server) resolveTurnHost(user userPublic) string {
-	// Explicit config takes priority — fastest and most reliable path.
+	// Explicit config takes priority РІР‚вЂќ fastest and most reliable path.
 	if s.cfg.TurnHost != "" {
 		return s.cfg.TurnHost
 	}
