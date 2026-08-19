@@ -24,9 +24,12 @@ describe("i18n strings and language resolution", () => {
 
     expect(en.nav.chats).toBe("Chats");
     expect(ru.nav.chats).toBe("Чаты");
+    expect(en.nav.storage).toBe("Files");
+    expect(ru.nav.storage).toBe("Файлы");
 
     expect(en.settings.language).toBe("Language");
     expect(ru.settings.language).toBe("Язык");
+
 
     expect(en.nav.unreadMessages(1)).toBe("1 unread messages");
     expect(ru.nav.unreadMessages(1)).toBe("1 непрочитанное сообщение");

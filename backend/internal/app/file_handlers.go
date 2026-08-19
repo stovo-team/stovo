@@ -413,6 +413,7 @@ func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, us
 
 	audioData, err := s.storage.Read(objectKey)
 	if err != nil {
+		s.logger.Warnf("transcription", "failed to read audio data for transcribe file_id=%s object_key=%s provider=%s error=%v", fileID, objectKey, s.storage.Provider(), err)
 		s.detail(w, http.StatusNotFound, "Could not read audio file")
 		return
 	}
