@@ -74,27 +74,29 @@ export function ChatSidebar({
   return (
     <aside className="chat-sidebar" aria-label="Chats sidebar">
       <div className="chat-sidebar-header">
-        <div className="chat-sidebar-hero">
-          <div className="chat-sidebar-brand-group">
-            <VeloLogo className="chat-sidebar-logo" />
-            <div className="server-switcher-container" ref={serverMenuRef}>
+        <div className="sidebar-title-row chat-list-title">
+          <span className="chat-list-brand-mark" aria-label="Stovo">
+            <VeloLogo className="chat-list-brand-logo" title="Stovo" />
+          </span>
+          <div className="chat-list-title-cluster">
+            <div
+              className={`menu-anchor server-switcher${isServerMenuOpen ? " menu-anchor--open" : ""}`}
+              ref={serverMenuRef}
+            >
               <button
                 type="button"
-                className={`server-switcher-trigger${isServerMenuOpen ? " is-open" : ""}`}
+                className="server-switcher-trigger"
+                aria-label="Select server"
                 aria-expanded={isServerMenuOpen}
-                aria-haspopup="true"
+                aria-haspopup="menu"
                 onClick={() => setIsServerMenuOpen((open) => !open)}
               >
-                <span className="server-switcher-trigger-text">{displayFamilyName}</span>
-                <ChevronDown
-                  size={16}
-                  className={`server-switcher-chevron${isServerMenuOpen ? " is-open" : ""}`}
-                  aria-hidden="true"
-                />
+                <span className="server-switcher-name">{displayFamilyName}</span>
+                <ChevronDown aria-hidden="true" size={18} className="server-switcher-caret" />
               </button>
 
               {isServerMenuOpen && (
-                <div className="server-switcher-menu" role="menu">
+                <div className="action-menu server-switcher-menu" role="menu" aria-label="Servers">
                   {validServers.length > 0 ? (
                     validServers.map((server) => {
                       const isActive = activeServer?.id === server.id;
@@ -146,7 +148,7 @@ export function ChatSidebar({
                   <button
                     type="button"
                     role="menuitem"
-                    className="server-switcher-add-btn"
+                    className="server-switcher-connect"
                     onClick={() => {
                       setIsServerMenuOpen(false);
                       navigate("/auth/server");
@@ -174,6 +176,7 @@ export function ChatSidebar({
             )}
           </div>
         </div>
+
         {!activeChatId && incomingSharedFiles && incomingSharedFiles.files.length > 0 && (
           <div className="shared-files-ready" role="status">
             <Paperclip aria-hidden="true" size={20} />
