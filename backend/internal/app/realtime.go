@@ -1,9 +1,8 @@
-﻿package app
+package app
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
