@@ -51,6 +51,7 @@ type GroqTranscriptionResponse struct {
 type GroqSTTConfig struct {
 	APIKey           string
 	Model            string
+	BaseURL          string
 	TimeoutSeconds   int
 	MaxConcurrency   int
 	CostPerAudioHour float64
@@ -64,6 +65,10 @@ type GroqSTTClient struct {
 
 // NewGroqSTTClient creates a new Groq STT client.
 func NewGroqSTTClient(cfg GroqSTTConfig) *GroqSTTClient {
+	if cfg.BaseURL == "" {
+		cfg.BaseURL = groqAPIBase
+	}
+	cfg.BaseURL = strings.TrimRight(cfg.BaseURL, "/")
 	if cfg.Model == "" {
 		cfg.Model = defaultSTTModel
 	}
@@ -156,8 +161,8 @@ func (c *GroqSTTClient) transcribeOnce(ctx context.Context, req TranscribeReques
 		return nil, fmt.Errorf("groq: close multipart writer: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		groqAPIBase+"/openai/v1/audio/transcriptions", &buf)
+	endpointURL := buildAudioTranscriptionsURL(c.cfg.BaseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpointURL, &buf)
 	if err != nil {
 		return nil, fmt.Errorf("groq: build request: %w", err)
 	}
@@ -188,6 +193,16 @@ func (c *GroqSTTClient) transcribeOnce(ctx context.Context, req TranscribeReques
 		return nil, &TransientError{Err: fmt.Errorf("groq: server error %d: %s", httpResp.StatusCode, string(body))}
 	}
 	if httpResp.StatusCode != http.StatusOK {
+		var groqErr struct {
+			Error struct {
+				Message string `json:"message"`
+				Type    string `json:"type"`
+				Code    string `json:"code"`
+			} `json:"error"`
+		}
+		if json.Unmarshal(body, &groqErr) == nil && groqErr.Error.Message != "" {
+			return nil, fmt.Errorf("groq API error (%d): %s", httpResp.StatusCode, groqErr.Error.Message)
+		}
 		return nil, fmt.Errorf("groq: unexpected status %d: %s", httpResp.StatusCode, string(body))
 	}
 
@@ -218,4 +233,21 @@ func isTransientGroqError(err error) bool {
 	}
 	_, ok := err.(*TransientError)
 	return ok
+}
+
+func buildAudioTranscriptionsURL(baseURL string) string {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if baseURL == "" {
+		return "https://api.groq.com/openai/v1/audio/transcriptions"
+	}
+	if strings.HasSuffix(baseURL, "/audio/transcriptions") {
+		return baseURL
+	}
+	if strings.HasSuffix(baseURL, "/v1") {
+		return baseURL + "/audio/transcriptions"
+	}
+	if strings.Contains(baseURL, "groq.com") {
+		return baseURL + "/openai/v1/audio/transcriptions"
+	}
+	return baseURL + "/v1/audio/transcriptions"
 }

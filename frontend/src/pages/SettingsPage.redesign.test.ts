@@ -7,7 +7,7 @@ const styles = readFileSync("src/styles.css", "utf8");
 describe("SettingsPage redesign", () => {
   it("uses the tiled overview and explicit internal setting surfaces", () => {
     expect(source).toContain('className="settings-dashboard"');
-    expect(source).toContain('settings-tile--${item.label.toLowerCase().replaceAll(" ", "-")}');
+    expect(source).toContain('settings-tile--${item.id.toLowerCase().replaceAll(" ", "-")}');
     expect(source).toContain('aria-label="Open profile settings"');
     expect(source).toContain('aria-label={`Open ${item.label.toLowerCase()} settings`}');
   });
@@ -16,7 +16,7 @@ describe("SettingsPage redesign", () => {
     expect(source).toContain('className="settings-appearance-preview"');
     expect(source).toContain("formatAppearanceHelper");
     expect(source).toContain("settings-appearance-preview-chat");
-    expect(source).toContain("Tap to personalize");
+    expect(source).toContain("tapToPersonalize");
   });
 
   it("opens server setup before clearing the session", () => {

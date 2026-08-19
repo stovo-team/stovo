@@ -112,7 +112,9 @@ describe("VoiceChannelStage", () => {
       endActiveCall: vi.fn(),
       joinVoiceChannel: mockJoinVoiceChannel,
       isPeerSpeaking: false,
-      activeGroupCalls: {}
+      activeGroupCalls: {},
+      callTimer: "00:00",
+      setIsCallSettingsMenuOpen: vi.fn()
     } as unknown as CallSessionApi;
 
     const container = renderComponent(
@@ -125,11 +127,11 @@ describe("VoiceChannelStage", () => {
       />
     );
 
-    expect(container.textContent).toContain("Voice Channel");
-    expect(container.textContent).toContain("1 member inside");
+    expect(container.textContent).toContain("Gaming Voice");
+    expect(container.textContent).toContain("1 member currently talking");
     expect(container.textContent).toContain("Bob");
 
-    const joinBtn = container.querySelector(".voice-channel-join-btn") as HTMLButtonElement;
+    const joinBtn = container.querySelector(".voice-room-primary-join-btn") as HTMLButtonElement;
     expect(joinBtn).toBeDefined();
 
     act(() => {
@@ -152,7 +154,9 @@ describe("VoiceChannelStage", () => {
       isPeerSpeaking: false,
       activeGroupCalls: {
         "voice-chat-1": mockVoiceChat.activeCall!
-      }
+      },
+      callTimer: "01:23",
+      setIsCallSettingsMenuOpen: vi.fn()
     } as unknown as CallSessionApi;
 
     const container = renderComponent(
@@ -165,9 +169,11 @@ describe("VoiceChannelStage", () => {
       />
     );
 
-    expect(container.textContent).toContain("Connected to Voice");
+    expect(container.textContent).toContain("Connected · 01:23");
+    expect(container.textContent).toContain("Alice (You)");
+    expect(container.textContent).toContain("Bob");
 
-    const leaveBtn = container.querySelector(".voice-stage-control-btn--leave") as HTMLButtonElement;
+    const leaveBtn = container.querySelector(".voice-dock-btn--disconnect") as HTMLButtonElement;
     expect(leaveBtn).toBeDefined();
 
     act(() => {
@@ -175,8 +181,8 @@ describe("VoiceChannelStage", () => {
     });
     expect(mockEndActiveCall).toHaveBeenCalled();
 
-    const buttons = container.querySelectorAll(".voice-stage-control-btn");
-    const micBtn = buttons[0] as HTMLButtonElement;
+    const dockButtons = container.querySelectorAll(".voice-dock-btn");
+    const micBtn = dockButtons[0] as HTMLButtonElement;
     expect(micBtn).toBeDefined();
 
     act(() => {

@@ -96,8 +96,15 @@ export const strings = {
     notificationsHelper: "Messages, calls, and quiet hours",
     privacyAndSecurity: "Privacy and Security",
     privacyHelper: "Profile visibility and read receipts",
+    language: "Language",
+    languageHelper: "App language and translation",
+    languageSystem: "System default (Auto)",
+    languageSystemSubtext: (current: string) => `Matches device language (${current})`,
+    languageEnglish: "English",
+    languageRussian: "Русский",
     helpAndAbout: "Help and About",
     helpHelper: "Version and support",
+
 
     changeServerAddress: "Change server address",
     tapToPersonalize: "Tap to personalize",
@@ -281,4 +288,12 @@ export const strings = {
   },
 } as const;
 
-export type AppStrings = typeof strings;
+type DeepStringRecord<T> = {
+  readonly [K in keyof T]: T[K] extends (...args: any[]) => any
+    ? T[K]
+    : T[K] extends object
+      ? DeepStringRecord<T[K]>
+      : string;
+};
+
+export type AppStrings = DeepStringRecord<typeof strings>;

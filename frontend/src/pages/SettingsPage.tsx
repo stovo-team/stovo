@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Database,
+  Globe,
   HelpCircle,
   Laptop,
   LockKeyhole,
@@ -28,6 +29,9 @@ import {
   X
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useLanguage, useStrings } from "../i18n/LanguageContext";
+import type { LanguageChoice } from "../config/strings";
+
 
 import {
   authenticateAppLock,
@@ -91,19 +95,8 @@ function ProfileAvatar({
   );
 }
 
-const settingsGroups = [
-  {
-    title: "Your space",
-    items: [
-      { label: "Appearance", helper: "Theme, accent, and chat look", icon: Palette },
-      { label: "Notifications", helper: "Messages, calls, and quiet hours", icon: Bell },
-      { label: "Privacy and Security", helper: "Profile visibility and read receipts", icon: LockKeyhole },
-      { label: "Help and About", helper: "Version and support", icon: HelpCircle }
-    ]
-  }
-];
-
 function formatAppearanceHelper(appearance: AppearanceSettings, resolvedThemeMode: string) {
+
   const themeLabel =
     appearance.themeMode === "system"
       ? (THEME_MODE_OPTIONS.find((option) => option.value === resolvedThemeMode)?.label ??
@@ -136,6 +129,7 @@ function AppearanceEditor({
   onBack: () => void;
   backButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
+  const strings = useStrings();
   const { appearance, setAppearance, updateAppearance } = useAppearance();
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [wallpaperUploadError, setWallpaperUploadError] = useState<string | null>(null);
@@ -172,7 +166,7 @@ function AppearanceEditor({
       return;
     }
     if (!file.type.startsWith("image/")) {
-      setWallpaperUploadError("Choose an image file (JPEG, PNG, GIF, or WebP).");
+      setWallpaperUploadError(strings.errors.wallpaperMustBeImage);
       return;
     }
     setIsUploadingWallpaper(true);
@@ -185,7 +179,7 @@ function AppearanceEditor({
       });
     } catch (err) {
       setWallpaperUploadError(
-        err instanceof ApiError ? String(err.message) : "Could not upload wallpaper"
+        err instanceof ApiError ? String(err.message) : strings.errors.couldNotUploadWallpaper
       );
     } finally {
       setIsUploadingWallpaper(false);
@@ -208,15 +202,15 @@ function AppearanceEditor({
     <div
       className="appearance-preview-hero"
       role="img"
-      aria-label="Theme preview"
+      aria-label={strings.appearance.themePreviewAria}
       data-wallpaper={appearance.wallpaper}
     >
       <span className="preview-avatar" aria-hidden="true">
         {initials(displayName)}
       </span>
       <div className="preview-thread">
-        <span className="preview-bubble">Family dinner is at 7.</span>
-        <span className="preview-bubble mine">I will bring dessert.</span>
+        <span className="preview-bubble">{strings.appearance.previewBubble1}</span>
+        <span className="preview-bubble mine">{strings.appearance.previewBubble2}</span>
       </div>
     </div>
   );
@@ -229,15 +223,16 @@ function AppearanceEditor({
             ref={backButtonRef}
             type="button"
             className="icon-button subtle appearance-editor-back"
-            aria-label="Back to settings"
+            aria-label={strings.appearance.backToSettings}
             onClick={discardAndClose}
           >
             <ChevronLeft aria-hidden="true" size={22} />
           </button>
           <h2 className="appearance-editor-title" tabIndex={-1}>
-            Appearance
+            {strings.appearance.title}
           </h2>
         </header>
+
 
         <div className="appearance-editor-preview-column">{previewHero}</div>
 
@@ -565,10 +560,32 @@ export default function SettingsPage() {
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
   const appearanceBackRef = useRef<HTMLButtonElement | null>(null);
 
+  const { language, setLanguage, systemLanguage, strings } = useLanguage();
   const canManageFamily = currentUser?.role === "owner" || currentUser?.role === "admin";
   const isAppearanceEditor = activeSettingsItem === "Appearance";
   const hasDetailSurface = Boolean(activeSettingsItem);
   const appearanceHelper = formatAppearanceHelper(appearance, resolvedThemeMode);
+
+  const languageHelper =
+    language === "system"
+      ? `${strings.settings.languageSystem} (${systemLanguage === "ru" ? strings.settings.languageRussian : strings.settings.languageEnglish})`
+      : language === "ru"
+      ? strings.settings.languageRussian
+      : strings.settings.languageEnglish;
+
+  const settingsGroups = [
+    {
+      title: strings.settings.yourSpace,
+      items: [
+        { id: "Appearance", label: strings.settings.appearance, helper: appearanceHelper, icon: Palette },
+        { id: "Notifications", label: strings.settings.notifications, helper: strings.settings.notificationsHelper, icon: Bell },
+        { id: "Privacy and Security", label: strings.settings.privacyAndSecurity, helper: strings.settings.privacyHelper, icon: LockKeyhole },
+        { id: "Language", label: strings.settings.language, helper: languageHelper, icon: Globe },
+        { id: "Help and About", label: strings.settings.helpAndAbout, helper: strings.settings.helpHelper, icon: HelpCircle }
+      ]
+    }
+  ];
+
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -602,7 +619,11 @@ export default function SettingsPage() {
   function updateDevicePreferences(patch: Partial<DevicePreferences>) {
     const next = writeDevicePreferences(patch);
     setDevicePreferences(next);
+    if (patch.language) {
+      setLanguage(patch.language);
+    }
   }
+
 
   async function handleAppLockToggle(enabled: boolean) {
     setError(null);
@@ -894,15 +915,15 @@ export default function SettingsPage() {
                   <div className="settings-list">
                     {group.items.map((item) => {
                       const Icon = item.icon;
-                      const isAppearance = item.label === "Appearance";
+                      const isAppearance = item.id === "Appearance";
                       return (
                         <button
                           type="button"
-                          className={`settings-row settings-tile settings-tile--${item.label.toLowerCase().replaceAll(" ", "-")}${activeSettingsItem === item.label ? " is-active" : ""}`}
-                          key={item.label}
-                          aria-expanded={activeSettingsItem === item.label}
+                          className={`settings-row settings-tile settings-tile--${item.id.toLowerCase().replaceAll(" ", "-")}${activeSettingsItem === item.id ? " is-active" : ""}`}
+                          key={item.id}
+                          aria-expanded={activeSettingsItem === item.id}
                           aria-label={`Open ${item.label.toLowerCase()} settings`}
-                          onClick={() => setActiveSettingsItem(item.label)}
+                          onClick={() => setActiveSettingsItem(item.id)}
                         >
                           <span className="settings-row-icon">
                             <Icon aria-hidden="true" size={20} />
@@ -919,8 +940,8 @@ export default function SettingsPage() {
                                   {initials(profileForm.displayName)}
                                 </span>
                                 <div className="preview-thread">
-                                  <span className="preview-bubble">Family dinner is at 7.</span>
-                                  <span className="preview-bubble mine">I will bring dessert.</span>
+                                  <span className="preview-bubble">{strings.appearance.previewBubble1}</span>
+                                  <span className="preview-bubble mine">{strings.appearance.previewBubble2}</span>
                                 </div>
                               </div>
                               <div className="settings-appearance-preview-meta">
@@ -936,7 +957,7 @@ export default function SettingsPage() {
                                     )
                                   )}
                                 </div>
-                                <span>Tap to personalize</span>
+                                <span>{strings.settings.tapToPersonalize}</span>
                               </div>
                             </div>
                           )}
@@ -960,7 +981,7 @@ export default function SettingsPage() {
                 }}
               >
                 <span className="settings-row-icon"><Server aria-hidden="true" size={20} /></span>
-                <span><strong>Change server address</strong><small>{currentServerUrl}</small></span>
+                <span><strong>{strings.settings.changeServerAddress}</strong><small>{currentServerUrl}</small></span>
                 <ChevronRight aria-hidden="true" size={18} />
               </button>
             </section>
@@ -978,7 +999,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     className="icon-button subtle"
-                    aria-label="Close settings panel"
+                    aria-label={strings.settings.closeSettingsPanel}
                     onClick={() => {
                       if (activeSettingsItem === "Privacy and Security" && privacyDetail !== "overview") {
                         setPrivacyDetail("overview");
@@ -998,8 +1019,23 @@ export default function SettingsPage() {
                   >
                     <ChevronLeft aria-hidden="true" size={22} />
                   </button>
-                  <h2>{activeSettingsItem}</h2>
+                  <h2>
+                    {activeSettingsItem === "Notifications"
+                      ? strings.settings.notifications
+                      : activeSettingsItem === "Privacy and Security"
+                      ? strings.settings.privacyAndSecurity
+                      : activeSettingsItem === "Language"
+                      ? strings.settings.language
+                      : activeSettingsItem === "Help and About"
+                      ? strings.settings.helpAndAbout
+                      : activeSettingsItem === "Profile"
+                      ? strings.settings.displayName
+                      : activeSettingsItem === "Family"
+                      ? strings.settings.family
+                      : activeSettingsItem}
+                  </h2>
                 </div>
+
                 {activeSettingsItem === "Profile" ? (
                   <div className="profile-detail-screen">
                     <section className="profile-detail-hero">
@@ -1189,20 +1225,65 @@ export default function SettingsPage() {
                       </section>
                     )}
                   </div>
+                ) : activeSettingsItem === "Language" ? (
+                  <div className="settings-toggle-groups">
+                    <section className="choice-page">
+                      <h3>{strings.settings.language}</h3>
+                      {[
+                        {
+                          value: "system" as const,
+                          label: strings.settings.languageSystem,
+                          subtext: strings.settings.languageSystemSubtext(
+                            systemLanguage === "ru"
+                              ? strings.settings.languageRussian
+                              : strings.settings.languageEnglish
+                          )
+                        },
+                        {
+                          value: "en" as const,
+                          label: strings.settings.languageEnglish,
+                          subtext: "English"
+                        },
+                        {
+                          value: "ru" as const,
+                          label: strings.settings.languageRussian,
+                          subtext: "Русский"
+                        }
+                      ].map((option) => {
+                        const isSelected = language === option.value;
+                        return (
+                          <button
+                            type="button"
+                            className={`privacy-choice${isSelected ? " is-selected" : ""}`}
+                            key={option.value}
+                            onClick={() => {
+                              updateDevicePreferences({ language: option.value });
+                            }}
+                          >
+                            <span className="privacy-choice-copy">
+                              <strong>{option.label}</strong>
+                              <small>{option.subtext}</small>
+                            </span>
+                            {isSelected && <span className="privacy-choice-check">✓</span>}
+                          </button>
+                        );
+                      })}
+                    </section>
+                  </div>
                 ) : activeSettingsItem === "Family" ? (
                   <div className="family-settings-members">
-                    <p className="muted-copy">Your shared family space. Calendar permissions follow each member’s role.</p>
+                    <p className="muted-copy">{strings.settings.familySpaceNote}</p>
                     {members.map((member) => (
                       <div className="settings-row family-settings-member" key={member.id}>
                         <span className="settings-row-icon">{initials(member.displayName)}</span>
                         <span><strong>{member.displayName}</strong><small>@{member.username} · {member.role}</small></span>
                       </div>
                     ))}
-                    {canManageFamily && <p className="muted-copy">Invitation and role management remains available here as the Family controls expand.</p>}
+                    {canManageFamily && <p className="muted-copy">{strings.settings.familyInviteNote}</p>}
                   </div>
                 ) : (
                   <p className="muted-copy">
-                    This area is ready for Stovo controls as they are added.
+                    {strings.settings.sectionComingSoon}
                   </p>
                 )}
 
@@ -1213,10 +1294,11 @@ export default function SettingsPage() {
               <>
             <button className="logout-row" type="button" onClick={() => void logout()}>
               <LogOut aria-hidden="true" size={20} />
-              Log out
+              {strings.settings.logOut}
             </button>
               </>
             )}
+
           </>
         )}
       </section>

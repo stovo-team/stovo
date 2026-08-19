@@ -52,7 +52,18 @@ func (s *Server) handleCreateCallSFUToken(w http.ResponseWriter, r *http.Request
 		s.detail(w, http.StatusServiceUnavailable, "SFU is not configured")
 		return
 	}
-	session, ok := s.getCallSessionByRoom(roomID)
+	session, ok := s.resolveCallSession(roomID, roomID)
+	if !ok {
+		chat, err := s.buildChatPublic(roomID, user)
+		if err == nil && chat.Type == "voice" {
+			session, _, err = s.joinCallSession(chat, user.ID, "audio")
+			if err != nil {
+				s.detail(w, http.StatusInternalServerError, "Could not join voice session")
+				return
+			}
+			ok = true
+		}
+	}
 	if !ok || !isCallParticipant(session, user.ID) {
 		s.detail(w, http.StatusForbidden, "Call not available")
 		return

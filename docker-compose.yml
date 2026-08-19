@@ -8,6 +8,7 @@ x-backend: &backend
     context: ./backend
   environment:
     GROQ_API_KEY: ${GROQ_API_KEY:-}
+    GROQ_BASE_URL: ${GROQ_BASE_URL:-}
     AI_CALL_TRANSCRIPTION_ENABLED: ${AI_CALL_TRANSCRIPTION_ENABLED:-true}
     GROQ_STT_MODEL: ${GROQ_STT_MODEL:-whisper-large-v3-turbo}
     GROQ_CHAT_MODEL: ${GROQ_CHAT_MODEL:-}

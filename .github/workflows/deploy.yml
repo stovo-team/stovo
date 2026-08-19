@@ -136,6 +136,7 @@ jobs:
                         turn_username="$(get_env TURN_USERNAME family)"
                         turn_password="$(get_env TURN_PASSWORD change_me)"
                         groq_api_key="$(get_env GROQ_API_KEY "$(get_env groq_api_key "$(get_env GROQ_KEY "$(get_env GROQ_API_TOKEN "")")")")"
+                        groq_base_url="$(get_env GROQ_BASE_URL "$(get_env GROQ_API_BASE "")")"
                         groq_stt_model="$(get_env GROQ_STT_MODEL whisper-large-v3-turbo)"
                         groq_chat_model="$(get_env GROQ_CHAT_MODEL "")"
                         groq_stt_cost="$(get_env GROQ_STT_COST_PER_AUDIO_HOUR_USD 0.04)"
@@ -167,6 +168,7 @@ jobs:
                           -e "TURN_USERNAME=${turn_username}" \
                           -e "TURN_PASSWORD=${turn_password}" \
                           -e "GROQ_API_KEY=${groq_api_key}" \
+                          -e "GROQ_BASE_URL=${groq_base_url}" \
                           -e "GROQ_STT_MODEL=${groq_stt_model}" \
                           -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
                           -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \

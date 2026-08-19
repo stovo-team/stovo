@@ -74,6 +74,7 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-stovo_minio_pass}
       DOCKER_NETWORK_NAME: stovo_default
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_BASE_URL: ${GROQ_BASE_URL:-}
       GROQ_STT_MODEL: ${GROQ_STT_MODEL:-whisper-large-v3-turbo}
       GROQ_CHAT_MODEL: ${GROQ_CHAT_MODEL:-}
       GROQ_STT_COST_PER_AUDIO_HOUR_USD: ${GROQ_STT_COST_PER_AUDIO_HOUR_USD:-0.04}

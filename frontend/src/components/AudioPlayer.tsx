@@ -218,8 +218,10 @@ export function AudioPlayer({
     }
   }, [accessToken, descriptor?.identity?.fileId, isTranscribing]);
 
+  const isDraggingRef = useRef(false);
+
   useEffect(() => {
-    if (previewPosition !== null && dragRevision.current !== snapshot?.revision) {
+    if (previewPosition !== null && !isDraggingRef.current && dragRevision.current !== (snapshot?.revision ?? null)) {
       setPreviewPosition(null);
       dragRevision.current = null;
     }
@@ -313,7 +315,8 @@ export function AudioPlayer({
         : 0;
   const canonicalPosition = clamp(snapshot?.position ?? 0, duration);
   const position = previewPosition === null ? canonicalPosition : clamp(previewPosition, duration);
-  const seekable = Boolean(snapshot?.canSeek && duration > 0);
+  const isCallDisabled = Boolean(disabledReason);
+  const seekable = Boolean(duration > 0 && !isCallDisabled);
   const isLoading = snapshot?.status === "loading" || (playIntent && snapshot?.status !== "playing" && snapshot?.status !== "buffering");
   const isBuffering = snapshot?.status === "buffering";
   const sessionPlaying =
@@ -322,7 +325,6 @@ export function AudioPlayer({
   // Icon follows optimistic intent; only a live playing/buffering session pauses on tap
   // so a second tap can recover a stuck load instead of calling pause().
   const isPauseAction = isPlaying;
-  const isCallDisabled = Boolean(disabledReason);
   const primaryLabel = sessionPlaying || playIntent
     ? "Pause audio"
     : "Play audio";
@@ -337,7 +339,7 @@ export function AudioPlayer({
       ? "Playback paused by another app."
       : null;
 
-  const beginPlayback = useCallback(async () => {
+  const beginPlayback = useCallback(async (startPosition?: number) => {
     if (playbackDisabled || playInFlight.current) return;
     playInFlight.current = true;
     setPlayIntent(true);
@@ -346,12 +348,10 @@ export function AudioPlayer({
       session.setSourceFactory(sourceFactory);
       const activeSnapshot = session.getSnapshot();
       const sameTrack = sameAudioIdentity(activeSnapshot.identity, descriptor.identity);
-      // Natural end is handled inside session.play() (platform-specific reload
-      // vs rewind). Reloading here too caused eternal loading after Android
-      // service restart when revision watermarks rejected the new snapshots.
-      // Force a fresh load when still stuck on loading so a second tap recovers.
+      const hasSpecificStart = typeof startPosition === "number" && isFiniteTime(startPosition) && startPosition >= 0;
       const needsReload =
         !sameTrack ||
+        hasSpecificStart ||
         activeSnapshot.status === "error" ||
         activeSnapshot.status === "idle" ||
         activeSnapshot.status === "loading" ||
@@ -359,12 +359,14 @@ export function AudioPlayer({
         activeSnapshot.status === "ended";
       if (needsReload) {
         const resumeAt =
-          sameTrack &&
-          (activeSnapshot.status === "error" ||
-            activeSnapshot.status === "authorization-required" ||
-            activeSnapshot.status === "loading")
-            ? activeSnapshot.position
-            : 0;
+          hasSpecificStart
+            ? startPosition
+            : sameTrack &&
+              (activeSnapshot.status === "error" ||
+                activeSnapshot.status === "authorization-required" ||
+                activeSnapshot.status === "loading")
+              ? activeSnapshot.position
+              : 0;
         await session.load(descriptor, resumeAt);
       }
       if (session.getSnapshot().status === "error") {
@@ -417,8 +419,14 @@ export function AudioPlayer({
   const commitSeek = useCallback((value: number) => {
     setPreviewPosition(null);
     dragRevision.current = null;
-    if (seekable) void session.seek(clamp(value, duration));
-  }, [duration, seekable, session]);
+    if (!seekable) return;
+    const clamped = clamp(value, duration);
+    if (!isActive || snapshot?.status === "idle" || snapshot?.status === "ended" || snapshot?.status === "error") {
+      void beginPlayback(clamped);
+    } else {
+      void session.seek(clamped);
+    }
+  }, [beginPlayback, duration, isActive, seekable, session, snapshot?.status]);
 
   const onWavePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     stopInteraction(event);
@@ -429,19 +437,21 @@ export function AudioPlayer({
     } catch {
       // jsdom and some browsers may not implement pointer capture.
     }
-    dragRevision.current = snapshot?.revision ?? null;
+    isDraggingRef.current = true;
+    dragRevision.current = snapshot?.revision ?? 0;
     const next = positionFromClientX(event.clientX, target, duration);
     setPreviewPosition(next);
   }, [duration, isCallDisabled, seekable, snapshot?.revision]);
 
   const onWavePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragRevision.current === null || !seekable) return;
+    if (!isDraggingRef.current || !seekable) return;
     setPreviewPosition(positionFromClientX(event.clientX, event.currentTarget, duration));
   }, [duration, seekable]);
 
   const onWavePointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     stopInteraction(event);
-    if (dragRevision.current === null) return;
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
     try {
       event.currentTarget.releasePointerCapture?.(event.pointerId);
     } catch {
