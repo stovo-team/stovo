@@ -135,11 +135,23 @@ jobs:
                         turn_realm="$(get_env TURN_REALM family-messenger)"
                         turn_username="$(get_env TURN_USERNAME family)"
                         turn_password="$(get_env TURN_PASSWORD change_me)"
+                        groq_api_key="$(get_env GROQ_API_KEY "$(get_env groq_api_key "$(get_env GROQ_KEY "$(get_env GROQ_API_TOKEN "")")")")"
+                        groq_stt_model="$(get_env GROQ_STT_MODEL whisper-large-v3-turbo)"
+                        groq_chat_model="$(get_env GROQ_CHAT_MODEL "")"
+                        groq_stt_cost="$(get_env GROQ_STT_COST_PER_AUDIO_HOUR_USD 0.04)"
+                        ai_call_transcription="$(get_env AI_CALL_TRANSCRIPTION_ENABLED true)"
+                        livekit_url="$(get_env LIVEKIT_URL "")"
+                        livekit_api_key="$(get_env LIVEKIT_API_KEY "")"
+                        livekit_api_secret="$(get_env LIVEKIT_API_SECRET "")"
+                        app_url="$(get_env APP_URL "https://${app_domain}")"
+                        server_url="${app_url%/}/s/${server_slug}"
                         sudo docker run -d \
                           --name "stovo-backend-${server_slug}" \
                           --network stovo_default \
                           --restart unless-stopped \
                           -e "SERVER_ID=${server_slug}" \
+                          -e "APP_URL=${server_url}" \
+                          -e "API_URL=${server_url}" \
                           -e "DATABASE_URL=postgres://${pg_user}:${pg_pass}@postgres:5432/stovo_db_${server_slug}?sslmode=disable" \
                           -e "REDIS_URL=redis://redis:6379/0" \
                           -e "MINIO_ENDPOINT=minio:9000" \
@@ -154,6 +166,14 @@ jobs:
                           -e "TURN_REALM=${turn_realm}" \
                           -e "TURN_USERNAME=${turn_username}" \
                           -e "TURN_PASSWORD=${turn_password}" \
+                          -e "GROQ_API_KEY=${groq_api_key}" \
+                          -e "GROQ_STT_MODEL=${groq_stt_model}" \
+                          -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
+                          -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                          -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
+                          -e "LIVEKIT_URL=${livekit_url}" \
+                          -e "LIVEKIT_API_KEY=${livekit_api_key}" \
+                          -e "LIVEKIT_API_SECRET=${livekit_api_secret}" \
                           --label "stovo-server=${server_slug}" \
                           stovo-backend || true
                     fi

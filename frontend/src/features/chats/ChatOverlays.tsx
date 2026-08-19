@@ -67,7 +67,7 @@ export function ChatOverlays({
   const {
     isNewChatOpen, newChatScreen, filteredNewChatMembers, newChatMemberSearch, groupTitle, groupMemberIds,
     setNewChatMemberSearch, setNewChatScreen, closeNewChatScreen, startDirectChatWith,
-    setGroupTitle, toggleGroupMember, handleCreateGroupChat, handleCreateChannelChat
+    setGroupTitle, toggleGroupMember, handleCreateGroupChat, handleCreateChannelChat, handleCreateVoiceChat
   } = chatOverview;
 
   return (
@@ -91,6 +91,7 @@ export function ChatOverlays({
                 onToggleGroupMember={toggleGroupMember}
                 onCreateGroup={(event) => void handleCreateGroupChat(event)}
                 onCreateChannel={(event) => void handleCreateChannelChat(event)}
+                onCreateVoiceChannel={(event) => void handleCreateVoiceChat(event)}
               />
             </div>
           </div>,

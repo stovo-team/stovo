@@ -278,6 +278,17 @@ func (o *Orchestrator) handleResolve(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func parseEnvSlice(env []string) map[string]string {
+	m := make(map[string]string, len(env))
+	for _, e := range env {
+		idx := strings.IndexByte(e, '=')
+		if idx > 0 {
+			m[e[:idx]] = e[idx+1:]
+		}
+	}
+	return m
+}
+
 // startBackendContainer starts a child Go backend container for a server cluster on the shared docker network.
 func (o *Orchestrator) startBackendContainer(slug string) error {
 	ctx := context.Background()
@@ -288,20 +299,57 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 		netName = "stovo_default"
 	}
 
+	desiredEnv := backendContainerEnv(slug, func(key, fallback string) string {
+		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
+			return value
+		}
+		return fallback
+	})
+
 	cfg := &container.Config{
-		Image: "stovo-backend:latest",
-		Env: backendContainerEnv(slug, func(key, fallback string) string {
-			if value := config.GetOrReloadEnv(key); value != "" {
-				return value
-			}
-			return fallback
-		}),
+		Image:  "stovo-backend:latest",
+		Env:    desiredEnv,
 		Labels: map[string]string{"stovo-server": slug},
 	}
 	hostCfg := &container.HostConfig{
 		NetworkMode:   container.NetworkMode(netName),
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 	}
+
+	// Check if container already exists
+	filterArgs := filters.NewArgs()
+	filterArgs.Add("name", "^/"+containerName+"$")
+	filterArgs.Add("name", "^"+containerName+"$")
+	containers, err := o.dockerClient.ContainerList(ctx, container.ListOptions{All: true, Filters: filterArgs})
+	if err == nil && len(containers) > 0 {
+		existing := containers[0]
+		inspect, inspectErr := o.dockerClient.ContainerInspect(ctx, existing.ID)
+		needsRecreate := false
+		if inspectErr != nil {
+			needsRecreate = true
+		} else {
+			existingEnv := parseEnvSlice(inspect.Config.Env)
+			desiredEnvMap := parseEnvSlice(desiredEnv)
+			for k, v := range desiredEnvMap {
+				if existingEnv[k] != v {
+					needsRecreate = true
+					break
+				}
+			}
+		}
+
+		if !needsRecreate {
+			if existing.State != "running" {
+				return o.dockerClient.ContainerStart(ctx, existing.ID, container.StartOptions{})
+			}
+			return nil
+		}
+
+		timeoutSec := 5
+		_ = o.dockerClient.ContainerStop(ctx, existing.ID, container.StopOptions{Timeout: &timeoutSec})
+		_ = o.dockerClient.ContainerRemove(ctx, existing.ID, container.RemoveOptions{Force: true})
+	}
+
 	resp, err := o.dockerClient.ContainerCreate(ctx, cfg, hostCfg, nil, nil, containerName)
 	if err != nil {
 		return err
@@ -326,6 +374,8 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 	appURL := strings.TrimRight(get("APP_URL", "http://localhost:8000"), "/")
 	serverURL := fmt.Sprintf("%s/s/%s", appURL, slug)
 
+	groqKey := get("GROQ_API_KEY", get("groq_api_key", get("GROQ_KEY", get("GROQ_API_TOKEN", ""))))
+
 	return []string{
 		fmt.Sprintf("SERVER_ID=%s", slug),
 		fmt.Sprintf("APP_URL=%s", serverURL),
@@ -344,7 +394,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("TURN_REALM=%s", get("TURN_REALM", "family-messenger")),
 		fmt.Sprintf("TURN_USERNAME=%s", get("TURN_USERNAME", "family")),
 		fmt.Sprintf("TURN_PASSWORD=%s", get("TURN_PASSWORD", "change_me")),
-		fmt.Sprintf("GROQ_API_KEY=%s", get("GROQ_API_KEY", "")),
+		fmt.Sprintf("GROQ_API_KEY=%s", groqKey),
 		fmt.Sprintf("GROQ_STT_MODEL=%s", get("GROQ_STT_MODEL", "whisper-large-v3-turbo")),
 		fmt.Sprintf("GROQ_CHAT_MODEL=%s", get("GROQ_CHAT_MODEL", "")),
 		fmt.Sprintf("GROQ_STT_COST_PER_AUDIO_HOUR_USD=%s", get("GROQ_STT_COST_PER_AUDIO_HOUR_USD", "0.04")),

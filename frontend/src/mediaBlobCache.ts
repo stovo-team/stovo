@@ -232,7 +232,9 @@ export function peekCachedObjectUrl(fileId: string): string | null {
 }
 
 export function seedMediaBlobCache(fileId: string, blob: Blob): string {
-  return remember(fileId.trim(), blob).objectUrl;
+  const entry = remember(fileId.trim(), blob);
+  void writeToCacheStorage(fileId.trim(), blob).catch(() => undefined);
+  return entry.objectUrl;
 }
 
 /** Pre-cache media blobs in the background with controlled concurrency. */

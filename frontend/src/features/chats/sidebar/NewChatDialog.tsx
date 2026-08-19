@@ -18,7 +18,8 @@ export function NewChatDialog({
   onGroupTitleChange,
   onToggleGroupMember,
   onCreateGroup,
-  onCreateChannel
+  onCreateChannel,
+  onCreateVoiceChannel
 }: {
   accessToken: string | null;
   screen: NewChatScreen;
@@ -34,12 +35,40 @@ export function NewChatDialog({
   onToggleGroupMember: (userId: string) => void;
   onCreateGroup: (event: FormEvent) => void;
   onCreateChannel: (event: FormEvent) => void;
+  onCreateVoiceChannel?: (event: FormEvent) => void;
 }) {
-  const composeFormId = screen === "channel" ? "new-channel-form" : "new-group-form";
+  const isChannel = screen === "channel";
+  const isVoice = screen === "voice";
+  const composeFormId = isVoice
+    ? "new-voice-form"
+    : isChannel
+      ? "new-channel-form"
+      : "new-group-form";
   const canCreateCompose = groupTitle.trim().length > 0;
 
-  if (screen === "group" || screen === "channel") {
-    const isChannel = screen === "channel";
+  if (screen === "group" || screen === "channel" || screen === "voice") {
+    const handleFormSubmit = (event: FormEvent) => {
+      event.preventDefault();
+      if (isVoice && onCreateVoiceChannel) {
+        onCreateVoiceChannel(event);
+      } else if (isChannel) {
+        onCreateChannel(event);
+      } else {
+        onCreateGroup(event);
+      }
+    };
+
+    const titleLabel = isVoice
+      ? "New Voice Channel"
+      : isChannel
+        ? "New channel"
+        : "New group";
+    const fieldPlaceholder = isVoice
+      ? "Voice channel name"
+      : isChannel
+        ? "Channel name"
+        : "Group name";
+
     return (
       <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-compose-title">
         <header className="new-chat-screen-header">
@@ -48,20 +77,13 @@ export function NewChatDialog({
               arrow_back
             </span>
           </button>
-          <h2 id="new-chat-compose-title">{isChannel ? "New channel" : "New group"}</h2>
+          <h2 id="new-chat-compose-title">{titleLabel}</h2>
           <button
             type="submit"
             form={composeFormId}
             className="new-chat-screen-action"
             disabled={!canCreateCompose}
-            onClick={(event) => {
-              event.preventDefault();
-              if (isChannel) {
-                onCreateChannel(event);
-              } else {
-                onCreateGroup(event);
-              }
-            }}
+            onClick={handleFormSubmit}
           >
             Create
           </button>
@@ -69,14 +91,14 @@ export function NewChatDialog({
         <form
           id={composeFormId}
           className="new-chat-compose"
-          onSubmit={isChannel ? onCreateChannel : onCreateGroup}
+          onSubmit={handleFormSubmit}
         >
           <label className="new-chat-compose-title-field">
-            <span>{isChannel ? "Channel name" : "Group name"}</span>
+            <span>{fieldPlaceholder}</span>
             <input
               autoFocus
               maxLength={255}
-              placeholder={isChannel ? "Channel name" : "Group name"}
+              placeholder={fieldPlaceholder}
               value={groupTitle}
               onChange={(event) => onGroupTitleChange(event.target.value)}
             />
@@ -172,6 +194,18 @@ export function NewChatDialog({
           <span className="new-chat-action-copy">
             <strong>New Channel</strong>
             <small>Broadcast updates to members</small>
+          </span>
+          <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
+            chevron_right
+          </span>
+        </button>
+        <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("voice")}>
+          <span className="new-chat-action-icon new-chat-action-icon--voice" aria-hidden={true}>
+            <span className="ms-icon ms-icon--22 ms-icon--filled">volume_up</span>
+          </span>
+          <span className="new-chat-action-copy">
+            <strong>New Voice Channel</strong>
+            <small>Persistent LiveKit voice room</small>
           </span>
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
             chevron_right

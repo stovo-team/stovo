@@ -100,7 +100,7 @@ function errorCopy(error: AudioPlaybackErrorCode | null): string {
 }
 
 function canRetry(error: AudioPlaybackErrorCode | null): boolean {
-  return error !== "authorization" && error !== "unsupported";
+  return error !== "authorization";
 }
 
 function stopInteraction(event: SyntheticEvent): void {

@@ -20,7 +20,7 @@ export interface ChatMember {
 export interface Chat {
   id: string;
   familyId: string;
-  type: "family" | "direct" | "group" | "channel" | "archive";
+  type: "family" | "direct" | "group" | "channel" | "voice" | "archive";
   title: string | null;
   createdBy: string | null;
   mediaVisibility: "family" | "members";
@@ -157,6 +157,17 @@ export function createChannelChat(
   payload: { title: string; memberIds: string[] }
 ) {
   return apiRequest<Chat>("/api/chats/channel", {
+    method: "POST",
+    accessToken,
+    body: payload
+  });
+}
+
+export function createVoiceChat(
+  accessToken: string,
+  payload: { title: string; memberIds: string[] }
+) {
+  return apiRequest<Chat>("/api/chats/voice", {
     method: "POST",
     accessToken,
     body: payload

@@ -8,6 +8,7 @@ import { CallVideoSettingsPopup } from "./CallVideoSettingsPopup";
 import { DesktopCallControls } from "./DesktopCallControls";
 import { GroupCallActiveBanner } from "./GroupCallActiveBanner";
 import { GroupCallPreJoinModal } from "./GroupCallPreJoinModal";
+import { VoiceChannelStage } from "./VoiceChannelStage";
 import { MobileActiveScreen } from "./MobileActiveScreen";
 import { MobileIncomingScreen } from "./MobileIncomingScreen";
 import { MobileMinimizedCallBar } from "./MobileMinimizedCallBar";
@@ -24,6 +25,7 @@ export {
   MobileIncomingScreen,
   GroupCallActiveBanner,
   GroupCallPreJoinModal,
+  VoiceChannelStage,
   useCallTimer
 };
 

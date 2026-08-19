@@ -350,3 +350,68 @@ func TestResolveCallSessionLoadsFromRedis(t *testing.T) {
 		t.Fatal("expected hydrated session to be re-indexed into local maps")
 	}
 }
+
+func TestVoiceChannelCallLifecycle(t *testing.T) {
+	server := newTestCallServer()
+	voiceChat := chatPublic{
+		ID:   "voice-1",
+		Type: "voice",
+		Members: []chatMemberPublic{
+			{ID: "user-1"},
+			{ID: "user-2"},
+			{ID: "user-3"},
+		},
+	}
+
+	// 1. User 1 starts voice channel
+	session, err := server.startCallSession(voiceChat, "user-1", "audio", nil)
+	if err != nil {
+		t.Fatalf("start voice channel: %v", err)
+	}
+	if session.Topology != callTopologySFU {
+		t.Fatalf("expected SFU topology for voice channel, got %s", session.Topology)
+	}
+	if session.State != callStateConnected {
+		t.Fatalf("expected connected state, got %s", session.State)
+	}
+	if len(session.Participants) != 1 {
+		t.Fatalf("expected only 1 participant on initial start (no ringing invitees), got %d", len(session.Participants))
+	}
+	if session.Participants["user-1"].State != participantConnected {
+		t.Fatalf("expected user-1 connected, got %s", session.Participants["user-1"].State)
+	}
+
+	// 2. User 2 joins voice channel
+	joinedSession, isNew, err := server.joinCallSession(voiceChat, "user-2", "audio")
+	if err != nil {
+		t.Fatalf("join voice channel: %v", err)
+	}
+	if isNew {
+		t.Fatal("expected existing session, not new")
+	}
+	if len(joinedSession.Participants) != 2 {
+		t.Fatalf("expected 2 participants, got %d", len(joinedSession.Participants))
+	}
+	if joinedSession.Participants["user-2"].State != participantConnected {
+		t.Fatalf("expected user-2 connected, got %s", joinedSession.Participants["user-2"].State)
+	}
+
+	// 3. User 1 leaves voice channel -> Room stays active
+	leftSess, leftOk, ended := server.leaveCallSession(voiceChat.ID, "user-1")
+	if !leftOk || ended {
+		t.Fatalf("expected room to stay active when 1 participant remains, ended=%v", ended)
+	}
+	if leftSess.Participants["user-1"].State != participantLeft {
+		t.Fatalf("expected user-1 left")
+	}
+
+	// 4. User 2 leaves voice channel -> Room ends
+	_, leftOk2, ended2 := server.leaveCallSession(voiceChat.ID, "user-2")
+	if !leftOk2 || !ended2 {
+		t.Fatalf("expected room to end when last participant leaves, ended=%v", ended2)
+	}
+	if _, exists := server.getCallSession(voiceChat.ID); exists {
+		t.Fatal("expected call session to be cleaned up after all participants left")
+	}
+}
+

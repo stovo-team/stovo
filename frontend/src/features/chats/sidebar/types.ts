@@ -27,6 +27,7 @@ export type ChatOverviewController = {
   startDirectChatWith: (userId: string) => Promise<void>;
   handleCreateGroupChat: (event: FormEvent) => Promise<void>;
   handleCreateChannelChat: (event: FormEvent) => Promise<void>;
+  handleCreateVoiceChat: (event: FormEvent) => Promise<void>;
 };
 
 export type ChatSidebarProps = {

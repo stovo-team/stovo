@@ -837,6 +837,65 @@ export function useCallSession({
     }
   }
 
+  async function joinVoiceChannel(
+    targetChat: Chat,
+    settings: { micMuted?: boolean; cameraEnabled?: boolean } = { micMuted: false, cameraEnabled: false }
+  ) {
+    const socket = socketRef.current;
+    if (!socket || !targetChat.id) {
+      return;
+    }
+    if (callPhaseRef.current !== "idle" && activeCallChatIdRef.current !== targetChat.id) {
+      await endActiveCall();
+    }
+
+    dismissNativeCallNotification();
+    stopCallRingtone();
+    setCallNotice("Connecting to voice channel…");
+    setActiveCallChatId(targetChat.id);
+    activeCallChatIdRef.current = targetChat.id;
+    setCallTopology("sfu");
+    setCallType("audio");
+    callTypeRef.current = "audio";
+
+    setCallPhase("connecting");
+    callPhaseRef.current = "connecting";
+
+    try {
+      await applyCallAudioPatch({
+        micMuted: Boolean(settings.micMuted),
+        cameraEnabled: Boolean(settings.cameraEnabled),
+        speakerMode: "small",
+      });
+
+      if (currentUser?.id) {
+        audioCallRef.current?.setLocalUserId(currentUser.id);
+      }
+      audioCallRef.current?.setChatId(targetChat.id);
+
+      await audioCallRef.current?.prepareForCall("audio");
+
+      const connected = await waitForSocketConnection(socket, {
+        onAttempt: (attempt, totalAttempts) => {
+          setCallNotice(
+            attempt === 1
+              ? "Connecting to voice channel…"
+              : `Reconnecting to voice channel… (${attempt}/${totalAttempts})`
+          );
+        }
+      });
+      if (!connected) {
+        throw new Error("Realtime connection is still unavailable. Please try joining again.");
+      }
+
+      socket.emit("call:join", { chatId: targetChat.id, callType: "audio" });
+    } catch (err) {
+      await audioCallRef.current?.cleanup(true).catch(() => undefined);
+      void resetCallState("Could not join voice channel", true, false);
+      setError(err instanceof Error ? err.message : "Could not join voice channel");
+    }
+  }
+
   function declineIncomingCall() {
     const declineChatId = activeCallChatId ?? activeCallChatIdRef.current;
     if (!socketRef.current || !declineChatId) {
@@ -1494,6 +1553,7 @@ export function useCallSession({
     openPreJoinModal,
     closePreJoinModal,
     joinOngoingGroupCall,
+    joinVoiceChannel,
 
     // Socket wiring (called by ChatsPage's socket-owning effect)
     attachToSocket,

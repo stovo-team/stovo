@@ -1,4 +1,4 @@
-import { Archive, BellOff, Hash, LockKeyhole, Pin, Star } from "lucide-react";
+import { Archive, BellOff, Hash, LockKeyhole, Pin, Star, Volume2 } from "lucide-react";
 
 import { Chat } from "../../../api/chats";
 import {
@@ -62,7 +62,11 @@ export function ChatListItem({
       {chatListLeadingVisual !== "avatar" ? (
         <span
           className={`chat-list-type-marker${
-            chatListLeadingVisual === "archive" ? " chat-list-type-marker--archive" : ""
+            chatListLeadingVisual === "archive"
+              ? " chat-list-type-marker--archive"
+              : chatListLeadingVisual === "voice"
+                ? " chat-list-type-marker--voice"
+                : ""
           }`}
           aria-hidden="true"
         >
@@ -70,6 +74,8 @@ export function ChatListItem({
             <LockKeyhole size={16} strokeWidth={2} />
           ) : chatListLeadingVisual === "hash" ? (
             <Hash size={16} strokeWidth={2} />
+          ) : chatListLeadingVisual === "voice" ? (
+            <Volume2 size={16} strokeWidth={2} />
           ) : (
             <Archive size={16} strokeWidth={2} />
           )}

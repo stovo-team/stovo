@@ -5,7 +5,8 @@ import {
   Chat,
   createChannelChat,
   createDirectChat,
-  createGroupChat
+  createGroupChat,
+  createVoiceChat
 } from "../../../api/chats";
 import { ApiError } from "../../../api/client";
 import { displayChatName } from "../shared/chatPresentation";
@@ -80,6 +81,12 @@ export function useChatOverview({
       if (chatFilter === "direct" && chat.type !== "direct") {
         return false;
       }
+      if (chatFilter === "channels" && chat.type !== "channel") {
+        return false;
+      }
+      if (chatFilter === "voice" && chat.type !== "voice") {
+        return false;
+      }
       if (chatFilter === "unread" && chat.unreadCount <= 0) {
         return false;
       }
@@ -101,13 +108,16 @@ export function useChatOverview({
   const chatsBySection = useMemo(() => {
     const sections: Record<ChatSectionKey, Chat[]> = {
       archive: [],
-      dms: [],
+      voice: [],
+      channels: [],
       groups: [],
-      channels: []
+      dms: []
     };
     for (const chat of filteredChats) {
       if (chat.type === "archive") {
         sections.archive.push(chat);
+      } else if (chat.type === "voice") {
+        sections.voice.push(chat);
       } else if (chat.type === "direct") {
         sections.dms.push(chat);
       } else if (chat.type === "channel") {
@@ -191,6 +201,26 @@ export function useChatOverview({
     }
   }
 
+  async function handleCreateVoiceChat(event: FormEvent) {
+    event.preventDefault();
+    if (!accessToken || !groupTitle.trim()) {
+      return;
+    }
+
+    onError(null);
+    try {
+      const chat = await createVoiceChat(accessToken, {
+        title: groupTitle.trim(),
+        memberIds: groupMemberIds
+      });
+      closeNewChatScreen();
+      onNavigateToChat(chat);
+      void refreshChats();
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not create voice channel");
+    }
+  }
+
   return {
     chatSearch,
     setChatSearch,
@@ -212,6 +242,7 @@ export function useChatOverview({
     toggleGroupMember,
     startDirectChatWith,
     handleCreateGroupChat,
-    handleCreateChannelChat
+    handleCreateChannelChat,
+    handleCreateVoiceChat
   };
 }

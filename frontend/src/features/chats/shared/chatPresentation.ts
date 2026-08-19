@@ -20,7 +20,10 @@ export function chatListLayoutClass(minimizedChatLayout: boolean) {
 
 export function compactChatListLeadingVisual(
   chatType: Chat["type"]
-): "lock" | "hash" | "archive" | "avatar" {
+): "lock" | "hash" | "archive" | "avatar" | "voice" {
+  if (chatType === "voice") {
+    return "voice";
+  }
   if (chatType === "group" || chatType === "family") {
     return "lock";
   }
@@ -41,8 +44,8 @@ export function displayChatName(chat: Chat, currentUserId: string | undefined) {
   if (chat.type === "archive") {
     return "Message Archive";
   }
-  if (chat.type === "family" || chat.type === "group" || chat.type === "channel") {
-    return chat.title ?? "General Family Chat";
+  if (chat.type === "family" || chat.type === "group" || chat.type === "channel" || chat.type === "voice") {
+    return chat.title ?? (chat.type === "voice" ? "Voice Channel" : "General Family Chat");
   }
   const otherMember = chat.members.find((member) => member.id !== currentUserId);
   return otherMember?.displayName ?? "Direct chat";
@@ -78,6 +81,9 @@ export function chatAvatarFallbackKind(chat: Chat): ChatAvatarFallbackKind {
   if (chat.type === "channel") {
     return "channel";
   }
+  if (chat.type === "voice") {
+    return "voice";
+  }
   if (chat.type === "group") {
     return "group";
   }
@@ -108,11 +114,13 @@ export const CHAT_FILTERS: Array<{ label: string; value: ChatFilter }> = [
   { label: "Unread", value: "unread" },
   { label: "Groups", value: "groups" },
   { label: "Direct", value: "direct" },
+  { label: "Voice", value: "voice" },
   { label: "Muted", value: "muted" }
 ];
 
 export const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> = [
   { key: "archive", label: "Message Archive" },
+  { key: "voice", label: "Voice Channels" },
   { key: "channels", label: "Channels" },
   { key: "groups", label: "Groups" },
   { key: "dms", label: "DMs" }
@@ -121,6 +129,9 @@ export const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> =
 export function chatTypeLabel(chat: Chat) {
   if (chat.type === "family") {
     return "Family chat";
+  }
+  if (chat.type === "voice") {
+    return "Voice channel";
   }
   if (chat.type === "channel") {
     return "Channel";
@@ -141,7 +152,7 @@ export function chatAvatarTypeClass(chat: Chat) {
   if (chat.type === "family") {
     return "family";
   }
-  if (chat.type === "group" || chat.type === "channel") {
+  if (chat.type === "group" || chat.type === "channel" || chat.type === "voice") {
     return "group";
   }
   if (chat.type === "archive") {
@@ -156,6 +167,16 @@ export function chatPreview(chat: Chat) {
   }
   if (chat.lastMessageContent && chat.lastMessageSenderDisplayName) {
     return `${chat.lastMessageSenderDisplayName}: ${chat.lastMessageContent}`;
+  }
+  if (chat.type === "voice") {
+    const participants = (chat.activeCall?.participants as Array<Record<string, any>>) || [];
+    const activeCount = participants.filter(
+      (p) => p.state === "connected" || p.state === "in-call"
+    ).length;
+    if (activeCount > 0) {
+      return `${activeCount} in voice / Voice Channel`;
+    }
+    return `${chat.members.length} members / Voice Channel`;
   }
   if (chat.type === "family") {
     return `${chat.members.length} members / private family room`;
@@ -193,9 +214,10 @@ export function canManageChat(chat: Chat, currentUser: User | null) {
   return (
     currentUser.role === "owner" ||
     currentUser.role === "admin" ||
-    ((chat.type === "group" || chat.type === "channel") && chat.createdBy === currentUser.id)
+    ((chat.type === "group" || chat.type === "channel" || chat.type === "voice") && chat.createdBy === currentUser.id)
   );
 }
+
 
 export function canUpdateMediaVisibility(chat: Chat, currentUser: User | null) {
   if (chat.type === "family") {

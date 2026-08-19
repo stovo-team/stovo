@@ -5,4 +5,6 @@
  */
 
 export { strings } from "./english";
+export { russianStrings } from "./russian";
 export type { AppStrings } from "./english";
+
