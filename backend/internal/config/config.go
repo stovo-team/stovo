@@ -181,7 +181,7 @@ func Load() (Config, error) {
 		LiveKitURL:                   envString("LIVEKIT_URL", ""),
 		LiveKitAPIKey:                envString("LIVEKIT_API_KEY", ""),
 		LiveKitAPISecret:             envString("LIVEKIT_API_SECRET", ""),
-		GroqAPIKey:                   strings.TrimSpace(os.Getenv("GROQ_API_KEY")),
+		GroqAPIKey:                   envAny("GROQ_API_KEY", "groq_api_key", "GROQ_KEY", "groq_key", "GROQ_API_TOKEN", "groq_api_token", "GROQ_TOKEN"),
 		GroqSTTModel:                 getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo"),
 		GroqChatModel:                getenv("GROQ_CHAT_MODEL", ""),
 		GroqSTTCostPerHourUSD:        envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
@@ -191,6 +191,16 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func envAny(keys ...string) string {
+	for _, k := range keys {
+		val := strings.TrimSpace(os.Getenv(k))
+		if val != "" && !IsPlaceholderKey(val) {
+			return val
+		}
+	}
+	return ""
 }
 
 func envString(key string, fallback string) string {

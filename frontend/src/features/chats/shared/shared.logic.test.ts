@@ -34,6 +34,7 @@ describe("chat presentation helpers", () => {
     expect(compactChatListLeadingVisual("group")).toBe("lock");
     expect(compactChatListLeadingVisual("family")).toBe("lock");
     expect(compactChatListLeadingVisual("channel")).toBe("hash");
+    expect(compactChatListLeadingVisual("voice")).toBe("voice");
     expect(compactChatListLeadingVisual("direct")).toBe("avatar");
     expect(compactChatListLeadingVisual("archive")).toBe("archive");
   });

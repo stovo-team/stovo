@@ -244,6 +244,56 @@ func (s *Server) handleCreateChannelChat(w http.ResponseWriter, r *http.Request,
 	s.json(w, http.StatusCreated, chat)
 }
 
+func (s *Server) handleCreateVoiceChat(w http.ResponseWriter, r *http.Request, user userPublic) {
+	var payload createVoiceChatRequest
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+	payload.Title = strings.TrimSpace(payload.Title)
+	if payload.Title == "" {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid voice chat payload")
+		return
+	}
+
+	memberIDs, err := s.resolveChatMembers(user, payload.MemberIDs)
+	if err != nil {
+		s.detail(w, domainErrorStatus(err), "Invalid voice chat members")
+		return
+	}
+
+	chatID := uuid.NewString()
+	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
+	now := nowString()
+	title := payload.Title
+	commentsEnabled := true
+	if err := s.store.CreateChatWithMembers(r.Context(), repository.CreateChatParams{
+		ID:                 chatID,
+		FamilyID:           user.FamilyID,
+		Type:               "voice",
+		Title:              &title,
+		CreatedBy:          user.ID,
+		MediaVisibility:    "members",
+		CommentsEnabled:    &commentsEnabled,
+		EncryptionProtocol: encryptionProtocol,
+		CreatedAt:          now,
+		MemberIDs:          memberIDs,
+		CreatePreferences:  true,
+	}); err != nil {
+		s.logger.Errorf("chats", "create voice chat failed user_id=%s error=%v", user.ID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not create voice chat")
+		return
+	}
+
+	chat, err := s.buildChatPublic(chatID, user)
+	if err != nil {
+		s.logger.Errorf("chats", "create voice chat build failed chat_id=%s user_id=%s error=%v", chatID, user.ID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not load created chat")
+		return
+	}
+	s.json(w, http.StatusCreated, chat)
+}
+
 func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user userPublic) {
 	chatID := chatIDFromURL(r)
 	chat, err := s.buildChatPublic(chatID, user)

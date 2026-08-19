@@ -678,7 +678,10 @@ export class WebAudioPlaybackBackend implements AudioPlaybackBackend {
     });
     try {
       await this.element.play();
-    } catch {
+    } catch (err: unknown) {
+      if (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
       this.publish({
         status: "error",
         playWhenReady: false,

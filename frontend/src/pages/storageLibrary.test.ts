@@ -11,6 +11,7 @@ describe("storage library helpers", () => {
   it("uses compact markers for group and channel sources while keeping archives icon-only", () => {
     expect(storageSourceLeadingVisual("group", true)).toBe("lock");
     expect(storageSourceLeadingVisual("channel", true)).toBe("hash");
+    expect(storageSourceLeadingVisual("voice", true)).toBe("voice");
     expect(storageSourceLeadingVisual("direct", true)).toBe("avatar");
     expect(storageSourceLeadingVisual("archive", true)).toBe("archive");
     expect(storageSourceLeadingVisual("archive", false)).toBe("archive");

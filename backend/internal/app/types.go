@@ -275,6 +275,11 @@ type createChannelChatRequest struct {
 	MemberIDs []string `json:"memberIds"`
 }
 
+type createVoiceChatRequest struct {
+	Title     string   `json:"title"`
+	MemberIDs []string `json:"memberIds"`
+}
+
 type updateChatRequest struct {
 	Title               *string `json:"title"`
 	MediaVisibility     *string `json:"mediaVisibility"`

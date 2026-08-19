@@ -5,6 +5,7 @@ import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
 import type { CallSessionApi } from "../calling/useCallSession";
+import { VoiceChannelStage } from "../calling/VoiceChannelStage";
 import { Composer } from "../composer/Composer";
 import type { CallPhase } from "../shared/types";
 import type { Message } from "../shared/types";
@@ -374,6 +375,15 @@ export function ConversationPanel({
             </span>
           </button>
         </div>
+      )}
+      {selectedChat.type === "voice" && callSession && (
+        <VoiceChannelStage
+          chat={selectedChat}
+          session={callSession}
+          members={selectedChat.members as unknown as User[]}
+          currentUser={currentUser}
+          accessToken={accessToken}
+        />
       )}
       <MessageList
         accessToken={accessToken}

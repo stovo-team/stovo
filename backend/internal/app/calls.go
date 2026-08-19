@@ -236,8 +236,8 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	if chat.Type == "channel" {
 		return nil, fmt.Errorf("calls are not available in channels")
 	}
-	if chat.Type != "direct" && chat.Type != "group" && chat.Type != "family" {
-		return nil, fmt.Errorf("calls are only available in direct and group chats")
+	if chat.Type != "direct" && chat.Type != "group" && chat.Type != "family" && chat.Type != "voice" {
+		return nil, fmt.Errorf("calls are only available in direct, group, and voice chats")
 	}
 
 	members := chatMemberSet(chat)
@@ -266,6 +266,8 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 				break
 			}
 		}
+	} else if chat.Type == "voice" {
+		// Voice channels do not dial/ring all members on start by default
 	} else {
 		for _, id := range memberIDs(chat) {
 			if id != callerUserID {
@@ -273,7 +275,7 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 			}
 		}
 	}
-	if len(invitees) == 0 {
+	if len(invitees) == 0 && chat.Type != "voice" {
 		return nil, fmt.Errorf("could not determine call participants")
 	}
 
@@ -306,7 +308,8 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		}
 	}
 
-	isGroupCall := chat.Type == "group" || chat.Type == "family"
+	isGroupCall := chat.Type == "group" || chat.Type == "family" || chat.Type == "voice"
+	isVoiceChannel := chat.Type == "voice"
 	now := time.Now().UTC()
 	roomID := uuid.NewString()
 
@@ -337,14 +340,22 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		}
 	}
 
-	// Always start as Mesh; dynamically promote to SFU when active connected count > maxMeshParticipants.
+	// Voice channels always use SFU (LiveKit) topology; standard calls start as Mesh.
 	topology := callTopologyMesh
+	if isVoiceChannel {
+		topology = callTopologySFU
+	}
+
+	calleeUserID := ""
+	if len(invitees) > 0 {
+		calleeUserID = invitees[0]
+	}
 
 	session := &callSession{
 		ID:           roomID,
 		ChatID:       chat.ID,
 		CallerUserID: callerUserID,
-		CalleeUserID: invitees[0],
+		CalleeUserID: calleeUserID,
 		CallType:     callType,
 		Topology:     topology,
 		State:        sessionState,
@@ -373,6 +384,64 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	}(session)
 	return session, nil
 }
+
+func (s *Server) joinCallSession(chat chatPublic, userID string, callType string) (*callSession, bool, error) {
+	callType = normalizeCallType(callType)
+	members := chatMemberSet(chat)
+	if !members[userID] {
+		return nil, false, fmt.Errorf("you are not a member of this chat")
+	}
+
+	s.callMu.Lock()
+	session, exists := s.callByChat[chat.ID]
+	if exists && session != nil {
+		if p, ok := session.Participants[userID]; ok && p != nil && (p.State == participantConnected || p.State == participantConnecting) {
+			s.callMu.Unlock()
+			return session, false, nil
+		}
+
+		if roomID, busy := s.userActiveCall[userID]; busy && roomID != session.ID {
+			s.callMu.Unlock()
+			return nil, false, fmt.Errorf("you are already in another call")
+		}
+
+		now := time.Now().UTC()
+		if p, ok := session.Participants[userID]; ok && p != nil {
+			p.State = participantConnected
+			if p.JoinedAt.IsZero() {
+				p.JoinedAt = now
+			}
+		} else {
+			session.Participants[userID] = &callParticipant{
+				UserID:   userID,
+				Role:     "member",
+				State:    participantConnected,
+				JoinedAt: now,
+			}
+		}
+		s.userActiveCall[userID] = session.ID
+		if chat.Type == "voice" || session.connectedOrConnectingCount() > maxMeshParticipants {
+			session.Topology = callTopologySFU
+		}
+		s.callMu.Unlock()
+
+		go func(sess *callSession) {
+			ctx := context.Background()
+			s.persistCallParticipants(ctx, sess)
+			s.persistCallSession(ctx, sess, 3600*time.Second)
+		}(session)
+
+		return session, false, nil
+	}
+	s.callMu.Unlock()
+
+	sess, err := s.startCallSession(chat, userID, callType, nil)
+	if err != nil {
+		return nil, false, err
+	}
+	return sess, true, nil
+}
+
 
 func (s *Server) indexCallSession(session *callSession) {
 	s.callByRoom[session.ID] = session

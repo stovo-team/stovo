@@ -40,6 +40,20 @@ func (s *Server) registerCallSocketHandlers(socket *socketio.Socket, user userPu
 			return
 		}
 		payloadMap := session.publicPayload()
+		if chat.Type == "voice" {
+			_ = socket.Emit("call:accepted", payloadMap)
+			s.emitCallToActiveParticipants(session, "call:participant-updated", payloadMap)
+			if session.Topology == callTopologySFU {
+				_ = socket.Emit("call:topology", map[string]any{
+					"roomId":   session.ID,
+					"chatId":   session.ChatID,
+					"topology": string(callTopologySFU),
+					"sfuUrl":   s.cfg.LiveKitURL,
+					"roomName": session.ID,
+				})
+			}
+			return
+		}
 		s.logger.Infof("realtime.call", "call:ringing emitted chat_id=%s room_id=%s caller=%s participants=%d", session.ChatID, session.ID, session.CallerUserID, len(session.Participants))
 		s.emitCallToActiveParticipants(session, "call:ringing", payloadMap)
 		if session.Topology == callTopologySFU {
@@ -54,6 +68,45 @@ func (s *Server) registerCallSocketHandlers(socket *socketio.Socket, user userPu
 		s.scheduleCallTimeout(session.ChatID, session.ExpiresAt, user.DisplayName)
 		for _, inviteeID := range session.ringingInviteeIDs() {
 			go s.notifyCallRinging(inviteeID, user.DisplayName, session.ChatID)
+		}
+	})
+
+	socket.On("call:join", func(event *socketio.EventPayload) {
+		var payload socketCallStartRequest
+		if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil || strings.TrimSpace(payload.ChatID) == "" {
+			_ = socket.Emit("call:error", map[string]any{"message": "Invalid call join payload"})
+			return
+		}
+		chat, err := s.buildChatPublic(payload.ChatID, user)
+		if err != nil {
+			_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": "Chat not found"})
+			return
+		}
+		callType := strings.TrimSpace(payload.CallType)
+		if callType == "" {
+			callType = "audio"
+		}
+		session, isNew, err := s.joinCallSession(chat, user.ID, callType)
+		if err != nil {
+			_ = socket.Emit("call:error", map[string]any{"chatId": payload.ChatID, "message": err.Error()})
+			return
+		}
+		payloadMap := session.actionPayload(nil)
+		_ = socket.Emit("call:accepted", payloadMap)
+		s.emitCallToActiveParticipants(session, "call:participant-updated", payloadMap)
+		if session.Topology == callTopologySFU {
+			topo := map[string]any{
+				"roomId":   session.ID,
+				"chatId":   session.ChatID,
+				"topology": string(callTopologySFU),
+				"sfuUrl":   s.cfg.LiveKitURL,
+				"roomName": session.ID,
+			}
+			_ = socket.Emit("call:topology", topo)
+			s.emitCallToActiveParticipants(session, "call:topology", topo)
+		}
+		if isNew && chat.Type != "voice" {
+			s.scheduleCallTimeout(session.ChatID, session.ExpiresAt, user.DisplayName)
 		}
 	})
 
