@@ -139,6 +139,21 @@ func (s *Server) getGroqChatModel() string {
 	return ""
 }
 
+func (s *Server) getGroqBaseURL() string {
+	if strings.TrimSpace(s.cfg.GroqBaseURL) != "" {
+		return strings.TrimSpace(s.cfg.GroqBaseURL)
+	}
+	u := config.GetOrReloadEnv("GROQ_BASE_URL")
+	if u == "" {
+		u = config.GetOrReloadEnv("GROQ_API_BASE")
+	}
+	if u != "" {
+		s.cfg.GroqBaseURL = u
+		return u
+	}
+	return ""
+}
+
 // handleStartTranscription starts a new transcription session for an active call.
 func (s *Server) handleStartTranscription(w http.ResponseWriter, r *http.Request, user userPublic) {
 	if !s.cfg.AICallTranscriptionEnabled {
@@ -666,6 +681,7 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 	apiKey := s.getGroqAPIKey()
 	groqClient := transcription.NewGroqSTTClient(transcription.GroqSTTConfig{
 		APIKey:           apiKey,
+		BaseURL:          s.getGroqBaseURL(),
 		Model:            s.cfg.GroqSTTModel,
 		TimeoutSeconds:   120,
 		CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD,
@@ -766,8 +782,9 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 	chatModel := s.getGroqChatModel()
 	if len(allSegments) > 0 && apiKey != "" && chatModel != "" {
 		llmClient := transcription.NewLLMClient(transcription.LLMConfig{
-			APIKey: apiKey,
-			Model:  chatModel,
+			APIKey:  apiKey,
+			BaseURL: s.getGroqBaseURL(),
+			Model:   chatModel,
 		})
 		ppResult, ppErr := llmClient.PostProcess(ctx, allSegments)
 		if ppErr == nil && ppResult != nil {

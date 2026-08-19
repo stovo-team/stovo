@@ -1,10 +1,22 @@
 import React from "react";
-import { Mic, MicOff, Monitor, PhoneOff, Video, VideoOff, Volume2 } from "lucide-react";
+import {
+  Mic,
+  MicOff,
+  Monitor,
+  PhoneOff,
+  Radio,
+  Settings,
+  Users,
+  Video,
+  VideoOff,
+  Volume2
+} from "lucide-react";
 
 import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
+import { displayChatName } from "../shared/chatPresentation";
 
 export type VoiceChannelStageProps = {
   chat: Chat;
@@ -30,19 +42,33 @@ export function VoiceChannelStage({
     endActiveCall,
     joinVoiceChannel,
     isPeerSpeaking,
-    activeGroupCalls
+    activeGroupCalls,
+    callTimer,
+    setIsCallSettingsMenuOpen
   } = session;
 
   const isCurrentChannelActive = activeCallChatId === chat.id && callPhase !== "idle";
+  const isConnecting = activeCallChatId === chat.id && callPhase === "connecting";
   const activeCall = activeGroupCalls[chat.id] || chat.activeCall;
-  const rawParticipants = (activeCall?.participants as Array<Record<string, any>>) || [];
+  const rawParticipants = (activeCall?.participants as Array<{ userId: string; state: string; role: string }>) || [];
+  
+  // Active participants currently in the room
   const activeParticipants = rawParticipants.filter(
     (p) => p.state === "connected" || p.state === "connecting" || p.state === "in-call"
   );
 
-  const participantCount = isCurrentChannelActive
-    ? Math.max(activeParticipants.length, 1)
-    : activeParticipants.length;
+  // If local user is active/connecting, make sure they are in the active participants list
+  const displayParticipants: Array<{ userId: string; state: string; role: string }> = [...activeParticipants];
+  if (isCurrentChannelActive && currentUser && !displayParticipants.some((p) => p.userId === currentUser.id)) {
+    displayParticipants.push({
+      userId: currentUser.id,
+      state: isConnecting ? "connecting" : "connected",
+      role: "member"
+    });
+  }
+
+  const channelName = displayChatName(chat, currentUser?.id);
+  const chatMembers = (chat.members as unknown as User[]) || members || [];
 
   const handleToggleMic = () => {
     void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted });
@@ -64,101 +90,200 @@ export function VoiceChannelStage({
     void endActiveCall();
   };
 
+  const resolveMemberInfo = (userId: string) => {
+    if (currentUser && userId === currentUser.id) {
+      return {
+        displayName: currentUser.displayName ? `${currentUser.displayName} (You)` : "You",
+        profilePhoto: currentUser.profilePhoto,
+        isSelf: true
+      };
+    }
+    const found = chatMembers.find((m) => m.id === userId) || members.find((m) => m.id === userId);
+    return {
+      displayName: found?.displayName || "Member",
+      profilePhoto: found?.profilePhoto || null,
+      isSelf: false
+    };
+  };
+
   return (
-    <div className={`voice-channel-stage${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Stage">
-      <div className="voice-channel-stage-header">
-        <div className="voice-channel-stage-title-group">
-          <div className="voice-channel-live-badge">
-            <span className="voice-channel-pulse-dot" aria-hidden="true" />
-            <Volume2 size={16} aria-hidden="true" />
-            <span>{isCurrentChannelActive ? "Connected to Voice" : "Voice Channel"}</span>
+    <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
+      {/* Top Voice Room Header Info */}
+      <div className="voice-room-topbar">
+        <div className="voice-room-status-cluster">
+          <span
+            className={`voice-room-indicator-dot${isCurrentChannelActive ? " is-live" : isConnecting ? " is-connecting" : ""}`}
+            aria-hidden="true"
+          />
+          <div className="voice-room-title-block">
+            <div className="voice-room-heading-row">
+              <Volume2 size={18} className="voice-room-icon" aria-hidden="true" />
+              <h2 className="voice-room-title">{channelName}</h2>
+              {isCurrentChannelActive && (
+                <span className="voice-room-live-pill">
+                  <Radio size={12} aria-hidden="true" />
+                  <span>LIVE</span>
+                </span>
+              )}
+            </div>
+            <p className="voice-room-status-text">
+              {isConnecting
+                ? "Connecting to LiveKit SFU…"
+                : isCurrentChannelActive
+                  ? `Connected · ${callTimer || "00:00"} · ${displayParticipants.length} in voice`
+                  : displayParticipants.length > 0
+                    ? `${displayParticipants.length} member${displayParticipants.length === 1 ? "" : "s"} currently talking`
+                    : "No one connected · Join to start conversation"}
+            </p>
           </div>
-          <span className="voice-channel-member-count">
-            {participantCount === 0
-              ? "No one here yet"
-              : `${participantCount} member${participantCount === 1 ? "" : "s"} inside`}
-          </span>
         </div>
 
-        {!isCurrentChannelActive ? (
-          <button
-            type="button"
-            className="voice-channel-join-btn"
-            onClick={handleJoin}
-            aria-label="Join voice channel"
-          >
-            <Volume2 size={18} aria-hidden="true" />
-            <span>Join Voice</span>
-          </button>
+        <div className="voice-room-header-actions">
+          <span className="voice-room-member-count-badge">
+            <Users size={15} aria-hidden="true" />
+            <span>{chatMembers.length} members</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Main Stage / Participant Grid */}
+      <div className="voice-room-stage">
+        {displayParticipants.length > 0 ? (
+          <div className="voice-room-grid">
+            {displayParticipants.map((p) => {
+              const info = resolveMemberInfo(p.userId);
+              const isSpeaking = !info.isSelf && isPeerSpeaking;
+              const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
+
+              return (
+                <div
+                  key={p.userId}
+                  className={`voice-participant-card${isSpeaking ? " is-speaking" : ""}${info.isSelf ? " is-self" : ""}`}
+                >
+                  <div className="voice-participant-avatar-wrapper">
+                    <RealAvatar
+                      accessToken={accessToken}
+                      className="voice-participant-avatar"
+                      file={info.profilePhoto}
+                      label={info.displayName}
+                    />
+                    {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
+                    {isMuted && (
+                      <span className="voice-card-muted-badge" title="Microphone muted">
+                        <MicOff size={14} aria-hidden="true" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="voice-participant-meta">
+                    <span className="voice-participant-name">{info.displayName}</span>
+                    <span className="voice-participant-state">
+                      {p.state === "connecting"
+                        ? "Connecting…"
+                        : isSpeaking
+                          ? "Speaking…"
+                          : isMuted
+                            ? "Muted"
+                            : "Connected"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         ) : (
-          <div className="voice-channel-controls">
+          <div className="voice-room-empty-state">
+            <div className="voice-room-empty-art">
+              <Volume2 size={48} aria-hidden="true" />
+            </div>
+            <h3>This Voice Channel is Quiet</h3>
+            <p>No active participants in this channel right now. Jump in and say hello!</p>
+            {!isCurrentChannelActive && (
+              <button
+                type="button"
+                className="voice-room-large-join-btn"
+                onClick={handleJoin}
+              >
+                <Volume2 size={20} aria-hidden="true" />
+                <span>Join Voice Channel</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Floating/Docked Control Bar */}
+      <div className="voice-room-bottom-bar">
+        {!isCurrentChannelActive ? (
+          <div className="voice-room-prejoin-controls">
             <button
               type="button"
-              className={`voice-stage-control-btn${callAudioSettings.micMuted ? " is-off" : ""}`}
+              className="voice-room-primary-join-btn"
+              onClick={handleJoin}
+              disabled={isConnecting}
+            >
+              <Volume2 size={20} aria-hidden="true" />
+              <span>{isConnecting ? "Connecting…" : "Join Voice Channel"}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="voice-room-in-call-controls" role="toolbar" aria-label="Voice Channel Controls">
+            <button
+              type="button"
+              className={`voice-dock-btn${callAudioSettings.micMuted ? " is-muted" : " is-active"}`}
               onClick={handleToggleMic}
-              title={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"}
-              aria-label={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"}
+              title={callAudioSettings.micMuted ? "Unmute Microphone" : "Mute Microphone"}
+              aria-label={callAudioSettings.micMuted ? "Unmute Microphone" : "Mute Microphone"}
             >
-              {callAudioSettings.micMuted ? <MicOff size={18} /> : <Mic size={18} />}
+              {callAudioSettings.micMuted ? <MicOff size={20} /> : <Mic size={20} />}
+              <span>{callAudioSettings.micMuted ? "Unmute" : "Mute"}</span>
             </button>
+
             <button
               type="button"
-              className={`voice-stage-control-btn${!callAudioSettings.cameraEnabled ? " is-off" : ""}`}
+              className={`voice-dock-btn${callAudioSettings.cameraEnabled ? " is-active" : ""}`}
               onClick={handleToggleVideo}
-              title={callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
-              aria-label={callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
+              title={callAudioSettings.cameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
+              aria-label={callAudioSettings.cameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
             >
-              {callAudioSettings.cameraEnabled ? <Video size={18} /> : <VideoOff size={18} />}
+              {callAudioSettings.cameraEnabled ? <Video size={20} /> : <VideoOff size={20} />}
+              <span>{callAudioSettings.cameraEnabled ? "Camera On" : "Camera"}</span>
             </button>
+
             <button
               type="button"
-              className={`voice-stage-control-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
+              className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
               onClick={handleToggleScreenShare}
-              title="Share screen"
-              aria-label="Share screen"
+              title={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
+              aria-label={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
             >
-              <Monitor size={18} />
+              <Monitor size={20} />
+              <span>Share</span>
             </button>
+
             <button
               type="button"
-              className="voice-stage-control-btn voice-stage-control-btn--leave"
-              onClick={handleLeave}
-              title="Leave voice channel"
-              aria-label="Leave voice channel"
+              className="voice-dock-btn"
+              onClick={() => setIsCallSettingsMenuOpen((open) => !open)}
+              title="Audio / Device Settings"
+              aria-label="Audio / Device Settings"
             >
-              <PhoneOff size={18} />
+              <Settings size={20} />
+              <span>Settings</span>
+            </button>
+
+            <button
+              type="button"
+              className="voice-dock-btn voice-dock-btn--disconnect"
+              onClick={handleLeave}
+              title="Disconnect from Voice Channel"
+              aria-label="Disconnect from Voice Channel"
+            >
+              <PhoneOff size={20} />
               <span>Leave</span>
             </button>
           </div>
         )}
       </div>
-
-      {participantCount > 0 && (
-        <div className="voice-channel-participants-strip">
-          {activeParticipants.map((p) => {
-            const member = members.find((m) => m.id === p.userId);
-            const isLocal = p.userId === currentUser?.id;
-            const displayName = isLocal ? "You" : member?.displayName || "Member";
-            const isSpeaking = !isLocal && isPeerSpeaking;
-
-            return (
-              <div
-                key={p.userId}
-                className={`voice-channel-participant-chip${isSpeaking ? " is-speaking" : ""}`}
-                title={displayName}
-              >
-                <RealAvatar
-                  accessToken={accessToken}
-                  className="avatar chat-avatar"
-                  file={member?.profilePhoto ?? null}
-                  label={displayName}
-                />
-                <span className="voice-participant-name">{displayName}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { NavLink } from "react-router-dom";
 import { CalendarDays, Folder, LogOut, MessageCircle, Settings, ShieldCheck } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { useReducedMotion } from "../hooks/useReducedMotion";
+import { useStrings } from "../i18n/LanguageContext";
+
 
 export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: number }) {
   const { authRequest, currentUser, logout } = useAuth();
@@ -36,41 +38,44 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
     };
   }, [authRequest, currentUser, unreadTotalOverride]);
 
+  const strings = useStrings();
+
   return (
-    <nav className="app-nav app-nav--active-variant-a" aria-label="Application navigation">
+    <nav className="app-nav app-nav--active-variant-a" aria-label={strings.nav.ariaLabel}>
       <div className="app-nav-links">
-        <NavLink to={`${prefix}/app/chats`} title="Chats" aria-label="Chats">
+        <NavLink to={`${prefix}/app/chats`} title={strings.nav.chats} aria-label={strings.nav.chats}>
           <MessageCircle aria-hidden={true} />
-          <span>Chats</span>
+          <span>{strings.nav.chats}</span>
           {unreadTotal > 0 && (
-            <small className="nav-badge" aria-label={`${unreadTotal} unread messages`}>
+            <small className="nav-badge" aria-label={strings.nav.unreadMessages(unreadTotal)}>
               {unreadTotal > 99 ? "99+" : unreadTotal}
             </small>
           )}
         </NavLink>
-        <NavLink to={`${prefix}/app/files`} title="Storage" aria-label="Storage">
+        <NavLink to={`${prefix}/app/files`} title={strings.nav.storage} aria-label={strings.nav.storage}>
           <Folder aria-hidden={true} />
-          <span>Storage</span>
+          <span>{strings.nav.storage}</span>
         </NavLink>
-        <NavLink to={`${prefix}/app/plans`} title="Plans" aria-label="Plans">
+        <NavLink to={`${prefix}/app/plans`} title={strings.nav.plans} aria-label={strings.nav.plans}>
           <CalendarDays aria-hidden={true} />
-          <span>Plans</span>
+          <span>{strings.nav.plans}</span>
         </NavLink>
-        <NavLink to={`${prefix}/app/settings`} title="Settings" aria-label="Settings">
+        <NavLink to={`${prefix}/app/settings`} title={strings.nav.settings} aria-label={strings.nav.settings}>
           <Settings aria-hidden={true} />
-          <span>Settings</span>
+          <span>{strings.nav.settings}</span>
         </NavLink>
         {canViewAdmin && (
-          <NavLink to={`${prefix}/app/admin`} title="Admin" aria-label="Admin">
+          <NavLink to={`${prefix}/app/admin`} title={strings.nav.admin} aria-label={strings.nav.admin}>
             <ShieldCheck aria-hidden={true} />
-            <span>Admin</span>
+            <span>{strings.nav.admin}</span>
           </NavLink>
         )}
       </div>
-      <button className="app-nav-logout" type="button" aria-label="Log out" title="Log out" onClick={logout}>
+      <button className="app-nav-logout" type="button" aria-label={strings.nav.logOut} title={strings.nav.logOut} onClick={logout}>
         <LogOut aria-hidden={true} size={20} />
-        <span>Log out</span>
+        <span>{strings.nav.logOut}</span>
       </button>
     </nav>
   );
 }
+

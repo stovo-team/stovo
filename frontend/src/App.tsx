@@ -9,7 +9,9 @@ import {
   ensureFullScreenIntentPermission
 } from "./api/notifications";
 import { AppearanceProvider } from "./appearance/AppearanceContext";
+import { LanguageProvider } from "./i18n/LanguageContext";
 import WallpaperCustomImageBridge from "./appearance/WallpaperCustomImageBridge";
+
 import AppLockGate from "./AppLockGate";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { useReducedMotion } from "./hooks/useReducedMotion";
@@ -412,23 +414,26 @@ function App() {
 
   return (
     <BrowserRouter>
-      <AppearanceProvider>
-        <AuthProvider>
-          <WallpaperCustomImageBridge />
-          <NotificationsBootstrapper />
-          <AndroidBackOrchestrator />
-          <NativeAppLinkRouter />
-          <NativeShareRouter />
-          <AppLockGate />
-          <Routes>
-            <Route path="/multi-admin" element={<MultiAdminPage />} />
-            <Route path="/s/:slug/*" element={<ClusterRoutes />} />
-            <Route path="/*" element={<ClusterRoutes />} />
-          </Routes>
-        </AuthProvider>
-      </AppearanceProvider>
+      <LanguageProvider>
+        <AppearanceProvider>
+          <AuthProvider>
+            <WallpaperCustomImageBridge />
+            <NotificationsBootstrapper />
+            <AndroidBackOrchestrator />
+            <NativeAppLinkRouter />
+            <NativeShareRouter />
+            <AppLockGate />
+            <Routes>
+              <Route path="/multi-admin" element={<MultiAdminPage />} />
+              <Route path="/s/:slug/*" element={<ClusterRoutes />} />
+              <Route path="/*" element={<ClusterRoutes />} />
+            </Routes>
+          </AuthProvider>
+        </AppearanceProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
+
 }
 
 export default App;

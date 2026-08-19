@@ -648,26 +648,30 @@ export function Composer({
         </div>
       )}
       </form>
-      <ScheduleMessageModal
-        isOpen={isScheduleModalOpen}
-        messageText={composer}
-        attachments={pendingAttachments}
-        onClose={() => setIsScheduleModalOpen(false)}
-        onConfirmSchedule={(scheduledDate) => {
-          setIsScheduleModalOpen(false);
-          void onScheduleMessage?.(scheduledDate);
-        }}
-      />
-      <ReminderModal
-        isOpen={isReminderModalOpen}
-        messageText={composer}
-        attachments={pendingAttachments}
-        onClose={() => setIsReminderModalOpen(false)}
-        onConfirmReminder={(rule) => {
-          setIsReminderModalOpen(false);
-          void onSetReminder?.(rule);
-        }}
-      />
+      {isScheduleModalOpen && (
+        <ScheduleMessageModal
+          isOpen={isScheduleModalOpen}
+          messageText={composer}
+          attachments={pendingAttachments}
+          onClose={() => setIsScheduleModalOpen(false)}
+          onConfirmSchedule={(scheduledDate) => {
+            setIsScheduleModalOpen(false);
+            void onScheduleMessage?.(scheduledDate);
+          }}
+        />
+      )}
+      {isReminderModalOpen && (
+        <ReminderModal
+          isOpen={isReminderModalOpen}
+          messageText={composer}
+          attachments={pendingAttachments}
+          onClose={() => setIsReminderModalOpen(false)}
+          onConfirmReminder={(rule) => {
+            setIsReminderModalOpen(false);
+            void onSetReminder?.(rule);
+          }}
+        />
+      )}
     </>
   );
 }

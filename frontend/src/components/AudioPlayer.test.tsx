@@ -550,6 +550,49 @@ describe("AudioPlayer", () => {
 
     expect(mockTranscribeFile).not.toHaveBeenCalled();
   });
+
+  it("allows seeking on the duration slider when idle to begin playback at that position", async () => {
+    setCachedAudioDuration("file-1", 60);
+    const { container } = renderPlayer({
+      resolveDurationUrl: async () => "blob:audio-file",
+    });
+    await settle();
+
+    const seekEl = container.querySelector<HTMLDivElement>('[data-control="seek"]');
+    expect(seekEl).not.toBeNull();
+
+    // Mock getBoundingClientRect
+    Object.defineProperty(seekEl, "getBoundingClientRect", {
+      value: () => ({ left: 0, width: 100, top: 0, height: 20, right: 100, bottom: 20, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+
+    // Pointer down at 50% (30s)
+    act(() => {
+      seekEl?.dispatchEvent(new PointerEvent("pointerdown", {
+        bubbles: true,
+        clientX: 50,
+        pointerId: 1,
+      }));
+    });
+
+    // Pointer up commits seek
+    act(() => {
+      seekEl?.dispatchEvent(new PointerEvent("pointerup", {
+        bubbles: true,
+        clientX: 50,
+        pointerId: 1,
+      }));
+    });
+    await settle();
+
+    expect(backend.load).toHaveBeenCalledWith(
+      expect.objectContaining({ identity: expect.objectContaining({ fileId: "file-1" }) }),
+      expect.anything(),
+      30
+    );
+  });
 });
+
+
 
 

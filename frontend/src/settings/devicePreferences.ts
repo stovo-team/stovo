@@ -1,3 +1,5 @@
+import type { LanguageChoice } from "../config/strings";
+
 export interface DevicePreferences {
   messageNotifications: boolean;
   messagePreview: boolean;
@@ -8,6 +10,7 @@ export interface DevicePreferences {
   quietHoursStart: string;
   quietHoursEnd: string;
   appLockEnabled: boolean;
+  language: LanguageChoice;
 }
 
 export const DEVICE_PREFERENCES_STORAGE_KEY = "familyMessenger.devicePreferences";
@@ -21,11 +24,16 @@ export const DEFAULT_DEVICE_PREFERENCES: DevicePreferences = {
   quietHoursEnabled: false,
   quietHoursStart: "22:00",
   quietHoursEnd: "07:00",
-  appLockEnabled: false
+  appLockEnabled: false,
+  language: "system"
 };
 
 function isTime(value: unknown): value is string {
   return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function isLanguageChoice(value: unknown): value is LanguageChoice {
+  return value === "system" || value === "en" || value === "ru";
 }
 
 export function readDevicePreferences(): DevicePreferences {
@@ -41,7 +49,8 @@ export function readDevicePreferences(): DevicePreferences {
       quietHoursEnabled: stored.quietHoursEnabled === true,
       quietHoursStart: isTime(stored.quietHoursStart) ? stored.quietHoursStart : DEFAULT_DEVICE_PREFERENCES.quietHoursStart,
       quietHoursEnd: isTime(stored.quietHoursEnd) ? stored.quietHoursEnd : DEFAULT_DEVICE_PREFERENCES.quietHoursEnd,
-      appLockEnabled: stored.appLockEnabled === true
+      appLockEnabled: stored.appLockEnabled === true,
+      language: isLanguageChoice(stored.language) ? stored.language : DEFAULT_DEVICE_PREFERENCES.language
     };
   } catch {
     return DEFAULT_DEVICE_PREFERENCES;
