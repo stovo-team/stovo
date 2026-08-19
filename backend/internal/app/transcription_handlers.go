@@ -107,13 +107,14 @@ type audioChunkRow struct {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func (s *Server) getGroqAPIKey() string {
-	if strings.TrimSpace(s.cfg.GroqAPIKey) != "" {
-		return strings.TrimSpace(s.cfg.GroqAPIKey)
-	}
-	key := config.GetOrReloadEnv("GROQ_API_KEY")
-	if key != "" {
-		s.cfg.GroqAPIKey = key
+	key := strings.TrimSpace(s.cfg.GroqAPIKey)
+	if key != "" && !config.IsPlaceholderKey(key) {
 		return key
+	}
+	reloaded := config.GetOrReloadEnv("GROQ_API_KEY")
+	if reloaded != "" && !config.IsPlaceholderKey(reloaded) {
+		s.cfg.GroqAPIKey = reloaded
+		return reloaded
 	}
 	return ""
 }

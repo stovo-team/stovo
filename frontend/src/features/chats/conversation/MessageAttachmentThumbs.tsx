@@ -87,13 +87,15 @@ export function AttachmentCard({
   videoAutoplay?: boolean;
 }) {
   const isImage = isImageAttachment(file);
-  const isVideo = file.mimeType.startsWith("video/");
-  const isAudio = file.mimeType.startsWith("audio/");
+  const isVideo = Boolean(file?.mimeType?.startsWith("video/"));
+  const isAudio = Boolean(file?.mimeType?.startsWith("audio/"));
   const documentKind = detectDocumentPreviewKind(file);
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
   const resolveAudioDurationUrl = useCallback(async () => {
+    if (!file?.id) return null;
     const cached = peekCachedObjectUrl(file.id);
     if (cached) return cached;
+    if (file.id.startsWith("local:")) return null;
     if (!accessToken?.trim()) return null;
     try {
       await downloadFileBlob(accessToken, file.id);
@@ -101,13 +103,13 @@ export function AttachmentCard({
     } catch {
       return null;
     }
-  }, [accessToken, file.id]);
+  }, [accessToken, file?.id]);
 
   if (isAudio) {
     const descriptor: AudioDescriptor = {
-      identity: { chatId, messageId, fileId: file.id },
-      title: file.originalName,
-      mimeType: file.mimeType
+      identity: { chatId: chatId || "", messageId: messageId || "", fileId: file.id || "" },
+      title: file.originalName || "Audio message",
+      mimeType: file.mimeType || "audio/mpeg"
     };
     return (
       <AudioPlayer
@@ -116,7 +118,7 @@ export function AttachmentCard({
         disabledReason={disabledReason}
         onBeforePlay={onBeforeAudioPlay}
         resolveDurationUrl={resolveAudioDurationUrl}
-        hideTitle={file.originalName.startsWith("voice-")}
+        hideTitle={Boolean(file.originalName?.startsWith("voice-"))}
         accessToken={accessToken}
       />
     );

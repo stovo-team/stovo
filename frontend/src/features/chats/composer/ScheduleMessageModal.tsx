@@ -175,20 +175,20 @@ export function ScheduleMessageModal({
           {!isValidFuture && (
             <p className="schedule-error-hint">Please choose a future date and time.</p>
           )}
+        </div>
 
-          <div className="modal-card-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={!isValidFuture}
-              onClick={handleConfirm}
-            >
-              Schedule Message
-            </button>
-          </div>
+        <div className="modal-card-footer modal-card-actions">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={!isValidFuture}
+            onClick={handleConfirm}
+          >
+            Schedule Message
+          </button>
         </div>
       </div>
     </div>
