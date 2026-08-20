@@ -4,11 +4,13 @@ import {
   chatInfoControlVisibility,
   chatListLayoutClass,
   chatPreview,
+  displayChatName,
   shouldShowChatRowMeta,
   compactChatListLeadingVisual,
   sharedContentItemMatchesTab,
   computeSharedContentItems
 } from "./chatPresentation";
+import { englishStrings, russianStrings } from "../../../config/strings";
 import {
   androidAppStatePayload,
   callTerminationEvent
@@ -56,6 +58,13 @@ describe("chat presentation helpers", () => {
 
   it("does not add a direct-message subtitle to Message Archive", () => {
     expect(chatPreview({ type: "archive" } as any)).toBe("");
+  });
+
+  it("localizes the name (title) of the Message Archive", () => {
+    const archiveChat = { type: "archive", members: [] } as any;
+    expect(displayChatName(archiveChat, "user1")).toBe("Message Archive");
+    expect(displayChatName(archiveChat, "user1", englishStrings)).toBe("Message Archive");
+    expect(displayChatName(archiveChat, "user1", russianStrings)).toBe("Архив сообщений");
   });
 
   it("removes the unused metadata container from Message Archive", () => {

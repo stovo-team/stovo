@@ -627,6 +627,10 @@ export function useCallSession({
 
   async function startDirectCall(type: "audio" | "video", inviteUserIds?: string[]) {
     console.log("[CALL] startDirectCall: entered type=", type, "callPhase=", callPhaseRef.current, "chatId=", selectedChat?.id, "socketConnected=", socketRef.current?.connected);
+    if (callPhaseRef.current !== "idle") {
+      console.warn("[CALL] startDirectCall: cannot start call while another call is active (callPhase=", callPhaseRef.current, ")");
+      return;
+    }
     const canCall =
       selectedChat &&
       currentUser &&

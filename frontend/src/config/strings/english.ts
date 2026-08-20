@@ -583,7 +583,19 @@ export const strings = {
     seenBy: "Seen by",
     noReaders: "No readers yet",
   },
-} as const;
+
+  // ── Call History ─────────────────────────────────────────────────────
+  callHistory: {
+    completed: (duration: string) => `Call completed · ${duration}`,
+    completedLabel: "Call completed",
+    missed: "Missed call",
+    declined: "Call declined",
+    canceled: "Call canceled",
+    failed: "Call failed",
+    videoCall: "Video call",
+    audioCall: "Audio call",
+  },
+};
 
 
 

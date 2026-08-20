@@ -1,5 +1,6 @@
 import { Archive, BellOff, Hash, LockKeyhole, Pin, Star, Volume2 } from "lucide-react";
 
+import { useStrings } from "../../../i18n/LanguageContext";
 import { Chat } from "../../../api/chats";
 import {
   chatAvatarFallbackKind,
@@ -36,8 +37,9 @@ export function ChatListItem({
   onSelect,
   onOpen
 }: ChatListItemProps) {
-  const chatName = displayChatName(chat, currentUserId);
-  const preview = chatPreview(chat);
+  const strings = useStrings();
+  const chatName = displayChatName(chat, currentUserId, strings);
+  const preview = chatPreview(chat, strings);
   const hasUnread = chat.unreadCount > 0;
   const compactLeadingVisual = compactChatListLeadingVisual(chat.type);
   const chatListLeadingVisual = minimizedChatLayout || chat.type === "archive"
