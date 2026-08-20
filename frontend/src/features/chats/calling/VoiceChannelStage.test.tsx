@@ -198,6 +198,7 @@ describe("VoiceChannelStage", () => {
       callPhase: "in-call",
       activeCallChatId: "voice-chat-1",
       callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callAudioCapabilities: { canShareScreen: true },
       applyCallAudioPatch: mockApplyCallAudioPatch,
       toggleScreenShare: vi.fn(),
       endActiveCall: mockEndActiveCall,

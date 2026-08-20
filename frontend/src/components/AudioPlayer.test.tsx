@@ -468,7 +468,7 @@ describe("AudioPlayer", () => {
     const { container } = renderPlayer({ accessToken: "token-123" });
     const transcribeBtn = container.querySelector<HTMLButtonElement>(".audio-player-transcribe-btn");
     expect(transcribeBtn).not.toBeNull();
-    expect(transcribeBtn?.textContent).toContain("Transcribe");
+    expect(transcribeBtn?.getAttribute("aria-label")).toBe("Transcribe voice message");
 
     // Click transcribe button
     act(() => transcribeBtn?.click());
@@ -482,8 +482,8 @@ describe("AudioPlayer", () => {
     expect(container.querySelector('[data-control="transcript-text"]')?.textContent)
       .toBe("Transcribed voice message text");
 
-    // Button text updates to "Hide Text"
-    expect(container.querySelector(".audio-player-transcribe-btn")?.textContent).toContain("Hide Text");
+    // Button aria-label updates to "Hide transcript"
+    expect(container.querySelector(".audio-player-transcribe-btn")?.getAttribute("aria-label")).toBe("Hide transcript");
 
     // Toggle dropdown shrink
     const toggleBtn = container.querySelector<HTMLButtonElement>(".audio-player-transcript-toggle");
@@ -493,7 +493,7 @@ describe("AudioPlayer", () => {
 
     // Transcript content is collapsed
     expect(container.querySelector('[data-control="transcript-text"]')).toBeNull();
-    expect(container.querySelector(".audio-player-transcribe-btn")?.textContent).toContain("Show Text");
+    expect(container.querySelector(".audio-player-transcribe-btn")?.getAttribute("aria-label")).toBe("Show transcript");
 
     // Toggle dropdown expand again
     act(() => toggleBtn?.click());

@@ -126,6 +126,8 @@ export const strings = {
     changeServerAddress: "Сменить адрес сервера",
     tapToPersonalize: "Нажмите для персонализации",
 
+    openSectionAria: (section: string) => `Открыть раздел «${section}»`,
+
     // profile card
     familyMember: "Член семьи",
     openProfileSettings: "Открыть настройки профиля",
@@ -195,6 +197,55 @@ export const strings = {
     chatBackground: "Фон чата",
     messageStyle: "Стиль сообщений",
     chatMedia: "Медиа в чате",
+
+    // theme options
+    themes: {
+      system: "Системная",
+      light: "Светлая",
+      dark: "Тёмная",
+      amoled: "AMOLED",
+    },
+
+    // accent options
+    accents: {
+      blue: "Синий",
+      green: "Зелёный",
+      purple: "Фиолетовый",
+      rose: "Розовый",
+      amber: "Янтарный",
+      custom: "Свой",
+    },
+
+    // wallpaper options
+    wallpapers: {
+      dots: "Точки",
+      paper: "Бумага",
+      aurora: "Аврора",
+      plain: "Простой",
+      custom: "Свой",
+    },
+
+    // bubble shape options
+    bubbleShapes: {
+      rounded: "Закругленный",
+      soft: "Мягкий",
+      square: "Прямой",
+    },
+
+    // message font options
+    messageFonts: {
+      system: "Системный",
+      sans: "Без засечек",
+      serif: "С засечками",
+      rounded: "Скругленный",
+      mono: "Моноширинный",
+    },
+
+    // density options
+    densities: {
+      comfortable: "Комфортная",
+      compact: "Компактная",
+    },
 
     // wallpaper
     photo: "Фото",

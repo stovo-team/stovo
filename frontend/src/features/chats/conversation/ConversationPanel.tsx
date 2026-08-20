@@ -25,6 +25,7 @@ export type ConversationPanelProps = {
   selectedChat: Chat | null;
   activeChatId?: string;
   chats: Chat[];
+  members?: User[];
   memberLookup: Map<string, { displayName: string; username?: string }>;
   isChatLoading: boolean;
   typingNames: string[];
@@ -63,6 +64,7 @@ export function ConversationPanel({
   selectedChat,
   activeChatId,
   chats,
+  members,
   memberLookup,
   isChatLoading,
   typingNames,
@@ -360,7 +362,7 @@ export function ConversationPanel({
           <VoiceChannelStage
             chat={selectedChat}
             session={callSession}
-            members={selectedChat.members as unknown as User[]}
+            members={members ?? (selectedChat.members as unknown as User[])}
             currentUser={currentUser}
             accessToken={accessToken}
           />

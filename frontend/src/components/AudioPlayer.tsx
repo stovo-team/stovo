@@ -494,6 +494,37 @@ export function AudioPlayer({
       onPointerDown={stopInteraction}
       onKeyDown={stopActivationPropagation}
     >
+      {accessToken && (
+        <button
+          type="button"
+          className={`audio-player-transcribe-btn${isTranscribing ? " is-loading" : ""}${transcript ? " has-transcript" : ""}`}
+          aria-label={
+            transcript
+              ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
+              : "Transcribe voice message"
+          }
+          title={
+            transcript
+              ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
+              : "Transcribe voice message"
+          }
+          disabled={isTranscribing}
+          onClick={(e) => {
+            stopInteraction(e);
+            if (transcript) {
+              setIsTranscriptExpanded((prev) => !prev);
+            } else {
+              void handleTranscribe();
+            }
+          }}
+        >
+          {isTranscribing ? (
+            <Loader2 size={12} className="audio-player-spin" aria-hidden="true" />
+          ) : (
+            <FileText size={12} aria-hidden="true" />
+          )}
+        </button>
+      )}
       <div className="audio-player-controls">
         <button
           type="button"
@@ -545,44 +576,6 @@ export function AudioPlayer({
               <span className="audio-player-title" title={descriptor.title}>
                 {descriptor.title}
               </span>
-            )}
-            {accessToken && (
-              <button
-                type="button"
-                className={`audio-player-transcribe-btn${isTranscribing ? " is-loading" : ""}${transcript ? " has-transcript" : ""}`}
-                aria-label={
-                  transcript
-                    ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
-                    : "Transcribe voice message"
-                }
-                title={
-                  transcript
-                    ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
-                    : "Transcribe voice message"
-                }
-                disabled={isTranscribing}
-                onClick={(e) => {
-                  stopInteraction(e);
-                  if (transcript) {
-                    setIsTranscriptExpanded((prev) => !prev);
-                  } else {
-                    void handleTranscribe();
-                  }
-                }}
-              >
-                {isTranscribing ? (
-                  <Loader2 size={12} className="audio-player-spin" aria-hidden="true" />
-                ) : (
-                  <FileText size={12} aria-hidden="true" />
-                )}
-                <span>
-                  {isTranscribing
-                    ? "Transcribing..."
-                    : transcript
-                      ? (isTranscriptExpanded ? "Hide Text" : "Show Text")
-                      : "Transcribe"}
-                </span>
-              </button>
             )}
           </div>
         </div>
