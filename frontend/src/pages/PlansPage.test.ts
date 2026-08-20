@@ -41,4 +41,49 @@ describe("PlansPage week range logic", () => {
     expect(source).toContain('window.addEventListener("focus", handleVisibility)');
     expect(source).toContain("loading && plans.length === 0");
   });
+
+  it("defines 4-hour step intervals for the today timeline", async () => {
+    const { TODAY_TIME_SLOTS, formatSlotTime } = await import("./PlansPage");
+    expect(TODAY_TIME_SLOTS).toEqual([0, 4, 8, 12, 16, 20]);
+    expect(typeof formatSlotTime(0)).toBe("string");
+    expect(typeof formatSlotTime(4)).toBe("string");
+    expect(typeof formatSlotTime(8)).toBe("string");
+    expect(typeof formatSlotTime(12)).toBe("string");
+    expect(typeof formatSlotTime(16)).toBe("string");
+    expect(typeof formatSlotTime(20)).toBe("string");
+  });
+
+  it("renders Google Calendar style timeline with time markers and lines", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(source).toContain('className="plans-timeline"');
+    expect(source).toContain('className="plans-timeline-slot"');
+    expect(source).toContain('className="plans-timeline-time"');
+    expect(source).toContain('className="plans-timeline-content"');
+    expect(source).toContain('className="plans-timeline-line"');
+    expect(source).toContain('className="plans-timeline-events"');
+
+    expect(styles).toContain(".plans-timeline");
+    expect(styles).toContain(".plans-timeline-slot");
+    expect(styles).toContain(".plans-timeline-time");
+    expect(styles).toContain(".plans-timeline-content");
+  });
+
+  it("provides fixed top navigation and scrollable content in storage and plans pages", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const storageSource = readFileSync(resolve(process.cwd(), "src/pages/FilesPage.tsx"), "utf8");
+
+    expect(storageSource).toContain('className="storage-main-header"');
+    expect(storageSource).toContain('className="storage-content-area"');
+
+    expect(styles).toMatch(/\.storage-page\.app-frame\s*\{[^}]*overflow:\s*hidden/);
+    expect(styles).toMatch(/\.plans-page\.app-frame\s*\{[^}]*overflow:\s*hidden/);
+    expect(styles).toMatch(/\.plans-agenda\s*\{[^}]*overflow-y:\s*auto/);
+    expect(styles).toMatch(/\.storage-content-area\s*\{[^}]*overflow-y:\s*auto/);
+  });
 });

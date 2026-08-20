@@ -6,6 +6,7 @@ import {
   Loader2,
   Pause,
   Play,
+  Sparkles,
 } from "lucide-react";
 import {
   useCallback,
@@ -521,7 +522,7 @@ export function AudioPlayer({
           {isTranscribing ? (
             <Loader2 size={12} className="audio-player-spin" aria-hidden="true" />
           ) : (
-            <FileText size={12} aria-hidden="true" />
+            <Sparkles size={12} aria-hidden="true" />
           )}
         </button>
       )}

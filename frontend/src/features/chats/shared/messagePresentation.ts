@@ -1,3 +1,4 @@
+import type { AppStrings } from "../../../config/strings";
 import { callHistoryLabel } from "../../../callHistory";
 import type { Chat, Message } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
@@ -170,9 +171,9 @@ export function emojiSizeClass(content: string | null | undefined): string {
   return "";
 }
 
-export function messagePreviewText(message: Message) {
+export function messagePreviewText(message: Message, strings?: AppStrings) {
   if (message.type === "call" && message.call) {
-    return callHistoryLabel(message.call);
+    return callHistoryLabel(message.call, strings);
   }
   if (message.content?.trim()) {
     return message.content.trim();

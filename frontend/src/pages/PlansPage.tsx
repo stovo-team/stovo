@@ -14,6 +14,13 @@ const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const formatDay = (date: Date) => new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(date);
 const formatTime = (value: string) => new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
 
+export const TODAY_TIME_SLOTS = [0, 4, 8, 12, 16, 20] as const;
+
+export function formatSlotTime(hour: number) {
+  const date = new Date(2000, 0, 1, hour, 0);
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
+}
+
 function toLocalIso(date: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
@@ -240,25 +247,29 @@ export default function PlansPage() {
       <AppNav />
       <section className="plans-layout" aria-busy={loading}>
         <aside className="plans-sidebar">
-          <label className="plans-search">
-            <Search size={17} />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={strings.plans.searchPlaceholder} aria-label={strings.plans.searchPlaceholder} />
-          </label>
-          <div className="plans-tabs">
-            {(["today", "week", "month"] as View[]).map((item) => (
-              <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
-                {item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}
+          <div className="plans-sidebar-header">
+            <label className="plans-search">
+              <Search size={17} />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={strings.plans.searchPlaceholder} aria-label={strings.plans.searchPlaceholder} />
+            </label>
+            <div className="plans-tabs">
+              {(["today", "week", "month"] as View[]).map((item) => (
+                <button key={item} className={view === item ? "active" : ""} onClick={() => setView(item)}>
+                  {item === "week" ? strings.plans.thisWeek : item === "today" ? strings.plans.today : strings.plans.month}
+                </button>
+              ))}
+            </div>
+            <p className="plans-list-label">{view === "today" ? strings.plans.today : strings.plans.upcoming}</p>
+          </div>
+          <div className="plans-sidebar-list">
+            {visiblePlans.map((plan) => (
+              <button className="plans-sidebar-row" key={plan.id} onClick={() => setSelectedDay(dayStart(new Date(plan.startsAt)))}>
+                <time>{new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric" }).format(new Date(plan.startsAt))}</time>
+                <span>{plan.title}</span>
               </button>
             ))}
+            {!loading && visiblePlans.length === 0 && <p className="plans-muted">{strings.plans.noPlansRange}</p>}
           </div>
-          <p className="plans-list-label">{view === "today" ? strings.plans.today : strings.plans.upcoming}</p>
-          {visiblePlans.map((plan) => (
-            <button className="plans-sidebar-row" key={plan.id} onClick={() => setSelectedDay(dayStart(new Date(plan.startsAt)))}>
-              <time>{new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric" }).format(new Date(plan.startsAt))}</time>
-              <span>{plan.title}</span>
-            </button>
-          ))}
-          {!loading && visiblePlans.length === 0 && <p className="plans-muted">{strings.plans.noPlansRange}</p>}
         </aside>
 
         <section className={`plans-content plans-content--${view}`}>
@@ -290,16 +301,124 @@ export default function PlansPage() {
             </div>
           ) : (
             <div className="plans-agenda">
-              <div className="plans-week-strip" aria-label="Week calendar">
-                {weekDays.map((day) => (
-                  <button className={sameDay(day, selectedDay) ? "active" : ""} key={day.toISOString()} onClick={() => setSelectedDay(day)}>
-                    <small>{new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(day)}</small>
-                    {day.getDate()}
-                  </button>
-                ))}
-              </div>
+              {view === "week" && (
+                <div className="plans-week-strip" aria-label="Week calendar">
+                  {weekDays.map((day) => (
+                    <button className={sameDay(day, selectedDay) ? "active" : ""} key={day.toISOString()} onClick={() => setSelectedDay(day)}>
+                      <small>{new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(day)}</small>
+                      {day.getDate()}
+                    </button>
+                  ))}
+                </div>
+              )}
               {loading && plans.length === 0 ? (
                 <p className="plans-empty">{strings.plans.loadingPlans}</p>
+              ) : view === "today" ? (
+                <div className="plans-timeline" role="region" aria-label="Today schedule timeline">
+                  {visiblePlans.filter((plan) => plan.allDay).length > 0 && (
+                    <div className="plans-timeline-slot plans-timeline-slot--allday">
+                      <div className="plans-timeline-time">
+                        <span>{strings.plans.allDay}</span>
+                      </div>
+                      <div className="plans-timeline-content">
+                        <div className="plans-timeline-line" />
+                        <div className="plans-timeline-events">
+                          {visiblePlans
+                            .filter((plan) => plan.allDay)
+                            .map((plan) => {
+                              const myRsvp = plan.attendees?.find((a) => a.userId === currentUser?.id)?.status;
+                              const goingCount = plan.attendees?.filter((entry) => entry.status === "going").length ?? 0;
+                              return (
+                                <article className="plan-row" key={plan.id}>
+                                  <time>{strings.plans.allDay}</time>
+                                  <div>
+                                    <strong>{plan.title}</strong>
+                                    {plan.location && <small>{plan.location}</small>}
+                                    {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
+                                    {plan.sourceChatId && (
+                                      <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>
+                                        {strings.plans.openChat}
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="plan-rsvp">
+                                    <span>{strings.plans.goingCount(goingCount)}</span>
+                                    <button
+                                      className={myRsvp === "going" ? "active" : ""}
+                                      onClick={() => void rsvp(plan, "going")}
+                                    >
+                                      {strings.plans.going}
+                                    </button>
+                                    <button
+                                      className={myRsvp === "maybe" ? "active" : ""}
+                                      onClick={() => void rsvp(plan, "maybe")}
+                                    >
+                                      {strings.plans.maybe}
+                                    </button>
+                                  </div>
+                                </article>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {TODAY_TIME_SLOTS.map((hour) => {
+                    const slotPlans = visiblePlans.filter((plan) => {
+                      if (plan.allDay) return false;
+                      const planHour = new Date(plan.startsAt).getHours();
+                      return planHour >= hour && planHour < hour + 4;
+                    });
+                    return (
+                      <div className="plans-timeline-slot" key={hour}>
+                        <div className="plans-timeline-time">
+                          <time dateTime={`${String(hour).padStart(2, "0")}:00`}>
+                            {formatSlotTime(hour)}
+                          </time>
+                        </div>
+                        <div className="plans-timeline-content">
+                          <div className="plans-timeline-line" />
+                          <div className="plans-timeline-events">
+                            {slotPlans.map((plan) => {
+                              const myRsvp = plan.attendees?.find((a) => a.userId === currentUser?.id)?.status;
+                              const goingCount = plan.attendees?.filter((entry) => entry.status === "going").length ?? 0;
+                              return (
+                                <article className="plan-row" key={plan.id}>
+                                  <time>{formatTime(plan.startsAt)}</time>
+                                  <div>
+                                    <strong>{plan.title}</strong>
+                                    {plan.location && <small>{plan.location}</small>}
+                                    {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
+                                    {plan.sourceChatId && (
+                                      <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>
+                                        {strings.plans.openChat}
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="plan-rsvp">
+                                    <span>{strings.plans.goingCount(goingCount)}</span>
+                                    <button
+                                      className={myRsvp === "going" ? "active" : ""}
+                                      onClick={() => void rsvp(plan, "going")}
+                                    >
+                                      {strings.plans.going}
+                                    </button>
+                                    <button
+                                      className={myRsvp === "maybe" ? "active" : ""}
+                                      onClick={() => void rsvp(plan, "maybe")}
+                                    >
+                                      {strings.plans.maybe}
+                                    </button>
+                                  </div>
+                                </article>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : visiblePlans.length === 0 ? (
                 <p className="plans-today-empty">{loading ? strings.plans.loadingPlans : strings.plans.noPlansYet}</p>
               ) : (

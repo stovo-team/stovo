@@ -202,6 +202,13 @@ export function VoiceChannelStage({
 
   const participantCount = displayParticipants.length;
 
+  const isMobileDevice = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const canShareScreen = !isMobileDevice && (
+    Boolean(callAudioCapabilities?.canShareScreen) ||
+    (typeof navigator !== "undefined" && typeof navigator.mediaDevices?.getDisplayMedia === "function")
+  );
+  const isAnotherCallActive = callPhase !== "idle" && activeCallChatId !== chat.id;
+
   let gridTierClass = "voice-grid--1";
   let avatarTierClass = "voice-avatar--xl";
   let wrapperTierClass = "voice-avatar-wrapper--xl";
@@ -252,7 +259,7 @@ export function VoiceChannelStage({
                       <div className="voice-list-avatar-wrap">
                         <RealAvatar
                           accessToken={accessToken}
-                          className="voice-list-row-avatar"
+                          className="avatar voice-list-row-avatar"
                           file={info.profilePhoto}
                           label={info.displayName}
                         />
@@ -322,7 +329,7 @@ export function VoiceChannelStage({
                       <div className={`voice-participant-avatar-wrapper ${wrapperTierClass}`}>
                         <RealAvatar
                           accessToken={accessToken}
-                          className={`voice-participant-avatar ${avatarTierClass}`}
+                          className={`avatar voice-participant-avatar ${avatarTierClass}`}
                           file={info.profilePhoto}
                           label={info.displayName}
                         />
@@ -379,10 +386,11 @@ export function VoiceChannelStage({
               type="button"
               className="voice-room-primary-join-btn"
               onClick={handleJoin}
-              disabled={isConnecting}
+              disabled={isConnecting || isAnotherCallActive}
+              title={isAnotherCallActive ? "Another call is in progress" : undefined}
             >
               <Volume2 size={20} aria-hidden="true" />
-              <span>{isConnecting ? "Connecting…" : "Join Voice Channel"}</span>
+              <span>{isConnecting ? "Connecting…" : isAnotherCallActive ? "Call in progress" : "Join Voice Channel"}</span>
             </button>
           </div>
         ) : (
@@ -407,8 +415,8 @@ export function VoiceChannelStage({
               {callAudioSettings.cameraEnabled ? <Video size={20} /> : <VideoOff size={20} />}
             </button>
 
-            {/* Screen Share button only shown when supported (e.g. not on Android/mobile where getDisplayMedia is unavailable) */}
-            {callAudioCapabilities?.canShareScreen && (
+            {/* Screen Share button only shown when supported (on desktop / browsers with getDisplayMedia) */}
+            {canShareScreen && (
               <button
                 type="button"
                 className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}

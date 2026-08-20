@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import type { AppStrings } from "../../../config/strings";
 import type { User } from "../../../api/auth";
 import type { Chat, Message, PinnedMessage } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
@@ -40,15 +41,15 @@ export function isSuppressedUserError(message: string | null): boolean {
   return message === "Authentication required";
 }
 
-export function displayChatName(chat: Chat, currentUserId: string | undefined) {
+export function displayChatName(chat: Chat, currentUserId: string | undefined, strings?: AppStrings) {
   if (chat.type === "archive") {
-    return "Message Archive";
+    return strings?.chats.types.messageArchive ?? strings?.chats.sections.archive ?? "Message Archive";
   }
   if (chat.type === "family" || chat.type === "group" || chat.type === "channel" || chat.type === "voice") {
-    return chat.title ?? (chat.type === "voice" ? "Voice Channel" : "General Family Chat");
+    return chat.title ?? (chat.type === "voice" ? (strings?.chats.types.voiceChannel ?? "Voice Channel") : (strings?.chats.types.generalFamilyChat ?? "General Family Chat"));
   }
   const otherMember = chat.members.find((member) => member.id !== currentUserId);
-  return otherMember?.displayName ?? "Direct chat";
+  return otherMember?.displayName ?? (strings?.chats.types.directChat ?? "Direct chat");
 }
 
 export function chatTransitionName(chatId: string, part: "avatar" | "title") {
@@ -161,7 +162,7 @@ export function chatAvatarTypeClass(chat: Chat) {
   return "";
 }
 
-export function chatPreview(chat: Chat) {
+export function chatPreview(chat: Chat, strings?: AppStrings) {
   if (chat.type === "archive") {
     return "";
   }
@@ -174,20 +175,28 @@ export function chatPreview(chat: Chat) {
       (p) => p.state === "connected" || p.state === "in-call"
     ).length;
     if (activeCount > 0) {
-      return `${activeCount} in voice / Voice Channel`;
+      return strings
+        ? strings.chats.types.inVoice(activeCount)
+        : `${activeCount} in voice / Voice Channel`;
     }
     return `${chat.members.length} members / Voice Channel`;
   }
   if (chat.type === "family") {
-    return `${chat.members.length} members / private family room`;
+    return strings
+      ? strings.chats.types.privateFamilyRoom(chat.members.length)
+      : `${chat.members.length} members / private family room`;
   }
   if (chat.type === "channel") {
-    return `${chat.members.length} members / read-only channel`;
+    return strings
+      ? strings.chats.types.readOnlyChannel(chat.members.length)
+      : `${chat.members.length} members / read-only channel`;
   }
   if (chat.type === "group") {
-    return `${chat.members.length} members / group chat`;
+    return strings
+      ? strings.chats.types.groupChatPreview(chat.members.length)
+      : `${chat.members.length} members / group chat`;
   }
-  return "Direct message";
+  return strings?.chats.types.directMessage ?? "Direct message";
 }
 
 export function shouldShowChatRowMeta(chatType: Chat["type"]): boolean {

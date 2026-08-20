@@ -233,8 +233,48 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 	b64 := base64.StdEncoding.EncodeToString(req.AudioData)
 	dataURI := fmt.Sprintf("data:%s;base64,%s", mime, b64)
 
+	format := "wav"
+	if strings.Contains(mime, "mp3") || strings.Contains(mime, "mpeg") {
+		format = "mp3"
+	} else if strings.Contains(mime, "webm") {
+		format = "webm"
+	} else if strings.Contains(mime, "ogg") || strings.Contains(mime, "opus") {
+		format = "ogg"
+	} else if strings.Contains(mime, "m4a") || strings.Contains(mime, "aac") {
+		format = "m4a"
+	}
+
 	chatURL := buildChatCompletionsURL(c.cfg.BaseURL)
-	payload := map[string]any{
+
+	// Schema 1: DashScope Multimodal audio_url schema
+	payload1 := map[string]any{
+		"model": c.cfg.Model,
+		"messages": []map[string]any{
+			{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type": "audio_url",
+						"audio_url": map[string]any{
+							"url": dataURI,
+						},
+					},
+					{
+						"type": "text",
+						"text": "Transcribe the audio speech word-for-word into text without translating.",
+					},
+				},
+			},
+		},
+	}
+
+	resp, err := c.sendChatAudioRequest(ctx, chatURL, payload1)
+	if err == nil {
+		return resp, nil
+	}
+
+	// Schema 2: OpenAI input_audio schema (raw base64 + format)
+	payload2 := map[string]any{
 		"model": c.cfg.Model,
 		"messages": []map[string]any{
 			{
@@ -243,18 +283,28 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 					{
 						"type": "input_audio",
 						"input_audio": map[string]any{
-							"data": dataURI,
+							"data":   b64,
+							"format": format,
 						},
 					},
 					{
 						"type": "text",
-						"text": "Transcribe the audio speech word-for-word without translating or omitting words.",
+						"text": "Transcribe the audio speech word-for-word into text without translating.",
 					},
 				},
 			},
 		},
 	}
 
+	resp2, err2 := c.sendChatAudioRequest(ctx, chatURL, payload2)
+	if err2 == nil {
+		return resp2, nil
+	}
+
+	return nil, err
+}
+
+func (c *GroqSTTClient) sendChatAudioRequest(ctx context.Context, chatURL string, payload any) (*GroqTranscriptionResponse, error) {
 	bodyBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("marshal chat audio request: %w", err)
@@ -279,18 +329,18 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 	}
 
 	if httpResp.StatusCode != http.StatusOK {
-		var apiErr struct {
-			Error struct {
-				Message string `json:"message"`
-				Type    string `json:"type"`
-				Code    string `json:"code"`
-			} `json:"error"`
-			Message string `json:"message"`
-		}
-		_ = json.Unmarshal(respBody, &apiErr)
-		msg := apiErr.Error.Message
-		if msg == "" {
-			msg = apiErr.Message
+		var rawMap map[string]any
+		msg := ""
+		if err := json.Unmarshal(respBody, &rawMap); err == nil {
+			if m, ok := rawMap["message"].(string); ok && m != "" {
+				msg = m
+			} else if e, ok := rawMap["error"].(map[string]any); ok {
+				if m, ok := e["message"].(string); ok && m != "" {
+					msg = m
+				}
+			} else if c, ok := rawMap["code"].(string); ok && c != "" {
+				msg = c
+			}
 		}
 		if msg == "" {
 			msg = string(respBody)

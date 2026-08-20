@@ -93,7 +93,8 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
   const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
   const isVoiceChannel = activeChat?.type === "voice";
   const isGroupCall = activeChat ? activeChat.type === "group" || activeChat.type === "family" : false;
-  const effectiveIsCallMinimized = isCallMinimized && isGroupCall;
+  const shouldRenderCallPopup = callPhase !== "idle" && (!isVoiceChannel || isCallMinimized);
+  const effectiveIsCallMinimized = isCallMinimized;
 
   if (callPhase === "idle" && !preJoinChatId) {
     return null;
@@ -111,7 +112,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
           }}
         />
       )}
-      {callPhase !== "idle" && !isVoiceChannel && (
+      {shouldRenderCallPopup && (
         <>
           {!effectiveIsCallMinimized && !isMobileViewport && (
             <div className="call-popup-backdrop-overlay" aria-hidden="true" />

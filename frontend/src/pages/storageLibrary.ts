@@ -74,6 +74,7 @@ export function buildStorageSources<TFile extends StorageFileLike>(
   currentUserId: string | undefined,
   categoryLabels?: {
     archive?: string;
+    archiveTitle?: string;
     voice?: string;
     family?: string;
     groups?: string;
@@ -94,7 +95,7 @@ export function buildStorageSources<TFile extends StorageFileLike>(
     const label = chat.type === "direct"
       ? otherMember?.displayName ?? "Direct chat"
       : chat.type === "archive"
-        ? "Message Archive"
+        ? categoryLabels?.archiveTitle ?? "Message Archive"
         : chat.title ?? "General Family Chat";
     return {
       chatId: chat.id,

@@ -72,8 +72,31 @@ describe("i18n strings and language resolution", () => {
     expect(ru.nav.unreadMessages(1)).toBe("1 непрочитанное сообщение");
     expect(ru.nav.unreadMessages(2)).toBe("2 непрочитанных сообщения");
     expect(ru.nav.unreadMessages(5)).toBe("5 непрочитанных сообщений");
+    expect(en.nav.unreadMessages(11)).toBe("11 unread messages");
     expect(ru.nav.unreadMessages(11)).toBe("11 непрочитанных сообщений");
     expect(ru.nav.unreadMessages(21)).toBe("21 непрочитанное сообщение");
+
+    expect(en.chats.sections.archive).toBe("Message Archive");
+    expect(ru.chats.sections.archive).toBe("Архив сообщений");
+    expect(en.chats.types.messageArchive).toBe("Message Archive");
+    expect(ru.chats.types.messageArchive).toBe("Архив сообщений");
+
+    expect(en.callHistory.completed("1:23")).toBe("Call completed · 1:23");
+    expect(ru.callHistory.completed("1:23")).toBe("Звонок завершён · 1:23");
+    expect(en.callHistory.completedLabel).toBe("Call completed");
+    expect(ru.callHistory.completedLabel).toBe("Звонок завершён");
+    expect(en.callHistory.declined).toBe("Call declined");
+    expect(ru.callHistory.declined).toBe("Звонок отклонён");
+    expect(en.callHistory.canceled).toBe("Call canceled");
+    expect(ru.callHistory.canceled).toBe("Звонок отменён");
+    expect(en.callHistory.missed).toBe("Missed call");
+    expect(ru.callHistory.missed).toBe("Пропущенный звонок");
+    expect(en.callHistory.failed).toBe("Call failed");
+    expect(ru.callHistory.failed).toBe("Сбой звонка");
+    expect(en.callHistory.videoCall).toBe("Video call");
+    expect(ru.callHistory.videoCall).toBe("Видеозвонок");
+    expect(en.callHistory.audioCall).toBe("Audio call");
+    expect(ru.callHistory.audioCall).toBe("Аудиозвонок");
   });
 
   it("exports valid english and russian string dictionaries with matching keys", () => {
@@ -91,5 +114,6 @@ describe("i18n strings and language resolution", () => {
     expect(Object.keys(russianStrings.notifications)).toEqual(Object.keys(englishStrings.notifications));
     expect(Object.keys(russianStrings.privacy)).toEqual(Object.keys(englishStrings.privacy));
     expect(Object.keys(russianStrings.errors)).toEqual(Object.keys(englishStrings.errors));
+    expect(Object.keys(russianStrings.callHistory)).toEqual(Object.keys(englishStrings.callHistory));
   });
 });
