@@ -14,7 +14,7 @@
     "@capacitor/android": "^8.4.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.0.5",
     "emoji-picker-react": "^4.19.1",
     "livekit-client": "^2.21.0",
     "lucide-react": "^1.16.0",
@@ -26,7 +26,7 @@
     "react-router-dom": "^7.18.2",
     "socket.io-client": "^4.8.1",
     "typescript": "^5.7.2",
-    "vite": "^6.0.7",
+    "vite": "^8.2.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
