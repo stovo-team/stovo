@@ -99,15 +99,21 @@ export default function ChatsPage() {
             onSelectChat={setSelectedChat}
             onOpenChat={openChat}
             mobileCallStrip={
-              callPhase !== "idle" && isCallMinimized && isMobileViewport && !chatId && (selectedChat?.type === "group" || selectedChat?.type === "family") ? (
+              callPhase !== "idle" && isCallMinimized && isMobileViewport && !chatId ? (
                 <MobileMinimizedCallBar
-                  peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
+                  peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
                   callPhase={callPhase}
                   callTimer={callTimer}
                   micMuted={callAudioSettings.micMuted}
                   onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                   onEnd={() => void endActiveCall()}
-                  onExpand={() => setIsCallMinimized(false)}
+                  onExpand={() => {
+                    setIsCallMinimized(false);
+                    if (activeCallChatId) {
+                      const target = chats.find((c) => c.id === activeCallChatId);
+                      if (target) openChat(target);
+                    }
+                  }}
                 />
               ) : undefined
             }

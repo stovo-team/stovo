@@ -22,12 +22,29 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+type NavTabsConfig struct {
+	Chats    bool `json:"chats"`
+	Storage  bool `json:"storage"`
+	Plans    bool `json:"plans"`
+	Settings bool `json:"settings"`
+}
+
+func defaultNavTabs() NavTabsConfig {
+	return NavTabsConfig{
+		Chats:    true,
+		Storage:  true,
+		Plans:    true,
+		Settings: true,
+	}
+}
+
 type ServerRecord struct {
-	ID        int       `json:"id"`
-	Slug      string    `json:"slug"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	Status    string    `json:"status"`
+	ID        int           `json:"id"`
+	Slug      string        `json:"slug"`
+	Name      string        `json:"name"`
+	CreatedAt time.Time     `json:"created_at"`
+	Status    string        `json:"status"`
+	NavTabs   NavTabsConfig `json:"nav_tabs"`
 }
 
 // Helper to write JSON response
@@ -89,10 +106,11 @@ func (o *Orchestrator) masterAuth(next http.Handler) http.Handler {
 // handleCreateServer provisions a new child server and auto-provisions its admin user.
 func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 	type createReq struct {
-		Slug          string `json:"slug"`
-		Name          string `json:"name"`
-		AdminUser     string `json:"admin_user"`
-		AdminPassword string `json:"admin_password"`
+		Slug          string         `json:"slug"`
+		Name          string         `json:"name"`
+		AdminUser     string         `json:"admin_user"`
+		AdminPassword string         `json:"admin_password"`
+		NavTabs       *NavTabsConfig `json:"nav_tabs,omitempty"`
 	}
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
@@ -109,9 +127,15 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		req.AdminPassword = "admin" + uuid.NewString()[:8]
 	}
 
+	navTabs := defaultNavTabs()
+	if req.NavTabs != nil {
+		navTabs = *req.NavTabs
+	}
+	navTabsJSON, _ := json.Marshal(navTabs)
+
 	// Insert server record
 	var id int
-	err := o.masterDB.QueryRow(`INSERT INTO servers (slug, name, status) VALUES ($1, $2, $3) RETURNING id`, req.Slug, req.Name, "created").Scan(&id)
+	err := o.masterDB.QueryRow(`INSERT INTO servers (slug, name, status, nav_tabs) VALUES ($1, $2, $3, $4) RETURNING id`, req.Slug, req.Name, "created", string(navTabsJSON)).Scan(&id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -177,12 +201,13 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		"admin_password": req.AdminPassword,
 		"cluster_url":    fmt.Sprintf("%s://%s/s/%s/login", scheme, host, req.Slug),
 		"invite_url":     inviteURL,
+		"nav_tabs":       navTabs,
 	})
 }
 
 // handleListServers returns all server records.
 func (o *Orchestrator) handleListServers(w http.ResponseWriter, r *http.Request) {
-	rows, err := o.masterDB.Query(`SELECT id, slug, name, created_at, status FROM servers ORDER BY id`)
+	rows, err := o.masterDB.Query(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, '') FROM servers ORDER BY id`)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -191,12 +216,81 @@ func (o *Orchestrator) handleListServers(w http.ResponseWriter, r *http.Request)
 	var list []ServerRecord
 	for rows.Next() {
 		var rec ServerRecord
-		if err := rows.Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status); err != nil {
+		var navTabsStr string
+		rec.NavTabs = defaultNavTabs()
+		if err := rows.Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr); err != nil {
 			continue
+		}
+		if navTabsStr != "" {
+			_ = json.Unmarshal([]byte(navTabsStr), &rec.NavTabs)
 		}
 		list = append(list, rec)
 	}
 	writeJSON(w, http.StatusOK, list)
+}
+
+// handleGetServerSettings returns server configuration including enabled navigation tabs.
+func (o *Orchestrator) handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "id")
+	var rec ServerRecord
+	var navTabsStr string
+	rec.NavTabs = defaultNavTabs()
+	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, '') FROM servers WHERE slug=$1`, slug).
+		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "server not found"})
+		return
+	}
+	if navTabsStr != "" {
+		_ = json.Unmarshal([]byte(navTabsStr), &rec.NavTabs)
+	}
+	writeJSON(w, http.StatusOK, rec)
+}
+
+// handleUpdateServerSettings updates server configuration including navigation tabs.
+func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "id")
+	type updateSettingsReq struct {
+		Name    *string        `json:"name,omitempty"`
+		NavTabs *NavTabsConfig `json:"nav_tabs,omitempty"`
+	}
+	var req updateSettingsReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid payload"})
+		return
+	}
+
+	var rec ServerRecord
+	var navTabsStr string
+	rec.NavTabs = defaultNavTabs()
+	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, '') FROM servers WHERE slug=$1`, slug).
+		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr)
+	if err != nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "server not found"})
+		return
+	}
+	if navTabsStr != "" {
+		_ = json.Unmarshal([]byte(navTabsStr), &rec.NavTabs)
+	}
+
+	if req.Name != nil && strings.TrimSpace(*req.Name) != "" {
+		rec.Name = strings.TrimSpace(*req.Name)
+	}
+	if req.NavTabs != nil {
+		rec.NavTabs = *req.NavTabs
+	}
+
+	navTabsJSON, _ := json.Marshal(rec.NavTabs)
+	_, err = o.masterDB.Exec(`UPDATE servers SET name=$1, nav_tabs=$2 WHERE slug=$3`, rec.Name, string(navTabsJSON), slug)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+
+	// Reconcile/restart backend container with new environment
+	_ = o.startBackendContainer(slug)
+
+	writeJSON(w, http.StatusOK, rec)
 }
 
 // handleDeleteServer tears down a server.
@@ -289,6 +383,18 @@ func parseEnvSlice(env []string) map[string]string {
 	return m
 }
 
+func (o *Orchestrator) getNavTabsForServer(slug string) string {
+	if o.masterDB == nil {
+		return `{"chats":true,"storage":true,"plans":true,"settings":true}`
+	}
+	var navTabsStr string
+	err := o.masterDB.QueryRow(`SELECT COALESCE(nav_tabs::text, '') FROM servers WHERE slug=$1`, slug).Scan(&navTabsStr)
+	if err != nil || navTabsStr == "" {
+		return `{"chats":true,"storage":true,"plans":true,"settings":true}`
+	}
+	return navTabsStr
+}
+
 // startBackendContainer starts a child Go backend container for a server cluster on the shared docker network.
 func (o *Orchestrator) startBackendContainer(slug string) error {
 	ctx := context.Background()
@@ -300,6 +406,9 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 	}
 
 	desiredEnv := backendContainerEnv(slug, func(key, fallback string) string {
+		if key == "NAV_TABS" {
+			return o.getNavTabsForServer(slug)
+		}
 		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
 			return value
 		}
@@ -375,6 +484,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 	serverURL := fmt.Sprintf("%s/s/%s", appURL, slug)
 
 	groqKey := get("GROQ_API_KEY", get("groq_api_key", get("GROQ_KEY", get("GROQ_API_TOKEN", ""))))
+	navTabs := get("NAV_TABS", `{"chats":true,"storage":true,"plans":true,"settings":true}`)
 
 	return []string{
 		fmt.Sprintf("SERVER_ID=%s", slug),
@@ -404,6 +514,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("LIVEKIT_URL=%s", get("LIVEKIT_URL", "")),
 		fmt.Sprintf("LIVEKIT_API_KEY=%s", get("LIVEKIT_API_KEY", "")),
 		fmt.Sprintf("LIVEKIT_API_SECRET=%s", get("LIVEKIT_API_SECRET", "")),
+		fmt.Sprintf("NAV_TABS=%s", navTabs),
 	}
 }
 

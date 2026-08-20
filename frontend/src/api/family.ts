@@ -21,6 +21,12 @@ export interface Family {
   name: string;
   storageLimitMb?: number | null;
   minimizedChatLayout: boolean;
+  navTabs?: {
+    chats?: boolean;
+    storage?: boolean;
+    plans?: boolean;
+    settings?: boolean;
+  };
 }
 
 export interface InvitePreview {

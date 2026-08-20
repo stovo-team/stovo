@@ -2,19 +2,65 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { CalendarDays, Folder, LogOut, MessageCircle, Settings, ShieldCheck } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
+import { Family } from "../api/family";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { useStrings } from "../i18n/LanguageContext";
 
+export interface NavTabsVisibility {
+  chats?: boolean;
+  storage?: boolean;
+  plans?: boolean;
+  settings?: boolean;
+}
 
-export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: number }) {
+export default function AppNav({
+  unreadTotalOverride,
+  navTabsOverride,
+}: {
+  unreadTotalOverride?: number;
+  navTabsOverride?: NavTabsVisibility;
+}) {
   const { authRequest, currentUser, logout } = useAuth();
   const [unreadTotal, setUnreadTotal] = useState(0);
+  const [navTabs, setNavTabs] = useState<NavTabsVisibility>(() => ({
+    chats: true,
+    storage: true,
+    plans: true,
+    settings: true,
+    ...navTabsOverride,
+  }));
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
   const prefersReducedMotion = useReducedMotion();
   const enableViewTransitions = !prefersReducedMotion;
 
   const match = typeof window !== "undefined" ? window.location.pathname.match(/^\/s\/([a-zA-Z0-9_-]+)/) : null;
   const prefix = match ? `/s/${match[1]}` : "";
+
+  useEffect(() => {
+    if (navTabsOverride) {
+      setNavTabs(navTabsOverride);
+      return;
+    }
+    if (!currentUser) {
+      return;
+    }
+    let cancelled = false;
+    authRequest<Family>("/api/family")
+      .then((fam) => {
+        if (!cancelled && fam?.navTabs) {
+          setNavTabs({
+            chats: fam.navTabs.chats ?? true,
+            storage: fam.navTabs.storage ?? true,
+            plans: fam.navTabs.plans ?? true,
+            settings: fam.navTabs.settings ?? true,
+          });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [authRequest, currentUser, navTabsOverride]);
 
   useEffect(() => {
     if (typeof unreadTotalOverride === "number") {
@@ -40,30 +86,43 @@ export default function AppNav({ unreadTotalOverride }: { unreadTotalOverride?: 
 
   const strings = useStrings();
 
+  const showChats = navTabs.chats !== false;
+  const showStorage = navTabs.storage !== false;
+  const showPlans = navTabs.plans !== false;
+  const showSettings = navTabs.settings !== false;
+
   return (
     <nav className="app-nav app-nav--active-variant-a" aria-label={strings.nav.ariaLabel}>
       <div className="app-nav-links">
-        <NavLink to={`${prefix}/app/chats`} title={strings.nav.chats} aria-label={strings.nav.chats}>
-          <MessageCircle aria-hidden={true} />
-          <span>{strings.nav.chats}</span>
-          {unreadTotal > 0 && (
-            <small className="nav-badge" aria-label={strings.nav.unreadMessages(unreadTotal)}>
-              {unreadTotal > 99 ? "99+" : unreadTotal}
-            </small>
-          )}
-        </NavLink>
-        <NavLink to={`${prefix}/app/files`} title={strings.nav.storage} aria-label={strings.nav.storage}>
-          <Folder aria-hidden={true} />
-          <span>{strings.nav.storage}</span>
-        </NavLink>
-        <NavLink to={`${prefix}/app/plans`} title={strings.nav.plans} aria-label={strings.nav.plans}>
-          <CalendarDays aria-hidden={true} />
-          <span>{strings.nav.plans}</span>
-        </NavLink>
-        <NavLink to={`${prefix}/app/settings`} title={strings.nav.settings} aria-label={strings.nav.settings}>
-          <Settings aria-hidden={true} />
-          <span>{strings.nav.settings}</span>
-        </NavLink>
+        {showChats && (
+          <NavLink to={`${prefix}/app/chats`} title={strings.nav.chats} aria-label={strings.nav.chats}>
+            <MessageCircle aria-hidden={true} />
+            <span>{strings.nav.chats}</span>
+            {unreadTotal > 0 && (
+              <small className="nav-badge" aria-label={strings.nav.unreadMessages(unreadTotal)}>
+                {unreadTotal > 99 ? "99+" : unreadTotal}
+              </small>
+            )}
+          </NavLink>
+        )}
+        {showStorage && (
+          <NavLink to={`${prefix}/app/files`} title={strings.nav.storage} aria-label={strings.nav.storage}>
+            <Folder aria-hidden={true} />
+            <span>{strings.nav.storage}</span>
+          </NavLink>
+        )}
+        {showPlans && (
+          <NavLink to={`${prefix}/app/plans`} title={strings.nav.plans} aria-label={strings.nav.plans}>
+            <CalendarDays aria-hidden={true} />
+            <span>{strings.nav.plans}</span>
+          </NavLink>
+        )}
+        {showSettings && (
+          <NavLink to={`${prefix}/app/settings`} title={strings.nav.settings} aria-label={strings.nav.settings}>
+            <Settings aria-hidden={true} />
+            <span>{strings.nav.settings}</span>
+          </NavLink>
+        )}
         {canViewAdmin && (
           <NavLink
             to={`${prefix}/app/admin`}

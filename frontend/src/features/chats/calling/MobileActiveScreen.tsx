@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { FamilyFile } from "../../../api/files";
+import { RealAvatar } from "../sidebar/RealAvatar";
 
 export function MobileActiveScreen({
   peerName,
+  peerProfilePhoto,
+  accessToken,
   callType,
   callPhase,
   isPeerSpeaking,
@@ -25,6 +29,8 @@ export function MobileActiveScreen({
   onEnd,
 }: {
   peerName: string;
+  peerProfilePhoto?: FamilyFile | null;
+  accessToken?: string | null;
   callType: "audio" | "video";
   callPhase: string;
   isPeerSpeaking: boolean;
@@ -32,7 +38,7 @@ export function MobileActiveScreen({
   isMicMuted: boolean;
   isCameraEnabled: boolean;
   isScreenSharing: boolean;
-  canShareScreen: boolean;
+  canShareScreen?: boolean;
   cameraFacingMode: "user" | "environment";
   speakerMode: "small" | "large";
   timer: string;
@@ -238,7 +244,12 @@ export function MobileActiveScreen({
                 <div className="mobile-active-avatar-wrap">
                   <div className={`mobile-active-audio-ring${isAnimating ? "" : " silent"}`} />
                   <div className={`mobile-active-audio-ring${isAnimating ? "" : " silent"}`} />
-                  <div className="mobile-active-avatar">{initial}</div>
+                  <RealAvatar
+                    accessToken={accessToken ?? null}
+                    className="avatar mobile-active-avatar"
+                    file={peerProfilePhoto}
+                    label={peerName}
+                  />
                 </div>
                 <div className="mobile-active-name">{peerName}</div>
                 <div className="mobile-active-time">
@@ -307,33 +318,32 @@ export function MobileActiveScreen({
           </button>
           <span className="mobile-active-ctrl-lbl">{isCameraEnabled ? "Camera" : "Camera off"}</span>
         </div>
-        {canShareScreen && (
-          <div className="mobile-active-ctrl">
-            <button
-              type="button"
-              className={`mobile-active-ctrl-btn${isScreenSharing ? " active" : ""}`}
-              aria-label={isScreenSharing ? "Stop sharing screen" : "Share screen"}
-              onClick={onToggleScreenShare}
-            >
-              <svg viewBox="0 0 24 24">
-                {isScreenSharing ? (
-                  <>
-                    <path d="M13.414 12l3.293 3.293-1.414 1.414L12 13.414l-3.293 3.293-1.414-1.414L10.586 12 7.293 8.707l1.414-1.414L12 10.586l3.293-3.293 1.414 1.414L13.414 12z" />
-                    <path d="M21 3H3a2 2 0 00-2 2v10a2 2 0 002 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H3V5h18v10z" />
-                  </>
-                ) : (
-                  <>
-                    <path d="M21 3H3a2 2 0 00-2 2v10a2 2 0 002 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H3V5h18v10z" />
-                    <path d="M12 7v4M10 9h4" />
-                  </>
-                )}
-              </svg>
-            </button>
-            <span className="mobile-active-ctrl-lbl">
-              {isScreenSharing ? "Stop share" : "Share"}
-            </span>
-          </div>
-        )}
+        {/* Screen Demonstration / Share button */}
+        <div className="mobile-active-ctrl">
+          <button
+            type="button"
+            className={`mobile-active-ctrl-btn${isScreenSharing ? " active" : ""}`}
+            aria-label={isScreenSharing ? "Stop sharing screen" : "Share screen"}
+            onClick={onToggleScreenShare}
+          >
+            <svg viewBox="0 0 24 24">
+              {isScreenSharing ? (
+                <>
+                  <path d="M13.414 12l3.293 3.293-1.414 1.414L12 13.414l-3.293 3.293-1.414-1.414L10.586 12 7.293 8.707l1.414-1.414L12 10.586l3.293-3.293 1.414 1.414L13.414 12z" />
+                  <path d="M21 3H3a2 2 0 00-2 2v10a2 2 0 002 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H3V5h18v10z" />
+                </>
+              ) : (
+                <>
+                  <path d="M21 3H3a2 2 0 00-2 2v10a2 2 0 002 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H3V5h18v10z" />
+                  <path d="M12 7v4M10 9h4" />
+                </>
+              )}
+            </svg>
+          </button>
+          <span className="mobile-active-ctrl-lbl">
+            {isScreenSharing ? "Stop share" : "Share"}
+          </span>
+        </div>
         {/* Flip camera — only during video */}
         {/* End */}
         <div className="mobile-active-ctrl">

@@ -1,16 +1,28 @@
+export interface NavTabsConfig {
+  chats: boolean;
+  storage: boolean;
+  plans: boolean;
+  settings: boolean;
+}
+
 export interface ServerRecord {
   id: number;
   slug: string;
   name: string;
   created_at: string;
   status: string;
+  nav_tabs?: NavTabsConfig;
 }
 
 export interface CreateServerResponse {
   id: number;
   slug: string;
   name: string;
+  admin_user?: string;
+  admin_password?: string;
+  cluster_url?: string;
   invite_url: string;
+  nav_tabs?: NavTabsConfig;
 }
 
 const MASTER_API_URL = import.meta.env.VITE_MASTER_API_URL || "";
@@ -39,14 +51,34 @@ export async function fetchServers(token: string): Promise<ServerRecord[]> {
   return res.json();
 }
 
-export interface CreateServerResponse {
-  id: number;
-  slug: string;
-  name: string;
-  admin_user?: string;
-  admin_password?: string;
-  cluster_url?: string;
-  invite_url: string;
+export async function fetchServerSettings(token: string, slug: string): Promise<ServerRecord> {
+  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}/settings`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch server settings");
+  }
+  return res.json();
+}
+
+export async function updateServerSettings(
+  token: string,
+  slug: string,
+  updates: { name?: string; nav_tabs?: Partial<NavTabsConfig> }
+): Promise<ServerRecord> {
+  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}/settings`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to update server settings");
+  }
+  return res.json();
 }
 
 export async function createServer(
@@ -54,7 +86,8 @@ export async function createServer(
   slug: string,
   name: string,
   adminUser?: string,
-  adminPassword?: string
+  adminPassword?: string,
+  navTabs?: Partial<NavTabsConfig>
 ): Promise<CreateServerResponse> {
   const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers`, {
     method: "POST",
@@ -62,7 +95,13 @@ export async function createServer(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ slug, name, admin_user: adminUser, admin_password: adminPassword }),
+    body: JSON.stringify({
+      slug,
+      name,
+      admin_user: adminUser,
+      admin_password: adminPassword,
+      nav_tabs: navTabs,
+    }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

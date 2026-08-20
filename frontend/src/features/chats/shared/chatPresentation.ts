@@ -61,15 +61,17 @@ export function transitionAnchorStyle(_name?: string): CSSProperties | undefined
 }
 
 export function chatInitials(name: string) {
-  const parts = name.split(" ").filter(Boolean);
+  // Strip parenthesized or bracketed suffixes like "(You)" or "(admin)"
+  const cleaned = name.replace(/\([^)]*\)|\[[^\]]*\]/g, "").trim() || name.trim();
+  const parts = cleaned.split(/\s+/).filter((p) => /[a-zA-Z0-9\u0400-\u04FF]/.test(p));
   if (parts.length >= 2) {
-    return parts
-      .slice(0, 2)
-      .map((part) => part.at(0)?.toUpperCase())
-      .join("");
+    const first = parts[0].match(/[a-zA-Z0-9\u0400-\u04FF]/)?.[0]?.toUpperCase() ?? "";
+    const second = parts[1].match(/[a-zA-Z0-9\u0400-\u04FF]/)?.[0]?.toUpperCase() ?? "";
+    if (first && second) return `${first}${second}`;
   }
-  const compact = parts[0] ?? name;
-  return compact.slice(0, 2).toUpperCase();
+  const compact = parts[0] || cleaned || name;
+  const match = compact.match(/[a-zA-Z0-9\u0400-\u04FF]{1,2}/);
+  return (match ? match[0] : compact.slice(0, 2)).toUpperCase();
 }
 
 export function chatAvatarFallbackKind(chat: Chat): ChatAvatarFallbackKind {

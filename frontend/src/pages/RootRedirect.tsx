@@ -16,9 +16,21 @@ export function shouldOpenMasterConsole(isNative: boolean, clusterPrefix: string
   return !isNative && !clusterPrefix;
 }
 
+export function getDefaultAppPath(
+  prefix: string,
+  navTabs?: { chats?: boolean; storage?: boolean; plans?: boolean; settings?: boolean }
+): string {
+  if (navTabs?.chats !== false) return `${prefix}/app/chats`;
+  if (navTabs?.storage !== false) return `${prefix}/app/files`;
+  if (navTabs?.plans !== false) return `${prefix}/app/plans`;
+  if (navTabs?.settings !== false) return `${prefix}/app/settings`;
+  return `${prefix}/app/admin`;
+}
+
 export default function RootRedirect() {
   const { currentUser, isLoading } = useAuth();
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
+  const [navTabs, setNavTabs] = useState<{ chats?: boolean; storage?: boolean; plans?: boolean; settings?: boolean } | undefined>(undefined);
   const serverConfigured = isServerUrlConfigured();
 
   const prefix = getClusterPrefix();
@@ -28,7 +40,12 @@ export default function RootRedirect() {
       return;
     }
     fetchSetupStatus()
-      .then((status) => setSetupRequired(status.setupRequired))
+      .then((status) => {
+        setSetupRequired(status.setupRequired);
+        if (status.navTabs) {
+          setNavTabs(status.navTabs);
+        }
+      })
       .catch(() => setSetupRequired(false));
   }, [serverConfigured]);
 
@@ -47,7 +64,7 @@ export default function RootRedirect() {
   }
 
   if (currentUser) {
-    return <Navigate to={`${prefix}/app/chats`} replace />;
+    return <Navigate to={getDefaultAppPath(prefix, navTabs)} replace />;
   }
 
   return <Navigate to={setupRequired ? `${prefix}/setup` : `${prefix}/login`} replace />;

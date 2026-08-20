@@ -356,6 +356,7 @@ export function useChatsPageController({
   function closeActiveChat() {
     clearSelectedMessages();
     setIsDetailsOpen(false);
+    if (callSession.callPhase !== "idle") callSession.setIsCallMinimized(true);
     navigateToChatList();
   }
 

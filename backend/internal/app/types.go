@@ -21,14 +21,22 @@ type userPublic struct {
 	Timezone            *string     `json:"timezone"`
 }
 
+type NavTabsConfig struct {
+	Chats    bool `json:"chats"`
+	Storage  bool `json:"storage"`
+	Plans    bool `json:"plans"`
+	Settings bool `json:"settings"`
+}
+
 type familyPublic struct {
-	ID                               string  `json:"id"`
-	Name                             string  `json:"name"`
-	StorageLimitMB                   *int64  `json:"storageLimitMb"`
-	MinimizedChatLayout              bool    `json:"minimizedChatLayout"`
-	DefaultMessageEncryptionProtocol string  `json:"defaultMessageEncryptionProtocol"`
-	PublicAppURL                     *string `json:"-"`
-	PublicAPIURL                     *string `json:"-"`
+	ID                               string        `json:"id"`
+	Name                             string        `json:"name"`
+	StorageLimitMB                   *int64        `json:"storageLimitMb"`
+	MinimizedChatLayout              bool          `json:"minimizedChatLayout"`
+	DefaultMessageEncryptionProtocol string        `json:"defaultMessageEncryptionProtocol"`
+	NavTabs                          NavTabsConfig `json:"navTabs"`
+	PublicAppURL                     *string       `json:"-"`
+	PublicAPIURL                     *string       `json:"-"`
 }
 
 type invitePublic struct {
@@ -94,9 +102,10 @@ type authResponse struct {
 }
 
 type setupStatusResponse struct {
-	SetupRequired bool    `json:"setupRequired"`
-	SetupComplete bool    `json:"setupComplete"`
-	FamilyName    *string `json:"familyName,omitempty"`
+	SetupRequired bool           `json:"setupRequired"`
+	SetupComplete bool           `json:"setupComplete"`
+	FamilyName    *string        `json:"familyName,omitempty"`
+	NavTabs       *NavTabsConfig `json:"navTabs,omitempty"`
 }
 
 type setupRequest struct {

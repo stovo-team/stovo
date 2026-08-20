@@ -7,6 +7,7 @@ import {
   FileText,
   Mic,
   MicOff,
+  Minimize2,
   Monitor,
   MoreVertical,
   PhoneOff,
@@ -17,6 +18,7 @@ import {
   Volume2
 } from "lucide-react";
 
+import { useStrings } from "../../../i18n/LanguageContext";
 import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
@@ -40,6 +42,8 @@ export function VoiceChannelStage({
   currentUser,
   accessToken,
 }: VoiceChannelStageProps) {
+  const strings = useStrings();
+  const voiceStrings = strings.chats.voiceRoom;
   const {
     callPhase,
     callType,
@@ -56,6 +60,7 @@ export function VoiceChannelStage({
     activeGroupCalls,
     setIsCallSettingsMenuOpen,
     setIsCallAudioPopupOpen,
+    setIsCallMinimized,
     callRoomId,
     socketRef,
     localVideoStream,
@@ -164,6 +169,11 @@ export function VoiceChannelStage({
     void endActiveCall();
   };
 
+  const handleShrink = () => {
+    setIsMoreMenuOpen(false);
+    setIsCallMinimized(true);
+  };
+
   const handleOpenSettings = () => {
     setIsMoreMenuOpen(false);
     if (setIsCallAudioPopupOpen) {
@@ -186,27 +196,24 @@ export function VoiceChannelStage({
 
   const resolveMemberInfo = (userId: string) => {
     if (currentUser && userId === currentUser.id) {
+      const foundSelf = chatMembers.find((m) => m.id === currentUser.id) || (members && members.find((m) => m.id === currentUser.id));
       return {
         displayName: currentUser.displayName ? `${currentUser.displayName} (You)` : "You",
-        profilePhoto: currentUser.profilePhoto ?? null,
+        rawDisplayName: currentUser.displayName || "You",
+        profilePhoto: currentUser.profilePhoto ?? foundSelf?.profilePhoto ?? null,
         isSelf: true
       };
     }
     const found = chatMembers.find((m) => m.id === userId) || (members && members.find((m) => m.id === userId));
     return {
       displayName: found?.displayName || "Member",
+      rawDisplayName: found?.displayName || "Member",
       profilePhoto: found?.profilePhoto ?? null,
       isSelf: false
     };
   };
 
   const participantCount = displayParticipants.length;
-
-  const isMobileDevice = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const canShareScreen = !isMobileDevice && (
-    Boolean(callAudioCapabilities?.canShareScreen) ||
-    (typeof navigator !== "undefined" && typeof navigator.mediaDevices?.getDisplayMedia === "function")
-  );
   const isAnotherCallActive = callPhase !== "idle" && activeCallChatId !== chat.id;
 
   let gridTierClass = "voice-grid--1";
@@ -239,7 +246,7 @@ export function VoiceChannelStage({
       <div className="voice-room-stage">
         {participantCount > 0 ? (
           isListMode ? (
-            <div className="voice-room-user-list" aria-label="Users in voice channel" role="list">
+            <div className="voice-room-user-list" aria-label={voiceStrings?.usersInVoice ?? "Users in voice channel"} role="list">
               {displayParticipants.map((p) => {
                 const info = resolveMemberInfo(p.userId);
                 const isSpeaking = !info.isSelf && isPeerSpeaking;
@@ -261,7 +268,7 @@ export function VoiceChannelStage({
                           accessToken={accessToken}
                           className="avatar voice-list-row-avatar"
                           file={info.profilePhoto}
-                          label={info.displayName}
+                          label={info.rawDisplayName}
                         />
                         {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
                       </div>
@@ -270,18 +277,18 @@ export function VoiceChannelStage({
                     </div>
                     <div className="voice-list-row-right">
                       {isMuted && (
-                        <span className="voice-list-muted-badge" title="Microphone muted" aria-label="Microphone muted">
+                        <span className="voice-list-muted-badge" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                           <MicOff size={14} aria-hidden="true" />
                         </span>
                       )}
                       <span className="voice-list-row-state">
                         {p.state === "connecting"
-                          ? "Connecting…"
+                          ? (voiceStrings?.connecting ?? "Connecting…")
                           : isSpeaking
-                            ? "Speaking…"
+                            ? (voiceStrings?.speaking ?? "Speaking…")
                             : isMuted
-                              ? "Muted"
-                              : "Connected"}
+                              ? (voiceStrings?.muted ?? "Muted")
+                              : (voiceStrings?.connected ?? "Connected")}
                       </span>
                     </div>
                   </div>
@@ -289,7 +296,7 @@ export function VoiceChannelStage({
               })}
             </div>
           ) : (
-            <div className={`voice-room-grid ${gridTierClass}`} aria-label="Users in voice channel">
+            <div className={`voice-room-grid ${gridTierClass}`} aria-label={voiceStrings?.usersInVoice ?? "Users in voice channel"}>
               {displayParticipants.map((p) => {
                 const info = resolveMemberInfo(p.userId);
                 const isSpeaking = !info.isSelf && isPeerSpeaking;
@@ -320,7 +327,7 @@ export function VoiceChannelStage({
                         />
                         {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
                         {isMuted && (
-                          <span className="voice-card-muted-badge voice-card-muted-badge--video" title="Microphone muted" aria-label="Microphone muted">
+                          <span className="voice-card-muted-badge voice-card-muted-badge--video" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                             <MicOff size={14} aria-hidden="true" />
                           </span>
                         )}
@@ -331,11 +338,11 @@ export function VoiceChannelStage({
                           accessToken={accessToken}
                           className={`avatar voice-participant-avatar ${avatarTierClass}`}
                           file={info.profilePhoto}
-                          label={info.displayName}
+                          label={info.rawDisplayName}
                         />
                         {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
                         {isMuted && (
-                          <span className="voice-card-muted-badge" title="Microphone muted" aria-label="Microphone muted">
+                          <span className="voice-card-muted-badge" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                             <MicOff size={14} aria-hidden="true" />
                           </span>
                         )}
@@ -345,12 +352,12 @@ export function VoiceChannelStage({
                       <span className="voice-participant-name">{info.displayName}</span>
                       <span className="voice-participant-state">
                         {p.state === "connecting"
-                          ? "Connecting…"
+                          ? (voiceStrings?.connecting ?? "Connecting…")
                           : isSpeaking
-                            ? "Speaking…"
+                            ? (voiceStrings?.speaking ?? "Speaking…")
                             : isMuted
-                              ? "Muted"
-                              : "Connected"}
+                              ? (voiceStrings?.muted ?? "Muted")
+                              : (voiceStrings?.connected ?? "Connected")}
                       </span>
                     </div>
                   </div>
@@ -363,8 +370,8 @@ export function VoiceChannelStage({
             <div className="voice-room-empty-art">
               <Volume2 size={48} aria-hidden="true" />
             </div>
-            <h3>No users</h3>
-            <p>No users in this voice channel right now. Join to start talking!</p>
+            <h3>{voiceStrings?.noUsers ?? "No users"}</h3>
+            <p>{voiceStrings?.noUsersDescription ?? "No users in this voice channel right now. Join to start talking!"}</p>
           </div>
         )}
 
@@ -387,10 +394,10 @@ export function VoiceChannelStage({
               className="voice-room-primary-join-btn"
               onClick={handleJoin}
               disabled={isConnecting || isAnotherCallActive}
-              title={isAnotherCallActive ? "Another call is in progress" : undefined}
+              title={isAnotherCallActive ? (voiceStrings?.callInProgress ?? "Call in progress") : undefined}
             >
               <Volume2 size={20} aria-hidden="true" />
-              <span>{isConnecting ? "Connecting…" : isAnotherCallActive ? "Call in progress" : "Join Voice Channel"}</span>
+              <span>{isConnecting ? (voiceStrings?.connecting ?? "Connecting…") : isAnotherCallActive ? (voiceStrings?.callInProgress ?? "Call in progress") : (voiceStrings?.joinVoiceChannel ?? "Join Voice Channel")}</span>
             </button>
           </div>
         ) : (
@@ -399,8 +406,8 @@ export function VoiceChannelStage({
               type="button"
               className={`voice-dock-btn${callAudioSettings.micMuted ? " is-muted" : " is-active"}`}
               onClick={handleToggleMic}
-              title={callAudioSettings.micMuted ? "Unmute Microphone" : "Mute Microphone"}
-              aria-label={callAudioSettings.micMuted ? "Unmute Microphone" : "Mute Microphone"}
+              title={callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone")}
+              aria-label={callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone")}
             >
               {callAudioSettings.micMuted ? <MicOff size={20} /> : <Mic size={20} />}
             </button>
@@ -409,24 +416,33 @@ export function VoiceChannelStage({
               type="button"
               className={`voice-dock-btn${callAudioSettings.cameraEnabled ? " is-active" : ""}`}
               onClick={handleToggleVideo}
-              title={callAudioSettings.cameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
-              aria-label={callAudioSettings.cameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
+              title={callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera")}
+              aria-label={callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera")}
             >
               {callAudioSettings.cameraEnabled ? <Video size={20} /> : <VideoOff size={20} />}
             </button>
 
-            {/* Screen Share button only shown when supported (on desktop / browsers with getDisplayMedia) */}
-            {canShareScreen && (
-              <button
-                type="button"
-                className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-                onClick={handleToggleScreenShare}
-                title={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
-                aria-label={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
-              >
-                <Monitor size={20} />
-              </button>
-            )}
+            {/* Screen Demonstration / Share button */}
+            <button
+              type="button"
+              className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
+              onClick={handleToggleScreenShare}
+              title={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
+              aria-label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
+            >
+              <Monitor size={20} />
+            </button>
+
+            {/* Shrink / Minimize Call Button */}
+            <button
+              type="button"
+              className="voice-dock-btn"
+              onClick={handleShrink}
+              title={voiceStrings?.shrinkCall ?? "Shrink Voice Channel"}
+              aria-label={voiceStrings?.shrinkCall ?? "Shrink Voice Channel"}
+            >
+              <Minimize2 size={20} />
+            </button>
 
             {/* 3 Dots Menu Button for Settings & AI Notes */}
             <div className="voice-more-menu-anchor">
@@ -435,8 +451,8 @@ export function VoiceChannelStage({
                 type="button"
                 className={`voice-dock-btn${isMoreMenuOpen ? " is-active" : ""}`}
                 onClick={() => setIsMoreMenuOpen((open) => !open)}
-                title="More Options"
-                aria-label="More Options"
+                title={voiceStrings?.moreOptions ?? "More Options"}
+                aria-label={voiceStrings?.moreOptions ?? "More Options"}
                 aria-haspopup="true"
                 aria-expanded={isMoreMenuOpen}
               >
@@ -460,7 +476,7 @@ export function VoiceChannelStage({
                     onClick={handleOpenSettings}
                   >
                     <Settings size={16} aria-hidden="true" />
-                    <span>Settings</span>
+                    <span>{voiceStrings?.settings ?? "Settings"}</span>
                   </button>
 
                   <button
@@ -492,8 +508,8 @@ export function VoiceChannelStage({
               type="button"
               className="voice-dock-btn voice-dock-btn--disconnect"
               onClick={handleLeave}
-              title="Disconnect from Voice Channel"
-              aria-label="Disconnect from Voice Channel"
+              title={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"}
+              aria-label={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"}
             >
               <PhoneOff size={20} />
             </button>
