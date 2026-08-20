@@ -34,6 +34,12 @@ export interface SetupStatus {
   setupRequired: boolean;
   setupComplete: boolean;
   familyName?: string | null;
+  navTabs?: {
+    chats?: boolean;
+    storage?: boolean;
+    plans?: boolean;
+    settings?: boolean;
+  };
 }
 
 export interface SetupPayload {
