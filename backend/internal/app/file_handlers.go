@@ -421,7 +421,7 @@ func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, us
 	groqClient := transcription.NewGroqSTTClient(transcription.GroqSTTConfig{
 		APIKey:           apiKey,
 		BaseURL:          s.getGroqBaseURL(),
-		Model:            s.cfg.GroqSTTModel,
+		Model:            s.getGroqSTTModel(),
 		CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD,
 	})
 
@@ -434,11 +434,11 @@ func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, us
 		contentType = "audio/webm"
 	}
 
-	groqResp, err := groqClient.Transcribe(r.Context(), transcription.TranscribeRequest{
+	groqResp, err := groqClient.TranscribeBatched(r.Context(), transcription.TranscribeRequest{
 		AudioData:   audioData,
 		Filename:    filename,
 		ContentType: contentType,
-	})
+	}, 60)
 	if err != nil {
 		s.logger.Warnf("transcription", "file transcribe failed file_id=%s error=%v", fileID, err)
 		s.detail(w, http.StatusInternalServerError, "Failed to transcribe audio: "+err.Error())

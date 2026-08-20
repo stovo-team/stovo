@@ -1,9 +1,17 @@
 import {
+  useEffect,
+  useRef,
+  useState
+} from "react";
+import {
+  FileText,
   Mic,
   MicOff,
   Monitor,
+  MoreVertical,
   PhoneOff,
   Settings,
+  Sparkles,
   Video,
   VideoOff,
   Volume2
@@ -13,6 +21,9 @@ import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
+import { TranscriptPanel } from "./TranscriptPanel";
+import { useTranscription } from "./useTranscription";
+import { hasLiveLocalVideo } from "../shared/callLifecycle";
 
 export type VoiceChannelStageProps = {
   chat: Chat;
@@ -31,6 +42,8 @@ export function VoiceChannelStage({
 }: VoiceChannelStageProps) {
   const {
     callPhase,
+    callType,
+    setCallType,
     activeCallChatId,
     callAudioSettings,
     applyCallAudioPatch,
@@ -39,8 +52,53 @@ export function VoiceChannelStage({
     joinVoiceChannel,
     isPeerSpeaking,
     activeGroupCalls,
-    setIsCallSettingsMenuOpen
+    setIsCallSettingsMenuOpen,
+    setIsCallAudioPopupOpen,
+    callRoomId,
+    socketRef,
+    localVideoStream,
+    audioCallRef
   } = session;
+
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
+  const moreButtonRef = useRef<HTMLButtonElement | null>(null);
+  const fallbackSocketRef = useRef(null);
+
+  const transcription = useTranscription({
+    accessToken: accessToken ?? session.accessToken ?? null,
+    roomId: callRoomId ?? (chat.activeCall?.roomId ?? null),
+    currentUserId: currentUser?.id ?? null,
+    socketRef: socketRef ?? session.socketRef ?? fallbackSocketRef,
+    localVideoStream: localVideoStream ?? session.localVideoStream,
+    enabled: true,
+  });
+
+  const {
+    transcriptState,
+    transcriptData,
+    isTranscriptPanelOpen,
+    toggleTranscriptPanel,
+    startTranscription,
+    stopTranscription,
+  } = transcription;
+
+  // Close more menu when clicking outside
+  useEffect(() => {
+    if (!isMoreMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        moreMenuRef.current &&
+        !moreMenuRef.current.contains(e.target as Node) &&
+        moreButtonRef.current &&
+        !moreButtonRef.current.contains(e.target as Node)
+      ) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isMoreMenuOpen]);
 
   const isCurrentChannelActive = activeCallChatId === chat.id && callPhase !== "idle";
   const isConnecting = activeCallChatId === chat.id && callPhase === "connecting";
@@ -80,7 +138,15 @@ export function VoiceChannelStage({
   };
 
   const handleToggleVideo = () => {
-    void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
+    const isCurrentlyActive = callAudioSettings.cameraEnabled && hasLiveLocalVideo(localVideoStream);
+    if (!isCurrentlyActive) {
+      if (setCallType) setCallType("video");
+      void applyCallAudioPatch({ cameraEnabled: true });
+      void audioCallRef?.current?.toggleVideo(true);
+    } else {
+      void applyCallAudioPatch({ cameraEnabled: false });
+      void audioCallRef?.current?.toggleVideo(false);
+    }
   };
 
   const handleToggleScreenShare = () => {
@@ -92,7 +158,28 @@ export function VoiceChannelStage({
   };
 
   const handleLeave = () => {
+    setIsMoreMenuOpen(false);
     void endActiveCall();
+  };
+
+  const handleOpenSettings = () => {
+    setIsMoreMenuOpen(false);
+    if (setIsCallAudioPopupOpen) {
+      setIsCallAudioPopupOpen(true);
+    } else if (setIsCallSettingsMenuOpen) {
+      setIsCallSettingsMenuOpen(true);
+    }
+  };
+
+  const handleToggleAiNotes = () => {
+    setIsMoreMenuOpen(false);
+    if (transcriptState === "idle" || transcriptState === "failed") {
+      void startTranscription();
+    } else if (transcriptState === "recording") {
+      void stopTranscription();
+    } else {
+      toggleTranscriptPanel();
+    }
   };
 
   const resolveMemberInfo = (userId: string) => {
@@ -111,52 +198,132 @@ export function VoiceChannelStage({
     };
   };
 
+  const participantCount = displayParticipants.length;
+
+  // Determine layout grid tier based on participant count:
+  // 1: maximum height & width (voice-grid--1)
+  // 2: height decreased 2x (1 col, 2 rows) (voice-grid--2)
+  // 3-4: width decreased 2x (2 cols, 2 rows) (voice-grid--4)
+  // 5-6: height decreased (2 cols, 3 rows) (voice-grid--6)
+  // 7-9: 3x3 grid (3 cols, 3 rows) (voice-grid--9)
+  // >9: single-row user list with scroll (voice-room-user-list)
+  let gridTierClass = "voice-grid--1";
+  let avatarTierClass = "voice-avatar--xl";
+  let wrapperTierClass = "voice-avatar-wrapper--xl";
+
+  if (participantCount === 2) {
+    gridTierClass = "voice-grid--2";
+    avatarTierClass = "voice-avatar--lg";
+    wrapperTierClass = "voice-avatar-wrapper--lg";
+  } else if (participantCount === 3 || participantCount === 4) {
+    gridTierClass = "voice-grid--4";
+    avatarTierClass = "voice-avatar--md";
+    wrapperTierClass = "voice-avatar-wrapper--md";
+  } else if (participantCount === 5 || participantCount === 6) {
+    gridTierClass = "voice-grid--6";
+    avatarTierClass = "voice-avatar--sm";
+    wrapperTierClass = "voice-avatar-wrapper--sm";
+  } else if (participantCount >= 7 && participantCount <= 9) {
+    gridTierClass = "voice-grid--9";
+    avatarTierClass = "voice-avatar--sm";
+    wrapperTierClass = "voice-avatar-wrapper--sm";
+  }
+
+  const isListMode = participantCount > 9;
+
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
-      {/* Main Stage / Participant Grid */}
+      {/* Main Stage / Participant Grid or List */}
       <div className="voice-room-stage">
-        {displayParticipants.length > 0 ? (
-          <div className="voice-room-grid" aria-label="Users in voice channel">
-            {displayParticipants.map((p) => {
-              const info = resolveMemberInfo(p.userId);
-              const isSpeaking = !info.isSelf && isPeerSpeaking;
-              const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
+        {participantCount > 0 ? (
+          isListMode ? (
+            <div className="voice-room-user-list" aria-label="Users in voice channel" role="list">
+              {displayParticipants.map((p) => {
+                const info = resolveMemberInfo(p.userId);
+                const isSpeaking = !info.isSelf && isPeerSpeaking;
+                const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
 
-              return (
-                <div
-                  key={p.userId}
-                  className={`voice-participant-card${isSpeaking ? " is-speaking" : ""}${info.isSelf ? " is-self" : ""}`}
-                >
-                  <div className="voice-participant-avatar-wrapper">
-                    <RealAvatar
-                      accessToken={accessToken}
-                      className="voice-participant-avatar"
-                      file={info.profilePhoto}
-                      label={info.displayName}
-                    />
-                    {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
-                    {isMuted && (
-                      <span className="voice-card-muted-badge" title="Microphone muted">
-                        <MicOff size={14} aria-hidden="true" />
+                return (
+                  <div
+                    key={p.userId}
+                    className={`voice-participant-list-row${isSpeaking ? " is-speaking" : ""}${info.isSelf ? " is-self" : ""}`}
+                    role="listitem"
+                  >
+                    <div className="voice-list-row-left">
+                      <div className="voice-list-avatar-wrap">
+                        <RealAvatar
+                          accessToken={accessToken}
+                          className="voice-list-row-avatar"
+                          file={info.profilePhoto}
+                          label={info.displayName}
+                        />
+                        {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
+                      </div>
+                      <span className="voice-list-row-name">{info.displayName}</span>
+                    </div>
+                    <div className="voice-list-row-right">
+                      {isMuted && (
+                        <span className="voice-list-muted-badge" title="Microphone muted" aria-label="Microphone muted">
+                          <MicOff size={14} aria-hidden="true" />
+                        </span>
+                      )}
+                      <span className="voice-list-row-state">
+                        {p.state === "connecting"
+                          ? "Connecting…"
+                          : isSpeaking
+                            ? "Speaking…"
+                            : isMuted
+                              ? "Muted"
+                              : "Connected"}
                       </span>
-                    )}
+                    </div>
                   </div>
-                  <div className="voice-participant-meta">
-                    <span className="voice-participant-name">{info.displayName}</span>
-                    <span className="voice-participant-state">
-                      {p.state === "connecting"
-                        ? "Connecting…"
-                        : isSpeaking
-                          ? "Speaking…"
-                          : isMuted
-                            ? "Muted"
-                            : "Connected"}
-                    </span>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={`voice-room-grid ${gridTierClass}`} aria-label="Users in voice channel">
+              {displayParticipants.map((p) => {
+                const info = resolveMemberInfo(p.userId);
+                const isSpeaking = !info.isSelf && isPeerSpeaking;
+                const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
+
+                return (
+                  <div
+                    key={p.userId}
+                    className={`voice-participant-card${isSpeaking ? " is-speaking" : ""}${info.isSelf ? " is-self" : ""}`}
+                  >
+                    <div className={`voice-participant-avatar-wrapper ${wrapperTierClass}`}>
+                      <RealAvatar
+                        accessToken={accessToken}
+                        className={`voice-participant-avatar ${avatarTierClass}`}
+                        file={info.profilePhoto}
+                        label={info.displayName}
+                      />
+                      {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
+                      {isMuted && (
+                        <span className="voice-card-muted-badge" title="Microphone muted" aria-label="Microphone muted">
+                          <MicOff size={14} aria-hidden="true" />
+                        </span>
+                      )}
+                    </div>
+                    <div className="voice-participant-meta">
+                      <span className="voice-participant-name">{info.displayName}</span>
+                      <span className="voice-participant-state">
+                        {p.state === "connecting"
+                          ? "Connecting…"
+                          : isSpeaking
+                            ? "Speaking…"
+                            : isMuted
+                              ? "Muted"
+                              : "Connected"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )
         ) : (
           <div className="voice-room-empty-state" data-testid="voice-room-empty-state">
             <div className="voice-room-empty-art">
@@ -165,6 +332,15 @@ export function VoiceChannelStage({
             <h3>No users</h3>
             <p>No users in this voice channel right now. Join to start talking!</p>
           </div>
+        )}
+
+        {/* Transcript / AI Notes Side Panel Overlay */}
+        {isTranscriptPanelOpen && (
+          <TranscriptPanel
+            data={transcriptData}
+            isLoading={transcriptState === "processing" || transcriptState === "stopping"}
+            onClose={toggleTranscriptPanel}
+          />
         )}
       </div>
 
@@ -192,7 +368,6 @@ export function VoiceChannelStage({
               aria-label={callAudioSettings.micMuted ? "Unmute Microphone" : "Mute Microphone"}
             >
               {callAudioSettings.micMuted ? <MicOff size={20} /> : <Mic size={20} />}
-              <span>{callAudioSettings.micMuted ? "Unmute" : "Mute"}</span>
             </button>
 
             <button
@@ -203,7 +378,6 @@ export function VoiceChannelStage({
               aria-label={callAudioSettings.cameraEnabled ? "Turn Off Camera" : "Turn On Camera"}
             >
               {callAudioSettings.cameraEnabled ? <Video size={20} /> : <VideoOff size={20} />}
-              <span>{callAudioSettings.cameraEnabled ? "Camera On" : "Camera"}</span>
             </button>
 
             <button
@@ -214,19 +388,67 @@ export function VoiceChannelStage({
               aria-label={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
             >
               <Monitor size={20} />
-              <span>Share</span>
             </button>
 
-            <button
-              type="button"
-              className="voice-dock-btn"
-              onClick={() => setIsCallSettingsMenuOpen((open) => !open)}
-              title="Audio / Device Settings"
-              aria-label="Audio / Device Settings"
-            >
-              <Settings size={20} />
-              <span>Settings</span>
-            </button>
+            {/* 3 Dots Menu Button for Settings & AI Notes */}
+            <div className="voice-more-menu-anchor">
+              <button
+                ref={moreButtonRef}
+                type="button"
+                className={`voice-dock-btn${isMoreMenuOpen ? " is-active" : ""}`}
+                onClick={() => setIsMoreMenuOpen((open) => !open)}
+                title="More Options"
+                aria-label="More Options"
+                aria-haspopup="true"
+                aria-expanded={isMoreMenuOpen}
+              >
+                <MoreVertical size={20} />
+                {transcriptState === "recording" && (
+                  <span className="voice-dock-badge-dot" title="AI Notes Recording" />
+                )}
+              </button>
+
+              {isMoreMenuOpen && (
+                <div
+                  ref={moreMenuRef}
+                  className="voice-more-menu"
+                  role="menu"
+                  aria-label="More Options Menu"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="voice-more-menu-item"
+                    onClick={handleOpenSettings}
+                  >
+                    <Settings size={16} aria-hidden="true" />
+                    <span>Settings</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`voice-more-menu-item${transcriptState === "recording" ? " is-recording" : ""}`}
+                    onClick={handleToggleAiNotes}
+                  >
+                    {transcriptState === "recording" ? (
+                      <Sparkles size={16} aria-hidden="true" className="voice-icon-spin" />
+                    ) : (
+                      <FileText size={16} aria-hidden="true" />
+                    )}
+                    <span>
+                      {transcriptState === "recording"
+                        ? "Stop AI Notes (Recording…)"
+                        : transcriptState === "processing" || transcriptState === "stopping"
+                          ? "AI Notes (Processing…)"
+                          : transcriptState === "ready"
+                            ? "View AI Notes"
+                            : "AI Notes"}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             <button
               type="button"
@@ -236,7 +458,6 @@ export function VoiceChannelStage({
               aria-label="Disconnect from Voice Channel"
             >
               <PhoneOff size={20} />
-              <span>Leave</span>
             </button>
           </div>
         )}
@@ -244,3 +465,4 @@ export function VoiceChannelStage({
     </div>
   );
 }
+

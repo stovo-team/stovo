@@ -139,6 +139,18 @@ func (s *Server) getGroqChatModel() string {
 	return ""
 }
 
+func (s *Server) getGroqSTTModel() string {
+	model := config.GetOrReloadEnv("GROQ_STT_MODEL")
+	if model != "" {
+		s.cfg.GroqSTTModel = model
+		return model
+	}
+	if strings.TrimSpace(s.cfg.GroqSTTModel) != "" {
+		return strings.TrimSpace(s.cfg.GroqSTTModel)
+	}
+	return "qwen3-asr-flash-2025-09-08"
+}
+
 func (s *Server) getGroqBaseURL() string {
 	if strings.TrimSpace(s.cfg.GroqBaseURL) != "" {
 		return strings.TrimSpace(s.cfg.GroqBaseURL)
@@ -682,7 +694,7 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 	groqClient := transcription.NewGroqSTTClient(transcription.GroqSTTConfig{
 		APIKey:           apiKey,
 		BaseURL:          s.getGroqBaseURL(),
-		Model:            s.cfg.GroqSTTModel,
+		Model:            s.getGroqSTTModel(),
 		TimeoutSeconds:   120,
 		CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD,
 	})

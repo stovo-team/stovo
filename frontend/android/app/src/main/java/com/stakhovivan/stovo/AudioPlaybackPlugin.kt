@@ -137,8 +137,6 @@ class AudioPlaybackPlugin : Plugin() {
                 call,
                 resolveState = false
             )
-            // Service stops itself on clear — drop the stale controller handle.
-            releaseController()
         }
     }
 
@@ -275,11 +273,6 @@ class AudioPlaybackPlugin : Plugin() {
 
     private fun emitSnapshot(bundle: Bundle) {
         notifyListeners("stateChanged", snapshotObject(bundle))
-        // Natural end stops the service to dismiss Android's media notification.
-        // Drop this controller so a replay connects to the new service session.
-        if (bundle.getString(AudioPlaybackService.KEY_STATUS) == AudioPlaybackStatus.ENDED.wireValue) {
-            releaseController()
-        }
     }
 
     /**
