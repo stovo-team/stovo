@@ -27,6 +27,8 @@ export function MobileActiveScreen({
   onToggleFlip,
   onOpenSpeakerSheet,
   onEnd,
+  onShrink,
+  notice,
 }: {
   peerName: string;
   peerProfilePhoto?: FamilyFile | null;

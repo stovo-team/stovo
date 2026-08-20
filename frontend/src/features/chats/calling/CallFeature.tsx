@@ -81,6 +81,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
     acceptIncomingCall,
     declineIncomingCall,
     endActiveCall,
+    callNotice,
     activeGroupCalls,
     preJoinChatId,
     closePreJoinModal,
