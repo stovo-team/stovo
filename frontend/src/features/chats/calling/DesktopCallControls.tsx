@@ -213,7 +213,7 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
               type="button"
               className="action-button primary"
               disabled={callInviteSelection.length === 0}
-              onClick={() => void sendCallInvites(callInviteSelection)}
+              onClick={() => void sendCallInvites()}
             >
               Invite ({callInviteSelection.length})
             </button>
