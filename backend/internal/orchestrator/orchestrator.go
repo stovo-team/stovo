@@ -59,6 +59,9 @@ func (o *Orchestrator) RegisterRoutes(r chi.Router) {
 	// Note: chi is imported in routes.go – we keep a thin wrapper here.
 	r.Post("/api/v1/master/servers", o.handleCreateServer)
 	r.Get("/api/v1/master/servers", o.handleListServers)
+	r.Get("/api/v1/master/servers/{id}/settings", o.handleGetServerSettings)
+	r.Patch("/api/v1/master/servers/{id}/settings", o.handleUpdateServerSettings)
+	r.Put("/api/v1/master/servers/{id}/settings", o.handleUpdateServerSettings)
 	r.Delete("/api/v1/master/servers/{id}", o.handleDeleteServer)
 	r.Post("/api/v1/master/servers/{id}/ghost-token", o.handleGhostToken)
 	r.Post("/api/v1/master/servers/{id}/invite", o.handleCreateInviteToken)

@@ -96,6 +96,11 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
   const shouldRenderCallPopup = callPhase !== "idle" && (!isVoiceChannel || isCallMinimized);
   const effectiveIsCallMinimized = isCallMinimized;
 
+  const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
+    activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
+    activeChat?.members?.find((m) => m.id !== currentUser?.id);
+  const peerProfilePhoto = activePeer?.profilePhoto ?? null;
+
   if (callPhase === "idle" && !preJoinChatId) {
     return null;
   }
@@ -138,6 +143,8 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
             {isMobileViewport && !isCallMinimized && callPhase === "incoming" && (
               <MobileIncomingScreen
                 peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
+                peerProfilePhoto={peerProfilePhoto}
+                accessToken={session.accessToken ?? null}
                 callType={callType}
                 onAccept={() => void acceptIncomingCall()}
                 onDecline={declineIncomingCall}
@@ -147,6 +154,8 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
             {isMobileViewport && !isCallMinimized && callPhase !== "incoming" && (
               <MobileActiveScreen
                 peerName={(callPeerDisplayName ?? activeCallPeerName) ?? ""}
+                peerProfilePhoto={peerProfilePhoto}
+                accessToken={session.accessToken ?? null}
                 callType={callType}
                 callPhase={callPhase}
                 isPeerSpeaking={isPeerSpeaking}

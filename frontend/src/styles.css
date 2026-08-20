@@ -12439,6 +12439,17 @@ span.message-spoiler.is-revealed {
   color: #fff;
   border: 2px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 4px 24px rgba(30, 90, 220, 0.35);
+  overflow: hidden;
+}
+
+.mobile-incoming-avatar img,
+.mobile-active-avatar img,
+.call-popup-real-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .mobile-incoming-name {
@@ -12648,6 +12659,7 @@ span.message-spoiler.is-revealed {
   font-weight: 700;
   color: #fff;
   border: 2px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
 }
 
 .mobile-active-name {
@@ -17223,32 +17235,32 @@ span.message-spoiler.is-revealed {
   outline-offset: 2px;
 }
 
-/* Transcribe button in audio player (lower right, icon-only) */
+/* Transcribe button in audio player (in meta row) */
 .audio-player-transcribe-btn {
   align-items: center;
   background: color-mix(in oklab, var(--accent-primary) 12%, transparent);
   border: 1px solid color-mix(in oklab, var(--accent-primary) 28%, transparent);
-  border-radius: 6px;
-  bottom: 6px;
+  border-radius: 999px;
   color: var(--accent-primary);
   cursor: pointer;
   display: inline-flex;
-  height: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  gap: 3px;
+  height: 18px;
   justify-content: center;
   line-height: 1;
-  padding: 0;
-  position: absolute;
-  right: 6px;
-  top: auto;
+  margin-left: auto;
+  padding: 0 6px;
+  position: static;
   transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 120ms ease-out;
-  width: 20px;
-  z-index: 2;
+  flex-shrink: 0;
 }
 
 .audio-player-transcribe-btn:hover:not(:disabled) {
   background: color-mix(in oklab, var(--accent-primary) 22%, transparent);
   border-color: var(--accent-primary);
-  transform: scale(1.08);
+  transform: scale(1.05);
 }
 
 .audio-player-transcribe-btn:active:not(:disabled) {
@@ -17265,20 +17277,25 @@ span.message-spoiler.is-revealed {
   border-color: var(--accent-primary);
 }
 
+.audio-player-transcribe-label {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
 .message-bubble.mine .audio-player-transcribe-btn {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
   color: #ffffff;
 }
 
 .message-bubble.mine .audio-player-transcribe-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.32);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 .message-bubble.mine .audio-player-transcribe-btn.has-transcript {
-  background: rgba(255, 255, 255, 0.28);
-  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* Transcribe spinning animation */
@@ -20082,7 +20099,7 @@ span.message-spoiler.is-revealed {
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 16px 20px;
+  padding: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px) 16px 16px;
   overflow-y: auto;
   min-height: 0;
   height: 100%;
@@ -20115,7 +20132,7 @@ span.message-spoiler.is-revealed {
 .voice-grid--1 .voice-participant-card {
   width: 100%;
   height: 100%;
-  max-height: 100%;
+  max-height: calc(100% - 8px);
 }
 
 .voice-grid--1 .voice-participant-name {
@@ -20516,7 +20533,8 @@ span.message-spoiler.is-revealed {
   justify-content: center;
   text-align: center;
   max-width: 440px;
-  margin: 0 auto;
+  margin: 48px auto 0 auto;
+  padding: 16px;
   gap: 12px;
 }
 

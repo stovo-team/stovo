@@ -194,6 +194,7 @@ describe("VoiceChannelStage", () => {
     const mockApplyCallAudioPatch = vi.fn();
     const mockSetIsCallAudioPopupOpen = vi.fn();
     const mockAudioToggleVideo = vi.fn();
+    const mockSetIsCallMinimized = vi.fn();
     const mockSession = {
       callPhase: "in-call",
       activeCallChatId: "voice-chat-1",
@@ -210,6 +211,7 @@ describe("VoiceChannelStage", () => {
       callTimer: "01:23",
       setIsCallSettingsMenuOpen: vi.fn(),
       setIsCallAudioPopupOpen: mockSetIsCallAudioPopupOpen,
+      setIsCallMinimized: mockSetIsCallMinimized,
       audioCallRef: {
         current: { toggleVideo: mockAudioToggleVideo }
       }
@@ -269,6 +271,14 @@ describe("VoiceChannelStage", () => {
       shareBtn.click();
     });
     expect(mockSession.toggleScreenShare).toHaveBeenCalled();
+
+    // Test Shrink button
+    const shrinkBtn = buttons[3] as HTMLButtonElement;
+    expect(shrinkBtn).toBeDefined();
+    act(() => {
+      shrinkBtn.click();
+    });
+    expect(mockSetIsCallMinimized).toHaveBeenCalledWith(true);
 
     // Click 3-dots more menu
     const moreBtn = inCallToolbar!.querySelector("button[title='More Options']") as HTMLButtonElement;

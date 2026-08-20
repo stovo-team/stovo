@@ -56,6 +56,25 @@ function isFiniteTime(value: number): boolean {
   return Number.isFinite(value) && value >= 0;
 }
 
+const TranscribeAIcon = ({ size = 12 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M4 19L10.5 4.5h3L20 19" />
+    <path d="M7 14h10" />
+    <path d="M18 5h3" />
+    <path d="M17 8h4" />
+  </svg>
+);
+
 function wholeTime(value: number): number {
   return isFiniteTime(value) ? Math.floor(value) : 0;
 }
@@ -495,37 +514,6 @@ export function AudioPlayer({
       onPointerDown={stopInteraction}
       onKeyDown={stopActivationPropagation}
     >
-      {accessToken && (
-        <button
-          type="button"
-          className={`audio-player-transcribe-btn${isTranscribing ? " is-loading" : ""}${transcript ? " has-transcript" : ""}`}
-          aria-label={
-            transcript
-              ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
-              : "Transcribe voice message"
-          }
-          title={
-            transcript
-              ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
-              : "Transcribe voice message"
-          }
-          disabled={isTranscribing}
-          onClick={(e) => {
-            stopInteraction(e);
-            if (transcript) {
-              setIsTranscriptExpanded((prev) => !prev);
-            } else {
-              void handleTranscribe();
-            }
-          }}
-        >
-          {isTranscribing ? (
-            <Loader2 size={12} className="audio-player-spin" aria-hidden="true" />
-          ) : (
-            <Sparkles size={12} aria-hidden="true" />
-          )}
-        </button>
-      )}
       <div className="audio-player-controls">
         <button
           type="button"
@@ -577,6 +565,40 @@ export function AudioPlayer({
               <span className="audio-player-title" title={descriptor.title}>
                 {descriptor.title}
               </span>
+            )}
+            {accessToken && (
+              <button
+                type="button"
+                className={`audio-player-transcribe-btn${isTranscribing ? " is-loading" : ""}${transcript ? " has-transcript" : ""}`}
+                aria-label={
+                  transcript
+                    ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
+                    : "Transcribe voice message"
+                }
+                title={
+                  transcript
+                    ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
+                    : "Transcribe voice message"
+                }
+                disabled={isTranscribing}
+                onClick={(e) => {
+                  stopInteraction(e);
+                  if (transcript) {
+                    setIsTranscriptExpanded((prev) => !prev);
+                  } else {
+                    void handleTranscribe();
+                  }
+                }}
+              >
+                {isTranscribing ? (
+                  <Loader2 size={11} className="audio-player-spin" aria-hidden="true" />
+                ) : (
+                  <TranscribeAIcon size={12} />
+                )}
+                <span className="audio-player-transcribe-label">
+                  {transcript ? (isTranscriptExpanded ? "Hide" : "Text") : "A"}
+                </span>
+              </button>
             )}
           </div>
         </div>

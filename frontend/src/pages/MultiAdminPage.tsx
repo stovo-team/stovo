@@ -6,6 +6,8 @@ import {
   fetchServers,
   getGhostToken,
   masterLogin,
+  updateServerSettings,
+  NavTabsConfig,
   ServerRecord,
 } from "../api/masterAdmin";
 
@@ -26,12 +28,29 @@ export default function MultiAdminPage() {
   const [newName, setNewName] = useState("");
   const [adminUser, setAdminUser] = useState("admin");
   const [adminPassword, setAdminPassword] = useState("admin12345");
+  const [createNavTabs, setCreateNavTabs] = useState<NavTabsConfig>({
+    chats: true,
+    storage: true,
+    plans: true,
+    settings: true,
+  });
   const [createResult, setCreateResult] = useState<{
     inviteUrl: string;
     clusterUrl: string;
     adminUser: string;
     adminPassword: string;
   } | null>(null);
+
+  // Settings Modal State
+  const [editingServer, setEditingServer] = useState<ServerRecord | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editNavTabs, setEditNavTabs] = useState<NavTabsConfig>({
+    chats: true,
+    storage: true,
+    plans: true,
+    settings: true,
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // Notification / Toast info
   const [toast, setToast] = useState<string | null>(null);
@@ -86,7 +105,14 @@ export default function MultiAdminPage() {
     e.preventDefault();
     if (!token || !newName) return;
     try {
-      const res = await createServer(token, "", newName.trim(), adminUser.trim(), adminPassword.trim());
+      const res = await createServer(
+        token,
+        "",
+        newName.trim(),
+        adminUser.trim(),
+        adminPassword.trim(),
+        createNavTabs
+      );
       const originClusterUrl = `${window.location.origin}/s/${res.slug}/login`;
       const originInviteUrl = `${window.location.origin}/s/${res.slug}/setup?token=${new URL(res.invite_url).searchParams.get("token") || ""}`;
       setCreateResult({
@@ -96,10 +122,43 @@ export default function MultiAdminPage() {
         adminPassword: res.admin_password || adminPassword,
       });
       setNewName("");
+      setCreateNavTabs({ chats: true, storage: true, plans: true, settings: true });
       loadServers();
       showToast(`Server "${res.name}" provisioned cleanly!`);
     } catch (err: any) {
       alert(err.message || "Failed to create server");
+    }
+  };
+
+  const handleOpenSettings = (s: ServerRecord) => {
+    setEditingServer(s);
+    setEditName(s.name);
+    setEditNavTabs({
+      chats: s.nav_tabs?.chats ?? true,
+      storage: s.nav_tabs?.storage ?? true,
+      plans: s.nav_tabs?.plans ?? true,
+      settings: s.nav_tabs?.settings ?? true,
+    });
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !editingServer) return;
+    setSavingSettings(true);
+    try {
+      const updated = await updateServerSettings(token, editingServer.slug, {
+        name: editName.trim(),
+        nav_tabs: editNavTabs,
+      });
+      setServers((prev) =>
+        prev.map((s) => (s.slug === editingServer.slug ? { ...s, ...updated } : s))
+      );
+      showToast(`Server settings for "${updated.name || editingServer.name}" saved!`);
+      setEditingServer(null);
+    } catch (err: any) {
+      alert(err.message || "Failed to update server settings");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -251,6 +310,7 @@ export default function MultiAdminPage() {
                     <th style={styles.th}>ID</th>
                     <th style={styles.th}>Name</th>
                     <th style={styles.th}>Server Link</th>
+                    <th style={styles.th}>Nav Tabs</th>
                     <th style={styles.th}>Status</th>
                     <th style={styles.th}>Created At</th>
                     <th style={styles.th}>Actions</th>
@@ -278,6 +338,22 @@ export default function MultiAdminPage() {
                         </a>
                       </td>
                       <td style={styles.td}>
+                        <div style={styles.tabBadgeGroup}>
+                          <span style={s.nav_tabs?.chats !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Chats Tab">
+                            Chats
+                          </span>
+                          <span style={s.nav_tabs?.storage !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Storage Tab">
+                            Storage
+                          </span>
+                          <span style={s.nav_tabs?.plans !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Plans Tab">
+                            Plans
+                          </span>
+                          <span style={s.nav_tabs?.settings !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Settings Tab">
+                            Settings
+                          </span>
+                        </div>
+                      </td>
+                      <td style={styles.td}>
                         <span style={styles.statusPill}>{s.status || "running"}</span>
                       </td>
                       <td style={styles.td}>
@@ -285,6 +361,13 @@ export default function MultiAdminPage() {
                       </td>
                       <td style={styles.td}>
                         <div style={styles.actionGroup}>
+                          <button
+                            onClick={() => handleOpenSettings(s)}
+                            title={`Configure server settings and navigation tabs for ${s.name}`}
+                            style={styles.settingsPillButton}
+                          >
+                            ⚙️ Settings
+                          </button>
                           <button
                             onClick={() => handleCopyInvite(s.slug)}
                             title="Generate and copy fresh single-use invite link"
@@ -321,6 +404,117 @@ export default function MultiAdminPage() {
           )}
         </div>
       </main>
+
+      {/* Server Settings Modal */}
+      {editingServer && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.badgePill}>SERVER SETTINGS</div>
+            <h3 style={styles.modalTitle}>{editingServer.name}</h3>
+            <p style={styles.modalSubtitle}>
+              Configure server properties and select which tabs will be shown in the tenant navigation panel.
+            </p>
+
+            <form onSubmit={handleSaveSettings} style={styles.form}>
+              <label style={styles.label}>
+                Server Name
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  style={styles.inputPill}
+                  required
+                />
+              </label>
+
+              <div style={{ marginTop: 8 }}>
+                <div style={{ ...styles.label, marginBottom: 12 }}>
+                  Navigation Panel Tabs
+                </div>
+                <div style={styles.tabsConfigCard}>
+                  <label style={styles.tabToggleRow}>
+                    <div>
+                      <div style={styles.tabToggleTitle}>💬 Chats</div>
+                      <div style={styles.tabToggleDesc}>Direct, group, and voice messaging</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={editNavTabs.chats}
+                      onChange={(e) =>
+                        setEditNavTabs((prev) => ({ ...prev, chats: e.target.checked }))
+                      }
+                      style={styles.checkbox}
+                    />
+                  </label>
+
+                  <label style={styles.tabToggleRow}>
+                    <div>
+                      <div style={styles.tabToggleTitle}>📁 Storage</div>
+                      <div style={styles.tabToggleDesc}>File library, media, and shared documents</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={editNavTabs.storage}
+                      onChange={(e) =>
+                        setEditNavTabs((prev) => ({ ...prev, storage: e.target.checked }))
+                      }
+                      style={styles.checkbox}
+                    />
+                  </label>
+
+                  <label style={styles.tabToggleRow}>
+                    <div>
+                      <div style={styles.tabToggleTitle}>📅 Plans</div>
+                      <div style={styles.tabToggleDesc}>Family events, calendar, and schedule</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={editNavTabs.plans}
+                      onChange={(e) =>
+                        setEditNavTabs((prev) => ({ ...prev, plans: e.target.checked }))
+                      }
+                      style={styles.checkbox}
+                    />
+                  </label>
+
+                  <label style={styles.tabToggleRow}>
+                    <div>
+                      <div style={styles.tabToggleTitle}>⚙️ Settings</div>
+                      <div style={styles.tabToggleDesc}>User profile, theme, audio, and device settings</div>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={editNavTabs.settings}
+                      onChange={(e) =>
+                        setEditNavTabs((prev) => ({ ...prev, settings: e.target.checked }))
+                      }
+                      style={styles.checkbox}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div style={styles.modalActions}>
+                <button
+                  type="button"
+                  onClick={() => setEditingServer(null)}
+                  style={styles.secondaryPillButton}
+                  disabled={savingSettings}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={styles.primaryPillButton}
+                  disabled={savingSettings}
+                >
+                  {savingSettings ? "Saving..." : "Save Settings"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Create Modal */}
       {isCreateOpen && (
@@ -406,6 +600,59 @@ export default function MultiAdminPage() {
                     required
                   />
                 </label>
+
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ ...styles.label, marginBottom: 10 }}>
+                    Enabled Navigation Tabs
+                  </div>
+                  <div style={styles.tabsConfigCard}>
+                    <label style={styles.tabToggleRow}>
+                      <span style={styles.tabToggleTitle}>💬 Chats</span>
+                      <input
+                        type="checkbox"
+                        checked={createNavTabs.chats}
+                        onChange={(e) =>
+                          setCreateNavTabs((prev) => ({ ...prev, chats: e.target.checked }))
+                        }
+                        style={styles.checkbox}
+                      />
+                    </label>
+                    <label style={styles.tabToggleRow}>
+                      <span style={styles.tabToggleTitle}>📁 Storage</span>
+                      <input
+                        type="checkbox"
+                        checked={createNavTabs.storage}
+                        onChange={(e) =>
+                          setCreateNavTabs((prev) => ({ ...prev, storage: e.target.checked }))
+                        }
+                        style={styles.checkbox}
+                      />
+                    </label>
+                    <label style={styles.tabToggleRow}>
+                      <span style={styles.tabToggleTitle}>📅 Plans</span>
+                      <input
+                        type="checkbox"
+                        checked={createNavTabs.plans}
+                        onChange={(e) =>
+                          setCreateNavTabs((prev) => ({ ...prev, plans: e.target.checked }))
+                        }
+                        style={styles.checkbox}
+                      />
+                    </label>
+                    <label style={styles.tabToggleRow}>
+                      <span style={styles.tabToggleTitle}>⚙️ Settings</span>
+                      <input
+                        type="checkbox"
+                        checked={createNavTabs.settings}
+                        onChange={(e) =>
+                          setCreateNavTabs((prev) => ({ ...prev, settings: e.target.checked }))
+                        }
+                        style={styles.checkbox}
+                      />
+                    </label>
+                  </div>
+                </div>
+
                 <div style={styles.modalActions}>
                   <button
                     type="button"
@@ -761,6 +1008,73 @@ const styles: Record<string, React.CSSProperties> = {
     border: "1px solid rgba(255, 255, 255, 0.08)",
     padding: 20,
     borderRadius: 24,
+  },
+  settingsPillButton: {
+    padding: "8px 18px",
+    backgroundColor: "rgba(96, 165, 250, 0.15)",
+    color: "#60a5fa",
+    border: "1px solid rgba(96, 165, 250, 0.3)",
+    borderRadius: 999,
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+    transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+  },
+  tabBadgeGroup: {
+    display: "flex",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  tabBadgeActive: {
+    fontSize: 11,
+    fontWeight: 700,
+    padding: "3px 8px",
+    borderRadius: 999,
+    backgroundColor: "rgba(52, 211, 153, 0.15)",
+    color: "#34d399",
+    border: "1px solid rgba(52, 211, 153, 0.3)",
+  },
+  tabBadgeInactive: {
+    fontSize: 11,
+    fontWeight: 600,
+    padding: "3px 8px",
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    color: "#6b7280",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    textDecoration: "line-through",
+  },
+  tabsConfigCard: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    backgroundColor: "#2c2c2e",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
+    borderRadius: 20,
+    padding: 14,
+  },
+  tabToggleRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    cursor: "pointer",
+    padding: "6px 4px",
+  },
+  tabToggleTitle: {
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#ffffff",
+  },
+  tabToggleDesc: {
+    fontSize: 12,
+    color: "#9ca3af",
+    marginTop: 2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    accentColor: "#3b82f6",
+    cursor: "pointer",
   },
   toast: {
     position: "fixed",

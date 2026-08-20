@@ -95,10 +95,12 @@ func (s *Server) handleSetupStatus(w http.ResponseWriter, r *http.Request) {
 			familyName = &family.Name
 		}
 	}
+	navTabs := parseNavTabsEnv()
 	s.json(w, http.StatusOK, setupStatusResponse{
 		SetupRequired: required,
 		SetupComplete: !required,
 		FamilyName:    familyName,
+		NavTabs:       &navTabs,
 	})
 }
 
