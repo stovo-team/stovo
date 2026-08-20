@@ -121,7 +121,7 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {selectedChat && callPhase !== "idle" && isCallMinimized && isMobileViewport && chatId && (selectedChat.type === "group" || selectedChat.type === "family") && (
+            {selectedChat && callPhase !== "idle" && isCallMinimized && isMobileViewport && (
               <MobileMinimizedCallBar
                 peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
                 callPhase={callPhase}
@@ -129,7 +129,13 @@ export default function ChatsPage() {
                 micMuted={callAudioSettings.micMuted}
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onEnd={() => void endActiveCall()}
-                onExpand={() => setIsCallMinimized(false)}
+                onExpand={() => {
+                  setIsCallMinimized(false);
+                  if (activeCallChatId && activeCallChatId !== selectedChat.id) {
+                    const target = chats.find((c) => c.id === activeCallChatId);
+                    if (target) openChat(target);
+                  }
+                }}
               />
             )}
             <ConversationPanel

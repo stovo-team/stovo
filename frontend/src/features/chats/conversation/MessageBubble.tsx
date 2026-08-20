@@ -1,6 +1,7 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
 import { CalendarClock, Check, Clock3, Phone, Video } from "lucide-react";
 
+import { useStrings } from "../../../i18n/LanguageContext";
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
 import type { Chat } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
@@ -87,6 +88,7 @@ export function MessageBubble({
   onReact: (message: Message, emoji: string) => void;
   onOpenThread: (message: Message) => void;
 }) {
+  const strings = useStrings();
   const mine = message.senderId === currentUserId;
   const [inlineContent, setInlineContent] = useState(message.content ?? "");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -115,8 +117,8 @@ export function MessageBubble({
       <article className="call-history-message" id={message.id} key={message.id}>
         <CallIcon aria-hidden="true" size={18} />
         <span>
-          <strong>{callHistoryLabel(message.call)}</strong>
-          <small>{isVideoCall ? "Video call" : "Audio call"}</small>
+          <strong>{callHistoryLabel(message.call, strings)}</strong>
+          <small>{isVideoCall ? strings.callHistory.videoCall : strings.callHistory.audioCall}</small>
         </span>
         <time>{callHistoryTimestamp(message.createdAt)}</time>
       </article>

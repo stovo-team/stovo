@@ -21,7 +21,7 @@ export function RealAvatar({
   label: string;
   style?: CSSProperties;
 }) {
-  const previewUrl = useFilePreviewUrl(accessToken, file ?? null, Boolean(file));
+  const previewUrl = useFilePreviewUrl(accessToken, file ?? null, Boolean(file?.id));
   const [imageBroken, setImageBroken] = useState(false);
 
   useEffect(() => {

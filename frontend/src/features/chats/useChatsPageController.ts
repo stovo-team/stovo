@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Location, NavigateFunction } from "react-router-dom";
 import type { Socket } from "socket.io-client";
 
+import { useStrings } from "../../i18n/LanguageContext";
 import type { User } from "../../api/auth";
 import { Chat } from "../../api/chats";
 import { FamilyFile } from "../../api/files";
@@ -60,6 +61,7 @@ export function useChatsPageController({
   updateCurrentUser,
   appearance
 }: UseChatsPageControllerParams) {
+  const strings = useStrings();
   const workspace = useChatWorkspaceState({ accessToken });
   const {
     family, members, setMembers, chats, setChats, selectedChat, setSelectedChat,
@@ -297,8 +299,8 @@ export function useChatsPageController({
   }, [chatId, chats, isLoading, isMobileViewport]);
 
   useEffect(() => {
-    setChatTitleDraft(selectedChat ? displayChatName(selectedChat, currentUser?.id) : "");
-  }, [currentUser?.id, selectedChat]);
+    setChatTitleDraft(selectedChat ? displayChatName(selectedChat, currentUser?.id, strings) : "");
+  }, [currentUser?.id, selectedChat, strings]);
 
   useEffect(() => {
     resetThreadForChatChange();

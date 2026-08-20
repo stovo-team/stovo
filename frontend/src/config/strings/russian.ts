@@ -612,7 +612,19 @@ export const strings = {
     seenBy: "Просмотрено",
     noReaders: "Пока никто не прочитал",
   },
-} as const;
+
+  // ── История звонков ───────────────────────────────────────────────────
+  callHistory: {
+    completed: (duration: string) => `Звонок завершён · ${duration}`,
+    completedLabel: "Звонок завершён",
+    missed: "Пропущенный звонок",
+    declined: "Звонок отклонён",
+    canceled: "Звонок отменён",
+    failed: "Сбой звонка",
+    videoCall: "Видеозвонок",
+    audioCall: "Аудиозвонок",
+  },
+};
 
 
 

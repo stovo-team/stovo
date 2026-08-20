@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 
+import { useStrings } from "../../../i18n/LanguageContext";
 import { User } from "../../../api/auth";
 import {
   Chat,
@@ -32,6 +33,7 @@ export function useChatOverview({
   onNavigateToChat,
   refreshChats
 }: UseChatOverviewOptions): ChatOverviewController {
+  const strings = useStrings();
   const [chatSearch, setChatSearch] = useState("");
   const [chatFilter, setChatFilter] = useState<ChatFilter>("all");
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
@@ -96,14 +98,14 @@ export function useChatOverview({
       if (!query) {
         return true;
       }
-      const chatName = displayChatName(chat, currentUserId).toLowerCase();
+      const chatName = displayChatName(chat, currentUserId, strings).toLowerCase();
       const memberText = chat.members
         .map((member) => `${member.displayName} ${member.username} ${member.role}`)
         .join(" ")
         .toLowerCase();
       return `${chatName} ${chat.type} ${memberText}`.includes(query);
     });
-  }, [chatFilter, chatSearch, chats, currentUserId]);
+  }, [chatFilter, chatSearch, chats, currentUserId, strings]);
 
   const chatsBySection = useMemo(() => {
     const sections: Record<ChatSectionKey, Chat[]> = {

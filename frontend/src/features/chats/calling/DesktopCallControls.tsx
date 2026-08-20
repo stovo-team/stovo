@@ -472,7 +472,7 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
       )}
 
       {/* Minimized state: single-line chip controls (desktop only — mobile bar is in header) */}
-      {isCallMinimized && !isMobileViewport && (session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
+      {isCallMinimized && !isMobileViewport && callPhase !== "idle" && (
         <div className="call-status-chip-controls">
           {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
             <button

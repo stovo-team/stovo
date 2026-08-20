@@ -14,6 +14,7 @@ import {
   Video
 } from "lucide-react";
 
+import { useStrings } from "../../../i18n/LanguageContext";
 import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import {
@@ -101,6 +102,8 @@ export function ChatHeader({
   threadRootMessage?: Message | null;
   onBackFromThread?: () => void;
 }) {
+  const strings = useStrings();
+  const chatName = displayChatName(selectedChat, currentUser?.id, strings);
   const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
   const handleBack = threadRootMessage && onBackFromThread ? onBackFromThread : onBack;
 
@@ -123,7 +126,7 @@ export function ChatHeader({
             className={`avatar chat-avatar ${chatAvatarTypeClass(selectedChat)}`}
             fallbackKind={chatAvatarFallbackKind(selectedChat)}
             file={chatAvatarFile(selectedChat, currentUser?.id)}
-            label={displayChatName(selectedChat, currentUser?.id)}
+            label={chatName}
             style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "avatar"))}
           />
           <span>
@@ -131,7 +134,7 @@ export function ChatHeader({
               <span>Comments</span>
             </span>
             <small className="chat-presence">
-              {displayChatName(selectedChat, currentUser?.id)}
+              {chatName}
             </small>
           </span>
         </div>
@@ -150,12 +153,12 @@ export function ChatHeader({
             className={`avatar chat-avatar ${chatAvatarTypeClass(selectedChat)}`}
             fallbackKind={chatAvatarFallbackKind(selectedChat)}
             file={chatAvatarFile(selectedChat, currentUser?.id)}
-            label={displayChatName(selectedChat, currentUser?.id)}
+            label={chatName}
             style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "avatar"))}
           />
           <span>
             <span className="chat-title-row" style={transitionAnchorStyle(chatTransitionName(selectedChat.id, "title"))}>
-              <span>{displayChatName(selectedChat, currentUser?.id)}</span>
+              <span>{chatName}</span>
               {typingNames.length > 0 && (
                 <span className="typing-dots" title={`${typingNames.join(", ")} typing`} aria-label="typing">
                   <span className="typing-dot" />
@@ -170,7 +173,7 @@ export function ChatHeader({
                   ? presence
                   : typingNames.length > 0
                     ? `${typingNames.join(", ")} typing...`
-                    : `${selectedChat.members.length} member${selectedChat.members.length === 1 ? "" : "s"}`}
+                    : strings.chats.types.membersCount(selectedChat.members.length)}
               </small>
             )}
           </span>
@@ -203,7 +206,7 @@ export function ChatHeader({
               type="button"
               className="icon-button subtle chat-header-selection-button"
               aria-label="Archive selected messages"
-              title="Save to Message Archive"
+              title={strings.chats.details.saveToArchive}
               onClick={onSelectionArchive}
             >
               <Archive aria-hidden="true" size={18} />
@@ -228,9 +231,9 @@ export function ChatHeader({
                   type="button"
                   className="icon-button subtle chat-header-call-button chat-header-call-button--audio"
                   aria-label="Audio call"
-                  title="Audio call"
+                  title={callPhase !== "idle" ? "Another call is in progress" : "Audio call"}
                   onClick={onStartAudioCall}
-                  disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
+                  disabled={callPhase !== "idle"}
                 >
                   <Phone aria-hidden="true" size={17} strokeWidth={2} />
                 </button>
@@ -238,9 +241,9 @@ export function ChatHeader({
                   type="button"
                   className="icon-button subtle chat-header-call-button"
                   aria-label="Video call"
-                  title="Video call"
+                  title={callPhase !== "idle" ? "Another call is in progress" : "Video call"}
                   onClick={onStartVideoCall}
-                  disabled={callPhase !== "idle" && activeCallChatId === selectedChat.id}
+                  disabled={callPhase !== "idle"}
                 >
                   <Video aria-hidden="true" size={18} strokeWidth={2} />
                 </button>

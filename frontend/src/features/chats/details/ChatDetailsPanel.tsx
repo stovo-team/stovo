@@ -130,7 +130,7 @@ export function ChatDetailsPanel({
   onTitleDraftChange: (value: string) => void;
 }) {
   const strings = useStrings();
-  const chatName = displayChatName(chat, currentUserId);
+  const chatName = displayChatName(chat, currentUserId, strings);
   const [activeControl, setActiveControl] = useState<ChatInfoControl>(null);
   const [tabDirection, setTabDirection] = useState<"forward" | "backward">("forward");
   const { nameEditor, settings } = chatInfoControlVisibility(activeControl);

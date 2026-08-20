@@ -258,6 +258,7 @@ export default function FilesPage() {
   const sourceGroups = useMemo(() => {
     return buildStorageSources(files, chats, currentUser?.id, {
       archive: strings.files.categories.archive,
+      archiveTitle: strings.chats.sections.archive,
       voice: strings.files.categories.voice,
       family: strings.files.categories.family,
       groups: strings.files.categories.groups,
@@ -552,58 +553,62 @@ export default function FilesPage() {
           {error && <p className="error-text">{error}</p>}
           {notice && <p className="success-text">{notice}</p>}
 
-          <label className="search-field storage-search">
-            <Search aria-hidden="true" size={18} />
-            <input
-              placeholder={strings.files.searchPlaceholder}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </label>
+          <div className="storage-main-header">
+            <label className="search-field storage-search">
+              <Search aria-hidden="true" size={18} />
+              <input
+                placeholder={strings.files.searchPlaceholder}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </label>
 
-          <div className="filter-chip-row" aria-label={strings.files.storageFilters}>
-            {storageFilters.map((item) => (
-              <button
-                type="button"
-                className={filter === item.value ? "filter-chip active" : "filter-chip"}
-                aria-pressed={filter === item.value}
-                key={item.value}
-                onClick={() => setFilter(item.value)}
-              >
-                {item.label}
-              </button>
-            ))}
+            <div className="filter-chip-row" aria-label={strings.files.storageFilters}>
+              {storageFilters.map((item) => (
+                <button
+                  type="button"
+                  className={filter === item.value ? "filter-chip active" : "filter-chip"}
+                  aria-pressed={filter === item.value}
+                  key={item.value}
+                  onClick={() => setFilter(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {isLoading ? (
-            <div className="storage-grid skeleton-grid" aria-hidden="true">
-              {Array.from({ length: 10 }).map((_, index) => (
-                <span className="storage-tile skeleton-tile" key={index} />
-              ))}
-            </div>
-          ) : filteredFiles.length === 0 ? (
-            <div className="empty-state storage-empty-state">
-              <HardDriveIcon />
-              <strong>{filter === "favorites" ? strings.files.noFilesInFilter : strings.files.empty}</strong>
-              <p>{strings.files.noFilesInFilter}</p>
-            </div>
-          ) : (
-            <div className="storage-grid">
-              {filteredFiles.map((file) => (
-                <StorageTile
-                  accessToken={accessToken}
-                  file={file}
-                  isSelected={selectedFile?.id === file.id}
-                  key={file.id}
-                  onOpenImage={(imageFile, previewUrl) => setFullViewImage({ file: imageFile, previewUrl })}
-                  onSelect={() => dispatchSelection(storageTileSelectionAction(
-                    window.matchMedia("(max-width: 960px)").matches,
-                    file.id
-                  ))}
-                />
-              ))}
-            </div>
-          )}
+          <div className="storage-content-area">
+            {isLoading ? (
+              <div className="storage-grid skeleton-grid" aria-hidden="true">
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <span className="storage-tile skeleton-tile" key={index} />
+                ))}
+              </div>
+            ) : filteredFiles.length === 0 ? (
+              <div className="empty-state storage-empty-state">
+                <HardDriveIcon />
+                <strong>{filter === "favorites" ? strings.files.noFilesInFilter : strings.files.empty}</strong>
+                <p>{strings.files.noFilesInFilter}</p>
+              </div>
+            ) : (
+              <div className="storage-grid">
+                {filteredFiles.map((file) => (
+                  <StorageTile
+                    accessToken={accessToken}
+                    file={file}
+                    isSelected={selectedFile?.id === file.id}
+                    key={file.id}
+                    onOpenImage={(imageFile, previewUrl) => setFullViewImage({ file: imageFile, previewUrl })}
+                    onSelect={() => dispatchSelection(storageTileSelectionAction(
+                      window.matchMedia("(max-width: 960px)").matches,
+                      file.id
+                    ))}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {mobileDetailsOpen && (
