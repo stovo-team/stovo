@@ -144,7 +144,7 @@ export type UseTranscriptionParams = {
   accessToken: string | null;
   roomId: string | null;
   currentUserId: string | null;
-  socketRef: React.RefObject<Socket | null>;
+  socketRef?: React.RefObject<Socket | null>;
   localVideoStream?: MediaStream | null;
   /** Whether AI transcription is available at all (config flag from the server). */
   enabled?: boolean;
@@ -264,7 +264,7 @@ export function useTranscription({
 
   // ── Socket event listeners ──────────────────────────────────────────────
   useEffect(() => {
-    const socket = socketRef.current;
+    const socket = socketRef?.current;
     if (!socket) return;
 
     const onRecording = (payload: { sessionId: string; status: string }) => {
