@@ -8,8 +8,8 @@ describe("SettingsPage redesign", () => {
   it("uses the tiled overview and explicit internal setting surfaces", () => {
     expect(source).toContain('className="settings-dashboard"');
     expect(source).toContain('settings-tile--${item.id.toLowerCase().replaceAll(" ", "-")}');
-    expect(source).toContain('aria-label="Open profile settings"');
-    expect(source).toContain('aria-label={`Open ${item.label.toLowerCase()} settings`}');
+    expect(source).toContain('aria-label={strings.settings.openProfileSettings}');
+    expect(source).toContain('aria-label={strings.settings.openSectionAria(item.label)}');
   });
 
   it("shows a live theme preview inside the Appearance tile", () => {
@@ -31,7 +31,7 @@ describe("SettingsPage redesign", () => {
     expect(source).not.toContain("Using {resolvedThemeMode}");
     expect(source).toContain("appearance-custom-swatch");
     expect(source).toContain("<Palette aria-hidden=\"true\" size={15}");
-    expect(source).toContain("Message bubble curvature");
+    expect(source).toContain("strings.appearance.bubbleCurvatureAria");
     expect(source).toContain("MESSAGE_FONT_OPTIONS");
     expect(source).toContain("appearance-wallpaper-tile ${tile.thumbClass}");
     expect(styles).toContain("appearance-segment--bar");
