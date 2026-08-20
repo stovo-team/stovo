@@ -361,20 +361,45 @@ export function useCallSession({
     const controller = audioCallRef.current;
     const next = !callAudioSettings.screenSharing;
     setCallAudioWarning(null);
+
+    if (next && (typeof navigator === "undefined" || !navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function")) {
+      const msg = "Screen demonstration is not supported on this browser or device";
+      setCallNotice(msg);
+      setCallAudioWarning(msg);
+      return;
+    }
+
     setCallAudioSettings((current) => ({ ...current, screenSharing: next }));
-    if (!controller) return;
+    if (!controller) {
+      const msg = "Cannot share screen: call is not connected";
+      setCallNotice(msg);
+      setCallAudioWarning(msg);
+      return;
+    }
     try {
       await controller.toggleScreenShare(next);
+      setCallNotice(next ? "Screen demonstration active" : null);
     } catch (err) {
       setCallAudioSettings((current) => ({ ...current, screenSharing: false }));
       const name = (err as DOMException)?.name ?? "";
       if (name === "NotAllowedError" || name === "PermissionDeniedError" || name === "AbortError") {
-        setCallAudioWarning("Screen sharing permission was denied.");
+        setCallNotice("Screen demonstration permission was denied");
+        setCallAudioWarning("Screen demonstration permission was denied");
         return;
       }
-      setCallAudioWarning(err instanceof Error ? err.message : "Failed to share screen");
+      const msg = err instanceof Error ? err.message : "Failed to share screen";
+      setCallNotice(msg);
+      setCallAudioWarning(msg);
     }
   }, [callAudioSettings.screenSharing]);
+
+  useEffect(() => {
+    if (!callNotice) return;
+    const timer = window.setTimeout(() => {
+      setCallNotice(null);
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [callNotice]);
 
   // Call ↔ message media arbitration: suppress message audio/video while a call is active.
   useEffect(() => {

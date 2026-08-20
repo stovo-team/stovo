@@ -1,15 +1,10 @@
 import { RefObject } from "react";
 import {
   Archive,
-  Bell,
-  BellOff,
-  CheckCheck,
   Copy,
-  Info,
+  Minimize2,
   Pencil,
   Phone,
-  Pin,
-  Star,
   Trash2,
   Video
 } from "lucide-react";
@@ -69,7 +64,8 @@ export function ChatHeader({
   onSelectionArchive,
   onSelectionEdit,
   threadRootMessage = null,
-  onBackFromThread
+  onBackFromThread,
+  onShrinkCall
 }: {
   accessToken: string | null;
   currentUser: User | null;
@@ -101,6 +97,7 @@ export function ChatHeader({
   onSelectionEdit?: () => void;
   threadRootMessage?: Message | null;
   onBackFromThread?: () => void;
+  onShrinkCall?: () => void;
 }) {
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
@@ -248,6 +245,17 @@ export function ChatHeader({
                   <Video aria-hidden="true" size={18} strokeWidth={2} />
                 </button>
               </>
+            )}
+            {selectedChat.type === "voice" && activeCallChatId === selectedChat.id && callPhase !== "idle" && (
+              <button
+                type="button"
+                className="icon-button subtle chat-header-call-button chat-header-shrink-button"
+                aria-label={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
+                title={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
+                onClick={onShrinkCall}
+              >
+                <Minimize2 aria-hidden="true" size={17} strokeWidth={2} />
+              </button>
             )}
             <button
               type="button"

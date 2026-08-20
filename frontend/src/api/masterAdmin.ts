@@ -25,38 +25,48 @@ export interface CreateServerResponse {
   nav_tabs?: NavTabsConfig;
 }
 
-const MASTER_API_URL = import.meta.env.VITE_MASTER_API_URL || "";
+export function getMasterApiUrl(): string {
+  if (typeof import.meta.env.VITE_MASTER_API_URL === "string" && import.meta.env.VITE_MASTER_API_URL.trim()) {
+    return import.meta.env.VITE_MASTER_API_URL.trim().replace(/\/$/, "");
+  }
+  return "";
+}
 
 export async function masterLogin(username: string, password: string): Promise<string> {
-  const res = await fetch(`${MASTER_API_URL}/api/v1/master/auth/login`, {
+  const masterUrl = getMasterApiUrl();
+  const res = await fetch(`${masterUrl}/api/v1/master/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Login failed");
+    throw new Error(err.error || err.message || "Login failed");
   }
   const data = await res.json();
   return data.access_token;
 }
 
 export async function fetchServers(token: string): Promise<ServerRecord[]> {
-  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers`, {
+  const masterUrl = getMasterApiUrl();
+  const res = await fetch(`${masterUrl}/api/v1/master/servers`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    throw new Error("Failed to fetch servers");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || err.message || "Failed to fetch servers");
   }
   return res.json();
 }
 
 export async function fetchServerSettings(token: string, slug: string): Promise<ServerRecord> {
-  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}/settings`, {
+  const masterUrl = getMasterApiUrl();
+  const res = await fetch(`${masterUrl}/api/v1/master/servers/${slug}/settings`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    throw new Error("Failed to fetch server settings");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || err.message || "Failed to fetch server settings");
   }
   return res.json();
 }
@@ -66,7 +76,8 @@ export async function updateServerSettings(
   slug: string,
   updates: { name?: string; nav_tabs?: Partial<NavTabsConfig> }
 ): Promise<ServerRecord> {
-  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}/settings`, {
+  const masterUrl = getMasterApiUrl();
+  const res = await fetch(`${masterUrl}/api/v1/master/servers/${slug}/settings`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -76,7 +87,7 @@ export async function updateServerSettings(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Failed to update server settings");
+    throw new Error(err.error || err.message || "Failed to update server settings");
   }
   return res.json();
 }
@@ -89,7 +100,8 @@ export async function createServer(
   adminPassword?: string,
   navTabs?: Partial<NavTabsConfig>
 ): Promise<CreateServerResponse> {
-  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers`, {
+  const masterUrl = getMasterApiUrl();
+  const res = await fetch(`${masterUrl}/api/v1/master/servers`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -105,40 +117,46 @@ export async function createServer(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Failed to create server");
+    throw new Error(err.error || err.message || "Failed to create server");
   }
   return res.json();
 }
 
 export async function deleteServer(token: string, slug: string): Promise<void> {
-  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}`, {
+  const masterUrl = getMasterApiUrl();
+  const res = await fetch(`${masterUrl}/api/v1/master/servers/${slug}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    throw new Error("Failed to delete server");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || err.message || "Failed to delete server");
   }
 }
 
 export async function getGhostToken(token: string, slug: string): Promise<string> {
-  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}/ghost-token`, {
+  const masterUrl = getMasterApiUrl();
+  const res = await fetch(`${masterUrl}/api/v1/master/servers/${slug}/ghost-token`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    throw new Error("Failed to generate Ghost Token");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || err.message || "Failed to generate Ghost Token");
   }
   const data = await res.json();
   return data.ghost_token;
 }
 
 export async function createInviteLink(token: string, slug: string): Promise<string> {
-  const res = await fetch(`${MASTER_API_URL}/api/v1/master/servers/${slug}/invite`, {
+  const masterUrl = getMasterApiUrl();
+  const res = await fetch(`${masterUrl}/api/v1/master/servers/${slug}/invite`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    throw new Error("Failed to generate invite link");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || err.message || "Failed to generate invite link");
   }
   const data = await res.json();
   return data.invite_url;

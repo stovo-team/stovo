@@ -189,6 +189,8 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
                 }
                 onOpenSpeakerSheet={() => setIsSpeakerSheetOpen(true)}
                 onEnd={() => void endActiveCall()}
+                onShrink={() => session.setIsCallMinimized(true)}
+                notice={callNotice}
               />
             )}
 

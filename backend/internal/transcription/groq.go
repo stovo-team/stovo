@@ -239,81 +239,94 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 
 	chatURL := buildChatCompletionsURL(c.cfg.BaseURL)
 
-	// Schema 1: DashScope Multimodal audio_url schema (audio only for ASR models)
-	payload1 := map[string]any{
-		"model": c.cfg.Model,
-		"messages": []map[string]any{
-			{
-				"role": "user",
-				"content": []map[string]any{
-					{
-						"type": "audio_url",
-						"audio_url": map[string]any{
-							"url": dataURI,
+	modelsToTry := []string{c.cfg.Model}
+	if c.cfg.Model != "qwen3-asr-flash" && c.cfg.Model != "qwen3-asr-flash-2025-09-08" {
+		modelsToTry = append(modelsToTry, "qwen3-asr-flash")
+	} else if c.cfg.Model == "qwen3-asr-flash" {
+		modelsToTry = append(modelsToTry, "qwen3-asr-flash-2025-09-08")
+	}
+
+	var lastErr error
+	for _, modelName := range modelsToTry {
+		if strings.TrimSpace(modelName) == "" {
+			continue
+		}
+
+		// Schema 1: DashScope input_audio with data URI
+		payload1 := map[string]any{
+			"model": modelName,
+			"messages": []map[string]any{
+				{
+					"role": "user",
+					"content": []map[string]any{
+						{
+							"type": "input_audio",
+							"input_audio": map[string]any{
+								"data": dataURI,
+							},
 						},
 					},
 				},
 			},
-		},
-	}
+			"stream": false,
+		}
+		if resp, err := c.sendChatAudioRequest(ctx, chatURL, payload1); err == nil {
+			return resp, nil
+		} else {
+			lastErr = err
+		}
 
-	resp, err := c.sendChatAudioRequest(ctx, chatURL, payload1)
-	if err == nil {
-		return resp, nil
-	}
-
-	// Schema 2: OpenAI input_audio schema (raw base64 + format)
-	payload2 := map[string]any{
-		"model": c.cfg.Model,
-		"messages": []map[string]any{
-			{
-				"role": "user",
-				"content": []map[string]any{
-					{
-						"type": "input_audio",
-						"input_audio": map[string]any{
-							"data":   b64,
-							"format": format,
+		// Schema 2: DashScope audio_url with data URI
+		payload2 := map[string]any{
+			"model": modelName,
+			"messages": []map[string]any{
+				{
+					"role": "user",
+					"content": []map[string]any{
+						{
+							"type": "audio_url",
+							"audio_url": map[string]any{
+								"url": dataURI,
+							},
 						},
 					},
 				},
 			},
-		},
-	}
+			"stream": false,
+		}
+		if resp, err := c.sendChatAudioRequest(ctx, chatURL, payload2); err == nil {
+			return resp, nil
+		} else {
+			lastErr = err
+		}
 
-	resp2, err2 := c.sendChatAudioRequest(ctx, chatURL, payload2)
-	if err2 == nil {
-		return resp2, nil
-	}
-
-	// Schema 3: Multimodal chat with instruction prompt
-	payload3 := map[string]any{
-		"model": c.cfg.Model,
-		"messages": []map[string]any{
-			{
-				"role": "user",
-				"content": []map[string]any{
-					{
-						"type": "audio_url",
-						"audio_url": map[string]any{
-							"url": dataURI,
+		// Schema 3: OpenAI input_audio with raw base64 + format
+		payload3 := map[string]any{
+			"model": modelName,
+			"messages": []map[string]any{
+				{
+					"role": "user",
+					"content": []map[string]any{
+						{
+							"type": "input_audio",
+							"input_audio": map[string]any{
+								"data":   b64,
+								"format": format,
+							},
 						},
-					},
-					{
-						"type": "text",
-						"text": "Transcribe the audio speech word-for-word into text.",
 					},
 				},
 			},
-		},
+			"stream": false,
+		}
+		if resp, err := c.sendChatAudioRequest(ctx, chatURL, payload3); err == nil {
+			return resp, nil
+		} else {
+			lastErr = err
+		}
 	}
 
-	resp3, err3 := c.sendChatAudioRequest(ctx, chatURL, payload3)
-	if err3 == nil {
-		return resp3, nil
-	}
-
-	return nil, err
+	return nil, lastErr
 }
 
 func convertAudioToMP3OrWAV(ctx context.Context, rawAudio []byte, inExt string) ([]byte, string, string) {
@@ -389,8 +402,11 @@ func (c *GroqSTTClient) sendChatAudioRequest(ctx context.Context, chatURL string
 				msg = c
 			}
 		}
-		if msg == "" {
-			msg = string(respBody)
+		if msg == "" || msg == "{}" {
+			msg = strings.TrimSpace(string(respBody))
+		}
+		if msg == "" || msg == "{}" {
+			msg = http.StatusText(httpResp.StatusCode)
 		}
 		return nil, fmt.Errorf("ASR API error (%d): %s", httpResp.StatusCode, msg)
 	}
