@@ -46,6 +46,8 @@ export function VoiceChannelStage({
     setCallType,
     activeCallChatId,
     callAudioSettings,
+    callAudioCapabilities,
+    callRemoteMedia,
     applyCallAudioPatch,
     toggleScreenShare,
     endActiveCall,
@@ -138,7 +140,7 @@ export function VoiceChannelStage({
   };
 
   const handleToggleVideo = () => {
-    const isCurrentlyActive = callAudioSettings.cameraEnabled && hasLiveLocalVideo(localVideoStream);
+    const isCurrentlyActive = callAudioSettings.cameraEnabled;
     if (!isCurrentlyActive) {
       if (setCallType) setCallType("video");
       void applyCallAudioPatch({ cameraEnabled: true });
@@ -186,27 +188,20 @@ export function VoiceChannelStage({
     if (currentUser && userId === currentUser.id) {
       return {
         displayName: currentUser.displayName ? `${currentUser.displayName} (You)` : "You",
-        profilePhoto: currentUser.profilePhoto,
+        profilePhoto: currentUser.profilePhoto ?? null,
         isSelf: true
       };
     }
-    const found = chatMembers.find((m) => m.id === userId) || members.find((m) => m.id === userId);
+    const found = chatMembers.find((m) => m.id === userId) || (members && members.find((m) => m.id === userId));
     return {
       displayName: found?.displayName || "Member",
-      profilePhoto: found?.profilePhoto || null,
+      profilePhoto: found?.profilePhoto ?? null,
       isSelf: false
     };
   };
 
   const participantCount = displayParticipants.length;
 
-  // Determine layout grid tier based on participant count:
-  // 1: maximum height & width (voice-grid--1)
-  // 2: height decreased 2x (1 col, 2 rows) (voice-grid--2)
-  // 3-4: width decreased 2x (2 cols, 2 rows) (voice-grid--4)
-  // 5-6: height decreased (2 cols, 3 rows) (voice-grid--6)
-  // 7-9: 3x3 grid (3 cols, 3 rows) (voice-grid--9)
-  // >9: single-row user list with scroll (voice-room-user-list)
   let gridTierClass = "voice-grid--1";
   let avatarTierClass = "voice-avatar--xl";
   let wrapperTierClass = "voice-avatar-wrapper--xl";
@@ -242,6 +237,10 @@ export function VoiceChannelStage({
                 const info = resolveMemberInfo(p.userId);
                 const isSpeaking = !info.isSelf && isPeerSpeaking;
                 const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
+                const peerMedia = !info.isSelf ? callRemoteMedia?.find((m) => m.userId === p.userId) : null;
+                const hasVideo = info.isSelf
+                  ? Boolean(callAudioSettings.cameraEnabled && localVideoStream)
+                  : Boolean(peerMedia?.hasVideo && peerMedia.stream);
 
                 return (
                   <div
@@ -260,6 +259,7 @@ export function VoiceChannelStage({
                         {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
                       </div>
                       <span className="voice-list-row-name">{info.displayName}</span>
+                      {hasVideo && <span className="voice-list-video-pill" title="Camera Active"><Video size={12} /></span>}
                     </div>
                     <div className="voice-list-row-right">
                       {isMuted && (
@@ -287,26 +287,53 @@ export function VoiceChannelStage({
                 const info = resolveMemberInfo(p.userId);
                 const isSpeaking = !info.isSelf && isPeerSpeaking;
                 const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
+                const peerMedia = !info.isSelf ? callRemoteMedia?.find((m) => m.userId === p.userId) : null;
+                const hasActiveVideo = info.isSelf
+                  ? Boolean(callAudioSettings.cameraEnabled && localVideoStream)
+                  : Boolean(peerMedia?.hasVideo && peerMedia.stream);
+                const videoStream = info.isSelf ? localVideoStream : peerMedia?.stream ?? null;
 
                 return (
                   <div
                     key={p.userId}
-                    className={`voice-participant-card${isSpeaking ? " is-speaking" : ""}${info.isSelf ? " is-self" : ""}`}
+                    className={`voice-participant-card${hasActiveVideo ? " has-video" : ""}${isSpeaking ? " is-speaking" : ""}${info.isSelf ? " is-self" : ""}`}
                   >
-                    <div className={`voice-participant-avatar-wrapper ${wrapperTierClass}`}>
-                      <RealAvatar
-                        accessToken={accessToken}
-                        className={`voice-participant-avatar ${avatarTierClass}`}
-                        file={info.profilePhoto}
-                        label={info.displayName}
-                      />
-                      {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
-                      {isMuted && (
-                        <span className="voice-card-muted-badge" title="Microphone muted" aria-label="Microphone muted">
-                          <MicOff size={14} aria-hidden="true" />
-                        </span>
-                      )}
-                    </div>
+                    {hasActiveVideo && videoStream ? (
+                      <div className="voice-participant-video-container">
+                        <video
+                          ref={(el) => {
+                            if (el && videoStream && el.srcObject !== videoStream) {
+                              el.srcObject = videoStream;
+                            }
+                          }}
+                          autoPlay
+                          playsInline
+                          muted={info.isSelf}
+                          className={`voice-participant-video-feed${info.isSelf && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
+                        />
+                        {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
+                        {isMuted && (
+                          <span className="voice-card-muted-badge voice-card-muted-badge--video" title="Microphone muted" aria-label="Microphone muted">
+                            <MicOff size={14} aria-hidden="true" />
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className={`voice-participant-avatar-wrapper ${wrapperTierClass}`}>
+                        <RealAvatar
+                          accessToken={accessToken}
+                          className={`voice-participant-avatar ${avatarTierClass}`}
+                          file={info.profilePhoto}
+                          label={info.displayName}
+                        />
+                        {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
+                        {isMuted && (
+                          <span className="voice-card-muted-badge" title="Microphone muted" aria-label="Microphone muted">
+                            <MicOff size={14} aria-hidden="true" />
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="voice-participant-meta">
                       <span className="voice-participant-name">{info.displayName}</span>
                       <span className="voice-participant-state">
@@ -380,15 +407,18 @@ export function VoiceChannelStage({
               {callAudioSettings.cameraEnabled ? <Video size={20} /> : <VideoOff size={20} />}
             </button>
 
-            <button
-              type="button"
-              className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-              onClick={handleToggleScreenShare}
-              title={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
-              aria-label={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
-            >
-              <Monitor size={20} />
-            </button>
+            {/* Screen Share button only shown when supported (e.g. not on Android/mobile where getDisplayMedia is unavailable) */}
+            {callAudioCapabilities?.canShareScreen && (
+              <button
+                type="button"
+                className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
+                onClick={handleToggleScreenShare}
+                title={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
+                aria-label={callAudioSettings.screenSharing ? "Stop Sharing Screen" : "Share Screen"}
+              >
+                <Monitor size={20} />
+              </button>
+            )}
 
             {/* 3 Dots Menu Button for Settings & AI Notes */}
             <div className="voice-more-menu-anchor">

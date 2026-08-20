@@ -140,6 +140,7 @@ export default function ChatsPage() {
               selectedChat={selectedChat}
               activeChatId={chatId}
               chats={chats}
+              members={members}
               memberLookup={memberLookup}
               isChatLoading={isChatLoading}
               typingNames={typingNames}

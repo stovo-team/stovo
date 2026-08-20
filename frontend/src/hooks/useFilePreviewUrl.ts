@@ -9,13 +9,18 @@ export default function useFilePreviewUrl(
   enabled = true
 ) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(() =>
-    enabled && file ? peekCachedObjectUrl(file.id) : null
+    enabled && file?.id ? peekCachedObjectUrl(file.id) : null
   );
 
   useEffect(() => {
     let cancelled = false;
 
-    if (!enabled || !file || !file.mimeType.startsWith("image/")) {
+    if (!enabled || !file || !file.id) {
+      setPreviewUrl(null);
+      return undefined;
+    }
+
+    if (file.mimeType && !file.mimeType.startsWith("image/") && !file.mimeType.includes("image")) {
       setPreviewUrl(null);
       return undefined;
     }

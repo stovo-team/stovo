@@ -110,6 +110,8 @@ export const strings = {
     changeServerAddress: "Change server address",
     tapToPersonalize: "Tap to personalize",
 
+    openSectionAria: (section: string) => `Open ${section.toLowerCase()} settings`,
+
     // profile card
     familyMember: "Family member",
     openProfileSettings: "Open profile settings",
@@ -179,6 +181,55 @@ export const strings = {
     chatBackground: "Chat background",
     messageStyle: "Message style",
     chatMedia: "Chat media",
+
+    // theme options
+    themes: {
+      system: "System",
+      light: "Light",
+      dark: "Dark",
+      amoled: "AMOLED",
+    },
+
+    // accent options
+    accents: {
+      blue: "Blue",
+      green: "Green",
+      purple: "Purple",
+      rose: "Rose",
+      amber: "Amber",
+      custom: "Custom",
+    },
+
+    // wallpaper options
+    wallpapers: {
+      dots: "Dots",
+      paper: "Paper",
+      aurora: "Aurora",
+      plain: "Plain",
+      custom: "Custom",
+    },
+
+    // bubble shape options
+    bubbleShapes: {
+      rounded: "Rounded",
+      soft: "Soft",
+      square: "Square",
+    },
+
+    // message font options
+    messageFonts: {
+      system: "System",
+      sans: "Sans",
+      serif: "Serif",
+      rounded: "Rounded",
+      mono: "Mono",
+    },
+
+    // density options
+    densities: {
+      comfortable: "Comfortable",
+      compact: "Compact",
+    },
 
     // wallpaper
     photo: "Photo",

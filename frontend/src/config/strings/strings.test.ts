@@ -30,6 +30,43 @@ describe("i18n strings and language resolution", () => {
     expect(en.settings.language).toBe("Language");
     expect(ru.settings.language).toBe("Язык");
 
+    expect(en.settings.notifications).toBe("Notifications");
+    expect(ru.settings.notifications).toBe("Уведомления");
+
+    expect(en.settings.privacyAndSecurity).toBe("Privacy and Security");
+    expect(ru.settings.privacyAndSecurity).toBe("Конфиденциальность и безопасность");
+
+    expect(en.settings.appearance).toBe("Appearance");
+    expect(ru.settings.appearance).toBe("Оформление");
+
+    expect(en.notifications.messages).toBe("Messages");
+    expect(ru.notifications.messages).toBe("Сообщения");
+    expect(en.notifications.messageNotifications).toBe("Message notifications");
+    expect(ru.notifications.messageNotifications).toBe("Уведомления о сообщениях");
+    expect(en.notifications.quietHours).toBe("Quiet hours");
+    expect(ru.notifications.quietHours).toBe("Тихие часы");
+
+    expect(en.privacy.profileVisibility).toBe("Profile visibility");
+    expect(ru.privacy.profileVisibility).toBe("Видимость профиля");
+    expect(en.privacy.readReceipts).toBe("Read receipts");
+    expect(ru.privacy.readReceipts).toBe("Отчёты о прочтении");
+    expect(en.privacy.blockedMembers).toBe("Blocked members");
+    expect(ru.privacy.blockedMembers).toBe("Заблокированные участники");
+
+    expect(en.appearance.theme).toBe("Theme");
+    expect(ru.appearance.theme).toBe("Тема");
+    expect(en.appearance.themes.system).toBe("System");
+    expect(ru.appearance.themes.system).toBe("Системная");
+    expect(en.appearance.accents.blue).toBe("Blue");
+    expect(ru.appearance.accents.blue).toBe("Синий");
+    expect(en.appearance.wallpapers.dots).toBe("Dots");
+    expect(ru.appearance.wallpapers.dots).toBe("Точки");
+    expect(en.appearance.bubbleShapes.rounded).toBe("Rounded");
+    expect(ru.appearance.bubbleShapes.rounded).toBe("Закругленный");
+    expect(en.appearance.messageFonts.system).toBe("System");
+    expect(ru.appearance.messageFonts.system).toBe("Системный");
+    expect(en.appearance.densities.comfortable).toBe("Comfortable");
+    expect(ru.appearance.densities.comfortable).toBe("Комфортная");
 
     expect(en.nav.unreadMessages(1)).toBe("1 unread messages");
     expect(ru.nav.unreadMessages(1)).toBe("1 непрочитанное сообщение");
@@ -45,6 +82,12 @@ describe("i18n strings and language resolution", () => {
     expect(Object.keys(russianStrings.auth)).toEqual(Object.keys(englishStrings.auth));
     expect(Object.keys(russianStrings.settings)).toEqual(Object.keys(englishStrings.settings));
     expect(Object.keys(russianStrings.appearance)).toEqual(Object.keys(englishStrings.appearance));
+    expect(Object.keys(russianStrings.appearance.themes)).toEqual(Object.keys(englishStrings.appearance.themes));
+    expect(Object.keys(russianStrings.appearance.accents)).toEqual(Object.keys(englishStrings.appearance.accents));
+    expect(Object.keys(russianStrings.appearance.wallpapers)).toEqual(Object.keys(englishStrings.appearance.wallpapers));
+    expect(Object.keys(russianStrings.appearance.bubbleShapes)).toEqual(Object.keys(englishStrings.appearance.bubbleShapes));
+    expect(Object.keys(russianStrings.appearance.messageFonts)).toEqual(Object.keys(englishStrings.appearance.messageFonts));
+    expect(Object.keys(russianStrings.appearance.densities)).toEqual(Object.keys(englishStrings.appearance.densities));
     expect(Object.keys(russianStrings.notifications)).toEqual(Object.keys(englishStrings.notifications));
     expect(Object.keys(russianStrings.privacy)).toEqual(Object.keys(englishStrings.privacy));
     expect(Object.keys(russianStrings.errors)).toEqual(Object.keys(englishStrings.errors));
