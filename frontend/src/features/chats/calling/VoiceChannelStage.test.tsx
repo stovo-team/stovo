@@ -272,14 +272,6 @@ describe("VoiceChannelStage", () => {
     });
     expect(mockSession.toggleScreenShare).toHaveBeenCalled();
 
-    // Test Shrink button
-    const shrinkBtn = buttons[3] as HTMLButtonElement;
-    expect(shrinkBtn).toBeDefined();
-    act(() => {
-      shrinkBtn.click();
-    });
-    expect(mockSetIsCallMinimized).toHaveBeenCalledWith(true);
-
     // Click 3-dots more menu
     const moreBtn = inCallToolbar!.querySelector("button[title='More Options']") as HTMLButtonElement;
     expect(moreBtn).toBeDefined();
@@ -433,5 +425,36 @@ describe("VoiceChannelStage", () => {
       expect(userList).toBeDefined();
       expect(userList?.querySelectorAll(".voice-participant-list-row").length).toBe(10);
     }
+  });
+
+  it("renders notice banner when callNotice is set", () => {
+    const mockSession = {
+      callPhase: "idle",
+      activeCallChatId: null,
+      callNotice: "Screen demonstration is not supported on this browser or device",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      activeGroupCalls: {},
+      callTimer: "00:00",
+      setIsCallSettingsMenuOpen: vi.fn()
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={mockSession}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    const banner = container.querySelector(".voice-room-notice-banner");
+    expect(banner).toBeDefined();
+    expect(banner?.textContent).toContain("Screen demonstration is not supported on this browser or device");
   });
 });

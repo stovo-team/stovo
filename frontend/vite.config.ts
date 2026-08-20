@@ -14,6 +14,21 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: ["frontend", ".loca.lt", "stovo-cloud.stovo.ru"],
     port: 5173,
-    hmr: disableHmr ? false : undefined
-  }
+    hmr: disableHmr ? false : undefined,
+    proxy: {
+      "/api/v1/master": {
+        target: "http://localhost:8001",
+        changeOrigin: true,
+      },
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+      "/socket.io": {
+        target: "http://localhost:8000",
+        ws: true,
+        changeOrigin: true,
+      },
+    },
+  },
 });

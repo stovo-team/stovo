@@ -47,6 +47,14 @@ type ServerRecord struct {
 	NavTabs   NavTabsConfig `json:"nav_tabs"`
 }
 
+func getMasterSecret() []byte {
+	secret := os.Getenv("MASTER_SYSTEM_SECRET")
+	if secret == "" {
+		secret = "super_secret_master_key_123"
+	}
+	return []byte(secret)
+}
+
 // Helper to write JSON response
 func writeJSON(w http.ResponseWriter, code int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
@@ -66,12 +74,18 @@ func (o *Orchestrator) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	adminUser := os.Getenv("MASTER_ADMIN_USER")
+	if adminUser == "" {
+		adminUser = "admin"
+	}
 	adminPass := os.Getenv("MASTER_ADMIN_PASSWORD")
+	if adminPass == "" {
+		adminPass = "changeme_master_pass"
+	}
 	if req.Username != adminUser || req.Password != adminPass {
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid credentials"})
 		return
 	}
-	secret := []byte(os.Getenv("MASTER_SYSTEM_SECRET"))
+	secret := getMasterSecret()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":   "master_admin",
 		"admin": true,
@@ -90,7 +104,7 @@ func (o *Orchestrator) masterAuth(next http.Handler) http.Handler {
 			return
 		}
 		tokenStr := auth[7:]
-		secret := []byte(os.Getenv("MASTER_SYSTEM_SECRET"))
+		secret := getMasterSecret()
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 			return secret, nil
 		})
@@ -98,7 +112,6 @@ func (o *Orchestrator) masterAuth(next http.Handler) http.Handler {
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid token"})
 			return
 		}
-		// optionally check admin claim
 		next.ServeHTTP(w, r)
 	})
 }
@@ -172,7 +185,7 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 
 	// Generate single‑use admin invite token
 	inviteToken := uuid.NewString()
-	secret := []byte(os.Getenv("MASTER_SYSTEM_SECRET"))
+	secret := getMasterSecret()
 	inviteJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"server": req.Slug,
 		"type":   "admin_invite",
@@ -313,7 +326,7 @@ func (o *Orchestrator) handleDeleteServer(w http.ResponseWriter, r *http.Request
 // handleGhostToken creates a short‑lived JWT that the master admin can use as a superadmin on a child server.
 func (o *Orchestrator) handleGhostToken(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "id")
-	secret := []byte(os.Getenv("MASTER_SYSTEM_SECRET"))
+	secret := getMasterSecret()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"server":        slug,
 		"is_superadmin": true,
@@ -327,7 +340,7 @@ func (o *Orchestrator) handleGhostToken(w http.ResponseWriter, r *http.Request) 
 func (o *Orchestrator) handleCreateInviteToken(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "id")
 	inviteToken := uuid.NewString()
-	secret := []byte(os.Getenv("MASTER_SYSTEM_SECRET"))
+	secret := getMasterSecret()
 	inviteJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"server": slug,
 		"type":   "admin_invite",
