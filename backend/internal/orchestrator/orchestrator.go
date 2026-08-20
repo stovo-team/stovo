@@ -26,8 +26,28 @@ func NewOrchestrator(dockerClient *client.Client, masterDBURL string) *Orchestra
 		log.Fatalf("cannot ping master DB: %v", err)
 	}
 	orch := &Orchestrator{dockerClient: dockerClient, masterDB: db}
+	if err := orch.initSchema(); err != nil {
+		log.Printf("[orchestrator] failed to init master DB schema: %v", err)
+	}
 	orch.ReconcileContainers()
 	return orch
+}
+
+// initSchema creates the master servers table if it does not already exist.
+func (o *Orchestrator) initSchema() error {
+	schema := `
+	CREATE TABLE IF NOT EXISTS servers (
+		id SERIAL PRIMARY KEY,
+		slug VARCHAR(64) NOT NULL UNIQUE,
+		name VARCHAR(255) NOT NULL,
+		status VARCHAR(64) NOT NULL DEFAULT 'running',
+		nav_tabs JSONB,
+		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);
+	CREATE INDEX IF NOT EXISTS idx_servers_slug ON servers(slug);
+	`
+	_, err := o.masterDB.Exec(schema)
+	return err
 }
 
 // ReconcileContainers ensures all registered servers have active running backend containers.
@@ -56,17 +76,20 @@ func (o *Orchestrator) Close() error {
 
 // RegisterRoutes attaches HTTP handlers for the master API.
 func (o *Orchestrator) RegisterRoutes(r chi.Router) {
-	// Note: chi is imported in routes.go – we keep a thin wrapper here.
-	r.Post("/api/v1/master/servers", o.handleCreateServer)
-	r.Get("/api/v1/master/servers", o.handleListServers)
-	r.Get("/api/v1/master/servers/{id}/settings", o.handleGetServerSettings)
-	r.Patch("/api/v1/master/servers/{id}/settings", o.handleUpdateServerSettings)
-	r.Put("/api/v1/master/servers/{id}/settings", o.handleUpdateServerSettings)
-	r.Delete("/api/v1/master/servers/{id}", o.handleDeleteServer)
-	r.Post("/api/v1/master/servers/{id}/ghost-token", o.handleGhostToken)
-	r.Post("/api/v1/master/servers/{id}/invite", o.handleCreateInviteToken)
-	r.Get("/api/v1/master/resolve", o.handleResolve)
 	r.Post("/api/v1/master/auth/login", o.handleLogin)
+	r.Get("/api/v1/master/resolve", o.handleResolve)
+
+	r.Group(func(protected chi.Router) {
+		protected.Use(o.masterAuth)
+		protected.Post("/api/v1/master/servers", o.handleCreateServer)
+		protected.Get("/api/v1/master/servers", o.handleListServers)
+		protected.Get("/api/v1/master/servers/{id}/settings", o.handleGetServerSettings)
+		protected.Patch("/api/v1/master/servers/{id}/settings", o.handleUpdateServerSettings)
+		protected.Put("/api/v1/master/servers/{id}/settings", o.handleUpdateServerSettings)
+		protected.Delete("/api/v1/master/servers/{id}", o.handleDeleteServer)
+		protected.Post("/api/v1/master/servers/{id}/ghost-token", o.handleGhostToken)
+		protected.Post("/api/v1/master/servers/{id}/invite", o.handleCreateInviteToken)
+	})
 }
 
 // The handler implementations live in routes.go.

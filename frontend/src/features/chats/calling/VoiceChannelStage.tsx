@@ -49,6 +49,7 @@ export function VoiceChannelStage({
     callType,
     setCallType,
     activeCallChatId,
+    callNotice,
     callAudioSettings,
     callAudioCapabilities,
     callRemoteMedia,
@@ -169,11 +170,6 @@ export function VoiceChannelStage({
     void endActiveCall();
   };
 
-  const handleShrink = () => {
-    setIsMoreMenuOpen(false);
-    setIsCallMinimized(true);
-  };
-
   const handleOpenSettings = () => {
     setIsMoreMenuOpen(false);
     if (setIsCallAudioPopupOpen) {
@@ -242,6 +238,13 @@ export function VoiceChannelStage({
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
+      {/* Notice Banner */}
+      {callNotice && (
+        <div className="voice-room-notice-banner" role="status" aria-live="polite">
+          <span>{callNotice}</span>
+        </div>
+      )}
+
       {/* Main Stage / Participant Grid or List */}
       <div className="voice-room-stage">
         {participantCount > 0 ? (
@@ -431,17 +434,6 @@ export function VoiceChannelStage({
               aria-label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
             >
               <Monitor size={20} />
-            </button>
-
-            {/* Shrink / Minimize Call Button */}
-            <button
-              type="button"
-              className="voice-dock-btn"
-              onClick={handleShrink}
-              title={voiceStrings?.shrinkCall ?? "Shrink Voice Channel"}
-              aria-label={voiceStrings?.shrinkCall ?? "Shrink Voice Channel"}
-            >
-              <Minimize2 size={20} />
             </button>
 
             {/* 3 Dots Menu Button for Settings & AI Notes */}

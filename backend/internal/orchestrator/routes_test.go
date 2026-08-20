@@ -74,3 +74,25 @@ func TestBackendContainerEnvIncludesNavTabsConfiguration(t *testing.T) {
 	}
 }
 
+func TestGetMasterSecretFallback(t *testing.T) {
+	t.Setenv("MASTER_SYSTEM_SECRET", "")
+	secret := getMasterSecret()
+	if string(secret) != "super_secret_master_key_123" {
+		t.Fatalf("expected fallback secret, got %q", string(secret))
+	}
+
+	t.Setenv("MASTER_SYSTEM_SECRET", "custom_secret")
+	secret = getMasterSecret()
+	if string(secret) != "custom_secret" {
+		t.Fatalf("expected custom secret, got %q", string(secret))
+	}
+}
+
+func TestDefaultNavTabs(t *testing.T) {
+	tabs := defaultNavTabs()
+	if !tabs.Chats || !tabs.Storage || !tabs.Plans || !tabs.Settings {
+		t.Fatalf("expected all tabs true by default, got: %+v", tabs)
+	}
+}
+
+

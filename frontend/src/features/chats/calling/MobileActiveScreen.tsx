@@ -52,6 +52,8 @@ export function MobileActiveScreen({
   onToggleFlip: () => void | Promise<void>;
   onOpenSpeakerSheet: () => void;
   onEnd: () => void;
+  onShrink?: () => void;
+  notice?: string | null;
 }) {
   // Local video elements for mobile — srcObject is set directly from the stream props
   // so the UI reacts as soon as the stream is available without timing fragility.
@@ -166,6 +168,33 @@ export function MobileActiveScreen({
       className={`mobile-active-screen${(showVideo || showRemoteVideo || (callType === "video" && isCameraEnabled)) ? " mobile-active-screen--video" : ""}`}
       onPointerDown={toggleControls}
     >
+      {/* Top right shrink button */}
+      <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}>
+        <button
+          type="button"
+          className="mobile-active-shrink-btn"
+          aria-label="Shrink call"
+          title="Shrink call"
+          onClick={(e) => {
+            e.stopPropagation();
+            onShrink?.();
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="4 14 10 14 10 20" />
+            <polyline points="20 10 14 10 14 4" />
+            <line x1="14" y1="10" x2="21" y2="3" />
+            <line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
+        </button>
+      </div>
+
+      {notice && (
+        <div className="mobile-active-notice-banner" role="status" aria-live="polite">
+          <span>{notice}</span>
+        </div>
+      )}
+
       {showProximityBlank && (
         <div className="mobile-active-proximity-blank" aria-hidden="true" />
       )}
