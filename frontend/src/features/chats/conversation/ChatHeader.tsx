@@ -1,10 +1,16 @@
 import { RefObject } from "react";
 import {
   Archive,
+  Bell,
+  BellOff,
+  CheckCheck,
   Copy,
+  Info,
   Minimize2,
   Pencil,
   Phone,
+  Pin,
+  Star,
   Trash2,
   Video
 } from "lucide-react";
