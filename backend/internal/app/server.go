@@ -1,4 +1,4 @@
-﻿package app
+package app
 
 import (
 	"bufio"
@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -624,12 +625,47 @@ func (s *Server) getFamily(familyID string) (familyPublic, error) {
 	return familyPublicFromEnt(f), nil
 }
 
+func parseNavTabsEnv() NavTabsConfig {
+	cfg := NavTabsConfig{
+		Chats:    true,
+		Storage:  true,
+		Plans:    true,
+		Settings: true,
+	}
+	raw := strings.TrimSpace(os.Getenv("NAV_TABS"))
+	if raw == "" {
+		return cfg
+	}
+	if err := json.Unmarshal([]byte(raw), &cfg); err == nil {
+		return cfg
+	}
+	items := strings.Split(raw, ",")
+	cfg.Chats = false
+	cfg.Storage = false
+	cfg.Plans = false
+	cfg.Settings = false
+	for _, item := range items {
+		switch strings.TrimSpace(strings.ToLower(item)) {
+		case "chats":
+			cfg.Chats = true
+		case "storage", "files":
+			cfg.Storage = true
+		case "plans":
+			cfg.Plans = true
+		case "settings":
+			cfg.Settings = true
+		}
+	}
+	return cfg
+}
+
 func familyPublicFromEnt(f *ent.Family) familyPublic {
 	family := familyPublic{
 		ID:                               f.ID,
 		Name:                             f.Name,
 		MinimizedChatLayout:              f.MinimizedChatLayout,
 		DefaultMessageEncryptionProtocol: f.DefaultMessageEncryptionProtocol,
+		NavTabs:                          parseNavTabsEnv(),
 		PublicAppURL:                     f.PublicAppURL,
 		PublicAPIURL:                     f.PublicAPIURL,
 	}

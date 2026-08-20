@@ -226,27 +226,17 @@ func (c *GroqSTTClient) transcribeOnce(ctx context.Context, req TranscribeReques
 }
 
 func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req TranscribeRequest) (*GroqTranscriptionResponse, error) {
-	mime := req.ContentType
-	if mime == "" {
-		mime = "audio/webm"
+	inExt := filepath.Ext(req.Filename)
+	if inExt == "" {
+		inExt = ".webm"
 	}
-	b64 := base64.StdEncoding.EncodeToString(req.AudioData)
+	convertedAudio, mime, format := convertAudioToMP3OrWAV(ctx, req.AudioData, inExt)
+	b64 := base64.StdEncoding.EncodeToString(convertedAudio)
 	dataURI := fmt.Sprintf("data:%s;base64,%s", mime, b64)
-
-	format := "wav"
-	if strings.Contains(mime, "mp3") || strings.Contains(mime, "mpeg") {
-		format = "mp3"
-	} else if strings.Contains(mime, "webm") {
-		format = "webm"
-	} else if strings.Contains(mime, "ogg") || strings.Contains(mime, "opus") {
-		format = "ogg"
-	} else if strings.Contains(mime, "m4a") || strings.Contains(mime, "aac") {
-		format = "m4a"
-	}
 
 	chatURL := buildChatCompletionsURL(c.cfg.BaseURL)
 
-	// Schema 1: DashScope Multimodal audio_url schema
+	// Schema 1: DashScope Multimodal audio_url schema (audio only for ASR models)
 	payload1 := map[string]any{
 		"model": c.cfg.Model,
 		"messages": []map[string]any{
@@ -258,10 +248,6 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 						"audio_url": map[string]any{
 							"url": dataURI,
 						},
-					},
-					{
-						"type": "text",
-						"text": "Transcribe the audio speech word-for-word into text without translating.",
 					},
 				},
 			},
@@ -287,10 +273,6 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 							"format": format,
 						},
 					},
-					{
-						"type": "text",
-						"text": "Transcribe the audio speech word-for-word into text without translating.",
-					},
 				},
 			},
 		},
@@ -301,7 +283,69 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 		return resp2, nil
 	}
 
+	// Schema 3: Multimodal chat with instruction prompt
+	payload3 := map[string]any{
+		"model": c.cfg.Model,
+		"messages": []map[string]any{
+			{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type": "audio_url",
+						"audio_url": map[string]any{
+							"url": dataURI,
+						},
+					},
+					{
+						"type": "text",
+						"text": "Transcribe the audio speech word-for-word into text.",
+					},
+				},
+			},
+		},
+	}
+
+	resp3, err3 := c.sendChatAudioRequest(ctx, chatURL, payload3)
+	if err3 == nil {
+		return resp3, nil
+	}
+
 	return nil, err
+}
+
+func convertAudioToMP3OrWAV(ctx context.Context, rawAudio []byte, inExt string) ([]byte, string, string) {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		return rawAudio, "audio/webm", "webm"
+	}
+	tmpDir, err := os.MkdirTemp("", "stovo-asr-conv-*")
+	if err != nil {
+		return rawAudio, "audio/webm", "webm"
+	}
+	defer os.RemoveAll(tmpDir)
+
+	inPath := filepath.Join(tmpDir, "in"+inExt)
+	outPath := filepath.Join(tmpDir, "out.mp3")
+
+	if err := os.WriteFile(inPath, rawAudio, 0600); err != nil {
+		return rawAudio, "audio/webm", "webm"
+	}
+
+	cmd := exec.CommandContext(ctx, "ffmpeg", "-y", "-i", inPath, "-ar", "16000", "-ac", "1", "-b:a", "48k", outPath)
+	if err := cmd.Run(); err != nil {
+		outPathWav := filepath.Join(tmpDir, "out.wav")
+		cmdWav := exec.CommandContext(ctx, "ffmpeg", "-y", "-i", inPath, "-ar", "16000", "-ac", "1", outPathWav)
+		if errWav := cmdWav.Run(); errWav == nil {
+			if data, errRead := os.ReadFile(outPathWav); errRead == nil && len(data) > 0 {
+				return data, "audio/wav", "wav"
+			}
+		}
+		return rawAudio, "audio/webm", "webm"
+	}
+
+	if data, errRead := os.ReadFile(outPath); errRead == nil && len(data) > 0 {
+		return data, "audio/mp3", "mp3"
+	}
+	return rawAudio, "audio/webm", "webm"
 }
 
 func (c *GroqSTTClient) sendChatAudioRequest(ctx context.Context, chatURL string, payload any) (*GroqTranscriptionResponse, error) {

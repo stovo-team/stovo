@@ -58,3 +58,19 @@ func TestBackendContainerEnvUsesPublicIPWhenTurnHostIsUnset(t *testing.T) {
 		t.Fatalf("TURN_HOST should fall back to PUBLIC_IP, got: %q", joined)
 	}
 }
+
+func TestBackendContainerEnvIncludesNavTabsConfiguration(t *testing.T) {
+	env := backendContainerEnv("family", func(key, fallback string) string {
+		if key == "NAV_TABS" {
+			return `{"chats":true,"storage":false,"plans":true,"settings":false}`
+		}
+		return fallback
+	})
+
+	joined := "\n" + strings.Join(env, "\n") + "\n"
+	want := "\nNAV_TABS={\"chats\":true,\"storage\":false,\"plans\":true,\"settings\":false}\n"
+	if !strings.Contains(joined, want) {
+		t.Fatalf("NAV_TABS should be in environment, got: %q", joined)
+	}
+}
+

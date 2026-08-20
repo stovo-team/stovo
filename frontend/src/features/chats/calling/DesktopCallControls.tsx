@@ -14,6 +14,7 @@ import {
   VideoOff,
   Volume2
 } from "lucide-react";
+import { RealAvatar } from "../sidebar/RealAvatar";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
 
@@ -76,6 +77,9 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
     accessToken,
     socketRef
   } = session;
+
+  const activePeer = members.find((m) => m.id === session.callPeerUserId);
+  const peerProfilePhoto = activePeer?.profilePhoto ?? null;
 
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
@@ -160,10 +164,7 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
               className={[
                 "call-popup-local-video",
                 callType === "video" && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? "visible" : "",
-                callAudioSettings.mirrorLocalVideo &&
-                callAudioSettings.cameraFacingMode === "user"
-                  ? "mirrored"
-                  : "",
+                callAudioSettings.mirrorLocalVideo && callAudioSettings.cameraFacingMode === "user" ? "mirrored" : "",
               ].filter(Boolean).join(" ")}
               autoPlay
               playsInline
@@ -173,30 +174,54 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
         )}
       </div>
 
+      {/* ── Call Invite Modal Overlay ── */}
       {isCallInviteOpen && callPhase === "in-call" && !isCallMinimized && (
-        <div className="call-invite-panel" style={{ padding: "8px 12px", maxHeight: 180, overflow: "auto" }}>
-          <strong style={{ display: "block", marginBottom: 8 }}>Add people</strong>
-          {members
-            .filter((m) => m.id !== currentUser?.id && !callParticipantIds.includes(m.id))
-            .map((m) => (
-              <label key={m.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-                <input
-                  type="checkbox"
-                  checked={callInviteSelection.includes(m.id)}
-                  onChange={(e) => {
-                    setCallInviteSelection((cur) =>
-                      e.target.checked ? [...cur, m.id] : cur.filter((id) => id !== m.id),
-                    );
-                  }}
-                />
-                <span>{m.displayName}</span>
-              </label>
-            ))}
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            <button type="button" className="primary-button" onClick={sendCallInvites}>
-              Invite
+        <div className="call-invite-modal" role="dialog" aria-label="Invite to call">
+          <div className="call-invite-modal-header">
+            <h3>Add members to call</h3>
+            <button
+              type="button"
+              className="icon-button subtle"
+              aria-label="Close invite modal"
+              onClick={() => setIsCallInviteOpen(false)}
+            >
+              ✕
             </button>
-            <button type="button" className="secondary-button" onClick={() => setIsCallInviteOpen(false)}>
+          </div>
+          <div className="call-invite-member-list">
+            {members
+              .filter((m) => m.id !== currentUser?.id && !callParticipantIds.includes(m.id))
+              .map((member) => (
+                <label key={member.id} className="call-invite-member-row">
+                  <input
+                    type="checkbox"
+                    checked={callInviteSelection.includes(member.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setCallInviteSelection((prev) => [...prev, member.id]);
+                      } else {
+                        setCallInviteSelection((prev) => prev.filter((id) => id !== member.id));
+                      }
+                    }}
+                  />
+                  <span>{member.displayName}</span>
+                </label>
+              ))}
+          </div>
+          <div className="call-invite-modal-actions">
+            <button
+              type="button"
+              className="action-button primary"
+              disabled={callInviteSelection.length === 0}
+              onClick={() => void sendCallInvites(callInviteSelection)}
+            >
+              Invite ({callInviteSelection.length})
+            </button>
+            <button
+              type="button"
+              className="action-button subtle"
+              onClick={() => setIsCallInviteOpen(false)}
+            >
               Cancel
             </button>
           </div>
@@ -212,7 +237,12 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
       {!isCallMinimized && (callType === "audio" || !callAudioSettings.cameraEnabled) && !hasRemoteVideo && !callRemoteMedia.some((m) => m.hasScreenShare) && callPhase === "in-call" && !isMobileViewport && (
         <div className="call-popup-avatar-area">
           <div className="call-popup-avatar-circle">
-            {(callPeerDisplayName ?? activeCallPeerName) ? (callPeerDisplayName ?? activeCallPeerName)!.charAt(0).toUpperCase() : "?"}
+            <RealAvatar
+              accessToken={accessToken ?? null}
+              className="avatar call-popup-real-avatar"
+              file={peerProfilePhoto}
+              label={callPeerDisplayName ?? activeCallPeerName ?? "Call"}
+            />
             <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
             <div className={`call-popup-avatar-ring${isPeerSpeaking ? "" : " silent"}`} />
           </div>
@@ -362,27 +392,25 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
                       {callType === "video" && callAudioSettings.cameraEnabled ? "Camera" : "Camera off"}
                     </span>
                   </div>
-                  {callAudioCapabilities.canShareScreen && (
-                    <div className="call-ctrl-wrap">
-                      <button
-                        type="button"
-                        className={`call-ctrl-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-                        aria-label={
-                          callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"
-                        }
-                        onClick={() => void toggleScreenShare()}
-                      >
-                        {callAudioSettings.screenSharing ? (
-                          <ScreenShareOff aria-hidden="true" size={20} />
-                        ) : (
-                          <ScreenShare aria-hidden="true" size={20} />
-                        )}
-                      </button>
-                      <span>
-                        {callAudioSettings.screenSharing ? "Stop sharing" : "Share screen"}
-                      </span>
-                    </div>
-                  )}
+                  <div className="call-ctrl-wrap">
+                    <button
+                      type="button"
+                      className={`call-ctrl-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
+                      aria-label={
+                        callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"
+                      }
+                      onClick={() => void toggleScreenShare()}
+                    >
+                      {callAudioSettings.screenSharing ? (
+                        <ScreenShareOff aria-hidden="true" size={20} />
+                      ) : (
+                        <ScreenShare aria-hidden="true" size={20} />
+                      )}
+                    </button>
+                    <span>
+                      {callAudioSettings.screenSharing ? "Stop sharing" : "Share screen"}
+                    </span>
+                  </div>
                   {isMobileViewport && callType === "video" && (
                     <div className="call-ctrl-wrap">
                       <button

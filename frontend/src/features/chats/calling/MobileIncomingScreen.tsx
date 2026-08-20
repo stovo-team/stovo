@@ -1,22 +1,33 @@
+import type { FamilyFile } from "../../../api/files";
+import { RealAvatar } from "../sidebar/RealAvatar";
+
 export function MobileIncomingScreen({
   peerName,
+  peerProfilePhoto,
+  accessToken,
   callType,
   onAccept,
   onDecline,
 }: {
   peerName: string;
+  peerProfilePhoto?: FamilyFile | null;
+  accessToken?: string | null;
   callType: "audio" | "video";
   onAccept: () => void;
   onDecline: () => void;
 }) {
-  const initial = peerName ? peerName.charAt(0).toUpperCase() : "?";
   return (
     <div className="mobile-incoming-screen">
       <div className="mobile-incoming-avatar-wrap">
         <div className="mobile-incoming-ripple" />
         <div className="mobile-incoming-ripple" />
         <div className="mobile-incoming-ripple" />
-        <div className="mobile-incoming-avatar">{initial}</div>
+        <RealAvatar
+          accessToken={accessToken ?? null}
+          className="avatar mobile-incoming-avatar"
+          file={peerProfilePhoto}
+          label={peerName}
+        />
       </div>
       <div className="mobile-incoming-name">{peerName}</div>
       <div className="mobile-incoming-status">
