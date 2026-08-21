@@ -17,6 +17,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(AppLockPlugin::class.java)
         registerPlugin(MediaLibraryPlugin::class.java)
         registerPlugin(NativeSharePlugin::class.java)
+        registerPlugin(ScreenCapturePlugin::class.java)
         super.onCreate(savedInstanceState)
         ShareReceiverPlugin.captureIntent(this, intent)
 

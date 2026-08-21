@@ -99,6 +99,11 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".ScreenCaptureService"
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
+
         <receiver
             android:name=".PictureInPictureActionReceiver"
             android:exported="false" />
@@ -115,6 +120,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 

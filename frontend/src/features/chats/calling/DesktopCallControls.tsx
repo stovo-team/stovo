@@ -392,27 +392,25 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
                       {callType === "video" && callAudioSettings.cameraEnabled ? "Camera" : "Camera off"}
                     </span>
                   </div>
-                  {callAudioCapabilities.canShareScreen && (
-                    <div className="call-ctrl-wrap">
-                      <button
-                        type="button"
-                        className={`call-ctrl-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-                        aria-label={
-                          callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"
-                        }
-                        onClick={() => void toggleScreenShare()}
-                      >
-                        {callAudioSettings.screenSharing ? (
-                          <ScreenShareOff aria-hidden="true" size={20} />
-                        ) : (
-                          <ScreenShare aria-hidden="true" size={20} />
-                        )}
-                      </button>
-                      <span>
-                        {callAudioSettings.screenSharing ? "Stop sharing" : "Share screen"}
-                      </span>
-                    </div>
-                  )}
+                  <div className="call-ctrl-wrap">
+                    <button
+                      type="button"
+                      className={`call-ctrl-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
+                      aria-label={
+                        callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"
+                      }
+                      onClick={() => void toggleScreenShare()}
+                    >
+                      {callAudioSettings.screenSharing ? (
+                        <ScreenShareOff aria-hidden="true" size={20} />
+                      ) : (
+                        <ScreenShare aria-hidden="true" size={20} />
+                      )}
+                    </button>
+                    <span>
+                      {callAudioSettings.screenSharing ? "Stop sharing" : "Share screen"}
+                    </span>
+                  </div>
                   {isMobileViewport && callType === "video" && (
                     <div className="call-ctrl-wrap">
                       <button
@@ -543,7 +541,7 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
               )}
             </button>
           )}
-          {callPhase === "in-call" && callAudioCapabilities.canShareScreen && (
+          {callPhase === "in-call" && (
             <button
               type="button"
               className={`call-ctrl-btn call-chip-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}

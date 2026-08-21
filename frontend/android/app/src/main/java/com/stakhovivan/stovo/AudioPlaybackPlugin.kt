@@ -36,6 +36,10 @@ class AudioPlaybackPlugin : Plugin() {
             }
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
         }
+
+        override fun onDisconnected(controller: MediaController) {
+            releaseController()
+        }
     }
 
     override fun load() {

@@ -160,10 +160,13 @@ export function useChatDetailsActions({
     if (!accessToken || !selectedChat) {
       return;
     }
+    const previousChat = selectedChat;
+    applyChatUpdate({ ...selectedChat, messageDelaySeconds: delaySeconds });
     try {
       const chat = await updateChatMessageDelay(accessToken, selectedChat.id, delaySeconds);
       applyChatUpdate(chat);
     } catch (err) {
+      applyChatUpdate(previousChat);
       onError(err instanceof ApiError ? String(err.message) : "Could not update message delay");
     }
   }

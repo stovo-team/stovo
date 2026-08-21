@@ -11,6 +11,11 @@ import {
   RemoteMedia,
   shouldOfferToPeer,
 } from "./types";
+import {
+  isNativeScreenCaptureAvailable,
+  createNativeScreenCaptureStream,
+  stopNativeScreenCapture,
+} from "../../native/screenCapturePlugin";
 
 export type { CallSettings, CallDevice, CallCapabilities, RemoteMedia, CallTopology };
 
@@ -414,24 +419,28 @@ export default class CallSessionController {
       return;
     }
 
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
-      throw new Error("Screen sharing is not supported in this browser");
-    }
-
     let display: MediaStream;
-    try {
-      display = await navigator.mediaDevices.getDisplayMedia({ video: true });
-    } catch (err) {
-      const name = (err as DOMException)?.name ?? "";
-      if (
-        name === "NotAllowedError" ||
-        name === "PermissionDeniedError" ||
-        name === "NotFoundError" ||
-        name === "AbortError"
-      ) {
+    if (isNativeScreenCaptureAvailable()) {
+      display = await createNativeScreenCaptureStream();
+    } else {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
+        throw new Error("Screen sharing is not supported in this browser");
+      }
+
+      try {
+        display = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      } catch (err) {
+        const name = (err as DOMException)?.name ?? "";
+        if (
+          name === "NotAllowedError" ||
+          name === "PermissionDeniedError" ||
+          name === "NotFoundError" ||
+          name === "AbortError"
+        ) {
+          throw err;
+        }
         throw err;
       }
-      throw err;
     }
 
     const track = display.getVideoTracks()[0];
@@ -478,7 +487,7 @@ export default class CallSessionController {
       canUseAutoGainControl: has,
       canUseVoiceEnhancement: typeof window !== "undefined" && "AudioContext" in window,
       canUseCamera: has,
-      canShareScreen: has && typeof navigator.mediaDevices.getDisplayMedia === "function",
+      canShareScreen: isNativeScreenCaptureAvailable() || (has && typeof navigator.mediaDevices?.getDisplayMedia === "function"),
     };
   }
 
@@ -696,6 +705,9 @@ export default class CallSessionController {
 
   private async stopScreenShare(notifyUi: boolean): Promise<void> {
     const wasSharing = Boolean(this.screenStream) || this.settings.screenSharing;
+    if (isNativeScreenCaptureAvailable()) {
+      void stopNativeScreenCapture().catch(() => undefined);
+    }
     if (this.topology === "sfu") {
       await this.sfu.unpublishScreenShare();
     } else {

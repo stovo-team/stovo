@@ -33,6 +33,7 @@ import {
   setNativeActiveCallState,
   type PictureInPictureState
 } from "../../../native/callPlugin";
+import { isNativeScreenCaptureAvailable } from "../../../native/screenCapturePlugin";
 import { navigateWithMotion } from "../../../motion/navigation";
 import { audioPlaybackSession } from "../../../audioPlaybackSession";
 import { videoPlaybackSession } from "../../../videoPlaybackSession";
@@ -362,7 +363,13 @@ export function useCallSession({
     const next = !callAudioSettings.screenSharing;
     setCallAudioWarning(null);
 
-    if (next && (typeof navigator === "undefined" || !navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== "function")) {
+    if (
+      next &&
+      !isNativeScreenCaptureAvailable() &&
+      (typeof navigator === "undefined" ||
+        !navigator.mediaDevices ||
+        typeof navigator.mediaDevices.getDisplayMedia !== "function")
+    ) {
       const msg = "Screen demonstration is not supported on this browser or device";
       setCallNotice(msg);
       setCallAudioWarning(msg);
