@@ -29,6 +29,12 @@ describe("active chat list item styling", () => {
     expect(closeActiveChatBody).toContain("navigateToChatList()");
   });
 
+  it("keeps one ChatsPage instance while switching between a room and the chat list", () => {
+    const appSource = readFileSync(resolve(process.cwd(), "src/App.tsx"), "utf8");
+    expect(appSource).toContain('path="/app/chats/:chatId?"');
+    expect(appSource).not.toContain('path="/app/chats/:chatId"');
+  });
+
   it("keeps chat-list-topline flex layout with non-wrapping time and distinct preview styling", () => {
     expect(styles).toMatch(
       /\.chat-list-topline \{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/
