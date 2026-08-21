@@ -1,12 +1,17 @@
 import type { CSSProperties } from "react";
 import type { RemoteMedia } from "../realtime/call/types";
+import { SpeakingWaveBadge } from "../features/chats/calling/SpeakingWaveBadge";
 
 type CallParticipantGridProps = {
   localStream: MediaStream | null;
+  localScreenStream?: MediaStream | null;
   remoteMedia: RemoteMedia[];
   localUserLabel?: string;
   mirrorLocal?: boolean;
   callType: "audio" | "video";
+  isLocalSpeaking?: boolean;
+  isPeerSpeaking?: boolean;
+  speakingUserIds?: string[];
 };
 
 const gridStyle: CSSProperties = {
@@ -67,6 +72,7 @@ const labelStyle: CSSProperties = {
   background: "rgba(0,0,0,0.55)",
   color: "#fff",
   fontSize: 12,
+  zIndex: 3,
 };
 
 function initial(label: string): string {
@@ -86,6 +92,7 @@ function ParticipantTile({
   showVideo,
   mirror,
   isScreen,
+  isSpeaking,
   className,
   style,
 }: {
@@ -94,26 +101,36 @@ function ParticipantTile({
   showVideo: boolean;
   mirror?: boolean;
   isScreen?: boolean;
+  isSpeaking?: boolean;
   className: string;
   style: CSSProperties;
 }) {
   return (
-    <div className={className} style={style}>
+    <div className={`${className}${isSpeaking ? " is-speaking" : ""}`} style={style}>
       {showVideo && stream ? (
-        <video
-          className="call-grid__video"
-          style={{
-            ...(isScreen ? screenVideoStyle : videoStyle),
-            transform: mirror ? "scaleX(-1)" : undefined,
-          }}
-          autoPlay
-          playsInline
-          muted
-          ref={(el) => bindStream(el, stream)}
-        />
+        <>
+          <video
+            className="call-grid__video"
+            style={{
+              ...(isScreen ? screenVideoStyle : videoStyle),
+              transform: mirror ? "scaleX(-1)" : undefined,
+            }}
+            autoPlay
+            playsInline
+            muted
+            ref={(el) => bindStream(el, stream)}
+          />
+          {isSpeaking && <SpeakingWaveBadge />}
+          {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
+        </>
       ) : (
-        <div className="call-grid__avatar" style={avatarStyle}>
-          {initial(label)}
+        <div className="call-grid__avatar-wrap">
+          <div className="call-grid__avatar-circle">
+            <div className="call-grid__avatar" style={avatarStyle}>
+              {initial(label)}
+            </div>
+            {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
+          </div>
         </div>
       )}
       <span className="call-grid__label" style={labelStyle}>
@@ -126,25 +143,38 @@ function ParticipantTile({
 
 export default function CallParticipantGrid({
   localStream,
+  localScreenStream,
   remoteMedia,
   localUserLabel = "You",
   mirrorLocal = true,
   callType,
+  isLocalSpeaking = false,
+  isPeerSpeaking = false,
+  speakingUserIds = [],
 }: CallParticipantGridProps) {
   const localHasVideo =
     callType === "video" &&
     Boolean(localStream?.getVideoTracks().some((t) => t.readyState !== "ended" && t.enabled));
 
-  const presenter = remoteMedia.find(
-    (m) =>
-      m.hasScreenShare &&
-      m.screenStream &&
-      m.screenStream.getVideoTracks().some((t) => t.readyState !== "ended"),
-  );
+  const presenter =
+    localScreenStream && localScreenStream.getVideoTracks().some((t) => t.readyState !== "ended")
+      ? { userId: localUserLabel, screenStream: localScreenStream }
+      : remoteMedia.find(
+          (m) =>
+            m.hasScreenShare &&
+            m.screenStream &&
+            m.screenStream.getVideoTracks().some((t) => t.readyState !== "ended"),
+        );
   const isPresenting = Boolean(presenter);
 
   const count = 1 + remoteMedia.length;
   const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
+
+  const isPresenterSpeaking = presenter
+    ? presenter.userId === localUserLabel
+      ? isLocalSpeaking
+      : (speakingUserIds.includes(presenter.userId) || (isPeerSpeaking && remoteMedia.length === 1))
+    : false;
 
   return (
     <div
@@ -164,6 +194,7 @@ export default function CallParticipantGrid({
           stream={presenter.screenStream}
           showVideo
           isScreen
+          isSpeaking={isPresenterSpeaking}
         />
       ) : null}
 
@@ -174,6 +205,7 @@ export default function CallParticipantGrid({
         stream={localStream}
         showVideo={localHasVideo}
         mirror={mirrorLocal}
+        isSpeaking={isLocalSpeaking}
       />
 
       {remoteMedia.map((remote) => {
@@ -188,27 +220,21 @@ export default function CallParticipantGrid({
           remote.stream.getVideoTracks().some((t) => t.readyState !== "ended");
         const showVideo = preferScreen || cameraVideo;
         const stream = preferScreen ? remote.screenStream : remote.stream;
+        const isRemoteSpeaking =
+          speakingUserIds.includes(remote.userId) ||
+          (isPeerSpeaking && remoteMedia.length === 1);
 
         return (
-          <div key={remote.userId} className="call-grid__tile call-grid__tile--remote" style={tileStyle}>
-            {showVideo && stream ? (
-              <video
-                className="call-grid__video"
-                style={preferScreen ? screenVideoStyle : videoStyle}
-                autoPlay
-                playsInline
-                muted
-                ref={(el) => bindStream(el, stream)}
-              />
-            ) : (
-              <div className="call-grid__avatar" style={avatarStyle}>
-                {initial(remote.userId)}
-              </div>
-            )}
-            <span className="call-grid__label" style={labelStyle}>
-              {remote.userId}
-              {preferScreen ? " · Screen" : ""}
-            </span>
+          <div key={remote.userId} style={{ position: "relative", width: "100%", height: "100%" }}>
+            <ParticipantTile
+              className="call-grid__tile call-grid__tile--remote"
+              style={tileStyle}
+              label={remote.userId}
+              stream={stream}
+              showVideo={showVideo}
+              isScreen={preferScreen}
+              isSpeaking={isRemoteSpeaking}
+            />
             {!showVideo && remote.hasAudio ? (
               <audio
                 className="call-grid__audio"

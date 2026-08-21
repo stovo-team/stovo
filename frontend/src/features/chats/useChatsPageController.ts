@@ -334,6 +334,9 @@ export function useChatsPageController({
   }
 
   function openChat(chat: Chat) {
+    if (callSession.callPhase !== "idle" && callSession.activeCallChatId !== chat.id) {
+      callSession.setIsCallMinimized(true);
+    }
     stickToBottomRef.current = true;
     forceScrollToBottomRef.current = true;
     bottomAnchorMessageIdRef.current = null;

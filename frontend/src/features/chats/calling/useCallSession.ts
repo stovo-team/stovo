@@ -140,6 +140,8 @@ export function useCallSession({
   });
   const [callAudioWarning, setCallAudioWarning] = useState<string | null>(null);
   const [isPeerSpeaking, setIsPeerSpeaking] = useState(false);
+  const [isLocalSpeaking, setIsLocalSpeaking] = useState(false);
+  const [speakingUserIds, setSpeakingUserIds] = useState<string[]>([]);
   const [isProximityNear, setIsProximityNear] = useState(false);
   const [isSpeakerSheetOpen, setIsSpeakerSheetOpen] = useState(false);
   const [callPeerDisplayName, setCallPeerDisplayName] = useState<string | null>(null);
@@ -151,6 +153,7 @@ export function useCallSession({
   const [callInviteSelection, setCallInviteSelection] = useState<string[]>([]);
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
+  const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const callTimer = useCallTimer(callPhase === "in-call");
 
@@ -546,6 +549,23 @@ export function useCallSession({
     }
   }, [hasRemoteVideo, remoteVideoStream]);
 
+  // Sync localVideoRef with local screen stream or camera stream on desktop/1:1 view
+  useEffect(() => {
+    const el = localVideoRef.current;
+    if (!el) return;
+    if (callAudioSettings.screenSharing && localScreenStream) {
+      if (el.srcObject !== localScreenStream) {
+        el.srcObject = localScreenStream;
+      }
+      void el.play().catch(() => undefined);
+    } else if (localVideoStream && callAudioSettings.cameraEnabled) {
+      if (el.srcObject !== localVideoStream) {
+        el.srcObject = localVideoStream;
+      }
+      void el.play().catch(() => undefined);
+    }
+  }, [callAudioSettings.screenSharing, localScreenStream, localVideoStream, callAudioSettings.cameraEnabled]);
+
   // Native PiP ownership arbitration: decide whether the call surface or the
   // message-video surface owns the OS picture-in-picture window.
   useEffect(() => {
@@ -639,6 +659,7 @@ export function useCallSession({
     setCallInviteSelection([]);
     setHasRemoteVideo(false);
     setLocalVideoStream(null);
+    setLocalScreenStream(null);
     setRemoteVideoStream(null);
     setCallType("audio");
     setCallAudioSettings((cur) => ({
@@ -979,6 +1000,7 @@ export function useCallSession({
     setCallPeerDisplayName(null);
     setHasRemoteVideo(false);
     setLocalVideoStream(null);
+    setLocalScreenStream(null);
     setRemoteVideoStream(null);
     setCallType("audio");
     setCallAudioSettings((cur) => ({
@@ -1044,6 +1066,9 @@ export function useCallSession({
           setLocalVideoStream(stream);
         }
       };
+      audioController.onLocalScreenStreamChange = (stream: MediaStream | null) => {
+        setLocalScreenStream(stream);
+      };
       audioController.onRemoteMediaChange = (media) => {
         setCallRemoteMedia(media);
         const withVideo = media.find((m) => m.hasScreenShare || m.hasVideo);
@@ -1064,8 +1089,11 @@ export function useCallSession({
       };
       audioController.onScreenShareEnded = () => {
         setCallAudioSettings((cur) => ({ ...cur, screenSharing: false }));
+        setLocalScreenStream(null);
       };
       audioController.onSpeakingChange(setIsPeerSpeaking);
+      audioController.onLocalSpeakingChange(setIsLocalSpeaking);
+      audioController.onPeerSpeakingUserIdsChange(setSpeakingUserIds);
       setCallAudioCapabilities(audioController.getCapabilities());
       setCallAudioSettings(audioController.getSettings());
       audioCallRef.current = audioController;
@@ -1576,6 +1604,10 @@ export function useCallSession({
     setCallAudioWarning,
     isPeerSpeaking,
     setIsPeerSpeaking,
+    isLocalSpeaking,
+    setIsLocalSpeaking,
+    speakingUserIds,
+    setSpeakingUserIds,
     isProximityNear,
     setIsProximityNear,
     isSpeakerSheetOpen,
@@ -1598,6 +1630,8 @@ export function useCallSession({
     setHasRemoteVideo,
     localVideoStream,
     setLocalVideoStream,
+    localScreenStream,
+    setLocalScreenStream,
     remoteVideoStream,
     setRemoteVideoStream,
     callTimer,

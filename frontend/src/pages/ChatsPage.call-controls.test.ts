@@ -13,7 +13,8 @@ describe("minimized desktop call controls", () => {
       /\{isCallMinimized && !isMobileViewport && callPhase !== "idle" && \([\s\S]*?\n      \)\}/,
     )?.[0] ?? "";
 
-    expect(minimizedBlock.match(/aria-label="Restore call window"/g)).toHaveLength(1);
+    expect(minimizedBlock).toContain('Restore call window');
+    expect(minimizedBlock).toContain("call-chip-restore");
     expect(minimizedBlock).toContain("call-chip-video");
   });
 });

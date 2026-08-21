@@ -23,6 +23,7 @@ import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
+import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -58,6 +59,8 @@ export function VoiceChannelStage({
     endActiveCall,
     joinVoiceChannel,
     isPeerSpeaking,
+    isLocalSpeaking,
+    speakingUserIds,
     activeGroupCalls,
     setIsCallSettingsMenuOpen,
     setIsCallAudioPopupOpen,
@@ -252,7 +255,9 @@ export function VoiceChannelStage({
             <div className="voice-room-user-list" aria-label={voiceStrings?.usersInVoice ?? "Users in voice channel"} role="list">
               {displayParticipants.map((p) => {
                 const info = resolveMemberInfo(p.userId);
-                const isSpeaking = !info.isSelf && isPeerSpeaking;
+                const isSpeaking = info.isSelf
+                  ? Boolean(isLocalSpeaking)
+                  : Boolean(speakingUserIds?.includes(p.userId) || (isPeerSpeaking && participantCount <= 2));
                 const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
                 const peerMedia = !info.isSelf ? callRemoteMedia?.find((m) => m.userId === p.userId) : null;
                 const hasVideo = info.isSelf
@@ -302,7 +307,9 @@ export function VoiceChannelStage({
             <div className={`voice-room-grid ${gridTierClass}`} aria-label={voiceStrings?.usersInVoice ?? "Users in voice channel"}>
               {displayParticipants.map((p) => {
                 const info = resolveMemberInfo(p.userId);
-                const isSpeaking = !info.isSelf && isPeerSpeaking;
+                const isSpeaking = info.isSelf
+                  ? Boolean(isLocalSpeaking)
+                  : Boolean(speakingUserIds?.includes(p.userId) || (isPeerSpeaking && participantCount <= 2));
                 const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
                 const peerMedia = !info.isSelf ? callRemoteMedia?.find((m) => m.userId === p.userId) : null;
                 const hasActiveVideo = info.isSelf
@@ -328,6 +335,7 @@ export function VoiceChannelStage({
                           muted={info.isSelf}
                           className={`voice-participant-video-feed${info.isSelf && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
                         />
+                        {isSpeaking && <SpeakingWaveBadge />}
                         {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
                         {isMuted && (
                           <span className="voice-card-muted-badge voice-card-muted-badge--video" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
@@ -434,6 +442,17 @@ export function VoiceChannelStage({
               aria-label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
             >
               <Monitor size={20} />
+            </button>
+
+            {/* Shrink / Minimize button */}
+            <button
+              type="button"
+              className="voice-dock-btn"
+              onClick={() => setIsCallMinimized?.(true)}
+              title={voiceStrings?.shrinkCall ?? "Shrink Voice Channel"}
+              aria-label={voiceStrings?.shrinkCall ?? "Shrink Voice Channel"}
+            >
+              <Minimize2 size={20} />
             </button>
 
             {/* 3 Dots Menu Button for Settings & AI Notes */}
