@@ -6,6 +6,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -17,16 +19,30 @@ class ScreenCaptureService : Service() {
     companion object {
         const val ACTION_START = "com.stakhovivan.stovo.screencapture.START"
         const val ACTION_STOP = "com.stakhovivan.stovo.screencapture.STOP"
+        const val EXTRA_RESULT_CODE = "result_code"
+        const val EXTRA_DATA = "data"
         private const val FOREGROUND_NOTIFICATION_ID = 1004
 
-        fun startService(context: Context) {
+        /**
+         * MediaProjection obtained inside the service, after startForeground() has been called.
+         * The plugin reads this after startService() completes. Guarded by the main thread.
+         */
+        @Volatile
+        var mediaProjection: MediaProjection? = null
+            private set
+
+        fun startService(context: Context, resultCode: Int, data: Intent) {
             val intent = Intent(context, ScreenCaptureService::class.java).apply {
                 action = ACTION_START
+                putExtra(EXTRA_RESULT_CODE, resultCode)
+                putExtra(EXTRA_DATA, data)
             }
             ContextCompat.startForegroundService(context, intent)
         }
 
         fun stopService(context: Context) {
+            mediaProjection?.stop()
+            mediaProjection = null
             val intent = Intent(context, ScreenCaptureService::class.java).apply {
                 action = ACTION_STOP
             }
@@ -54,6 +70,7 @@ class ScreenCaptureService : Service() {
             0
         }
 
+        // startForeground() MUST be called before getMediaProjection() on Android 14+.
         ServiceCompat.startForeground(
             this,
             FOREGROUND_NOTIFICATION_ID,
@@ -61,7 +78,27 @@ class ScreenCaptureService : Service() {
             foregroundType
         )
 
+        // Now that we are a foreground service with the correct type, obtain the projection.
+        val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, 0) ?: 0
+        val data = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent?.getParcelableExtra(EXTRA_DATA, Intent::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent?.getParcelableExtra(EXTRA_DATA)
+        }
+
+        if (resultCode != 0 && data != null) {
+            val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
+            mediaProjection = manager?.getMediaProjection(resultCode, data)
+        }
+
         return START_STICKY
+    }
+
+    override fun onDestroy() {
+        mediaProjection?.stop()
+        mediaProjection = null
+        super.onDestroy()
     }
 
     private fun buildServiceNotification(): Notification {
