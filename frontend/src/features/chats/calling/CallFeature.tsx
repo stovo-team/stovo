@@ -97,7 +97,10 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
   const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
   const isVoiceChannel = activeChat?.type === "voice";
   const isGroupCall = activeChat ? activeChat.type === "group" || activeChat.type === "family" : false;
-  const shouldRenderCallPopup = callPhase !== "idle" && (!isVoiceChannel || isCallMinimized);
+  // Voice channels use the persistent call header owned by ChatsPage when
+  // minimized. Keeping them out of the generic popup prevents minimization
+  // from looking like the room ended or from creating a second call surface.
+  const shouldRenderCallPopup = callPhase !== "idle" && !isVoiceChannel;
   const effectiveIsCallMinimized = isCallMinimized;
 
   const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
