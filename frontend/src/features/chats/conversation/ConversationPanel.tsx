@@ -279,7 +279,10 @@ export function ConversationPanel({
         onOpenDetails={onOpenDetails}
         onStartAudioCall={onStartAudioCall}
         onStartVideoCall={onStartVideoCall}
-        onShrinkCall={() => callSession?.setIsCallMinimized(true)}
+        onShrinkCall={() => {
+          callSession?.setIsCallMinimized(true);
+          onBack();
+        }}
         isMessageSearchOpen={isMessageSearchOpen}
         onToggleMessageSearch={toggleMessageSearch}
         onOpenMessageSearch={openMessageSearch}
