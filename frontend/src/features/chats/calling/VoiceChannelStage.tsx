@@ -426,17 +426,15 @@ export function VoiceChannelStage({
             </button>
 
             {/* Screen Demonstration / Share button */}
-            {callAudioCapabilities?.canShareScreen && (
-              <button
-                type="button"
-                className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-                onClick={handleToggleScreenShare}
-                title={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
-                aria-label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
-              >
-                <Monitor size={20} />
-              </button>
-            )}
+            <button
+              type="button"
+              className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
+              onClick={handleToggleScreenShare}
+              title={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
+              aria-label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
+            >
+              <Monitor size={20} />
+            </button>
 
             {/* 3 Dots Menu Button for Settings & AI Notes */}
             <div className="voice-more-menu-anchor">

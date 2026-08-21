@@ -40,31 +40,29 @@ describe("MobileActiveScreen", () => {
     onEnd: vi.fn(),
   };
 
-  it("renders screen share button when canShareScreen is true", () => {
+  it("renders screen share button unconditionally on mobile active screen", () => {
     const container = renderComponent(
-      <MobileActiveScreen {...defaultProps} canShareScreen={true} />
+      <MobileActiveScreen {...defaultProps} />
     );
 
-    const shareBtn = container.querySelector("button[aria-label='Share screen']");
+    const shareBtn = container.querySelector("button[aria-label='Share screen']") as HTMLButtonElement;
     expect(shareBtn).toBeDefined();
     expect(shareBtn).not.toBeNull();
+
+    act(() => {
+      shareBtn.click();
+    });
+    expect(defaultProps.onToggleScreenShare).toHaveBeenCalled();
   });
 
-  it("hides screen share button when canShareScreen is false (e.g. Android WebView)", () => {
+  it("renders active state when isScreenSharing is true", () => {
     const container = renderComponent(
-      <MobileActiveScreen {...defaultProps} canShareScreen={false} />
+      <MobileActiveScreen {...defaultProps} isScreenSharing={true} />
     );
 
-    const shareBtn = container.querySelector("button[aria-label='Share screen']");
-    expect(shareBtn).toBeNull();
-  });
-
-  it("hides screen share button when canShareScreen is undefined", () => {
-    const container = renderComponent(
-      <MobileActiveScreen {...defaultProps} canShareScreen={undefined} />
-    );
-
-    const shareBtn = container.querySelector("button[aria-label='Share screen']");
-    expect(shareBtn).toBeNull();
+    const shareBtn = container.querySelector("button[aria-label='Stop sharing screen']");
+    expect(shareBtn).toBeDefined();
+    expect(shareBtn).not.toBeNull();
+    expect(shareBtn?.classList.contains("active")).toBe(true);
   });
 });

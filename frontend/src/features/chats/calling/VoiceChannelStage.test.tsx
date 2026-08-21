@@ -458,14 +458,15 @@ describe("VoiceChannelStage", () => {
     expect(banner?.textContent).toContain("Screen demonstration is not supported on this browser or device");
   });
 
-  it("hides screen share button when canShareScreen is false (e.g. Android WebView)", () => {
+  it("renders screen share button in voice channel controls", () => {
+    const mockToggleScreenShare = vi.fn();
     const mockSession = {
       callPhase: "in-call",
       activeCallChatId: "voice-chat-1",
       callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
-      callAudioCapabilities: { canShareScreen: false },
+      callAudioCapabilities: { canShareScreen: true },
       applyCallAudioPatch: vi.fn(),
-      toggleScreenShare: vi.fn(),
+      toggleScreenShare: mockToggleScreenShare,
       endActiveCall: vi.fn(),
       joinVoiceChannel: vi.fn(),
       isPeerSpeaking: false,
@@ -493,8 +494,14 @@ describe("VoiceChannelStage", () => {
 
     const inCallToolbar = container.querySelector(".voice-room-in-call-controls");
     expect(inCallToolbar).toBeDefined();
-    const shareBtn = inCallToolbar!.querySelector("button[aria-label='Share Screen']");
-    expect(shareBtn).toBeNull();
+    const shareBtn = inCallToolbar!.querySelector("button[aria-label='Share Screen']") as HTMLButtonElement;
+    expect(shareBtn).toBeDefined();
+    expect(shareBtn).not.toBeNull();
+
+    act(() => {
+      shareBtn.click();
+    });
+    expect(mockToggleScreenShare).toHaveBeenCalled();
   });
 });
 
