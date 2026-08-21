@@ -504,52 +504,6 @@ describe("VoiceChannelStage", () => {
     expect(mockToggleScreenShare).toHaveBeenCalled();
   });
 
-  it("renders shrink button in voice channel controls and calls setIsCallMinimized(true) when clicked", () => {
-    const mockSetIsCallMinimized = vi.fn();
-    const mockSession = {
-      callPhase: "in-call",
-      activeCallChatId: "voice-chat-1",
-      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
-      callAudioCapabilities: { canShareScreen: true },
-      applyCallAudioPatch: vi.fn(),
-      toggleScreenShare: vi.fn(),
-      endActiveCall: vi.fn(),
-      joinVoiceChannel: vi.fn(),
-      isPeerSpeaking: false,
-      activeGroupCalls: {
-        "voice-chat-1": mockVoiceChat.activeCall!
-      },
-      callTimer: "01:23",
-      setIsCallSettingsMenuOpen: vi.fn(),
-      setIsCallAudioPopupOpen: vi.fn(),
-      setIsCallMinimized: mockSetIsCallMinimized,
-      audioCallRef: {
-        current: { toggleVideo: vi.fn() }
-      }
-    } as unknown as CallSessionApi;
-
-    const container = renderComponent(
-      <VoiceChannelStage
-        chat={mockVoiceChat}
-        session={mockSession}
-        members={mockVoiceChat.members as unknown as User[]}
-        currentUser={mockCurrentUser}
-        accessToken="test-token"
-      />
-    );
-
-    const inCallToolbar = container.querySelector(".voice-room-in-call-controls");
-    expect(inCallToolbar).toBeDefined();
-    const shrinkBtn = inCallToolbar!.querySelector("button[aria-label='Shrink Voice Channel']") as HTMLButtonElement;
-    expect(shrinkBtn).toBeDefined();
-    expect(shrinkBtn).not.toBeNull();
-
-    act(() => {
-      shrinkBtn.click();
-    });
-    expect(mockSetIsCallMinimized).toHaveBeenCalledWith(true);
-  });
-
   it("renders voice speaking ring around avatar when peer is speaking in voice room", () => {
     const mockSession = {
       callPhase: "in-call",

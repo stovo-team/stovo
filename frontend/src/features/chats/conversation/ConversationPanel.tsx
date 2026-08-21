@@ -281,7 +281,8 @@ export function ConversationPanel({
         onStartVideoCall={onStartVideoCall}
         isCallMinimized={callSession?.isCallMinimized ?? false}
         onShrinkCall={() => {
-          callSession?.setIsCallMinimized((v) => !v);
+          callSession?.setIsCallMinimized(true);
+          onBack();
         }}
         isMessageSearchOpen={isMessageSearchOpen}
         onToggleMessageSearch={toggleMessageSearch}
