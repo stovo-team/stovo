@@ -37,6 +37,7 @@ export function useChatDetailsActions({
   markChatRead
 }: UseChatDetailsActionsParams) {
   const [isChatMediaUploading, setIsChatMediaUploading] = useState(false);
+  const [editingChatPhotoFile, setEditingChatPhotoFile] = useState<File | null>(null);
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatWallpaperInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -59,14 +60,17 @@ export function useChatDetailsActions({
     };
   }, [wallpaperPreviewUrl]);
 
-  function applyChatUpdate(chat: Chat) {
-    setSelectedChat((current) => (current?.id === chat.id ? chat : current));
-    setChats((current) => current.map((item) => (item.id === chat.id ? chat : item)));
+  function applyChatUpdate(updated: Chat) {
+    setSelectedChat(updated);
+    setChats((current) => current.map((c) => (c.id === updated.id ? updated : c)));
   }
 
   async function handleChatSettingsSubmit(event: FormEvent, chatTitleDraft: string) {
     event.preventDefault();
     if (!accessToken || !selectedChat || !canManageSelectedChat) {
+      return;
+    }
+    if (!chatTitleDraft.trim()) {
       return;
     }
 
@@ -81,17 +85,25 @@ export function useChatDetailsActions({
     }
   }
 
-  async function handleChatPhotoSelect(event: ChangeEvent<HTMLInputElement>) {
+  function handleChatPhotoSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
     if (!accessToken || !selectedChat || !canManageSelectedChat || !file) {
       return;
     }
 
+    setEditingChatPhotoFile(file);
+  }
+
+  async function handleSaveCroppedChatPhoto(croppedFile: File) {
+    if (!accessToken || !selectedChat || !canManageSelectedChat) {
+      return;
+    }
+    setEditingChatPhotoFile(null);
     setIsChatMediaUploading(true);
     onError(null);
     try {
-      const uploaded = await uploadFile(accessToken, file);
+      const uploaded = await uploadFile(accessToken, croppedFile);
       const chat = await updateChat(accessToken, selectedChat.id, {
         chatPhotoFileId: uploaded.id
       });
@@ -217,12 +229,15 @@ export function useChatDetailsActions({
   return {
     canManageSelectedChat,
     isChatMediaUploading,
+    editingChatPhotoFile,
+    setEditingChatPhotoFile,
     chatPhotoInputRef,
     chatWallpaperInputRef,
     wallpaperPreviewUrl,
     wallpaperStyle,
     handleChatSettingsSubmit,
     handleChatPhotoSelect,
+    handleSaveCroppedChatPhoto,
     handleMediaVisibilityChange,
     handleCommentsEnabledChange,
     handlePinPermissionChange,

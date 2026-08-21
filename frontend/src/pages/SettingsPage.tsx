@@ -63,6 +63,7 @@ import {
   readDevicePreferences,
   writeDevicePreferences
 } from "../settings/devicePreferences";
+import { AvatarEditorModal } from "../components/AvatarEditorModal";
 import AppNav from "./AppNav";
 
 function initials(name: string | undefined) {
@@ -565,6 +566,7 @@ export default function SettingsPage() {
   const [privacyDetail, setPrivacyDetail] = useState<"overview" | "profile" | "lastSeen" | "blocked">("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingProfilePhotoFile, setEditingProfilePhotoFile] = useState<File | null>(null);
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
   const appearanceBackRef = useRef<HTMLButtonElement | null>(null);
 
@@ -755,18 +757,25 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleProfilePhotoSelect(event: ChangeEvent<HTMLInputElement>) {
+  function handleProfilePhotoSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
-    if (!accessToken || !file) {
+    if (!file) {
       return;
     }
+    setError(null);
+    setNotice(null);
+    setEditingProfilePhotoFile(file);
+  }
 
+  async function handleSaveCroppedProfilePhoto(croppedFile: File) {
+    if (!accessToken) return;
+    setEditingProfilePhotoFile(null);
     setError(null);
     setNotice(null);
     setIsSaving(true);
     try {
-      const uploaded = await uploadFile(accessToken, file);
+      const uploaded = await uploadFile(accessToken, croppedFile);
       const updatedUser = await authRequest<User>("/api/auth/me", {
         method: "PATCH",
         body: { profilePhotoFileId: uploaded.id }
@@ -1340,6 +1349,13 @@ export default function SettingsPage() {
           </>
         )}
       </section>
+      {editingProfilePhotoFile && (
+        <AvatarEditorModal
+          file={editingProfilePhotoFile}
+          onClose={() => setEditingProfilePhotoFile(null)}
+          onSave={handleSaveCroppedProfilePhoto}
+        />
+      )}
     </main>
   );
 }

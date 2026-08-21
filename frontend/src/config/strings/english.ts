@@ -397,6 +397,9 @@ export const strings = {
       adminsOnly: "Admins only",
       messageDelay: "Message delay",
       off: "Off",
+      on: "On",
+      custom: "Custom",
+      seconds: "seconds",
       members: "Members",
       tabs: {
         media: "Media",
@@ -615,6 +618,21 @@ export const strings = {
     failed: "Call failed",
     videoCall: "Video call",
     audioCall: "Audio call",
+  },
+
+  // ── Avatar Editor ───────────────────────────────────────────────────
+  avatarEditor: {
+    title: "Edit Profile Photo",
+    chatPhotoTitle: "Edit Photo",
+    zoom: "Zoom",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    rotate: "Rotate",
+    reset: "Reset",
+    cancel: "Cancel",
+    apply: "Set profile photo",
+    applyGeneric: "Apply",
+    dragHint: "Drag to reposition · Scroll or pinch to zoom",
   },
 };
 

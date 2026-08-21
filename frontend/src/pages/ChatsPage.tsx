@@ -197,6 +197,9 @@ export default function ChatsPage() {
               isUploading={detailsActions.isChatMediaUploading}
               sharedContentItems={sharedContentItems}
               wallpaperPreviewUrl={detailsActions.wallpaperPreviewUrl}
+              editingChatPhotoFile={detailsActions.editingChatPhotoFile}
+              onCloseEditChatPhoto={() => detailsActions.setEditingChatPhotoFile(null)}
+              onSaveCroppedChatPhoto={detailsActions.handleSaveCroppedChatPhoto}
               onChatPhotoSelect={detailsActions.handleChatPhotoSelect}
               onChatWallpaperSelect={detailsActions.handleChatWallpaperSelect}
               onChatSettingsSubmit={(event) => void detailsActions.handleChatSettingsSubmit(event, chatTitleDraft)}

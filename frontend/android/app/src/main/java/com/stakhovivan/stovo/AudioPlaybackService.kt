@@ -168,6 +168,18 @@ class AudioPlaybackService : MediaSessionService() {
         controllerInfo: MediaSession.ControllerInfo
     ): MediaSession? = if (released) null else mediaSession
 
+    override fun onUpdateNotification(
+        session: MediaSession,
+        startInForegroundRequired: Boolean
+    ) {
+        val currentStatus = coordinator.snapshot().status
+        if (currentStatus == AudioPlaybackStatus.ENDED || currentStatus == AudioPlaybackStatus.IDLE) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            return
+        }
+        super.onUpdateNotification(session, startInForegroundRequired)
+    }
+
     override fun onDestroy() {
         stopProgressUpdates()
         if (!released) {
@@ -175,6 +187,7 @@ class AudioPlaybackService : MediaSessionService() {
             mediaSession.release()
             player.release()
         }
+        stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
 
@@ -361,9 +374,9 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     /**
-     * Natural end: publish ENDED for in-app replay.
+     * Natural end: publish ENDED for in-app replay and dismiss notification.
      */
-    private fun handlePlaybackEnded() {
+     private fun handlePlaybackEnded() {
         if (identity == null) return
         if (coordinator.snapshot().status == AudioPlaybackStatus.ENDED) return
 
@@ -376,6 +389,7 @@ class AudioPlaybackService : MediaSessionService() {
         if (::mediaSession.isInitialized) {
             mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle(ended))
         }
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun clearPlayback(reason: AudioPlaybackCleanupReason) {
@@ -392,6 +406,7 @@ class AudioPlaybackService : MediaSessionService() {
         if (::mediaSession.isInitialized) {
             mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle())
         }
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun snapshotBundle(snapshot: AudioPlaybackSnapshot = coordinator.snapshot()) = Bundle().apply {

@@ -252,29 +252,32 @@ export function ChatHeader({
                 </button>
               </>
             )}
-            {selectedChat.type === "voice" && activeCallChatId === selectedChat.id && callPhase !== "idle" && (
+            {selectedChat.type === "voice" ? (
+              activeCallChatId === selectedChat.id && callPhase !== "idle" && (
+                <button
+                  type="button"
+                  className="icon-button subtle chat-header-call-button chat-header-shrink-button"
+                  aria-label={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
+                  title={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
+                  onClick={onShrinkCall}
+                >
+                  <Minimize2 aria-hidden="true" size={18} strokeWidth={2} />
+                </button>
+              )
+            ) : (
               <button
                 type="button"
-                className="icon-button subtle chat-header-call-button chat-header-shrink-button"
-                aria-label={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
-                title={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
-                onClick={onShrinkCall}
+                className="chat-header-search-button"
+                aria-label="Search messages"
+                aria-pressed={isMessageSearchOpen}
+                title="Search messages"
+                onClick={onToggleMessageSearch}
               >
-                <Minimize2 aria-hidden="true" size={17} strokeWidth={2} />
+                <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                  search
+                </span>
               </button>
             )}
-            <button
-              type="button"
-              className="chat-header-search-button"
-              aria-label="Search messages"
-              aria-pressed={isMessageSearchOpen}
-              title="Search messages"
-              onClick={onToggleMessageSearch}
-            >
-              <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                search
-              </span>
-            </button>
             {false && (
               <div className={isChatMenuOpen ? "menu-anchor menu-anchor--open" : "menu-anchor"} ref={chatMenuRef}>
                 <button

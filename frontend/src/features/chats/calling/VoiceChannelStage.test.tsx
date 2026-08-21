@@ -457,4 +457,44 @@ describe("VoiceChannelStage", () => {
     expect(banner).toBeDefined();
     expect(banner?.textContent).toContain("Screen demonstration is not supported on this browser or device");
   });
+
+  it("hides screen share button when canShareScreen is false (e.g. Android WebView)", () => {
+    const mockSession = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callAudioCapabilities: { canShareScreen: false },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      activeGroupCalls: {
+        "voice-chat-1": mockVoiceChat.activeCall!
+      },
+      callTimer: "01:23",
+      setIsCallSettingsMenuOpen: vi.fn(),
+      setIsCallAudioPopupOpen: vi.fn(),
+      setIsCallMinimized: vi.fn(),
+      audioCallRef: {
+        current: { toggleVideo: vi.fn() }
+      }
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={mockSession}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    const inCallToolbar = container.querySelector(".voice-room-in-call-controls");
+    expect(inCallToolbar).toBeDefined();
+    const shareBtn = inCallToolbar!.querySelector("button[aria-label='Share Screen']");
+    expect(shareBtn).toBeNull();
+  });
 });
+
