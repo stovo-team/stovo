@@ -12,6 +12,7 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import android.util.Base64
 import android.util.DisplayMetrics
 import androidx.activity.result.ActivityResult
@@ -76,15 +77,15 @@ class ScreenCapturePlugin : Plugin() {
             // to be called BEFORE getMediaProjection(). We pass the result code and data to the
             // service so it can call getMediaProjection() itself, after startForeground().
             ScreenCaptureService.startService(context, result.resultCode, result.data!!)
+            waitForMediaProjection(call)
+        } catch (e: Exception) {
+            cleanupCapture()
+            call.reject("Failed to start screen capture: ${e.message}", e)
+        }
+    }
 
-            // Poll for the MediaProjection that the service obtains after startForeground().
-            // The service runs on the main thread so this typically resolves in one pass.
-            val projection = waitForMediaProjection()
-            if (projection == null) {
-                ScreenCaptureService.stopService(context)
-                call.reject("Failed to obtain MediaProjection from foreground service")
-                return
-            }
+    private fun initializeCapture(call: PluginCall, projection: MediaProjection) {
+        try {
             mediaProjection = projection
 
             projection.registerCallback(object : MediaProjection.Callback() {
@@ -150,23 +151,27 @@ class ScreenCapturePlugin : Plugin() {
     }
 
     /**
-     * Waits up to 2 seconds for [ScreenCaptureService.mediaProjection] to become non-null.
-     * The service sets this field synchronously in onStartCommand() after startForeground(),
-     * but onStartCommand() runs on the main thread so it may not have executed yet when
-     * this callback (also on the main thread) resumes right after startForegroundService().
-     *
-     * We spin on a background thread to avoid blocking the main thread.
+     * Waits for the service without blocking the application's main thread. Both the
+     * activity result and the service lifecycle are dispatched on that thread, so a
+     * synchronous wait here would prevent onStartCommand() from calling startForeground().
      */
-    private fun waitForMediaProjection(): MediaProjection? {
-        val timeoutMs = 2000L
-        val pollIntervalMs = 20L
-        val deadline = System.currentTimeMillis() + timeoutMs
-        while (System.currentTimeMillis() < deadline) {
-            val proj = ScreenCaptureService.mediaProjection
-            if (proj != null) return proj
-            Thread.sleep(pollIntervalMs)
+    private fun waitForMediaProjection(call: PluginCall, attempts: Int = 0) {
+        val projection = ScreenCaptureService.mediaProjection
+        if (projection != null) {
+            initializeCapture(call, projection)
+            return
         }
-        return ScreenCaptureService.mediaProjection
+
+        if (attempts >= 100) {
+            ScreenCaptureService.stopService(context)
+            call.reject("Failed to obtain MediaProjection from foreground service")
+            return
+        }
+
+        Handler(Looper.getMainLooper()).postDelayed(
+            { waitForMediaProjection(call, attempts + 1) },
+            20L
+        )
     }
 
     private fun handleImageAvailable(reader: ImageReader, width: Int, height: Int) {
