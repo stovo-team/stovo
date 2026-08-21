@@ -80,7 +80,11 @@ class ScreenCapturePlugin : Plugin() {
             // Android 14+ requires foreground service started before or immediately with MediaProjection
             ScreenCaptureService.startService(context)
 
-            val projection = manager.getMediaProjection(result.resultCode, result.data!!)
+            val projection = manager.getMediaProjection(result.resultCode, result.data!!) ?: run {
+                ScreenCaptureService.stopService(context)
+                call.reject("Failed to obtain MediaProjection")
+                return
+            }
             mediaProjection = projection
 
             projection.registerCallback(object : MediaProjection.Callback() {
