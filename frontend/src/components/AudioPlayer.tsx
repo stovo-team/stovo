@@ -20,15 +20,6 @@ import {
 } from "react";
 
 import {
-  getCachedAudioDuration,
-  readAudioDurationFromUrl,
-  setCachedAudioDuration,
-} from "../audioDurationCache";
-import {
-  getFileTranscript,
-  transcribeFile,
-} from "../api/files";
-import {
   audioPlaybackSession,
   sameAudioIdentity,
   type AudioDescriptor,
@@ -37,6 +28,8 @@ import {
   type AudioPlaybackSnapshot,
   type AudioSourceFactory,
 } from "../audioPlaybackSession";
+import { useAudioDuration } from "./audio-player/useAudioDuration";
+import { useAudioTranscript } from "./audio-player/useAudioTranscript";
 
 export interface AudioPlayerProps {
   descriptor: AudioDescriptor;
@@ -192,51 +185,7 @@ export function AudioPlayer({
   // briefly lags (or used to drop playing snapshots entirely).
   const [playIntent, setPlayIntent] = useState(false);
   const [startDiagnostic, setStartDiagnostic] = useState<string | null>(null);
-  const [knownDuration, setKnownDuration] = useState(
-    () => getCachedAudioDuration(descriptor.identity.fileId) ?? 0,
-  );
-  const [transcript, setTranscript] = useState<string | null>(null);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [transcriptError, setTranscriptError] = useState<string | null>(null);
-  const [isTranscriptExpanded, setIsTranscriptExpanded] = useState(true);
-
-  useEffect(() => {
-    const fileId = descriptor?.identity?.fileId;
-    if (!accessToken || !fileId || fileId.startsWith("local:")) return;
-    let cancelled = false;
-    getFileTranscript(accessToken, fileId)
-      .then((res) => {
-        if (!cancelled && res?.text) {
-          setTranscript(res.text);
-        }
-      })
-      .catch(() => {
-        // Silently ignore if not transcribed yet
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken, descriptor?.identity?.fileId]);
-
-  const handleTranscribe = useCallback(async () => {
-    const fileId = descriptor?.identity?.fileId;
-    if (!accessToken || isTranscribing || !fileId || fileId.startsWith("local:")) return;
-    setIsTranscribing(true);
-    setTranscriptError(null);
-    try {
-      const res = await transcribeFile(accessToken, fileId);
-      if (res?.text) {
-        setTranscript(res.text);
-        setIsTranscriptExpanded(true);
-      } else {
-        setTranscriptError("No speech detected in audio.");
-      }
-    } catch (err) {
-      setTranscriptError(err instanceof Error ? err.message : "Transcription failed.");
-    } finally {
-      setIsTranscribing(false);
-    }
-  }, [accessToken, descriptor?.identity?.fileId, isTranscribing]);
+  const { transcript, isTranscribing, transcriptError, isTranscriptExpanded, setIsTranscriptExpanded, transcribe: handleTranscribe } = useAudioTranscript(accessToken, descriptor.identity.fileId);
 
   const isDraggingRef = useRef(false);
 
@@ -291,39 +240,7 @@ export function AudioPlayer({
     return () => window.clearTimeout(timer);
   }, [playIntent, snapshot?.duration, snapshot?.error, snapshot?.platform, snapshot?.position, snapshot?.status]);
 
-  useEffect(() => {
-    const sessionDuration = snapshot?.duration ?? 0;
-    if (isFiniteTime(sessionDuration) && sessionDuration > 0) {
-      setCachedAudioDuration(descriptor.identity.fileId, sessionDuration);
-      setKnownDuration(sessionDuration);
-    }
-  }, [descriptor.identity.fileId, snapshot?.duration]);
-
-  useEffect(() => {
-    const fileId = descriptor.identity.fileId;
-    const cached = getCachedAudioDuration(fileId);
-    if (cached !== null) {
-      setKnownDuration(cached);
-      return;
-    }
-    if (!resolveDurationUrl) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const url = await resolveDurationUrl();
-        if (cancelled || !url) return;
-        const probed = await readAudioDurationFromUrl(url);
-        if (cancelled || probed === null) return;
-        setCachedAudioDuration(fileId, probed);
-        setKnownDuration(probed);
-      } catch {
-        // Duration probe is best-effort; playback can still reveal length later.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [descriptor.identity.fileId, resolveDurationUrl]);
+  const knownDuration = useAudioDuration(descriptor.identity.fileId, snapshot?.duration, resolveDurationUrl);
 
   const isActive = snapshot !== null;
   const sessionDuration = isFiniteTime(snapshot?.duration ?? 0) ? snapshot?.duration ?? 0 : 0;

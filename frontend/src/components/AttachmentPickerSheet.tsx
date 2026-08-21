@@ -1,23 +1,23 @@
-import { type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
-import { AudioLines, Camera, Check, FileText, Image as ImageIcon, Music, Paperclip, Smile } from "lucide-react";
+import { AudioLines, FileText, Image as ImageIcon, Music, Paperclip, Smile } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 
 import {
   isNativeMediaLibraryAvailable,
-  getCachedNativeMedia,
-  listNativeMedia,
   nativeMediaPreviewUrl,
-  fetchNativeMediaFileUrl,
   selectNativeMediaFiles,
   type NativeMediaItem
 } from "../native/mediaLibraryPlugin";
 import { useReducedMotion } from "../hooks/useReducedMotion";
-import { EMOJI_CATEGORY_ICONS } from "../features/chats/composer/Composer";
+import { EMOJI_CATEGORY_ICONS } from "../features/chats/composer/emojiCategories";
 import ImageLightbox from "./ImageLightbox";
 import { MessageEnlargeButton } from "./MessageEnlargeModal";
+import { DocumentPickerList } from "./attachment-picker/DocumentPickerList";
+import { MediaGalleryGrid } from "./attachment-picker/MediaGalleryGrid";
+import { useMediaPicker } from "./attachment-picker/useMediaPicker";
 
 export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file";
 export type AttachmentPickerTab = "gallery" | "file" | "audio";
@@ -38,12 +38,6 @@ type AttachmentPickerSheetProps = {
   onPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
 };
 
-function formatDuration(durationMs: number): string | null {
-  if (durationMs <= 0) return null;
-  const seconds = Math.floor(durationMs / 1000);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
 export default function AttachmentPickerSheet({
   open,
   onClose,
@@ -61,11 +55,7 @@ export default function AttachmentPickerSheet({
 }: AttachmentPickerSheetProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>("gallery");
-  const [media, setMedia] = useState<NativeMediaItem[]>([]);
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
-  const [galleryState, setGalleryState] = useState<"loading" | "ready" | "empty" | "error">("loading");
   const [internalPreviewMediaItem, setInternalPreviewMediaItem] = useState<NativeMediaItem | null>(null);
-  const [fullPreviewUrl, setFullPreviewUrl] = useState<string | null>(null);
   const previewMediaItem = propPreviewMediaItem !== undefined ? propPreviewMediaItem : internalPreviewMediaItem;
   const setPreviewMediaItem = useCallback(
     (item: NativeMediaItem | null) => {
@@ -77,6 +67,7 @@ export default function AttachmentPickerSheet({
     },
     [onPreviewMediaItemChange]
   );
+  const { media, selectedItemIds, state: galleryState, fullPreviewUrl, loadRecentItems, toggleSelection, clearSelection } = useMediaPicker(open, activeTab, previewMediaItem);
   const [isSending, setIsSending] = useState(false);
   const [localDraft, setLocalDraft] = useState("");
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
@@ -115,14 +106,14 @@ export default function AttachmentPickerSheet({
 
   const resetSheetState = useCallback(() => {
     setActiveTab("gallery");
-    setSelectedItemIds([]);
+    clearSelection();
     setPreviewMediaItem(null);
     setIsSending(false);
     setIsEmojiOpen(false);
     setIsFullScreen(false);
     setDragTranslateY(0);
     setIsDragging(false);
-  }, [setPreviewMediaItem]);
+  }, [clearSelection, setPreviewMediaItem]);
 
   const closeSheet = useCallback(() => {
     if (isClosing) return;
@@ -315,30 +306,6 @@ export default function AttachmentPickerSheet({
     }
   };
 
-  const mediaCategory = (tab: AttachmentPickerTab) => (tab === "file" ? "documents" : tab);
-
-  const loadRecentItems = async (tab: AttachmentPickerTab) => {
-    if (!isNativeMediaLibraryAvailable()) {
-      setGalleryState("empty");
-      return;
-    }
-    const cached = getCachedNativeMedia(mediaCategory(tab));
-    if (cached.length > 0) {
-      setMedia(cached);
-      setGalleryState("ready");
-    } else {
-      setGalleryState("loading");
-    }
-    try {
-      const items = await listNativeMedia(mediaCategory(tab));
-      setMedia(items);
-      setGalleryState(items.length > 0 ? "ready" : "empty");
-    } catch {
-      setMedia([]);
-      setGalleryState("error");
-    }
-  };
-
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -371,11 +338,6 @@ export default function AttachmentPickerSheet({
     resetSheetState();
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    void loadRecentItems(activeTab);
-  }, [open, activeTab]);
-
   useLayoutEffect(() => {
     if (!open) return;
     adjustTextareaHeight();
@@ -392,29 +354,7 @@ export default function AttachmentPickerSheet({
     return () => document.removeEventListener("pointerdown", handleDocumentPointerDown);
   }, [isEmojiOpen]);
 
-  useEffect(() => {
-    if (!open || !previewMediaItem) {
-      setFullPreviewUrl(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchNativeMediaFileUrl(previewMediaItem.id).then((url) => {
-      if (!cancelled && url) {
-        setFullPreviewUrl(url);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, previewMediaItem]);
-
   if (!open) return null;
-
-  const toggleGridItemSelection = (id: string) => {
-    setSelectedItemIds((previous) =>
-      previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id]
-    );
-  };
 
   const handleEmojiPick = (emojiData: EmojiClickData) => {
     const textarea = textareaRef.current;
@@ -513,117 +453,23 @@ export default function AttachmentPickerSheet({
           onTouchEnd={handleBodyTouchEnd}
         >
           {activeTab === "gallery" && (
-            <div className="attachment-picker-gallery-tab">
-              <div className="attachment-picker-grid">
-                <button
-                  type="button"
-                  className="attachment-picker-grid-tile camera-tile"
-                  onClick={() => {
-                    onPick("camera");
-                    closeSheet();
-                  }}
-                  title="Take photo or video"
-                >
-                  <span className="camera-tile-icon">
-                    <Camera size={26} />
-                  </span>
-                  <span className="camera-tile-label">Camera</span>
-                </button>
-                {media.map((item) => {
-                  const selected = selectedItemIds.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      className={`attachment-picker-grid-tile media-tile ${selected ? "selected" : ""}`}
-                    >
-                      <button
-                        type="button"
-                        className="media-tile-thumb-btn"
-                        onClick={() => setPreviewMediaItem(item)}
-                        aria-label={`Preview ${item.name}`}
-                      >
-                        <img src={nativeMediaPreviewUrl(item)} alt="" loading="lazy" decoding="async" />
-                        {formatDuration(item.durationMs) && (
-                          <span className="media-tile-badge">{formatDuration(item.durationMs)}</span>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        className={`media-tile-checkbox ${selected ? "checked" : ""}`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          toggleGridItemSelection(item.id);
-                        }}
-                        aria-label={selected ? `Deselect ${item.name}` : `Select ${item.name}`}
-                        aria-pressed={selected}
-                      >
-                        {selected && <Check size={12} strokeWidth={3} />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-              {galleryState === "loading" && <p className="attachment-picker-gallery-status">Loading your gallery…</p>}
-              {galleryState === "empty" && (
-                <div className="attachment-picker-gallery-status">
-                  <p>No photos or videos found in the in-app gallery.</p>
-                  <button
-                    type="button"
-                    className="attachment-picker-secondary-btn"
-                    onClick={() => {
-                      onPick("gallery");
-                      closeSheet();
-                    }}
-                  >
-                    <ImageIcon size={18} />
-                    Choose photos
-                  </button>
-                </div>
-              )}
-              {galleryState === "error" && (
-                <div className="attachment-picker-gallery-status">
-                  <p>Unable to load the in-app gallery.</p>
-                  <button
-                    type="button"
-                    className="attachment-picker-secondary-btn"
-                    onClick={() => {
-                      onPick("gallery");
-                      closeSheet();
-                    }}
-                  >
-                    <ImageIcon size={18} />
-                    Choose photos
-                  </button>
-                  <button
-                    type="button"
-                    className="attachment-picker-secondary-btn"
-                    onClick={() => void loadRecentItems("gallery")}
-                  >
-                    Try again
-                  </button>
-                </div>
-              )}
-              {!isNativeMediaLibraryAvailable() && (
-                <button
-                  type="button"
-                  className="attachment-picker-secondary-btn"
-                  onClick={() => {
-                    onPick("gallery");
-                    closeSheet();
-                  }}
-                >
-                  <ImageIcon size={18} />
-                  Choose photos
-                </button>
-              )}
-            </div>
+            <MediaGalleryGrid
+              media={media}
+              selectedItemIds={selectedItemIds}
+              state={galleryState}
+              onToggle={toggleSelection}
+              onPreview={setPreviewMediaItem}
+              onCamera={() => { onPick("camera"); closeSheet(); }}
+              onChooseGallery={() => { onPick("gallery"); closeSheet(); }}
+              onRetry={() => void loadRecentItems("gallery")}
+            />
           )}
 
           {activeTab === "file" && (
-            <RecentFileList
+            <DocumentPickerList
               items={media}
               selectedItemIds={selectedItemIds}
-              onToggle={toggleGridItemSelection}
+              onToggle={toggleSelection}
               loading={galleryState === "loading"}
               emptyLabel="No recent documents on this device."
               icon={<FileText size={22} />}
@@ -634,10 +480,10 @@ export default function AttachmentPickerSheet({
             />
           )}
           {activeTab === "audio" && (
-            <RecentFileList
+            <DocumentPickerList
               items={media}
               selectedItemIds={selectedItemIds}
-              onToggle={toggleGridItemSelection}
+              onToggle={toggleSelection}
               loading={galleryState === "loading"}
               emptyLabel="No recent audio files on this device."
               icon={<Music size={22} />}
@@ -794,55 +640,4 @@ export default function AttachmentPickerSheet({
   );
 
   return typeof document !== "undefined" ? createPortal(fullContent, document.body) : fullContent;
-}
-
-function RecentFileList({
-  items,
-  selectedItemIds,
-  onToggle,
-  loading,
-  emptyLabel,
-  icon,
-  onChoose
-}: {
-  items: NativeMediaItem[];
-  selectedItemIds: string[];
-  onToggle: (id: string) => void;
-  loading: boolean;
-  emptyLabel: string;
-  icon: ReactNode;
-  onChoose: () => void;
-}) {
-  return (
-    <div className="attachment-picker-list-tab">
-      <button type="button" className="attachment-picker-sheet-item" onClick={onChoose}>
-        <span className="attachment-picker-sheet-icon file-icon">{icon}</span>
-        <span className="attachment-picker-sheet-copy">
-          <strong>Choose from device</strong>
-          <span>{items.length ? "Browse all files" : emptyLabel}</span>
-        </span>
-      </button>
-      {loading && <p className="attachment-picker-gallery-status">Loading recent items…</p>}
-      {items.map((item) => {
-        const selected = selectedItemIds.includes(item.id);
-        return (
-          <button
-            key={item.id}
-            type="button"
-            className={`attachment-picker-sheet-item attachment-picker-recent-item ${selected ? "selected" : ""}`}
-            onClick={() => onToggle(item.id)}
-          >
-            <span className="attachment-picker-sheet-icon file-icon">{icon}</span>
-            <span className="attachment-picker-sheet-copy">
-              <strong>{item.name}</strong>
-              <span>{item.mimeType}</span>
-            </span>
-            <span className={`media-tile-checkbox ${selected ? "checked" : ""}`}>
-              {selected && <Check size={12} strokeWidth={3} />}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
 }

@@ -11,6 +11,10 @@ const callFeatureSource = readFileSync(
   "utf8",
 );
 const chatsPageSource = readFileSync(resolve(process.cwd(), "src/pages/ChatsPage.tsx"), "utf8");
+const conversationPanelSource = readFileSync(
+  resolve(process.cwd(), "src/features/chats/conversation/ConversationPanel.tsx"),
+  "utf8",
+);
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8")
   .replace(/^\uFEFF/, "")
   .replace(/\r\n/g, "\n");
@@ -59,6 +63,8 @@ describe("mobile active video call UI", () => {
     expect(callFeatureSource).toContain('callPhase !== "idle" && !isVoiceChannel');
     expect(chatsPageSource).toContain('callPhase !== "idle" && isCallMinimized && !chatId');
     expect(chatsPageSource).toContain('selectedChat && chatId && callPhase !== "idle" && isCallMinimized');
+    expect(conversationPanelSource).toContain('callSession?.setIsCallMinimized(true);');
+    expect(conversationPanelSource).not.toContain('callSession?.setIsCallMinimized(true);\n          onBack();');
   });
 
   it("uses compact spacing for the bottom app navigation", () => {

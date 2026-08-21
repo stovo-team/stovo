@@ -282,7 +282,6 @@ export function ConversationPanel({
         isCallMinimized={callSession?.isCallMinimized ?? false}
         onShrinkCall={() => {
           callSession?.setIsCallMinimized(true);
-          onBack();
         }}
         isMessageSearchOpen={isMessageSearchOpen}
         onToggleMessageSearch={toggleMessageSearch}
@@ -364,13 +363,17 @@ export function ConversationPanel({
       )}
       {selectedChat.type === "voice" ? (
         callSession ? (
-          <VoiceChannelStage
-            chat={selectedChat}
-            session={callSession}
-            members={members ?? (selectedChat.members as unknown as User[])}
-            currentUser={currentUser}
-            accessToken={accessToken}
-          />
+          callSession.isCallMinimized &&
+          callSession.activeCallChatId === selectedChat.id &&
+          callPhase !== "idle" ? null : (
+            <VoiceChannelStage
+              chat={selectedChat}
+              session={callSession}
+              members={members ?? (selectedChat.members as unknown as User[])}
+              currentUser={currentUser}
+              accessToken={accessToken}
+            />
+          )
         ) : null
       ) : (
         <>

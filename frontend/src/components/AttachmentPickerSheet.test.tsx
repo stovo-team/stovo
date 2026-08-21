@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 
 const styles = readFileSync("src/styles.css", "utf8");
 const attachmentSheetSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
+const mediaPickerSource = readFileSync("src/components/attachment-picker/useMediaPicker.ts", "utf8");
+const mediaGridSource = readFileSync("src/components/attachment-picker/MediaGalleryGrid.tsx", "utf8");
 
 describe("AttachmentPickerSheet Android gallery", () => {
   it("keeps only isolated Gallery, File, and Audio tabs", () => {
@@ -50,36 +52,35 @@ describe("AttachmentPickerSheet Android gallery", () => {
   });
 
   it("uses cached media immediately and refreshes the device library for new captures", () => {
-    expect(attachmentSheetSource).toContain("getCachedNativeMedia");
-    expect(attachmentSheetSource).toContain("const cached = getCachedNativeMedia");
-    expect(attachmentSheetSource).toContain("listNativeMedia(mediaCategory(tab))");
+    expect(mediaPickerSource).toContain("getCachedNativeMedia");
+    expect(mediaPickerSource).toContain("const cached = getCachedNativeMedia");
+    expect(mediaPickerSource).toContain("listNativeMedia(categoryFor(tab))");
   });
 
   it("allows selecting multiple recent audio and document items", () => {
     expect(attachmentSheetSource).toContain("selectedItemIds={selectedItemIds}");
-    expect(attachmentSheetSource).toContain("onToggle={toggleGridItemSelection}");
+    expect(attachmentSheetSource).toContain("onToggle={toggleSelection}");
+    expect(mediaPickerSource).toContain("const toggleSelection");
   });
 
   it("does not reset the selected tab while loading its media", () => {
     expect(attachmentSheetSource).toMatch(/useEffect\(\(\) => \{[\s\S]*?resetSheetState\(\);[\s\S]*?\}, \[open\]\);/);
-    expect(attachmentSheetSource).toMatch(/useEffect\(\(\) => \{[\s\S]*?loadRecentItems\(activeTab\)[\s\S]*?\}, \[open, activeTab\]\);/);
+    expect(mediaPickerSource).toMatch(/useEffect\(\(\) => \{[\s\S]*?loadRecentItems\(activeTab\)[\s\S]*?\}, \[activeTab, loadRecentItems, open\]\);/);
   });
 
   it("falls back to Android's picker when the in-app media query is empty or fails", () => {
-    expect(attachmentSheetSource).toContain("No photos or videos found in the in-app gallery.");
-    expect(attachmentSheetSource).toContain("Unable to load the in-app gallery.");
-    expect(attachmentSheetSource).toMatch(/galleryState === "empty"[\s\S]*?onPick\("gallery"\)/);
-    expect(attachmentSheetSource).toMatch(/galleryState === "error"[\s\S]*?onPick\("gallery"\)/);
+    expect(mediaGridSource).toContain("No photos or videos found in the in-app gallery.");
+    expect(mediaGridSource).toContain("Unable to load the in-app gallery.");
+    expect(attachmentSheetSource).toContain("onChooseGallery={() => { onPick(\"gallery\"); closeSheet(); }}");
   });
 
   it("opens ImageLightbox preview on photo thumbnail click and toggles selection on top-right checkbox click", () => {
     expect(attachmentSheetSource).toContain("ImageLightbox");
     expect(attachmentSheetSource).toContain("previewMediaItem");
-    expect(attachmentSheetSource).toContain("setPreviewMediaItem(item)");
-    expect(attachmentSheetSource).toContain("media-tile-thumb-btn");
-    expect(attachmentSheetSource).toContain("media-tile-checkbox");
-    expect(attachmentSheetSource).toContain("toggleGridItemSelection(item.id)");
-    expect(attachmentSheetSource).toContain("event.stopPropagation()");
+    expect(attachmentSheetSource).toContain("onPreview={setPreviewMediaItem}");
+    expect(mediaGridSource).toContain("media-tile-thumb-btn");
+    expect(mediaGridSource).toContain("media-tile-checkbox");
+    expect(mediaGridSource).toContain("onToggle(item.id)");
   });
 
   it("defines CSS rules for TG-style attachment sheet, grid layout, inline message box, and bottom nav", () => {
@@ -142,17 +143,15 @@ describe("AttachmentPickerSheet Android gallery", () => {
   });
 
   it("fetches full resolution original media for ImageLightbox preview", () => {
-    const updatedSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
-    expect(updatedSource).toContain("fetchNativeMediaFileUrl");
-    expect(updatedSource).toContain("fullPreviewUrl");
-    expect(updatedSource).toMatch(/imageUrl=\{fullPreviewUrl\s*\|\|\s*nativeMediaPreviewUrl\(previewMediaItem\)\}/);
+    expect(mediaPickerSource).toContain("fetchNativeMediaFileUrl");
+    expect(mediaPickerSource).toContain("fullPreviewUrl");
+    expect(attachmentSheetSource).toMatch(/imageUrl=\{fullPreviewUrl\s*\|\|\s*nativeMediaPreviewUrl\(previewMediaItem\)\}/);
   });
 
   it("declares all hooks at top level before conditional return to prevent white screen crashes", () => {
-    const updatedSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
-    const [beforeEarlyReturn, afterEarlyReturn] = updatedSource.split("if (!open) return null;");
-    expect(beforeEarlyReturn).toContain("fetchNativeMediaFileUrl");
-    expect(beforeEarlyReturn).toContain("useEffect");
+    const [beforeEarlyReturn, afterEarlyReturn] = attachmentSheetSource.split("if (!open) return null;");
+    expect(beforeEarlyReturn).toContain("useMediaPicker(open, activeTab, previewMediaItem)");
+    expect(mediaPickerSource).toContain("fetchNativeMediaFileUrl");
     expect(afterEarlyReturn).toBeDefined();
     expect(afterEarlyReturn).not.toMatch(/\buse(Effect|LayoutEffect|State|Memo|Callback|Ref)\s*\(/);
   });

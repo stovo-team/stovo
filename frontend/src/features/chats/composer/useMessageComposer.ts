@@ -6,7 +6,6 @@ import {
   RefObject,
   SetStateAction,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useRef,
   useState
@@ -46,6 +45,7 @@ import {
 } from "../outbox/messageOutboxStore";
 import { computeInitialReminderDate } from "../outbox/reminderSchedule";
 import { drainOutboxQueue } from "../outbox/messageOutboxProcessor";
+import { useMessageCooldown } from "./useMessageCooldown";
 
 export type UseMessageComposerParams = {
   chatId: string | undefined;
@@ -137,24 +137,10 @@ export function useMessageComposer({
   const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
-  const [lastSentTimestampByChat, setLastSentTimestampByChat] = useState<Record<string, number>>({});
-  const [, setCooldownTick] = useState<number>(0);
-
-  const activeChatId = selectedChat?.id ?? "";
-  const delaySeconds = selectedChat?.messageDelaySeconds ?? 0;
-  const lastSentAt = activeChatId ? (lastSentTimestampByChat[activeChatId] ?? 0) : 0;
-  const messageDelayRemaining =
-    delaySeconds > 0 && lastSentAt > 0
-      ? Math.max(0, Math.ceil((lastSentAt + delaySeconds * 1000 - Date.now()) / 1000))
-      : 0;
-
-  useEffect(() => {
-    if (messageDelayRemaining <= 0) return;
-    const interval = setInterval(() => {
-      setCooldownTick((tick) => tick + 1);
-    }, 250);
-    return () => clearInterval(interval);
-  }, [messageDelayRemaining]);
+  const { remaining: messageDelayRemaining, markSent } = useMessageCooldown(
+    selectedChat?.id,
+    selectedChat?.messageDelaySeconds
+  );
 
   const composerFormattingSelectionRef = useRef<TextSelection | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
@@ -684,12 +670,7 @@ export function useMessageComposer({
 
       // Persist to local outbox queue
       await enqueueOutboxMessage(outboxItem);
-      if (delaySeconds > 0) {
-        setLastSentTimestampByChat((prev) => ({
-          ...prev,
-          [selectedChat.id]: Date.now()
-        }));
-      }
+      markSent(selectedChat.id);
 
       // Ensure focus remains persistent after async queuing
       composerInputRef.current?.focus({ preventScroll: true });

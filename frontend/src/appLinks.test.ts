@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getInviteAppLinkPath, getNotificationAppLink } from "./appLinks";
+import { getInviteApiUrl, getInviteAppLinkPath, getNotificationAppLink } from "./appLinks";
 
 describe("getNotificationAppLink", () => {
   it("routes a chat notification to its exact chat", () => {
@@ -70,10 +70,19 @@ describe("getInviteAppLinkPath", () => {
 
   it("parses https web invite urls", () => {
     expect(getInviteAppLinkPath("https://stovo-cloud.stovo.ru/invite/inv-12345")).toBe(
-      "/invite/inv-12345"
+      "/invite/inv-12345?apiUrl=https%3A%2F%2Fstovo-cloud.stovo.ru"
     );
     expect(getInviteAppLinkPath("https://myfamily.stovo.ru/invite/inv-12345?apiUrl=http%3A%2F%2F192.168.1.50%3A8000")).toBe(
       "/invite/inv-12345?apiUrl=http%3A%2F%2F192.168.1.50%3A8000"
+    );
+  });
+
+  it("keeps the source server for direct web app links", () => {
+    expect(getInviteApiUrl("https://stovo-cloud.stovo.ru/s/family-a/invite/inv-12345")).toBe(
+      "https://stovo-cloud.stovo.ru/s/family-a"
+    );
+    expect(getInviteAppLinkPath("https://stovo-cloud.stovo.ru/s/family-a/invite/inv-12345")).toBe(
+      "/invite/inv-12345?apiUrl=https%3A%2F%2Fstovo-cloud.stovo.ru%2Fs%2Ffamily-a"
     );
   });
 
