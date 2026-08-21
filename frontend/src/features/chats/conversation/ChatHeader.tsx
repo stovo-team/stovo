@@ -6,6 +6,7 @@ import {
   CheckCheck,
   Copy,
   Info,
+  Maximize2,
   Minimize2,
   Pencil,
   Phone,
@@ -71,7 +72,8 @@ export function ChatHeader({
   onSelectionEdit,
   threadRootMessage = null,
   onBackFromThread,
-  onShrinkCall
+  onShrinkCall,
+  isCallMinimized = false
 }: {
   accessToken: string | null;
   currentUser: User | null;
@@ -104,6 +106,7 @@ export function ChatHeader({
   threadRootMessage?: Message | null;
   onBackFromThread?: () => void;
   onShrinkCall?: () => void;
+  isCallMinimized?: boolean;
 }) {
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
@@ -257,11 +260,23 @@ export function ChatHeader({
                 <button
                   type="button"
                   className="icon-button subtle chat-header-call-button chat-header-shrink-button"
-                  aria-label={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
-                  title={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
+                  aria-label={
+                    isCallMinimized
+                      ? (strings.chats.voiceRoom?.expandCall ?? "Expand Voice Channel")
+                      : (strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel")
+                  }
+                  title={
+                    isCallMinimized
+                      ? (strings.chats.voiceRoom?.expandCall ?? "Expand Voice Channel")
+                      : (strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel")
+                  }
                   onClick={onShrinkCall}
                 >
-                  <Minimize2 aria-hidden="true" size={18} strokeWidth={2} />
+                  {isCallMinimized ? (
+                    <Maximize2 aria-hidden="true" size={18} strokeWidth={2} />
+                  ) : (
+                    <Minimize2 aria-hidden="true" size={18} strokeWidth={2} />
+                  )}
                 </button>
               )
             ) : (

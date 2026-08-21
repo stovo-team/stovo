@@ -17,8 +17,10 @@ import {
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
+import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 
 import type { User } from "../../../api/auth";
+import type { Chat } from "../../../api/chats";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import type { CallSessionApi } from "./useCallSession";
@@ -28,6 +30,8 @@ export type DesktopCallControlsProps = {
   members: User[];
   currentUser: User | null;
   isMobileViewport: boolean;
+  chats?: Chat[];
+  onOpenChat?: (chat: Chat) => void;
 };
 
 /**
@@ -37,7 +41,14 @@ export type DesktopCallControlsProps = {
  * remote/local video refs and their attached MediaStreams keep the exact
  * same DOM lifetime.
  */
-export function DesktopCallControls({ session, members, currentUser, isMobileViewport }: DesktopCallControlsProps) {
+export function DesktopCallControls({
+  session,
+  members,
+  currentUser,
+  isMobileViewport,
+  chats = [],
+  onOpenChat
+}: DesktopCallControlsProps) {
   const {
     callPhase,
     callType,
@@ -48,6 +59,7 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
     hasRemoteVideo,
     callRemoteMedia,
     localVideoStream,
+    localScreenStream,
     remoteVideoStream,
     remoteVideoRef,
     localVideoRef,
@@ -63,6 +75,8 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
     callPeerDisplayName,
     activeCallPeerName,
     isPeerSpeaking,
+    isLocalSpeaking,
+    speakingUserIds,
     callSettingsButtonRef,
     isCallSettingsMenuOpen,
     isCallAudioPopupOpen,
@@ -78,8 +92,16 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
     socketRef
   } = session;
 
-  const activePeer = members.find((m) => m.id === session.callPeerUserId);
+  const activeChat = session.activeCallChatId ? chats.find((c) => c.id === session.activeCallChatId) : null;
+  const isVoiceChannel = activeChat?.type === "voice";
+
+  const activePeer = members.find((m) => m.id === session.callPeerUserId) ||
+    activeChat?.members?.find((m) => m.id === session.callPeerUserId) ||
+    activeChat?.members?.find((m) => m.id !== currentUser?.id);
   const peerProfilePhoto = activePeer?.profilePhoto ?? null;
+
+  const callTitle = (callPeerDisplayName ?? activeCallPeerName) ?? activeChat?.title ?? (isVoiceChannel ? "Voice Channel" : "Call");
+  const callTimer = session.callTimer;
 
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
@@ -106,14 +128,24 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
         !(isCallMinimized && isMobileViewport) && (
       <div className="call-popup-header">
           <>
-            {!(callPhase === "in-call" && callType === "video") && (
+            {!(callPhase === "in-call" && callType === "video" && !isCallMinimized) && (
             <strong className="call-popup-status">
-              {callPhase === "incoming"
+              {isCallMinimized
+                ? (callPhase === "in-call"
+                    ? `${callTitle} · ${callTimer}`
+                    : callPhase === "incoming"
+                    ? `${callTitle} · Incoming…`
+                    : callPhase === "outgoing"
+                    ? `${callTitle} · Ringing…`
+                    : `${callTitle} · Connecting…`)
+                : callPhase === "incoming"
                 ? (callType === "video" ? "Incoming video call" : "Incoming call")
                 : callPhase === "outgoing"
                 ? "Ringing…"
                 : callPhase === "connecting"
                 ? "Connecting…"
+                : isVoiceChannel
+                ? (activeChat?.title ?? "Voice Channel")
                 : "Audio call"}
             </strong>
             )}
@@ -139,10 +171,11 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
       )}
 
       {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
-      <div className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callRemoteMedia.some((m) => m.hasScreenShare) && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
+      <div className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
         {callRemoteMedia.length > 1 && callPhase === "in-call" && !isCallMinimized ? (
           <CallParticipantGrid
             localStream={localVideoStream}
+            localScreenStream={localScreenStream}
             remoteMedia={callRemoteMedia}
             localUserLabel={currentUser?.displayName ?? "You"}
             mirrorLocal={
@@ -150,26 +183,39 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
               callAudioSettings.cameraFacingMode === "user"
             }
             callType={callType}
+            isLocalSpeaking={isLocalSpeaking}
+            isPeerSpeaking={isPeerSpeaking}
+            speakingUserIds={speakingUserIds}
           />
         ) : (
           <>
-            <video
-              ref={remoteVideoRef}
-              className={`call-popup-remote-video${(callType === "video" || hasRemoteVideo || callRemoteMedia.some((m) => m.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? " visible" : ""}`}
-              autoPlay
-              playsInline
-            />
-            <video
-              ref={localVideoRef}
-              className={[
-                "call-popup-local-video",
-                callType === "video" && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? "visible" : "",
-                callAudioSettings.mirrorLocalVideo && callAudioSettings.cameraFacingMode === "user" ? "mirrored" : "",
-              ].filter(Boolean).join(" ")}
-              autoPlay
-              playsInline
-              muted
-            />
+            <div className="call-popup-remote-video-wrap">
+              <video
+                ref={remoteVideoRef}
+                className={`call-popup-remote-video${(callType === "video" || hasRemoteVideo || callRemoteMedia.some((m) => m.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? " visible" : ""}`}
+                autoPlay
+                playsInline
+              />
+              {isPeerSpeaking && (callType === "video" || hasRemoteVideo || callRemoteMedia.some((m) => m.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport && (
+                <SpeakingWaveBadge />
+              )}
+            </div>
+            <div className="call-popup-local-video-wrap">
+              <video
+                ref={localVideoRef}
+                className={[
+                  "call-popup-local-video",
+                  (callType === "video" || callAudioSettings.screenSharing) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport ? "visible" : "",
+                  callAudioSettings.mirrorLocalVideo && callAudioSettings.cameraFacingMode === "user" && !callAudioSettings.screenSharing ? "mirrored" : "",
+                ].filter(Boolean).join(" ")}
+                autoPlay
+                playsInline
+                muted
+              />
+              {isLocalSpeaking && (callType === "video" || callAudioSettings.screenSharing) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport && (
+                <SpeakingWaveBadge className="speaking-wave-badge--pip" />
+              )}
+            </div>
           </>
         )}
       </div>
@@ -560,7 +606,8 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
           <button
             type="button"
             className="call-ctrl-btn call-chip-btn end-btn"
-            aria-label="End call"
+            aria-label={isVoiceChannel ? "Disconnect from voice channel" : "End call"}
+            title={isVoiceChannel ? "Disconnect from voice channel" : "End call"}
             onClick={() => void endActiveCall()}
           >
             <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" style={{ transform: "rotate(135deg)" }} fill="currentColor">
@@ -570,8 +617,15 @@ export function DesktopCallControls({ session, members, currentUser, isMobileVie
           <button
             type="button"
             className="icon-button subtle call-chip-restore"
-            aria-label="Restore call window"
-            onClick={() => setIsCallMinimized(false)}
+            aria-label={isVoiceChannel ? "Enlarge voice channel" : "Restore call window"}
+            title={isVoiceChannel ? "Enlarge voice channel" : "Restore call window"}
+            onClick={() => {
+              setIsCallMinimized(false);
+              if (session.activeCallChatId && onOpenChat && chats.length > 0) {
+                const target = chats.find((c) => c.id === session.activeCallChatId);
+                if (target) onOpenChat(target);
+              }
+            }}
           >
             <Maximize2 aria-hidden="true" size={15} />
           </button>

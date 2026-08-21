@@ -476,6 +476,7 @@ export const strings = {
       stopSharingScreen: "Остановить демонстрацию экрана",
       shareScreen: "Демонстрация экрана",
       shrinkCall: "Свернуть голосовой канал",
+      expandCall: "Развернуть голосовой канал",
       moreOptions: "Дополнительные параметры",
       settings: "Настройки",
       disconnect: "Выйти из голосового канала",
