@@ -1,4 +1,4 @@
-import { RefObject, useMemo, useState } from "react";
+import { type ReactNode, RefObject, useMemo, useState } from "react";
 import { Forward, MessageCircle, Reply } from "lucide-react";
 
 import type { User } from "../../../api/auth";
@@ -51,6 +51,7 @@ export type ConversationPanelProps = {
   isDockedEmojiPicker: boolean;
   showDockedEmojiPicker: boolean;
   callSession?: CallSessionApi;
+  minimizedCallHeader?: ReactNode;
   onOpenChat: (chat: Chat) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onOpenNewChat: () => void;
@@ -71,6 +72,7 @@ export function ConversationPanel({
   callPhase,
   activeCallChatId,
   callSession,
+  minimizedCallHeader,
   isChatMenuOpen,
   chatMenuRef,
   onToggleChatMenu,
@@ -282,6 +284,7 @@ export function ConversationPanel({
         isCallMinimized={callSession?.isCallMinimized ?? false}
         onShrinkCall={() => {
           callSession?.setIsCallMinimized(true);
+          onBack();
         }}
         isMessageSearchOpen={isMessageSearchOpen}
         onToggleMessageSearch={toggleMessageSearch}
@@ -316,6 +319,7 @@ export function ConversationPanel({
           clearSelectedMessages();
         }}
       />
+      {minimizedCallHeader}
       {isMessageSearchOpen && (
         <div className="search-field message-search-field" role="search">
           <span className="ms-icon ms-icon--20" aria-hidden={true}>

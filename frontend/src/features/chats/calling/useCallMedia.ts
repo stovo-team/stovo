@@ -3,35 +3,27 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type MutableRe
 import CallController, { type CallSettings, type RemoteMedia } from "../../../realtime/CallController";
 import { audioPlaybackSession } from "../../../audioPlaybackSession";
 import { videoPlaybackSession } from "../../../videoPlaybackSession";
-import { enterNativePictureInPictureIfPossible, isNativeCallPluginAvailable, setNativeActiveCallState } from "../../../native/callPlugin";
 import { isNativeScreenCaptureAvailable } from "../../../native/screenCapturePlugin";
-import type { CallPhase } from "../shared/types";
 
 type UseCallMediaParams = {
   audioCallRef: MutableRefObject<CallController | null>;
-  callPhase: CallPhase;
-  callPhaseRef: MutableRefObject<CallPhase>;
+  callPhase: "idle" | "incoming" | "outgoing" | "connecting" | "in-call";
   callType: "audio" | "video";
   callAudioSettings: CallSettings;
   setCallAudioSettings: Dispatch<SetStateAction<CallSettings>>;
   setCallAudioWarning: Dispatch<SetStateAction<string | null>>;
   setCallNotice: Dispatch<SetStateAction<string | null>>;
-  activeCallChatIdRef: MutableRefObject<string | null>;
-  activeCallSessionIdRef: MutableRefObject<string | null>;
 };
 
 /** Owns call media streams, media-element refs, and browser/native media effects. */
 export function useCallMedia({
   audioCallRef,
   callPhase,
-  callPhaseRef,
   callType,
   callAudioSettings,
   setCallAudioSettings,
   setCallAudioWarning,
-  setCallNotice,
-  activeCallChatIdRef,
-  activeCallSessionIdRef
+  setCallNotice
 }: UseCallMediaParams) {
   const [callRemoteMedia, setCallRemoteMedia] = useState<RemoteMedia[]>([]);
   const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
@@ -80,13 +72,6 @@ export function useCallMedia({
     }
     try {
       await controller.toggleScreenShare(next);
-      if (next && isNativeCallPluginAvailable()) {
-        const active = callPhaseRef.current !== "idle" && Boolean(activeCallSessionIdRef.current);
-        if (active) {
-          await setNativeActiveCallState({ active: true, video: true, chatId: activeCallChatIdRef.current, sessionId: activeCallSessionIdRef.current });
-          await enterNativePictureInPictureIfPossible();
-        }
-      }
       setCallNotice(next ? "Screen demonstration active" : null);
     } catch (err) {
       setCallAudioSettings((current) => ({ ...current, screenSharing: false }));
@@ -100,7 +85,7 @@ export function useCallMedia({
       setCallNotice(message);
       setCallAudioWarning(message);
     }
-  }, [activeCallChatIdRef, activeCallSessionIdRef, audioCallRef, callAudioSettings.screenSharing, callPhaseRef, setCallAudioSettings, setCallAudioWarning, setCallNotice]);
+  }, [audioCallRef, callAudioSettings.screenSharing, setCallAudioSettings, setCallAudioWarning, setCallNotice]);
 
   return { callRemoteMedia, setCallRemoteMedia, hasRemoteVideo, setHasRemoteVideo, localVideoStream, setLocalVideoStream, localScreenStream, setLocalScreenStream, remoteVideoStream, setRemoteVideoStream, remoteAudioRef, remoteVideoRef, localVideoRef, toggleScreenShare };
 }

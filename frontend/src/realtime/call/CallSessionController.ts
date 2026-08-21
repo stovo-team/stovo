@@ -729,7 +729,10 @@ export default class CallSessionController {
 
   private async stopScreenShare(notifyUi: boolean): Promise<void> {
     const wasSharing = Boolean(this.screenStream) || this.settings.screenSharing;
-    if (isNativeScreenCaptureAvailable()) {
+    // Starting native capture creates a stream before this method clears a
+    // previous share. Do not stop that fresh capture when no share was active,
+    // otherwise we publish an ended track and remotes only see a grey tile.
+    if (wasSharing && isNativeScreenCaptureAvailable()) {
       void stopNativeScreenCapture().catch(() => undefined);
     }
     if (this.topology === "sfu") {
