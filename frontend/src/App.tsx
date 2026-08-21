@@ -314,15 +314,7 @@ function ClusterRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route
-        path="/app/chats"
-        element={
-          <RequireAuth>
-            <ChatsPage />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/app/chats/:chatId"
+        path="/app/chats/:chatId?"
         element={
           <RequireAuth>
             <ChatsPage />

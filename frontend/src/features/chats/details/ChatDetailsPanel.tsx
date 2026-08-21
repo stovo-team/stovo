@@ -396,31 +396,23 @@ export function ChatDetailsPanel({
             <div className="chat-info-section">
               <p className="chat-info-section-label">{strings.chats.details.messageDelay}</p>
               <div className="chat-info-island" role="radiogroup" aria-label={strings.chats.details.messageDelay}>
-                <label
-                  className="chat-info-permission-option chat-info-permission-option--inline"
-                  onClick={handleDelayOff}
-                >
+                <label className="chat-info-permission-option chat-info-permission-option--inline">
                   <input
                     type="radio"
                     name="messageDelay"
                     value="off"
                     checked={!isDelayOn}
                     onChange={handleDelayOff}
-                    onClick={handleDelayOff}
                   />
                   <span>{strings.chats.details.off}</span>
                 </label>
-                <label
-                  className="chat-info-permission-option chat-info-permission-option--inline"
-                  onClick={handleDelayOn}
-                >
+                <label className="chat-info-permission-option chat-info-permission-option--inline">
                   <input
                     type="radio"
                     name="messageDelay"
                     value="on"
                     checked={isDelayOn}
                     onChange={handleDelayOn}
-                    onClick={handleDelayOn}
                   />
                   <span>{strings.chats.details.on ?? "On"}</span>
                 </label>

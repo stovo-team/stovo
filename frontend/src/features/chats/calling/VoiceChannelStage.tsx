@@ -13,6 +13,7 @@ import {
   PhoneOff,
   Settings,
   Sparkles,
+  UserPlus,
   Video,
   VideoOff,
   Volume2
@@ -34,6 +35,8 @@ export type VoiceChannelStageProps = {
   members: User[];
   currentUser: User | null;
   accessToken: string | null;
+  canCreateFamilyInvite?: boolean;
+  onOpenFamilyInvite?: () => void;
 };
 
 export function VoiceChannelStage({
@@ -42,6 +45,8 @@ export function VoiceChannelStage({
   members,
   currentUser,
   accessToken,
+  canCreateFamilyInvite = false,
+  onOpenFamilyInvite,
 }: VoiceChannelStageProps) {
   const strings = useStrings();
   const voiceStrings = strings.chats.voiceRoom;
@@ -68,6 +73,7 @@ export function VoiceChannelStage({
     callRoomId,
     socketRef,
     localVideoStream,
+    localScreenStream,
     audioCallRef
   } = session;
 
@@ -264,9 +270,13 @@ export function VoiceChannelStage({
                   : Boolean(speakingUserIds?.includes(p.userId) || (isPeerSpeaking && participantCount <= 2));
                 const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
                 const peerMedia = !info.isSelf ? callRemoteMedia?.find((m) => m.userId === p.userId) : null;
+                const screenStream = info.isSelf ? localScreenStream : peerMedia?.screenStream ?? null;
+                const hasScreenShare = Boolean(
+                  screenStream?.getVideoTracks().some((track) => track.readyState !== "ended")
+                );
                 const hasVideo = info.isSelf
-                  ? Boolean(callAudioSettings.cameraEnabled && localVideoStream)
-                  : Boolean(peerMedia?.hasVideo && peerMedia.stream);
+                  ? hasScreenShare || Boolean(callAudioSettings.cameraEnabled && localVideoStream)
+                  : hasScreenShare || Boolean(peerMedia?.hasVideo && peerMedia.stream);
 
                 return (
                   <div
@@ -285,7 +295,7 @@ export function VoiceChannelStage({
                         {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
                       </div>
                       <span className="voice-list-row-name">{info.displayName}</span>
-                      {hasVideo && <span className="voice-list-video-pill" title="Camera Active"><Video size={12} /></span>}
+                      {hasVideo && <span className="voice-list-video-pill" title={hasScreenShare ? "Screen Sharing" : "Camera Active"}><Video size={12} /></span>}
                     </div>
                     <div className="voice-list-row-right">
                       {isMuted && (
@@ -316,10 +326,16 @@ export function VoiceChannelStage({
                   : Boolean(speakingUserIds?.includes(p.userId) || (isPeerSpeaking && participantCount <= 2));
                 const isMuted = info.isSelf ? callAudioSettings.micMuted : false;
                 const peerMedia = !info.isSelf ? callRemoteMedia?.find((m) => m.userId === p.userId) : null;
+                const screenStream = info.isSelf ? localScreenStream : peerMedia?.screenStream ?? null;
+                const hasScreenShare = Boolean(
+                  screenStream?.getVideoTracks().some((track) => track.readyState !== "ended")
+                );
                 const hasActiveVideo = info.isSelf
-                  ? Boolean(callAudioSettings.cameraEnabled && localVideoStream)
-                  : Boolean(peerMedia?.hasVideo && peerMedia.stream);
-                const videoStream = info.isSelf ? localVideoStream : peerMedia?.stream ?? null;
+                  ? hasScreenShare || Boolean(callAudioSettings.cameraEnabled && localVideoStream)
+                  : hasScreenShare || Boolean(peerMedia?.hasVideo && peerMedia.stream);
+                const videoStream = hasScreenShare
+                  ? screenStream
+                  : (info.isSelf ? localVideoStream : peerMedia?.stream ?? null);
 
                 return (
                   <div
@@ -337,7 +353,7 @@ export function VoiceChannelStage({
                           autoPlay
                           playsInline
                           muted={info.isSelf}
-                          className={`voice-participant-video-feed${info.isSelf && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
+                          className={`voice-participant-video-feed${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
                         />
                         {isSpeaking && <SpeakingWaveBadge />}
                         {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
@@ -388,6 +404,17 @@ export function VoiceChannelStage({
             <h3>{voiceStrings?.noUsers ?? "No users"}</h3>
             <p>{voiceStrings?.noUsersDescription ?? "No users in this voice channel right now. Join to start talking!"}</p>
           </div>
+        )}
+
+        {canCreateFamilyInvite && onOpenFamilyInvite && chat.members.length > 1 && (
+          <button
+            type="button"
+            className="voice-room-member-invite"
+            onClick={onOpenFamilyInvite}
+          >
+            <UserPlus aria-hidden="true" size={18} />
+            <span>{strings.chats.details.inviteMember}</span>
+          </button>
         )}
 
         {/* Transcript / AI Notes Side Panel Overlay */}
