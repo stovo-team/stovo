@@ -424,6 +424,7 @@ export const strings = {
       custom: "Своя",
       seconds: "сек",
       members: "Участники",
+      inviteMember: "Пригласить участника",
       tabs: {
         media: "Медиа",
         audio: "Аудио",

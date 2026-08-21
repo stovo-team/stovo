@@ -53,6 +53,19 @@
                     android:pathPrefix="/invite" />
             </intent-filter>
 
+            <!-- Cluster invite URLs are served under /s/<slug>/invite/<token>.
+                 This must be a verified App Link too; otherwise Android only
+                 opens the matching root-level /invite URLs in Stovo. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="stovo-cloud.stovo.ru"
+                    android:pathPattern="/s/.*/invite/.*" />
+            </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

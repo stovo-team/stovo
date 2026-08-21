@@ -78,6 +78,13 @@ describe("chat details controls", () => {
     expect(chatDetailsPanel).toContain("onFocusMessage={() => onFocusMessage(item.messageId)}");
   });
 
+  it("offers a family invite from multi-member chat details", () => {
+    expect(chatDetailsPanel).toContain("canCreateFamilyInvite && chat.members.length > 1");
+    expect(chatDetailsPanel).toContain('className="chat-info-member-invite"');
+    expect(chatDetailsPanel).toContain("onClick={onOpenFamilyInvite}");
+    expect(styles).toContain(".chat-info-member-invite {");
+  });
+
   it("includes message delay setting in chat settings with cooldown counter styles", () => {
     expect(chatDetailsPanel).toContain("strings.chats.details.messageDelay");
     expect(chatDetailsPanel).toContain('name="messageDelay"');

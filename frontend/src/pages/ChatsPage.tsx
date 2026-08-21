@@ -127,23 +127,6 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {selectedChat && chatId && callPhase !== "idle" && isCallMinimized && (
-              <MobileMinimizedCallBar
-                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
-                callPhase={callPhase}
-                callTimer={callTimer}
-                micMuted={callAudioSettings.micMuted}
-                onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-                onEnd={() => void endActiveCall()}
-                onExpand={() => {
-                  setIsCallMinimized(false);
-                  if (activeCallChatId) {
-                    const target = chats.find((c) => c.id === activeCallChatId);
-                    if (target) openChat(target);
-                  }
-                }}
-              />
-            )}
             <ConversationPanel
               thread={thread}
               composer={composerApi}
@@ -178,6 +161,25 @@ export default function ChatsPage() {
               isDockedEmojiPicker={isDockedEmojiPicker}
               showDockedEmojiPicker={showDockedEmojiPicker}
               callSession={callSession}
+              minimizedCallHeader={
+                selectedChat && chatId && callPhase !== "idle" && isCallMinimized ? (
+                  <MobileMinimizedCallBar
+                    peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
+                    callPhase={callPhase}
+                    callTimer={callTimer}
+                    micMuted={callAudioSettings.micMuted}
+                    onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
+                    onEnd={() => void endActiveCall()}
+                    onExpand={() => {
+                      setIsCallMinimized(false);
+                      if (activeCallChatId) {
+                        const target = chats.find((c) => c.id === activeCallChatId);
+                        if (target) openChat(target);
+                      }
+                    }}
+                  />
+                ) : null
+              }
               onOpenChat={openChat}
               onOpenImage={openFullViewImage}
               onOpenNewChat={openNewChatScreen}
@@ -190,6 +192,7 @@ export default function ChatsPage() {
               chatPhotoInputRef={detailsActions.chatPhotoInputRef}
               chatWallpaperInputRef={detailsActions.chatWallpaperInputRef}
               chatTitleDraft={chatTitleDraft}
+              canCreateFamilyInvite={canCreateFamilyInvite}
               canManageChat={detailsActions.canManageSelectedChat}
               currentUser={currentUser}
               currentUserId={currentUser?.id}
@@ -215,6 +218,7 @@ export default function ChatsPage() {
               }}
               onMediaVisibilityChange={detailsActions.handleMediaVisibilityChange}
               onOpenImage={openFullViewImage}
+              onOpenFamilyInvite={() => setIsFamilyInviteOpen(true)}
               onPinPermissionChange={detailsActions.handlePinPermissionChange}
               onMessageDelayChange={detailsActions.handleMessageDelayChange}
               onPreferenceChange={(payload) => void detailsActions.handleChatPreferenceChange(payload)}

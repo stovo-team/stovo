@@ -64,7 +64,7 @@ describe("mobile active video call UI", () => {
     expect(chatsPageSource).toContain('callPhase !== "idle" && isCallMinimized && !chatId');
     expect(chatsPageSource).toContain('selectedChat && chatId && callPhase !== "idle" && isCallMinimized');
     expect(conversationPanelSource).toContain('callSession?.setIsCallMinimized(true);');
-    expect(conversationPanelSource).not.toContain('callSession?.setIsCallMinimized(true);\n          onBack();');
+    expect(conversationPanelSource).toContain('callSession?.setIsCallMinimized(true);\n          onBack();');
   });
 
   it("uses compact spacing for the bottom app navigation", () => {

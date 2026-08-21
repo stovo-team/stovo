@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, RefObject, useEffect, useState } from "react";
-import { Clock3, FileText, Image, Mail, Music, Pencil, Settings, Video } from "lucide-react";
+import { Clock3, FileText, Image, Mail, Music, Pencil, Settings, UserPlus, Video } from "lucide-react";
 
 const MESSAGE_DELAY_PRESETS = [
   { label: "5s", value: 5 },
@@ -82,6 +82,7 @@ export function ChatDetailsPanel({
   chatPhotoInputRef,
   chatWallpaperInputRef,
   chatTitleDraft,
+  canCreateFamilyInvite,
   canManageChat,
   currentUser,
   currentUserId,
@@ -99,6 +100,7 @@ export function ChatDetailsPanel({
   onFocusMessage,
   onMediaVisibilityChange,
   onOpenImage,
+  onOpenFamilyInvite,
   onPinPermissionChange,
   onMessageDelayChange,
   onPreferenceChange,
@@ -112,6 +114,7 @@ export function ChatDetailsPanel({
   chatPhotoInputRef: RefObject<HTMLInputElement | null>;
   chatWallpaperInputRef: RefObject<HTMLInputElement | null>;
   chatTitleDraft: string;
+  canCreateFamilyInvite: boolean;
   canManageChat: boolean;
   currentUser: User | null;
   currentUserId: string | undefined;
@@ -132,6 +135,7 @@ export function ChatDetailsPanel({
   onFocusMessage: (messageId: string) => void;
   onMediaVisibilityChange: (enabled: boolean) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
+  onOpenFamilyInvite: () => void;
   onPinPermissionChange: (permission: "everyone" | "admins_only") => void;
   onMessageDelayChange: (delaySeconds: number) => void;
   onPreferenceChange: (
@@ -726,6 +730,16 @@ export function ChatDetailsPanel({
                 </li>
               ))}
             </ul>
+            {canCreateFamilyInvite && chat.members.length > 1 && (
+              <button
+                type="button"
+                className="chat-info-member-invite"
+                onClick={onOpenFamilyInvite}
+              >
+                <UserPlus aria-hidden="true" size={20} />
+                {strings.chats.details.inviteMember}
+              </button>
+            )}
           </div>
         </div>
       </div>
