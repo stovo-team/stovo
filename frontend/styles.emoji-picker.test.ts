@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 
 const styles = readFileSync("src/styles.css", "utf8");
 const composer = readFileSync("src/features/chats/composer/Composer.tsx", "utf8");
+const composerEmojiPicker = readFileSync(
+  "src/features/chats/composer/ComposerEmojiPicker.tsx",
+  "utf8"
+);
+const pendingAttachmentsStrip = readFileSync(
+  "src/features/chats/composer/PendingAttachmentsStrip.tsx",
+  "utf8"
+);
 const chatHeader = readFileSync("src/features/chats/conversation/ChatHeader.tsx", "utf8");
 const useMessageComposerSource = readFileSync(
   "src/features/chats/composer/useMessageComposer.ts",
@@ -79,8 +87,8 @@ describe("docked emoji picker styles", () => {
   });
 
   it("uses the picker's own dark sprite theme", () => {
-    expect(composer).toContain('theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}');
-    expect(composer).toContain("categoryIcons={EMOJI_CATEGORY_ICONS}");
+    expect(composerEmojiPicker).toContain('theme={theme === "light" ? Theme.LIGHT : Theme.DARK}');
+    expect(composerEmojiPicker).toContain("categoryIcons={EMOJI_CATEGORY_ICONS}");
     expect(styles).not.toContain(':root[data-theme-mode="dark"] .emoji-picker .epr-cat-btn');
   });
 
@@ -96,11 +104,9 @@ describe("docked emoji picker styles", () => {
 
 describe("active chat message spacing", () => {
   it("keeps pending attachments inside the floating composer", () => {
-    const attachmentStrip = composer.indexOf('className="composer-attachments-strip"');
-    const composerForm = composer.lastIndexOf('<form', attachmentStrip);
-
-    expect(attachmentStrip).toBeGreaterThan(composerForm);
-    expect(composer.slice(composerForm, attachmentStrip)).toContain('className={`message-composer');
+    expect(composer).toContain("<PendingAttachmentsStrip");
+    expect(pendingAttachmentsStrip).toContain('className="composer-attachments-strip"');
+    expect(pendingAttachmentsStrip).toContain("PendingAttachmentCard");
   });
 
   it("does not restore an opaque surface behind the active-chat composer", () => {

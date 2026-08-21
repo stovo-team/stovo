@@ -22,7 +22,9 @@ describe("active chat list item styling", () => {
       resolve(process.cwd(), "src/features/chats/useChatsPageController.ts"),
       "utf8"
     );
-    const closeActiveChatBody = controllerSource.match(/function closeActiveChat\(\)\s*\{([\s\S]*?)\}/)?.[1] ?? "";
+    const start = controllerSource.indexOf("function closeActiveChat()");
+    const end = controllerSource.indexOf("const { requestCloseActiveChatSurface", start);
+    const closeActiveChatBody = controllerSource.slice(start, end);
     expect(closeActiveChatBody).not.toContain("setSelectedChat(null)");
     expect(closeActiveChatBody).toContain("navigateToChatList()");
   });
