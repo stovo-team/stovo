@@ -35,6 +35,7 @@ export type CallFeatureProps = {
   members: User[];
   currentUser: User | null;
   chats?: Chat[];
+  onOpenChat?: (chat: Chat) => void;
 };
 
 /**
@@ -45,7 +46,7 @@ export type CallFeatureProps = {
  * element stays in ChatsPage since CallController needs it attached even
  * before a call starts.
  */
-export function CallFeature({ session, isMobileViewport, members, currentUser, chats = [] }: CallFeatureProps) {
+export function CallFeature({ session, isMobileViewport, members, currentUser, chats = [], onOpenChat }: CallFeatureProps) {
   const {
     callPhase,
     callType,
@@ -53,6 +54,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
     callPeerDisplayName,
     activeCallPeerName,
     isPeerSpeaking,
+    isLocalSpeaking,
     isProximityNear,
     callAudioSettings,
     callAudioCapabilities,
@@ -62,6 +64,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
     callTimer,
     hasRemoteVideo,
     localVideoStream,
+    localScreenStream,
     remoteVideoStream,
     isCallSettingsMenuOpen,
     isCallAudioPopupOpen,
@@ -160,6 +163,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
                 callType={callType}
                 callPhase={callPhase}
                 isPeerSpeaking={isPeerSpeaking}
+                isLocalSpeaking={isLocalSpeaking}
                 isProximityNear={isProximityNear}
                 isMicMuted={callAudioSettings.micMuted}
                 isCameraEnabled={callAudioSettings.cameraEnabled}
@@ -170,6 +174,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
                 timer={callTimer}
                 hasRemoteVideo={hasRemoteVideo}
                 localVideoStream={localVideoStream}
+                localScreenStream={localScreenStream}
                 remoteVideoStream={remoteVideoStream}
                 mirrorLocalVideo={callAudioSettings.mirrorLocalVideo}
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
@@ -200,6 +205,8 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
               members={members}
               currentUser={currentUser}
               isMobileViewport={isMobileViewport}
+              chats={chats}
+              onOpenChat={onOpenChat}
             />
           </section>
         </>

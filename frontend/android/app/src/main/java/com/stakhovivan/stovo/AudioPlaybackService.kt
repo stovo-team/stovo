@@ -173,7 +173,7 @@ class AudioPlaybackService : MediaSessionService() {
         startInForegroundRequired: Boolean
     ) {
         val currentStatus = coordinator.snapshot().status
-        if (currentStatus == AudioPlaybackStatus.ENDED || currentStatus == AudioPlaybackStatus.IDLE) {
+        if (suppressPlayerEvents || identity == null || currentStatus == AudioPlaybackStatus.ENDED || currentStatus == AudioPlaybackStatus.IDLE) {
             stopForeground(STOP_FOREGROUND_REMOVE)
             return
         }
@@ -272,6 +272,7 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     private fun load(args: Bundle): SessionResult {
+        suppressPlayerEvents = false
         val requestedIdentity = AudioPlaybackIdentity(
             args.getString(KEY_CHAT_ID).orEmpty(),
             args.getString(KEY_MESSAGE_ID).orEmpty(),
@@ -393,6 +394,7 @@ class AudioPlaybackService : MediaSessionService() {
         }
 
         suppressPlayerEvents = true
+        identity = null
         try {
             player.pause()
             player.stop()
@@ -400,14 +402,16 @@ class AudioPlaybackService : MediaSessionService() {
             credentials.clear()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
-        } finally {
-            suppressPlayerEvents = false
+        } catch (_: Exception) {
+            // Ignore teardown exceptions
         }
     }
 
     private fun clearPlayback(reason: AudioPlaybackCleanupReason) {
         stopProgressUpdates()
         suppressPlayerEvents = true
+        identity = null
+        callActive = false
         try {
             player.playWhenReady = false
             player.pause()
@@ -416,15 +420,13 @@ class AudioPlaybackService : MediaSessionService() {
             credentials.clear()
             resumeStore.clear()
             coordinator.cleanup(reason)
-            identity = null
-            callActive = false
             if (::mediaSession.isInitialized) {
                 mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle())
             }
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
-        } finally {
-            suppressPlayerEvents = false
+        } catch (_: Exception) {
+            // Ignore teardown exceptions
         }
     }
 

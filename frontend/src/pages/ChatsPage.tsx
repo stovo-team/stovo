@@ -129,7 +129,7 @@ export default function ChatsPage() {
           >
             {selectedChat && callPhase !== "idle" && isCallMinimized && isMobileViewport && (
               <MobileMinimizedCallBar
-                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? "Call"}
+                peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
                 callPhase={callPhase}
                 callTimer={callTimer}
                 micMuted={callAudioSettings.micMuted}
@@ -137,7 +137,7 @@ export default function ChatsPage() {
                 onEnd={() => void endActiveCall()}
                 onExpand={() => {
                   setIsCallMinimized(false);
-                  if (activeCallChatId && activeCallChatId !== selectedChat.id) {
+                  if (activeCallChatId) {
                     const target = chats.find((c) => c.id === activeCallChatId);
                     if (target) openChat(target);
                   }
@@ -224,7 +224,7 @@ export default function ChatsPage() {
         </div>
         {audioRestoreStatus && <p className="audio-restore-status" role="status">{audioRestoreStatus}</p>}
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
-        <CallFeature session={callSession} isMobileViewport={isMobileViewport} members={members} currentUser={currentUser} chats={chats} />
+        <CallFeature session={callSession} isMobileViewport={isMobileViewport} members={members} currentUser={currentUser} chats={chats} onOpenChat={openChat} />
         <ChatOverlays
           accessToken={accessToken}
           family={family}

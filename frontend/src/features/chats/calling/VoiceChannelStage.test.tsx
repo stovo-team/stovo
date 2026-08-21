@@ -503,5 +503,145 @@ describe("VoiceChannelStage", () => {
     });
     expect(mockToggleScreenShare).toHaveBeenCalled();
   });
+
+  it("renders shrink button in voice channel controls and calls setIsCallMinimized(true) when clicked", () => {
+    const mockSetIsCallMinimized = vi.fn();
+    const mockSession = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callAudioCapabilities: { canShareScreen: true },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      activeGroupCalls: {
+        "voice-chat-1": mockVoiceChat.activeCall!
+      },
+      callTimer: "01:23",
+      setIsCallSettingsMenuOpen: vi.fn(),
+      setIsCallAudioPopupOpen: vi.fn(),
+      setIsCallMinimized: mockSetIsCallMinimized,
+      audioCallRef: {
+        current: { toggleVideo: vi.fn() }
+      }
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={mockSession}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    const inCallToolbar = container.querySelector(".voice-room-in-call-controls");
+    expect(inCallToolbar).toBeDefined();
+    const shrinkBtn = inCallToolbar!.querySelector("button[aria-label='Shrink Voice Channel']") as HTMLButtonElement;
+    expect(shrinkBtn).toBeDefined();
+    expect(shrinkBtn).not.toBeNull();
+
+    act(() => {
+      shrinkBtn.click();
+    });
+    expect(mockSetIsCallMinimized).toHaveBeenCalledWith(true);
+  });
+
+  it("renders voice speaking ring around avatar when peer is speaking in voice room", () => {
+    const mockSession = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      callAudioCapabilities: { canShareScreen: true },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: true,
+      speakingUserIds: ["user-2"],
+      activeGroupCalls: {
+        "voice-chat-1": mockVoiceChat.activeCall!
+      },
+      callTimer: "01:23",
+      setIsCallSettingsMenuOpen: vi.fn(),
+      setIsCallAudioPopupOpen: vi.fn(),
+      setIsCallMinimized: vi.fn(),
+      audioCallRef: { current: { toggleVideo: vi.fn() } }
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={mockSession}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    const speakingRings = container.querySelectorAll(".voice-speaking-ring");
+    expect(speakingRings.length).toBeGreaterThan(0);
+  });
+
+  it("renders wave animation badge in top-right corner of active video feed in voice room when speaking", () => {
+    const mockTrack = {
+      readyState: "live",
+      kind: "video",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    const mockStream = {
+      getVideoTracks: () => [mockTrack],
+      getTracks: () => [mockTrack],
+    } as unknown as MediaStream;
+
+    const mockSession = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: true, screenSharing: false },
+      callAudioCapabilities: { canShareScreen: true },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: true,
+      callRemoteMedia: [
+        {
+          userId: "user-2",
+          stream: mockStream,
+          screenStream: null,
+          hasVideo: true,
+          hasAudio: true,
+          hasScreenShare: false
+        }
+      ],
+      activeGroupCalls: {
+        "voice-chat-1": mockVoiceChat.activeCall!
+      },
+      callTimer: "01:23",
+      setIsCallSettingsMenuOpen: vi.fn(),
+      setIsCallAudioPopupOpen: vi.fn(),
+      setIsCallMinimized: vi.fn(),
+      audioCallRef: { current: { toggleVideo: vi.fn() } }
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={mockSession}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    const videoContainer = container.querySelector(".voice-participant-video-container");
+    expect(videoContainer).not.toBeNull();
+    const waveBadge = videoContainer?.querySelector(".speaking-wave-badge");
+    expect(waveBadge).not.toBeNull();
+  });
 });
 

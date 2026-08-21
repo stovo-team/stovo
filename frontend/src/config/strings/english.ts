@@ -453,6 +453,7 @@ export const strings = {
       stopSharingScreen: "Stop Sharing Screen",
       shareScreen: "Share Screen",
       shrinkCall: "Shrink Voice Channel",
+      expandCall: "Expand Voice Channel",
       moreOptions: "More Options",
       settings: "Settings",
       disconnect: "Disconnect from Voice Channel",
