@@ -111,7 +111,15 @@ export function ChatHeader({
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
   const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
-  const handleBack = threadRootMessage && onBackFromThread ? onBackFromThread : onBack;
+  const isActiveVoiceChannel =
+    selectedChat.type === "voice" &&
+    activeCallChatId === selectedChat.id &&
+    callPhase !== "idle";
+  const handleBack = threadRootMessage && onBackFromThread
+    ? onBackFromThread
+    : isActiveVoiceChannel && onShrinkCall
+      ? onShrinkCall
+      : onBack;
 
   return (
     <div className="chat-detail-header chat-detail-header--floating">
@@ -256,7 +264,7 @@ export function ChatHeader({
               </>
             )}
             {selectedChat.type === "voice" ? (
-              activeCallChatId === selectedChat.id && callPhase !== "idle" && (
+              isActiveVoiceChannel && (
                 <button
                   type="button"
                   className="icon-button subtle chat-header-call-button chat-header-shrink-button"
