@@ -1,5 +1,14 @@
-import { ChangeEvent, FormEvent, RefObject, useState } from "react";
+import { ChangeEvent, FormEvent, RefObject, useEffect, useState } from "react";
 import { Clock3, FileText, Image, Mail, Music, Pencil, Settings, Video } from "lucide-react";
+
+const MESSAGE_DELAY_PRESETS = [
+  { label: "5s", value: 5 },
+  { label: "10s", value: 10 },
+  { label: "15s", value: 15 },
+  { label: "30s", value: 30 },
+  { label: "1 min", value: 60 },
+  { label: "5 min", value: 300 }
+] as const;
 
 import { User } from "../../../api/auth";
 import { Chat } from "../../../api/chats";
@@ -17,6 +26,7 @@ import {
 import type { ChatInfoControl, SharedContentItem, SharedContentTab } from "../shared/types";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { useStrings } from "../../../i18n/LanguageContext";
+import { AvatarEditorModal } from "../../../components/AvatarEditorModal";
 
 export function SharedContentThumb({
   accessToken,
@@ -93,6 +103,9 @@ export function ChatDetailsPanel({
   onMessageDelayChange,
   onPreferenceChange,
   onTitleDraftChange,
+  editingChatPhotoFile,
+  onCloseEditChatPhoto,
+  onSaveCroppedChatPhoto,
 }: {
   accessToken: string | null;
   chat: Chat;
@@ -106,6 +119,9 @@ export function ChatDetailsPanel({
   isUploading: boolean;
   sharedContentItems: SharedContentItem[];
   wallpaperPreviewUrl: string | null;
+  editingChatPhotoFile?: File | null;
+  onCloseEditChatPhoto?: () => void;
+  onSaveCroppedChatPhoto?: (croppedFile: File) => void | Promise<void>;
   onChatPhotoSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onChatWallpaperSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onChatSettingsSubmit: (event: FormEvent) => void;
@@ -142,6 +158,68 @@ export function ChatDetailsPanel({
   const hasPinPermissionSetting = canManageChat && chat.type !== "direct";
   const hasMessageDelaySetting = canManageChat && chat.type !== "direct";
   const sharedContentTabs = ["media", "audio", "files", "links"] as const;
+
+  const currentMessageDelay = chat.messageDelaySeconds ?? 0;
+  const isDelayOn = currentMessageDelay > 0;
+  const isPresetDelay = (val: number) => MESSAGE_DELAY_PRESETS.some((p) => p.value === val);
+
+  const [selectedDelayMode, setSelectedDelayMode] = useState<string>(() => {
+    if (currentMessageDelay > 0) {
+      return isPresetDelay(currentMessageDelay) ? String(currentMessageDelay) : "custom";
+    }
+    return "5";
+  });
+
+  const [customDelayDraft, setCustomDelayDraft] = useState<string>(() => {
+    if (currentMessageDelay > 0 && !isPresetDelay(currentMessageDelay)) {
+      return String(currentMessageDelay);
+    }
+    return "10";
+  });
+
+  useEffect(() => {
+    if (currentMessageDelay > 0) {
+      if (isPresetDelay(currentMessageDelay)) {
+        setSelectedDelayMode(String(currentMessageDelay));
+      } else {
+        setSelectedDelayMode("custom");
+        setCustomDelayDraft(String(currentMessageDelay));
+      }
+    }
+  }, [currentMessageDelay]);
+
+  function handleDelayOff() {
+    void onMessageDelayChange(0);
+  }
+
+  function handleDelayOn() {
+    if (selectedDelayMode === "custom") {
+      const parsed = parseInt(customDelayDraft, 10);
+      void onMessageDelayChange(parsed > 0 ? parsed : 10);
+    } else {
+      void onMessageDelayChange(Number(selectedDelayMode) || 5);
+    }
+  }
+
+  function handleDelaySelectChange(event: ChangeEvent<HTMLSelectElement>) {
+    const mode = event.target.value;
+    setSelectedDelayMode(mode);
+    if (mode === "custom") {
+      const parsed = parseInt(customDelayDraft, 10);
+      void onMessageDelayChange(parsed > 0 ? parsed : 10);
+    } else {
+      void onMessageDelayChange(Number(mode));
+    }
+  }
+
+  function handleCustomDelayChange(event: ChangeEvent<HTMLInputElement>) {
+    const val = event.target.value;
+    setCustomDelayDraft(val);
+    const parsed = parseInt(val, 10);
+    if (parsed > 0) {
+      void onMessageDelayChange(parsed);
+    }
+  }
 
   function handleDetailsTabChange(tab: SharedContentTab) {
     const currentIndex = sharedContentTabs.indexOf(detailsTab);
@@ -314,27 +392,63 @@ export function ChatDetailsPanel({
             <div className="chat-info-section">
               <p className="chat-info-section-label">{strings.chats.details.messageDelay}</p>
               <div className="chat-info-island" role="radiogroup" aria-label={strings.chats.details.messageDelay}>
-                {[
-                  { label: strings.chats.details.off, value: 0 },
-                  { label: "5s", value: 5 },
-                  { label: "10s", value: 10 },
-                  { label: "15s", value: 15 },
-                  { label: "30s", value: 30 },
-                  { label: "1m", value: 60 },
-                  { label: "2m", value: 120 },
-                  { label: "5m", value: 300 }
-                ].map((option) => (
-                  <label key={option.value} className="chat-info-permission-option chat-info-permission-option--inline">
-                    <input
-                      type="radio"
-                      name="messageDelay"
-                      value={option.value}
-                      checked={(chat.messageDelaySeconds ?? 0) === option.value}
-                      onChange={() => void onMessageDelayChange(option.value)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
+                <label className="chat-info-permission-option chat-info-permission-option--inline">
+                  <input
+                    type="radio"
+                    name="messageDelay"
+                    value="off"
+                    checked={!isDelayOn}
+                    onChange={handleDelayOff}
+                  />
+                  <span>{strings.chats.details.off}</span>
+                </label>
+                <label className="chat-info-permission-option chat-info-permission-option--inline">
+                  <input
+                    type="radio"
+                    name="messageDelay"
+                    value="on"
+                    checked={isDelayOn}
+                    onChange={handleDelayOn}
+                  />
+                  <span>{strings.chats.details.on ?? "On"}</span>
+                </label>
+
+                {isDelayOn && (
+                  <div className="chat-info-delay-controls">
+                    <div className="chat-info-delay-select-wrap">
+                      <select
+                        className="chat-info-delay-select"
+                        aria-label={strings.chats.details.messageDelay}
+                        value={selectedDelayMode}
+                        onChange={handleDelaySelectChange}
+                      >
+                        {MESSAGE_DELAY_PRESETS.map((preset) => (
+                          <option key={preset.value} value={String(preset.value)}>
+                            {preset.label}
+                          </option>
+                        ))}
+                        <option value="custom">{strings.chats.details.custom ?? "Custom"}</option>
+                      </select>
+                    </div>
+                    {selectedDelayMode === "custom" && (
+                      <div className="chat-info-delay-custom-wrap">
+                        <input
+                          type="number"
+                          min="1"
+                          max="86400"
+                          className="chat-info-delay-custom-input"
+                          aria-label="Custom delay seconds"
+                          placeholder="Seconds"
+                          value={customDelayDraft}
+                          onChange={handleCustomDelayChange}
+                        />
+                        <span className="chat-info-delay-custom-unit">
+                          {strings.chats.details.seconds ?? "seconds"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -607,6 +721,15 @@ export function ChatDetailsPanel({
           </div>
         </div>
       </div>
+      {editingChatPhotoFile && onCloseEditChatPhoto && onSaveCroppedChatPhoto && (
+        <AvatarEditorModal
+          file={editingChatPhotoFile}
+          title={strings.avatarEditor.chatPhotoTitle}
+          applyLabel={strings.avatarEditor.applyGeneric}
+          onClose={onCloseEditChatPhoto}
+          onSave={onSaveCroppedChatPhoto}
+        />
+      )}
     </aside>
   );
 }

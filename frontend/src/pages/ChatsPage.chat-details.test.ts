@@ -81,7 +81,21 @@ describe("chat details controls", () => {
   it("includes message delay setting in chat settings with cooldown counter styles", () => {
     expect(chatDetailsPanel).toContain("strings.chats.details.messageDelay");
     expect(chatDetailsPanel).toContain('name="messageDelay"');
+    expect(chatDetailsPanel).toContain('value="off"');
+    expect(chatDetailsPanel).toContain('value="on"');
+    expect(chatDetailsPanel).toContain('className="chat-info-delay-select"');
+    expect(chatDetailsPanel).toContain('className="chat-info-delay-custom-input"');
     expect(styles).toContain(".composer-delay-counter {");
+    expect(styles).toContain(".chat-info-delay-controls {");
+    expect(styles).toContain(".chat-info-delay-select {");
+    expect(styles).toContain(".chat-info-delay-custom-input {");
+  });
+
+  it("styles chat wallpaper upload button as fully rounded and radio buttons as modern", () => {
+    expect(styles).toContain("border-radius: 9999px;");
+    expect(styles).toContain(".chat-info-permission-option input[type=\"radio\"]");
+    expect(styles).toContain("border-radius: 50%;");
+    expect(styles).toContain("radial-gradient(circle at center, var(--accent-primary");
   });
 });
 

@@ -73,8 +73,8 @@ export function ChatSidebar({
 
   return (
     <aside className="chat-sidebar" aria-label="Chats sidebar">
-      <div className="chat-sidebar-header">
-        <div className="sidebar-title-row chat-list-title">
+      <div className={`chat-sidebar-header${isServerMenuOpen ? " is-server-menu-open" : ""}`}>
+        <div className={`sidebar-title-row chat-list-title${isServerMenuOpen ? " is-server-menu-open" : ""}`}>
           <span className="chat-list-brand-mark" aria-label="Stovo">
             <VeloLogo className="chat-list-brand-logo" title="Stovo" />
           </span>
