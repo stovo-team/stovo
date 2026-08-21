@@ -401,6 +401,7 @@ export const strings = {
       custom: "Custom",
       seconds: "seconds",
       members: "Members",
+      inviteMember: "Invite member",
       tabs: {
         media: "Media",
         audio: "Audio",

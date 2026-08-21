@@ -217,14 +217,11 @@ export function useCallSession({
   } = useCallMedia({
     audioCallRef,
     callPhase,
-    callPhaseRef,
     callType,
     callAudioSettings,
     setCallAudioSettings,
     setCallAudioWarning,
-    setCallNotice,
-    activeCallChatIdRef,
-    activeCallSessionIdRef
+    setCallNotice
   });
 
   const activeCallChat = useMemo(
