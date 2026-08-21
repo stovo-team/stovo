@@ -52,6 +52,8 @@ export type ConversationPanelProps = {
   showDockedEmojiPicker: boolean;
   callSession?: CallSessionApi;
   minimizedCallHeader?: ReactNode;
+  canCreateFamilyInvite?: boolean;
+  onOpenFamilyInvite?: () => void;
   onOpenChat: (chat: Chat) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onOpenNewChat: () => void;
@@ -73,6 +75,8 @@ export function ConversationPanel({
   activeCallChatId,
   callSession,
   minimizedCallHeader,
+  canCreateFamilyInvite,
+  onOpenFamilyInvite,
   isChatMenuOpen,
   chatMenuRef,
   onToggleChatMenu,
@@ -376,6 +380,8 @@ export function ConversationPanel({
               members={members ?? (selectedChat.members as unknown as User[])}
               currentUser={currentUser}
               accessToken={accessToken}
+              canCreateFamilyInvite={canCreateFamilyInvite}
+              onOpenFamilyInvite={onOpenFamilyInvite}
             />
           )
         ) : null

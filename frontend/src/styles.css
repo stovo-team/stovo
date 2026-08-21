@@ -21207,6 +21207,26 @@ span.message-spoiler.is-revealed {
   margin: 0 0 12px 0;
 }
 
+.voice-room-member-invite {
+  align-items: center;
+  background: color-mix(in oklab, var(--accent-primary) 16%, #161616);
+  border: 1px solid color-mix(in oklab, var(--accent-primary) 58%, transparent);
+  border-radius: 999px;
+  color: #ffffff;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-weight: 600;
+  gap: 8px;
+  margin: 16px auto 4px;
+  padding: 10px 16px;
+}
+
+.voice-room-member-invite:hover,
+.voice-room-member-invite:focus-visible {
+  background: color-mix(in oklab, var(--accent-primary) 28%, #161616);
+}
+
 /* ─────────────────────────────────────────────────────────────
    Bottom Bar & Controls
    ───────────────────────────────────────────────────────────── */

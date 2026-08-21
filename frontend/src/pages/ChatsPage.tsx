@@ -161,6 +161,8 @@ export default function ChatsPage() {
               isDockedEmojiPicker={isDockedEmojiPicker}
               showDockedEmojiPicker={showDockedEmojiPicker}
               callSession={callSession}
+              canCreateFamilyInvite={canCreateFamilyInvite}
+              onOpenFamilyInvite={() => setIsFamilyInviteOpen(true)}
               minimizedCallHeader={
                 selectedChat && chatId && callPhase !== "idle" && isCallMinimized ? (
                   <MobileMinimizedCallBar

@@ -98,6 +98,13 @@ describe("chat details controls", () => {
     expect(styles).toContain(".chat-info-delay-custom-input {");
   });
 
+  it("updates the message delay only from the radio change event", () => {
+    expect(chatDetailsPanel).toContain("onChange={handleDelayOff}");
+    expect(chatDetailsPanel).toContain("onChange={handleDelayOn}");
+    expect(chatDetailsPanel).not.toContain("onClick={handleDelayOff}");
+    expect(chatDetailsPanel).not.toContain("onClick={handleDelayOn}");
+  });
+
   it("styles chat wallpaper upload button as fully rounded and radio buttons as modern", () => {
     expect(styles).toContain("border-radius: 9999px;");
     expect(styles).toContain(".chat-info-permission-option input[type=\"radio\"]");
