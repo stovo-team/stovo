@@ -73,7 +73,8 @@ export default class CallSessionController {
   private wasLocalSpeaking = false;
   private localSpeakingAnalyser: AnalyserNode | null = null;
   private remoteAnalysers = new Map<string, AnalyserNode>();
-  private readonly SPEAKING_THRESHOLD = 0.015;
+  // Ignore low-level room and microphone noise before marking a participant as speaking.
+  private readonly SPEAKING_THRESHOLD = 0.04;
 
   onVideoUnavailable?: () => void;
   onConnectionReconnecting?: () => void;

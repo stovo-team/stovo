@@ -18,7 +18,6 @@ import CallController, {
   CallCapabilities,
   CallDevice,
   CallSettings,
-  type RemoteMedia,
   type CallTopology
 } from "../../../realtime/CallController";
 import { waitForSocketConnection } from "../../../realtime/socketConnection";
@@ -33,13 +32,11 @@ import {
   setNativeActiveCallState,
   type PictureInPictureState
 } from "../../../native/callPlugin";
-import { isNativeScreenCaptureAvailable } from "../../../native/screenCapturePlugin";
 import { navigateWithMotion } from "../../../motion/navigation";
-import { audioPlaybackSession } from "../../../audioPlaybackSession";
-import { videoPlaybackSession } from "../../../videoPlaybackSession";
 import { activeSessionVideoElement, callTerminationEvent, hasLiveLocalVideo } from "../shared/callLifecycle";
 import type { CallPhase, CallTrackStatus } from "../shared/types";
 import { useCallTimer } from "./useCallTimer";
+import { useCallMedia } from "./useCallMedia";
 
 export type UseCallSessionParams = {
   accessToken: string | null;
@@ -147,14 +144,9 @@ export function useCallSession({
   const [callPeerDisplayName, setCallPeerDisplayName] = useState<string | null>(null);
   const [callRoomId, setCallRoomId] = useState<string | null>(null);
   const [callTopology, setCallTopology] = useState<CallTopology>("mesh");
-  const [callRemoteMedia, setCallRemoteMedia] = useState<RemoteMedia[]>([]);
   const [callParticipantIds, setCallParticipantIds] = useState<string[]>([]);
   const [isCallInviteOpen, setIsCallInviteOpen] = useState(false);
   const [callInviteSelection, setCallInviteSelection] = useState<string[]>([]);
-  const [hasRemoteVideo, setHasRemoteVideo] = useState(false);
-  const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
-  const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
-  const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const callTimer = useCallTimer(callPhase === "in-call");
 
   const [activeGroupCalls, setActiveGroupCalls] = useState<Record<string, Record<string, any>>>({});
@@ -196,9 +188,6 @@ export function useCallSession({
   const callRoomIdRef = useRef<string | null>(null);
   const audioCallRef = useRef<CallController | null>(null);
   const callSoundPlayerRef = useRef(createCallSoundPlayer());
-  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const activeCallChatIdRef = useRef<string | null>(null);
   // Per-session identifier set from call:ringing.createdAt; guards stale same-chatId
   // termination events from previous call sessions.
@@ -210,6 +199,33 @@ export function useCallSession({
   const callSettingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const callSettingsMenuRef = useRef<HTMLDivElement | null>(null);
   const callAudioPopupRef = useRef<HTMLDivElement | null>(null);
+  const {
+    callRemoteMedia,
+    setCallRemoteMedia,
+    hasRemoteVideo,
+    setHasRemoteVideo,
+    localVideoStream,
+    setLocalVideoStream,
+    localScreenStream,
+    setLocalScreenStream,
+    remoteVideoStream,
+    setRemoteVideoStream,
+    remoteAudioRef,
+    remoteVideoRef,
+    localVideoRef,
+    toggleScreenShare
+  } = useCallMedia({
+    audioCallRef,
+    callPhase,
+    callPhaseRef,
+    callType,
+    callAudioSettings,
+    setCallAudioSettings,
+    setCallAudioWarning,
+    setCallNotice,
+    activeCallChatIdRef,
+    activeCallSessionIdRef
+  });
 
   const activeCallChat = useMemo(
     () => (activeCallChatId ? chats.find((chat) => chat.id === activeCallChatId) ?? null : null),
@@ -333,18 +349,6 @@ export function useCallSession({
     soundDisabledRef.current = callAudioSettings.soundDisabled;
   }, [callAudioSettings.soundDisabled]);
 
-  // On Android (Capacitor), proactively acquire the local media stream as soon
-  // as an incoming call is displayed.  This triggers the OS permission dialog
-  // while the user can still see the incoming-call screen, so that when they
-  // tap Accept the stream is already ready and no second dialog appears.
-  useEffect(() => {
-    if (callPhase !== "incoming") return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const cap = typeof window !== "undefined" ? (window as any).Capacitor : undefined;
-    if (!cap || typeof cap.isNativePlatform !== "function" || !cap.isNativePlatform()) return;
-    void audioCallRef.current?.prepareForCall(callType).catch(() => undefined);
-  }, [callPhase, callType]);
-
   const refreshCallAudioDevices = useCallback(async () => {
     const controller = audioCallRef.current;
     if (!controller) {
@@ -370,48 +374,6 @@ export function useCallSession({
     }
   }, []);
 
-  const toggleScreenShare = useCallback(async () => {
-    const controller = audioCallRef.current;
-    const next = !callAudioSettings.screenSharing;
-    setCallAudioWarning(null);
-
-    if (
-      next &&
-      !isNativeScreenCaptureAvailable() &&
-      (typeof navigator === "undefined" ||
-        !navigator.mediaDevices ||
-        typeof navigator.mediaDevices.getDisplayMedia !== "function")
-    ) {
-      const msg = "Screen demonstration is not supported on this browser or device";
-      setCallNotice(msg);
-      setCallAudioWarning(msg);
-      return;
-    }
-
-    setCallAudioSettings((current) => ({ ...current, screenSharing: next }));
-    if (!controller) {
-      const msg = "Cannot share screen: call is not connected";
-      setCallNotice(msg);
-      setCallAudioWarning(msg);
-      return;
-    }
-    try {
-      await controller.toggleScreenShare(next);
-      setCallNotice(next ? "Screen demonstration active" : null);
-    } catch (err) {
-      setCallAudioSettings((current) => ({ ...current, screenSharing: false }));
-      const name = (err as DOMException)?.name ?? "";
-      if (name === "NotAllowedError" || name === "PermissionDeniedError" || name === "AbortError") {
-        setCallNotice("Screen demonstration permission was denied");
-        setCallAudioWarning("Screen demonstration permission was denied");
-        return;
-      }
-      const msg = err instanceof Error ? err.message : "Failed to share screen";
-      setCallNotice(msg);
-      setCallAudioWarning(msg);
-    }
-  }, [callAudioSettings.screenSharing]);
-
   useEffect(() => {
     if (!callNotice) return;
     const timer = window.setTimeout(() => {
@@ -419,18 +381,6 @@ export function useCallSession({
     }, 4000);
     return () => window.clearTimeout(timer);
   }, [callNotice]);
-
-  // Call ↔ message media arbitration: suppress message audio/video while a call is active.
-  useEffect(() => {
-    void (async () => {
-      if (callPhase !== "idle") {
-        videoPlaybackSession.pauseActive();
-        await audioPlaybackSession.setCallActive(true);
-        return;
-      }
-      await audioPlaybackSession.setCallActive(false);
-    })().catch(() => undefined);
-  }, [callPhase]);
 
   useEffect(() => {
     syncNativePictureInPictureCallState();

@@ -9,7 +9,6 @@ import {
 } from "react";
 import {
   Bell,
-  Clock3,
   ChevronLeft,
   ChevronRight,
   Database,
@@ -17,9 +16,6 @@ import {
   HelpCircle,
   Laptop,
   LockKeyhole,
-  Mail,
-  UserRound,
-  UserRoundX,
   LogOut,
   Palette,
   RotateCcw,
@@ -65,6 +61,10 @@ import {
 } from "../settings/devicePreferences";
 import { AvatarEditorModal } from "../components/AvatarEditorModal";
 import AppNav from "./AppNav";
+import { NotificationsSettings } from "./settings/NotificationsSettings";
+import { LanguageSettings } from "./settings/LanguageSettings";
+import { ProfileSettingsTab } from "./settings/ProfileSettingsTab";
+import { PrivacySecuritySettings, type PrivacyDetail } from "./settings/PrivacySecuritySettings";
 
 function initials(name: string | undefined) {
   return (name ?? "Stovo")
@@ -74,7 +74,6 @@ function initials(name: string | undefined) {
     .map((part) => part.at(0)?.toUpperCase())
     .join("");
 }
-
 function ProfileAvatar({
   accessToken,
   file,
@@ -563,7 +562,7 @@ export default function SettingsPage() {
   );
   const [members, setMembers] = useState<User[]>([]);
   const [blockedMemberIds, setBlockedMemberIds] = useState<string[]>([]);
-  const [privacyDetail, setPrivacyDetail] = useState<"overview" | "profile" | "lastSeen" | "blocked">("overview");
+  const [privacyDetail, setPrivacyDetail] = useState<PrivacyDetail>("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editingProfilePhotoFile, setEditingProfilePhotoFile] = useState<File | null>(null);
@@ -1054,269 +1053,58 @@ export default function SettingsPage() {
                 </div>
 
                 {activeSettingsItem === "Profile" ? (
-                  <div className="profile-detail-screen">
-                    <section className="profile-detail-hero">
-                      <div className="profile-detail-avatar-wrap">
+                  <ProfileSettingsTab
+                    strings={strings}
+                    profileForm={profileForm}
+                    setProfileForm={setProfileForm}
+                    passwordForm={passwordForm}
+                    setPasswordForm={setPasswordForm}
+                    canManageFamily={canManageFamily}
+                    isSaving={isSaving}
+                    accessToken={accessToken}
+                    role={currentUser?.role}
+                    username={currentUser?.username}
+                    currentServerUrl={currentServerUrl}
+                    connectionLink={connectionLink}
+                    onProfileSubmit={handleProfileSubmit}
+                    onPasswordSubmit={handlePasswordSubmit}
+                    onCopyConnection={() => void copyConnectionCredentials()}
+                    profilePhotoControl={
+                      <>
                         <ProfileAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} size="lg" />
                         <button type="button" className="avatar-edit-button" aria-label={strings.settings.changeProfilePhoto} disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><span className="ms-icon ms-icon--24" aria-hidden={true}>add_a_photo</span></button>
                         <input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} />
-                      </div>
-                      <div><h3>{profileForm.displayName || strings.settings.familyMember}</h3><span className="role-pill">{currentUser?.role}</span></div>
-                    </section>
-                    <form className="profile-detail-form" onSubmit={handleProfileSubmit}>
-                      <label><span><UserRound aria-hidden="true" size={21} />{strings.settings.displayName}</span><input maxLength={255} value={profileForm.displayName} onChange={(event) => setProfileForm((current) => ({ ...current, displayName: event.target.value }))} /></label>
-                      <label><span><Mail aria-hidden="true" size={21} />{strings.settings.emailOptional}</span><input type="email" placeholder={strings.settings.emailPlaceholder} maxLength={255} value={profileForm.email} onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))} /></label>
-                      <label style={{ alignItems: "flex-start" }}><span style={{ paddingTop: "10px" }}><UserRound aria-hidden="true" size={21} />{strings.settings.bioOptional}</span><textarea placeholder={strings.settings.bioPlaceholder} maxLength={500} rows={3} value={profileForm.bio} onChange={(event) => setProfileForm((current) => ({ ...current, bio: event.target.value }))} /></label>
-                      <label><span><Clock3 aria-hidden="true" size={21} />{strings.settings.timezone}</span><select value={profileForm.timezone} onChange={(event) => setProfileForm((current) => ({ ...current, timezone: event.target.value }))}>{Intl.supportedValuesOf("timeZone").map((tz) => (<option key={tz} value={tz}>{tz}</option>))}</select></label>
-                      <label><span><Users aria-hidden="true" size={21} />{strings.settings.family}</span><input disabled={!canManageFamily} maxLength={255} value={profileForm.familyName} onChange={(event) => setProfileForm((current) => ({ ...current, familyName: event.target.value }))} /></label>
-                      <button type="submit" className="save-button primary-button" disabled={isSaving || !profileForm.displayName.trim()}>{isSaving ? strings.settings.savingEllipsis : strings.settings.saveProfile}</button>
-                    </form>
-                    <form className="profile-detail-form" onSubmit={handlePasswordSubmit}>
-                      <h3>{strings.settings.changePassword}</h3>
-                      <p className="muted-copy">{strings.settings.changePasswordNote}</p>
-                      <label><span><LockKeyhole aria-hidden="true" size={21} />{strings.settings.currentPassword}</span><input type="password" autoComplete="current-password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))} required /></label>
-                      <label><span><LockKeyhole aria-hidden="true" size={21} />{strings.settings.newPassword}</span><input type="password" autoComplete="new-password" minLength={8} value={passwordForm.newPassword} onChange={(event) => setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))} required /></label>
-                      <label><span><LockKeyhole aria-hidden="true" size={21} />{strings.settings.confirmNewPassword}</span><input type="password" autoComplete="new-password" minLength={8} value={passwordForm.confirmation} onChange={(event) => setPasswordForm((current) => ({ ...current, confirmation: event.target.value }))} required /></label>
-                      <button type="submit" className="save-button primary-button" disabled={isSaving || !accessToken}>{isSaving ? strings.settings.changing : strings.settings.changePassword}</button>
-                    </form>
-                    <section className="profile-detail-form connection-export">
-                      <h3>{strings.settings.connectAndroidDevice}</h3>
-                      <p className="muted-copy">{strings.settings.androidLinkNote}</p>
-                      <label><span><Server aria-hidden="true" size={21} />{strings.settings.server}</span><input readOnly value={currentServerUrl} /></label>
-                      <label><span><UserRound aria-hidden="true" size={21} />{strings.settings.login}</span><input readOnly value={currentUser?.username ?? ""} /></label>
-                      {connectionLink && <label><span>{strings.settings.androidLink}</span><input readOnly value={connectionLink} onFocus={(event) => event.currentTarget.select()} /></label>}
-                      <button type="button" className="save-button primary-button" onClick={() => void copyConnectionCredentials()}>{strings.settings.copyConnectionLink}</button>
-                    </section>
-                  </div>
-                ) : activeSettingsItem === "Notifications" ? (
-                  <div className="settings-toggle-groups">
-                    <section>
-                      <h3>{strings.notifications.messages}</h3>
-                      {([
-                        ["messageNotifications", strings.notifications.messageNotifications],
-                        ["messagePreview", strings.notifications.messagePreview],
-                        ["messageSound", strings.notifications.messageSound]
-                      ] as const).map(([key, label]) => (
-                        <label className="appearance-toggle-row" key={key}>
-                          <strong>{label}</strong>
-                          <input
-                            type="checkbox"
-                            checked={devicePreferences[key]}
-                            onChange={(event) => updateDevicePreferences({ [key]: event.target.checked })}
-                          />
-                        </label>
-                      ))}
-                    </section>
-                    <section>
-                      <h3>{strings.notifications.calls}</h3>
-                      {([
-                        ["callNotifications", strings.notifications.callNotifications],
-                        ["ringtoneEnabled", strings.notifications.ringtoneEnabled]
-                      ] as const).map(([key, label]) => (
-                        <label className="appearance-toggle-row" key={key}>
-                          <strong>{label}</strong>
-                          <input
-                            type="checkbox"
-                            checked={devicePreferences[key]}
-                            onChange={(event) => updateDevicePreferences({ [key]: event.target.checked })}
-                          />
-                        </label>
-                      ))}
-                    </section>
-                    <section>
-                      <h3>{strings.notifications.quietHours}</h3>
-                      <label className="appearance-toggle-row">
-                        <span><strong>{strings.notifications.muteNotifications}</strong><span className="appearance-toggle-help">{devicePreferences.quietHoursStart} — {devicePreferences.quietHoursEnd}</span></span>
-                        <input type="checkbox" checked={devicePreferences.quietHoursEnabled} onChange={(event) => updateDevicePreferences({ quietHoursEnabled: event.target.checked })} />
-                      </label>
-                      <div className="quiet-hours-times">
-                        <label>
-                          {strings.notifications.start}
-                          <input
-                            aria-label={strings.notifications.quietHoursStartAria}
-                            type="time"
-                            value={devicePreferences.quietHoursStart}
-                            onChange={(event) => updateDevicePreferences({ quietHoursStart: event.target.value })}
-                          />
-                        </label>
-                        <label>
-                          {strings.notifications.end}
-                          <input
-                            aria-label={strings.notifications.quietHoursEndAria}
-                            type="time"
-                            value={devicePreferences.quietHoursEnd}
-                            onChange={(event) => updateDevicePreferences({ quietHoursEnd: event.target.value })}
-                          />
-                        </label>
-                      </div>
-                    </section>
-                  </div>
-                ) : activeSettingsItem === "Privacy and Security" && privacyDetail === "overview" ? (
-                  <div className="settings-toggle-groups">
-                    <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("profile")}>
-                      <UserRound aria-hidden="true" />
-                      <span>
-                        <strong>{strings.privacy.profileVisibility}</strong>
-                        <small>{currentUser?.profileVisibility === "nobody" ? strings.privacy.nobody : strings.privacy.family}</small>
-                      </span>
-                      <ChevronRight aria-hidden="true" />
-                    </button>
-                    <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("lastSeen")}>
-                      <Clock3 aria-hidden="true" />
-                      <span>
-                        <strong>{strings.privacy.lastSeen}</strong>
-                        <small>{currentUser?.lastSeenVisibility === "nobody" ? strings.privacy.nobody : strings.privacy.family}</small>
-                      </span>
-                      <ChevronRight aria-hidden="true" />
-                    </button>
-                    <label className="privacy-row">
-                      <Mail aria-hidden="true" />
-                      <span>
-                        <strong>{strings.privacy.readReceipts}</strong>
-                        <small>{strings.privacy.readReceiptsHelp}</small>
-                      </span>
-                      <input
-                        type="checkbox"
-                        checked={currentUser?.readReceiptsEnabled ?? true}
-                        disabled={isSaving}
-                        onChange={(event) => void updatePrivacy({ readReceiptsEnabled: event.target.checked })}
-                      />
-                    </label>
-                    {isAndroidAppLockAvailablePlatform() && (
-                      <label className="privacy-row">
-                        <LockKeyhole aria-hidden="true" />
-                        <span>
-                          <strong>{strings.privacy.appLock}</strong>
-                          <small>{devicePreferences.appLockEnabled ? strings.privacy.appLockOn : strings.privacy.appLockOff}</small>
-                        </span>
-                        <input
-                          type="checkbox"
-                          checked={devicePreferences.appLockEnabled}
-                          disabled={isSaving}
-                          onChange={(event) => void handleAppLockToggle(event.target.checked)}
-                        />
-                      </label>
-                    )}
-                    <button type="button" className="privacy-row" onClick={() => setPrivacyDetail("blocked")}>
-                      <UserRoundX aria-hidden="true" />
-                      <span><strong>{strings.privacy.blockedMembers}</strong></span>
-                      <ChevronRight aria-hidden="true" />
-                    </button>
-                  </div>
+                      </>
+                    }
+                  />                ) : activeSettingsItem === "Notifications" ? (
+                  <NotificationsSettings
+                    strings={strings}
+                    preferences={devicePreferences}
+                    onUpdate={updateDevicePreferences}
+                  />
                 ) : activeSettingsItem === "Privacy and Security" ? (
-                  <div className="settings-toggle-groups">
-                    {privacyDetail === "blocked" ? (
-                      <section className="blocked-members-page">
-                        <h3>{strings.privacy.blockedMembers}</h3>
-                        {members
-                          .filter((member) => member.id !== currentUser?.id)
-                          .map((member) => {
-                            const isBlocked = blockedMemberIds.includes(member.id);
-                            return (
-                              <div className="settings-row" key={member.id}>
-                                <ProfileAvatar
-                                  accessToken={accessToken}
-                                  file={member.profilePhoto}
-                                  label={member.displayName}
-                                  size="default"
-                                />
-                                <span>
-                                  <strong>{member.displayName}</strong>
-                                  <small>@{member.username}</small>
-                                </span>
-                                <button
-                                  type="button"
-                                  className="blocked-member-action"
-                                  disabled={isSaving}
-                                  onClick={() => void toggleBlock(member)}
-                                >
-                                  {isBlocked ? strings.privacy.unblock : strings.privacy.block}
-                                </button>
-                              </div>
-                            );
-                          })}
-                      </section>
-                    ) : (
-                      <section className="choice-page">
-                        <h3>{privacyDetail === "profile" ? strings.privacy.profileVisibility : strings.privacy.lastSeen}</h3>
-                        {(["family", "nobody"] as const).map((value) => {
-                          const selected =
-                            (privacyDetail === "profile"
-                              ? currentUser?.profileVisibility
-                              : currentUser?.lastSeenVisibility) === value;
-                          return (
-                            <button
-                              type="button"
-                              className={`privacy-choice${selected ? " is-selected" : ""}`}
-                              key={value}
-                              onClick={() =>
-                                void updatePrivacy(
-                                  privacyDetail === "profile"
-                                    ? { profileVisibility: value }
-                                    : { lastSeenVisibility: value }
-                                )
-                              }
-                            >
-                              <span className="privacy-choice-copy">
-                                <strong>{value === "family" ? strings.privacy.family : strings.privacy.nobody}</strong>
-                                <small>
-                                  {value === "family"
-                                    ? strings.privacy.visibleToFamily
-                                    : strings.privacy.hiddenFromMembers}
-                                </small>
-                              </span>
-                              {selected && <span className="privacy-choice-check">✓</span>}
-                            </button>
-                          );
-                        })}
-                      </section>
-                    )}
-                  </div>
+                  <PrivacySecuritySettings
+                    strings={strings}
+                    currentUser={currentUser}
+                    members={members}
+                    blockedMemberIds={blockedMemberIds}
+                    detail={privacyDetail}
+                    isSaving={isSaving}
+                    appLockEnabled={devicePreferences.appLockEnabled}
+                    canUseAppLock={isAndroidAppLockAvailablePlatform()}
+                    onDetailChange={setPrivacyDetail}
+                    onUpdatePrivacy={(patch) => void updatePrivacy(patch)}
+                    onAppLockChange={(enabled) => void handleAppLockToggle(enabled)}
+                    onToggleBlock={(member) => void toggleBlock(member)}
+                    renderMemberAvatar={(member) => <ProfileAvatar accessToken={accessToken} file={member.profilePhoto} label={member.displayName} size="default" />}
+                  />
                 ) : activeSettingsItem === "Language" ? (
-                  <div className="settings-toggle-groups">
-                    <section className="choice-page">
-                      <h3>{strings.settings.language}</h3>
-                      {[
-                        {
-                          value: "system" as const,
-                          label: strings.settings.languageSystem,
-                          subtext: strings.settings.languageSystemSubtext(
-                            systemLanguage === "ru"
-                              ? strings.settings.languageRussian
-                              : strings.settings.languageEnglish
-                          )
-                        },
-                        {
-                          value: "en" as const,
-                          label: strings.settings.languageEnglish,
-                          subtext: "English"
-                        },
-                        {
-                          value: "ru" as const,
-                          label: strings.settings.languageRussian,
-                          subtext: "Русский"
-                        }
-                      ].map((option) => {
-                        const isSelected = language === option.value;
-                        return (
-                          <button
-                            type="button"
-                            className={`privacy-choice${isSelected ? " is-selected" : ""}`}
-                            key={option.value}
-                            onClick={() => {
-                              updateDevicePreferences({ language: option.value });
-                            }}
-                          >
-                            <span className="privacy-choice-copy">
-                              <strong>{option.label}</strong>
-                              <small>{option.subtext}</small>
-                            </span>
-                            {isSelected && <span className="privacy-choice-check">✓</span>}
-                          </button>
-                        );
-                      })}
-                    </section>
-                  </div>
+                  <LanguageSettings
+                    strings={strings}
+                    language={language}
+                    systemLanguage={systemLanguage}
+                    onChange={(value) => updateDevicePreferences({ language: value })}
+                  />
                 ) : activeSettingsItem === "Family" ? (
                   <div className="family-settings-members">
                     <p className="muted-copy">{strings.settings.familySpaceNote}</p>

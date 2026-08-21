@@ -18,14 +18,14 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
-import { downloadFileBlob, type FamilyFile, createStreamingMediaUrl } from "../api/files";
-import { peekCachedObjectUrl } from "../mediaBlobCache";
+import { type FamilyFile } from "../api/files";
 import {
   sameVideoIdentity,
   videoPlaybackSession,
   type VideoIdentity,
   type VideoPlaybackRegistration,
 } from "../videoPlaybackSession";
+import { useVideoSource } from "./video-player/useVideoSource";
 
 export interface VideoPlayerProps {
   file: FamilyFile;
@@ -50,26 +50,6 @@ export function formatVideoTime(seconds: number): string {
     return `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
   }
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
-}
-
-function validVideoSource(
-  file: FamilyFile,
-  accessToken: string,
-  identity: VideoIdentity,
-): "source" | "format" | null {
-  if (
-    !file.id?.trim() ||
-    !identity.chatId?.trim() ||
-    !identity.messageId?.trim() ||
-    !identity.fileId?.trim() ||
-    identity.fileId !== file.id
-  ) {
-    return "source";
-  }
-  if (!accessToken.trim() && !peekCachedObjectUrl(file.id)) {
-    return "source";
-  }
-  return /^video\/[^\s/]+$/i.test(file.mimeType.trim()) ? null : "format";
 }
 
 function stopPropagation(event: SyntheticEvent): void {
@@ -122,7 +102,6 @@ export function VideoPlayer({
   const expandedVideoRef = useRef<HTMLVideoElement>(null);
   const isExpandingRef = useRef(false);
   const registrationRef = useRef<VideoPlaybackRegistration | null>(null);
-  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [localError, setLocalError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -184,71 +163,13 @@ export function VideoPlayer({
     };
   }, [autoplayEnabled, identity.chatId, identity.fileId, identity.messageId]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setSourceUrl(null);
+  const startLoading = useCallback(() => {
     setLocalError(null);
     setIsLoading(true);
     setVideoSize({ width: 0, height: 0 });
-
-    const invalid = validVideoSource(file, accessToken, identity);
-    if (invalid) {
-      reportFailure(
-        invalid === "format" ? "Unsupported video format" : "Video source is unavailable",
-      );
-      return () => { cancelled = true; };
-    }
-
     updateSession({ status: "loading", error: null });
-
-    const cached = peekCachedObjectUrl(file.id);
-    if (cached) {
-      setSourceUrl(cached);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void createStreamingMediaUrl(accessToken, file.id)
-      .then((url) => {
-        if (cancelled) return;
-        setSourceUrl(url);
-        void downloadFileBlob(accessToken, file.id).catch(() => undefined);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        void downloadFileBlob(accessToken, file.id)
-          .then((blob) => {
-            if (cancelled) return;
-            if (blob.size === 0) {
-              reportFailure("Video source is empty");
-              return;
-            }
-            const url = peekCachedObjectUrl(file.id);
-            if (!url) {
-              reportFailure("Video source is unavailable");
-              return;
-            }
-            setSourceUrl(url);
-          })
-          .catch(() => {
-            if (!cancelled) reportFailure("Video download failed");
-          });
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    accessToken,
-    file.id,
-    file.mimeType,
-    identity.chatId,
-    identity.fileId,
-    identity.messageId,
-    reportFailure,
-    updateSession,
-  ]);
+  }, [updateSession]);
+  const sourceUrl = useVideoSource(file, accessToken, identity, startLoading, reportFailure);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
