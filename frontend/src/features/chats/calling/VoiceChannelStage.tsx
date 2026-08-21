@@ -118,7 +118,11 @@ export function VoiceChannelStage({
   
   // Active participants currently in the room
   const activeParticipants = rawParticipants.filter(
-    (p) => p.state === "connected" || p.state === "connecting" || p.state === "in-call"
+    (p) =>
+      (p.state === "connected" || p.state === "connecting" || p.state === "in-call") &&
+      // Chat snapshots can briefly retain the local participant after Leave.
+      // Never present that cached entry as an active user once our session ended.
+      (isCurrentChannelActive || p.userId !== currentUser?.id)
   );
 
   // If local user is active/connecting, make sure they are in the active participants list
@@ -519,4 +523,3 @@ export function VoiceChannelStage({
     </div>
   );
 }
-

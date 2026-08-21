@@ -189,6 +189,42 @@ describe("VoiceChannelStage", () => {
     expect(mockJoinVoiceChannel).toHaveBeenCalledWith(emptyVoiceChat, { micMuted: false, cameraEnabled: false });
   });
 
+  it("does not show the local user from a stale room snapshot after leaving", () => {
+    const staleLocalParticipantChat: Chat = {
+      ...mockVoiceChat,
+      activeCall: {
+        ...mockVoiceChat.activeCall!,
+        participants: [{ userId: mockCurrentUser.id, state: "connected", role: "member" }]
+      }
+    };
+    const session = {
+      callPhase: "idle",
+      activeCallChatId: null,
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      activeGroupCalls: {},
+      callTimer: "00:00",
+      setIsCallSettingsMenuOpen: vi.fn()
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={staleLocalParticipantChat}
+        session={session}
+        members={staleLocalParticipantChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    expect(container.textContent).toContain("No users");
+    expect(container.textContent).not.toContain("Alice (You)");
+  });
+
   it("renders connected controls when active in the voice channel without text labels and with 3-dots menu", () => {
     const mockEndActiveCall = vi.fn();
     const mockApplyCallAudioPatch = vi.fn();
@@ -300,7 +336,7 @@ describe("VoiceChannelStage", () => {
   it("scales grid tiers dynamically from 1 to 2, 4, 6, 9 participants and switches to list mode for >9", () => {
     const createSessionWithCount = (count: number) => {
       const participants = Array.from({ length: count }, (_, i) => ({
-        userId: `user-${i + 1}`,
+        userId: `remote-user-${i + 1}`,
         state: "connected",
         role: "member"
       }));
@@ -598,4 +634,3 @@ describe("VoiceChannelStage", () => {
     expect(waveBadge).not.toBeNull();
   });
 });
-

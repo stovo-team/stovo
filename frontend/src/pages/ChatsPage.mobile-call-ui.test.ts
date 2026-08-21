@@ -10,6 +10,7 @@ const callFeatureSource = readFileSync(
   resolve(process.cwd(), "src/features/chats/calling/CallFeature.tsx"),
   "utf8",
 );
+const chatsPageSource = readFileSync(resolve(process.cwd(), "src/pages/ChatsPage.tsx"), "utf8");
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8")
   .replace(/^\uFEFF/, "")
   .replace(/\r\n/g, "\n");
@@ -52,6 +53,12 @@ describe("mobile active video call UI", () => {
 
   it("does not show a generic video call title in the popup header", () => {
     expect(callFeatureSource).not.toContain('      ? "Video call"\n      : "Audio call"');
+  });
+
+  it("keeps a minimized voice channel in the persistent call header", () => {
+    expect(callFeatureSource).toContain('callPhase !== "idle" && !isVoiceChannel');
+    expect(chatsPageSource).toContain('callPhase !== "idle" && isCallMinimized && !chatId');
+    expect(chatsPageSource).toContain('selectedChat && chatId && callPhase !== "idle" && isCallMinimized');
   });
 
   it("uses compact spacing for the bottom app navigation", () => {
