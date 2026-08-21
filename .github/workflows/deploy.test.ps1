@@ -38,3 +38,7 @@ if ($workflow -notmatch 'active_file_count=' -or
     $workflow -notmatch 'Deploying backend; restore or reconcile missing media separately') {
     throw "Deployment must warn about a MinIO/database mismatch while allowing a backend rollout."
 }
+
+if ($workflow -notmatch 'migrations/master') {
+    throw "Deployment must apply master database migrations."
+}

@@ -68,7 +68,10 @@ jobs:
             for _ in $(seq 1 30); do if sudo docker compose -f docker-compose.master.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
 
             # Apply master database migrations
-            cat migrations/master/001_create_servers.sql | sudo docker compose -f docker-compose.master.yml exec -T postgres psql -U "$pg_user" -d "$pg_db" || true
+            for migration in $(find migrations/master -maxdepth 1 -name '*.sql' | sort); do
+              echo "Applying master migration: $migration"
+              cat "$migration" | sudo docker compose -f docker-compose.master.yml exec -T postgres psql -U "$pg_user" -d "$pg_db"
+            done
 
             # Build backend docker image for child servers
             sudo docker build -t stovo-backend ./backend
