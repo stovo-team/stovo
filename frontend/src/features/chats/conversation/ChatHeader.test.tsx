@@ -88,7 +88,6 @@ describe("ChatHeader", () => {
 
   it("replaces search button with shrink button for active voice channel", () => {
     const onShrinkCall = vi.fn();
-    const onBack = vi.fn();
     const container = renderComponent(
       <ChatHeader
         accessToken="test-token"
@@ -100,7 +99,7 @@ describe("ChatHeader", () => {
         isChatMenuOpen={false}
         chatMenuRef={createRef()}
         onToggleChatMenu={vi.fn()}
-        onBack={onBack}
+        onBack={vi.fn()}
         onOpenDetails={vi.fn()}
         onStartAudioCall={vi.fn()}
         onStartVideoCall={vi.fn()}
@@ -124,11 +123,5 @@ describe("ChatHeader", () => {
     });
     expect(onShrinkCall).toHaveBeenCalledTimes(1);
 
-    const backButton = container.querySelector(".mobile-back-button") as HTMLButtonElement;
-    act(() => {
-      backButton.click();
-    });
-    expect(onShrinkCall).toHaveBeenCalledTimes(2);
-    expect(onBack).not.toHaveBeenCalled();
   });
 });

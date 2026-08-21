@@ -258,7 +258,12 @@ export function useCallSession({
 
     const hasLiveSession = Boolean(activeCallSessionIdRef.current);
     const active = phase !== "idle" && hasLiveSession;
-    const video = active && callTypeRef.current === "video";
+    // A native screen capture still relies on the WebView to turn capture frames
+    // into the WebRTC track. Keep it visible in Android PiP when leaving an
+    // audio call that is sharing the screen, just as we do for a camera call.
+    const video = active && (
+      callTypeRef.current === "video" || callAudioSettings.screenSharing
+    );
 
     void setNativeActiveCallState({
       active,
@@ -266,7 +271,11 @@ export function useCallSession({
       chatId: active ? activeCallChatIdRef.current : null,
       sessionId: active ? activeCallSessionIdRef.current : null
     });
-  }, [setIsVideoPictureInPictureActive, videoPictureInPictureActiveRef]);
+  }, [
+    callAudioSettings.screenSharing,
+    setIsVideoPictureInPictureActive,
+    videoPictureInPictureActiveRef
+  ]);
 
   const restoreActiveCallSurface = useCallback(() => {
     if (callPhaseRef.current === "idle") {
@@ -425,7 +434,13 @@ export function useCallSession({
 
   useEffect(() => {
     syncNativePictureInPictureCallState();
-  }, [activeCallChatId, callPhase, callType, syncNativePictureInPictureCallState]);
+  }, [
+    activeCallChatId,
+    callAudioSettings.screenSharing,
+    callPhase,
+    callType,
+    syncNativePictureInPictureCallState
+  ]);
 
   useEffect(() => {
     audioCallRef.current?.updateAccessToken(accessToken ?? "");
