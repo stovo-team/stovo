@@ -9,8 +9,8 @@ import {
   useRef,
   useState
 } from "react";
-import EmojiPicker, { Categories, EmojiClickData, Theme } from "emoji-picker-react";
-import { Bus, Cat, Flag, History, Music, Paperclip, Pencil, Reply, Shirt, Smile, Trophy, Utensils, X } from "lucide-react";
+import { type EmojiClickData } from "emoji-picker-react";
+import { Paperclip, Pencil } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
 import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
@@ -21,29 +21,18 @@ import { MessageEnlargeButton } from "../../../components/MessageEnlargeModal";
 import { VoiceRecordButton } from "../../../components/VoiceRecordButton";
 import type { FormattingKind, TextSelection, ToolbarAnchor } from "../../../composerFormatting";
 import { isVoiceRecordingSupported } from "../../../voiceRecording";
-import { firstImageAttachment, messageActionSummary } from "../shared/messagePresentation";
 import type { Message, PendingLocalAttachment } from "../shared/types";
 import { createClientMessageId } from "../shared/messageState";
 import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
 import type { ReminderRule } from "../outbox/messageOutboxStore";
-import { ComposerContextThumb } from "../conversation/MessageAttachmentThumbs";
 import { AttachmentControls } from "./AttachmentControls";
-import { PendingAttachmentCard } from "./PendingAttachmentCard";
+import { PendingAttachmentsStrip } from "./PendingAttachmentsStrip";
 import { SendSubmenu } from "./SendSubmenu";
 import { ScheduleMessageModal } from "./ScheduleMessageModal";
 import { ReminderModal } from "./ReminderModal";
-
-export const EMOJI_CATEGORY_ICONS: Partial<Record<Categories, ReactNode>> = {
-  [Categories.SUGGESTED]: <History aria-hidden="true" size={18} />,
-  [Categories.SMILEYS_PEOPLE]: <Smile aria-hidden="true" size={18} />,
-  [Categories.ANIMALS_NATURE]: <Cat aria-hidden="true" size={18} />,
-  [Categories.FOOD_DRINK]: <Utensils aria-hidden="true" size={18} />,
-  [Categories.TRAVEL_PLACES]: <Bus aria-hidden="true" size={18} />,
-  [Categories.ACTIVITIES]: <Trophy aria-hidden="true" size={18} />,
-  [Categories.OBJECTS]: <Shirt aria-hidden="true" size={18} />,
-  [Categories.SYMBOLS]: <Music aria-hidden="true" size={18} />,
-  [Categories.FLAGS]: <Flag aria-hidden="true" size={18} />
-};
+import { ComposerReplyBar } from "./ComposerReplyBar";
+import { ComposerEmojiPicker, ComposerEmojiPickerDock } from "./ComposerEmojiPicker";
+export { EMOJI_CATEGORY_ICONS } from "./emojiCategories";
 
 export function Composer({
   accessToken,
@@ -349,20 +338,7 @@ export function Composer({
         className={`message-composer${isDockedEmojiPicker ? " message-composer--emoji-docked" : ""}${showDockedEmojiPicker ? " message-composer--emoji-open" : ""}`}
         onSubmit={onSubmit}
       >
-      {pendingAttachments.length > 0 && (
-        <div className="composer-attachments-strip" aria-label="Attachments to send">
-          <div className="pending-attachments">
-            {pendingAttachments.map((pending) => (
-              <PendingAttachmentCard
-                key={pending.localId}
-                pending={pending}
-                onRemove={() => onRemovePendingAttachment(pending.localId)}
-                onEdit={() => setEditingAttachment(pending)}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <PendingAttachmentsStrip attachments={pendingAttachments} onRemove={onRemovePendingAttachment} onEdit={setEditingAttachment} />
       {editingAttachment && (
         <ImageEditorModal
           pending={editingAttachment}
@@ -378,32 +354,7 @@ export function Composer({
       {selectedChat?.type === "channel" && channelCommentsDisabledForViewer && (
         <p className="muted-copy">Comments are disabled in this channel.</p>
       )}
-      {replyTarget && !isInThreadMode && (
-        <div
-          className={`reply-composer-preview${
-            firstImageAttachment(replyTarget) ? "" : " reply-composer-preview--no-thumb"
-          }`}
-        >
-          <Reply className="reply-composer-icon" aria-hidden="true" size={16} />
-          <span className="reply-composer-bar" aria-hidden="true" />
-          <ComposerContextThumb accessToken={accessToken} file={firstImageAttachment(replyTarget)} />
-          <div className="reply-composer-copy">
-            <span className="reply-composer-who">
-              Reply to {replyTarget.senderDisplayName ?? "Family member"}
-            </span>
-            <span className="reply-composer-snip">{messageActionSummary(replyTarget)}</span>
-          </div>
-          <button
-            type="button"
-            className="reply-composer-dismiss"
-            aria-label="Cancel reply"
-            title="Cancel reply"
-            onClick={onCancelReply}
-          >
-            <X aria-hidden="true" size={14} />
-          </button>
-        </div>
-      )}
+      {replyTarget && !isInThreadMode && <ComposerReplyBar accessToken={accessToken} replyTarget={replyTarget} onCancel={onCancelReply} />}
       <div className={`message-composer-row${composerIsMultiline ? " message-composer-row--multiline" : ""}`}>
         <AttachmentControls
           disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
@@ -450,35 +401,16 @@ export function Composer({
           isUploading={isUploading}
           isSendingMessage={isSendingMessage}
         />
-        <div className="emoji-picker-shell" ref={emojiPickerRef}>
-          <button
-            type="button"
-            className="emoji-picker-button"
-            aria-label="Add emoji"
-            aria-expanded={isEmojiPickerOpen}
-            title="Add emoji"
-            disabled={channelCommentsDisabledForViewer || missingCommentThread}
-            onClick={onToggleEmojiPicker}
-          >
-            <Smile aria-hidden="true" size={22} />
-          </button>
-          {!showDockedEmojiPicker && isEmojiPickerOpen && (
-            <div className="emoji-picker" role="menu" aria-label="Choose emoji">
-              <EmojiPicker
-                onEmojiClick={onEmojiPick}
-                autoFocusSearch={false}
-                lazyLoadEmojis
-                previewConfig={{ showPreview: false }}
-                searchDisabled
-                skinTonesDisabled
-                categoryIcons={EMOJI_CATEGORY_ICONS}
-                theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
-                width={360}
-                height={380}
-              />
-            </div>
-          )}
-        </div>
+        <ComposerEmojiPicker
+          open={isEmojiPickerOpen}
+          showDocked={showDockedEmojiPicker}
+          theme={resolvedThemeMode}
+          disabled={channelCommentsDisabledForViewer || missingCommentThread}
+          pickerRef={emojiPickerRef}
+          dockRef={emojiPickerDockRef}
+          onToggle={onToggleEmojiPicker}
+          onEmojiPick={onEmojiPick}
+        />
         <div className="message-composer-shell">
           <div className="message-composer-input-wrap">
             <textarea
@@ -629,25 +561,8 @@ export function Composer({
           )}
         </div>
       </div>
-      {showDockedEmojiPicker && (
-        <div className="emoji-picker-dock" ref={emojiPickerDockRef} role="group" aria-label="Emoji picker">
-          <div className="emoji-picker emoji-picker--docked" role="menu" aria-label="Choose emoji">
-            <EmojiPicker
-              onEmojiClick={onEmojiPick}
-              autoFocusSearch={false}
-              lazyLoadEmojis
-              previewConfig={{ showPreview: false }}
-              searchDisabled
-              skinTonesDisabled
-              categoryIcons={EMOJI_CATEGORY_ICONS}
-              theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
-              width="100%"
-              height={380}
-            />
-          </div>
-        </div>
-      )}
       </form>
+      <ComposerEmojiPickerDock show={showDockedEmojiPicker} theme={resolvedThemeMode} dockRef={emojiPickerDockRef} onEmojiPick={onEmojiPick} />
       {isScheduleModalOpen && (
         <ScheduleMessageModal
           isOpen={isScheduleModalOpen}

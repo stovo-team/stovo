@@ -8,6 +8,28 @@ export type NotificationAppLink = {
 
 const CHAT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
+/**
+ * Returns the API base carried by an HTTP(S) invite link. A cluster invite
+ * such as https://host/s/family/invite/token must keep /s/family as part of
+ * its API base when it is opened in the native app.
+ */
+export function getInviteApiUrl(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null;
+    }
+
+    const invitePathIndex = url.pathname.indexOf("/invite/");
+    if (invitePathIndex === -1) {
+      return null;
+    }
+    return `${url.origin}${url.pathname.slice(0, invitePathIndex)}`;
+  } catch {
+    return null;
+  }
+}
+
 export function getNotificationAppLink(rawUrl: string): NotificationAppLink | null {
   try {
     const url = new URL(rawUrl);
@@ -104,6 +126,16 @@ export function getInviteAppLinkPath(rawUrl: string): string | null {
     const searchParams = new URLSearchParams(url.search);
     if (queryToken) {
       searchParams.delete("token");
+    }
+    // App links opened directly by Android do not load the web page first, so
+    // the native app cannot infer the server from window.location. Carry the
+    // invite link's own HTTP(S) origin when the backend did not already add
+    // apiUrl (the usual case when the app and API share one origin).
+    if (!searchParams.get("apiUrl")) {
+      const inviteApiUrl = getInviteApiUrl(rawUrl);
+      if (inviteApiUrl) {
+        searchParams.set("apiUrl", inviteApiUrl);
+      }
     }
     const searchStr = searchParams.toString();
     const query = searchStr ? `?${searchStr}` : "";

@@ -115,7 +115,11 @@ export function ChatHeader({
     selectedChat.type === "voice" &&
     activeCallChatId === selectedChat.id &&
     callPhase !== "idle";
-  const handleBack = threadRootMessage && onBackFromThread ? onBackFromThread : onBack;
+  const handleBack = threadRootMessage && onBackFromThread
+    ? onBackFromThread
+    : isActiveVoiceChannel && onShrinkCall
+      ? onShrinkCall
+      : onBack;
 
   return (
     <div className="chat-detail-header chat-detail-header--floating">

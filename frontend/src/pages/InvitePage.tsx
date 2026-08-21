@@ -5,6 +5,7 @@ import { ExternalLink, Smartphone } from "lucide-react";
 
 import { acceptInvite, previewInvite, InvitePreview } from "../api/family";
 import { ApiError, getClusterPrefix, storeApiUrlFromInviteLink } from "../api/client";
+import { getInviteApiUrl } from "../appLinks";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 
@@ -23,7 +24,22 @@ export default function InvitePage() {
 
   const prefix = getClusterPrefix();
   const isNative = Capacitor.isNativePlatform();
-  const appDeepLink = token ? `stovo://invite/${encodeURIComponent(token)}${location.search}` : null;
+  const appDeepLink = token
+    ? (() => {
+        const searchParams = new URLSearchParams(location.search);
+        // Browser-originated deep links need the same server handoff as a
+        // direct Android App Link. Without it, the app may look up the token
+        // against whichever server was previously active on the device.
+        if (!searchParams.get("apiUrl")) {
+          const inviteApiUrl = getInviteApiUrl(window.location.href);
+          if (inviteApiUrl) {
+            searchParams.set("apiUrl", inviteApiUrl);
+          }
+        }
+        const search = searchParams.toString();
+        return `stovo://invite/${encodeURIComponent(token)}${search ? `?${search}` : ""}`;
+      })()
+    : null;
 
   useEffect(() => {
     storeApiUrlFromInviteLink(location.search);
