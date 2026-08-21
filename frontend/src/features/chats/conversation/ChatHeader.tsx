@@ -260,23 +260,11 @@ export function ChatHeader({
                 <button
                   type="button"
                   className="icon-button subtle chat-header-call-button chat-header-shrink-button"
-                  aria-label={
-                    isCallMinimized
-                      ? (strings.chats.voiceRoom?.expandCall ?? "Expand Voice Channel")
-                      : (strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel")
-                  }
-                  title={
-                    isCallMinimized
-                      ? (strings.chats.voiceRoom?.expandCall ?? "Expand Voice Channel")
-                      : (strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel")
-                  }
+                  aria-label={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
+                  title={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
                   onClick={onShrinkCall}
                 >
-                  {isCallMinimized ? (
-                    <Maximize2 aria-hidden="true" size={18} strokeWidth={2} />
-                  ) : (
-                    <Minimize2 aria-hidden="true" size={18} strokeWidth={2} />
-                  )}
+                  <Minimize2 aria-hidden="true" size={18} strokeWidth={2} />
                 </button>
               )
             ) : (

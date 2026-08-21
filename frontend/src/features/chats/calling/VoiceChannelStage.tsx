@@ -444,17 +444,6 @@ export function VoiceChannelStage({
               <Monitor size={20} />
             </button>
 
-            {/* Shrink / Minimize button */}
-            <button
-              type="button"
-              className="voice-dock-btn"
-              onClick={() => setIsCallMinimized?.(true)}
-              title={voiceStrings?.shrinkCall ?? "Shrink Voice Channel"}
-              aria-label={voiceStrings?.shrinkCall ?? "Shrink Voice Channel"}
-            >
-              <Minimize2 size={20} />
-            </button>
-
             {/* 3 Dots Menu Button for Settings & AI Notes */}
             <div className="voice-more-menu-anchor">
               <button
