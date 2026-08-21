@@ -101,6 +101,7 @@ class AudioPlaybackService : MediaSessionService() {
     private var callActive = false
     private var revision = 0L
     private var released = false
+    private var suppressPlayerEvents = false
     private val progressHandler = Handler(Looper.getMainLooper())
     private val progressTick = object : Runnable {
         override fun run() {
@@ -141,14 +142,13 @@ class AudioPlaybackService : MediaSessionService() {
         val audioAttributes = AudioAttributes.Builder()
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .setUsage(C.USAGE_MEDIA)
-            .build()
         player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(protectedFactory))
             .setSeekBackIncrementMs(SEEK_INCREMENT_MS)
             .setSeekForwardIncrementMs(SEEK_INCREMENT_MS)
             .build()
             .also {
-                it.setAudioAttributes(audioAttributes, true)
+                it.setAudioAttributes(audioAttributes.build(), true)
                 it.setHandleAudioBecomingNoisy(true)
                 it.addListener(playerListener)
             }
@@ -193,12 +193,14 @@ class AudioPlaybackService : MediaSessionService() {
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (suppressPlayerEvents) return
             if (playbackState == Player.STATE_ENDED && identity != null) {
                 handlePlaybackEnded()
             }
         }
 
         override fun onEvents(player: Player, events: Player.Events) {
+            if (suppressPlayerEvents) return
             if (callActive && player.playWhenReady) {
                 player.pause()
                 return
@@ -211,6 +213,7 @@ class AudioPlaybackService : MediaSessionService() {
         }
 
         override fun onPlayerError(error: PlaybackException) {
+            if (suppressPlayerEvents) return
             credentials.clear()
             publishPlayerState(mapPlaybackError(error))
         }
@@ -374,39 +377,55 @@ class AudioPlaybackService : MediaSessionService() {
     }
 
     /**
-     * Natural end: publish ENDED for in-app replay and dismiss notification.
+     * Natural end: publish ENDED for in-app replay and dismiss system media banner.
      */
-     private fun handlePlaybackEnded() {
+    private fun handlePlaybackEnded() {
         if (identity == null) return
         if (coordinator.snapshot().status == AudioPlaybackStatus.ENDED) return
 
         stopProgressUpdates()
         player.playWhenReady = false
-        player.pause()
         coordinator.naturalEnd()
         val ended = coordinator.snapshot()
         if (ended.identity != null) resumeStore.save(ended)
         if (::mediaSession.isInitialized) {
             mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle(ended))
         }
-        stopForeground(STOP_FOREGROUND_REMOVE)
+
+        suppressPlayerEvents = true
+        try {
+            player.pause()
+            player.stop()
+            player.clearMediaItems()
+            credentials.clear()
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        } finally {
+            suppressPlayerEvents = false
+        }
     }
 
     private fun clearPlayback(reason: AudioPlaybackCleanupReason) {
         stopProgressUpdates()
-        player.playWhenReady = false
-        player.pause()
-        player.stop()
-        player.clearMediaItems()
-        credentials.clear()
-        resumeStore.clear()
-        coordinator.cleanup(reason)
-        identity = null
-        callActive = false
-        if (::mediaSession.isInitialized) {
-            mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle())
+        suppressPlayerEvents = true
+        try {
+            player.playWhenReady = false
+            player.pause()
+            player.stop()
+            player.clearMediaItems()
+            credentials.clear()
+            resumeStore.clear()
+            coordinator.cleanup(reason)
+            identity = null
+            callActive = false
+            if (::mediaSession.isInitialized) {
+                mediaSession.broadcastCustomCommand(EVENT_STATE_CHANGED, snapshotBundle())
+            }
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        } finally {
+            suppressPlayerEvents = false
         }
-        stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
     private fun snapshotBundle(snapshot: AudioPlaybackSnapshot = coordinator.snapshot()) = Bundle().apply {
