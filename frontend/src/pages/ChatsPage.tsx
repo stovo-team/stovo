@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
 
@@ -13,6 +14,7 @@ import { getClusterPrefix } from "../api/client";
 import AppNav from "./AppNav";
 import { CallFeature, MobileMinimizedCallBar } from "../features/chats/calling/CallFeature";
 import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
+import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
 
 export default function ChatsPage() {
   const { chatId } = useParams();
@@ -25,6 +27,7 @@ export default function ChatsPage() {
   const ctrl = useChatsPageController({
     chatId, location, navigate, prefersReducedMotion, accessToken, currentUser, authRequest, updateCurrentUser, appearance
   });
+  const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
   const {
     family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
@@ -161,11 +164,12 @@ export default function ChatsPage() {
               isDockedEmojiPicker={isDockedEmojiPicker}
               showDockedEmojiPicker={showDockedEmojiPicker}
               callSession={callSession}
-              canCreateFamilyInvite={canCreateFamilyInvite}
-              onOpenFamilyInvite={() => setIsFamilyInviteOpen(true)}
+              canAddPeople={detailsActions.canManageSelectedChat && selectedChat?.type === "voice"}
+              onOpenAddPeople={() => setAddPeopleChat(selectedChat)}
               minimizedCallHeader={
                 selectedChat && chatId && callPhase !== "idle" && isCallMinimized ? (
                   <MobileMinimizedCallBar
+                    className="mobile-call-strip--chat-header"
                     peerName={(callPeerDisplayName ?? activeCallPeerName) ?? (chats.find((c) => c.id === activeCallChatId)?.title ?? "Call")}
                     callPhase={callPhase}
                     callTimer={callTimer}
@@ -194,7 +198,6 @@ export default function ChatsPage() {
               chatPhotoInputRef={detailsActions.chatPhotoInputRef}
               chatWallpaperInputRef={detailsActions.chatWallpaperInputRef}
               chatTitleDraft={chatTitleDraft}
-              canCreateFamilyInvite={canCreateFamilyInvite}
               canManageChat={detailsActions.canManageSelectedChat}
               currentUser={currentUser}
               currentUserId={currentUser?.id}
@@ -220,7 +223,7 @@ export default function ChatsPage() {
               }}
               onMediaVisibilityChange={detailsActions.handleMediaVisibilityChange}
               onOpenImage={openFullViewImage}
-              onOpenFamilyInvite={() => setIsFamilyInviteOpen(true)}
+              onOpenAddPeople={() => setAddPeopleChat(selectedChat)}
               onPinPermissionChange={detailsActions.handlePinPermissionChange}
               onMessageDelayChange={detailsActions.handleMessageDelayChange}
               onPreferenceChange={(payload) => void detailsActions.handleChatPreferenceChange(payload)}
@@ -255,6 +258,14 @@ export default function ChatsPage() {
             handleSendMessage({ preventDefault: () => {} });
           }}
         />
+        {addPeopleChat && (
+          <AddPeopleDialog
+            accessToken={accessToken}
+            members={members.filter((member) => !addPeopleChat.members.some((chatMember) => chatMember.id === member.id))}
+            onAdd={detailsActions.handleAddChatMember}
+            onClose={() => setAddPeopleChat(null)}
+          />
+        )}
       </section>
     </main>
   );

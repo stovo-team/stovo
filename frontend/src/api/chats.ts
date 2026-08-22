@@ -191,6 +191,14 @@ export function updateChat(
   });
 }
 
+export function addChatMembers(accessToken: string, chatId: string, userIds: string[]) {
+  return apiRequest<Chat>(`/api/chats/${chatId}/members`, {
+    method: "POST",
+    accessToken,
+    body: { userIds }
+  });
+}
+
 export function updateChatPreferences(
   accessToken: string,
   chatId: string,

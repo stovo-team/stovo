@@ -67,6 +67,9 @@ describe("mobile active video call UI", () => {
     expect(conversationPanelSource).not.toContain('callSession?.setIsCallMinimized(true);\n          onBack();');
     expect(conversationPanelSource).toContain('const isShowingVoiceTextChat');
     expect(conversationPanelSource).toContain('selectedChat.type === "voice" && !isShowingVoiceTextChat');
+    expect(conversationPanelSource).toContain('message.type !== "call"');
+    expect(chatsPageSource).toContain('className="mobile-call-strip--chat-header"');
+    expect(styles).toContain('.mobile-call-strip--chat-header');
   });
 
   it("uses compact spacing for the bottom app navigation", () => {

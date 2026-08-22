@@ -1,7 +1,7 @@
 import { ChangeEvent, CSSProperties, Dispatch, FormEvent, SetStateAction, useMemo, useRef, useState } from "react";
 
 import type { User } from "../../../api/auth";
-import { Chat, Message, updateChat, updateChatMessageDelay, updateChatPinPermission, updateChatPreferences } from "../../../api/chats";
+import { addChatMembers, Chat, Message, updateChat, updateChatMessageDelay, updateChatPinPermission, updateChatPreferences } from "../../../api/chats";
 import { ApiError } from "../../../api/client";
 import { uploadFile } from "../../../api/files";
 import useFilePreviewUrl from "../../../hooks/useFilePreviewUrl";
@@ -191,6 +191,20 @@ export function useChatDetailsActions({
     }
   }
 
+  async function handleAddChatMember(userId: string) {
+    if (!accessToken || !selectedChat || !canManageSelectedChat) {
+      return;
+    }
+    onError(null);
+    try {
+      const chat = await addChatMembers(accessToken, selectedChat.id, [userId]);
+      applyChatUpdate(chat);
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not add person to chat");
+      throw err;
+    }
+  }
+
   async function handleChatWallpaperSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
@@ -246,6 +260,7 @@ export function useChatDetailsActions({
     handlePinPermissionChange,
     handleMessageDelayChange,
     handleChatPreferenceChange,
+    handleAddChatMember,
     handleChatWallpaperSelect,
     handleMarkSelectedChatRead
   };

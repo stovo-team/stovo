@@ -404,6 +404,47 @@ func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user u
 	s.json(w, http.StatusOK, updated)
 }
 
+func (s *Server) handleAddChatMembers(w http.ResponseWriter, r *http.Request, user userPublic) {
+	chatID := chatIDFromURL(r)
+	chat, err := s.buildChatPublic(chatID, user)
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "Chat not found")
+		return
+	}
+	if chat.Type != "group" && chat.Type != "channel" && chat.Type != "voice" {
+		s.detail(w, http.StatusUnprocessableEntity, "People can only be added to group, channel, or voice chats")
+		return
+	}
+	if !s.canManageChat(chat, user) {
+		s.detail(w, http.StatusForbidden, "Permission denied")
+		return
+	}
+
+	var payload addChatMembersRequest
+	if err := s.decodeJSON(r, &payload); err != nil || len(payload.UserIDs) == 0 {
+		s.detail(w, http.StatusUnprocessableEntity, "userIds are required")
+		return
+	}
+	memberIDs, err := s.resolveChatMembers(user, payload.UserIDs)
+	if err != nil {
+		s.detail(w, domainErrorStatus(err), "Invalid chat members")
+		return
+	}
+	if err := s.store.AddChatMembers(r.Context(), repository.AddChatMembersParams{
+		ChatID: chatID, UserIDs: memberIDs, CreatedAt: nowString(),
+	}); err != nil {
+		s.logger.Errorf("chats", "add chat members failed chat_id=%s user_id=%s error=%v", chatID, user.ID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not add people to chat")
+		return
+	}
+	updated, err := s.buildChatPublic(chatID, user)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load updated chat")
+		return
+	}
+	s.json(w, http.StatusOK, updated)
+}
+
 func (s *Server) handleUpdateChatPreferences(w http.ResponseWriter, r *http.Request, user userPublic) {
 	chatID := chatIDFromURL(r)
 	if _, err := s.buildChatPublic(chatID, user); err != nil {
@@ -602,7 +643,7 @@ func (s *Server) canManageChat(chat chatPublic, user userPublic) bool {
 	if isAdmin(user.Role) {
 		return true
 	}
-	return (chat.Type == "group" || chat.Type == "channel") && chat.CreatedBy != nil && *chat.CreatedBy == user.ID
+	return (chat.Type == "group" || chat.Type == "channel" || chat.Type == "voice") && chat.CreatedBy != nil && *chat.CreatedBy == user.ID
 }
 
 func (s *Server) canSendToChat(chat chatPublic, user userPublic) bool {

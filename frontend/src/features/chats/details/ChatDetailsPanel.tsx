@@ -82,7 +82,6 @@ export function ChatDetailsPanel({
   chatPhotoInputRef,
   chatWallpaperInputRef,
   chatTitleDraft,
-  canCreateFamilyInvite,
   canManageChat,
   currentUser,
   currentUserId,
@@ -100,7 +99,7 @@ export function ChatDetailsPanel({
   onFocusMessage,
   onMediaVisibilityChange,
   onOpenImage,
-  onOpenFamilyInvite,
+  onOpenAddPeople,
   onPinPermissionChange,
   onMessageDelayChange,
   onPreferenceChange,
@@ -114,7 +113,6 @@ export function ChatDetailsPanel({
   chatPhotoInputRef: RefObject<HTMLInputElement | null>;
   chatWallpaperInputRef: RefObject<HTMLInputElement | null>;
   chatTitleDraft: string;
-  canCreateFamilyInvite: boolean;
   canManageChat: boolean;
   currentUser: User | null;
   currentUserId: string | undefined;
@@ -135,7 +133,7 @@ export function ChatDetailsPanel({
   onFocusMessage: (messageId: string) => void;
   onMediaVisibilityChange: (enabled: boolean) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
-  onOpenFamilyInvite: () => void;
+  onOpenAddPeople: () => void;
   onPinPermissionChange: (permission: "everyone" | "admins_only") => void;
   onMessageDelayChange: (delaySeconds: number) => void;
   onPreferenceChange: (
@@ -153,6 +151,7 @@ export function ChatDetailsPanel({
   const chatName = displayChatName(chat, currentUserId, strings);
   const [activeControl, setActiveControl] = useState<ChatInfoControl>(null);
   const [tabDirection, setTabDirection] = useState<"forward" | "backward">("forward");
+  const canAddPeople = canManageChat && (chat.type === "group" || chat.type === "channel" || chat.type === "voice");
   const { nameEditor, settings } = chatInfoControlVisibility(activeControl);
   const canRename =
     canManageChat && chat.type !== "direct" && chatTitleDraft.trim() !== chatName.trim();
@@ -722,14 +721,14 @@ export function ChatDetailsPanel({
                 </li>
               ))}
             </ul>
-            {canCreateFamilyInvite && chat.type !== "direct" && chat.type !== "archive" && (
+            {canAddPeople && (
               <button
                 type="button"
                 className="chat-info-member-invite"
-                onClick={onOpenFamilyInvite}
+                onClick={onOpenAddPeople}
               >
                 <UserPlus aria-hidden="true" size={20} />
-                {strings.chats.details.inviteMember}
+                {strings.chats.details.addPeople}
               </button>
             )}
           </div>
