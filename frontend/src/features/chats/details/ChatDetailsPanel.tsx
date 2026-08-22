@@ -722,7 +722,7 @@ export function ChatDetailsPanel({
                 </li>
               ))}
             </ul>
-            {canCreateFamilyInvite && chat.members.length > 1 && (
+            {canCreateFamilyInvite && chat.type !== "direct" && chat.type !== "archive" && (
               <button
                 type="button"
                 className="chat-info-member-invite"

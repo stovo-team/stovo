@@ -11,6 +11,7 @@ import {
 import type { Socket } from "socket.io-client";
 import type { NavigateFunction } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
 
 import type { User } from "../../../api/auth";
 import type { Chat, Message } from "../../../api/chats";
@@ -27,6 +28,7 @@ import {
   addPictureInPictureListener,
   addProximityListener,
   disableNativeCallMode,
+  enterNativePictureInPictureIfPossible,
   enableNativeCallMode,
   isNativeCallPluginAvailable,
   setNativeActiveCallState,
@@ -271,12 +273,10 @@ export function useCallSession({
 
     const hasLiveSession = Boolean(activeCallSessionIdRef.current);
     const active = phase !== "idle" && hasLiveSession;
-    // A native screen capture still relies on the WebView to turn capture frames
-    // into the WebRTC track. Keep it visible in Android PiP when leaving an
-    // audio call that is sharing the screen, just as we do for a camera call.
-    const video = active && (
-      callTypeRef.current === "video" || callAudioSettings.screenSharing
-    );
+    // Android PiP keeps the active call WebView alive. This must include
+    // audio-only calls (notably voice channels), not just camera or screen-share
+    // calls, so leaving the app never tears down the active call surface.
+    const video = active;
 
     void setNativeActiveCallState({
       active,
@@ -285,7 +285,6 @@ export function useCallSession({
       sessionId: active ? activeCallSessionIdRef.current : null
     });
   }, [
-    callAudioSettings.screenSharing,
     setIsVideoPictureInPictureActive,
     videoPictureInPictureActiveRef
   ]);
@@ -383,11 +382,45 @@ export function useCallSession({
     syncNativePictureInPictureCallState();
   }, [
     activeCallChatId,
-    callAudioSettings.screenSharing,
     callPhase,
     callType,
     syncNativePictureInPictureCallState
   ]);
+
+  // `onUserLeaveHint` covers the Home gesture on Android, but some app exits
+  // (task switching, screen-share hand-offs, and OEM navigation) only report
+  // through Capacitor's lifecycle event. Enter PiP for every active call there
+  // as well; the native bridge safely ignores an already-active PiP window.
+  useEffect(() => {
+    if (!(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android")) {
+      return;
+    }
+
+    let disposed = false;
+    let removeListener: (() => void) | null = null;
+    void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
+      if (isActive || callPhaseRef.current === "idle") return;
+
+      const sessionId = activeCallSessionIdRef.current;
+      if (!sessionId) return;
+      void setNativeActiveCallState({
+        active: true,
+        video: true,
+        chatId: activeCallChatIdRef.current,
+        sessionId,
+      }).finally(() => {
+        void enterNativePictureInPictureIfPossible();
+      });
+    }).then((listener) => {
+      if (disposed) listener.remove();
+      else removeListener = () => listener.remove();
+    });
+
+    return () => {
+      disposed = true;
+      removeListener?.();
+    };
+  }, []);
 
   useEffect(() => {
     audioCallRef.current?.updateAccessToken(accessToken ?? "");

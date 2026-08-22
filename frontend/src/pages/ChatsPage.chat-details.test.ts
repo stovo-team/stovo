@@ -78,8 +78,8 @@ describe("chat details controls", () => {
     expect(chatDetailsPanel).toContain("onFocusMessage={() => onFocusMessage(item.messageId)}");
   });
 
-  it("offers a family invite from multi-member chat details", () => {
-    expect(chatDetailsPanel).toContain("canCreateFamilyInvite && chat.members.length > 1");
+  it("offers a family invite from eligible chat details", () => {
+    expect(chatDetailsPanel).toContain('canCreateFamilyInvite && chat.type !== "direct" && chat.type !== "archive"');
     expect(chatDetailsPanel).toContain('className="chat-info-member-invite"');
     expect(chatDetailsPanel).toContain("onClick={onOpenFamilyInvite}");
     expect(styles).toContain(".chat-info-member-invite {");
