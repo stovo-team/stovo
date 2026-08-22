@@ -672,6 +672,7 @@
 
 /* ── AI Transcript control button ── */
 .call-ctrl-btn--transcript {
+  border-radius: 12px;
   border-color: color-mix(in oklab, var(--accent-primary) 40%, var(--border-default));
 }
 
@@ -17375,6 +17376,12 @@ span.message-spoiler.is-revealed {
 
 /* Capacitor renders the same narrow chat layout as the mobile browser. */
 @media (max-width: 960px) {
+  /* The compact voice call strip stays below the floating chat header. */
+  :root[data-platform="web"] .messenger-shell.has-active-chat .mobile-call-strip--chat-header,
+  :root[data-platform="native"] .messenger-shell.has-active-chat .mobile-call-strip--chat-header {
+    margin-top: calc(64px + env(safe-area-inset-top));
+  }
+
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar {
     --web-chat-sidebar-header-height: 190px;
     position: relative;

@@ -142,8 +142,8 @@ describe("VoiceChannelStage", () => {
     expect(mockJoinVoiceChannel).toHaveBeenCalledWith(mockVoiceChat, { micMuted: false, cameraEnabled: false });
   });
 
-  it("offers a family invite in multi-member voice channels", () => {
-    const onOpenFamilyInvite = vi.fn();
+  it("opens the add-people picker in voice channels", () => {
+    const onOpenAddPeople = vi.fn();
     const session = {
       callPhase: "idle",
       activeCallChatId: null,
@@ -164,15 +164,15 @@ describe("VoiceChannelStage", () => {
         members={mockVoiceChat.members as unknown as User[]}
         currentUser={mockCurrentUser}
         accessToken="test-token"
-        canCreateFamilyInvite
-        onOpenFamilyInvite={onOpenFamilyInvite}
+        canAddPeople
+        onOpenAddPeople={onOpenAddPeople}
       />
     );
 
     const inviteButton = container.querySelector(".voice-room-member-invite") as HTMLButtonElement;
     expect(inviteButton).not.toBeNull();
     act(() => inviteButton.click());
-    expect(onOpenFamilyInvite).toHaveBeenCalledOnce();
+    expect(onOpenAddPeople).toHaveBeenCalledOnce();
   });
 
   it("renders 'No users' when channel is empty with exactly one join button", () => {

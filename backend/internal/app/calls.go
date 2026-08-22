@@ -739,6 +739,9 @@ func (s *Server) recordCallHistory(session *callSession, reason string) {
 			return
 		}
 	}
+	// The AI notes message will reply to this call-history record, so it stays
+	// visibly attached to the call in the same chat.
+	s.linkTranscriptionToCallHistory(session.ID, messageID)
 	s.bumpChatHistoryRevision(context.Background(), session.ChatID)
 	caller, err := s.getUserByID(session.CallerUserID)
 	if err != nil {
@@ -760,12 +763,16 @@ func (s *Server) recordCallHistory(session *callSession, reason string) {
 
 func (s *Server) endCallSession(chatID string) (*callSession, bool) {
 	s.callMu.Lock()
-	defer s.callMu.Unlock()
 	session, ok := s.callByChat[chatID]
 	if !ok {
+		s.callMu.Unlock()
 		return nil, false
 	}
 	s.unindexCallSession(session)
+	s.callMu.Unlock()
+	// Stop the recorder while participants are still addressable from this
+	// session. This is deliberately before the call:ended event is emitted.
+	s.stopActiveTranscriptionForEndedCall(session)
 	go func(sess *callSession) {
 		ctx := context.Background()
 		if s.store != nil {
@@ -780,15 +787,19 @@ func (s *Server) endCallSession(chatID string) (*callSession, bool) {
 
 func (s *Server) leaveCallSession(chatID, userID string) (*callSession, bool, bool) {
 	s.callMu.Lock()
-	defer s.callMu.Unlock()
 	session, ok := s.callByChat[chatID]
 	if !ok || !isCallParticipantAny(session, userID) {
+		s.callMu.Unlock()
 		return nil, false, false
 	}
 	s.setParticipantState(session, userID, participantLeft)
 	ended := !session.hasLiveParticipants()
 	if ended {
 		s.unindexCallSession(session)
+	}
+	s.callMu.Unlock()
+	if ended {
+		s.stopActiveTranscriptionForEndedCall(session)
 		go func(sess *callSession) {
 			ctx := context.Background()
 			if s.store != nil {

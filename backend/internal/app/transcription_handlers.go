@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -251,30 +252,22 @@ func (s *Server) handleStopTranscription(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	ctx := r.Context()
-	now := time.Now().UTC()
-	if err := s.dbUpdateTranscriptionStatus(ctx, body.SessionID, string(transcription.SessionStatusStopping), &now, nil); err != nil {
+	stoppedSessionID, stopped, err := s.stopTranscriptionSession(r.Context(), session, body.SessionID, "manual")
+	if err != nil {
 		s.logger.Warnf("transcription", "stop session failed session_id=%s error=%v", body.SessionID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not stop transcription")
+		return
+	}
+	if !stopped {
+		s.detail(w, http.StatusConflict, "Transcription is not recording for this call")
+		return
 	}
 
-	s.emitCallToActiveParticipants(session, "call.transcription.stopping", map[string]any{
-		"roomId":    roomID,
-		"chatId":    session.ChatID,
-		"sessionId": body.SessionID,
-		"status":    string(transcription.SessionStatusStopping),
-	})
-
-	s.logger.Infof("transcription", "session stopping session_id=%s call_id=%s user_id=%s", body.SessionID, roomID, user.ID)
+	s.logger.Infof("transcription", "session stopping session_id=%s call_id=%s user_id=%s", stoppedSessionID, roomID, user.ID)
 	s.json(w, http.StatusOK, map[string]any{
-		"sessionId": body.SessionID,
+		"sessionId": stoppedSessionID,
 		"status":    string(transcription.SessionStatusStopping),
 	})
-
-	// Wait briefly for participant uploads to complete, then process.
-	go func(sessID, callID, chatID string) {
-		time.Sleep(15 * time.Second)
-		s.processTranscription(context.Background(), sessID, callID, chatID)
-	}(body.SessionID, session.ID, session.ChatID)
 }
 
 // handleGetTranscriptionStatus returns the latest transcription session for a call.
@@ -491,9 +484,9 @@ func (s *Server) handleGetTranscriptArtifact(w http.ResponseWriter, r *http.Requ
 func (s *Server) dbInsertTranscriptionSession(ctx context.Context, sessionID, chatID, callID, initiatedBy string, now time.Time) error {
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO call_transcription_sessions
-			(id, call_id, initiated_by, status, provider, provider_model, started_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, 'groq', $5, $6, $6, $6)`,
-		sessionID, callID, initiatedBy,
+			(id, chat_id, call_id, initiated_by, status, provider, provider_model, started_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, 'groq', $6, $7, $7, $7)`,
+		sessionID, chatID, callID, initiatedBy,
 		string(transcription.SessionStatusRecording),
 		s.cfg.GroqSTTModel,
 		now,
@@ -509,6 +502,62 @@ func (s *Server) dbUpdateTranscriptionStatus(ctx context.Context, sessionID, sta
 		status, stoppedAt, completedAt, sessionID,
 	)
 	return err
+}
+
+// stopTranscriptionSession is the single stop path for both the control in the
+// call UI and terminal call lifecycle events. The update is conditional so a
+// manual stop and a simultaneous call end schedule processing only once.
+func (s *Server) stopTranscriptionSession(ctx context.Context, call *callSession, requestedSessionID, reason string) (string, bool, error) {
+	if s.db == nil || call == nil {
+		return "", false, nil
+	}
+
+	stoppedAt := time.Now().UTC()
+	var sessionID string
+	err := s.db.QueryRowContext(ctx, `
+		UPDATE call_transcription_sessions
+		SET status=$1, stopped_at=COALESCE(stopped_at, $2), updated_at=now()
+		WHERE call_id=$3
+			AND ($4 = '' OR id=$4)
+			AND status IN ('starting', 'recording')
+		RETURNING id`,
+		string(transcription.SessionStatusStopping), stoppedAt, call.ID, requestedSessionID,
+	).Scan(&sessionID)
+	if err == sql.ErrNoRows {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+
+	s.emitCallToActiveParticipants(call, "call.transcription.stopping", map[string]any{
+		"roomId":    call.ID,
+		"chatId":    call.ChatID,
+		"sessionId": sessionID,
+		"status":    string(transcription.SessionStatusStopping),
+		"reason":    reason,
+	})
+	s.scheduleTranscriptionProcessing(sessionID, call.ID, call.ChatID)
+	return sessionID, true, nil
+}
+
+// stopActiveTranscriptionForEndedCall stops recording before an ended call can
+// leave its clients with a live MediaRecorder. Processing continues so the
+// notes are still delivered after the call has been recorded in chat history.
+func (s *Server) stopActiveTranscriptionForEndedCall(call *callSession) {
+	if _, stopped, err := s.stopTranscriptionSession(context.Background(), call, "", "call_ended"); err != nil {
+		s.logger.Warnf("transcription", "automatic stop failed call_id=%s error=%v", call.ID, err)
+	} else if stopped {
+		s.logger.Infof("transcription", "automatically stopped session for ended call_id=%s", call.ID)
+	}
+}
+
+func (s *Server) scheduleTranscriptionProcessing(sessionID, callID, chatID string) {
+	go func() {
+		// Give each recorder time to upload its final MediaRecorder chunk.
+		time.Sleep(15 * time.Second)
+		s.processTranscription(context.Background(), sessionID, callID, chatID)
+	}()
 }
 
 func (s *Server) dbGetAudioChunk(ctx context.Context, chunkID string) (*audioChunkRow, error) {
@@ -725,6 +774,7 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 		s.logger.Warnf("transcription", "final status update failed session_id=%s error=%v", sessionID, err)
 	}
 	s.broadcastTranscriptionStatus(chatID, callID, sessionID, string(transcription.SessionStatusReady))
+	s.publishAICallNotes(ctx, sessionID)
 	s.logger.Infof("transcription", "processing completed session_id=%s call_id=%s segments=%d", sessionID, callID, len(allSegments))
 }
 
@@ -832,6 +882,159 @@ func (s *Server) runLLMPostProcessing(ctx context.Context, sessionID string, seg
 	}
 }
 
+type aiCallNotesClaim struct {
+	InitiatedBy          string
+	ChatID               string
+	CallHistoryMessageID string
+	Summary              transcription.PostProcessingResult
+}
+
+// linkTranscriptionToCallHistory records the call-history message that will
+// own the notes. It is invoked as soon as the call history is durable, whether
+// the transcript finished before or after the call itself ended.
+func (s *Server) linkTranscriptionToCallHistory(callID, callHistoryMessageID string) {
+	if s.db == nil {
+		return
+	}
+	var sessionID string
+	err := s.db.QueryRowContext(context.Background(), `
+		UPDATE call_transcription_sessions
+		SET call_history_message_id=$1, updated_at=now()
+		WHERE call_id=$2 AND call_history_message_id IS NULL
+		RETURNING id`, callHistoryMessageID, callID).Scan(&sessionID)
+	if err == sql.ErrNoRows {
+		return
+	}
+	if err != nil {
+		s.logger.Warnf("transcription", "link call history failed call_id=%s error=%v", callID, err)
+		return
+	}
+	// A user can stop notes before ending a call. In that case processing may
+	// already be ready, so retry publication when the call history appears.
+	go s.publishAICallNotes(context.Background(), sessionID)
+}
+
+// publishAICallNotes posts one text message as a reply to the call-history
+// message. The durable claim prevents the processing and call-end paths from
+// both creating notes for the same transcription session.
+func (s *Server) publishAICallNotes(ctx context.Context, sessionID string) {
+	if s.db == nil {
+		return
+	}
+	claim, err := s.dbClaimAICallNotes(ctx, sessionID)
+	if err != nil || claim == nil {
+		if err != nil {
+			s.logger.Warnf("transcription", "claim AI call notes failed session_id=%s error=%v", sessionID, err)
+		}
+		return
+	}
+
+	content := formatAICallNotes(claim.Summary)
+	if content == "" {
+		return
+	}
+	initiator, err := s.getUserByID(claim.InitiatedBy)
+	if err != nil {
+		s.releaseAICallNotesClaim(ctx, sessionID)
+		s.logger.Warnf("transcription", "AI notes initiator lookup failed session_id=%s error=%v", sessionID, err)
+		return
+	}
+	message, err := s.createGeneratedMessageWithPayloadContext(ctx, initiator, claim.ChatID, sendMessageRequest{
+		Content:          &content,
+		ReplyToMessageID: &claim.CallHistoryMessageID,
+	})
+	if err != nil {
+		s.releaseAICallNotesClaim(ctx, sessionID)
+		s.logger.Warnf("transcription", "AI notes message creation failed session_id=%s error=%v", sessionID, err)
+		return
+	}
+	if _, err := s.db.ExecContext(ctx, `
+		UPDATE call_transcription_sessions
+		SET notes_message_id=$1, notes_publishing=false, updated_at=now()
+		WHERE id=$2`, message.ID, sessionID); err != nil {
+		s.logger.Warnf("transcription", "AI notes message link failed session_id=%s error=%v", sessionID, err)
+	}
+}
+
+func (s *Server) dbClaimAICallNotes(ctx context.Context, sessionID string) (*aiCallNotesClaim, error) {
+	query := `
+		UPDATE call_transcription_sessions
+		SET notes_publishing=true, updated_at=now()
+		WHERE id=$1
+			AND status='ready'
+			AND summary_json IS NOT NULL
+			AND call_history_message_id IS NOT NULL
+			AND notes_message_id IS NULL
+			AND notes_publishing=false
+		RETURNING id, initiated_by, chat_id, call_history_message_id, summary_json`
+
+	var claimedSessionID, rawSummary string
+	claim := &aiCallNotesClaim{}
+	err := s.db.QueryRowContext(ctx, query, sessionID).Scan(&claimedSessionID, &claim.InitiatedBy, &claim.ChatID, &claim.CallHistoryMessageID, &rawSummary)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(rawSummary), &claim.Summary); err != nil {
+		s.releaseAICallNotesClaim(ctx, claimedSessionID)
+		return nil, err
+	}
+	return claim, nil
+}
+
+func (s *Server) releaseAICallNotesClaim(ctx context.Context, sessionID string) {
+	if sessionID == "" || s.db == nil {
+		return
+	}
+	_, _ = s.db.ExecContext(ctx, `UPDATE call_transcription_sessions SET notes_publishing=false, updated_at=now() WHERE id=$1`, sessionID)
+}
+
+func formatAICallNotes(result transcription.PostProcessingResult) string {
+	sections := make([]string, 0, 4)
+	if summary := strings.TrimSpace(result.Summary); summary != "" {
+		sections = append(sections, "AI call notes\n\n"+summary)
+	}
+	if len(result.Decisions) > 0 {
+		items := make([]string, 0, len(result.Decisions))
+		for _, decision := range result.Decisions {
+			if text := strings.TrimSpace(decision.Text); text != "" {
+				items = append(items, "- "+text)
+			}
+		}
+		if len(items) > 0 {
+			sections = append(sections, "Decisions\n"+strings.Join(items, "\n"))
+		}
+	}
+	if len(result.ActionItems) > 0 {
+		items := make([]string, 0, len(result.ActionItems))
+		for _, action := range result.ActionItems {
+			if text := strings.TrimSpace(action.Text); text != "" {
+				items = append(items, "- "+text)
+			}
+		}
+		if len(items) > 0 {
+			sections = append(sections, "Action items\n"+strings.Join(items, "\n"))
+		}
+	}
+	if len(result.OpenQuestions) > 0 {
+		items := make([]string, 0, len(result.OpenQuestions))
+		for _, question := range result.OpenQuestions {
+			if text := strings.TrimSpace(question.Text); text != "" {
+				items = append(items, "- "+text)
+			}
+		}
+		if len(items) > 0 {
+			sections = append(sections, "Open questions\n"+strings.Join(items, "\n"))
+		}
+	}
+	content := strings.Join(sections, "\n\n")
+	if len(content) > 4000 {
+		return strings.TrimSpace(content[:3997]) + "..."
+	}
+	return content
+}
 
 func (s *Server) markTranscriptionFailed(ctx context.Context, sessionID, chatID, callID, code, message string) {
 	_, _ = s.db.ExecContext(ctx,

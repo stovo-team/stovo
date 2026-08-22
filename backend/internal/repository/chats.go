@@ -31,6 +31,13 @@ type CreateChatParams struct {
 	CreatePreferences  bool
 }
 
+// AddChatMembersParams holds the memberships to add to an existing chat.
+type AddChatMembersParams struct {
+	ChatID    string
+	UserIDs   []string
+	CreatedAt string
+}
+
 // CreateChatWithMembers inserts a chat, memberships, and optionally preferences.
 func (s *Store) CreateChatWithMembers(ctx context.Context, p CreateChatParams) error {
 	return s.WithTx(ctx, func(tx *ent.Tx) error {
@@ -74,6 +81,33 @@ func (s *Store) CreateChatWithMembers(ctx context.Context, p CreateChatParams) e
 			}
 		}
 		return nil
+	})
+}
+
+// AddChatMembers adds memberships and their per-chat preferences atomically.
+func (s *Store) AddChatMembers(ctx context.Context, p AddChatMembersParams) error {
+	return s.WithTx(ctx, func(tx *ent.Tx) error {
+		for _, userID := range p.UserIDs {
+			if err := tx.ChatMember.Create().
+				SetID(p.ChatID).
+				SetUserID(userID).
+				SetCreatedAt(p.CreatedAt).
+				OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
+				DoNothing().
+				Exec(ctx); err != nil {
+				return err
+			}
+			if err := tx.ChatPreference.Create().
+				SetID(p.ChatID).
+				SetUserID(userID).
+				OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
+				DoNothing().
+				Exec(ctx); err != nil {
+				return err
+			}
+		}
+		_, err := tx.Chat.UpdateOneID(p.ChatID).SetUpdatedAt(p.CreatedAt).Save(ctx)
+		return err
 	})
 }
 

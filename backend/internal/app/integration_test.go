@@ -405,6 +405,49 @@ func mediaPlaybackRequest(t *testing.T, client *http.Client, method, target, tok
 	return resp
 }
 
+func TestAddExistingServerMemberToChat(t *testing.T) {
+	server, httpServer, client := newTestServer(t)
+	defer httpServer.Close()
+	defer server.Close()
+
+	owner := setupOwner(t, client, httpServer.URL, "chat-owner", "Chat Family")
+	member := createInvitedUser(t, client, httpServer.URL, owner, "chat-member")
+	personToAdd := createInvitedUser(t, client, httpServer.URL, owner, "chat-person-to-add")
+
+	createResp := jsonRequest(t, client, http.MethodPost, httpServer.URL+"/api/chats/group", owner.AccessToken, map[string]any{
+		"title":     "Weekend plans",
+		"memberIds": []string{member.User.ID},
+	})
+	if createResp.StatusCode != http.StatusCreated {
+		t.Fatalf("create group status = %d", createResp.StatusCode)
+	}
+	chat := decodeJSON[chatPublic](t, createResp)
+
+	addResp := jsonRequest(t, client, http.MethodPost, httpServer.URL+"/api/chats/"+chat.ID+"/members", owner.AccessToken, map[string]any{
+		"userIds": []string{personToAdd.User.ID},
+	})
+	if addResp.StatusCode != http.StatusOK {
+		t.Fatalf("add chat member status = %d body=%s", addResp.StatusCode, readBody(t, addResp))
+	}
+	updated := decodeJSON[chatPublic](t, addResp)
+	foundAddedPerson := false
+	for _, candidate := range updated.Members {
+		if candidate.ID == personToAdd.User.ID {
+			foundAddedPerson = true
+			break
+		}
+	}
+	if !foundAddedPerson {
+		t.Fatalf("added person is missing from chat members: %#v", updated.Members)
+	}
+
+	visibleToAddedPerson := jsonRequest(t, client, http.MethodGet, httpServer.URL+"/api/chats/"+chat.ID, personToAdd.AccessToken, nil)
+	if visibleToAddedPerson.StatusCode != http.StatusOK {
+		t.Fatalf("added person chat access status = %d", visibleToAddedPerson.StatusCode)
+	}
+	_ = visibleToAddedPerson.Body.Close()
+}
+
 func createInvitedUser(t *testing.T, ownerClient *http.Client, serverURL string, owner authResponse, username string) authResponse {
 	t.Helper()
 	inviteResp := jsonRequest(t, ownerClient, http.MethodPost, serverURL+"/api/invites", owner.AccessToken, map[string]any{

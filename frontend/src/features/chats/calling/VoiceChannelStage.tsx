@@ -36,8 +36,8 @@ export type VoiceChannelStageProps = {
   members: User[];
   currentUser: User | null;
   accessToken: string | null;
-  canCreateFamilyInvite?: boolean;
-  onOpenFamilyInvite?: () => void;
+  canAddPeople?: boolean;
+  onOpenAddPeople?: () => void;
 };
 
 export function VoiceChannelStage({
@@ -46,8 +46,8 @@ export function VoiceChannelStage({
   members,
   currentUser,
   accessToken,
-  canCreateFamilyInvite = false,
-  onOpenFamilyInvite,
+  canAddPeople = false,
+  onOpenAddPeople,
 }: VoiceChannelStageProps) {
   const strings = useStrings();
   const voiceStrings = strings.chats.voiceRoom;
@@ -425,14 +425,14 @@ export function VoiceChannelStage({
           </div>
         )}
 
-        {canCreateFamilyInvite && onOpenFamilyInvite && chat.members.length > 1 && (
+        {canAddPeople && onOpenAddPeople && (
           <button
             type="button"
             className="voice-room-member-invite"
-            onClick={onOpenFamilyInvite}
+            onClick={onOpenAddPeople}
           >
             <UserPlus aria-hidden="true" size={18} />
-            <span>{strings.chats.details.inviteMember}</span>
+            <span>{strings.chats.details.addPeople}</span>
           </button>
         )}
 
