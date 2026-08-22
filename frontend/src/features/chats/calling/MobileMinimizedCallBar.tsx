@@ -8,6 +8,7 @@ export function MobileMinimizedCallBar({
   onToggleMic,
   onEnd,
   onExpand,
+  className = "",
 }: {
   peerName: string;
   callPhase: CallPhase;
@@ -16,6 +17,7 @@ export function MobileMinimizedCallBar({
   onToggleMic: () => void;
   onEnd: () => void;
   onExpand: () => void;
+  className?: string;
 }) {
   const statusLabel =
     callPhase === "in-call"
@@ -25,7 +27,7 @@ export function MobileMinimizedCallBar({
         : "Connecting…";
 
   return (
-    <div className="mobile-call-strip" role="status" aria-live="polite">
+    <div className={`mobile-call-strip ${className}`.trim()} role="status" aria-live="polite">
       <button
         type="button"
         className={`mobile-call-strip-btn${micMuted ? " is-muted" : ""}`}

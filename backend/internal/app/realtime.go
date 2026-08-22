@@ -123,6 +123,17 @@ func (s *Server) createMessageWithPayload(user userPublic, chatID string, payloa
 }
 
 func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, clientMessageID *string, forwarded *messageForwardSource) (messagePublic, error) {
+	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, clientMessageID, forwarded, false)
+}
+
+// createGeneratedMessageWithPayloadContext creates a durable server-generated
+// chat message. It keeps ordinary chat permissions and encryption rules but
+// bypasses slow mode so a completed call's notes are never silently dropped.
+func (s *Server) createGeneratedMessageWithPayloadContext(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest) (messagePublic, error) {
+	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, nil, nil, true)
+}
+
+func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, clientMessageID *string, forwarded *messageForwardSource, skipMessageDelay bool) (messagePublic, error) {
 	chat, err := s.buildChatPublic(chatID, user)
 	if err != nil {
 		return messagePublic{}, errNotFound
@@ -130,8 +141,10 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	if err := s.validateMessageSendPermissions(ctx, chat, user, &payload); err != nil {
 		return messagePublic{}, err
 	}
-	if err := s.checkMessageDelay(ctx, chat, user, chatID); err != nil {
-		return messagePublic{}, err
+	if !skipMessageDelay {
+		if err := s.checkMessageDelay(ctx, chat, user, chatID); err != nil {
+			return messagePublic{}, err
+		}
 	}
 	content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, attachments, messageType, err := s.resolveMessageContent(chat, user, chatID, payload)
 	if err != nil {

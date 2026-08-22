@@ -309,11 +309,22 @@ export function useTranscription({
       }
     };
 
+    // A terminal call event is a fallback for the server's explicit
+    // transcription-stopping event. It guarantees recorder cleanup even when
+    // a call ends while the client is backgrounded or its stop event is late.
+    const onCallEnded = (payload: { roomId?: string }) => {
+      if (payload.roomId && roomId && payload.roomId !== roomId) return;
+      if (stateRef.current === "recording") {
+        setTranscriptState("stopping");
+      }
+    };
+
     socket.on("call.transcription.recording", onRecording);
     socket.on("call.transcription.stopping", onStopping);
     socket.on("call.transcription.transcribing", onTranscribing);
     socket.on("call.transcription.ready", onReady);
     socket.on("call.transcription.failed", onFailed);
+    socket.on("call:ended", onCallEnded);
 
     return () => {
       socket.off("call.transcription.recording", onRecording);
@@ -321,8 +332,9 @@ export function useTranscription({
       socket.off("call.transcription.transcribing", onTranscribing);
       socket.off("call.transcription.ready", onReady);
       socket.off("call.transcription.failed", onFailed);
+      socket.off("call:ended", onCallEnded);
     };
-  }, [socketRef]);
+  }, [socketRef, roomId]);
 
   // ── Actions ────────────────────────────────────────────────────────────
 

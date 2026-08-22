@@ -401,7 +401,9 @@ export const strings = {
       custom: "Custom",
       seconds: "seconds",
       members: "Members",
-      inviteMember: "Invite member",
+      addPeople: "Add people",
+      addPeopleSearchPlaceholder: "Search people",
+      noPeopleToAdd: "Everyone in the server is already in this chat.",
       tabs: {
         media: "Media",
         audio: "Audio",

@@ -424,7 +424,9 @@ export const strings = {
       custom: "Своя",
       seconds: "сек",
       members: "Участники",
-      inviteMember: "Пригласить участника",
+      addPeople: "Добавить участников",
+      addPeopleSearchPlaceholder: "Поиск участников",
+      noPeopleToAdd: "Все участники сервера уже добавлены в этот чат.",
       tabs: {
         media: "Медиа",
         audio: "Аудио",

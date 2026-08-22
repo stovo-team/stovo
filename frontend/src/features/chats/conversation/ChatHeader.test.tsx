@@ -128,8 +128,8 @@ describe("ChatHeader", () => {
     act(() => {
       backButton.click();
     });
-    expect(onShrinkCall).toHaveBeenCalledTimes(2);
-    expect(onBack).not.toHaveBeenCalled();
+    expect(onShrinkCall).toHaveBeenCalledTimes(1);
+    expect(onBack).toHaveBeenCalledTimes(1);
 
   });
 });

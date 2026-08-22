@@ -52,8 +52,8 @@ export type ConversationPanelProps = {
   showDockedEmojiPicker: boolean;
   callSession?: CallSessionApi;
   minimizedCallHeader?: ReactNode;
-  canCreateFamilyInvite?: boolean;
-  onOpenFamilyInvite?: () => void;
+  canAddPeople?: boolean;
+  onOpenAddPeople?: () => void;
   onOpenChat: (chat: Chat) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onOpenNewChat: () => void;
@@ -75,8 +75,8 @@ export function ConversationPanel({
   activeCallChatId,
   callSession,
   minimizedCallHeader,
-  canCreateFamilyInvite,
-  onOpenFamilyInvite,
+  canAddPeople,
+  onOpenAddPeople,
   isChatMenuOpen,
   chatMenuRef,
   onToggleChatMenu,
@@ -167,6 +167,12 @@ export function ConversationPanel({
     endSwipeReplyGesture,
     threadReplyCounts
   } = thread;
+  const messagesForDisplay = selectedChat?.type === "voice"
+    ? messages.filter((message) => message.type !== "call")
+    : messages;
+  const visibleMessagesForDisplay = selectedChat?.type === "voice"
+    ? visibleMessages.filter((message) => message.type !== "call")
+    : visibleMessages;
 
   const {
     composer: composerText,
@@ -361,7 +367,7 @@ export function ConversationPanel({
           >
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 9 5l5 13M6 13h6M14 18l3-8 3 8M15.3 14h3.4" /></svg>
           </button>
-          <span className="message-search-results" aria-live="polite">{visibleMessages.length} results</span>
+          <span className="message-search-results" aria-live="polite">{visibleMessagesForDisplay.length} results</span>
           <button
             type="button"
             className="message-search-option message-search-close"
@@ -382,8 +388,8 @@ export function ConversationPanel({
             members={members ?? (selectedChat.members as unknown as User[])}
             currentUser={currentUser}
             accessToken={accessToken}
-            canCreateFamilyInvite={canCreateFamilyInvite}
-            onOpenFamilyInvite={onOpenFamilyInvite}
+            canAddPeople={canAddPeople}
+            onOpenAddPeople={onOpenAddPeople}
           />
         ) : null
       ) : (
@@ -414,8 +420,8 @@ export function ConversationPanel({
             currentUser={currentUser}
             selectedChat={selectedChat}
             chats={chats}
-            messages={messages}
-            visibleMessages={visibleMessages}
+            messages={messagesForDisplay}
+            visibleMessages={visibleMessagesForDisplay}
             threadRootMessage={threadRootMessage}
             threadRootMessageId={threadRootMessageId}
             memberLookup={memberLookup}
