@@ -113,6 +113,39 @@ describe("MobileActiveScreen", () => {
     expect(container.querySelector(".mobile-active-screenshare-bar")).not.toBeNull();
   });
 
+  it("keeps every camera tile below an active remote screen share", () => {
+    const mockTrack = {
+      readyState: "live",
+      kind: "video",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    const mockStream = {
+      getVideoTracks: () => [mockTrack],
+      getTracks: () => [mockTrack],
+    } as unknown as MediaStream;
+
+    const container = renderComponent(
+      <MobileActiveScreen
+        {...defaultProps}
+        callType="video"
+        isCameraEnabled
+        localVideoStream={mockStream}
+        remoteMedia={[{
+          userId: "alice",
+          stream: mockStream,
+          screenStream: mockStream,
+          hasVideo: true,
+          hasAudio: true,
+          hasScreenShare: true,
+        }]}
+      />
+    );
+
+    expect(container.querySelector(".call-grid--presenting")).not.toBeNull();
+    expect(container.querySelectorAll(".call-grid__tile")).toHaveLength(3);
+  });
+
   it("renders active audio rings around avatar when peer is speaking in audio call", () => {
     const container = renderComponent(
       <MobileActiveScreen

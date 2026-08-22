@@ -100,6 +100,12 @@ export function ConversationPanel({
   onOpenImage,
   onOpenNewChat
 }: ConversationPanelProps) {
+  const isShowingVoiceTextChat =
+    selectedChat?.type === "voice" &&
+    callSession?.isCallMinimized &&
+    callSession.activeCallChatId === selectedChat.id &&
+    callPhase !== "idle";
+
   const {
     messages,
     visibleMessages,
@@ -288,7 +294,6 @@ export function ConversationPanel({
         isCallMinimized={callSession?.isCallMinimized ?? false}
         onShrinkCall={() => {
           callSession?.setIsCallMinimized(true);
-          onBack();
         }}
         isMessageSearchOpen={isMessageSearchOpen}
         onToggleMessageSearch={toggleMessageSearch}
@@ -369,21 +374,17 @@ export function ConversationPanel({
           </button>
         </div>
       )}
-      {selectedChat.type === "voice" ? (
+      {selectedChat.type === "voice" && !isShowingVoiceTextChat ? (
         callSession ? (
-          callSession.isCallMinimized &&
-          callSession.activeCallChatId === selectedChat.id &&
-          callPhase !== "idle" ? null : (
-            <VoiceChannelStage
-              chat={selectedChat}
-              session={callSession}
-              members={members ?? (selectedChat.members as unknown as User[])}
-              currentUser={currentUser}
-              accessToken={accessToken}
-              canCreateFamilyInvite={canCreateFamilyInvite}
-              onOpenFamilyInvite={onOpenFamilyInvite}
-            />
-          )
+          <VoiceChannelStage
+            chat={selectedChat}
+            session={callSession}
+            members={members ?? (selectedChat.members as unknown as User[])}
+            currentUser={currentUser}
+            accessToken={accessToken}
+            canCreateFamilyInvite={canCreateFamilyInvite}
+            onOpenFamilyInvite={onOpenFamilyInvite}
+          />
         ) : null
       ) : (
         <>

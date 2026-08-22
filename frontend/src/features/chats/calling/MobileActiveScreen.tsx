@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FamilyFile } from "../../../api/files";
+import type { RemoteMedia } from "../../../realtime/call/types";
+import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 
@@ -23,6 +25,9 @@ export function MobileActiveScreen({
   localVideoStream,
   localScreenStream,
   remoteVideoStream,
+  remoteMedia = [],
+  localUserLabel = "You",
+  speakingUserIds = [],
   mirrorLocalVideo,
   onToggleMic,
   onToggleCamera,
@@ -52,6 +57,9 @@ export function MobileActiveScreen({
   localVideoStream: MediaStream | null;
   localScreenStream?: MediaStream | null;
   remoteVideoStream: MediaStream | null;
+  remoteMedia?: RemoteMedia[];
+  localUserLabel?: string;
+  speakingUserIds?: string[];
   mirrorLocalVideo: boolean;
   onToggleMic: () => void;
   onToggleCamera: () => void;
@@ -239,8 +247,12 @@ export function MobileActiveScreen({
 
   const showRemoteVideo = Boolean(hasRemoteVideo || remoteVideoStream !== null);
   const isSharingLocalScreen = Boolean(isScreenSharing || localScreenStream);
+  const hasRemoteScreenShare = remoteMedia.some(
+    (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
+  );
+  const showPresentationGrid = Boolean(localScreenStream) || hasRemoteScreenShare;
   const showLocalCamera = Boolean(isCameraEnabled && localVideoStream);
-  const showAnyVideo = showRemoteVideo || isSharingLocalScreen || (callType === "video" && isCameraEnabled);
+  const showAnyVideo = showRemoteVideo || isSharingLocalScreen || showPresentationGrid || (callType === "video" && isCameraEnabled);
   const showAvatar = !showAnyVideo;
   const showProximityBlank =
     isProximityNear && (callType === "audio" || (!isCameraEnabled && !showRemoteVideo && !isSharingLocalScreen));
@@ -306,6 +318,20 @@ export function MobileActiveScreen({
       {/* Video stage */}
       {showAnyVideo && (
         <div className="mobile-active-video-stage" onPointerDown={toggleControls}>
+          {showPresentationGrid ? (
+            <CallParticipantGrid
+              localStream={localVideoStream}
+              localScreenStream={localScreenStream}
+              remoteMedia={remoteMedia}
+              localUserLabel={localUserLabel}
+              mirrorLocal={mirrorLocalVideo && previewFacingMode === "user"}
+              callType={callType}
+              isLocalSpeaking={isLocalSpeaking}
+              isPeerSpeaking={isPeerSpeaking}
+              speakingUserIds={speakingUserIds}
+            />
+          ) : (
+            <>
           {/* Case 1: Remote video is available */}
           {showRemoteVideo && remoteVideoStream && (
             <>
@@ -474,6 +500,8 @@ export function MobileActiveScreen({
                 </svg>
               </button>
             </div>
+          )}
+            </>
           )}
         </div>
       )}

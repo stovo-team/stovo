@@ -172,7 +172,7 @@ export function DesktopCallControls({
 
       {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
       <div className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
-        {callRemoteMedia.length > 1 && callPhase === "in-call" && !isCallMinimized ? (
+        {(callRemoteMedia.length > 1 || localScreenStream || callRemoteMedia.some((media) => media.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized ? (
           <CallParticipantGrid
             localStream={localVideoStream}
             localScreenStream={localScreenStream}
