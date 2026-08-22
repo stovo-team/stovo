@@ -666,4 +666,58 @@ describe("VoiceChannelStage", () => {
     const waveBadge = videoContainer?.querySelector(".speaking-wave-badge");
     expect(waveBadge).not.toBeNull();
   });
+
+  it("shows the shared screen above the voice channel camera tiles", () => {
+    const mockTrack = {
+      readyState: "live",
+      kind: "video",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    const mockStream = {
+      getVideoTracks: () => [mockTrack],
+      getTracks: () => [mockTrack],
+    } as unknown as MediaStream;
+    const session = {
+      callPhase: "in-call",
+      callType: "video",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: true, screenSharing: false, mirrorLocalVideo: false },
+      callAudioCapabilities: { canShareScreen: true },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      isLocalSpeaking: false,
+      speakingUserIds: [],
+      localVideoStream: mockStream,
+      callRemoteMedia: [{
+        userId: "user-2",
+        stream: mockStream,
+        screenStream: mockStream,
+        hasVideo: true,
+        hasAudio: true,
+        hasScreenShare: true,
+      }],
+      activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+      setIsCallSettingsMenuOpen: vi.fn(),
+      setIsCallAudioPopupOpen: vi.fn(),
+      setIsCallMinimized: vi.fn(),
+      audioCallRef: { current: { toggleVideo: vi.fn() } },
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={session}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    expect(container.querySelector(".call-grid--presenting")).not.toBeNull();
+    expect(container.querySelectorAll(".call-grid__tile")).toHaveLength(3);
+  });
 });

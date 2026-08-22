@@ -28,6 +28,7 @@ import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
+import CallParticipantGrid from "../../../components/CallParticipantGrid";
 
 export type VoiceChannelStageProps = {
   chat: Chat;
@@ -248,6 +249,12 @@ export function VoiceChannelStage({
   }
 
   const isListMode = participantCount > 9;
+  const hasActiveScreenShare = Boolean(
+    localScreenStream?.getVideoTracks().some((track) => track.readyState !== "ended") ||
+    callRemoteMedia?.some(
+      (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
+    ),
+  );
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
@@ -260,7 +267,19 @@ export function VoiceChannelStage({
 
       {/* Main Stage / Participant Grid or List */}
       <div className="voice-room-stage">
-        {participantCount > 0 ? (
+        {hasActiveScreenShare ? (
+          <CallParticipantGrid
+            localStream={localVideoStream}
+            localScreenStream={localScreenStream}
+            remoteMedia={callRemoteMedia ?? []}
+            localUserLabel={currentUser?.displayName ?? "You"}
+            mirrorLocal={Boolean(callAudioSettings.mirrorLocalVideo)}
+            callType={callType}
+            isLocalSpeaking={isLocalSpeaking}
+            isPeerSpeaking={isPeerSpeaking}
+            speakingUserIds={speakingUserIds}
+          />
+        ) : participantCount > 0 ? (
           isListMode ? (
             <div className="voice-room-user-list" aria-label={voiceStrings?.usersInVoice ?? "Users in voice channel"} role="list">
               {displayParticipants.map((p) => {

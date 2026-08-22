@@ -179,6 +179,9 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
                 localVideoStream={localVideoStream}
                 localScreenStream={localScreenStream}
                 remoteVideoStream={remoteVideoStream}
+                remoteMedia={session.callRemoteMedia}
+                localUserLabel={currentUser?.displayName ?? "You"}
+                speakingUserIds={session.speakingUserIds}
                 mirrorLocalVideo={callAudioSettings.mirrorLocalVideo}
                 onToggleMic={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
                 onToggleCamera={() => {
