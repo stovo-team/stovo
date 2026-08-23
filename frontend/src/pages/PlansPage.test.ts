@@ -83,20 +83,27 @@ describe("PlansPage week range logic", () => {
     expect(styles).toContain(".plans-dialog textarea:focus-visible {");
   });
 
-  it("renders a seven-day week grid and compact attendance controls", async () => {
+  it("renders timed three-day and week grids with compact attendance controls", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
     const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
-    expect(source).toContain('className="plans-week-calendar"');
-    expect(source).toContain("weekDays.map((day)");
-    expect(source).toContain('className="plans-week-event"');
+    expect(source).toContain('className={`plans-calendar plans-calendar--${days.length}`}');
+    expect(source).toContain("renderTimedCalendar(view === \"threeDays\" ? threeDayRange : weekDays)");
+    expect(source).toContain("threeDayRange");
+    expect(source).toContain("formatDateRange(threeDayRange[0], threeDayRange[2])");
+    expect(source).toContain("formatDateRange(weekDays[0], weekDays[6])");
+    expect(source).toContain("getCalendarEventStyle(plan)");
+    expect(source).toContain('className="plans-calendar-event"');
     expect(source).toContain("strings.plans.goingQuestion");
     expect(source).toContain("strings.plans.createdBy");
+    expect(source).toContain("getPlanStatus");
+    expect(source).toContain("strings.plans.happening");
     expect(source).toContain("<RealAvatar");
-    expect(styles).toContain(".plans-week-calendar");
+    expect(styles).toContain(".plans-calendar-day-track");
     expect(styles).toContain(".plan-attendee-list");
+    expect(styles).toContain(".plan-status--happening");
   });
 
   it("provides fixed top navigation and scrollable content in storage and plans pages", async () => {

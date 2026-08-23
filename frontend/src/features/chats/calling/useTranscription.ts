@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
+import { getApiUrl } from "../../../api/client";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -89,7 +90,7 @@ export type AudioChunkUploadParams = {
 /** Request a presigned URL and upload a single audio chunk to MinIO. */
 export async function uploadAudioChunk(params: AudioChunkUploadParams): Promise<void> {
   // 1. Request presigned URL from backend.
-  const urlResponse = await fetch(`/api/calls/${params.roomId}/transcription/uploads`, {
+  const urlResponse = await fetch(`${getApiUrl()}/api/calls/${params.roomId}/transcription/uploads`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -126,7 +127,7 @@ export async function uploadAudioChunk(params: AudioChunkUploadParams): Promise<
   }
 
   // 3. Confirm completion to backend.
-  await fetch(`/api/calls/${params.roomId}/transcription/uploads/${chunkId}/complete`, {
+  await fetch(`${getApiUrl()}/api/calls/${params.roomId}/transcription/uploads/${chunkId}/complete`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -344,7 +345,7 @@ export function useTranscription({
     setTranscriptState("starting");
     setTranscriptError(null);
     try {
-      const response = await fetch(`/api/calls/${roomId}/transcription/start`, {
+      const response = await fetch(`${getApiUrl()}/api/calls/${roomId}/transcription/start`, {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -354,7 +355,9 @@ export function useTranscription({
         };
         throw new Error(err.detail ?? "Failed to start transcription");
       }
-      const data = (await response.json()) as { id: string; status: string };
+      const data = (await response.json().catch(() => {
+        throw new Error("AI Notes service returned an invalid response. Check the configured server URL.");
+      })) as { id: string; status: string };
       setTranscriptSessionId(data.id);
       setTranscriptState("recording");
     } catch (err) {
@@ -368,7 +371,7 @@ export function useTranscription({
     if (!accessToken || !roomId || !sessionIdRef.current) return;
     setTranscriptState("stopping");
     try {
-      const response = await fetch(`/api/calls/${roomId}/transcription/stop`, {
+      const response = await fetch(`${getApiUrl()}/api/calls/${roomId}/transcription/stop`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -390,7 +393,7 @@ export function useTranscription({
   const fetchTranscript = useCallback(async () => {
     if (!accessToken || !roomId) return;
     try {
-      const response = await fetch(`/api/calls/${roomId}/transcript`, {
+      const response = await fetch(`${getApiUrl()}/api/calls/${roomId}/transcript`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!response.ok) {

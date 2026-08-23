@@ -1,4 +1,4 @@
-import { Check, Minus, Plus, RotateCcw, X } from "lucide-react";
+import { Check, RotateCcw, SlidersHorizontal, SunMedium, X, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -38,6 +38,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
   const [previewUrl, setPreviewUrl] = useState("");
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [adjustments, setAdjustments] = useState<WallpaperAdjustments>(DEFAULT_ADJUSTMENTS);
+  const [isAdjustmentsOpen, setIsAdjustmentsOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const gammaFilterId = `chat-wallpaper-gamma-${useId().replace(/:/g, "")}`;
 
@@ -119,10 +120,10 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
             <p>{strings.wallpaperEditor.previewHelp}</p>
           </div>
           <div className="wallpaper-editor-header-actions">
-            <button type="button" className="avatar-editor-btn-icon" onClick={() => setAdjustments(DEFAULT_ADJUSTMENTS)} aria-label={strings.avatarEditor.reset}>
+            <button type="button" className="wallpaper-editor-icon-button" onClick={() => setAdjustments(DEFAULT_ADJUSTMENTS)} aria-label={strings.avatarEditor.reset} title={strings.avatarEditor.reset}>
               <RotateCcw />
             </button>
-            <button type="button" className="avatar-editor-close-btn" onClick={onClose} aria-label={strings.avatarEditor.cancel}>
+            <button type="button" className="wallpaper-editor-icon-button" onClick={onClose} aria-label={strings.avatarEditor.cancel} title={strings.avatarEditor.cancel}>
               <X />
             </button>
           </div>
@@ -139,12 +140,16 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
         </div>
 
         <div className="wallpaper-editor-controls">
-          <div className="wallpaper-editor-zoom-row">
-            <button type="button" className="avatar-editor-btn-icon" onClick={() => update("zoom", Math.max(0.5, adjustments.zoom - 0.1))} disabled={adjustments.zoom <= 0.5} aria-label={strings.avatarEditor.zoomOut}><Minus /></button>
-            <label className="wallpaper-editor-range"><span>{strings.avatarEditor.zoom}</span><input type="range" min="0.5" max="2.5" step="0.01" value={adjustments.zoom} onChange={(event) => update("zoom", Number(event.target.value))} /></label>
-            <button type="button" className="avatar-editor-btn-icon" onClick={() => update("zoom", Math.min(2.5, adjustments.zoom + 0.1))} disabled={adjustments.zoom >= 2.5} aria-label={strings.avatarEditor.zoomIn}><Plus /></button>
+          <div className="wallpaper-editor-toolbar" aria-label={strings.wallpaperEditor.title}>
+            <button type="button" className="wallpaper-editor-toolbar-button" onClick={() => update("zoom", Math.max(0.5, adjustments.zoom - 0.1))} disabled={adjustments.zoom <= 0.5} aria-label={strings.avatarEditor.zoomOut}><ZoomOut /></button>
+            <span className="wallpaper-editor-zoom-value">{Math.round(adjustments.zoom * 100)}%</span>
+            <button type="button" className="wallpaper-editor-toolbar-button" onClick={() => update("zoom", Math.min(2.5, adjustments.zoom + 0.1))} disabled={adjustments.zoom >= 2.5} aria-label={strings.avatarEditor.zoomIn}><ZoomIn /></button>
+            <span className="wallpaper-editor-toolbar-divider" aria-hidden="true" />
+            <button type="button" className="wallpaper-editor-toolbar-button" onClick={() => update("brightness", adjustments.brightness === 100 ? 82 : 100)} aria-label={strings.wallpaperEditor.brightness} title={strings.wallpaperEditor.brightness}><SunMedium /></button>
+            <button type="button" className="wallpaper-editor-toolbar-button wallpaper-editor-toolbar-button--label" onClick={() => setIsAdjustmentsOpen((open) => !open)} aria-expanded={isAdjustmentsOpen} aria-controls="wallpaper-adjustments"><SlidersHorizontal /><span>{strings.wallpaperEditor.adjustments}</span></button>
           </div>
-          <div className="wallpaper-editor-adjustments">
+          <div id="wallpaper-adjustments" className="wallpaper-editor-adjustments" hidden={!isAdjustmentsOpen}>
+            <Adjustment label={strings.avatarEditor.zoom} min={0.5} max={2.5} step={0.01} value={adjustments.zoom} unit="×" onChange={(value) => update("zoom", value)} />
             <Adjustment label={strings.wallpaperEditor.brightness} min={0} max={200} value={adjustments.brightness} unit="%" onChange={(value) => update("brightness", value)} />
             <Adjustment label={strings.wallpaperEditor.contrast} min={0} max={200} value={adjustments.contrast} unit="%" onChange={(value) => update("contrast", value)} />
             <Adjustment label={strings.wallpaperEditor.gamma} min={0.2} max={3} step={0.01} value={adjustments.gamma} onChange={(value) => update("gamma", value)} />

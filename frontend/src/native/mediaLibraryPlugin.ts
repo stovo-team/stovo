@@ -16,6 +16,10 @@ type CachedMediaFile = { path: string; name: string; mimeType: string };
 type NativeMediaLibraryPlugin = {
   listMedia(options?: { limit?: number; category?: NativeMediaCategory }): Promise<{ items: NativeMediaItem[] }>;
   copyMedia(options: { ids: string[] }): Promise<{ files: CachedMediaFile[] }>;
+  addListener(
+    eventName: "mediaLibraryChanged",
+    listener: (event: { category: NativeMediaCategory }) => void
+  ): Promise<{ remove: () => Promise<void> }>;
 };
 
 const MediaLibraryPlugin = registerPlugin<NativeMediaLibraryPlugin>("MediaLibraryPlugin");
@@ -37,6 +41,19 @@ export async function listNativeMedia(category: NativeMediaCategory = "gallery")
 /** Returns the last device query immediately while a fresh query runs in the background. */
 export function getCachedNativeMedia(category: NativeMediaCategory): NativeMediaItem[] {
   return mediaCache.get(category) ?? [];
+}
+
+/** Subscribes while the attachment sheet is open so new device photos appear without reopening it. */
+export async function addNativeMediaLibraryListener(
+  onChange: (category: NativeMediaCategory) => void
+): Promise<() => void> {
+  if (!isNativeMediaLibraryAvailable()) return () => undefined;
+  try {
+    const handle = await MediaLibraryPlugin.addListener("mediaLibraryChanged", ({ category }) => onChange(category));
+    return () => { void handle.remove(); };
+  } catch {
+    return () => undefined;
+  }
 }
 
 /** Maps an Android cache file to a URL that the Capacitor WebView can display. */
