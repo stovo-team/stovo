@@ -3,10 +3,13 @@ package com.stakhovivan.stovo
 import android.Manifest
 import android.content.ContentUris
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Size
@@ -35,10 +38,33 @@ import java.util.UUID
     )]
 )
 class MediaLibraryPlugin : Plugin() {
+    private val mediaChangeHandler = Handler(Looper.getMainLooper())
+    private val notifyGalleryChanged = Runnable {
+        notifyListeners("mediaLibraryChanged", JSObject().put("category", "gallery"))
+    }
+    private val galleryObserver = object : ContentObserver(mediaChangeHandler) {
+        override fun onChange(selfChange: Boolean) = scheduleGalleryChange()
+        override fun onChange(selfChange: Boolean, uri: Uri?) = scheduleGalleryChange()
+    }
+
+    override fun load() {
+        super.load()
+        resolver()?.let {
+            it.registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, galleryObserver)
+            it.registerContentObserver(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, galleryObserver)
+        }
+    }
+
+    override fun handleOnDestroy() {
+        mediaChangeHandler.removeCallbacks(notifyGalleryChanged)
+        resolver()?.unregisterContentObserver(galleryObserver)
+        super.handleOnDestroy()
+    }
+
     @PluginMethod
     fun listMedia(call: PluginCall) {
         val category = call.getString("category", "gallery") ?: "gallery"
-        if (category != "documents" && !hasMediaAccess()) {
+        if (category != "documents" && !hasMediaAccess(category)) {
             requestPermissionForAlias("media", call, "loadMedia")
             return
         }
@@ -48,7 +74,7 @@ class MediaLibraryPlugin : Plugin() {
     @PermissionCallback
     private fun loadMedia(call: PluginCall) {
         val category = call.getString("category", "gallery") ?: "gallery"
-        if (category != "documents" && !hasMediaAccess()) {
+        if (category != "documents" && !hasMediaAccess(category)) {
             call.reject("Media library permission was not granted")
             return
         }
@@ -85,12 +111,14 @@ class MediaLibraryPlugin : Plugin() {
         )
         val selection = when (category) {
             "audio" -> "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
-            "documents" -> "${MediaStore.Files.FileColumns.MIME_TYPE} NOT LIKE ?"
+            // Downloads holds both media and ordinary files.  Only show the latter in
+            // Recent files; audio, images, and videos have their own picker tabs.
+            "documents" -> "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
             else -> "${MediaStore.Files.FileColumns.MEDIA_TYPE} IN (?, ?)"
         }
         val arguments = when (category) {
             "audio" -> arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_AUDIO.toString())
-            "documents" -> arrayOf("image/%")
+            "documents" -> arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_NONE.toString())
             else -> arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString(), MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO.toString())
         }
         try {
@@ -281,17 +309,25 @@ class MediaLibraryPlugin : Plugin() {
 
     private fun resolver() = (activity ?: bridge?.activity)?.contentResolver
 
+    /** Coalesce writes from camera apps so the web layer reloads only after MediaStore settles. */
+    private fun scheduleGalleryChange() {
+        mediaChangeHandler.removeCallbacks(notifyGalleryChanged)
+        mediaChangeHandler.postDelayed(notifyGalleryChanged, 250)
+    }
+
     /**
      * Android 14 lets people grant access to only selected photos and videos.
      * That is still sufficient for MediaStore to return the media we may show,
      * but Capacitor's alias state reports it as denied because the broad media
      * permissions themselves are not granted.
      */
-    private fun hasMediaAccess(): Boolean {
+    private fun hasMediaAccess(category: String): Boolean {
         val permissionContext = context ?: return false
         fun granted(permission: String) = permissionContext.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 
         return when {
+            category == "audio" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                granted(Manifest.permission.READ_MEDIA_AUDIO)
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ->
                 granted(Manifest.permission.READ_MEDIA_IMAGES) ||
                     granted(Manifest.permission.READ_MEDIA_VIDEO) ||

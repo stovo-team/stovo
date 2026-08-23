@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { App } from "@capacitor/app";
 
 import {
+  addNativeMediaLibraryListener,
   fetchNativeMediaFileUrl,
   getCachedNativeMedia,
   isNativeMediaLibraryAvailable,
@@ -51,6 +53,30 @@ export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, pr
 
   useEffect(() => {
     if (open) void loadRecentItems(activeTab);
+  }, [activeTab, loadRecentItems, open]);
+
+  useEffect(() => {
+    if (!open || !isNativeMediaLibraryAvailable()) return;
+    let disposed = false;
+    let removeMediaListener: () => void = () => undefined;
+    let appStateListener: { remove: () => Promise<void> } | undefined;
+
+    void addNativeMediaLibraryListener((category) => {
+      if (!disposed && category === categoryFor(activeTab)) void loadRecentItems(activeTab);
+    }).then((remove) => {
+      if (disposed) remove(); else removeMediaListener = remove;
+    });
+    void App.addListener("appStateChange", ({ isActive }) => {
+      if (!disposed && isActive) void loadRecentItems(activeTab);
+    }).then((listener) => {
+      if (disposed) void listener.remove(); else appStateListener = listener;
+    });
+
+    return () => {
+      disposed = true;
+      removeMediaListener();
+      void appStateListener?.remove();
+    };
   }, [activeTab, loadRecentItems, open]);
 
   useEffect(() => {
