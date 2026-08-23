@@ -125,13 +125,19 @@ class MediaLibraryPlugin : Plugin() {
         try {
             resolver.query(
                 collection, projection, selection, arguments,
-                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC LIMIT $limit OFFSET $offset"
+                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC"
             )?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
                 val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
                 val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.MIME_TYPE)
                 val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DURATION)
-                while (cursor.moveToNext()) {
+                var skipped = 0
+                var count = 0
+                while (count < limit && cursor.moveToNext()) {
+                    if (skipped < offset) {
+                        skipped++
+                        continue
+                    }
                     val id = cursor.getLong(idIndex)
                     val uri = ContentUris.withAppendedId(collection, id)
                     items.put(JSObject().apply {
@@ -143,6 +149,7 @@ class MediaLibraryPlugin : Plugin() {
                         put("mimeType", cursor.getString(mimeIndex) ?: "application/octet-stream")
                         put("durationMs", cursor.getLong(durationIndex).coerceAtLeast(0))
                     })
+                    count++
                 }
             }
         } catch (error: Exception) {
@@ -203,14 +210,19 @@ class MediaLibraryPlugin : Plugin() {
             projection,
             null,
             null,
-            "${MediaStore.MediaColumns.DATE_ADDED} DESC LIMIT $limit OFFSET $offset"
+            "${MediaStore.MediaColumns.DATE_ADDED} DESC"
         )?.use { cursor ->
             val idIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
             val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
             val mimeIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
             val durationIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DURATION)
+            var skipped = 0
             var count = 0
             while (count < limit && cursor.moveToNext()) {
+                if (skipped < offset) {
+                    skipped++
+                    continue
+                }
                 val id = cursor.getLong(idIndex)
                 val uri = ContentUris.withAppendedId(collection, id)
                 val mimeType = cursor.getString(mimeIndex) ?: "application/octet-stream"

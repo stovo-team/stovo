@@ -150,13 +150,14 @@ func (s *Store) UpdateChatPinPermission(ctx context.Context, chatID, permission,
 	return err
 }
 
-// UpdateChatMessageDelay sets message_delay_seconds and updated_at.
-func (s *Store) UpdateChatMessageDelay(ctx context.Context, chatID string, delaySeconds int, updatedAt string) error {
-	_, err := s.Client.Chat.UpdateOneID(chatID).
+// UpdateChatMessageDelay sets message_delay_seconds and returns the row that
+// was committed, so callers do not need a second read to confirm the value.
+func (s *Store) UpdateChatMessageDelay(ctx context.Context, chatID string, delaySeconds int, updatedAt string) (*ent.Chat, error) {
+	updated, err := s.Client.Chat.UpdateOneID(chatID).
 		SetMessageDelaySeconds(delaySeconds).
 		SetUpdatedAt(updatedAt).
 		Save(ctx)
-	return err
+	return updated, err
 }
 
 // UpdateChatPreferencesParams holds optional preference field updates.
