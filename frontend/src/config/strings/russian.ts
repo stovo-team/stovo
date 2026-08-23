@@ -123,7 +123,6 @@ export const strings = {
     helpHelper: "Версия и поддержка",
 
 
-    changeServerAddress: "Сменить адрес сервера",
     tapToPersonalize: "Нажмите для персонализации",
 
     openSectionAria: (section: string) => `Открыть раздел «${section}»`,
@@ -411,8 +410,8 @@ export const strings = {
       uploadPhoto: "Загрузить фото",
       changePhoto: "Изменить фото",
       remove: "Удалить",
-      familyStorage: "Семейные файлы",
-      familyStorageHelp: "Показывать медиа в общих семейных файлах",
+      familyStorage: "Сохранять медиа в общем хранилище",
+      familyStorageHelp: "Сделать медиа этого чата доступными в общем хранилище",
       comments: "Комментарии",
       commentsHelp: "Разрешить участникам комментировать публикации",
       whoCanPin: "Кто может закреплять сообщения",
@@ -518,7 +517,7 @@ export const strings = {
     favorite: "В избранное",
     removeFavorite: "Удалить из избранного",
     openInChat: "Открыть в чате",
-    familyStorage: "Семейные файлы",
+    familyStorage: "Общее хранилище",
     chatMembers: "Участники чата",
   },
 
@@ -552,6 +551,11 @@ export const strings = {
       if (mod10 === 1) return `${count} идёт`;
       return `${count} идут`;
     },
+    goingQuestion: "Идёте?",
+    yes: "Да",
+    no: "Нет",
+    createdBy: (name: string) => `Создал(а) ${name}`,
+    unknownMember: "Член семьи",
     openChat: "Открыть чат",
     close: "Закрыть",
   },
@@ -641,6 +645,24 @@ export const strings = {
     noReaders: "Пока никто не прочитал",
   },
 
+  comments: {
+    title: "Комментарии",
+    count: (count: number) => {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      if (mod100 >= 11 && mod100 <= 19) return `${count} комментариев`;
+      if (mod10 === 1) return `${count} комментарий`;
+      if (mod10 >= 2 && mod10 <= 4) return `${count} комментария`;
+      return `${count} комментариев`;
+    },
+    noComments: "Комментариев пока нет",
+    firstComment: "Оставьте первый комментарий.",
+    write: "Написать комментарий…",
+    disabled: "Комментарии отключены",
+    disabledInChannel: "Комментарии в этом канале отключены.",
+    chooseThread: "Выберите публикацию для комментария.",
+  },
+
   // ── История звонков ───────────────────────────────────────────────────
   callHistory: {
     completed: (duration: string) => `Звонок завершён · ${duration}`,
@@ -666,6 +688,22 @@ export const strings = {
     apply: "Сохранить фото профиля",
     applyGeneric: "Применить",
     dragHint: "Перетащите для перемещения · Колесико или жест для масштаба",
+  },
+  wallpaperEditor: {
+    title: "Редактирование фона чата",
+    previewHelp: "Настройте изображение перед применением к этому чату.",
+    preview: "Предпросмотр фона чата",
+    chatPreview: "Предпросмотр чата",
+    previewIncoming: "Так будет выглядеть фон.",
+    previewOutgoing: "Отлично выглядит!",
+    messagePlaceholder: "Написать сообщение",
+    brightness: "Яркость",
+    contrast: "Контраст",
+    gamma: "Гамма",
+    hue: "Оттенок",
+    saturation: "Насыщенность",
+    blur: "Размытие",
+    apply: "Применить фон",
   },
 };
 

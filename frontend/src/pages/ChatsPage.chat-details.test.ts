@@ -15,6 +15,7 @@ const chatPresentation = readFileSync(
   "utf8"
 );
 const chatOverlays = readFileSync(resolve(process.cwd(), "src/features/chats/ChatOverlays.tsx"), "utf8");
+const wallpaperEditor = readFileSync(resolve(process.cwd(), "src/components/ChatWallpaperEditorModal.tsx"), "utf8");
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 describe("chat details controls", () => {
@@ -110,6 +111,19 @@ describe("chat details controls", () => {
     expect(styles).toContain(".chat-info-permission-option input[type=\"radio\"]");
     expect(styles).toContain("border-radius: 50%;");
     expect(styles).toContain("radial-gradient(circle at center, var(--accent-primary");
+  });
+
+  it("opens a configurable preview editor before applying a chat wallpaper", () => {
+    expect(chatDetailsPanel).toContain("ChatWallpaperEditorModal");
+    expect(wallpaperEditor).toContain("wallpaper-editor-preview");
+    expect(wallpaperEditor).toContain('update("brightness", value)');
+    expect(wallpaperEditor).toContain('update("contrast", value)');
+    expect(wallpaperEditor).toContain('update("gamma", value)');
+    expect(wallpaperEditor).toContain('update("hue", value)');
+    expect(wallpaperEditor).toContain('update("saturation", value)');
+    expect(wallpaperEditor).toContain('update("blur", value)');
+    expect(wallpaperEditor).toContain("context.filter");
+    expect(styles).toContain(".wallpaper-editor-preview {");
   });
 });
 

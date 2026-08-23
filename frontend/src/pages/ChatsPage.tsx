@@ -207,6 +207,9 @@ export default function ChatsPage() {
               editingChatPhotoFile={detailsActions.editingChatPhotoFile}
               onCloseEditChatPhoto={() => detailsActions.setEditingChatPhotoFile(null)}
               onSaveCroppedChatPhoto={detailsActions.handleSaveCroppedChatPhoto}
+              editingChatWallpaperFile={detailsActions.editingChatWallpaperFile}
+              onCloseEditChatWallpaper={() => detailsActions.setEditingChatWallpaperFile(null)}
+              onSaveEditedChatWallpaper={detailsActions.handleSaveEditedChatWallpaper}
               onChatPhotoSelect={detailsActions.handleChatPhotoSelect}
               onChatWallpaperSelect={detailsActions.handleChatWallpaperSelect}
               onChatSettingsSubmit={(event) => void detailsActions.handleChatSettingsSubmit(event, chatTitleDraft)}

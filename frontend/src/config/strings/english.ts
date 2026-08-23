@@ -107,7 +107,6 @@ export const strings = {
     helpHelper: "Version and support",
 
 
-    changeServerAddress: "Change server address",
     tapToPersonalize: "Tap to personalize",
 
     openSectionAria: (section: string) => `Open ${section.toLowerCase()} settings`,
@@ -388,8 +387,8 @@ export const strings = {
       uploadPhoto: "Upload photo",
       changePhoto: "Change photo",
       remove: "Remove",
-      familyStorage: "Family storage",
-      familyStorageHelp: "Show media in shared family storage",
+      familyStorage: "Save media to shared storage",
+      familyStorageHelp: "Make this chat's media available in shared storage",
       comments: "Comments",
       commentsHelp: "Allow members to comment on posts",
       whoCanPin: "Who can pin messages",
@@ -495,7 +494,7 @@ export const strings = {
     favorite: "Favorite",
     removeFavorite: "Remove favorite",
     openInChat: "Open in chat",
-    familyStorage: "Family storage",
+    familyStorage: "Shared storage",
     chatMembers: "Chat members",
   },
 
@@ -523,6 +522,11 @@ export const strings = {
     going: "Going",
     maybe: "Maybe",
     goingCount: (count: number) => `${count} going`,
+    goingQuestion: "Going?",
+    yes: "Yes",
+    no: "No",
+    createdBy: (name: string) => `Created by ${name}`,
+    unknownMember: "Family member",
     openChat: "Open chat",
     close: "Close",
   },
@@ -612,6 +616,17 @@ export const strings = {
     noReaders: "No readers yet",
   },
 
+  comments: {
+    title: "Comments",
+    count: (count: number) => `${count} ${count === 1 ? "comment" : "comments"}`,
+    noComments: "No comments yet",
+    firstComment: "Be the first to leave a comment.",
+    write: "Write a comment…",
+    disabled: "Comments are disabled",
+    disabledInChannel: "Comments are disabled in this channel.",
+    chooseThread: "Choose a post to comment on.",
+  },
+
   // ── Call History ─────────────────────────────────────────────────────
   callHistory: {
     completed: (duration: string) => `Call completed · ${duration}`,
@@ -637,6 +652,22 @@ export const strings = {
     apply: "Set profile photo",
     applyGeneric: "Apply",
     dragHint: "Drag to reposition · Scroll or pinch to zoom",
+  },
+  wallpaperEditor: {
+    title: "Edit chat background",
+    previewHelp: "Adjust the image before applying it to this chat.",
+    preview: "Chat background preview",
+    chatPreview: "Chat preview",
+    previewIncoming: "This is how the background will look.",
+    previewOutgoing: "Looks great!",
+    messagePlaceholder: "Write a message",
+    brightness: "Brightness",
+    contrast: "Contrast",
+    gamma: "Gamma",
+    hue: "Hue",
+    saturation: "Saturation",
+    blur: "Blur",
+    apply: "Apply background",
   },
 };
 

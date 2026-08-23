@@ -55,6 +55,7 @@ function createMockMessage(overrides: Partial<Message> = {}): Message {
     replyToMessageId: null,
     threadRootMessageId: null,
     messageKind: "chat",
+    commentCount: 0,
     createdAt: "2026-08-17T10:05:00.000Z",
     updatedAt: "2026-08-17T10:05:00.000Z",
     deletedAt: null,
@@ -167,7 +168,7 @@ describe("MessageBubble receipt status", () => {
     expect(receipt).toBeNull();
   });
 
-  it("renders singular comment label when threadReplyCount is 1", () => {
+  it("renders a persistent singular comment label when threadReplyCount is 1", () => {
     const onOpenThread = vi.fn();
     const message = createMockMessage();
     const container = document.createElement("div");
@@ -263,5 +264,19 @@ describe("MessageBubble receipt status", () => {
     const threadButton = container.querySelector(".thread-open-button");
     expect(threadButton).not.toBeNull();
     expect(threadButton?.textContent?.trim()).toBe("3 comments");
+  });
+
+  it("renders a zero-comments button for a root message", () => {
+    const message = createMockMessage();
+    const container = renderBubble(message, "user-1", createMockChat({ type: "group" }));
+
+    expect(container.querySelector(".thread-open-button")?.textContent?.trim()).toBe("0 comments");
+  });
+
+  it("does not render a comments button beneath a comment", () => {
+    const message = createMockMessage({ messageKind: "thread", threadRootMessageId: "root-1" });
+    const container = renderBubble(message, "user-1", createMockChat({ type: "group" }));
+
+    expect(container.querySelector(".thread-open-button")).toBeNull();
   });
 });

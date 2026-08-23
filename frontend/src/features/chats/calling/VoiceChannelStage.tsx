@@ -26,7 +26,6 @@ import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
-import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
@@ -95,9 +94,7 @@ export function VoiceChannelStage({
 
   const {
     transcriptState,
-    transcriptData,
-    isTranscriptPanelOpen,
-    toggleTranscriptPanel,
+    transcriptError,
     startTranscription,
     stopTranscription,
   } = transcription;
@@ -200,10 +197,21 @@ export function VoiceChannelStage({
       void startTranscription();
     } else if (transcriptState === "recording") {
       void stopTranscription();
-    } else {
-      toggleTranscriptPanel();
     }
   };
+
+  const aiNotesStatus = transcriptError
+    ? `AI Notes failed: ${transcriptError}`
+    : transcriptState === "starting"
+      ? "Starting AI Notes…"
+      : transcriptState === "recording"
+        ? "AI Notes is recording. It will stop automatically when the call ends."
+        : transcriptState === "stopping" || transcriptState === "processing"
+          ? "AI Notes is processing in the background and will be posted in this chat."
+          : transcriptState === "ready"
+            ? "AI Notes is ready and will be posted in this chat with the call history."
+            : null;
+  const visibleNotice = transcriptError ? aiNotesStatus : callNotice ?? aiNotesStatus;
 
   const resolveMemberInfo = (userId: string) => {
     if (currentUser && userId === currentUser.id) {
@@ -260,9 +268,14 @@ export function VoiceChannelStage({
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
       {/* Notice Banner */}
-      {callNotice && (
-        <div className="voice-room-notice-banner" role="status" aria-live="polite">
-          <span>{callNotice}</span>
+      {visibleNotice && (
+        <div
+          className="voice-room-notice-banner"
+          role={transcriptError ? "alert" : "status"}
+          aria-live="polite"
+          data-testid="voice-ai-notes-status"
+        >
+          <span>{visibleNotice}</span>
         </div>
       )}
 
@@ -437,14 +450,6 @@ export function VoiceChannelStage({
           </button>
         )}
 
-        {/* Transcript / AI Notes Side Panel Overlay */}
-        {isTranscriptPanelOpen && (
-          <TranscriptPanel
-            data={transcriptData}
-            isLoading={transcriptState === "processing" || transcriptState === "stopping"}
-            onClose={toggleTranscriptPanel}
-          />
-        )}
       </div>
 
       {/* Bottom Floating/Docked Control Bar */}
@@ -535,6 +540,7 @@ export function VoiceChannelStage({
                     role="menuitem"
                     className={`voice-more-menu-item${transcriptState === "recording" ? " is-recording" : ""}`}
                     onClick={handleToggleAiNotes}
+                    disabled={transcriptState === "starting" || transcriptState === "stopping" || transcriptState === "processing" || transcriptState === "ready"}
                   >
                     {transcriptState === "recording" ? (
                       <Sparkles size={16} aria-hidden="true" className="voice-icon-spin" />
@@ -547,8 +553,10 @@ export function VoiceChannelStage({
                         : transcriptState === "processing" || transcriptState === "stopping"
                           ? "AI Notes (Processing…)"
                           : transcriptState === "ready"
-                            ? "View AI Notes"
-                            : "AI Notes"}
+                            ? "AI Notes (Will post in chat)"
+                            : transcriptState === "failed"
+                              ? "Retry AI Notes"
+                              : "Start AI Notes"}
                     </span>
                   </button>
                 </div>
