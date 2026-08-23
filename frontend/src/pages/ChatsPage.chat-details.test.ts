@@ -104,6 +104,7 @@ describe("chat details controls", () => {
     expect(chatDetailsPanel).toContain("onChange={handleDelayOn}");
     expect(chatDetailsPanel).not.toContain("onClick={handleDelayOff}");
     expect(chatDetailsPanel).not.toContain("onClick={handleDelayOn}");
+    expect(chatDetailsPanel).toContain("if (!event.currentTarget.checked)");
   });
 
   it("styles chat wallpaper upload button as fully rounded and radio buttons as modern", () => {

@@ -101,7 +101,7 @@ export function MessageContextMenu({
     <div
       className={`action-menu message-context-menu${reactionsExpanded ? " message-context-menu--reactions-expanded" : ""}`}
       role="menu"
-      style={{ left: menu.x, top: menu.y }}
+      style={{ left: menu.x, right: "auto", top: menu.y }}
       onMouseDown={(event) => event.stopPropagation()}
     >
       <div

@@ -8439,13 +8439,13 @@ span.message-spoiler.is-revealed {
 .wallpaper-editor-header h3, .wallpaper-editor-header p { display: none; }
 .wallpaper-editor-icon-button, .wallpaper-editor-toolbar-button { background: rgba(10, 15, 25, .72); border-radius: 999px; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); backdrop-filter: blur(8px); }
 .wallpaper-editor-icon-button:hover, .wallpaper-editor-toolbar-button:hover:not(:disabled) { background: rgba(10, 15, 25, .9); color: var(--text-primary, #fff); transform: scale(1.08); }
-.wallpaper-editor-controls { align-items: center; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 18px; justify-content: center; left: 0; padding: 0 16px; position: absolute; right: 0; z-index: 3; border: 0; }
+.wallpaper-editor-controls { align-items: center; bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px)); display: flex; gap: 10px; justify-content: center; left: 0; padding: 0 16px; position: absolute; right: 0; z-index: 3; border: 0; }
 .wallpaper-editor-toolbar, .wallpaper-editor-zoom-value, .wallpaper-editor-toolbar-divider, .wallpaper-editor-toolbar-button--label { display: none; }
 .wallpaper-editor-menu { position: relative; }
-.wallpaper-editor-menu-popover { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 50px); display: grid; gap: 12px; left: 16px; max-width: none; min-width: 0; position: fixed; right: 16px; }
-.wallpaper-editor-menu-popover[hidden] { display: none; }
-.wallpaper-editor-range { text-shadow: 0 1px 3px rgba(0, 0, 0, .8); }
-.wallpaper-editor-range input { background: transparent; }
+.wallpaper-editor-menu-popover { bottom: calc(max(40px, calc(env(safe-area-inset-bottom) + 24px)) + 46px); display: grid; gap: 7px; left: 42px; max-width: none; min-width: 0; position: fixed; right: 42px; }
+.wallpaper-editor-range { font-size: .72rem; gap: 3px; text-shadow: 0 1px 3px rgba(0, 0, 0, .8); }
+.wallpaper-editor-range input { background: transparent; height: 3px; }
+.wallpaper-editor-range input::-webkit-slider-thumb { height: 12px; width: 12px; }
 
 .attachment-card {
   align-items: center;
@@ -11770,7 +11770,7 @@ span.message-spoiler.is-revealed {
   border: 1px solid color-mix(in srgb, var(--border-default) 60%, transparent);
   border-radius: 14px;
   margin-bottom: 4px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .plans-timeline-events .plan-row:hover {
@@ -11942,7 +11942,7 @@ span.message-spoiler.is-revealed {
     padding-right: 10px;
     transform: translateY(-7px);
   }
-  .plans-timeline-events .plan-row { gap: 8px; grid-template-columns: 48px minmax(0, 1fr); padding: 8px; }
+  .plans-timeline-events .plan-row { gap: 8px; grid-template-columns: 48px minmax(0, 1fr); padding: 6px; }
   .plans-create-fab {
     bottom: var(--fab-offset-bottom);
     height: 56px;
@@ -12465,6 +12465,7 @@ span.message-spoiler.is-revealed {
       opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       visibility 0s 420ms;
+    animation: chat-detail-slide-out-to-right 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
   }
 
   .messenger-shell.chat-list-view .chat-sidebar {
@@ -12480,6 +12481,7 @@ span.message-spoiler.is-revealed {
       opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       visibility 0s 0s;
+    animation: chat-list-slide-in-from-left 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
   }
 
   .messenger-shell.chat-list-view .chat-sidebar-header {
@@ -12579,6 +12581,7 @@ span.message-spoiler.is-revealed {
       opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       visibility 0s 0s;
+    animation: chat-detail-slide-in-from-right 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
   }
 
   .messenger-shell.has-active-chat .chat-sidebar {
@@ -12590,6 +12593,27 @@ span.message-spoiler.is-revealed {
       opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       visibility 0s 420ms;
+    animation: chat-list-slide-out-to-left 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
+  }
+
+  @keyframes chat-detail-slide-in-from-right {
+    from { opacity: 0; transform: translate3d(100%, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+
+  @keyframes chat-detail-slide-out-to-right {
+    from { opacity: 1; transform: translate3d(0, 0, 0); }
+    to { opacity: 0; transform: translate3d(100%, 0, 0); }
+  }
+
+  @keyframes chat-list-slide-in-from-left {
+    from { opacity: 0.7; transform: translate3d(-20%, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+
+  @keyframes chat-list-slide-out-to-left {
+    from { opacity: 1; transform: translate3d(0, 0, 0); }
+    to { opacity: 0.7; transform: translate3d(-20%, 0, 0); }
   }
 
   .messenger-shell.has-active-chat .chat-detail-header--floating {
@@ -14164,7 +14188,7 @@ span.message-spoiler.is-revealed {
   box-sizing: border-box;
   display: block;
   gap: 0;
-  padding: 6px 12px 8px;
+  padding: 4px 0 0;
   position: relative;
   width: 100%;
   max-width: 100%;
@@ -14177,11 +14201,11 @@ span.message-spoiler.is-revealed {
   background: var(--background-secondary, rgba(255, 255, 255, 0.06));
   border-radius: 28px;
   box-sizing: border-box;
-  gap: 0 2px;
+  gap: 0;
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   min-height: 38px;
-  padding: 2px 6px;
+  padding: 2px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -14199,7 +14223,7 @@ span.message-spoiler.is-revealed {
 }
 
 .attachment-picker-message-box .message-composer-row > .emoji-picker-shell {
-  margin-right: 2px !important;
+  margin-right: 0 !important;
 }
 
 .attachment-picker-message-box .message-composer-row > .message-composer-actions {

@@ -482,16 +482,42 @@ func (s *Server) handleGetTranscriptArtifact(w http.ResponseWriter, r *http.Requ
 // ─────────────────────────────────────────────────────────────────────────────
 
 func (s *Server) dbInsertTranscriptionSession(ctx context.Context, sessionID, chatID, callID, initiatedBy string, now time.Time) error {
-	_, err := s.db.ExecContext(ctx, `
+	insert := func() error {
+		_, err := s.db.ExecContext(ctx, `
 		INSERT INTO call_transcription_sessions
 			(id, chat_id, call_id, initiated_by, status, provider, provider_model, started_at, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, 'groq', $6, $7, $7, $7)`,
-		sessionID, chatID, callID, initiatedBy,
-		string(transcription.SessionStatusRecording),
-		s.cfg.GroqSTTModel,
-		now,
-	)
-	return err
+			sessionID, chatID, callID, initiatedBy,
+			string(transcription.SessionStatusRecording),
+			s.cfg.GroqSTTModel,
+			now,
+		)
+		return err
+	}
+	if err := insert(); err == nil {
+		return nil
+	} else {
+		// A deploy, client crash, or dropped call:end can leave an active DB row
+		// behind. Only reclaim it after its recorder heartbeat has been quiet long
+		// enough that it cannot be a live browser recording.
+		result, cleanupErr := s.db.ExecContext(ctx, `
+			UPDATE call_transcription_sessions
+			SET status='failed',
+				failure_code='stale_session',
+				failure_message='AI Notes stopped because its recording session became inactive.',
+				completed_at=COALESCE(completed_at, now()),
+				updated_at=now()
+			WHERE call_id=$1
+				AND status IN ('starting', 'recording', 'stopping', 'queued', 'validating_audio', 'transcribing', 'postprocessing')
+				AND updated_at < now() - interval '45 seconds'`, callID)
+		if cleanupErr != nil {
+			return err
+		}
+		if reclaimed, rowsErr := result.RowsAffected(); rowsErr != nil || reclaimed == 0 {
+			return err
+		}
+		return insert()
+	}
 }
 
 func (s *Server) dbUpdateTranscriptionStatus(ctx context.Context, sessionID, status string, stoppedAt, completedAt *time.Time) error {
@@ -610,6 +636,9 @@ func (s *Server) dbInsertAudioChunk(ctx context.Context, chunkID, sessionID, par
 		chunkID, sessionID, participantID, sequence, objectKey, container, codec,
 		callStartMs, callEndMs, durationMs,
 	)
+	if err == nil {
+		_, _ = s.db.ExecContext(ctx, `UPDATE call_transcription_sessions SET updated_at=now() WHERE id=$1`, sessionID)
+	}
 	return err
 }
 
