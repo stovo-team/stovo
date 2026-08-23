@@ -116,8 +116,8 @@ function chatFolderLabel(file: FamilyFile) {
   return "Family workspace";
 }
 
-function accessLabel(file: FamilyFile) {
-  return file.accessScope === "family" ? "Family storage" : "Chat members";
+function accessLabel(file: FamilyFile, sharedStorageLabel: string) {
+  return file.accessScope === "family" ? sharedStorageLabel : "Chat members";
 }
 
 function chatInitials(name: string) {
@@ -376,11 +376,11 @@ export default function FilesPage() {
       if (existing) {
         existing.items.push(file);
       } else {
-        groups.push({ id, label, access: accessLabel(file), items: [file] });
+        groups.push({ id, label, access: accessLabel(file, strings.files.familyStorage), items: [file] });
       }
       return groups;
     }, []);
-  }, [filteredFiles]);
+  }, [filteredFiles, strings.files.familyStorage]);
   const selectedSource = sourceGroups.flatMap((group) => group.sources)
     .find((source) => source.chatId === sourceChatId);
 
@@ -741,7 +741,7 @@ export default function FilesPage() {
                 <div>
                   <dt>Source</dt>
                   <dd>
-                    {chatFolderLabel(selectedFile)} / {accessLabel(selectedFile)}
+                    {chatFolderLabel(selectedFile)} / {accessLabel(selectedFile, strings.files.familyStorage)}
                   </dd>
                 </div>
               </dl>

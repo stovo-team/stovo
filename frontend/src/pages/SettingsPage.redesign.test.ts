@@ -19,12 +19,9 @@ describe("SettingsPage redesign", () => {
     expect(source).toContain("tapToPersonalize");
   });
 
-  it("opens server setup before clearing the session", () => {
-    expect(source).toContain('navigate("/server-setup", { replace: true })');
-    const navigateIndex = source.indexOf('navigate("/server-setup", { replace: true })');
-    const logoutIndex = source.indexOf("void logout()");
-    expect(navigateIndex).toBeGreaterThan(-1);
-    expect(logoutIndex).toBeGreaterThan(navigateIndex);
+  it("does not offer server address changes from settings", () => {
+    expect(source).not.toContain('settings-tile--server');
+    expect(source).not.toContain('settings.changeServerAddress');
   });
 
   it("keeps appearance controls compact with working style options", () => {

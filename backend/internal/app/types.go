@@ -387,6 +387,7 @@ type messagePublic struct {
 	ReplyToMessageID    *string                 `json:"replyToMessageId"`
 	ThreadRootMessageID *string                 `json:"threadRootMessageId"`
 	MessageKind         string                  `json:"messageKind"`
+	CommentCount        int                     `json:"commentCount"`
 	CreatedAt           time.Time               `json:"createdAt"`
 	UpdatedAt           time.Time               `json:"updatedAt"`
 	DeletedAt           *time.Time              `json:"deletedAt"`

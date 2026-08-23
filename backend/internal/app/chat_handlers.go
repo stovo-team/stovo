@@ -1039,6 +1039,21 @@ func (s *Server) listMessagesPage(chatID string, user userPublic, before string,
 		}
 		messages = append(messages, message)
 	}
+	rootMessageIDs := make([]string, 0, len(messages))
+	for _, message := range messages {
+		if message.MessageKind == "chat" {
+			rootMessageIDs = append(rootMessageIDs, message.ID)
+		}
+	}
+	commentCounts, err := s.store.CountThreadMessagesByRootIDs(context.Background(), chatID, rootMessageIDs)
+	if err != nil {
+		return nil, false, err
+	}
+	for index := range messages {
+		if messages[index].MessageKind == "chat" {
+			messages[index].CommentCount = commentCounts[messages[index].ID]
+		}
+	}
 	return messages, hasMore, nil
 }
 

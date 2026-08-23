@@ -19,12 +19,11 @@ import {
   LogOut,
   Palette,
   RotateCcw,
-  Server,
   Shield,
   Users,
   X
 } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useLanguage, useStrings } from "../i18n/LanguageContext";
 import type { AppStrings, LanguageChoice } from "../config/strings";
 
@@ -47,7 +46,7 @@ import {
   WallpaperChoice,
   useAppearance
 } from "../appearance/AppearanceContext";
-import { ApiError, getApiUrl, setApiUrlOverride } from "../api/client";
+import { ApiError, getApiUrl } from "../api/client";
 import { changePassword, User } from "../api/auth";
 import { createConnectionLink } from "../connectionLink";
 import { Family, getMembers } from "../api/family";
@@ -536,7 +535,6 @@ function AppearanceEditor({
 }
 
 export default function SettingsPage() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { accessToken, authRequest, currentUser, logout, updateCurrentUser } = useAuth();
   const { appearance, resolvedThemeMode } = useAppearance();
@@ -984,23 +982,6 @@ export default function SettingsPage() {
                 </section>
               ))}
             </div>
-            <section className="settings-server-tile">
-              <button
-                type="button"
-                className="settings-row settings-tile--server"
-                onClick={() => {
-                  // Leave the auth-gated settings route before clearing the session,
-                  // otherwise RequireAuth redirects to /login.
-                  navigate("/server-setup", { replace: true });
-                  setApiUrlOverride(null);
-                  void logout();
-                }}
-              >
-                <span className="settings-row-icon"><Server aria-hidden="true" size={20} /></span>
-                <span><strong>{strings.settings.changeServerAddress}</strong><small>{currentServerUrl}</small></span>
-                <ChevronRight aria-hidden="true" size={18} />
-              </button>
-            </section>
             </div>
               </>
             )}

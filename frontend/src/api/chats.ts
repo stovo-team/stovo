@@ -95,6 +95,7 @@ export interface Message {
   replyToMessageId: string | null;
   threadRootMessageId: string | null;
   messageKind: "chat" | "thread";
+  commentCount?: number;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

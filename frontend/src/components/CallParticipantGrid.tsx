@@ -161,15 +161,18 @@ export default function CallParticipantGrid({
   remoteMedia,
   localUserLabel = "You",
   mirrorLocal = true,
-  callType,
+  callType: _callType,
   isLocalSpeaking = false,
   isPeerSpeaking = false,
   speakingUserIds = [],
 }: CallParticipantGridProps) {
   const [isPresenterPortrait, setIsPresenterPortrait] = useState(false);
-  const localHasVideo =
-    callType === "video" &&
-    Boolean(localStream?.getVideoTracks().some((t) => t.readyState !== "ended" && t.enabled));
+  // Voice channels may keep their audio call type while a local camera track
+  // is live. The presentation/PiP grid must follow the actual track, otherwise
+  // it replaces the user's camera with an avatar during a screen share.
+  const localHasVideo = Boolean(
+    localStream?.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled),
+  );
 
   const presenter =
     localScreenStream && localScreenStream.getVideoTracks().some((t) => t.readyState !== "ended")

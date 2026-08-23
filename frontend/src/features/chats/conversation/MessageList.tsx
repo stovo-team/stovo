@@ -5,6 +5,7 @@ import {
 } from "react";
 import { ChevronDown, MessageCircle } from "lucide-react";
 
+import { useStrings } from "../../../i18n/LanguageContext";
 import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
@@ -94,6 +95,47 @@ export function MessageList({
   onSaveEdit?: (message: Message, content: string) => Promise<void>;
   onCancelEdit?: () => void;
 }) {
+  const strings = useStrings();
+  const threadComments = threadRootMessageId
+    ? visibleMessages.filter((message) => message.id !== threadRootMessageId)
+    : [];
+
+  const renderMessage = (message: Message, previousMessage: Message | undefined) => (
+    <MessageBubble
+      key={message.clientMessageId || message.id}
+      message={message}
+      previousMessage={previousMessage}
+      currentUserId={currentUser?.id}
+      selectedChat={selectedChat}
+      chats={chats}
+      messages={messages}
+      memberLookup={memberLookup}
+      accessToken={accessToken}
+      videoAutoplay={videoAutoplay}
+      renderMarkdown={renderMarkdown}
+      callActive={callActive}
+      isMessageSelectionMode={isMessageSelectionMode}
+      isSelected={selectedMessageIds.includes(message.id)}
+      swipeReplyState={swipeReplyState}
+      threadReplyCount={threadReplyCounts.get(message.id) ?? 0}
+      showThreadButton={!threadRootMessageId}
+      isEditing={editTargetMessage?.id === message.id}
+      onSaveEdit={onSaveEdit}
+      onCancelEdit={onCancelEdit}
+      onBubbleClick={onBubbleClick}
+      onContextMenu={onContextMenu}
+      onSwipePointerDown={onSwipePointerDown}
+      onSwipePointerMove={onSwipePointerMove}
+      onSwipePointerUp={onSwipePointerUp}
+      onSwipePointerCancel={onSwipePointerCancel}
+      onOpenImage={onOpenImage}
+      onFocusRepliedMessage={onFocusRepliedMessage}
+      onOpenOriginChat={onOpenOriginChat}
+      onReact={onReact}
+      onOpenThread={onOpenThread}
+    />
+  );
+
   return (
     <>
       <div
@@ -135,58 +177,46 @@ export function MessageList({
             <strong>No messages yet</strong>
             <p>Send the first message to start the conversation.</p>
           </>
-        ) : visibleMessages.length === 0 ? (
+        ) : visibleMessages.length === 0 && !(threadRootMessageId && threadRootMessage) ? (
           <div className="phase-empty-state compact-empty">
             <span className="ms-icon ms-icon--20" aria-hidden={true}>
               search
             </span>
-            <strong>{threadRootMessageId ? "No comments yet" : "No matches"}</strong>
+            <strong>{threadRootMessageId ? strings.comments.noComments : "No matches"}</strong>
             <p>
               {threadRootMessageId
-                ? "Be the first to leave a comment."
+                ? strings.comments.firstComment
                 : "Try another word or close search to return to the full chat."}
             </p>
           </div>
         ) : (
           <div className="message-list">
-            <div className="date-separator">{formatDateSeparator(visibleMessages[0]?.createdAt)}</div>
-            {visibleMessages.map((message, messageIndex) => {
-              const previousMessage = messageIndex > 0 ? visibleMessages[messageIndex - 1] : undefined;
-              return (
-                <MessageBubble
-                  key={message.clientMessageId || message.id}
-                  message={message}
-                  previousMessage={previousMessage}
-                  currentUserId={currentUser?.id}
-                  selectedChat={selectedChat}
-                  chats={chats}
-                  messages={messages}
-                  memberLookup={memberLookup}
-                  accessToken={accessToken}
-                  videoAutoplay={videoAutoplay}
-                  renderMarkdown={renderMarkdown}
-                  callActive={callActive}
-                  isMessageSelectionMode={isMessageSelectionMode}
-                  isSelected={selectedMessageIds.includes(message.id)}
-                  swipeReplyState={swipeReplyState}
-                  threadReplyCount={threadReplyCounts.get(message.id) ?? 0}
-                  isEditing={editTargetMessage?.id === message.id}
-                  onSaveEdit={onSaveEdit}
-                  onCancelEdit={onCancelEdit}
-                  onBubbleClick={onBubbleClick}
-                  onContextMenu={onContextMenu}
-                  onSwipePointerDown={onSwipePointerDown}
-                  onSwipePointerMove={onSwipePointerMove}
-                  onSwipePointerUp={onSwipePointerUp}
-                  onSwipePointerCancel={onSwipePointerCancel}
-                  onOpenImage={onOpenImage}
-                  onFocusRepliedMessage={onFocusRepliedMessage}
-                  onOpenOriginChat={onOpenOriginChat}
-                  onReact={onReact}
-                  onOpenThread={onOpenThread}
-                />
-              );
-            })}
+            {threadRootMessageId && threadRootMessage ? (
+              <>
+                <div className="date-separator">{formatDateSeparator(threadRootMessage.createdAt)}</div>
+                {renderMessage(threadRootMessage, undefined)}
+                <div className="thread-comments-divider" role="separator">
+                  <span>{strings.comments.title}</span>
+                </div>
+                {threadComments.length === 0 ? (
+                  <div className="thread-comments-empty">
+                    <strong>{strings.comments.noComments}</strong>
+                    <p>{strings.comments.firstComment}</p>
+                  </div>
+                ) : (
+                  threadComments.map((message, messageIndex) =>
+                    renderMessage(message, messageIndex > 0 ? threadComments[messageIndex - 1] : undefined)
+                  )
+                )}
+              </>
+            ) : (
+              <>
+                <div className="date-separator">{formatDateSeparator(visibleMessages[0]?.createdAt)}</div>
+                {visibleMessages.map((message, messageIndex) =>
+                  renderMessage(message, messageIndex > 0 ? visibleMessages[messageIndex - 1] : undefined)
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { Dispatch, RefObject, SetStateAction, useCallback, useEffect, useRef } from "react";
+import { Dispatch, MutableRefObject, RefObject, SetStateAction, useCallback, useEffect, useRef } from "react";
 
 import type { User } from "../../../api/auth";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../../../api/chats";
@@ -14,6 +14,15 @@ import { getActiveServer, upsertServer } from "../../../api/serverRegistry";
 import { getOutboxMessagesForChat, type QueuedOutboxMessage } from "../outbox/messageOutboxStore";
 import { reconstructFileFromQueuedAttachment } from "../outbox/messageOutboxProcessor";
 import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
+
+/** A response started before a local chat mutation must not replace that mutation. */
+export function isCurrentChatMetadataRefresh(
+  chatId: string,
+  mutationVersionsAtRequest: Readonly<Record<string, number>>,
+  currentMutationVersions: Readonly<Record<string, number>>
+) {
+  return (currentMutationVersions[chatId] ?? 0) === (mutationVersionsAtRequest[chatId] ?? 0);
+}
 
 export function mergeOutboxPendingMessages(
   current: Message[],
@@ -116,6 +125,7 @@ export type UseChatDataLoaderParams = {
   setIsChatLoading: Dispatch<SetStateAction<boolean>>;
   activeChatIdRef: RefObject<string | undefined>;
   chatsRef: RefObject<Chat[]>;
+  chatMutationVersionRef: MutableRefObject<Record<string, number>>;
   messageCacheRef: RefObject<Record<string, Message[]>>;
   historyCursorRef: RefObject<Record<string, string | null>>;
   setMessages: Dispatch<SetStateAction<Message[]>>;
@@ -149,6 +159,7 @@ export function useChatDataLoader({
   setIsChatLoading,
   activeChatIdRef,
   chatsRef,
+  chatMutationVersionRef,
   messageCacheRef,
   historyCursorRef,
   setMessages,
@@ -191,6 +202,7 @@ export function useChatDataLoader({
     const requestId = loadOverviewRequestRef.current + 1;
     loadOverviewRequestRef.current = requestId;
     const isCurrentRequest = () => loadOverviewRequestRef.current === requestId;
+    const mutationVersionsAtRequest = { ...chatMutationVersionRef.current };
 
     if (!hasLoadedOverviewRef.current && chatsRef.current.length === 0) {
       setIsLoading(true);
@@ -212,7 +224,17 @@ export function useChatDataLoader({
       }
       setFamily(familyResult);
       setMembers(memberResult);
-      setChats(chatResult);
+      setChats((current) =>
+        chatResult.map((serverChat) => {
+          return isCurrentChatMetadataRefresh(
+            serverChat.id,
+            mutationVersionsAtRequest,
+            chatMutationVersionRef.current
+          )
+            ? serverChat
+            : current.find((chat) => chat.id === serverChat.id) ?? serverChat;
+        })
+      );
       hasLoadedOverviewRef.current = true;
       setHasLoadedOverview(true);
       if (currentUserIdRef.current) {
@@ -222,7 +244,10 @@ export function useChatDataLoader({
       const currentChatId = activeChatIdRef.current;
       if (currentChatId) {
         const fallbackChat = chatResult.find((chat) => chat.id === currentChatId) ?? null;
-        if (fallbackChat) {
+        if (
+          fallbackChat &&
+          isCurrentChatMetadataRefresh(fallbackChat.id, mutationVersionsAtRequest, chatMutationVersionRef.current)
+        ) {
           setSelectedChat((current) =>
             // The server copy owns member data so connector aliases added from
             // the admin page immediately become available to the mention picker.
@@ -315,6 +340,7 @@ export function useChatDataLoader({
         // conversation's first paint behind them. Pins and refreshed chat
         // metadata are enhancements; the first ten messages are the primary
         // content the user came here to read.
+        const mutationVersionAtChatRequest = chatMutationVersionRef.current[requestedChatId] ?? 0;
         const chatRequest = authRequestRef.current<Chat>(`/api/chats/${requestedChatId}`)
           .catch(() => null as Chat | null);
         const pinsRequest = authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`)
@@ -382,7 +408,14 @@ export function useChatDataLoader({
 
         void Promise.all([chatRequest, pinsRequest]).then(([chat, pinsResult]) => {
           if (!isCurrentRequest()) return;
-          if (chat) {
+          if (
+            chat &&
+            isCurrentChatMetadataRefresh(
+              requestedChatId,
+              { [requestedChatId]: mutationVersionAtChatRequest },
+              chatMutationVersionRef.current
+            )
+          ) {
             setSelectedChat((current) =>
               current?.id === requestedChatId ? { ...current, ...chat } : chat
             );
@@ -426,6 +459,7 @@ export function useChatDataLoader({
     },
     [
       accessTokenRef,
+      chatMutationVersionRef,
       chatsRef,
       historyCursorRef,
       messageCacheRef,

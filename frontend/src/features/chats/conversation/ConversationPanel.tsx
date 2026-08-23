@@ -15,6 +15,7 @@ import { MessageContextMenu } from "./MessageContextMenu";
 import { MessageDialogs } from "./MessageDialogs";
 import { MessageList } from "./MessageList";
 import { copyToClipboard } from "../../../utils/clipboard";
+import { useStrings } from "../../../i18n/LanguageContext";
 import type { ComposerController, ConversationController } from "./types";
 
 export type ConversationPanelProps = {
@@ -98,6 +99,7 @@ export function ConversationPanel({
   onOpenImage,
   onOpenNewChat
 }: ConversationPanelProps) {
+  const strings = useStrings();
   const [isVoiceTextChatOpen, setIsVoiceTextChatOpen] = useState(false);
   const isActiveVoiceChannel =
     selectedChat?.type === "voice" &&
@@ -304,8 +306,15 @@ export function ConversationPanel({
         onOpenDetails={onOpenDetails}
         onStartAudioCall={onStartAudioCall}
         onStartVideoCall={onStartVideoCall}
-        onOpenVoiceChat={() => {
-          if (isActiveVoiceChannel) {
+        isVoiceTextChatOpen={Boolean(isShowingVoiceTextChat)}
+        onToggleVoiceChat={() => {
+          if (isShowingVoiceTextChat) {
+            if (isActiveVoiceChannel) {
+              callSession?.setIsCallMinimized(false);
+            } else {
+              setIsVoiceTextChatOpen(false);
+            }
+          } else if (isActiveVoiceChannel) {
             callSession?.setIsCallMinimized(true);
           } else {
             setIsVoiceTextChatOpen(true);
@@ -534,7 +543,7 @@ export function ConversationPanel({
                       }}
                     >
                       <MessageCircle aria-hidden="true" size={22} />
-                      <span>Comment</span>
+                      <span>{strings.contextMenu.comment}</span>
                     </button>
                   )}
                   {(!selectedChat || selectedChat.type !== "channel" || canPostInSelectedChannel || threadRootMessageId) && (

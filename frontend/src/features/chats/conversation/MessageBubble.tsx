@@ -43,6 +43,7 @@ export function MessageBubble({
   isSelected,
   swipeReplyState,
   threadReplyCount,
+  showThreadButton = true,
   isEditing = false,
   onSaveEdit,
   onCancelEdit,
@@ -73,6 +74,7 @@ export function MessageBubble({
   isSelected: boolean;
   swipeReplyState: SwipeReplyState | null;
   threadReplyCount: number;
+  showThreadButton?: boolean;
   isEditing?: boolean;
   onSaveEdit?: (message: Message, newContent: string) => Promise<void>;
   onCancelEdit?: () => void;
@@ -417,7 +419,8 @@ export function MessageBubble({
           })}
         </div>
       )}
-      {threadReplyCount > 0 && (
+      {showThreadButton && message.messageKind === "chat" && message.type !== "call" && selectedChat.type !== "archive" &&
+        (selectedChat.type !== "channel" || selectedChat.commentsEnabled) && (
         <button
           type="button"
           className="thread-open-button"
@@ -425,7 +428,7 @@ export function MessageBubble({
             onOpenThread(message);
           }}
         >
-          {threadReplyCount} {threadReplyCount === 1 ? "comment" : "comments"}
+          {strings.comments.count(threadReplyCount)}
         </button>
       )}
     </article>
