@@ -1,4 +1,4 @@
-import { type ReactNode, RefObject, useMemo, useState } from "react";
+import { type ReactNode, RefObject, useEffect, useMemo, useState } from "react";
 import { Forward, MessageCircle, Reply } from "lucide-react";
 
 import type { User } from "../../../api/auth";
@@ -30,7 +30,6 @@ export type ConversationPanelProps = {
   isChatLoading: boolean;
   typingNames: string[];
   callPhase: CallPhase;
-  activeCallChatId: string | null;
   isChatMenuOpen: boolean;
   chatMenuRef: RefObject<HTMLDivElement | null>;
   onToggleChatMenu: () => void;
@@ -72,7 +71,6 @@ export function ConversationPanel({
   isChatLoading,
   typingNames,
   callPhase,
-  activeCallChatId,
   callSession,
   minimizedCallHeader,
   canAddPeople,
@@ -100,11 +98,21 @@ export function ConversationPanel({
   onOpenImage,
   onOpenNewChat
 }: ConversationPanelProps) {
+  const [isVoiceTextChatOpen, setIsVoiceTextChatOpen] = useState(false);
+  const isActiveVoiceChannel =
+    selectedChat?.type === "voice" &&
+    callSession?.activeCallChatId === selectedChat.id &&
+    callPhase !== "idle";
+
+  useEffect(() => {
+    setIsVoiceTextChatOpen(false);
+  }, [selectedChat?.id]);
+
   const isShowingVoiceTextChat =
     selectedChat?.type === "voice" &&
-    callSession?.isCallMinimized &&
-    callSession.activeCallChatId === selectedChat.id &&
-    callPhase !== "idle";
+    (isActiveVoiceChannel
+      ? Boolean(callSession?.isCallMinimized)
+      : isVoiceTextChatOpen);
 
   const {
     messages,
@@ -289,7 +297,6 @@ export function ConversationPanel({
         selectedChat={selectedChat}
         typingNames={typingNames}
         callPhase={callPhase}
-        activeCallChatId={activeCallChatId}
         isChatMenuOpen={isChatMenuOpen}
         chatMenuRef={chatMenuRef}
         onToggleChatMenu={onToggleChatMenu}
@@ -297,9 +304,12 @@ export function ConversationPanel({
         onOpenDetails={onOpenDetails}
         onStartAudioCall={onStartAudioCall}
         onStartVideoCall={onStartVideoCall}
-        isCallMinimized={callSession?.isCallMinimized ?? false}
-        onShrinkCall={() => {
-          callSession?.setIsCallMinimized(true);
+        onOpenVoiceChat={() => {
+          if (isActiveVoiceChannel) {
+            callSession?.setIsCallMinimized(true);
+          } else {
+            setIsVoiceTextChatOpen(true);
+          }
         }}
         isMessageSearchOpen={isMessageSearchOpen}
         onToggleMessageSearch={toggleMessageSearch}

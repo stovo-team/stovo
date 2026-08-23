@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  Captions,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -48,25 +49,6 @@ export interface AudioPlayerProps {
 function isFiniteTime(value: number): boolean {
   return Number.isFinite(value) && value >= 0;
 }
-
-const TranscribeAIcon = ({ size = 12 }: { size?: number }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M4 19L10.5 4.5h3L20 19" />
-    <path d="M7 14h10" />
-    <path d="M18 5h3" />
-    <path d="M17 8h4" />
-  </svg>
-);
 
 function wholeTime(value: number): number {
   return isFiniteTime(value) ? Math.floor(value) : 0;
@@ -510,10 +492,10 @@ export function AudioPlayer({
                 {isTranscribing ? (
                   <Loader2 size={11} className="audio-player-spin" aria-hidden="true" />
                 ) : (
-                  <TranscribeAIcon size={12} />
+                  <Captions size={12} aria-hidden="true" />
                 )}
                 <span className="audio-player-transcribe-label">
-                  {transcript ? (isTranscriptExpanded ? "Hide" : "Text") : "A"}
+                  {transcript ? (isTranscriptExpanded ? "Hide" : "Text") : "Text"}
                 </span>
               </button>
             )}
