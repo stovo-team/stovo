@@ -123,6 +123,7 @@ describe("MessageContextMenu commenting and replying", () => {
 
     expect(buttonTexts).toContain("Comment");
     expect(buttonTexts).toContain("Reply");
+    expect((container.querySelector("[role='menu']") as HTMLElement).style.right).toBe("auto");
 
     const commentBtn = buttons.find((b) => b.textContent?.trim() === "Comment");
     act(() => {

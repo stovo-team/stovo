@@ -1,5 +1,5 @@
-import { ArrowLeft, Check, Droplet, Focus, RotateCcw, SunMedium } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { ArrowLeft, Check, Droplet, Focus, RotateCcw, SunMedium, ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useStrings } from "../i18n/LanguageContext";
@@ -42,6 +42,8 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
   const [adjustments, setAdjustments] = useState<WallpaperAdjustments>(DEFAULT_ADJUSTMENTS);
   const [activeMenu, setActiveMenu] = useState<"light" | "color" | "blur" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const pinchStartRef = useRef<{ distance: number; zoom: number } | null>(null);
+  const activePointersRef = useRef(new Map<number, { x: number; y: number }>());
   const gammaFilterId = `chat-wallpaper-gamma-${useId().replace(/:/g, "")}`;
 
   useEffect(() => {
@@ -58,6 +60,36 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
   };
 
   const visualFilter = `${buildPhotoFilter(adjustments)} url(#${gammaFilterId})`;
+
+  function updateZoom(nextZoom: number) {
+    update("zoom", Math.min(2.5, Math.max(0.5, nextZoom)));
+  }
+
+  function handlePreviewWheel(event: React.WheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+    updateZoom(adjustments.zoom * (1 - event.deltaY * 0.0015));
+  }
+
+  function handlePreviewPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointersRef.current.size === 2) {
+      const [first, second] = Array.from(activePointersRef.current.values());
+      pinchStartRef.current = { distance: Math.hypot(first.x - second.x, first.y - second.y), zoom: adjustments.zoom };
+    }
+  }
+
+  function handlePreviewPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!activePointersRef.current.has(event.pointerId)) return;
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointersRef.current.size !== 2 || !pinchStartRef.current) return;
+    const [first, second] = Array.from(activePointersRef.current.values());
+    updateZoom(pinchStartRef.current.zoom * Math.hypot(first.x - second.x, first.y - second.y) / pinchStartRef.current.distance);
+  }
+
+  function handlePreviewPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    activePointersRef.current.delete(event.pointerId);
+    if (activePointersRef.current.size < 2) pinchStartRef.current = null;
+  }
 
   async function handleApply() {
     if (!image) return;
@@ -95,7 +127,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
   return createPortal(
     <div className="wallpaper-editor-backdrop" role="dialog" aria-modal="true" aria-label={strings.wallpaperEditor.title}>
       <div className="wallpaper-editor-modal">
-        <div className="wallpaper-editor-preview" aria-label={strings.wallpaperEditor.preview} data-drawing-enabled={WALLPAPER_EDITOR_FEATURES.drawing}>
+        <div className="wallpaper-editor-preview" aria-label={strings.wallpaperEditor.preview} data-drawing-enabled={WALLPAPER_EDITOR_FEATURES.drawing} onWheel={handlePreviewWheel} onPointerDown={handlePreviewPointerDown} onPointerMove={handlePreviewPointerMove} onPointerUp={handlePreviewPointerUp} onPointerCancel={handlePreviewPointerUp}>
           <svg className="wallpaper-editor-svg-filter" aria-hidden="true"><defs><filter id={gammaFilterId}><feComponentTransfer><feFuncR type="gamma" amplitude="1" exponent={adjustments.gamma} offset="0" /><feFuncG type="gamma" amplitude="1" exponent={adjustments.gamma} offset="0" /><feFuncB type="gamma" amplitude="1" exponent={adjustments.gamma} offset="0" /></feComponentTransfer></filter></defs></svg>
           {previewUrl && <img src={previewUrl} alt="" className="wallpaper-editor-preview-image" style={{ filter: visualFilter, transform: `scale(${adjustments.zoom})` }} />}
           <div className="wallpaper-editor-preview-shade" />
@@ -110,6 +142,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
             </div>
           </header>
           <div className="wallpaper-editor-controls" aria-label={strings.wallpaperEditor.title}>
+            <button type="button" className="wallpaper-editor-toolbar-button" onClick={() => updateZoom(adjustments.zoom - .1)} aria-label={strings.avatarEditor.zoomOut}><ZoomOut /></button>
             <EditorMenuButton icon={<SunMedium />} label={strings.wallpaperEditor.brightness} isOpen={activeMenu === "light"} onClick={() => setActiveMenu((menu) => menu === "light" ? null : "light")}>
               <Adjustment label={strings.wallpaperEditor.brightness} min={0} max={200} value={adjustments.brightness} unit="%" onChange={(value) => update("brightness", value)} />
               <Adjustment label={strings.wallpaperEditor.contrast} min={0} max={200} value={adjustments.contrast} unit="%" onChange={(value) => update("contrast", value)} />
@@ -122,6 +155,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
             <EditorMenuButton icon={<Focus />} label={strings.wallpaperEditor.blur} isOpen={activeMenu === "blur"} onClick={() => setActiveMenu((menu) => menu === "blur" ? null : "blur")}>
               <Adjustment label={strings.wallpaperEditor.blur} min={0} max={30} value={adjustments.blur} unit="px" onChange={(value) => update("blur", value)} />
             </EditorMenuButton>
+            <button type="button" className="wallpaper-editor-toolbar-button" onClick={() => updateZoom(adjustments.zoom + .1)} aria-label={strings.avatarEditor.zoomIn}><ZoomIn /></button>
           </div>
         </div>
       </div>
@@ -136,7 +170,7 @@ function Adjustment({ label, min, max, step = 1, value, unit = "", onChange }: {
 
 function EditorMenuButton({ icon, label, isOpen, onClick, children }: { icon: React.ReactNode; label: string; isOpen: boolean; onClick: () => void; children: React.ReactNode }) {
   return <div className="wallpaper-editor-menu">
-    <div className="wallpaper-editor-menu-popover" hidden={!isOpen}>{children}</div>
+    {isOpen && <div className="wallpaper-editor-menu-popover">{children}</div>}
     <button type="button" className="wallpaper-editor-toolbar-button" onClick={onClick} aria-label={label} aria-expanded={isOpen}>{icon}</button>
   </div>;
 }
