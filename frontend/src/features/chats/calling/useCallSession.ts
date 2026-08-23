@@ -918,6 +918,10 @@ export function useCallSession({
     setCallTopology("sfu");
     setCallType("audio");
     callTypeRef.current = "audio";
+    // PiP eligibility is keyed by a live session. Voice channels receive the
+    // server session timestamp asynchronously, so arm the native call surface
+    // immediately and replace this marker when `call:accepted` arrives.
+    activeCallSessionIdRef.current = "pending";
 
     setCallPhase("connecting");
     callPhaseRef.current = "connecting";
@@ -1044,6 +1048,7 @@ export function useCallSession({
       audioController.onConnectionEstablished = () => {
         console.log("[CALL] onConnectionEstablished fired callPhase=", callPhaseRef.current);
         setCallPhase("in-call");
+        callPhaseRef.current = "in-call";
         setCallNotice(null);
         if (callTypeRef.current === "video") {
           void applyCallAudioPatch({ speakerMode: "large" });

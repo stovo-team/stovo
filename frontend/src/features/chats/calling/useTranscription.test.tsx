@@ -4,6 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { useTranscription } from "./useTranscription";
 
+vi.mock("../../../api/client", () => ({
+  getApiUrl: () => "https://api.example.test",
+}));
+
 const mountedRoots: Root[] = [];
 
 class FakeMediaStream {
@@ -69,10 +73,11 @@ describe("useTranscription", () => {
 
     vi.stubGlobal("MediaStream", FakeMediaStream);
     vi.stubGlobal("MediaRecorder", recorderConstructor);
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ id: "transcript-1", status: "recording" }),
       { status: 201, headers: { "Content-Type": "application/json" } },
-    )));
+    ));
+    vi.stubGlobal("fetch", fetchMock);
 
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -86,5 +91,9 @@ describe("useTranscription", () => {
     });
 
     expect(recorderConstructor).toHaveBeenCalledWith(expect.objectContaining({ getAudioTracks: expect.any(Function) }), expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.example.test/api/calls/voice-room-1/transcription/start",
+      expect.any(Object),
+    );
   });
 });

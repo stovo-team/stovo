@@ -55,6 +55,23 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(mediaPickerSource).toContain("getCachedNativeMedia");
     expect(mediaPickerSource).toContain("const cached = getCachedNativeMedia");
     expect(mediaPickerSource).toContain("listNativeMedia(categoryFor(tab))");
+    expect(mediaPickerSource).toContain("addNativeMediaLibraryListener");
+    expect(mediaPickerSource).toContain('App.addListener("appStateChange"');
+    expect(mediaPickerSource).toContain("category === categoryFor(activeTab)");
+  });
+
+  it("observes MediaStore changes so a new photo is loaded while the gallery stays open", () => {
+    const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
+    expect(nativePluginSource).toContain("ContentObserver");
+    expect(nativePluginSource).toContain("registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI");
+    expect(nativePluginSource).toContain('notifyListeners("mediaLibraryChanged"');
+  });
+
+  it("uses the Android audio permission for recent audio and limits recent files to documents", () => {
+    const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
+    expect(nativePluginSource).toContain('hasMediaAccess(category)');
+    expect(nativePluginSource).toContain("Manifest.permission.READ_MEDIA_AUDIO");
+    expect(nativePluginSource).toContain("MediaStore.Files.FileColumns.MEDIA_TYPE_NONE");
   });
 
   it("allows selecting multiple recent audio and document items", () => {

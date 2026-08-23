@@ -240,6 +240,7 @@ export function ChatDetailsPanel({
 
   if (settings) {
     return (
+      <>
       <aside
         className="chat-details-panel chat-info-screen chat-info-screen--settings"
         role="dialog"
@@ -464,6 +465,14 @@ export function ChatDetailsPanel({
           )}
         </div>
       </aside>
+      {editingChatWallpaperFile && onCloseEditChatWallpaper && onSaveEditedChatWallpaper && (
+        <ChatWallpaperEditorModal
+          file={editingChatWallpaperFile}
+          onClose={onCloseEditChatWallpaper}
+          onSave={onSaveEditedChatWallpaper}
+        />
+      )}
+      </>
     );
   }
 
