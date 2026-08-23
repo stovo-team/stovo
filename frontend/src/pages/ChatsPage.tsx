@@ -143,7 +143,6 @@ export default function ChatsPage() {
               isChatLoading={isChatLoading}
               typingNames={typingNames}
               callPhase={callPhase}
-              activeCallChatId={activeCallChatId}
               isChatMenuOpen={isChatMenuOpen}
               chatMenuRef={chatMenuRef}
               onToggleChatMenu={() => setIsChatMenuOpen((value) => !value)}

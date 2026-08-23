@@ -603,9 +603,9 @@
 }
 
 .call-ctrl-btn.is-active {
-  background: var(--accent-soft);
-  border-color: var(--accent-border-soft);
-  color: var(--accent-primary);
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
 }
 
 .call-ctrl-btn--invite {
@@ -13208,8 +13208,9 @@ span.message-spoiler.is-revealed {
 }
 
 .mobile-active-ctrl-btn.active {
-  background: rgba(80, 160, 255, 0.25);
-  color: #5ab0ff;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
 }
 
 .mobile-active-ctrl-btn.end {
@@ -21218,7 +21219,7 @@ span.message-spoiler.is-revealed {
   align-items: center;
   background: color-mix(in oklab, var(--accent-primary) 16%, #161616);
   border: 1px solid color-mix(in oklab, var(--accent-primary) 58%, transparent);
-  border-radius: 999px;
+  border-radius: 6px;
   color: #ffffff;
   cursor: pointer;
   display: inline-flex;
@@ -21318,9 +21319,9 @@ span.message-spoiler.is-revealed {
 }
 
 .voice-dock-btn.is-active {
-  background: rgba(99, 102, 241, 0.22);
-  border-color: rgba(99, 102, 241, 0.4);
-  color: #818cf8;
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
 }
 
 .voice-dock-btn--disconnect {

@@ -113,6 +113,31 @@ describe("MobileActiveScreen", () => {
     expect(container.querySelector(".mobile-active-screenshare-bar")).not.toBeNull();
   });
 
+  it("uses a vertical presentation tile for a portrait screen share", () => {
+    const mockTrack = {
+      readyState: "live",
+      kind: "video",
+      getSettings: () => ({ width: 1080, height: 1920 }),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    const mockScreenStream = {
+      getVideoTracks: () => [mockTrack],
+      getTracks: () => [mockTrack],
+    } as unknown as MediaStream;
+
+    const container = renderComponent(
+      <MobileActiveScreen
+        {...defaultProps}
+        isScreenSharing
+        localScreenStream={mockScreenStream}
+      />
+    );
+
+    const presentationTile = container.querySelector(".call-grid__tile--screen") as HTMLDivElement;
+    expect(presentationTile.style.aspectRatio).toBe("9 / 16");
+  });
+
   it("keeps every camera tile below an active remote screen share", () => {
     const mockTrack = {
       readyState: "live",

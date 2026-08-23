@@ -145,7 +145,8 @@ export type UseTranscriptionParams = {
   roomId: string | null;
   currentUserId: string | null;
   socketRef?: React.RefObject<Socket | null>;
-  localVideoStream?: MediaStream | null;
+  /** The existing local call stream, including for audio-only calls. */
+  localAudioStream?: MediaStream | null;
   /** Whether AI transcription is available at all (config flag from the server). */
   enabled?: boolean;
 };
@@ -168,7 +169,7 @@ export function useTranscription({
   roomId,
   currentUserId,
   socketRef,
-  localVideoStream,
+  localAudioStream,
   enabled = true,
 }: UseTranscriptionParams): UseTranscriptionReturn {
   const [transcriptState, setTranscriptState] = useState<TranscriptState>("idle");
@@ -199,8 +200,8 @@ export function useTranscription({
     const startRecording = async () => {
       try {
         let stream: MediaStream;
-        if (localVideoStream && localVideoStream.getAudioTracks().length > 0) {
-          stream = new MediaStream(localVideoStream.getAudioTracks());
+        if (localAudioStream && localAudioStream.getAudioTracks().length > 0) {
+          stream = new MediaStream(localAudioStream.getAudioTracks());
         } else {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           stopStreamOnCleanup = true;
@@ -260,7 +261,7 @@ export function useTranscription({
         activeStream.getTracks().forEach((t) => t.stop());
       }
     };
-  }, [transcriptState, accessToken, roomId, currentUserId, transcriptSessionId, localVideoStream]);
+  }, [transcriptState, accessToken, roomId, currentUserId, transcriptSessionId, localAudioStream]);
 
   // ── Socket event listeners ──────────────────────────────────────────────
   useEffect(() => {

@@ -753,6 +753,14 @@ export default class CallSessionController {
     return this.screenStream;
   }
 
+  /**
+   * Returns the active call media stream so features such as AI notes can
+   * record the microphone already acquired for an audio-only call.
+   */
+  getLocalStream(): MediaStream | null {
+    return this.localStream;
+  }
+
   private markMediaConnected() {
     if (this.mediaConnected) return;
     this.mediaConnected = true;

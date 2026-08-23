@@ -62,7 +62,6 @@ describe("ChatHeader", () => {
         selectedChat={mockDirectChat}
         typingNames={[]}
         callPhase="idle"
-        activeCallChatId={null}
         isChatMenuOpen={false}
         chatMenuRef={createRef()}
         onToggleChatMenu={vi.fn()}
@@ -86,8 +85,8 @@ describe("ChatHeader", () => {
     expect(audioBtn).not.toBeNull();
   });
 
-  it("replaces search button with shrink button for active voice channel", () => {
-    const onShrinkCall = vi.fn();
+  it("shows a chat button for voice channels before and during a call", () => {
+    const onOpenVoiceChat = vi.fn();
     const onBack = vi.fn();
     const container = renderComponent(
       <ChatHeader
@@ -96,7 +95,6 @@ describe("ChatHeader", () => {
         selectedChat={mockVoiceChat}
         typingNames={[]}
         callPhase="in-call"
-        activeCallChatId="voice-1"
         isChatMenuOpen={false}
         chatMenuRef={createRef()}
         onToggleChatMenu={vi.fn()}
@@ -104,7 +102,7 @@ describe("ChatHeader", () => {
         onOpenDetails={vi.fn()}
         onStartAudioCall={vi.fn()}
         onStartVideoCall={vi.fn()}
-        onShrinkCall={onShrinkCall}
+        onOpenVoiceChat={onOpenVoiceChat}
         isMessageSearchOpen={false}
         onToggleMessageSearch={vi.fn()}
         onOpenMessageSearch={vi.fn()}
@@ -116,20 +114,55 @@ describe("ChatHeader", () => {
     );
 
     expect(container.querySelector(".chat-header-search-button")).toBeNull();
-    const shrinkButton = container.querySelector(".chat-header-shrink-button") as HTMLButtonElement;
-    expect(shrinkButton).not.toBeNull();
+    const chatButton = container.querySelector(".chat-header-voice-chat-button") as HTMLButtonElement;
+    expect(chatButton).not.toBeNull();
+    expect(chatButton.getAttribute("aria-label")).toBe("Open chat");
 
     act(() => {
-      shrinkButton.click();
+      chatButton.click();
     });
-    expect(onShrinkCall).toHaveBeenCalledTimes(1);
+    expect(onOpenVoiceChat).toHaveBeenCalledTimes(1);
 
     const backButton = container.querySelector(".mobile-back-button") as HTMLButtonElement;
     act(() => {
       backButton.click();
     });
-    expect(onShrinkCall).toHaveBeenCalledTimes(1);
+    expect(onOpenVoiceChat).toHaveBeenCalledTimes(1);
     expect(onBack).toHaveBeenCalledTimes(1);
+  });
 
+  it("shows the chat button before joining a voice channel", () => {
+    const onOpenVoiceChat = vi.fn();
+    const container = renderComponent(
+      <ChatHeader
+        accessToken="test-token"
+        currentUser={mockUser}
+        selectedChat={mockVoiceChat}
+        typingNames={[]}
+        callPhase="idle"
+        isChatMenuOpen={false}
+        chatMenuRef={createRef()}
+        onToggleChatMenu={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDetails={vi.fn()}
+        onStartAudioCall={vi.fn()}
+        onStartVideoCall={vi.fn()}
+        onOpenVoiceChat={onOpenVoiceChat}
+        isMessageSearchOpen={false}
+        onToggleMessageSearch={vi.fn()}
+        onOpenMessageSearch={vi.fn()}
+        onMarkRead={vi.fn()}
+        onTogglePinned={vi.fn()}
+        onToggleMuted={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />
+    );
+
+    const chatButton = container.querySelector(".chat-header-voice-chat-button") as HTMLButtonElement;
+    expect(chatButton).not.toBeNull();
+    act(() => {
+      chatButton.click();
+    });
+    expect(onOpenVoiceChat).toHaveBeenCalledTimes(1);
   });
 });

@@ -80,13 +80,18 @@ class CallPlugin : Plugin() {
 
     @PluginMethod
     fun setActiveCallState(call: PluginCall) {
-        pictureInPictureCoordinator.updateCallState(
-            active = call.getBoolean("active", false) ?: false,
-            video = call.getBoolean("video", false) ?: false,
-            chatId = call.getString("chatId"),
-            sessionId = call.getString("sessionId")
-        )
-        call.resolve(buildPictureInPictureState("call-state"))
+        val update = {
+            pictureInPictureCoordinator.updateCallState(
+                active = call.getBoolean("active", false) ?: false,
+                video = call.getBoolean("video", false) ?: false,
+                chatId = call.getString("chatId"),
+                sessionId = call.getString("sessionId")
+            )
+            updateAutomaticPictureInPicture()
+            call.resolve(buildPictureInPictureState("call-state"))
+        }
+        val currentActivity = activity ?: bridge?.activity
+        if (currentActivity == null) update() else currentActivity.runOnUiThread(update)
     }
 
     @PluginMethod
@@ -344,6 +349,34 @@ class CallPlugin : Plugin() {
             // OEMs may reject parameter changes during a lifecycle transition.
         } catch (_: SecurityException) {
             // PiP denial is a typed fallback, never a playback teardown.
+        }
+    }
+
+    private fun updateAutomaticPictureInPicture() {
+        val currentActivity = activity ?: bridge?.activity ?: return
+        if (
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            currentActivity.isInPictureInPictureModeCompat() ||
+            currentActivity.isFinishing ||
+            currentActivity.isDestroyed
+        ) {
+            return
+        }
+
+        val snapshot = pictureInPictureCoordinator.snapshot()
+        try {
+            val params = PictureInPictureParams.Builder().apply {
+                setAutoEnterEnabled(snapshot.eligible)
+                pictureInPictureAspectRatio(snapshot.requestedOwner, snapshot.videoState)
+                    ?.let { ratio -> setAspectRatio(Rational(ratio.width, ratio.height)) }
+            }.build()
+            currentActivity.setPictureInPictureParams(params)
+        } catch (_: IllegalArgumentException) {
+            // Some OEMs reject PiP parameter changes during lifecycle transitions.
+        } catch (_: IllegalStateException) {
+            // The next explicit app-state transition still attempts PiP entry.
+        } catch (_: SecurityException) {
+            // PiP support is optional and must never affect the live call.
         }
     }
 
