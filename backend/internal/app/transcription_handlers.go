@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"family-messenger/backend/internal/config"
 	"family-messenger/backend/internal/transcription"
@@ -200,7 +202,16 @@ func (s *Server) handleStartTranscription(w http.ResponseWriter, r *http.Request
 	ctx := r.Context()
 	if err := s.dbInsertTranscriptionSession(ctx, sessionID, session.ChatID, session.ID, user.ID, now); err != nil {
 		s.logger.Warnf("transcription", "insert session failed session_id=%s call_id=%s error=%v", sessionID, roomID, err)
-		s.detail(w, http.StatusConflict, "A transcription session may already be active for this call")
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			s.detail(w, http.StatusConflict, "A transcription session is already active for this call")
+			return
+		}
+		if errors.As(err, &pgErr) && (pgErr.Code == "42P01" || pgErr.Code == "42703") {
+			s.detail(w, http.StatusServiceUnavailable, "AI Notes database migration is missing. Apply the latest backend migrations.")
+			return
+		}
+		s.detail(w, http.StatusInternalServerError, "Could not create the AI Notes session. Check the server logs.")
 		return
 	}
 

@@ -711,6 +711,22 @@ func (s *Server) initSchema() error {
 	for _, stmt := range schemaRepairStatements {
 		_, _ = s.db.Exec(stmt)
 	}
+	// Tenant servers are provisioned independently. Keep the AI Notes columns
+	// available even when an older tenant database missed the Atlas migration.
+	if _, err := s.db.Exec(`
+		ALTER TABLE call_transcription_sessions
+			ADD COLUMN IF NOT EXISTS chat_id text,
+			ADD COLUMN IF NOT EXISTS call_history_message_id text,
+			ADD COLUMN IF NOT EXISTS notes_message_id text,
+			ADD COLUMN IF NOT EXISTS notes_publishing boolean NOT NULL DEFAULT false`); err != nil {
+		return fmt.Errorf("repair AI Notes transcription schema: %w", err)
+	}
+	if _, err := s.db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_call_transcription_sessions_notes_message_id
+			ON call_transcription_sessions (notes_message_id)
+			WHERE notes_message_id IS NOT NULL`); err != nil {
+		return fmt.Errorf("repair AI Notes notes-message index: %w", err)
+	}
 	_, _ = s.db.Exec(`ALTER TABLE chats ADD COLUMN IF NOT EXISTS message_delay_seconds INTEGER NOT NULL DEFAULT 0;`)
 	_, _ = s.db.Exec(`ALTER TABLE chats ADD COLUMN message_delay_seconds INTEGER NOT NULL DEFAULT 0;`)
 	return nil
