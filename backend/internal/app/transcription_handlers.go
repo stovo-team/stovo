@@ -504,6 +504,32 @@ func (s *Server) dbUpdateTranscriptionStatus(ctx context.Context, sessionID, sta
 	return err
 }
 
+// recoverInterruptedTranscriptionSessions releases recordings that belonged to
+// the previous server process. Browser recorders and background processing do
+// not survive a deploy, so retaining these rows would both misrepresent their
+// state and violate the one-active-session-per-call constraint on the next
+// voice-channel join.
+func (s *Server) recoverInterruptedTranscriptionSessions(ctx context.Context) {
+	if s.db == nil {
+		return
+	}
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE call_transcription_sessions
+		SET status='failed',
+			failure_code='server_restarted',
+			failure_message='AI Notes was interrupted because the server restarted.',
+			completed_at=COALESCE(completed_at, now()),
+			updated_at=now()
+		WHERE status IN ('starting', 'recording', 'stopping', 'queued', 'validating_audio', 'transcribing', 'postprocessing')`)
+	if err != nil {
+		s.logger.Warnf("transcription", "recover interrupted sessions failed error=%v", err)
+		return
+	}
+	if count, err := result.RowsAffected(); err == nil && count > 0 {
+		s.logger.Infof("transcription", "marked interrupted sessions as failed count=%d", count)
+	}
+}
+
 // stopTranscriptionSession is the single stop path for both the control in the
 // call UI and terminal call lifecycle events. The update is conditional so a
 // manual stop and a simultaneous call end schedule processing only once.

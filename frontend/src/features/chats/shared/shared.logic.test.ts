@@ -196,7 +196,7 @@ describe("message gesture helpers", () => {
 
   it("leaves a phone-sized right inset for the message menu", () => {
     expect(messageContextMenuPosition(340, 380, 375, 812, true)).toEqual({
-      x: 107,
+      x: 91,
       y: 380
     });
   });

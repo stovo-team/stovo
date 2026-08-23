@@ -95,6 +95,8 @@ describe("PlansPage week range logic", () => {
     expect(source).toContain("formatDateRange(threeDayRange[0], threeDayRange[2])");
     expect(source).toContain("formatDateRange(weekDays[0], weekDays[6])");
     expect(source).toContain("getCalendarEventStyle(plan)");
+    expect(source).toContain("CALENDAR_TIME_MARKERS = TODAY_TIME_SLOTS");
+    expect(source).toContain('className="plan-rsvp-response"');
     expect(source).toContain('className="plans-calendar-event"');
     expect(source).toContain("strings.plans.goingQuestion");
     expect(source).toContain("strings.plans.createdBy");
@@ -103,6 +105,7 @@ describe("PlansPage week range logic", () => {
     expect(source).toContain("<RealAvatar");
     expect(styles).toContain(".plans-calendar-day-track");
     expect(styles).toContain(".plan-attendee-list");
+    expect(styles).toContain(".plan-rsvp-response");
     expect(styles).toContain(".plan-status--happening");
   });
 

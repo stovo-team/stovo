@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { App } from "@capacitor/app";
 
 import {
@@ -14,6 +14,9 @@ import type { AttachmentPickerTab } from "../AttachmentPickerSheet";
 export type MediaPickerState = "loading" | "ready" | "empty" | "error";
 
 const categoryFor = (tab: AttachmentPickerTab) => (tab === "file" ? "documents" : tab);
+const INITIAL_BATCH_SIZE = 12;
+const BACKGROUND_BATCH_SIZE = 24;
+const MAX_MEDIA_ITEMS = 120;
 
 /** Loads device media and owns the selection state used by the attachment sheet. */
 export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, previewItem: NativeMediaItem | null) {
@@ -21,8 +24,10 @@ export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, pr
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [state, setState] = useState<MediaPickerState>("loading");
   const [fullPreviewUrl, setFullPreviewUrl] = useState<string | null>(null);
+  const loadGenerationRef = useRef(0);
 
   const loadRecentItems = useCallback(async (tab: AttachmentPickerTab) => {
+    const generation = ++loadGenerationRef.current;
     if (!isNativeMediaLibraryAvailable()) {
       setMedia([]);
       setState("empty");
@@ -36,10 +41,27 @@ export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, pr
       setState("loading");
     }
     try {
-      const items = await listNativeMedia(categoryFor(tab));
+      const category = categoryFor(tab);
+      const items = await listNativeMedia(category, { limit: INITIAL_BATCH_SIZE });
+      if (generation !== loadGenerationRef.current) return;
       setMedia(items);
       setState(items.length ? "ready" : "empty");
+      if (!items.length) return;
+
+      // Preview generation is expensive on Android. Render a usable first page,
+      // then append the rest without blocking the picker animation or interaction.
+      let offset = INITIAL_BATCH_SIZE;
+      let allItems = items;
+      while (offset < MAX_MEDIA_ITEMS) {
+        const nextBatch = await listNativeMedia(category, { limit: BACKGROUND_BATCH_SIZE, offset });
+        if (generation !== loadGenerationRef.current || !nextBatch.length) return;
+        allItems = [...allItems, ...nextBatch];
+        setMedia(allItems);
+        if (nextBatch.length < BACKGROUND_BATCH_SIZE) return;
+        offset += BACKGROUND_BATCH_SIZE;
+      }
     } catch {
+      if (generation !== loadGenerationRef.current) return;
       setMedia([]);
       setState("error");
     }
@@ -53,6 +75,7 @@ export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, pr
 
   useEffect(() => {
     if (open) void loadRecentItems(activeTab);
+    else loadGenerationRef.current += 1;
   }, [activeTab, loadRecentItems, open]);
 
   useEffect(() => {

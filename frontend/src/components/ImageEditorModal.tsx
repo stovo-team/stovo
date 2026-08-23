@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, Crop as CropIcon, Pencil, RotateCcw, Sliders, Undo2, X } from "lucide-react";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
+import { buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
 
 interface Stroke {
   color: string;
@@ -34,6 +35,7 @@ const COLOR_PRESETS = [
 ];
 
 export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalProps) {
+  const editorFeatures = PHOTO_EDITOR_FEATURES.media;
   const [activeTab, setActiveTab] = useState<"adjust" | "crop" | "draw">("adjust");
 
   // Adjustments
@@ -194,7 +196,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
       }
 
       // Step 1: Draw base image (cropped area) with Brightness and Contrast
-      ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+      ctx.filter = buildPhotoFilter({ brightness, contrast, gamma });
       ctx.drawImage(imgElement, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
       ctx.filter = "none";
 
@@ -299,7 +301,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
                 alt="Preview"
                 className="image-editor-base-img"
                 style={{
-                  filter: `brightness(${brightness}%) contrast(${contrast}%)`,
+                  filter: buildPhotoFilter({ brightness, contrast, gamma }),
                   clipPath: `inset(${crop.y}% ${100 - (crop.x + crop.width)}% ${100 - (crop.y + crop.height)}% ${crop.x}%)`
                 }}
               />
@@ -358,14 +360,14 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
             <CropIcon size={18} />
             <span>Crop</span>
           </button>
-          <button
+          {editorFeatures.drawing && <button
             type="button"
             className={`image-editor-tab${activeTab === "draw" ? " is-active" : ""}`}
             onClick={() => setActiveTab("draw")}
           >
             <Pencil size={18} />
             <span>Draw</span>
-          </button>
+          </button>}
         </nav>
 
         {/* Tab Controls Panel */}
@@ -493,7 +495,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
             </div>
           )}
 
-          {activeTab === "draw" && (
+          {editorFeatures.drawing && activeTab === "draw" && (
             <div className="image-editor-draw-controls">
               <div className="draw-colors">
                 <span className="control-section-label">Color:</span>
