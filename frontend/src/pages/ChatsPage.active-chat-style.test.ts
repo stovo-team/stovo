@@ -45,6 +45,10 @@ describe("active chat list item styling", () => {
     expect(styles).toMatch(
       /\.messenger-shell\.has-active-chat \.chat-detail \{[\s\S]*?transform:\s*translate3d\(0, 0, 0\);[\s\S]*?420ms/
     );
+    expect(styles).toContain("animation: chat-detail-slide-in-from-right 420ms");
+    expect(styles).toContain("animation: chat-detail-slide-out-to-right 420ms");
+    expect(styles).toContain("animation: chat-list-slide-in-from-left 420ms");
+    expect(styles).toContain("@keyframes chat-detail-slide-in-from-right");
   });
 
   it("keeps chat-list-topline flex layout with non-wrapping time and distinct preview styling", () => {

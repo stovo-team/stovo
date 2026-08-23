@@ -198,11 +198,20 @@ export function ChatDetailsPanel({
     }
   }, [currentMessageDelay]);
 
-  function handleDelayOff() {
+  function handleDelayOff(event: ChangeEvent<HTMLInputElement>) {
+    // Some mobile WebViews report a change for the radio that has just been
+    // unchecked as well as the newly checked one. Only the selected control
+    // is allowed to persist a delay value.
+    if (!event.currentTarget.checked) {
+      return;
+    }
     void onMessageDelayChange(0);
   }
 
-  function handleDelayOn() {
+  function handleDelayOn(event: ChangeEvent<HTMLInputElement>) {
+    if (!event.currentTarget.checked) {
+      return;
+    }
     if (selectedDelayMode === "custom") {
       const parsed = parseInt(customDelayDraft, 10);
       void onMessageDelayChange(parsed > 0 ? parsed : 10);
