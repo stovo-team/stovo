@@ -73,8 +73,11 @@ export default class CallSessionController {
   private wasLocalSpeaking = false;
   private localSpeakingAnalyser: AnalyserNode | null = null;
   private remoteAnalysers = new Map<string, AnalyserNode>();
-  // Ignore low-level room and microphone noise before marking a participant as speaking.
-  private readonly SPEAKING_THRESHOLD = 0.04;
+  private localSpeakingSince: number | null = null;
+  private remoteSpeakingSince = new Map<string, number>();
+  // Ignore ambient noise and require a sustained voice-level signal before marking a participant as speaking.
+  private readonly SPEAKING_THRESHOLD = 0.065;
+  private readonly SPEAKING_ACTIVATION_DELAY_MS = 180;
 
   onVideoUnavailable?: () => void;
   onConnectionReconnecting?: () => void;
@@ -1059,6 +1062,7 @@ export default class CallSessionController {
       analyser.fftSize = 256;
       source.connect(analyser);
       this.localSpeakingAnalyser = analyser;
+      this.localSpeakingSince = null;
       this.ensureSpeakingPolling();
     } catch {
       // Ignored
@@ -1075,6 +1079,7 @@ export default class CallSessionController {
       analyser.fftSize = 256;
       source.connect(analyser);
       this.remoteAnalysers.set(userId, analyser);
+      this.remoteSpeakingSince.delete(userId);
       this.ensureSpeakingPolling();
     } catch {
       // Ignored
@@ -1083,25 +1088,36 @@ export default class CallSessionController {
 
   private unregisterRemoteAudioSpeaking(userId: string) {
     this.remoteAnalysers.delete(userId);
+    this.remoteSpeakingSince.delete(userId);
   }
 
   private ensureSpeakingPolling() {
     if (this.speakingAnimFrame !== null) return;
     const data = new Uint8Array(128);
 
-    const poll = () => {
+    const poll = (now: number) => {
       // 1. Local speaking
       if (this.localSpeakingAnalyser && !this.settings.micMuted) {
         this.localSpeakingAnalyser.getByteFrequencyData(data);
         const avg = data.reduce((s, v) => s + v, 0) / data.length / 255;
-        const localSpeaking = avg > this.SPEAKING_THRESHOLD;
+        if (avg > this.SPEAKING_THRESHOLD) {
+          this.localSpeakingSince ??= now;
+        } else {
+          this.localSpeakingSince = null;
+        }
+        const localSpeaking =
+          this.localSpeakingSince !== null &&
+          now - this.localSpeakingSince >= this.SPEAKING_ACTIVATION_DELAY_MS;
         if (localSpeaking !== this.wasLocalSpeaking) {
           this.wasLocalSpeaking = localSpeaking;
           this.localSpeakingCallback?.(localSpeaking);
         }
-      } else if (this.wasLocalSpeaking) {
-        this.wasLocalSpeaking = false;
-        this.localSpeakingCallback?.(false);
+      } else {
+        this.localSpeakingSince = null;
+        if (this.wasLocalSpeaking) {
+          this.wasLocalSpeaking = false;
+          this.localSpeakingCallback?.(false);
+        }
       }
 
       // 2. Remote peer speaking
@@ -1110,6 +1126,14 @@ export default class CallSessionController {
         analyser.getByteFrequencyData(data);
         const avg = data.reduce((s, v) => s + v, 0) / data.length / 255;
         if (avg > this.SPEAKING_THRESHOLD) {
+          this.remoteSpeakingSince.set(uid, this.remoteSpeakingSince.get(uid) ?? now);
+        } else {
+          this.remoteSpeakingSince.delete(uid);
+        }
+        if (
+          this.remoteSpeakingSince.has(uid) &&
+          now - (this.remoteSpeakingSince.get(uid) ?? now) >= this.SPEAKING_ACTIVATION_DELAY_MS
+        ) {
           activeSpeakingUserIds.push(uid);
         }
       }
@@ -1134,6 +1158,8 @@ export default class CallSessionController {
     }
     this.localSpeakingAnalyser = null;
     this.remoteAnalysers.clear();
+    this.localSpeakingSince = null;
+    this.remoteSpeakingSince.clear();
     if (this.speakingContext) {
       void this.speakingContext.close().catch(() => undefined);
       this.speakingContext = null;

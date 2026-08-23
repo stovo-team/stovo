@@ -79,6 +79,36 @@ func (s *Store) ListMessageIDsPage(ctx context.Context, p ListMessageIDsPagePara
 	return ids, nil
 }
 
+// CountThreadMessagesByRootIDs returns the active reply count for each root message.
+// Counts are intentionally batched because regular history does not include replies.
+func (s *Store) CountThreadMessagesByRootIDs(ctx context.Context, chatID string, rootMessageIDs []string) (map[string]int, error) {
+	counts := make(map[string]int, len(rootMessageIDs))
+	if len(rootMessageIDs) == 0 {
+		return counts, nil
+	}
+
+	var rows []struct {
+		ThreadRootMessageID string `json:"thread_root_message_id"`
+		Count               int    `json:"count"`
+	}
+	if err := s.Client.Message.Query().
+		Where(
+			message.ChatIDEQ(chatID),
+			message.MessageKindEQ("thread"),
+			message.ThreadRootMessageIDIn(rootMessageIDs...),
+			message.DeletedAtIsNil(),
+		).
+		GroupBy(message.FieldThreadRootMessageID).
+		Aggregate(ent.Count()).
+		Scan(ctx, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		counts[row.ThreadRootMessageID] = row.Count
+	}
+	return counts, nil
+}
+
 // MessageCreatedAtInChat returns created_at for a message in a chat.
 func (s *Store) MessageCreatedAtInChat(ctx context.Context, messageID, chatID string) (string, error) {
 	m, err := s.Client.Message.Query().

@@ -32,6 +32,7 @@ import { ScheduleMessageModal } from "./ScheduleMessageModal";
 import { ReminderModal } from "./ReminderModal";
 import { ComposerReplyBar } from "./ComposerReplyBar";
 import { ComposerEmojiPicker, ComposerEmojiPickerDock } from "./ComposerEmojiPicker";
+import { useStrings } from "../../../i18n/LanguageContext";
 export { EMOJI_CATEGORY_ICONS } from "./emojiCategories";
 
 export function Composer({
@@ -155,6 +156,7 @@ export function Composer({
   onScheduleMessage?: (scheduledDate: Date) => void | Promise<void>;
   onSetReminder?: (rule: ReminderRule) => void | Promise<void>;
 }) {
+  const strings = useStrings();
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
   const [isSendSubmenuOpen, setIsSendSubmenuOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -352,7 +354,7 @@ export function Composer({
         />
       )}
       {selectedChat?.type === "channel" && channelCommentsDisabledForViewer && (
-        <p className="muted-copy">Comments are disabled in this channel.</p>
+        <p className="muted-copy">{strings.comments.disabledInChannel}</p>
       )}
       {replyTarget && !isInThreadMode && <ComposerReplyBar accessToken={accessToken} replyTarget={replyTarget} onCancel={onCancelReply} />}
       <div className={`message-composer-row${composerIsMultiline ? " message-composer-row--multiline" : ""}`}>
@@ -419,12 +421,12 @@ export function Composer({
               maxLength={4000}
               placeholder={
                 isInThreadMode
-                  ? "Write a comment…"
+                  ? strings.comments.write
                   : selectedChat?.type === "channel"
                     ? channelCommentsDisabledForViewer
-                      ? "Comments are disabled"
+                      ? strings.comments.disabled
                       : missingCommentThread
-                        ? "Comment…"
+                        ? strings.comments.chooseThread
                         : canPostInSelectedChannel
                           ? "Post an update"
                           : "Message"

@@ -65,7 +65,7 @@ export function useChatsPageController({
   const workspace = useChatWorkspaceState({ accessToken });
   const {
     family, members, setMembers, chats, setChats, selectedChat, setSelectedChat,
-    isLoading, isChatLoading, setIsChatLoading, isOnline, chatsRef, accessTokenRef
+    isLoading, isChatLoading, setIsChatLoading, isOnline, chatsRef, accessTokenRef, chatMutationVersionRef
   } = workspace;
 
   const [typingNames, setTypingNames] = useState<string[]>([]);
@@ -125,7 +125,7 @@ export function useChatsPageController({
     accessTokenRef, authRequest, currentUser, chatId, onError: setError,
     setFamily: workspace.setFamily, setMembers, setChats, setSelectedChat,
     setIsLoading: workspace.setIsLoading, setHasLoadedOverview: workspace.setHasLoadedOverview,
-    setIsChatLoading, activeChatIdRef, chatsRef,
+    setIsChatLoading, activeChatIdRef, chatsRef, chatMutationVersionRef,
     messageCacheRef, historyCursorRef, setMessages, setPinnedMessages, setPinIndex,
     applyMessagesForChat, markChatRead
   });
@@ -268,7 +268,7 @@ export function useChatsPageController({
   const canCreateFamilyInvite = currentUser?.role === "owner" || currentUser?.role === "admin";
 
   const detailsActions = useChatDetailsActions({
-    accessToken, selectedChat, currentUser, setSelectedChat, setChats,
+    accessToken, selectedChat, currentUser, setSelectedChat, setChats, chatMutationVersionRef,
     onError: setError, setIsChatMenuOpen, messages, markChatRead
   });
 

@@ -17,6 +17,7 @@ afterEach(() => {
     });
   }
   document.body.innerHTML = "";
+  vi.unstubAllGlobals();
 });
 
 function renderComponent(ui: React.ReactNode) {
@@ -573,6 +574,49 @@ describe("VoiceChannelStage", () => {
     expect(mockToggleScreenShare).toHaveBeenCalled();
   });
 
+  it("shows the server error when AI Notes cannot start", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ detail: "Transcription service is not configured" }),
+      { status: 503, headers: { "Content-Type": "application/json" } },
+    )));
+    const session = {
+      callPhase: "in-call",
+      activeCallChatId: "voice-chat-1",
+      callRoomId: "voice-room-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: false, screenSharing: false },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+      setIsCallSettingsMenuOpen: vi.fn(),
+      setIsCallAudioPopupOpen: vi.fn(),
+      audioCallRef: { current: { toggleVideo: vi.fn() } },
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={session}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    act(() => {
+      (container.querySelector("button[title='More Options']") as HTMLButtonElement).click();
+    });
+    await act(async () => {
+      (Array.from(container.querySelectorAll(".voice-more-menu-item")).find((item) => item.textContent?.includes("Start AI Notes")) as HTMLButtonElement).click();
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector("[data-testid='voice-ai-notes-status']")?.textContent)
+      .toContain("Transcription service is not configured");
+  });
+
   it("renders voice speaking ring around avatar when peer is speaking in voice room", () => {
     const mockSession = {
       callPhase: "in-call",
@@ -719,5 +763,53 @@ describe("VoiceChannelStage", () => {
 
     expect(container.querySelector(".call-grid--presenting")).not.toBeNull();
     expect(container.querySelectorAll(".call-grid__tile")).toHaveLength(3);
+  });
+
+  it("keeps the local camera visible during a voice-channel screen share even when the call is audio typed", () => {
+    const mockTrack = {
+      readyState: "live",
+      enabled: true,
+      kind: "video",
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
+    const mockStream = {
+      getVideoTracks: () => [mockTrack],
+      getTracks: () => [mockTrack],
+    } as unknown as MediaStream;
+    const session = {
+      callPhase: "in-call",
+      callType: "audio",
+      activeCallChatId: "voice-chat-1",
+      callAudioSettings: { micMuted: false, cameraEnabled: true, screenSharing: true, mirrorLocalVideo: false },
+      callAudioCapabilities: { canShareScreen: true },
+      applyCallAudioPatch: vi.fn(),
+      toggleScreenShare: vi.fn(),
+      endActiveCall: vi.fn(),
+      joinVoiceChannel: vi.fn(),
+      isPeerSpeaking: false,
+      isLocalSpeaking: false,
+      speakingUserIds: [],
+      localVideoStream: mockStream,
+      localScreenStream: mockStream,
+      callRemoteMedia: [],
+      activeGroupCalls: { "voice-chat-1": mockVoiceChat.activeCall! },
+      setIsCallSettingsMenuOpen: vi.fn(),
+      setIsCallAudioPopupOpen: vi.fn(),
+      setIsCallMinimized: vi.fn(),
+      audioCallRef: { current: { toggleVideo: vi.fn() } },
+    } as unknown as CallSessionApi;
+
+    const container = renderComponent(
+      <VoiceChannelStage
+        chat={mockVoiceChat}
+        session={session}
+        members={mockVoiceChat.members as unknown as User[]}
+        currentUser={mockCurrentUser}
+        accessToken="test-token"
+      />
+    );
+
+    expect(container.querySelector(".call-grid__tile--local .call-grid__video")).not.toBeNull();
   });
 });

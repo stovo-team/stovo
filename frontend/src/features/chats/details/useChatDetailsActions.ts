@@ -1,4 +1,4 @@
-import { ChangeEvent, CSSProperties, Dispatch, FormEvent, SetStateAction, useMemo, useRef, useState } from "react";
+import { ChangeEvent, CSSProperties, Dispatch, FormEvent, MutableRefObject, SetStateAction, useMemo, useRef, useState } from "react";
 
 import type { User } from "../../../api/auth";
 import { addChatMembers, Chat, Message, updateChat, updateChatMessageDelay, updateChatPinPermission, updateChatPreferences } from "../../../api/chats";
@@ -13,6 +13,7 @@ export type UseChatDetailsActionsParams = {
   currentUser: User | null;
   setSelectedChat: Dispatch<SetStateAction<Chat | null>>;
   setChats: Dispatch<SetStateAction<Chat[]>>;
+  chatMutationVersionRef: MutableRefObject<Record<string, number>>;
   onError: (message: string | null) => void;
   setIsChatMenuOpen: Dispatch<SetStateAction<boolean>>;
   messages: Message[];
@@ -31,6 +32,7 @@ export function useChatDetailsActions({
   currentUser,
   setSelectedChat,
   setChats,
+  chatMutationVersionRef,
   onError,
   setIsChatMenuOpen,
   messages,
@@ -38,8 +40,10 @@ export function useChatDetailsActions({
 }: UseChatDetailsActionsParams) {
   const [isChatMediaUploading, setIsChatMediaUploading] = useState(false);
   const [editingChatPhotoFile, setEditingChatPhotoFile] = useState<File | null>(null);
+  const [editingChatWallpaperFile, setEditingChatWallpaperFile] = useState<File | null>(null);
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatWallpaperInputRef = useRef<HTMLInputElement | null>(null);
+  const messageDelayRequestRef = useRef(0);
 
   const canManageSelectedChat = selectedChat ? canManageChat(selectedChat, currentUser) : false;
 
@@ -61,6 +65,7 @@ export function useChatDetailsActions({
   }, [wallpaperPreviewUrl]);
 
   function applyChatUpdate(updated: Chat) {
+    chatMutationVersionRef.current[updated.id] = (chatMutationVersionRef.current[updated.id] ?? 0) + 1;
     setSelectedChat(updated);
     setChats((current) => current.map((c) => (c.id === updated.id ? updated : c)));
   }
@@ -160,14 +165,20 @@ export function useChatDetailsActions({
     if (!accessToken || !selectedChat) {
       return;
     }
+    const requestId = messageDelayRequestRef.current + 1;
+    messageDelayRequestRef.current = requestId;
     const previousChat = selectedChat;
     applyChatUpdate({ ...selectedChat, messageDelaySeconds: delaySeconds });
     try {
       const chat = await updateChatMessageDelay(accessToken, selectedChat.id, delaySeconds);
-      applyChatUpdate(chat);
+      if (messageDelayRequestRef.current === requestId) {
+        applyChatUpdate(chat);
+      }
     } catch (err) {
-      applyChatUpdate(previousChat);
-      onError(err instanceof ApiError ? String(err.message) : "Could not update message delay");
+      if (messageDelayRequestRef.current === requestId) {
+        applyChatUpdate(previousChat);
+        onError(err instanceof ApiError ? String(err.message) : "Could not update message delay");
+      }
     }
   }
 
@@ -205,7 +216,7 @@ export function useChatDetailsActions({
     }
   }
 
-  async function handleChatWallpaperSelect(event: ChangeEvent<HTMLInputElement>) {
+  function handleChatWallpaperSelect(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
     if (!accessToken || !selectedChat || !file) {
@@ -215,10 +226,18 @@ export function useChatDetailsActions({
       onError("Choose an image file (JPEG, PNG, GIF, or WebP).");
       return;
     }
+    setEditingChatWallpaperFile(file);
+  }
+
+  async function handleSaveEditedChatWallpaper(wallpaperFile: File) {
+    if (!accessToken || !selectedChat) {
+      return;
+    }
+    setEditingChatWallpaperFile(null);
     setIsChatMediaUploading(true);
     onError(null);
     try {
-      const uploaded = await uploadFile(accessToken, file);
+      const uploaded = await uploadFile(accessToken, wallpaperFile);
       const chat = await updateChatPreferences(accessToken, selectedChat.id, {
         wallpaperFileId: uploaded.id
       });
@@ -248,6 +267,8 @@ export function useChatDetailsActions({
     isChatMediaUploading,
     editingChatPhotoFile,
     setEditingChatPhotoFile,
+    editingChatWallpaperFile,
+    setEditingChatWallpaperFile,
     chatPhotoInputRef,
     chatWallpaperInputRef,
     wallpaperPreviewUrl,
@@ -262,6 +283,7 @@ export function useChatDetailsActions({
     handleChatPreferenceChange,
     handleAddChatMember,
     handleChatWallpaperSelect,
+    handleSaveEditedChatWallpaper,
     handleMarkSelectedChatRead
   };
 }

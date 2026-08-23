@@ -1,9 +1,12 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
+import { User } from "../api/auth";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
+import { getMembers } from "../api/family";
 import { createPlan, getPlans, Plan, PlanDraft, PlanRSVP, rsvpPlan } from "../api/plans";
 import { useAuth } from "../auth/AuthContext";
+import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import AppNav from "./AppNav";
 import { useStrings } from "../i18n/LanguageContext";
 
@@ -14,7 +17,8 @@ const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const formatDay = (date: Date) => new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(date);
 const formatTime = (value: string) => new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
 
-export const TODAY_TIME_SLOTS = [0, 4, 8, 12, 16, 20] as const;
+const TODAY_TIME_SLOT_HOURS = 3;
+export const TODAY_TIME_SLOTS = [0, 3, 6, 9, 12, 15, 18, 21] as const;
 
 export function formatSlotTime(hour: number) {
   const date = new Date(2000, 0, 1, hour, 0);
@@ -59,6 +63,8 @@ export default function PlansPage() {
 
   const [selectedDay, setSelectedDay] = useState(dayStart(new Date()));
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [members, setMembers] = useState<User[]>([]);
+  const [profilePreviewMemberId, setProfilePreviewMemberId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,6 +116,19 @@ export default function PlansPage() {
   }, [accessToken, range]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    let cancelled = false;
+    void getMembers(accessToken)
+      .then((loadedMembers) => {
+        if (!cancelled) setMembers(loadedMembers);
+      })
+      .catch(() => {
+        if (!cancelled) setMembers(currentUser ? [currentUser] : []);
+      });
+    return () => { cancelled = true; };
+  }, [accessToken, currentUser]);
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -216,8 +235,6 @@ export default function PlansPage() {
 
   async function rsvp(plan: Plan, targetStatus: PlanRSVP) {
     if (!accessToken || !currentUser) return;
-    const currentStatus = plan.attendees?.find((a) => a.userId === currentUser.id)?.status;
-    const nextStatus: PlanRSVP = currentStatus === targetStatus ? "declined" : targetStatus;
 
     setPlans((prevPlans) =>
       prevPlans.map((p) => {
@@ -225,14 +242,14 @@ export default function PlansPage() {
         const existing = (p.attendees || []).filter((a) => a.userId !== currentUser.id);
         return {
           ...p,
-          attendees: [...existing, { userId: currentUser.id, status: nextStatus }]
+          attendees: [...existing, { userId: currentUser.id, status: targetStatus }]
         };
       })
     );
 
     try {
-      await rsvpPlan(accessToken, plan.id, nextStatus);
-      await loadSilent();
+      const updated = await rsvpPlan(accessToken, plan.id, targetStatus);
+      setPlans((prevPlans) => prevPlans.map((current) => current.id === updated.id ? updated : current));
     } catch {
       setError("Could not update RSVP");
       await loadSilent();
@@ -241,6 +258,83 @@ export default function PlansPage() {
 
   const calendarStart = addDays(selectedDay, (selectedDay.getDay() + 6) % 7 * -1);
   const weekDays = Array.from({ length: 7 }, (_, index) => addDays(calendarStart, index));
+  const membersById = useMemo(() => {
+    const result = new Map(members.map((member) => [member.id, member]));
+    if (currentUser) result.set(currentUser.id, currentUser);
+    return result;
+  }, [currentUser, members]);
+
+  const renderPlanCard = (plan: Plan, timeLabel: string) => {
+    const myRsvp = plan.attendees?.find((entry) => entry.userId === currentUser?.id)?.status;
+    const goingMembers = (plan.attendees ?? [])
+      .filter((entry) => entry.status === "going")
+      .map((entry) => membersById.get(entry.userId))
+      .filter((member): member is User => Boolean(member));
+    const creator = membersById.get(plan.createdBy);
+
+    return (
+      <article className="plan-row" key={plan.id}>
+        <time>{timeLabel}</time>
+        <div className="plan-card-content">
+          <div>
+            <strong>{plan.title}</strong>
+            {plan.location && <small>{plan.location}</small>}
+            {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
+            <small className="plan-created-by">{strings.plans.createdBy(creator?.displayName ?? strings.plans.unknownMember)}</small>
+            {plan.sourceChatId && (
+              <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>
+                {strings.plans.openChat}
+              </button>
+            )}
+          </div>
+          <div className="plan-rsvp">
+            <span className="plan-attendance-count">{strings.plans.goingCount(goingMembers.length)}</span>
+            <div className="plan-rsvp-actions" aria-label={strings.plans.goingQuestion}>
+              <span>{strings.plans.goingQuestion}</span>
+              <button type="button" className={myRsvp === "going" ? "active" : ""} aria-pressed={myRsvp === "going"} onClick={() => void rsvp(plan, "going")}>
+                {strings.plans.yes}
+              </button>
+              <button type="button" className={myRsvp === "declined" ? "active" : ""} aria-pressed={myRsvp === "declined"} onClick={() => void rsvp(plan, "declined")}>
+                {strings.plans.no}
+              </button>
+            </div>
+            {goingMembers.length > 0 && (
+              <div className="plan-attendee-list" aria-label={strings.plans.goingCount(goingMembers.length)}>
+                {goingMembers.slice(0, 6).map((member) => (
+                  <div
+                    className="plan-attendee"
+                    key={member.id}
+                    onMouseEnter={() => setProfilePreviewMemberId(member.id)}
+                    onMouseLeave={() => setProfilePreviewMemberId(null)}
+                  >
+                    <button
+                      type="button"
+                      className="plan-attendee-button"
+                      title={member.displayName}
+                      aria-label={member.displayName}
+                      aria-expanded={profilePreviewMemberId === member.id}
+                      onFocus={() => setProfilePreviewMemberId(member.id)}
+                      onBlur={() => setProfilePreviewMemberId(null)}
+                      onClick={() => setProfilePreviewMemberId((current) => current === member.id ? null : member.id)}
+                    >
+                      <RealAvatar accessToken={accessToken} className="avatar plan-attendee-avatar" file={member.profilePhoto} label={member.displayName} />
+                    </button>
+                    {profilePreviewMemberId === member.id && (
+                      <div className="plan-member-popover" role="tooltip">
+                        <RealAvatar accessToken={accessToken} className="avatar plan-member-popover-avatar" file={member.profilePhoto} label={member.displayName} />
+                        <span><strong>{member.displayName}</strong><small>@{member.username}</small></span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {goingMembers.length > 6 && <span className="plan-attendee-more">+{goingMembers.length - 6}</span>}
+              </div>
+            )}
+          </div>
+        </div>
+      </article>
+    );
+  };
 
   return (
     <main className="app-shell app-frame plans-page">
@@ -301,19 +395,37 @@ export default function PlansPage() {
             </div>
           ) : (
             <div className="plans-agenda">
-              {view === "week" && (
-                <div className="plans-week-strip" aria-label="Week calendar">
-                  {weekDays.map((day) => (
-                    <button className={sameDay(day, selectedDay) ? "active" : ""} key={day.toISOString()} onClick={() => setSelectedDay(day)}>
-                      <small>{new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(day)}</small>
-                      {day.getDate()}
-                    </button>
-                  ))}
-                </div>
-              )}
               {loading && plans.length === 0 ? (
                 <p className="plans-empty">{strings.plans.loadingPlans}</p>
-              ) : view === "today" ? (
+              ) : view === "week" ? (
+                <div className="plans-week-calendar" role="grid" aria-label={strings.plans.thisWeek}>
+                  {weekDays.map((day) => {
+                    const dayPlans = visiblePlans.filter((plan) => sameDay(new Date(plan.startsAt), day));
+                    return (
+                      <section className={`plans-week-day${sameDay(day, selectedDay) ? " active" : ""}`} key={day.toISOString()} role="gridcell">
+                        <button type="button" className="plans-week-day-heading" onClick={() => setSelectedDay(day)}>
+                          <small>{new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(day)}</small>
+                          <strong>{day.getDate()}</strong>
+                        </button>
+                        <div className="plans-week-day-events">
+                          {dayPlans.map((plan) => (
+                            <button
+                              type="button"
+                              className="plans-week-event"
+                              key={plan.id}
+                              onClick={() => { setSelectedDay(day); setView("today"); }}
+                              title={`${plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)} — ${plan.title}`}
+                            >
+                              <time>{plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)}</time>
+                              <span>{plan.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              ) : (
                 <div className="plans-timeline" role="region" aria-label="Today schedule timeline">
                   {visiblePlans.filter((plan) => plan.allDay).length > 0 && (
                     <div className="plans-timeline-slot plans-timeline-slot--allday">
@@ -323,42 +435,7 @@ export default function PlansPage() {
                       <div className="plans-timeline-content">
                         <div className="plans-timeline-line" />
                         <div className="plans-timeline-events">
-                          {visiblePlans
-                            .filter((plan) => plan.allDay)
-                            .map((plan) => {
-                              const myRsvp = plan.attendees?.find((a) => a.userId === currentUser?.id)?.status;
-                              const goingCount = plan.attendees?.filter((entry) => entry.status === "going").length ?? 0;
-                              return (
-                                <article className="plan-row" key={plan.id}>
-                                  <time>{strings.plans.allDay}</time>
-                                  <div>
-                                    <strong>{plan.title}</strong>
-                                    {plan.location && <small>{plan.location}</small>}
-                                    {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
-                                    {plan.sourceChatId && (
-                                      <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>
-                                        {strings.plans.openChat}
-                                      </button>
-                                    )}
-                                  </div>
-                                  <div className="plan-rsvp">
-                                    <span>{strings.plans.goingCount(goingCount)}</span>
-                                    <button
-                                      className={myRsvp === "going" ? "active" : ""}
-                                      onClick={() => void rsvp(plan, "going")}
-                                    >
-                                      {strings.plans.going}
-                                    </button>
-                                    <button
-                                      className={myRsvp === "maybe" ? "active" : ""}
-                                      onClick={() => void rsvp(plan, "maybe")}
-                                    >
-                                      {strings.plans.maybe}
-                                    </button>
-                                  </div>
-                                </article>
-                              );
-                            })}
+                          {visiblePlans.filter((plan) => plan.allDay).map((plan) => renderPlanCard(plan, strings.plans.allDay))}
                         </div>
                       </div>
                     </div>
@@ -367,7 +444,7 @@ export default function PlansPage() {
                     const slotPlans = visiblePlans.filter((plan) => {
                       if (plan.allDay) return false;
                       const planHour = new Date(plan.startsAt).getHours();
-                      return planHour >= hour && planHour < hour + 4;
+                      return planHour >= hour && planHour < hour + TODAY_TIME_SLOT_HOURS;
                     });
                     return (
                       <div className="plans-timeline-slot" key={hour}>
@@ -379,83 +456,13 @@ export default function PlansPage() {
                         <div className="plans-timeline-content">
                           <div className="plans-timeline-line" />
                           <div className="plans-timeline-events">
-                            {slotPlans.map((plan) => {
-                              const myRsvp = plan.attendees?.find((a) => a.userId === currentUser?.id)?.status;
-                              const goingCount = plan.attendees?.filter((entry) => entry.status === "going").length ?? 0;
-                              return (
-                                <article className="plan-row" key={plan.id}>
-                                  <time>{formatTime(plan.startsAt)}</time>
-                                  <div>
-                                    <strong>{plan.title}</strong>
-                                    {plan.location && <small>{plan.location}</small>}
-                                    {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
-                                    {plan.sourceChatId && (
-                                      <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>
-                                        {strings.plans.openChat}
-                                      </button>
-                                    )}
-                                  </div>
-                                  <div className="plan-rsvp">
-                                    <span>{strings.plans.goingCount(goingCount)}</span>
-                                    <button
-                                      className={myRsvp === "going" ? "active" : ""}
-                                      onClick={() => void rsvp(plan, "going")}
-                                    >
-                                      {strings.plans.going}
-                                    </button>
-                                    <button
-                                      className={myRsvp === "maybe" ? "active" : ""}
-                                      onClick={() => void rsvp(plan, "maybe")}
-                                    >
-                                      {strings.plans.maybe}
-                                    </button>
-                                  </div>
-                                </article>
-                              );
-                            })}
+                            {slotPlans.map((plan) => renderPlanCard(plan, formatTime(plan.startsAt)))}
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              ) : visiblePlans.length === 0 ? (
-                <p className="plans-today-empty">{loading ? strings.plans.loadingPlans : strings.plans.noPlansYet}</p>
-              ) : (
-                visiblePlans.map((plan) => {
-                  const myRsvp = plan.attendees?.find((a) => a.userId === currentUser?.id)?.status;
-                  const goingCount = plan.attendees?.filter((entry) => entry.status === "going").length ?? 0;
-                  return (
-                    <article className="plan-row" key={plan.id}>
-                      <time>{plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)}</time>
-                      <div>
-                        <strong>{plan.title}</strong>
-                        {plan.location && <small>{plan.location}</small>}
-                        {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
-                        {plan.sourceChatId && (
-                          <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>
-                            {strings.plans.openChat}
-                          </button>
-                        )}
-                      </div>
-                      <div className="plan-rsvp">
-                        <span>{strings.plans.goingCount(goingCount)}</span>
-                        <button
-                          className={myRsvp === "going" ? "active" : ""}
-                          onClick={() => void rsvp(plan, "going")}
-                        >
-                          {strings.plans.going}
-                        </button>
-                        <button
-                          className={myRsvp === "maybe" ? "active" : ""}
-                          onClick={() => void rsvp(plan, "maybe")}
-                        >
-                          {strings.plans.maybe}
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })
               )}
             </div>
           )}

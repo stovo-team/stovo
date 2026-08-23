@@ -30,6 +30,9 @@ export function useChatWorkspaceState({ accessToken }: UseChatWorkspaceStatePara
 
   const chatsRef = useRef<Chat[]>([]);
   const accessTokenRef = useRef<string | null>(accessToken);
+  // Detail mutations increment this counter so an older background refresh
+  // cannot overwrite a setting the user has just changed.
+  const chatMutationVersionRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     chatsRef.current = chats;
@@ -70,7 +73,8 @@ export function useChatWorkspaceState({ accessToken }: UseChatWorkspaceStatePara
     setIsChatLoading,
     isOnline,
     chatsRef,
-    accessTokenRef
+    accessTokenRef,
+    chatMutationVersionRef
   };
 }
 

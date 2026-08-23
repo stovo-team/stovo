@@ -8,6 +8,7 @@ import {
   Info,
   Maximize2,
   MessageCircle,
+  MessageCircleOff,
   Pencil,
   Phone,
   Pin,
@@ -71,7 +72,8 @@ export function ChatHeader({
   onSelectionEdit,
   threadRootMessage = null,
   onBackFromThread,
-  onOpenVoiceChat,
+  isVoiceTextChatOpen = false,
+  onToggleVoiceChat,
 }: {
   accessToken: string | null;
   currentUser: User | null;
@@ -102,7 +104,8 @@ export function ChatHeader({
   onSelectionEdit?: () => void;
   threadRootMessage?: Message | null;
   onBackFromThread?: () => void;
-  onOpenVoiceChat?: () => void;
+  isVoiceTextChatOpen?: boolean;
+  onToggleVoiceChat?: () => void;
 }) {
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
@@ -135,7 +138,7 @@ export function ChatHeader({
           />
           <span>
             <span className="chat-title-row">
-              <span>Comments</span>
+              <span>{strings.comments.title}</span>
             </span>
             <small className="chat-presence">
               {chatName}
@@ -257,11 +260,15 @@ export function ChatHeader({
               <button
                 type="button"
                 className="icon-button subtle chat-header-call-button chat-header-voice-chat-button"
-                aria-label="Open chat"
-                title="Open chat"
-                onClick={onOpenVoiceChat}
+                aria-label={isVoiceTextChatOpen ? "Close chat" : "Open chat"}
+                title={isVoiceTextChatOpen ? "Close chat" : "Open chat"}
+                onClick={onToggleVoiceChat}
               >
-                <MessageCircle aria-hidden="true" size={18} strokeWidth={2} />
+                {isVoiceTextChatOpen ? (
+                  <MessageCircleOff aria-hidden="true" size={18} strokeWidth={2} />
+                ) : (
+                  <MessageCircle aria-hidden="true" size={18} strokeWidth={2} />
+                )}
               </button>
             ) : (
               <button

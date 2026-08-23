@@ -27,6 +27,7 @@ import type { ChatInfoControl, SharedContentItem, SharedContentTab } from "../sh
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { AvatarEditorModal } from "../../../components/AvatarEditorModal";
+import { ChatWallpaperEditorModal } from "../../../components/ChatWallpaperEditorModal";
 
 export function SharedContentThumb({
   accessToken,
@@ -107,6 +108,9 @@ export function ChatDetailsPanel({
   editingChatPhotoFile,
   onCloseEditChatPhoto,
   onSaveCroppedChatPhoto,
+  editingChatWallpaperFile,
+  onCloseEditChatWallpaper,
+  onSaveEditedChatWallpaper,
 }: {
   accessToken: string | null;
   chat: Chat;
@@ -123,6 +127,9 @@ export function ChatDetailsPanel({
   editingChatPhotoFile?: File | null;
   onCloseEditChatPhoto?: () => void;
   onSaveCroppedChatPhoto?: (croppedFile: File) => void | Promise<void>;
+  editingChatWallpaperFile?: File | null;
+  onCloseEditChatWallpaper?: () => void;
+  onSaveEditedChatWallpaper?: (wallpaperFile: File) => void | Promise<void>;
   onChatPhotoSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onChatWallpaperSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   onChatSettingsSubmit: (event: FormEvent) => void;
@@ -741,6 +748,13 @@ export function ChatDetailsPanel({
           applyLabel={strings.avatarEditor.applyGeneric}
           onClose={onCloseEditChatPhoto}
           onSave={onSaveCroppedChatPhoto}
+        />
+      )}
+      {editingChatWallpaperFile && onCloseEditChatWallpaper && onSaveEditedChatWallpaper && (
+        <ChatWallpaperEditorModal
+          file={editingChatWallpaperFile}
+          onClose={onCloseEditChatWallpaper}
+          onSave={onSaveEditedChatWallpaper}
         />
       )}
     </aside>

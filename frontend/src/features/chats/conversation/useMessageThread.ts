@@ -543,6 +543,10 @@ export function useMessageThread({
       if (message.messageKind !== "thread" || !message.threadRootMessageId) continue;
       counts.set(message.threadRootMessageId, (counts.get(message.threadRootMessageId) ?? 0) + 1);
     }
+    for (const message of messages) {
+      if (message.messageKind !== "chat") continue;
+      counts.set(message.id, Math.max(counts.get(message.id) ?? 0, message.commentCount ?? 0));
+    }
     return counts;
   }, [messages]);
 

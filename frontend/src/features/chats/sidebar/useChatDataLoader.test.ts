@@ -34,6 +34,13 @@ function makeMessage(id: string, createdAt: string): Message {
 }
 
 describe("useChatDataLoader", () => {
+  it("rejects chat metadata responses that began before a local setting change", async () => {
+    const { isCurrentChatMetadataRefresh } = await import("./useChatDataLoader");
+
+    expect(isCurrentChatMetadataRefresh("chat-1", { "chat-1": 2 }, { "chat-1": 2 })).toBe(true);
+    expect(isCurrentChatMetadataRefresh("chat-1", { "chat-1": 2 }, { "chat-1": 3 })).toBe(false);
+  });
+
   it("loads first 10 messages and subsequently fetches more history in the background", async () => {
     const firstTen: Message[] = Array.from({ length: 10 }, (_, i) =>
       makeMessage(`msg-${i + 1}`, `2026-01-01T10:00:${String(i).padStart(2, "0")}.000Z`)
@@ -86,6 +93,7 @@ describe("useChatDataLoader", () => {
     const activeChatIdRef = { current: "chat-1" };
     const accessTokenRef = { current: "test-token" };
     const chatsRef = { current: [] };
+    const chatMutationVersionRef = { current: {} };
     const messageCacheRef = { current: {} };
 
     let loaderRef: ReturnType<typeof useChatDataLoader> | null = null;
@@ -105,6 +113,7 @@ describe("useChatDataLoader", () => {
         setIsChatLoading: vi.fn(),
         activeChatIdRef,
         chatsRef,
+        chatMutationVersionRef,
         messageCacheRef,
         historyCursorRef,
         setMessages: vi.fn(),
@@ -181,4 +190,3 @@ describe("useChatDataLoader", () => {
     expect(merged[1].content).toBe("Offline draft message");
   });
 });
-

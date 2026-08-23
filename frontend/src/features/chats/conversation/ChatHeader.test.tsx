@@ -86,7 +86,7 @@ describe("ChatHeader", () => {
   });
 
   it("shows a chat button for voice channels before and during a call", () => {
-    const onOpenVoiceChat = vi.fn();
+    const onToggleVoiceChat = vi.fn();
     const onBack = vi.fn();
     const container = renderComponent(
       <ChatHeader
@@ -102,7 +102,7 @@ describe("ChatHeader", () => {
         onOpenDetails={vi.fn()}
         onStartAudioCall={vi.fn()}
         onStartVideoCall={vi.fn()}
-        onOpenVoiceChat={onOpenVoiceChat}
+        onToggleVoiceChat={onToggleVoiceChat}
         isMessageSearchOpen={false}
         onToggleMessageSearch={vi.fn()}
         onOpenMessageSearch={vi.fn()}
@@ -121,18 +121,18 @@ describe("ChatHeader", () => {
     act(() => {
       chatButton.click();
     });
-    expect(onOpenVoiceChat).toHaveBeenCalledTimes(1);
+    expect(onToggleVoiceChat).toHaveBeenCalledTimes(1);
 
     const backButton = container.querySelector(".mobile-back-button") as HTMLButtonElement;
     act(() => {
       backButton.click();
     });
-    expect(onOpenVoiceChat).toHaveBeenCalledTimes(1);
+    expect(onToggleVoiceChat).toHaveBeenCalledTimes(1);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
   it("shows the chat button before joining a voice channel", () => {
-    const onOpenVoiceChat = vi.fn();
+    const onToggleVoiceChat = vi.fn();
     const container = renderComponent(
       <ChatHeader
         accessToken="test-token"
@@ -147,7 +147,7 @@ describe("ChatHeader", () => {
         onOpenDetails={vi.fn()}
         onStartAudioCall={vi.fn()}
         onStartVideoCall={vi.fn()}
-        onOpenVoiceChat={onOpenVoiceChat}
+        onToggleVoiceChat={onToggleVoiceChat}
         isMessageSearchOpen={false}
         onToggleMessageSearch={vi.fn()}
         onOpenMessageSearch={vi.fn()}
@@ -163,6 +163,38 @@ describe("ChatHeader", () => {
     act(() => {
       chatButton.click();
     });
-    expect(onOpenVoiceChat).toHaveBeenCalledTimes(1);
+    expect(onToggleVoiceChat).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a crossed chat button while a voice channel's text chat is open", () => {
+    const container = renderComponent(
+      <ChatHeader
+        accessToken="test-token"
+        currentUser={mockUser}
+        selectedChat={mockVoiceChat}
+        typingNames={[]}
+        callPhase="idle"
+        isChatMenuOpen={false}
+        chatMenuRef={createRef()}
+        onToggleChatMenu={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDetails={vi.fn()}
+        onStartAudioCall={vi.fn()}
+        onStartVideoCall={vi.fn()}
+        isVoiceTextChatOpen
+        onToggleVoiceChat={vi.fn()}
+        isMessageSearchOpen={false}
+        onToggleMessageSearch={vi.fn()}
+        onOpenMessageSearch={vi.fn()}
+        onMarkRead={vi.fn()}
+        onTogglePinned={vi.fn()}
+        onToggleMuted={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />
+    );
+
+    const chatButton = container.querySelector(".chat-header-voice-chat-button") as HTMLButtonElement;
+    expect(chatButton.getAttribute("aria-label")).toBe("Close chat");
+    expect(chatButton.querySelector(".lucide-message-circle-off")).not.toBeNull();
   });
 });

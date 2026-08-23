@@ -42,15 +42,17 @@ describe("PlansPage week range logic", () => {
     expect(source).toContain("loading && plans.length === 0");
   });
 
-  it("defines 4-hour step intervals for the today timeline", async () => {
+  it("defines 3-hour step intervals for the today timeline", async () => {
     const { TODAY_TIME_SLOTS, formatSlotTime } = await import("./PlansPage");
-    expect(TODAY_TIME_SLOTS).toEqual([0, 4, 8, 12, 16, 20]);
+    expect(TODAY_TIME_SLOTS).toEqual([0, 3, 6, 9, 12, 15, 18, 21]);
     expect(typeof formatSlotTime(0)).toBe("string");
-    expect(typeof formatSlotTime(4)).toBe("string");
-    expect(typeof formatSlotTime(8)).toBe("string");
+    expect(typeof formatSlotTime(3)).toBe("string");
+    expect(typeof formatSlotTime(6)).toBe("string");
+    expect(typeof formatSlotTime(9)).toBe("string");
     expect(typeof formatSlotTime(12)).toBe("string");
-    expect(typeof formatSlotTime(16)).toBe("string");
-    expect(typeof formatSlotTime(20)).toBe("string");
+    expect(typeof formatSlotTime(15)).toBe("string");
+    expect(typeof formatSlotTime(18)).toBe("string");
+    expect(typeof formatSlotTime(21)).toBe("string");
   });
 
   it("renders Google Calendar style timeline with time markers and lines", async () => {
@@ -70,6 +72,31 @@ describe("PlansPage week range logic", () => {
     expect(styles).toContain(".plans-timeline-slot");
     expect(styles).toContain(".plans-timeline-time");
     expect(styles).toContain(".plans-timeline-content");
+  });
+
+  it("styles the plan description textarea like the dialog fields", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(styles).toContain(".plans-dialog textarea {");
+    expect(styles).toContain(".plans-dialog textarea:focus-visible {");
+  });
+
+  it("renders a seven-day week grid and compact attendance controls", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(source).toContain('className="plans-week-calendar"');
+    expect(source).toContain("weekDays.map((day)");
+    expect(source).toContain('className="plans-week-event"');
+    expect(source).toContain("strings.plans.goingQuestion");
+    expect(source).toContain("strings.plans.createdBy");
+    expect(source).toContain("<RealAvatar");
+    expect(styles).toContain(".plans-week-calendar");
+    expect(styles).toContain(".plan-attendee-list");
   });
 
   it("provides fixed top navigation and scrollable content in storage and plans pages", async () => {
