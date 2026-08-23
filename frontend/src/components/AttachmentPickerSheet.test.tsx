@@ -174,9 +174,11 @@ describe("AttachmentPickerSheet Android gallery", () => {
   });
 
   it("renders an initial gallery batch before loading later batches in the background", () => {
+    const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
     expect(mediaPickerSource).toContain("INITIAL_BATCH_SIZE = 12");
     expect(mediaPickerSource).toContain("BACKGROUND_BATCH_SIZE = 24");
     expect(mediaPickerSource).toContain("listNativeMedia(category, { limit: INITIAL_BATCH_SIZE })");
     expect(mediaPickerSource).toContain("offset += BACKGROUND_BATCH_SIZE");
+    expect(nativePluginSource).not.toContain("OFFSET $offset");
   });
 });

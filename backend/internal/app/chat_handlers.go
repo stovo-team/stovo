@@ -394,10 +394,17 @@ func (s *Server) handleUpdateChat(w http.ResponseWriter, r *http.Request, user u
 			s.detail(w, http.StatusUnprocessableEntity, "messageDelaySeconds must be between 0 and 86400")
 			return
 		}
-		if err := s.store.UpdateChatMessageDelay(r.Context(), chatID, delay, nowString()); err != nil {
+		updatedChat, err := s.store.UpdateChatMessageDelay(r.Context(), chatID, delay, nowString())
+		if err != nil {
 			s.detail(w, http.StatusInternalServerError, "Could not update chat")
 			return
 		}
+		// Return the committed value directly. A second read here could observe
+		// an older snapshot and make the client switch the control back to Off.
+		chat.MessageDelaySeconds = updatedChat.MessageDelaySeconds
+		chat.UpdatedAt = parseTime(updatedChat.UpdatedAt)
+		s.json(w, http.StatusOK, chat)
+		return
 	}
 
 	updated, _ := s.buildChatPublic(chatID, user)

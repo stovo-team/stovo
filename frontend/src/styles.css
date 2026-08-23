@@ -8437,12 +8437,13 @@ span.message-spoiler.is-revealed {
 .wallpaper-editor-preview { height: 100%; min-height: 0; }
 .wallpaper-editor-header { position: absolute; inset: 0 0 auto; z-index: 2; padding: max(12px, env(safe-area-inset-top)) 14px 12px; border: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .38), transparent); }
 .wallpaper-editor-header h3, .wallpaper-editor-header p { display: none; }
-.wallpaper-editor-icon-button, .wallpaper-editor-toolbar-button { background: transparent; }
-.wallpaper-editor-icon-button:hover, .wallpaper-editor-toolbar-button:hover:not(:disabled) { background: transparent; color: var(--text-primary, #fff); transform: scale(1.08); }
+.wallpaper-editor-icon-button, .wallpaper-editor-toolbar-button { background: rgba(10, 15, 25, .72); border-radius: 999px; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); backdrop-filter: blur(8px); }
+.wallpaper-editor-icon-button:hover, .wallpaper-editor-toolbar-button:hover:not(:disabled) { background: rgba(10, 15, 25, .9); color: var(--text-primary, #fff); transform: scale(1.08); }
 .wallpaper-editor-controls { align-items: center; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 18px; justify-content: center; left: 0; padding: 0 16px; position: absolute; right: 0; z-index: 3; border: 0; }
 .wallpaper-editor-toolbar, .wallpaper-editor-zoom-value, .wallpaper-editor-toolbar-divider, .wallpaper-editor-toolbar-button--label { display: none; }
 .wallpaper-editor-menu { position: relative; }
-.wallpaper-editor-menu-popover { bottom: calc(100% + 12px); display: grid; gap: 12px; left: 50%; min-width: min(280px, calc(100vw - 32px)); position: absolute; transform: translateX(-50%); }
+.wallpaper-editor-menu-popover { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 50px); display: grid; gap: 12px; left: 16px; max-width: none; min-width: 0; position: fixed; right: 16px; }
+.wallpaper-editor-menu-popover[hidden] { display: none; }
 .wallpaper-editor-range { text-shadow: 0 1px 3px rgba(0, 0, 0, .8); }
 .wallpaper-editor-range input { background: transparent; }
 
@@ -11655,12 +11656,12 @@ span.message-spoiler.is-revealed {
   padding: 12px 8px;
 }
 .plan-row { align-items: start; border-bottom: 1px solid color-mix(in srgb, var(--border-default) 62%, transparent); display: grid; gap: 12px; grid-template-columns: 60px minmax(0, 1fr); min-height: 0; }
-.plan-row time { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.plan-row time { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 .plan-row strong, .plan-row small { display: block; }
 .plan-row small { color: var(--text-secondary); margin-top: 4px; }
 .plan-card-content { min-width: 0; }
 .plan-title-line { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
-.plan-title-line strong { font-size: 14px; line-height: 1.25; }
+.plan-title-line strong { font-size: 16px; line-height: 1.2; }
 .plan-status { border-radius: 999px; font-size: 10px; font-weight: 800; line-height: 1; padding: 4px 6px; white-space: nowrap; }
 .plan-status--scheduled { background: var(--accent-soft); color: var(--accent-primary); }
 .plan-status--happening { background: color-mix(in srgb, #22c55e 18%, transparent); color: #4ade80; }
@@ -11672,11 +11673,11 @@ span.message-spoiler.is-revealed {
 .plan-rsvp-response { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
 .plan-attendance-count { color: var(--text-secondary); font-size: 12px; font-weight: 700; }
 .plan-rsvp-actions { align-items: center; display: inline-flex; gap: 4px; }
-.plan-rsvp-actions > span { color: var(--text-secondary); font-size: 12px; font-weight: 700; margin-right: 2px; }
+.plan-rsvp-actions > span { color: var(--text-secondary); font-size: 14px; font-weight: 700; margin-right: 2px; }
 .plan-rsvp-actions button { font-size: 11px; min-height: 26px; padding: 3px 8px; }
-.plan-attendee-list { align-items: center; display: flex; gap: 3px; min-height: 18px; }
-.plan-attendee { position: relative; }
-.plan-attendee-button { background: transparent; border: 0; border-radius: 50%; cursor: pointer; display: grid; padding: 0; place-items: center; }
+.plan-attendee-list { align-items: center; background: transparent !important; border: 0 !important; box-shadow: none !important; display: flex; gap: 3px; min-height: 18px; padding: 0; }
+.plan-attendee { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0; position: relative; }
+.plan-attendee-button { background: transparent !important; border: 0 !important; border-radius: 0; box-shadow: none !important; cursor: pointer; display: grid; padding: 0; place-items: center; }
 .plan-attendee-avatar { background: transparent !important; border: 0 !important; box-shadow: none !important; height: 18px; width: 18px; }
 .plan-attendee-button:hover .plan-attendee-avatar, .plan-attendee-button:focus-visible .plan-attendee-avatar { transform: translateY(-1px); }
 .plan-attendee-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
@@ -12453,14 +12454,17 @@ span.message-spoiler.is-revealed {
   }
 
   .messenger-shell.chat-list-view .chat-detail {
-    opacity: 0.8;
+    /* Keep the conversation off-canvas until it is selected. Its matching
+       active rule below brings it in from the right, so opening and returning
+       use the same continuous horizontal track. */
+    opacity: 0;
     pointer-events: none;
-    transform: translate3d(var(--motion-route-distance, 24px), 0, 0);
+    transform: translate3d(100%, 0, 0);
     visibility: hidden;
     transition:
-      opacity 280ms var(--motion-ease-exit, cubic-bezier(0.4, 0, 1, 1)),
-      transform 280ms var(--motion-ease-exit, cubic-bezier(0.4, 0, 1, 1)),
-      visibility 0s 280ms;
+      opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      visibility 0s 420ms;
   }
 
   .messenger-shell.chat-list-view .chat-sidebar {
@@ -12473,8 +12477,8 @@ span.message-spoiler.is-revealed {
     transform: translate3d(0, 0, 0);
     visibility: visible;
     transition:
-      opacity 280ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
-      transform 280ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
+      opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       visibility 0s 0s;
   }
 
@@ -12569,23 +12573,23 @@ span.message-spoiler.is-revealed {
     /* A transformed ancestor corrupts Android WebView's native text-selection
        handles, leaving black tiles around the cursor. Keep the resting chat
        surface untransformed; the hidden list state still supplies the slide. */
-    transform: none;
+    transform: translate3d(0, 0, 0);
     visibility: visible;
     transition:
-      opacity 340ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
-      transform 340ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
+      opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       visibility 0s 0s;
   }
 
   .messenger-shell.has-active-chat .chat-sidebar {
     opacity: 0.7;
     pointer-events: none;
-    transform: translate3d(calc(-1 * var(--motion-route-distance-tight, 12px)), 0, 0);
+    transform: translate3d(-20%, 0, 0);
     visibility: hidden;
     transition:
-      opacity 340ms var(--motion-ease-exit, cubic-bezier(0.4, 0, 1, 1)),
-      transform 340ms var(--motion-ease-exit, cubic-bezier(0.4, 0, 1, 1)),
-      visibility 0s 340ms;
+      opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      visibility 0s 420ms;
   }
 
   .messenger-shell.has-active-chat .chat-detail-header--floating {
@@ -12766,6 +12770,12 @@ span.message-spoiler.is-revealed {
   .action-menu:not(.server-switcher-menu) {
     right: 0;
     z-index: 48;
+  }
+
+  /* This menu is positioned with an inline left value. Keeping `right: 0`
+     would stretch it across the viewport and erase its intended edge inset. */
+  .action-menu.message-context-menu {
+    right: auto;
   }
 
   .server-switcher-menu {
@@ -14167,11 +14177,11 @@ span.message-spoiler.is-revealed {
   background: var(--background-secondary, rgba(255, 255, 255, 0.06));
   border-radius: 28px;
   box-sizing: border-box;
-  gap: 0 4px;
+  gap: 0 2px;
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
-  min-height: 42px;
-  padding: 4px 8px;
+  min-height: 38px;
+  padding: 2px 6px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -14249,7 +14259,7 @@ span.message-spoiler.is-revealed {
   font-size: 1rem;
   line-height: 1.4;
   max-height: calc(1.4em * 3 + 12px);
-  min-height: 26px;
+  min-height: 22px;
   overflow-y: hidden;
   padding: 4px 6px;
   margin: 0;
@@ -14281,17 +14291,17 @@ span.message-spoiler.is-revealed {
   color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex;
-  height: 28px !important;
+  height: 26px !important;
   justify-content: center;
   margin: 0 !important;
-  min-height: 28px !important;
-  max-height: 28px !important;
-  min-width: 28px !important;
-  max-width: 28px !important;
+  min-height: 26px !important;
+  max-height: 26px !important;
+  min-width: 26px !important;
+  max-width: 26px !important;
   padding: 0 !important;
   transition: background-color 120ms ease-out, color 120ms ease-out;
-  width: 28px !important;
-  flex: 0 0 28px !important;
+  width: 26px !important;
+  flex: 0 0 26px !important;
   box-sizing: border-box;
 }
 
@@ -14301,10 +14311,10 @@ span.message-spoiler.is-revealed {
   justify-content: center;
   margin: 0 !important;
   padding: 0 !important;
-  width: 28px !important;
-  min-width: 28px !important;
-  max-width: 28px !important;
-  flex: 0 0 28px !important;
+  width: 26px !important;
+  min-width: 26px !important;
+  max-width: 26px !important;
+  flex: 0 0 26px !important;
 }
 
 .attachment-picker-message-box .file-picker svg,
@@ -14375,16 +14385,16 @@ span.message-spoiler.is-revealed {
   color: #ffffff !important;
   cursor: pointer;
   display: inline-flex;
-  height: 32px !important;
+  height: 30px !important;
   justify-content: center;
   margin: 0 !important;
-  min-height: 32px !important;
-  max-height: 32px !important;
-  min-width: 32px !important;
-  max-width: 32px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
   padding: 0 !important;
-  width: 32px !important;
-  flex: 0 0 32px !important;
+  width: 30px !important;
+  flex: 0 0 30px !important;
   box-sizing: border-box;
   transition: transform 120ms ease, opacity 120ms ease;
 }
