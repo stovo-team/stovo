@@ -24,7 +24,7 @@ function formatDateRange(start: Date, end: Date) {
 
 const TODAY_TIME_SLOT_HOURS = 3;
 export const TODAY_TIME_SLOTS = [0, 3, 6, 9, 12, 15, 18, 21] as const;
-const CALENDAR_HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+const CALENDAR_TIME_MARKERS = TODAY_TIME_SLOTS;
 
 export function formatSlotTime(hour: number) {
   const date = new Date(2000, 0, 1, hour, 0);
@@ -339,15 +339,17 @@ export default function PlansPage() {
             )}
           </div>
           <div className="plan-rsvp">
-            <span className="plan-attendance-count">{strings.plans.goingCount(goingMembers.length)}</span>
-            <div className="plan-rsvp-actions" aria-label={strings.plans.goingQuestion}>
-              <span>{strings.plans.goingQuestion}</span>
-              <button type="button" className={myRsvp === "going" ? "active" : ""} aria-pressed={myRsvp === "going"} onClick={() => void rsvp(plan, "going")}>
-                {strings.plans.yes}
-              </button>
-              <button type="button" className={myRsvp === "declined" ? "active" : ""} aria-pressed={myRsvp === "declined"} onClick={() => void rsvp(plan, "declined")}>
-                {strings.plans.no}
-              </button>
+            <div className="plan-rsvp-response">
+              <span className="plan-attendance-count">{strings.plans.goingCount(goingMembers.length)}</span>
+              <div className="plan-rsvp-actions" aria-label={strings.plans.goingQuestion}>
+                <span>{strings.plans.goingQuestion}</span>
+                <button type="button" className={myRsvp === "going" ? "active" : ""} aria-pressed={myRsvp === "going"} onClick={() => void rsvp(plan, "going")}>
+                  {strings.plans.yes}
+                </button>
+                <button type="button" className={myRsvp === "declined" ? "active" : ""} aria-pressed={myRsvp === "declined"} onClick={() => void rsvp(plan, "declined")}>
+                  {strings.plans.no}
+                </button>
+              </div>
             </div>
             {goingMembers.length > 0 && (
               <div className="plan-attendee-list" aria-label={strings.plans.goingCount(goingMembers.length)}>
@@ -391,7 +393,7 @@ export default function PlansPage() {
     <div className={`plans-calendar plans-calendar--${days.length}`} role="grid" aria-label={days.length === 3 ? strings.plans.threeDays : strings.plans.thisWeek}>
       <div className="plans-calendar-hours" aria-hidden="true">
         <span />
-        {CALENDAR_HOURS.map((hour) => <time key={hour}>{formatSlotTime(hour)}</time>)}
+        {CALENDAR_TIME_MARKERS.map((hour) => <time key={hour}>{formatSlotTime(hour)}</time>)}
       </div>
       <div className="plans-calendar-days">
         {days.map((day) => {

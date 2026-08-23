@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core";
 export const MESSAGE_CONTEXT_MENU_WIDTH = 236;
 export const MESSAGE_CONTEXT_MENU_HEIGHT = 360;
 export const MESSAGE_CONTEXT_MENU_EDGE_INSET = 16;
-export const MOBILE_MESSAGE_CONTEXT_MENU_EDGE_INSET = 32;
+export const MOBILE_MESSAGE_CONTEXT_MENU_EDGE_INSET = 48;
 export const SWIPE_REPLY_MAX_OFFSET = 84;
 export const SWIPE_REPLY_TRIGGER_OFFSET = 56;
 export const SWIPE_REPLY_DIRECTION_LOCK = 12;

@@ -54,7 +54,7 @@ describe("AttachmentPickerSheet Android gallery", () => {
   it("uses cached media immediately and refreshes the device library for new captures", () => {
     expect(mediaPickerSource).toContain("getCachedNativeMedia");
     expect(mediaPickerSource).toContain("const cached = getCachedNativeMedia");
-    expect(mediaPickerSource).toContain("listNativeMedia(categoryFor(tab))");
+    expect(mediaPickerSource).toContain("const category = categoryFor(tab)");
     expect(mediaPickerSource).toContain("addNativeMediaLibraryListener");
     expect(mediaPickerSource).toContain('App.addListener("appStateChange"');
     expect(mediaPickerSource).toContain("category === categoryFor(activeTab)");
@@ -156,7 +156,7 @@ describe("AttachmentPickerSheet Android gallery", () => {
     // Does not perform square center cropping
     expect(nativePluginSource).not.toContain("Bitmap.createBitmap(bitmap, x, y, size, size)");
     expect(nativePluginSource).toContain("ImageDecoder");
-    expect(nativePluginSource).toContain("maxDimension = 2048");
+    expect(nativePluginSource).toContain("maxDimension = 768");
   });
 
   it("fetches full resolution original media for ImageLightbox preview", () => {
@@ -171,5 +171,12 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(mediaPickerSource).toContain("fetchNativeMediaFileUrl");
     expect(afterEarlyReturn).toBeDefined();
     expect(afterEarlyReturn).not.toMatch(/\buse(Effect|LayoutEffect|State|Memo|Callback|Ref)\s*\(/);
+  });
+
+  it("renders an initial gallery batch before loading later batches in the background", () => {
+    expect(mediaPickerSource).toContain("INITIAL_BATCH_SIZE = 12");
+    expect(mediaPickerSource).toContain("BACKGROUND_BATCH_SIZE = 24");
+    expect(mediaPickerSource).toContain("listNativeMedia(category, { limit: INITIAL_BATCH_SIZE })");
+    expect(mediaPickerSource).toContain("offset += BACKGROUND_BATCH_SIZE");
   });
 });
