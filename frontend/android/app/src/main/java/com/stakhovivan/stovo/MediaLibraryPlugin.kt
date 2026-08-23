@@ -79,6 +79,7 @@ class MediaLibraryPlugin : Plugin() {
             return
         }
         val limit = (call.getInt("limit", 120) ?: 120).coerceIn(1, 300)
+        val offset = (call.getInt("offset", 0) ?: 0).coerceAtLeast(0)
         val resolver = resolver() ?: run {
             call.reject("Media library is unavailable")
             return
@@ -90,8 +91,8 @@ class MediaLibraryPlugin : Plugin() {
                 // devices (especially with "selected photos" access) that collection can
                 // legitimately return no rows even though the image and video collections
                 // are readable.  Query the collections that own the permissions instead.
-                appendVisualMedia(items, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, limit)
-                appendVisualMedia(items, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, limit)
+                appendVisualMedia(items, MediaStore.Images.Media.EXTERNAL_CONTENT_URI, limit, offset)
+                appendVisualMedia(items, MediaStore.Video.Media.EXTERNAL_CONTENT_URI, limit, offset)
                 call.resolve(JSObject().put("items", items))
             } catch (error: Exception) {
                 call.reject("Unable to read the media library", error)
@@ -124,7 +125,7 @@ class MediaLibraryPlugin : Plugin() {
         try {
             resolver.query(
                 collection, projection, selection, arguments,
-                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC LIMIT $limit"
+                "${MediaStore.Files.FileColumns.DATE_ADDED} DESC LIMIT $limit OFFSET $offset"
             )?.use { cursor ->
                 val idIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
                 val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns.DISPLAY_NAME)
@@ -189,7 +190,7 @@ class MediaLibraryPlugin : Plugin() {
         call.resolve(JSObject().put("files", files))
     }
 
-    private fun appendVisualMedia(items: JSArray, collection: Uri, limit: Int) {
+    private fun appendVisualMedia(items: JSArray, collection: Uri, limit: Int, offset: Int) {
         val resolver = resolver() ?: return
         val projection = arrayOf(
             MediaStore.MediaColumns._ID,
@@ -202,7 +203,7 @@ class MediaLibraryPlugin : Plugin() {
             projection,
             null,
             null,
-            "${MediaStore.MediaColumns.DATE_ADDED} DESC"
+            "${MediaStore.MediaColumns.DATE_ADDED} DESC LIMIT $limit OFFSET $offset"
         )?.use { cursor ->
             val idIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
             val nameIndex = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
@@ -260,7 +261,7 @@ class MediaLibraryPlugin : Plugin() {
                 try {
                     val source = ImageDecoder.createSource(resolver, uri)
                     ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
-                        val maxDimension = 2048
+                        val maxDimension = 768
                         val width = info.size.width
                         val height = info.size.height
                         if (width > maxDimension || height > maxDimension) {
@@ -282,7 +283,7 @@ class MediaLibraryPlugin : Plugin() {
                 val width = boundsOptions.outWidth
                 val height = boundsOptions.outHeight
                 var sampleSize = 1
-                val maxDimension = 2048
+                val maxDimension = 768
                 if (width > maxDimension || height > maxDimension) {
                     val maxSide = maxOf(width, height)
                     while ((maxSide / sampleSize) > maxDimension * 2) {

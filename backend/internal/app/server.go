@@ -157,6 +157,10 @@ func New(cfg config.Config) (*Server, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed initializing schema: %w", err)
 	}
+	// Audio capture and post-processing workers live in this process. After a
+	// deploy they cannot safely resume an old recording, but its active row
+	// would otherwise block a fresh AI Notes session in a restored voice room.
+	app.recoverInterruptedTranscriptionSessions(context.Background())
 
 	frontendURL, err := url.Parse(cfg.FrontendOrigin)
 	if err == nil {

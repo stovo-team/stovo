@@ -8431,6 +8431,21 @@ span.message-spoiler.is-revealed {
   .wallpaper-editor-adjustments { grid-template-columns: 1fr; }
 }
 
+/* Full-screen chat wallpaper editor: image first, controls only on demand. */
+.wallpaper-editor-backdrop { padding: 0; }
+.wallpaper-editor-modal { width: 100%; height: 100%; max-height: none; overflow: hidden; border: 0; border-radius: 0; background: #111827; box-shadow: none; }
+.wallpaper-editor-preview { height: 100%; min-height: 0; }
+.wallpaper-editor-header { position: absolute; inset: 0 0 auto; z-index: 2; padding: max(12px, env(safe-area-inset-top)) 14px 12px; border: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .38), transparent); }
+.wallpaper-editor-header h3, .wallpaper-editor-header p { display: none; }
+.wallpaper-editor-icon-button, .wallpaper-editor-toolbar-button { background: transparent; }
+.wallpaper-editor-icon-button:hover, .wallpaper-editor-toolbar-button:hover:not(:disabled) { background: transparent; color: var(--text-primary, #fff); transform: scale(1.08); }
+.wallpaper-editor-controls { align-items: center; bottom: max(16px, env(safe-area-inset-bottom)); display: flex; gap: 18px; justify-content: center; left: 0; padding: 0 16px; position: absolute; right: 0; z-index: 3; border: 0; }
+.wallpaper-editor-toolbar, .wallpaper-editor-zoom-value, .wallpaper-editor-toolbar-divider, .wallpaper-editor-toolbar-button--label { display: none; }
+.wallpaper-editor-menu { position: relative; }
+.wallpaper-editor-menu-popover { bottom: calc(100% + 12px); display: grid; gap: 12px; left: 50%; min-width: min(280px, calc(100vw - 32px)); position: absolute; transform: translateX(-50%); }
+.wallpaper-editor-range { text-shadow: 0 1px 3px rgba(0, 0, 0, .8); }
+.wallpaper-editor-range input { background: transparent; }
+
 .attachment-card {
   align-items: center;
   background: var(--surface-card);
@@ -11653,15 +11668,16 @@ span.message-spoiler.is-revealed {
 .plan-created-by { align-items: center; display: flex; gap: 5px; margin-top: 4px; }
 .plan-created-by small { font-size: 11px; margin: 0; }
 .plan-creator-avatar { background: transparent; box-shadow: none; height: 18px; width: 18px; }
-.plan-rsvp { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; grid-column: auto; margin-top: 8px; }
+.plan-rsvp { display: grid; gap: 4px; grid-column: auto; margin-top: 8px; }
+.plan-rsvp-response { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
 .plan-attendance-count { color: var(--text-secondary); font-size: 12px; font-weight: 700; }
 .plan-rsvp-actions { align-items: center; display: inline-flex; gap: 4px; }
 .plan-rsvp-actions > span { color: var(--text-secondary); font-size: 12px; font-weight: 700; margin-right: 2px; }
 .plan-rsvp-actions button { font-size: 11px; min-height: 26px; padding: 3px 8px; }
-.plan-attendee-list { align-items: center; display: flex; gap: 3px; min-height: 22px; }
+.plan-attendee-list { align-items: center; display: flex; gap: 3px; min-height: 18px; }
 .plan-attendee { position: relative; }
 .plan-attendee-button { background: transparent; border: 0; border-radius: 50%; cursor: pointer; display: grid; padding: 0; place-items: center; }
-.plan-attendee-avatar { background: transparent; border: 0; box-shadow: none; height: 22px; width: 22px; }
+.plan-attendee-avatar { background: transparent !important; border: 0 !important; box-shadow: none !important; height: 18px; width: 18px; }
 .plan-attendee-button:hover .plan-attendee-avatar, .plan-attendee-button:focus-visible .plan-attendee-avatar { transform: translateY(-1px); }
 .plan-attendee-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .plan-attendee-more { color: var(--text-secondary); font-size: 10px; font-weight: 800; }
@@ -11676,7 +11692,7 @@ span.message-spoiler.is-revealed {
 .plans-month button { background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; min-height: 54px; min-width: 0; padding: 4px 0; width: 100%; box-sizing: border-box; }
 .plans-month button.selected { color: var(--accent-primary); font-weight: 700; }
 .plans-calendar { display: grid; flex: 1; grid-template-columns: 48px minmax(0, 1fr); min-height: 0; padding: 4px 0 24px; }
-.plans-calendar-hours { color: var(--text-muted); display: grid; grid-template-rows: 42px repeat(24, 56px); text-align: right; }
+.plans-calendar-hours { color: var(--text-muted); display: grid; grid-template-rows: 42px repeat(8, 66px); text-align: right; }
 .plans-calendar-hours time { font-size: 10px; font-variant-numeric: tabular-nums; padding-right: 8px; transform: translateY(-7px); }
 .plans-calendar-days { display: grid; gap: 4px; min-width: 0; }
 .plans-calendar--3 .plans-calendar-days { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -11686,7 +11702,7 @@ span.message-spoiler.is-revealed {
 .plans-calendar-day-heading small { font-size: 10px; line-height: 1; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .plans-calendar-day-heading strong { color: var(--text-primary); font-size: 16px; line-height: 1; }
 .plans-calendar-day.active .plans-calendar-day-heading strong { color: var(--accent-primary); }
-.plans-calendar-day-track { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 55px, color-mix(in srgb, var(--border-default) 70%, transparent) 55px, color-mix(in srgb, var(--border-default) 70%, transparent) 56px); display: grid; grid-template-rows: repeat(48, 28px); min-height: 1344px; }
+.plans-calendar-day-track { background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 65px, color-mix(in srgb, var(--border-default) 70%, transparent) 65px, color-mix(in srgb, var(--border-default) 70%, transparent) 66px); display: grid; grid-template-rows: repeat(48, 11px); min-height: 528px; }
 .plans-calendar-event { background: var(--accent-soft); border: 1px solid var(--accent-border-soft); border-radius: 7px; color: var(--text-primary); cursor: pointer; display: grid; gap: 2px; margin: 2px; min-width: 0; overflow: hidden; padding: 4px; position: relative; text-align: left; z-index: 1; }
 .plans-calendar-event:hover, .plans-calendar-event:focus-visible { background: color-mix(in srgb, var(--accent-primary) 22%, var(--surface-card)); border-color: var(--accent-primary); }
 .plans-calendar-event time { color: var(--accent-primary); font-size: 9px; font-variant-numeric: tabular-nums; font-weight: 800; }
@@ -11937,13 +11953,13 @@ span.message-spoiler.is-revealed {
   .plan-row { gap: 8px; grid-template-columns: 48px minmax(0, 1fr); padding: 8px 0; }
   .plan-rsvp-actions button { min-height: 24px; padding: 2px 7px; }
   .plans-calendar { grid-template-columns: 38px minmax(0, 1fr); }
-  .plans-calendar-hours { grid-template-rows: 38px repeat(24, 48px); }
+  .plans-calendar-hours { grid-template-rows: 38px repeat(8, 54px); }
   .plans-calendar-hours time { font-size: 9px; padding-right: 5px; }
   .plans-calendar-days { gap: 2px; }
   .plans-calendar-day-heading { height: 38px; }
   .plans-calendar-day-heading small { font-size: 8px; }
   .plans-calendar-day-heading strong { font-size: 13px; }
-  .plans-calendar-day-track { background-size: 100% 48px; grid-template-rows: repeat(48, 24px); min-height: 1152px; }
+  .plans-calendar-day-track { background-size: 100% 54px; grid-template-rows: repeat(48, 9px); min-height: 432px; }
   .plans-calendar-event { border-radius: 5px; margin: 1px; padding: 3px; }
   .plans-calendar-event time { font-size: 8px; }
   .plans-calendar-event span { font-size: 9px; }
@@ -13707,11 +13723,12 @@ span.message-spoiler.is-revealed {
   border-radius: 20px 20px 0 0;
   transform: translate3d(0, 100%, 0);
   transition:
-    transform 320ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
-    height 380ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
-    max-height 380ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
-    border-radius 380ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1));
-  will-change: transform, height, border-radius;
+    transform 220ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
+    height 220ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-radius 220ms var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1));
+  contain: layout paint style;
+  transform: translate3d(0, 100%, 0);
+  will-change: transform, height;
 }
 
 .attachment-picker-sheet.tg-style.is-ready {
@@ -14137,11 +14154,12 @@ span.message-spoiler.is-revealed {
   box-sizing: border-box;
   display: block;
   gap: 0;
-  padding: 8px 16px 12px;
+  padding: 6px 12px 8px;
   position: relative;
   width: 100%;
   max-width: 100%;
-  margin: 0;
+  margin: 0 8px 8px;
+  width: calc(100% - 16px);
 }
 
 .attachment-picker-message-box .message-composer-row {

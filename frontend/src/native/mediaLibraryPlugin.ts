@@ -14,7 +14,7 @@ export type NativeMediaCategory = "gallery" | "audio" | "documents";
 type CachedMediaFile = { path: string; name: string; mimeType: string };
 
 type NativeMediaLibraryPlugin = {
-  listMedia(options?: { limit?: number; category?: NativeMediaCategory }): Promise<{ items: NativeMediaItem[] }>;
+  listMedia(options?: { limit?: number; offset?: number; category?: NativeMediaCategory }): Promise<{ items: NativeMediaItem[] }>;
   copyMedia(options: { ids: string[] }): Promise<{ files: CachedMediaFile[] }>;
   addListener(
     eventName: "mediaLibraryChanged",
@@ -30,11 +30,16 @@ export function isNativeMediaLibraryAvailable(): boolean {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
-export async function listNativeMedia(category: NativeMediaCategory = "gallery"): Promise<NativeMediaItem[]> {
+export async function listNativeMedia(
+  category: NativeMediaCategory = "gallery",
+  options: { limit?: number; offset?: number } = {}
+): Promise<NativeMediaItem[]> {
   if (!isNativeMediaLibraryAvailable()) return [];
-  const result = await MediaLibraryPlugin.listMedia({ limit: 120, category });
+  const result = await MediaLibraryPlugin.listMedia({ limit: options.limit ?? 120, offset: options.offset ?? 0, category });
   const items = (result.items ?? []).filter((item) => item.id && item.uri && item.mimeType);
-  mediaCache.set(category, items);
+  // The cache is only for the immediately usable first page. Do not replace it
+  // with a later batch, otherwise reopening the picker would start halfway down.
+  if ((options.offset ?? 0) === 0) mediaCache.set(category, items);
   return items;
 }
 
