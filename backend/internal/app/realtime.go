@@ -269,9 +269,11 @@ func (s *Server) validateMessageSendPermissions(ctx context.Context, chat chatPu
 	return nil
 }
 
-// checkMessageDelay enforces per-chat slow-mode rate limiting for non-managers.
+// checkMessageDelay enforces per-chat slow-mode rate limiting for every human
+// sender. Managers configure the setting, but must not silently bypass the
+// delay themselves or it appears to switch off as soon as they test it.
 func (s *Server) checkMessageDelay(ctx context.Context, chat chatPublic, user userPublic, chatID string) error {
-	if chat.MessageDelaySeconds <= 0 || s.canManageChat(chat, user) {
+	if chat.MessageDelaySeconds <= 0 {
 		return nil
 	}
 	lastCreatedAt, err := s.store.GetLastUserMessageCreatedAt(ctx, chatID, user.ID)

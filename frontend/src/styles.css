@@ -12800,6 +12800,7 @@ span.message-spoiler.is-revealed {
      would stretch it across the viewport and erase its intended edge inset. */
   .action-menu.message-context-menu {
     right: auto;
+    width: min(300px, calc(100vw - 96px));
   }
 
   .server-switcher-menu {

@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 
 export const MESSAGE_CONTEXT_MENU_WIDTH = 236;
+export const MOBILE_MESSAGE_CONTEXT_MENU_WIDTH = 300;
 export const MESSAGE_CONTEXT_MENU_HEIGHT = 360;
 export const MESSAGE_CONTEXT_MENU_EDGE_INSET = 16;
 export const MOBILE_MESSAGE_CONTEXT_MENU_EDGE_INSET = 48;
@@ -23,9 +24,10 @@ export function messageContextMenuPosition(
   const horizontalInset = isMobile
     ? MOBILE_MESSAGE_CONTEXT_MENU_EDGE_INSET
     : MESSAGE_CONTEXT_MENU_EDGE_INSET;
+  const menuWidth = isMobile ? MOBILE_MESSAGE_CONTEXT_MENU_WIDTH : MESSAGE_CONTEXT_MENU_WIDTH;
   const maxX = Math.max(
     horizontalInset,
-    viewportWidth - MESSAGE_CONTEXT_MENU_WIDTH - horizontalInset
+    viewportWidth - menuWidth - horizontalInset
   );
   const opensAbove =
     y + MESSAGE_CONTEXT_MENU_HEIGHT > viewportHeight - MESSAGE_CONTEXT_MENU_EDGE_INSET;
