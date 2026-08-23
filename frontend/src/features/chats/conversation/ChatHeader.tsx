@@ -7,7 +7,7 @@ import {
   Copy,
   Info,
   Maximize2,
-  Minimize2,
+  MessageCircle,
   Pencil,
   Phone,
   Pin,
@@ -47,7 +47,6 @@ export function ChatHeader({
   selectedChat,
   typingNames,
   callPhase,
-  activeCallChatId,
   isChatMenuOpen,
   chatMenuRef,
   onToggleChatMenu,
@@ -72,15 +71,13 @@ export function ChatHeader({
   onSelectionEdit,
   threadRootMessage = null,
   onBackFromThread,
-  onShrinkCall,
-  isCallMinimized = false
+  onOpenVoiceChat,
 }: {
   accessToken: string | null;
   currentUser: User | null;
   selectedChat: Chat;
   typingNames: string[];
   callPhase: CallPhase;
-  activeCallChatId: string | null;
   isChatMenuOpen: boolean;
   chatMenuRef: RefObject<HTMLDivElement | null>;
   onToggleChatMenu: () => void;
@@ -105,16 +102,11 @@ export function ChatHeader({
   onSelectionEdit?: () => void;
   threadRootMessage?: Message | null;
   onBackFromThread?: () => void;
-  onShrinkCall?: () => void;
-  isCallMinimized?: boolean;
+  onOpenVoiceChat?: () => void;
 }) {
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
   const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
-  const isActiveVoiceChannel =
-    selectedChat.type === "voice" &&
-    activeCallChatId === selectedChat.id &&
-    callPhase !== "idle";
   const handleBack = threadRootMessage && onBackFromThread
     ? onBackFromThread
     : onBack;
@@ -262,17 +254,15 @@ export function ChatHeader({
               </>
             )}
             {selectedChat.type === "voice" ? (
-              isActiveVoiceChannel && (
-                <button
-                  type="button"
-                  className="icon-button subtle chat-header-call-button chat-header-shrink-button"
-                  aria-label={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
-                  title={strings.chats.voiceRoom?.shrinkCall ?? "Shrink Voice Channel"}
-                  onClick={onShrinkCall}
-                >
-                  <Minimize2 aria-hidden="true" size={18} strokeWidth={2} />
-                </button>
-              )
+              <button
+                type="button"
+                className="icon-button subtle chat-header-call-button chat-header-voice-chat-button"
+                aria-label="Open chat"
+                title="Open chat"
+                onClick={onOpenVoiceChat}
+              >
+                <MessageCircle aria-hidden="true" size={18} strokeWidth={2} />
+              </button>
             ) : (
               <button
                 type="button"

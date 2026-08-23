@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import type { RemoteMedia } from "../realtime/call/types";
 import { SpeakingWaveBadge } from "../features/chats/calling/SpeakingWaveBadge";
 
@@ -32,11 +32,20 @@ const tileStyle: CSSProperties = {
   aspectRatio: "4 / 3",
 };
 
-const presenterTileStyle: CSSProperties = {
+const landscapePresenterTileStyle: CSSProperties = {
   ...tileStyle,
   aspectRatio: "16 / 9",
   minHeight: "180px",
   gridColumn: "1 / -1",
+};
+
+const portraitPresenterTileStyle: CSSProperties = {
+  ...tileStyle,
+  aspectRatio: "9 / 16",
+  minHeight: "180px",
+  maxWidth: "min(100%, calc(52vh * 9 / 16))",
+  gridColumn: "1 / -1",
+  justifySelf: "center",
 };
 
 const videoStyle: CSSProperties = {
@@ -93,6 +102,7 @@ function ParticipantTile({
   mirror,
   isScreen,
   isSpeaking,
+  onVideoDimensions,
   className,
   style,
 }: {
@@ -102,6 +112,7 @@ function ParticipantTile({
   mirror?: boolean;
   isScreen?: boolean;
   isSpeaking?: boolean;
+  onVideoDimensions?: (width: number, height: number) => void;
   className: string;
   style: CSSProperties;
 }) {
@@ -119,6 +130,9 @@ function ParticipantTile({
             playsInline
             muted
             ref={(el) => bindStream(el, stream)}
+            onLoadedMetadata={(event) => {
+              onVideoDimensions?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight);
+            }}
           />
           {isSpeaking && <SpeakingWaveBadge />}
           {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
@@ -152,6 +166,7 @@ export default function CallParticipantGrid({
   isPeerSpeaking = false,
   speakingUserIds = [],
 }: CallParticipantGridProps) {
+  const [isPresenterPortrait, setIsPresenterPortrait] = useState(false);
   const localHasVideo =
     callType === "video" &&
     Boolean(localStream?.getVideoTracks().some((t) => t.readyState !== "ended" && t.enabled));
@@ -166,6 +181,14 @@ export default function CallParticipantGrid({
             m.screenStream.getVideoTracks().some((t) => t.readyState !== "ended"),
         );
   const isPresenting = Boolean(presenter);
+
+  useEffect(() => {
+    const track = presenter?.screenStream?.getVideoTracks()[0];
+    const settings = track?.getSettings?.();
+    setIsPresenterPortrait(
+      Boolean(settings?.width && settings?.height && settings.height > settings.width),
+    );
+  }, [presenter?.screenStream]);
 
   const count = 1 + remoteMedia.length;
   const columns = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(count))));
@@ -189,12 +212,17 @@ export default function CallParticipantGrid({
       {presenter?.screenStream ? (
         <ParticipantTile
           className="call-grid__tile call-grid__tile--screen"
-          style={presenterTileStyle}
+          style={isPresenterPortrait ? portraitPresenterTileStyle : landscapePresenterTileStyle}
           label={presenter.userId}
           stream={presenter.screenStream}
           showVideo
           isScreen
           isSpeaking={isPresenterSpeaking}
+          onVideoDimensions={(width, height) => {
+            if (width > 0 && height > 0) {
+              setIsPresenterPortrait(height > width);
+            }
+          }}
         />
       ) : null}
 

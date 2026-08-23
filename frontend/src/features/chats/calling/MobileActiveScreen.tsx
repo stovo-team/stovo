@@ -630,13 +630,12 @@ export function MobileActiveScreen({
             <svg viewBox="0 0 24 24">
               {isSharingLocalScreen ? (
                 <>
-                  <path d="M13.414 12l3.293 3.293-1.414 1.414L12 13.414l-3.293 3.293-1.414-1.414L10.586 12 7.293 8.707l1.414-1.414L12 10.586l3.293-3.293 1.414 1.414L13.414 12z" />
                   <path d="M21 3H3a2 2 0 00-2 2v10a2 2 0 002 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H3V5h18v10z" />
                 </>
               ) : (
                 <>
                   <path d="M21 3H3a2 2 0 00-2 2v10a2 2 0 002 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H3V5h18v10z" />
-                  <path d="M12 7v4M10 9h4" />
+                  <line x1="3" y1="3" x2="21" y2="21" />
                 </>
               )}
             </svg>

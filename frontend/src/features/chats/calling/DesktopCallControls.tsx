@@ -1,5 +1,5 @@
 import {
-  FileText,
+  Captions,
   Maximize2,
   Mic,
   MicOff,
@@ -108,7 +108,7 @@ export function DesktopCallControls({
     roomId: callRoomId,
     currentUserId: currentUser?.id ?? null,
     socketRef,
-    localVideoStream,
+    localAudioStream: audioCallRef.current?.getLocalStream?.() ?? localVideoStream,
     enabled: true,
   });
 
@@ -448,9 +448,9 @@ export function DesktopCallControls({
                       onClick={() => void toggleScreenShare()}
                     >
                       {callAudioSettings.screenSharing ? (
-                        <ScreenShareOff aria-hidden="true" size={20} />
-                      ) : (
                         <ScreenShare aria-hidden="true" size={20} />
+                      ) : (
+                        <ScreenShareOff aria-hidden="true" size={20} />
                       )}
                     </button>
                     <span>
@@ -510,7 +510,7 @@ export function DesktopCallControls({
                     }
                   }}
                 >
-                  <FileText aria-hidden="true" size={20} />
+                  <Captions aria-hidden="true" size={20} />
                 </button>
                 <span>
                   {transcriptState === "recording" ? "Stop" :
@@ -597,9 +597,9 @@ export function DesktopCallControls({
               onClick={() => void toggleScreenShare()}
             >
               {callAudioSettings.screenSharing ? (
-                <ScreenShareOff aria-hidden="true" size={16} />
-              ) : (
                 <ScreenShare aria-hidden="true" size={16} />
+              ) : (
+                <ScreenShareOff aria-hidden="true" size={16} />
               )}
             </button>
           )}

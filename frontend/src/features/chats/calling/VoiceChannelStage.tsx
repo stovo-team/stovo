@@ -8,11 +8,12 @@ import {
   Mic,
   MicOff,
   Minimize2,
-  Monitor,
   MoreVertical,
   PhoneOff,
   Settings,
   Sparkles,
+  ScreenShare,
+  ScreenShareOff,
   UserPlus,
   Video,
   VideoOff,
@@ -88,7 +89,7 @@ export function VoiceChannelStage({
     roomId: callRoomId ?? (chat.activeCall?.roomId ?? null),
     currentUserId: currentUser?.id ?? null,
     socketRef: socketRef ?? session.socketRef ?? fallbackSocketRef,
-    localVideoStream: localVideoStream ?? session.localVideoStream,
+    localAudioStream: audioCallRef?.current?.getLocalStream?.() ?? localVideoStream ?? session.localVideoStream,
     enabled: true,
   });
 
@@ -491,7 +492,7 @@ export function VoiceChannelStage({
               title={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
               aria-label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
             >
-              <Monitor size={20} />
+              {callAudioSettings.screenSharing ? <ScreenShare size={20} /> : <ScreenShareOff size={20} />}
             </button>
 
             {/* 3 Dots Menu Button for Settings & AI Notes */}
