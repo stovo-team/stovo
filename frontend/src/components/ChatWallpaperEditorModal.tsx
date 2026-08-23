@@ -102,7 +102,6 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
           <div className="wallpaper-editor-preview-header">{strings.wallpaperEditor.chatPreview}</div>
           <div className="wallpaper-editor-message wallpaper-editor-message--incoming">{strings.wallpaperEditor.previewIncoming}</div>
           <div className="wallpaper-editor-message wallpaper-editor-message--outgoing">{strings.wallpaperEditor.previewOutgoing}</div>
-          <div className="wallpaper-editor-composer">{strings.wallpaperEditor.messagePlaceholder}</div>
           <header className="wallpaper-editor-header">
             <button type="button" className="wallpaper-editor-icon-button" onClick={onClose} aria-label={strings.avatarEditor.cancel} title={strings.avatarEditor.cancel}><ArrowLeft /></button>
             <div className="wallpaper-editor-header-actions">

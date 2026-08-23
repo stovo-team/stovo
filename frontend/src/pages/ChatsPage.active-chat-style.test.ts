@@ -35,6 +35,18 @@ describe("active chat list item styling", () => {
     expect(appSource).not.toContain('path="/app/chats/:chatId"');
   });
 
+  it("slides the mobile conversation in from the right and restores the list from the left", () => {
+    expect(styles).toMatch(
+      /\.messenger-shell\.chat-list-view \.chat-detail \{[\s\S]*?transform:\s*translate3d\(100%, 0, 0\);[\s\S]*?420ms/
+    );
+    expect(styles).toMatch(
+      /\.messenger-shell\.has-active-chat \.chat-sidebar \{[\s\S]*?transform:\s*translate3d\(-20%, 0, 0\);[\s\S]*?420ms/
+    );
+    expect(styles).toMatch(
+      /\.messenger-shell\.has-active-chat \.chat-detail \{[\s\S]*?transform:\s*translate3d\(0, 0, 0\);[\s\S]*?420ms/
+    );
+  });
+
   it("keeps chat-list-topline flex layout with non-wrapping time and distinct preview styling", () => {
     expect(styles).toMatch(
       /\.chat-list-topline \{[\s\S]*?display:\s*flex;[\s\S]*?justify-content:\s*space-between;/
