@@ -1,8 +1,6 @@
 import {
-  ChangeEvent,
   Dispatch,
   KeyboardEvent as ReactKeyboardEvent,
-  PointerEvent as ReactPointerEvent,
   RefObject,
   SetStateAction,
   useCallback,
@@ -14,12 +12,8 @@ import { EmojiClickData } from "emoji-picker-react";
 import { Capacitor } from "@capacitor/core";
 import type { Socket } from "socket.io-client";
 
-import { Chat, Message, attachMessageFiles, editMessage, sendMessage } from "../../../api/chats";
-import { ApiError } from "../../../api/client";
-import { decryptMessage } from "../../../api/messageCrypto";
-import { encryptMessageContent } from "../../../api/messageCrypto";
-import { type FamilyFile, uploadFile } from "../../../api/files";
-import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
+import { Chat, Message, attachMessageFiles, editMessage } from "../../../api/chats";
+import { uploadFile } from "../../../api/files";
 import {
   applyFormattingToTextarea,
   measureTextareaSelectionAnchor
@@ -28,24 +22,22 @@ import type { FormattingKind, TextSelection, ToolbarAnchor } from "../../../comp
 import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
 import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import { parseScheduleCommand } from "../../../plans/scheduleCommand";
-import { isVoiceRecordingSupported, startVoiceRecording, type VoiceRecorderHandle } from "../../../voiceRecording";
 import { applyMessagePreviewToChat } from "../shared/chatPresentation";
-import {
-  createClientMessageId,
-  inferOptimisticMessageType,
-  markPendingMessageFailed,
-  mergeIncomingMessage,
-} from "../shared/messageState";
+import { markPendingMessageFailed } from "../shared/messageState";
 import type { MessageStateUpdate, PendingLocalAttachment } from "../shared/types";
 import {
   enqueueOutboxMessage,
-  type QueuedOutboxAttachment,
-  type QueuedOutboxMessage,
   type ReminderRule
 } from "../outbox/messageOutboxStore";
 import { computeInitialReminderDate } from "../outbox/reminderSchedule";
 import { drainOutboxQueue } from "../outbox/messageOutboxProcessor";
 import { useMessageCooldown } from "./useMessageCooldown";
+import { useComposerAttachments } from "./useComposerAttachments";
+import { useVoiceMessageRecording } from "./useVoiceMessageRecording";
+import { createQueuedComposerMessage } from "./createQueuedComposerMessage";
+import { useComposerDraftPersistence } from "./useComposerDraftPersistence";
+import { useComposerUiActions } from "./useComposerUiActions";
+import { sendQueuedNotificationReply as sendQueuedReply } from "./sendQueuedNotificationReply";
 
 export type UseMessageComposerParams = {
   chatId: string | undefined;
@@ -127,14 +119,12 @@ export function useMessageComposer({
 }: UseMessageComposerParams) {
   const [composer, setComposer] = useState("");
   const [formattingToolbarAnchor, setFormattingToolbarAnchor] = useState<ToolbarAnchor | null>(null);
-  const [pendingAttachments, setPendingAttachments] = useState<PendingLocalAttachment[]>([]);
   const [composerIsMultiline, setComposerIsMultiline] = useState(false);
   const [composerLineCount, setComposerLineCount] = useState(1);
   const [composerEnlargeOpen, setComposerEnlargeOpen] = useState(false);
   const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
   const [galleryPreviewMediaItem, setGalleryPreviewMediaItem] = useState<NativeMediaItem | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
-  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const { remaining: messageDelayRemaining, markSent } = useMessageCooldown(
@@ -143,17 +133,17 @@ export function useMessageComposer({
   );
 
   const composerFormattingSelectionRef = useRef<TextSelection | null>(null);
-  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
-  const galleryAttachmentInputRef = useRef<HTMLInputElement | null>(null);
-  const cameraAttachmentInputRef = useRef<HTMLInputElement | null>(null);
-  const audioAttachmentInputRef = useRef<HTMLInputElement | null>(null);
-  const documentAttachmentInputRef = useRef<HTMLInputElement | null>(null);
-  const voiceRecorderRef = useRef<VoiceRecorderHandle | null>(null);
-  const voiceRecordingPointerIdRef = useRef<number | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
   const emojiPickerDockRef = useRef<HTMLDivElement | null>(null);
-  const typingStopTimerRef = useRef<number | null>(null);
   const sendInFlightRef = useRef(false);
+  const {
+    pendingAttachments, setPendingAttachments, attachmentInputRef, galleryAttachmentInputRef,
+    cameraAttachmentInputRef, audioAttachmentInputRef, documentAttachmentInputRef,
+    handleFileSelect, addSharedFileAttachments, removePendingAttachment, updatePendingAttachment
+  } = useComposerAttachments();
+  const { handleComposerChange } = useComposerDraftPersistence({
+    chatId, selectedChatId: selectedChat?.id, setComposer, socketRef
+  });
 
   const getComposerHeightLimits = useCallback((textarea: HTMLTextAreaElement) => {
     const style = window.getComputedStyle(textarea);
@@ -261,25 +251,13 @@ export function useMessageComposer({
     openEmojiPicker();
   }
 
-  function handleComposerChange(value: string) {
-    setComposer(value);
-    if (chatId) {
-      if (value) {
-        window.localStorage.setItem(`stovo:draft:${chatId}`, value);
-      } else {
-        window.localStorage.removeItem(`stovo:draft:${chatId}`);
-      }
-    }
-    if (selectedChat && value.trim()) {
-      socketRef.current?.emit("typing:start", { chatId: selectedChat.id });
-      if (typingStopTimerRef.current) {
-        window.clearTimeout(typingStopTimerRef.current);
-      }
-      typingStopTimerRef.current = window.setTimeout(() => {
-        socketRef.current?.emit("typing:stop", { chatId: selectedChat.id });
-      }, 1400);
-    }
-  }
+  const { focusInput, handleAttachButtonClick, handleEditMessage, cancelEditMode } = useComposerUiActions({
+    inputRef: composerInputRef,
+    setAttachmentSheetOpen: setIsAttachmentSheetOpen,
+    closeEmojiPicker,
+    setEditTargetMessage,
+    setMessageContextMenu
+  });
 
   function handleComposerKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Escape" && editTargetMessage !== null) {
@@ -305,11 +283,6 @@ export function useMessageComposer({
     }
   }
 
-  function handleAttachButtonClick() {
-    closeEmojiPicker();
-    setIsAttachmentSheetOpen(true);
-  }
-
   function handleAttachmentSheetPick(option: AttachmentPickerOption) {
     setIsAttachmentSheetOpen(false);
     if (option === "gallery") {
@@ -325,76 +298,6 @@ export function useMessageComposer({
       return;
     }
     documentAttachmentInputRef.current?.click();
-  }
-
-  function handleFileSelect(event: ChangeEvent<HTMLInputElement>) {
-    const selectedFiles = Array.from(event.target.files ?? []);
-    event.target.value = "";
-    if (selectedFiles.length === 0) return;
-
-    const next: PendingLocalAttachment[] = selectedFiles.map((file) => {
-      const localId = `local:${createClientMessageId()}`;
-      try {
-        seedMediaBlobCache(localId, file);
-      } catch {
-        // Non-fatal
-      }
-      const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-      return {
-        localId,
-        file,
-        previewUrl: isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(file) : null
-      };
-    });
-    setPendingAttachments((current) => [...current, ...next]);
-  }
-
-  function addSharedFileAttachments(files: File[]) {
-    if (files.length === 0) return;
-    const next: PendingLocalAttachment[] = files.map((file) => {
-      const localId = `local:${createClientMessageId()}`;
-      try {
-        seedMediaBlobCache(localId, file);
-      } catch {
-        // Non-fatal
-      }
-      const isImage = file.type.startsWith("image/");
-      const isVideo = file.type.startsWith("video/");
-      return {
-        localId,
-        file,
-        previewUrl: isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(file) : null
-      };
-    });
-    setPendingAttachments((current) => [...current, ...next]);
-  }
-
-  function removePendingAttachment(localId: string) {
-    setPendingAttachments((current) => {
-      return current.filter((item) => item.localId !== localId);
-    });
-  }
-
-  function updatePendingAttachment(localId: string, updatedFile: File) {
-    try {
-      seedMediaBlobCache(localId, updatedFile);
-    } catch {
-      // Non-fatal
-    }
-    const isImage = updatedFile.type.startsWith("image/");
-    const isVideo = updatedFile.type.startsWith("video/");
-    const previewUrl = isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(updatedFile) : null;
-    setPendingAttachments((current) =>
-      current.map((item) => {
-        if (item.localId !== localId) return item;
-        return {
-          ...item,
-          file: updatedFile,
-          previewUrl
-        };
-      })
-    );
   }
 
   function handleComposerCut() {
@@ -508,19 +411,6 @@ export function useMessageComposer({
     }
   }
 
-  function focusInput() {
-    window.setTimeout(() => composerInputRef.current?.focus(), 0);
-  }
-
-  function handleEditMessage(message: Message) {
-    setEditTargetMessage(message);
-    setMessageContextMenu(null);
-  }
-
-  function cancelEditMode() {
-    setEditTargetMessage(null);
-  }
-
   async function handleSendMessage(event?: { preventDefault?: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) {
     event?.preventDefault?.();
     if (sendInFlightRef.current) return;
@@ -557,88 +447,11 @@ export function useMessageComposer({
       return;
     }
 
-    const clientMessageId = createClientMessageId();
-    const createdAt = new Date().toISOString();
-    const threadRootForSend = threadRootMessageId ? threadRootMessageId : null;
-    const replyToMessageId = threadRootForSend
-      ? replyTarget && replyTarget.id !== threadRootForSend
-        ? replyTarget.id
-        : null
-      : replyTarget?.id ?? null;
-    const draftContent = content;
-
-    const outboxAttachments: QueuedOutboxAttachment[] = localAttachments.map((pending) => ({
-      id: pending.localId,
-      name: pending.file.name,
-      mimeType: pending.file.type,
-      size: pending.file.size,
-      blob: pending.file
-    }));
-
-    const previewAttachments: FamilyFile[] = localAttachments.map((pending) => ({
-      id: pending.localId,
-      familyId: "",
-      uploadedBy: currentUser.id,
-      chatId: selectedChat.id,
-      chatTitle: selectedChat.title ?? null,
-      chatType: (selectedChat.type === "archive" ? null : selectedChat.type) as "family" | "direct" | "group" | "channel" | null,
-      originMessageId: null,
-      accessScope: "chat" as const,
-      storageProvider: "local",
-      originalName: pending.file.name,
-      mimeType: pending.file.type,
-      sizeBytes: pending.file.size,
-      checksum: null,
-      createdAt,
-      deletedAt: null,
-      isFavorite: false
-    }));
-
-    const mentionedUserIds = extractMentionedUserIds(selectedChat.members, currentUser.id, draftContent);
-
-    const optimisticMessage: Message = {
-      id: `pending:${clientMessageId}`,
-      chatId: selectedChat.id,
-      senderId: currentUser.id,
-      senderDisplayName: currentUser.displayName,
-      type: inferOptimisticMessageType(previewAttachments, draftContent || null),
-      content: draftContent || null,
-      encryptionProtocol: selectedChat.encryptionProtocol,
-      ciphertext: null,
-      nonce: null,
-      keyVersion: null,
-      encryptionMetadata: null,
-      replyToMessageId,
-      threadRootMessageId: threadRootForSend,
-      messageKind: threadRootForSend ? "thread" : "chat",
-      createdAt,
-      updatedAt: createdAt,
-      deletedAt: null,
-      isEdited: false,
-      forwardedFrom: null,
-      statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
-      reactions: [],
-      attachments: previewAttachments,
-      clientMessageId,
-      deliveryState: "sending"
-    };
-
-    const outboxItem: QueuedOutboxMessage = {
-      id: clientMessageId,
-      clientMessageId,
-      chatId: selectedChat.id,
-      userId: currentUser.id,
-      content: draftContent || null,
-      replyToMessageId,
-      threadRootMessageId: threadRootForSend,
-      mentionedUserIds,
-      encryptionProtocol: selectedChat.encryptionProtocol,
-      attachments: outboxAttachments,
-      createdAt,
-      status: "queued",
-      attemptCount: 0,
-      optimisticMessage
-    };
+    const { optimisticMessage, outboxItem } = createQueuedComposerMessage({
+      chat: selectedChat, user: currentUser, content, attachments: localAttachments,
+      replyTarget, threadRootMessageId,
+      mentionedUserIds: extractMentionedUserIds(selectedChat.members, currentUser.id, content)
+    });
 
     try {
       sendInFlightRef.current = true;
@@ -721,91 +534,12 @@ export function useMessageComposer({
       return;
     }
 
-    const clientMessageId = createClientMessageId();
-    const createdAt = new Date().toISOString();
     const scheduledFor = scheduledDate.toISOString();
-    const threadRootForSend = threadRootMessageId ? threadRootMessageId : null;
-    const replyToMessageId = threadRootForSend
-      ? replyTarget && replyTarget.id !== threadRootForSend
-        ? replyTarget.id
-        : null
-      : replyTarget?.id ?? null;
-    const draftContent = content;
-
-    const outboxAttachments: QueuedOutboxAttachment[] = localAttachments.map((pending) => ({
-      id: pending.localId,
-      name: pending.file.name,
-      mimeType: pending.file.type,
-      size: pending.file.size,
-      blob: pending.file
-    }));
-
-    const previewAttachments: FamilyFile[] = localAttachments.map((pending) => ({
-      id: pending.localId,
-      familyId: "",
-      uploadedBy: currentUser.id,
-      chatId: selectedChat.id,
-      chatTitle: selectedChat.title ?? null,
-      chatType: (selectedChat.type === "archive" ? null : selectedChat.type) as "family" | "direct" | "group" | "channel" | null,
-      originMessageId: null,
-      accessScope: "chat" as const,
-      storageProvider: "local",
-      originalName: pending.file.name,
-      mimeType: pending.file.type,
-      sizeBytes: pending.file.size,
-      checksum: null,
-      createdAt,
-      deletedAt: null,
-      isFavorite: false
-    }));
-
-    const mentionedUserIds = extractMentionedUserIds(selectedChat.members, currentUser.id, draftContent);
-
-    const optimisticMessage: Message = {
-      id: `pending:${clientMessageId}`,
-      chatId: selectedChat.id,
-      senderId: currentUser.id,
-      senderDisplayName: currentUser.displayName,
-      type: inferOptimisticMessageType(previewAttachments, draftContent || null),
-      content: draftContent || null,
-      encryptionProtocol: selectedChat.encryptionProtocol,
-      ciphertext: null,
-      nonce: null,
-      keyVersion: null,
-      encryptionMetadata: null,
-      replyToMessageId,
-      threadRootMessageId: threadRootForSend,
-      messageKind: threadRootForSend ? "thread" : "chat",
-      createdAt,
-      updatedAt: createdAt,
-      deletedAt: null,
-      isEdited: false,
-      forwardedFrom: null,
-      statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
-      reactions: [],
-      attachments: previewAttachments,
-      clientMessageId,
-      deliveryState: "scheduled",
-      scheduledFor
-    };
-
-    const outboxItem: QueuedOutboxMessage = {
-      id: clientMessageId,
-      clientMessageId,
-      chatId: selectedChat.id,
-      userId: currentUser.id,
-      content: draftContent || null,
-      replyToMessageId,
-      threadRootMessageId: threadRootForSend,
-      mentionedUserIds,
-      encryptionProtocol: selectedChat.encryptionProtocol,
-      attachments: outboxAttachments,
-      createdAt,
-      status: "scheduled",
-      attemptCount: 0,
-      scheduledFor,
-      optimisticMessage
-    };
+    const { optimisticMessage, outboxItem } = createQueuedComposerMessage({
+      chat: selectedChat, user: currentUser, content, attachments: localAttachments,
+      replyTarget, threadRootMessageId, scheduledFor,
+      mentionedUserIds: extractMentionedUserIds(selectedChat.members, currentUser.id, content)
+    });
 
     try {
       // Clear composer state immediately
@@ -868,93 +602,11 @@ export function useMessageComposer({
 
     const initialDate = computeInitialReminderDate(rule, new Date());
     const scheduledFor = initialDate.toISOString();
-    const clientMessageId = createClientMessageId();
-    const createdAt = new Date().toISOString();
-    const threadRootForSend = threadRootMessageId ? threadRootMessageId : null;
-    const replyToMessageId = threadRootForSend
-      ? replyTarget && replyTarget.id !== threadRootForSend
-        ? replyTarget.id
-        : null
-      : replyTarget?.id ?? null;
-    const draftContent = content;
-
-    const outboxAttachments: QueuedOutboxAttachment[] = localAttachments.map((pending) => ({
-      id: pending.localId,
-      name: pending.file.name,
-      mimeType: pending.file.type,
-      size: pending.file.size,
-      blob: pending.file
-    }));
-
-    const previewAttachments: FamilyFile[] = localAttachments.map((pending) => ({
-      id: pending.localId,
-      familyId: "",
-      uploadedBy: currentUser.id,
-      chatId: selectedChat.id,
-      chatTitle: selectedChat.title ?? null,
-      chatType: (selectedChat.type === "archive" ? null : selectedChat.type) as "family" | "direct" | "group" | "channel" | null,
-      originMessageId: null,
-      accessScope: "chat" as const,
-      storageProvider: "local",
-      originalName: pending.file.name,
-      mimeType: pending.file.type,
-      sizeBytes: pending.file.size,
-      checksum: null,
-      createdAt,
-      deletedAt: null,
-      isFavorite: false
-    }));
-
-    const mentionedUserIds = extractMentionedUserIds(selectedChat.members, currentUser.id, draftContent);
-
-    const optimisticMessage: Message = {
-      id: `pending:${clientMessageId}`,
-      chatId: selectedChat.id,
-      senderId: currentUser.id,
-      senderDisplayName: currentUser.displayName,
-      type: inferOptimisticMessageType(previewAttachments, draftContent || null),
-      content: draftContent || null,
-      encryptionProtocol: selectedChat.encryptionProtocol,
-      ciphertext: null,
-      nonce: null,
-      keyVersion: null,
-      encryptionMetadata: null,
-      replyToMessageId,
-      threadRootMessageId: threadRootForSend,
-      messageKind: threadRootForSend ? "thread" : "chat",
-      createdAt,
-      updatedAt: createdAt,
-      deletedAt: null,
-      isEdited: false,
-      forwardedFrom: null,
-      statuses: [{ userId: currentUser.id, status: "sent", createdAt }],
-      reactions: [],
-      attachments: previewAttachments,
-      clientMessageId,
-      deliveryState: "scheduled",
-      scheduledFor,
-      isReminder: true
-    };
-
-    const outboxItem: QueuedOutboxMessage = {
-      id: clientMessageId,
-      clientMessageId,
-      chatId: selectedChat.id,
-      userId: currentUser.id,
-      content: draftContent || null,
-      replyToMessageId,
-      threadRootMessageId: threadRootForSend,
-      mentionedUserIds,
-      encryptionProtocol: selectedChat.encryptionProtocol,
-      attachments: outboxAttachments,
-      createdAt,
-      status: "scheduled",
-      attemptCount: 0,
-      scheduledFor,
-      isReminder: true,
-      reminderRule: rule,
-      optimisticMessage
-    };
+    const { optimisticMessage, outboxItem } = createQueuedComposerMessage({
+      chat: selectedChat, user: currentUser, content, attachments: localAttachments,
+      replyTarget, threadRootMessageId, scheduledFor, reminderRule: rule,
+      mentionedUserIds: extractMentionedUserIds(selectedChat.members, currentUser.id, content)
+    });
 
     try {
       // Clear composer state immediately
@@ -991,110 +643,24 @@ export function useMessageComposer({
     }
   }
 
-  async function sendQueuedNotificationReply(text: string) {
-    const content = text.trim();
-    if (!content || !accessToken || !currentUser || !selectedChat) return;
-    if (selectedChat.type === "channel" && !canPostInSelectedChannel) {
-      onError("You do not have permission to post in this channel");
-      return;
-    }
-    try {
-      const encrypted = await encryptMessageContent(selectedChat, content, currentUser.id);
-      const message = await sendMessage(accessToken, selectedChat.id, encrypted.content, [], null, null, encrypted.encryption);
-      const displayMessage = await decryptMessage(selectedChat.id, message, currentUser.id);
-      applyMessagesForChat(selectedChat.id, (current) => mergeIncomingMessage(current, displayMessage));
-      onChatsUpdate((current) =>
-        current.map((chat) =>
-          chat.id === selectedChat.id ? { ...applyMessagePreviewToChat(chat, displayMessage), unreadCount: 0 } : chat
-        )
-      );
-    } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Message failed");
-    }
-  }
+  const sendQueuedNotificationReply = (text: string) => sendQueuedReply({
+    text, accessToken, currentUser, selectedChat, canPostInSelectedChannel,
+    applyMessagesForChat, onChatsUpdate, onError
+  });
 
-  function cancelVoiceRecording() {
-    voiceRecordingPointerIdRef.current = null;
-    voiceRecorderRef.current?.cancel();
-    voiceRecorderRef.current = null;
-    setIsVoiceRecording(false);
-  }
-
-  async function stopAndSendVoiceRecording() {
-    voiceRecordingPointerIdRef.current = null;
-    const handle = voiceRecorderRef.current;
-    voiceRecorderRef.current = null;
-    setIsVoiceRecording(false);
-    if (!handle) return;
-    try {
-      const file = await handle.stop();
-      const localId = `local:${createClientMessageId()}`;
-      try {
-        seedMediaBlobCache(localId, file);
-      } catch {
-        // Non-fatal
-      }
-      const pending: PendingLocalAttachment = {
-        localId,
-        file,
-        previewUrl: null
-      };
-      await handleSendMessage(undefined, [pending]);
-    } catch (err) {
-      onError(err instanceof Error ? err.message : "Could not send voice message");
-    }
-  }
-
-  async function handleVoicePressStart(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (channelCommentsDisabledForViewer || missingCommentThread || isUploading || isSendingMessage) {
-      return;
-    }
-    if (messageDelayRemaining > 0) {
-      onError(`Please wait ${messageDelayRemaining}s before sending another message`);
-      return;
-    }
-    if (event.pointerType === "mouse" && voiceRecordingPointerIdRef.current !== null) {
-      await stopAndSendVoiceRecording();
-      return;
-    }
-    if (event.button !== 0 || voiceRecordingPointerIdRef.current !== null) {
-      return;
-    }
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    voiceRecordingPointerIdRef.current = event.pointerId;
-    if (!isVoiceRecordingSupported()) {
-      voiceRecordingPointerIdRef.current = null;
-      onError("Voice recording is not supported on this device");
-      return;
-    }
-    try {
-      onError(null);
-      const handle = await startVoiceRecording();
-      if (voiceRecordingPointerIdRef.current !== event.pointerId) {
-        handle.cancel();
-        return;
-      }
-      voiceRecorderRef.current = handle;
-      setIsVoiceRecording(true);
-    } catch (err) {
-      if (voiceRecordingPointerIdRef.current !== event.pointerId) return;
-      voiceRecordingPointerIdRef.current = null;
-      voiceRecorderRef.current = null;
-      setIsVoiceRecording(false);
-      onError(err instanceof Error ? err.message : "Microphone permission is required to record");
-    }
-  }
-
-  async function handleVoicePressEnd(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (voiceRecordingPointerIdRef.current !== event.pointerId) return;
-    await stopAndSendVoiceRecording();
-  }
-
-  function handleVoicePressCancel(event: ReactPointerEvent<HTMLButtonElement>) {
-    if (voiceRecordingPointerIdRef.current !== event.pointerId) return;
-    cancelVoiceRecording();
-  }
+  const {
+    isVoiceRecording,
+    cancelVoiceRecording,
+    stopAndSendVoiceRecording,
+    handleVoicePressStart,
+    handleVoicePressEnd,
+    handleVoicePressCancel
+  } = useVoiceMessageRecording({
+    disabled: channelCommentsDisabledForViewer || missingCommentThread || isUploading || isSendingMessage,
+    cooldownSeconds: messageDelayRemaining,
+    onError,
+    onSend: (attachments) => handleSendMessage(undefined, attachments)
+  });
 
   function resetForChatChange(nextChatId: string | undefined) {
     clearComposerFormattingSelection();

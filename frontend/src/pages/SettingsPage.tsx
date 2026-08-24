@@ -64,6 +64,10 @@ import { NotificationsSettings } from "./settings/NotificationsSettings";
 import { LanguageSettings } from "./settings/LanguageSettings";
 import { ProfileSettingsTab } from "./settings/ProfileSettingsTab";
 import { PrivacySecuritySettings, type PrivacyDetail } from "./settings/PrivacySecuritySettings";
+import { AppearanceEditor } from "./settings/AppearanceEditor";
+import { FamilySettings } from "./settings/FamilySettings";
+import { SettingsAvatar } from "./settings/SettingsAvatar";
+import { SettingsDashboard, type SettingsDashboardGroup } from "./settings/SettingsDashboard";
 
 function initials(name: string | undefined) {
   return (name ?? "Stovo")
@@ -72,26 +76,6 @@ function initials(name: string | undefined) {
     .slice(0, 2)
     .map((part) => part.at(0)?.toUpperCase())
     .join("");
-}
-function ProfileAvatar({
-  accessToken,
-  file,
-  label,
-  size = "lg"
-}: {
-  accessToken: string | null;
-  file: FamilyFile | null | undefined;
-  label: string | undefined;
-  size?: "default" | "lg";
-}) {
-  const previewUrl = useFilePreviewUrl(accessToken, file ?? null, Boolean(file));
-  const sizeClass = size === "lg" ? " avatar-lg" : "";
-
-  return (
-    <span className={`avatar${sizeClass} user-avatar-preview`}>
-      {previewUrl ? <img src={previewUrl} alt="" /> : initials(label)}
-    </span>
-  );
 }
 
 function formatAppearanceHelper(
@@ -110,428 +94,6 @@ function formatAppearanceHelper(
     strings.appearance.densities[appearance.density] ??
     (DENSITY_OPTIONS.find((option) => option.value === appearance.density)?.label ?? appearance.density);
   return `${themeLabel} · ${accentLabel} · ${densityLabel}`;
-}
-
-const wallpaperTileMeta: Array<{ value: WallpaperChoice; thumbClass: string }> = [
-  { value: "dots", thumbClass: "appearance-wallpaper-thumb--dots" },
-  { value: "paper", thumbClass: "appearance-wallpaper-thumb--paper" },
-  { value: "aurora", thumbClass: "appearance-wallpaper-thumb--aurora" },
-  { value: "plain", thumbClass: "appearance-wallpaper-thumb--plain" },
-  { value: "custom", thumbClass: "appearance-wallpaper-thumb--custom" }
-];
-
-function AppearanceEditor({
-  accessToken,
-  displayName,
-  onBack,
-  backButtonRef
-}: {
-  accessToken: string | null;
-  displayName: string;
-  onBack: () => void;
-  backButtonRef: RefObject<HTMLButtonElement | null>;
-}) {
-  const strings = useStrings();
-  const { appearance, setAppearance, updateAppearance } = useAppearance();
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-  const [wallpaperUploadError, setWallpaperUploadError] = useState<string | null>(null);
-  const [isUploadingWallpaper, setIsUploadingWallpaper] = useState(false);
-  const wallpaperInputRef = useRef<HTMLInputElement | null>(null);
-  const baselineRef = useRef(appearance);
-  const committedRef = useRef(false);
-
-  useEffect(() => {
-    backButtonRef.current?.focus();
-  }, [backButtonRef]);
-
-  function discardAndClose() {
-    if (!committedRef.current) {
-      setAppearance(baselineRef.current);
-    }
-    onBack();
-  }
-
-  function commitAndClose() {
-    committedRef.current = true;
-    onBack();
-  }
-
-  function handleResetConfirm() {
-    updateAppearance(DEFAULT_APPEARANCE);
-    setResetConfirmOpen(false);
-  }
-
-  async function handleCustomWallpaperSelect(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = "";
-    if (!accessToken || !file) {
-      return;
-    }
-    if (!file.type.startsWith("image/")) {
-      setWallpaperUploadError(strings.errors.wallpaperMustBeImage);
-      return;
-    }
-    setIsUploadingWallpaper(true);
-    setWallpaperUploadError(null);
-    try {
-      const uploaded = await uploadFile(accessToken, file);
-      updateAppearance({
-        wallpaper: "custom",
-        customWallpaperFileId: uploaded.id
-      });
-    } catch (err) {
-      setWallpaperUploadError(
-        err instanceof ApiError ? String(err.message) : strings.errors.couldNotUploadWallpaper
-      );
-    } finally {
-      setIsUploadingWallpaper(false);
-    }
-  }
-
-  function selectWallpaper(value: WallpaperChoice) {
-    if (value === "custom") {
-      if (appearance.customWallpaperFileId) {
-        updateAppearance({ wallpaper: "custom" });
-        return;
-      }
-      wallpaperInputRef.current?.click();
-      return;
-    }
-    updateAppearance({ wallpaper: value });
-  }
-
-  const previewHero = (
-    <div
-      className="appearance-preview-hero"
-      role="img"
-      aria-label={strings.appearance.themePreviewAria}
-      data-wallpaper={appearance.wallpaper}
-    >
-      <span className="preview-avatar" aria-hidden="true">
-        {initials(displayName)}
-      </span>
-      <div className="preview-thread">
-        <span className="preview-bubble">{strings.appearance.previewBubble1}</span>
-        <span className="preview-bubble mine">{strings.appearance.previewBubble2}</span>
-      </div>
-    </div>
-  );
-
-  return (
-    <>
-      <div className="appearance-editor appearance-editor-enter">
-        <header className="appearance-editor-header">
-          <button
-            ref={backButtonRef}
-            type="button"
-            className="icon-button subtle appearance-editor-back"
-            aria-label={strings.appearance.backToSettings}
-            onClick={discardAndClose}
-          >
-            <ChevronLeft aria-hidden="true" size={22} />
-          </button>
-          <h2 className="appearance-editor-title" tabIndex={-1}>
-            {strings.appearance.title}
-          </h2>
-        </header>
-
-
-        <div className="appearance-editor-preview-column">{previewHero}</div>
-
-        <div className="appearance-editor-controls">
-          <section className="appearance-section-card">
-            <p className="appearance-section-label">{strings.appearance.theme}</p>
-            <div className="appearance-segment appearance-segment--bar" role="tablist" aria-label={strings.appearance.themeModeAria}>
-              {THEME_MODE_OPTIONS.filter((option) => option.value !== "light").map((option) => (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={appearance.themeMode === option.value}
-                  className={appearance.themeMode === option.value ? "active" : ""}
-                  key={option.value}
-                  onClick={() => updateAppearance({ themeMode: option.value })}
-                >
-                  {strings.appearance.themes[option.value] ?? option.label}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="appearance-section-card">
-            <p className="appearance-section-label">{strings.appearance.accentColour}</p>
-            <div className="appearance-swatch-row" role="group" aria-label={strings.appearance.accentColourAria}>
-              {PRESET_ACCENT_OPTIONS.map((accent) => {
-                const label = strings.appearance.accents[accent.value] ?? accent.label;
-                return (
-                  <button
-                    type="button"
-                    className={`color-swatch ${accent.swatchClassName} ${
-                      appearance.accent === accent.value ? "active" : ""
-                    }`}
-                    aria-label={`${label} ${strings.appearance.accentSuffix}`}
-                    aria-pressed={appearance.accent === accent.value}
-                    title={`${label} ${strings.appearance.accentSuffix}`}
-                    key={accent.value}
-                    onClick={() => updateAppearance({ accent: accent.value })}
-                  />
-                );
-              })}
-              <label
-                className={`color-swatch custom appearance-custom-swatch${
-                  appearance.accent === "custom" ? " active" : ""
-                }`}
-                title={strings.appearance.customColor}
-                style={{ background: appearance.customAccent }}
-              >
-                <Palette aria-hidden="true" size={15} strokeWidth={2.25} />
-                <span className="visually-hidden">{strings.appearance.customColor}</span>
-                <input
-                  type="color"
-                  value={appearance.customAccent}
-                  aria-label={strings.appearance.customAccentAria}
-                  onChange={(event) =>
-                    updateAppearance({ accent: "custom", customAccent: event.target.value })
-                  }
-                />
-              </label>
-            </div>
-          </section>
-
-          <section className="appearance-section-card">
-            <p className="appearance-section-label">{strings.appearance.chatBackground}</p>
-            <div className="appearance-wallpaper-grid" role="radiogroup" aria-label={strings.appearance.chatBackgroundAria}>
-              {wallpaperTileMeta.map((tile) => {
-                const label = strings.appearance.wallpapers[tile.value] ?? tile.value;
-                return (
-                  <button
-                    type="button"
-                    className={`appearance-wallpaper-tile ${tile.thumbClass}`}
-                    role="radio"
-                    aria-checked={appearance.wallpaper === tile.value}
-                    aria-label={label}
-                    title={label}
-                    key={tile.value}
-                    disabled={isUploadingWallpaper && tile.value === "custom"}
-                    onClick={() => selectWallpaper(tile.value)}
-                  >
-                    {tile.value === "custom" ? (
-                      <span>{appearance.customWallpaperFileId ? strings.appearance.photo : strings.appearance.upload}</span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-            <input
-              ref={wallpaperInputRef}
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              className="visually-hidden"
-              type="file"
-              onChange={(event) => void handleCustomWallpaperSelect(event)}
-            />
-            <div className="appearance-wallpaper-upload-row">
-              <button
-                type="button"
-                className="button-secondary"
-                disabled={isUploadingWallpaper || !accessToken}
-                onClick={() => wallpaperInputRef.current?.click()}
-              >
-                {isUploadingWallpaper ? strings.appearance.uploading : strings.appearance.uploadImage}
-              </button>
-              {appearance.customWallpaperFileId && (
-                <button
-                  type="button"
-                  className="button-secondary"
-                  disabled={isUploadingWallpaper}
-                  onClick={() =>
-                    updateAppearance({
-                      wallpaper:
-                        appearance.wallpaper === "custom" ? "dots" : appearance.wallpaper,
-                      customWallpaperFileId: null
-                    })
-                  }
-                >
-                  {strings.appearance.removeCustom}
-                </button>
-              )}
-            </div>
-            {wallpaperUploadError && (
-              <p className="error-text" role="alert">
-                {wallpaperUploadError}
-              </p>
-            )}
-          </section>
-
-          <section className="appearance-section-card appearance-section-card--stack">
-            <p className="appearance-section-label">{strings.appearance.messageStyle}</p>
-            <label className="range-field">
-              <span className="appearance-inline-row">
-                {strings.appearance.curvature}
-                <strong>{appearance.bubbleRadius}px</strong>
-              </span>
-              <input
-                type="range"
-                min="4"
-                max="24"
-                step="1"
-                value={appearance.bubbleRadius}
-                aria-label={strings.appearance.bubbleCurvatureAria}
-                onChange={(event) =>
-                  updateAppearance({ bubbleRadius: Number(event.target.value) })
-                }
-              />
-            </label>
-            <div className="appearance-segment appearance-segment--bar appearance-segment--3" role="group" aria-label={strings.appearance.bubbleShapePresetsAria}>
-              {BUBBLE_SHAPE_OPTIONS.map((option) => (
-                <button
-                  type="button"
-                  className={appearance.bubbleShape === option.value ? "active" : ""}
-                  aria-pressed={appearance.bubbleShape === option.value}
-                  key={option.value}
-                  onClick={() => updateAppearance({ bubbleShape: option.value })}
-                >
-                  {strings.appearance.bubbleShapes[option.value] ?? option.label}
-                </button>
-              ))}
-            </div>
-            <div className="appearance-segment appearance-segment--bar appearance-segment--fonts" role="group" aria-label={strings.appearance.messageFontAria}>
-              {MESSAGE_FONT_OPTIONS.map((option) => (
-                <button
-                  type="button"
-                  className={appearance.messageFont === option.value ? "active" : ""}
-                  aria-pressed={appearance.messageFont === option.value}
-                  key={option.value}
-                  style={{ fontFamily: option.family }}
-                  onClick={() => updateAppearance({ messageFont: option.value })}
-                >
-                  {strings.appearance.messageFonts[option.value] ?? option.label}
-                </button>
-              ))}
-            </div>
-            <label className="range-field">
-              <span className="appearance-inline-row">
-                {strings.appearance.messageSize}
-                <strong>{Math.round(appearance.messageScale * 100)}%</strong>
-              </span>
-              <input
-                type="range"
-                min="0.9"
-                max="1.18"
-                step="0.02"
-                value={appearance.messageScale}
-                onChange={(event) =>
-                  updateAppearance({ messageScale: Number(event.target.value) })
-                }
-              />
-            </label>
-            <div className="appearance-segment appearance-segment--bar appearance-segment--2" role="group" aria-label={strings.appearance.densityAria}>
-              {DENSITY_OPTIONS.map((option) => (
-                <button
-                  type="button"
-                  className={appearance.density === option.value ? "active" : ""}
-                  aria-pressed={appearance.density === option.value}
-                  key={option.value}
-                  onClick={() => updateAppearance({ density: option.value })}
-                >
-                  {strings.appearance.densities[option.value] ?? option.label}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="appearance-section-card appearance-section-card--stack">
-            <p className="appearance-section-label">{strings.appearance.chatMedia}</p>
-            <label className="appearance-toggle-row">
-              <span>
-                <strong>{strings.appearance.videoAutoplay}</strong>
-                <span className="appearance-toggle-help">{strings.appearance.videoAutoplayHelp}</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={appearance.videoAutoplay}
-                aria-label={strings.appearance.videoAutoplay}
-                onChange={(event) => updateAppearance({ videoAutoplay: event.target.checked })}
-              />
-            </label>
-            <label className="appearance-toggle-row">
-              <span>
-                <strong>{strings.appearance.renderMarkdown}</strong>
-                <span className="appearance-toggle-help">{strings.appearance.renderMarkdownHelp}</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={appearance.renderMarkdown}
-                aria-label={strings.appearance.renderMarkdown}
-                onChange={(event) => updateAppearance({ renderMarkdown: event.target.checked })}
-              />
-            </label>
-            <label className="appearance-toggle-row">
-              <span>
-                <strong>{strings.appearance.enterToSend}</strong>
-                <span className="appearance-toggle-help">
-                  {strings.appearance.enterToSendHelp}
-                </span>
-              </span>
-              <input
-                type="checkbox"
-                checked={appearance.sendOnEnter}
-                aria-label={strings.appearance.enterToSend}
-                onChange={(event) => updateAppearance({ sendOnEnter: event.target.checked })}
-              />
-            </label>
-          </section>
-
-          <button
-            type="button"
-            className="ghost-button appearance-reset-button"
-            onClick={() => setResetConfirmOpen(true)}
-          >
-            <RotateCcw aria-hidden="true" size={16} />
-            {strings.appearance.resetAppearance}
-          </button>
-
-          <button type="button" className="appearance-done-button" onClick={commitAndClose}>
-            {strings.appearance.done}
-          </button>
-        </div>
-      </div>
-
-      {resetConfirmOpen && (
-        <div
-          className="dialog-backdrop"
-          role="presentation"
-          onClick={() => setResetConfirmOpen(false)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setResetConfirmOpen(false);
-            }
-          }}
-        >
-          <section
-            className="messenger-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="appearance-reset-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="modal-header">
-              <h2 id="appearance-reset-title">{strings.appearance.resetAllSettings}</h2>
-            </div>
-            <p className="muted-copy">
-              {strings.appearance.resetNote}
-            </p>
-            <div className="segmented-control">
-              <button type="button" onClick={() => setResetConfirmOpen(false)}>
-                {strings.appearance.keepMyTheme}
-              </button>
-              <button type="button" onClick={handleResetConfirm}>
-                {strings.appearance.reset}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-    </>
-  );
 }
 
 export default function SettingsPage() {
@@ -844,145 +406,16 @@ export default function SettingsPage() {
             {error && <p className="error-text" role="alert">{error}</p>}
             {notice && <p className="success-text" role="status">{notice}</p>}
 
-            <div className="settings-dashboard">
-            <section
-              className="profile-card settings-profile-tile"
-            >
-              <div className="profile-photo-control">
-                <ProfileAvatar
-                  accessToken={accessToken}
-                  file={currentUser?.profilePhoto}
-                  label={profileForm.displayName || strings.settings.familyMember}
-                />
-                <button
-                  type="button"
-                  className="avatar-edit-button"
-                  aria-label={strings.settings.changeProfilePhoto}
-                  title={strings.settings.changeProfilePhoto}
-                  disabled={isSaving}
-                  onClick={() => profilePhotoInputRef.current?.click()}
-                >
-                  <span className="ms-icon ms-icon--24" aria-hidden={true}>
-                    add_a_photo
-                  </span>
-                </button>
-                <input
-                  ref={profilePhotoInputRef}
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  className="visually-hidden"
-                  disabled={isSaving}
-                  type="file"
-                  onChange={handleProfilePhotoSelect}
-                />
-              </div>
-              <button
-                type="button"
-                className="settings-profile-open"
-                aria-label={strings.settings.openProfileSettings}
-                onClick={() => setActiveSettingsItem("Profile")}
-              >
-                <span>
-                  <h2>{profileForm.displayName || strings.settings.familyMember}</h2>
-                  <span className="role-pill">{currentUser?.role}</span>
-                </span>
-                <ChevronRight aria-hidden="true" size={18} />
-              </button>
-            </section>
-
-            {activeSettingsItem === "Profile" && <form className="settings-form" onSubmit={handleProfileSubmit}>
-              <label>
-                {strings.settings.avatarDisplayName}
-                <input
-                  maxLength={255}
-                  value={profileForm.displayName}
-                  onChange={(event) =>
-                    setProfileForm((current) => ({
-                      ...current,
-                      displayName: event.target.value
-                    }))
-                  }
-                />
-              </label>
-              <label>
-                {strings.settings.familySpaceName}
-                <input
-                  disabled={!canManageFamily}
-                  maxLength={255}
-                  value={profileForm.familyName}
-                  onChange={(event) =>
-                    setProfileForm((current) => ({
-                      ...current,
-                      familyName: event.target.value
-                    }))
-                  }
-                />
-              </label>
-              <button type="submit" disabled={isSaving || !profileForm.displayName.trim()}>
-                {isSaving ? strings.settings.saving : strings.settings.saveProfile}
-              </button>
-            </form>}
-
-            <div className="settings-groups">
-              {settingsGroups.map((group) => (
-                <section className="settings-group" key={group.title}>
-                  <h2>{group.title}</h2>
-                  <div className="settings-list">
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const isAppearance = item.id === "Appearance";
-                      return (
-                        <button
-                          type="button"
-                          className={`settings-row settings-tile settings-tile--${item.id.toLowerCase().replaceAll(" ", "-")}${activeSettingsItem === item.id ? " is-active" : ""}`}
-                          key={item.id}
-                          aria-expanded={activeSettingsItem === item.id}
-                          aria-label={strings.settings.openSectionAria(item.label)}
-                          onClick={() => setActiveSettingsItem(item.id)}
-                        >
-                          <span className="settings-row-icon">
-                            <Icon aria-hidden="true" size={20} />
-                          </span>
-                          <span>
-                            <strong>{item.label}</strong>
-                            <small>{isAppearance ? appearanceHelper : item.helper}</small>
-                          </span>
-                          <ChevronRight aria-hidden="true" size={18} />
-                          {isAppearance && (
-                            <div className="settings-appearance-preview" aria-hidden="true">
-                              <div className="settings-appearance-preview-chat">
-                                <span className="preview-avatar">
-                                  {initials(profileForm.displayName)}
-                                </span>
-                                <div className="preview-thread">
-                                  <span className="preview-bubble">{strings.appearance.previewBubble1}</span>
-                                  <span className="preview-bubble mine">{strings.appearance.previewBubble2}</span>
-                                </div>
-                              </div>
-                              <div className="settings-appearance-preview-meta">
-                                <div className="settings-appearance-preview-swatches">
-                                  {ACCENT_OPTIONS.filter((option) => option.value !== "custom").map(
-                                    (accent) => (
-                                      <span
-                                        key={accent.value}
-                                        className={`color-swatch ${accent.swatchClassName}${
-                                          appearance.accent === accent.value ? " active" : ""
-                                        }`}
-                                      />
-                                    )
-                                  )}
-                                </div>
-                                <span>{strings.settings.tapToPersonalize}</span>
-                              </div>
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
-            </div>
+            <SettingsDashboard
+              strings={strings}
+              profileName={profileForm.displayName}
+              role={currentUser?.role}
+              groups={settingsGroups as SettingsDashboardGroup[]}
+              appearance={appearance}
+              appearanceHelper={appearanceHelper}
+              onOpen={setActiveSettingsItem}
+              profilePhotoControl={<><SettingsAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} /><button type="button" className="avatar-edit-button" aria-label={strings.settings.changeProfilePhoto} title={strings.settings.changeProfilePhoto} disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><span className="ms-icon ms-icon--24" aria-hidden={true}>add_a_photo</span></button><input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} /></>}
+            />
               </>
             )}
 
@@ -1052,7 +485,7 @@ export default function SettingsPage() {
                     onCopyConnection={() => void copyConnectionCredentials()}
                     profilePhotoControl={
                       <>
-                        <ProfileAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} size="lg" />
+                        <SettingsAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} size="lg" />
                         <button type="button" className="avatar-edit-button" aria-label={strings.settings.changeProfilePhoto} disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><span className="ms-icon ms-icon--24" aria-hidden={true}>add_a_photo</span></button>
                         <input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} />
                       </>
@@ -1077,7 +510,7 @@ export default function SettingsPage() {
                     onUpdatePrivacy={(patch) => void updatePrivacy(patch)}
                     onAppLockChange={(enabled) => void handleAppLockToggle(enabled)}
                     onToggleBlock={(member) => void toggleBlock(member)}
-                    renderMemberAvatar={(member) => <ProfileAvatar accessToken={accessToken} file={member.profilePhoto} label={member.displayName} size="default" />}
+                    renderMemberAvatar={(member) => <SettingsAvatar accessToken={accessToken} file={member.profilePhoto} label={member.displayName} size="default" />}
                   />
                 ) : activeSettingsItem === "Language" ? (
                   <LanguageSettings
@@ -1087,16 +520,7 @@ export default function SettingsPage() {
                     onChange={(value) => updateDevicePreferences({ language: value })}
                   />
                 ) : activeSettingsItem === "Family" ? (
-                  <div className="family-settings-members">
-                    <p className="muted-copy">{strings.settings.familySpaceNote}</p>
-                    {members.map((member) => (
-                      <div className="settings-row family-settings-member" key={member.id}>
-                        <span className="settings-row-icon">{initials(member.displayName)}</span>
-                        <span><strong>{member.displayName}</strong><small>@{member.username} · {member.role}</small></span>
-                      </div>
-                    ))}
-                    {canManageFamily && <p className="muted-copy">{strings.settings.familyInviteNote}</p>}
-                  </div>
+                  <FamilySettings strings={strings} members={members} canManageFamily={canManageFamily} />
                 ) : (
                   <p className="muted-copy">
                     {strings.settings.sectionComingSoon}
