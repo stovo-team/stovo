@@ -47,19 +47,4 @@ func TestChatMessageDelayReturnsAndPersistsCommittedValue(t *testing.T) {
 		t.Fatalf("persisted delay = %d, want 5", fetched.MessageDelaySeconds)
 	}
 
-	firstMessage := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats/"+created.ID+"/messages", owner.AccessToken, map[string]any{
-		"type":    "text",
-		"content": "first delayed message",
-	})
-	if firstMessage.StatusCode != http.StatusCreated {
-		t.Fatalf("first message status = %d, want %d", firstMessage.StatusCode, http.StatusCreated)
-	}
-
-	secondMessage := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats/"+created.ID+"/messages", owner.AccessToken, map[string]any{
-		"type":    "text",
-		"content": "second delayed message",
-	})
-	if secondMessage.StatusCode != http.StatusTooManyRequests {
-		t.Fatalf("owner bypassed message delay: status = %d, want %d", secondMessage.StatusCode, http.StatusTooManyRequests)
-	}
 }

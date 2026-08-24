@@ -21058,13 +21058,13 @@ span.message-spoiler.is-revealed {
 .voice-room-notice-banner {
   position: absolute;
   top: calc(max(4px, env(safe-area-inset-top, 0px)) + var(--chat-floating-header-overlap, 56px) + 12px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 12px;
+  right: 12px;
   background: rgba(30, 30, 38, 0.94);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  padding: 8px 18px;
+  border-radius: 12px;
+  padding: 12px 14px;
   font-size: 0.85rem;
   font-weight: 500;
   z-index: 50;
@@ -21073,8 +21073,8 @@ span.message-spoiler.is-revealed {
   -webkit-backdrop-filter: blur(10px);
   pointer-events: none;
   animation: voice-notice-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  text-align: center;
-  max-width: 90%;
+  text-align: left;
+  max-width: none;
   box-sizing: border-box;
 }
 
@@ -21741,19 +21741,6 @@ span.message-spoiler.is-revealed {
   color: #ef4444;
 }
 
-.voice-icon-spin {
-  animation: voice-spin 2s linear infinite;
-}
-
-@keyframes voice-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 /* ─────────────────────────────────────────────────────────────
    Speaking Wave Animation Badge (Top-Right of Video & Tiles)
    ───────────────────────────────────────────────────────────── */
@@ -21873,3 +21860,15 @@ span.message-spoiler.is-revealed {
 
 
 
+.admin-roles-layout { display: grid; grid-template-columns: minmax(180px, 0.45fr) minmax(0, 1fr); gap: 16px; }
+.admin-role-list { display: grid; gap: 8px; align-content: start; }
+.admin-role-list button { border: 1px solid var(--border-color, #d8d8d8); border-radius: 10px; background: var(--surface-color, #fff); color: inherit; padding: 12px; text-align: left; display: grid; gap: 3px; cursor: pointer; }
+.admin-role-list button.active { border-color: var(--accent-color, #6a57d8); box-shadow: inset 0 0 0 1px var(--accent-color, #6a57d8); }
+.admin-role-list small, .admin-role-permissions small { color: var(--muted-text-color, #707070); }
+.admin-role-editor { display: grid; gap: 14px; }
+.admin-role-editor > label { display: grid; gap: 6px; font-weight: 600; }
+.admin-role-editor input[type="text"], .admin-role-editor input:not([type]) { width: 100%; }
+.admin-role-permissions { display: grid; gap: 8px; }
+.admin-role-permissions label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border-color, #e5e5e5); }
+.admin-role-permissions span { display: grid; gap: 2px; }
+@media (max-width: 700px) { .admin-roles-layout { display: block; } .admin-role-list { margin-bottom: 16px; } }

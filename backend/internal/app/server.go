@@ -248,6 +248,10 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/family", s.authenticated(s.handleGetFamily))
 	router.Patch("/api/family", s.authenticated(s.handleUpdateFamily))
 	router.Get("/api/family/members", s.authenticated(s.handleGetMembers))
+	router.Get("/api/family/roles", s.authenticated(s.handleListServerRoles))
+	router.Post("/api/family/roles", s.authenticated(s.handleCreateServerRole))
+	router.Patch("/api/family/roles/{roleId}", s.authenticated(s.handleUpdateServerRole))
+	router.Delete("/api/family/roles/{roleId}", s.authenticated(s.handleDeleteServerRole))
 	router.Patch("/api/family/members/{userId}/role", s.authenticated(s.handleChangeRole))
 	router.Delete("/api/family/members/{userId}", s.authenticated(s.handleRemoveMember))
 	router.Get("/api/plans", s.authenticated(s.handleGetPlans))
@@ -572,7 +576,10 @@ func (s *Server) getUserByID(userID string) (userPublic, error) {
 		}
 		return userPublic{}, err
 	}
-	return s.userPublicFromEnt(u), nil
+	user := s.userPublicFromEnt(u)
+	_ = s.db.QueryRowContext(context.Background(), `SELECT COALESCE(role_id, '') FROM users WHERE id = $1`, u.ID).Scan(&user.RoleID)
+	s.hydrateUserRole(context.Background(), &user)
+	return user, nil
 }
 
 func (s *Server) userPublicFromEnt(u *ent.User) userPublic {
@@ -587,6 +594,10 @@ func (s *Server) userPublicFromEnt(u *ent.User) userPublic {
 		ProfileVisibility:   u.ProfileVisibility,
 		LastSeenVisibility:  u.LastSeenVisibility,
 		ReadReceiptsEnabled: u.ReadReceiptsEnabled,
+		DirectMessagePermission: "family",
+		GroupInvitePermission: "allow",
+		ChannelInvitePermission: "allow",
+		VoiceInvitePermission: "allow",
 		Email:               u.Email,
 		Bio:                 u.Bio,
 		Timezone:            u.Timezone,
@@ -602,11 +613,21 @@ func (s *Server) userPublicFromEnt(u *ent.User) userPublic {
 			user.ProfilePhoto = &file
 		}
 	}
+	if u.AudioCallSettings != nil {
+		var settings audioCallSettings
+		if json.Unmarshal([]byte(*u.AudioCallSettings), &settings) == nil && settings.Privacy != nil {
+			user.DirectMessagePermission = settings.Privacy.DirectMessagePermission
+			user.GroupInvitePermission = settings.Privacy.GroupInvitePermission
+			user.ChannelInvitePermission = settings.Privacy.ChannelInvitePermission
+			user.VoiceInvitePermission = settings.Privacy.VoiceInvitePermission
+			user.InvitePermissionUserIDs = settings.Privacy.InvitePermissionUserIDs
+		}
+	}
 	return user
 }
 
 func (s *Server) requireAdmin(user userPublic) error {
-	if !isAdmin(user.Role) {
+	if !hasPermission(user, permissionManageServer) {
 		return errForbidden
 	}
 	return nil
@@ -706,6 +727,11 @@ func (s *Server) initSchema() error {
 	for _, stmt := range schemaStatements {
 		if _, err := s.db.Exec(stmt); err != nil {
 			return err
+		}
+	}
+	for _, stmt := range transcriptionSchemaStatements {
+		if _, err := s.db.Exec(stmt); err != nil {
+			return fmt.Errorf("initialize AI Notes transcription schema: %w", err)
 		}
 	}
 	for _, stmt := range schemaRepairStatements {

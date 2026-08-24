@@ -1,7 +1,7 @@
 import { ApiError, apiRequest, getStoredRefreshToken } from "./client";
 import { FamilyFile } from "./files";
 
-export type UserRole = "owner" | "admin" | "member" | "child";
+export type UserRole = string;
 
 export interface User {
   id: string;
@@ -9,6 +9,9 @@ export interface User {
   username: string;
   displayName: string;
   role: UserRole;
+	roleId?: string;
+	roleName?: string;
+	permissions?: string[];
   isActive: boolean;
   publicKey: string | null;
   profilePhoto: FamilyFile | null;
@@ -17,6 +20,11 @@ export interface User {
   profileVisibility: "family" | "nobody";
   lastSeenVisibility: "family" | "nobody";
   readReceiptsEnabled: boolean;
+  directMessagePermission?: "family" | "selected" | "nobody";
+  groupInvitePermission?: "allow" | "selected" | "request" | "nobody";
+  channelInvitePermission?: "allow" | "selected" | "request" | "nobody";
+  voiceInvitePermission?: "allow" | "selected" | "request" | "nobody";
+  invitePermissionUserIds?: string[];
   email?: string | null;
   bio?: string | null;
   timezone?: string | null;

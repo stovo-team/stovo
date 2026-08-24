@@ -3,18 +3,17 @@ import { Link } from "react-router-dom";
 
 import { User, UserRole } from "../api/auth";
 import { ApiError, getClusterPrefix } from "../api/client";
-import { changeMemberRole, removeMember } from "../api/family";
+import { changeMemberRole, getServerRoles, removeMember, ServerRole } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 
-const ROLE_OPTIONS: UserRole[] = ["admin", "member", "child"];
 const MEMBERS_PAGE_SIZE = 20;
 
 function canManage(actor: User, target: User) {
   if (actor.id === target.id) return false;
   if (actor.role === "owner") return target.role !== "owner";
-  if (actor.role === "admin") return target.role === "member" || target.role === "child";
+  if (actor.role === "admin") return target.role !== "owner";
   return false;
 }
 
@@ -50,6 +49,7 @@ function MemberAvatar({ accessToken, member }: { accessToken: string | null; mem
 export default function AdminMembersPage() {
   const { accessToken, authRequest, currentUser } = useAuth();
   const [members, setMembers] = useState<User[]>([]);
+	const [roles, setRoles] = useState<ServerRole[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(MEMBERS_PAGE_SIZE);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export default function AdminMembersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const canViewAdmin = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_members") === true;
   const prefix = getClusterPrefix();
 
   const filteredMembers = useMemo(() => {
@@ -83,8 +83,9 @@ export default function AdminMembersPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const membersResult = await authRequest<User[]>("/api/family/members");
+		const [membersResult, roleResult] = await Promise.all([authRequest<User[]>("/api/family/members"), getServerRoles(accessToken)]);
       setMembers(membersResult.filter((member) => (member.role as string) !== "connector"));
+		setRoles(roleResult);
       setVisibleCount(MEMBERS_PAGE_SIZE);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not load members");
@@ -193,8 +194,7 @@ export default function AdminMembersPage() {
               {!isLoading && filteredMembers.length === 0 && <p className="muted-text">No members found.</p>}
               {visibleMembers.map((member) => {
                 const manageable = currentUser ? canManage(currentUser, member) : false;
-                const roleOptions =
-                  currentUser?.role === "admin" ? ROLE_OPTIONS.filter((role) => role !== "admin") : ROLE_OPTIONS;
+                const roleOptions = roles;
 
                 return (
                   <article key={member.id} className="admin-member-row admin-member-row--manage">
@@ -207,15 +207,15 @@ export default function AdminMembersPage() {
                     </span>
                     <div className="admin-member-actions">
                       <select
-                        value={member.role}
+                        value={member.roleId ?? member.role}
                         disabled={!manageable || isSaving}
                         onChange={(event) => void handleRoleChange(member, event.target.value as UserRole)}
                         aria-label={`Role for ${member.displayName}`}
                       >
-                        {member.role === "owner" && <option value="owner">owner</option>}
+                        {member.role === "owner" && <option value="owner">Owner</option>}
                         {roleOptions.map((role) => (
-                          <option key={role} value={role}>
-                            {role}
+                          <option key={role.id} value={role.id}>
+                            {role.name}
                           </option>
                         ))}
                       </select>

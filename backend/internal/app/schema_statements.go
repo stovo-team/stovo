@@ -9,6 +9,10 @@ var schemaStatements = []string{
 		storage_limit_mb INTEGER,
 		minimized_chat_layout BOOLEAN NOT NULL DEFAULT FALSE,
 		default_message_encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest',
+		default_profile_visibility TEXT NOT NULL DEFAULT 'family',
+		default_last_seen_visibility TEXT NOT NULL DEFAULT 'family',
+		default_read_receipts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+		default_notification_settings TEXT NOT NULL DEFAULT '{"messageNotifications":true,"messagePreview":true,"messageSound":true,"callNotifications":true,"ringtoneEnabled":true,"quietHoursEnabled":false,"quietHoursStart":"22:00","quietHoursEnd":"07:00"}',
 		public_app_url TEXT,
 		public_api_url TEXT,
 		created_at TEXT NOT NULL,
@@ -296,10 +300,123 @@ var schemaStatements = []string{
 	`CREATE UNIQUE INDEX IF NOT EXISTS uq_family_chat_per_family ON chats(family_id) WHERE type = 'family';`,
 }
 
+// transcriptionSchemaStatements bootstraps AI Notes for independently
+// provisioned tenant databases. Tenant databases are not migrated by Atlas at
+// creation time, so this must run before the startup repair ALTER statements.
+var transcriptionSchemaStatements = []string{
+	`CREATE TABLE IF NOT EXISTS call_transcription_sessions (
+		id text PRIMARY KEY,
+		call_id text NOT NULL,
+		initiated_by text NOT NULL,
+		status text NOT NULL,
+		provider text NOT NULL DEFAULT 'groq',
+		provider_model text NOT NULL DEFAULT 'whisper-large-v3-turbo',
+		started_at timestamp with time zone,
+		stopped_at timestamp with time zone,
+		completed_at timestamp with time zone,
+		submitted_audio_ms bigint NOT NULL DEFAULT 0,
+		estimated_cost_usd numeric(12,6),
+		detected_languages jsonb NOT NULL DEFAULT '[]'::jsonb,
+		failure_code text,
+		failure_message text,
+		artifact_exact_key text,
+		artifact_cleaned_key text,
+		artifact_vtt_key text,
+		artifact_summary_key text,
+		summary_json jsonb,
+		created_at timestamp with time zone NOT NULL DEFAULT now(),
+		updated_at timestamp with time zone NOT NULL DEFAULT now()
+	);`,
+	`CREATE UNIQUE INDEX IF NOT EXISTS idx_call_transcription_sessions_call_id_active
+		ON call_transcription_sessions (call_id)
+		WHERE status IN ('starting', 'recording', 'stopping', 'queued', 'validating_audio', 'transcribing', 'postprocessing');`,
+	`CREATE INDEX IF NOT EXISTS idx_call_transcription_sessions_call_id ON call_transcription_sessions (call_id);`,
+	`CREATE INDEX IF NOT EXISTS idx_call_transcription_sessions_status ON call_transcription_sessions (status);`,
+	`CREATE TABLE IF NOT EXISTS call_audio_chunks (
+		id text PRIMARY KEY,
+		session_id text NOT NULL,
+		participant_id text NOT NULL,
+		sequence_number integer NOT NULL,
+		object_key text NOT NULL,
+		container text NOT NULL,
+		codec text NOT NULL,
+		call_start_ms bigint NOT NULL,
+		call_end_ms bigint NOT NULL,
+		duration_ms bigint NOT NULL,
+		object_size_bytes bigint,
+		checksum_sha256 text,
+		client_vad_score real,
+		server_vad_status text,
+		upload_status text NOT NULL DEFAULT 'pending',
+		created_at timestamp with time zone NOT NULL DEFAULT now(),
+		CONSTRAINT call_audio_chunks_session_participant_seq UNIQUE (session_id, participant_id, sequence_number)
+	);`,
+	`CREATE INDEX IF NOT EXISTS idx_call_audio_chunks_session_id ON call_audio_chunks (session_id);`,
+	`CREATE INDEX IF NOT EXISTS idx_call_audio_chunks_participant_id ON call_audio_chunks (participant_id);`,
+	`CREATE TABLE IF NOT EXISTS call_transcript_segments (
+		id text PRIMARY KEY,
+		call_id text NOT NULL,
+		session_id text NOT NULL,
+		participant_id text NOT NULL,
+		start_ms bigint NOT NULL,
+		end_ms bigint NOT NULL,
+		exact_text text NOT NULL,
+		cleaned_text text,
+		detected_language text,
+		confidence real,
+		package_id text,
+		provider_segment_index integer,
+		created_at timestamp with time zone NOT NULL DEFAULT now(),
+		updated_at timestamp with time zone NOT NULL DEFAULT now()
+	);`,
+	`CREATE INDEX IF NOT EXISTS idx_call_transcript_segments_session_start ON call_transcript_segments (session_id, start_ms);`,
+	`CREATE INDEX IF NOT EXISTS idx_call_transcript_segments_call_start ON call_transcript_segments (call_id, start_ms);`,
+	`CREATE INDEX IF NOT EXISTS idx_call_transcript_segments_participant ON call_transcript_segments (participant_id, start_ms);`,
+	`CREATE INDEX IF NOT EXISTS idx_call_transcript_segments_fts ON call_transcript_segments USING gin(to_tsvector('simple', exact_text));`,
+	`CREATE TABLE IF NOT EXISTS call_transcription_packages (
+		id text PRIMARY KEY,
+		session_id text NOT NULL,
+		participant_id text NOT NULL,
+		object_key text,
+		duration_ms bigint NOT NULL DEFAULT 0,
+		regions jsonb NOT NULL DEFAULT '[]'::jsonb,
+		provider_response jsonb,
+		status text NOT NULL DEFAULT 'pending',
+		created_at timestamp with time zone NOT NULL DEFAULT now(),
+		updated_at timestamp with time zone NOT NULL DEFAULT now()
+	);`,
+	`CREATE INDEX IF NOT EXISTS idx_call_transcription_packages_session_id ON call_transcription_packages (session_id);`,
+}
+
 // schemaRepairStatements are idempotent ALTER / DO $$ statements that fix
 // schema issues introduced in earlier versions of the application. They are
 // executed with errors ignored so they never block startup on a fresh database.
 var schemaRepairStatements = []string{
+	`CREATE TABLE IF NOT EXISTS server_roles (
+		id TEXT PRIMARY KEY,
+		family_id TEXT NOT NULL,
+		name TEXT NOT NULL,
+		description TEXT NOT NULL DEFAULT '',
+		permissions TEXT NOT NULL DEFAULT '[]',
+		is_default BOOLEAN NOT NULL DEFAULT FALSE,
+		created_at TEXT NOT NULL,
+		updated_at TEXT NOT NULL,
+		UNIQUE (family_id, name),
+		FOREIGN KEY (family_id) REFERENCES families(id)
+	);`,
+	`ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id TEXT;`,
+	`CREATE INDEX IF NOT EXISTS idx_users_family_role_id ON users (family_id, role_id);`,
+	`INSERT INTO server_roles (id, family_id, name, description, permissions, is_default, created_at, updated_at)
+	 SELECT families.id || ':admin', families.id, 'Admin', 'Full server administration', '["manage_server","manage_roles","manage_members","manage_channels","manage_messages","manage_calls","manage_plans","manage_files","manage_integrations"]', TRUE, NOW()::text, NOW()::text FROM families
+	 ON CONFLICT (id) DO NOTHING;`,
+	`INSERT INTO server_roles (id, family_id, name, description, permissions, is_default, created_at, updated_at)
+	 SELECT families.id || ':member', families.id, 'Member', '', '[]', TRUE, NOW()::text, NOW()::text FROM families
+	 ON CONFLICT (id) DO NOTHING;`,
+	`UPDATE users SET role_id = family_id || CASE WHEN role IN ('owner', 'admin') THEN ':admin' ELSE ':member' END WHERE role_id IS NULL;`,
+	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_profile_visibility TEXT NOT NULL DEFAULT 'family';`,
+	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_last_seen_visibility TEXT NOT NULL DEFAULT 'family';`,
+	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_read_receipts_enabled BOOLEAN NOT NULL DEFAULT TRUE;`,
+	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_notification_settings TEXT NOT NULL DEFAULT '{"messageNotifications":true,"messagePreview":true,"messageSound":true,"callNotifications":true,"ringtoneEnabled":true,"quietHoursEnabled":false,"quietHoursStart":"22:00","quietHoursEnd":"07:00"}';`,
 	`DO $$ BEGIN
 		IF EXISTS (
 			SELECT 1 FROM information_schema.table_constraints

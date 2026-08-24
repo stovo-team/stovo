@@ -11,9 +11,9 @@ import {
   MoreVertical,
   PhoneOff,
   Settings,
-  Sparkles,
   ScreenShare,
   ScreenShareOff,
+  Square,
   UserPlus,
   Video,
   VideoOff,
@@ -205,7 +205,7 @@ export function VoiceChannelStage({
     : transcriptState === "starting"
       ? "Starting AI Notes…"
       : transcriptState === "recording"
-        ? "AI Notes is recording. It will stop automatically when the call ends."
+        ? "AI Notes is on. It will stop automatically when the call ends."
         : transcriptState === "stopping" || transcriptState === "processing"
           ? "AI Notes is processing in the background and will be posted in this chat."
           : transcriptState === "ready"
@@ -543,13 +543,13 @@ export function VoiceChannelStage({
                     disabled={transcriptState === "starting" || transcriptState === "stopping" || transcriptState === "processing" || transcriptState === "ready"}
                   >
                     {transcriptState === "recording" ? (
-                      <Sparkles size={16} aria-hidden="true" className="voice-icon-spin" />
+                      <Square size={16} aria-hidden="true" fill="currentColor" />
                     ) : (
                       <FileText size={16} aria-hidden="true" />
                     )}
                     <span>
                       {transcriptState === "recording"
-                        ? "Stop AI Notes (Recording…)"
+                        ? "Stop AI Notes"
                         : transcriptState === "processing" || transcriptState === "stopping"
                           ? "AI Notes (Processing…)"
                           : transcriptState === "ready"

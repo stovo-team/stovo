@@ -145,13 +145,30 @@ func (s *Server) getGroqChatModel() string {
 func (s *Server) getGroqSTTModel() string {
 	model := config.GetOrReloadEnv("GROQ_STT_MODEL")
 	if model != "" {
+		return s.normalizedSTTModel(model)
+	}
+	if strings.TrimSpace(s.cfg.GroqSTTModel) != "" {
+		return s.normalizedSTTModel(s.cfg.GroqSTTModel)
+	}
+	return "qwen3-asr-flash-2025-09-08"
+}
+
+// qwen-plus is a chat model and cannot transcribe audio. Preserve a configured
+// ASR model, but recover safely from this common configuration mix-up.
+func (s *Server) normalizedSTTModel(model string) string {
+	model = strings.TrimSpace(model)
+	if !strings.HasPrefix(strings.ToLower(model), "qwen-plus") {
 		s.cfg.GroqSTTModel = model
 		return model
 	}
-	if strings.TrimSpace(s.cfg.GroqSTTModel) != "" {
-		return strings.TrimSpace(s.cfg.GroqSTTModel)
+	fallback := "whisper-large-v3-turbo"
+	baseURL := strings.ToLower(s.getGroqBaseURL())
+	if strings.Contains(baseURL, "aliyuncs.com") || strings.Contains(baseURL, "dashscope") || strings.Contains(baseURL, "maas") {
+		fallback = "qwen3-asr-flash"
 	}
-	return "qwen3-asr-flash-2025-09-08"
+	s.cfg.GroqSTTModel = fallback
+	s.logger.Warnf("transcription", "GROQ_STT_MODEL=%q is a chat model; using ASR model %q instead", model, fallback)
+	return fallback
 }
 
 func (s *Server) getGroqBaseURL() string {
@@ -831,6 +848,10 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 			detectedLangs[l] = true
 		}
 	}
+	if len(allSegments) == 0 {
+		s.markTranscriptionFailed(ctx, sessionID, chatID, callID, "transcription_failed", "No speech could be transcribed. Check the AI Notes speech-to-text model and provider configuration.")
+		return
+	}
 
 	s.updateTranscriptionMetadata(ctx, sessionID, totalAudioMs, detectedLangs, groqClient)
 	s.runLLMPostProcessing(ctx, sessionID, allSegments, apiKey)
@@ -1107,20 +1128,24 @@ func (s *Server) markTranscriptionFailed(ctx context.Context, sessionID, chatID,
 		`UPDATE call_transcription_sessions SET status='failed', failure_code=$1, failure_message=$2, updated_at=now() WHERE id=$3`,
 		code, message, sessionID,
 	)
-	s.broadcastTranscriptionStatus(chatID, callID, sessionID, string(transcription.SessionStatusFailed))
+	s.broadcastTranscriptionStatus(chatID, callID, sessionID, string(transcription.SessionStatusFailed), message)
 }
 
-func (s *Server) broadcastTranscriptionStatus(chatID, callID, sessionID, status string) {
+func (s *Server) broadcastTranscriptionStatus(chatID, callID, sessionID, status string, failureMessages ...string) {
 	session, ok := s.resolveCallSession(chatID, callID)
 	if !ok {
 		return
 	}
-	s.emitCallToActiveParticipants(session, "call.transcription."+strings.ToLower(status), map[string]any{
+	payload := map[string]any{
 		"roomId":    callID,
 		"chatId":    chatID,
 		"sessionId": sessionID,
 		"status":    status,
-	})
+	}
+	if len(failureMessages) > 0 && strings.TrimSpace(failureMessages[0]) != "" {
+		payload["failureMessage"] = failureMessages[0]
+	}
+	s.emitCallToActiveParticipants(session, "call.transcription."+strings.ToLower(status), payload)
 }
 
 func (s *Server) dbGetSessionChunks(ctx context.Context, sessionID string) ([]audioChunkRow, error) {

@@ -489,7 +489,7 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 	bio := trimStringPointer(payload.Bio)
 	timezone := trimStringPointer(payload.Timezone)
 
-	if displayName == nil && publicKey == nil && profilePhotoFileID == nil && payload.ProfileVisibility == nil && payload.LastSeenVisibility == nil && payload.ReadReceiptsEnabled == nil && email == nil && bio == nil && timezone == nil {
+	if displayName == nil && publicKey == nil && profilePhotoFileID == nil && payload.ProfileVisibility == nil && payload.LastSeenVisibility == nil && payload.ReadReceiptsEnabled == nil && payload.DirectMessagePermission == nil && payload.GroupInvitePermission == nil && payload.ChannelInvitePermission == nil && payload.VoiceInvitePermission == nil && payload.InvitePermissionUserIDs == nil && email == nil && bio == nil && timezone == nil {
 		s.detail(w, http.StatusUnprocessableEntity, "A profile or privacy setting is required")
 		return
 	}
@@ -509,6 +509,7 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 			return
 		}
 	}
+	if err := validateContactPrivacyUpdate(payload); err != nil { s.detail(w, http.StatusUnprocessableEntity, err.Error()); return }
 
 	params := repository.UpdateUserProfileParams{
 		DisplayName:         displayName,
@@ -531,6 +532,7 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 		s.detail(w, http.StatusInternalServerError, "Could not update profile")
 		return
 	}
+	if err := s.updateContactPrivacy(r.Context(), user.ID, payload); err != nil { s.detail(w, http.StatusInternalServerError, "Could not update privacy settings"); return }
 
 	updated, err := s.getUserByID(user.ID)
 	if err != nil {
@@ -538,6 +540,21 @@ func (s *Server) handleUpdateMe(w http.ResponseWriter, r *http.Request, user use
 		return
 	}
 	s.json(w, http.StatusOK, updated)
+}
+
+func validateContactPrivacyUpdate(p updateMeRequest) error {
+	if p.DirectMessagePermission != nil && *p.DirectMessagePermission != "family" && *p.DirectMessagePermission != "selected" && *p.DirectMessagePermission != "nobody" { return fmt.Errorf("direct message permission is invalid") }
+	for _, value := range []*string{p.GroupInvitePermission, p.ChannelInvitePermission, p.VoiceInvitePermission} { if value != nil && *value != "allow" && *value != "selected" && *value != "request" && *value != "nobody" { return fmt.Errorf("invite permission is invalid") } }
+	return nil
+}
+
+func (s *Server) updateContactPrivacy(ctx context.Context, userID string, p updateMeRequest) error {
+	if p.DirectMessagePermission == nil && p.GroupInvitePermission == nil && p.ChannelInvitePermission == nil && p.VoiceInvitePermission == nil && p.InvitePermissionUserIDs == nil { return nil }
+	raw, err := s.store.AudioCallSettings(ctx, userID); if err != nil { return err }
+	settings := defaultAudioSettings(); if raw != nil { _ = json.Unmarshal([]byte(*raw), &settings) }
+	privacy := contactPrivacySettings{DirectMessagePermission: "family", GroupInvitePermission: "allow", ChannelInvitePermission: "allow", VoiceInvitePermission: "allow"}; if settings.Privacy != nil { privacy = *settings.Privacy }
+	if p.DirectMessagePermission != nil { privacy.DirectMessagePermission = *p.DirectMessagePermission }; if p.GroupInvitePermission != nil { privacy.GroupInvitePermission = *p.GroupInvitePermission }; if p.ChannelInvitePermission != nil { privacy.ChannelInvitePermission = *p.ChannelInvitePermission }; if p.VoiceInvitePermission != nil { privacy.VoiceInvitePermission = *p.VoiceInvitePermission }; if p.InvitePermissionUserIDs != nil { privacy.InvitePermissionUserIDs = *p.InvitePermissionUserIDs }
+	settings.Privacy = &privacy; blob, err := json.Marshal(settings); if err != nil { return err }; return s.store.SetAudioCallSettings(ctx, userID, string(blob))
 }
 
 func (s *Server) handleChangePassword(w http.ResponseWriter, r *http.Request, user userPublic) {
@@ -596,7 +613,10 @@ func (s *Server) getUserForLogin(ctx context.Context, username string) (userPubl
 	if err != nil {
 		return userPublic{}, "", err
 	}
-	return s.userPublicFromEnt(u), u.PasswordHash, nil
+	user := s.userPublicFromEnt(u)
+	_ = s.db.QueryRowContext(ctx, `SELECT COALESCE(role_id, '') FROM users WHERE id = $1`, u.ID).Scan(&user.RoleID)
+	s.hydrateUserRole(ctx, &user)
+	return user, u.PasswordHash, nil
 }
 
 func (s *Server) issueRefreshToken(userID string) (raw string, hashed string, expiresAt string, err error) {
@@ -809,6 +829,14 @@ func (s *Server) handlePutAudioSettings(w http.ResponseWriter, r *http.Request, 
 		payload.SpeakerMode = "small"
 	}
 
+	// Audio changes must not discard privacy controls stored with the user's
+	// persisted settings.
+	if raw, err := s.store.AudioCallSettings(r.Context(), user.ID); err == nil && raw != nil {
+		var existing audioCallSettings
+		if json.Unmarshal([]byte(*raw), &existing) == nil {
+			payload.Privacy = existing.Privacy
+		}
+	}
 	blob, err := json.Marshal(payload)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not encode audio settings")

@@ -29,7 +29,7 @@ export default function AppNav({
     settings: true,
     ...navTabsOverride,
   }));
-  const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const canViewAdmin = currentUser?.role === "owner" || Boolean(currentUser?.permissions?.length);
   const prefersReducedMotion = useReducedMotion();
   const enableViewTransitions = !prefersReducedMotion;
 
