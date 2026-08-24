@@ -31,7 +31,7 @@ func (s *Server) handlePinMessage(w http.ResponseWriter, r *http.Request, user u
 		return
 	}
 
-	if chat.PinPermission == "admins_only" && !isAdmin(user.Role) {
+	if chat.PinPermission == "admins_only" && !hasPermission(user, permissionManageMessages) {
 		s.detail(w, http.StatusForbidden, "Only admins can pin messages in this chat")
 		return
 	}
@@ -103,7 +103,7 @@ func (s *Server) handleUnpinMessage(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	if user.ID != pin.PinnedBy && !isAdmin(user.Role) {
+	if user.ID != pin.PinnedBy && !hasPermission(user, permissionManageMessages) {
 		s.detail(w, http.StatusForbidden, "Cannot unpin this message")
 		return
 	}

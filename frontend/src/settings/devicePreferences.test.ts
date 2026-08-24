@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import {
   DEFAULT_DEVICE_PREFERENCES,
+  applyServerNotificationDefaults,
   isWithinQuietHours,
   readDevicePreferences,
   writeDevicePreferences
@@ -25,6 +26,12 @@ beforeEach(() => {
 describe("device preferences", () => {
   it("uses quiet hours and notifications defaults for a new device", () => {
     expect(readDevicePreferences()).toEqual(DEFAULT_DEVICE_PREFERENCES);
+  });
+
+  it("uses server notification defaults only before this device has a saved choice", () => {
+    const serverDefaults = JSON.stringify({ ...DEFAULT_DEVICE_PREFERENCES, messageSound: false, quietHoursEnabled: true });
+    expect(applyServerNotificationDefaults(serverDefaults)).toMatchObject({ messageSound: false, quietHoursEnabled: true });
+    expect(applyServerNotificationDefaults(JSON.stringify({ ...DEFAULT_DEVICE_PREFERENCES, messageSound: true }))).toMatchObject({ messageSound: false });
   });
 
   it("persists a partial device preference update including language", () => {

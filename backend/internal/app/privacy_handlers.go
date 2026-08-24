@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"net/http"
+	"slices"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -12,6 +13,15 @@ func (s *Server) directContactBlocked(firstUserID, secondUserID string) (bool, e
 		return false, nil
 	}
 	return s.store.DirectContactBlocked(context.Background(), firstUserID, secondUserID)
+}
+
+func contactPermissionAllows(target userPublic, inviterID, chatType string) bool {
+	permission := target.DirectMessagePermission
+	if chatType == "group" { permission = target.GroupInvitePermission }
+	if chatType == "channel" { permission = target.ChannelInvitePermission }
+	if chatType == "voice" { permission = target.VoiceInvitePermission }
+	if chatType == "direct" { return permission != "nobody" && (permission != "selected" || slices.Contains(target.InvitePermissionUserIDs, inviterID)) }
+	return permission == "allow" || (permission == "selected" && slices.Contains(target.InvitePermissionUserIDs, inviterID))
 }
 
 func (s *Server) handleListBlocks(w http.ResponseWriter, r *http.Request, user userPublic) {

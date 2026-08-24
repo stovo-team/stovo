@@ -661,7 +661,7 @@ export default function SettingsPage() {
     }
   }
 
-  async function updatePrivacy(patch: Partial<Pick<User, "profileVisibility" | "lastSeenVisibility" | "readReceiptsEnabled">>) {
+  async function updatePrivacy(patch: Partial<Pick<User, "profileVisibility" | "lastSeenVisibility" | "readReceiptsEnabled" | "directMessagePermission" | "groupInvitePermission" | "channelInvitePermission" | "voiceInvitePermission" | "invitePermissionUserIds">>) {
     if (!currentUser) return;
     setIsSaving(true);
     setError(null);

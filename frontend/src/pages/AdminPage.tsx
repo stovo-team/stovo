@@ -12,11 +12,19 @@ export default function AdminPage() {
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const canViewAdmin = currentUser?.role === "owner" || Boolean(currentUser?.permissions?.length);
+  const isOwner = currentUser?.role === "owner";
   const prefix = getClusterPrefix();
 
   const adminTabs = [
-    {
+    ...(isOwner ? [{ to: "/app/admin/defaults", icon: "tune", title: strings.admin.hub.memberDefaults, description: strings.admin.hub.memberDefaultsDesc }] : []),
+	...(currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_roles") ? [{
+		to: "/app/admin/roles",
+		icon: "admin_panel_settings",
+		title: "Roles",
+		description: "Permissions and member roles"
+	}] : []),
+	{
       to: "/app/admin/appearance",
       icon: "palette",
       title: strings.admin.hub.appearance,

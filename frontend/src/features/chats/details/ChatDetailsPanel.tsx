@@ -142,7 +142,7 @@ export function ChatDetailsPanel({
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onOpenAddPeople: () => void;
   onPinPermissionChange: (permission: "everyone" | "admins_only") => void;
-  onMessageDelayChange: (delaySeconds: number) => void;
+  onMessageDelayChange: (delaySeconds: number) => Promise<boolean>;
   onPreferenceChange: (
     payload: {
       isMuted?: boolean;
@@ -170,7 +170,12 @@ export function ChatDetailsPanel({
   const sharedContentTabs = ["media", "audio", "files", "links"] as const;
 
   const currentMessageDelay = chat.messageDelaySeconds ?? 0;
-  const isDelayOn = currentMessageDelay > 0;
+  // A background chat refresh can contain the value from before the PATCH.
+  // Keep the user's just-selected value visible until its own request has
+  // confirmed it, rather than letting that stale snapshot flip the radio Off.
+  const [pendingMessageDelay, setPendingMessageDelay] = useState<number | null>(null);
+  const displayedMessageDelay = pendingMessageDelay ?? currentMessageDelay;
+  const isDelayOn = displayedMessageDelay > 0;
   const isPresetDelay = (val: number) => MESSAGE_DELAY_PRESETS.some((p) => p.value === val);
 
   const [selectedDelayMode, setSelectedDelayMode] = useState<string>(() => {
@@ -198,6 +203,20 @@ export function ChatDetailsPanel({
     }
   }, [currentMessageDelay]);
 
+  useEffect(() => {
+    if (pendingMessageDelay !== null && currentMessageDelay === pendingMessageDelay) {
+      setPendingMessageDelay(null);
+    }
+  }, [currentMessageDelay, pendingMessageDelay]);
+
+  async function changeMessageDelay(delaySeconds: number) {
+    setPendingMessageDelay(delaySeconds);
+    const saved = await onMessageDelayChange(delaySeconds);
+    if (!saved) {
+      setPendingMessageDelay(null);
+    }
+  }
+
   function handleDelayOff(event: ChangeEvent<HTMLInputElement>) {
     // Some mobile WebViews report a change for the radio that has just been
     // unchecked as well as the newly checked one. Only the selected control
@@ -205,7 +224,7 @@ export function ChatDetailsPanel({
     if (!event.currentTarget.checked) {
       return;
     }
-    void onMessageDelayChange(0);
+    void changeMessageDelay(0);
   }
 
   function handleDelayOn(event: ChangeEvent<HTMLInputElement>) {
@@ -214,9 +233,9 @@ export function ChatDetailsPanel({
     }
     if (selectedDelayMode === "custom") {
       const parsed = parseInt(customDelayDraft, 10);
-      void onMessageDelayChange(parsed > 0 ? parsed : 10);
+      void changeMessageDelay(parsed > 0 ? parsed : 10);
     } else {
-      void onMessageDelayChange(Number(selectedDelayMode) || 5);
+      void changeMessageDelay(Number(selectedDelayMode) || 5);
     }
   }
 
@@ -225,9 +244,9 @@ export function ChatDetailsPanel({
     setSelectedDelayMode(mode);
     if (mode === "custom") {
       const parsed = parseInt(customDelayDraft, 10);
-      void onMessageDelayChange(parsed > 0 ? parsed : 10);
+      void changeMessageDelay(parsed > 0 ? parsed : 10);
     } else {
-      void onMessageDelayChange(Number(mode));
+      void changeMessageDelay(Number(mode));
     }
   }
 
@@ -236,7 +255,7 @@ export function ChatDetailsPanel({
     setCustomDelayDraft(val);
     const parsed = parseInt(val, 10);
     if (parsed > 0) {
-      void onMessageDelayChange(parsed);
+      void changeMessageDelay(parsed);
     }
   }
 

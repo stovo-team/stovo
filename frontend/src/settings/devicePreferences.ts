@@ -57,6 +57,18 @@ export function readDevicePreferences(): DevicePreferences {
   }
 }
 
+export function applyServerNotificationDefaults(raw: string): DevicePreferences {
+  if (typeof window === "undefined" || window.localStorage.getItem(DEVICE_PREFERENCES_STORAGE_KEY) !== null) {
+    return readDevicePreferences();
+  }
+  try {
+    const defaults = JSON.parse(raw) as Partial<DevicePreferences>;
+    return writeDevicePreferences(defaults);
+  } catch {
+    return readDevicePreferences();
+  }
+}
+
 export function writeDevicePreferences(patch: Partial<DevicePreferences>): DevicePreferences {
   const next = { ...readDevicePreferences(), ...patch };
   if (typeof window !== "undefined") {

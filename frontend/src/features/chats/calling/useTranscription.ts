@@ -301,13 +301,13 @@ export function useTranscription({
       }
     };
 
-    const onFailed = (payload: { sessionId: string; status: string }) => {
+    const onFailed = (payload: { sessionId: string; status: string; failureMessage?: string }) => {
       if (
         sessionIdRef.current === payload.sessionId ||
         payload.status === "failed"
       ) {
         setTranscriptState("failed");
-        setTranscriptError("Transcription failed. Please try again.");
+        setTranscriptError(payload.failureMessage || "Transcription failed. Please try again.");
       }
     };
 

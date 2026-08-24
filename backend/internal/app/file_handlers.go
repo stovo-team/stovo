@@ -279,7 +279,7 @@ func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request, user u
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
-	if !isAdmin(user.Role) && file.UploadedBy != user.ID {
+	if !hasPermission(user, permissionManageFiles) && file.UploadedBy != user.ID {
 		s.detail(w, http.StatusForbidden, "Only owner, admin, or uploader can delete")
 		return
 	}

@@ -21,6 +21,10 @@ export interface Family {
   name: string;
   storageLimitMb?: number | null;
   minimizedChatLayout: boolean;
+  defaultProfileVisibility: "family" | "nobody";
+  defaultLastSeenVisibility: "family" | "nobody";
+  defaultReadReceiptsEnabled: boolean;
+  defaultNotificationSettings: string;
   navTabs?: {
     chats?: boolean;
     storage?: boolean;
@@ -34,6 +38,15 @@ export interface InvitePreview {
   role: UserRole;
   expiresAt: string;
   usesRemaining: number;
+}
+
+export interface ServerRole {
+  id: string;
+  name: string;
+  description?: string;
+  permissions: string[];
+  isDefault: boolean;
+  memberCount: number;
 }
 
 export interface InviteResponse {
@@ -60,7 +73,7 @@ export function getFamily(accessToken: string) {
   return apiRequest<Family>("/api/family", { accessToken });
 }
 
-export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean }) {
+export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean; defaultProfileVisibility?: "family" | "nobody"; defaultLastSeenVisibility?: "family" | "nobody"; defaultReadReceiptsEnabled?: boolean; defaultNotificationSettings?: string }) {
   return apiRequest<Family>("/api/family", {
     method: "PATCH",
     accessToken,
@@ -70,6 +83,22 @@ export function updateFamily(accessToken: string, payload: { name?: string; stor
 
 export function getMembers(accessToken: string) {
   return apiRequest<User[]>("/api/family/members", { accessToken });
+}
+
+export function getServerRoles(accessToken: string) {
+  return apiRequest<ServerRole[]>("/api/family/roles", { accessToken });
+}
+
+export function createServerRole(accessToken: string, payload: Pick<ServerRole, "name" | "description" | "permissions">) {
+  return apiRequest<ServerRole>("/api/family/roles", { method: "POST", accessToken, body: payload });
+}
+
+export function updateServerRole(accessToken: string, roleId: string, payload: Partial<Pick<ServerRole, "name" | "description" | "permissions">>) {
+  return apiRequest<ServerRole>(`/api/family/roles/${encodeURIComponent(roleId)}`, { method: "PATCH", accessToken, body: payload });
+}
+
+export function deleteServerRole(accessToken: string, roleId: string, replacementRoleId: string) {
+  return apiRequest<void>(`/api/family/roles/${encodeURIComponent(roleId)}`, { method: "DELETE", accessToken, body: { replacementRoleId } });
 }
 
 export function changeMemberRole(accessToken: string, userId: string, role: UserRole) {
