@@ -57,10 +57,7 @@ type Server struct {
 	socketMu       sync.RWMutex
 	socketUsers    map[string]socketSession
 	userSockets    map[string]map[string]*socketio.Socket
-	callMu         sync.Mutex
-	callByChat     map[string]*callSession
-	callByRoom     map[string]*callSession
-	userActiveCall map[string]string // userID в†’ roomID
+	calls          *CallManager
 	callTimeout    time.Duration
 	frontendClient *http.Client
 	frontendTarget *url.URL
@@ -129,6 +126,7 @@ func New(cfg config.Config) (*Server, error) {
 	drv := entsql.OpenDB(dialect.Postgres, db)
 	entClient := ent.NewClient(ent.Driver(drv))
 
+	callManager := NewCallManager()
 	app := &Server{
 		cfg:            cfg,
 		db:             db,
@@ -144,9 +142,7 @@ func New(cfg config.Config) (*Server, error) {
 		broker:         broker.NewRedisBroker(redisClient),
 		socketUsers:    make(map[string]socketSession),
 		userSockets:    make(map[string]map[string]*socketio.Socket),
-		callByChat:     make(map[string]*callSession),
-		callByRoom:     make(map[string]*callSession),
-		userActiveCall: make(map[string]string),
+		calls:          callManager,
 		callTimeout:    30 * time.Second,
 		recentEvents:   make(map[string]time.Time),
 		ntfyRetryCh:    make(chan ntfyRetryItem, 100),

@@ -67,8 +67,8 @@ func (s *Server) restoreCallSessions(ctx context.Context) {
 		s.logger.Warnf("delivery", "restoreCallSessions query error: %v", err)
 		return
 	}
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
+	s.calls.Lock()
+	defer s.calls.Unlock()
 	for _, row := range sessions {
 		var sess callSession
 		sess.ID = row.ID
@@ -107,15 +107,9 @@ func (s *Server) restoreCallSessions(ctx context.Context) {
 			}
 		}
 		ptr := &sess
-		s.callByRoom[sess.ID] = ptr
-		s.callByChat[sess.ChatID] = ptr
-		for userID, p := range sess.Participants {
-			if p != nil && p.State != participantLeft && p.State != participantDeclined {
-				s.userActiveCall[userID] = sess.ID
-			}
-		}
+		s.calls.IndexLocked(ptr)
 	}
-	count := len(s.callByRoom)
+	count := s.calls.CountLocked()
 	if count > 0 {
 		s.logger.Infof("delivery", "restoreCallSessions restored %d active sessions", count)
 	}

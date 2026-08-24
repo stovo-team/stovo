@@ -252,8 +252,8 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		return nil, err
 	}
 
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
+	s.calls.Lock()
+	defer s.calls.Unlock()
 
 	if err := s.checkCallConflicts(callerUserID, chat.ID, invitees); err != nil {
 		return nil, err
@@ -382,19 +382,19 @@ func (s *Server) validateCallPrivacy(callerUserID string, invitees []string, cha
 }
 
 // checkCallConflicts ensures no concurrent calls exist for the chat, caller, or invitees.
-// Must be called with s.callMu held.
+// Must be called with s.calls held.
 func (s *Server) checkCallConflicts(callerUserID, chatID string, invitees []string) error {
-	if _, exists := s.callByChat[chatID]; exists {
+	if _, exists := s.calls.ByChatLocked(chatID); exists {
 		return fmt.Errorf("call already in progress for this chat")
 	}
-	if roomID, busy := s.userActiveCall[callerUserID]; busy {
-		if existing := s.callByRoom[roomID]; existing != nil && existing.ChatID != chatID {
+	if roomID, busy := s.calls.ActiveRoomLocked(callerUserID); busy {
+		if existing, found := s.calls.ByRoomLocked(roomID); found && existing != nil && existing.ChatID != chatID {
 			return fmt.Errorf("you are already in another call")
 		}
 	}
 	for _, invitee := range invitees {
-		if roomID, busy := s.userActiveCall[invitee]; busy {
-			if existing := s.callByRoom[roomID]; existing != nil && existing.ChatID != chatID {
+		if roomID, busy := s.calls.ActiveRoomLocked(invitee); busy {
+			if existing, found := s.calls.ByRoomLocked(roomID); found && existing != nil && existing.ChatID != chatID {
 				return fmt.Errorf("participant is busy in another call")
 			}
 		}
@@ -409,16 +409,16 @@ func (s *Server) joinCallSession(chat chatPublic, userID string, callType string
 		return nil, false, fmt.Errorf("you are not a member of this chat")
 	}
 
-	s.callMu.Lock()
-	session, exists := s.callByChat[chat.ID]
+	s.calls.Lock()
+	session, exists := s.calls.ByChatLocked(chat.ID)
 	if exists && session != nil {
 		if p, ok := session.Participants[userID]; ok && p != nil && (p.State == participantConnected || p.State == participantConnecting) {
-			s.callMu.Unlock()
+			s.calls.Unlock()
 			return session, false, nil
 		}
 
-		if roomID, busy := s.userActiveCall[userID]; busy && roomID != session.ID {
-			s.callMu.Unlock()
+		if roomID, busy := s.calls.ActiveRoomLocked(userID); busy && roomID != session.ID {
+			s.calls.Unlock()
 			return nil, false, fmt.Errorf("you are already in another call")
 		}
 
@@ -436,11 +436,11 @@ func (s *Server) joinCallSession(chat chatPublic, userID string, callType string
 				JoinedAt: now,
 			}
 		}
-		s.userActiveCall[userID] = session.ID
+		s.calls.SetActiveLocked(userID, session.ID)
 		if (chat.Type == "voice" || session.connectedOrConnectingCount() > maxMeshParticipants) && s.isSFUConfigured() {
 			session.Topology = callTopologySFU
 		}
-		s.callMu.Unlock()
+		s.calls.Unlock()
 
 		go func(sess *callSession) {
 			ctx := context.Background()
@@ -450,7 +450,7 @@ func (s *Server) joinCallSession(chat chatPublic, userID string, callType string
 
 		return session, false, nil
 	}
-	s.callMu.Unlock()
+	s.calls.Unlock()
 
 	sess, err := s.startCallSession(chat, userID, callType, nil)
 	if err != nil {
@@ -460,59 +460,39 @@ func (s *Server) joinCallSession(chat chatPublic, userID string, callType string
 }
 
 
-func (s *Server) indexCallSession(session *callSession) {
-	s.callByRoom[session.ID] = session
-	s.callByChat[session.ChatID] = session
-	for userID, p := range session.Participants {
-		if p == nil {
-			continue
-		}
-		if p.State == participantLeft || p.State == participantDeclined {
-			continue
-		}
-		s.userActiveCall[userID] = session.ID
-	}
-}
+func (s *Server) indexCallSession(session *callSession) { s.calls.IndexLocked(session) }
 
-func (s *Server) unindexCallSession(session *callSession) {
-	delete(s.callByRoom, session.ID)
-	delete(s.callByChat, session.ChatID)
-	for userID := range session.Participants {
-		if s.userActiveCall[userID] == session.ID {
-			delete(s.userActiveCall, userID)
-		}
-	}
-}
+func (s *Server) unindexCallSession(session *callSession) { s.calls.UnindexLocked(session) }
 
 func (s *Server) getCallSession(chatID string) (*callSession, bool) {
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
-	session, ok := s.callByChat[chatID]
+	s.calls.Lock()
+	defer s.calls.Unlock()
+	session, ok := s.calls.ByChatLocked(chatID)
 	return session, ok
 }
 
 func (s *Server) getCallSessionByRoom(roomID string) (*callSession, bool) {
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
-	session, ok := s.callByRoom[roomID]
+	s.calls.Lock()
+	defer s.calls.Unlock()
+	session, ok := s.calls.ByRoomLocked(roomID)
 	return session, ok
 }
 
 func (s *Server) resolveCallSession(chatID, roomID string) (*callSession, bool) {
-	s.callMu.Lock()
+	s.calls.Lock()
 	if roomID != "" {
-		if session, ok := s.callByRoom[roomID]; ok {
-			s.callMu.Unlock()
+		if session, ok := s.calls.ByRoomLocked(roomID); ok {
+			s.calls.Unlock()
 			return session, true
 		}
 	}
 	if chatID != "" {
-		if session, ok := s.callByChat[chatID]; ok {
-			s.callMu.Unlock()
+		if session, ok := s.calls.ByChatLocked(chatID); ok {
+			s.calls.Unlock()
 			return session, true
 		}
 	}
-	s.callMu.Unlock()
+	s.calls.Unlock()
 
 	// Memory miss: Redis is live call-state authority across instances.
 	lookupIDs := make([]string, 0, 2)
@@ -528,34 +508,34 @@ func (s *Server) resolveCallSession(chatID, roomID string) (*callSession, bool) 
 		if loaded == nil {
 			continue
 		}
-		s.callMu.Lock()
+		s.calls.Lock()
 		if roomID != "" {
-			if existing, ok := s.callByRoom[roomID]; ok {
-				s.callMu.Unlock()
+			if existing, ok := s.calls.ByRoomLocked(roomID); ok {
+				s.calls.Unlock()
 				return existing, true
 			}
 		}
 		if chatID != "" {
-			if existing, ok := s.callByChat[chatID]; ok {
-				s.callMu.Unlock()
+			if existing, ok := s.calls.ByChatLocked(chatID); ok {
+				s.calls.Unlock()
 				return existing, true
 			}
 		}
-		if existing, ok := s.callByRoom[loaded.ID]; ok {
-			s.callMu.Unlock()
+		if existing, ok := s.calls.ByRoomLocked(loaded.ID); ok {
+			s.calls.Unlock()
 			return existing, true
 		}
 		s.indexCallSession(loaded)
-		s.callMu.Unlock()
+		s.calls.Unlock()
 		return loaded, true
 	}
 	return nil, false
 }
 
 func (s *Server) setCallSessionState(chatID string, state callState) (*callSession, bool) {
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
-	session, ok := s.callByChat[chatID]
+	s.calls.Lock()
+	defer s.calls.Unlock()
+	session, ok := s.calls.ByChatLocked(chatID)
 	if !ok {
 		return nil, false
 	}
@@ -592,11 +572,11 @@ func (s *Server) setParticipantState(session *callSession, userID string, state 
 		}
 	}
 	if state == participantLeft || state == participantDeclined {
-		if s.userActiveCall[userID] == session.ID {
-			delete(s.userActiveCall, userID)
+		if roomID, active := s.calls.ActiveRoomLocked(userID); active && roomID == session.ID {
+			s.calls.ClearActiveLocked(userID)
 		}
 	} else {
-		s.userActiveCall[userID] = session.ID
+		s.calls.SetActiveLocked(userID, session.ID)
 	}
 }
 
@@ -613,8 +593,8 @@ func (s *Server) inviteUsersToCall(session *callSession, inviterUserID string, i
 		return nil, fmt.Errorf("could not verify inviter")
 	}
 	added := make([]string, 0)
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
+	s.calls.Lock()
+	defer s.calls.Unlock()
 
 	for _, raw := range inviteUserIDs {
 		id := strings.TrimSpace(raw)
@@ -631,7 +611,7 @@ func (s *Server) inviteUsersToCall(session *callSession, inviterUserID string, i
 		if existing := session.Participants[id]; existing != nil && existing.State != participantLeft && existing.State != participantDeclined {
 			continue
 		}
-		if roomID, busy := s.userActiveCall[id]; busy && roomID != session.ID {
+		if roomID, busy := s.calls.ActiveRoomLocked(id); busy && roomID != session.ID {
 			return nil, fmt.Errorf("participant is busy in another call")
 		}
 		if blocked, blockErr := s.directContactBlocked(inviterUserID, id); blockErr != nil {
@@ -644,7 +624,7 @@ func (s *Server) inviteUsersToCall(session *callSession, inviterUserID string, i
 			Role:   "member",
 			State:  participantRinging,
 		}
-		s.userActiveCall[id] = session.ID
+		s.calls.SetActiveLocked(id, session.ID)
 		added = append(added, id)
 		if session.CalleeUserID == "" {
 			session.CalleeUserID = id
@@ -691,8 +671,8 @@ func (s *Server) maybePromoteToSFULocked(session *callSession) (bool, error) {
 }
 
 func (s *Server) promoteCallToSFU(session *callSession) (bool, error) {
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
+	s.calls.Lock()
+	defer s.calls.Unlock()
 	return s.maybePromoteToSFULocked(session)
 }
 
@@ -762,14 +742,14 @@ func (s *Server) recordCallHistory(session *callSession, reason string) {
 }
 
 func (s *Server) endCallSession(chatID string) (*callSession, bool) {
-	s.callMu.Lock()
-	session, ok := s.callByChat[chatID]
+	s.calls.Lock()
+	session, ok := s.calls.ByChatLocked(chatID)
 	if !ok {
-		s.callMu.Unlock()
+		s.calls.Unlock()
 		return nil, false
 	}
 	s.unindexCallSession(session)
-	s.callMu.Unlock()
+	s.calls.Unlock()
 	// Stop the recorder while participants are still addressable from this
 	// session. This is deliberately before the call:ended event is emitted.
 	s.stopActiveTranscriptionForEndedCall(session)
@@ -786,10 +766,10 @@ func (s *Server) endCallSession(chatID string) (*callSession, bool) {
 }
 
 func (s *Server) leaveCallSession(chatID, userID string) (*callSession, bool, bool) {
-	s.callMu.Lock()
-	session, ok := s.callByChat[chatID]
+	s.calls.Lock()
+	session, ok := s.calls.ByChatLocked(chatID)
 	if !ok || !isCallParticipantAny(session, userID) {
-		s.callMu.Unlock()
+		s.calls.Unlock()
 		return nil, false, false
 	}
 	s.setParticipantState(session, userID, participantLeft)
@@ -797,7 +777,7 @@ func (s *Server) leaveCallSession(chatID, userID string) (*callSession, bool, bo
 	if ended {
 		s.unindexCallSession(session)
 	}
-	s.callMu.Unlock()
+	s.calls.Unlock()
 	if ended {
 		s.stopActiveTranscriptionForEndedCall(session)
 		go func(sess *callSession) {
@@ -822,15 +802,15 @@ func (s *Server) leaveCallSession(chatID, userID string) (*callSession, bool, bo
 }
 
 func (s *Server) endCallForUser(userID string) (*callSession, bool) {
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
-	roomID, ok := s.userActiveCall[userID]
+	s.calls.Lock()
+	defer s.calls.Unlock()
+	roomID, ok := s.calls.ActiveRoomLocked(userID)
 	if !ok {
 		return nil, false
 	}
-	_, exists := s.callByRoom[roomID]
+	_, exists := s.calls.ByRoomLocked(roomID)
 	if !exists {
-		delete(s.userActiveCall, userID)
+		s.calls.ClearActiveLocked(userID)
 		return nil, false
 	}
 	// A socket disconnect is not a hang-up: backgrounding and tab changes
@@ -839,21 +819,21 @@ func (s *Server) endCallForUser(userID string) (*callSession, bool) {
 }
 
 func (s *Server) userHasActiveCall(userID string) bool {
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
-	_, ok := s.userActiveCall[userID]
+	s.calls.Lock()
+	defer s.calls.Unlock()
+	_, ok := s.calls.ActiveRoomLocked(userID)
 	return ok
 }
 
 // getActiveCallSessionForUser returns any in-memory call session for userID.
 func (s *Server) getActiveCallSessionForUser(userID string) *callSession {
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
-	roomID, ok := s.userActiveCall[userID]
+	s.calls.Lock()
+	defer s.calls.Unlock()
+	roomID, ok := s.calls.ActiveRoomLocked(userID)
 	if !ok {
 		return nil
 	}
-	session, exists := s.callByRoom[roomID]
+	session, exists := s.calls.ByRoomLocked(roomID)
 	if !exists {
 		return nil
 	}
@@ -863,13 +843,13 @@ func (s *Server) getActiveCallSessionForUser(userID string) *callSession {
 // getRingingSessionForUser returns the active ringing call session for a user
 // (where the user is an invitee still ringing), or nil if none.
 func (s *Server) getRingingSessionForUser(userID string) *callSession {
-	s.callMu.Lock()
-	defer s.callMu.Unlock()
-	roomID, ok := s.userActiveCall[userID]
+	s.calls.Lock()
+	defer s.calls.Unlock()
+	roomID, ok := s.calls.ActiveRoomLocked(userID)
 	if !ok {
 		return nil
 	}
-	session, exists := s.callByRoom[roomID]
+	session, exists := s.calls.ByRoomLocked(roomID)
 	if !exists {
 		return nil
 	}
@@ -899,12 +879,12 @@ func (s *Server) scheduleCallTimeout(chatID string, expiresAt time.Time, callerN
 			return
 		}
 		if session.State == callStateConnected || session.connectedOrConnectingCount() > 1 {
-			s.callMu.Lock()
+			s.calls.Lock()
 			for _, id := range ringing {
 				s.setParticipantState(session, id, participantLeft)
 			}
 			payload := session.actionPayload(map[string]any{"reason": "timeout", "endedAt": nowString()})
-			s.callMu.Unlock()
+			s.calls.Unlock()
 			for _, id := range ringing {
 				s.emitCallToUser(id, "call:timeout", payload)
 				s.emitCallToUser(id, "call:ended", payload)

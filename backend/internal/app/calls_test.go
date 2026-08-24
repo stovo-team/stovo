@@ -36,9 +36,7 @@ func TestCallHistoryStatus(t *testing.T) {
 
 func newTestCallServer() *Server {
 	return &Server{
-		callByChat:     make(map[string]*callSession),
-		callByRoom:     make(map[string]*callSession),
-		userActiveCall: make(map[string]string),
+		calls:          NewCallManager(),
 		callTimeout:    30 * time.Second,
 	}
 }
@@ -171,8 +169,7 @@ func TestPromoteToSFUWithConfig(t *testing.T) {
 			"u5": {UserID: "u5", Role: "member", State: participantConnecting},
 		},
 	}
-	server.callByRoom[session.ID] = session
-	server.callByChat[session.ChatID] = session
+	server.calls.Seed(session)
 	promoted, err := server.promoteCallToSFU(session)
 	if err != nil {
 		t.Fatalf("promote: %v", err)
@@ -212,27 +209,18 @@ func TestGroupCallStartsInConnectedStateAndMesh(t *testing.T) {
 }
 
 func TestEndCallForUserPreservesRingingSessionForTimeout(t *testing.T) {
-	server := &Server{
-		callByChat: map[string]*callSession{},
-		callByRoom: map[string]*callSession{
-			"room-a": {
-				ID:           "room-a",
-				ChatID:       "chat-a",
-				CallerUserID: "user-1",
-				CalleeUserID: "user-2",
-				State:        callStateRinging,
-				Participants: map[string]*callParticipant{
-					"user-1": {UserID: "user-1", Role: "host", State: participantRinging},
-					"user-2": {UserID: "user-2", Role: "member", State: participantRinging},
-				},
-			},
+	server := newTestCallServer()
+	server.calls.Seed(&callSession{
+		ID:           "room-a",
+		ChatID:       "chat-a",
+		CallerUserID: "user-1",
+		CalleeUserID: "user-2",
+		State:        callStateRinging,
+		Participants: map[string]*callParticipant{
+			"user-1": {UserID: "user-1", Role: "host", State: participantRinging},
+			"user-2": {UserID: "user-2", Role: "member", State: participantRinging},
 		},
-		userActiveCall: map[string]string{
-			"user-1": "room-a",
-			"user-2": "room-a",
-		},
-	}
-	server.callByChat["chat-a"] = server.callByRoom["room-a"]
+	})
 
 	if ended, ok := server.endCallForUser("user-2"); ok || ended != nil {
 		t.Fatal("expected a ringing call to remain active for the normal timeout path")
@@ -243,27 +231,18 @@ func TestEndCallForUserPreservesRingingSessionForTimeout(t *testing.T) {
 }
 
 func TestEndCallForUserPreservesConnectedCallDuringSocketDisconnect(t *testing.T) {
-	server := &Server{
-		callByChat: map[string]*callSession{},
-		callByRoom: map[string]*callSession{
-			"room-a": {
-				ID:           "room-a",
-				ChatID:       "chat-a",
-				CallerUserID: "user-1",
-				CalleeUserID: "user-2",
-				State:        callStateConnecting,
-				Participants: map[string]*callParticipant{
-					"user-1": {UserID: "user-1", Role: "host", State: participantConnecting},
-					"user-2": {UserID: "user-2", Role: "member", State: participantConnecting},
-				},
-			},
+	server := newTestCallServer()
+	server.calls.Seed(&callSession{
+		ID:           "room-a",
+		ChatID:       "chat-a",
+		CallerUserID: "user-1",
+		CalleeUserID: "user-2",
+		State:        callStateConnecting,
+		Participants: map[string]*callParticipant{
+			"user-1": {UserID: "user-1", Role: "host", State: participantConnecting},
+			"user-2": {UserID: "user-2", Role: "member", State: participantConnecting},
 		},
-		userActiveCall: map[string]string{
-			"user-1": "room-a",
-			"user-2": "room-a",
-		},
-	}
-	server.callByChat["chat-a"] = server.callByRoom["room-a"]
+	})
 
 	if ended, ok := server.endCallForUser("user-2"); ok || ended != nil {
 		t.Fatal("expected a connecting call to survive a transient socket disconnect")
@@ -288,11 +267,11 @@ func TestLeaveCallKeepsRoomAlive(t *testing.T) {
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
-	server.callMu.Lock()
+	server.calls.Lock()
 	server.setParticipantState(session, "user-1", participantConnected)
 	server.setParticipantState(session, "user-2", participantConnected)
 	server.setParticipantState(session, "user-3", participantConnected)
-	server.callMu.Unlock()
+	server.calls.Unlock()
 
 	left, ok, ended := server.leaveCallSession(session.ChatID, "user-3")
 	if !ok || ended || left == nil {
@@ -329,11 +308,7 @@ func TestResolveCallSessionLoadsFromRedis(t *testing.T) {
 	}
 	server.persistCallSession(context.Background(), session, time.Minute)
 
-	server.callMu.Lock()
-	server.callByRoom = make(map[string]*callSession)
-	server.callByChat = make(map[string]*callSession)
-	server.userActiveCall = make(map[string]string)
-	server.callMu.Unlock()
+	server.calls.Reset()
 
 	got, ok := server.resolveCallSession("chat-redis-1", "room-redis-1")
 	if !ok || got == nil {
@@ -342,10 +317,7 @@ func TestResolveCallSessionLoadsFromRedis(t *testing.T) {
 	if got.ID != session.ID || got.ChatID != session.ChatID || got.State != callStateRinging {
 		t.Fatalf("unexpected session after Redis hydrate: id=%q chat=%q state=%q", got.ID, got.ChatID, got.State)
 	}
-	server.callMu.Lock()
-	_, inRoom := server.callByRoom[session.ID]
-	_, inChat := server.callByChat[session.ChatID]
-	server.callMu.Unlock()
+	inRoom, inChat := server.calls.Has(session)
 	if !inRoom || !inChat {
 		t.Fatal("expected hydrated session to be re-indexed into local maps")
 	}
