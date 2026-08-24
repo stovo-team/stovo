@@ -157,7 +157,7 @@ func (s *Server) registerCallSocketHandlers(socket *socketio.Socket, user userPu
 			return
 		}
 
-		s.callMu.Lock()
+		s.calls.Lock()
 		s.setParticipantState(session, user.ID, participantConnecting)
 		if host := session.Participants[session.CallerUserID]; host != nil && host.State == participantRinging {
 			s.setParticipantState(session, session.CallerUserID, participantConnecting)
@@ -165,11 +165,11 @@ func (s *Server) registerCallSocketHandlers(socket *socketio.Socket, user userPu
 		promoted, promoteErr := s.maybePromoteToSFULocked(session)
 		if promoteErr != nil {
 			s.setParticipantState(session, user.ID, participantRinging)
-			s.callMu.Unlock()
+			s.calls.Unlock()
 			_ = socket.Emit("call:error", map[string]any{"chatId": session.ChatID, "message": promoteErr.Error()})
 			return
 		}
-		s.callMu.Unlock()
+		s.calls.Unlock()
 
 		session, _ = s.setCallSessionState(session.ChatID, callStateConnecting)
 		payloadMap := session.actionPayload(nil)
@@ -204,10 +204,10 @@ func (s *Server) registerCallSocketHandlers(socket *socketio.Socket, user userPu
 			return
 		}
 
-		s.callMu.Lock()
+		s.calls.Lock()
 		s.setParticipantState(session, user.ID, participantDeclined)
 		shouldEnd := !session.hasLiveParticipants() || (session.connectedOrConnectingCount() == 0 && len(session.ringingInviteeIDs()) == 0)
-		s.callMu.Unlock()
+		s.calls.Unlock()
 		if shouldEnd {
 			ended, endedOK := s.endCallSession(session.ChatID)
 			if !endedOK {
@@ -349,14 +349,14 @@ func (s *Server) registerCallSocketHandlers(socket *socketio.Socket, user userPu
 		if session.State == callStateConnecting {
 			_, _ = s.setCallSessionState(session.ChatID, callStateConnected)
 		}
-		s.callMu.Lock()
+		s.calls.Lock()
 		if p := session.Participants[user.ID]; p != nil && p.State == participantConnecting {
 			s.setParticipantState(session, user.ID, participantConnected)
 		}
 		if p := session.Participants[targetUserID]; p != nil && p.State == participantConnecting {
 			s.setParticipantState(session, targetUserID, participantConnected)
 		}
-		s.callMu.Unlock()
+		s.calls.Unlock()
 		s.emitCallToUser(targetUserID, "call:signal", map[string]any{
 			"chatId":     session.ChatID,
 			"roomId":     session.ID,
