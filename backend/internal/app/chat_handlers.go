@@ -107,6 +107,10 @@ func (s *Server) handleCreateDirectChat(w http.ResponseWriter, r *http.Request, 
 		s.detail(w, http.StatusForbidden, "Direct messages are unavailable for this member")
 		return
 	}
+	if !contactPermissionAllows(target, user.ID, "direct") {
+		s.detail(w, http.StatusForbidden, "Direct messages are restricted by this member")
+		return
+	}
 
 	if existingID, err := s.findDirectChat(user.ID, target.ID); err == nil {
 		chat, _ := s.buildChatPublic(existingID, user)
@@ -158,6 +162,7 @@ func (s *Server) handleCreateGroupChat(w http.ResponseWriter, r *http.Request, u
 		s.detail(w, domainErrorStatus(err), "Invalid group chat members")
 		return
 	}
+	if err := s.validateInvitePermissions(user, memberIDs, "group"); err != nil { s.detail(w, http.StatusForbidden, err.Error()); return }
 
 	chatID := uuid.NewString()
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
@@ -190,8 +195,8 @@ func (s *Server) handleCreateGroupChat(w http.ResponseWriter, r *http.Request, u
 }
 
 func (s *Server) handleCreateChannelChat(w http.ResponseWriter, r *http.Request, user userPublic) {
-	if err := s.requireAdmin(user); err != nil {
-		s.detail(w, http.StatusForbidden, "Owner or admin access required")
+	if !hasPermission(user, permissionManageChannels) {
+		s.detail(w, http.StatusForbidden, "Permission denied")
 		return
 	}
 
@@ -211,6 +216,7 @@ func (s *Server) handleCreateChannelChat(w http.ResponseWriter, r *http.Request,
 		s.detail(w, domainErrorStatus(err), "Invalid channel chat members")
 		return
 	}
+	if err := s.validateInvitePermissions(user, memberIDs, "channel"); err != nil { s.detail(w, http.StatusForbidden, err.Error()); return }
 
 	chatID := uuid.NewString()
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
@@ -245,6 +251,10 @@ func (s *Server) handleCreateChannelChat(w http.ResponseWriter, r *http.Request,
 }
 
 func (s *Server) handleCreateVoiceChat(w http.ResponseWriter, r *http.Request, user userPublic) {
+	if !hasPermission(user, permissionManageChannels) {
+		s.detail(w, http.StatusForbidden, "Permission denied")
+		return
+	}
 	var payload createVoiceChatRequest
 	if err := s.decodeJSON(r, &payload); err != nil {
 		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
@@ -261,6 +271,7 @@ func (s *Server) handleCreateVoiceChat(w http.ResponseWriter, r *http.Request, u
 		s.detail(w, domainErrorStatus(err), "Invalid voice chat members")
 		return
 	}
+	if err := s.validateInvitePermissions(user, memberIDs, "voice"); err != nil { s.detail(w, http.StatusForbidden, err.Error()); return }
 
 	chatID := uuid.NewString()
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
@@ -422,7 +433,7 @@ func (s *Server) handleAddChatMembers(w http.ResponseWriter, r *http.Request, us
 		s.detail(w, http.StatusUnprocessableEntity, "People can only be added to group, channel, or voice chats")
 		return
 	}
-	if !s.canManageChat(chat, user) {
+	if !hasPermission(user, permissionManageMembers) && !s.canManageChat(chat, user) {
 		s.detail(w, http.StatusForbidden, "Permission denied")
 		return
 	}
@@ -437,6 +448,7 @@ func (s *Server) handleAddChatMembers(w http.ResponseWriter, r *http.Request, us
 		s.detail(w, domainErrorStatus(err), "Invalid chat members")
 		return
 	}
+	if err := s.validateInvitePermissions(user, memberIDs, chat.Type); err != nil { s.detail(w, http.StatusForbidden, err.Error()); return }
 	if err := s.store.AddChatMembers(r.Context(), repository.AddChatMembersParams{
 		ChatID: chatID, UserIDs: memberIDs, CreatedAt: nowString(),
 	}); err != nil {
@@ -647,7 +659,7 @@ func (s *Server) canManageChat(chat chatPublic, user userPublic) bool {
 	if chat.Type == "direct" {
 		return false
 	}
-	if isAdmin(user.Role) {
+	if hasPermission(user, permissionManageChannels) {
 		return true
 	}
 	return (chat.Type == "group" || chat.Type == "channel" || chat.Type == "voice") && chat.CreatedBy != nil && *chat.CreatedBy == user.ID
@@ -1062,6 +1074,16 @@ func (s *Server) listMessagesPage(chatID string, user userPublic, before string,
 		}
 	}
 	return messages, hasMore, nil
+}
+
+func (s *Server) validateInvitePermissions(inviter userPublic, memberIDs []string, chatType string) error {
+	for _, memberID := range memberIDs {
+		if memberID == inviter.ID { continue }
+		target, err := s.getUserByID(memberID)
+		if err != nil { return err }
+		if !contactPermissionAllows(target, inviter.ID, chatType) { return fmt.Errorf("%s does not accept this invitation", target.DisplayName) }
+	}
+	return nil
 }
 
 func (s *Server) createMessage(ctx context.Context, user userPublic, chatID string, clientMessageID *string, r *http.Request) (messagePublic, error) {

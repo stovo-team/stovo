@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -16,12 +17,63 @@ import (
 	"github.com/google/uuid"
 )
 
+const defaultNotificationSettingsJSON = `{"messageNotifications":true,"messagePreview":true,"messageSound":true,"callNotifications":true,"ringtoneEnabled":true,"quietHoursEnabled":false,"quietHoursStart":"22:00","quietHoursEnd":"07:00"}`
+
+type defaultNotificationSettings struct {
+	MessageNotifications bool   `json:"messageNotifications"`
+	MessagePreview       bool   `json:"messagePreview"`
+	MessageSound         bool   `json:"messageSound"`
+	CallNotifications    bool   `json:"callNotifications"`
+	RingtoneEnabled      bool   `json:"ringtoneEnabled"`
+	QuietHoursEnabled    bool   `json:"quietHoursEnabled"`
+	QuietHoursStart      string `json:"quietHoursStart"`
+	QuietHoursEnd        string `json:"quietHoursEnd"`
+}
+
+func isValidPrivacyVisibility(value *string) bool {
+	return value == nil || *value == "family" || *value == "nobody"
+}
+
+func isValidDefaultNotificationSettings(raw string) bool {
+	var settings defaultNotificationSettings
+	if json.Unmarshal([]byte(raw), &settings) != nil {
+		return false
+	}
+	for _, value := range []string{settings.QuietHoursStart, settings.QuietHoursEnd} {
+		if _, err := time.Parse("15:04", value); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Server) familyMemberDefaults(ctx context.Context, familyID string) (profileVisibility, lastSeenVisibility string, readReceiptsEnabled bool, notificationSettings string, err error) {
+	profileVisibility, lastSeenVisibility, readReceiptsEnabled, notificationSettings = "family", "family", true, defaultNotificationSettingsJSON
+	err = s.db.QueryRowContext(ctx, `SELECT default_profile_visibility, default_last_seen_visibility, default_read_receipts_enabled, default_notification_settings FROM families WHERE id = $1`, familyID).Scan(&profileVisibility, &lastSeenVisibility, &readReceiptsEnabled, &notificationSettings)
+	return
+}
+
+func (s *Server) updateFamilyMemberDefaults(ctx context.Context, familyID string, payload updateFamilyRequest) error {
+	profile, lastSeen, receipts, notifications, err := s.familyMemberDefaults(ctx, familyID)
+	if err != nil { return err }
+	if payload.DefaultProfileVisibility != nil { profile = *payload.DefaultProfileVisibility }
+	if payload.DefaultLastSeenVisibility != nil { lastSeen = *payload.DefaultLastSeenVisibility }
+	if payload.DefaultReadReceiptsEnabled != nil { receipts = *payload.DefaultReadReceiptsEnabled }
+	if payload.DefaultNotificationSettings != nil { notifications = *payload.DefaultNotificationSettings }
+	_, err = s.db.ExecContext(ctx, `UPDATE families SET default_profile_visibility = $1, default_last_seen_visibility = $2, default_read_receipts_enabled = $3, default_notification_settings = $4, updated_at = $5 WHERE id = $6`, profile, lastSeen, receipts, notifications, nowString(), familyID)
+	return err
+}
+
 func (s *Server) handleGetFamily(w http.ResponseWriter, _ *http.Request, user userPublic) {
 	family, err := s.getFamily(user.FamilyID)
 	if err != nil {
 		s.detail(w, http.StatusNotFound, "Family not found")
 		return
 	}
+	profile, lastSeen, receipts, notifications, err := s.familyMemberDefaults(context.Background(), user.FamilyID)
+	if err != nil { s.detail(w, http.StatusInternalServerError, "Could not load member defaults"); return }
+	family.DefaultProfileVisibility, family.DefaultLastSeenVisibility = profile, lastSeen
+	family.DefaultReadReceiptsEnabled, family.DefaultNotificationSettings = receipts, notifications
 	s.json(w, http.StatusOK, family)
 }
 
@@ -45,6 +97,18 @@ func (s *Server) handleUpdateFamily(w http.ResponseWriter, r *http.Request, user
 		s.detail(w, http.StatusUnprocessableEntity, "storageLimitMb must be positive")
 		return
 	}
+	if user.Role != ownerRole && (payload.DefaultProfileVisibility != nil || payload.DefaultLastSeenVisibility != nil || payload.DefaultReadReceiptsEnabled != nil || payload.DefaultNotificationSettings != nil) {
+		s.detail(w, http.StatusForbidden, "Only the server owner can update member defaults")
+		return
+	}
+	if !isValidPrivacyVisibility(payload.DefaultProfileVisibility) || !isValidPrivacyVisibility(payload.DefaultLastSeenVisibility) {
+		s.detail(w, http.StatusUnprocessableEntity, "privacy visibility must be family or nobody")
+		return
+	}
+	if payload.DefaultNotificationSettings != nil && !isValidDefaultNotificationSettings(*payload.DefaultNotificationSettings) {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid notification defaults")
+		return
+	}
 
 	if err := s.store.UpdateFamily(r.Context(), user.FamilyID, repository.UpdateFamilyParams{
 		Name:                name,
@@ -54,6 +118,12 @@ func (s *Server) handleUpdateFamily(w http.ResponseWriter, r *http.Request, user
 	}); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update family")
 		return
+	}
+	if payload.DefaultProfileVisibility != nil || payload.DefaultLastSeenVisibility != nil || payload.DefaultReadReceiptsEnabled != nil || payload.DefaultNotificationSettings != nil {
+		if err := s.updateFamilyMemberDefaults(r.Context(), user.FamilyID, payload); err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not update member defaults")
+			return
+		}
 	}
 
 	family, err := s.getFamily(user.FamilyID)
@@ -73,13 +143,16 @@ func (s *Server) handleGetMembers(w http.ResponseWriter, r *http.Request, user u
 
 	members := make([]userPublic, 0, len(rows))
 	for _, row := range rows {
-		members = append(members, s.userPublicFromEnt(row))
+		member := s.userPublicFromEnt(row)
+		_ = s.db.QueryRowContext(r.Context(), `SELECT COALESCE(role_id, '') FROM users WHERE id = $1`, row.ID).Scan(&member.RoleID)
+		s.hydrateUserRole(r.Context(), &member)
+		members = append(members, member)
 	}
 	s.json(w, http.StatusOK, members)
 }
 
 func (s *Server) handleChangeRole(w http.ResponseWriter, r *http.Request, user userPublic) {
-	if err := s.requireAdmin(user); err != nil {
+	if !hasPermission(user, permissionManageMembers) {
 		s.detail(w, http.StatusForbidden, "Permission denied")
 		return
 	}
@@ -89,10 +162,6 @@ func (s *Server) handleChangeRole(w http.ResponseWriter, r *http.Request, user u
 		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
 		return
 	}
-	if !isValidRole(payload.Role) || payload.Role == ownerRole {
-		s.detail(w, http.StatusUnprocessableEntity, "Invalid role")
-		return
-	}
 
 	target, err := s.getUserByID(userIDFromURL(r))
 	if err != nil || target.FamilyID != user.FamilyID || !target.IsActive {
@@ -100,7 +169,20 @@ func (s *Server) handleChangeRole(w http.ResponseWriter, r *http.Request, user u
 		return
 	}
 
-	if err := s.store.UpdateUserRole(r.Context(), target.ID, payload.Role); err != nil {
+	if target.Role == ownerRole || payload.Role == "" {
+		s.detail(w, http.StatusForbidden, "The server owner role cannot be changed")
+		return
+	}
+	assignedRole, err := s.loadServerRole(r.Context(), user.FamilyID, payload.Role)
+	if err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid role")
+		return
+	}
+	if assignedRole.IsDefault && assignedRole.Name == "Admin" && !hasPermission(user, permissionManageRoles) {
+		s.detail(w, http.StatusForbidden, "Only role managers can assign the Admin role")
+		return
+	}
+	if err := s.assignServerRole(r.Context(), user.FamilyID, target.ID, payload.Role); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update role")
 		return
 	}
@@ -242,6 +324,11 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		s.detail(w, http.StatusNotFound, "Invite not found")
 		return
 	}
+	profileVisibility, lastSeenVisibility, readReceiptsEnabled, _, err := s.familyMemberDefaults(r.Context(), family.ID)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load member defaults")
+		return
+	}
 
 	passwordHash, err := hashPassword(payload.Password)
 	if err != nil {
@@ -277,6 +364,9 @@ func (s *Server) handleAcceptInvite(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:      refreshExpires,
 		CreatedAt:      now,
 		IPAddress:      s.getClientIP(r),
+		ProfileVisibility: profileVisibility,
+		LastSeenVisibility: lastSeenVisibility,
+		ReadReceiptsEnabled: readReceiptsEnabled,
 	})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {

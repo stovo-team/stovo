@@ -8,6 +8,9 @@ type userPublic struct {
 	Username            string      `json:"username"`
 	DisplayName         string      `json:"displayName"`
 	Role                string      `json:"role"`
+	RoleID              string      `json:"roleId,omitempty"`
+	RoleName            string      `json:"roleName,omitempty"`
+	Permissions         []string    `json:"permissions,omitempty"`
 	IsActive            bool        `json:"isActive"`
 	PublicKey           *string     `json:"publicKey"`
 	ProfilePhoto        *filePublic `json:"profilePhoto"`
@@ -16,6 +19,11 @@ type userPublic struct {
 	ProfileVisibility   string      `json:"profileVisibility"`
 	LastSeenVisibility  string      `json:"lastSeenVisibility"`
 	ReadReceiptsEnabled bool        `json:"readReceiptsEnabled"`
+	DirectMessagePermission string `json:"directMessagePermission"`
+	GroupInvitePermission string `json:"groupInvitePermission"`
+	ChannelInvitePermission string `json:"channelInvitePermission"`
+	VoiceInvitePermission string `json:"voiceInvitePermission"`
+	InvitePermissionUserIDs []string `json:"invitePermissionUserIds"`
 	Email               *string     `json:"email"`
 	Bio                 *string     `json:"bio"`
 	Timezone            *string     `json:"timezone"`
@@ -34,6 +42,10 @@ type familyPublic struct {
 	StorageLimitMB                   *int64        `json:"storageLimitMb"`
 	MinimizedChatLayout              bool          `json:"minimizedChatLayout"`
 	DefaultMessageEncryptionProtocol string        `json:"defaultMessageEncryptionProtocol"`
+	DefaultProfileVisibility         string        `json:"defaultProfileVisibility"`
+	DefaultLastSeenVisibility        string        `json:"defaultLastSeenVisibility"`
+	DefaultReadReceiptsEnabled       bool          `json:"defaultReadReceiptsEnabled"`
+	DefaultNotificationSettings      string        `json:"defaultNotificationSettings"`
 	NavTabs                          NavTabsConfig `json:"navTabs"`
 	PublicAppURL                     *string       `json:"-"`
 	PublicAPIURL                     *string       `json:"-"`
@@ -143,6 +155,11 @@ type updateMeRequest struct {
 	ProfileVisibility   *string `json:"profileVisibility"`
 	LastSeenVisibility  *string `json:"lastSeenVisibility"`
 	ReadReceiptsEnabled *bool   `json:"readReceiptsEnabled"`
+	DirectMessagePermission *string `json:"directMessagePermission"`
+	GroupInvitePermission *string `json:"groupInvitePermission"`
+	ChannelInvitePermission *string `json:"channelInvitePermission"`
+	VoiceInvitePermission *string `json:"voiceInvitePermission"`
+	InvitePermissionUserIDs *[]string `json:"invitePermissionUserIds"`
 	Email               *string `json:"email"`
 	Bio                 *string `json:"bio"`
 	Timezone            *string `json:"timezone"`
@@ -152,6 +169,31 @@ type updateFamilyRequest struct {
 	Name                *string `json:"name"`
 	StorageLimitMB      *int64  `json:"storageLimitMb"`
 	MinimizedChatLayout *bool   `json:"minimizedChatLayout"`
+	DefaultProfileVisibility *string `json:"defaultProfileVisibility"`
+	DefaultLastSeenVisibility *string `json:"defaultLastSeenVisibility"`
+	DefaultReadReceiptsEnabled *bool `json:"defaultReadReceiptsEnabled"`
+	DefaultNotificationSettings *string `json:"defaultNotificationSettings"`
+}
+
+type serverRolePublic struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description,omitempty"`
+	Permissions []string `json:"permissions"`
+	IsDefault   bool     `json:"isDefault"`
+	MemberCount int      `json:"memberCount"`
+}
+
+type createServerRoleRequest struct {
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Permissions []string `json:"permissions"`
+}
+
+type updateServerRoleRequest struct {
+	Name        *string   `json:"name"`
+	Description *string   `json:"description"`
+	Permissions *[]string `json:"permissions"`
 }
 
 type planPublic struct {
@@ -612,6 +654,15 @@ type audioCallSettings struct {
 	OutputVolume              float64 `json:"outputVolume"`
 	VoiceEnhancementThreshold float64 `json:"voiceEnhancementThreshold"`
 	VoiceEnhancementHighpass  float64 `json:"voiceEnhancementHighpass"`
+	Privacy                   *contactPrivacySettings `json:"privacy,omitempty"`
+}
+
+type contactPrivacySettings struct {
+	DirectMessagePermission string `json:"directMessagePermission"`
+	GroupInvitePermission string `json:"groupInvitePermission"`
+	ChannelInvitePermission string `json:"channelInvitePermission"`
+	VoiceInvitePermission string `json:"voiceInvitePermission"`
+	InvitePermissionUserIDs []string `json:"invitePermissionUserIds"`
 }
 
 type updateAudioSettingsRequest = audioCallSettings

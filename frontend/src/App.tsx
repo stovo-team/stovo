@@ -30,6 +30,8 @@ import AdminAppearancePage from "./pages/AdminAppearancePage";
 import AdminEncryptionPage from "./pages/AdminEncryptionPage";
 import AdminMcpPage from "./pages/AdminMcpPage";
 import AdminMembersPage from "./pages/AdminMembersPage";
+import AdminRolesPage from "./pages/AdminRolesPage";
+import AdminDefaultsPage from "./pages/AdminDefaultsPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
 import InvitePage from "./pages/InvitePage";
@@ -40,6 +42,7 @@ import ServerSetupPage from "./pages/ServerSetupPage";
 import SettingsPage from "./pages/SettingsPage";
 import SetupPage from "./pages/SetupPage";
 import MultiAdminPage from "./pages/MultiAdminPage";
+import { applyServerNotificationDefaults } from "./settings/devicePreferences";
 
 if (typeof document !== "undefined") {
   document.documentElement.dataset.platform = Capacitor.isNativePlatform() ? "native" : "web";
@@ -61,7 +64,10 @@ function NotificationsBootstrapper() {
     }
     if (lastBootstrappedUserId.current === currentUser.id) return;
     lastBootstrappedUserId.current = currentUser.id;
-    void bootstrapNotifications(authRequest).catch(() => undefined);
+    void authRequest<{ defaultNotificationSettings: string }>("/api/family")
+      .then((family) => applyServerNotificationDefaults(family.defaultNotificationSettings))
+      .catch(() => undefined)
+      .finally(() => void bootstrapNotifications(authRequest).catch(() => undefined));
   }, [currentUser, authRequest]);
 
   return null;
@@ -385,6 +391,8 @@ function ClusterRoutes() {
           </RequireAuth>
         }
       />
+      <Route path="/app/admin/roles" element={<RequireAuth><AdminRolesPage /></RequireAuth>} />
+      <Route path="/app/admin/defaults" element={<RequireAuth><AdminDefaultsPage /></RequireAuth>} />
       <Route
         path="/app/settings"
         element={

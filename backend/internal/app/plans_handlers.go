@@ -15,7 +15,7 @@ import (
 )
 
 func canManagePlan(user userPublic, plan planPublic) bool {
-	return user.Role == "owner" || user.Role == "admin" || user.ID == plan.CreatedBy
+	return hasPermission(user, permissionManagePlans) || user.ID == plan.CreatedBy
 }
 
 func normalizePlanRecurrence(value string) (*string, error) {

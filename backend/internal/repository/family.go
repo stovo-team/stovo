@@ -154,6 +154,9 @@ type AcceptInviteParams struct {
 	ExpiresAt      string
 	CreatedAt      string
 	IPAddress      string
+	ProfileVisibility string
+	LastSeenVisibility string
+	ReadReceiptsEnabled bool
 }
 
 // AcceptInvite creates the user, increments invite usage, joins family chat, and issues a refresh token.
@@ -166,6 +169,9 @@ func (s *Store) AcceptInvite(ctx context.Context, p AcceptInviteParams) error {
 			SetPasswordHash(p.PasswordHash).
 			SetDisplayName(p.DisplayName).
 			SetRole(p.Role).
+			SetProfileVisibility(p.ProfileVisibility).
+			SetLastSeenVisibility(p.LastSeenVisibility).
+			SetReadReceiptsEnabled(p.ReadReceiptsEnabled).
 			SetIsActive(1).
 			SetCreatedAt(p.CreatedAt).
 			Save(ctx); err != nil {

@@ -549,6 +549,8 @@ export const strings = {
       mcpDesc: "Claude Code, Codex, OpenClaw, Hermes",
       members: "Members",
       membersDesc: "Family members, roles, and account actions",
+      memberDefaults: "Member defaults",
+      memberDefaultsDesc: "Privacy and notification choices for new members and devices",
     },
     appearance: {
       title: "Appearance",
@@ -557,6 +559,17 @@ export const strings = {
       minimizedLayout: "Minimized layout",
       minimizedLayoutDesc: "Single-line chat items with compact badges",
       saved: "Chat layout saved for everyone",
+    },
+    defaults: {
+      title: "Member defaults",
+      ownerRequired: "Only the server owner can manage member defaults.",
+      privacy: "Default privacy",
+      privacyHelp: "Applied when a new member joins. Members can later choose their own privacy settings.",
+      notifications: "Default notifications",
+      notificationsHelp: "Applied the first time a member uses a new device. Existing device choices stay unchanged.",
+      saved: "Member defaults saved",
+      loadError: "Could not load member defaults",
+      saveError: "Could not save member defaults",
     },
     encryption: {
       title: "Message encryption",

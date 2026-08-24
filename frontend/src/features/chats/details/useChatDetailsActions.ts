@@ -163,7 +163,7 @@ export function useChatDetailsActions({
 
   async function handleMessageDelayChange(delaySeconds: number) {
     if (!accessToken || !selectedChat) {
-      return;
+      return false;
     }
     const requestId = messageDelayRequestRef.current + 1;
     messageDelayRequestRef.current = requestId;
@@ -174,11 +174,13 @@ export function useChatDetailsActions({
       if (messageDelayRequestRef.current === requestId) {
         applyChatUpdate(chat);
       }
+      return true;
     } catch (err) {
       if (messageDelayRequestRef.current === requestId) {
         applyChatUpdate(previousChat);
         onError(err instanceof ApiError ? String(err.message) : "Could not update message delay");
       }
+      return false;
     }
   }
 
