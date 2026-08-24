@@ -136,9 +136,8 @@ describe("ImageEditorModal", () => {
     });
 
     expect(document.body.textContent).toContain("Edit Image");
-    const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>(".image-editor-tab"));
-    const adjustmentsTab = tabs.find((t) => t.querySelector("svg.lucide-sliders"));
-    expect(adjustmentsTab).not.toBeUndefined();
+    const adjustmentsTab = document.querySelector<HTMLButtonElement>('[aria-label="Adjust image"]');
+    expect(adjustmentsTab).not.toBeNull();
     act(() => {
       adjustmentsTab?.click();
     });
@@ -147,8 +146,8 @@ describe("ImageEditorModal", () => {
     expect(document.body.textContent).toContain("Gamma");
 
     // Click Crop tab
-    const cropTab = tabs.find((t) => t.querySelector("svg.lucide-crop"));
-    expect(cropTab).not.toBeUndefined();
+    const cropTab = document.querySelector<HTMLButtonElement>('[aria-label="Crop image"]');
+    expect(cropTab).not.toBeNull();
 
     act(() => {
       cropTab?.click();
@@ -157,8 +156,8 @@ describe("ImageEditorModal", () => {
     expect(document.body.textContent).toContain("Aspect Ratio:");
 
     // Click Draw tab
-    const drawTab = tabs.find((t) => t.querySelector("svg.lucide-pencil"));
-    expect(drawTab).not.toBeUndefined();
+    const drawTab = document.querySelector<HTMLButtonElement>('[aria-label="Draw on image"]');
+    expect(drawTab).not.toBeNull();
 
     act(() => {
       drawTab?.click();

@@ -352,6 +352,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           <button
             type="button"
             className={`image-editor-tab${activeTab === "adjust" ? " is-active" : ""}`}
+            aria-label="Adjust image"
             onClick={() => setActiveTab((tab) => tab === "adjust" ? null : "adjust")}
           >
             <Sliders size={18} />
@@ -359,6 +360,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           <button
             type="button"
             className={`image-editor-tab${activeTab === "crop" ? " is-active" : ""}`}
+            aria-label="Crop image"
             onClick={() => setActiveTab((tab) => tab === "crop" ? null : "crop")}
           >
             <CropIcon size={18} />
@@ -366,6 +368,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           {editorFeatures.drawing && <button
             type="button"
             className={`image-editor-tab${activeTab === "draw" ? " is-active" : ""}`}
+            aria-label="Draw on image"
             onClick={() => setActiveTab((tab) => tab === "draw" ? null : "draw")}
           >
             <Pencil size={18} />
