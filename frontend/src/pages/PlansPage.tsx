@@ -9,7 +9,7 @@ import { useAuth } from "../auth/AuthContext";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import AppNav from "./AppNav";
 import { useStrings } from "../i18n/LanguageContext";
-import { formatSlotTime, TODAY_TIME_SLOTS } from "./plansTimeline";
+import { formatSlotTime, TODAY_TIME_SLOT_HOURS, TODAY_TIME_SLOTS } from "./plansTimeline";
 
 type View = "today" | "threeDays" | "week" | "month";
 const dayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
