@@ -91,12 +91,9 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).toContain("onChooseGallery={() => { onPick(\"gallery\"); closeSheet(); }}");
   });
 
-  it("opens ImageLightbox preview on photo thumbnail click and toggles selection on top-right checkbox click", () => {
-    expect(attachmentSheetSource).toContain("ImageLightbox");
-    expect(attachmentSheetSource).toContain("previewMediaItem");
-    expect(attachmentSheetSource).toContain("onPreview={setPreviewMediaItem}");
+  it("opens the editor directly on photo thumbnail click and toggles selection on top-right checkbox click", () => {
     expect(attachmentSheetSource).toContain("ImageEditorModal");
-    expect(attachmentSheetSource).toContain("onEdit={previewMediaItem.mimeType.startsWith(\"image/\")");
+    expect(attachmentSheetSource).toContain("onPreview={(item) => void openPhotoEditor(item)}");
     expect(mediaGridSource).toContain("media-tile-thumb-btn");
     expect(mediaGridSource).toContain("media-tile-checkbox");
     expect(mediaGridSource).toContain("onToggle(item.id)");
@@ -135,24 +132,6 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(styles).toContain(".attachment-picker-sheet-handle-zone");
   });
 
-  it("closes only the preview when returning or clicking back from ImageLightbox, keeping the gallery open", () => {
-    // Closing ImageLightbox in AttachmentPickerSheet clears previewMediaItem without closing the sheet
-    expect(attachmentSheetSource).toContain("onClose={() => setPreviewMediaItem(null)}");
-    // Back button listener clears previewMediaItem when preview is open
-    expect(attachmentSheetSource).toMatch(/if\s*\(previewMediaItem\)\s*\{\s*setPreviewMediaItem\(null\);\s*return;\s*\}/);
-    expect(attachmentSheetSource).toContain("App.addListener(\"backButton\"");
-  });
-
-  it("integrates gallery preview and attachment sheet dismissal with useChatSurfaceDismissal", () => {
-    const dismissalSource = readFileSync("src/features/chats/useChatSurfaceDismissal.ts", "utf8");
-    expect(dismissalSource).toContain("hasGalleryPreview");
-    expect(dismissalSource).toContain("closeGalleryPreview");
-    expect(dismissalSource).toContain("isAttachmentSheetOpen");
-    expect(dismissalSource).toContain("closeAttachmentSheet");
-    // When gallery preview is open, back button / Escape dismisses only the preview
-    expect(dismissalSource).toMatch(/if\s*\(hasGalleryPreview\s*&&\s*closeGalleryPreview\)\s*\{\s*closeGalleryPreview\(\);\s*return;\s*\}/);
-  });
-
   it("generates uncropped high-quality previews in native MediaLibraryPlugin", () => {
     const nativePluginSource = readFileSync("android/app/src/main/java/com/stakhovivan/stovo/MediaLibraryPlugin.kt", "utf8");
     // Does not perform square center cropping
@@ -161,15 +140,14 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(nativePluginSource).toContain("maxDimension = 768");
   });
 
-  it("fetches full resolution original media for ImageLightbox preview", () => {
-    expect(mediaPickerSource).toContain("fetchNativeMediaFileUrl");
-    expect(mediaPickerSource).toContain("fullPreviewUrl");
-    expect(attachmentSheetSource).toMatch(/imageUrl=\{fullPreviewUrl\s*\|\|\s*nativeMediaPreviewUrl\(previewMediaItem\)\}/);
+  it("fetches the full-resolution original before opening the photo editor", () => {
+    expect(attachmentSheetSource).toContain("fetchNativeMediaFileUrl(item.id)");
+    expect(attachmentSheetSource).toContain("new File([blob], item.name");
   });
 
   it("declares all hooks at top level before conditional return to prevent white screen crashes", () => {
     const [beforeEarlyReturn, afterEarlyReturn] = attachmentSheetSource.split("if (!open) return null;");
-    expect(beforeEarlyReturn).toContain("useMediaPicker(open, activeTab, previewMediaItem)");
+    expect(beforeEarlyReturn).toContain("useMediaPicker(open, activeTab, null)");
     expect(mediaPickerSource).toContain("fetchNativeMediaFileUrl");
     expect(afterEarlyReturn).toBeDefined();
     expect(afterEarlyReturn).not.toMatch(/\buse(Effect|LayoutEffect|State|Memo|Callback|Ref)\s*\(/);

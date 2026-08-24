@@ -6,6 +6,7 @@ import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 
 import {
+  fetchNativeMediaFileUrl,
   isNativeMediaLibraryAvailable,
   nativeMediaPreviewUrl,
   selectNativeMediaFiles,
@@ -13,7 +14,6 @@ import {
 } from "../native/mediaLibraryPlugin";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { EMOJI_CATEGORY_ICONS } from "../features/chats/composer/emojiCategories";
-import ImageLightbox from "./ImageLightbox";
 import { ImageEditorModal } from "./ImageEditorModal";
 import { MessageEnlargeButton } from "./MessageEnlargeModal";
 import { DocumentPickerList } from "./attachment-picker/DocumentPickerList";
@@ -70,7 +70,7 @@ export default function AttachmentPickerSheet({
     },
     [onPreviewMediaItemChange]
   );
-  const { media, selectedItemIds, state: galleryState, fullPreviewUrl, loadRecentItems, toggleSelection, clearSelection } = useMediaPicker(open, activeTab, previewMediaItem);
+  const { media, selectedItemIds, state: galleryState, loadRecentItems, toggleSelection, clearSelection } = useMediaPicker(open, activeTab, null);
   const [isSending, setIsSending] = useState(false);
   const [localDraft, setLocalDraft] = useState("");
   const [isEmojiOpen, setIsEmojiOpen] = useState(false);
@@ -357,21 +357,21 @@ export default function AttachmentPickerSheet({
     return () => document.removeEventListener("pointerdown", handleDocumentPointerDown);
   }, [isEmojiOpen]);
 
-  const openPhotoEditor = useCallback(async () => {
-    if (!previewMediaItem?.mimeType.startsWith("image/")) return;
-    const imageUrl = fullPreviewUrl || nativeMediaPreviewUrl(previewMediaItem);
+  const openPhotoEditor = useCallback(async (item: NativeMediaItem) => {
+    if (!item.mimeType.startsWith("image/")) return;
+    const imageUrl = await fetchNativeMediaFileUrl(item.id) || nativeMediaPreviewUrl(item);
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       setEditingAttachment({
-        localId: `gallery-edit:${previewMediaItem.id}`,
-        file: new File([blob], previewMediaItem.name, { type: previewMediaItem.mimeType || blob.type || "image/jpeg" }),
+        localId: `gallery-edit:${item.id}`,
+        file: new File([blob], item.name, { type: item.mimeType || blob.type || "image/jpeg" }),
         previewUrl: imageUrl
       });
     } catch {
       // Native gallery URLs should be fetchable; leave the preview open if the file cannot be read.
     }
-  }, [fullPreviewUrl, previewMediaItem]);
+  }, []);
 
   if (!open) return null;
 
@@ -477,7 +477,7 @@ export default function AttachmentPickerSheet({
               selectedItemIds={selectedItemIds}
               state={galleryState}
               onToggle={toggleSelection}
-              onPreview={setPreviewMediaItem}
+              onPreview={(item) => void openPhotoEditor(item)}
               onCamera={() => { onPick("camera"); closeSheet(); }}
               onChooseGallery={() => { onPick("gallery"); closeSheet(); }}
               onRetry={() => void loadRecentItems("gallery")}
@@ -647,15 +647,6 @@ export default function AttachmentPickerSheet({
   const fullContent = (
     <>
       {sheetContent}
-      {previewMediaItem && (
-        <ImageLightbox
-          imageUrl={fullPreviewUrl || nativeMediaPreviewUrl(previewMediaItem)}
-          title={previewMediaItem.name}
-          subtitle={previewMediaItem.mimeType}
-          onClose={() => setPreviewMediaItem(null)}
-          onEdit={previewMediaItem.mimeType.startsWith("image/") ? () => void openPhotoEditor() : undefined}
-        />
-      )}
       {editingAttachment && (
         <ImageEditorModal
           pending={editingAttachment}
@@ -663,7 +654,6 @@ export default function AttachmentPickerSheet({
           onSave={(editedFile) => {
             onSelectFiles?.([editedFile]);
             setEditingAttachment(null);
-            setPreviewMediaItem(null);
           }}
         />
       )}

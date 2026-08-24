@@ -41,7 +41,7 @@ const PEN_SIZES = [
 
 export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalProps) {
   const editorFeatures = PHOTO_EDITOR_FEATURES.media;
-  const [activeTab, setActiveTab] = useState<"adjust" | "crop" | "draw">("adjust");
+  const [activeTab, setActiveTab] = useState<"adjust" | "crop" | "draw" | null>(null);
 
   // Adjustments
   const [brightness, setBrightness] = useState<number>(100); // 50 - 150
@@ -352,31 +352,28 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
           <button
             type="button"
             className={`image-editor-tab${activeTab === "adjust" ? " is-active" : ""}`}
-            onClick={() => setActiveTab("adjust")}
+            onClick={() => setActiveTab((tab) => tab === "adjust" ? null : "adjust")}
           >
             <Sliders size={18} />
-            <span>Adjustments</span>
           </button>
           <button
             type="button"
             className={`image-editor-tab${activeTab === "crop" ? " is-active" : ""}`}
-            onClick={() => setActiveTab("crop")}
+            onClick={() => setActiveTab((tab) => tab === "crop" ? null : "crop")}
           >
             <CropIcon size={18} />
-            <span>Crop</span>
           </button>
           {editorFeatures.drawing && <button
             type="button"
             className={`image-editor-tab${activeTab === "draw" ? " is-active" : ""}`}
-            onClick={() => setActiveTab("draw")}
+            onClick={() => setActiveTab((tab) => tab === "draw" ? null : "draw")}
           >
             <Pencil size={18} />
-            <span>Draw</span>
           </button>}
         </nav>
 
         {/* Tab Controls Panel */}
-        <div className="image-editor-controls">
+        {activeTab && <div className="image-editor-controls">
           {activeTab === "adjust" && (
             <div className="image-editor-controls-grid">
               <div className="image-editor-control-item">
@@ -560,7 +557,7 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Footer Actions */}
         <footer className="image-editor-footer">

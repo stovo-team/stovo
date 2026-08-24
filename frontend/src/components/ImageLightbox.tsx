@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Download, MoreVertical, Pencil, Share2, X } from "lucide-react";
+import { Download, MoreVertical, Share2, X } from "lucide-react";
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { shareContent } from "../native/nativeSharePlugin";
 
@@ -12,7 +12,6 @@ interface ImageLightboxProps {
   onClose: () => void;
   onDownload?: () => void;
   onShare?: () => void;
-  onEdit?: () => void;
   onGoToMessage?: () => void;
 }
 
@@ -24,7 +23,6 @@ export default function ImageLightbox({
   onClose,
   onDownload,
   onShare,
-  onEdit,
   onGoToMessage
 }: ImageLightboxProps) {
   const prefersReducedMotion = useReducedMotion();
@@ -144,17 +142,6 @@ export default function ImageLightbox({
               onClick={onDownload}
             >
               <Download aria-hidden="true" size={18} />
-            </button>
-          )}
-          {onEdit && (
-            <button
-              type="button"
-              className="image-lightbox-edit"
-              title="Edit photo"
-              aria-label="Edit photo"
-              onClick={onEdit}
-            >
-              <Pencil aria-hidden="true" size={18} />
             </button>
           )}
           <button
