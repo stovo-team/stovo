@@ -10,8 +10,6 @@ import {
 } from "react";
 import type { Socket } from "socket.io-client";
 import type { NavigateFunction } from "react-router-dom";
-import { Capacitor } from "@capacitor/core";
-import { App as CapacitorApp } from "@capacitor/app";
 
 import type { User } from "../../../api/auth";
 import type { Chat, Message } from "../../../api/chats";
@@ -25,11 +23,6 @@ import { waitForSocketConnection } from "../../../realtime/socketConnection";
 import { createCallSoundPlayer } from "../../../realtime/callSounds";
 import { getAudioSettings, mergeWithDefaults } from "../../../api/audioSettings";
 import {
-  addPictureInPictureListener,
-  addProximityListener,
-  disableNativeCallMode,
-  enterNativePictureInPictureIfPossible,
-  enableNativeCallMode,
   isNativeCallPluginAvailable,
   setNativeActiveCallState,
   type PictureInPictureState
@@ -39,6 +32,10 @@ import { activeSessionVideoElement, callTerminationEvent, hasLiveLocalVideo } fr
 import type { CallPhase, CallTrackStatus } from "../shared/types";
 import { useCallTimer } from "./useCallTimer";
 import { useCallMedia } from "./useCallMedia";
+import { useCallSessionMediaEffects } from "./useCallSessionMediaEffects";
+import { useCallSessionNativeEffects } from "./useCallSessionNativeEffects";
+import { useCallInviteControls } from "./useCallInviteControls";
+import { useCallSignaling } from "./useCallSignaling";
 
 export type UseCallSessionParams = {
   accessToken: string | null;
@@ -378,53 +375,18 @@ export function useCallSession({
     return () => window.clearTimeout(timer);
   }, [callNotice]);
 
-  useEffect(() => {
-    syncNativePictureInPictureCallState();
-  }, [
-    activeCallChatId,
-    callPhase,
-    callType,
-    syncNativePictureInPictureCallState
-  ]);
+  useCallSessionNativeEffects({
+    callPhase, callAudioSettings, callPhaseRef, activeCallChatIdRef, activeCallSessionIdRef,
+    pictureInPictureActiveRef, videoPictureInPictureActiveRef, lastNativeVideoRevisionRef,
+    setIsProximityNear, setIsVideoPictureInPictureActive, setIsCallMinimized,
+    syncNativePictureInPictureCallState, restoreActiveCallSurface, restoreActiveVideoSurface
+  });
 
-  // `onUserLeaveHint` covers the Home gesture on Android, but some app exits
-  // (task switching, screen-share hand-offs, and OEM navigation) only report
-  // through Capacitor's lifecycle event. Enter PiP for every active call there
-  // as well; the native bridge safely ignores an already-active PiP window.
-  useEffect(() => {
-    if (!(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android")) {
-      return;
-    }
-
-    let disposed = false;
-    let removeListener: (() => void) | null = null;
-    void CapacitorApp.addListener("appStateChange", ({ isActive }) => {
-      if (isActive || callPhaseRef.current === "idle") return;
-
-      const sessionId = activeCallSessionIdRef.current;
-      if (!sessionId) return;
-      void setNativeActiveCallState({
-        active: true,
-        video: true,
-        chatId: activeCallChatIdRef.current,
-        sessionId,
-      }).finally(() => {
-        void enterNativePictureInPictureIfPossible();
-      });
-    }).then((listener) => {
-      if (disposed) listener.remove();
-      else removeListener = () => listener.remove();
-    });
-
-    return () => {
-      disposed = true;
-      removeListener?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    audioCallRef.current?.updateAccessToken(accessToken ?? "");
-  }, [accessToken]);
+  useCallSessionMediaEffects({
+    accessToken, callPhase, hasRemoteVideo, remoteVideoStream, localVideoStream, localScreenStream,
+    cameraEnabled: callAudioSettings.cameraEnabled, screenSharing: callAudioSettings.screenSharing,
+    audioCallRef, remoteVideoRef, localVideoRef
+  });
 
   // Auto-minimize the call popup when the user opens a different chat.
   useEffect(() => {
@@ -462,36 +424,6 @@ export function useCallSession({
     }
   }, [callPhase, callAudioSettings.soundDisabled, startOutgoingRingtone]);
 
-  // Android: proximity sensor blanks the screen near the ear; route audio to earpiece/speaker.
-  useEffect(() => {
-    if (!isNativeCallPluginAvailable() || callPhase === "idle") {
-      setIsProximityNear(false);
-      void disableNativeCallMode();
-      return;
-    }
-
-    const earpiece =
-      callAudioSettings.speakerMode === "small" && !callAudioSettings.outputDeviceId;
-    void enableNativeCallMode(earpiece);
-
-    let removeListener: (() => void) | undefined;
-    void addProximityListener((near) => setIsProximityNear(near)).then((remove) => {
-      removeListener = remove;
-    });
-
-    return () => {
-      removeListener?.();
-      setIsProximityNear(false);
-      void disableNativeCallMode();
-    };
-  }, [callPhase, callAudioSettings.speakerMode, callAudioSettings.outputDeviceId]);
-
-  useEffect(() => {
-    if (callPhase === "idle") {
-      pictureInPictureActiveRef.current = false;
-    }
-  }, [callPhase]);
-
   // Watchdog timer for "connecting" phase: prevents eternal connecting state
   useEffect(() => {
     if (callPhase !== "connecting" || !activeCallChatId || !callPeerUserId) {
@@ -523,95 +455,6 @@ export function useCallSession({
       clearTimeout(timeoutId);
     };
   }, [callPhase, activeCallChatId, callPeerUserId]);
-
-  // Re-attach video refs to the controller whenever a call becomes active.
-  // startOutgoing / acceptIncoming await getUserMedia (hundreds of ms), giving
-  // React time to render the popup and populate the refs before they're needed.
-  useEffect(() => {
-    if (callPhase !== "idle" && audioCallRef.current) {
-      audioCallRef.current.attachRemoteVideoElement(remoteVideoRef.current);
-      audioCallRef.current.attachLocalVideoElement(localVideoRef.current);
-      // Re-sync in case the remote track arrived before the call popup rendered.
-      audioCallRef.current.syncRemoteVideoToUI();
-    }
-  }, [callPhase]);
-
-  // When remote video track arrives, ensure the video element resumes playback
-  // (some browsers won't auto-play a video element that was hidden when srcObject was set)
-  useEffect(() => {
-    if ((hasRemoteVideo || remoteVideoStream) && remoteVideoRef.current) {
-      void remoteVideoRef.current.play().catch(() => undefined);
-    }
-  }, [hasRemoteVideo, remoteVideoStream]);
-
-  // Sync localVideoRef with local screen stream or camera stream on desktop/1:1 view
-  useEffect(() => {
-    const el = localVideoRef.current;
-    if (!el) return;
-    if (callAudioSettings.screenSharing && localScreenStream) {
-      if (el.srcObject !== localScreenStream) {
-        el.srcObject = localScreenStream;
-      }
-      void el.play().catch(() => undefined);
-    } else if (localVideoStream && callAudioSettings.cameraEnabled) {
-      if (el.srcObject !== localVideoStream) {
-        el.srcObject = localVideoStream;
-      }
-      void el.play().catch(() => undefined);
-    }
-  }, [callAudioSettings.screenSharing, localScreenStream, localVideoStream, callAudioSettings.cameraEnabled]);
-
-  // Native PiP ownership arbitration: decide whether the call surface or the
-  // message-video surface owns the OS picture-in-picture window.
-  useEffect(() => {
-    if (!(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android")) {
-      return;
-    }
-
-    let cancelled = false;
-    let removeListener: (() => void) | null = null;
-
-    void addPictureInPictureListener((state: PictureInPictureState) => {
-      pictureInPictureActiveRef.current = state.active;
-      if (Number.isSafeInteger(state.acceptedRevision) && state.acceptedRevision >= 0) {
-        lastNativeVideoRevisionRef.current = Math.max(
-          lastNativeVideoRevisionRef.current,
-          state.acceptedRevision
-        );
-      }
-      if (state.active) {
-        const videoOwner = state.owner === "video";
-        videoPictureInPictureActiveRef.current = videoOwner;
-        setIsVideoPictureInPictureActive(videoOwner);
-        setIsCallMinimized(false);
-        return;
-      }
-      videoPictureInPictureActiveRef.current = false;
-      setIsVideoPictureInPictureActive(false);
-      if (state.owner === "video") {
-        restoreActiveVideoSurface(state);
-      } else if (state.owner === "call" && callPhaseRef.current !== "idle") {
-        restoreActiveCallSurface();
-      }
-    }).then((remove) => {
-      if (cancelled) {
-        remove();
-      } else {
-        removeListener = remove;
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      removeListener?.();
-    };
-  }, [
-    lastNativeVideoRevisionRef,
-    restoreActiveCallSurface,
-    restoreActiveVideoSurface,
-    setIsVideoPictureInPictureActive,
-    videoPictureInPictureActiveRef
-  ]);
 
   /** Dismiss the native Android incoming-call notification (no-op on web/iOS). */
   function dismissNativeCallNotification() {
@@ -760,15 +603,12 @@ export function useCallSession({
     console.log("[CALL] startDirectCall: call:start emitted — waiting for call:ringing from server");
   }
 
-  function sendCallInvites() {
-    if (!callInviteSelection.length) {
-      setIsCallInviteOpen(false);
-      return;
-    }
-    audioCallRef.current?.inviteUsers(callInviteSelection);
-    setIsCallInviteOpen(false);
-    setCallInviteSelection([]);
-  }
+  const sendCallInvites = useCallInviteControls({
+    audioCallRef,
+    callInviteSelection,
+    setCallInviteSelection,
+    setIsCallInviteOpen
+  });
 
   async function acceptIncomingCall() {
     const socket = socketRef.current;
@@ -1029,548 +869,42 @@ export function useCallSession({
    * Returns a cleanup function that ChatsPage must invoke (before
    * disconnecting the socket) when the owning effect tears down.
    */
-  const attachToSocket = useCallback(
-    (socket: Socket, socketAccessToken: string) => {
-      const audioController = new CallController(socket, socketAccessToken);
-      if (currentUser?.id) {
-        audioController.setLocalUserId(currentUser.id);
-      }
-      audioController.attachRemoteAudioElement(remoteAudioRef.current);
-      audioController.onVideoUnavailable = () => {
-        setCallType("audio");
-        setCallNotice("Camera not available — continuing with audio only");
-      };
-      audioController.onConnectionReconnecting = () => {
-        if (callPhaseRef.current === "idle") return;
-        setCallPhase("connecting");
-        setCallNotice("Reconnecting to call…");
-      };
-      audioController.onConnectionEstablished = () => {
-        console.log("[CALL] onConnectionEstablished fired callPhase=", callPhaseRef.current);
-        setCallPhase("in-call");
-        callPhaseRef.current = "in-call";
-        setCallNotice(null);
-        if (callTypeRef.current === "video") {
-          void applyCallAudioPatch({ speakerMode: "large" });
-        }
-      };
-      // When the remote party enables their camera mid-call, show the video UI
-      // on the receiving side without requiring the local user to act.
-      audioController.onRemoteVideoTrack = (stream: MediaStream) => {
-        setCallType("video");
-        setHasRemoteVideo(true);
-        setRemoteVideoStream(stream);
-      };
-      audioController.onLocalStreamReady = (stream: MediaStream) => {
-        if (hasLiveLocalVideo(stream)) {
-          setLocalVideoStream(stream);
-        }
-      };
-      audioController.onLocalScreenStreamChange = (stream: MediaStream | null) => {
-        setLocalScreenStream(stream);
-      };
-      audioController.onRemoteMediaChange = (media) => {
-        setCallRemoteMedia(media);
-        const withVideo = media.find((m) => m.hasScreenShare || m.hasVideo);
-        if (withVideo) {
-          setHasRemoteVideo(true);
-          setRemoteVideoStream(
-            withVideo.hasScreenShare && withVideo.screenStream
-              ? withVideo.screenStream
-              : withVideo.stream
-          );
-        }
-      };
-      audioController.onTopologyChange = (topology) => {
-        setCallTopology(topology);
-        if (topology === "sfu") {
-          setCallNotice("Switching to group media…");
-        }
-      };
-      audioController.onScreenShareEnded = () => {
-        setCallAudioSettings((cur) => ({ ...cur, screenSharing: false }));
-        setLocalScreenStream(null);
-      };
-      audioController.onSpeakingChange(setIsPeerSpeaking);
-      audioController.onLocalSpeakingChange(setIsLocalSpeaking);
-      audioController.onPeerSpeakingUserIdsChange(setSpeakingUserIds);
-      setCallAudioCapabilities(audioController.getCapabilities());
-      setCallAudioSettings(audioController.getSettings());
-      audioCallRef.current = audioController;
-
-      let audioSettingsCancelled = false;
-      void getAudioSettings(socketAccessToken)
-        .then((saved) => {
-          if (audioSettingsCancelled) return;
-          const merged = mergeWithDefaults(saved);
-          setCallAudioSettings((cur) => ({ ...cur, ...merged }));
-          return audioController.applySettings(merged);
-        })
-        .catch(() => undefined);
-
-      function isSessionMismatch(p: { sessionStartedAt?: string; chatId?: string }) {
-        if (callPhaseRef.current === "idle") {
-          console.log("[CALL] isSessionMismatch: MISMATCH — callPhase is idle");
-          return true; // not in a call
-        }
-        if (p.chatId && activeCallChatIdRef.current && p.chatId !== activeCallChatIdRef.current) {
-          console.log("[CALL] isSessionMismatch: MISMATCH — chatId", p.chatId, "!== activeCallChatId", activeCallChatIdRef.current);
-          return true; // wrong chat
-        }
-        if (activeCallSessionIdRef.current) {
-          if (!p.sessionStartedAt || p.sessionStartedAt !== activeCallSessionIdRef.current) {
-            console.log("[CALL] isSessionMismatch: MISMATCH — sessionStartedAt", p.sessionStartedAt, "!== activeSession", activeCallSessionIdRef.current);
-            return true; // stale or untagged session
-          }
-        }
-        console.log("[CALL] isSessionMismatch: PASS — event is for current session");
-        return false;
-      }
-
-      socket.on(
-        "call:ringing",
-        (payload: {
-          chatId: string;
-          roomId?: string;
-          callerId: string;
-          calleeId: string;
-          callType?: string;
-          topology?: CallTopology;
-          expiresAt?: string;
-          createdAt?: string;
-          participants?: Array<{ userId: string; state: string; role: string }>;
-        }) => {
-          console.log("[call:ringing] received", payload, "selfId=", currentUser?.id);
-          const selfUserId = currentUser?.id ?? null;
-          const isCaller = selfUserId !== null && payload.callerId === selfUserId;
-          if (callPhaseRef.current !== "idle") {
-            const isPendingOutgoingConfirm =
-              isCaller &&
-              activeCallSessionIdRef.current === "pending" &&
-              payload.chatId === activeCallChatIdRef.current;
-            const isCurrentSessionReemit =
-              payload.createdAt && payload.createdAt === activeCallSessionIdRef.current;
-            if (!isPendingOutgoingConfirm && !isCurrentSessionReemit) {
-              console.log("[call:ringing] ignoring stale event — active session mismatch",
-                "payload.createdAt=", payload.createdAt,
-                "payload.chatId=", payload.chatId,
-                "activeSession=", activeCallSessionIdRef.current,
-                "activeChat=", activeCallChatIdRef.current);
-              return;
-            }
-          }
-          const incomingCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
-          setCallType(incomingCallType);
-          setActiveCallChatId(payload.chatId);
-          activeCallChatIdRef.current = payload.chatId;
-          if (payload.roomId) {
-            setCallRoomId(payload.roomId);
-            callRoomIdRef.current = payload.roomId;
-            audioController.setRoomId(payload.roomId);
-          }
-          audioController.setChatId(payload.chatId);
-          if (payload.topology) {
-            setCallTopology(payload.topology);
-            audioController.setTopology(payload.topology);
-          }
-          if (selfUserId) {
-            audioController.setLocalUserId(selfUserId);
-          }
-          if (payload.participants) {
-            setCallParticipantIds(payload.participants.map((p) => p.userId));
-          }
-          if (payload.createdAt) {
-            activeCallSessionIdRef.current = payload.createdAt;
-          }
-          const peerId = isCaller
-            ? (payload.participants?.find((p) => p.userId !== selfUserId)?.userId ?? payload.calleeId)
-            : payload.callerId;
-          setCallPeerUserId(peerId);
-
-          const chat = chatsRef.current.find((c) => c.id === payload.chatId) ?? selectedChat;
-          const isGroup = chat ? (chat.type === "group" || chat.type === "family") : (payload.participants ? payload.participants.length > 2 : false);
-          const selfParticipant = payload.participants?.find((p) => p.userId === selfUserId);
-          const isSelfConnected = selfParticipant?.state === "connected" || selfParticipant?.state === "connecting";
-
-          if (payload.chatId && isGroup) {
-            setActiveGroupCalls((prev) => ({
-              ...prev,
-              [payload.chatId]: {
-                roomId: payload.roomId,
-                chatId: payload.chatId,
-                callerId: payload.callerId,
-                callType: payload.callType,
-                topology: payload.topology,
-                participants: payload.participants,
-                createdAt: payload.createdAt,
-              },
-            }));
-          }
-
-          if (isCaller) {
-            if (isGroup || isSelfConnected) {
-              console.log("[CALL] call:ringing: isCaller=true & isGroup/connected — transitioning immediately to in-call, sessionId=", payload.createdAt);
-              stopCallRingtone();
-              setCallPhase("in-call");
-              callPhaseRef.current = "in-call";
-              setCallNotice(null);
-              if (selfUserId) {
-                void audioController.syncMeshPeers([selfUserId]).catch((err) => {
-                  console.error("[CALL] syncMeshPeers for group host failed:", err);
-                });
-              }
-            } else {
-              console.log("[CALL] call:ringing: isCaller=true — transitioning to outgoing, sessionId=", payload.createdAt);
-              setCallPhase("outgoing");
-              callPhaseRef.current = "outgoing";
-            }
-          } else {
-            console.log("[CALL] call:ringing: isCaller=false — transitioning to incoming, sessionId=", payload.createdAt);
-            setCallPhase("incoming");
-            callPhaseRef.current = "incoming";
-            setCallNotice(incomingCallType === "video" ? "Incoming video call" : "Incoming audio call");
-            startIncomingRingtone();
-          }
-        }
-      );
-
-      socket.on("call:accepted", (payload: {
-        chatId: string;
-        roomId?: string;
-        callerId: string;
-        calleeId: string;
-        callType?: string;
-        topology?: CallTopology;
-        sessionStartedAt?: string;
-        participants?: Array<{ userId: string; state: string; role: string }>;
-      }) => {
-        console.log("[call:accepted] chatId=", payload.chatId, "ref=", activeCallChatIdRef.current, "currentUser=", currentUser?.id);
-        if (!currentUser || payload.chatId !== activeCallChatIdRef.current) {
-          console.warn("[call:accepted] GUARD FAILED — bailing. currentUser=", !!currentUser, "chatMatch=", payload.chatId === activeCallChatIdRef.current);
-          return;
-        }
-        stopCallRingtone();
-        const mediaPeers = (payload.participants ?? [])
-          .filter((p) => p.userId !== currentUser.id && (p.state === "connecting" || p.state === "connected"))
-          .map((p) => p.userId);
-        const peerId = mediaPeers[0]
-          ?? (payload.callerId === currentUser.id ? payload.calleeId : payload.callerId);
-        const acceptedCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
-        if (payload.sessionStartedAt) {
-          activeCallSessionIdRef.current = payload.sessionStartedAt;
-        }
-        if (payload.roomId) {
-          setCallRoomId(payload.roomId);
-          callRoomIdRef.current = payload.roomId;
-          audioController.setRoomId(payload.roomId);
-        }
-        audioController.setChatId(payload.chatId);
-        if (payload.topology) {
-          setCallTopology(payload.topology);
-          audioController.setTopology(payload.topology);
-        }
-        audioController.setLocalUserId(currentUser.id);
-        setCallPeerUserId(peerId);
-        setCallType(acceptedCallType);
-        callTypeRef.current = acceptedCallType;
-        setCallParticipantIds((payload.participants ?? []).map((p) => p.userId));
-        setCallPhase("connecting");
-
-        if (payload.chatId) {
-          setActiveGroupCalls((prev) => {
-            const existing = prev[payload.chatId];
-            if (!existing) return prev;
-            return {
-              ...prev,
-              [payload.chatId]: {
-                ...existing,
-                ...(payload.roomId ? { roomId: payload.roomId } : {}),
-                ...(payload.topology ? { topology: payload.topology } : {}),
-                ...(payload.participants ? { participants: payload.participants } : {}),
-              },
-            };
-          });
-        }
-
-        const joinMedia = async () => {
-          if (payload.topology === "sfu") {
-            try {
-              await audioController.switchToSfu();
-              return;
-            } catch (sfuErr) {
-              console.warn("[call:accepted] SFU join failed, attempting mesh fallback:", sfuErr);
-              setCallTopology("mesh");
-              audioController.setTopology("mesh");
-              if (mediaPeers.length > 0) {
-                await audioController.syncMeshPeers([currentUser.id, ...mediaPeers]);
-                return;
-              }
-              if (payload.callerId === currentUser.id) {
-                await audioController.startOutgoing(payload.chatId, peerId, acceptedCallType);
-              } else {
-                await audioController.acceptIncoming(payload.chatId, peerId, acceptedCallType);
-              }
-              return;
-            }
-          }
-          if (mediaPeers.length > 0) {
-            await audioController.syncMeshPeers([currentUser.id, ...mediaPeers]);
-            return;
-          }
-          if (payload.callerId === currentUser.id) {
-            await audioController.startOutgoing(payload.chatId, peerId, acceptedCallType);
-          } else {
-            await audioController.acceptIncoming(payload.chatId, peerId, acceptedCallType);
-          }
-        };
-
-        void joinMedia()
-          .then(() => {
-            console.log("[call:accepted] media join resolved");
-            setCallPhase("in-call");
-            callPhaseRef.current = "in-call";
-            setCallNotice(null);
-          })
-          .catch(async (err) => {
-            console.error("[call:accepted] media join threw:", err);
-            if (socket.connected) socket.emit("call:end", { chatId: payload.chatId, roomId: payload.roomId });
-            await resetCallState("Camera/mic permission or device failed", true, false);
-            setError(err instanceof Error ? err.message : "Could not start call");
-          });
-      });
-
-      socket.on("call:participant-updated", (payload: {
-        chatId?: string;
-        roomId?: string;
-        topology?: CallTopology;
-        participants?: Array<{ userId: string; state: string; role: string }>;
-      }) => {
-        if (!currentUser || callPhaseRef.current === "idle") return;
-        if (payload.chatId && payload.chatId !== activeCallChatIdRef.current) return;
-        const participants = payload.participants ?? [];
-        setCallParticipantIds(participants.map((p) => p.userId));
-        if (payload.roomId) {
-          setCallRoomId(payload.roomId);
-          callRoomIdRef.current = payload.roomId;
-          audioController.setRoomId(payload.roomId);
-        }
-        if (payload.chatId) {
-          setActiveGroupCalls((prev) => {
-            const existing = prev[payload.chatId!];
-            if (!existing) return prev;
-            return {
-              ...prev,
-              [payload.chatId!]: {
-                ...existing,
-                ...(payload.roomId ? { roomId: payload.roomId } : {}),
-                ...(payload.topology ? { topology: payload.topology } : {}),
-                ...(payload.participants ? { participants: payload.participants } : {}),
-              },
-            };
-          });
-        }
-        const mediaPeers = participants
-          .filter((p) => p.userId !== currentUser.id && (p.state === "connecting" || p.state === "connected"))
-          .map((p) => p.userId);
-        if (payload.topology === "sfu") {
-          setCallTopology("sfu");
-          void audioController.switchToSfu()
-            .then(() => {
-              setCallNotice(null);
-              setCallPhase("in-call");
-              callPhaseRef.current = "in-call";
-            })
-            .catch((err) => {
-              console.warn("[call:participant-updated] switchToSfu failed, continuing with mesh:", err);
-              setCallTopology("mesh");
-              audioController.setTopology("mesh");
-              setCallNotice(null);
-              setCallPhase("in-call");
-              callPhaseRef.current = "in-call";
-              if (mediaPeers.length > 0) {
-                void audioController.syncMeshPeers([currentUser.id, ...mediaPeers]).catch(() => undefined);
-              }
-            });
-          return;
-        }
-        if (mediaPeers.length > 0 && callPhaseRef.current !== "incoming" && callPhaseRef.current !== "outgoing") {
-          void audioController.syncMeshPeers([currentUser.id, ...mediaPeers]).catch((err) => {
-            console.error("[call:participant-updated] syncMeshPeers failed", err);
-          });
-        }
-      });
-
-      socket.on("call:topology", (payload: {
-        chatId?: string;
-        roomId?: string;
-        topology?: CallTopology;
-        sfuUrl?: string;
-        roomName?: string;
-      }) => {
-        if (!currentUser || callPhaseRef.current === "idle") return;
-        if (payload.chatId && payload.chatId !== activeCallChatIdRef.current) return;
-        if (payload.roomId) {
-          setCallRoomId(payload.roomId);
-          callRoomIdRef.current = payload.roomId;
-          audioController.setRoomId(payload.roomId);
-        }
-        if (payload.topology === "sfu") {
-          setCallTopology("sfu");
-          setCallNotice("Switching to group media…");
-          void audioController.switchToSfu()
-            .then(() => {
-              setCallNotice(null);
-              setCallPhase("in-call");
-              callPhaseRef.current = "in-call";
-            })
-            .catch((err) => {
-              console.warn("[call:topology] switchToSfu failed, keeping mesh:", err);
-              setCallTopology("mesh");
-              audioController.setTopology("mesh");
-              setCallNotice(null);
-              setCallPhase("in-call");
-              callPhaseRef.current = "in-call";
-            });
-        }
-      });
-
-      socket.on(
-        "call:signal",
-        (payload: { chatId: string; fromUserId: string; data: Record<string, unknown> }) => {
-          void audioController.handleSignal(payload as { chatId: string; fromUserId: string; data: Record<string, unknown> }).catch((err) => {
-            setError(err instanceof Error ? err.message : "Call signaling failed");
-          });
-        }
-      );
-
-      socket.on("call:declined", (payload: { chatId?: string; sessionStartedAt?: string }) => {
-        console.log("[CALL] call:declined received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
-        if (payload?.chatId) {
-          setActiveGroupCalls((prev) => {
-            if (!prev[payload.chatId!]) return prev;
-            const next = { ...prev };
-            delete next[payload.chatId!];
-            return next;
-          });
-        }
-        // Guard against stale queued events from previous calls being delivered
-        // via drainPendingEvents on socket reconnect killing a newly started call.
-        if (isSessionMismatch(payload)) {
-          console.log("[CALL] call:declined ignored — session mismatch or idle");
-          return;
-        }
-        console.log("[CALL] call:declined: resetting call state");
-        stopCallRingtone();
-        // Server already ended the session — pass serverAlreadyNotified=true so
-        // cleanup() does not send a redundant call:end that would produce a
-        // spurious call:error response.
-        void resetCallState("Call declined", true);
-      });
-      socket.on("call:canceled", (payload: { chatId?: string; sessionStartedAt?: string }) => {
-        console.log("[CALL] call:canceled received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
-        if (payload?.chatId) {
-          setActiveGroupCalls((prev) => {
-            if (!prev[payload.chatId!]) return prev;
-            const next = { ...prev };
-            delete next[payload.chatId!];
-            return next;
-          });
-        }
-        if (isSessionMismatch(payload)) {
-          console.log("[CALL] call:canceled ignored — session mismatch or idle");
-          return;
-        }
-        console.log("[CALL] call:canceled: resetting call state");
-        stopCallRingtone();
-        void resetCallState("Call canceled", true);
-      });
-      socket.on("call:timeout", (payload: { chatId?: string; sessionStartedAt?: string }) => {
-        console.log("[CALL] call:timeout received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current, "callPhase=", callPhaseRef.current);
-        if (payload?.chatId) {
-          setActiveGroupCalls((prev) => {
-            if (!prev[payload.chatId!]) return prev;
-            const next = { ...prev };
-            delete next[payload.chatId!];
-            return next;
-          });
-        }
-        if (isSessionMismatch(payload)) {
-          console.log("[CALL] call:timeout ignored — session mismatch or idle");
-          return;
-        }
-        console.log("[CALL] call:timeout: resetting call state");
-        stopCallRingtone();
-        void resetCallState("Missed call", true);
-      });
-      socket.on("call:ended", (payload: { chatId?: string; sessionStartedAt?: string }) => {
-        console.log("[call:ended] received chatId=", payload?.chatId, "sessionStartedAt=", payload?.sessionStartedAt, "activeSession=", activeCallSessionIdRef.current);
-        if (payload?.chatId) {
-          setActiveGroupCalls((prev) => {
-            if (!prev[payload.chatId!]) return prev;
-            const next = { ...prev };
-            delete next[payload.chatId!];
-            return next;
-          });
-        }
-        if (isSessionMismatch(payload)) {
-          console.log("[call:ended] ignoring — session mismatch or idle");
-          return;
-        }
-        stopCallRingtone();
-        void resetCallState("Call ended", true);
-      });
-      // call:sync is emitted by the server when the user's socket reconnects during
-      // an active call. Resume WebRTC signaling so the call can recover from a brief
-      // socket disconnect without ending the call entirely.
-      socket.on("call:sync", (payload: { chatId: string; callerId: string; calleeId: string; callType?: string; state?: string }) => {
-        console.log("[call:sync] received", payload);
-        if (!currentUser || callPhaseRef.current === "idle") return;
-        if (payload.chatId !== activeCallChatIdRef.current) return;
-        const syncCallType: "audio" | "video" = payload.callType === "video" ? "video" : "audio";
-        const asOfferer = payload.callerId === currentUser.id;
-        const peerId = asOfferer ? payload.calleeId : payload.callerId;
-        void audioController.resumeSignaling(payload.chatId, peerId, syncCallType, asOfferer).catch((err) => {
-          console.error("[call:sync] resumeSignaling failed:", err);
-        });
-      });
-      socket.on("call:error", (payload: { message?: string }) => {
-        const message = payload.message ?? "Call failed";
-        console.error("[call:error] received:", payload);
-        stopCallRingtone();
-        // Late call:end / call:signal on an already-cleared session is harmless noise.
-        if (message === "Call not available") {
-          if (callPhaseRef.current === "idle") return;
-          void resetCallState("Call ended", true);
-          return;
-        }
-        setError(message);
-        // Server encountered an error and the session may already be gone;
-        // pass serverAlreadyNotified=true to avoid a redundant call:end.
-        void resetCallState(undefined, true);
-      });
-
-      return () => {
-        audioSettingsCancelled = true;
-        socket.off("call:ringing");
-        socket.off("call:accepted");
-        socket.off("call:participant-updated");
-        socket.off("call:topology");
-        socket.off("call:signal");
-        socket.off("call:declined");
-        socket.off("call:canceled");
-        socket.off("call:timeout");
-        socket.off("call:ended");
-        socket.off("call:sync");
-        socket.off("call:error");
-        stopCallRingtone();
-        // Do not emit call:end here — socket teardown must not kill an active call.
-        void audioController.cleanup(true).catch(() => undefined);
-        audioCallRef.current = null;
-      };
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentUser?.id]
-  );
+  const attachToSocket = useCallSignaling({
+    currentUser,
+    remoteAudioRef,
+    setCallType,
+    setCallNotice,
+    callPhaseRef,
+    setCallPhase,
+    callTypeRef,
+    applyCallAudioPatch,
+    setHasRemoteVideo,
+    setRemoteVideoStream,
+    setLocalVideoStream,
+    setLocalScreenStream,
+    setCallRemoteMedia,
+    setCallTopology,
+    setCallAudioSettings,
+    setIsPeerSpeaking,
+    setIsLocalSpeaking,
+    setSpeakingUserIds,
+    setCallAudioCapabilities,
+    audioCallRef,
+    activeCallChatIdRef,
+    activeCallSessionIdRef,
+    setActiveCallChatId,
+    setCallRoomId,
+    callRoomIdRef,
+    setCallParticipantIds,
+    setCallPeerUserId,
+    chatsRef,
+    selectedChat,
+    setActiveGroupCalls,
+    stopCallRingtone,
+    startIncomingRingtone,
+    setError,
+    resetCallState
+  });
 
   return {
     // State
