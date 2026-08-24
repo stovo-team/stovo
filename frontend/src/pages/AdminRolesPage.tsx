@@ -33,13 +33,16 @@ export default function AdminRolesPage() {
     try {
       const next = await getServerRoles(accessToken);
       setRoles(next);
-      const selected = next.find((role) => role.id === selectedId) ?? next[0] ?? null;
-      setSelectedId(selected?.id ?? null);
-      setDraft(selected ? { ...selected, permissions: [...selected.permissions] } : null);
+      setSelectedId((current) => next.some((role) => role.id === current) ? current : next[0]?.id ?? null);
     } catch (err) { setError(err instanceof ApiError ? String(err.message) : "Could not load roles"); }
-  }, [accessToken, selectedId]);
+  }, [accessToken]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    const selected = roles.find((role) => role.id === selectedId);
+    if (selected) setDraft({ ...selected, permissions: [...selected.permissions] });
+  }, [roles, selectedId]);
 
   function select(role: ServerRole) { setSelectedId(role.id); setDraft({ ...role, permissions: [...role.permissions] }); setError(null); }
   function togglePermission(permission: string) {
@@ -64,10 +67,10 @@ export default function AdminRolesPage() {
   }
 
   return <main className="app-shell app-frame admin-page admin-detail-page"><AppNav /><section className="page-surface admin-surface">
-    <div className="admin-detail-header"><Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin"><span className="ms-icon ms-icon--22" aria-hidden="true">arrow_back</span></Link><div><h1>Roles</h1><p className="muted-text">Server-wide permissions for every group and channel.</p></div></div>
+    <div className="admin-detail-header"><Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin"><span className="ms-icon ms-icon--22" aria-hidden="true">arrow_back</span></Link><div><h1>Roles</h1></div></div>
     {!canManage && <p className="error-text">Role management access required.</p>}{error && <p className="error-text">{error}</p>}
     {canManage && <div className="admin-roles-layout">
-      <aside className="admin-role-list" aria-label="Server roles">{roles.map((role) => <button key={role.id} type="button" className={role.id === selectedId ? "active" : ""} onClick={() => select(role)}><strong>{role.name}</strong><small>{role.isDefault ? "Default role" : `${role.memberCount} members`}</small></button>)}<button type="button" onClick={() => { setSelectedId("new"); setDraft({ id: "new", name: "", description: "", permissions: [], isDefault: false, memberCount: 0 }); }}>+ Create role</button></aside>
+      <aside className="admin-role-list" aria-label="Server roles">{roles.map((role) => <button key={role.id} type="button" className={role.id === selectedId ? "active" : ""} onClick={() => select(role)}><strong>{role.name}</strong><small>{role.isDefault ? "Default role" : `${role.memberCount} members`}</small></button>)}<button type="button" className="admin-role-create" onClick={() => { setSelectedId("new"); setDraft({ id: "new", name: "", description: "", permissions: [], isDefault: false, memberCount: 0 }); }}><span className="ms-icon ms-icon--18" aria-hidden="true">add</span>Create role</button></aside>
       {draft && <section className="admin-panel admin-role-editor"><label>Role name<input value={draft.name} maxLength={60} onChange={(event) => setDraft({ ...draft, name: event.target.value })} disabled={saving} /></label><label>Description<input value={draft.description ?? ""} onChange={(event) => setDraft({ ...draft, description: event.target.value })} disabled={saving} /></label><p className="admin-role-default">{draft.isDefault ? "Default role — it can be edited but not deleted." : "Custom role"}</p><div className="admin-role-permissions">{permissions.map(([key, label, helper]) => <label key={key}><input type="checkbox" checked={draft.permissions.includes(key)} onChange={() => togglePermission(key)} disabled={saving} /><span><strong>{label}</strong><small>{helper}</small></span></label>)}</div><div className="admin-member-actions"><button type="button" className="primary-button" onClick={() => void save()} disabled={saving || !draft.name.trim()}>Save role</button>{!draft.isDefault && draft.id !== "new" && <button type="button" className="danger-button" onClick={() => void remove()} disabled={saving}>Delete role</button>}</div></section>}
     </div>}
   </section></main>;

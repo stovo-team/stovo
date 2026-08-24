@@ -228,6 +228,7 @@ export default function ChatsPage() {
               onOpenAddPeople={() => setAddPeopleChat(selectedChat)}
               onPinPermissionChange={detailsActions.handlePinPermissionChange}
               onMessageDelayChange={detailsActions.handleMessageDelayChange}
+              pendingMessageDelay={detailsActions.pendingMessageDelay}
               onPreferenceChange={(payload) => void detailsActions.handleChatPreferenceChange(payload)}
               onTitleDraftChange={setChatTitleDraft}
             />

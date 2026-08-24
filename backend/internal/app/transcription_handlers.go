@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -73,7 +74,7 @@ type uploadChunkRequest struct {
 	SessionID     string `json:"sessionId"`
 	ParticipantID string `json:"participantId"`
 	Sequence      int    `json:"sequence"`
-	Container     string `json:"container"` // "webm" | "ogg"
+	Container     string `json:"container"` // "webm" | "ogg" | "mp4"
 	CallStartMs   int64  `json:"callStartMs"`
 	CallEndMs     int64  `json:"callEndMs"`
 	DurationMs    int64  `json:"durationMs"`
@@ -337,7 +338,7 @@ func (s *Server) handleGetTranscript(w http.ResponseWriter, r *http.Request, use
 	s.json(w, http.StatusOK, result)
 }
 
-// handleRequestUploadURL issues a presigned MinIO URL for uploading an audio chunk.
+// handleRequestUploadURL registers an audio chunk and returns the authenticated upload path.
 func (s *Server) handleRequestUploadURL(w http.ResponseWriter, r *http.Request, user userPublic) {
 	if !s.cfg.AICallTranscriptionEnabled {
 		s.detail(w, http.StatusServiceUnavailable, "AI call transcription is not enabled")
@@ -370,41 +371,86 @@ func (s *Server) handleRequestUploadURL(w http.ResponseWriter, r *http.Request, 
 	}
 
 	container := req.Container
-	if container != "ogg" && container != "webm" {
+	if container != "ogg" && container != "webm" && container != "mp4" {
 		container = "webm"
 	}
-	objectKey := fmt.Sprintf("calls/%s/%s/audio/%s/%06d.%s",
-		session.ChatID, req.SessionID, user.ID, req.Sequence, container)
-	chunkID := uuid.NewString()
-
 	ctx := r.Context()
-	codec := "opus"
-	contentType := "audio/webm"
-	if container == "ogg" {
-		contentType = "audio/ogg"
-	}
-
-	if err := s.dbInsertAudioChunk(ctx, chunkID, req.SessionID, user.ID, req.Sequence,
-		objectKey, container, codec, req.CallStartMs, req.CallEndMs, req.DurationMs); err != nil {
-		s.logger.Warnf("transcription", "insert chunk failed chunk_id=%s session_id=%s error=%v", chunkID, req.SessionID, err)
-		s.detail(w, http.StatusInternalServerError, "Failed to register upload")
+	chunkID := ""
+	objectKey := ""
+	if existing, err := s.dbGetAudioChunkBySequence(ctx, req.SessionID, user.ID, req.Sequence); err == nil {
+		// Network retries must keep using the original row. Returning a new ID
+		// after INSERT ... ON CONFLICT DO NOTHING leaves the upload unfinishable.
+		chunkID, objectKey = existing.ID, existing.ObjectKey
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		s.logger.Warnf("transcription", "get existing chunk failed session_id=%s error=%v", req.SessionID, err)
+		s.detail(w, http.StatusInternalServerError, "Failed to prepare audio upload")
 		return
-	}
+	} else {
+		objectKey = fmt.Sprintf("calls/%s/%s/audio/%s/%06d.%s",
+			session.ChatID, req.SessionID, user.ID, req.Sequence, container)
+		chunkID = uuid.NewString()
+		codec := "opus"
+		if container == "mp4" {
+			codec = "aac"
+		}
 
-	bucket := s.cfg.MinIOCallsBucket
-	uploadURL, err := s.storage.PresignPutObject(ctx, bucket, objectKey, 15*time.Minute, contentType)
-	if err != nil {
-		s.logger.Warnf("transcription", "presign failed chunk_id=%s room_id=%s error=%v", chunkID, roomID, err)
-		s.detail(w, http.StatusInternalServerError, "Failed to generate upload URL")
-		return
+		if err := s.dbInsertAudioChunk(ctx, chunkID, req.SessionID, user.ID, req.Sequence,
+			objectKey, container, codec, req.CallStartMs, req.CallEndMs, req.DurationMs); err != nil {
+			s.logger.Warnf("transcription", "insert chunk failed chunk_id=%s session_id=%s error=%v", chunkID, req.SessionID, err)
+			s.detail(w, http.StatusInternalServerError, "Failed to register upload")
+			return
+		}
 	}
 
 	s.json(w, http.StatusOK, uploadChunkResponse{
 		ChunkID:   chunkID,
-		UploadURL: uploadURL,
+		// Keep object storage private: a browser cannot resolve an internal MinIO
+		// hostname, and an object-store CORS policy must not block AI Notes.
+		UploadURL: fmt.Sprintf("/api/calls/%s/transcription/uploads/%s/data", roomID, chunkID),
 		ObjectKey: objectKey,
 		ExpiresAt: time.Now().Add(15 * time.Minute).UTC().Format(time.RFC3339),
 	})
+}
+
+// handleUploadAudioChunkData proxies a chunk to private storage, avoiding
+// client access to a presigned internal MinIO endpoint.
+func (s *Server) handleUploadAudioChunkData(w http.ResponseWriter, r *http.Request, user userPublic) {
+	chunkID := strings.TrimSpace(chi.URLParam(r, "chunkId"))
+	if chunkID == "" {
+		s.detail(w, http.StatusBadRequest, "chunkId required")
+		return
+	}
+	chunk, err := s.dbGetAudioChunk(r.Context(), chunkID)
+	if err != nil || chunk == nil {
+		s.detail(w, http.StatusNotFound, "Upload not found")
+		return
+	}
+	if chunk.ParticipantID != user.ID {
+		s.detail(w, http.StatusForbidden, "This upload does not belong to you")
+		return
+	}
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 32<<20))
+	if err != nil || len(data) == 0 {
+		s.detail(w, http.StatusBadRequest, "Audio upload was empty or too large")
+		return
+	}
+	contentType := "audio/webm"
+	if chunk.Container == "ogg" {
+		contentType = "audio/ogg"
+	} else if chunk.Container == "mp4" {
+		contentType = "audio/mp4"
+	}
+	if err := s.storage.SaveToBucket(r.Context(), s.cfg.MinIOCallsBucket, chunk.ObjectKey, data, contentType); err != nil {
+		s.logger.Warnf("transcription", "store chunk failed chunk_id=%s error=%v", chunkID, err)
+		s.detail(w, http.StatusBadGateway, "Could not store audio upload")
+		return
+	}
+	if err := s.dbCompleteAudioChunk(r.Context(), chunkID, int64(len(data)), ""); err != nil {
+		s.logger.Warnf("transcription", "mark uploaded failed chunk_id=%s error=%v", chunkID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not confirm audio upload")
+		return
+	}
+	s.json(w, http.StatusOK, map[string]any{"chunkId": chunkID, "uploaded": true})
 }
 
 // handleCompleteUpload marks a chunk upload as complete and verifies it exists in MinIO.
@@ -636,6 +682,16 @@ func (s *Server) scheduleTranscriptionProcessing(sessionID, callID, chatID strin
 	go func() {
 		// Give each recorder time to upload its final MediaRecorder chunk.
 		time.Sleep(15 * time.Second)
+		// A mobile client can finish its final PUT after the call-end socket event.
+		// Do not declare an empty recording while the server still has registered,
+		// pending chunks awaiting their completion acknowledgement.
+		for range 30 {
+			pending, err := s.dbCountPendingAudioChunks(context.Background(), sessionID)
+			if err != nil || pending == 0 {
+				break
+			}
+			time.Sleep(time.Second)
+		}
 		s.processTranscription(context.Background(), sessionID, callID, chatID)
 	}()
 }
@@ -668,6 +724,19 @@ func (s *Server) dbInsertAudioChunk(ctx context.Context, chunkID, sessionID, par
 		_, _ = s.db.ExecContext(ctx, `UPDATE call_transcription_sessions SET updated_at=now() WHERE id=$1`, sessionID)
 	}
 	return err
+}
+
+func (s *Server) dbGetAudioChunkBySequence(ctx context.Context, sessionID, participantID string, sequence int) (*audioChunkRow, error) {
+	row := s.db.QueryRowContext(ctx,
+		`SELECT id, session_id, participant_id, object_key, sequence_number, container, codec, call_start_ms, call_end_ms, duration_ms
+		 FROM call_audio_chunks WHERE session_id=$1 AND participant_id=$2 AND sequence_number=$3`, sessionID, participantID, sequence)
+	chunk := &audioChunkRow{}
+	err := row.Scan(&chunk.ID, &chunk.SessionID, &chunk.ParticipantID, &chunk.ObjectKey,
+		&chunk.Sequence, &chunk.Container, &chunk.Codec, &chunk.CallStartMs, &chunk.CallEndMs, &chunk.DurationMs)
+	if err != nil {
+		return nil, err
+	}
+	return chunk, nil
 }
 
 func (s *Server) dbCompleteAudioChunk(ctx context.Context, chunkID string, sizeBytes int64, checksum string) error {
@@ -865,6 +934,14 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 	s.logger.Infof("transcription", "processing completed session_id=%s call_id=%s segments=%d", sessionID, callID, len(allSegments))
 }
 
+func (s *Server) dbCountPendingAudioChunks(ctx context.Context, sessionID string) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT count(*) FROM call_audio_chunks WHERE session_id=$1 AND upload_status='pending'`, sessionID,
+	).Scan(&count)
+	return count, err
+}
+
 // transcribeParticipantChunks downloads and transcribes all audio chunks for a
 // single participant. Returns the recognised segments and the set of detected languages.
 func (s *Server) transcribeParticipantChunks(ctx context.Context, callID, sessionID, participantID string, chunks []audioChunkRow, client *transcription.GroqSTTClient) ([]transcription.TranscriptSegmentForLLM, map[string]bool) {
@@ -879,6 +956,8 @@ func (s *Server) transcribeParticipantChunks(ctx context.Context, callID, sessio
 		contentType, filename := "audio/webm", "audio.webm"
 		if chunk.Container == "ogg" {
 			contentType, filename = "audio/ogg", "audio.ogg"
+		} else if chunk.Container == "mp4" {
+			contentType, filename = "audio/mp4", "audio.m4a"
 		}
 		resp, err := client.Transcribe(ctx, transcription.TranscribeRequest{
 			AudioData:   audioData,

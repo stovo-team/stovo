@@ -7857,6 +7857,40 @@ span.message-spoiler.is-revealed {
   flex-wrap: wrap;
 }
 
+.draw-pen-selector {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.draw-pen-option {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--text-secondary, #a1a1aa);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 0.78rem;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 10px;
+}
+
+.draw-pen-option.is-active {
+  background: color-mix(in oklab, var(--accent-primary, #6366f1) 28%, transparent);
+  border-color: var(--accent-primary, #6366f1);
+  color: var(--text-primary, #fff);
+}
+
+.draw-pen-sample {
+  background: currentColor;
+  border-radius: 999px;
+  display: block;
+  width: 16px;
+}
+
 .draw-settings .image-editor-control-item {
   flex: 1;
   min-width: 160px;
@@ -10660,7 +10694,8 @@ span.message-spoiler.is-revealed {
 }
 
 .image-lightbox-download,
-.image-lightbox-share {
+.image-lightbox-share,
+.image-lightbox-edit {
   align-items: center;
   /* Keep the action affordance circular in Android WebView as well as desktop. */
   background: color-mix(in oklab, #000000 48%, transparent);
@@ -10680,17 +10715,20 @@ span.message-spoiler.is-revealed {
 }
 
 .image-lightbox-download:hover,
-.image-lightbox-share:hover {
+.image-lightbox-share:hover,
+.image-lightbox-edit:hover {
   background: color-mix(in oklab, #ffffff 22%, #000000 38%);
 }
 
 .image-lightbox-download:active,
-.image-lightbox-share:active {
+.image-lightbox-share:active,
+.image-lightbox-edit:active {
   transform: scale(0.95);
 }
 
 .image-lightbox-download:focus-visible,
-.image-lightbox-share:focus-visible {
+.image-lightbox-share:focus-visible,
+.image-lightbox-edit:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.6);
   outline-offset: 2px;
 }
@@ -21860,15 +21898,22 @@ span.message-spoiler.is-revealed {
 
 
 
-.admin-roles-layout { display: grid; grid-template-columns: minmax(180px, 0.45fr) minmax(0, 1fr); gap: 16px; }
-.admin-role-list { display: grid; gap: 8px; align-content: start; }
-.admin-role-list button { border: 1px solid var(--border-color, #d8d8d8); border-radius: 10px; background: var(--surface-color, #fff); color: inherit; padding: 12px; text-align: left; display: grid; gap: 3px; cursor: pointer; }
-.admin-role-list button.active { border-color: var(--accent-color, #6a57d8); box-shadow: inset 0 0 0 1px var(--accent-color, #6a57d8); }
-.admin-role-list small, .admin-role-permissions small { color: var(--muted-text-color, #707070); }
-.admin-role-editor { display: grid; gap: 14px; }
-.admin-role-editor > label { display: grid; gap: 6px; font-weight: 600; }
+.admin-roles-layout { display: grid; grid-template-columns: minmax(220px, .45fr) minmax(0, 1fr); gap: 18px; margin-top: 18px; }
+.admin-role-list { display: grid; align-content: start; background: #141414; border: 1px solid #2a2a2a; border-radius: 18px; overflow: hidden; }
+.admin-page .admin-role-list button { align-items: center; background: transparent; border: 0; border-radius: 0; color: #f5f7fb; display: grid; gap: 2px; min-height: 58px; padding: 11px 14px; text-align: left; }
+.admin-page .admin-role-list button + button { border-top: 1px solid #2a2a2a; }
+.admin-page .admin-role-list button:hover, .admin-page .admin-role-list button:focus-visible, .admin-page .admin-role-list button.active { background: #1d2530; outline: none; }
+.admin-page .admin-role-list button.active { box-shadow: inset 3px 0 0 #7eb8ff; }
+.admin-role-list small, .admin-role-permissions small { color: #8b93a0; }
+.admin-page .admin-role-list .admin-role-create { align-items: center; color: #7eb8ff; display: flex; gap: 7px; font-weight: 700; }
+.admin-role-editor { display: grid; gap: 14px; padding: 18px !important; }
+.admin-role-editor > label { display: grid; gap: 7px; font-weight: 600; }
 .admin-role-editor input[type="text"], .admin-role-editor input:not([type]) { width: 100%; }
-.admin-role-permissions { display: grid; gap: 8px; }
-.admin-role-permissions label { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border-color, #e5e5e5); }
-.admin-role-permissions span { display: grid; gap: 2px; }
+.admin-role-permissions { border-top: 1px solid #2a2a2a; display: grid; gap: 0; }
+.admin-role-permissions label { align-items: flex-start; border-bottom: 1px solid #2a2a2a; display: flex; gap: 11px; padding: 12px 0; }
+.admin-role-permissions span { display: grid; gap: 3px; }
 @media (max-width: 700px) { .admin-roles-layout { display: block; } .admin-role-list { margin-bottom: 16px; } }
+.admin-defaults-notification-settings {
+  display: grid;
+  gap: 14px;
+}

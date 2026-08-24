@@ -33,6 +33,11 @@ const COLOR_PRESETS = [
   "#ec4899",
   "#000000"
 ];
+const PEN_SIZES = [
+  { label: "Fine", width: 2 },
+  { label: "Medium", width: 4 },
+  { label: "Bold", width: 8 }
+];
 
 export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalProps) {
   const editorFeatures = PHOTO_EDITOR_FEATURES.media;
@@ -514,6 +519,21 @@ export function ImageEditorModal({ pending, onSave, onClose }: ImageEditorModalP
               </div>
 
               <div className="draw-settings">
+                <div className="draw-pen-selector" role="group" aria-label="Pen size">
+                  <span className="control-section-label">Pen:</span>
+                  {PEN_SIZES.map((pen) => (
+                    <button
+                      key={pen.label}
+                      type="button"
+                      className={`draw-pen-option${drawWidth === pen.width ? " is-active" : ""}`}
+                      onClick={() => setDrawWidth(pen.width)}
+                      aria-pressed={drawWidth === pen.width}
+                    >
+                      <span className="draw-pen-sample" style={{ height: pen.width }} aria-hidden="true" />
+                      {pen.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="image-editor-control-item">
                   <div className="control-label">
                     <span>Brush Size</span>

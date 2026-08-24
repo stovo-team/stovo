@@ -14,10 +14,12 @@ import {
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { EMOJI_CATEGORY_ICONS } from "../features/chats/composer/emojiCategories";
 import ImageLightbox from "./ImageLightbox";
+import { ImageEditorModal } from "./ImageEditorModal";
 import { MessageEnlargeButton } from "./MessageEnlargeModal";
 import { DocumentPickerList } from "./attachment-picker/DocumentPickerList";
 import { MediaGalleryGrid } from "./attachment-picker/MediaGalleryGrid";
 import { useMediaPicker } from "./attachment-picker/useMediaPicker";
+import type { PendingLocalAttachment } from "../features/chats/shared/types";
 
 export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file";
 export type AttachmentPickerTab = "gallery" | "file" | "audio";
@@ -56,6 +58,7 @@ export default function AttachmentPickerSheet({
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>("gallery");
   const [internalPreviewMediaItem, setInternalPreviewMediaItem] = useState<NativeMediaItem | null>(null);
+  const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
   const previewMediaItem = propPreviewMediaItem !== undefined ? propPreviewMediaItem : internalPreviewMediaItem;
   const setPreviewMediaItem = useCallback(
     (item: NativeMediaItem | null) => {
@@ -402,6 +405,21 @@ export default function AttachmentPickerSheet({
   };
 
   const selectedCount = selectedItemIds.length;
+  const openPhotoEditor = useCallback(async () => {
+    if (!previewMediaItem?.mimeType.startsWith("image/")) return;
+    const imageUrl = fullPreviewUrl || nativeMediaPreviewUrl(previewMediaItem);
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      setEditingAttachment({
+        localId: `gallery-edit:${previewMediaItem.id}`,
+        file: new File([blob], previewMediaItem.name, { type: previewMediaItem.mimeType || blob.type || "image/jpeg" }),
+        previewUrl: imageUrl
+      });
+    } catch {
+      // Native gallery URLs should be fetchable; leave the preview open if the file cannot be read.
+    }
+  }, [fullPreviewUrl, previewMediaItem]);
   const sheetContent = (
     <div
       className={`attachment-picker-backdrop${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}
@@ -634,6 +652,18 @@ export default function AttachmentPickerSheet({
           title={previewMediaItem.name}
           subtitle={previewMediaItem.mimeType}
           onClose={() => setPreviewMediaItem(null)}
+          onEdit={previewMediaItem.mimeType.startsWith("image/") ? () => void openPhotoEditor() : undefined}
+        />
+      )}
+      {editingAttachment && (
+        <ImageEditorModal
+          pending={editingAttachment}
+          onClose={() => setEditingAttachment(null)}
+          onSave={(editedFile) => {
+            onSelectFiles?.([editedFile]);
+            setEditingAttachment(null);
+            setPreviewMediaItem(null);
+          }}
         />
       )}
     </>
