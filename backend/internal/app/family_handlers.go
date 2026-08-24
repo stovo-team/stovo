@@ -31,7 +31,7 @@ type defaultNotificationSettings struct {
 }
 
 func isValidPrivacyVisibility(value *string) bool {
-	return value == nil || *value == "family" || *value == "nobody"
+	return value == nil || *value == "everyone" || *value == "nobody"
 }
 
 func isValidDefaultNotificationSettings(raw string) bool {
@@ -48,8 +48,14 @@ func isValidDefaultNotificationSettings(raw string) bool {
 }
 
 func (s *Server) familyMemberDefaults(ctx context.Context, familyID string) (profileVisibility, lastSeenVisibility string, readReceiptsEnabled bool, notificationSettings string, err error) {
-	profileVisibility, lastSeenVisibility, readReceiptsEnabled, notificationSettings = "family", "family", true, defaultNotificationSettingsJSON
+	profileVisibility, lastSeenVisibility, readReceiptsEnabled, notificationSettings = "everyone", "everyone", true, defaultNotificationSettingsJSON
 	err = s.db.QueryRowContext(ctx, `SELECT default_profile_visibility, default_last_seen_visibility, default_read_receipts_enabled, default_notification_settings FROM families WHERE id = $1`, familyID).Scan(&profileVisibility, &lastSeenVisibility, &readReceiptsEnabled, &notificationSettings)
+	if profileVisibility == "family" {
+		profileVisibility = "everyone"
+	}
+	if lastSeenVisibility == "family" {
+		lastSeenVisibility = "everyone"
+	}
 	return
 }
 
@@ -102,7 +108,7 @@ func (s *Server) handleUpdateFamily(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 	if !isValidPrivacyVisibility(payload.DefaultProfileVisibility) || !isValidPrivacyVisibility(payload.DefaultLastSeenVisibility) {
-		s.detail(w, http.StatusUnprocessableEntity, "privacy visibility must be family or nobody")
+		s.detail(w, http.StatusUnprocessableEntity, "privacy visibility must be everyone or nobody")
 		return
 	}
 	if payload.DefaultNotificationSettings != nil && !isValidDefaultNotificationSettings(*payload.DefaultNotificationSettings) {

@@ -103,6 +103,7 @@ export function ChatDetailsPanel({
   onOpenAddPeople,
   onPinPermissionChange,
   onMessageDelayChange,
+  pendingMessageDelay,
   onPreferenceChange,
   onTitleDraftChange,
   editingChatPhotoFile,
@@ -143,6 +144,7 @@ export function ChatDetailsPanel({
   onOpenAddPeople: () => void;
   onPinPermissionChange: (permission: "everyone" | "admins_only") => void;
   onMessageDelayChange: (delaySeconds: number) => Promise<boolean>;
+  pendingMessageDelay: number | null;
   onPreferenceChange: (
     payload: {
       isMuted?: boolean;
@@ -170,10 +172,6 @@ export function ChatDetailsPanel({
   const sharedContentTabs = ["media", "audio", "files", "links"] as const;
 
   const currentMessageDelay = chat.messageDelaySeconds ?? 0;
-  // A background chat refresh can contain the value from before the PATCH.
-  // Keep the user's just-selected value visible until its own request has
-  // confirmed it, rather than letting that stale snapshot flip the radio Off.
-  const [pendingMessageDelay, setPendingMessageDelay] = useState<number | null>(null);
   const displayedMessageDelay = pendingMessageDelay ?? currentMessageDelay;
   const isDelayOn = displayedMessageDelay > 0;
   const isPresetDelay = (val: number) => MESSAGE_DELAY_PRESETS.some((p) => p.value === val);
@@ -203,18 +201,8 @@ export function ChatDetailsPanel({
     }
   }, [currentMessageDelay]);
 
-  useEffect(() => {
-    if (pendingMessageDelay !== null && currentMessageDelay === pendingMessageDelay) {
-      setPendingMessageDelay(null);
-    }
-  }, [currentMessageDelay, pendingMessageDelay]);
-
   async function changeMessageDelay(delaySeconds: number) {
-    setPendingMessageDelay(delaySeconds);
-    const saved = await onMessageDelayChange(delaySeconds);
-    if (!saved) {
-      setPendingMessageDelay(null);
-    }
+    await onMessageDelayChange(delaySeconds);
   }
 
   function handleDelayOff(event: ChangeEvent<HTMLInputElement>) {

@@ -76,4 +76,24 @@ describe("ImageLightbox", () => {
 
     expect(handleShare).toHaveBeenCalledTimes(1);
   });
+
+  it("renders the pencil editor control only when editing is available", () => {
+    const handleEdit = vi.fn();
+
+    act(() => {
+      root?.render(
+        <ImageLightbox
+          imageUrl="test.jpg"
+          title="Test Image"
+          onClose={vi.fn()}
+          onEdit={handleEdit}
+        />
+      );
+    });
+
+    const editBtn = document.querySelector<HTMLButtonElement>(".image-lightbox-edit");
+    expect(editBtn?.getAttribute("aria-label")).toBe("Edit photo");
+    act(() => editBtn?.click());
+    expect(handleEdit).toHaveBeenCalledTimes(1);
+  });
 });
