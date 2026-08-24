@@ -104,6 +104,7 @@ export function ChatDetailsPanel({
   onPinPermissionChange,
   onMessageDelayChange,
   pendingMessageDelay,
+  messageDelayStatus,
   onPreferenceChange,
   onTitleDraftChange,
   editingChatPhotoFile,
@@ -145,6 +146,7 @@ export function ChatDetailsPanel({
   onPinPermissionChange: (permission: "everyone" | "admins_only") => void;
   onMessageDelayChange: (delaySeconds: number) => Promise<boolean>;
   pendingMessageDelay: number | null;
+  messageDelayStatus: { state: "saving" | "error"; message: string } | null;
   onPreferenceChange: (
     payload: {
       isMuted?: boolean;
@@ -475,6 +477,14 @@ export function ChatDetailsPanel({
                       </div>
                     )}
                   </div>
+                )}
+                {messageDelayStatus && (
+                  <p
+                    className={`chat-info-delay-status chat-info-delay-status--${messageDelayStatus.state}`}
+                    role={messageDelayStatus.state === "error" ? "alert" : "status"}
+                  >
+                    {messageDelayStatus.message}
+                  </p>
                 )}
               </div>
             </div>

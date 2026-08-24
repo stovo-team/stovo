@@ -9,7 +9,8 @@ describe("native tab transition layer", () => {
   it("animates page content smoothly with carousel transitions while keeping fixed navigation stable", () => {
     expect(appSource).toContain('const [motionFinishedForPath, setMotionFinishedForPath]');
     expect(appSource).toContain('motionFinishedForPath !== location.pathname');
-    expect(appSource).toContain('onAnimationEnd={() => {');
+    expect(appSource).toContain('onAnimationEnd={(event) => {');
+    expect(appSource).toContain('if (event.target !== event.currentTarget) return;');
     expect(appSource).toContain('setMotionFinishedForPath(location.pathname);');
     expect(styles).toContain("animation-fill-mode: backwards;");
     expect(styles).toContain("will-change: opacity, transform;");
