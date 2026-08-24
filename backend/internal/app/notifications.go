@@ -99,7 +99,7 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 		if recipientID == senderID {
 			continue
 		}
-		if s.userViewingChatInForeground(recipientID, chatID) {
+		if s.sessions.IsViewingChatInForeground(recipientID, chatID) {
 			continue
 		}
 		topic, err := s.getUserNtfyTopic(context.Background(), recipientID)
@@ -131,7 +131,7 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 }
 
 func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatID string) {
-	if s.userViewingChatInForeground(calleeUserID, chatID) {
+	if s.sessions.IsViewingChatInForeground(calleeUserID, chatID) {
 		return
 	}
 	topic, err := s.getUserNtfyTopic(context.Background(), calleeUserID)
@@ -155,7 +155,7 @@ func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatI
 }
 
 func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID string) {
-	if s.userViewingChatInForeground(calleeUserID, chatID) {
+	if s.sessions.IsViewingChatInForeground(calleeUserID, chatID) {
 		return
 	}
 	topic, err := s.getUserNtfyTopic(context.Background(), calleeUserID)

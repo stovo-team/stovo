@@ -48,7 +48,7 @@ func (s *Server) configureSockets() {
 			return
 		}
 
-		s.registerSocket(user, socket)
+		s.sessions.Register(user, socket)
 		if err := cache.NewPresenceService(s.cache).MarkOnline(context.Background(), user.ID, 60); err != nil {
 			s.logger.Warnf("realtime", "presence online update failed user_id=%s error=%v", user.ID, err)
 		}
@@ -331,7 +331,7 @@ func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID 
 func (s *Server) onlineChatRecipients(chat chatPublic, senderID string) []string {
 	recipients := make([]string, 0)
 	for _, member := range chat.Members {
-		if member.ID != senderID && s.userOnline(member.ID) {
+		if member.ID != senderID && s.sessions.IsOnline(member.ID) {
 			recipients = append(recipients, member.ID)
 		}
 	}
@@ -408,7 +408,7 @@ func (s *Server) emitMessageNew(chat chatPublic, message messagePublic) {
 		if member.ID == message.SenderID {
 			continue
 		}
-		if s.userOnline(member.ID) {
+		if s.sessions.IsOnline(member.ID) {
 			onlineRecipients = append(onlineRecipients, member.ID)
 		}
 	}
@@ -428,7 +428,7 @@ func (s *Server) emitMessageNew(chat chatPublic, message messagePublic) {
 		if member.ID == message.SenderID {
 			continue
 		}
-		if s.userOnline(member.ID) {
+		if s.sessions.IsOnline(member.ID) {
 			continue
 		}
 		mID := member.ID
@@ -536,13 +536,7 @@ func (s *Server) emitSocketError(socket *socketio.Socket, clientMessageID *strin
 // from inside a socket-event handler goroutine can deadlock or silently drop in
 // the doquangtan/socketio library; direct socket.Emit never has that problem.
 func (s *Server) emitCallToUser(userID, event string, payload any) {
-	s.socketMu.RLock()
-	sockets := s.userSockets[userID]
-	targets := make([]*socketio.Socket, 0, len(sockets))
-	for _, sock := range sockets {
-		targets = append(targets, sock)
-	}
-	s.socketMu.RUnlock()
+	targets := s.sessions.SocketsForUser(userID)
 	if len(targets) == 0 {
 		s.logger.Warnf("realtime.call", "emitCallToUser: no sockets for user_id=%s event=%s РІР‚вЂќ queueing", userID, event)
 		if strings.HasPrefix(event, "call:") {
@@ -557,45 +551,6 @@ func (s *Server) emitCallToUser(userID, event string, payload any) {
 			s.logger.Infof("realtime.call", "emitCallToUser: emitted user_id=%s event=%s socket_id=%s", userID, event, sock.Id)
 		}
 	}
-}
-
-func (s *Server) registerSocket(user userPublic, socket *socketio.Socket) {
-	s.socketMu.Lock()
-	defer s.socketMu.Unlock()
-	s.socketUsers[socket.Id] = socketSession{User: user}
-	if s.userSockets[user.ID] == nil {
-		s.userSockets[user.ID] = make(map[string]*socketio.Socket)
-	}
-	s.userSockets[user.ID][socket.Id] = socket
-}
-
-func (s *Server) unregisterSocket(userID, socketID string) {
-	s.socketMu.Lock()
-	defer s.socketMu.Unlock()
-	delete(s.socketUsers, socketID)
-	if sockets := s.userSockets[userID]; sockets != nil {
-		delete(sockets, socketID)
-		if len(sockets) == 0 {
-			delete(s.userSockets, userID)
-		}
-	}
-}
-
-func (s *Server) userOnline(userID string) bool {
-	s.socketMu.RLock()
-	defer s.socketMu.RUnlock()
-	return len(s.userSockets[userID]) > 0
-}
-
-func (s *Server) userViewingChatInForeground(userID string, chatID string) bool {
-	s.socketMu.RLock()
-	defer s.socketMu.RUnlock()
-	for socketID := range s.userSockets[userID] {
-		if session, ok := s.socketUsers[socketID]; ok && session.Foreground && session.ActiveChatID == chatID {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Server) socketQueryValue(socket *socketio.Socket, key string) string {

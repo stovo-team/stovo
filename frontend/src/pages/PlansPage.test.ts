@@ -43,7 +43,7 @@ describe("PlansPage week range logic", () => {
   });
 
   it("defines 3-hour step intervals for the today timeline", async () => {
-    const { TODAY_TIME_SLOTS, formatSlotTime } = await import("./PlansPage");
+    const { TODAY_TIME_SLOTS, formatSlotTime } = await import("./plansTimeline");
     expect(TODAY_TIME_SLOTS).toEqual([0, 3, 6, 9, 12, 15, 18, 21]);
     expect(typeof formatSlotTime(0)).toBe("string");
     expect(typeof formatSlotTime(3)).toBe("string");

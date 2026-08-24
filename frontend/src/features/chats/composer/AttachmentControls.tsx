@@ -1,8 +1,6 @@
-import { ChangeEvent, RefObject } from "react";
 import { Paperclip } from "lucide-react";
 
-import AttachmentPickerSheet, { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
-import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
+import AttachmentPickerSheet from "../../../components/AttachmentPickerSheet";
 import {
   AUDIO_ATTACHMENT_ACCEPT,
   CAMERA_ATTACHMENT_ACCEPT,
@@ -10,52 +8,32 @@ import {
   DOCUMENT_ATTACHMENT_ACCEPT,
   GALLERY_ATTACHMENT_ACCEPT
 } from "../../../attachmentAccept";
+import { useComposerAttachmentContext } from "./ComposerAttachmentContext";
 
-export function AttachmentControls({
-  disabled,
-  isAttachmentSheetOpen,
-  previewMediaItem,
-  onPreviewMediaItemChange,
-  attachmentInputRef,
-  galleryAttachmentInputRef,
-  cameraAttachmentInputRef,
-  audioAttachmentInputRef,
-  documentAttachmentInputRef,
-  onAttachButtonClick,
-  onFileSelect,
-  onCloseSheet,
-  onPickOption,
-  onSelectDirectFiles,
-  onSendSelectedFiles,
-  composer,
-  onComposerChange,
-  resolvedThemeMode,
-  onEnlargeComposer,
-  isUploading,
-  isSendingMessage
-}: {
-  disabled: boolean;
-  isAttachmentSheetOpen: boolean;
-  previewMediaItem?: NativeMediaItem | null;
-  onPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
-  attachmentInputRef: RefObject<HTMLInputElement | null>;
-  galleryAttachmentInputRef: RefObject<HTMLInputElement | null>;
-  cameraAttachmentInputRef: RefObject<HTMLInputElement | null>;
-  audioAttachmentInputRef: RefObject<HTMLInputElement | null>;
-  documentAttachmentInputRef: RefObject<HTMLInputElement | null>;
-  onAttachButtonClick: () => void;
-  onFileSelect: (event: ChangeEvent<HTMLInputElement>) => void;
-  onCloseSheet: () => void;
-  onPickOption: (option: AttachmentPickerOption) => void;
-  onSelectDirectFiles?: (files: File[]) => void;
-  onSendSelectedFiles?: (files: File[], message: string) => void | Promise<void>;
-  composer?: string;
-  onComposerChange?: (value: string) => void;
-  resolvedThemeMode?: "light" | "dark";
-  onEnlargeComposer?: () => void;
-  isUploading?: boolean;
-  isSendingMessage?: boolean;
-}) {
+export function AttachmentControls() {
+  const {
+    disabled,
+    isAttachmentSheetOpen,
+    previewMediaItem,
+    onPreviewMediaItemChange,
+    attachmentInputRef,
+    galleryAttachmentInputRef,
+    cameraAttachmentInputRef,
+    audioAttachmentInputRef,
+    documentAttachmentInputRef,
+    onAttachButtonClick,
+    onFileSelect,
+    onCloseSheet,
+    onPickOption,
+    onSelectDirectFiles,
+    onSendSelectedFiles,
+    composer,
+    onComposerChange,
+    resolvedThemeMode,
+    onEnlargeComposer,
+    isUploading,
+    isSendingMessage
+  } = useComposerAttachmentContext();
   return (
     <>
       <button

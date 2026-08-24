@@ -7,23 +7,19 @@ import (
 )
 
 func TestUserViewingChatInForeground(t *testing.T) {
-	server := &Server{
-		socketUsers: map[string]socketSession{
-			"foreground-chat-a": {Foreground: true, ActiveChatID: "chat-a"},
-			"background-chat-b": {Foreground: false, ActiveChatID: "chat-b"},
-		},
-		userSockets: map[string]map[string]*socketio.Socket{
-			"user-1": {
-				"foreground-chat-a": nil,
-				"background-chat-b": nil,
-			},
-		},
-	}
+	server := &Server{sessions: NewSessionRegistry()}
+	user := userPublic{ID: "user-1"}
+	foregroundSocket := &socketio.Socket{Id: "foreground-chat-a"}
+	backgroundSocket := &socketio.Socket{Id: "background-chat-b"}
+	server.sessions.Register(user, foregroundSocket)
+	server.sessions.Register(user, backgroundSocket)
+	server.sessions.SetAppState(foregroundSocket.Id, true, "chat-a")
+	server.sessions.SetAppState(backgroundSocket.Id, false, "chat-b")
 
-	if !server.userViewingChatInForeground("user-1", "chat-a") {
+	if !server.sessions.IsViewingChatInForeground("user-1", "chat-a") {
 		t.Fatal("expected notifications for the active foreground chat to be suppressed")
 	}
-	if server.userViewingChatInForeground("user-1", "chat-b") {
+	if server.sessions.IsViewingChatInForeground("user-1", "chat-b") {
 		t.Fatal("expected notifications for another chat to be delivered")
 	}
 }

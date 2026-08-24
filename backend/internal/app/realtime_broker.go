@@ -41,7 +41,7 @@ func (s *Server) handleBrokerMessageEvent(event broker.BrokerEvent) error {
 	if eventID == "" {
 		eventID = "message:" + strings.TrimSpace(stringValue(event["message_id"]))
 	}
-	if s.seenRecentEvent(eventID) {
+	if s.eventDeduplicator().Seen(eventID) {
 		return nil
 	}
 	payload, ok := event["payload"]
@@ -71,7 +71,7 @@ func (s *Server) handleBrokerMessageEvent(event broker.BrokerEvent) error {
 		if member.ID == message.SenderID {
 			continue
 		}
-		if s.userOnline(member.ID) {
+		if s.sessions.IsOnline(member.ID) {
 			onlineRecipients = append(onlineRecipients, member.ID)
 		}
 	}
@@ -86,26 +86,6 @@ func (s *Server) handleBrokerMessageEvent(event broker.BrokerEvent) error {
 		}
 	}
 	return nil
-}
-
-func (s *Server) seenRecentEvent(eventID string) bool {
-	if strings.TrimSpace(eventID) == "" {
-		return false
-	}
-	now := time.Now().UTC()
-	cutoff := now.Add(-2 * time.Minute)
-	s.recentEventMu.Lock()
-	defer s.recentEventMu.Unlock()
-	for id, seenAt := range s.recentEvents {
-		if seenAt.Before(cutoff) {
-			delete(s.recentEvents, id)
-		}
-	}
-	if _, exists := s.recentEvents[eventID]; exists {
-		return true
-	}
-	s.recentEvents[eventID] = now
-	return false
 }
 
 func stringValue(value any) string {
