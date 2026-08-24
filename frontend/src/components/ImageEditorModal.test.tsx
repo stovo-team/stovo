@@ -160,6 +160,8 @@ describe("ImageEditorModal", () => {
     });
 
     expect(document.body.textContent).toContain("Color:");
+    expect(document.body.textContent).toContain("Pen:");
+    expect(document.body.textContent).toContain("Fine");
     expect(document.body.textContent).toContain("Brush Size");
   });
 });

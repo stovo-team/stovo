@@ -9,8 +9,8 @@ var schemaStatements = []string{
 		storage_limit_mb INTEGER,
 		minimized_chat_layout BOOLEAN NOT NULL DEFAULT FALSE,
 		default_message_encryption_protocol TEXT NOT NULL DEFAULT 'server_at_rest',
-		default_profile_visibility TEXT NOT NULL DEFAULT 'family',
-		default_last_seen_visibility TEXT NOT NULL DEFAULT 'family',
+		default_profile_visibility TEXT NOT NULL DEFAULT 'everyone',
+		default_last_seen_visibility TEXT NOT NULL DEFAULT 'everyone',
 		default_read_receipts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
 		default_notification_settings TEXT NOT NULL DEFAULT '{"messageNotifications":true,"messagePreview":true,"messageSound":true,"callNotifications":true,"ringtoneEnabled":true,"quietHoursEnabled":false,"quietHoursStart":"22:00","quietHoursEnd":"07:00"}',
 		public_app_url TEXT,
@@ -413,8 +413,10 @@ var schemaRepairStatements = []string{
 	 SELECT families.id || ':member', families.id, 'Member', '', '[]', TRUE, NOW()::text, NOW()::text FROM families
 	 ON CONFLICT (id) DO NOTHING;`,
 	`UPDATE users SET role_id = family_id || CASE WHEN role IN ('owner', 'admin') THEN ':admin' ELSE ':member' END WHERE role_id IS NULL;`,
-	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_profile_visibility TEXT NOT NULL DEFAULT 'family';`,
-	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_last_seen_visibility TEXT NOT NULL DEFAULT 'family';`,
+	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_profile_visibility TEXT NOT NULL DEFAULT 'everyone';`,
+	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_last_seen_visibility TEXT NOT NULL DEFAULT 'everyone';`,
+	`UPDATE families SET default_profile_visibility = 'everyone' WHERE default_profile_visibility = 'family';`,
+	`UPDATE families SET default_last_seen_visibility = 'everyone' WHERE default_last_seen_visibility = 'family';`,
 	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_read_receipts_enabled BOOLEAN NOT NULL DEFAULT TRUE;`,
 	`ALTER TABLE families ADD COLUMN IF NOT EXISTS default_notification_settings TEXT NOT NULL DEFAULT '{"messageNotifications":true,"messagePreview":true,"messageSound":true,"callNotifications":true,"ringtoneEnabled":true,"quietHoursEnabled":false,"quietHoursStart":"22:00","quietHoursEnd":"07:00"}';`,
 	`DO $$ BEGIN

@@ -80,7 +80,7 @@ export type AudioChunkUploadParams = {
   sessionId: string;
   participantId: string;
   sequence: number;
-  container: "webm" | "ogg";
+  container: "webm" | "ogg" | "mp4";
   callStartMs: number;
   callEndMs: number;
   durationMs: number;
@@ -107,7 +107,8 @@ export async function uploadAudioChunk(params: AudioChunkUploadParams): Promise<
     }),
   });
   if (!urlResponse.ok) {
-    throw new Error(`Failed to get upload URL: ${urlResponse.status}`);
+    const detail = await urlResponse.json().catch(() => ({})) as { detail?: string };
+    throw new Error(detail.detail ?? `Failed to get upload URL: ${urlResponse.status}`);
   }
   const { chunkId, uploadUrl } = (await urlResponse.json()) as {
     chunkId: string;
@@ -117,9 +118,13 @@ export async function uploadAudioChunk(params: AudioChunkUploadParams): Promise<
   };
 
   // 2. Upload directly to MinIO.
-  const uploadResponse = await fetch(uploadUrl, {
+  const uploadTarget = uploadUrl.startsWith("http") ? uploadUrl : `${getApiUrl()}${uploadUrl}`;
+  const uploadResponse = await fetch(uploadTarget, {
     method: "PUT",
-    headers: { "Content-Type": params.container === "ogg" ? "audio/ogg" : "audio/webm" },
+    headers: {
+      "Content-Type": params.container === "ogg" ? "audio/ogg" : params.container === "mp4" ? "audio/mp4" : "audio/webm",
+      Authorization: `Bearer ${params.accessToken}`,
+    },
     body: params.blob,
   });
   if (!uploadResponse.ok) {
@@ -127,7 +132,7 @@ export async function uploadAudioChunk(params: AudioChunkUploadParams): Promise<
   }
 
   // 3. Confirm completion to backend.
-  await fetch(`${getApiUrl()}/api/calls/${params.roomId}/transcription/uploads/${chunkId}/complete`, {
+  const completeResponse = await fetch(`${getApiUrl()}/api/calls/${params.roomId}/transcription/uploads/${chunkId}/complete`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -135,6 +140,10 @@ export async function uploadAudioChunk(params: AudioChunkUploadParams): Promise<
     },
     body: JSON.stringify({ checksum: "", sizeBytes: params.blob.size }),
   });
+  if (!completeResponse.ok) {
+    const detail = await completeResponse.json().catch(() => ({})) as { detail?: string };
+    throw new Error(detail.detail ?? `Audio upload confirmation failed: ${completeResponse.status}`);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -197,25 +206,35 @@ export function useTranscription({
     let lastChunkEndMs = 0;
     let activeStream: MediaStream | null = null;
     let stopStreamOnCleanup = false;
+    let isActive = true;
+
+    const failRecording = (message: string) => {
+      if (!isActive) return;
+      setTranscriptState("failed");
+      setTranscriptError(message);
+    };
 
     const startRecording = async () => {
       try {
         let stream: MediaStream;
-        if (localAudioStream && localAudioStream.getAudioTracks().length > 0) {
-          stream = new MediaStream(localAudioStream.getAudioTracks());
+        const liveLocalTracks = localAudioStream?.getAudioTracks().filter((track) => track.readyState === "live") ?? [];
+        if (liveLocalTracks.length > 0) {
+          stream = new MediaStream(liveLocalTracks);
         } else {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           stopStreamOnCleanup = true;
         }
         activeStream = stream;
 
-        const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-          ? "audio/webm;codecs=opus"
-          : MediaRecorder.isTypeSupported("audio/webm")
-          ? "audio/webm"
-          : "audio/ogg";
-
-        const container: "webm" | "ogg" = mimeType.includes("ogg") ? "ogg" : "webm";
+        if (typeof MediaRecorder === "undefined") {
+          throw new Error("AI Notes recording is not supported in this browser");
+        }
+        const mimeCandidates = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg"];
+        const mimeType = mimeCandidates.find((type) => MediaRecorder.isTypeSupported(type));
+        if (!mimeType) {
+          throw new Error("This browser does not support an AI Notes audio format");
+        }
+        const container: "webm" | "ogg" | "mp4" = mimeType.includes("mp4") ? "mp4" : mimeType.includes("ogg") ? "ogg" : "webm";
 
         recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 64000 });
         recorder.ondataavailable = async (e: BlobEvent) => {
@@ -241,20 +260,24 @@ export function useTranscription({
               });
             } catch (uploadErr) {
               console.warn("[useTranscription] chunk upload failed seq=", seq, uploadErr);
+              failRecording(uploadErr instanceof Error ? uploadErr.message : "AI Notes could not upload audio. Check the server storage connection.");
             }
           }
         };
 
         // Slice audio into 5-second chunks
+        recorder.onerror = () => failRecording("AI Notes recording failed in this browser");
         recorder.start(5000);
       } catch (err) {
         console.error("[useTranscription] MediaRecorder init failed:", err);
+        failRecording(err instanceof Error ? err.message : "AI Notes recording could not start");
       }
     };
 
     void startRecording();
 
     return () => {
+      isActive = false;
       if (recorder && recorder.state !== "inactive") {
         recorder.stop();
       }

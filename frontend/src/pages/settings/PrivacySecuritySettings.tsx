@@ -3,7 +3,7 @@ import { Clock3, ChevronRight, LockKeyhole, Mail, UserPlus, UsersRound, UserRoun
 import type { AppStrings } from "../../config/strings";
 import type { User } from "../../api/auth";
 
-export type PrivacyDetail = "overview" | "profile" | "lastSeen" | "blocked" | "directMessages" | "groupInvites" | "channelInvites" | "voiceInvites";
+export type PrivacyDetail = "overview" | "profile" | "lastSeen" | "blocked" | "invitations" | "directMessages" | "groupInvites" | "channelInvites" | "voiceInvites";
 
 interface PrivacySecuritySettingsProps {
   strings: AppStrings;
@@ -43,7 +43,7 @@ export function PrivacySecuritySettings({
           <UserRound aria-hidden="true" />
           <span>
             <strong>{strings.privacy.profileVisibility}</strong>
-            <small>{currentUser?.profileVisibility === "nobody" ? strings.privacy.nobody : strings.privacy.family}</small>
+            <small>{currentUser?.profileVisibility === "nobody" ? strings.privacy.nobody : strings.privacy.everyone}</small>
           </span>
           <ChevronRight aria-hidden="true" />
         </button>
@@ -51,7 +51,7 @@ export function PrivacySecuritySettings({
           <Clock3 aria-hidden="true" />
           <span>
             <strong>{strings.privacy.lastSeen}</strong>
-            <small>{currentUser?.lastSeenVisibility === "nobody" ? strings.privacy.nobody : strings.privacy.family}</small>
+            <small>{currentUser?.lastSeenVisibility === "nobody" ? strings.privacy.nobody : strings.privacy.everyone}</small>
           </span>
           <ChevronRight aria-hidden="true" />
         </button>
@@ -63,24 +63,9 @@ export function PrivacySecuritySettings({
           </span>
           <input type="checkbox" checked={currentUser?.readReceiptsEnabled ?? true} disabled={isSaving} onChange={(event) => onUpdatePrivacy({ readReceiptsEnabled: event.target.checked })} />
         </label>
-        <button type="button" className="privacy-row" onClick={() => onDetailChange("directMessages")}>
-          <Mail aria-hidden="true" />
-          <span><strong>Direct messages</strong><small>{currentUser?.directMessagePermission === "nobody" ? strings.privacy.nobody : currentUser?.directMessagePermission === "selected" ? "Selected people" : strings.privacy.family}</small></span>
-          <ChevronRight aria-hidden="true" />
-        </button>
-        <button type="button" className="privacy-row" onClick={() => onDetailChange("groupInvites")}>
-          <UsersRound aria-hidden="true" />
-          <span><strong>Group invitations</strong><small>{inviteSummary(currentUser?.groupInvitePermission)}</small></span>
-          <ChevronRight aria-hidden="true" />
-        </button>
-        <button type="button" className="privacy-row" onClick={() => onDetailChange("channelInvites")}>
+        <button type="button" className="privacy-row" onClick={() => onDetailChange("invitations")}>
           <UserPlus aria-hidden="true" />
-          <span><strong>Channel invitations</strong><small>{inviteSummary(currentUser?.channelInvitePermission)}</small></span>
-          <ChevronRight aria-hidden="true" />
-        </button>
-        <button type="button" className="privacy-row" onClick={() => onDetailChange("voiceInvites")}>
-          <Volume2 aria-hidden="true" />
-          <span><strong>Voice-channel invitations</strong><small>{inviteSummary(currentUser?.voiceInvitePermission)}</small></span>
+          <span><strong>{strings.privacy.invitationsAndMessages}</strong><small>{strings.privacy.invitationsAndMessagesHelp}</small></span>
           <ChevronRight aria-hidden="true" />
         </button>
         {canUseAppLock && (
@@ -120,8 +105,15 @@ export function PrivacySecuritySettings({
             );
           })}
         </section>
+      ) : detail === "invitations" ? (
+        <section className="settings-toggle-groups">
+          <button type="button" className="privacy-row" onClick={() => onDetailChange("directMessages")}><Mail aria-hidden="true" /><span><strong>{strings.privacy.directMessages}</strong><small>{strings.privacy.directMessagesHelp}</small></span><ChevronRight aria-hidden="true" /></button>
+          <button type="button" className="privacy-row" onClick={() => onDetailChange("groupInvites")}><UsersRound aria-hidden="true" /><span><strong>{strings.privacy.groupInvitations}</strong><small>{inviteSummary(strings, currentUser?.groupInvitePermission)}</small></span><ChevronRight aria-hidden="true" /></button>
+          <button type="button" className="privacy-row" onClick={() => onDetailChange("channelInvites")}><UserPlus aria-hidden="true" /><span><strong>{strings.privacy.channelInvitations}</strong><small>{inviteSummary(strings, currentUser?.channelInvitePermission)}</small></span><ChevronRight aria-hidden="true" /></button>
+          <button type="button" className="privacy-row" onClick={() => onDetailChange("voiceInvites")}><Volume2 aria-hidden="true" /><span><strong>{strings.privacy.voiceChannelInvitations}</strong><small>{inviteSummary(strings, currentUser?.voiceInvitePermission)}</small></span><ChevronRight aria-hidden="true" /></button>
+        </section>
       ) : detail === "directMessages" || detail === "groupInvites" || detail === "channelInvites" || detail === "voiceInvites" ? (
-        <PrivacyContactRule detail={detail} currentUser={currentUser} members={members} isSaving={isSaving} onUpdatePrivacy={onUpdatePrivacy} />
+        <PrivacyContactRule detail={detail} strings={strings} currentUser={currentUser} members={members} isSaving={isSaving} onUpdatePrivacy={onUpdatePrivacy} />
       ) : (
         <section className="choice-page">
           <h3>{detail === "profile" ? strings.privacy.profileVisibility : strings.privacy.lastSeen}</h3>
@@ -130,8 +122,8 @@ export function PrivacySecuritySettings({
             return (
               <button type="button" className={`privacy-choice${selected ? " is-selected" : ""}`} key={value} onClick={() => onUpdatePrivacy(detail === "profile" ? { profileVisibility: value } : { lastSeenVisibility: value })}>
                 <span className="privacy-choice-copy">
-                  <strong>{value === "family" ? strings.privacy.family : strings.privacy.nobody}</strong>
-                  <small>{value === "family" ? strings.privacy.visibleToFamily : strings.privacy.hiddenFromMembers}</small>
+                  <strong>{value === "family" ? strings.privacy.everyone : strings.privacy.nobody}</strong>
+                  <small>{value === "family" ? strings.privacy.visibleToEveryone : strings.privacy.hiddenFromMembers}</small>
                 </span>
                 {selected && <span className="privacy-choice-check">✓</span>}
               </button>
@@ -143,20 +135,20 @@ export function PrivacySecuritySettings({
   );
 }
 
-function inviteSummary(value: User["groupInvitePermission"] | undefined) {
-  return value === "nobody" ? "No one" : value === "selected" ? "Selected people" : value === "request" ? "Invite requests" : "Everyone";
+function inviteSummary(strings: AppStrings, value: User["groupInvitePermission"] | undefined) {
+  return value === "nobody" ? strings.privacy.noOne : value === "selected" ? strings.privacy.selectedPeople : value === "request" ? strings.privacy.inviteRequests : strings.privacy.everyone;
 }
 
-function PrivacyContactRule({ detail, currentUser, members, isSaving, onUpdatePrivacy }: Pick<PrivacySecuritySettingsProps, "currentUser" | "members" | "isSaving" | "onUpdatePrivacy"> & { detail: Exclude<PrivacyDetail, "overview" | "profile" | "lastSeen" | "blocked"> }) {
+function PrivacyContactRule({ detail, currentUser, members, isSaving, onUpdatePrivacy, strings }: Pick<PrivacySecuritySettingsProps, "currentUser" | "members" | "isSaving" | "onUpdatePrivacy" | "strings"> & { detail: Exclude<PrivacyDetail, "overview" | "profile" | "lastSeen" | "blocked" | "invitations"> }) {
   const isDM = detail === "directMessages";
   const key = isDM ? "directMessagePermission" : detail === "groupInvites" ? "groupInvitePermission" : detail === "channelInvites" ? "channelInvitePermission" : "voiceInvitePermission";
   const value = currentUser?.[key] ?? (isDM ? "family" : "allow");
   const options = isDM
-    ? [["family", "Everyone in this server", "Any family member can start a direct message."], ["selected", "Selected people", "Only people you choose below can start a direct message."], ["nobody", "No one", "Nobody can create a direct message with you."]]
-    : [["allow", "Everyone", "Anyone with permission to add people can invite you."], ["selected", "Selected people", "Only people you choose below can invite you."], ["request", "Invite requests only", "Invitations are sent to your direct messages as requests."], ["nobody", "No one", "Nobody can add you to this type of chat."]];
+    ? [["family", strings.privacy.everyoneInServer, strings.privacy.everyoneInServerHelp], ["selected", strings.privacy.selectedPeople, strings.privacy.selectedPeopleMessageHelp], ["nobody", strings.privacy.noOne, strings.privacy.noOneMessageHelp]]
+    : [["allow", strings.privacy.everyone, strings.privacy.everyoneCanInvite], ["selected", strings.privacy.selectedPeople, strings.privacy.selectedPeopleInviteHelp], ["request", strings.privacy.inviteRequests, strings.privacy.inviteRequestsHelp], ["nobody", strings.privacy.noOne, strings.privacy.noOneInviteHelp]];
   const selected = currentUser?.invitePermissionUserIds ?? [];
-  return <section className="choice-page"><h3>{isDM ? "Who can create direct messages with you?" : "Who can invite you?"}</h3>
+  return <section className="choice-page"><h3>{isDM ? strings.privacy.whoCanMessageYou : strings.privacy.whoCanInviteYou}</h3>
     {options.map(([option, title, help]) => <button type="button" disabled={isSaving} className={`privacy-choice${value === option ? " is-selected" : ""}`} key={option} onClick={() => onUpdatePrivacy({ [key]: option } as Partial<User>)}><span className="privacy-choice-copy"><strong>{title}</strong><small>{help}</small></span>{value === option && <span className="privacy-choice-check">✓</span>}</button>)}
-    {value === "selected" && <div className="blocked-members-page"><h3>Allowed people</h3>{members.filter((member) => member.id !== currentUser?.id).map((member) => <label className="settings-row" key={member.id}><span><strong>{member.displayName}</strong><small>@{member.username}</small></span><input type="checkbox" checked={selected.includes(member.id)} disabled={isSaving} onChange={() => onUpdatePrivacy({ invitePermissionUserIds: selected.includes(member.id) ? selected.filter((id) => id !== member.id) : [...selected, member.id] })} /></label>)}</div>}
+    {value === "selected" && <div className="blocked-members-page"><h3>{strings.privacy.allowedPeople}</h3>{members.filter((member) => member.id !== currentUser?.id).map((member) => <label className="settings-row" key={member.id}><span><strong>{member.displayName}</strong><small>@{member.username}</small></span><input type="checkbox" checked={selected.includes(member.id)} disabled={isSaving} onChange={() => onUpdatePrivacy({ invitePermissionUserIds: selected.includes(member.id) ? selected.filter((id) => id !== member.id) : [...selected, member.id] })} /></label>)}</div>}
   </section>;
 }

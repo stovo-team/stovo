@@ -76,8 +76,8 @@ export default class CallSessionController {
   private localSpeakingSince: number | null = null;
   private remoteSpeakingSince = new Map<string, number>();
   // Ignore ambient noise and require a sustained voice-level signal before marking a participant as speaking.
-  private readonly SPEAKING_THRESHOLD = 0.055;
-  private readonly SPEAKING_ACTIVATION_DELAY_MS = 180;
+  private readonly SPEAKING_THRESHOLD = 0.025;
+  private readonly SPEAKING_ACTIVATION_DELAY_MS = 120;
 
   onVideoUnavailable?: () => void;
   onConnectionReconnecting?: () => void;

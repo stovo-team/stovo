@@ -95,6 +95,8 @@ describe("AttachmentPickerSheet Android gallery", () => {
     expect(attachmentSheetSource).toContain("ImageLightbox");
     expect(attachmentSheetSource).toContain("previewMediaItem");
     expect(attachmentSheetSource).toContain("onPreview={setPreviewMediaItem}");
+    expect(attachmentSheetSource).toContain("ImageEditorModal");
+    expect(attachmentSheetSource).toContain("onEdit={previewMediaItem.mimeType.startsWith(\"image/\")");
     expect(mediaGridSource).toContain("media-tile-thumb-btn");
     expect(mediaGridSource).toContain("media-tile-checkbox");
     expect(mediaGridSource).toContain("onToggle(item.id)");

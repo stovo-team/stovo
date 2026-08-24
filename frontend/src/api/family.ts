@@ -21,8 +21,8 @@ export interface Family {
   name: string;
   storageLimitMb?: number | null;
   minimizedChatLayout: boolean;
-  defaultProfileVisibility: "family" | "nobody";
-  defaultLastSeenVisibility: "family" | "nobody";
+  defaultProfileVisibility: "everyone" | "nobody";
+  defaultLastSeenVisibility: "everyone" | "nobody";
   defaultReadReceiptsEnabled: boolean;
   defaultNotificationSettings: string;
   navTabs?: {
@@ -73,7 +73,7 @@ export function getFamily(accessToken: string) {
   return apiRequest<Family>("/api/family", { accessToken });
 }
 
-export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean; defaultProfileVisibility?: "family" | "nobody"; defaultLastSeenVisibility?: "family" | "nobody"; defaultReadReceiptsEnabled?: boolean; defaultNotificationSettings?: string }) {
+export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean; defaultProfileVisibility?: "everyone" | "nobody"; defaultLastSeenVisibility?: "everyone" | "nobody"; defaultReadReceiptsEnabled?: boolean; defaultNotificationSettings?: string }) {
   return apiRequest<Family>("/api/family", {
     method: "PATCH",
     accessToken,

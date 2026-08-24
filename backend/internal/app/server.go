@@ -219,6 +219,7 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/calls/{roomId}/transcription/status", s.authenticated(s.handleGetTranscriptionStatus))
 	router.Get("/api/calls/{roomId}/transcript", s.authenticated(s.handleGetTranscript))
 	router.Post("/api/calls/{roomId}/transcription/uploads", s.authenticated(s.handleRequestUploadURL))
+	router.Put("/api/calls/{roomId}/transcription/uploads/{chunkId}/data", s.authenticated(s.handleUploadAudioChunkData))
 	router.Post("/api/calls/{roomId}/transcription/uploads/{chunkId}/complete", s.authenticated(s.handleCompleteUpload))
 	router.Patch("/api/calls/{roomId}/transcript/segments/{segmentId}", s.authenticated(s.handleUpdateTranscriptSegment))
 	router.Get("/api/calls/{roomId}/transcript/artifacts/{artifactType}", s.authenticated(s.handleGetTranscriptArtifact))

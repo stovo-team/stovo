@@ -41,6 +41,9 @@ export function useChatDetailsActions({
   const [isChatMediaUploading, setIsChatMediaUploading] = useState(false);
   const [editingChatPhotoFile, setEditingChatPhotoFile] = useState<File | null>(null);
   const [editingChatWallpaperFile, setEditingChatWallpaperFile] = useState<File | null>(null);
+  // This belongs above ChatDetailsPanel: a background refresh can briefly
+  // unmount that panel while a settings request is in flight.
+  const [pendingMessageDelay, setPendingMessageDelay] = useState<{ chatId: string; delaySeconds: number } | null>(null);
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatWallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const messageDelayRequestRef = useRef(0);
@@ -168,16 +171,19 @@ export function useChatDetailsActions({
     const requestId = messageDelayRequestRef.current + 1;
     messageDelayRequestRef.current = requestId;
     const previousChat = selectedChat;
+    setPendingMessageDelay({ chatId: selectedChat.id, delaySeconds });
     applyChatUpdate({ ...selectedChat, messageDelaySeconds: delaySeconds });
     try {
       const chat = await updateChatMessageDelay(accessToken, selectedChat.id, delaySeconds);
       if (messageDelayRequestRef.current === requestId) {
         applyChatUpdate(chat);
+        setPendingMessageDelay(null);
       }
       return true;
     } catch (err) {
       if (messageDelayRequestRef.current === requestId) {
         applyChatUpdate(previousChat);
+        setPendingMessageDelay(null);
         onError(err instanceof ApiError ? String(err.message) : "Could not update message delay");
       }
       return false;
@@ -267,6 +273,7 @@ export function useChatDetailsActions({
   return {
     canManageSelectedChat,
     isChatMediaUploading,
+    pendingMessageDelay: pendingMessageDelay?.chatId === selectedChat?.id ? pendingMessageDelay.delaySeconds : null,
     editingChatPhotoFile,
     setEditingChatPhotoFile,
     editingChatWallpaperFile,
