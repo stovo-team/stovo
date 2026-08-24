@@ -273,7 +273,7 @@ export function useChatDetailsActions({
   return {
     canManageSelectedChat,
     isChatMediaUploading,
-    pendingMessageDelay: pendingMessageDelay?.chatId === selectedChat?.id ? pendingMessageDelay.delaySeconds : null,
+    pendingMessageDelay: pendingMessageDelay?.chatId === selectedChat?.id ? pendingMessageDelay?.delaySeconds ?? null : null,
     editingChatPhotoFile,
     setEditingChatPhotoFile,
     editingChatWallpaperFile,

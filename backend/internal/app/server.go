@@ -34,12 +34,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type socketSession struct {
-	User         userPublic
-	Foreground   bool
-	ActiveChatID string
-}
-
 type Server struct {
 	cfg       config.Config
 	db        *sql.DB
@@ -54,10 +48,9 @@ type Server struct {
 	cache     cache.CachingService
 	broker    broker.MessageBrokerService
 
-	socketMu       sync.RWMutex
-	socketUsers    map[string]socketSession
-	userSockets    map[string]map[string]*socketio.Socket
+	sessions       *SessionRegistry
 	calls          *CallManager
+	events         *EventDeduplicator
 	callTimeout    time.Duration
 	frontendClient *http.Client
 	frontendTarget *url.URL
@@ -65,8 +58,6 @@ type Server struct {
 	realtimeCtx    context.Context
 	realtimeCancel context.CancelFunc
 	realtimeWG     sync.WaitGroup
-	recentEventMu  sync.Mutex
-	recentEvents   map[string]time.Time
 	ntfyRetryCh    chan ntfyRetryItem
 	mcpHTTP        http.Handler
 }
@@ -140,11 +131,10 @@ func New(cfg config.Config) (*Server, error) {
 		sockets:        socketio.New(),
 		cache:          cache.NewRedisCache(redisClient),
 		broker:         broker.NewRedisBroker(redisClient),
-		socketUsers:    make(map[string]socketSession),
-		userSockets:    make(map[string]map[string]*socketio.Socket),
+		sessions:       NewSessionRegistry(),
 		calls:          callManager,
+		events:         NewEventDeduplicator(),
 		callTimeout:    30 * time.Second,
-		recentEvents:   make(map[string]time.Time),
 		ntfyRetryCh:    make(chan ntfyRetryItem, 100),
 	}
 
@@ -200,6 +190,9 @@ func (s *Server) Close() error {
 
 func (s *Server) Routes() http.Handler {
 	router := chi.NewRouter()
+	privacy := NewPrivacyHandler(s.store, s.getUserByID)
+	preferences := NewAccountPreferencesHandler(s.store, s.cfg.AppURL, s.decodeJSON)
+	plans := NewPlanHTTPHandler(s.store, s.decodeJSON, s.getPlan, s.validatePlanAttendees, s.canAccessPlanChat, s.emitPlanEvent)
 	router.Use(s.corsMiddleware)
 	router.Use(s.loggingMiddleware)
 
@@ -235,12 +228,12 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/auth/me", s.authenticated(s.handleMe))
 	router.Patch("/api/auth/me", s.authenticated(s.handleUpdateMe))
 	router.Post("/api/auth/change-password", s.authenticated(s.handleChangePassword))
-	router.Get("/api/privacy/blocks", s.authenticated(s.handleListBlocks))
-	router.Post("/api/privacy/blocks/{userId}", s.authenticated(s.handleBlockUser))
-	router.Delete("/api/privacy/blocks/{userId}", s.authenticated(s.handleUnblockUser))
-	router.Get("/api/auth/audio-settings", s.authenticated(s.handleGetAudioSettings))
-	router.Put("/api/auth/audio-settings", s.authenticated(s.handlePutAudioSettings))
-	router.Get("/api/notifications/topic", s.authenticated(s.handleGetNotificationTopic))
+	router.Get("/api/privacy/blocks", s.authenticated(privacy.handleListBlocks))
+	router.Post("/api/privacy/blocks/{userId}", s.authenticated(privacy.handleBlockUser))
+	router.Delete("/api/privacy/blocks/{userId}", s.authenticated(privacy.handleUnblockUser))
+	router.Get("/api/auth/audio-settings", s.authenticated(preferences.handleGetAudioSettings))
+	router.Put("/api/auth/audio-settings", s.authenticated(preferences.handlePutAudioSettings))
+	router.Get("/api/notifications/topic", s.authenticated(preferences.handleGetNotificationTopic))
 
 	router.Get("/api/family", s.authenticated(s.handleGetFamily))
 	router.Patch("/api/family", s.authenticated(s.handleUpdateFamily))
@@ -251,9 +244,9 @@ func (s *Server) Routes() http.Handler {
 	router.Delete("/api/family/roles/{roleId}", s.authenticated(s.handleDeleteServerRole))
 	router.Patch("/api/family/members/{userId}/role", s.authenticated(s.handleChangeRole))
 	router.Delete("/api/family/members/{userId}", s.authenticated(s.handleRemoveMember))
-	router.Get("/api/plans", s.authenticated(s.handleGetPlans))
-	router.Post("/api/plans", s.authenticated(s.handleCreatePlan))
-	router.Post("/api/plans/{planId}/rsvp", s.authenticated(s.handlePlanRSVP))
+	router.Get("/api/plans", s.authenticated(plans.handleGetPlans))
+	router.Post("/api/plans", s.authenticated(plans.handleCreatePlan))
+	router.Post("/api/plans/{planId}/rsvp", s.authenticated(plans.handlePlanRSVP))
 
 	router.Post("/api/invites", s.authenticated(s.handleCreateInvite))
 	router.Get("/api/invites/{token}", s.handlePreviewInvite)

@@ -3,15 +3,15 @@ import { describe, expect, it } from "vitest";
 
 const styles = readFileSync("src/styles.css", "utf8");
 const composerSource = readFileSync("src/features/chats/composer/Composer.tsx", "utf8");
-const useMessageComposerSource = readFileSync(
-  "src/features/chats/composer/useMessageComposer.ts",
+const useComposerUiActionsSource = readFileSync(
+  "src/features/chats/composer/useComposerUiActions.ts",
   "utf8"
 );
 
 describe("web composer pickers", () => {
   it("opens the attachment choice panel before selecting a file", () => {
-    expect(useMessageComposerSource).toMatch(
-      /function handleAttachButtonClick\(\) \{\s+closeEmojiPicker\(\);\s+setIsAttachmentSheetOpen\(true\);/s
+    expect(useComposerUiActionsSource).toMatch(
+      /function handleAttachButtonClick\(\) \{\s+closeEmojiPicker\(\);\s+setAttachmentSheetOpen\(true\);/s
     );
     expect(composerSource).not.toContain("{Capacitor.isNativePlatform() && (");
   });

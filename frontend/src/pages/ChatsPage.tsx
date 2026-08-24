@@ -12,7 +12,7 @@ import { useChatsPageController } from "../features/chats/useChatsPageController
 import { useReducedMotion } from "../hooks/useReducedMotion";
 import { getClusterPrefix } from "../api/client";
 import AppNav from "./AppNav";
-import { CallFeature, MobileMinimizedCallBar } from "../features/chats/calling/CallFeature";
+import { CallFeature, CallFeatureProvider, MobileMinimizedCallBar } from "../features/chats/calling/CallFeature";
 import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
 
@@ -236,7 +236,16 @@ export default function ChatsPage() {
         </div>
         {audioRestoreStatus && <p className="audio-restore-status" role="status">{audioRestoreStatus}</p>}
         <audio ref={remoteAudioRef} autoPlay className="visually-hidden" />
-        <CallFeature session={callSession} isMobileViewport={isMobileViewport} members={members} currentUser={currentUser} chats={chats} onOpenChat={openChat} />
+        <CallFeatureProvider
+          session={callSession}
+          isMobileViewport={isMobileViewport}
+          members={members}
+          currentUser={currentUser}
+          chats={chats}
+          onOpenChat={openChat}
+        >
+          <CallFeature />
+        </CallFeatureProvider>
         <ChatOverlays
           accessToken={accessToken}
           family={family}

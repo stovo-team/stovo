@@ -26,6 +26,7 @@ import { createClientMessageId } from "../shared/messageState";
 import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
 import type { ReminderRule } from "../outbox/messageOutboxStore";
 import { AttachmentControls } from "./AttachmentControls";
+import { ComposerAttachmentProvider } from "./ComposerAttachmentContext";
 import { PendingAttachmentsStrip } from "./PendingAttachmentsStrip";
 import { SendSubmenu } from "./SendSubmenu";
 import { ScheduleMessageModal } from "./ScheduleMessageModal";
@@ -358,27 +359,25 @@ export function Composer({
       )}
       {replyTarget && !isInThreadMode && <ComposerReplyBar accessToken={accessToken} replyTarget={replyTarget} onCancel={onCancelReply} />}
       <div className={`message-composer-row${composerIsMultiline ? " message-composer-row--multiline" : ""}`}>
-        <AttachmentControls
-          disabled={isUploading || channelCommentsDisabledForViewer || missingCommentThread}
-          isAttachmentSheetOpen={isAttachmentSheetOpen}
-          previewMediaItem={galleryPreviewMediaItem}
-          onPreviewMediaItemChange={onGalleryPreviewMediaItemChange}
-          attachmentInputRef={attachmentInputRef}
-          galleryAttachmentInputRef={galleryAttachmentInputRef}
-          cameraAttachmentInputRef={cameraAttachmentInputRef}
-          audioAttachmentInputRef={audioAttachmentInputRef}
-          documentAttachmentInputRef={documentAttachmentInputRef}
-          onAttachButtonClick={onAttachButtonClick}
-          onFileSelect={onFileSelect}
-          onCloseSheet={onCloseAttachmentSheet}
-          onPickOption={onAttachmentSheetPick}
-          onSelectDirectFiles={(files) => {
+        <ComposerAttachmentProvider value={{
+          disabled: isUploading || channelCommentsDisabledForViewer || missingCommentThread,
+          isAttachmentSheetOpen,
+          previewMediaItem: galleryPreviewMediaItem,
+          onPreviewMediaItemChange: onGalleryPreviewMediaItemChange,
+          attachmentInputRef,
+          galleryAttachmentInputRef,
+          cameraAttachmentInputRef,
+          audioAttachmentInputRef,
+          documentAttachmentInputRef,
+          onAttachButtonClick,
+          onFileSelect,
+          onCloseSheet: onCloseAttachmentSheet,
+          onPickOption: onAttachmentSheetPick,
+          onSelectDirectFiles: (files) => {
             onAddSharedFileAttachments?.(files);
-            // The picker only stages attachments. Focus the ordinary composer
-            // once it closes so the next action is writing the message/caption.
             requestAnimationFrame(() => composerInputRef.current?.focus());
-          }}
-          onSendSelectedFiles={(files, message) => {
+          },
+          onSendSelectedFiles: (files, message) => {
             const attachments = files.map((file) => {
               const localId = `local:${createClientMessageId()}`;
               try {
@@ -388,21 +387,19 @@ export function Composer({
               }
               const isImage = file.type.startsWith("image/");
               const isVideo = file.type.startsWith("video/");
-              return {
-                localId,
-                file,
-                previewUrl: isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(file) : null
-              };
+              return { localId, file, previewUrl: isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(file) : null };
             });
             return onSubmit({ preventDefault: () => undefined }, attachments, message);
-          }}
-          composer={composer}
-          onComposerChange={onComposerChange}
-          resolvedThemeMode={resolvedThemeMode}
-          onEnlargeComposer={onEnlargeComposer}
-          isUploading={isUploading}
-          isSendingMessage={isSendingMessage}
-        />
+          },
+          composer,
+          onComposerChange,
+          resolvedThemeMode,
+          onEnlargeComposer,
+          isUploading,
+          isSendingMessage
+        }}>
+          <AttachmentControls />
+        </ComposerAttachmentProvider>
         <ComposerEmojiPicker
           open={isEmojiPickerOpen}
           showDocked={showDockedEmojiPicker}
