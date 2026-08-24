@@ -37,17 +37,17 @@ describe("active chat list item styling", () => {
 
   it("slides the mobile conversation in from the right and restores the list from the left", () => {
     expect(styles).toMatch(
-      /\.messenger-shell\.chat-list-view \.chat-detail \{[\s\S]*?transform:\s*translate3d\(100%, 0, 0\);[\s\S]*?420ms/
+      /\.messenger-shell\.chat-list-view \.chat-detail \{[\s\S]*?transform:\s*translate3d\(100%, 0, 0\);[\s\S]*?var\(--motion-page, 300ms\)/
     );
     expect(styles).toMatch(
-      /\.messenger-shell\.has-active-chat \.chat-sidebar \{[\s\S]*?transform:\s*translate3d\(-20%, 0, 0\);[\s\S]*?420ms/
+      /\.messenger-shell\.has-active-chat \.chat-sidebar \{[\s\S]*?transform:\s*translate3d\(-20%, 0, 0\);[\s\S]*?var\(--motion-page, 300ms\)/
     );
     expect(styles).toMatch(
-      /\.messenger-shell\.has-active-chat \.chat-detail \{[\s\S]*?transform:\s*translate3d\(0, 0, 0\);[\s\S]*?420ms/
+      /\.messenger-shell\.has-active-chat \.chat-detail \{[\s\S]*?transform:\s*translate3d\(0, 0, 0\);[\s\S]*?var\(--motion-page, 300ms\)/
     );
-    expect(styles).toContain("animation: chat-detail-slide-in-from-right 420ms");
-    expect(styles).toContain("animation: chat-detail-slide-out-to-right 420ms");
-    expect(styles).toContain("animation: chat-list-slide-in-from-left 420ms");
+    expect(styles).toContain("animation: chat-detail-slide-in-from-right var(--motion-page, 300ms)");
+    expect(styles).toContain("animation: chat-detail-slide-out-to-right var(--motion-page, 300ms)");
+    expect(styles).toContain("animation: chat-list-slide-in-from-left var(--motion-page, 300ms)");
     expect(styles).toContain("@keyframes chat-detail-slide-in-from-right");
   });
 

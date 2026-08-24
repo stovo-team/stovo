@@ -229,6 +229,7 @@ export default function ChatsPage() {
               onPinPermissionChange={detailsActions.handlePinPermissionChange}
               onMessageDelayChange={detailsActions.handleMessageDelayChange}
               pendingMessageDelay={detailsActions.pendingMessageDelay}
+              messageDelayStatus={detailsActions.messageDelayStatus}
               onPreferenceChange={(payload) => void detailsActions.handleChatPreferenceChange(payload)}
               onTitleDraftChange={setChatTitleDraft}
             />

@@ -309,7 +309,10 @@ function ClusterRoutes() {
       key={location.pathname}
       className={`app-route-layer${routeMotionClass}`}
       aria-live="off"
-      onAnimationEnd={() => {
+      onAnimationEnd={(event) => {
+        // Page content can have its own animations (for example settings
+        // cards). Their bubbling events must not end the route carousel early.
+        if (event.target !== event.currentTarget) return;
         setMotionFinishedForPath(location.pathname);
       }}
     >

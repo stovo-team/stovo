@@ -10694,8 +10694,7 @@ span.message-spoiler.is-revealed {
 }
 
 .image-lightbox-download,
-.image-lightbox-share,
-.image-lightbox-edit {
+.image-lightbox-share {
   align-items: center;
   /* Keep the action affordance circular in Android WebView as well as desktop. */
   background: color-mix(in oklab, #000000 48%, transparent);
@@ -10715,20 +10714,17 @@ span.message-spoiler.is-revealed {
 }
 
 .image-lightbox-download:hover,
-.image-lightbox-share:hover,
-.image-lightbox-edit:hover {
+.image-lightbox-share:hover {
   background: color-mix(in oklab, #ffffff 22%, #000000 38%);
 }
 
 .image-lightbox-download:active,
-.image-lightbox-share:active,
-.image-lightbox-edit:active {
+.image-lightbox-share:active {
   transform: scale(0.95);
 }
 
 .image-lightbox-download:focus-visible,
-.image-lightbox-share:focus-visible,
-.image-lightbox-edit:focus-visible {
+.image-lightbox-share:focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.6);
   outline-offset: 2px;
 }
@@ -12500,10 +12496,10 @@ span.message-spoiler.is-revealed {
     transform: translate3d(100%, 0, 0);
     visibility: hidden;
     transition:
-      opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
-      transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
-      visibility 0s 420ms;
-    animation: chat-detail-slide-out-to-right 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
+      opacity var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      visibility 0s var(--motion-page, 300ms);
+    animation: chat-detail-slide-out-to-right var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
   }
 
   .messenger-shell.chat-list-view .chat-sidebar {
@@ -12516,10 +12512,10 @@ span.message-spoiler.is-revealed {
     transform: translate3d(0, 0, 0);
     visibility: visible;
     transition:
-      opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
-      transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      opacity var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       visibility 0s 0s;
-    animation: chat-list-slide-in-from-left 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
+    animation: chat-list-slide-in-from-left var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
   }
 
   .messenger-shell.chat-list-view .chat-sidebar-header {
@@ -12616,10 +12612,10 @@ span.message-spoiler.is-revealed {
     transform: translate3d(0, 0, 0);
     visibility: visible;
     transition:
-      opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
-      transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      opacity var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
       visibility 0s 0s;
-    animation: chat-detail-slide-in-from-right 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
+    animation: chat-detail-slide-in-from-right var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
   }
 
   .messenger-shell.has-active-chat .chat-sidebar {
@@ -12628,10 +12624,10 @@ span.message-spoiler.is-revealed {
     transform: translate3d(-20%, 0, 0);
     visibility: hidden;
     transition:
-      opacity 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
-      transform 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
-      visibility 0s 420ms;
-    animation: chat-list-slide-out-to-left 420ms var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
+      opacity var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      transform var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)),
+      visibility 0s var(--motion-page, 300ms);
+    animation: chat-list-slide-out-to-left var(--motion-page, 300ms) var(--motion-ease-in-out, cubic-bezier(0.4, 0, 0.2, 1)) both;
   }
 
   @keyframes chat-detail-slide-in-from-right {
@@ -15797,6 +15793,34 @@ span.message-spoiler.is-revealed {
   font-size: 0.875rem;
   font-weight: 500;
   flex-shrink: 0;
+}
+
+/* Gallery editor follows the image-first wallpaper editor treatment. */
+.image-editor-backdrop { padding: 0; }
+.image-editor-modal { background: #111827; border: 0; border-radius: 0; box-shadow: none; height: 100%; max-height: none; width: 100%; }
+.image-editor-header { background: linear-gradient(180deg, rgba(0, 0, 0, .38), transparent); border: 0; inset: 0 0 auto; padding: max(12px, env(safe-area-inset-top)) 14px 12px; position: absolute; z-index: 4; }
+.image-editor-title h3, .image-editor-title .ms-icon, .image-editor-btn-secondary span { display: none; }
+.image-editor-stage { max-height: none; padding: 0; }
+.image-editor-preview-wrapper, .image-editor-base-img { height: 100%; max-height: none; max-width: 100%; }
+.image-editor-base-img { border-radius: 0; width: 100%; }
+.image-editor-tabs { background: transparent; border: 0; bottom: max(40px, calc(env(safe-area-inset-bottom) + 24px)); gap: 10px; justify-content: center; left: 0; padding: 0 16px; position: absolute; right: 0; z-index: 5; }
+.image-editor-tab { align-items: center; background: rgba(10, 15, 25, .72); border-radius: 999px; box-shadow: 0 3px 12px rgba(0, 0, 0, .28); display: inline-flex; height: 44px; justify-content: center; padding: 0; width: 44px; }
+.image-editor-tab.is-active { background: rgba(10, 15, 25, .92); color: #fff; outline: 2px solid var(--accent-primary, #6366f1); }
+.image-editor-controls { background: rgba(10, 15, 25, .86); border-radius: 16px; bottom: calc(max(40px, calc(env(safe-area-inset-bottom) + 24px)) + 56px); box-shadow: 0 8px 30px rgba(0, 0, 0, .38); left: 22px; max-height: min(42vh, 310px); padding: 12px; position: absolute; right: 22px; z-index: 5; }
+.image-editor-footer { background: linear-gradient(0deg, rgba(0, 0, 0, .45), transparent); border: 0; bottom: 0; left: 0; padding: 12px 14px max(12px, env(safe-area-inset-bottom)); position: absolute; right: 0; z-index: 4; }
+
+.chat-info-delay-status {
+  margin: 10px 2px 0;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.chat-info-delay-status--saving {
+  color: var(--text-secondary);
+}
+
+.chat-info-delay-status--error {
+  color: var(--danger, #ff5c5c);
 }
 
 .appearance-wallpaper-upload-row {
@@ -21916,4 +21940,16 @@ span.message-spoiler.is-revealed {
 .admin-defaults-notification-settings {
   display: grid;
   gap: 14px;
+}
+
+.admin-page .admin-panel .appearance-setting-row select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+  cursor: pointer;
+  min-width: 128px;
+  padding-right: 42px;
 }

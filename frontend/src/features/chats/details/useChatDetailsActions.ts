@@ -44,6 +44,7 @@ export function useChatDetailsActions({
   // This belongs above ChatDetailsPanel: a background refresh can briefly
   // unmount that panel while a settings request is in flight.
   const [pendingMessageDelay, setPendingMessageDelay] = useState<{ chatId: string; delaySeconds: number } | null>(null);
+  const [messageDelayStatus, setMessageDelayStatus] = useState<{ chatId: string; state: "saving" | "error"; message: string } | null>(null);
   const chatPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const chatWallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const messageDelayRequestRef = useRef(0);
@@ -172,19 +173,31 @@ export function useChatDetailsActions({
     messageDelayRequestRef.current = requestId;
     const previousChat = selectedChat;
     setPendingMessageDelay({ chatId: selectedChat.id, delaySeconds });
+    setMessageDelayStatus({ chatId: selectedChat.id, state: "saving", message: "Saving message delay…" });
+    onError(null);
     applyChatUpdate({ ...selectedChat, messageDelaySeconds: delaySeconds });
     try {
       const chat = await updateChatMessageDelay(accessToken, selectedChat.id, delaySeconds);
       if (messageDelayRequestRef.current === requestId) {
+        if (chat.messageDelaySeconds !== delaySeconds) {
+          setPendingMessageDelay(null);
+          setMessageDelayStatus({ chatId: selectedChat.id, state: "error", message: `Message delay was not saved: requested ${delaySeconds}s, server returned ${chat.messageDelaySeconds ?? 0}s.` });
+          return false;
+        }
         applyChatUpdate(chat);
         setPendingMessageDelay(null);
+        setMessageDelayStatus(null);
       }
       return true;
     } catch (err) {
       if (messageDelayRequestRef.current === requestId) {
         applyChatUpdate(previousChat);
         setPendingMessageDelay(null);
-        onError(err instanceof ApiError ? String(err.message) : "Could not update message delay");
+        const message = err instanceof ApiError
+          ? `Could not save message delay (${err.status}): ${String(err.message)}`
+          : "Could not save message delay: network request failed";
+        setMessageDelayStatus({ chatId: selectedChat.id, state: "error", message });
+        onError(message);
       }
       return false;
     }
@@ -274,6 +287,7 @@ export function useChatDetailsActions({
     canManageSelectedChat,
     isChatMediaUploading,
     pendingMessageDelay: pendingMessageDelay?.chatId === selectedChat?.id ? pendingMessageDelay?.delaySeconds ?? null : null,
+    messageDelayStatus: messageDelayStatus?.chatId === selectedChat?.id ? messageDelayStatus : null,
     editingChatPhotoFile,
     setEditingChatPhotoFile,
     editingChatWallpaperFile,
