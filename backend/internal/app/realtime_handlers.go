@@ -15,8 +15,8 @@ import (
 // It applies a grace period before tearing down calls to tolerate
 // polling→WebSocket transport upgrades and brief reconnects.
 func (s *Server) onSocketDisconnect(socket *socketio.Socket, user userPublic) {
-	s.unregisterSocket(user.ID, socket.Id)
-	if s.userOnline(user.ID) {
+	s.sessions.Unregister(user.ID, socket.Id)
+	if s.sessions.IsOnline(user.ID) {
 		return
 	}
 	userID := user.ID
@@ -28,7 +28,7 @@ func (s *Server) onSocketDisconnect(socket *socketio.Socket, user userPublic) {
 			grace = 10 * time.Second
 		}
 		time.Sleep(grace)
-		if s.userOnline(userID) {
+		if s.sessions.IsOnline(userID) {
 			return
 		}
 		if ended, ok := s.endCallForUser(userID); ok {
@@ -70,13 +70,7 @@ func (s *Server) onSocketAppState(socket *socketio.Socket, user userPublic, even
 	if len(event.Data) == 0 || decodeSocketPayload(event.Data[0], &payload) != nil {
 		return
 	}
-	s.socketMu.Lock()
-	if session, ok := s.socketUsers[socket.Id]; ok {
-		session.Foreground = payload.Foreground
-		session.ActiveChatID = payload.ActiveChatID
-		s.socketUsers[socket.Id] = session
-	}
-	s.socketMu.Unlock()
+	s.sessions.SetAppState(socket.Id, payload.Foreground, payload.ActiveChatID)
 	s.logger.Debugf("realtime.app_state", "socket_id=%s user_id=%s foreground=%v", socket.Id, user.ID, payload.Foreground)
 }
 

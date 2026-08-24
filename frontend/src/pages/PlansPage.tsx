@@ -9,6 +9,7 @@ import { useAuth } from "../auth/AuthContext";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import AppNav from "./AppNav";
 import { useStrings } from "../i18n/LanguageContext";
+import { formatSlotTime, TODAY_TIME_SLOTS } from "./plansTimeline";
 
 type View = "today" | "threeDays" | "week" | "month";
 const dayStart = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -22,14 +23,7 @@ function formatDateRange(start: Date, end: Date) {
   return formatter.formatRange?.(start, end) ?? `${formatter.format(start)} – ${formatter.format(end)}`;
 }
 
-const TODAY_TIME_SLOT_HOURS = 3;
-export const TODAY_TIME_SLOTS = [0, 3, 6, 9, 12, 15, 18, 21] as const;
 const CALENDAR_TIME_MARKERS = TODAY_TIME_SLOTS;
-
-export function formatSlotTime(hour: number) {
-  const date = new Date(2000, 0, 1, hour, 0);
-  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date);
-}
 
 type PlanStatus = "scheduled" | "happening" | "happened";
 

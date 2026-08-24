@@ -357,6 +357,22 @@ export default function AttachmentPickerSheet({
     return () => document.removeEventListener("pointerdown", handleDocumentPointerDown);
   }, [isEmojiOpen]);
 
+  const openPhotoEditor = useCallback(async () => {
+    if (!previewMediaItem?.mimeType.startsWith("image/")) return;
+    const imageUrl = fullPreviewUrl || nativeMediaPreviewUrl(previewMediaItem);
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      setEditingAttachment({
+        localId: `gallery-edit:${previewMediaItem.id}`,
+        file: new File([blob], previewMediaItem.name, { type: previewMediaItem.mimeType || blob.type || "image/jpeg" }),
+        previewUrl: imageUrl
+      });
+    } catch {
+      // Native gallery URLs should be fetchable; leave the preview open if the file cannot be read.
+    }
+  }, [fullPreviewUrl, previewMediaItem]);
+
   if (!open) return null;
 
   const handleEmojiPick = (emojiData: EmojiClickData) => {
@@ -405,21 +421,6 @@ export default function AttachmentPickerSheet({
   };
 
   const selectedCount = selectedItemIds.length;
-  const openPhotoEditor = useCallback(async () => {
-    if (!previewMediaItem?.mimeType.startsWith("image/")) return;
-    const imageUrl = fullPreviewUrl || nativeMediaPreviewUrl(previewMediaItem);
-    try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      setEditingAttachment({
-        localId: `gallery-edit:${previewMediaItem.id}`,
-        file: new File([blob], previewMediaItem.name, { type: previewMediaItem.mimeType || blob.type || "image/jpeg" }),
-        previewUrl: imageUrl
-      });
-    } catch {
-      // Native gallery URLs should be fetchable; leave the preview open if the file cannot be read.
-    }
-  }, [fullPreviewUrl, previewMediaItem]);
   const sheetContent = (
     <div
       className={`attachment-picker-backdrop${isReady ? " is-ready" : ""}${isClosing ? " is-closing" : ""}`}

@@ -19,20 +19,9 @@ import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 
-import type { User } from "../../../api/auth";
-import type { Chat } from "../../../api/chats";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
-import type { CallSessionApi } from "./useCallSession";
-
-export type DesktopCallControlsProps = {
-  session: CallSessionApi;
-  members: User[];
-  currentUser: User | null;
-  isMobileViewport: boolean;
-  chats?: Chat[];
-  onOpenChat?: (chat: Chat) => void;
-};
+import { useCallFeatureContext } from "./CallFeatureContext";
 
 /**
  * Call popup chrome shared by the header, video stage, invite panel, and
@@ -41,14 +30,8 @@ export type DesktopCallControlsProps = {
  * remote/local video refs and their attached MediaStreams keep the exact
  * same DOM lifetime.
  */
-export function DesktopCallControls({
-  session,
-  members,
-  currentUser,
-  isMobileViewport,
-  chats = [],
-  onOpenChat
-}: DesktopCallControlsProps) {
+export function DesktopCallControls() {
+  const { session, members, currentUser, isMobileViewport, chats, onOpenChat } = useCallFeatureContext();
   const {
     callPhase,
     callType,

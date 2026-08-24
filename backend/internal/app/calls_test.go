@@ -36,6 +36,7 @@ func TestCallHistoryStatus(t *testing.T) {
 
 func newTestCallServer() *Server {
 	return &Server{
+		sessions:       NewSessionRegistry(),
 		calls:          NewCallManager(),
 		callTimeout:    30 * time.Second,
 	}

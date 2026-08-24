@@ -1,5 +1,3 @@
-import type { User } from "../../../api/auth";
-import type { Chat } from "../../../api/chats";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { CallAudioSettingsPopup } from "./CallAudioSettingsPopup";
 import { CallSettingsContextMenu } from "./CallSettingsContextMenu";
@@ -12,8 +10,8 @@ import { VoiceChannelStage } from "./VoiceChannelStage";
 import { MobileActiveScreen } from "./MobileActiveScreen";
 import { MobileIncomingScreen } from "./MobileIncomingScreen";
 import { MobileMinimizedCallBar } from "./MobileMinimizedCallBar";
-import type { CallSessionApi } from "./useCallSession";
 import { useCallTimer } from "./useCallTimer";
+import { useCallFeatureContext } from "./CallFeatureContext";
 
 export {
   CallSettingsContextMenu,
@@ -28,15 +26,7 @@ export {
   VoiceChannelStage,
   useCallTimer
 };
-
-export type CallFeatureProps = {
-  session: CallSessionApi;
-  isMobileViewport: boolean;
-  members: User[];
-  currentUser: User | null;
-  chats?: Chat[];
-  onOpenChat?: (chat: Chat) => void;
-};
+export { CallFeatureProvider } from "./CallFeatureContext";
 
 /**
  * Call UI composition layer: renders the call popup (backdrop, mobile
@@ -46,7 +36,8 @@ export type CallFeatureProps = {
  * element stays in ChatsPage since CallController needs it attached even
  * before a call starts.
  */
-export function CallFeature({ session, isMobileViewport, members, currentUser, chats = [], onOpenChat }: CallFeatureProps) {
+export function CallFeature() {
+  const { session, isMobileViewport, members, currentUser, chats, onOpenChat } = useCallFeatureContext();
   const {
     callPhase,
     callType,
@@ -206,14 +197,7 @@ export function CallFeature({ session, isMobileViewport, members, currentUser, c
               />
             )}
 
-            <DesktopCallControls
-              session={session}
-              members={members}
-              currentUser={currentUser}
-              isMobileViewport={isMobileViewport}
-              chats={chats}
-              onOpenChat={onOpenChat}
-            />
+            <DesktopCallControls />
           </section>
         </>
       )}

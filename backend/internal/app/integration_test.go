@@ -1460,8 +1460,8 @@ func TestRealtimeMessageDeliveryParity(t *testing.T) {
 	chat := decodeJSON[chatPublic](t, chatResp)
 
 	fakeSocket := &socketio.Socket{Id: "member-socket"}
-	server.registerSocket(member.User, fakeSocket)
-	defer server.unregisterSocket(member.User.ID, fakeSocket.Id)
+	server.sessions.Register(member.User, fakeSocket)
+	defer server.sessions.Unregister(member.User.ID, fakeSocket.Id)
 	content := "Live message"
 	clientMessageID := "client-1"
 
