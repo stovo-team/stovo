@@ -1,30 +1,13 @@
 package storage
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"time"
+
+	"family-messenger/backend/internal/ports"
 )
 
-// ObjectStore is the backend's private object-storage boundary.
-type ObjectStore interface {
-	Save(objectKey string, data []byte) error
-	Read(objectKey string) ([]byte, error)
-	Open(objectKey string) (io.ReadSeekCloser, error)
-	Delete(objectKey string) error
-	Provider() string
-	PresignPutObject(ctx context.Context, bucket, objectKey string, expires time.Duration, contentType string) (string, error)
-	PresignGetObject(ctx context.Context, bucket, objectKey string, expires time.Duration) (string, error)
-	SaveToBucket(ctx context.Context, bucket, objectKey string, data []byte, contentType string) error
-	StatObject(ctx context.Context, bucket, objectKey string) (ObjectInfo, error)
-}
-
-type ObjectInfo struct {
-	Size int64
-	ContentType string
-	ETag string
-}
+type ObjectStore = ports.ObjectStore
+type ObjectInfo = ports.ObjectInfo
 
 type Config struct {
 	Provider  string

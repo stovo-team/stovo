@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/broker"
+	"family-messenger/backend/internal/ports"
 )
 
 const brokerChannelMessages = "events:messages"
@@ -32,7 +32,7 @@ func (s *Server) startBrokerConsumers() {
 	}()
 }
 
-func (s *Server) handleBrokerMessageEvent(event broker.BrokerEvent) error {
+func (s *Server) handleBrokerMessageEvent(event ports.Event) error {
 	eventType := strings.TrimSpace(stringValue(event["type"]))
 	if eventType != "message.created" {
 		return nil

@@ -239,18 +239,11 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	if chat.Type != "direct" && chat.Type != "group" && chat.Type != "family" && chat.Type != "voice" {
 		return nil, fmt.Errorf("calls are only available in direct, group, and voice chats")
 	}
-	members := chatMemberSet(chat)
-	if !members[callerUserID] {
-		return nil, fmt.Errorf("you are not a member of this chat")
-	}
-
-	invitees, err := s.resolveCallInvitees(chat, callerUserID, inviteUserIDs, members)
+	initiation, err := s.prepareCallInitiation(chat, callerUserID, callType, inviteUserIDs)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.validateCallPrivacy(callerUserID, invitees, chat.Type); err != nil {
-		return nil, err
-	}
+	invitees := initiation.InviteeIDs()
 
 	s.calls.Lock()
 	defer s.calls.Unlock()
@@ -259,7 +252,6 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 		return nil, err
 	}
 
-	isGroupCall := chat.Type == "group" || chat.Type == "family" || chat.Type == "voice"
 	isVoiceChannel := chat.Type == "voice"
 	now := time.Now().UTC()
 	roomID := uuid.NewString()
@@ -268,7 +260,7 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	sessionState := callStateRinging
 	var connectedAt time.Time
 	var callerJoinedAt time.Time
-	if isGroupCall {
+	if initiation.StartsActive {
 		callerState = participantConnected
 		callerJoinedAt = now
 		sessionState = callStateConnected
@@ -458,7 +450,6 @@ func (s *Server) joinCallSession(chat chatPublic, userID string, callType string
 	}
 	return sess, true, nil
 }
-
 
 func (s *Server) indexCallSession(session *callSession) { s.calls.IndexLocked(session) }
 

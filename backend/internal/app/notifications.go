@@ -20,7 +20,7 @@ type ntfyPayload struct {
 }
 
 func (s *Server) getUserNtfyTopic(ctx context.Context, userID string) (string, error) {
-	token, err := s.store.NtfyTopicToken(ctx, userID)
+	token, err := s.notificationRecipients.NtfyTopicToken(ctx, userID)
 	if err != nil {
 		return "", err
 	}
@@ -90,7 +90,7 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 	for _, userID := range mentionedUserIDs {
 		mentioned[userID] = struct{}{}
 	}
-	memberIDs, err := s.store.ListChatMemberUserIDs(context.Background(), chatID)
+	memberIDs, err := s.notificationRecipients.ListChatMemberUserIDs(context.Background(), chatID)
 	if err != nil {
 		s.logger.Warnf("ntfy", "failed to query chat members for chat_id=%s: %v", chatID, err)
 		return

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"family-messenger/backend/internal/app"
+	"family-messenger/backend/internal/bootstrap"
 	"family-messenger/backend/internal/config"
 )
 
@@ -19,7 +20,11 @@ func main() {
 		panic(err)
 	}
 
-	server, err := app.New(cfg)
+	deps, err := bootstrap.BuildDependencies(cfg)
+	if err != nil {
+		panic(err)
+	}
+	server, err := app.NewWithDependencies(deps)
 	if err != nil {
 		panic(err)
 	}

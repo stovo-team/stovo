@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"family-messenger/backend/ent"
+	"family-messenger/backend/internal/ports"
 	"family-messenger/backend/internal/repository"
-	"family-messenger/backend/internal/storage"
 	"family-messenger/backend/internal/transcription"
 
 	"github.com/google/uuid"
@@ -293,7 +293,7 @@ func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request, user u
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func deleteFileObjects(store storage.ObjectStore, objectKey string, thumbnailObjectKey *string) {
+func deleteFileObjects(store ports.ObjectStore, objectKey string, thumbnailObjectKey *string) {
 	_ = store.Delete(objectKey)
 	if thumbnailObjectKey != nil {
 		_ = store.Delete(*thumbnailObjectKey)
@@ -492,4 +492,3 @@ func (s *Server) handleGetFileTranscript(w http.ResponseWriter, r *http.Request,
 
 	s.json(w, http.StatusOK, cachedResp)
 }
-

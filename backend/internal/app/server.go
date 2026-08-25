@@ -17,36 +17,35 @@ import (
 	"time"
 
 	"family-messenger/backend/ent"
-	"family-messenger/backend/internal/broker"
-	"family-messenger/backend/internal/cache"
 	"family-messenger/backend/internal/config"
 	"family-messenger/backend/internal/logging"
+	"family-messenger/backend/internal/ports"
 	"family-messenger/backend/internal/repository"
-	"family-messenger/backend/internal/storage"
 	"family-messenger/backend/internal/tunnel"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/redis/go-redis/v9"
 )
 
 type Server struct {
-	cfg       config.Config
-	db        *sql.DB
-	ent       *ent.Client
-	store     *repository.Store
-	redis     *redis.Client
-	logger    *logging.Logger
-	logBuffer *logging.Buffer
-	storage   storage.ObjectStore
-	tunnel    *tunnel.Manager
-	sockets   *socketio.Io
-	cache     cache.CachingService
-	broker    broker.MessageBrokerService
+	cfg                    config.Config
+	db                     *sql.DB
+	ent                    *ent.Client
+	store                  *repository.Store
+	redis                  *redis.Client
+	logger                 *logging.Logger
+	logBuffer              *logging.Buffer
+	storage                ports.ObjectStore
+	tunnel                 *tunnel.Manager
+	sockets                *socketio.Io
+	cache                  ports.Cache
+	broker                 ports.EventBroker
+	privacy                ports.PrivacyBlocklist
+	contactPolicy          ports.DirectContactPolicy
+	preferences            ports.AccountPreferences
+	notificationRecipients ports.NotificationRecipients
 
 	sessions       *SessionRegistry
 	calls          *CallManager
@@ -62,85 +61,25 @@ type Server struct {
 	mcpHTTP        http.Handler
 }
 
-func New(cfg config.Config) (*Server, error) {
-	storageService, err := storage.New(storage.Config{
-		Provider: cfg.StorageProvider, LocalPath: cfg.LocalStoragePath,
-		Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey,
-		Secure: cfg.MinIOSecure, Bucket: cfg.MinIOFilesBucket,
-	})
-	if err != nil {
+// NewWithDependencies starts the application with infrastructure assembled by
+// the composition root. It keeps application startup separate from adapter creation.
+func NewWithDependencies(deps Dependencies) (*Server, error) {
+	if err := deps.validate(); err != nil {
 		return nil, err
 	}
-	var logBuffer *logging.Buffer
-	if cfg.StorageProvider == "minio" {
-		logStore, err := storage.New(storage.Config{Provider: "minio", Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure, Bucket: cfg.MinIOLogsBucket})
-		if err != nil {
-			return nil, err
-		}
-		logBuffer = logging.NewBufferWithArchive(cfg.LogBufferMaxRecords, logStore)
-	} else {
-		logBuffer, err = logging.NewBuffer(cfg.LogBufferMaxRecords, cfg.LogFilePath)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	db, err := sql.Open("pgx", cfg.EffectiveDatabaseURL())
-	if err != nil {
-		return nil, err
-	}
-	db.SetMaxOpenConns(cfg.DatabaseMaxOpenConns)
-	db.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
-	db.SetConnMaxLifetime(30 * time.Minute)
-	if err := db.Ping(); err != nil {
-		_ = logBuffer.Close()
-		_ = db.Close()
-		return nil, err
-	}
-
-	redisOptions, err := redis.ParseURL(cfg.EffectiveRedisURL())
-	if err != nil {
-		_ = logBuffer.Close()
-		_ = db.Close()
-		return nil, err
-	}
-	redisOptions.DialTimeout = 5 * time.Second
-	redisOptions.ReadTimeout = 5 * time.Second
-	redisOptions.WriteTimeout = 5 * time.Second
-	redisClient := redis.NewClient(redisOptions)
-	if err := redisClient.Ping(context.Background()).Err(); err != nil {
-		_ = logBuffer.Close()
-		_ = db.Close()
-		return nil, err
-	}
-
-	drv := entsql.OpenDB(dialect.Postgres, db)
-	entClient := ent.NewClient(ent.Driver(drv))
-
-	callManager := NewCallManager()
 	app := &Server{
-		cfg:            cfg,
-		db:             db,
-		ent:            entClient,
-		store:          repository.New(entClient),
-		redis:          redisClient,
-		logger:         logging.NewLogger(logBuffer),
-		logBuffer:      logBuffer,
-		storage:        storageService,
-		tunnel:         tunnel.NewManager(),
-		sockets:        socketio.New(),
-		cache:          cache.NewRedisCache(redisClient),
-		broker:         broker.NewRedisBroker(redisClient),
-		sessions:       NewSessionRegistry(),
-		calls:          callManager,
-		events:         NewEventDeduplicator(),
-		callTimeout:    30 * time.Second,
-		ntfyRetryCh:    make(chan ntfyRetryItem, 100),
+		cfg: deps.Config, db: deps.DB, ent: deps.Ent, store: deps.Store,
+		redis: deps.Redis, logger: deps.Logger, logBuffer: deps.LogBuffer,
+		storage: deps.Storage, tunnel: deps.Tunnel, sockets: deps.Sockets,
+		cache: deps.Cache, broker: deps.Broker,
+		privacy: deps.Privacy, contactPolicy: deps.Contacts, preferences: deps.Preferences,
+		notificationRecipients: deps.NotificationRecipients,
+		sessions:               NewSessionRegistry(), calls: NewCallManager(), events: NewEventDeduplicator(),
+		callTimeout: 30 * time.Second, ntfyRetryCh: make(chan ntfyRetryItem, 100),
 	}
 
 	if err := app.initSchema(); err != nil {
-		_ = logBuffer.Close()
-		_ = db.Close()
+		_ = app.Close()
 		return nil, fmt.Errorf("failed initializing schema: %w", err)
 	}
 	// Audio capture and post-processing workers live in this process. After a
@@ -148,7 +87,7 @@ func New(cfg config.Config) (*Server, error) {
 	// would otherwise block a fresh AI Notes session in a restored voice room.
 	app.recoverInterruptedTranscriptionSessions(context.Background())
 
-	frontendURL, err := url.Parse(cfg.FrontendOrigin)
+	frontendURL, err := url.Parse(app.cfg.FrontendOrigin)
 	if err == nil {
 		app.frontendTarget = frontendURL
 		app.frontendClient = &http.Client{
@@ -190,8 +129,8 @@ func (s *Server) Close() error {
 
 func (s *Server) Routes() http.Handler {
 	router := chi.NewRouter()
-	privacy := NewPrivacyHandler(s.store, s.getUserByID)
-	preferences := NewAccountPreferencesHandler(s.store, s.cfg.AppURL, s.decodeJSON)
+	privacy := NewPrivacyHandler(s.privacy, s.getUserByID)
+	preferences := NewAccountPreferencesHandler(s.preferences, s.cfg.AppURL, s.decodeJSON)
 	plans := NewPlanHTTPHandler(s.store, s.decodeJSON, s.getPlan, s.validatePlanAttendees, s.canAccessPlanChat, s.emitPlanEvent)
 	router.Use(s.corsMiddleware)
 	router.Use(s.loggingMiddleware)
@@ -574,23 +513,23 @@ func (s *Server) getUserByID(userID string) (userPublic, error) {
 
 func (s *Server) userPublicFromEnt(u *ent.User) userPublic {
 	user := userPublic{
-		ID:                  u.ID,
-		FamilyID:            u.FamilyID,
-		Username:            u.Username,
-		DisplayName:         u.DisplayName,
-		Role:                u.Role,
-		IsActive:            u.IsActive == 1,
-		PublicKey:           u.PublicKey,
-		ProfileVisibility:   u.ProfileVisibility,
-		LastSeenVisibility:  u.LastSeenVisibility,
-		ReadReceiptsEnabled: u.ReadReceiptsEnabled,
+		ID:                      u.ID,
+		FamilyID:                u.FamilyID,
+		Username:                u.Username,
+		DisplayName:             u.DisplayName,
+		Role:                    u.Role,
+		IsActive:                u.IsActive == 1,
+		PublicKey:               u.PublicKey,
+		ProfileVisibility:       u.ProfileVisibility,
+		LastSeenVisibility:      u.LastSeenVisibility,
+		ReadReceiptsEnabled:     u.ReadReceiptsEnabled,
 		DirectMessagePermission: "family",
-		GroupInvitePermission: "allow",
+		GroupInvitePermission:   "allow",
 		ChannelInvitePermission: "allow",
-		VoiceInvitePermission: "allow",
-		Email:               u.Email,
-		Bio:                 u.Bio,
-		Timezone:            u.Timezone,
+		VoiceInvitePermission:   "allow",
+		Email:                   u.Email,
+		Bio:                     u.Bio,
+		Timezone:                u.Timezone,
 	}
 	created := parseTime(u.CreatedAt)
 	user.CreatedAt = &created

@@ -1,12 +1,7 @@
 package broker
 
-import "context"
+import "family-messenger/backend/internal/ports"
 
-type BrokerEvent map[string]any
-
-type EventHandler func(BrokerEvent) error
-
-type MessageBrokerService interface {
-	Publish(ctx context.Context, channel string, event BrokerEvent) error
-	Subscribe(ctx context.Context, channel string, handler EventHandler) error
-}
+type BrokerEvent = ports.Event
+type EventHandler = ports.EventHandler
+type MessageBrokerService = ports.EventBroker
