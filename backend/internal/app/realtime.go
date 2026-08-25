@@ -9,9 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/broker"
 	"family-messenger/backend/internal/cache"
+	"family-messenger/backend/internal/domain"
 	"family-messenger/backend/internal/repository"
+	"family-messenger/backend/internal/services"
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/google/uuid"
@@ -196,77 +197,42 @@ func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, use
 	}
 	message.ClientMessageID = clientMessageID
 	s.bumpChatHistoryRevision(ctx, chatID)
-	brokerEvent := broker.BrokerEvent{
-		"event_id":   uuid.NewString(),
-		"type":       "message.created",
-		"chat_id":    chatID,
-		"message_id": message.ID,
-		"payload":    toMap(message),
+	delivery := services.NewMessageDeliveryService(newMessageDeliveryAdapter(s))
+	createdEvent := domain.MessageCreated{EventID: uuid.NewString(), ChatID: chatID, MessageID: message.ID, Payload: toMap(message)}
+	notification := domain.MessageNotification{
+		ChatID: chatID, ChatType: chat.Type, ChatTitle: chat.Title, SenderID: user.ID,
+		SenderName: user.DisplayName, Preview: truncatePreview(message.Content), MentionedUserIDs: payload.MentionedUserIDs,
 	}
 	// Redis fan-out is deliberately off the request path. Once the message is
 	// durable, the sender is acknowledged; delivery is then best-effort and
 	// tracked separately by receipt statuses.
 	go func() {
-		if err := s.broker.Publish(context.Background(), brokerChannelMessages, brokerEvent); err != nil {
+		if err := delivery.PublishCreated(context.Background(), createdEvent); err != nil {
 			s.logger.Warnf("realtime", "broker publish failed channel=%s chat_id=%s error=%v", brokerChannelMessages, chatID, err)
 			s.emitMessageNew(chat, message)
 		}
 	}()
-	go s.notifyMessageRecipients(chatID, chat.Type, chat.Title, user.ID, user.DisplayName, truncatePreview(message.Content), payload.MentionedUserIDs)
+	go delivery.NotifyRecipients(context.Background(), notification)
 	return message, nil
 }
 
 // validateMessageSendPermissions checks block lists, channel post permissions,
 // and reply-target validity. It also normalises the payload's reply/thread fields.
 func (s *Server) validateMessageSendPermissions(ctx context.Context, chat chatPublic, user userPublic, payload *sendMessageRequest) error {
-	if chat.Type == "direct" {
-		for _, member := range chat.Members {
-			if member.ID == user.ID {
-				continue
-			}
-			blocked, err := s.directContactBlocked(user.ID, member.ID)
-			if err != nil {
-				return newStatusError(500, "could not check privacy settings")
-			}
-			if blocked {
-				return newStatusError(403, "direct messages are unavailable for this member")
-			}
-		}
-	}
-	canPost := s.canSendToChat(chat, user)
-	threadRootMessageID := trimStringPointer(payload.ThreadRootMessageID)
-	if !canPost {
-		if chat.Type != "channel" || !chat.CommentsEnabled || threadRootMessageID == nil {
-			return errForbidden
-		}
-		if err := s.validateReplyTarget(chat.ID, *threadRootMessageID); err != nil {
-			return err
-		}
-		payload.ThreadRootMessageID = threadRootMessageID
-		payload.ReplyToMessageID = nil
+	input := &domain.SendMessage{ReplyToMessageID: payload.ReplyToMessageID, ThreadRootMessageID: payload.ThreadRootMessageID}
+	service := services.NewMessageService(messagePolicyAdapter{server: s})
+	err := service.ValidateSend(ctx, messageDomainChat(chat), domain.Sender{ID: user.ID, Role: user.Role}, input)
+	switch err {
+	case nil:
+		payload.ReplyToMessageID, payload.ThreadRootMessageID = input.ReplyToMessageID, input.ThreadRootMessageID
 		return nil
+	case services.ErrMessageForbidden:
+		return errForbidden
+	case services.ErrDirectBlocked:
+		return newStatusError(403, "direct messages are unavailable for this member")
+	default:
+		return err
 	}
-	if payload.ReplyToMessageID != nil {
-		replyToMessageID := trimStringPointer(payload.ReplyToMessageID)
-		if replyToMessageID != nil {
-			if err := s.validateReplyTarget(chat.ID, *replyToMessageID); err != nil {
-				return err
-			}
-		}
-		payload.ReplyToMessageID = replyToMessageID
-	}
-	if payload.ThreadRootMessageID != nil {
-		root := trimStringPointer(payload.ThreadRootMessageID)
-		if root == nil {
-			payload.ThreadRootMessageID = nil
-		} else {
-			if err := s.validateReplyTarget(chat.ID, *root); err != nil {
-				return err
-			}
-			payload.ThreadRootMessageID = root
-		}
-	}
-	return nil
 }
 
 // checkMessageDelay enforces per-chat slow-mode rate limiting for non-managers.
@@ -281,7 +247,7 @@ func (s *Server) checkMessageDelay(ctx context.Context, chat chatPublic, user us
 	elapsed := time.Since(parseTime(lastCreatedAt))
 	requiredDelay := time.Duration(chat.MessageDelaySeconds) * time.Second
 	if elapsed < requiredDelay {
-		remaining := int((requiredDelay-elapsed+999*time.Millisecond) / time.Second)
+		remaining := int((requiredDelay - elapsed + 999*time.Millisecond) / time.Second)
 		if remaining <= 0 {
 			remaining = 1
 		}

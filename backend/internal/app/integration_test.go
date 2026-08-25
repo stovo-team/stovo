@@ -69,7 +69,7 @@ func newTestServer(t *testing.T) (*Server, *httptest.Server, *http.Client) {
 		LogFilePath:           filepath.Join(root, "logs", "backend.log"),
 		LogBufferMaxRecords:   2000,
 	}
-	server, err := New(cfg)
+	server, err := NewWithDependencies(newIntegrationTestDependencies(t, cfg))
 	if err != nil {
 		t.Fatalf("new server: %v", err)
 	}

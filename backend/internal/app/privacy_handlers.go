@@ -6,17 +6,15 @@ import (
 	"net/http"
 	"slices"
 
+	"family-messenger/backend/internal/ports"
+
 	"github.com/go-chi/chi/v5"
 )
 
 // privacyStore is the persistence boundary required by PrivacyHandler.
 // Keeping it limited to block-list operations lets the HTTP adapter avoid a
 // dependency on Server or the wider repository API.
-type privacyStore interface {
-	ListBlockedUserIDs(context.Context, string) ([]string, error)
-	BlockUser(context.Context, string, string, string) error
-	UnblockUser(context.Context, string, string) error
-}
+type privacyStore = ports.PrivacyBlocklist
 
 // PrivacyHandler serves authenticated privacy block-list routes.
 type PrivacyHandler struct {
@@ -29,18 +27,26 @@ func NewPrivacyHandler(store privacyStore, lookupUser func(string) (userPublic, 
 }
 
 func (s *Server) directContactBlocked(firstUserID, secondUserID string) (bool, error) {
-	if s.store == nil {
+	if s.contactPolicy == nil {
 		return false, nil
 	}
-	return s.store.DirectContactBlocked(context.Background(), firstUserID, secondUserID)
+	return s.contactPolicy.DirectContactBlocked(context.Background(), firstUserID, secondUserID)
 }
 
 func contactPermissionAllows(target userPublic, inviterID, chatType string) bool {
 	permission := target.DirectMessagePermission
-	if chatType == "group" { permission = target.GroupInvitePermission }
-	if chatType == "channel" { permission = target.ChannelInvitePermission }
-	if chatType == "voice" { permission = target.VoiceInvitePermission }
-	if chatType == "direct" { return permission != "nobody" && (permission != "selected" || slices.Contains(target.InvitePermissionUserIDs, inviterID)) }
+	if chatType == "group" {
+		permission = target.GroupInvitePermission
+	}
+	if chatType == "channel" {
+		permission = target.ChannelInvitePermission
+	}
+	if chatType == "voice" {
+		permission = target.VoiceInvitePermission
+	}
+	if chatType == "direct" {
+		return permission != "nobody" && (permission != "selected" || slices.Contains(target.InvitePermissionUserIDs, inviterID))
+	}
 	return permission == "allow" || (permission == "selected" && slices.Contains(target.InvitePermissionUserIDs, inviterID))
 }
 
