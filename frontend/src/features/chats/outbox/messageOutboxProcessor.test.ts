@@ -124,7 +124,9 @@ describe("messageOutboxProcessor", () => {
       null,
       null,
       undefined,
-      []
+      [],
+      false,
+      "client-msg-1"
     );
     expect(applyMessagesForChat).toHaveBeenCalled();
 

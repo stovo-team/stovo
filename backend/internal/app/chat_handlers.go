@@ -547,10 +547,29 @@ func (s *Server) handleGetMessages(w http.ResponseWriter, r *http.Request, user 
 
 func (s *Server) handleSendMessage(w http.ResponseWriter, r *http.Request, user userPublic) {
 	chatID := chatIDFromURL(r)
-	message, err := s.createMessage(r.Context(), user, chatID, nil, r)
+	var payload sendMessageRequest
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+	operationID := strings.TrimSpace(r.Header.Get(clientOperationHeader))
+	if operationID != "" {
+		if _, err := uuid.Parse(operationID); err != nil {
+			s.detail(w, http.StatusBadRequest, "Invalid operation ID")
+			return
+		}
+	}
+	message, replayed, err := s.createRESTMessageWithSync(r.Context(), user, chatID, payload, operationID)
 	if err != nil {
 		s.detail(w, domainErrorStatus(err), err.Error())
 		return
+	}
+	if !replayed {
+		chat, chatErr := s.buildChatPublic(chatID, user)
+		if chatErr == nil {
+			s.notifyCreatedRESTMessage(chat, user, message, payload)
+		}
+		s.bumpChatHistoryRevision(r.Context(), chatID)
 	}
 	s.json(w, http.StatusCreated, message)
 }

@@ -4,7 +4,9 @@ const platform = vi.hoisted(() => ({ native: false, name: "web" }));
 const nativePlugin = vi.hoisted(() => ({
   getStatus: vi.fn(async () => ({ supported: true, keyReady: true, schemaVersion: 0, replicaReady: false, migrationState: "scaffold" })),
   prepareProfile: vi.fn(async () => ({ supported: true, keyReady: true, schemaVersion: 0, replicaReady: false, migrationState: "scaffold" })),
-  clearProfile: vi.fn(async () => ({ supported: true, keyReady: false, schemaVersion: 0, replicaReady: false, migrationState: "scaffold" }))
+  clearProfile: vi.fn(async () => ({ supported: true, keyReady: false, schemaVersion: 0, replicaReady: false, migrationState: "scaffold" })),
+  getSyncCursor: vi.fn(async () => ({ cursor: "cursor-1", replicaReady: true })),
+  listOperations: vi.fn(async () => ({ operations: [], replicaReady: true }))
 }));
 
 vi.mock("@capacitor/core", () => ({
@@ -18,7 +20,9 @@ vi.mock("@capacitor/core", () => ({
 import {
   clearLocalReplicaProfile,
   getLocalReplicaStatus,
+  getNativeReplicaSyncCursor,
   isAndroidLocalReplicaPlatform,
+  listNativeReplicaOperations,
   prepareLocalReplicaProfile
 } from "./localReplicaPlugin";
 
@@ -42,5 +46,15 @@ describe("local replica plugin bridge", () => {
     platform.name = "android";
     await expect(prepareLocalReplicaProfile("user-1")).resolves.toMatchObject({ keyReady: true, replicaReady: false });
     expect(nativePlugin.prepareProfile).toHaveBeenCalledWith({ profileId: "user-1" });
+  });
+
+  it("keeps sync cursor and operation queue calls as no-ops while scaffolded", async () => {
+    platform.native = true;
+    platform.name = "android";
+
+    await expect(getNativeReplicaSyncCursor("user-1")).resolves.toBeNull();
+    await expect(listNativeReplicaOperations("user-1")).resolves.toEqual([]);
+    expect(nativePlugin.getSyncCursor).not.toHaveBeenCalled();
+    expect(nativePlugin.listOperations).not.toHaveBeenCalled();
   });
 });

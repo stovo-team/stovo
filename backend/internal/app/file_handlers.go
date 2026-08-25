@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"family-messenger/backend/internal/repository"
 	"family-messenger/backend/internal/transcription"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
@@ -26,6 +28,318 @@ const (
 type mediaPlaybackTokenResponse struct {
 	Token     string    `json:"token"`
 	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+const directUploadCapabilityTTL = 15 * time.Minute
+const directDownloadCapabilityTTL = 5 * time.Minute
+
+type reserveDirectFileUploadRequest struct {
+	OriginalName string  `json:"originalName"`
+	MimeType     string  `json:"mimeType"`
+	SizeBytes    int64   `json:"sizeBytes"`
+	Checksum     *string `json:"checksum,omitempty"`
+	ChatID       *string `json:"chatId,omitempty"`
+}
+
+type directFileUploadResponse struct {
+	UploadID      string     `json:"uploadId"`
+	FileID        string     `json:"fileId"`
+	State         string     `json:"state"`
+	UploadURL     *string    `json:"uploadUrl,omitempty"`
+	ExpiresAt     *time.Time `json:"expiresAt,omitempty"`
+	ExpectedMIME  string     `json:"expectedMimeType"`
+	ExpectedBytes int64      `json:"expectedSizeBytes"`
+}
+
+type directFileAccessResponse struct {
+	FileID       string    `json:"fileId"`
+	Revision     *string   `json:"revision,omitempty"`
+	URL          string    `json:"url"`
+	ExpiresAt    time.Time `json:"expiresAt"`
+	MimeType     string    `json:"mimeType"`
+	SizeBytes    int64     `json:"sizeBytes"`
+	Checksum     *string   `json:"checksum,omitempty"`
+}
+
+type directUploadRecord struct {
+	UploadID       string
+	FileID         string
+	ObjectKey      string
+	ExpectedMIME   string
+	ExpectedBytes  int64
+	ExpectedSHA256 *string
+	State          string
+	ExpiresAt      time.Time
+}
+
+// handleReserveDirectFileUpload creates durable metadata before any direct
+// object transfer. It intentionally does not alter the legacy multipart route.
+func (s *Server) handleReserveDirectFileUpload(w http.ResponseWriter, r *http.Request, user userPublic) {
+	if strings.TrimSpace(s.cfg.MinIOPublicEndpoint) == "" {
+		s.detail(w, http.StatusServiceUnavailable, "Direct uploads are not configured")
+		return
+	}
+	key := strings.TrimSpace(r.Header.Get("Idempotency-Key"))
+	if key == "" || len(key) > 200 {
+		s.detail(w, http.StatusUnprocessableEntity, "Idempotency-Key is required")
+		return
+	}
+	var payload reserveDirectFileUploadRequest
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+	payload.OriginalName = sanitizeFilename(payload.OriginalName)
+	mimeType, allowed := normalizeUploadMime(payload.MimeType, payload.OriginalName)
+	if !allowed || payload.SizeBytes <= 0 || payload.SizeBytes > s.cfg.MaxUploadSizeBytes {
+		s.detail(w, http.StatusUnprocessableEntity, "Invalid file metadata")
+		return
+	}
+	if payload.Checksum != nil {
+		checksum := strings.ToLower(strings.TrimSpace(*payload.Checksum))
+		if len(checksum) != 64 {
+			s.detail(w, http.StatusUnprocessableEntity, "checksum must be a SHA-256 hex digest")
+			return
+		}
+		for _, ch := range checksum {
+			if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
+				s.detail(w, http.StatusUnprocessableEntity, "checksum must be a SHA-256 hex digest")
+				return
+			}
+		}
+		payload.Checksum = &checksum
+	}
+
+	chatID := ""
+	accessScope := "family"
+	if payload.ChatID != nil {
+		chatID = strings.TrimSpace(*payload.ChatID)
+	}
+	if chatID != "" {
+		chat, err := s.buildChatPublic(chatID, user)
+		if err != nil {
+			s.detail(w, http.StatusBadRequest, "Invalid chatId")
+			return
+		}
+		chatID, accessScope = chat.ID, "chat"
+	}
+
+	requestHashBytes, _ := json.Marshal(struct {
+		OriginalName string  `json:"originalName"`
+		MimeType     string  `json:"mimeType"`
+		SizeBytes    int64   `json:"sizeBytes"`
+		Checksum     *string `json:"checksum,omitempty"`
+		ChatID       string  `json:"chatId,omitempty"`
+	}{payload.OriginalName, mimeType, payload.SizeBytes, payload.Checksum, chatID})
+	requestHash := sha256Hex(requestHashBytes)
+
+	record, found, err := s.loadDirectUploadByIdempotency(r.Context(), user.ID, key)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load upload")
+		return
+	}
+	if found {
+		storedHash, err := s.directUploadRequestHash(r.Context(), record.UploadID)
+		if err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not load upload")
+			return
+		}
+		if storedHash != requestHash {
+			s.detail(w, http.StatusConflict, "Idempotency-Key was already used with a different request")
+			return
+		}
+		s.respondDirectUploadReservation(w, r, record)
+		return
+	}
+
+	now := time.Now().UTC()
+	record = directUploadRecord{
+		UploadID:       uuid.NewString(),
+		FileID:         uuid.NewString(),
+		ObjectKey:      path.Join("quarantine", "families", user.FamilyID, "uploads", uuid.NewString(), payload.OriginalName),
+		ExpectedMIME:   mimeType,
+		ExpectedBytes:  payload.SizeBytes,
+		ExpectedSHA256: payload.Checksum,
+		State:          "reserved",
+		ExpiresAt:      now.Add(directUploadCapabilityTTL),
+	}
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not reserve upload")
+		return
+	}
+	defer tx.Rollback()
+	var chatValue any
+	if chatID != "" { chatValue = chatID }
+	_, err = tx.ExecContext(r.Context(), `INSERT INTO files
+		(id, family_id, uploaded_by, chat_id, access_scope, storage_provider, object_key, lifecycle_state, object_revision, original_name, mime_type, size_bytes, checksum, created_at, preview_status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,'reserved',$8,$9,$10,$11,$12,$13,'none')`,
+		record.FileID, user.FamilyID, user.ID, chatValue, accessScope, s.storage.Provider(), record.ObjectKey, record.FileID, payload.OriginalName, mimeType, payload.SizeBytes, payload.Checksum, now.Format(time.RFC3339Nano))
+	if err == nil {
+		_, err = tx.ExecContext(r.Context(), `INSERT INTO file_uploads
+			(id, file_id, family_id, uploaded_by, chat_id, access_scope, idempotency_key, request_hash, upload_mode, object_key, expected_mime_type, expected_size_bytes, expected_checksum, state, expires_at, created_at, updated_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'single',$9,$10,$11,$12,'reserved',$13,$14,$14)`,
+			record.UploadID, record.FileID, user.FamilyID, user.ID, chatValue, accessScope, key, requestHash, record.ObjectKey, mimeType, payload.SizeBytes, payload.Checksum, record.ExpiresAt.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano))
+	}
+	if err != nil {
+		_ = tx.Rollback()
+		// A concurrent retry may have won the unique idempotency constraint.
+		if existing, exists, loadErr := s.loadDirectUploadByIdempotency(r.Context(), user.ID, key); loadErr == nil && exists {
+			storedHash, hashErr := s.directUploadRequestHash(r.Context(), existing.UploadID)
+			if hashErr == nil && storedHash == requestHash {
+				s.respondDirectUploadReservation(w, r, existing)
+				return
+			}
+		}
+		s.detail(w, http.StatusInternalServerError, "Could not reserve upload")
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not reserve upload")
+		return
+	}
+	s.respondDirectUploadReservation(w, r, record)
+}
+
+func (s *Server) respondDirectUploadReservation(w http.ResponseWriter, r *http.Request, record directUploadRecord) {
+	response := directFileUploadResponse{UploadID: record.UploadID, FileID: record.FileID, State: record.State, ExpectedMIME: record.ExpectedMIME, ExpectedBytes: record.ExpectedBytes}
+	if record.State == "reserved" && time.Now().UTC().Before(record.ExpiresAt) {
+		url, err := s.storage.PresignPutObject(r.Context(), s.cfg.MinIOFilesBucket, record.ObjectKey, time.Until(record.ExpiresAt), record.ExpectedMIME)
+		if err != nil {
+			s.detail(w, http.StatusServiceUnavailable, "Direct uploads are not available")
+			return
+		}
+		response.UploadURL, response.ExpiresAt = &url, &record.ExpiresAt
+	}
+	s.json(w, http.StatusOK, response)
+}
+
+func (s *Server) handleCompleteDirectFileUpload(w http.ResponseWriter, r *http.Request, user userPublic) {
+	uploadID := strings.TrimSpace(chi.URLParam(r, "uploadId"))
+	if uploadID == "" {
+		s.detail(w, http.StatusNotFound, "Upload not found")
+		return
+	}
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not complete upload")
+		return
+	}
+	defer tx.Rollback()
+	record, err := scanDirectUpload(tx.QueryRowContext(r.Context(), `SELECT id, file_id, object_key, expected_mime_type, expected_size_bytes, expected_checksum, state, expires_at FROM file_uploads WHERE id = $1 AND uploaded_by = $2 FOR UPDATE`, uploadID, user.ID))
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "Upload not found")
+		return
+	}
+	if record.State == "validating" || record.State == "ready" {
+		_ = tx.Commit()
+		s.json(w, http.StatusAccepted, directFileUploadResponse{UploadID: record.UploadID, FileID: record.FileID, State: record.State, ExpectedMIME: record.ExpectedMIME, ExpectedBytes: record.ExpectedBytes})
+		return
+	}
+	if record.State != "reserved" || !time.Now().UTC().Before(record.ExpiresAt) {
+		s.detail(w, http.StatusConflict, "Upload is no longer completable")
+		return
+	}
+	object, err := s.storage.StatObject(r.Context(), s.cfg.MinIOFilesBucket, record.ObjectKey)
+	if err != nil || object.Size != record.ExpectedBytes {
+		s.detail(w, http.StatusConflict, "Uploaded object does not match reservation")
+		return
+	}
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	_, err = tx.ExecContext(r.Context(), `UPDATE file_uploads SET state = 'validating', completed_at = $2, updated_at = $2 WHERE id = $1`, record.UploadID, now)
+	if err == nil {
+		_, err = tx.ExecContext(r.Context(), `UPDATE files SET lifecycle_state = 'validating', object_etag = $2 WHERE id = $1`, record.FileID, object.ETag)
+	}
+	if err == nil {
+		jobPayload, marshalErr := json.Marshal(map[string]string{"uploadId": record.UploadID, "fileId": record.FileID})
+		if marshalErr != nil {
+			err = marshalErr
+		} else {
+			err = writeOutboxEventTx(r.Context(), tx, "", user.FamilyID, "file.validate", record.FileID, jobPayload)
+		}
+	}
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not complete upload")
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not complete upload")
+		return
+	}
+	// A later validation worker promotes the file to ready after it verifies
+	// bytes, checksum, MIME and safety; completion alone never grants access.
+	s.json(w, http.StatusAccepted, directFileUploadResponse{UploadID: record.UploadID, FileID: record.FileID, State: "validating", ExpectedMIME: record.ExpectedMIME, ExpectedBytes: record.ExpectedBytes})
+}
+
+// handleGetDirectFileUpload lets a durable device transfer poll the
+// authoritative lifecycle state after it submits completion.
+func (s *Server) handleGetDirectFileUpload(w http.ResponseWriter, r *http.Request, user userPublic) {
+	uploadID := strings.TrimSpace(chi.URLParam(r, "uploadId"))
+	if uploadID == "" {
+		s.detail(w, http.StatusNotFound, "Upload not found")
+		return
+	}
+	record, err := scanDirectUpload(s.db.QueryRowContext(r.Context(), `
+		SELECT id, file_id, object_key, expected_mime_type, expected_size_bytes, expected_checksum, state, expires_at
+		FROM file_uploads WHERE id = $1 AND uploaded_by = $2`, uploadID, user.ID))
+	if errors.Is(err, sql.ErrNoRows) {
+		s.detail(w, http.StatusNotFound, "Upload not found")
+		return
+	}
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not load upload")
+		return
+	}
+	s.respondDirectUploadReservation(w, r, record)
+}
+
+func (s *Server) handleCreateDirectFileAccess(w http.ResponseWriter, r *http.Request, user userPublic) {
+	if strings.TrimSpace(s.cfg.MinIOPublicEndpoint) == "" {
+		s.detail(w, http.StatusServiceUnavailable, "Direct access is not configured")
+		return
+	}
+	fileID := fileIDFromURL(r)
+	file, objectKey, err := s.loadFileRecord(r.Context(), fileID, user.ID)
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) || !s.fileVisibleToUser(r.Context(), file, user) {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	var state string
+	var revision *string
+	err = s.db.QueryRowContext(r.Context(), `SELECT lifecycle_state, object_revision FROM files WHERE id = $1`, fileID).Scan(&state, &revision)
+	if err != nil || state != "ready" {
+		s.detail(w, http.StatusNotFound, "File not found")
+		return
+	}
+	expiresAt := time.Now().UTC().Add(directDownloadCapabilityTTL)
+	url, err := s.storage.PresignGetObject(r.Context(), s.cfg.MinIOFilesBucket, objectKey, directDownloadCapabilityTTL)
+	if err != nil {
+		s.detail(w, http.StatusServiceUnavailable, "Direct access is not available")
+		return
+	}
+	s.json(w, http.StatusOK, directFileAccessResponse{FileID: fileID, Revision: revision, URL: url, ExpiresAt: expiresAt, MimeType: file.MimeType, SizeBytes: file.SizeBytes, Checksum: file.Checksum})
+}
+
+func (s *Server) loadDirectUploadByIdempotency(ctx context.Context, userID, key string) (directUploadRecord, bool, error) {
+	record, err := scanDirectUpload(s.db.QueryRowContext(ctx, `SELECT id, file_id, object_key, expected_mime_type, expected_size_bytes, expected_checksum, state, expires_at FROM file_uploads WHERE uploaded_by = $1 AND idempotency_key = $2`, userID, key))
+	if err == sql.ErrNoRows { return directUploadRecord{}, false, nil }
+	if err != nil { return directUploadRecord{}, false, err }
+	return record, true, nil
+}
+
+func (s *Server) directUploadRequestHash(ctx context.Context, uploadID string) (string, error) {
+	var hash string
+	err := s.db.QueryRowContext(ctx, `SELECT request_hash FROM file_uploads WHERE id = $1`, uploadID).Scan(&hash)
+	return hash, err
+}
+
+func scanDirectUpload(row *sql.Row) (directUploadRecord, error) {
+	var record directUploadRecord
+	var expires string
+	err := row.Scan(&record.UploadID, &record.FileID, &record.ObjectKey, &record.ExpectedMIME, &record.ExpectedBytes, &record.ExpectedSHA256, &record.State, &expires)
+	if err != nil { return directUploadRecord{}, err }
+	record.ExpiresAt, err = time.Parse(time.RFC3339Nano, expires)
+	return record, err
 }
 
 func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request, user userPublic) {
@@ -121,7 +435,7 @@ func (s *Server) handleGetFiles(w http.ResponseWriter, r *http.Request, user use
 	files := make([]filePublic, 0)
 	for _, fileID := range fileIDs {
 		file, err := s.buildFilePublic(fileID, user.ID)
-		if err == nil && file.DeletedAt == nil && s.fileVisibleToUser(r.Context(), file, user) {
+		if err == nil && file.DeletedAt == nil && s.fileReadyForPublic(r.Context(), file.ID) && s.fileVisibleToUser(r.Context(), file, user) {
 			files = append(files, file)
 		}
 	}
@@ -130,16 +444,27 @@ func (s *Server) handleGetFiles(w http.ResponseWriter, r *http.Request, user use
 
 func (s *Server) handleGetFile(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, err := s.buildFilePublic(fileIDFromURL(r), user.ID)
-	if err != nil || !s.fileVisibleToUser(r.Context(), file, user) || file.DeletedAt != nil {
+	if err != nil || !s.fileReadyForPublic(r.Context(), file.ID) || !s.fileVisibleToUser(r.Context(), file, user) || file.DeletedAt != nil {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
 	s.json(w, http.StatusOK, file)
 }
 
+// fileReadyForPublic is intentionally used at the legacy read boundary too:
+// direct-upload reservations create file metadata before bytes are validated,
+// but that metadata must never appear in Storage or a legacy detail request.
+func (s *Server) fileReadyForPublic(ctx context.Context, fileID string) bool {
+	var state string
+	if err := s.db.QueryRowContext(ctx, `SELECT lifecycle_state FROM files WHERE id = $1`, fileID).Scan(&state); err != nil {
+		return false
+	}
+	return state == "ready"
+}
+
 func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, objectKey, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -156,7 +481,7 @@ func (s *Server) handleDownloadFile(w http.ResponseWriter, r *http.Request, user
 
 func (s *Server) handleGetFileThumbnail(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, _, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || file.ThumbnailObjectKey == nil || !s.fileVisibleToUser(r.Context(), file, user) {
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) || file.ThumbnailObjectKey == nil || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -172,7 +497,7 @@ func (s *Server) handleGetFileThumbnail(w http.ResponseWriter, r *http.Request, 
 
 func (s *Server) handleCreateMediaPlaybackToken(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, _, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !isStreamableMediaMime(file.MimeType) || !s.fileVisibleToUser(r.Context(), file, user) {
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) || !isStreamableMediaMime(file.MimeType) || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -206,7 +531,7 @@ func (s *Server) handleStreamMediaPlaybackFile(w http.ResponseWriter, r *http.Re
 		return
 	}
 	file, objectKey, err := s.loadFileRecord(r.Context(), fileID, user.ID)
-	if err != nil || file.ID != claims.FileID || file.FamilyID != claims.FamilyID || file.DeletedAt != nil ||
+	if err != nil || file.ID != claims.FileID || file.FamilyID != claims.FamilyID || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) ||
 		!s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
@@ -250,7 +575,7 @@ func mediaPlaybackTokenFromRequest(r *http.Request) string {
 
 func (s *Server) handleUpdateFilePreferences(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, _, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -275,7 +600,7 @@ func (s *Server) handleUpdateFilePreferences(w http.ResponseWriter, r *http.Requ
 
 func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request, user userPublic) {
 	file, objectKey, err := s.loadFileRecord(r.Context(), fileIDFromURL(r), user.ID)
-	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -307,7 +632,7 @@ func (s *Server) buildFilePublic(fileID, viewerID string) (filePublic, error) {
 
 func (s *Server) validateImageFileForFamily(fileID string, user userPublic, missingMessage string) error {
 	file, err := s.buildFilePublic(fileID, user.ID)
-	if err != nil || file.DeletedAt != nil || file.FamilyID != user.FamilyID || !s.fileVisibleToUser(context.Background(), file, user) {
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(context.Background(), file.ID) || file.FamilyID != user.FamilyID || !s.fileVisibleToUser(context.Background(), file, user) {
 		return newStatusError(http.StatusNotFound, missingMessage)
 	}
 	if !strings.HasPrefix(file.MimeType, "image/") {
@@ -392,7 +717,7 @@ func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, us
 
 	fileID := fileIDFromURL(r)
 	file, objectKey, err := s.loadFileRecord(r.Context(), fileID, user.ID)
-	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}
@@ -472,7 +797,7 @@ func (s *Server) handleTranscribeFile(w http.ResponseWriter, r *http.Request, us
 func (s *Server) handleGetFileTranscript(w http.ResponseWriter, r *http.Request, user userPublic) {
 	fileID := fileIDFromURL(r)
 	file, objectKey, err := s.loadFileRecord(r.Context(), fileID, user.ID)
-	if err != nil || file.DeletedAt != nil || !s.fileVisibleToUser(r.Context(), file, user) {
+	if err != nil || file.DeletedAt != nil || !s.fileReadyForPublic(r.Context(), file.ID) || !s.fileVisibleToUser(r.Context(), file, user) {
 		s.detail(w, http.StatusNotFound, "File not found")
 		return
 	}

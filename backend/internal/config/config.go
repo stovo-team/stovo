@@ -31,6 +31,10 @@ type Config struct {
 	DatabaseMaxOpenConns         int
 	DatabaseMaxIdleConns         int
 	RedisURL                     string
+	// RedisJobsURL is deliberately separate from RedisURL in production so a
+	// backlogged stream cannot evict cache, presence, or socket Pub/Sub state.
+	// Empty keeps small/local installations on the existing Redis instance.
+	RedisJobsURL                 string
 	RedisHost                    string
 	RedisPort                    int
 	RedisPassword                string
@@ -156,6 +160,7 @@ func Load() (Config, error) {
 		DatabaseMaxOpenConns:         databaseMaxOpenConns,
 		DatabaseMaxIdleConns:         databaseMaxIdleConns,
 		RedisURL:                     strings.TrimSpace(os.Getenv("REDIS_URL")),
+		RedisJobsURL:                 strings.TrimSpace(os.Getenv("REDIS_JOBS_URL")),
 		RedisHost:                    getenv("REDIS_HOST", "localhost"),
 		RedisPort:                    redisPort,
 		RedisPassword:                strings.TrimSpace(os.Getenv("REDIS_PASSWORD")),
@@ -286,6 +291,13 @@ func (c Config) EffectiveRedisURL() string {
 		return fmt.Sprintf("redis://:%s@%s:%d/0", url.QueryEscape(c.RedisPassword), c.RedisHost, c.RedisPort)
 	}
 	return fmt.Sprintf("redis://%s:%d/0", c.RedisHost, c.RedisPort)
+}
+
+func (c Config) EffectiveRedisJobsURL() string {
+	if strings.TrimSpace(c.RedisJobsURL) != "" {
+		return strings.TrimSpace(c.RedisJobsURL)
+	}
+	return c.EffectiveRedisURL()
 }
 
 func ParseFlexibleDuration(raw string) (time.Duration, error) {

@@ -180,7 +180,9 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
           item.replyToMessageId,
           item.threadRootMessageId,
           encrypted.encryption,
-          item.mentionedUserIds
+          item.mentionedUserIds,
+          false,
+          item.clientMessageId
         );
 
         // 4. Decrypt received message
