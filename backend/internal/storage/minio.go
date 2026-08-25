@@ -14,9 +14,12 @@ import (
 )
 
 type MinIOStorage struct {
-	client   *minio.Client
-	bucket   string
-	fallback ObjectStore
+	client        *minio.Client
+	presignClient *minio.Client
+	bucket        string
+	accessKey     string
+	secretKey     string
+	fallback      ObjectStore
 }
 
 func (s *MinIOStorage) SetFallback(fallback ObjectStore) {
@@ -33,7 +36,7 @@ func NewMinIOStorage(endpoint, accessKey, secretKey string, secure bool, bucket 
 	if err != nil {
 		return nil, err
 	}
-	store := &MinIOStorage{client: client, bucket: bucket}
+	store := &MinIOStorage{client: client, presignClient: client, bucket: bucket, accessKey: accessKey, secretKey: secretKey}
 	exists, err := client.BucketExists(context.Background(), bucket)
 	if err != nil {
 		return nil, err
@@ -66,7 +69,25 @@ func NewMinIOStorageForBucket(client *minio.Client, bucket string) (*MinIOStorag
 	if err := enableBucketVersioning(context.Background(), client, bucket); err != nil {
 		return nil, err
 	}
-	return &MinIOStorage{client: client, bucket: bucket}, nil
+	return &MinIOStorage{client: client, presignClient: client, bucket: bucket}, nil
+}
+
+// SetPresignEndpoint changes only the host embedded in signed URLs. The
+// backend continues to use its private MinIO endpoint for all object I/O.
+func (s *MinIOStorage) SetPresignEndpoint(endpoint string, secure bool) error {
+	endpoint = strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(endpoint), "https://"), "http://")
+	if endpoint == "" {
+		return fmt.Errorf("MinIO public endpoint is required")
+	}
+	client, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(s.accessKey, s.secretKey, ""),
+		Secure: secure,
+	})
+	if err != nil {
+		return err
+	}
+	s.presignClient = client
+	return nil
 }
 
 // enableBucketVersioning ensures deletion creates a recoverable delete marker
@@ -118,7 +139,7 @@ func (s *MinIOStorage) PresignPutObject(ctx context.Context, bucket, objectKey s
 	if contentType != "" {
 		reqParams.Set("response-content-type", contentType)
 	}
-	u, err := s.client.PresignedPutObject(ctx, bucket, objectKey, expires)
+	u, err := s.presignClient.PresignedPutObject(ctx, bucket, objectKey, expires)
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +147,7 @@ func (s *MinIOStorage) PresignPutObject(ctx context.Context, bucket, objectKey s
 }
 
 func (s *MinIOStorage) PresignGetObject(ctx context.Context, bucket, objectKey string, expires time.Duration) (string, error) {
-	u, err := s.client.PresignedGetObject(ctx, bucket, objectKey, expires, nil)
+	u, err := s.presignClient.PresignedGetObject(ctx, bucket, objectKey, expires, nil)
 	if err != nil {
 		return "", err
 	}

@@ -37,11 +37,15 @@ x-backend: &backend
     STORAGE_PROVIDER: ${STORAGE_PROVIDER:-minio}
     LOCAL_STORAGE_PATH: /app/uploads
     MINIO_ENDPOINT: minio:9000
+    # The private endpoint above is for server I/O. Presigned URLs use this
+    # externally reachable Caddy hostname when direct media is enabled.
+    MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-}
+    MINIO_PUBLIC_SECURE: ${MINIO_PUBLIC_SECURE:-true}
     MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
     MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
     MINIO_SECURE: "false"
-    MINIO_FILES_BUCKET: stovo-files
-    MINIO_LOGS_BUCKET: stovo-logs
+    MINIO_FILES_BUCKET: ${MINIO_FILES_BUCKET:-stovo-files}
+    MINIO_LOGS_BUCKET: ${MINIO_LOGS_BUCKET:-stovo-logs}
     MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-100}
     LOG_LEVEL: ${LOG_LEVEL:-INFO}
     LOG_FILE_PATH: /app/logs/backend.log
@@ -153,12 +157,18 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+      MINIO_FILES_BUCKET: ${MINIO_FILES_BUCKET:-stovo-files}
+      MINIO_LOGS_BUCKET: ${MINIO_LOGS_BUCKET:-stovo-logs}
+      MINIO_CALLS_BUCKET: ${MINIO_CALLS_BUCKET:-stovo-calls}
     entrypoint: >
       /bin/sh -c "mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
-      mc mb --ignore-existing local/stovo-files && mc mb --ignore-existing local/stovo-logs &&
+      mc mb --ignore-existing local/$$MINIO_FILES_BUCKET && mc mb --ignore-existing local/$$MINIO_LOGS_BUCKET && mc mb --ignore-existing local/$$MINIO_CALLS_BUCKET &&
       mc admin user add local $$MINIO_ACCESS_KEY $$MINIO_SECRET_KEY || true &&
-      mc admin policy attach local readwrite --user $$MINIO_ACCESS_KEY &&
-      (mc ilm rule add --expire-days 14 local/stovo-logs || true)"
+      printf '{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":[\"s3:ListBucket\",\"s3:GetBucketLocation\",\"s3:PutBucketVersioning\"],\"Resource\":[\"arn:aws:s3:::%s\",\"arn:aws:s3:::%s\",\"arn:aws:s3:::%s\"]},{\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\",\"s3:DeleteObject\",\"s3:AbortMultipartUpload\",\"s3:ListMultipartUploadParts\"],\"Resource\":[\"arn:aws:s3:::%s/*\",\"arn:aws:s3:::%s/*\",\"arn:aws:s3:::%s/*\"]}]}' $$MINIO_FILES_BUCKET $$MINIO_LOGS_BUCKET $$MINIO_CALLS_BUCKET $$MINIO_FILES_BUCKET $$MINIO_LOGS_BUCKET $$MINIO_CALLS_BUCKET > /tmp/stovo-backend-policy.json &&
+      mc admin policy create local stovo-backend /tmp/stovo-backend-policy.json || true &&
+      mc admin policy detach local readwrite --user $$MINIO_ACCESS_KEY || true &&
+      mc admin policy attach local stovo-backend --user $$MINIO_ACCESS_KEY &&
+      (mc ilm rule add --expire-days 14 local/$$MINIO_LOGS_BUCKET || true)"
 
   backend-blue:
     <<: *backend

@@ -27,7 +27,8 @@ import (
 func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 	storageService, err := storage.New(storage.Config{
 		Provider: cfg.StorageProvider, LocalPath: cfg.LocalStoragePath, Endpoint: cfg.MinIOEndpoint,
-		AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure, Bucket: cfg.MinIOFilesBucket,
+		AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure,
+		PublicEndpoint: cfg.MinIOPublicEndpoint, PublicSecure: cfg.MinIOPublicSecure, Bucket: cfg.MinIOFilesBucket,
 	})
 	if err != nil {
 		return app.Dependencies{}, err

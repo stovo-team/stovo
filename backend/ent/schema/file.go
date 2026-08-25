@@ -28,7 +28,17 @@ func (File) Fields() []ent.Field {
 		field.String("access_scope").NotEmpty(),
 		field.String("storage_provider").NotEmpty(),
 		field.String("object_key").NotEmpty(),
+		// Lifecycle fields are intentionally separate from object_key so future
+		// direct uploads remain invisible until validation promotes them to ready.
+		field.String("lifecycle_state").Default("ready"),
+		field.String("object_revision").Optional().Nillable(),
+		field.String("object_etag").Optional().Nillable(),
 		field.String("thumbnail_object_key").Optional().Nillable(),
+		field.String("detected_mime_type").Optional().Nillable(),
+		field.String("preview_revision").Optional().Nillable(),
+		field.String("preview_status").Default("none"),
+		field.String("validation_failure_code").Optional().Nillable(),
+		field.String("validated_at").Optional().Nillable(),
 		field.String("original_name").NotEmpty(),
 		field.String("mime_type").NotEmpty(),
 		field.Int("size_bytes"),
