@@ -1,21 +1,17 @@
 package app
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"family-messenger/backend/internal/ports"
 
 	"github.com/google/uuid"
 )
 
 // accountPreferencesStore is the persistence boundary for account preference routes.
-type accountPreferencesStore interface {
-	AudioCallSettings(context.Context, string) (*string, error)
-	SetAudioCallSettings(context.Context, string, string) error
-	NtfyTopicToken(context.Context, string) (*string, error)
-	SetNtfyTopicToken(context.Context, string, string) error
-}
+type accountPreferencesStore = ports.AccountPreferences
 
 // AccountPreferencesHandler serves the audio and notification preferences routes.
 type AccountPreferencesHandler struct {
