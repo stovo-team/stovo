@@ -35,6 +35,7 @@ type Server struct {
 	ent                    *ent.Client
 	store                  *repository.Store
 	redis                  *redis.Client
+	jobsRedis              *redis.Client
 	logger                 *logging.Logger
 	logBuffer              *logging.Buffer
 	storage                ports.ObjectStore
@@ -69,13 +70,16 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 	}
 	app := &Server{
 		cfg: deps.Config, db: deps.DB, ent: deps.Ent, store: deps.Store,
-		redis: deps.Redis, logger: deps.Logger, logBuffer: deps.LogBuffer,
+		redis: deps.Redis, jobsRedis: deps.JobsRedis, logger: deps.Logger, logBuffer: deps.LogBuffer,
 		storage: deps.Storage, tunnel: deps.Tunnel, sockets: deps.Sockets,
 		cache: deps.Cache, broker: deps.Broker,
 		privacy: deps.Privacy, contactPolicy: deps.Contacts, preferences: deps.Preferences,
 		notificationRecipients: deps.NotificationRecipients,
 		sessions:               NewSessionRegistry(), calls: NewCallManager(), events: NewEventDeduplicator(),
 		callTimeout: 30 * time.Second, ntfyRetryCh: make(chan ntfyRetryItem, 100),
+	}
+	if app.jobsRedis == nil {
+		app.jobsRedis = app.redis
 	}
 
 	if err := app.initSchema(); err != nil {
@@ -103,6 +107,8 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 	app.configureSockets()
 	app.tunnel.ConfigureLocalTunnelHealth(app.validatePublicBackendURL, 5*time.Second, 3)
 	app.startBrokerConsumers()
+	app.startOutboxDispatcher()
+	app.startFileValidationWorker()
 	app.restoreCallSessions(context.Background())
 	app.initMCP()
 	app.realtimeWG.Add(1)
@@ -120,6 +126,9 @@ func (s *Server) Close() error {
 	s.realtimeWG.Wait()
 	s.sockets.Close()
 	_ = s.redis.Close()
+	if s.jobsRedis != nil && s.jobsRedis != s.redis {
+		_ = s.jobsRedis.Close()
+	}
 	_ = s.logBuffer.Close()
 	if s.ent != nil {
 		_ = s.ent.Close()
@@ -156,6 +165,7 @@ func (s *Server) Routes() http.Handler {
 	router.Get("/api/health", s.handleHealth)
 	router.Get("/api/health/db", s.handleHealthDB)
 	router.Get("/api/health/redis", s.handleHealthRedis)
+	router.Get("/api/sync", s.authenticated(s.handleSync))
 
 	router.Get("/api/auth/setup-status", s.handleSetupStatus)
 	router.Post("/api/auth/setup", s.handleSetup)
@@ -219,8 +229,12 @@ func (s *Server) Routes() http.Handler {
 	router.Delete("/api/messages/{messageId}/reactions/{emoji}", s.authenticated(s.handleRemoveMessageReaction))
 
 	router.Post("/api/files/upload", s.authenticated(s.handleUploadFile))
+	router.Post("/api/files/uploads", s.authenticated(s.handleReserveDirectFileUpload))
+	router.Get("/api/files/uploads/{uploadId}", s.authenticated(s.handleGetDirectFileUpload))
+	router.Post("/api/files/uploads/{uploadId}/complete", s.authenticated(s.handleCompleteDirectFileUpload))
 	router.Get("/api/files", s.authenticated(s.handleGetFiles))
 	router.Get("/api/files/{fileId}", s.authenticated(s.handleGetFile))
+	router.Post("/api/files/{fileId}/access", s.authenticated(s.handleCreateDirectFileAccess))
 	router.Get("/api/files/{fileId}/download", s.authenticated(s.handleDownloadFile))
 	router.Get("/api/files/{fileId}/thumbnail", s.authenticated(s.handleGetFileThumbnail))
 	router.Post("/api/files/{fileId}/playback-token", s.authenticated(s.handleCreateMediaPlaybackToken))
@@ -267,7 +281,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		}
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Refresh-Token, X-Stovo-Media-Token, bypass-tunnel-reminder, abypass-tunnel-reminder")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, Idempotency-Key, X-Refresh-Token, X-Stovo-Media-Token, X-Stovo-Operation-Id, bypass-tunnel-reminder, abypass-tunnel-reminder")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)

@@ -48,6 +48,7 @@ import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
 import { useStrings } from "../i18n/LanguageContext";
+import { loadCachedFileList, saveCachedFileList } from "../fileLibraryCache";
 import {
   initialStorageSelection,
   shouldOpenStorageTilePreview,
@@ -294,6 +295,9 @@ export default function FilesPage() {
       ]);
       setFamily(familyResult);
       setFiles(filesResult);
+      if (currentUser?.id) {
+        void saveCachedFileList(currentUser.id, filesResult);
+      }
       setChats(chatsResult);
       dispatchSelection({ type: "load-default", fileId: filesResult[0]?.id ?? null });
     } catch (err) {
@@ -301,15 +305,27 @@ export default function FilesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, authRequest]);
+  }, [accessToken, authRequest, currentUser?.id]);
 
   useEffect(() => {
     dispatchSelection({ type: "reset-gallery" });
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    if (currentUser?.id) {
+      void loadCachedFileList<FamilyFile>(currentUser.id).then((cached) => {
+        if (cancelled || !cached?.length) return;
+        setFiles((current) => current.length > 0 ? current : cached);
+        setIsLoading(false);
+        dispatchSelection({ type: "load-default", fileId: cached[0]?.id ?? null });
+      });
+    }
     void load();
-  }, [load]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, load]);
 
   useEffect(() => {
     if (!mobileDetailsOpen) {

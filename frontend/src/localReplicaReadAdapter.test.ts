@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createMigrationSafeReadAdapter, type LocalReplicaReadAdapter, type ReplicaMigrationStore } from "./localReplicaReadAdapter";
+import {
+  createMigrationSafeReadAdapter,
+  createNoopReplicaSyncAdapter,
+  type LocalReplicaReadAdapter,
+  type ReplicaMigrationStore
+} from "./localReplicaReadAdapter";
 
 type Message = { id: string; body: string };
 type Chat = { id: string; title: string };
@@ -52,5 +57,11 @@ describe("migration-safe local replica adapter", () => {
     await adapter.clear("user-1");
     expect(native.clear).toHaveBeenCalledWith("user-1");
     expect(legacy.clear).toHaveBeenCalledWith("user-1");
+  });
+
+  it("provides no cursor or queued operations before native persistence ships", async () => {
+    const sync = createNoopReplicaSyncAdapter();
+    await expect(sync.getCursor("user-1")).resolves.toBeNull();
+    await expect(sync.listOperations("user-1", ["queued"])).resolves.toEqual([]);
   });
 });

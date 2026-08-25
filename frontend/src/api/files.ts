@@ -25,6 +25,34 @@ export interface MediaPlaybackToken {
   expiresAt: string;
 }
 
+export interface DirectFileUploadReservationRequest {
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksum?: string | null;
+  chatId?: string | null;
+}
+
+export interface DirectFileUploadReservation {
+  uploadId: string;
+  fileId: string;
+  state: "reserved" | "validating" | "ready" | "rejected" | string;
+  uploadUrl?: string;
+  expiresAt?: string;
+  expectedMimeType: string;
+  expectedSizeBytes: number;
+}
+
+export interface DirectFileAccess {
+  fileId: string;
+  revision?: string;
+  url: string;
+  expiresAt: string;
+  mimeType: string;
+  sizeBytes: number;
+  checksum?: string;
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
@@ -62,6 +90,54 @@ export async function uploadFile(accessToken: string, file: File, chatId?: strin
 
 export function getFiles(accessToken: string) {
   return apiRequest<FamilyFile[]>("/api/files", { accessToken });
+}
+
+export function reserveDirectFileUpload(
+  accessToken: string,
+  payload: DirectFileUploadReservationRequest,
+  idempotencyKey: string,
+) {
+  return apiRequest<DirectFileUploadReservation>("/api/files/uploads", {
+    method: "POST",
+    accessToken,
+    headers: { "Idempotency-Key": idempotencyKey },
+    body: {
+      ...payload,
+      checksum: payload.checksum ?? undefined,
+      chatId: payload.chatId ?? undefined,
+    },
+  });
+}
+
+export function completeDirectFileUpload(
+  accessToken: string,
+  uploadId: string,
+  idempotencyKey: string,
+) {
+  return apiRequest<DirectFileUploadReservation>(
+    `/api/files/uploads/${encodeURIComponent(uploadId)}/complete`,
+    {
+      method: "POST",
+      accessToken,
+      headers: { "Idempotency-Key": idempotencyKey },
+    },
+  );
+}
+
+/** Polls the authoritative lifecycle state after direct-upload completion. */
+export function getDirectFileUpload(accessToken: string, uploadId: string) {
+  return apiRequest<DirectFileUploadReservation>(
+    `/api/files/uploads/${encodeURIComponent(uploadId)}`,
+    { accessToken },
+  );
+}
+
+/** Returns a short-lived capability only after the server confirms ready-state access. */
+export function createDirectFileAccess(accessToken: string, fileId: string) {
+  return apiRequest<DirectFileAccess>(`/api/files/${encodeURIComponent(fileId)}/access`, {
+    method: "POST",
+    accessToken,
+  });
 }
 
 export function getFile(accessToken: string, fileId: string) {
