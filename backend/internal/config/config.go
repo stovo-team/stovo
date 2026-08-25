@@ -48,6 +48,11 @@ type Config struct {
 	MinIOAccessKey               string
 	MinIOSecretKey               string
 	MinIOSecure                  bool
+	// MinIOPublicEndpoint is used only for generated presigned URLs. It must
+	// be externally resolvable (for example media.example.com), unlike the
+	// internal MinIOEndpoint used by backend reads and writes.
+	MinIOPublicEndpoint          string
+	MinIOPublicSecure            bool
 	MinIOFilesBucket             string
 	MinIOLogsBucket              string
 	LogFilePath                  string
@@ -173,6 +178,8 @@ func Load() (Config, error) {
 		MinIOAccessKey:               strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")),
 		MinIOSecretKey:               strings.TrimSpace(os.Getenv("MINIO_SECRET_KEY")),
 		MinIOSecure:                  envBool("MINIO_SECURE", false),
+		MinIOPublicEndpoint:          strings.TrimSpace(os.Getenv("MINIO_PUBLIC_ENDPOINT")),
+		MinIOPublicSecure:            envBool("MINIO_PUBLIC_SECURE", true),
 		MinIOFilesBucket:             getenv("MINIO_FILES_BUCKET", "stovo-files"),
 		MinIOLogsBucket:              getenv("MINIO_LOGS_BUCKET", "stovo-logs"),
 		LogFilePath:                  logPath,
