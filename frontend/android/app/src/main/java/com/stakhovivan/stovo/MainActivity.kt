@@ -15,6 +15,7 @@ class MainActivity : BridgeActivity() {
         registerPlugin(VoiceRecordingPlugin::class.java)
         registerPlugin(ShareReceiverPlugin::class.java)
         registerPlugin(AppLockPlugin::class.java)
+        registerPlugin(LocalReplicaPlugin::class.java)
         registerPlugin(MediaLibraryPlugin::class.java)
         registerPlugin(NativeSharePlugin::class.java)
         registerPlugin(ScreenCapturePlugin::class.java)

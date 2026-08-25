@@ -684,6 +684,18 @@ func (s *Server) initSchema() error {
 	}
 	_, _ = s.db.Exec(`ALTER TABLE chats ADD COLUMN IF NOT EXISTS message_delay_seconds INTEGER NOT NULL DEFAULT 0;`)
 	_, _ = s.db.Exec(`ALTER TABLE chats ADD COLUMN message_delay_seconds INTEGER NOT NULL DEFAULT 0;`)
+	// Direct-media lifecycle fields are additive so independently provisioned
+	// tenant databases are ready before the reservation API is enabled.
+	_, _ = s.db.Exec(`
+		ALTER TABLE files
+			ADD COLUMN IF NOT EXISTS lifecycle_state TEXT NOT NULL DEFAULT 'ready',
+			ADD COLUMN IF NOT EXISTS object_revision TEXT,
+			ADD COLUMN IF NOT EXISTS object_etag TEXT,
+			ADD COLUMN IF NOT EXISTS detected_mime_type TEXT,
+			ADD COLUMN IF NOT EXISTS preview_revision TEXT,
+			ADD COLUMN IF NOT EXISTS preview_status TEXT NOT NULL DEFAULT 'none',
+			ADD COLUMN IF NOT EXISTS validation_failure_code TEXT,
+			ADD COLUMN IF NOT EXISTS validated_at TEXT`)
 	return nil
 }
 

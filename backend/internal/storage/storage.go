@@ -16,6 +16,10 @@ type Config struct {
 	AccessKey string
 	SecretKey string
 	Secure    bool
+	// PublicEndpoint is an optional externally reachable S3 endpoint used
+	// exclusively for presigning. Data-plane calls keep using Endpoint.
+	PublicEndpoint string
+	PublicSecure   bool
 	Bucket    string
 }
 
@@ -31,6 +35,11 @@ func New(cfg Config) (ObjectStore, error) {
 		if cfg.LocalPath != "" {
 			if local, err := NewLocalStorage(cfg.LocalPath); err == nil {
 				store.SetFallback(local)
+			}
+		}
+		if cfg.PublicEndpoint != "" {
+			if err := store.SetPresignEndpoint(cfg.PublicEndpoint, cfg.PublicSecure); err != nil {
+				return nil, err
 			}
 		}
 		return store, nil
