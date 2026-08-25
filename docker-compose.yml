@@ -27,6 +27,8 @@ x-backend: &backend
     REDIS_HOST: redis
     REDIS_PORT: 6379
     REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    # Streams are isolated from cache, presence, and socket Pub/Sub state.
+    REDIS_JOBS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis-jobs:6379/0
     JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
     JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
     JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
@@ -78,6 +80,8 @@ x-backend: &backend
       condition: service_healthy
     redis:
       condition: service_healthy
+    redis-jobs:
+      condition: service_healthy
     ntfy:
       condition: service_healthy
     minio-init:
@@ -103,6 +107,19 @@ services:
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Durable worker stream only. A consumer backlog here cannot evict cache,
+  # presence, rate-limit, or socket Pub/Sub data kept in `redis`.
+  redis-jobs:
+    image: redis@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    volumes:
+      - redis-jobs-data:/data
     healthcheck:
       test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping"]
       interval: 5s
@@ -272,6 +289,7 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  redis-jobs-data:
   caddy-data:
   caddy-config:
   ntfy-cache:

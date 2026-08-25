@@ -1,6 +1,7 @@
 package com.stakhovivan.stovo
 
 import com.getcapacitor.JSObject
+import com.getcapacitor.JSArray
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
@@ -48,6 +49,20 @@ class LocalReplicaPlugin : Plugin() {
             return
         }
         call.resolve(status(false))
+    }
+
+    // These contracts reserve the native bridge shape for sync state and the
+    // persistent operation graph. Until the encrypted database migration is
+    // complete they intentionally return empty values rather than accepting
+    // data that could be lost after an app restart.
+    @PluginMethod
+    fun getSyncCursor(call: PluginCall) {
+        call.resolve(JSObject().put("cursor", null).put("replicaReady", false))
+    }
+
+    @PluginMethod
+    fun listOperations(call: PluginCall) {
+        call.resolve(JSObject().put("operations", JSArray()).put("replicaReady", false))
     }
 
     private fun status(keyReady: Boolean) = JSObject()

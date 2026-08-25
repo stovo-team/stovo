@@ -48,10 +48,17 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 		_ = db.Close()
 		return app.Dependencies{}, err
 	}
+	jobsRedisClient, err := openRedisURL(cfg.EffectiveRedisJobsURL())
+	if err != nil {
+		_ = redisClient.Close()
+		_ = logBuffer.Close()
+		_ = db.Close()
+		return app.Dependencies{}, err
+	}
 	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	store := repository.New(entClient)
 	return app.Dependencies{
-		Config: cfg, DB: db, Ent: entClient, Store: store, Redis: redisClient,
+		Config: cfg, DB: db, Ent: entClient, Store: store, Redis: redisClient, JobsRedis: jobsRedisClient,
 		Logger: logging.NewLogger(logBuffer), LogBuffer: logBuffer, Storage: storageService,
 		Tunnel: tunnel.NewManager(), Sockets: socketio.New(), Cache: cache.NewRedisCache(redisClient),
 		Broker:  broker.NewRedisBroker(redisClient),
@@ -89,7 +96,11 @@ func openDatabase(cfg config.Config) (*sql.DB, error) {
 }
 
 func openRedis(cfg config.Config) (*redis.Client, error) {
-	options, err := redis.ParseURL(cfg.EffectiveRedisURL())
+	return openRedisURL(cfg.EffectiveRedisURL())
+}
+
+func openRedisURL(redisURL string) (*redis.Client, error) {
+	options, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return nil, err
 	}

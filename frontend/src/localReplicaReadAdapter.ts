@@ -15,6 +15,43 @@ export type LocalReplicaReadAdapter<TChats, TMessage extends { id: string }> = {
 export type ReplicaMigrationStore<TChats, TMessage extends { id: string }> =
   LocalReplicaReadAdapter<TChats, TMessage> & { isReady(): Promise<boolean> };
 
+export type ReplicaOperationStatus = "queued" | "running" | "retry" | "failed" | "completed" | "cancelled";
+
+export type ReplicaOperation = {
+  id: string;
+  type: string;
+  payloadJson: string;
+  payloadHash: string;
+  dependencies: string[];
+  status: ReplicaOperationStatus;
+  attemptCount: number;
+  createdAt: string;
+  updatedAt: string;
+  retryAt?: string | null;
+  errorCode?: string | null;
+};
+
+/**
+ * Cursor/operation seam for the future encrypted replica. The scaffold's
+ * implementation intentionally performs no writes, preventing a half-shipped
+ * native store from diverging from the current message outbox.
+ */
+export type LocalReplicaSyncAdapter = {
+  getCursor(profileId: string): Promise<string | null>;
+  listOperations(profileId: string, statuses?: ReplicaOperationStatus[]): Promise<ReplicaOperation[]>;
+};
+
+export function createNoopReplicaSyncAdapter(): LocalReplicaSyncAdapter {
+  return {
+    async getCursor() {
+      return null;
+    },
+    async listOperations() {
+      return [];
+    }
+  };
+}
+
 /**
  * Uses native only after it explicitly reports a complete replica. Any native
  * error or incomplete schema falls through to legacy storage, preserving the

@@ -23,6 +23,9 @@ type Dependencies struct {
 	Ent                    *ent.Client
 	Store                  *repository.Store
 	Redis                  *redis.Client
+	// JobsRedis is optional for backward-compatible tests/local deployments;
+	// NewWithDependencies falls back to Redis when it is not supplied.
+	JobsRedis              *redis.Client
 	Logger                 *logging.Logger
 	LogBuffer              *logging.Buffer
 	Storage                ports.ObjectStore

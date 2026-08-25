@@ -251,19 +251,21 @@ export function sendMessage(
   fileIds: string[] = [],
   replyToMessageId: string | null = null,
   threadRootMessageId: string | null = null,
-	  encryption?: {
+  encryption?: {
     encryptionProtocol: MessageEncryptionProtocol;
     ciphertext?: string | null;
     nonce?: string | null;
     keyVersion?: number | null;
     encryptionMetadata?: string | null;
-	  },
-	  mentionedUserIds: string[] = [],
-	  attachmentsPending = false
+  },
+  mentionedUserIds: string[] = [],
+  attachmentsPending = false,
+  operationId?: string
 ) {
   return apiRequest<Message>(`/api/chats/${chatId}/messages`, {
     method: "POST",
     accessToken,
+    headers: operationId ? { "X-Stovo-Operation-Id": operationId } : undefined,
     body: {
       type: fileIds.length ? "mixed" : "text",
       content,
@@ -273,11 +275,11 @@ export function sendMessage(
       fileIds: [...new Set(fileIds)],
       replyToMessageId,
       threadRootMessageId,
-		...encryption,
-		mentionedUserIds,
-		// Omit the flag for normal messages so clients remain compatible with a
-		// server that has not yet rolled out background attachments.
-		...(attachmentsPending ? { attachmentsPending: true } : {})
+      ...encryption,
+      mentionedUserIds,
+      // Omit the flag for normal messages so clients remain compatible with a
+      // server that has not yet rolled out background attachments.
+      ...(attachmentsPending ? { attachmentsPending: true } : {})
     }
   });
 }
