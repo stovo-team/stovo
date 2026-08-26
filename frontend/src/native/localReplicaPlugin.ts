@@ -29,7 +29,10 @@ type NativeLocalReplicaPlugin = {
   getStatus(options?: { profileId?: string }): Promise<LocalReplicaStatus>;
   prepareProfile(options: { profileId: string }): Promise<LocalReplicaStatus>;
   clearProfile(options: { profileId: string }): Promise<LocalReplicaStatus>;
+  getValue(options: { profileId: string; key: string }): Promise<{ value: string | null; replicaReady: boolean }>;
+  setValue(options: { profileId: string; key: string; value: string }): Promise<{ replicaReady: boolean }>;
   getSyncCursor(options: { profileId: string }): Promise<{ cursor: string | null; replicaReady: boolean }>;
+  setSyncCursor(options: { profileId: string; cursor: string }): Promise<{ replicaReady: boolean }>;
   listOperations(options: { profileId: string; statuses?: LocalReplicaOperationStatus[] }): Promise<{
     operations: LocalReplicaOperation[];
     replicaReady: boolean;
@@ -59,7 +62,7 @@ export async function getLocalReplicaStatus(profileId?: string): Promise<LocalRe
   }
 }
 
-/** Prepares the account-scoped Keystore key without opting the account into the replica yet. */
+/** Prepares the account-scoped Keystore key used by the encrypted replica. */
 export async function prepareLocalReplicaProfile(profileId: string): Promise<LocalReplicaStatus> {
   if (!isAndroidLocalReplicaPlatform() || !profileId.trim()) return unavailable;
   try {
@@ -79,9 +82,34 @@ export async function clearLocalReplicaProfile(profileId: string): Promise<void>
   }
 }
 
+/** Reads an encrypted native JSON value, or null when native storage is unavailable. */
+export async function loadNativeReplicaValue(profileId: string, key: string): Promise<string | null> {
+  if (!isAndroidLocalReplicaPlatform() || !profileId.trim() || !key.trim()) return null;
+  const status = await prepareLocalReplicaProfile(profileId);
+  if (!status.replicaReady) return null;
+  try {
+    const result = await LocalReplicaPlugin.getValue({ profileId, key });
+    return result.replicaReady ? result.value : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persists a JSON value through the Android Keystore-encrypted replica. */
+export async function saveNativeReplicaValue(profileId: string, key: string, value: string): Promise<boolean> {
+  if (!isAndroidLocalReplicaPlatform() || !profileId.trim() || !key.trim()) return false;
+  const status = await prepareLocalReplicaProfile(profileId);
+  if (!status.replicaReady) return false;
+  try {
+    const result = await LocalReplicaPlugin.setValue({ profileId, key, value });
+    return result.replicaReady;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Returns null until a native replica is fully migrated. Callers must retain
- * their existing server/cache sync path when this returns null.
+ * Reads the account-scoped opaque cursor from Keystore-encrypted storage.
  */
 export async function getNativeReplicaSyncCursor(profileId: string): Promise<string | null> {
   const status = await getLocalReplicaStatus(profileId);
@@ -91,6 +119,19 @@ export async function getNativeReplicaSyncCursor(profileId: string): Promise<str
     return result.replicaReady ? result.cursor : null;
   } catch {
     return null;
+  }
+}
+
+/** Persists the last fully applied delta cursor after local state is committed. */
+export async function saveNativeReplicaSyncCursor(profileId: string, cursor: string): Promise<boolean> {
+  if (!isAndroidLocalReplicaPlatform() || !profileId.trim() || !cursor.trim()) return false;
+  const status = await prepareLocalReplicaProfile(profileId);
+  if (!status.replicaReady) return false;
+  try {
+    const result = await LocalReplicaPlugin.setSyncCursor({ profileId, cursor });
+    return result.replicaReady;
+  } catch {
+    return false;
   }
 }
 

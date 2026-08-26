@@ -110,6 +110,14 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request, user userPub
 	if len(response.Events) > 0 {
 		next := s.encodeSyncCursor(user, response.Events[len(response.Events)-1].Sequence)
 		response.NextCursor = &next
+	} else if rawCursor == "" {
+		// A clean first sync still needs a durable high-water mark; otherwise a
+		// device with no currently visible events repeatedly scans its history.
+		var sequence int64
+		if err := s.db.QueryRowContext(r.Context(), `SELECT COALESCE(MAX(sequence), 0) FROM sync_events WHERE family_id=$1`, user.FamilyID).Scan(&sequence); err == nil {
+			next := s.encodeSyncCursor(user, sequence)
+			response.NextCursor = &next
+		}
 	}
 	s.json(w, http.StatusOK, response)
 }
@@ -374,6 +382,68 @@ func writeOutboxEventTx(ctx context.Context, tx *sql.Tx, syncEventID, familyID, 
 		VALUES ($1, $2, $3, $4, 1, $5, $6::jsonb)`,
 		uuid.NewString(), syncEventID, familyID, topic, partitionKey, payload)
 	return err
+}
+
+// writeFileSyncEventTx keeps Storage metadata changes ordered with their source
+// mutation. Payloads intentionally contain only an opaque file ID; each device
+// then loads the current, viewer-specific representation through /api/files/{id}.
+func writeFileSyncEventTx(ctx context.Context, tx *sql.Tx, familyID string, chatID *string, eventType, fileID string) error {
+	recipients, err := syncRecipientIDsForChatTx(ctx, tx, familyID, chatID)
+	if err != nil {
+		return err
+	}
+	return writeFileSyncEventForRecipientsTx(ctx, tx, familyID, recipients, eventType, fileID)
+}
+
+func writeFileSyncEventForRecipientsTx(ctx context.Context, tx *sql.Tx, familyID string, recipients []string, eventType, fileID string) error {
+	payload, err := json.Marshal(map[string]string{"fileId": fileID})
+	if err != nil {
+		return err
+	}
+	syncEventID, _, err := writeSyncEventTx(ctx, tx, familyID, "recipients", recipients, eventType, "file", fileID, payload)
+	if err != nil {
+		return err
+	}
+	return writeOutboxEventTx(ctx, tx, syncEventID, familyID, eventType, fileID, payload)
+}
+
+func syncRecipientIDsForChatTx(ctx context.Context, tx *sql.Tx, familyID string, chatID *string) ([]string, error) {
+	query := `SELECT id FROM users WHERE family_id=$1 AND is_active=1`
+	args := []any{familyID}
+	if chatID != nil && strings.TrimSpace(*chatID) != "" {
+		query = `SELECT cm.user_id FROM chat_members cm JOIN users u ON u.id=cm.user_id WHERE cm.chat_id=$1 AND u.is_active=1`
+		args = []any{*chatID}
+	}
+	rows, err := tx.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	recipients := make([]string, 0)
+	for rows.Next() {
+		var userID string
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+		recipients = append(recipients, userID)
+	}
+	return recipients, rows.Err()
+}
+
+func writeMessageChangedSyncEventTx(ctx context.Context, tx *sql.Tx, familyID, chatID, messageID string) error {
+	recipients, err := syncRecipientIDsForChatTx(ctx, tx, familyID, &chatID)
+	if err != nil {
+		return err
+	}
+	payload, err := json.Marshal(map[string]string{"messageId": messageID, "chatId": chatID})
+	if err != nil {
+		return err
+	}
+	syncEventID, _, err := writeSyncEventTx(ctx, tx, familyID, "recipients", recipients, "message.changed", "message", messageID, payload)
+	if err != nil {
+		return err
+	}
+	return writeOutboxEventTx(ctx, tx, syncEventID, familyID, "message.changed", chatID, payload)
 }
 
 // syncRecipientIDs returns each chat member once and always includes the

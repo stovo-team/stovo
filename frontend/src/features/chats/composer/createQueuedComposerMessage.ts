@@ -3,6 +3,7 @@ import type { FamilyFile } from "../../../api/files";
 import { createClientMessageId, inferOptimisticMessageType } from "../shared/messageState";
 import type { PendingLocalAttachment } from "../shared/types";
 import type { QueuedOutboxAttachment, QueuedOutboxMessage, ReminderRule } from "../outbox/messageOutboxStore";
+import { nativeSourceUriForFile } from "../../../native/mediaLibraryPlugin";
 
 type Options = {
   chat: Chat;
@@ -25,7 +26,13 @@ export function createQueuedComposerMessage(options: Options) {
     ? replyTarget && replyTarget.id !== threadRootForSend ? replyTarget.id : null
     : replyTarget?.id ?? null;
   const outboxAttachments: QueuedOutboxAttachment[] = attachments.map((pending) => ({
-    id: pending.localId, name: pending.file.name, mimeType: pending.file.type, size: pending.file.size, blob: pending.file
+    id: pending.localId,
+    name: pending.file.name,
+    mimeType: pending.file.type,
+    size: pending.file.size,
+    blob: pending.file,
+    uploadOperationId: pending.localId,
+    nativeSourceUri: nativeSourceUriForFile(pending.file) ?? undefined,
   }));
   const previewAttachments: FamilyFile[] = attachments.map((pending) => ({
     id: pending.localId, familyId: "", uploadedBy: user.id, chatId: chat.id, chatTitle: chat.title ?? null,

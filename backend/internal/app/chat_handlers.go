@@ -57,7 +57,27 @@ func (s *Server) handleAttachMessageFiles(w http.ResponseWriter, r *http.Request
 		s.detail(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	if err := s.store.AddMessageAttachments(r.Context(), meta.ID, uniqueAttachmentFileIDs(payload.FileIDs)); err != nil {
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not attach files")
+		return
+	}
+	defer tx.Rollback()
+	for _, fileID := range uniqueAttachmentFileIDs(payload.FileIDs) {
+		if _, err := tx.ExecContext(r.Context(), `
+			INSERT INTO message_attachments (message_id, file_id) VALUES ($1, $2)
+			ON CONFLICT (message_id, file_id) DO NOTHING`, meta.ID, fileID); err != nil {
+			s.logger.Errorf("chats", "add message attachment failed message_id=%s error=%v", meta.ID, err)
+			s.detail(w, http.StatusInternalServerError, "Could not attach files")
+			return
+		}
+	}
+	if err := writeMessageChangedSyncEventTx(r.Context(), tx, user.FamilyID, meta.ChatID, meta.ID); err != nil {
+		s.logger.Errorf("chats", "write message sync event failed message_id=%s error=%v", meta.ID, err)
+		s.detail(w, http.StatusInternalServerError, "Could not attach files")
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		s.logger.Errorf("chats", "add message attachments failed message_id=%s error=%v", meta.ID, err)
 		s.detail(w, http.StatusInternalServerError, "Could not attach files")
 		return
@@ -69,6 +89,27 @@ func (s *Server) handleAttachMessageFiles(w http.ResponseWriter, r *http.Request
 	}
 	s.emitMessageUpdated(meta.ChatID, message)
 	s.bumpChatHistoryRevision(r.Context(), meta.ChatID)
+	s.json(w, http.StatusOK, message)
+}
+
+// handleGetMessage is deliberately narrow for cursor deltas such as a
+// background attachment completion. The chat authorization check runs before
+// the viewer-specific message representation is returned.
+func (s *Server) handleGetMessage(w http.ResponseWriter, r *http.Request, user userPublic) {
+	meta, err := s.store.GetActiveMessageMeta(r.Context(), messageIDFromURL(r))
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	if _, err := s.buildChatPublic(meta.ChatID, user); err != nil {
+		s.detail(w, http.StatusNotFound, "Message not found")
+		return
+	}
+	message, err := s.buildMessage(meta.ID, user.ID)
+	if err != nil {
+		s.detail(w, http.StatusNotFound, "Message not found")
+		return
+	}
 	s.json(w, http.StatusOK, message)
 }
 
@@ -162,7 +203,10 @@ func (s *Server) handleCreateGroupChat(w http.ResponseWriter, r *http.Request, u
 		s.detail(w, domainErrorStatus(err), "Invalid group chat members")
 		return
 	}
-	if err := s.validateInvitePermissions(user, memberIDs, "group"); err != nil { s.detail(w, http.StatusForbidden, err.Error()); return }
+	if err := s.validateInvitePermissions(user, memberIDs, "group"); err != nil {
+		s.detail(w, http.StatusForbidden, err.Error())
+		return
+	}
 
 	chatID := uuid.NewString()
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
@@ -216,7 +260,10 @@ func (s *Server) handleCreateChannelChat(w http.ResponseWriter, r *http.Request,
 		s.detail(w, domainErrorStatus(err), "Invalid channel chat members")
 		return
 	}
-	if err := s.validateInvitePermissions(user, memberIDs, "channel"); err != nil { s.detail(w, http.StatusForbidden, err.Error()); return }
+	if err := s.validateInvitePermissions(user, memberIDs, "channel"); err != nil {
+		s.detail(w, http.StatusForbidden, err.Error())
+		return
+	}
 
 	chatID := uuid.NewString()
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
@@ -271,7 +318,10 @@ func (s *Server) handleCreateVoiceChat(w http.ResponseWriter, r *http.Request, u
 		s.detail(w, domainErrorStatus(err), "Invalid voice chat members")
 		return
 	}
-	if err := s.validateInvitePermissions(user, memberIDs, "voice"); err != nil { s.detail(w, http.StatusForbidden, err.Error()); return }
+	if err := s.validateInvitePermissions(user, memberIDs, "voice"); err != nil {
+		s.detail(w, http.StatusForbidden, err.Error())
+		return
+	}
 
 	chatID := uuid.NewString()
 	encryptionProtocol := s.defaultMessageEncryptionProtocol(user.FamilyID)
@@ -448,7 +498,10 @@ func (s *Server) handleAddChatMembers(w http.ResponseWriter, r *http.Request, us
 		s.detail(w, domainErrorStatus(err), "Invalid chat members")
 		return
 	}
-	if err := s.validateInvitePermissions(user, memberIDs, chat.Type); err != nil { s.detail(w, http.StatusForbidden, err.Error()); return }
+	if err := s.validateInvitePermissions(user, memberIDs, chat.Type); err != nil {
+		s.detail(w, http.StatusForbidden, err.Error())
+		return
+	}
 	if err := s.store.AddChatMembers(r.Context(), repository.AddChatMembersParams{
 		ChatID: chatID, UserIDs: memberIDs, CreatedAt: nowString(),
 	}); err != nil {
@@ -1097,10 +1150,16 @@ func (s *Server) listMessagesPage(chatID string, user userPublic, before string,
 
 func (s *Server) validateInvitePermissions(inviter userPublic, memberIDs []string, chatType string) error {
 	for _, memberID := range memberIDs {
-		if memberID == inviter.ID { continue }
+		if memberID == inviter.ID {
+			continue
+		}
 		target, err := s.getUserByID(memberID)
-		if err != nil { return err }
-		if !contactPermissionAllows(target, inviter.ID, chatType) { return fmt.Errorf("%s does not accept this invitation", target.DisplayName) }
+		if err != nil {
+			return err
+		}
+		if !contactPermissionAllows(target, inviter.ID, chatType) {
+			return fmt.Errorf("%s does not accept this invitation", target.DisplayName)
+		}
 	}
 	return nil
 }

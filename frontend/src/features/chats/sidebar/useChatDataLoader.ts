@@ -14,6 +14,8 @@ import { getActiveServer, upsertServer } from "../../../api/serverRegistry";
 import { getOutboxMessagesForChat, type QueuedOutboxMessage } from "../outbox/messageOutboxStore";
 import { reconstructFileFromQueuedAttachment } from "../outbox/messageOutboxProcessor";
 import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
+import { decryptMessage } from "../../../api/messageCrypto";
+import { syncChatReplicaDeltas } from "./chatDeltaSync";
 
 /** A response started before a local chat mutation must not replace that mutation. */
 export function isCurrentChatMetadataRefresh(
@@ -171,6 +173,7 @@ export function useChatDataLoader({
   const loadOverviewRequestRef = useRef(0);
   const loadChatRequestRef = useRef(0);
   const hasLoadedOverviewRef = useRef(false);
+  const deltaSyncInFlightRef = useRef(false);
 
   const authRequestRef = useRef(authRequest);
   const onErrorRef = useRef(onError);
@@ -472,10 +475,45 @@ export function useChatDataLoader({
     ]
   );
 
+  const syncDeltas = useCallback(async () => {
+    const accessToken = accessTokenRef.current;
+    const userId = currentUserIdRef.current;
+    if (!accessToken || !userId || deltaSyncInFlightRef.current) return;
+    deltaSyncInFlightRef.current = true;
+    try {
+      await syncChatReplicaDeltas({
+        accessToken,
+        userId,
+        onMessageCreated: async (rawMessage) => {
+          const displayMessage = await decryptMessage(rawMessage.chatId, rawMessage, userId);
+          applyMessagesForChatRef.current(rawMessage.chatId, (current) => mergeMessageLists(current, [displayMessage]));
+          setChats((current) => {
+            const next = current.map((chat) =>
+              chat.id === rawMessage.chatId ? applyMessagePreviewToChat(chat, displayMessage) : chat,
+            );
+            void saveCachedChatList(userId, next);
+            return next;
+          });
+          setSelectedChat((current) =>
+            current?.id === rawMessage.chatId ? applyMessagePreviewToChat(current, displayMessage) : current,
+          );
+        },
+      });
+    } catch {
+      // The encrypted cache remains usable; a later visibility wake-up retries.
+    } finally {
+      deltaSyncInFlightRef.current = false;
+    }
+  }, [accessTokenRef, setChats, setSelectedChat]);
+
   const syncCurrentView = useCallback(async () => {
-    await loadOverview();
-    await loadSelectedChat(activeChatIdRef.current, true);
-  }, [activeChatIdRef, loadOverview, loadSelectedChat]);
+    if (!hasLoadedOverviewRef.current) {
+      await loadOverview();
+      await loadSelectedChat(activeChatIdRef.current, true);
+      return;
+    }
+    await syncDeltas();
+  }, [activeChatIdRef, loadOverview, loadSelectedChat, syncDeltas]);
 
   const syncCurrentViewRef = useRef(syncCurrentView);
   useEffect(() => {

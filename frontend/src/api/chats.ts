@@ -244,6 +244,10 @@ export function getMessages(
   return getMessageHistoryPage(accessToken, chatId, before, limit, threadRootMessageId).then((page) => page.messages);
 }
 
+export function getMessage(accessToken: string, messageId: string) {
+  return apiRequest<Message>(`/api/messages/${encodeURIComponent(messageId)}`, { accessToken });
+}
+
 export function sendMessage(
   accessToken: string,
   chatId: string,

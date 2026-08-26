@@ -13,6 +13,9 @@ export type NativeMediaCategory = "gallery" | "audio" | "documents";
 
 type CachedMediaFile = { path: string; name: string; mimeType: string };
 
+/** A Web File that still knows the app-private native source it came from. */
+export type NativeBackedFile = File & { readonly stovoNativeSourceUri?: string };
+
 type NativeMediaLibraryPlugin = {
   listMedia(options?: { limit?: number; offset?: number; category?: NativeMediaCategory }): Promise<{ items: NativeMediaItem[] }>;
   copyMedia(options: { ids: string[] }): Promise<{ files: CachedMediaFile[] }>;
@@ -80,19 +83,27 @@ export async function fetchNativeMediaFileUrl(id: string): Promise<string | null
 export async function selectNativeMediaFiles(
   ids: string[],
   fetcher: typeof fetch = fetch
-): Promise<File[]> {
+): Promise<NativeBackedFile[]> {
   if (!isNativeMediaLibraryAvailable() || ids.length === 0) return [];
   const result = await MediaLibraryPlugin.copyMedia({ ids });
-  const files: File[] = [];
+  const files: NativeBackedFile[] = [];
   for (const cached of result.files ?? []) {
     try {
       const response = await fetcher(Capacitor.convertFileSrc(cached.path));
       if (!response.ok) continue;
       const blob = await response.blob();
-      files.push(new File([blob], cached.name, { type: cached.mimeType || blob.type }));
+      const file = new File([blob], cached.name, { type: cached.mimeType || blob.type }) as NativeBackedFile;
+      Object.defineProperty(file, "stovoNativeSourceUri", { value: cached.path, enumerable: false });
+      files.push(file);
     } catch {
       // Ignore individual file errors to let other attachments succeed
     }
   }
   return files;
+}
+
+/** Returns the app-private native source retained for WorkManager staging. */
+export function nativeSourceUriForFile(file: File): string | null {
+  const source = (file as NativeBackedFile).stovoNativeSourceUri;
+  return typeof source === "string" && source.trim() ? source : null;
 }

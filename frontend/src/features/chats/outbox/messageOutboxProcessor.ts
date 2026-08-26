@@ -147,7 +147,13 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
             } catch {
               // Non-fatal
             }
-            const uploaded = await uploadFile(accessToken, file, item.chatId);
+            const uploaded = await uploadFile(
+              accessToken,
+              file,
+              item.chatId,
+              att.uploadOperationId ?? att.id,
+              currentUser.id,
+            );
             att.uploadedFileId = uploaded.id;
             att.uploadedFile = uploaded;
             uploadedAttachments.push(uploaded);

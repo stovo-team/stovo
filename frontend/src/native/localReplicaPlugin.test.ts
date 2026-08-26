@@ -5,7 +5,10 @@ const nativePlugin = vi.hoisted(() => ({
   getStatus: vi.fn(async () => ({ supported: true, keyReady: true, schemaVersion: 0, replicaReady: false, migrationState: "scaffold" })),
   prepareProfile: vi.fn(async () => ({ supported: true, keyReady: true, schemaVersion: 0, replicaReady: false, migrationState: "scaffold" })),
   clearProfile: vi.fn(async () => ({ supported: true, keyReady: false, schemaVersion: 0, replicaReady: false, migrationState: "scaffold" })),
+  getValue: vi.fn(async () => ({ value: "[]", replicaReady: true })),
+  setValue: vi.fn(async () => ({ replicaReady: true })),
   getSyncCursor: vi.fn(async () => ({ cursor: "cursor-1", replicaReady: true })),
+  setSyncCursor: vi.fn(async () => ({ replicaReady: true })),
   listOperations: vi.fn(async () => ({ operations: [], replicaReady: true }))
 }));
 
@@ -23,7 +26,10 @@ import {
   getNativeReplicaSyncCursor,
   isAndroidLocalReplicaPlatform,
   listNativeReplicaOperations,
-  prepareLocalReplicaProfile
+  loadNativeReplicaValue,
+  prepareLocalReplicaProfile,
+  saveNativeReplicaSyncCursor,
+  saveNativeReplicaValue
 } from "./localReplicaPlugin";
 
 describe("local replica plugin bridge", () => {
@@ -56,5 +62,26 @@ describe("local replica plugin bridge", () => {
     await expect(listNativeReplicaOperations("user-1")).resolves.toEqual([]);
     expect(nativePlugin.getSyncCursor).not.toHaveBeenCalled();
     expect(nativePlugin.listOperations).not.toHaveBeenCalled();
+  });
+
+  it("persists an opaque Android sync cursor only after the profile is ready", async () => {
+    platform.native = true;
+    platform.name = "android";
+    nativePlugin.prepareProfile.mockResolvedValue({ supported: true, keyReady: true, schemaVersion: 1, replicaReady: true, migrationState: "ready" });
+
+    await expect(saveNativeReplicaSyncCursor("user-1", "opaque.cursor")).resolves.toBe(true);
+    expect(nativePlugin.setSyncCursor).toHaveBeenCalledWith({ profileId: "user-1", cursor: "opaque.cursor" });
+  });
+
+  it("reads and writes the encrypted native value store only when ready", async () => {
+    platform.native = true;
+    platform.name = "android";
+    nativePlugin.prepareProfile.mockResolvedValue({ supported: true, keyReady: true, schemaVersion: 1, replicaReady: true, migrationState: "ready" });
+    nativePlugin.getValue.mockResolvedValue({ value: '[{"id":"chat-1"}]', replicaReady: true });
+
+    await expect(loadNativeReplicaValue("user-1", "chat-list")).resolves.toBe('[{"id":"chat-1"}]');
+    await expect(saveNativeReplicaValue("user-1", "chat-list", "[]")).resolves.toBe(true);
+    expect(nativePlugin.getValue).toHaveBeenCalledWith({ profileId: "user-1", key: "chat-list" });
+    expect(nativePlugin.setValue).toHaveBeenCalledWith({ profileId: "user-1", key: "chat-list", value: "[]" });
   });
 });

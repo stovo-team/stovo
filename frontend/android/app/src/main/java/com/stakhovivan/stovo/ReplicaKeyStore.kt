@@ -5,6 +5,7 @@ import android.security.keystore.KeyProperties
 import java.security.KeyStore
 import java.security.MessageDigest
 import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
 
 /**
  * Owns only the key-encryption-key for the future encrypted replica database.
@@ -55,12 +56,23 @@ internal object ReplicaKeyStore {
         return true
     }
 
-    private fun aliasFor(profileId: String): String? {
+    fun key(profileId: String): SecretKey? {
+        val alias = aliasFor(profileId) ?: return null
+        if (!prepare(profileId)) return null
+        val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+        return keyStore.getKey(alias, null) as? SecretKey
+    }
+
+    fun profileDigest(profileId: String): String? {
         val normalized = profileId.trim()
         if (normalized.isEmpty() || normalized.length > 512) return null
-        val digest = MessageDigest.getInstance("SHA-256")
+        return MessageDigest.getInstance("SHA-256")
             .digest(normalized.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
+    }
+
+    private fun aliasFor(profileId: String): String? {
+        val digest = profileDigest(profileId) ?: return null
         return KEY_ALIAS_PREFIX + digest
     }
 }
