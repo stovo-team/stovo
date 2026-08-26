@@ -237,7 +237,13 @@ describe("messageOutboxProcessor", () => {
       onChatsUpdate: vi.fn()
     });
 
-    expect(uploadFile).toHaveBeenCalledWith("mock-token", expect.any(File), "chat-1");
+    expect(uploadFile).toHaveBeenCalledWith(
+      "mock-token",
+      expect.any(File),
+      "chat-1",
+      "local-att-1",
+      "user-1"
+    );
     expect(sendMessage).toHaveBeenCalledWith(
       "mock-token",
       "chat-1",
@@ -246,7 +252,9 @@ describe("messageOutboxProcessor", () => {
       null,
       null,
       undefined,
-      []
+      [],
+      false,
+      "client-msg-3"
     );
   });
 
@@ -342,7 +350,9 @@ describe("messageOutboxProcessor", () => {
       null,
       null,
       undefined,
-      []
+      [],
+      false,
+      "client-scheduled-due"
     );
     const remaining = await getOutboxMessages("user-1");
     expect(remaining).toHaveLength(0);
