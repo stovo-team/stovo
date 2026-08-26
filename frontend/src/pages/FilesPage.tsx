@@ -49,6 +49,7 @@ import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
 import { useStrings } from "../i18n/LanguageContext";
 import { loadCachedFileList, saveCachedFileList } from "../fileLibraryCache";
+import { syncChatReplicaDeltas } from "../features/chats/sidebar/chatDeltaSync";
 import {
   initialStorageSelection,
   shouldOpenStorageTilePreview,
@@ -281,7 +282,7 @@ export default function FilesPage() {
     });
   }, [selectedFileId]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (includeFiles = true) => {
     if (!accessToken) {
       return;
     }
@@ -290,16 +291,18 @@ export default function FilesPage() {
     try {
       const [familyResult, filesResult, chatsResult] = await Promise.all([
         authRequest<Family>("/api/family"),
-        authRequest<FamilyFile[]>("/api/files"),
+        includeFiles ? authRequest<FamilyFile[]>("/api/files") : Promise.resolve(null),
         getChats(accessToken)
       ]);
       setFamily(familyResult);
-      setFiles(filesResult);
-      if (currentUser?.id) {
-        void saveCachedFileList(currentUser.id, filesResult);
+      if (filesResult) {
+        setFiles(filesResult);
+        if (currentUser?.id) {
+          void saveCachedFileList(currentUser.id, filesResult);
+        }
+        dispatchSelection({ type: "load-default", fileId: filesResult[0]?.id ?? null });
       }
       setChats(chatsResult);
-      dispatchSelection({ type: "load-default", fileId: filesResult[0]?.id ?? null });
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not load storage");
     } finally {
@@ -313,19 +316,38 @@ export default function FilesPage() {
 
   useEffect(() => {
     let cancelled = false;
-    if (currentUser?.id) {
-      void loadCachedFileList<FamilyFile>(currentUser.id).then((cached) => {
-        if (cancelled || !cached?.length) return;
-        setFiles((current) => current.length > 0 ? current : cached);
+    const userId = currentUser?.id;
+    void (async () => {
+      const cached = userId ? await loadCachedFileList<FamilyFile>(userId) : null;
+      if (cancelled) return;
+      if (cached !== null) {
+        setFiles(cached);
         setIsLoading(false);
         dispatchSelection({ type: "load-default", fileId: cached[0]?.id ?? null });
-      });
-    }
-    void load();
+        // Family/chat labels are compact metadata requests. File bytes and the
+        // file list itself stay local; only file IDs carried by the cursor are
+        // fetched below.
+        await load(false);
+        if (!accessToken || !userId || cancelled) return;
+        await syncChatReplicaDeltas({
+          accessToken,
+          userId,
+          onFileChanged: async (fileId, changed) => {
+            if (cancelled) return;
+            setFiles((current) => changed
+              ? [changed, ...current.filter((file) => file.id !== fileId)].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+              : current.filter((file) => file.id !== fileId));
+            if (!changed) dispatchSelection({ type: "remove", fileId });
+          },
+        });
+        return;
+      }
+      await load(true);
+    })().catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.id, load]);
+  }, [accessToken, currentUser?.id, load]);
 
   useEffect(() => {
     if (!mobileDetailsOpen) {
@@ -412,7 +434,7 @@ export default function FilesPage() {
     try {
       const uploadedFiles: FamilyFile[] = [];
       for (const file of selectedFiles) {
-        uploadedFiles.push(await uploadFile(accessToken, file));
+        uploadedFiles.push(await uploadFile(accessToken, file, undefined, undefined, currentUser?.id));
       }
       setFiles((current) => [...uploadedFiles, ...current]);
       if (uploadedFiles[0]) {

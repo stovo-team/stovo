@@ -8,6 +8,7 @@ import {
   getDirectFileUpload,
   getMediaPlaybackUrl,
   reserveDirectFileUpload,
+  uploadFile,
 } from "./files";
 
 describe("media playback file API", () => {
@@ -161,5 +162,35 @@ describe("direct media file API", () => {
 
     expect(fetchMock.mock.calls[0][0]).toBe(`${getApiUrl()}/api/files/uploads/upload%2Fone`);
     expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("Authorization")).toBe("Bearer access-token");
+  });
+
+  it("uses the stable operation key through direct transfer and validation", async () => {
+    const uploaded = {
+      id: "file-1", familyId: "family-1", uploadedBy: "user-1", chatId: "chat-1", chatTitle: null,
+      chatType: "group", originMessageId: null, accessScope: "chat", storageProvider: "minio",
+      originalName: "photo.jpg", mimeType: "image/jpeg", sizeBytes: 3, checksum: null,
+      createdAt: "2026-08-26T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        uploadId: "upload-1", fileId: "file-1", state: "reserved", uploadUrl: "https://media.example/upload",
+        expectedMimeType: "image/jpeg", expectedSizeBytes: 3,
+      }), { status: 200, headers: { "Content-Type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        uploadId: "upload-1", fileId: "file-1", state: "ready", expectedMimeType: "image/jpeg", expectedSizeBytes: 3,
+      }), { status: 202, headers: { "Content-Type": "application/json" } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(uploaded), { status: 200, headers: { "Content-Type": "application/json" } }));
+
+    await expect(uploadFile("access-token", new File(["abc"], "photo.jpg", { type: "image/jpeg" }), "chat-1", "operation-1"))
+      .resolves.toMatchObject({ id: "file-1" });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(`${getApiUrl()}/api/files/uploads`);
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get("Idempotency-Key")).toBe("operation-1");
+    expect(fetchMock.mock.calls[1][0]).toBe("https://media.example/upload");
+    expect(fetchMock.mock.calls[1][1]?.method).toBe("PUT");
+    expect(fetchMock.mock.calls[2][0]).toBe(`${getApiUrl()}/api/files/uploads/upload-1/complete`);
+    expect(new Headers(fetchMock.mock.calls[2][1]?.headers).get("Idempotency-Key")).toBe("operation-1");
+    expect(fetchMock.mock.calls[3][0]).toBe(`${getApiUrl()}/api/files/file-1`);
   });
 });

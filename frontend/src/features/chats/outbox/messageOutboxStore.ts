@@ -8,6 +8,10 @@ export interface QueuedOutboxAttachment {
   size: number;
   blob?: Blob;
   dataBase64?: string;
+  /** App-private Android source retained for WorkManager staging. */
+  nativeSourceUri?: string;
+  /** Stable direct-object reservation key retained across app restarts. */
+  uploadOperationId?: string;
   uploadedFile?: FamilyFile;
   uploadedFileId?: string;
 }

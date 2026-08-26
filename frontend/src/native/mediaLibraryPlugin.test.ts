@@ -15,7 +15,7 @@ vi.mock("@capacitor/core", () => ({
   registerPlugin: () => nativePlugin
 }));
 
-import { fetchNativeMediaFileUrl, isNativeMediaLibraryAvailable, nativeMediaPreviewUrl, selectNativeMediaFiles } from "./mediaLibraryPlugin";
+import { fetchNativeMediaFileUrl, isNativeMediaLibraryAvailable, nativeMediaPreviewUrl, nativeSourceUriForFile, selectNativeMediaFiles } from "./mediaLibraryPlugin";
 
 describe("media library plugin", () => {
   beforeEach(() => {
@@ -45,6 +45,7 @@ describe("media library plugin", () => {
     expect(fetcher).toHaveBeenCalledWith("webview://file:///cache/photo.jpg");
     expect(files).toHaveLength(1);
     expect(files[0]).toMatchObject({ name: "photo.jpg", type: "image/jpeg" });
+    expect(nativeSourceUriForFile(files[0])).toBe("file:///cache/photo.jpg");
   });
 
   it("fetches full resolution native media file url", async () => {

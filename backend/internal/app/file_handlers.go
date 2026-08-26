@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/ent"
 	"family-messenger/backend/internal/ports"
 	"family-messenger/backend/internal/repository"
 	"family-messenger/backend/internal/transcription"
@@ -52,13 +52,13 @@ type directFileUploadResponse struct {
 }
 
 type directFileAccessResponse struct {
-	FileID       string    `json:"fileId"`
-	Revision     *string   `json:"revision,omitempty"`
-	URL          string    `json:"url"`
-	ExpiresAt    time.Time `json:"expiresAt"`
-	MimeType     string    `json:"mimeType"`
-	SizeBytes    int64     `json:"sizeBytes"`
-	Checksum     *string   `json:"checksum,omitempty"`
+	FileID    string    `json:"fileId"`
+	Revision  *string   `json:"revision,omitempty"`
+	URL       string    `json:"url"`
+	ExpiresAt time.Time `json:"expiresAt"`
+	MimeType  string    `json:"mimeType"`
+	SizeBytes int64     `json:"sizeBytes"`
+	Checksum  *string   `json:"checksum,omitempty"`
 }
 
 type directUploadRecord struct {
@@ -170,7 +170,9 @@ func (s *Server) handleReserveDirectFileUpload(w http.ResponseWriter, r *http.Re
 	}
 	defer tx.Rollback()
 	var chatValue any
-	if chatID != "" { chatValue = chatID }
+	if chatID != "" {
+		chatValue = chatID
+	}
 	_, err = tx.ExecContext(r.Context(), `INSERT INTO files
 		(id, family_id, uploaded_by, chat_id, access_scope, storage_provider, object_key, lifecycle_state, object_revision, original_name, mime_type, size_bytes, checksum, created_at, preview_status)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,'reserved',$8,$9,$10,$11,$12,$13,'none')`,
@@ -322,8 +324,12 @@ func (s *Server) handleCreateDirectFileAccess(w http.ResponseWriter, r *http.Req
 
 func (s *Server) loadDirectUploadByIdempotency(ctx context.Context, userID, key string) (directUploadRecord, bool, error) {
 	record, err := scanDirectUpload(s.db.QueryRowContext(ctx, `SELECT id, file_id, object_key, expected_mime_type, expected_size_bytes, expected_checksum, state, expires_at FROM file_uploads WHERE uploaded_by = $1 AND idempotency_key = $2`, userID, key))
-	if err == sql.ErrNoRows { return directUploadRecord{}, false, nil }
-	if err != nil { return directUploadRecord{}, false, err }
+	if err == sql.ErrNoRows {
+		return directUploadRecord{}, false, nil
+	}
+	if err != nil {
+		return directUploadRecord{}, false, err
+	}
 	return record, true, nil
 }
 
@@ -337,7 +343,9 @@ func scanDirectUpload(row *sql.Row) (directUploadRecord, error) {
 	var record directUploadRecord
 	var expires string
 	err := row.Scan(&record.UploadID, &record.FileID, &record.ObjectKey, &record.ExpectedMIME, &record.ExpectedBytes, &record.ExpectedSHA256, &record.State, &expires)
-	if err != nil { return directUploadRecord{}, err }
+	if err != nil {
+		return directUploadRecord{}, err
+	}
 	record.ExpiresAt, err = time.Parse(time.RFC3339Nano, expires)
 	return record, err
 }
@@ -397,23 +405,26 @@ func (s *Server) handleUploadFile(w http.ResponseWriter, r *http.Request, user u
 	if chatID != "" {
 		chatIDPtr = &chatID
 	}
-	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
-		return s.store.CreateFile(r.Context(), tx, repository.CreateFileParams{
-			ID:                 fileID,
-			FamilyID:           user.FamilyID,
-			UploadedBy:         user.ID,
-			ChatID:             chatIDPtr,
-			AccessScope:        accessScope,
-			StorageProvider:    "local",
-			ObjectKey:          objectKey,
-			ThumbnailObjectKey: thumbnailObjectKey,
-			OriginalName:       sanitizeFilename(header.Filename),
-			MimeType:           mimeType,
-			SizeBytes:          len(data),
-			Checksum:           &checksum,
-			CreatedAt:          now,
-		})
-	}); err != nil {
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not record file")
+		return
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(r.Context(), `
+		INSERT INTO files (id, family_id, uploaded_by, chat_id, access_scope, storage_provider, object_key,
+		                   thumbnail_object_key, original_name, mime_type, size_bytes, checksum, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+		fileID, user.FamilyID, user.ID, chatIDPtr, accessScope, "local", objectKey,
+		thumbnailObjectKey, sanitizeFilename(header.Filename), mimeType, len(data), checksum, now); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not record file")
+		return
+	}
+	if err := writeFileSyncEventTx(r.Context(), tx, user.FamilyID, chatIDPtr, "file.changed", fileID); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not record file")
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not record file")
 		return
 	}
@@ -588,9 +599,25 @@ func (s *Server) handleUpdateFilePreferences(w http.ResponseWriter, r *http.Requ
 		s.detail(w, http.StatusUnprocessableEntity, "isFavorite is required")
 		return
 	}
-	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
-		return s.store.UpsertFileFavorite(r.Context(), tx, file.ID, user.ID, *payload.IsFavorite)
-	}); err != nil {
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not update file preferences")
+		return
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(r.Context(), `
+		INSERT INTO file_preferences (id, user_id, is_favorite)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (id, user_id) DO UPDATE SET is_favorite=EXCLUDED.is_favorite`, file.ID, user.ID, *payload.IsFavorite); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not update file preferences")
+		return
+	}
+	// A favorite is private to one account, including that account's other devices.
+	if err := writeFileSyncEventForRecipientsTx(r.Context(), tx, user.FamilyID, []string{user.ID}, "file.preference.changed", file.ID); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not update file preferences")
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not update file preferences")
 		return
 	}
@@ -608,9 +635,21 @@ func (s *Server) handleDeleteFile(w http.ResponseWriter, r *http.Request, user u
 		s.detail(w, http.StatusForbidden, "Only owner, admin, or uploader can delete")
 		return
 	}
-	if err := s.store.WithTx(r.Context(), func(tx *ent.Tx) error {
-		return s.store.SoftDeleteFile(r.Context(), tx, file.ID, nowString())
-	}); err != nil {
+	tx, err := s.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not delete file")
+		return
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(r.Context(), `UPDATE files SET deleted_at=$2 WHERE id=$1`, file.ID, nowString()); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not delete file")
+		return
+	}
+	if err := writeFileSyncEventTx(r.Context(), tx, user.FamilyID, file.ChatID, "file.deleted", file.ID); err != nil {
+		s.detail(w, http.StatusInternalServerError, "Could not delete file")
+		return
+	}
+	if err := tx.Commit(); err != nil {
 		s.detail(w, http.StatusInternalServerError, "Could not delete file")
 		return
 	}

@@ -9,10 +9,6 @@ import com.getcapacitor.annotation.CapacitorPlugin
 
 /**
  * Capability and key-lifecycle bridge for the encrypted local replica.
- *
- * It intentionally reports replicaReady=false until the Room/SQLCipher data
- * store is shipped. JavaScript callers must retain their existing IndexedDB
- * fallback while that migration is incomplete.
  */
 @CapacitorPlugin(name = "LocalReplicaPlugin")
 class LocalReplicaPlugin : Plugin() {
@@ -30,8 +26,8 @@ class LocalReplicaPlugin : Plugin() {
             call.reject("profileId is required")
             return
         }
-        val keyReady = runCatching { ReplicaKeyStore.prepare(profileId) }.getOrElse {
-            call.reject("Could not prepare encrypted replica key", it)
+        val keyReady = runCatching { ReplicaKeyStore.prepare(profileId) }.getOrElse { error ->
+            call.reject("Could not prepare encrypted replica key: ${error.message ?: "unknown error"}")
             return
         }
         call.resolve(status(keyReady))
@@ -44,22 +40,83 @@ class LocalReplicaPlugin : Plugin() {
             call.reject("profileId is required")
             return
         }
-        runCatching { ReplicaKeyStore.clear(profileId) }.onFailure {
-            call.reject("Could not clear encrypted replica key", it)
+        runCatching {
+            EncryptedReplicaStore(context.filesDir.resolve("replica")).clearProfile(profileId)
+            ReplicaKeyStore.clear(profileId)
+        }.onFailure { error ->
+            call.reject("Could not clear encrypted replica key: ${error.message ?: "unknown error"}")
             return
         }
         call.resolve(status(false))
     }
 
-    // These contracts reserve the native bridge shape for sync state and the
-    // persistent operation graph. Until the encrypted database migration is
-    // complete they intentionally return empty values rather than accepting
-    // data that could be lost after an app restart.
     @PluginMethod
-    fun getSyncCursor(call: PluginCall) {
-        call.resolve(JSObject().put("cursor", null).put("replicaReady", false))
+    fun getValue(call: PluginCall) {
+        val profileId = call.getString("profileId")?.trim().orEmpty()
+        val key = call.getString("key")?.trim().orEmpty()
+        if (profileId.isEmpty() || key.isEmpty()) {
+            call.reject("profileId and key are required")
+            return
+        }
+        val value = runCatching { EncryptedReplicaStore(context.filesDir.resolve("replica")).read(profileId, key) }.getOrElse { error ->
+            call.reject("Could not read encrypted replica value: ${error.message ?: "unknown error"}")
+            return
+        }
+        call.resolve(JSObject().put("value", value).put("replicaReady", true))
     }
 
+    @PluginMethod
+    fun setValue(call: PluginCall) {
+        val profileId = call.getString("profileId")?.trim().orEmpty()
+        val key = call.getString("key")?.trim().orEmpty()
+        val value = call.getString("value")
+        if (profileId.isEmpty() || key.isEmpty() || value == null || value.length > 5_000_000) {
+            call.reject("profileId, key, and a value up to 5 MB are required")
+            return
+        }
+        runCatching { EncryptedReplicaStore(context.filesDir.resolve("replica")).write(profileId, key, value) }.onFailure { error ->
+            call.reject("Could not save encrypted replica value: ${error.message ?: "unknown error"}")
+            return
+        }
+        call.resolve(JSObject().put("replicaReady", true))
+    }
+
+    @PluginMethod
+    fun getSyncCursor(call: PluginCall) {
+        val profileId = call.getString("profileId")?.trim().orEmpty()
+        if (profileId.isEmpty()) {
+            call.reject("profileId is required")
+            return
+        }
+        val cursor = runCatching {
+            EncryptedReplicaStore(context.filesDir.resolve("replica")).read(profileId, "sync-cursor")
+        }.getOrElse { error ->
+            call.reject("Could not read encrypted sync cursor: ${error.message ?: "unknown error"}")
+            return
+        }
+        call.resolve(JSObject().put("cursor", cursor).put("replicaReady", true))
+    }
+
+    @PluginMethod
+    fun setSyncCursor(call: PluginCall) {
+        val profileId = call.getString("profileId")?.trim().orEmpty()
+        val cursor = call.getString("cursor")?.trim()
+        if (profileId.isEmpty() || cursor == null || cursor.length > 4_096) {
+            call.reject("profileId and a cursor up to 4096 characters are required")
+            return
+        }
+        runCatching {
+            EncryptedReplicaStore(context.filesDir.resolve("replica")).write(profileId, "sync-cursor", cursor)
+        }.onFailure { error ->
+            call.reject("Could not save encrypted sync cursor: ${error.message ?: "unknown error"}")
+            return
+        }
+        call.resolve(JSObject().put("replicaReady", true))
+    }
+
+    // The persistent operation graph remains the next migration step. It must
+    // not claim durability until binary transfer data and retry dependencies
+    // are stored in one native transaction.
     @PluginMethod
     fun listOperations(call: PluginCall) {
         call.resolve(JSObject().put("operations", JSArray()).put("replicaReady", false))
@@ -68,7 +125,7 @@ class LocalReplicaPlugin : Plugin() {
     private fun status(keyReady: Boolean) = JSObject()
         .put("supported", true)
         .put("keyReady", keyReady)
-        .put("schemaVersion", 0)
-        .put("replicaReady", false)
-        .put("migrationState", "scaffold")
+        .put("schemaVersion", if (keyReady) 1 else 0)
+        .put("replicaReady", keyReady)
+        .put("migrationState", if (keyReady) "ready" else "scaffold")
 }

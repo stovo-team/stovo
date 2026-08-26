@@ -29,7 +29,7 @@ describe("chat history cache helpers", () => {
     ]);
   });
 
-  it("keeps only the 20 most recently opened chats with at most 50 messages each", () => {
+  it("keeps every cached chat and message instead of silently discarding offline history", () => {
     const entries = Array.from({ length: 21 }, (_, index) => ({
       chatId: `chat-${index}`,
       accessedAt: index,
@@ -38,9 +38,9 @@ describe("chat history cache helpers", () => {
 
     const trimmed = trimRecentChatHistory(entries);
 
-    expect(trimmed).toHaveLength(20);
-    expect(trimmed.some((entry) => entry.chatId === "chat-0")).toBe(false);
-    expect(trimmed.at(-1)?.messages).toHaveLength(50);
+    expect(trimmed).toHaveLength(21);
+    expect(trimmed.some((entry) => entry.chatId === "chat-0")).toBe(true);
+    expect(trimmed.at(-1)?.messages).toHaveLength(51);
   });
 
   it("saves and restores cached chat list for a user", async () => {

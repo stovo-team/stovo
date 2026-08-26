@@ -22,7 +22,7 @@ func (ConsumerReceipt) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").StorageKey("consumer_name").NotEmpty().Immutable(),
 		field.String("event_id").NotEmpty().Immutable(),
-		field.JSON("result", map[string]any{}).Optional().Nillable(),
+		field.JSON("result", map[string]any{}).Optional(),
 		field.Time("completed_at").Immutable(),
 	}
 }
