@@ -117,7 +117,9 @@ services:
   # presence, rate-limit, or socket Pub/Sub data kept in `redis`.
   redis-jobs:
     image: redis@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    # Streams carry durable worker work. Do not evict a pending job under
+    # pressure; PostgreSQL remains the replayable source through outbox_events.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
     volumes:
       - redis-jobs-data:/data
     healthcheck:

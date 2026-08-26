@@ -263,6 +263,16 @@ export function clearMediaBlobCache(): void {
   activeFetches = 0;
 }
 
+/** Removes persisted media too; use this on logout/account removal. */
+export async function clearPersistentMediaBlobCache(): Promise<void> {
+  clearMediaBlobCache();
+  if (typeof caches === "undefined") return;
+  await Promise.allSettled([
+    caches.delete(CACHE_NAME),
+    ...LEGACY_CACHE_NAMES.map((name) => caches.delete(name)),
+  ]);
+}
+
 /** Test helper — clears in-memory entries without touching Cache Storage. */
 export function __resetMediaBlobMemoryForTests(): void {
   for (const entry of memory.values()) {

@@ -11,6 +11,10 @@ import {
 
 import { ApiError, ApiRequestOptions, apiRequest, getApiUrl, setApiUrlOverride, storeRefreshToken } from "../api/client";
 import { clearRecentChatHistory } from "../chatHistoryCache";
+import { clearCachedFileLists } from "../fileLibraryCache";
+import { clearPersistentMediaBlobCache } from "../mediaBlobCache";
+import { clearOutbox } from "../features/chats/outbox/messageOutboxStore";
+import { clearLocalReplicaProfile, prepareLocalReplicaProfile } from "../native/localReplicaPlugin";
 import {
   AuthResponse,
   LoginPayload,
@@ -80,6 +84,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessTokenRef.current = accessToken;
   }, [accessToken]);
 
+  // Generate/open the account key before the first route reads its replica.
+  // This is deliberately best-effort: web and unsupported Android devices
+  // retain their existing startup behavior, while the native bridge reports
+  // any key failure through its fail-closed cache writes.
+  useEffect(() => {
+    if (currentUser?.id) void prepareLocalReplicaProfile(currentUser.id);
+  }, [currentUser?.id]);
+
   // The registry is also updated by route discovery and background family
   // loading. Keep this React view in sync with those storage updates.
   useEffect(() => {
@@ -147,13 +159,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser(user);
   }, []);
 
+  const clearOfflineSessionState = useCallback(async () => {
+    const profileId = currentUser?.id;
+    await Promise.allSettled([
+      clearRecentChatHistory(),
+      clearCachedFileLists(),
+      clearPersistentMediaBlobCache(),
+      clearOutbox(),
+      ...(profileId ? [clearLocalReplicaProfile(profileId)] : []),
+    ]);
+  }, [currentUser?.id]);
+
   const clearExpiredSession = useCallback(async () => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    await clearRecentChatHistory();
+    await clearOfflineSessionState();
     storeRefreshToken(null);
     setAccessToken(null);
     setCurrentUser(null);
-  }, []);
+  }, [clearOfflineSessionState]);
 
   const refresh = useCallback(async () => {
     try {
@@ -258,11 +281,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimeout(refreshTimerRef.current);
     }
     await logoutRequest().catch(() => undefined);
-    await clearRecentChatHistory();
+    await clearOfflineSessionState();
     storeRefreshToken(null);
     setAccessToken(null);
     setCurrentUser(null);
-  }, []);
+  }, [clearOfflineSessionState]);
 
   const authRequest = useCallback(
     async <T,>(endpoint: string, options: ApiRequestOptions = {}) => {

@@ -1,5 +1,7 @@
 import { ApiError, apiRequest, getApiUrl } from "./client";
 import { getCachedFileBlob, prefetchFileBlobs, seedMediaBlobCache } from "../mediaBlobCache";
+import { enqueueBackgroundUpload, enqueueBrowserBackgroundUpload, getBackgroundUploadStatus } from "../native/backgroundUploadPlugin";
+import { nativeSourceUriForFile } from "../native/mediaLibraryPlugin";
 
 export interface FamilyFile {
   id: string;
@@ -61,7 +63,14 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
-export async function uploadFile(accessToken: string, file: File, chatId?: string | null) {
+function createUploadOperationId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `upload-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function uploadLegacyFile(accessToken: string, file: File, chatId?: string | null) {
   const body = new FormData();
   body.append("file", file);
   if (chatId) {
@@ -86,6 +95,120 @@ export async function uploadFile(accessToken: string, file: File, chatId?: strin
     // Non-fatal.
   }
   return uploaded;
+}
+
+function directUploadTarget(uploadUrl: string): string {
+  return /^https?:\/\//i.test(uploadUrl) ? uploadUrl : `${getApiUrl()}${uploadUrl}`;
+}
+
+async function waitForDirectUpload(
+  accessToken: string,
+  reservation: DirectFileUploadReservation,
+): Promise<FamilyFile> {
+  let current = reservation;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    if (current.state === "ready") {
+      return getFile(accessToken, current.fileId);
+    }
+    if (current.state === "rejected") {
+      throw new ApiError(422, "File was rejected during validation");
+    }
+    await new Promise<void>((resolve) => window.setTimeout(resolve, Math.min(1000 * (attempt + 1), 5000)));
+    current = await getDirectFileUpload(accessToken, current.uploadId);
+  }
+  // Keep the durable outbox queued: validation happens asynchronously and its
+  // result may be delayed while the worker fleet or storage is unavailable.
+  throw new ApiError(503, "File validation is still in progress");
+}
+
+async function uploadDirectFile(
+  accessToken: string,
+  file: File,
+  chatId: string | null | undefined,
+  idempotencyKey: string,
+): Promise<FamilyFile> {
+  let reservation = await reserveDirectFileUpload(accessToken, {
+    originalName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    sizeBytes: file.size,
+    chatId,
+  }, idempotencyKey);
+
+  if (reservation.state === "reserved") {
+    if (!reservation.uploadUrl) {
+      throw new ApiError(503, "Upload reservation did not include a transfer URL");
+    }
+    const putResponse = await fetch(directUploadTarget(reservation.uploadUrl), {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    });
+    if (!putResponse.ok) {
+      // Presigned URLs expire. Treat this as retriable: the stable reservation
+      // key returns a fresh URL on the next durable outbox attempt.
+      throw new ApiError(putResponse.status === 408 ? 408 : 503, "Direct file transfer did not complete");
+    }
+    reservation = await completeDirectFileUpload(accessToken, reservation.uploadId, idempotencyKey);
+  }
+
+  return waitForDirectUpload(accessToken, reservation);
+}
+
+async function uploadViaBackgroundWorker(
+  accessToken: string,
+  file: File,
+  chatId: string | null | undefined,
+  idempotencyKey: string,
+  profileId: string,
+  sourceUri?: string | null,
+): Promise<FamilyFile> {
+  const uploadOptions = {
+    profileId, operationId: idempotencyKey, apiUrl: getApiUrl(), accessToken,
+    originalName: file.name, mimeType: file.type || "application/octet-stream", sizeBytes: file.size, chatId,
+  };
+  const queued = sourceUri
+    ? await enqueueBackgroundUpload({ ...uploadOptions, sourceUri })
+    : await enqueueBrowserBackgroundUpload(uploadOptions, file);
+  if (!queued) return uploadDirectFile(accessToken, file, chatId, idempotencyKey);
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const status = await getBackgroundUploadStatus(profileId, idempotencyKey);
+    if (status?.status === "failed") throw new ApiError(422, status.error ?? "Background upload failed");
+    if (status?.uploadId) return waitForDirectUpload(accessToken, {
+      uploadId: status.uploadId, fileId: status.fileId ?? "", state: status.status,
+      expectedMimeType: file.type || "application/octet-stream", expectedSizeBytes: file.size,
+    });
+    await new Promise<void>((resolve) => window.setTimeout(resolve, Math.min(1000 * (attempt + 1), 5000)));
+  }
+  throw new ApiError(503, "Background transfer is still queued");
+}
+
+/**
+ * Uploads directly to object storage when the deployment has the public media
+ * endpoint enabled. The caller-owned idempotency key makes outbox retries
+ * resume the same reservation; older deployments retain the multipart route.
+ */
+export async function uploadFile(
+  accessToken: string,
+  file: File,
+  chatId?: string | null,
+  idempotencyKey = createUploadOperationId(),
+  backgroundProfileId?: string,
+) {
+  try {
+    const sourceUri = nativeSourceUriForFile(file);
+    if (backgroundProfileId) {
+      return await uploadViaBackgroundWorker(accessToken, file, chatId, idempotencyKey, backgroundProfileId, sourceUri);
+    }
+    return await uploadDirectFile(accessToken, file, chatId, idempotencyKey);
+  } catch (error) {
+    // Rolling deployments may not have MINIO_PUBLIC_ENDPOINT configured yet.
+    // Only that explicit capability response may use the legacy path; any
+    // other error remains visible to the durable outbox for a safe retry.
+    if (error instanceof ApiError && error.status === 503 && error.message === "Direct uploads are not configured") {
+      return uploadLegacyFile(accessToken, file, chatId);
+    }
+    throw error;
+  }
 }
 
 export function getFiles(accessToken: string) {

@@ -213,6 +213,7 @@ func (s *Server) Routes() http.Handler {
 	router.Patch("/api/chats/{chatId}/preferences", s.authenticated(s.handleUpdateChatPreferences))
 	router.Get("/api/chats/{chatId}/messages", s.authenticated(s.handleGetMessages))
 	router.Post("/api/chats/{chatId}/messages", s.authenticated(s.handleSendMessage))
+	router.Get("/api/messages/{messageId}", s.authenticated(s.handleGetMessage))
 	router.Post("/api/messages/{messageId}/attachments", s.authenticated(s.handleAttachMessageFiles))
 
 	router.Get("/api/chats/{chatId}/pins", s.authenticated(s.handleGetPins))

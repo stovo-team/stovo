@@ -275,7 +275,9 @@ func (s *Server) startCallSession(chat chatPublic, callerUserID string, callType
 	}
 
 	topology := callTopologyMesh
-	if isVoiceChannel && s.isSFUConfigured() {
+	// Voice channels are SFU-only. Unlike ad-hoc calls, they must never
+	// silently fall back to a mesh topology as members join and leave.
+	if isVoiceChannel {
 		topology = callTopologySFU
 	}
 	calleeUserID := ""
@@ -429,7 +431,7 @@ func (s *Server) joinCallSession(chat chatPublic, userID string, callType string
 			}
 		}
 		s.calls.SetActiveLocked(userID, session.ID)
-		if (chat.Type == "voice" || session.connectedOrConnectingCount() > maxMeshParticipants) && s.isSFUConfigured() {
+		if chat.Type == "voice" || (session.connectedOrConnectingCount() > maxMeshParticipants && s.isSFUConfigured()) {
 			session.Topology = callTopologySFU
 		}
 		s.calls.Unlock()

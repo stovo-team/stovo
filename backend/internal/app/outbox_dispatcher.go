@@ -27,11 +27,11 @@ const (
 )
 
 type leasedOutboxEvent struct {
-	ID           string
-	Topic        string
+	ID            string
+	Topic         string
 	SchemaVersion int
-	PartitionKey string
-	Payload      []byte
+	PartitionKey  string
+	Payload       []byte
 }
 
 // startOutboxDispatcher bridges the authoritative Postgres outbox to Redis
@@ -196,14 +196,15 @@ func (s *Server) processFileValidationJob(ctx context.Context, eventValue any, p
 		}
 	}
 
-	var fileID, objectKey, expectedMIME, state string
+	var fileID, objectKey, expectedMIME, state, familyID string
+	var chatID sql.NullString
 	var expectedBytes int64
 	var expectedChecksum sql.NullString
 	err := s.db.QueryRowContext(ctx, `
 		SELECT fu.file_id, fu.object_key, fu.expected_mime_type, fu.expected_size_bytes,
-		       fu.expected_checksum, fu.state
-		FROM file_uploads fu WHERE fu.id = $1`, job.UploadID).Scan(
-		&fileID, &objectKey, &expectedMIME, &expectedBytes, &expectedChecksum, &state)
+		       fu.expected_checksum, fu.state, f.family_id, f.chat_id
+		FROM file_uploads fu JOIN files f ON f.id=fu.file_id WHERE fu.id = $1`, job.UploadID).Scan(
+		&fileID, &objectKey, &expectedMIME, &expectedBytes, &expectedChecksum, &state, &familyID, &chatID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
@@ -255,17 +256,37 @@ func (s *Server) processFileValidationJob(ctx context.Context, eventValue any, p
 		return s.recordFileValidationReceipt(ctx, eventID)
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `
 		UPDATE file_uploads SET state = 'ready', updated_at = $2, failure_code = NULL WHERE id = $1`, job.UploadID, now); err != nil {
 		return err
 	}
-	if _, err := s.db.ExecContext(ctx, `
+	if _, err := tx.ExecContext(ctx, `
 		UPDATE files SET lifecycle_state = 'ready', object_revision = $2, detected_mime_type = $3,
 		       checksum = $4, validated_at = $5, validation_failure_code = NULL
 		WHERE id = $1`, fileID, uuid.NewString(), detectedMIME, checksum, now); err != nil {
 		return err
 	}
-	return s.recordFileValidationReceipt(ctx, eventID)
+	var syncChatID *string
+	if chatID.Valid {
+		syncChatID = &chatID.String
+	}
+	if err := writeFileSyncEventTx(ctx, tx, familyID, syncChatID, "file.changed", fileID); err != nil {
+		return err
+	}
+	if eventID != "" {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO consumer_receipts (consumer_name, event_id, result)
+			VALUES ($1, $2, '{"status":"processed"}'::jsonb)
+			ON CONFLICT (consumer_name, event_id) DO NOTHING`, fileValidationGroup, eventID); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func detectedMIMECompatible(expected, detected string) bool {

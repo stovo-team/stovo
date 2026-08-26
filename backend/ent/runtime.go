@@ -225,15 +225,15 @@ func init() {
 	// file.ObjectKeyValidator is a validator for the "object_key" field. It is called by the builders before save.
 	file.ObjectKeyValidator = fileDescObjectKey.Validators[0].(func(string) error)
 	// fileDescOriginalName is the schema descriptor for original_name field.
-	fileDescOriginalName := fileFields[8].Descriptor()
+	fileDescOriginalName := fileFields[16].Descriptor()
 	// file.OriginalNameValidator is a validator for the "original_name" field. It is called by the builders before save.
 	file.OriginalNameValidator = fileDescOriginalName.Validators[0].(func(string) error)
 	// fileDescMimeType is the schema descriptor for mime_type field.
-	fileDescMimeType := fileFields[9].Descriptor()
+	fileDescMimeType := fileFields[17].Descriptor()
 	// file.MimeTypeValidator is a validator for the "mime_type" field. It is called by the builders before save.
 	file.MimeTypeValidator = fileDescMimeType.Validators[0].(func(string) error)
 	// fileDescCreatedAt is the schema descriptor for created_at field.
-	fileDescCreatedAt := fileFields[12].Descriptor()
+	fileDescCreatedAt := fileFields[20].Descriptor()
 	// file.CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
 	file.CreatedAtValidator = fileDescCreatedAt.Validators[0].(func(string) error)
 	// fileDescID is the schema descriptor for id field.

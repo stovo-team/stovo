@@ -1,8 +1,12 @@
+import {
+  isAndroidLocalReplicaPlatform,
+  loadNativeReplicaValue,
+  saveNativeReplicaValue,
+} from "./native/localReplicaPlugin";
+
 const DATABASE_NAME = "stovo-chat-history-v1";
 const STORE_NAME = "recent-history";
 const CHAT_LIST_KEY = "__chat_list__";
-const MAX_CHATS = 20;
-const MAX_MESSAGES_PER_CHAT = 50;
 
 export type CachedChatHistory<T extends { id: string } = { id: string }> = {
   userId: string;
@@ -31,8 +35,7 @@ export function trimRecentChatHistory<T extends { id: string }>(
   return [...entries]
     .filter((entry) => entry.chatId !== CHAT_LIST_KEY)
     .sort((left, right) => left.accessedAt - right.accessedAt)
-    .slice(-MAX_CHATS)
-    .map((entry) => ({ ...entry, messages: entry.messages.slice(-MAX_MESSAGES_PER_CHAT) }));
+    .map((entry) => ({ ...entry, messages: [...entry.messages] }));
 }
 
 function database(): Promise<IDBDatabase> {
@@ -74,7 +77,44 @@ function saveCachedChatListToLocalStorage<T>(userId: string, chats: T[]): void {
   }
 }
 
+async function removeLegacyCacheEntry(userId: string, chatId: string): Promise<void> {
+  if (typeof localStorage !== "undefined") {
+    try {
+      if (chatId === CHAT_LIST_KEY) {
+        localStorage.removeItem(getLocalStorageKey(userId));
+      } else {
+        localStorage.removeItem(`stovo_cached_messages_${userId}_${chatId}`);
+      }
+    } catch {
+      // Best effort; the IndexedDB record is removed independently.
+    }
+  }
+  if (typeof indexedDB === "undefined") return;
+  try {
+    const db = await database();
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    transaction.objectStore(STORE_NAME).delete([userId, chatId]);
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+    db.close();
+  } catch {
+    // Non-fatal; a later encrypted write will retry this cleanup.
+  }
+}
+
 export async function loadCachedChatList<T>(userId: string): Promise<T[] | null> {
+  const native = await loadNativeReplicaValue(userId, "chat-list");
+  if (native) {
+    try {
+      const parsed = JSON.parse(native);
+      if (Array.isArray(parsed)) return parsed as T[];
+    } catch {
+      // Fall through to the legacy cache during a staged migration.
+    }
+  }
   if (typeof indexedDB === "undefined") {
     return loadCachedChatListFromLocalStorage<T>(userId);
   }
@@ -88,15 +128,29 @@ export async function loadCachedChatList<T>(userId: string): Promise<T[] | null>
     });
     db.close();
     if (entry?.chats && Array.isArray(entry.chats)) {
+      if (isAndroidLocalReplicaPlatform()) {
+        void saveCachedChatList(userId, entry.chats);
+      }
       return entry.chats;
     }
-    return loadCachedChatListFromLocalStorage<T>(userId);
+    const fallback = loadCachedChatListFromLocalStorage<T>(userId);
+    if (fallback && isAndroidLocalReplicaPlatform()) void saveCachedChatList(userId, fallback);
+    return fallback;
   } catch {
-    return loadCachedChatListFromLocalStorage<T>(userId);
+    const fallback = loadCachedChatListFromLocalStorage<T>(userId);
+    if (fallback && isAndroidLocalReplicaPlatform()) void saveCachedChatList(userId, fallback);
+    return fallback;
   }
 }
 
 export async function saveCachedChatList<T>(userId: string, chats: T[]): Promise<void> {
+  if (await saveNativeReplicaValue(userId, "chat-list", JSON.stringify(chats))) {
+    void removeLegacyCacheEntry(userId, CHAT_LIST_KEY);
+    return;
+  }
+  // Android is intentionally fail-closed: never create a new plaintext
+  // browser cache when the Keystore-backed replica cannot accept this value.
+  if (isAndroidLocalReplicaPlatform()) return;
   saveCachedChatListToLocalStorage(userId, chats);
   if (typeof indexedDB === "undefined") return;
   try {
@@ -124,6 +178,7 @@ export function loadRecentChatHistoryFromLocalStorage<T extends { id: string }>(
   userId: string,
   chatId: string
 ): T[] | null {
+  if (isAndroidLocalReplicaPlatform()) return null;
   if (typeof localStorage === "undefined") return null;
   try {
     const raw = localStorage.getItem(`stovo_cached_messages_${userId}_${chatId}`);
@@ -140,11 +195,12 @@ export function saveRecentChatHistoryToLocalStorage<T extends { id: string }>(
   chatId: string,
   messages: T[]
 ): void {
+  if (isAndroidLocalReplicaPlatform()) return;
   if (typeof localStorage === "undefined") return;
   try {
     localStorage.setItem(
       `stovo_cached_messages_${userId}_${chatId}`,
-      JSON.stringify(messages.slice(-MAX_MESSAGES_PER_CHAT))
+      JSON.stringify(messages)
     );
   } catch {
     // Non-fatal.
@@ -152,6 +208,15 @@ export function saveRecentChatHistoryToLocalStorage<T extends { id: string }>(
 }
 
 export async function loadRecentChatHistory<T extends { id: string }>(userId: string, chatId: string): Promise<T[] | null> {
+  const native = await loadNativeReplicaValue(userId, `history:${chatId}`);
+  if (native) {
+    try {
+      const parsed = JSON.parse(native);
+      if (Array.isArray(parsed)) return parsed as T[];
+    } catch {
+      // Fall through during migration.
+    }
+  }
   const localFallback = loadRecentChatHistoryFromLocalStorage<T>(userId, chatId);
   if (typeof indexedDB === "undefined") return localFallback;
   try {
@@ -172,16 +237,27 @@ export async function loadRecentChatHistory<T extends { id: string }>(userId: st
     }
     db.close();
     if (entry?.messages && Array.isArray(entry.messages)) {
-      saveRecentChatHistoryToLocalStorage(userId, chatId, entry.messages);
+      if (isAndroidLocalReplicaPlatform()) {
+        void saveRecentChatHistory(userId, chatId, entry.messages);
+      } else {
+        saveRecentChatHistoryToLocalStorage(userId, chatId, entry.messages);
+      }
       return entry.messages;
     }
+    if (localFallback && isAndroidLocalReplicaPlatform()) void saveRecentChatHistory(userId, chatId, localFallback);
     return localFallback;
   } catch {
+    if (localFallback && isAndroidLocalReplicaPlatform()) void saveRecentChatHistory(userId, chatId, localFallback);
     return localFallback;
   }
 }
 
 export async function saveRecentChatHistory<T extends { id: string }>(userId: string, chatId: string, messages: T[]): Promise<void> {
+  if (await saveNativeReplicaValue(userId, `history:${chatId}`, JSON.stringify(messages))) {
+    void removeLegacyCacheEntry(userId, chatId);
+    return;
+  }
+  if (isAndroidLocalReplicaPlatform()) return;
   saveRecentChatHistoryToLocalStorage(userId, chatId, messages);
   if (typeof indexedDB === "undefined") return;
   try {
@@ -195,7 +271,7 @@ export async function saveRecentChatHistory<T extends { id: string }>(userId: st
       userId,
       chatId,
       accessedAt: Date.now(),
-      messages: messages.slice(-MAX_MESSAGES_PER_CHAT),
+      messages,
     };
     const retained = trimRecentChatHistory([
       ...existing.filter((entry) => entry.userId === userId && entry.chatId !== chatId),
@@ -224,7 +300,9 @@ export async function saveRecentChatHistory<T extends { id: string }>(userId: st
 export async function clearRecentChatHistory(): Promise<void> {
   if (typeof localStorage !== "undefined") {
     try {
-      const keys = Object.keys(localStorage).filter((key) => key.startsWith("stovo_cached_chats_"));
+      const keys = Object.keys(localStorage).filter(
+        (key) => key.startsWith("stovo_cached_chats_") || key.startsWith("stovo_cached_messages_"),
+      );
       for (const key of keys) localStorage.removeItem(key);
     } catch {
       // Non-fatal.
