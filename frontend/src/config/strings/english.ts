@@ -248,6 +248,12 @@ export const strings = {
     // toggles
     videoAutoplay: "Video autoplay",
     videoAutoplayHelp: "Muted inline preview like Telegram",
+    autoDownloadMedia: "Auto-download media",
+    autoDownloadMediaHelp: "Cache eligible attachments for offline viewing",
+    autoDownloadWiFiOnly: "Wi-Fi only",
+    autoDownloadWiFiOnlyHelp: "Do not prefetch on cellular or when the connection cannot be verified",
+    autoDownloadLimit: "Auto-download size limit",
+    autoDownloadLimitHelp: "Files above this size are shown as metadata until you open or save them",
     renderMarkdown: "Render markdown",
     renderMarkdownHelp: "Bold, italic, links, code, and more",
     enterToSend: "Enter to send",

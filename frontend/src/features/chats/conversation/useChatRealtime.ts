@@ -68,7 +68,7 @@ export function useChatRealtime({
           if (displayMessage.attachments?.length && accessTokenRef?.current) {
             prefetchFiles(
               accessTokenRef.current,
-              displayMessage.attachments.map((a) => a.id).filter(Boolean)
+              displayMessage.attachments
             );
           }
           onChatsUpdate((current) =>
@@ -102,7 +102,7 @@ export function useChatRealtime({
           if (displayMessage.attachments?.length && accessTokenRef?.current) {
             prefetchFiles(
               accessTokenRef.current,
-              displayMessage.attachments.map((a) => a.id).filter(Boolean)
+              displayMessage.attachments
             );
           }
           applyMessagesForChat(message.chatId, (current) => replaceMessage(current, displayMessage));

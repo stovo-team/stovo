@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { downloadFileBlob, FamilyFile } from "../api/files";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
+import { shouldAutoDownloadMedia } from "../mediaDownloadPolicy";
 
 export default function useFilePreviewUrl(
   accessToken: string | null,
@@ -32,6 +33,13 @@ export default function useFilePreviewUrl(
     }
 
     if (!accessToken) {
+      setPreviewUrl(null);
+      return undefined;
+    }
+
+    // Large/restricted media deliberately stays metadata-only until the user
+    // explicitly opens or saves it. Cached blobs remain immediately usable.
+    if (!shouldAutoDownloadMedia(file)) {
       setPreviewUrl(null);
       return undefined;
     }

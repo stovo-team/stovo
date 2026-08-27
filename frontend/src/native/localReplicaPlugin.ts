@@ -33,6 +33,8 @@ type NativeLocalReplicaPlugin = {
   setValue(options: { profileId: string; key: string; value: string }): Promise<{ replicaReady: boolean }>;
   getSyncCursor(options: { profileId: string }): Promise<{ cursor: string | null; replicaReady: boolean }>;
   setSyncCursor(options: { profileId: string; cursor: string }): Promise<{ replicaReady: boolean }>;
+  putOperation(options: { profileId: string; operationJson: string }): Promise<{ replicaReady: boolean }>;
+  removeOperation(options: { profileId: string; operationId: string }): Promise<{ replicaReady: boolean }>;
   listOperations(options: { profileId: string; statuses?: LocalReplicaOperationStatus[] }): Promise<{
     operations: LocalReplicaOperation[];
     replicaReady: boolean;
@@ -135,10 +137,31 @@ export async function saveNativeReplicaSyncCursor(profileId: string, cursor: str
   }
 }
 
-/**
- * Returns an empty list until operation persistence is shipped. It is not a
- * replacement for the existing message outbox during the scaffold phase.
- */
+/** Stores one encrypted, account-scoped operation in the native durable outbox. */
+export async function putNativeReplicaOperation(profileId: string, operation: LocalReplicaOperation): Promise<boolean> {
+  if (!isAndroidLocalReplicaPlatform() || !profileId.trim() || !operation.id.trim()) return false;
+  const status = await prepareLocalReplicaProfile(profileId);
+  if (!status.replicaReady) return false;
+  try {
+    const result = await LocalReplicaPlugin.putOperation({ profileId, operationJson: JSON.stringify(operation) });
+    return result.replicaReady;
+  } catch {
+    return false;
+  }
+}
+
+export async function removeNativeReplicaOperation(profileId: string, operationId: string): Promise<boolean> {
+  if (!isAndroidLocalReplicaPlatform() || !profileId.trim() || !operationId.trim()) return false;
+  const status = await prepareLocalReplicaProfile(profileId);
+  if (!status.replicaReady) return false;
+  try {
+    const result = await LocalReplicaPlugin.removeOperation({ profileId, operationId });
+    return result.replicaReady;
+  } catch {
+    return false;
+  }
+}
+
 export async function listNativeReplicaOperations(
   profileId: string,
   statuses?: LocalReplicaOperationStatus[]

@@ -1,5 +1,12 @@
 import type { Message, MessageEncryptionProtocol } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
+import {
+  isAndroidLocalReplicaPlatform,
+  listNativeReplicaOperations,
+  putNativeReplicaOperation,
+  removeNativeReplicaOperation,
+  type LocalReplicaOperation,
+} from "../../../native/localReplicaPlugin";
 
 export interface QueuedOutboxAttachment {
   id: string;
@@ -51,9 +58,65 @@ export interface QueuedOutboxMessage {
 const DATABASE_NAME = "stovo-outbox-v1";
 const STORE_NAME = "outbox_messages";
 const LOCAL_STORAGE_PREFIX = "stovo_outbox_queue_";
+const memoryFallback = new Map<string, QueuedOutboxMessage[]>();
 
 function getLocalStorageKey(userId: string): string {
   return `${LOCAL_STORAGE_PREFIX}${userId}`;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let result = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    result += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + 0x8000)));
+  }
+  return btoa(result);
+}
+
+async function forNativeReplica(item: QueuedOutboxMessage): Promise<QueuedOutboxMessage> {
+  const attachments = await Promise.all(item.attachments.map(async ({ blob, ...attachment }) => ({
+    ...attachment,
+    // Android content URIs are later handed directly to the encrypted
+    // WorkManager transfer staging path. Browser-originated Files retain an
+    // encrypted base64 copy in the native operation instead.
+    dataBase64: attachment.dataBase64 ?? (!attachment.nativeSourceUri && blob ? bytesToBase64(new Uint8Array(await blob.arrayBuffer())) : undefined),
+  })));
+  return { ...item, attachments };
+}
+
+function nativeOperation(item: QueuedOutboxMessage): LocalReplicaOperation {
+  const now = new Date().toISOString();
+  return {
+    id: item.id,
+    type: "message.send",
+    payloadJson: JSON.stringify(item),
+    // The ID is already a UUID generated client-side and doubles as the
+    // idempotency identity. The server validates the request hash separately.
+    payloadHash: item.clientMessageId,
+    dependencies: [],
+    status: item.status === "failed" ? "failed" : item.status === "sending" ? "running" : "queued",
+    attemptCount: item.attemptCount,
+    createdAt: item.createdAt,
+    updatedAt: now,
+    errorCode: item.deliveryError ?? null,
+  };
+}
+
+async function nativeOutboxItems(userId: string): Promise<QueuedOutboxMessage[]> {
+  const operations = await listNativeReplicaOperations(userId);
+  const result: QueuedOutboxMessage[] = [];
+  for (const operation of operations) {
+    if (operation.type !== "message.send") continue;
+    try {
+      const item = JSON.parse(operation.payloadJson) as QueuedOutboxMessage;
+      if (item.userId === userId) {
+        const status = operation.status === "failed" ? "failed" : operation.status === "running" ? "sending" : "queued";
+        result.push({ ...item, status, attemptCount: operation.attemptCount });
+      }
+    } catch {
+      // One malformed encrypted record must not hide the rest of the outbox.
+    }
+  }
+  return result.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 function database(): Promise<IDBDatabase> {
@@ -77,18 +140,19 @@ function database(): Promise<IDBDatabase> {
 }
 
 function loadOutboxFromLocalStorage(userId: string): QueuedOutboxMessage[] {
-  if (typeof localStorage === "undefined") return [];
+  if (typeof localStorage === "undefined") return memoryFallback.get(userId) ?? [];
   try {
     const raw = localStorage.getItem(getLocalStorageKey(userId));
-    if (!raw) return [];
+    if (!raw) return memoryFallback.get(userId) ?? [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as QueuedOutboxMessage[]) : [];
   } catch {
-    return [];
+    return memoryFallback.get(userId) ?? [];
   }
 }
 
 function saveOutboxToLocalStorage(userId: string, messages: QueuedOutboxMessage[]): void {
+  memoryFallback.set(userId, messages);
   if (typeof localStorage === "undefined") return;
   try {
     // Exclude raw Blobs from JSON serialization to avoid JSON.stringify crash
@@ -103,6 +167,11 @@ function saveOutboxToLocalStorage(userId: string, messages: QueuedOutboxMessage[
 }
 
 export async function enqueueOutboxMessage(item: QueuedOutboxMessage): Promise<void> {
+  if (isAndroidLocalReplicaPlatform()) {
+    const stored = await putNativeReplicaOperation(item.userId, nativeOperation(await forNativeReplica(item)));
+    if (!stored) throw new Error("Encrypted Android outbox is unavailable");
+    return;
+  }
   // Sync to localStorage
   const currentLocal = loadOutboxFromLocalStorage(item.userId);
   const existingIdx = currentLocal.findIndex((msg) => msg.id === item.id);
@@ -130,6 +199,9 @@ export async function enqueueOutboxMessage(item: QueuedOutboxMessage): Promise<v
 }
 
 export async function getOutboxMessages(userId?: string): Promise<QueuedOutboxMessage[]> {
+  if (isAndroidLocalReplicaPlatform()) {
+    return userId ? nativeOutboxItems(userId) : [];
+  }
   if (!userId) {
     if (typeof indexedDB === "undefined") return [];
     try {
@@ -181,6 +253,13 @@ export async function updateOutboxMessage(
   userId: string,
   updates: Partial<QueuedOutboxMessage>
 ): Promise<void> {
+  if (isAndroidLocalReplicaPlatform()) {
+    const current = (await nativeOutboxItems(userId)).find((item) => item.id === id);
+    if (!current) return;
+    const stored = await putNativeReplicaOperation(userId, nativeOperation(await forNativeReplica({ ...current, ...updates })));
+    if (!stored) throw new Error("Encrypted Android outbox is unavailable");
+    return;
+  }
   const currentLocal = loadOutboxFromLocalStorage(userId);
   const idx = currentLocal.findIndex((msg) => msg.id === id);
   if (idx >= 0) {
@@ -214,6 +293,11 @@ export async function updateOutboxMessage(
 }
 
 export async function removeOutboxMessage(id: string, userId?: string): Promise<void> {
+  if (isAndroidLocalReplicaPlatform()) {
+    if (!userId) return;
+    if (!(await removeNativeReplicaOperation(userId, id))) throw new Error("Encrypted Android outbox is unavailable");
+    return;
+  }
   if (userId) {
     const currentLocal = loadOutboxFromLocalStorage(userId);
     const filtered = currentLocal.filter((msg) => msg.id !== id);
@@ -253,7 +337,14 @@ export async function removeOutboxMessage(id: string, userId?: string): Promise<
 }
 
 export async function clearOutbox(userId?: string): Promise<void> {
+  if (isAndroidLocalReplicaPlatform()) {
+    if (!userId) return;
+    const operations = await nativeOutboxItems(userId);
+    await Promise.all(operations.map((item) => removeNativeReplicaOperation(userId, item.id)));
+    return;
+  }
   if (userId) {
+    memoryFallback.delete(userId);
     if (typeof localStorage !== "undefined") {
       try {
         localStorage.removeItem(getLocalStorageKey(userId));
@@ -261,12 +352,15 @@ export async function clearOutbox(userId?: string): Promise<void> {
         // ignore
       }
     }
-  } else if (typeof localStorage !== "undefined") {
-    try {
-      const keys = Object.keys(localStorage).filter((k) => k.startsWith(LOCAL_STORAGE_PREFIX));
-      for (const key of keys) localStorage.removeItem(key);
-    } catch {
-      // ignore
+  } else {
+    memoryFallback.clear();
+    if (typeof localStorage !== "undefined") {
+      try {
+        const keys = Object.keys(localStorage).filter((k) => k.startsWith(LOCAL_STORAGE_PREFIX));
+        for (const key of keys) localStorage.removeItem(key);
+      } catch {
+        // ignore
+      }
     }
   }
 

@@ -33,6 +33,12 @@ export interface AppearanceSettings {
   avatarColor: string;
   /** Muted inline video autoplay in chat (Telegram-style). */
   videoAutoplay: boolean;
+  /** Pre-cache eligible chat attachments for offline viewing. */
+  autoDownloadMedia: boolean;
+  /** Maximum attachment size automatically cached, in MiB. */
+  autoDownloadLimitMB: number;
+  /** Require a connection that is not reported as cellular/metered. */
+  autoDownloadWiFiOnly: boolean;
   /** Render message markdown instead of plain text. */
   renderMarkdown: boolean;
   /** When true, Enter sends; when false, Enter inserts a newline (Ctrl/Cmd+Enter sends). */
@@ -90,6 +96,9 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   messageScale: 1,
   avatarColor: "#0ea5e9",
   videoAutoplay: true,
+  autoDownloadMedia: true,
+  autoDownloadLimitMB: 10,
+  autoDownloadWiFiOnly: false,
   renderMarkdown: true,
   sendOnEnter: true
 };
@@ -253,6 +262,18 @@ function readAppearanceSettings(): AppearanceSettings {
         typeof parsed.videoAutoplay === "boolean"
           ? parsed.videoAutoplay
           : DEFAULT_APPEARANCE.videoAutoplay,
+      autoDownloadMedia:
+        typeof parsed.autoDownloadMedia === "boolean"
+          ? parsed.autoDownloadMedia
+          : DEFAULT_APPEARANCE.autoDownloadMedia,
+      autoDownloadLimitMB:
+        typeof parsed.autoDownloadLimitMB === "number" && [1, 5, 10, 25, 50].includes(parsed.autoDownloadLimitMB)
+          ? parsed.autoDownloadLimitMB
+          : DEFAULT_APPEARANCE.autoDownloadLimitMB,
+      autoDownloadWiFiOnly:
+        typeof parsed.autoDownloadWiFiOnly === "boolean"
+          ? parsed.autoDownloadWiFiOnly
+          : DEFAULT_APPEARANCE.autoDownloadWiFiOnly,
       renderMarkdown:
         typeof parsed.renderMarkdown === "boolean"
           ? parsed.renderMarkdown

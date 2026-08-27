@@ -10,11 +10,12 @@ function invalidSource(file: FamilyFile, accessToken: string, identity: VideoIde
   return /^video\/[^\s/]+$/i.test(file.mimeType.trim()) ? null : "format";
 }
 
-export function useVideoSource(file: FamilyFile, accessToken: string, identity: VideoIdentity, onLoading: () => void, onFailure: (message: string) => void) {
+export function useVideoSource(file: FamilyFile, accessToken: string, identity: VideoIdentity, onLoading: () => void, onFailure: (message: string) => void, enabled = true) {
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     setSourceUrl(null);
+    if (!enabled && !peekCachedObjectUrl(file.id)) return () => { cancelled = true; };
     const invalid = invalidSource(file, accessToken, identity);
     if (invalid) { onFailure(invalid === "format" ? "Unsupported video format" : "Video source is unavailable"); return () => { cancelled = true; }; }
     onLoading();
@@ -35,6 +36,6 @@ export function useVideoSource(file: FamilyFile, accessToken: string, identity: 
       }).catch(() => { if (!cancelled) onFailure("Video download failed"); });
     });
     return () => { cancelled = true; };
-  }, [accessToken, file.id, file.mimeType, identity.chatId, identity.fileId, identity.messageId, onFailure, onLoading]);
+  }, [accessToken, enabled, file.id, file.mimeType, identity.chatId, identity.fileId, identity.messageId, onFailure, onLoading]);
   return sourceUrl;
 }
