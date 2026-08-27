@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { FileText, Image } from "lucide-react";
 
 import { downloadFileBlob, formatFileSize, saveFileToDisk } from "../../../api/files";
@@ -8,6 +8,7 @@ import { DocumentAttachmentPreview, detectDocumentPreviewKind } from "../../../c
 import { VideoPlayer } from "../../../components/VideoPlayer";
 import useFilePreviewUrl from "../../../hooks/useFilePreviewUrl";
 import { peekCachedObjectUrl } from "../../../mediaBlobCache";
+import { shouldAutoDownloadMedia } from "../../../mediaDownloadPolicy";
 import { audioPlaybackSession, type AudioDescriptor } from "../../../audioPlaybackSession";
 import { buildAudioSourceFactory } from "../shared/audioSourceFactory";
 import { isImageAttachment } from "../shared/messagePresentation";
@@ -41,24 +42,37 @@ export function MessageImageAttachment({
   onOpenImage?: (file: FamilyFile, previewUrl: string) => void;
 }) {
   const previewUrl = useFilePreviewUrl(accessToken, file, true);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const openOrDownload = async () => {
+    if (previewUrl) {
+      onOpenImage?.(file, previewUrl);
+      return;
+    }
+    if (!accessToken || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      await downloadFileBlob(accessToken, file.id);
+      const cached = peekCachedObjectUrl(file.id);
+      if (cached) onOpenImage?.(file, cached);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <button
       type="button"
       className="message-photo-attachment"
-      aria-label={`Open ${file.originalName} full view`}
-      disabled={!previewUrl}
-      onClick={() => {
-        if (previewUrl) {
-          onOpenImage?.(file, previewUrl);
-        }
-      }}
+      aria-label={`${previewUrl ? "Open" : "Download"} ${file.originalName}`}
+      disabled={!previewUrl && !accessToken}
+      onClick={() => void openOrDownload()}
     >
       {previewUrl ? (
         <img src={previewUrl} alt="" />
       ) : (
         <span className="message-photo-placeholder" aria-hidden="true">
-          <Image size={28} />
+          <Image size={28} />{isDownloading ? " Downloading…" : " Download"}
         </span>
       )}
     </button>
@@ -97,6 +111,7 @@ export function AttachmentCard({
     if (cached) return cached;
     if (file.id.startsWith("local:")) return null;
     if (!accessToken?.trim()) return null;
+    if (!shouldAutoDownloadMedia(file)) return null;
     try {
       await downloadFileBlob(accessToken, file.id);
       return peekCachedObjectUrl(file.id);

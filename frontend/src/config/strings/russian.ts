@@ -264,6 +264,12 @@ export const strings = {
     // toggles
     videoAutoplay: "Автовоспроизведение видео",
     videoAutoplayHelp: "Встроенный предпросмотр без звука, как в Telegram",
+    autoDownloadMedia: "Автозагрузка медиа",
+    autoDownloadMediaHelp: "Кэшировать подходящие вложения для просмотра офлайн",
+    autoDownloadWiFiOnly: "Только по Wi‑Fi",
+    autoDownloadWiFiOnlyHelp: "Не загружать заранее по мобильной сети или при неизвестном типе сети",
+    autoDownloadLimit: "Лимит размера автозагрузки",
+    autoDownloadLimitHelp: "Файлы больше лимита отображаются как метаданные, пока вы не откроете или не сохраните их",
     renderMarkdown: "Рендеринг markdown",
     renderMarkdownHelp: "Жирный, курсив, ссылки, код и многое другое",
     enterToSend: "Отправка по Enter",

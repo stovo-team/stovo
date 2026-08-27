@@ -315,16 +315,9 @@ export function useMessageThread({
         applyMessagesForChat(chatIdToLoad, (current) => mergeMessageLists(current, decrypted));
         historyCursorRef.current[chatIdToLoad] = page.hasMore ? page.nextBefore : null;
         if (token && decrypted.length > 0) {
-          const fileIds: string[] = [];
-          for (const m of decrypted) {
-            if (m.attachments?.length) {
-              for (const a of m.attachments) {
-                if (a.id) fileIds.push(a.id);
-              }
-            }
-          }
-          if (fileIds.length > 0) {
-            prefetchFiles(token, fileIds);
+          const attachments = decrypted.flatMap((message) => message.attachments ?? []);
+          if (attachments.length > 0) {
+            prefetchFiles(token, attachments);
           }
         }
         window.requestAnimationFrame(() => {

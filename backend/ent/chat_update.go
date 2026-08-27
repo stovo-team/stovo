@@ -509,6 +509,9 @@ func (_u *ChatUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.PinPermission(); ok {
 		_spec.SetField(chat.FieldPinPermission, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.MessageDelaySeconds(); ok {
+		_spec.SetField(chat.FieldMessageDelaySeconds, field.TypeInt, value)
+	}
 	if _u.mutation.FamilyCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -1272,6 +1275,9 @@ func (_u *ChatUpdateOne) sqlSave(ctx context.Context) (_node *Chat, err error) {
 	}
 	if value, ok := _u.mutation.PinPermission(); ok {
 		_spec.SetField(chat.FieldPinPermission, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MessageDelaySeconds(); ok {
+		_spec.SetField(chat.FieldMessageDelaySeconds, field.TypeInt, value)
 	}
 	if _u.mutation.FamilyCleared() {
 		edge := &sqlgraph.EdgeSpec{

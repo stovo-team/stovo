@@ -50,10 +50,10 @@ export function isNetworkError(err: unknown): boolean {
 }
 
 export function reconstructFileFromQueuedAttachment(attachment: QueuedOutboxAttachment): File {
+  let file: File;
   if (attachment.blob) {
-    return new File([attachment.blob], attachment.name, { type: attachment.mimeType });
-  }
-  if (attachment.dataBase64) {
+    file = new File([attachment.blob], attachment.name, { type: attachment.mimeType });
+  } else if (attachment.dataBase64) {
     try {
       const byteCharacters = atob(attachment.dataBase64);
       const byteNumbers = new Array(byteCharacters.length);
@@ -62,12 +62,17 @@ export function reconstructFileFromQueuedAttachment(attachment: QueuedOutboxAtta
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: attachment.mimeType });
-      return new File([blob], attachment.name, { type: attachment.mimeType });
+      file = new File([blob], attachment.name, { type: attachment.mimeType });
     } catch {
-      // Fallback
+      file = new File([], attachment.name, { type: attachment.mimeType });
     }
+  } else {
+    file = new File([], attachment.name, { type: attachment.mimeType });
   }
-  return new File([], attachment.name, { type: attachment.mimeType });
+  if (attachment.nativeSourceUri) {
+    Object.defineProperty(file, "stovoNativeSourceUri", { value: attachment.nativeSourceUri, enumerable: false });
+  }
+  return file;
 }
 
 export interface OutboxProcessOptions {

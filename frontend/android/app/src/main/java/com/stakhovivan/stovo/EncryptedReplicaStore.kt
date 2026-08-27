@@ -54,6 +54,10 @@ internal class EncryptedReplicaStore(private val root: File) {
         File(root, digest).deleteRecursively()
     }
 
+    fun delete(profileId: String, key: String) {
+        fileFor(profileId, key)?.delete()
+    }
+
     private fun fileFor(profileId: String, key: String): File? {
         if (key.isBlank() || key.length > 512) return null
         val profileDigest = ReplicaKeyStore.profileDigest(profileId) ?: return null

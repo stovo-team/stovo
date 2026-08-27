@@ -2,6 +2,7 @@ import { ApiError, apiRequest, getApiUrl } from "./client";
 import { getCachedFileBlob, prefetchFileBlobs, seedMediaBlobCache } from "../mediaBlobCache";
 import { enqueueBackgroundUpload, enqueueBrowserBackgroundUpload, getBackgroundUploadStatus } from "../native/backgroundUploadPlugin";
 import { nativeSourceUriForFile } from "../native/mediaLibraryPlugin";
+import { shouldAutoDownloadMedia } from "../mediaDownloadPolicy";
 
 export interface FamilyFile {
   id: string;
@@ -324,8 +325,8 @@ export async function downloadFileBlob(accessToken: string, fileId: string) {
   return getCachedFileBlob(accessToken, fileId, fetchFileBlob);
 }
 
-export function prefetchFiles(accessToken: string, fileIds: string[]) {
-  prefetchFileBlobs(accessToken, fileIds, fetchFileBlob);
+export function prefetchFiles(accessToken: string, files: Array<Pick<FamilyFile, "id" | "sizeBytes">>) {
+  prefetchFileBlobs(accessToken, files.filter(shouldAutoDownloadMedia).map((file) => file.id), fetchFileBlob);
 }
 
 export async function saveFileToDisk(accessToken: string, file: FamilyFile) {
