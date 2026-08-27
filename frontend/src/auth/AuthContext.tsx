@@ -13,6 +13,7 @@ import { ApiError, ApiRequestOptions, apiRequest, getApiUrl, setApiUrlOverride, 
 import { clearRecentChatHistory } from "../chatHistoryCache";
 import { clearCachedFileLists } from "../fileLibraryCache";
 import { clearPersistentMediaBlobCache } from "../mediaBlobCache";
+import { clearApiResponseCache } from "../api/apiResponseCache";
 import { clearOutbox } from "../features/chats/outbox/messageOutboxStore";
 import { clearLocalReplicaProfile, prepareLocalReplicaProfile } from "../native/localReplicaPlugin";
 import {
@@ -175,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearRecentChatHistory(),
       clearCachedFileLists(),
       clearPersistentMediaBlobCache(),
+      clearApiResponseCache(profileId),
       clearOutbox(),
       ...(profileId ? [clearLocalReplicaProfile(profileId)] : []),
     ]);

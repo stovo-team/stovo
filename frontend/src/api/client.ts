@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { loadApiResponseCache, saveApiResponseCache } from "./apiResponseCache";
 
 const DEFAULT_API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const API_URL_STORAGE_KEY = "familyMessenger.apiUrl";
@@ -102,6 +103,16 @@ function deriveApiUrlFromBrowser() {
 }
 
 import { deriveServerNameFromUrl, getActiveServer, hashServerUrl, loadServerState, normalizeApiUrl as registryNormalizeApiUrl, setActiveServerId, upsertServer } from "./serverRegistry";
+
+function cacheProfileId() {
+  return getActiveServer()?.user?.id ?? null;
+}
+
+function canCacheRequest(endpoint: string, options: ApiRequestOptions) {
+  return (options.method ?? "GET").toUpperCase() === "GET" &&
+    Boolean(options.accessToken) &&
+    !endpoint.startsWith("/api/auth/");
+}
 
 export function getApiUrl(): string {
   if (typeof window !== "undefined") {
@@ -266,12 +277,21 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
     headers.set("Authorization", `Bearer ${options.accessToken}`);
   }
 
-  const response = await fetch(`${apiUrl}${endpoint}`, {
-    ...options,
-    body,
-    headers,
-    credentials: "include"
-  });
+  const cacheable = canCacheRequest(endpoint, options);
+  const profileId = cacheable ? cacheProfileId() : null;
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl}${endpoint}`, {
+      ...options,
+      body,
+      headers,
+      credentials: "include"
+    });
+  } catch (error) {
+    const cached = cacheable ? await loadApiResponseCache<T>(profileId, endpoint) : null;
+    if (cached !== null) return cached;
+    throw error;
+  }
 
   if (response.status === 204) {
     return undefined as T;
@@ -280,9 +300,16 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
+    // A server outage should not erase a usable local view. Authentication and
+    // client errors remain authoritative and are never replaced by stale data.
+    if (response.status >= 500 && cacheable) {
+      const cached = await loadApiResponseCache<T>(profileId, endpoint);
+      if (cached !== null) return cached;
+    }
     throw new ApiError(response.status, payload?.detail ?? response.statusText);
   }
 
+  if (cacheable) void saveApiResponseCache(profileId, endpoint, payload);
   return payload as T;
 }
 
