@@ -8,6 +8,8 @@ import (
 
 type ObjectStore = ports.ObjectStore
 type ObjectInfo = ports.ObjectInfo
+type BucketObjectStore = ports.BucketObjectStore
+type PresignedObjectStore = ports.PresignedObjectStore
 
 type Config struct {
 	Provider  string
@@ -20,7 +22,7 @@ type Config struct {
 	// exclusively for presigning. Data-plane calls keep using Endpoint.
 	PublicEndpoint string
 	PublicSecure   bool
-	Bucket    string
+	Bucket         string
 }
 
 func New(cfg Config) (ObjectStore, error) {

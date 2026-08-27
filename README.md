@@ -2,7 +2,7 @@
 
 This project is a self-hosted family messenger that provides real-time private communication, invite-based access, role-based permissions, MinIO-backed private file sharing, and modular infrastructure abstractions. The system uses PostgreSQL for persistent data, Redis for message brokering and caching, and MinIO for file objects and durable structured log archives.
 
-The backend is a FastAPI modular monolith. It is intentionally structured so future phases can keep business logic separate from infrastructure details such as Redis and local file storage.
+The backend is a Go modular monolith built with Chi and Ent. It uses feature-owned application services and infrastructure ports so business rules remain separate from Redis, object storage, and transport concerns.
 
 ## Handoff Snapshot
 
@@ -23,7 +23,7 @@ Start with these documents:
 
 This repository currently implements the project foundation through Phase 7:
 
-- FastAPI backend
+- Go backend (Chi + Ent)
 - React + Vite + TypeScript frontend
 - PostgreSQL service
 - Redis service

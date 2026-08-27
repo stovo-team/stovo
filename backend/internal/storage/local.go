@@ -3,12 +3,10 @@ package storage
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type LocalStorage struct {
@@ -80,14 +78,6 @@ func (s *LocalStorage) resolve(objectKey string) (string, error) {
 		return "", errors.New("path escapes storage root")
 	}
 	return fullPath, nil
-}
-
-func (s *LocalStorage) PresignPutObject(_ context.Context, _, _ string, _ time.Duration, _ string) (string, error) {
-	return "", fmt.Errorf("presigned URLs not supported with local storage")
-}
-
-func (s *LocalStorage) PresignGetObject(_ context.Context, _, _ string, _ time.Duration) (string, error) {
-	return "", fmt.Errorf("presigned URLs not supported with local storage")
 }
 
 func (s *LocalStorage) SaveToBucket(_ context.Context, _ string, objectKey string, data []byte, _ string) error {

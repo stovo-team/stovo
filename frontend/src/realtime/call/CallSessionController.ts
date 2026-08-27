@@ -1,7 +1,11 @@
 import { Socket } from "socket.io-client";
 import { getApiUrl } from "../../api/client";
-import MeshMediaEngine from "./MeshMediaEngine";
-import LiveKitMediaEngine from "./LiveKitMediaEngine";
+import {
+  defaultMediaEngineFactory,
+  type MediaEngineFactory,
+  type MeshMediaEnginePort,
+  type SFUMediaEnginePort,
+} from "./mediaEngineFactory";
 import {
   CallCapabilities,
   CallDevice,
@@ -33,8 +37,8 @@ export default class CallSessionController {
   /** Extra audio elements for multi-party remotes beyond the primary remoteAudioEl. */
   private extraAudioEls = new Map<string, HTMLAudioElement>();
 
-  private mesh: MeshMediaEngine;
-  private sfu: LiveKitMediaEngine;
+  private mesh: MeshMediaEnginePort;
+  private sfu: SFUMediaEnginePort;
 
   private localStream: MediaStream | null = null;
   private sourceStream: MediaStream | null = null;
@@ -91,11 +95,15 @@ export default class CallSessionController {
   /** Fired when local screen stream starts or ends. */
   onLocalScreenStreamChange?: (stream: MediaStream | null) => void;
 
-  constructor(socket: Socket, accessToken: string) {
+  constructor(
+    socket: Socket,
+    accessToken: string,
+    mediaEngines: MediaEngineFactory = defaultMediaEngineFactory,
+  ) {
     this.socket = socket;
     this.accessToken = accessToken;
-    this.mesh = new MeshMediaEngine(socket, accessToken);
-    this.sfu = new LiveKitMediaEngine();
+    this.mesh = mediaEngines.createMesh(socket, accessToken);
+    this.sfu = mediaEngines.createSFU();
     this.wireMeshCallbacks();
     this.wireSfuCallbacks();
   }
