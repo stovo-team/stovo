@@ -814,6 +814,46 @@ func PinPermissionContainsFold(v string) predicate.Chat {
 	return predicate.Chat(sql.FieldContainsFold(FieldPinPermission, v))
 }
 
+// MessageDelaySecondsEQ applies the EQ predicate on the "message_delay_seconds" field.
+func MessageDelaySecondsEQ(v int) predicate.Chat {
+	return predicate.Chat(sql.FieldEQ(FieldMessageDelaySeconds, v))
+}
+
+// MessageDelaySecondsNEQ applies the NEQ predicate on the "message_delay_seconds" field.
+func MessageDelaySecondsNEQ(v int) predicate.Chat {
+	return predicate.Chat(sql.FieldNEQ(FieldMessageDelaySeconds, v))
+}
+
+// MessageDelaySecondsIn applies the In predicate on the "message_delay_seconds" field.
+func MessageDelaySecondsIn(vs ...int) predicate.Chat {
+	return predicate.Chat(sql.FieldIn(FieldMessageDelaySeconds, vs...))
+}
+
+// MessageDelaySecondsNotIn applies the NotIn predicate on the "message_delay_seconds" field.
+func MessageDelaySecondsNotIn(vs ...int) predicate.Chat {
+	return predicate.Chat(sql.FieldNotIn(FieldMessageDelaySeconds, vs...))
+}
+
+// MessageDelaySecondsGT applies the GT predicate on the "message_delay_seconds" field.
+func MessageDelaySecondsGT(v int) predicate.Chat {
+	return predicate.Chat(sql.FieldGT(FieldMessageDelaySeconds, v))
+}
+
+// MessageDelaySecondsGTE applies the GTE predicate on the "message_delay_seconds" field.
+func MessageDelaySecondsGTE(v int) predicate.Chat {
+	return predicate.Chat(sql.FieldGTE(FieldMessageDelaySeconds, v))
+}
+
+// MessageDelaySecondsLT applies the LT predicate on the "message_delay_seconds" field.
+func MessageDelaySecondsLT(v int) predicate.Chat {
+	return predicate.Chat(sql.FieldLT(FieldMessageDelaySeconds, v))
+}
+
+// MessageDelaySecondsLTE applies the LTE predicate on the "message_delay_seconds" field.
+func MessageDelaySecondsLTE(v int) predicate.Chat {
+	return predicate.Chat(sql.FieldLTE(FieldMessageDelaySeconds, v))
+}
+
 // HasFamily applies the HasEdge predicate on the "family" edge.
 func HasFamily() predicate.Chat {
 	return predicate.Chat(func(s *sql.Selector) {

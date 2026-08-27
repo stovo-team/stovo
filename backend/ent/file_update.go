@@ -120,6 +120,60 @@ func (_u *FileUpdate) SetNillableObjectKey(v *string) *FileUpdate {
 	return _u
 }
 
+// SetLifecycleState sets the "lifecycle_state" field.
+func (_u *FileUpdate) SetLifecycleState(v string) *FileUpdate {
+	_u.mutation.SetLifecycleState(v)
+	return _u
+}
+
+// SetNillableLifecycleState sets the "lifecycle_state" field if the given value is not nil.
+func (_u *FileUpdate) SetNillableLifecycleState(v *string) *FileUpdate {
+	if v != nil {
+		_u.SetLifecycleState(*v)
+	}
+	return _u
+}
+
+// SetObjectRevision sets the "object_revision" field.
+func (_u *FileUpdate) SetObjectRevision(v string) *FileUpdate {
+	_u.mutation.SetObjectRevision(v)
+	return _u
+}
+
+// SetNillableObjectRevision sets the "object_revision" field if the given value is not nil.
+func (_u *FileUpdate) SetNillableObjectRevision(v *string) *FileUpdate {
+	if v != nil {
+		_u.SetObjectRevision(*v)
+	}
+	return _u
+}
+
+// ClearObjectRevision clears the value of the "object_revision" field.
+func (_u *FileUpdate) ClearObjectRevision() *FileUpdate {
+	_u.mutation.ClearObjectRevision()
+	return _u
+}
+
+// SetObjectEtag sets the "object_etag" field.
+func (_u *FileUpdate) SetObjectEtag(v string) *FileUpdate {
+	_u.mutation.SetObjectEtag(v)
+	return _u
+}
+
+// SetNillableObjectEtag sets the "object_etag" field if the given value is not nil.
+func (_u *FileUpdate) SetNillableObjectEtag(v *string) *FileUpdate {
+	if v != nil {
+		_u.SetObjectEtag(*v)
+	}
+	return _u
+}
+
+// ClearObjectEtag clears the value of the "object_etag" field.
+func (_u *FileUpdate) ClearObjectEtag() *FileUpdate {
+	_u.mutation.ClearObjectEtag()
+	return _u
+}
+
 // SetThumbnailObjectKey sets the "thumbnail_object_key" field.
 func (_u *FileUpdate) SetThumbnailObjectKey(v string) *FileUpdate {
 	_u.mutation.SetThumbnailObjectKey(v)
@@ -137,6 +191,100 @@ func (_u *FileUpdate) SetNillableThumbnailObjectKey(v *string) *FileUpdate {
 // ClearThumbnailObjectKey clears the value of the "thumbnail_object_key" field.
 func (_u *FileUpdate) ClearThumbnailObjectKey() *FileUpdate {
 	_u.mutation.ClearThumbnailObjectKey()
+	return _u
+}
+
+// SetDetectedMimeType sets the "detected_mime_type" field.
+func (_u *FileUpdate) SetDetectedMimeType(v string) *FileUpdate {
+	_u.mutation.SetDetectedMimeType(v)
+	return _u
+}
+
+// SetNillableDetectedMimeType sets the "detected_mime_type" field if the given value is not nil.
+func (_u *FileUpdate) SetNillableDetectedMimeType(v *string) *FileUpdate {
+	if v != nil {
+		_u.SetDetectedMimeType(*v)
+	}
+	return _u
+}
+
+// ClearDetectedMimeType clears the value of the "detected_mime_type" field.
+func (_u *FileUpdate) ClearDetectedMimeType() *FileUpdate {
+	_u.mutation.ClearDetectedMimeType()
+	return _u
+}
+
+// SetPreviewRevision sets the "preview_revision" field.
+func (_u *FileUpdate) SetPreviewRevision(v string) *FileUpdate {
+	_u.mutation.SetPreviewRevision(v)
+	return _u
+}
+
+// SetNillablePreviewRevision sets the "preview_revision" field if the given value is not nil.
+func (_u *FileUpdate) SetNillablePreviewRevision(v *string) *FileUpdate {
+	if v != nil {
+		_u.SetPreviewRevision(*v)
+	}
+	return _u
+}
+
+// ClearPreviewRevision clears the value of the "preview_revision" field.
+func (_u *FileUpdate) ClearPreviewRevision() *FileUpdate {
+	_u.mutation.ClearPreviewRevision()
+	return _u
+}
+
+// SetPreviewStatus sets the "preview_status" field.
+func (_u *FileUpdate) SetPreviewStatus(v string) *FileUpdate {
+	_u.mutation.SetPreviewStatus(v)
+	return _u
+}
+
+// SetNillablePreviewStatus sets the "preview_status" field if the given value is not nil.
+func (_u *FileUpdate) SetNillablePreviewStatus(v *string) *FileUpdate {
+	if v != nil {
+		_u.SetPreviewStatus(*v)
+	}
+	return _u
+}
+
+// SetValidationFailureCode sets the "validation_failure_code" field.
+func (_u *FileUpdate) SetValidationFailureCode(v string) *FileUpdate {
+	_u.mutation.SetValidationFailureCode(v)
+	return _u
+}
+
+// SetNillableValidationFailureCode sets the "validation_failure_code" field if the given value is not nil.
+func (_u *FileUpdate) SetNillableValidationFailureCode(v *string) *FileUpdate {
+	if v != nil {
+		_u.SetValidationFailureCode(*v)
+	}
+	return _u
+}
+
+// ClearValidationFailureCode clears the value of the "validation_failure_code" field.
+func (_u *FileUpdate) ClearValidationFailureCode() *FileUpdate {
+	_u.mutation.ClearValidationFailureCode()
+	return _u
+}
+
+// SetValidatedAt sets the "validated_at" field.
+func (_u *FileUpdate) SetValidatedAt(v string) *FileUpdate {
+	_u.mutation.SetValidatedAt(v)
+	return _u
+}
+
+// SetNillableValidatedAt sets the "validated_at" field if the given value is not nil.
+func (_u *FileUpdate) SetNillableValidatedAt(v *string) *FileUpdate {
+	if v != nil {
+		_u.SetValidatedAt(*v)
+	}
+	return _u
+}
+
+// ClearValidatedAt clears the value of the "validated_at" field.
+func (_u *FileUpdate) ClearValidatedAt() *FileUpdate {
+	_u.mutation.ClearValidatedAt()
 	return _u
 }
 
@@ -386,11 +534,53 @@ func (_u *FileUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.ObjectKey(); ok {
 		_spec.SetField(file.FieldObjectKey, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.LifecycleState(); ok {
+		_spec.SetField(file.FieldLifecycleState, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ObjectRevision(); ok {
+		_spec.SetField(file.FieldObjectRevision, field.TypeString, value)
+	}
+	if _u.mutation.ObjectRevisionCleared() {
+		_spec.ClearField(file.FieldObjectRevision, field.TypeString)
+	}
+	if value, ok := _u.mutation.ObjectEtag(); ok {
+		_spec.SetField(file.FieldObjectEtag, field.TypeString, value)
+	}
+	if _u.mutation.ObjectEtagCleared() {
+		_spec.ClearField(file.FieldObjectEtag, field.TypeString)
+	}
 	if value, ok := _u.mutation.ThumbnailObjectKey(); ok {
 		_spec.SetField(file.FieldThumbnailObjectKey, field.TypeString, value)
 	}
 	if _u.mutation.ThumbnailObjectKeyCleared() {
 		_spec.ClearField(file.FieldThumbnailObjectKey, field.TypeString)
+	}
+	if value, ok := _u.mutation.DetectedMimeType(); ok {
+		_spec.SetField(file.FieldDetectedMimeType, field.TypeString, value)
+	}
+	if _u.mutation.DetectedMimeTypeCleared() {
+		_spec.ClearField(file.FieldDetectedMimeType, field.TypeString)
+	}
+	if value, ok := _u.mutation.PreviewRevision(); ok {
+		_spec.SetField(file.FieldPreviewRevision, field.TypeString, value)
+	}
+	if _u.mutation.PreviewRevisionCleared() {
+		_spec.ClearField(file.FieldPreviewRevision, field.TypeString)
+	}
+	if value, ok := _u.mutation.PreviewStatus(); ok {
+		_spec.SetField(file.FieldPreviewStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ValidationFailureCode(); ok {
+		_spec.SetField(file.FieldValidationFailureCode, field.TypeString, value)
+	}
+	if _u.mutation.ValidationFailureCodeCleared() {
+		_spec.ClearField(file.FieldValidationFailureCode, field.TypeString)
+	}
+	if value, ok := _u.mutation.ValidatedAt(); ok {
+		_spec.SetField(file.FieldValidatedAt, field.TypeString, value)
+	}
+	if _u.mutation.ValidatedAtCleared() {
+		_spec.ClearField(file.FieldValidatedAt, field.TypeString)
 	}
 	if value, ok := _u.mutation.OriginalName(); ok {
 		_spec.SetField(file.FieldOriginalName, field.TypeString, value)
@@ -616,6 +806,60 @@ func (_u *FileUpdateOne) SetNillableObjectKey(v *string) *FileUpdateOne {
 	return _u
 }
 
+// SetLifecycleState sets the "lifecycle_state" field.
+func (_u *FileUpdateOne) SetLifecycleState(v string) *FileUpdateOne {
+	_u.mutation.SetLifecycleState(v)
+	return _u
+}
+
+// SetNillableLifecycleState sets the "lifecycle_state" field if the given value is not nil.
+func (_u *FileUpdateOne) SetNillableLifecycleState(v *string) *FileUpdateOne {
+	if v != nil {
+		_u.SetLifecycleState(*v)
+	}
+	return _u
+}
+
+// SetObjectRevision sets the "object_revision" field.
+func (_u *FileUpdateOne) SetObjectRevision(v string) *FileUpdateOne {
+	_u.mutation.SetObjectRevision(v)
+	return _u
+}
+
+// SetNillableObjectRevision sets the "object_revision" field if the given value is not nil.
+func (_u *FileUpdateOne) SetNillableObjectRevision(v *string) *FileUpdateOne {
+	if v != nil {
+		_u.SetObjectRevision(*v)
+	}
+	return _u
+}
+
+// ClearObjectRevision clears the value of the "object_revision" field.
+func (_u *FileUpdateOne) ClearObjectRevision() *FileUpdateOne {
+	_u.mutation.ClearObjectRevision()
+	return _u
+}
+
+// SetObjectEtag sets the "object_etag" field.
+func (_u *FileUpdateOne) SetObjectEtag(v string) *FileUpdateOne {
+	_u.mutation.SetObjectEtag(v)
+	return _u
+}
+
+// SetNillableObjectEtag sets the "object_etag" field if the given value is not nil.
+func (_u *FileUpdateOne) SetNillableObjectEtag(v *string) *FileUpdateOne {
+	if v != nil {
+		_u.SetObjectEtag(*v)
+	}
+	return _u
+}
+
+// ClearObjectEtag clears the value of the "object_etag" field.
+func (_u *FileUpdateOne) ClearObjectEtag() *FileUpdateOne {
+	_u.mutation.ClearObjectEtag()
+	return _u
+}
+
 // SetThumbnailObjectKey sets the "thumbnail_object_key" field.
 func (_u *FileUpdateOne) SetThumbnailObjectKey(v string) *FileUpdateOne {
 	_u.mutation.SetThumbnailObjectKey(v)
@@ -633,6 +877,100 @@ func (_u *FileUpdateOne) SetNillableThumbnailObjectKey(v *string) *FileUpdateOne
 // ClearThumbnailObjectKey clears the value of the "thumbnail_object_key" field.
 func (_u *FileUpdateOne) ClearThumbnailObjectKey() *FileUpdateOne {
 	_u.mutation.ClearThumbnailObjectKey()
+	return _u
+}
+
+// SetDetectedMimeType sets the "detected_mime_type" field.
+func (_u *FileUpdateOne) SetDetectedMimeType(v string) *FileUpdateOne {
+	_u.mutation.SetDetectedMimeType(v)
+	return _u
+}
+
+// SetNillableDetectedMimeType sets the "detected_mime_type" field if the given value is not nil.
+func (_u *FileUpdateOne) SetNillableDetectedMimeType(v *string) *FileUpdateOne {
+	if v != nil {
+		_u.SetDetectedMimeType(*v)
+	}
+	return _u
+}
+
+// ClearDetectedMimeType clears the value of the "detected_mime_type" field.
+func (_u *FileUpdateOne) ClearDetectedMimeType() *FileUpdateOne {
+	_u.mutation.ClearDetectedMimeType()
+	return _u
+}
+
+// SetPreviewRevision sets the "preview_revision" field.
+func (_u *FileUpdateOne) SetPreviewRevision(v string) *FileUpdateOne {
+	_u.mutation.SetPreviewRevision(v)
+	return _u
+}
+
+// SetNillablePreviewRevision sets the "preview_revision" field if the given value is not nil.
+func (_u *FileUpdateOne) SetNillablePreviewRevision(v *string) *FileUpdateOne {
+	if v != nil {
+		_u.SetPreviewRevision(*v)
+	}
+	return _u
+}
+
+// ClearPreviewRevision clears the value of the "preview_revision" field.
+func (_u *FileUpdateOne) ClearPreviewRevision() *FileUpdateOne {
+	_u.mutation.ClearPreviewRevision()
+	return _u
+}
+
+// SetPreviewStatus sets the "preview_status" field.
+func (_u *FileUpdateOne) SetPreviewStatus(v string) *FileUpdateOne {
+	_u.mutation.SetPreviewStatus(v)
+	return _u
+}
+
+// SetNillablePreviewStatus sets the "preview_status" field if the given value is not nil.
+func (_u *FileUpdateOne) SetNillablePreviewStatus(v *string) *FileUpdateOne {
+	if v != nil {
+		_u.SetPreviewStatus(*v)
+	}
+	return _u
+}
+
+// SetValidationFailureCode sets the "validation_failure_code" field.
+func (_u *FileUpdateOne) SetValidationFailureCode(v string) *FileUpdateOne {
+	_u.mutation.SetValidationFailureCode(v)
+	return _u
+}
+
+// SetNillableValidationFailureCode sets the "validation_failure_code" field if the given value is not nil.
+func (_u *FileUpdateOne) SetNillableValidationFailureCode(v *string) *FileUpdateOne {
+	if v != nil {
+		_u.SetValidationFailureCode(*v)
+	}
+	return _u
+}
+
+// ClearValidationFailureCode clears the value of the "validation_failure_code" field.
+func (_u *FileUpdateOne) ClearValidationFailureCode() *FileUpdateOne {
+	_u.mutation.ClearValidationFailureCode()
+	return _u
+}
+
+// SetValidatedAt sets the "validated_at" field.
+func (_u *FileUpdateOne) SetValidatedAt(v string) *FileUpdateOne {
+	_u.mutation.SetValidatedAt(v)
+	return _u
+}
+
+// SetNillableValidatedAt sets the "validated_at" field if the given value is not nil.
+func (_u *FileUpdateOne) SetNillableValidatedAt(v *string) *FileUpdateOne {
+	if v != nil {
+		_u.SetValidatedAt(*v)
+	}
+	return _u
+}
+
+// ClearValidatedAt clears the value of the "validated_at" field.
+func (_u *FileUpdateOne) ClearValidatedAt() *FileUpdateOne {
+	_u.mutation.ClearValidatedAt()
 	return _u
 }
 
@@ -912,11 +1250,53 @@ func (_u *FileUpdateOne) sqlSave(ctx context.Context) (_node *File, err error) {
 	if value, ok := _u.mutation.ObjectKey(); ok {
 		_spec.SetField(file.FieldObjectKey, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.LifecycleState(); ok {
+		_spec.SetField(file.FieldLifecycleState, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ObjectRevision(); ok {
+		_spec.SetField(file.FieldObjectRevision, field.TypeString, value)
+	}
+	if _u.mutation.ObjectRevisionCleared() {
+		_spec.ClearField(file.FieldObjectRevision, field.TypeString)
+	}
+	if value, ok := _u.mutation.ObjectEtag(); ok {
+		_spec.SetField(file.FieldObjectEtag, field.TypeString, value)
+	}
+	if _u.mutation.ObjectEtagCleared() {
+		_spec.ClearField(file.FieldObjectEtag, field.TypeString)
+	}
 	if value, ok := _u.mutation.ThumbnailObjectKey(); ok {
 		_spec.SetField(file.FieldThumbnailObjectKey, field.TypeString, value)
 	}
 	if _u.mutation.ThumbnailObjectKeyCleared() {
 		_spec.ClearField(file.FieldThumbnailObjectKey, field.TypeString)
+	}
+	if value, ok := _u.mutation.DetectedMimeType(); ok {
+		_spec.SetField(file.FieldDetectedMimeType, field.TypeString, value)
+	}
+	if _u.mutation.DetectedMimeTypeCleared() {
+		_spec.ClearField(file.FieldDetectedMimeType, field.TypeString)
+	}
+	if value, ok := _u.mutation.PreviewRevision(); ok {
+		_spec.SetField(file.FieldPreviewRevision, field.TypeString, value)
+	}
+	if _u.mutation.PreviewRevisionCleared() {
+		_spec.ClearField(file.FieldPreviewRevision, field.TypeString)
+	}
+	if value, ok := _u.mutation.PreviewStatus(); ok {
+		_spec.SetField(file.FieldPreviewStatus, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ValidationFailureCode(); ok {
+		_spec.SetField(file.FieldValidationFailureCode, field.TypeString, value)
+	}
+	if _u.mutation.ValidationFailureCodeCleared() {
+		_spec.ClearField(file.FieldValidationFailureCode, field.TypeString)
+	}
+	if value, ok := _u.mutation.ValidatedAt(); ok {
+		_spec.SetField(file.FieldValidatedAt, field.TypeString, value)
+	}
+	if _u.mutation.ValidatedAtCleared() {
+		_spec.ClearField(file.FieldValidatedAt, field.TypeString)
 	}
 	if value, ok := _u.mutation.OriginalName(); ok {
 		_spec.SetField(file.FieldOriginalName, field.TypeString, value)

@@ -4,7 +4,8 @@ const platform = vi.hoisted(() => ({ native: false }));
 vi.mock("@capacitor/core", () => ({
   Capacitor: {
     isNativePlatform: () => platform.native
-  }
+  },
+  registerPlugin: () => ({})
 }));
 
 import { getApiUrl, getClusterPrefix, isServerUrlConfigured, setApiUrlOverride } from "./client";
