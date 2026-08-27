@@ -403,7 +403,7 @@ func (s *Server) handleRequestUploadURL(w http.ResponseWriter, r *http.Request, 
 	}
 
 	s.json(w, http.StatusOK, uploadChunkResponse{
-		ChunkID:   chunkID,
+		ChunkID: chunkID,
 		// Keep object storage private: a browser cannot resolve an internal MinIO
 		// hostname, and an object-store CORS policy must not block AI Notes.
 		UploadURL: fmt.Sprintf("/api/calls/%s/transcription/uploads/%s/data", roomID, chunkID),
@@ -440,7 +440,13 @@ func (s *Server) handleUploadAudioChunkData(w http.ResponseWriter, r *http.Reque
 	} else if chunk.Container == "mp4" {
 		contentType = "audio/mp4"
 	}
-	if err := s.storage.SaveToBucket(r.Context(), s.cfg.MinIOCallsBucket, chunk.ObjectKey, data, contentType); err != nil {
+	store, err := s.bucketObjectStore()
+	if err != nil {
+		s.logger.Warnf("transcription", "storage does not support buckets chunk_id=%s error=%v", chunkID, err)
+		s.detail(w, http.StatusBadGateway, "Could not store audio upload")
+		return
+	}
+	if err := store.SaveToBucket(r.Context(), s.cfg.MinIOCallsBucket, chunk.ObjectKey, data, contentType); err != nil {
 		s.logger.Warnf("transcription", "store chunk failed chunk_id=%s error=%v", chunkID, err)
 		s.detail(w, http.StatusBadGateway, "Could not store audio upload")
 		return
@@ -476,7 +482,13 @@ func (s *Server) handleCompleteUpload(w http.ResponseWriter, r *http.Request, us
 	}
 
 	bucket := s.cfg.MinIOCallsBucket
-	info, err := s.storage.StatObject(ctx, bucket, chunk.ObjectKey)
+	store, err := s.bucketObjectStore()
+	if err != nil {
+		s.logger.Warnf("transcription", "storage does not support buckets chunk_id=%s error=%v", chunkID, err)
+		s.detail(w, http.StatusBadRequest, "Upload not found in storage; please retry the upload")
+		return
+	}
+	info, err := store.StatObject(ctx, bucket, chunk.ObjectKey)
 	if err != nil {
 		s.logger.Warnf("transcription", "stat object failed chunk_id=%s key=%s error=%v", chunkID, chunk.ObjectKey, err)
 		s.detail(w, http.StatusBadRequest, "Upload not found in storage; please retry the upload")
@@ -543,7 +555,12 @@ func (s *Server) handleGetTranscriptArtifact(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	downloadURL, err := s.storage.PresignGetObject(ctx, s.cfg.MinIOCallsBucket, artifactKey, 5*time.Minute)
+	store, err := s.presignedObjectStore()
+	if err != nil {
+		s.detail(w, http.StatusInternalServerError, "Failed to generate download URL")
+		return
+	}
+	downloadURL, err := store.PresignGetObject(ctx, s.cfg.MinIOCallsBucket, artifactKey, 5*time.Minute)
 	if err != nil {
 		s.detail(w, http.StatusInternalServerError, "Failed to generate download URL")
 		return

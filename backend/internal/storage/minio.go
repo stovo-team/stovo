@@ -175,8 +175,8 @@ func (s *MinIOStorage) StatObject(ctx context.Context, bucket, objectKey string)
 			ETag:        info.ETag,
 		}, nil
 	}
-	if s.fallback != nil {
-		return s.fallback.StatObject(ctx, bucket, objectKey)
+	if fallback, ok := s.fallback.(BucketObjectStore); ok {
+		return fallback.StatObject(ctx, bucket, objectKey)
 	}
 	return ObjectInfo{}, err
 }

@@ -6,17 +6,17 @@ import (
 	"fmt"
 
 	"family-messenger/backend/internal/domain"
-	"family-messenger/backend/internal/services"
+	"family-messenger/backend/internal/features/calls"
 )
 
 // prepareCallInitiation adapts the existing app data to the pure call use case.
 // Session locking, persistence, and emission deliberately remain in calls.go.
 func (s *Server) prepareCallInitiation(chat chatPublic, callerUserID, callType string, inviteUserIDs []string) (domain.CallInitiation, error) {
-	service := services.NewCallService(callChatReader{chat: callChatFromPublic(chat)}, directCallPrivacyCheck(s.directContactBlocked), nil)
-	initiation, err := service.PrepareStart(context.Background(), services.StartCallInput{
+	service := calls.NewService(callChatReader{chat: callChatFromPublic(chat)}, directCallPrivacyCheck(s.directContactBlocked), nil)
+	initiation, err := service.PrepareStart(context.Background(), calls.StartInput{
 		ChatID: chat.ID, CallerUserID: callerUserID, CallType: callType, InviteUserIDs: inviteUserIDs,
 	})
-	if errors.Is(err, services.ErrNotChatMember) {
+	if errors.Is(err, calls.ErrNotChatMember) {
 		return domain.CallInitiation{}, fmt.Errorf("you are not a member of this chat")
 	}
 	return initiation, err

@@ -11,8 +11,8 @@ import (
 
 	"family-messenger/backend/internal/cache"
 	"family-messenger/backend/internal/domain"
+	"family-messenger/backend/internal/features/messages"
 	"family-messenger/backend/internal/repository"
-	"family-messenger/backend/internal/services"
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/google/uuid"
@@ -197,7 +197,7 @@ func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, use
 	}
 	message.ClientMessageID = clientMessageID
 	s.bumpChatHistoryRevision(ctx, chatID)
-	delivery := services.NewMessageDeliveryService(newMessageDeliveryAdapter(s))
+	delivery := messages.NewDeliveryService(newMessageDeliveryAdapter(s))
 	createdEvent := domain.MessageCreated{EventID: uuid.NewString(), ChatID: chatID, MessageID: message.ID, Payload: toMap(message)}
 	notification := domain.MessageNotification{
 		ChatID: chatID, ChatType: chat.Type, ChatTitle: chat.Title, SenderID: user.ID,
@@ -220,15 +220,15 @@ func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, use
 // and reply-target validity. It also normalises the payload's reply/thread fields.
 func (s *Server) validateMessageSendPermissions(ctx context.Context, chat chatPublic, user userPublic, payload *sendMessageRequest) error {
 	input := &domain.SendMessage{ReplyToMessageID: payload.ReplyToMessageID, ThreadRootMessageID: payload.ThreadRootMessageID}
-	service := services.NewMessageService(messagePolicyAdapter{server: s})
+	service := messages.NewService(messagePolicyAdapter{server: s})
 	err := service.ValidateSend(ctx, messageDomainChat(chat), domain.Sender{ID: user.ID, Role: user.Role}, input)
 	switch err {
 	case nil:
 		payload.ReplyToMessageID, payload.ThreadRootMessageID = input.ReplyToMessageID, input.ThreadRootMessageID
 		return nil
-	case services.ErrMessageForbidden:
+	case messages.ErrForbidden:
 		return errForbidden
-	case services.ErrDirectBlocked:
+	case messages.ErrDirectBlocked:
 		return newStatusError(403, "direct messages are unavailable for this member")
 	default:
 		return err
