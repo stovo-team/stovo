@@ -19,6 +19,8 @@ import {
 import { createPortal } from "react-dom";
 
 import { type FamilyFile } from "../api/files";
+import { peekCachedObjectUrl } from "../mediaBlobCache";
+import { shouldAutoDownloadMedia } from "../mediaDownloadPolicy";
 import {
   sameVideoIdentity,
   videoPlaybackSession,
@@ -107,7 +109,10 @@ export function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
+  const [manualDownloadRequested, setManualDownloadRequested] = useState(false);
   const autoplayEnabled = autoplay;
+  const canLoadAutomatically = shouldAutoDownloadMedia(file) || Boolean(peekCachedObjectUrl(file.id));
+  const canLoad = canLoadAutomatically || manualDownloadRequested;
 
   const getOwnSnapshot = useCallback(
     () => videoPlaybackSession.getSnapshot(identity),
@@ -169,7 +174,7 @@ export function VideoPlayer({
     setVideoSize({ width: 0, height: 0 });
     updateSession({ status: "loading", error: null });
   }, [updateSession]);
-  const sourceUrl = useVideoSource(file, accessToken, identity, startLoading, reportFailure);
+  const sourceUrl = useVideoSource(file, accessToken, identity, startLoading, reportFailure, canLoad);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -418,7 +423,10 @@ export function VideoPlayer({
       >
         {videoNode}
 
-        {isLoading && !error && !disabledReason && (
+        {!canLoad && !disabledReason && (
+          <button type="button" className="video-player-status" onClick={() => setManualDownloadRequested(true)}>Download video</button>
+        )}
+        {canLoad && isLoading && !error && !disabledReason && (
           <div className="video-player-status" role="status" aria-live="polite">Loading video…</div>
         )}
         {disabledReason && (

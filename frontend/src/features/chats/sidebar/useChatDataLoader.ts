@@ -362,16 +362,9 @@ export function useChatDataLoader({
         applyMessagesForChatRef.current(requestedChatId, decryptedMessages);
         historyCursorRef.current[requestedChatId] = messageResult.hasMore ? messageResult.nextBefore : null;
         if (accessTokenRef.current && decryptedMessages.length > 0) {
-          const fileIds: string[] = [];
-          for (const m of decryptedMessages) {
-            if (m.attachments?.length) {
-              for (const a of m.attachments) {
-                if (a.id) fileIds.push(a.id);
-              }
-            }
-          }
-          if (fileIds.length > 0) {
-            prefetchFiles(accessTokenRef.current, fileIds);
+          const attachments = decryptedMessages.flatMap((message) => message.attachments ?? []);
+          if (attachments.length > 0) {
+            prefetchFiles(accessTokenRef.current, attachments);
           }
         }
         if (currentUserIdRef.current) {
@@ -390,16 +383,9 @@ export function useChatDataLoader({
             applyMessagesForChatRef.current(requestedChatId, (current) => mergeMessageLists(current, moreDecrypted));
             historyCursorRef.current[requestedChatId] = morePage.hasMore ? morePage.nextBefore : null;
             if (accessTokenRef.current && moreDecrypted.length > 0) {
-              const moreFileIds: string[] = [];
-              for (const m of moreDecrypted) {
-                if (m.attachments?.length) {
-                  for (const a of m.attachments) {
-                    if (a.id) moreFileIds.push(a.id);
-                  }
-                }
-              }
-              if (moreFileIds.length > 0) {
-                prefetchFiles(accessTokenRef.current, moreFileIds);
+              const attachments = moreDecrypted.flatMap((message) => message.attachments ?? []);
+              if (attachments.length > 0) {
+                prefetchFiles(accessTokenRef.current, attachments);
               }
             }
             if (currentUserIdRef.current) {

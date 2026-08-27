@@ -35,6 +35,16 @@ import {
   upsertServer
 } from "../api/serverRegistry";
 
+function isNetworkFailure(error: unknown): boolean {
+  if (typeof navigator !== "undefined" && !navigator.onLine) return true;
+  if (error instanceof TypeError) return true;
+  if (error && typeof error === "object" && "status" in error) {
+    const status = Number((error as { status?: unknown }).status);
+    return status === 0 || status === 408 || status === 502 || status === 503 || status === 504;
+  }
+  return false;
+}
+
 interface AuthState {
   accessToken: string | null;
   currentUser: User | null;
@@ -229,6 +239,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // On mount: attempt to restore session from the refresh token
   useEffect(() => {
     let cancelled = false;
+    const cachedAccount = getActiveServer();
+
+    // A remembered account is enough to open its local replica while the
+    // server is unavailable. Normal refresh resumes when connectivity returns.
+    if (cachedAccount?.user && cachedAccount.accessToken) {
+      setAccessToken(cachedAccount.accessToken);
+      setCurrentUser(cachedAccount.user);
+      setIsOffline(typeof navigator !== "undefined" && !navigator.onLine);
+    }
 
     refreshSession()
       .then((response) => {
@@ -236,9 +255,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           applyAuthResponse(response);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
-          void clearExpiredSession();
+          // A temporary network failure must not erase the offline replica or
+          // queued messages. Authentication failures still clear the session.
+          if (cachedAccount?.user && cachedAccount.accessToken &&
+            (isNetworkFailure(error) || !(error instanceof ApiError) || (error.status !== 401 && error.status !== 403))) {
+            setIsOffline(true);
+          } else {
+            void clearExpiredSession();
+          }
         }
       })
       .finally(() => {
