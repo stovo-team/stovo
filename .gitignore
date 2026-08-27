@@ -56,3 +56,4 @@ features.db
 
 # Local helper scripts
 /scripts/
+/docker-compose.test.ps1
