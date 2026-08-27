@@ -88,3 +88,6 @@ features.db
 
 # Build / test output dumps
 *_output.txt
+
+# Local helper scripts
+/scripts/
