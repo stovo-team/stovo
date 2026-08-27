@@ -193,6 +193,10 @@ export function useTranscription({
   stateRef.current = transcriptState;
   const sessionIdRef = useRef<string | null>(null);
   sessionIdRef.current = transcriptSessionId;
+  // Stopping MediaRecorder emits its last chunk asynchronously. Keep a handle
+  // to that flush so the manual stop request cannot race the final upload.
+  const flushRecorderRef = useRef<(() => Promise<void>) | null>(null);
+  const isStoppingRef = useRef(false);
 
   // ── Audio Recorder Effect ────────────────────────────────────────────────
   useEffect(() => {
@@ -207,6 +211,12 @@ export function useTranscription({
     let activeStream: MediaStream | null = null;
     let stopStreamOnCleanup = false;
     let isActive = true;
+    let flushRecorder: (() => Promise<void>) | null = null;
+    let resolveRecorderStopped: (() => void) | null = null;
+    const recorderStopped = new Promise<void>((resolve) => {
+      resolveRecorderStopped = resolve;
+    });
+    const pendingUploads = new Set<Promise<void>>();
 
     const failRecording = (message: string) => {
       if (!isActive) return;
@@ -245,8 +255,8 @@ export function useTranscription({
             const durationMs = Math.max(1000, nowOffsetMs - callStartMs);
             lastChunkEndMs = nowOffsetMs;
 
-            try {
-              await uploadAudioChunk({
+            let upload: Promise<void>;
+            upload = uploadAudioChunk({
                 accessToken,
                 roomId,
                 sessionId: transcriptSessionId,
@@ -257,16 +267,37 @@ export function useTranscription({
                 callEndMs: nowOffsetMs,
                 durationMs,
                 blob: e.data,
-              });
-            } catch (uploadErr) {
-              console.warn("[useTranscription] chunk upload failed seq=", seq, uploadErr);
-              failRecording(uploadErr instanceof Error ? uploadErr.message : "AI Notes could not upload audio. Check the server storage connection.");
-            }
+              })
+              .catch((uploadErr) => {
+                console.warn("[useTranscription] chunk upload failed seq=", seq, uploadErr);
+                failRecording(uploadErr instanceof Error ? uploadErr.message : "AI Notes could not upload audio. Check the server storage connection.");
+              })
+              .finally(() => pendingUploads.delete(upload));
+            pendingUploads.add(upload);
           }
         };
 
         // Slice audio into 5-second chunks
         recorder.onerror = () => failRecording("AI Notes recording failed in this browser");
+        recorder.onstop = () => resolveRecorderStopped?.();
+        flushRecorder = async () => {
+          if (recorder && recorder.state !== "inactive") {
+            recorder.stop();
+          }
+          // `dataavailable` is delivered before `stop`, but do not leave the
+          // stop control hung if a browser fails to emit the terminal event.
+          await Promise.race([
+            recorderStopped,
+            new Promise<void>((resolve) => window.setTimeout(resolve, 2000)),
+          ]);
+          // A network request may stall indefinitely; the server also waits
+          // for pending uploads, so let it take over after a bounded wait.
+          await Promise.race([
+            Promise.all([...pendingUploads]),
+            new Promise<void>((resolve) => window.setTimeout(resolve, 10000)),
+          ]);
+        };
+        flushRecorderRef.current = flushRecorder;
         recorder.start(5000);
       } catch (err) {
         console.error("[useTranscription] MediaRecorder init failed:", err);
@@ -280,6 +311,9 @@ export function useTranscription({
       isActive = false;
       if (recorder && recorder.state !== "inactive") {
         recorder.stop();
+      }
+      if (flushRecorderRef.current === flushRecorder) {
+        flushRecorderRef.current = null;
       }
       if (stopStreamOnCleanup && activeStream) {
         activeStream.getTracks().forEach((t) => t.stop());
@@ -365,6 +399,7 @@ export function useTranscription({
 
   const startTranscription = useCallback(async () => {
     if (!accessToken || !roomId || !enabled) return;
+    isStoppingRef.current = false;
     setTranscriptState("starting");
     setTranscriptError(null);
     try {
@@ -391,7 +426,16 @@ export function useTranscription({
   }, [accessToken, roomId, enabled]);
 
   const stopTranscription = useCallback(async () => {
-    if (!accessToken || !roomId || !sessionIdRef.current) return;
+    if (!accessToken || !roomId || !sessionIdRef.current || isStoppingRef.current) return;
+    isStoppingRef.current = true;
+    try {
+      // Flush MediaRecorder before telling the server to process the session.
+      // Without this, a short call can be processed before its only (terminal)
+      // chunk has finished uploading.
+      await flushRecorderRef.current?.();
+    } catch (err) {
+      console.warn("[useTranscription] recorder flush failed:", err);
+    }
     setTranscriptState("stopping");
     try {
       const response = await fetch(`${getApiUrl()}/api/calls/${roomId}/transcription/stop`, {
@@ -410,6 +454,8 @@ export function useTranscription({
       console.error("[useTranscription] stop failed:", err);
       setTranscriptState("failed");
       setTranscriptError(err instanceof Error ? err.message : "Failed to stop transcription");
+    } finally {
+      isStoppingRef.current = false;
     }
   }, [accessToken, roomId]);
 
@@ -444,6 +490,7 @@ export function useTranscription({
   }, [isTranscriptPanelOpen, transcriptState, transcriptData, fetchTranscript]);
 
   const resetTranscription = useCallback(() => {
+    isStoppingRef.current = false;
     setTranscriptState("idle");
     setTranscriptSessionId(null);
     setTranscriptData(null);

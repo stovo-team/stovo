@@ -206,7 +206,12 @@ func (s *Server) handleReserveDirectFileUpload(w http.ResponseWriter, r *http.Re
 func (s *Server) respondDirectUploadReservation(w http.ResponseWriter, r *http.Request, record directUploadRecord) {
 	response := directFileUploadResponse{UploadID: record.UploadID, FileID: record.FileID, State: record.State, ExpectedMIME: record.ExpectedMIME, ExpectedBytes: record.ExpectedBytes}
 	if record.State == "reserved" && time.Now().UTC().Before(record.ExpiresAt) {
-		url, err := s.storage.PresignPutObject(r.Context(), s.cfg.MinIOFilesBucket, record.ObjectKey, time.Until(record.ExpiresAt), record.ExpectedMIME)
+		store, err := s.presignedObjectStore()
+		if err != nil {
+			s.detail(w, http.StatusServiceUnavailable, "Direct uploads are not available")
+			return
+		}
+		url, err := store.PresignPutObject(r.Context(), s.cfg.MinIOFilesBucket, record.ObjectKey, time.Until(record.ExpiresAt), record.ExpectedMIME)
 		if err != nil {
 			s.detail(w, http.StatusServiceUnavailable, "Direct uploads are not available")
 			return
@@ -242,7 +247,12 @@ func (s *Server) handleCompleteDirectFileUpload(w http.ResponseWriter, r *http.R
 		s.detail(w, http.StatusConflict, "Upload is no longer completable")
 		return
 	}
-	object, err := s.storage.StatObject(r.Context(), s.cfg.MinIOFilesBucket, record.ObjectKey)
+	store, err := s.bucketObjectStore()
+	if err != nil {
+		s.detail(w, http.StatusConflict, "Uploaded object does not match reservation")
+		return
+	}
+	object, err := store.StatObject(r.Context(), s.cfg.MinIOFilesBucket, record.ObjectKey)
 	if err != nil || object.Size != record.ExpectedBytes {
 		s.detail(w, http.StatusConflict, "Uploaded object does not match reservation")
 		return
@@ -314,7 +324,12 @@ func (s *Server) handleCreateDirectFileAccess(w http.ResponseWriter, r *http.Req
 		return
 	}
 	expiresAt := time.Now().UTC().Add(directDownloadCapabilityTTL)
-	url, err := s.storage.PresignGetObject(r.Context(), s.cfg.MinIOFilesBucket, objectKey, directDownloadCapabilityTTL)
+	store, err := s.presignedObjectStore()
+	if err != nil {
+		s.detail(w, http.StatusServiceUnavailable, "Direct access is not available")
+		return
+	}
+	url, err := store.PresignGetObject(r.Context(), s.cfg.MinIOFilesBucket, objectKey, directDownloadCapabilityTTL)
 	if err != nil {
 		s.detail(w, http.StatusServiceUnavailable, "Direct access is not available")
 		return

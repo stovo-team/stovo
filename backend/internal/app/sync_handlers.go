@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"family-messenger/backend/internal/domain"
-	"family-messenger/backend/internal/services"
+	"family-messenger/backend/internal/features/messages"
 
 	"github.com/google/uuid"
 )
@@ -507,7 +507,7 @@ func newCreatedMessagePublic(id, chatID string, user userPublic, messageType str
 }
 
 func (s *Server) notifyCreatedRESTMessage(chat chatPublic, user userPublic, message messagePublic, request sendMessageRequest) {
-	delivery := services.NewMessageDeliveryService(newMessageDeliveryAdapter(s))
+	delivery := messages.NewDeliveryService(newMessageDeliveryAdapter(s))
 	createdEvent := domain.MessageCreated{EventID: uuid.NewString(), ChatID: message.ChatID, MessageID: message.ID, Payload: toMap(message)}
 	notification := domain.MessageNotification{
 		ChatID: message.ChatID, ChatType: chat.Type, ChatTitle: chat.Title, SenderID: user.ID,
