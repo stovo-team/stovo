@@ -11,9 +11,12 @@ import (
 	"family-messenger/backend/ent/chatmediaapproval"
 	"family-messenger/backend/ent/chatmember"
 	"family-messenger/backend/ent/chatpreference"
+	"family-messenger/backend/ent/clientoperation"
+	"family-messenger/backend/ent/consumerreceipt"
 	"family-messenger/backend/ent/family"
 	"family-messenger/backend/ent/file"
 	"family-messenger/backend/ent/filepreference"
+	"family-messenger/backend/ent/fileupload"
 	"family-messenger/backend/ent/invite"
 	"family-messenger/backend/ent/mcpauditevent"
 	"family-messenger/backend/ent/mcpconnector"
@@ -24,10 +27,14 @@ import (
 	"family-messenger/backend/ent/messagereaction"
 	"family-messenger/backend/ent/messagestatus"
 	"family-messenger/backend/ent/messageuserdeletion"
+	"family-messenger/backend/ent/notificationdelivery"
+	"family-messenger/backend/ent/outboxevent"
 	"family-messenger/backend/ent/pinnedmessage"
 	"family-messenger/backend/ent/plan"
 	"family-messenger/backend/ent/planattendee"
 	"family-messenger/backend/ent/refreshtoken"
+	"family-messenger/backend/ent/syncevent"
+	"family-messenger/backend/ent/synceventrecipient"
 	"family-messenger/backend/ent/user"
 	"family-messenger/backend/ent/userblock"
 	"fmt"
@@ -97,31 +104,38 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			callparticipant.Table:     callparticipant.ValidColumn,
-			callsession.Table:         callsession.ValidColumn,
-			chat.Table:                chat.ValidColumn,
-			chatmediaapproval.Table:   chatmediaapproval.ValidColumn,
-			chatmember.Table:          chatmember.ValidColumn,
-			chatpreference.Table:      chatpreference.ValidColumn,
-			family.Table:              family.ValidColumn,
-			file.Table:                file.ValidColumn,
-			filepreference.Table:      filepreference.ValidColumn,
-			invite.Table:              invite.ValidColumn,
-			mcpauditevent.Table:       mcpauditevent.ValidColumn,
-			mcpconnector.Table:        mcpconnector.ValidColumn,
-			mcpconnectorchat.Table:    mcpconnectorchat.ValidColumn,
-			mediaqualitysetting.Table: mediaqualitysetting.ValidColumn,
-			message.Table:             message.ValidColumn,
-			messageattachment.Table:   messageattachment.ValidColumn,
-			messagereaction.Table:     messagereaction.ValidColumn,
-			messagestatus.Table:       messagestatus.ValidColumn,
-			messageuserdeletion.Table: messageuserdeletion.ValidColumn,
-			pinnedmessage.Table:       pinnedmessage.ValidColumn,
-			plan.Table:                plan.ValidColumn,
-			planattendee.Table:        planattendee.ValidColumn,
-			refreshtoken.Table:        refreshtoken.ValidColumn,
-			user.Table:                user.ValidColumn,
-			userblock.Table:           userblock.ValidColumn,
+			callparticipant.Table:      callparticipant.ValidColumn,
+			callsession.Table:          callsession.ValidColumn,
+			chat.Table:                 chat.ValidColumn,
+			chatmediaapproval.Table:    chatmediaapproval.ValidColumn,
+			chatmember.Table:           chatmember.ValidColumn,
+			chatpreference.Table:       chatpreference.ValidColumn,
+			clientoperation.Table:      clientoperation.ValidColumn,
+			consumerreceipt.Table:      consumerreceipt.ValidColumn,
+			family.Table:               family.ValidColumn,
+			file.Table:                 file.ValidColumn,
+			filepreference.Table:       filepreference.ValidColumn,
+			fileupload.Table:           fileupload.ValidColumn,
+			invite.Table:               invite.ValidColumn,
+			mcpauditevent.Table:        mcpauditevent.ValidColumn,
+			mcpconnector.Table:         mcpconnector.ValidColumn,
+			mcpconnectorchat.Table:     mcpconnectorchat.ValidColumn,
+			mediaqualitysetting.Table:  mediaqualitysetting.ValidColumn,
+			message.Table:              message.ValidColumn,
+			messageattachment.Table:    messageattachment.ValidColumn,
+			messagereaction.Table:      messagereaction.ValidColumn,
+			messagestatus.Table:        messagestatus.ValidColumn,
+			messageuserdeletion.Table:  messageuserdeletion.ValidColumn,
+			notificationdelivery.Table: notificationdelivery.ValidColumn,
+			outboxevent.Table:          outboxevent.ValidColumn,
+			pinnedmessage.Table:        pinnedmessage.ValidColumn,
+			plan.Table:                 plan.ValidColumn,
+			planattendee.Table:         planattendee.ValidColumn,
+			refreshtoken.Table:         refreshtoken.ValidColumn,
+			syncevent.Table:            syncevent.ValidColumn,
+			synceventrecipient.Table:   synceventrecipient.ValidColumn,
+			user.Table:                 user.ValidColumn,
+			userblock.Table:            userblock.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

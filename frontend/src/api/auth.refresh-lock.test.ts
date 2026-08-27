@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@capacitor/core", () => ({
   Capacitor: {
     isNativePlatform: () => false
-  }
+  },
+  registerPlugin: () => ({})
 }));
 
 import { refreshSession } from "./auth";

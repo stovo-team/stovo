@@ -4,6 +4,8 @@ package ent
 
 import (
 	"context"
+	stdsql "database/sql"
+	"fmt"
 	"sync"
 
 	"entgo.io/ent/dialect"
@@ -24,12 +26,18 @@ type Tx struct {
 	ChatMember *ChatMemberClient
 	// ChatPreference is the client for interacting with the ChatPreference builders.
 	ChatPreference *ChatPreferenceClient
+	// ClientOperation is the client for interacting with the ClientOperation builders.
+	ClientOperation *ClientOperationClient
+	// ConsumerReceipt is the client for interacting with the ConsumerReceipt builders.
+	ConsumerReceipt *ConsumerReceiptClient
 	// Family is the client for interacting with the Family builders.
 	Family *FamilyClient
 	// File is the client for interacting with the File builders.
 	File *FileClient
 	// FilePreference is the client for interacting with the FilePreference builders.
 	FilePreference *FilePreferenceClient
+	// FileUpload is the client for interacting with the FileUpload builders.
+	FileUpload *FileUploadClient
 	// Invite is the client for interacting with the Invite builders.
 	Invite *InviteClient
 	// McpAuditEvent is the client for interacting with the McpAuditEvent builders.
@@ -50,6 +58,10 @@ type Tx struct {
 	MessageStatus *MessageStatusClient
 	// MessageUserDeletion is the client for interacting with the MessageUserDeletion builders.
 	MessageUserDeletion *MessageUserDeletionClient
+	// NotificationDelivery is the client for interacting with the NotificationDelivery builders.
+	NotificationDelivery *NotificationDeliveryClient
+	// OutboxEvent is the client for interacting with the OutboxEvent builders.
+	OutboxEvent *OutboxEventClient
 	// PinnedMessage is the client for interacting with the PinnedMessage builders.
 	PinnedMessage *PinnedMessageClient
 	// Plan is the client for interacting with the Plan builders.
@@ -58,6 +70,10 @@ type Tx struct {
 	PlanAttendee *PlanAttendeeClient
 	// RefreshToken is the client for interacting with the RefreshToken builders.
 	RefreshToken *RefreshTokenClient
+	// SyncEvent is the client for interacting with the SyncEvent builders.
+	SyncEvent *SyncEventClient
+	// SyncEventRecipient is the client for interacting with the SyncEventRecipient builders.
+	SyncEventRecipient *SyncEventRecipientClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 	// UserBlock is the client for interacting with the UserBlock builders.
@@ -199,9 +215,12 @@ func (tx *Tx) init() {
 	tx.ChatMediaApproval = NewChatMediaApprovalClient(tx.config)
 	tx.ChatMember = NewChatMemberClient(tx.config)
 	tx.ChatPreference = NewChatPreferenceClient(tx.config)
+	tx.ClientOperation = NewClientOperationClient(tx.config)
+	tx.ConsumerReceipt = NewConsumerReceiptClient(tx.config)
 	tx.Family = NewFamilyClient(tx.config)
 	tx.File = NewFileClient(tx.config)
 	tx.FilePreference = NewFilePreferenceClient(tx.config)
+	tx.FileUpload = NewFileUploadClient(tx.config)
 	tx.Invite = NewInviteClient(tx.config)
 	tx.McpAuditEvent = NewMcpAuditEventClient(tx.config)
 	tx.McpConnector = NewMcpConnectorClient(tx.config)
@@ -212,10 +231,14 @@ func (tx *Tx) init() {
 	tx.MessageReaction = NewMessageReactionClient(tx.config)
 	tx.MessageStatus = NewMessageStatusClient(tx.config)
 	tx.MessageUserDeletion = NewMessageUserDeletionClient(tx.config)
+	tx.NotificationDelivery = NewNotificationDeliveryClient(tx.config)
+	tx.OutboxEvent = NewOutboxEventClient(tx.config)
 	tx.PinnedMessage = NewPinnedMessageClient(tx.config)
 	tx.Plan = NewPlanClient(tx.config)
 	tx.PlanAttendee = NewPlanAttendeeClient(tx.config)
 	tx.RefreshToken = NewRefreshTokenClient(tx.config)
+	tx.SyncEvent = NewSyncEventClient(tx.config)
+	tx.SyncEventRecipient = NewSyncEventRecipientClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.UserBlock = NewUserBlockClient(tx.config)
 }
@@ -280,3 +303,27 @@ func (tx *txDriver) Query(ctx context.Context, query string, args, v any) error 
 }
 
 var _ dialect.Driver = (*txDriver)(nil)
+
+// ExecContext allows calling the underlying ExecContext method of the transaction if it is supported by it.
+// See, database/sql#Tx.ExecContext for more information.
+func (tx *txDriver) ExecContext(ctx context.Context, query string, args ...any) (stdsql.Result, error) {
+	ex, ok := tx.tx.(interface {
+		ExecContext(context.Context, string, ...any) (stdsql.Result, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("Tx.ExecContext is not supported")
+	}
+	return ex.ExecContext(ctx, query, args...)
+}
+
+// QueryContext allows calling the underlying QueryContext method of the transaction if it is supported by it.
+// See, database/sql#Tx.QueryContext for more information.
+func (tx *txDriver) QueryContext(ctx context.Context, query string, args ...any) (*stdsql.Rows, error) {
+	q, ok := tx.tx.(interface {
+		QueryContext(context.Context, string, ...any) (*stdsql.Rows, error)
+	})
+	if !ok {
+		return nil, fmt.Errorf("Tx.QueryContext is not supported")
+	}
+	return q.QueryContext(ctx, query, args...)
+}

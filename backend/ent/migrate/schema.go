@@ -109,7 +109,9 @@ var (
 				Name:    "uq_family_chat_per_family",
 				Unique:  true,
 				Columns: []*schema.Column{ChatsColumns[11]},
-				Annotation: entsql.IndexWhere("type = 'family'"),
+				Annotation: &entsql.IndexAnnotation{
+					Where: "type = 'family'",
+				},
 			},
 		},
 	}
@@ -175,6 +177,55 @@ var (
 			},
 		},
 	}
+	// ClientOperationsColumns holds the columns for the "client_operations" table.
+	ClientOperationsColumns = []*schema.Column{
+		{Name: "actor_user_id", Type: field.TypeString},
+		{Name: "operation_id", Type: field.TypeString},
+		{Name: "operation_type", Type: field.TypeString},
+		{Name: "request_hash", Type: field.TypeString},
+		{Name: "response_status", Type: field.TypeInt},
+		{Name: "response_body", Type: field.TypeJSON},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "expires_at", Type: field.TypeTime},
+	}
+	// ClientOperationsTable holds the schema information for the "client_operations" table.
+	ClientOperationsTable = &schema.Table{
+		Name:       "client_operations",
+		Columns:    ClientOperationsColumns,
+		PrimaryKey: []*schema.Column{ClientOperationsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "clientoperation_actor_user_id_operation_id",
+				Unique:  true,
+				Columns: []*schema.Column{ClientOperationsColumns[0], ClientOperationsColumns[1]},
+			},
+			{
+				Name:    "idx_client_operations_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{ClientOperationsColumns[7]},
+			},
+		},
+	}
+	// ConsumerReceiptsColumns holds the columns for the "consumer_receipts" table.
+	ConsumerReceiptsColumns = []*schema.Column{
+		{Name: "consumer_name", Type: field.TypeString},
+		{Name: "event_id", Type: field.TypeString},
+		{Name: "result", Type: field.TypeJSON, Nullable: true},
+		{Name: "completed_at", Type: field.TypeTime},
+	}
+	// ConsumerReceiptsTable holds the schema information for the "consumer_receipts" table.
+	ConsumerReceiptsTable = &schema.Table{
+		Name:       "consumer_receipts",
+		Columns:    ConsumerReceiptsColumns,
+		PrimaryKey: []*schema.Column{ConsumerReceiptsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "consumerreceipt_consumer_name_event_id",
+				Unique:  true,
+				Columns: []*schema.Column{ConsumerReceiptsColumns[0], ConsumerReceiptsColumns[1]},
+			},
+		},
+	}
 	// FamiliesColumns holds the columns for the "families" table.
 	FamiliesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString},
@@ -199,7 +250,15 @@ var (
 		{Name: "access_scope", Type: field.TypeString},
 		{Name: "storage_provider", Type: field.TypeString},
 		{Name: "object_key", Type: field.TypeString},
+		{Name: "lifecycle_state", Type: field.TypeString, Default: "ready"},
+		{Name: "object_revision", Type: field.TypeString, Nullable: true},
+		{Name: "object_etag", Type: field.TypeString, Nullable: true},
 		{Name: "thumbnail_object_key", Type: field.TypeString, Nullable: true},
+		{Name: "detected_mime_type", Type: field.TypeString, Nullable: true},
+		{Name: "preview_revision", Type: field.TypeString, Nullable: true},
+		{Name: "preview_status", Type: field.TypeString, Default: "none"},
+		{Name: "validation_failure_code", Type: field.TypeString, Nullable: true},
+		{Name: "validated_at", Type: field.TypeString, Nullable: true},
 		{Name: "original_name", Type: field.TypeString},
 		{Name: "mime_type", Type: field.TypeString},
 		{Name: "size_bytes", Type: field.TypeInt},
@@ -218,19 +277,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "files_chats_files",
-				Columns:    []*schema.Column{FilesColumns[11]},
+				Columns:    []*schema.Column{FilesColumns[19]},
 				RefColumns: []*schema.Column{ChatsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "files_families_files",
-				Columns:    []*schema.Column{FilesColumns[12]},
+				Columns:    []*schema.Column{FilesColumns[20]},
 				RefColumns: []*schema.Column{FamiliesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "files_users_files_uploaded",
-				Columns:    []*schema.Column{FilesColumns[13]},
+				Columns:    []*schema.Column{FilesColumns[21]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -252,6 +311,52 @@ var (
 				Name:    "filepreference_file_id_user_id",
 				Unique:  true,
 				Columns: []*schema.Column{FilePreferencesColumns[0], FilePreferencesColumns[1]},
+			},
+		},
+	}
+	// FileUploadsColumns holds the columns for the "file_uploads" table.
+	FileUploadsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString},
+		{Name: "file_id", Type: field.TypeString},
+		{Name: "family_id", Type: field.TypeString},
+		{Name: "uploaded_by", Type: field.TypeString},
+		{Name: "chat_id", Type: field.TypeString, Nullable: true},
+		{Name: "access_scope", Type: field.TypeString},
+		{Name: "idempotency_key", Type: field.TypeString},
+		{Name: "request_hash", Type: field.TypeString},
+		{Name: "upload_mode", Type: field.TypeString},
+		{Name: "multipart_upload_id", Type: field.TypeString, Nullable: true},
+		{Name: "object_key", Type: field.TypeString},
+		{Name: "expected_mime_type", Type: field.TypeString},
+		{Name: "expected_size_bytes", Type: field.TypeInt64},
+		{Name: "expected_checksum", Type: field.TypeString, Nullable: true},
+		{Name: "state", Type: field.TypeString, Default: "reserved"},
+		{Name: "failure_code", Type: field.TypeString, Nullable: true},
+		{Name: "expires_at", Type: field.TypeString},
+		{Name: "completed_at", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeString},
+		{Name: "updated_at", Type: field.TypeString},
+	}
+	// FileUploadsTable holds the schema information for the "file_uploads" table.
+	FileUploadsTable = &schema.Table{
+		Name:       "file_uploads",
+		Columns:    FileUploadsColumns,
+		PrimaryKey: []*schema.Column{FileUploadsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "fileupload_file_id",
+				Unique:  true,
+				Columns: []*schema.Column{FileUploadsColumns[1]},
+			},
+			{
+				Name:    "fileupload_uploaded_by_idempotency_key",
+				Unique:  true,
+				Columns: []*schema.Column{FileUploadsColumns[3], FileUploadsColumns[6]},
+			},
+			{
+				Name:    "fileupload_state_expires_at",
+				Unique:  false,
+				Columns: []*schema.Column{FileUploadsColumns[14], FileUploadsColumns[16]},
 			},
 		},
 	}
@@ -561,6 +666,71 @@ var (
 			},
 		},
 	}
+	// NotificationDeliveriesColumns holds the columns for the "notification_deliveries" table.
+	NotificationDeliveriesColumns = []*schema.Column{
+		{Name: "event_id", Type: field.TypeString},
+		{Name: "recipient_id", Type: field.TypeString},
+		{Name: "channel", Type: field.TypeString},
+		{Name: "state", Type: field.TypeString},
+		{Name: "attempts", Type: field.TypeInt, Default: 0},
+		{Name: "provider_id", Type: field.TypeString, Nullable: true},
+		{Name: "last_error", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// NotificationDeliveriesTable holds the schema information for the "notification_deliveries" table.
+	NotificationDeliveriesTable = &schema.Table{
+		Name:       "notification_deliveries",
+		Columns:    NotificationDeliveriesColumns,
+		PrimaryKey: []*schema.Column{NotificationDeliveriesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "notificationdelivery_event_id_recipient_id_channel",
+				Unique:  true,
+				Columns: []*schema.Column{NotificationDeliveriesColumns[0], NotificationDeliveriesColumns[1], NotificationDeliveriesColumns[2]},
+			},
+			{
+				Name:    "idx_notification_deliveries_state_updated",
+				Unique:  false,
+				Columns: []*schema.Column{NotificationDeliveriesColumns[3], NotificationDeliveriesColumns[8]},
+			},
+		},
+	}
+	// OutboxEventsColumns holds the columns for the "outbox_events" table.
+	OutboxEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString},
+		{Name: "sync_event_id", Type: field.TypeString, Nullable: true},
+		{Name: "family_id", Type: field.TypeString, Nullable: true},
+		{Name: "topic", Type: field.TypeString},
+		{Name: "schema_version", Type: field.TypeInt, Default: 1},
+		{Name: "partition_key", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeJSON},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "available_at", Type: field.TypeTime},
+		{Name: "lease_owner", Type: field.TypeString, Nullable: true},
+		{Name: "lease_expires_at", Type: field.TypeTime, Nullable: true},
+		{Name: "attempts", Type: field.TypeInt, Default: 0},
+		{Name: "published_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_error", Type: field.TypeString, Nullable: true},
+	}
+	// OutboxEventsTable holds the schema information for the "outbox_events" table.
+	OutboxEventsTable = &schema.Table{
+		Name:       "outbox_events",
+		Columns:    OutboxEventsColumns,
+		PrimaryKey: []*schema.Column{OutboxEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "idx_outbox_events_topic_created",
+				Unique:  false,
+				Columns: []*schema.Column{OutboxEventsColumns[3], OutboxEventsColumns[7]},
+			},
+			{
+				Name:    "idx_outbox_events_sync_event",
+				Unique:  false,
+				Columns: []*schema.Column{OutboxEventsColumns[1]},
+			},
+		},
+	}
 	// PinnedMessagesColumns holds the columns for the "pinned_messages" table.
 	PinnedMessagesColumns = []*schema.Column{
 		{Name: "chat_id", Type: field.TypeString},
@@ -680,6 +850,61 @@ var (
 			},
 		},
 	}
+	// SyncEventsColumns holds the columns for the "sync_events" table.
+	SyncEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "family_id", Type: field.TypeString},
+		{Name: "audience", Type: field.TypeString},
+		{Name: "event_type", Type: field.TypeString},
+		{Name: "schema_version", Type: field.TypeInt, Default: 1},
+		{Name: "aggregate_type", Type: field.TypeString},
+		{Name: "aggregate_id", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeJSON},
+		{Name: "occurred_at", Type: field.TypeTime},
+	}
+	// SyncEventsTable holds the schema information for the "sync_events" table.
+	SyncEventsTable = &schema.Table{
+		Name:       "sync_events",
+		Columns:    SyncEventsColumns,
+		PrimaryKey: []*schema.Column{SyncEventsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "idx_sync_events_family_sequence",
+				Unique:  false,
+				Columns: []*schema.Column{SyncEventsColumns[2], SyncEventsColumns[1]},
+			},
+			{
+				Name:    "idx_sync_events_occurred_at",
+				Unique:  false,
+				Columns: []*schema.Column{SyncEventsColumns[9]},
+			},
+		},
+	}
+	// SyncEventRecipientsColumns holds the columns for the "sync_event_recipients" table.
+	SyncEventRecipientsColumns = []*schema.Column{
+		{Name: "event_id", Type: field.TypeString},
+		{Name: "user_id", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// SyncEventRecipientsTable holds the schema information for the "sync_event_recipients" table.
+	SyncEventRecipientsTable = &schema.Table{
+		Name:       "sync_event_recipients",
+		Columns:    SyncEventRecipientsColumns,
+		PrimaryKey: []*schema.Column{SyncEventRecipientsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "synceventrecipient_event_id_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{SyncEventRecipientsColumns[0], SyncEventRecipientsColumns[1]},
+			},
+			{
+				Name:    "idx_sync_event_recipients_user_event",
+				Unique:  false,
+				Columns: []*schema.Column{SyncEventRecipientsColumns[1], SyncEventRecipientsColumns[0]},
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString},
@@ -743,9 +968,12 @@ var (
 		ChatMediaApprovalsTable,
 		ChatMembersTable,
 		ChatPreferencesTable,
+		ClientOperationsTable,
+		ConsumerReceiptsTable,
 		FamiliesTable,
 		FilesTable,
 		FilePreferencesTable,
+		FileUploadsTable,
 		InvitesTable,
 		McpAuditEventsTable,
 		McpConnectorsTable,
@@ -756,10 +984,14 @@ var (
 		MessageReactionsTable,
 		MessageStatusesTable,
 		MessageUserDeletionsTable,
+		NotificationDeliveriesTable,
+		OutboxEventsTable,
 		PinnedMessagesTable,
 		PlansTable,
 		PlanAttendeesTable,
 		RefreshTokensTable,
+		SyncEventsTable,
+		SyncEventRecipientsTable,
 		UsersTable,
 		UserBlocksTable,
 	}
@@ -789,6 +1021,12 @@ func init() {
 	ChatPreferencesTable.Annotation = &entsql.Annotation{
 		Table: "chat_preferences",
 	}
+	ClientOperationsTable.Annotation = &entsql.Annotation{
+		Table: "client_operations",
+	}
+	ConsumerReceiptsTable.Annotation = &entsql.Annotation{
+		Table: "consumer_receipts",
+	}
 	FamiliesTable.Annotation = &entsql.Annotation{
 		Table: "families",
 	}
@@ -800,6 +1038,9 @@ func init() {
 	}
 	FilePreferencesTable.Annotation = &entsql.Annotation{
 		Table: "file_preferences",
+	}
+	FileUploadsTable.Annotation = &entsql.Annotation{
+		Table: "file_uploads",
 	}
 	InvitesTable.ForeignKeys[0].RefTable = FamiliesTable
 	InvitesTable.ForeignKeys[1].RefTable = UsersTable
@@ -840,6 +1081,12 @@ func init() {
 	MessageUserDeletionsTable.Annotation = &entsql.Annotation{
 		Table: "message_user_deletions",
 	}
+	NotificationDeliveriesTable.Annotation = &entsql.Annotation{
+		Table: "notification_deliveries",
+	}
+	OutboxEventsTable.Annotation = &entsql.Annotation{
+		Table: "outbox_events",
+	}
 	PinnedMessagesTable.Annotation = &entsql.Annotation{
 		Table: "pinned_messages",
 	}
@@ -855,6 +1102,12 @@ func init() {
 	RefreshTokensTable.ForeignKeys[0].RefTable = UsersTable
 	RefreshTokensTable.Annotation = &entsql.Annotation{
 		Table: "refresh_tokens",
+	}
+	SyncEventsTable.Annotation = &entsql.Annotation{
+		Table: "sync_events",
+	}
+	SyncEventRecipientsTable.Annotation = &entsql.Annotation{
+		Table: "sync_event_recipients",
 	}
 	UsersTable.ForeignKeys[0].RefTable = FamiliesTable
 	UsersTable.Annotation = &entsql.Annotation{

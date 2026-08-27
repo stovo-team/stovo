@@ -69,6 +69,48 @@ func (_c *FileCreate) SetObjectKey(v string) *FileCreate {
 	return _c
 }
 
+// SetLifecycleState sets the "lifecycle_state" field.
+func (_c *FileCreate) SetLifecycleState(v string) *FileCreate {
+	_c.mutation.SetLifecycleState(v)
+	return _c
+}
+
+// SetNillableLifecycleState sets the "lifecycle_state" field if the given value is not nil.
+func (_c *FileCreate) SetNillableLifecycleState(v *string) *FileCreate {
+	if v != nil {
+		_c.SetLifecycleState(*v)
+	}
+	return _c
+}
+
+// SetObjectRevision sets the "object_revision" field.
+func (_c *FileCreate) SetObjectRevision(v string) *FileCreate {
+	_c.mutation.SetObjectRevision(v)
+	return _c
+}
+
+// SetNillableObjectRevision sets the "object_revision" field if the given value is not nil.
+func (_c *FileCreate) SetNillableObjectRevision(v *string) *FileCreate {
+	if v != nil {
+		_c.SetObjectRevision(*v)
+	}
+	return _c
+}
+
+// SetObjectEtag sets the "object_etag" field.
+func (_c *FileCreate) SetObjectEtag(v string) *FileCreate {
+	_c.mutation.SetObjectEtag(v)
+	return _c
+}
+
+// SetNillableObjectEtag sets the "object_etag" field if the given value is not nil.
+func (_c *FileCreate) SetNillableObjectEtag(v *string) *FileCreate {
+	if v != nil {
+		_c.SetObjectEtag(*v)
+	}
+	return _c
+}
+
 // SetThumbnailObjectKey sets the "thumbnail_object_key" field.
 func (_c *FileCreate) SetThumbnailObjectKey(v string) *FileCreate {
 	_c.mutation.SetThumbnailObjectKey(v)
@@ -79,6 +121,76 @@ func (_c *FileCreate) SetThumbnailObjectKey(v string) *FileCreate {
 func (_c *FileCreate) SetNillableThumbnailObjectKey(v *string) *FileCreate {
 	if v != nil {
 		_c.SetThumbnailObjectKey(*v)
+	}
+	return _c
+}
+
+// SetDetectedMimeType sets the "detected_mime_type" field.
+func (_c *FileCreate) SetDetectedMimeType(v string) *FileCreate {
+	_c.mutation.SetDetectedMimeType(v)
+	return _c
+}
+
+// SetNillableDetectedMimeType sets the "detected_mime_type" field if the given value is not nil.
+func (_c *FileCreate) SetNillableDetectedMimeType(v *string) *FileCreate {
+	if v != nil {
+		_c.SetDetectedMimeType(*v)
+	}
+	return _c
+}
+
+// SetPreviewRevision sets the "preview_revision" field.
+func (_c *FileCreate) SetPreviewRevision(v string) *FileCreate {
+	_c.mutation.SetPreviewRevision(v)
+	return _c
+}
+
+// SetNillablePreviewRevision sets the "preview_revision" field if the given value is not nil.
+func (_c *FileCreate) SetNillablePreviewRevision(v *string) *FileCreate {
+	if v != nil {
+		_c.SetPreviewRevision(*v)
+	}
+	return _c
+}
+
+// SetPreviewStatus sets the "preview_status" field.
+func (_c *FileCreate) SetPreviewStatus(v string) *FileCreate {
+	_c.mutation.SetPreviewStatus(v)
+	return _c
+}
+
+// SetNillablePreviewStatus sets the "preview_status" field if the given value is not nil.
+func (_c *FileCreate) SetNillablePreviewStatus(v *string) *FileCreate {
+	if v != nil {
+		_c.SetPreviewStatus(*v)
+	}
+	return _c
+}
+
+// SetValidationFailureCode sets the "validation_failure_code" field.
+func (_c *FileCreate) SetValidationFailureCode(v string) *FileCreate {
+	_c.mutation.SetValidationFailureCode(v)
+	return _c
+}
+
+// SetNillableValidationFailureCode sets the "validation_failure_code" field if the given value is not nil.
+func (_c *FileCreate) SetNillableValidationFailureCode(v *string) *FileCreate {
+	if v != nil {
+		_c.SetValidationFailureCode(*v)
+	}
+	return _c
+}
+
+// SetValidatedAt sets the "validated_at" field.
+func (_c *FileCreate) SetValidatedAt(v string) *FileCreate {
+	_c.mutation.SetValidatedAt(v)
+	return _c
+}
+
+// SetNillableValidatedAt sets the "validated_at" field if the given value is not nil.
+func (_c *FileCreate) SetNillableValidatedAt(v *string) *FileCreate {
+	if v != nil {
+		_c.SetValidatedAt(*v)
 	}
 	return _c
 }
@@ -169,6 +281,7 @@ func (_c *FileCreate) Mutation() *FileMutation {
 
 // Save creates the File in the database.
 func (_c *FileCreate) Save(ctx context.Context) (*File, error) {
+	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -191,6 +304,18 @@ func (_c *FileCreate) Exec(ctx context.Context) error {
 func (_c *FileCreate) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (_c *FileCreate) defaults() {
+	if _, ok := _c.mutation.LifecycleState(); !ok {
+		v := file.DefaultLifecycleState
+		_c.mutation.SetLifecycleState(v)
+	}
+	if _, ok := _c.mutation.PreviewStatus(); !ok {
+		v := file.DefaultPreviewStatus
+		_c.mutation.SetPreviewStatus(v)
 	}
 }
 
@@ -235,6 +360,12 @@ func (_c *FileCreate) check() error {
 		if err := file.ObjectKeyValidator(v); err != nil {
 			return &ValidationError{Name: "object_key", err: fmt.Errorf(`ent: validator failed for field "File.object_key": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.LifecycleState(); !ok {
+		return &ValidationError{Name: "lifecycle_state", err: errors.New(`ent: missing required field "File.lifecycle_state"`)}
+	}
+	if _, ok := _c.mutation.PreviewStatus(); !ok {
+		return &ValidationError{Name: "preview_status", err: errors.New(`ent: missing required field "File.preview_status"`)}
 	}
 	if _, ok := _c.mutation.OriginalName(); !ok {
 		return &ValidationError{Name: "original_name", err: errors.New(`ent: missing required field "File.original_name"`)}
@@ -322,9 +453,41 @@ func (_c *FileCreate) createSpec() (*File, *sqlgraph.CreateSpec) {
 		_spec.SetField(file.FieldObjectKey, field.TypeString, value)
 		_node.ObjectKey = value
 	}
+	if value, ok := _c.mutation.LifecycleState(); ok {
+		_spec.SetField(file.FieldLifecycleState, field.TypeString, value)
+		_node.LifecycleState = value
+	}
+	if value, ok := _c.mutation.ObjectRevision(); ok {
+		_spec.SetField(file.FieldObjectRevision, field.TypeString, value)
+		_node.ObjectRevision = &value
+	}
+	if value, ok := _c.mutation.ObjectEtag(); ok {
+		_spec.SetField(file.FieldObjectEtag, field.TypeString, value)
+		_node.ObjectEtag = &value
+	}
 	if value, ok := _c.mutation.ThumbnailObjectKey(); ok {
 		_spec.SetField(file.FieldThumbnailObjectKey, field.TypeString, value)
 		_node.ThumbnailObjectKey = &value
+	}
+	if value, ok := _c.mutation.DetectedMimeType(); ok {
+		_spec.SetField(file.FieldDetectedMimeType, field.TypeString, value)
+		_node.DetectedMimeType = &value
+	}
+	if value, ok := _c.mutation.PreviewRevision(); ok {
+		_spec.SetField(file.FieldPreviewRevision, field.TypeString, value)
+		_node.PreviewRevision = &value
+	}
+	if value, ok := _c.mutation.PreviewStatus(); ok {
+		_spec.SetField(file.FieldPreviewStatus, field.TypeString, value)
+		_node.PreviewStatus = value
+	}
+	if value, ok := _c.mutation.ValidationFailureCode(); ok {
+		_spec.SetField(file.FieldValidationFailureCode, field.TypeString, value)
+		_node.ValidationFailureCode = &value
+	}
+	if value, ok := _c.mutation.ValidatedAt(); ok {
+		_spec.SetField(file.FieldValidatedAt, field.TypeString, value)
+		_node.ValidatedAt = &value
 	}
 	if value, ok := _c.mutation.OriginalName(); ok {
 		_spec.SetField(file.FieldOriginalName, field.TypeString, value)
@@ -531,6 +694,54 @@ func (u *FileUpsert) UpdateObjectKey() *FileUpsert {
 	return u
 }
 
+// SetLifecycleState sets the "lifecycle_state" field.
+func (u *FileUpsert) SetLifecycleState(v string) *FileUpsert {
+	u.Set(file.FieldLifecycleState, v)
+	return u
+}
+
+// UpdateLifecycleState sets the "lifecycle_state" field to the value that was provided on create.
+func (u *FileUpsert) UpdateLifecycleState() *FileUpsert {
+	u.SetExcluded(file.FieldLifecycleState)
+	return u
+}
+
+// SetObjectRevision sets the "object_revision" field.
+func (u *FileUpsert) SetObjectRevision(v string) *FileUpsert {
+	u.Set(file.FieldObjectRevision, v)
+	return u
+}
+
+// UpdateObjectRevision sets the "object_revision" field to the value that was provided on create.
+func (u *FileUpsert) UpdateObjectRevision() *FileUpsert {
+	u.SetExcluded(file.FieldObjectRevision)
+	return u
+}
+
+// ClearObjectRevision clears the value of the "object_revision" field.
+func (u *FileUpsert) ClearObjectRevision() *FileUpsert {
+	u.SetNull(file.FieldObjectRevision)
+	return u
+}
+
+// SetObjectEtag sets the "object_etag" field.
+func (u *FileUpsert) SetObjectEtag(v string) *FileUpsert {
+	u.Set(file.FieldObjectEtag, v)
+	return u
+}
+
+// UpdateObjectEtag sets the "object_etag" field to the value that was provided on create.
+func (u *FileUpsert) UpdateObjectEtag() *FileUpsert {
+	u.SetExcluded(file.FieldObjectEtag)
+	return u
+}
+
+// ClearObjectEtag clears the value of the "object_etag" field.
+func (u *FileUpsert) ClearObjectEtag() *FileUpsert {
+	u.SetNull(file.FieldObjectEtag)
+	return u
+}
+
 // SetThumbnailObjectKey sets the "thumbnail_object_key" field.
 func (u *FileUpsert) SetThumbnailObjectKey(v string) *FileUpsert {
 	u.Set(file.FieldThumbnailObjectKey, v)
@@ -546,6 +757,90 @@ func (u *FileUpsert) UpdateThumbnailObjectKey() *FileUpsert {
 // ClearThumbnailObjectKey clears the value of the "thumbnail_object_key" field.
 func (u *FileUpsert) ClearThumbnailObjectKey() *FileUpsert {
 	u.SetNull(file.FieldThumbnailObjectKey)
+	return u
+}
+
+// SetDetectedMimeType sets the "detected_mime_type" field.
+func (u *FileUpsert) SetDetectedMimeType(v string) *FileUpsert {
+	u.Set(file.FieldDetectedMimeType, v)
+	return u
+}
+
+// UpdateDetectedMimeType sets the "detected_mime_type" field to the value that was provided on create.
+func (u *FileUpsert) UpdateDetectedMimeType() *FileUpsert {
+	u.SetExcluded(file.FieldDetectedMimeType)
+	return u
+}
+
+// ClearDetectedMimeType clears the value of the "detected_mime_type" field.
+func (u *FileUpsert) ClearDetectedMimeType() *FileUpsert {
+	u.SetNull(file.FieldDetectedMimeType)
+	return u
+}
+
+// SetPreviewRevision sets the "preview_revision" field.
+func (u *FileUpsert) SetPreviewRevision(v string) *FileUpsert {
+	u.Set(file.FieldPreviewRevision, v)
+	return u
+}
+
+// UpdatePreviewRevision sets the "preview_revision" field to the value that was provided on create.
+func (u *FileUpsert) UpdatePreviewRevision() *FileUpsert {
+	u.SetExcluded(file.FieldPreviewRevision)
+	return u
+}
+
+// ClearPreviewRevision clears the value of the "preview_revision" field.
+func (u *FileUpsert) ClearPreviewRevision() *FileUpsert {
+	u.SetNull(file.FieldPreviewRevision)
+	return u
+}
+
+// SetPreviewStatus sets the "preview_status" field.
+func (u *FileUpsert) SetPreviewStatus(v string) *FileUpsert {
+	u.Set(file.FieldPreviewStatus, v)
+	return u
+}
+
+// UpdatePreviewStatus sets the "preview_status" field to the value that was provided on create.
+func (u *FileUpsert) UpdatePreviewStatus() *FileUpsert {
+	u.SetExcluded(file.FieldPreviewStatus)
+	return u
+}
+
+// SetValidationFailureCode sets the "validation_failure_code" field.
+func (u *FileUpsert) SetValidationFailureCode(v string) *FileUpsert {
+	u.Set(file.FieldValidationFailureCode, v)
+	return u
+}
+
+// UpdateValidationFailureCode sets the "validation_failure_code" field to the value that was provided on create.
+func (u *FileUpsert) UpdateValidationFailureCode() *FileUpsert {
+	u.SetExcluded(file.FieldValidationFailureCode)
+	return u
+}
+
+// ClearValidationFailureCode clears the value of the "validation_failure_code" field.
+func (u *FileUpsert) ClearValidationFailureCode() *FileUpsert {
+	u.SetNull(file.FieldValidationFailureCode)
+	return u
+}
+
+// SetValidatedAt sets the "validated_at" field.
+func (u *FileUpsert) SetValidatedAt(v string) *FileUpsert {
+	u.Set(file.FieldValidatedAt, v)
+	return u
+}
+
+// UpdateValidatedAt sets the "validated_at" field to the value that was provided on create.
+func (u *FileUpsert) UpdateValidatedAt() *FileUpsert {
+	u.SetExcluded(file.FieldValidatedAt)
+	return u
+}
+
+// ClearValidatedAt clears the value of the "validated_at" field.
+func (u *FileUpsert) ClearValidatedAt() *FileUpsert {
+	u.SetNull(file.FieldValidatedAt)
 	return u
 }
 
@@ -778,6 +1073,62 @@ func (u *FileUpsertOne) UpdateObjectKey() *FileUpsertOne {
 	})
 }
 
+// SetLifecycleState sets the "lifecycle_state" field.
+func (u *FileUpsertOne) SetLifecycleState(v string) *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.SetLifecycleState(v)
+	})
+}
+
+// UpdateLifecycleState sets the "lifecycle_state" field to the value that was provided on create.
+func (u *FileUpsertOne) UpdateLifecycleState() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateLifecycleState()
+	})
+}
+
+// SetObjectRevision sets the "object_revision" field.
+func (u *FileUpsertOne) SetObjectRevision(v string) *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.SetObjectRevision(v)
+	})
+}
+
+// UpdateObjectRevision sets the "object_revision" field to the value that was provided on create.
+func (u *FileUpsertOne) UpdateObjectRevision() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateObjectRevision()
+	})
+}
+
+// ClearObjectRevision clears the value of the "object_revision" field.
+func (u *FileUpsertOne) ClearObjectRevision() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearObjectRevision()
+	})
+}
+
+// SetObjectEtag sets the "object_etag" field.
+func (u *FileUpsertOne) SetObjectEtag(v string) *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.SetObjectEtag(v)
+	})
+}
+
+// UpdateObjectEtag sets the "object_etag" field to the value that was provided on create.
+func (u *FileUpsertOne) UpdateObjectEtag() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateObjectEtag()
+	})
+}
+
+// ClearObjectEtag clears the value of the "object_etag" field.
+func (u *FileUpsertOne) ClearObjectEtag() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearObjectEtag()
+	})
+}
+
 // SetThumbnailObjectKey sets the "thumbnail_object_key" field.
 func (u *FileUpsertOne) SetThumbnailObjectKey(v string) *FileUpsertOne {
 	return u.Update(func(s *FileUpsert) {
@@ -796,6 +1147,104 @@ func (u *FileUpsertOne) UpdateThumbnailObjectKey() *FileUpsertOne {
 func (u *FileUpsertOne) ClearThumbnailObjectKey() *FileUpsertOne {
 	return u.Update(func(s *FileUpsert) {
 		s.ClearThumbnailObjectKey()
+	})
+}
+
+// SetDetectedMimeType sets the "detected_mime_type" field.
+func (u *FileUpsertOne) SetDetectedMimeType(v string) *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.SetDetectedMimeType(v)
+	})
+}
+
+// UpdateDetectedMimeType sets the "detected_mime_type" field to the value that was provided on create.
+func (u *FileUpsertOne) UpdateDetectedMimeType() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateDetectedMimeType()
+	})
+}
+
+// ClearDetectedMimeType clears the value of the "detected_mime_type" field.
+func (u *FileUpsertOne) ClearDetectedMimeType() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearDetectedMimeType()
+	})
+}
+
+// SetPreviewRevision sets the "preview_revision" field.
+func (u *FileUpsertOne) SetPreviewRevision(v string) *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.SetPreviewRevision(v)
+	})
+}
+
+// UpdatePreviewRevision sets the "preview_revision" field to the value that was provided on create.
+func (u *FileUpsertOne) UpdatePreviewRevision() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdatePreviewRevision()
+	})
+}
+
+// ClearPreviewRevision clears the value of the "preview_revision" field.
+func (u *FileUpsertOne) ClearPreviewRevision() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearPreviewRevision()
+	})
+}
+
+// SetPreviewStatus sets the "preview_status" field.
+func (u *FileUpsertOne) SetPreviewStatus(v string) *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.SetPreviewStatus(v)
+	})
+}
+
+// UpdatePreviewStatus sets the "preview_status" field to the value that was provided on create.
+func (u *FileUpsertOne) UpdatePreviewStatus() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdatePreviewStatus()
+	})
+}
+
+// SetValidationFailureCode sets the "validation_failure_code" field.
+func (u *FileUpsertOne) SetValidationFailureCode(v string) *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.SetValidationFailureCode(v)
+	})
+}
+
+// UpdateValidationFailureCode sets the "validation_failure_code" field to the value that was provided on create.
+func (u *FileUpsertOne) UpdateValidationFailureCode() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateValidationFailureCode()
+	})
+}
+
+// ClearValidationFailureCode clears the value of the "validation_failure_code" field.
+func (u *FileUpsertOne) ClearValidationFailureCode() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearValidationFailureCode()
+	})
+}
+
+// SetValidatedAt sets the "validated_at" field.
+func (u *FileUpsertOne) SetValidatedAt(v string) *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.SetValidatedAt(v)
+	})
+}
+
+// UpdateValidatedAt sets the "validated_at" field to the value that was provided on create.
+func (u *FileUpsertOne) UpdateValidatedAt() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateValidatedAt()
+	})
+}
+
+// ClearValidatedAt clears the value of the "validated_at" field.
+func (u *FileUpsertOne) ClearValidatedAt() *FileUpsertOne {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearValidatedAt()
 	})
 }
 
@@ -961,6 +1410,7 @@ func (_c *FileCreateBulk) Save(ctx context.Context) ([]*File, error) {
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*FileMutation)
 				if !ok {
@@ -1209,6 +1659,62 @@ func (u *FileUpsertBulk) UpdateObjectKey() *FileUpsertBulk {
 	})
 }
 
+// SetLifecycleState sets the "lifecycle_state" field.
+func (u *FileUpsertBulk) SetLifecycleState(v string) *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.SetLifecycleState(v)
+	})
+}
+
+// UpdateLifecycleState sets the "lifecycle_state" field to the value that was provided on create.
+func (u *FileUpsertBulk) UpdateLifecycleState() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateLifecycleState()
+	})
+}
+
+// SetObjectRevision sets the "object_revision" field.
+func (u *FileUpsertBulk) SetObjectRevision(v string) *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.SetObjectRevision(v)
+	})
+}
+
+// UpdateObjectRevision sets the "object_revision" field to the value that was provided on create.
+func (u *FileUpsertBulk) UpdateObjectRevision() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateObjectRevision()
+	})
+}
+
+// ClearObjectRevision clears the value of the "object_revision" field.
+func (u *FileUpsertBulk) ClearObjectRevision() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearObjectRevision()
+	})
+}
+
+// SetObjectEtag sets the "object_etag" field.
+func (u *FileUpsertBulk) SetObjectEtag(v string) *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.SetObjectEtag(v)
+	})
+}
+
+// UpdateObjectEtag sets the "object_etag" field to the value that was provided on create.
+func (u *FileUpsertBulk) UpdateObjectEtag() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateObjectEtag()
+	})
+}
+
+// ClearObjectEtag clears the value of the "object_etag" field.
+func (u *FileUpsertBulk) ClearObjectEtag() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearObjectEtag()
+	})
+}
+
 // SetThumbnailObjectKey sets the "thumbnail_object_key" field.
 func (u *FileUpsertBulk) SetThumbnailObjectKey(v string) *FileUpsertBulk {
 	return u.Update(func(s *FileUpsert) {
@@ -1227,6 +1733,104 @@ func (u *FileUpsertBulk) UpdateThumbnailObjectKey() *FileUpsertBulk {
 func (u *FileUpsertBulk) ClearThumbnailObjectKey() *FileUpsertBulk {
 	return u.Update(func(s *FileUpsert) {
 		s.ClearThumbnailObjectKey()
+	})
+}
+
+// SetDetectedMimeType sets the "detected_mime_type" field.
+func (u *FileUpsertBulk) SetDetectedMimeType(v string) *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.SetDetectedMimeType(v)
+	})
+}
+
+// UpdateDetectedMimeType sets the "detected_mime_type" field to the value that was provided on create.
+func (u *FileUpsertBulk) UpdateDetectedMimeType() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateDetectedMimeType()
+	})
+}
+
+// ClearDetectedMimeType clears the value of the "detected_mime_type" field.
+func (u *FileUpsertBulk) ClearDetectedMimeType() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearDetectedMimeType()
+	})
+}
+
+// SetPreviewRevision sets the "preview_revision" field.
+func (u *FileUpsertBulk) SetPreviewRevision(v string) *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.SetPreviewRevision(v)
+	})
+}
+
+// UpdatePreviewRevision sets the "preview_revision" field to the value that was provided on create.
+func (u *FileUpsertBulk) UpdatePreviewRevision() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdatePreviewRevision()
+	})
+}
+
+// ClearPreviewRevision clears the value of the "preview_revision" field.
+func (u *FileUpsertBulk) ClearPreviewRevision() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearPreviewRevision()
+	})
+}
+
+// SetPreviewStatus sets the "preview_status" field.
+func (u *FileUpsertBulk) SetPreviewStatus(v string) *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.SetPreviewStatus(v)
+	})
+}
+
+// UpdatePreviewStatus sets the "preview_status" field to the value that was provided on create.
+func (u *FileUpsertBulk) UpdatePreviewStatus() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdatePreviewStatus()
+	})
+}
+
+// SetValidationFailureCode sets the "validation_failure_code" field.
+func (u *FileUpsertBulk) SetValidationFailureCode(v string) *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.SetValidationFailureCode(v)
+	})
+}
+
+// UpdateValidationFailureCode sets the "validation_failure_code" field to the value that was provided on create.
+func (u *FileUpsertBulk) UpdateValidationFailureCode() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateValidationFailureCode()
+	})
+}
+
+// ClearValidationFailureCode clears the value of the "validation_failure_code" field.
+func (u *FileUpsertBulk) ClearValidationFailureCode() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearValidationFailureCode()
+	})
+}
+
+// SetValidatedAt sets the "validated_at" field.
+func (u *FileUpsertBulk) SetValidatedAt(v string) *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.SetValidatedAt(v)
+	})
+}
+
+// UpdateValidatedAt sets the "validated_at" field to the value that was provided on create.
+func (u *FileUpsertBulk) UpdateValidatedAt() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.UpdateValidatedAt()
+	})
+}
+
+// ClearValidatedAt clears the value of the "validated_at" field.
+func (u *FileUpsertBulk) ClearValidatedAt() *FileUpsertBulk {
+	return u.Update(func(s *FileUpsert) {
+		s.ClearValidatedAt()
 	})
 }
 

@@ -31,8 +31,24 @@ type File struct {
 	StorageProvider string `json:"storage_provider,omitempty"`
 	// ObjectKey holds the value of the "object_key" field.
 	ObjectKey string `json:"object_key,omitempty"`
+	// LifecycleState holds the value of the "lifecycle_state" field.
+	LifecycleState string `json:"lifecycle_state,omitempty"`
+	// ObjectRevision holds the value of the "object_revision" field.
+	ObjectRevision *string `json:"object_revision,omitempty"`
+	// ObjectEtag holds the value of the "object_etag" field.
+	ObjectEtag *string `json:"object_etag,omitempty"`
 	// ThumbnailObjectKey holds the value of the "thumbnail_object_key" field.
 	ThumbnailObjectKey *string `json:"thumbnail_object_key,omitempty"`
+	// DetectedMimeType holds the value of the "detected_mime_type" field.
+	DetectedMimeType *string `json:"detected_mime_type,omitempty"`
+	// PreviewRevision holds the value of the "preview_revision" field.
+	PreviewRevision *string `json:"preview_revision,omitempty"`
+	// PreviewStatus holds the value of the "preview_status" field.
+	PreviewStatus string `json:"preview_status,omitempty"`
+	// ValidationFailureCode holds the value of the "validation_failure_code" field.
+	ValidationFailureCode *string `json:"validation_failure_code,omitempty"`
+	// ValidatedAt holds the value of the "validated_at" field.
+	ValidatedAt *string `json:"validated_at,omitempty"`
 	// OriginalName holds the value of the "original_name" field.
 	OriginalName string `json:"original_name,omitempty"`
 	// MimeType holds the value of the "mime_type" field.
@@ -104,7 +120,7 @@ func (*File) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case file.FieldSizeBytes:
 			values[i] = new(sql.NullInt64)
-		case file.FieldID, file.FieldFamilyID, file.FieldUploadedBy, file.FieldChatID, file.FieldAccessScope, file.FieldStorageProvider, file.FieldObjectKey, file.FieldThumbnailObjectKey, file.FieldOriginalName, file.FieldMimeType, file.FieldChecksum, file.FieldCreatedAt, file.FieldDeletedAt:
+		case file.FieldID, file.FieldFamilyID, file.FieldUploadedBy, file.FieldChatID, file.FieldAccessScope, file.FieldStorageProvider, file.FieldObjectKey, file.FieldLifecycleState, file.FieldObjectRevision, file.FieldObjectEtag, file.FieldThumbnailObjectKey, file.FieldDetectedMimeType, file.FieldPreviewRevision, file.FieldPreviewStatus, file.FieldValidationFailureCode, file.FieldValidatedAt, file.FieldOriginalName, file.FieldMimeType, file.FieldChecksum, file.FieldCreatedAt, file.FieldDeletedAt:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -164,12 +180,66 @@ func (_m *File) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ObjectKey = value.String
 			}
+		case file.FieldLifecycleState:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field lifecycle_state", values[i])
+			} else if value.Valid {
+				_m.LifecycleState = value.String
+			}
+		case file.FieldObjectRevision:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field object_revision", values[i])
+			} else if value.Valid {
+				_m.ObjectRevision = new(string)
+				*_m.ObjectRevision = value.String
+			}
+		case file.FieldObjectEtag:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field object_etag", values[i])
+			} else if value.Valid {
+				_m.ObjectEtag = new(string)
+				*_m.ObjectEtag = value.String
+			}
 		case file.FieldThumbnailObjectKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field thumbnail_object_key", values[i])
 			} else if value.Valid {
 				_m.ThumbnailObjectKey = new(string)
 				*_m.ThumbnailObjectKey = value.String
+			}
+		case file.FieldDetectedMimeType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field detected_mime_type", values[i])
+			} else if value.Valid {
+				_m.DetectedMimeType = new(string)
+				*_m.DetectedMimeType = value.String
+			}
+		case file.FieldPreviewRevision:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field preview_revision", values[i])
+			} else if value.Valid {
+				_m.PreviewRevision = new(string)
+				*_m.PreviewRevision = value.String
+			}
+		case file.FieldPreviewStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field preview_status", values[i])
+			} else if value.Valid {
+				_m.PreviewStatus = value.String
+			}
+		case file.FieldValidationFailureCode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field validation_failure_code", values[i])
+			} else if value.Valid {
+				_m.ValidationFailureCode = new(string)
+				*_m.ValidationFailureCode = value.String
+			}
+		case file.FieldValidatedAt:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field validated_at", values[i])
+			} else if value.Valid {
+				_m.ValidatedAt = new(string)
+				*_m.ValidatedAt = value.String
 			}
 		case file.FieldOriginalName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -280,8 +350,44 @@ func (_m *File) String() string {
 	builder.WriteString("object_key=")
 	builder.WriteString(_m.ObjectKey)
 	builder.WriteString(", ")
+	builder.WriteString("lifecycle_state=")
+	builder.WriteString(_m.LifecycleState)
+	builder.WriteString(", ")
+	if v := _m.ObjectRevision; v != nil {
+		builder.WriteString("object_revision=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ObjectEtag; v != nil {
+		builder.WriteString("object_etag=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
 	if v := _m.ThumbnailObjectKey; v != nil {
 		builder.WriteString("thumbnail_object_key=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.DetectedMimeType; v != nil {
+		builder.WriteString("detected_mime_type=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.PreviewRevision; v != nil {
+		builder.WriteString("preview_revision=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	builder.WriteString("preview_status=")
+	builder.WriteString(_m.PreviewStatus)
+	builder.WriteString(", ")
+	if v := _m.ValidationFailureCode; v != nil {
+		builder.WriteString("validation_failure_code=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ValidatedAt; v != nil {
+		builder.WriteString("validated_at=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

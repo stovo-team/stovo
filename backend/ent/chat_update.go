@@ -207,6 +207,7 @@ func (_u *ChatUpdate) SetNillablePinPermission(v *string) *ChatUpdate {
 
 // SetMessageDelaySeconds sets the "message_delay_seconds" field.
 func (_u *ChatUpdate) SetMessageDelaySeconds(v int) *ChatUpdate {
+	_u.mutation.ResetMessageDelaySeconds()
 	_u.mutation.SetMessageDelaySeconds(v)
 	return _u
 }
@@ -216,6 +217,12 @@ func (_u *ChatUpdate) SetNillableMessageDelaySeconds(v *int) *ChatUpdate {
 	if v != nil {
 		_u.SetMessageDelaySeconds(*v)
 	}
+	return _u
+}
+
+// AddMessageDelaySeconds adds value to the "message_delay_seconds" field.
+func (_u *ChatUpdate) AddMessageDelaySeconds(v int) *ChatUpdate {
+	_u.mutation.AddMessageDelaySeconds(v)
 	return _u
 }
 
@@ -511,6 +518,9 @@ func (_u *ChatUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.MessageDelaySeconds(); ok {
 		_spec.SetField(chat.FieldMessageDelaySeconds, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedMessageDelaySeconds(); ok {
+		_spec.AddField(chat.FieldMessageDelaySeconds, field.TypeInt, value)
 	}
 	if _u.mutation.FamilyCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -944,6 +954,7 @@ func (_u *ChatUpdateOne) SetNillablePinPermission(v *string) *ChatUpdateOne {
 
 // SetMessageDelaySeconds sets the "message_delay_seconds" field.
 func (_u *ChatUpdateOne) SetMessageDelaySeconds(v int) *ChatUpdateOne {
+	_u.mutation.ResetMessageDelaySeconds()
 	_u.mutation.SetMessageDelaySeconds(v)
 	return _u
 }
@@ -953,6 +964,12 @@ func (_u *ChatUpdateOne) SetNillableMessageDelaySeconds(v *int) *ChatUpdateOne {
 	if v != nil {
 		_u.SetMessageDelaySeconds(*v)
 	}
+	return _u
+}
+
+// AddMessageDelaySeconds adds value to the "message_delay_seconds" field.
+func (_u *ChatUpdateOne) AddMessageDelaySeconds(v int) *ChatUpdateOne {
+	_u.mutation.AddMessageDelaySeconds(v)
 	return _u
 }
 
@@ -1278,6 +1295,9 @@ func (_u *ChatUpdateOne) sqlSave(ctx context.Context) (_node *Chat, err error) {
 	}
 	if value, ok := _u.mutation.MessageDelaySeconds(); ok {
 		_spec.SetField(chat.FieldMessageDelaySeconds, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedMessageDelaySeconds(); ok {
+		_spec.AddField(chat.FieldMessageDelaySeconds, field.TypeInt, value)
 	}
 	if _u.mutation.FamilyCleared() {
 		edge := &sqlgraph.EdgeSpec{

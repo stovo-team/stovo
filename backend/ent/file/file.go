@@ -24,8 +24,24 @@ const (
 	FieldStorageProvider = "storage_provider"
 	// FieldObjectKey holds the string denoting the object_key field in the database.
 	FieldObjectKey = "object_key"
+	// FieldLifecycleState holds the string denoting the lifecycle_state field in the database.
+	FieldLifecycleState = "lifecycle_state"
+	// FieldObjectRevision holds the string denoting the object_revision field in the database.
+	FieldObjectRevision = "object_revision"
+	// FieldObjectEtag holds the string denoting the object_etag field in the database.
+	FieldObjectEtag = "object_etag"
 	// FieldThumbnailObjectKey holds the string denoting the thumbnail_object_key field in the database.
 	FieldThumbnailObjectKey = "thumbnail_object_key"
+	// FieldDetectedMimeType holds the string denoting the detected_mime_type field in the database.
+	FieldDetectedMimeType = "detected_mime_type"
+	// FieldPreviewRevision holds the string denoting the preview_revision field in the database.
+	FieldPreviewRevision = "preview_revision"
+	// FieldPreviewStatus holds the string denoting the preview_status field in the database.
+	FieldPreviewStatus = "preview_status"
+	// FieldValidationFailureCode holds the string denoting the validation_failure_code field in the database.
+	FieldValidationFailureCode = "validation_failure_code"
+	// FieldValidatedAt holds the string denoting the validated_at field in the database.
+	FieldValidatedAt = "validated_at"
 	// FieldOriginalName holds the string denoting the original_name field in the database.
 	FieldOriginalName = "original_name"
 	// FieldMimeType holds the string denoting the mime_type field in the database.
@@ -78,7 +94,15 @@ var Columns = []string{
 	FieldAccessScope,
 	FieldStorageProvider,
 	FieldObjectKey,
+	FieldLifecycleState,
+	FieldObjectRevision,
+	FieldObjectEtag,
 	FieldThumbnailObjectKey,
+	FieldDetectedMimeType,
+	FieldPreviewRevision,
+	FieldPreviewStatus,
+	FieldValidationFailureCode,
+	FieldValidatedAt,
 	FieldOriginalName,
 	FieldMimeType,
 	FieldSizeBytes,
@@ -108,6 +132,10 @@ var (
 	StorageProviderValidator func(string) error
 	// ObjectKeyValidator is a validator for the "object_key" field. It is called by the builders before save.
 	ObjectKeyValidator func(string) error
+	// DefaultLifecycleState holds the default value on creation for the "lifecycle_state" field.
+	DefaultLifecycleState string
+	// DefaultPreviewStatus holds the default value on creation for the "preview_status" field.
+	DefaultPreviewStatus string
 	// OriginalNameValidator is a validator for the "original_name" field. It is called by the builders before save.
 	OriginalNameValidator func(string) error
 	// MimeTypeValidator is a validator for the "mime_type" field. It is called by the builders before save.
@@ -156,9 +184,49 @@ func ByObjectKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldObjectKey, opts...).ToFunc()
 }
 
+// ByLifecycleState orders the results by the lifecycle_state field.
+func ByLifecycleState(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLifecycleState, opts...).ToFunc()
+}
+
+// ByObjectRevision orders the results by the object_revision field.
+func ByObjectRevision(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldObjectRevision, opts...).ToFunc()
+}
+
+// ByObjectEtag orders the results by the object_etag field.
+func ByObjectEtag(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldObjectEtag, opts...).ToFunc()
+}
+
 // ByThumbnailObjectKey orders the results by the thumbnail_object_key field.
 func ByThumbnailObjectKey(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldThumbnailObjectKey, opts...).ToFunc()
+}
+
+// ByDetectedMimeType orders the results by the detected_mime_type field.
+func ByDetectedMimeType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDetectedMimeType, opts...).ToFunc()
+}
+
+// ByPreviewRevision orders the results by the preview_revision field.
+func ByPreviewRevision(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPreviewRevision, opts...).ToFunc()
+}
+
+// ByPreviewStatus orders the results by the preview_status field.
+func ByPreviewStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPreviewStatus, opts...).ToFunc()
+}
+
+// ByValidationFailureCode orders the results by the validation_failure_code field.
+func ByValidationFailureCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldValidationFailureCode, opts...).ToFunc()
+}
+
+// ByValidatedAt orders the results by the validated_at field.
+func ByValidatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldValidatedAt, opts...).ToFunc()
 }
 
 // ByOriginalName orders the results by the original_name field.

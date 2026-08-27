@@ -24,6 +24,12 @@ type ChatMember func(*sql.Selector)
 // ChatPreference is the predicate function for chatpreference builders.
 type ChatPreference func(*sql.Selector)
 
+// ClientOperation is the predicate function for clientoperation builders.
+type ClientOperation func(*sql.Selector)
+
+// ConsumerReceipt is the predicate function for consumerreceipt builders.
+type ConsumerReceipt func(*sql.Selector)
+
 // Family is the predicate function for family builders.
 type Family func(*sql.Selector)
 
@@ -32,6 +38,9 @@ type File func(*sql.Selector)
 
 // FilePreference is the predicate function for filepreference builders.
 type FilePreference func(*sql.Selector)
+
+// FileUpload is the predicate function for fileupload builders.
+type FileUpload func(*sql.Selector)
 
 // Invite is the predicate function for invite builders.
 type Invite func(*sql.Selector)
@@ -63,6 +72,12 @@ type MessageStatus func(*sql.Selector)
 // MessageUserDeletion is the predicate function for messageuserdeletion builders.
 type MessageUserDeletion func(*sql.Selector)
 
+// NotificationDelivery is the predicate function for notificationdelivery builders.
+type NotificationDelivery func(*sql.Selector)
+
+// OutboxEvent is the predicate function for outboxevent builders.
+type OutboxEvent func(*sql.Selector)
+
 // PinnedMessage is the predicate function for pinnedmessage builders.
 type PinnedMessage func(*sql.Selector)
 
@@ -74,6 +89,12 @@ type PlanAttendee func(*sql.Selector)
 
 // RefreshToken is the predicate function for refreshtoken builders.
 type RefreshToken func(*sql.Selector)
+
+// SyncEvent is the predicate function for syncevent builders.
+type SyncEvent func(*sql.Selector)
+
+// SyncEventRecipient is the predicate function for synceventrecipient builders.
+type SyncEventRecipient func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
