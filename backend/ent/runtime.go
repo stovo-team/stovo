@@ -9,9 +9,12 @@ import (
 	"family-messenger/backend/ent/chatmediaapproval"
 	"family-messenger/backend/ent/chatmember"
 	"family-messenger/backend/ent/chatpreference"
+	"family-messenger/backend/ent/clientoperation"
+	"family-messenger/backend/ent/consumerreceipt"
 	"family-messenger/backend/ent/family"
 	"family-messenger/backend/ent/file"
 	"family-messenger/backend/ent/filepreference"
+	"family-messenger/backend/ent/fileupload"
 	"family-messenger/backend/ent/invite"
 	"family-messenger/backend/ent/mcpauditevent"
 	"family-messenger/backend/ent/mcpconnector"
@@ -22,11 +25,15 @@ import (
 	"family-messenger/backend/ent/messagereaction"
 	"family-messenger/backend/ent/messagestatus"
 	"family-messenger/backend/ent/messageuserdeletion"
+	"family-messenger/backend/ent/notificationdelivery"
+	"family-messenger/backend/ent/outboxevent"
 	"family-messenger/backend/ent/pinnedmessage"
 	"family-messenger/backend/ent/plan"
 	"family-messenger/backend/ent/planattendee"
 	"family-messenger/backend/ent/refreshtoken"
 	"family-messenger/backend/ent/schema"
+	"family-messenger/backend/ent/syncevent"
+	"family-messenger/backend/ent/synceventrecipient"
 	"family-messenger/backend/ent/user"
 	"family-messenger/backend/ent/userblock"
 	"time"
@@ -176,6 +183,38 @@ func init() {
 	chatpreferenceDescID := chatpreferenceFields[0].Descriptor()
 	// chatpreference.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	chatpreference.IDValidator = chatpreferenceDescID.Validators[0].(func(string) error)
+	clientoperationFields := schema.ClientOperation{}.Fields()
+	_ = clientoperationFields
+	// clientoperationDescOperationID is the schema descriptor for operation_id field.
+	clientoperationDescOperationID := clientoperationFields[1].Descriptor()
+	// clientoperation.OperationIDValidator is a validator for the "operation_id" field. It is called by the builders before save.
+	clientoperation.OperationIDValidator = clientoperationDescOperationID.Validators[0].(func(string) error)
+	// clientoperationDescOperationType is the schema descriptor for operation_type field.
+	clientoperationDescOperationType := clientoperationFields[2].Descriptor()
+	// clientoperation.OperationTypeValidator is a validator for the "operation_type" field. It is called by the builders before save.
+	clientoperation.OperationTypeValidator = clientoperationDescOperationType.Validators[0].(func(string) error)
+	// clientoperationDescRequestHash is the schema descriptor for request_hash field.
+	clientoperationDescRequestHash := clientoperationFields[3].Descriptor()
+	// clientoperation.RequestHashValidator is a validator for the "request_hash" field. It is called by the builders before save.
+	clientoperation.RequestHashValidator = clientoperationDescRequestHash.Validators[0].(func(string) error)
+	// clientoperationDescResponseBody is the schema descriptor for response_body field.
+	clientoperationDescResponseBody := clientoperationFields[5].Descriptor()
+	// clientoperation.DefaultResponseBody holds the default value on creation for the response_body field.
+	clientoperation.DefaultResponseBody = clientoperationDescResponseBody.Default.(map[string]interface{})
+	// clientoperationDescID is the schema descriptor for id field.
+	clientoperationDescID := clientoperationFields[0].Descriptor()
+	// clientoperation.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	clientoperation.IDValidator = clientoperationDescID.Validators[0].(func(string) error)
+	consumerreceiptFields := schema.ConsumerReceipt{}.Fields()
+	_ = consumerreceiptFields
+	// consumerreceiptDescEventID is the schema descriptor for event_id field.
+	consumerreceiptDescEventID := consumerreceiptFields[1].Descriptor()
+	// consumerreceipt.EventIDValidator is a validator for the "event_id" field. It is called by the builders before save.
+	consumerreceipt.EventIDValidator = consumerreceiptDescEventID.Validators[0].(func(string) error)
+	// consumerreceiptDescID is the schema descriptor for id field.
+	consumerreceiptDescID := consumerreceiptFields[0].Descriptor()
+	// consumerreceipt.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	consumerreceipt.IDValidator = consumerreceiptDescID.Validators[0].(func(string) error)
 	familyFields := schema.Family{}.Fields()
 	_ = familyFields
 	// familyDescName is the schema descriptor for name field.
@@ -224,6 +263,14 @@ func init() {
 	fileDescObjectKey := fileFields[6].Descriptor()
 	// file.ObjectKeyValidator is a validator for the "object_key" field. It is called by the builders before save.
 	file.ObjectKeyValidator = fileDescObjectKey.Validators[0].(func(string) error)
+	// fileDescLifecycleState is the schema descriptor for lifecycle_state field.
+	fileDescLifecycleState := fileFields[7].Descriptor()
+	// file.DefaultLifecycleState holds the default value on creation for the lifecycle_state field.
+	file.DefaultLifecycleState = fileDescLifecycleState.Default.(string)
+	// fileDescPreviewStatus is the schema descriptor for preview_status field.
+	fileDescPreviewStatus := fileFields[13].Descriptor()
+	// file.DefaultPreviewStatus holds the default value on creation for the preview_status field.
+	file.DefaultPreviewStatus = fileDescPreviewStatus.Default.(string)
 	// fileDescOriginalName is the schema descriptor for original_name field.
 	fileDescOriginalName := fileFields[16].Descriptor()
 	// file.OriginalNameValidator is a validator for the "original_name" field. It is called by the builders before save.
@@ -254,6 +301,64 @@ func init() {
 	filepreferenceDescID := filepreferenceFields[0].Descriptor()
 	// filepreference.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	filepreference.IDValidator = filepreferenceDescID.Validators[0].(func(string) error)
+	fileuploadFields := schema.FileUpload{}.Fields()
+	_ = fileuploadFields
+	// fileuploadDescFileID is the schema descriptor for file_id field.
+	fileuploadDescFileID := fileuploadFields[1].Descriptor()
+	// fileupload.FileIDValidator is a validator for the "file_id" field. It is called by the builders before save.
+	fileupload.FileIDValidator = fileuploadDescFileID.Validators[0].(func(string) error)
+	// fileuploadDescFamilyID is the schema descriptor for family_id field.
+	fileuploadDescFamilyID := fileuploadFields[2].Descriptor()
+	// fileupload.FamilyIDValidator is a validator for the "family_id" field. It is called by the builders before save.
+	fileupload.FamilyIDValidator = fileuploadDescFamilyID.Validators[0].(func(string) error)
+	// fileuploadDescUploadedBy is the schema descriptor for uploaded_by field.
+	fileuploadDescUploadedBy := fileuploadFields[3].Descriptor()
+	// fileupload.UploadedByValidator is a validator for the "uploaded_by" field. It is called by the builders before save.
+	fileupload.UploadedByValidator = fileuploadDescUploadedBy.Validators[0].(func(string) error)
+	// fileuploadDescAccessScope is the schema descriptor for access_scope field.
+	fileuploadDescAccessScope := fileuploadFields[5].Descriptor()
+	// fileupload.AccessScopeValidator is a validator for the "access_scope" field. It is called by the builders before save.
+	fileupload.AccessScopeValidator = fileuploadDescAccessScope.Validators[0].(func(string) error)
+	// fileuploadDescIdempotencyKey is the schema descriptor for idempotency_key field.
+	fileuploadDescIdempotencyKey := fileuploadFields[6].Descriptor()
+	// fileupload.IdempotencyKeyValidator is a validator for the "idempotency_key" field. It is called by the builders before save.
+	fileupload.IdempotencyKeyValidator = fileuploadDescIdempotencyKey.Validators[0].(func(string) error)
+	// fileuploadDescRequestHash is the schema descriptor for request_hash field.
+	fileuploadDescRequestHash := fileuploadFields[7].Descriptor()
+	// fileupload.RequestHashValidator is a validator for the "request_hash" field. It is called by the builders before save.
+	fileupload.RequestHashValidator = fileuploadDescRequestHash.Validators[0].(func(string) error)
+	// fileuploadDescUploadMode is the schema descriptor for upload_mode field.
+	fileuploadDescUploadMode := fileuploadFields[8].Descriptor()
+	// fileupload.UploadModeValidator is a validator for the "upload_mode" field. It is called by the builders before save.
+	fileupload.UploadModeValidator = fileuploadDescUploadMode.Validators[0].(func(string) error)
+	// fileuploadDescObjectKey is the schema descriptor for object_key field.
+	fileuploadDescObjectKey := fileuploadFields[10].Descriptor()
+	// fileupload.ObjectKeyValidator is a validator for the "object_key" field. It is called by the builders before save.
+	fileupload.ObjectKeyValidator = fileuploadDescObjectKey.Validators[0].(func(string) error)
+	// fileuploadDescExpectedMimeType is the schema descriptor for expected_mime_type field.
+	fileuploadDescExpectedMimeType := fileuploadFields[11].Descriptor()
+	// fileupload.ExpectedMimeTypeValidator is a validator for the "expected_mime_type" field. It is called by the builders before save.
+	fileupload.ExpectedMimeTypeValidator = fileuploadDescExpectedMimeType.Validators[0].(func(string) error)
+	// fileuploadDescState is the schema descriptor for state field.
+	fileuploadDescState := fileuploadFields[14].Descriptor()
+	// fileupload.DefaultState holds the default value on creation for the state field.
+	fileupload.DefaultState = fileuploadDescState.Default.(string)
+	// fileuploadDescExpiresAt is the schema descriptor for expires_at field.
+	fileuploadDescExpiresAt := fileuploadFields[16].Descriptor()
+	// fileupload.ExpiresAtValidator is a validator for the "expires_at" field. It is called by the builders before save.
+	fileupload.ExpiresAtValidator = fileuploadDescExpiresAt.Validators[0].(func(string) error)
+	// fileuploadDescCreatedAt is the schema descriptor for created_at field.
+	fileuploadDescCreatedAt := fileuploadFields[18].Descriptor()
+	// fileupload.CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
+	fileupload.CreatedAtValidator = fileuploadDescCreatedAt.Validators[0].(func(string) error)
+	// fileuploadDescUpdatedAt is the schema descriptor for updated_at field.
+	fileuploadDescUpdatedAt := fileuploadFields[19].Descriptor()
+	// fileupload.UpdatedAtValidator is a validator for the "updated_at" field. It is called by the builders before save.
+	fileupload.UpdatedAtValidator = fileuploadDescUpdatedAt.Validators[0].(func(string) error)
+	// fileuploadDescID is the schema descriptor for id field.
+	fileuploadDescID := fileuploadFields[0].Descriptor()
+	// fileupload.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	fileupload.IDValidator = fileuploadDescID.Validators[0].(func(string) error)
 	inviteFields := schema.Invite{}.Fields()
 	_ = inviteFields
 	// inviteDescFamilyID is the schema descriptor for family_id field.
@@ -504,6 +609,54 @@ func init() {
 	messageuserdeletionDescID := messageuserdeletionFields[0].Descriptor()
 	// messageuserdeletion.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	messageuserdeletion.IDValidator = messageuserdeletionDescID.Validators[0].(func(string) error)
+	notificationdeliveryFields := schema.NotificationDelivery{}.Fields()
+	_ = notificationdeliveryFields
+	// notificationdeliveryDescRecipientID is the schema descriptor for recipient_id field.
+	notificationdeliveryDescRecipientID := notificationdeliveryFields[1].Descriptor()
+	// notificationdelivery.RecipientIDValidator is a validator for the "recipient_id" field. It is called by the builders before save.
+	notificationdelivery.RecipientIDValidator = notificationdeliveryDescRecipientID.Validators[0].(func(string) error)
+	// notificationdeliveryDescChannel is the schema descriptor for channel field.
+	notificationdeliveryDescChannel := notificationdeliveryFields[2].Descriptor()
+	// notificationdelivery.ChannelValidator is a validator for the "channel" field. It is called by the builders before save.
+	notificationdelivery.ChannelValidator = notificationdeliveryDescChannel.Validators[0].(func(string) error)
+	// notificationdeliveryDescState is the schema descriptor for state field.
+	notificationdeliveryDescState := notificationdeliveryFields[3].Descriptor()
+	// notificationdelivery.StateValidator is a validator for the "state" field. It is called by the builders before save.
+	notificationdelivery.StateValidator = notificationdeliveryDescState.Validators[0].(func(string) error)
+	// notificationdeliveryDescAttempts is the schema descriptor for attempts field.
+	notificationdeliveryDescAttempts := notificationdeliveryFields[4].Descriptor()
+	// notificationdelivery.DefaultAttempts holds the default value on creation for the attempts field.
+	notificationdelivery.DefaultAttempts = notificationdeliveryDescAttempts.Default.(int)
+	// notificationdeliveryDescID is the schema descriptor for id field.
+	notificationdeliveryDescID := notificationdeliveryFields[0].Descriptor()
+	// notificationdelivery.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	notificationdelivery.IDValidator = notificationdeliveryDescID.Validators[0].(func(string) error)
+	outboxeventFields := schema.OutboxEvent{}.Fields()
+	_ = outboxeventFields
+	// outboxeventDescTopic is the schema descriptor for topic field.
+	outboxeventDescTopic := outboxeventFields[3].Descriptor()
+	// outboxevent.TopicValidator is a validator for the "topic" field. It is called by the builders before save.
+	outboxevent.TopicValidator = outboxeventDescTopic.Validators[0].(func(string) error)
+	// outboxeventDescSchemaVersion is the schema descriptor for schema_version field.
+	outboxeventDescSchemaVersion := outboxeventFields[4].Descriptor()
+	// outboxevent.DefaultSchemaVersion holds the default value on creation for the schema_version field.
+	outboxevent.DefaultSchemaVersion = outboxeventDescSchemaVersion.Default.(int)
+	// outboxeventDescPartitionKey is the schema descriptor for partition_key field.
+	outboxeventDescPartitionKey := outboxeventFields[5].Descriptor()
+	// outboxevent.PartitionKeyValidator is a validator for the "partition_key" field. It is called by the builders before save.
+	outboxevent.PartitionKeyValidator = outboxeventDescPartitionKey.Validators[0].(func(string) error)
+	// outboxeventDescPayload is the schema descriptor for payload field.
+	outboxeventDescPayload := outboxeventFields[6].Descriptor()
+	// outboxevent.DefaultPayload holds the default value on creation for the payload field.
+	outboxevent.DefaultPayload = outboxeventDescPayload.Default.(map[string]interface{})
+	// outboxeventDescAttempts is the schema descriptor for attempts field.
+	outboxeventDescAttempts := outboxeventFields[11].Descriptor()
+	// outboxevent.DefaultAttempts holds the default value on creation for the attempts field.
+	outboxevent.DefaultAttempts = outboxeventDescAttempts.Default.(int)
+	// outboxeventDescID is the schema descriptor for id field.
+	outboxeventDescID := outboxeventFields[0].Descriptor()
+	// outboxevent.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	outboxevent.IDValidator = outboxeventDescID.Validators[0].(func(string) error)
 	pinnedmessageFields := schema.PinnedMessage{}.Fields()
 	_ = pinnedmessageFields
 	// pinnedmessageDescMessageID is the schema descriptor for message_id field.
@@ -608,6 +761,50 @@ func init() {
 	refreshtokenDescID := refreshtokenFields[0].Descriptor()
 	// refreshtoken.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	refreshtoken.IDValidator = refreshtokenDescID.Validators[0].(func(string) error)
+	synceventFields := schema.SyncEvent{}.Fields()
+	_ = synceventFields
+	// synceventDescFamilyID is the schema descriptor for family_id field.
+	synceventDescFamilyID := synceventFields[2].Descriptor()
+	// syncevent.FamilyIDValidator is a validator for the "family_id" field. It is called by the builders before save.
+	syncevent.FamilyIDValidator = synceventDescFamilyID.Validators[0].(func(string) error)
+	// synceventDescAudience is the schema descriptor for audience field.
+	synceventDescAudience := synceventFields[3].Descriptor()
+	// syncevent.AudienceValidator is a validator for the "audience" field. It is called by the builders before save.
+	syncevent.AudienceValidator = synceventDescAudience.Validators[0].(func(string) error)
+	// synceventDescEventType is the schema descriptor for event_type field.
+	synceventDescEventType := synceventFields[4].Descriptor()
+	// syncevent.EventTypeValidator is a validator for the "event_type" field. It is called by the builders before save.
+	syncevent.EventTypeValidator = synceventDescEventType.Validators[0].(func(string) error)
+	// synceventDescSchemaVersion is the schema descriptor for schema_version field.
+	synceventDescSchemaVersion := synceventFields[5].Descriptor()
+	// syncevent.DefaultSchemaVersion holds the default value on creation for the schema_version field.
+	syncevent.DefaultSchemaVersion = synceventDescSchemaVersion.Default.(int)
+	// synceventDescAggregateType is the schema descriptor for aggregate_type field.
+	synceventDescAggregateType := synceventFields[6].Descriptor()
+	// syncevent.AggregateTypeValidator is a validator for the "aggregate_type" field. It is called by the builders before save.
+	syncevent.AggregateTypeValidator = synceventDescAggregateType.Validators[0].(func(string) error)
+	// synceventDescAggregateID is the schema descriptor for aggregate_id field.
+	synceventDescAggregateID := synceventFields[7].Descriptor()
+	// syncevent.AggregateIDValidator is a validator for the "aggregate_id" field. It is called by the builders before save.
+	syncevent.AggregateIDValidator = synceventDescAggregateID.Validators[0].(func(string) error)
+	// synceventDescPayload is the schema descriptor for payload field.
+	synceventDescPayload := synceventFields[8].Descriptor()
+	// syncevent.DefaultPayload holds the default value on creation for the payload field.
+	syncevent.DefaultPayload = synceventDescPayload.Default.(map[string]interface{})
+	// synceventDescID is the schema descriptor for id field.
+	synceventDescID := synceventFields[0].Descriptor()
+	// syncevent.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	syncevent.IDValidator = synceventDescID.Validators[0].(func(string) error)
+	synceventrecipientFields := schema.SyncEventRecipient{}.Fields()
+	_ = synceventrecipientFields
+	// synceventrecipientDescUserID is the schema descriptor for user_id field.
+	synceventrecipientDescUserID := synceventrecipientFields[1].Descriptor()
+	// synceventrecipient.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	synceventrecipient.UserIDValidator = synceventrecipientDescUserID.Validators[0].(func(string) error)
+	// synceventrecipientDescID is the schema descriptor for id field.
+	synceventrecipientDescID := synceventrecipientFields[0].Descriptor()
+	// synceventrecipient.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	synceventrecipient.IDValidator = synceventrecipientDescID.Validators[0].(func(string) error)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescFamilyID is the schema descriptor for family_id field.

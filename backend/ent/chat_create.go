@@ -433,6 +433,10 @@ func (_c *ChatCreate) createSpec() (*Chat, *sqlgraph.CreateSpec) {
 		_spec.SetField(chat.FieldPinPermission, field.TypeString, value)
 		_node.PinPermission = value
 	}
+	if value, ok := _c.mutation.MessageDelaySeconds(); ok {
+		_spec.SetField(chat.FieldMessageDelaySeconds, field.TypeInt, value)
+		_node.MessageDelaySeconds = value
+	}
 	if nodes := _c.mutation.FamilyIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -745,6 +749,12 @@ func (u *ChatUpsert) UpdateMessageDelaySeconds() *ChatUpsert {
 	return u
 }
 
+// AddMessageDelaySeconds adds v to the "message_delay_seconds" field.
+func (u *ChatUpsert) AddMessageDelaySeconds(v int) *ChatUpsert {
+	u.Add(chat.FieldMessageDelaySeconds, v)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
 // Using this option is equivalent to using:
 //
@@ -972,6 +982,13 @@ func (u *ChatUpsertOne) UpdatePinPermission() *ChatUpsertOne {
 func (u *ChatUpsertOne) SetMessageDelaySeconds(v int) *ChatUpsertOne {
 	return u.Update(func(s *ChatUpsert) {
 		s.SetMessageDelaySeconds(v)
+	})
+}
+
+// AddMessageDelaySeconds adds v to the "message_delay_seconds" field.
+func (u *ChatUpsertOne) AddMessageDelaySeconds(v int) *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.AddMessageDelaySeconds(v)
 	})
 }
 
@@ -1376,6 +1393,13 @@ func (u *ChatUpsertBulk) UpdatePinPermission() *ChatUpsertBulk {
 func (u *ChatUpsertBulk) SetMessageDelaySeconds(v int) *ChatUpsertBulk {
 	return u.Update(func(s *ChatUpsert) {
 		s.SetMessageDelaySeconds(v)
+	})
+}
+
+// AddMessageDelaySeconds adds v to the "message_delay_seconds" field.
+func (u *ChatUpsertBulk) AddMessageDelaySeconds(v int) *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.AddMessageDelaySeconds(v)
 	})
 }
 

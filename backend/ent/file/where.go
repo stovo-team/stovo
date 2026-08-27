@@ -94,9 +94,49 @@ func ObjectKey(v string) predicate.File {
 	return predicate.File(sql.FieldEQ(FieldObjectKey, v))
 }
 
+// LifecycleState applies equality check predicate on the "lifecycle_state" field. It's identical to LifecycleStateEQ.
+func LifecycleState(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldLifecycleState, v))
+}
+
+// ObjectRevision applies equality check predicate on the "object_revision" field. It's identical to ObjectRevisionEQ.
+func ObjectRevision(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldObjectRevision, v))
+}
+
+// ObjectEtag applies equality check predicate on the "object_etag" field. It's identical to ObjectEtagEQ.
+func ObjectEtag(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldObjectEtag, v))
+}
+
 // ThumbnailObjectKey applies equality check predicate on the "thumbnail_object_key" field. It's identical to ThumbnailObjectKeyEQ.
 func ThumbnailObjectKey(v string) predicate.File {
 	return predicate.File(sql.FieldEQ(FieldThumbnailObjectKey, v))
+}
+
+// DetectedMimeType applies equality check predicate on the "detected_mime_type" field. It's identical to DetectedMimeTypeEQ.
+func DetectedMimeType(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldDetectedMimeType, v))
+}
+
+// PreviewRevision applies equality check predicate on the "preview_revision" field. It's identical to PreviewRevisionEQ.
+func PreviewRevision(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldPreviewRevision, v))
+}
+
+// PreviewStatus applies equality check predicate on the "preview_status" field. It's identical to PreviewStatusEQ.
+func PreviewStatus(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldPreviewStatus, v))
+}
+
+// ValidationFailureCode applies equality check predicate on the "validation_failure_code" field. It's identical to ValidationFailureCodeEQ.
+func ValidationFailureCode(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldValidationFailureCode, v))
+}
+
+// ValidatedAt applies equality check predicate on the "validated_at" field. It's identical to ValidatedAtEQ.
+func ValidatedAt(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldValidatedAt, v))
 }
 
 // OriginalName applies equality check predicate on the "original_name" field. It's identical to OriginalNameEQ.
@@ -529,6 +569,221 @@ func ObjectKeyContainsFold(v string) predicate.File {
 	return predicate.File(sql.FieldContainsFold(FieldObjectKey, v))
 }
 
+// LifecycleStateEQ applies the EQ predicate on the "lifecycle_state" field.
+func LifecycleStateEQ(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldLifecycleState, v))
+}
+
+// LifecycleStateNEQ applies the NEQ predicate on the "lifecycle_state" field.
+func LifecycleStateNEQ(v string) predicate.File {
+	return predicate.File(sql.FieldNEQ(FieldLifecycleState, v))
+}
+
+// LifecycleStateIn applies the In predicate on the "lifecycle_state" field.
+func LifecycleStateIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldIn(FieldLifecycleState, vs...))
+}
+
+// LifecycleStateNotIn applies the NotIn predicate on the "lifecycle_state" field.
+func LifecycleStateNotIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldNotIn(FieldLifecycleState, vs...))
+}
+
+// LifecycleStateGT applies the GT predicate on the "lifecycle_state" field.
+func LifecycleStateGT(v string) predicate.File {
+	return predicate.File(sql.FieldGT(FieldLifecycleState, v))
+}
+
+// LifecycleStateGTE applies the GTE predicate on the "lifecycle_state" field.
+func LifecycleStateGTE(v string) predicate.File {
+	return predicate.File(sql.FieldGTE(FieldLifecycleState, v))
+}
+
+// LifecycleStateLT applies the LT predicate on the "lifecycle_state" field.
+func LifecycleStateLT(v string) predicate.File {
+	return predicate.File(sql.FieldLT(FieldLifecycleState, v))
+}
+
+// LifecycleStateLTE applies the LTE predicate on the "lifecycle_state" field.
+func LifecycleStateLTE(v string) predicate.File {
+	return predicate.File(sql.FieldLTE(FieldLifecycleState, v))
+}
+
+// LifecycleStateContains applies the Contains predicate on the "lifecycle_state" field.
+func LifecycleStateContains(v string) predicate.File {
+	return predicate.File(sql.FieldContains(FieldLifecycleState, v))
+}
+
+// LifecycleStateHasPrefix applies the HasPrefix predicate on the "lifecycle_state" field.
+func LifecycleStateHasPrefix(v string) predicate.File {
+	return predicate.File(sql.FieldHasPrefix(FieldLifecycleState, v))
+}
+
+// LifecycleStateHasSuffix applies the HasSuffix predicate on the "lifecycle_state" field.
+func LifecycleStateHasSuffix(v string) predicate.File {
+	return predicate.File(sql.FieldHasSuffix(FieldLifecycleState, v))
+}
+
+// LifecycleStateEqualFold applies the EqualFold predicate on the "lifecycle_state" field.
+func LifecycleStateEqualFold(v string) predicate.File {
+	return predicate.File(sql.FieldEqualFold(FieldLifecycleState, v))
+}
+
+// LifecycleStateContainsFold applies the ContainsFold predicate on the "lifecycle_state" field.
+func LifecycleStateContainsFold(v string) predicate.File {
+	return predicate.File(sql.FieldContainsFold(FieldLifecycleState, v))
+}
+
+// ObjectRevisionEQ applies the EQ predicate on the "object_revision" field.
+func ObjectRevisionEQ(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldObjectRevision, v))
+}
+
+// ObjectRevisionNEQ applies the NEQ predicate on the "object_revision" field.
+func ObjectRevisionNEQ(v string) predicate.File {
+	return predicate.File(sql.FieldNEQ(FieldObjectRevision, v))
+}
+
+// ObjectRevisionIn applies the In predicate on the "object_revision" field.
+func ObjectRevisionIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldIn(FieldObjectRevision, vs...))
+}
+
+// ObjectRevisionNotIn applies the NotIn predicate on the "object_revision" field.
+func ObjectRevisionNotIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldNotIn(FieldObjectRevision, vs...))
+}
+
+// ObjectRevisionGT applies the GT predicate on the "object_revision" field.
+func ObjectRevisionGT(v string) predicate.File {
+	return predicate.File(sql.FieldGT(FieldObjectRevision, v))
+}
+
+// ObjectRevisionGTE applies the GTE predicate on the "object_revision" field.
+func ObjectRevisionGTE(v string) predicate.File {
+	return predicate.File(sql.FieldGTE(FieldObjectRevision, v))
+}
+
+// ObjectRevisionLT applies the LT predicate on the "object_revision" field.
+func ObjectRevisionLT(v string) predicate.File {
+	return predicate.File(sql.FieldLT(FieldObjectRevision, v))
+}
+
+// ObjectRevisionLTE applies the LTE predicate on the "object_revision" field.
+func ObjectRevisionLTE(v string) predicate.File {
+	return predicate.File(sql.FieldLTE(FieldObjectRevision, v))
+}
+
+// ObjectRevisionContains applies the Contains predicate on the "object_revision" field.
+func ObjectRevisionContains(v string) predicate.File {
+	return predicate.File(sql.FieldContains(FieldObjectRevision, v))
+}
+
+// ObjectRevisionHasPrefix applies the HasPrefix predicate on the "object_revision" field.
+func ObjectRevisionHasPrefix(v string) predicate.File {
+	return predicate.File(sql.FieldHasPrefix(FieldObjectRevision, v))
+}
+
+// ObjectRevisionHasSuffix applies the HasSuffix predicate on the "object_revision" field.
+func ObjectRevisionHasSuffix(v string) predicate.File {
+	return predicate.File(sql.FieldHasSuffix(FieldObjectRevision, v))
+}
+
+// ObjectRevisionIsNil applies the IsNil predicate on the "object_revision" field.
+func ObjectRevisionIsNil() predicate.File {
+	return predicate.File(sql.FieldIsNull(FieldObjectRevision))
+}
+
+// ObjectRevisionNotNil applies the NotNil predicate on the "object_revision" field.
+func ObjectRevisionNotNil() predicate.File {
+	return predicate.File(sql.FieldNotNull(FieldObjectRevision))
+}
+
+// ObjectRevisionEqualFold applies the EqualFold predicate on the "object_revision" field.
+func ObjectRevisionEqualFold(v string) predicate.File {
+	return predicate.File(sql.FieldEqualFold(FieldObjectRevision, v))
+}
+
+// ObjectRevisionContainsFold applies the ContainsFold predicate on the "object_revision" field.
+func ObjectRevisionContainsFold(v string) predicate.File {
+	return predicate.File(sql.FieldContainsFold(FieldObjectRevision, v))
+}
+
+// ObjectEtagEQ applies the EQ predicate on the "object_etag" field.
+func ObjectEtagEQ(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldObjectEtag, v))
+}
+
+// ObjectEtagNEQ applies the NEQ predicate on the "object_etag" field.
+func ObjectEtagNEQ(v string) predicate.File {
+	return predicate.File(sql.FieldNEQ(FieldObjectEtag, v))
+}
+
+// ObjectEtagIn applies the In predicate on the "object_etag" field.
+func ObjectEtagIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldIn(FieldObjectEtag, vs...))
+}
+
+// ObjectEtagNotIn applies the NotIn predicate on the "object_etag" field.
+func ObjectEtagNotIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldNotIn(FieldObjectEtag, vs...))
+}
+
+// ObjectEtagGT applies the GT predicate on the "object_etag" field.
+func ObjectEtagGT(v string) predicate.File {
+	return predicate.File(sql.FieldGT(FieldObjectEtag, v))
+}
+
+// ObjectEtagGTE applies the GTE predicate on the "object_etag" field.
+func ObjectEtagGTE(v string) predicate.File {
+	return predicate.File(sql.FieldGTE(FieldObjectEtag, v))
+}
+
+// ObjectEtagLT applies the LT predicate on the "object_etag" field.
+func ObjectEtagLT(v string) predicate.File {
+	return predicate.File(sql.FieldLT(FieldObjectEtag, v))
+}
+
+// ObjectEtagLTE applies the LTE predicate on the "object_etag" field.
+func ObjectEtagLTE(v string) predicate.File {
+	return predicate.File(sql.FieldLTE(FieldObjectEtag, v))
+}
+
+// ObjectEtagContains applies the Contains predicate on the "object_etag" field.
+func ObjectEtagContains(v string) predicate.File {
+	return predicate.File(sql.FieldContains(FieldObjectEtag, v))
+}
+
+// ObjectEtagHasPrefix applies the HasPrefix predicate on the "object_etag" field.
+func ObjectEtagHasPrefix(v string) predicate.File {
+	return predicate.File(sql.FieldHasPrefix(FieldObjectEtag, v))
+}
+
+// ObjectEtagHasSuffix applies the HasSuffix predicate on the "object_etag" field.
+func ObjectEtagHasSuffix(v string) predicate.File {
+	return predicate.File(sql.FieldHasSuffix(FieldObjectEtag, v))
+}
+
+// ObjectEtagIsNil applies the IsNil predicate on the "object_etag" field.
+func ObjectEtagIsNil() predicate.File {
+	return predicate.File(sql.FieldIsNull(FieldObjectEtag))
+}
+
+// ObjectEtagNotNil applies the NotNil predicate on the "object_etag" field.
+func ObjectEtagNotNil() predicate.File {
+	return predicate.File(sql.FieldNotNull(FieldObjectEtag))
+}
+
+// ObjectEtagEqualFold applies the EqualFold predicate on the "object_etag" field.
+func ObjectEtagEqualFold(v string) predicate.File {
+	return predicate.File(sql.FieldEqualFold(FieldObjectEtag, v))
+}
+
+// ObjectEtagContainsFold applies the ContainsFold predicate on the "object_etag" field.
+func ObjectEtagContainsFold(v string) predicate.File {
+	return predicate.File(sql.FieldContainsFold(FieldObjectEtag, v))
+}
+
 // ThumbnailObjectKeyEQ applies the EQ predicate on the "thumbnail_object_key" field.
 func ThumbnailObjectKeyEQ(v string) predicate.File {
 	return predicate.File(sql.FieldEQ(FieldThumbnailObjectKey, v))
@@ -602,6 +857,371 @@ func ThumbnailObjectKeyEqualFold(v string) predicate.File {
 // ThumbnailObjectKeyContainsFold applies the ContainsFold predicate on the "thumbnail_object_key" field.
 func ThumbnailObjectKeyContainsFold(v string) predicate.File {
 	return predicate.File(sql.FieldContainsFold(FieldThumbnailObjectKey, v))
+}
+
+// DetectedMimeTypeEQ applies the EQ predicate on the "detected_mime_type" field.
+func DetectedMimeTypeEQ(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeNEQ applies the NEQ predicate on the "detected_mime_type" field.
+func DetectedMimeTypeNEQ(v string) predicate.File {
+	return predicate.File(sql.FieldNEQ(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeIn applies the In predicate on the "detected_mime_type" field.
+func DetectedMimeTypeIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldIn(FieldDetectedMimeType, vs...))
+}
+
+// DetectedMimeTypeNotIn applies the NotIn predicate on the "detected_mime_type" field.
+func DetectedMimeTypeNotIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldNotIn(FieldDetectedMimeType, vs...))
+}
+
+// DetectedMimeTypeGT applies the GT predicate on the "detected_mime_type" field.
+func DetectedMimeTypeGT(v string) predicate.File {
+	return predicate.File(sql.FieldGT(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeGTE applies the GTE predicate on the "detected_mime_type" field.
+func DetectedMimeTypeGTE(v string) predicate.File {
+	return predicate.File(sql.FieldGTE(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeLT applies the LT predicate on the "detected_mime_type" field.
+func DetectedMimeTypeLT(v string) predicate.File {
+	return predicate.File(sql.FieldLT(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeLTE applies the LTE predicate on the "detected_mime_type" field.
+func DetectedMimeTypeLTE(v string) predicate.File {
+	return predicate.File(sql.FieldLTE(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeContains applies the Contains predicate on the "detected_mime_type" field.
+func DetectedMimeTypeContains(v string) predicate.File {
+	return predicate.File(sql.FieldContains(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeHasPrefix applies the HasPrefix predicate on the "detected_mime_type" field.
+func DetectedMimeTypeHasPrefix(v string) predicate.File {
+	return predicate.File(sql.FieldHasPrefix(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeHasSuffix applies the HasSuffix predicate on the "detected_mime_type" field.
+func DetectedMimeTypeHasSuffix(v string) predicate.File {
+	return predicate.File(sql.FieldHasSuffix(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeIsNil applies the IsNil predicate on the "detected_mime_type" field.
+func DetectedMimeTypeIsNil() predicate.File {
+	return predicate.File(sql.FieldIsNull(FieldDetectedMimeType))
+}
+
+// DetectedMimeTypeNotNil applies the NotNil predicate on the "detected_mime_type" field.
+func DetectedMimeTypeNotNil() predicate.File {
+	return predicate.File(sql.FieldNotNull(FieldDetectedMimeType))
+}
+
+// DetectedMimeTypeEqualFold applies the EqualFold predicate on the "detected_mime_type" field.
+func DetectedMimeTypeEqualFold(v string) predicate.File {
+	return predicate.File(sql.FieldEqualFold(FieldDetectedMimeType, v))
+}
+
+// DetectedMimeTypeContainsFold applies the ContainsFold predicate on the "detected_mime_type" field.
+func DetectedMimeTypeContainsFold(v string) predicate.File {
+	return predicate.File(sql.FieldContainsFold(FieldDetectedMimeType, v))
+}
+
+// PreviewRevisionEQ applies the EQ predicate on the "preview_revision" field.
+func PreviewRevisionEQ(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionNEQ applies the NEQ predicate on the "preview_revision" field.
+func PreviewRevisionNEQ(v string) predicate.File {
+	return predicate.File(sql.FieldNEQ(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionIn applies the In predicate on the "preview_revision" field.
+func PreviewRevisionIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldIn(FieldPreviewRevision, vs...))
+}
+
+// PreviewRevisionNotIn applies the NotIn predicate on the "preview_revision" field.
+func PreviewRevisionNotIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldNotIn(FieldPreviewRevision, vs...))
+}
+
+// PreviewRevisionGT applies the GT predicate on the "preview_revision" field.
+func PreviewRevisionGT(v string) predicate.File {
+	return predicate.File(sql.FieldGT(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionGTE applies the GTE predicate on the "preview_revision" field.
+func PreviewRevisionGTE(v string) predicate.File {
+	return predicate.File(sql.FieldGTE(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionLT applies the LT predicate on the "preview_revision" field.
+func PreviewRevisionLT(v string) predicate.File {
+	return predicate.File(sql.FieldLT(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionLTE applies the LTE predicate on the "preview_revision" field.
+func PreviewRevisionLTE(v string) predicate.File {
+	return predicate.File(sql.FieldLTE(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionContains applies the Contains predicate on the "preview_revision" field.
+func PreviewRevisionContains(v string) predicate.File {
+	return predicate.File(sql.FieldContains(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionHasPrefix applies the HasPrefix predicate on the "preview_revision" field.
+func PreviewRevisionHasPrefix(v string) predicate.File {
+	return predicate.File(sql.FieldHasPrefix(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionHasSuffix applies the HasSuffix predicate on the "preview_revision" field.
+func PreviewRevisionHasSuffix(v string) predicate.File {
+	return predicate.File(sql.FieldHasSuffix(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionIsNil applies the IsNil predicate on the "preview_revision" field.
+func PreviewRevisionIsNil() predicate.File {
+	return predicate.File(sql.FieldIsNull(FieldPreviewRevision))
+}
+
+// PreviewRevisionNotNil applies the NotNil predicate on the "preview_revision" field.
+func PreviewRevisionNotNil() predicate.File {
+	return predicate.File(sql.FieldNotNull(FieldPreviewRevision))
+}
+
+// PreviewRevisionEqualFold applies the EqualFold predicate on the "preview_revision" field.
+func PreviewRevisionEqualFold(v string) predicate.File {
+	return predicate.File(sql.FieldEqualFold(FieldPreviewRevision, v))
+}
+
+// PreviewRevisionContainsFold applies the ContainsFold predicate on the "preview_revision" field.
+func PreviewRevisionContainsFold(v string) predicate.File {
+	return predicate.File(sql.FieldContainsFold(FieldPreviewRevision, v))
+}
+
+// PreviewStatusEQ applies the EQ predicate on the "preview_status" field.
+func PreviewStatusEQ(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldPreviewStatus, v))
+}
+
+// PreviewStatusNEQ applies the NEQ predicate on the "preview_status" field.
+func PreviewStatusNEQ(v string) predicate.File {
+	return predicate.File(sql.FieldNEQ(FieldPreviewStatus, v))
+}
+
+// PreviewStatusIn applies the In predicate on the "preview_status" field.
+func PreviewStatusIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldIn(FieldPreviewStatus, vs...))
+}
+
+// PreviewStatusNotIn applies the NotIn predicate on the "preview_status" field.
+func PreviewStatusNotIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldNotIn(FieldPreviewStatus, vs...))
+}
+
+// PreviewStatusGT applies the GT predicate on the "preview_status" field.
+func PreviewStatusGT(v string) predicate.File {
+	return predicate.File(sql.FieldGT(FieldPreviewStatus, v))
+}
+
+// PreviewStatusGTE applies the GTE predicate on the "preview_status" field.
+func PreviewStatusGTE(v string) predicate.File {
+	return predicate.File(sql.FieldGTE(FieldPreviewStatus, v))
+}
+
+// PreviewStatusLT applies the LT predicate on the "preview_status" field.
+func PreviewStatusLT(v string) predicate.File {
+	return predicate.File(sql.FieldLT(FieldPreviewStatus, v))
+}
+
+// PreviewStatusLTE applies the LTE predicate on the "preview_status" field.
+func PreviewStatusLTE(v string) predicate.File {
+	return predicate.File(sql.FieldLTE(FieldPreviewStatus, v))
+}
+
+// PreviewStatusContains applies the Contains predicate on the "preview_status" field.
+func PreviewStatusContains(v string) predicate.File {
+	return predicate.File(sql.FieldContains(FieldPreviewStatus, v))
+}
+
+// PreviewStatusHasPrefix applies the HasPrefix predicate on the "preview_status" field.
+func PreviewStatusHasPrefix(v string) predicate.File {
+	return predicate.File(sql.FieldHasPrefix(FieldPreviewStatus, v))
+}
+
+// PreviewStatusHasSuffix applies the HasSuffix predicate on the "preview_status" field.
+func PreviewStatusHasSuffix(v string) predicate.File {
+	return predicate.File(sql.FieldHasSuffix(FieldPreviewStatus, v))
+}
+
+// PreviewStatusEqualFold applies the EqualFold predicate on the "preview_status" field.
+func PreviewStatusEqualFold(v string) predicate.File {
+	return predicate.File(sql.FieldEqualFold(FieldPreviewStatus, v))
+}
+
+// PreviewStatusContainsFold applies the ContainsFold predicate on the "preview_status" field.
+func PreviewStatusContainsFold(v string) predicate.File {
+	return predicate.File(sql.FieldContainsFold(FieldPreviewStatus, v))
+}
+
+// ValidationFailureCodeEQ applies the EQ predicate on the "validation_failure_code" field.
+func ValidationFailureCodeEQ(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeNEQ applies the NEQ predicate on the "validation_failure_code" field.
+func ValidationFailureCodeNEQ(v string) predicate.File {
+	return predicate.File(sql.FieldNEQ(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeIn applies the In predicate on the "validation_failure_code" field.
+func ValidationFailureCodeIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldIn(FieldValidationFailureCode, vs...))
+}
+
+// ValidationFailureCodeNotIn applies the NotIn predicate on the "validation_failure_code" field.
+func ValidationFailureCodeNotIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldNotIn(FieldValidationFailureCode, vs...))
+}
+
+// ValidationFailureCodeGT applies the GT predicate on the "validation_failure_code" field.
+func ValidationFailureCodeGT(v string) predicate.File {
+	return predicate.File(sql.FieldGT(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeGTE applies the GTE predicate on the "validation_failure_code" field.
+func ValidationFailureCodeGTE(v string) predicate.File {
+	return predicate.File(sql.FieldGTE(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeLT applies the LT predicate on the "validation_failure_code" field.
+func ValidationFailureCodeLT(v string) predicate.File {
+	return predicate.File(sql.FieldLT(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeLTE applies the LTE predicate on the "validation_failure_code" field.
+func ValidationFailureCodeLTE(v string) predicate.File {
+	return predicate.File(sql.FieldLTE(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeContains applies the Contains predicate on the "validation_failure_code" field.
+func ValidationFailureCodeContains(v string) predicate.File {
+	return predicate.File(sql.FieldContains(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeHasPrefix applies the HasPrefix predicate on the "validation_failure_code" field.
+func ValidationFailureCodeHasPrefix(v string) predicate.File {
+	return predicate.File(sql.FieldHasPrefix(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeHasSuffix applies the HasSuffix predicate on the "validation_failure_code" field.
+func ValidationFailureCodeHasSuffix(v string) predicate.File {
+	return predicate.File(sql.FieldHasSuffix(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeIsNil applies the IsNil predicate on the "validation_failure_code" field.
+func ValidationFailureCodeIsNil() predicate.File {
+	return predicate.File(sql.FieldIsNull(FieldValidationFailureCode))
+}
+
+// ValidationFailureCodeNotNil applies the NotNil predicate on the "validation_failure_code" field.
+func ValidationFailureCodeNotNil() predicate.File {
+	return predicate.File(sql.FieldNotNull(FieldValidationFailureCode))
+}
+
+// ValidationFailureCodeEqualFold applies the EqualFold predicate on the "validation_failure_code" field.
+func ValidationFailureCodeEqualFold(v string) predicate.File {
+	return predicate.File(sql.FieldEqualFold(FieldValidationFailureCode, v))
+}
+
+// ValidationFailureCodeContainsFold applies the ContainsFold predicate on the "validation_failure_code" field.
+func ValidationFailureCodeContainsFold(v string) predicate.File {
+	return predicate.File(sql.FieldContainsFold(FieldValidationFailureCode, v))
+}
+
+// ValidatedAtEQ applies the EQ predicate on the "validated_at" field.
+func ValidatedAtEQ(v string) predicate.File {
+	return predicate.File(sql.FieldEQ(FieldValidatedAt, v))
+}
+
+// ValidatedAtNEQ applies the NEQ predicate on the "validated_at" field.
+func ValidatedAtNEQ(v string) predicate.File {
+	return predicate.File(sql.FieldNEQ(FieldValidatedAt, v))
+}
+
+// ValidatedAtIn applies the In predicate on the "validated_at" field.
+func ValidatedAtIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldIn(FieldValidatedAt, vs...))
+}
+
+// ValidatedAtNotIn applies the NotIn predicate on the "validated_at" field.
+func ValidatedAtNotIn(vs ...string) predicate.File {
+	return predicate.File(sql.FieldNotIn(FieldValidatedAt, vs...))
+}
+
+// ValidatedAtGT applies the GT predicate on the "validated_at" field.
+func ValidatedAtGT(v string) predicate.File {
+	return predicate.File(sql.FieldGT(FieldValidatedAt, v))
+}
+
+// ValidatedAtGTE applies the GTE predicate on the "validated_at" field.
+func ValidatedAtGTE(v string) predicate.File {
+	return predicate.File(sql.FieldGTE(FieldValidatedAt, v))
+}
+
+// ValidatedAtLT applies the LT predicate on the "validated_at" field.
+func ValidatedAtLT(v string) predicate.File {
+	return predicate.File(sql.FieldLT(FieldValidatedAt, v))
+}
+
+// ValidatedAtLTE applies the LTE predicate on the "validated_at" field.
+func ValidatedAtLTE(v string) predicate.File {
+	return predicate.File(sql.FieldLTE(FieldValidatedAt, v))
+}
+
+// ValidatedAtContains applies the Contains predicate on the "validated_at" field.
+func ValidatedAtContains(v string) predicate.File {
+	return predicate.File(sql.FieldContains(FieldValidatedAt, v))
+}
+
+// ValidatedAtHasPrefix applies the HasPrefix predicate on the "validated_at" field.
+func ValidatedAtHasPrefix(v string) predicate.File {
+	return predicate.File(sql.FieldHasPrefix(FieldValidatedAt, v))
+}
+
+// ValidatedAtHasSuffix applies the HasSuffix predicate on the "validated_at" field.
+func ValidatedAtHasSuffix(v string) predicate.File {
+	return predicate.File(sql.FieldHasSuffix(FieldValidatedAt, v))
+}
+
+// ValidatedAtIsNil applies the IsNil predicate on the "validated_at" field.
+func ValidatedAtIsNil() predicate.File {
+	return predicate.File(sql.FieldIsNull(FieldValidatedAt))
+}
+
+// ValidatedAtNotNil applies the NotNil predicate on the "validated_at" field.
+func ValidatedAtNotNil() predicate.File {
+	return predicate.File(sql.FieldNotNull(FieldValidatedAt))
+}
+
+// ValidatedAtEqualFold applies the EqualFold predicate on the "validated_at" field.
+func ValidatedAtEqualFold(v string) predicate.File {
+	return predicate.File(sql.FieldEqualFold(FieldValidatedAt, v))
+}
+
+// ValidatedAtContainsFold applies the ContainsFold predicate on the "validated_at" field.
+func ValidatedAtContainsFold(v string) predicate.File {
+	return predicate.File(sql.FieldContainsFold(FieldValidatedAt, v))
 }
 
 // OriginalNameEQ applies the EQ predicate on the "original_name" field.
