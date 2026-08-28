@@ -3,8 +3,8 @@
 package ent
 
 import (
-	"family-messenger/backend/ent/notificationdelivery"
 	"fmt"
+	"stovo-messenger/backend/ent/notificationdelivery"
 	"strings"
 	"time"
 

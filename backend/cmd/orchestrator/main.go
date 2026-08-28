@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"family-messenger/backend/internal/config"
-	"family-messenger/backend/internal/orchestrator"
+	"stovo-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/orchestrator"
 	"github.com/docker/docker/client"
 	"github.com/go-chi/chi/v5"
 )

@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/ports"
 )
 
 func (s *Server) bucketObjectStore() (ports.BucketObjectStore, error) {

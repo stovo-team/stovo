@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/migrate"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/migrate"
 )
 
 func TestEntTablesMatchSchemaFixture(t *testing.T) {

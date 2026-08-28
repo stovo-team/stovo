@@ -7,10 +7,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/message"
-	"family-messenger/backend/ent/pinnedmessage"
-	"family-messenger/backend/ent/predicate"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/message"
+	"stovo-messenger/backend/ent/pinnedmessage"
+	"stovo-messenger/backend/ent/predicate"
 )
 
 // MessageChatIDIfActive returns the chat id for a non-deleted message.

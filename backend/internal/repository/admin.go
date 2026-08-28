@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"family-messenger/backend/ent"
+	"stovo-messenger/backend/ent"
 )
 
 // UpdateFamilyPublicURLs sets public_app_url and public_api_url (nil clears).

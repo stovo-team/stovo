@@ -22,6 +22,16 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
+-- Schema additions introduced after this fixture's original database dump.
+-- Kept here so the fixture represents the current migration state.
+CREATE TABLE file_uploads (id text PRIMARY KEY);
+CREATE TABLE sync_events (id text PRIMARY KEY);
+CREATE TABLE sync_event_recipients (event_id text NOT NULL, user_id text NOT NULL, PRIMARY KEY (event_id, user_id));
+CREATE TABLE client_operations (actor_user_id text NOT NULL, operation_id text NOT NULL, PRIMARY KEY (actor_user_id, operation_id));
+CREATE TABLE outbox_events (id text PRIMARY KEY);
+CREATE TABLE consumer_receipts (consumer_name text NOT NULL, event_id text NOT NULL, PRIMARY KEY (consumer_name, event_id));
+CREATE TABLE notification_deliveries (event_id text NOT NULL, recipient_id text NOT NULL, channel text NOT NULL, PRIMARY KEY (event_id, recipient_id, channel));
+
 --
 -- Name: call_participants; Type: TABLE; Schema: public; Owner: -
 --
@@ -982,5 +992,4 @@ ALTER TABLE ONLY public.mcp_audit_events
 --
 
 \unrestrict VzzdRewl6MEPbbc8M7WrOFjxeprhKue2AaTTp4q95HWGZVc3Uy9eTadK70s030t
-
 

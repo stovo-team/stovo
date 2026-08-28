@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/repository"
+	"stovo-messenger/backend/internal/repository"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"

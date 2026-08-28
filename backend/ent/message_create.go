@@ -5,10 +5,10 @@ package ent
 import (
 	"context"
 	"errors"
-	"family-messenger/backend/ent/chat"
-	"family-messenger/backend/ent/message"
-	"family-messenger/backend/ent/user"
 	"fmt"
+	"stovo-messenger/backend/ent/chat"
+	"stovo-messenger/backend/ent/message"
+	"stovo-messenger/backend/ent/user"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"

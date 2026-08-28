@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/ports"
 
 	"github.com/google/uuid"
 )

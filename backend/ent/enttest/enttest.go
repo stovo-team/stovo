@@ -5,11 +5,11 @@ package enttest
 import (
 	"context"
 
-	"family-messenger/backend/ent"
+	"stovo-messenger/backend/ent"
 	// required by schema hooks.
-	_ "family-messenger/backend/ent/runtime"
+	_ "stovo-messenger/backend/ent/runtime"
 
-	"family-messenger/backend/ent/migrate"
+	"stovo-messenger/backend/ent/migrate"
 
 	"entgo.io/ent/dialect/sql/schema"
 )

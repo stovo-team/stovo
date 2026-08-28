@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"family-messenger/backend/ent"
+	"stovo-messenger/backend/ent"
 )
 
 // Store is the Ent-backed data access layer.

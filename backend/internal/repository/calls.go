@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/callparticipant"
-	"family-messenger/backend/ent/callsession"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/callparticipant"
+	"stovo-messenger/backend/ent/callsession"
 )
 
 // CreateCallSessionParams holds fields for inserting a call session.

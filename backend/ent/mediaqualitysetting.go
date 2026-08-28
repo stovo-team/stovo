@@ -3,8 +3,8 @@
 package ent
 
 import (
-	"family-messenger/backend/ent/mediaqualitysetting"
 	"fmt"
+	"stovo-messenger/backend/ent/mediaqualitysetting"
 	"strings"
 
 	"entgo.io/ent"

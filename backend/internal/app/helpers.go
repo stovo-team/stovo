@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/config"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/argon2"

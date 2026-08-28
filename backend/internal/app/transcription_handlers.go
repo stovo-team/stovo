@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 
-	"family-messenger/backend/internal/config"
-	"family-messenger/backend/internal/transcription"
+	"stovo-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/transcription"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

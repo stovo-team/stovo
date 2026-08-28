@@ -5,9 +5,9 @@ package ent
 import (
 	"context"
 	"errors"
-	"family-messenger/backend/ent/mediaqualitysetting"
-	"family-messenger/backend/ent/predicate"
 	"fmt"
+	"stovo-messenger/backend/ent/mediaqualitysetting"
+	"stovo-messenger/backend/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"

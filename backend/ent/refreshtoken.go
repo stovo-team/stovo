@@ -3,9 +3,9 @@
 package ent
 
 import (
-	"family-messenger/backend/ent/refreshtoken"
-	"family-messenger/backend/ent/user"
 	"fmt"
+	"stovo-messenger/backend/ent/refreshtoken"
+	"stovo-messenger/backend/ent/user"
 	"strings"
 
 	"entgo.io/ent"

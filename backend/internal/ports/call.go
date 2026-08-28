@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"family-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/domain"
 )
 
 // CallChatReader supplies only the chat data needed to begin a call.

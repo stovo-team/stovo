@@ -5,8 +5,8 @@ package ent
 import (
 	"context"
 	"errors"
-	"family-messenger/backend/ent/clientoperation"
 	"fmt"
+	"stovo-messenger/backend/ent/clientoperation"
 	"time"
 
 	"entgo.io/ent/dialect"

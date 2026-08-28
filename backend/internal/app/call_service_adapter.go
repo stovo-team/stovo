@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"family-messenger/backend/internal/domain"
-	"family-messenger/backend/internal/features/calls"
+	"stovo-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/features/calls"
 )
 
 // prepareCallInitiation adapts the existing app data to the pure call use case.

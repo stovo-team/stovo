@@ -4,8 +4,8 @@ package ent
 
 import (
 	"context"
-	"family-messenger/backend/ent/messagereaction"
-	"family-messenger/backend/ent/predicate"
+	"stovo-messenger/backend/ent/messagereaction"
+	"stovo-messenger/backend/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"

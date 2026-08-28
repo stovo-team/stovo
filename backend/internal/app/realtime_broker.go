@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/ports"
 )
 
 const brokerChannelMessages = "events:messages"

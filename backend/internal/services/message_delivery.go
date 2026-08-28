@@ -1,8 +1,8 @@
 package services
 
 import (
-	"family-messenger/backend/internal/features/messages"
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/features/messages"
+	"stovo-messenger/backend/internal/ports"
 )
 
 // MessageDeliveryService is retained for compatibility. New code uses the

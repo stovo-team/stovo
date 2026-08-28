@@ -5,11 +5,11 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/chatmember"
-	"family-messenger/backend/ent/mcpauditevent"
-	"family-messenger/backend/ent/mcpconnector"
-	"family-messenger/backend/ent/mcpconnectorchat"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/chatmember"
+	"stovo-messenger/backend/ent/mcpauditevent"
+	"stovo-messenger/backend/ent/mcpconnector"
+	"stovo-messenger/backend/ent/mcpconnectorchat"
 )
 
 // GetMCPConnectorByTokenHash loads a connector by token hash.

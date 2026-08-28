@@ -3,8 +3,8 @@
 package ent
 
 import (
-	"family-messenger/backend/ent/pinnedmessage"
 	"fmt"
+	"stovo-messenger/backend/ent/pinnedmessage"
 	"strings"
 	"time"
 

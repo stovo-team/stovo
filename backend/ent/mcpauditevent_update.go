@@ -5,11 +5,11 @@ package ent
 import (
 	"context"
 	"errors"
-	"family-messenger/backend/ent/family"
-	"family-messenger/backend/ent/mcpauditevent"
-	"family-messenger/backend/ent/mcpconnector"
-	"family-messenger/backend/ent/predicate"
 	"fmt"
+	"stovo-messenger/backend/ent/family"
+	"stovo-messenger/backend/ent/mcpauditevent"
+	"stovo-messenger/backend/ent/mcpconnector"
+	"stovo-messenger/backend/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"

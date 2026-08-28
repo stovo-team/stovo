@@ -5,7 +5,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 
-	"family-messenger/backend/ent/userblock"
+	"stovo-messenger/backend/ent/userblock"
 )
 
 // ListBlockedUserIDs returns blocked_user_id values for a blocker, newest first.

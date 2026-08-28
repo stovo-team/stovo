@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
-	"family-messenger/backend/ent/chatmember"
-	"family-messenger/backend/internal/config"
-	"family-messenger/backend/internal/storage"
+	"stovo-messenger/backend/ent/chatmember"
+	"stovo-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/storage"
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/golang-jwt/jwt/v5"

@@ -5,12 +5,12 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/chat"
-	"family-messenger/backend/ent/chatmember"
-	"family-messenger/backend/ent/file"
-	"family-messenger/backend/ent/filepreference"
-	"family-messenger/backend/ent/messageattachment"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/chat"
+	"stovo-messenger/backend/ent/chatmember"
+	"stovo-messenger/backend/ent/file"
+	"stovo-messenger/backend/ent/filepreference"
+	"stovo-messenger/backend/ent/messageattachment"
 )
 
 // CreateFileParams holds fields for inserting a file row.

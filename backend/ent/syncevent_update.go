@@ -5,9 +5,9 @@ package ent
 import (
 	"context"
 	"errors"
-	"family-messenger/backend/ent/predicate"
-	"family-messenger/backend/ent/syncevent"
 	"fmt"
+	"stovo-messenger/backend/ent/predicate"
+	"stovo-messenger/backend/ent/syncevent"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"

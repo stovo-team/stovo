@@ -4,8 +4,8 @@ package ent
 
 import (
 	"encoding/json"
-	"family-messenger/backend/ent/syncevent"
 	"fmt"
+	"stovo-messenger/backend/ent/syncevent"
 	"strings"
 	"time"
 

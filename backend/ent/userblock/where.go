@@ -3,7 +3,7 @@
 package userblock
 
 import (
-	"family-messenger/backend/ent/predicate"
+	"stovo-messenger/backend/ent/predicate"
 
 	"entgo.io/ent/dialect/sql"
 )

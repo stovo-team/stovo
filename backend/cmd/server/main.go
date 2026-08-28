@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"family-messenger/backend/internal/app"
-	"family-messenger/backend/internal/bootstrap"
-	"family-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/app"
+	"stovo-messenger/backend/internal/bootstrap"
+	"stovo-messenger/backend/internal/config"
 )
 
 func main() {

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"slices"
 
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/ports"
 
 	"github.com/go-chi/chi/v5"
 )

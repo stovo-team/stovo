@@ -4,10 +4,10 @@ package ent
 
 import (
 	"context"
-	"family-messenger/backend/ent/chatpreference"
-	"family-messenger/backend/ent/predicate"
 	"fmt"
 	"math"
+	"stovo-messenger/backend/ent/chatpreference"
+	"stovo-messenger/backend/ent/predicate"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"

@@ -4,8 +4,8 @@ package ent
 
 import (
 	"encoding/json"
-	"family-messenger/backend/ent/outboxevent"
 	"fmt"
+	"stovo-messenger/backend/ent/outboxevent"
 	"strings"
 	"time"
 
