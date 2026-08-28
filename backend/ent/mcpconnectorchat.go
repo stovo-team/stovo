@@ -3,8 +3,8 @@
 package ent
 
 import (
-	"family-messenger/backend/ent/mcpconnectorchat"
 	"fmt"
+	"stovo-messenger/backend/ent/mcpconnectorchat"
 	"strings"
 
 	"entgo.io/ent"

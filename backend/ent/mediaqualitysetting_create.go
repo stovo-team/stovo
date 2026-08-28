@@ -5,8 +5,8 @@ package ent
 import (
 	"context"
 	"errors"
-	"family-messenger/backend/ent/mediaqualitysetting"
 	"fmt"
+	"stovo-messenger/backend/ent/mediaqualitysetting"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"

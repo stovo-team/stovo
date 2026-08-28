@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/cache"
-	"family-messenger/backend/internal/domain"
-	"family-messenger/backend/internal/features/messages"
-	"family-messenger/backend/internal/repository"
+	"stovo-messenger/backend/internal/cache"
+	"stovo-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/features/messages"
+	"stovo-messenger/backend/internal/repository"
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/google/uuid"

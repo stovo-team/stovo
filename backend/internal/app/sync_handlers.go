@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/domain"
-	"family-messenger/backend/internal/features/messages"
+	"stovo-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/features/messages"
 
 	"github.com/google/uuid"
 )

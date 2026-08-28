@@ -3,7 +3,7 @@ package messages
 import (
 	"context"
 
-	"family-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/domain"
 )
 
 // Delivery is the post-persistence capability required by the message feature.

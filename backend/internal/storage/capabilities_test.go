@@ -3,7 +3,7 @@ package storage
 import (
 	"testing"
 
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/ports"
 )
 
 func TestLocalStorageExposesOnlySupportedCapabilities(t *testing.T) {

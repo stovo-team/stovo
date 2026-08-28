@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"testing"
 
-	"family-messenger/backend/internal/storage"
+	"stovo-messenger/backend/internal/storage"
 )
 
 func TestGenerateVideoThumbnailProducesJPEG(t *testing.T) {

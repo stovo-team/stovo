@@ -3,8 +3,8 @@
 package ent
 
 import (
-	"family-messenger/backend/ent/callparticipant"
 	"fmt"
+	"stovo-messenger/backend/ent/callparticipant"
 	"strings"
 	"time"
 

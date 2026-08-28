@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/ports"
-	"family-messenger/backend/internal/repository"
-	"family-messenger/backend/internal/transcription"
+	"stovo-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/repository"
+	"stovo-messenger/backend/internal/transcription"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"

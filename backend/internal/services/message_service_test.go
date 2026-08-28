@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"family-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/domain"
 )
 
 type messageAuthorizerStub struct {

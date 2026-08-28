@@ -5,9 +5,9 @@ package ent
 import (
 	"context"
 	"errors"
-	"family-messenger/backend/ent/callparticipant"
-	"family-messenger/backend/ent/predicate"
 	"fmt"
+	"stovo-messenger/backend/ent/callparticipant"
+	"stovo-messenger/backend/ent/predicate"
 	"time"
 
 	"entgo.io/ent/dialect/sql"

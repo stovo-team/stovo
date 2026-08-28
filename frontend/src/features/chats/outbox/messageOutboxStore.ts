@@ -63,7 +63,17 @@ const memoryFallback = new Map<string, QueuedOutboxMessage[]>();
 function getLocalStorageKey(userId: string): string {
   return `${LOCAL_STORAGE_PREFIX}${userId}`;
 }
-
+function outboxStorageKeys(): string[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    return Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .filter((key): key is string => key?.startsWith(LOCAL_STORAGE_PREFIX) ?? false);
+  } catch {
+    // Storage may be disabled by a browser privacy setting. The in-memory
+    // fallback remains the authoritative best-effort store for this session.
+    return [];
+  }
+}
 function bytesToBase64(bytes: Uint8Array): string {
   let result = "";
   for (let offset = 0; offset < bytes.length; offset += 0x8000) {
@@ -71,7 +81,6 @@ function bytesToBase64(bytes: Uint8Array): string {
   }
   return btoa(result);
 }
-
 async function forNativeReplica(item: QueuedOutboxMessage): Promise<QueuedOutboxMessage> {
   const attachments = await Promise.all(item.attachments.map(async ({ blob, ...attachment }) => ({
     ...attachment,
@@ -304,8 +313,7 @@ export async function removeOutboxMessage(id: string, userId?: string): Promise<
     saveOutboxToLocalStorage(userId, filtered);
   } else if (typeof localStorage !== "undefined") {
     try {
-      const keys = Object.keys(localStorage).filter((k) => k.startsWith(LOCAL_STORAGE_PREFIX));
-      for (const key of keys) {
+      for (const key of outboxStorageKeys()) {
         const uId = key.slice(LOCAL_STORAGE_PREFIX.length);
         const list = loadOutboxFromLocalStorage(uId);
         if (list.some((msg) => msg.id === id)) {
@@ -356,8 +364,7 @@ export async function clearOutbox(userId?: string): Promise<void> {
     memoryFallback.clear();
     if (typeof localStorage !== "undefined") {
       try {
-        const keys = Object.keys(localStorage).filter((k) => k.startsWith(LOCAL_STORAGE_PREFIX));
-        for (const key of keys) localStorage.removeItem(key);
+        for (const key of outboxStorageKeys()) localStorage.removeItem(key);
       } catch {
         // ignore
       }

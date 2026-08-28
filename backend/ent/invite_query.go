@@ -4,12 +4,12 @@ package ent
 
 import (
 	"context"
-	"family-messenger/backend/ent/family"
-	"family-messenger/backend/ent/invite"
-	"family-messenger/backend/ent/predicate"
-	"family-messenger/backend/ent/user"
 	"fmt"
 	"math"
+	"stovo-messenger/backend/ent/family"
+	"stovo-messenger/backend/ent/invite"
+	"stovo-messenger/backend/ent/predicate"
+	"stovo-messenger/backend/ent/user"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"

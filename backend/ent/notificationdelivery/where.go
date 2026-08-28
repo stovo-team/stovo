@@ -3,7 +3,7 @@
 package notificationdelivery
 
 import (
-	"family-messenger/backend/ent/predicate"
+	"stovo-messenger/backend/ent/predicate"
 	"time"
 
 	"entgo.io/ent/dialect/sql"

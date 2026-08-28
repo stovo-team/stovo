@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"family-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/domain"
 )
 
 // MessageDelivery publishes realtime events and recipient notifications for a

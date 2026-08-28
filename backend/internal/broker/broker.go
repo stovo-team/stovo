@@ -1,6 +1,6 @@
 package broker
 
-import "family-messenger/backend/internal/ports"
+import "stovo-messenger/backend/internal/ports"
 
 type BrokerEvent = ports.Event
 type EventHandler = ports.EventHandler

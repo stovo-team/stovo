@@ -3,7 +3,7 @@ package ports
 import (
 	"context"
 
-	"family-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/domain"
 )
 
 // MessageAuthorizer supplies policy checks needed before a message is stored.

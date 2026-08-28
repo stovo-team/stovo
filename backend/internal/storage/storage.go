@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/ports"
 )
 
 type ObjectStore = ports.ObjectStore

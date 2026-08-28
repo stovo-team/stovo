@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"family-messenger/backend/ent"
+	"stovo-messenger/backend/ent"
 )
 
 type mcpConnectorContextKey struct{}

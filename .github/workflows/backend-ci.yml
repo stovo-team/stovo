@@ -4,10 +4,14 @@ on:
   push:
     paths:
       - "backend/**"
+      - ".architecture/**"
+      - "scripts/check-solid-boundaries.sh"
       - ".github/workflows/backend-ci.yml"
   pull_request:
     paths:
       - "backend/**"
+      - ".architecture/**"
+      - "scripts/check-solid-boundaries.sh"
       - ".github/workflows/backend-ci.yml"
 
 concurrency:
@@ -64,6 +68,9 @@ jobs:
           fi
       - name: Unit and integration tests
         run: go test ./...
+      - name: SOLID architecture boundaries
+        working-directory: ..
+        run: bash scripts/check-solid-boundaries.sh
       - name: Atlas migrate validate
         if: hashFiles('backend/migrations/atlas.sum') != ''
         run: |

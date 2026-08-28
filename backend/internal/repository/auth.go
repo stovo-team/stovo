@@ -3,12 +3,12 @@ package repository
 import (
 	"context"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/chat"
-	"family-messenger/backend/ent/chatmember"
-	"family-messenger/backend/ent/chatpreference"
-	"family-messenger/backend/ent/refreshtoken"
-	"family-messenger/backend/ent/user"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/chat"
+	"stovo-messenger/backend/ent/chatmember"
+	"stovo-messenger/backend/ent/chatpreference"
+	"stovo-messenger/backend/ent/refreshtoken"
+	"stovo-messenger/backend/ent/user"
 )
 
 // Ping verifies database connectivity with the sole allowed application SQL probe.

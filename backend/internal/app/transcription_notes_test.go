@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"family-messenger/backend/internal/transcription"
+	"stovo-messenger/backend/internal/transcription"
 )
 
 func TestFormatAICallNotes(t *testing.T) {

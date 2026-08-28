@@ -4,10 +4,10 @@ package ent
 
 import (
 	"context"
-	"family-messenger/backend/ent/fileupload"
-	"family-messenger/backend/ent/predicate"
 	"fmt"
 	"math"
+	"stovo-messenger/backend/ent/fileupload"
+	"stovo-messenger/backend/ent/predicate"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
