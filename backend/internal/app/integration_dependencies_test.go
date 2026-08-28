@@ -6,14 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/internal/broker"
-	"family-messenger/backend/internal/cache"
-	"family-messenger/backend/internal/config"
-	"family-messenger/backend/internal/logging"
-	"family-messenger/backend/internal/repository"
-	"family-messenger/backend/internal/storage"
-	"family-messenger/backend/internal/tunnel"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/internal/broker"
+	"stovo-messenger/backend/internal/cache"
+	"stovo-messenger/backend/internal/config"
+	featureplans "stovo-messenger/backend/internal/features/plans"
+	"stovo-messenger/backend/internal/logging"
+	"stovo-messenger/backend/internal/repository"
+	"stovo-messenger/backend/internal/storage"
+	"stovo-messenger/backend/internal/tunnel"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -69,5 +70,6 @@ func newIntegrationTestDependencies(t *testing.T, cfg config.Config) Dependencie
 		Tunnel: tunnel.NewManager(), Sockets: socketio.New(), Cache: cache.NewRedisCache(client),
 		Broker:  broker.NewRedisBroker(client),
 		Privacy: store, Contacts: store, Preferences: store, NotificationRecipients: store,
+		Plans: featureplans.NewService(store, nil, nil),
 	}
 }

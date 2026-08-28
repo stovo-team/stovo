@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"family-messenger/backend/internal/cache"
+	"stovo-messenger/backend/internal/cache"
 
 	socketio "github.com/doquangtan/socketio/v4"
 )

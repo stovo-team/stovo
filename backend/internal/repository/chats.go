@@ -5,15 +5,15 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/chat"
-	"family-messenger/backend/ent/chatmediaapproval"
-	"family-messenger/backend/ent/chatmember"
-	"family-messenger/backend/ent/chatpreference"
-	"family-messenger/backend/ent/message"
-	"family-messenger/backend/ent/messageattachment"
-	"family-messenger/backend/ent/predicate"
-	"family-messenger/backend/ent/user"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/chat"
+	"stovo-messenger/backend/ent/chatmediaapproval"
+	"stovo-messenger/backend/ent/chatmember"
+	"stovo-messenger/backend/ent/chatpreference"
+	"stovo-messenger/backend/ent/message"
+	"stovo-messenger/backend/ent/messageattachment"
+	"stovo-messenger/backend/ent/predicate"
+	"stovo-messenger/backend/ent/user"
 )
 
 // CreateChatParams holds fields for creating a chat with members (and optional preferences).

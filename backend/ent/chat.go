@@ -3,10 +3,10 @@
 package ent
 
 import (
-	"family-messenger/backend/ent/chat"
-	"family-messenger/backend/ent/family"
-	"family-messenger/backend/ent/user"
 	"fmt"
+	"stovo-messenger/backend/ent/chat"
+	"stovo-messenger/backend/ent/family"
+	"stovo-messenger/backend/ent/user"
 	"strings"
 
 	"entgo.io/ent"

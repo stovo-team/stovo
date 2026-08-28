@@ -6,14 +6,14 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/chatpreference"
-	"family-messenger/backend/ent/message"
-	"family-messenger/backend/ent/messageattachment"
-	"family-messenger/backend/ent/messagereaction"
-	"family-messenger/backend/ent/messagestatus"
-	"family-messenger/backend/ent/messageuserdeletion"
-	"family-messenger/backend/ent/predicate"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/chatpreference"
+	"stovo-messenger/backend/ent/message"
+	"stovo-messenger/backend/ent/messageattachment"
+	"stovo-messenger/backend/ent/messagereaction"
+	"stovo-messenger/backend/ent/messagestatus"
+	"stovo-messenger/backend/ent/messageuserdeletion"
+	"stovo-messenger/backend/ent/predicate"
 )
 
 // FindActiveForwardInChat returns a non-deleted message forwarded from sourceMessageID into chatID.

@@ -5,12 +5,12 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/chat"
-	"family-messenger/backend/ent/chatmember"
-	"family-messenger/backend/ent/chatpreference"
-	"family-messenger/backend/ent/invite"
-	"family-messenger/backend/ent/user"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/chat"
+	"stovo-messenger/backend/ent/chatmember"
+	"stovo-messenger/backend/ent/chatpreference"
+	"stovo-messenger/backend/ent/invite"
+	"stovo-messenger/backend/ent/user"
 )
 
 // FamilyByID loads a family by primary key.

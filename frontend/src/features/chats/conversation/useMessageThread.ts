@@ -1,7 +1,5 @@
 import {
   Dispatch,
-  MouseEvent as ReactMouseEvent,
-  PointerEvent as ReactPointerEvent,
   RefObject,
   SetStateAction,
   useCallback,
@@ -47,18 +45,6 @@ import {
   isMultiMemberChat
 } from "../shared/messagePresentation";
 import {
-  CHAT_EXIT_SWIPE_EDGE_THRESHOLD,
-  CHAT_EXIT_SWIPE_TRIGGER_OFFSET,
-  MESSAGE_LONG_PRESS_DURATION_MS,
-  MESSAGE_LONG_PRESS_MOVE_TOLERANCE,
-  SWIPE_REPLY_DIRECTION_LOCK,
-  SWIPE_REPLY_MAX_OFFSET,
-  SWIPE_REPLY_TRIGGER_OFFSET,
-  SWIPE_REPLY_VERTICAL_TOLERANCE,
-  messageContextMenuPosition,
-  supportsSwipeReplyGesture
-} from "../shared/messageGestures";
-import {
   mergeIncomingMessage,
   mergeMessageLists,
   markMessagesReadThrough,
@@ -66,17 +52,12 @@ import {
   replaceMessage
 } from "../shared/messageState";
 import type {
-  ChatExitSwipeState,
-  MessageLongPressState,
   MessageStateUpdate,
   PendingMessageFocus,
   SharedContentTab,
-  SwipeReplyGestureState,
-  SwipeReplyState
 } from "../shared/types";
 import type { MessageContextMenuState } from "./MessageContextMenu";
-
-// messageContextMenuPositionArgs isn't exported by messagePresentation; remove unused import below.
+import { useMessageGestures } from "./useMessageGestures";
 
 export type UseMessageThreadParams = {
   chatId: string | undefined;
@@ -121,7 +102,6 @@ export function useMessageThread({
   const [replyTarget, setReplyTarget] = useState<Message | null>(null);
   const [forwardTarget, setForwardTarget] = useState<Message | null>(null);
   const [editTargetMessage, setEditTargetMessage] = useState<Message | null>(null);
-  const [swipeReplyState, setSwipeReplyState] = useState<SwipeReplyState | null>(null);
   const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
   const [pinIndex, setPinIndex] = useState<number>(0);
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null);
@@ -146,11 +126,6 @@ export function useMessageThread({
   const pinTrackingTimeoutRef = useRef<number | null>(null);
   const messageHighlightTimeoutRef = useRef<number | null>(null);
   const pendingMessageFocusRef = useRef<PendingMessageFocus | null>(null);
-
-  const swipeReplyGestureRef = useRef<SwipeReplyGestureState | null>(null);
-  const messageLongPressRef = useRef<MessageLongPressState | null>(null);
-  const chatExitSwipeRef = useRef<ChatExitSwipeState | null>(null);
-  const suppressedMessageClickRef = useRef<{ messageId: string; expiresAt: number } | null>(null);
 
   useEffect(() => {
     activeChatIdRef.current = chatId;
@@ -209,42 +184,10 @@ export function useMessageThread({
     [clearMessageMotionState, prefersReducedMotion]
   );
 
-  const resetSwipeReplyState = useCallback(() => {
-    swipeReplyGestureRef.current = null;
-    setSwipeReplyState(null);
-  }, []);
-
   const clearSelectedMessages = useCallback(() => {
     setSelectedMessageIds([]);
   }, []);
   const isMessageSelectionMode = selectedMessageIds.length > 0;
-
-  const clearMessageLongPressGesture = useCallback(() => {
-    if (messageLongPressRef.current) {
-      window.clearTimeout(messageLongPressRef.current.timerId);
-      messageLongPressRef.current = null;
-    }
-  }, []);
-
-  const resetChatExitSwipeGesture = useCallback(() => {
-    chatExitSwipeRef.current = null;
-  }, []);
-
-  const markNextMessageClickSuppressed = useCallback((messageId: string) => {
-    suppressedMessageClickRef.current = { messageId, expiresAt: Date.now() + 900 };
-  }, []);
-
-  const consumeSuppressedMessageClick = useCallback((messageId: string) => {
-    const current = suppressedMessageClickRef.current;
-    if (!current) return false;
-    if (current.expiresAt < Date.now()) {
-      suppressedMessageClickRef.current = null;
-      return false;
-    }
-    if (current.messageId !== messageId) return false;
-    suppressedMessageClickRef.current = null;
-    return true;
-  }, []);
 
   const toggleSelectedMessage = useCallback((messageId: string) => {
     setSelectedMessageIds((current) =>
@@ -252,18 +195,34 @@ export function useMessageThread({
     );
   }, []);
 
-  const showMessageContextMenu = useCallback(
-    (message: Message, x: number, y: number) => {
-      resetSwipeReplyState();
-      clearMessageLongPressGesture();
-      clearSelectedMessages();
-      setMessageContextMenu({
-        message,
-        ...messageContextMenuPosition(x, y, window.innerWidth, window.innerHeight, isMobileViewport)
-      });
-    },
-    [clearMessageLongPressGesture, clearSelectedMessages, isMobileViewport, resetSwipeReplyState]
-  );
+  const {
+    swipeReplyState,
+    resetSwipeReplyState,
+    clearMessageLongPressGesture,
+    consumeSuppressedMessageClick,
+    showMessageContextMenu,
+    handleMessageBubbleClick,
+    openMessageContextMenu,
+    beginSwipeReplyGesture,
+    handleSwipeReplyMove,
+    endSwipeReplyGesture,
+    shouldAllowChatExitSwipe,
+    beginChatExitSwipe,
+    moveChatExitSwipe,
+    endChatExitSwipe,
+    resetChatExitSwipeGesture
+  } = useMessageGestures({
+    chatId,
+    isMobileViewport,
+    isMessageSelectionMode,
+    channelCommentsDisabledForViewer,
+    messageContextMenu,
+    clearSelectedMessages,
+    toggleSelectedMessage,
+    setSelectedMessageIds,
+    setMessageContextMenu,
+    onReplyToMessage: handleReplyToMessage
+  });
 
   const applyMessagesForChat = useCallback((targetChatId: string, nextState: MessageStateUpdate) => {
     const currentMessages =
@@ -599,229 +558,6 @@ export function useMessageThread({
     forceScrollToBottomRef.current = true;
     scrollMessagesToBottom();
     requestAnimationFrame(() => focusComposerInput());
-  }
-
-  function shouldAllowSwipeReply(message: Message, event: ReactPointerEvent<HTMLElement>, missingCommentThread: boolean) {
-    if (!supportsSwipeReplyGesture() || !event.isPrimary || event.button !== 0) return false;
-    if (isMessageSelectionMode) return false;
-    if (event.pointerType === "mouse" || messageContextMenu !== null) return false;
-    if (channelCommentsDisabledForViewer || missingCommentThread) return false;
-    if (message.deliveryState === "sending") return false;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest("button, a, input, textarea, select, [role='button']")) return false;
-    return true;
-  }
-
-  function shouldAllowMobileMessageGesture(event: ReactPointerEvent<HTMLElement>, message: Message) {
-    if (!isMobileViewport || !event.isPrimary || event.button !== 0) return false;
-    if (event.pointerType === "mouse" || message.deliveryState === "sending") return false;
-    const target = event.target as HTMLElement | null;
-    if (target?.closest("button, a, input, textarea, select, [role='button']")) return false;
-    return true;
-  }
-
-  function beginMessageLongPressGesture(event: ReactPointerEvent<HTMLElement>, message: Message) {
-    clearMessageLongPressGesture();
-    if (isMessageSelectionMode || !shouldAllowMobileMessageGesture(event, message)) {
-      return;
-    }
-    const timerId = window.setTimeout(() => {
-      markNextMessageClickSuppressed(message.id);
-      resetSwipeReplyState();
-      setMessageContextMenu(null);
-      setSelectedMessageIds([message.id]);
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-        navigator.vibrate(10);
-      }
-      messageLongPressRef.current = null;
-    }, MESSAGE_LONG_PRESS_DURATION_MS);
-    messageLongPressRef.current = {
-      messageId: message.id,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      timerId
-    };
-  }
-
-  function handleMessageLongPressMove(event: ReactPointerEvent<HTMLElement>, message: Message) {
-    const gesture = messageLongPressRef.current;
-    if (!gesture || gesture.messageId !== message.id || gesture.pointerId !== event.pointerId) return;
-    if (
-      Math.abs(event.clientX - gesture.startX) > MESSAGE_LONG_PRESS_MOVE_TOLERANCE ||
-      Math.abs(event.clientY - gesture.startY) > MESSAGE_LONG_PRESS_MOVE_TOLERANCE
-    ) {
-      clearMessageLongPressGesture();
-    }
-  }
-
-  function endMessageLongPressGesture(event: ReactPointerEvent<HTMLElement>, message: Message) {
-    const gesture = messageLongPressRef.current;
-    if (!gesture || gesture.messageId !== message.id || gesture.pointerId !== event.pointerId) return;
-    clearMessageLongPressGesture();
-  }
-
-  function handleMessageBubbleClick(event: ReactMouseEvent<HTMLElement>, message: Message) {
-    if (!isMobileViewport) return;
-    if (consumeSuppressedMessageClick(message.id)) {
-      event.preventDefault();
-      return;
-    }
-    const target = event.target as HTMLElement | null;
-    if (target?.closest("button, a, input, textarea, select, [role='button']")) return;
-    if (isMessageSelectionMode) {
-      event.preventDefault();
-      toggleSelectedMessage(message.id);
-      return;
-    }
-    const rect = event.currentTarget.getBoundingClientRect();
-    showMessageContextMenu(message, rect.right - 20, rect.top + Math.min(rect.height * 0.5, 40));
-  }
-
-  function openMessageContextMenu(event: ReactMouseEvent<HTMLElement>, message: Message) {
-    event.preventDefault();
-    if (isMobileViewport || isMessageSelectionMode) return;
-    showMessageContextMenu(message, event.clientX, event.clientY);
-  }
-
-  function shouldAllowChatExitSwipe(event: ReactPointerEvent<HTMLElement>) {
-    if (!isMobileViewport || !chatId || !event.isPrimary || event.button !== 0) return false;
-    if (event.pointerType === "mouse") return false;
-    if (event.clientX > CHAT_EXIT_SWIPE_EDGE_THRESHOLD) return false;
-    const target = event.target as HTMLElement | null;
-    if (
-      target?.closest(
-        "button, a, input, textarea, select, [role='button'], .action-menu, .emoji-picker, .emoji-picker-dock"
-      )
-    ) {
-      return false;
-    }
-    return true;
-  }
-
-  function beginChatExitSwipe(event: ReactPointerEvent<HTMLElement>) {
-    if (!shouldAllowChatExitSwipe(event)) return;
-    chatExitSwipeRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      lock: "pending",
-      committed: false
-    };
-  }
-
-  function moveChatExitSwipe(event: ReactPointerEvent<HTMLElement>, requestCloseActiveChatSurface: () => void) {
-    const gesture = chatExitSwipeRef.current;
-    if (!gesture || gesture.pointerId !== event.pointerId || gesture.committed) return;
-
-    const deltaX = event.clientX - gesture.startX;
-    const deltaY = event.clientY - gesture.startY;
-
-    if (gesture.lock === "pending") {
-      if (Math.abs(deltaY) > 12 && Math.abs(deltaY) > Math.abs(deltaX)) {
-        gesture.lock = "vertical";
-        return;
-      }
-      if (deltaX <= 10 || deltaX <= Math.abs(deltaY)) {
-        return;
-      }
-      gesture.lock = "horizontal";
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-    }
-
-    if (gesture.lock !== "horizontal") return;
-
-    if (deltaX >= CHAT_EXIT_SWIPE_TRIGGER_OFFSET) {
-      gesture.committed = true;
-      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      requestCloseActiveChatSurface();
-      resetChatExitSwipeGesture();
-    }
-  }
-
-  function endChatExitSwipe(event: ReactPointerEvent<HTMLElement>) {
-    const gesture = chatExitSwipeRef.current;
-    if (!gesture || gesture.pointerId !== event.pointerId) return;
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    resetChatExitSwipeGesture();
-  }
-
-  function beginSwipeReplyGesture(event: ReactPointerEvent<HTMLElement>, message: Message, missingCommentThread: boolean) {
-    if (!shouldAllowSwipeReply(message, event, missingCommentThread)) {
-      beginMessageLongPressGesture(event, message);
-      return;
-    }
-    swipeReplyGestureRef.current = {
-      messageId: message.id,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      lastOffset: 0,
-      lock: "pending"
-    };
-    // Do not create the swipe transform until a horizontal drag is confirmed.
-    // A long press starts text selection, and a translate3d(0, 0, 0) on the
-    // selected bubble makes Android WebView paint black tiles by its handles.
-    beginMessageLongPressGesture(event, message);
-  }
-
-  function updateSwipeReplyOffset(messageId: string, offset: number) {
-    const clampedOffset = Math.min(Math.max(offset, 0), SWIPE_REPLY_MAX_OFFSET);
-    setSwipeReplyState({ messageId, offset: clampedOffset, activated: clampedOffset >= SWIPE_REPLY_TRIGGER_OFFSET });
-  }
-
-  function handleSwipeReplyMove(event: ReactPointerEvent<HTMLElement>, message: Message) {
-    const gesture = swipeReplyGestureRef.current;
-    if (!gesture || gesture.messageId !== message.id || gesture.pointerId !== event.pointerId) {
-      handleMessageLongPressMove(event, message);
-      return;
-    }
-
-    handleMessageLongPressMove(event, message);
-
-    const deltaX = event.clientX - gesture.startX;
-    const deltaY = event.clientY - gesture.startY;
-
-    if (gesture.lock === "pending") {
-      if (Math.abs(deltaY) > SWIPE_REPLY_VERTICAL_TOLERANCE && Math.abs(deltaY) > Math.abs(deltaX)) {
-        resetSwipeReplyState();
-        clearMessageLongPressGesture();
-        return;
-      }
-      if (deltaX <= SWIPE_REPLY_DIRECTION_LOCK || deltaX <= Math.abs(deltaY)) {
-        return;
-      }
-      gesture.lock = "horizontal";
-      clearMessageLongPressGesture();
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-    }
-
-    gesture.lastOffset = Math.min(Math.max(deltaX, 0), SWIPE_REPLY_MAX_OFFSET);
-    event.preventDefault();
-    updateSwipeReplyOffset(message.id, gesture.lastOffset);
-  }
-
-  function endSwipeReplyGesture(event: ReactPointerEvent<HTMLElement>, message: Message, options?: { commit?: boolean }) {
-    endMessageLongPressGesture(event, message);
-    const gesture = swipeReplyGestureRef.current;
-    if (!gesture || gesture.messageId !== message.id || gesture.pointerId !== event.pointerId) return;
-
-    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    const shouldCommit =
-      options?.commit !== false && gesture.lock === "horizontal" && gesture.lastOffset >= SWIPE_REPLY_TRIGGER_OFFSET;
-    resetSwipeReplyState();
-
-    if (shouldCommit) {
-      markNextMessageClickSuppressed(message.id);
-      handleReplyToMessage(message);
-    }
   }
 
   async function handleConfirmDelete() {

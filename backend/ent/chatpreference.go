@@ -3,8 +3,8 @@
 package ent
 
 import (
-	"family-messenger/backend/ent/chatpreference"
 	"fmt"
+	"stovo-messenger/backend/ent/chatpreference"
 	"strings"
 
 	"entgo.io/ent"

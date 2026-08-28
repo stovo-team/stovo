@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"family-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/config"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/go-chi/chi/v5"

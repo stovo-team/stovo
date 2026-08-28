@@ -2,15 +2,17 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/ent/chatmember"
-	"family-messenger/backend/ent/plan"
-	"family-messenger/backend/ent/planattendee"
-	"family-messenger/backend/ent/user"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/ent/chatmember"
+	"stovo-messenger/backend/ent/plan"
+	"stovo-messenger/backend/ent/planattendee"
+	"stovo-messenger/backend/ent/user"
+	featureplans "stovo-messenger/backend/internal/features/plans"
 )
 
 // ListPlansInRange returns non-deleted plans overlapping [start, end) for a family.
@@ -173,4 +175,90 @@ func (s *Store) ListActiveUserIDsByFamily(ctx context.Context, familyID string) 
 		ids = append(ids, u.ID)
 	}
 	return ids, nil
+}
+
+// ListPlanViews adapts Ent rows to the plans feature's persistence-neutral
+// result type. HTTP handlers intentionally do not receive Ent entities.
+func (s *Store) ListPlanViews(ctx context.Context, familyID string, start, end time.Time) ([]featureplans.Plan, error) {
+	rows, err := s.ListPlansInRange(ctx, familyID, start, end)
+	if err != nil {
+		return nil, err
+	}
+	plans := make([]featureplans.Plan, 0, len(rows))
+	for _, row := range rows {
+		view, err := s.planView(ctx, row)
+		if err != nil {
+			return nil, err
+		}
+		plans = append(plans, view)
+	}
+	return plans, nil
+}
+
+// CreatePlanView owns the transaction required to create a plan and its
+// attendees. The plans feature supplies only domain values, never an Ent tx.
+func (s *Store) CreatePlanView(ctx context.Context, input featureplans.NewPlan) (featureplans.Plan, error) {
+	err := s.WithTx(ctx, func(tx *ent.Tx) error {
+		if err := s.CreatePlan(ctx, tx, CreatePlanParams{
+			ID: input.ID, FamilyID: input.FamilyID, Title: input.Title, Notes: input.Notes, Location: input.Location,
+			StartsAt: input.StartsAt.Format(time.RFC3339Nano), EndsAt: input.EndsAt.Format(time.RFC3339Nano),
+			AllDay: input.AllDay, TimeZone: input.TimeZone, Recurrence: input.Recurrence, CreatedBy: input.CreatedBy,
+			SourceChatID: input.SourceChatID, CreatedAt: input.CreatedAt.Format(time.RFC3339Nano), UpdatedAt: input.UpdatedAt.Format(time.RFC3339Nano),
+		}); err != nil {
+			return err
+		}
+		return s.ReplacePlanAttendees(ctx, tx, input.ID, input.AttendeeUserID, input.CreatedBy, input.UpdatedAt.Format(time.RFC3339Nano))
+	})
+	if err != nil {
+		return featureplans.Plan{}, err
+	}
+	return s.GetPlanView(ctx, input.ID)
+}
+
+func (s *Store) GetPlanView(ctx context.Context, id string) (featureplans.Plan, error) {
+	row, err := s.GetPlan(ctx, id)
+	if err != nil {
+		return featureplans.Plan{}, err
+	}
+	return s.planView(ctx, row)
+}
+
+func (s *Store) SetPlanRSVP(ctx context.Context, planID, userID, status string, updatedAt time.Time) error {
+	return s.UpsertPlanRSVP(ctx, planID, userID, status, updatedAt.Format(time.RFC3339Nano))
+}
+
+func (s *Store) ValidatePlanAttendees(ctx context.Context, familyID string, ids []string) error {
+	for _, id := range ids {
+		member, err := s.UserByID(ctx, id)
+		if err != nil || member.FamilyID != familyID || member.IsActive == 0 {
+			return fmt.Errorf("invalid plan attendee")
+		}
+	}
+	return nil
+}
+
+func (s *Store) planView(ctx context.Context, row *ent.Plan) (featureplans.Plan, error) {
+	attendees, err := s.ListPlanAttendees(ctx, row.ID)
+	if err != nil {
+		return featureplans.Plan{}, err
+	}
+	view := featureplans.Plan{
+		ID: row.ID, FamilyID: row.FamilyID, Title: row.Title, Notes: row.Notes, Location: row.Location,
+		StartsAt: planTime(row.StartsAt), EndsAt: planTime(row.EndsAt), AllDay: row.AllDay, TimeZone: row.TimeZone,
+		Recurrence: row.Recurrence, CreatedBy: row.CreatedBy, SourceChatID: row.SourceChatID, Revision: row.Revision,
+		CreatedAt: planTime(row.CreatedAt), UpdatedAt: planTime(row.UpdatedAt),
+		Attendees: make([]featureplans.Attendee, 0, len(attendees)),
+	}
+	for _, attendee := range attendees {
+		view.Attendees = append(view.Attendees, featureplans.Attendee{UserID: attendee.UserID, Status: attendee.Status})
+	}
+	return view, nil
+}
+
+func planTime(value string) time.Time {
+	parsed, err := time.Parse(time.RFC3339Nano, value)
+	if err != nil {
+		return time.Time{}
+	}
+	return parsed
 }

@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 
-	"family-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/domain"
 )
 
 // messagePolicyAdapter keeps application infrastructure at the outer edge

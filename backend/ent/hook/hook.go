@@ -4,8 +4,8 @@ package hook
 
 import (
 	"context"
-	"family-messenger/backend/ent"
 	"fmt"
+	"stovo-messenger/backend/ent"
 )
 
 // The CallParticipantFunc type is an adapter to allow the use of ordinary

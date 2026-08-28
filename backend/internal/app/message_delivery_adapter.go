@@ -3,8 +3,8 @@ package app
 import (
 	"context"
 
-	"family-messenger/backend/internal/domain"
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/ports"
 )
 
 // messageDeliveryAdapter bridges the delivery use case to the current broker

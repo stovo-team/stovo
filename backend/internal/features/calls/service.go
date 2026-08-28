@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"family-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/domain"
 )
 
 var (

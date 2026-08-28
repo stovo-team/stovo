@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"family-messenger/backend/ent"
+	"stovo-messenger/backend/ent"
 )
 
 func (s *Server) handlePinMessage(w http.ResponseWriter, r *http.Request, user userPublic) {

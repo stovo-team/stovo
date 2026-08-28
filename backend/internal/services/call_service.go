@@ -2,8 +2,8 @@
 package services
 
 import (
-	"family-messenger/backend/internal/features/calls"
-	"family-messenger/backend/internal/ports"
+	"stovo-messenger/backend/internal/features/calls"
+	"stovo-messenger/backend/internal/ports"
 )
 
 var (

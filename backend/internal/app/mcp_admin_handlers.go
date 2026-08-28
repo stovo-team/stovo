@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strings"
 
-	"family-messenger/backend/ent"
-	"family-messenger/backend/internal/repository"
+	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/internal/repository"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"

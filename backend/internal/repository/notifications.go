@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"family-messenger/backend/ent/chatmember"
+	"stovo-messenger/backend/ent/chatmember"
 )
 
 // ListChatMemberUserIDs returns user_id values for a chat.

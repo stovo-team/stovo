@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
-	"family-messenger/backend/internal/config"
-	"family-messenger/backend/internal/storage"
+	"stovo-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/storage"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 

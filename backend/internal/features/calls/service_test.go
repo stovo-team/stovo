@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"family-messenger/backend/internal/domain"
+	"stovo-messenger/backend/internal/domain"
 )
 
 type chatReaderStub struct{ chat domain.CallChat }

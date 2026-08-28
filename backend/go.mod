@@ -1,4 +1,4 @@
-module family-messenger/backend
+module stovo-messenger/backend
 
 go 1.25.5
 
