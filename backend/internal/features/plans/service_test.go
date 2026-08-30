@@ -33,6 +33,9 @@ func (s *storeStub) ValidatePlanAttendees(context.Context, string, []string) err
 func (s *storeStub) CanAccessPlanChat(context.Context, string, string, string) (bool, error) {
 	return s.chatAllowed, nil
 }
+func (s *storeStub) ListActiveUserIDsByFamily(context.Context, string) ([]string, error) {
+	return nil, nil
+}
 
 func TestCreateNormalizesInputAtTheUseCaseBoundary(t *testing.T) {
 	now := time.Date(2026, 8, 27, 12, 0, 0, 0, time.UTC)

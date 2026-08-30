@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	featurepreferences "stovo-messenger/backend/internal/features/preferences"
 )
 
 type accountPreferencesStoreFake struct {
@@ -36,7 +38,7 @@ func (f *accountPreferencesStoreFake) SetNtfyTopicToken(_ context.Context, _ str
 }
 
 func TestAccountPreferencesReturnsStoreFailureForAudioSettings(t *testing.T) {
-	handler := NewAccountPreferencesHandler(&accountPreferencesStoreFake{audioErr: errors.New("database unavailable")}, "https://app.test", nil)
+	handler := NewAccountPreferencesHandler(featurepreferences.NewService(&accountPreferencesStoreFake{audioErr: errors.New("database unavailable")}, func() string { return "stovo-user-test" }), "https://app.test", nil)
 	recorder := httptest.NewRecorder()
 	handler.handleGetAudioSettings(recorder, httptest.NewRequest(http.MethodGet, "/api/auth/audio-settings", nil), userPublic{ID: "user-1"})
 	if recorder.Code != http.StatusInternalServerError {
@@ -48,7 +50,7 @@ func TestAccountPreferencesKeepsPrivacyWhenSavingAudioSettings(t *testing.T) {
 	existing := `{"privacy":{"directMessagePermission":"nobody"}}`
 	store := &accountPreferencesStoreFake{audioSettings: &existing}
 	decoder := func(r *http.Request, target any) error { return json.NewDecoder(r.Body).Decode(target) }
-	handler := NewAccountPreferencesHandler(store, "https://app.test", decoder)
+	handler := NewAccountPreferencesHandler(featurepreferences.NewService(store, func() string { return "stovo-user-test" }), "https://app.test", decoder)
 	recorder := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPut, "/api/auth/audio-settings", strings.NewReader(`{"inputGain":999,"outputVolume":-1,"speakerMode":"invalid"}`))
 	handler.handlePutAudioSettings(recorder, req, userPublic{ID: "user-1"})
@@ -67,7 +69,7 @@ func TestAccountPreferencesKeepsPrivacyWhenSavingAudioSettings(t *testing.T) {
 func TestAccountPreferencesReturnsExistingNotificationTopic(t *testing.T) {
 	topic := "stovo-user-known"
 	store := &accountPreferencesStoreFake{topic: &topic}
-	handler := NewAccountPreferencesHandler(store, "https://app.test", nil)
+	handler := NewAccountPreferencesHandler(featurepreferences.NewService(store, func() string { return "stovo-user-test" }), "https://app.test", nil)
 	recorder := httptest.NewRecorder()
 	handler.handleGetNotificationTopic(recorder, httptest.NewRequest(http.MethodGet, "/api/notifications/topic", nil), userPublic{ID: "user-1"})
 	if recorder.Code != http.StatusOK || store.persisted != "" || !strings.Contains(recorder.Body.String(), topic) {

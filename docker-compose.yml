@@ -78,6 +78,8 @@ x-backend: &backend
   depends_on:
     postgres:
       condition: service_healthy
+    backend-migrate:
+      condition: service_completed_successfully
     redis:
       condition: service_healthy
     redis-jobs:
@@ -88,6 +90,28 @@ x-backend: &backend
       condition: service_completed_successfully
 
 services:
+  backend-migrate:
+    build:
+      context: ./backend
+    restart: "no"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - 'atlas migrate apply --dir file:///app/migrations --url "$(stovo-database-url)"'
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
   postgres:
     image: postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     environment:

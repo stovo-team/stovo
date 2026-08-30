@@ -5,9 +5,94 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"stovo-messenger/backend/internal/domain"
 )
+
+// Session is the persistence-neutral durable representation of a live call.
+// Runtime owns socket maps and Redis copies; this feature owns the durable
+// lifecycle records used for recovery and history.
+type Session struct {
+	ID, ChatID, CallerID, CalleeID, CallType, Topology, State string
+	CreatedAt                                                 time.Time
+}
+
+type Participant struct {
+	RoomID, UserID, Role, State string
+	JoinedAt                    *time.Time
+}
+
+type HistoryRecord struct {
+	MessageID, ChatID, SenderID, EncryptionMetadata, CreatedAt, UpdatedAt string
+}
+
+type SessionStore interface {
+	CreateSession(context.Context, Session) error
+	UpdateSessionState(context.Context, string, string) error
+	UpdateSessionTopology(context.Context, string, string) error
+	EndSession(context.Context, string, int, time.Time) error
+	UpsertParticipant(context.Context, Participant) error
+	ActiveSessions(context.Context, time.Duration) ([]Session, error)
+	Participants(context.Context, string) ([]Participant, error)
+	RecordHistory(context.Context, HistoryRecord) error
+}
+
+// PersistenceService keeps transports from accessing a shared repository and
+// leaves transaction details entirely inside the call persistence adapter.
+type PersistenceService struct{ store SessionStore }
+
+func NewPersistenceService(store SessionStore) *PersistenceService {
+	return &PersistenceService{store: store}
+}
+func (s *PersistenceService) Create(ctx context.Context, session Session) error {
+	if s == nil || s.store == nil {
+		return nil
+	}
+	return s.store.CreateSession(ctx, session)
+}
+func (s *PersistenceService) SetState(ctx context.Context, id, state string) error {
+	if s == nil || s.store == nil {
+		return nil
+	}
+	return s.store.UpdateSessionState(ctx, id, state)
+}
+func (s *PersistenceService) SetTopology(ctx context.Context, id, topology string) error {
+	if s == nil || s.store == nil {
+		return nil
+	}
+	return s.store.UpdateSessionTopology(ctx, id, topology)
+}
+func (s *PersistenceService) End(ctx context.Context, id string, duration int, endedAt time.Time) error {
+	if s == nil || s.store == nil {
+		return nil
+	}
+	return s.store.EndSession(ctx, id, duration, endedAt)
+}
+func (s *PersistenceService) UpsertParticipant(ctx context.Context, participant Participant) error {
+	if s == nil || s.store == nil {
+		return nil
+	}
+	return s.store.UpsertParticipant(ctx, participant)
+}
+func (s *PersistenceService) Active(ctx context.Context, lookback time.Duration) ([]Session, error) {
+	if s == nil || s.store == nil {
+		return nil, nil
+	}
+	return s.store.ActiveSessions(ctx, lookback)
+}
+func (s *PersistenceService) Participants(ctx context.Context, roomID string) ([]Participant, error) {
+	if s == nil || s.store == nil {
+		return nil, nil
+	}
+	return s.store.Participants(ctx, roomID)
+}
+func (s *PersistenceService) RecordHistory(ctx context.Context, record HistoryRecord) error {
+	if s == nil || s.store == nil {
+		return nil
+	}
+	return s.store.RecordHistory(ctx, record)
+}
 
 var (
 	ErrUnavailable    = errors.New("calls are unavailable in this chat")

@@ -89,6 +89,13 @@ type Store interface {
 	SetPlanRSVP(context.Context, string, string, string, time.Time) error
 	ValidatePlanAttendees(context.Context, string, []string) error
 	CanAccessPlanChat(context.Context, string, string, string) (bool, error)
+	ListActiveUserIDsByFamily(context.Context, string) ([]string, error)
+}
+
+// ActiveUserIDs returns the delivery audience for an already-authorized plan
+// event. Socket.IO remains an outer transport concern.
+func (s *Service) ActiveUserIDs(ctx context.Context, familyID string) ([]string, error) {
+	return s.store.ListActiveUserIDsByFamily(ctx, familyID)
 }
 
 type Clock func() time.Time

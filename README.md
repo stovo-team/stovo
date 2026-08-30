@@ -28,7 +28,7 @@ This repository currently implements the project foundation through Phase 7:
 - PostgreSQL service
 - Redis service
 - Docker Compose orchestration
-- Alembic migration system
+- Atlas versioned migration system
 - health endpoints for backend, database, and Redis
 - Socket.IO health stub
 - infrastructure abstractions for broker, cache, storage, and encryption
@@ -60,32 +60,27 @@ The project does not yet include message encryption-at-rest behavior, MinIO/S3, 
 ## Architecture
 
 ```text
-Frontend
-  |
-  | REST API + Socket.IO
-  |
-Backend Application
-  |
-  |-- Auth Module
-  |-- Users Module
-  |-- Families Module
-  |-- Invites Module
-  |-- Chats Module
-  |-- Messages Module
-  |-- Files Module
-  |-- Admin Module
-  |-- Realtime Module
-  |
-  |-- MessageBrokerService -> Redis adapter
-  |-- CachingService       -> Redis adapter
-  |-- StorageService       -> local filesystem adapter
-  |
-  |-- PostgreSQL
-  |-- Redis
-  |-- Local File System
+bootstrap
+  -> outer adapters / HTTP and realtime transports / runtime workers
+  -> feature services and feature-owned ports
+  -> domain
 ```
 
-The key rule for later phases is that business services should depend on internal abstractions, not directly on Redis or the filesystem.
+The backend is being migrated incrementally to this feature-first Onion
+Architecture. `internal/domain` is framework-free. `internal/features` owns
+application commands, queries, results, and the narrow ports it consumes.
+Ent, PostgreSQL, Redis, object storage, Socket.IO, configuration, and external
+providers are outer concerns composed by `internal/bootstrap`.
+
+This is intentionally a compatibility-preserving migration: the HTTP paths,
+JSON payloads, status codes, cookies, Socket.IO events/acks, MCP behavior, and
+Atlas schema remain stable. `internal/app` is still the compatibility façade
+for routes, Socket.IO callbacks, and some worker supervision while the
+remaining slices are cut over feature by feature. It is not yet valid to call
+the migration complete.
+
+The enforced dependency rules and a current ownership/cutover inventory live
+in `backend/architecture_test.go` and `backend/MIGRATION_INVENTORY.md`.
 
 For a review-friendly narrative of the current system and the rewrite constraints, see `docs/architecture.md`.
 
@@ -134,7 +129,8 @@ The command writes a JSON manifest to the private `stovo-logs/migrations/` prefi
 What happens on startup:
 
 - PostgreSQL and Redis start first.
-- The backend container runs `alembic upgrade head` automatically before starting Uvicorn.
+- The one-shot `backend-migrate` service applies the checked-in Atlas migration directory before either backend color starts.
+- The Go/Chi backend then starts without performing DDL at runtime.
 - The frontend container builds once and serves the Vite preview build on port `5173`.
 
 Open the app:
@@ -181,9 +177,9 @@ Use the reset command only when you want to discard local dev data.
 
 ### Troubleshooting Docker Startup
 
-If the backend container exits during startup with an Alembic error like
-`Can't locate revision identified by ...`, your local Postgres volume was created from an
-older branch or migration history. Reset the local Docker volumes and start again:
+If `backend-migrate` reports an Atlas checksum or dirty-database error, your local
+Postgres volume was created from an older branch or migration history. For disposable
+local data, reset the local Docker volumes and start again:
 
 ```bash
 docker compose down -v
@@ -191,6 +187,10 @@ docker compose up --build
 ```
 
 This repository's clean-checkout path expects a fresh local database volume.
+
+For an existing non-disposable database, do not reset or let the migration service
+guess. Follow [the Atlas baseline procedure](backend/migrations/BASELINE.md) to back
+up, check for drift, and stamp the existing baseline before deployment.
 
 ## Frontend Build Check
 

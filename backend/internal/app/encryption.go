@@ -6,9 +6,10 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"fmt"
 	"io"
 	"strings"
+
+	featureadministration "stovo-messenger/backend/internal/features/administration"
 )
 
 const (
@@ -34,14 +35,7 @@ func supportedEncryptionProtocols() []encryptionProtocolPublic {
 }
 
 func normalizeEncryptionProtocol(value string) (string, error) {
-	switch strings.TrimSpace(value) {
-	case "", encryptionProtocolServerAtRest:
-		return encryptionProtocolServerAtRest, nil
-	case encryptionProtocolEndToEnd:
-		return encryptionProtocolEndToEnd, nil
-	default:
-		return "", fmt.Errorf("unsupported encryption protocol")
-	}
+	return featureadministration.NormalizeEncryptionProtocol(value)
 }
 
 func (s *Server) serverEncryptionKey(familyID string) []byte {

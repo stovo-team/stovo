@@ -1,0 +1,42 @@
+package http
+
+import (
+	stdhttp "net/http"
+
+	"github.com/go-chi/chi/v5"
+)
+
+// CallRoutes contains the already-composed inbound handlers for calls and
+// call transcription. Authentication remains a caller concern: every entry
+// must be wrapped before it is supplied here. This transport owns only the
+// stable HTTP method and path dispatch.
+type CallRoutes struct {
+	GetICEServers               stdhttp.Handler
+	CreateSFUToken              stdhttp.Handler
+	StartTranscription          stdhttp.Handler
+	StopTranscription           stdhttp.Handler
+	GetTranscriptionStatus      stdhttp.Handler
+	GetTranscript               stdhttp.Handler
+	RequestTranscriptionUpload  stdhttp.Handler
+	UploadAudioChunkData        stdhttp.Handler
+	CompleteTranscriptionUpload stdhttp.Handler
+	UpdateTranscriptSegment     stdhttp.Handler
+	GetTranscriptArtifact       stdhttp.Handler
+}
+
+// RegisterCallRoutes installs the stable REST contract for calls and
+// transcription. Authorization and business policy remain in supplied
+// handlers.
+func RegisterCallRoutes(router chi.Router, routes CallRoutes) {
+	router.Method(stdhttp.MethodGet, "/api/calls/ice-servers", routes.GetICEServers)
+	router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/sfu-token", routes.CreateSFUToken)
+	router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/transcription/start", routes.StartTranscription)
+	router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/transcription/stop", routes.StopTranscription)
+	router.Method(stdhttp.MethodGet, "/api/calls/{roomId}/transcription/status", routes.GetTranscriptionStatus)
+	router.Method(stdhttp.MethodGet, "/api/calls/{roomId}/transcript", routes.GetTranscript)
+	router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/transcription/uploads", routes.RequestTranscriptionUpload)
+	router.Method(stdhttp.MethodPut, "/api/calls/{roomId}/transcription/uploads/{chunkId}/data", routes.UploadAudioChunkData)
+	router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/transcription/uploads/{chunkId}/complete", routes.CompleteTranscriptionUpload)
+	router.Method(stdhttp.MethodPatch, "/api/calls/{roomId}/transcript/segments/{segmentId}", routes.UpdateTranscriptSegment)
+	router.Method(stdhttp.MethodGet, "/api/calls/{roomId}/transcript/artifacts/{artifactType}", routes.GetTranscriptArtifact)
+}

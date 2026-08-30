@@ -1,32 +1,38 @@
 package app
 
-import "time"
+import (
+	"time"
+
+	httptransport "stovo-messenger/backend/internal/transport/http"
+	chatpresenter "stovo-messenger/backend/internal/transport/http/presenter"
+	realtimetransport "stovo-messenger/backend/internal/transport/realtime"
+)
 
 type userPublic struct {
-	ID                  string      `json:"id"`
-	FamilyID            string      `json:"familyId"`
-	Username            string      `json:"username"`
-	DisplayName         string      `json:"displayName"`
-	Role                string      `json:"role"`
-	RoleID              string      `json:"roleId,omitempty"`
-	RoleName            string      `json:"roleName,omitempty"`
-	Permissions         []string    `json:"permissions,omitempty"`
-	IsActive            bool        `json:"isActive"`
-	PublicKey           *string     `json:"publicKey"`
-	ProfilePhoto        *filePublic `json:"profilePhoto"`
-	CreatedAt           *time.Time  `json:"createdAt,omitempty"`
-	LastSeenAt          *time.Time  `json:"lastSeenAt"`
-	ProfileVisibility   string      `json:"profileVisibility"`
-	LastSeenVisibility  string      `json:"lastSeenVisibility"`
-	ReadReceiptsEnabled bool        `json:"readReceiptsEnabled"`
-	DirectMessagePermission string `json:"directMessagePermission"`
-	GroupInvitePermission string `json:"groupInvitePermission"`
-	ChannelInvitePermission string `json:"channelInvitePermission"`
-	VoiceInvitePermission string `json:"voiceInvitePermission"`
-	InvitePermissionUserIDs []string `json:"invitePermissionUserIds"`
-	Email               *string     `json:"email"`
-	Bio                 *string     `json:"bio"`
-	Timezone            *string     `json:"timezone"`
+	ID                      string      `json:"id"`
+	FamilyID                string      `json:"familyId"`
+	Username                string      `json:"username"`
+	DisplayName             string      `json:"displayName"`
+	Role                    string      `json:"role"`
+	RoleID                  string      `json:"roleId,omitempty"`
+	RoleName                string      `json:"roleName,omitempty"`
+	Permissions             []string    `json:"permissions,omitempty"`
+	IsActive                bool        `json:"isActive"`
+	PublicKey               *string     `json:"publicKey"`
+	ProfilePhoto            *filePublic `json:"profilePhoto"`
+	CreatedAt               *time.Time  `json:"createdAt,omitempty"`
+	LastSeenAt              *time.Time  `json:"lastSeenAt"`
+	ProfileVisibility       string      `json:"profileVisibility"`
+	LastSeenVisibility      string      `json:"lastSeenVisibility"`
+	ReadReceiptsEnabled     bool        `json:"readReceiptsEnabled"`
+	DirectMessagePermission string      `json:"directMessagePermission"`
+	GroupInvitePermission   string      `json:"groupInvitePermission"`
+	ChannelInvitePermission string      `json:"channelInvitePermission"`
+	VoiceInvitePermission   string      `json:"voiceInvitePermission"`
+	InvitePermissionUserIDs []string    `json:"invitePermissionUserIds"`
+	Email                   *string     `json:"email"`
+	Bio                     *string     `json:"bio"`
+	Timezone                *string     `json:"timezone"`
 }
 
 type NavTabsConfig struct {
@@ -63,10 +69,7 @@ type invitePublic struct {
 	RevokedAt *time.Time `json:"revokedAt"`
 }
 
-type createInviteResponse struct {
-	InviteURL string       `json:"inviteUrl"`
-	Invite    invitePublic `json:"invite"`
-}
+type createInviteResponse = httptransport.InviteCreateResponse
 
 type publicInviteLink struct {
 	ID        string    `json:"id"`
@@ -149,29 +152,29 @@ type changePasswordRequest struct {
 }
 
 type updateMeRequest struct {
-	DisplayName         *string `json:"displayName"`
-	PublicKey           *string `json:"publicKey"`
-	ProfilePhotoFileID  *string `json:"profilePhotoFileId"`
-	ProfileVisibility   *string `json:"profileVisibility"`
-	LastSeenVisibility  *string `json:"lastSeenVisibility"`
-	ReadReceiptsEnabled *bool   `json:"readReceiptsEnabled"`
-	DirectMessagePermission *string `json:"directMessagePermission"`
-	GroupInvitePermission *string `json:"groupInvitePermission"`
-	ChannelInvitePermission *string `json:"channelInvitePermission"`
-	VoiceInvitePermission *string `json:"voiceInvitePermission"`
+	DisplayName             *string   `json:"displayName"`
+	PublicKey               *string   `json:"publicKey"`
+	ProfilePhotoFileID      *string   `json:"profilePhotoFileId"`
+	ProfileVisibility       *string   `json:"profileVisibility"`
+	LastSeenVisibility      *string   `json:"lastSeenVisibility"`
+	ReadReceiptsEnabled     *bool     `json:"readReceiptsEnabled"`
+	DirectMessagePermission *string   `json:"directMessagePermission"`
+	GroupInvitePermission   *string   `json:"groupInvitePermission"`
+	ChannelInvitePermission *string   `json:"channelInvitePermission"`
+	VoiceInvitePermission   *string   `json:"voiceInvitePermission"`
 	InvitePermissionUserIDs *[]string `json:"invitePermissionUserIds"`
-	Email               *string `json:"email"`
-	Bio                 *string `json:"bio"`
-	Timezone            *string `json:"timezone"`
+	Email                   *string   `json:"email"`
+	Bio                     *string   `json:"bio"`
+	Timezone                *string   `json:"timezone"`
 }
 
 type updateFamilyRequest struct {
-	Name                *string `json:"name"`
-	StorageLimitMB      *int64  `json:"storageLimitMb"`
-	MinimizedChatLayout *bool   `json:"minimizedChatLayout"`
-	DefaultProfileVisibility *string `json:"defaultProfileVisibility"`
-	DefaultLastSeenVisibility *string `json:"defaultLastSeenVisibility"`
-	DefaultReadReceiptsEnabled *bool `json:"defaultReadReceiptsEnabled"`
+	Name                        *string `json:"name"`
+	StorageLimitMB              *int64  `json:"storageLimitMb"`
+	MinimizedChatLayout         *bool   `json:"minimizedChatLayout"`
+	DefaultProfileVisibility    *string `json:"defaultProfileVisibility"`
+	DefaultLastSeenVisibility   *string `json:"defaultLastSeenVisibility"`
+	DefaultReadReceiptsEnabled  *bool   `json:"defaultReadReceiptsEnabled"`
 	DefaultNotificationSettings *string `json:"defaultNotificationSettings"`
 }
 
@@ -254,95 +257,14 @@ type changeRoleRequest struct {
 	Role string `json:"role"`
 }
 
-type createInviteRequest struct {
-	Role           string `json:"role"`
-	ExpiresInHours *int   `json:"expiresInHours"`
-	MaxUses        *int   `json:"maxUses"`
-}
+type createInviteRequest = httptransport.InviteCreateRequest
 
-type acceptInviteRequest struct {
-	Nickname    string `json:"nickname"`
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	DisplayName string `json:"displayName"`
-}
+type acceptInviteRequest = httptransport.InviteAcceptRequest
 
-type chatMemberPublic struct {
-	ID                 string      `json:"id"`
-	DisplayName        string      `json:"displayName"`
-	Username           string      `json:"username"`
-	Role               string      `json:"role"`
-	PublicKey          *string     `json:"publicKey"`
-	ProfilePhoto       *filePublic `json:"profilePhoto"`
-	IsOnline           bool        `json:"isOnline"`
-	LastSeenAt         *time.Time  `json:"lastSeenAt"`
-	LastSeenVisibility string      `json:"lastSeenVisibility"`
-}
-
-type chatPublic struct {
-	ID                              string             `json:"id"`
-	FamilyID                        string             `json:"familyId"`
-	Type                            string             `json:"type"`
-	Title                           *string            `json:"title"`
-	CreatedBy                       *string            `json:"createdBy"`
-	MediaVisibility                 string             `json:"mediaVisibility"`
-	CommentsEnabled                 bool               `json:"commentsEnabled"`
-	EncryptionProtocol              string             `json:"encryptionProtocol"`
-	MediaVisibilityPendingApproval  bool               `json:"mediaVisibilityPendingApproval"`
-	MediaVisibilityApprovalCount    int                `json:"mediaVisibilityApprovalCount"`
-	MediaVisibilityApprovalRequired int                `json:"mediaVisibilityApprovalRequired"`
-	MyMediaVisibilityApproval       bool               `json:"myMediaVisibilityApproval"`
-	ChatPhoto                       *filePublic        `json:"chatPhoto"`
-	CreatedAt                       time.Time          `json:"createdAt"`
-	UpdatedAt                       time.Time          `json:"updatedAt"`
-	Members                         []chatMemberPublic `json:"members"`
-	UnreadCount                     int                `json:"unreadCount"`
-	LastMessageID                   *string            `json:"lastMessageId"`
-	LastMessageSenderID             *string            `json:"lastMessageSenderId"`
-	LastMessageSenderDisplayName    *string            `json:"lastMessageSenderDisplayName"`
-	LastMessageContent              *string            `json:"lastMessageContent"`
-	LastMessageType                 *string            `json:"lastMessageType"`
-	LastMessageCreatedAt            *time.Time         `json:"lastMessageCreatedAt"`
-	IsMuted                         bool               `json:"isMuted"`
-	IsPinned                        bool               `json:"isPinned"`
-	IsFavorite                      bool               `json:"isFavorite"`
-	Wallpaper                       *filePublic        `json:"wallpaper"`
-	PinPermission                   string             `json:"pinPermission"`
-	MessageDelaySeconds             int                `json:"messageDelaySeconds"`
-	ActiveCall                      map[string]any     `json:"activeCall,omitempty"`
-}
-
-type createDirectChatRequest struct {
-	UserID string `json:"userId"`
-}
-
-type createGroupChatRequest struct {
-	Title     string   `json:"title"`
-	MemberIDs []string `json:"memberIds"`
-}
-
-type createChannelChatRequest struct {
-	Title     string   `json:"title"`
-	MemberIDs []string `json:"memberIds"`
-}
-
-type createVoiceChatRequest struct {
-	Title     string   `json:"title"`
-	MemberIDs []string `json:"memberIds"`
-}
-
-type addChatMembersRequest struct {
-	UserIDs []string `json:"userIds"`
-}
-
-type updateChatRequest struct {
-	Title               *string `json:"title"`
-	MediaVisibility     *string `json:"mediaVisibility"`
-	ChatPhotoFileID     *string `json:"chatPhotoFileId"`
-	CommentsEnabled     *bool   `json:"commentsEnabled"`
-	PinPermission       *string `json:"pinPermission"`
-	MessageDelaySeconds *int    `json:"messageDelaySeconds"`
-}
+// Chat transport DTOs live at the HTTP edge. Aliases retain the existing
+// compatibility names while app finishes delegating the surrounding handlers.
+type chatMemberPublic = chatpresenter.Member
+type chatPublic = chatpresenter.Chat
 
 type pinnedMessagePublic struct {
 	ChatID    string        `json:"chatId"`
@@ -572,52 +494,16 @@ type encryptionSettingsUpdateRequest struct {
 	DefaultMessageEncryptionProtocol string `json:"defaultMessageEncryptionProtocol"`
 }
 
-type socketSendMessageRequest struct {
-	ChatID              string   `json:"chatId"`
-	Content             *string  `json:"content"`
-	ReplyToMessageID    *string  `json:"replyToMessageId"`
-	ThreadRootMessageID *string  `json:"threadRootMessageId"`
-	FileIDs             []string `json:"fileIds"`
-	ClientMessageID     *string  `json:"clientMessageId"`
-	EncryptionProtocol  *string  `json:"encryptionProtocol"`
-	Ciphertext          *string  `json:"ciphertext"`
-	Nonce               *string  `json:"nonce"`
-	KeyVersion          *int     `json:"keyVersion"`
-	EncryptionMetadata  *string  `json:"encryptionMetadata"`
-}
+type socketSendMessageRequest = realtimetransport.MessageSendRequest
+type socketReadRequest = realtimetransport.MessageReadRequest
+type socketTypingRequest = realtimetransport.TypingRequest
 
-type socketReadRequest struct {
-	MessageID string  `json:"messageId"`
-	ChatID    *string `json:"chatId"`
-}
-
-type socketTypingRequest struct {
-	ChatID string `json:"chatId"`
-}
-
-type socketCallStartRequest struct {
-	ChatID        string   `json:"chatId"`
-	CallType      string   `json:"callType"`
-	InviteUserIDs []string `json:"inviteUserIds"`
-}
-
-type socketCallActionRequest struct {
-	ChatID string `json:"chatId"`
-	RoomID string `json:"roomId"`
-}
-
-type socketCallInviteRequest struct {
-	ChatID        string   `json:"chatId"`
-	RoomID        string   `json:"roomId"`
-	InviteUserIDs []string `json:"inviteUserIds"`
-}
-
-type socketCallSignalRequest struct {
-	ChatID       string         `json:"chatId"`
-	RoomID       string         `json:"roomId"`
-	TargetUserID *string        `json:"targetUserId"`
-	Data         map[string]any `json:"data"`
-}
+// Deprecated local names retain compatibility for the coordinator while the
+// wire shapes are owned by the realtime transport.
+type socketCallStartRequest = realtimetransport.CallStartRequest
+type socketCallActionRequest = realtimetransport.CallActionRequest
+type socketCallInviteRequest = realtimetransport.CallInviteRequest
+type socketCallSignalRequest = realtimetransport.CallSignalRequest
 
 type logRecord struct {
 	ID           int64     `json:"id"`
@@ -643,25 +529,25 @@ type iceServer struct {
 }
 
 type audioCallSettings struct {
-	SpeakerMode               string  `json:"speakerMode"`
-	InputDeviceID             string  `json:"inputDeviceId"`
-	OutputDeviceID            string  `json:"outputDeviceId"`
-	EchoCancellation          bool    `json:"echoCancellation"`
-	NoiseSuppression          bool    `json:"noiseSuppression"`
-	AutoGainControl           bool    `json:"autoGainControl"`
-	VoiceEnhancement          bool    `json:"voiceEnhancement"`
-	InputGain                 float64 `json:"inputGain"`
-	OutputVolume              float64 `json:"outputVolume"`
-	VoiceEnhancementThreshold float64 `json:"voiceEnhancementThreshold"`
-	VoiceEnhancementHighpass  float64 `json:"voiceEnhancementHighpass"`
+	SpeakerMode               string                  `json:"speakerMode"`
+	InputDeviceID             string                  `json:"inputDeviceId"`
+	OutputDeviceID            string                  `json:"outputDeviceId"`
+	EchoCancellation          bool                    `json:"echoCancellation"`
+	NoiseSuppression          bool                    `json:"noiseSuppression"`
+	AutoGainControl           bool                    `json:"autoGainControl"`
+	VoiceEnhancement          bool                    `json:"voiceEnhancement"`
+	InputGain                 float64                 `json:"inputGain"`
+	OutputVolume              float64                 `json:"outputVolume"`
+	VoiceEnhancementThreshold float64                 `json:"voiceEnhancementThreshold"`
+	VoiceEnhancementHighpass  float64                 `json:"voiceEnhancementHighpass"`
 	Privacy                   *contactPrivacySettings `json:"privacy,omitempty"`
 }
 
 type contactPrivacySettings struct {
-	DirectMessagePermission string `json:"directMessagePermission"`
-	GroupInvitePermission string `json:"groupInvitePermission"`
-	ChannelInvitePermission string `json:"channelInvitePermission"`
-	VoiceInvitePermission string `json:"voiceInvitePermission"`
+	DirectMessagePermission string   `json:"directMessagePermission"`
+	GroupInvitePermission   string   `json:"groupInvitePermission"`
+	ChannelInvitePermission string   `json:"channelInvitePermission"`
+	VoiceInvitePermission   string   `json:"voiceInvitePermission"`
 	InvitePermissionUserIDs []string `json:"invitePermissionUserIds"`
 }
 

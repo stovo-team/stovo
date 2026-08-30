@@ -8,18 +8,21 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"mime"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/url"
-	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
 	"stovo-messenger/backend/internal/config"
+	featurefamily "stovo-messenger/backend/internal/features/family"
+	featureroles "stovo-messenger/backend/internal/features/roles"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/argon2"
@@ -30,6 +33,16 @@ const (
 	adminRole  = "admin"
 	memberRole = "member"
 	childRole  = "child"
+
+	permissionManageServer       = "manage_server"
+	permissionManageRoles        = "manage_roles"
+	permissionManageMembers      = "manage_members"
+	permissionManageChannels     = "manage_channels"
+	permissionManageMessages     = "manage_messages"
+	permissionManageCalls        = "manage_calls"
+	permissionManagePlans        = "manage_plans"
+	permissionManageFiles        = "manage_files"
+	permissionManageIntegrations = "manage_integrations"
 )
 
 var (
@@ -187,16 +200,6 @@ func normalizePublicURL(raw *string) (*string, error) {
 	return &normalized, nil
 }
 
-func sanitizeFilename(name string) string {
-	base := filepath.Base(strings.ReplaceAll(name, "\\", "/"))
-	base = strings.TrimSpace(base)
-	if base == "" || base == "." {
-		return "file"
-	}
-	replacer := strings.NewReplacer("..", "", "/", "-", "\\", "-", "\x00", "")
-	return replacer.Replace(base)
-}
-
 func sha256Hex(data []byte) string {
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
@@ -242,49 +245,6 @@ func chooseMessageType(content *string, files []filePublic) string {
 	return "file"
 }
 
-func allowedMime(contentType string) bool {
-	mimeType, _, err := mime.ParseMediaType(contentType)
-	if err != nil {
-		return false
-	}
-
-	switch mimeType {
-	case "image/jpeg", "image/png", "image/gif", "image/webp",
-		"video/mp4", "video/webm", "video/quicktime",
-		"audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/x-wav", "audio/ogg", "audio/webm",
-		"application/pdf", "text/plain",
-		"application/msword",
-		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-		"application/vnd.ms-excel",
-		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-		"application/vnd.ms-powerpoint",
-		"application/vnd.openxmlformats-officedocument.presentationml.presentation":
-		return true
-	default:
-		return false
-	}
-}
-
-// normalizeUploadMime preserves a valid MIME type supplied by the client. Some
-// mobile file providers only report application/octet-stream for local files,
-// so a known, allowed filename extension is used for that specific fallback.
-func normalizeUploadMime(contentType, filename string) (string, bool) {
-	mediaType, _, err := mime.ParseMediaType(contentType)
-	if err == nil && allowedMime(mediaType) {
-		return mediaType, true
-	}
-	if mediaType != "" && mediaType != "application/octet-stream" && mediaType != "binary/octet-stream" {
-		return "", false
-	}
-
-	inferred := mime.TypeByExtension(strings.ToLower(filepath.Ext(filename)))
-	inferredType, _, err := mime.ParseMediaType(inferred)
-	if err != nil || !allowedMime(inferredType) {
-		return "", false
-	}
-	return inferredType, true
-}
-
 func checkURL(target string, timeout time.Duration) (bool, *int, string) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
 	if err != nil {
@@ -304,3 +264,207 @@ func checkURL(target string, timeout time.Duration) (bool, *int, string) {
 	}
 	return false, &status, resp.Status
 }
+
+func domainErrorStatus(err error) int {
+	var httpErr statusError
+	if errors.As(err, &httpErr) {
+		return httpErr.Status
+	}
+	switch {
+	case errors.Is(err, errForbidden):
+		return http.StatusForbidden
+	case errors.Is(err, errUnauthorized):
+		return http.StatusUnauthorized
+	case isMissing(err):
+		return http.StatusNotFound
+	default:
+		return http.StatusBadRequest
+	}
+}
+
+func defaultAudioSettings() audioCallSettings {
+	return audioCallSettings{
+		SpeakerMode:               "small",
+		InputDeviceID:             "",
+		OutputDeviceID:            "",
+		EchoCancellation:          true,
+		NoiseSuppression:          true,
+		AutoGainControl:           true,
+		VoiceEnhancement:          false,
+		InputGain:                 100,
+		OutputVolume:              80,
+		VoiceEnhancementThreshold: -24,
+		VoiceEnhancementHighpass:  120,
+	}
+}
+
+func (s *Server) loadServerRole(ctx context.Context, familyID, roleID string) (serverRolePublic, error) {
+	role, err := s.roles.Get(ctx, familyID, roleID)
+	return serverRoleFromFeature(role), err
+}
+
+func serverRoleFromFeature(role featureroles.Role) serverRolePublic {
+	return serverRolePublic{ID: role.ID, Name: role.Name, Description: role.Description, Permissions: role.Permissions, IsDefault: role.IsDefault, MemberCount: role.MemberCount}
+}
+
+func (s *Server) hydrateUserRole(ctx context.Context, user *userPublic) {
+	if user.Role == ownerRole {
+		user.Permissions = []string{}
+		user.RoleName = "Owner"
+		return
+	}
+	role, err := s.loadServerRole(ctx, user.FamilyID, user.RoleID)
+	if err != nil {
+		return
+	}
+	user.RoleName, user.Permissions = role.Name, role.Permissions
+}
+
+func hasPermission(user userPublic, permission string) bool {
+	if user.Role == ownerRole {
+		return true
+	}
+	for _, value := range user.Permissions {
+		if value == permission {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) assignServerRole(ctx context.Context, familyID, userID, roleID string) error {
+	if _, err := s.loadServerRole(ctx, familyID, roleID); err != nil {
+		return err
+	}
+	return s.roles.Assign(ctx, familyID, userID, roleID)
+}
+
+func (s *Server) getInviteByID(ctx context.Context, inviteID string) (invitePublic, error) {
+	inv, err := s.familyQueries.InviteByID(ctx, inviteID)
+	if err != nil {
+		return invitePublic{}, err
+	}
+	return invitePublicFromFamilyInvite(inv), nil
+}
+
+func (s *Server) findInviteByToken(ctx context.Context, rawToken string) (invitePublic, familyPublic, error) {
+	hashed := tokenHash(s.cfg.InviteTokenSecret, rawToken)
+	inv, err := s.familyQueries.InviteByTokenHash(ctx, hashed)
+	if err != nil {
+		return invitePublic{}, familyPublic{}, err
+	}
+	invite := invitePublicFromFamilyInvite(inv)
+	if invite.RevokedAt != nil || invite.UsedCount >= invite.MaxUses || invite.ExpiresAt.Before(time.Now()) {
+		return invitePublic{}, familyPublic{}, errNotFound
+	}
+	family, err := s.getFamily(invite.FamilyID)
+	if err != nil {
+		return invitePublic{}, familyPublic{}, err
+	}
+	return invite, family, nil
+}
+
+func invitePublicFromFamilyInvite(inv featurefamily.Invite) invitePublic {
+	return invitePublic{ID: inv.ID, FamilyID: inv.FamilyID, Role: inv.Role, ExpiresAt: inv.ExpiresAt, MaxUses: inv.MaxUses, UsedCount: inv.UsedCount, CreatedBy: inv.CreatedBy, CreatedAt: inv.CreatedAt, RevokedAt: inv.RevokedAt}
+}
+
+func (s *Server) userPublicFromFamilyMember(memberRow featurefamily.Member) userPublic {
+	member := userPublic{ID: memberRow.ID, FamilyID: memberRow.FamilyID, Username: memberRow.Username, DisplayName: memberRow.DisplayName, Role: memberRow.Role, IsActive: memberRow.IsActive, PublicKey: memberRow.PublicKey, ProfileVisibility: memberRow.ProfileVisibility, LastSeenVisibility: memberRow.LastSeenVisibility, ReadReceiptsEnabled: memberRow.ReadReceiptsEnabled, DirectMessagePermission: "family", GroupInvitePermission: "allow", ChannelInvitePermission: "allow", VoiceInvitePermission: "allow", Email: memberRow.Email, Bio: memberRow.Bio, Timezone: memberRow.Timezone}
+	created := parseTime(memberRow.CreatedAt)
+	member.CreatedAt = &created
+	if memberRow.LastSeenAt != nil {
+		lastSeen := parseTime(*memberRow.LastSeenAt)
+		member.LastSeenAt = &lastSeen
+	}
+	if memberRow.ProfilePhotoFileID != nil {
+		if file, err := s.buildFilePublic(*memberRow.ProfilePhotoFileID, member.ID); err == nil && file.DeletedAt == nil {
+			member.ProfilePhoto = &file
+		}
+	}
+	if memberRow.AudioCallSettings != nil {
+		var settings audioCallSettings
+		if json.Unmarshal([]byte(*memberRow.AudioCallSettings), &settings) == nil && settings.Privacy != nil {
+			member.DirectMessagePermission = settings.Privacy.DirectMessagePermission
+			member.GroupInvitePermission = settings.Privacy.GroupInvitePermission
+			member.ChannelInvitePermission = settings.Privacy.ChannelInvitePermission
+			member.VoiceInvitePermission = settings.Privacy.VoiceInvitePermission
+			member.InvitePermissionUserIDs = settings.Privacy.InvitePermissionUserIDs
+		}
+	}
+	return member
+}
+
+func buildInviteURL(family familyPublic, defaultAppURL, defaultAPIURL, rawToken string) string {
+	appURL := strings.TrimRight(strings.TrimSpace(defaultAppURL), "/")
+	apiURL := strings.TrimRight(strings.TrimSpace(defaultAPIURL), "/")
+
+	hasPublicAppURL := family.PublicAppURL != nil && strings.TrimSpace(*family.PublicAppURL) != ""
+	hasPublicAPIURL := family.PublicAPIURL != nil && strings.TrimSpace(*family.PublicAPIURL) != ""
+
+	if hasPublicAppURL {
+		appURL = strings.TrimRight(strings.TrimSpace(*family.PublicAppURL), "/")
+	}
+	if hasPublicAPIURL {
+		apiURL = strings.TrimRight(strings.TrimSpace(*family.PublicAPIURL), "/")
+	}
+
+	baseURL := appURL
+	if !hasPublicAppURL && hasPublicAPIURL {
+		baseURL = apiURL
+	}
+	if hasPublicAppURL && hasPublicAPIURL && appURL != apiURL {
+		baseURL = apiURL
+	}
+
+	inviteURL := fmt.Sprintf("%s/invite/%s", baseURL, url.PathEscape(rawToken))
+	if appURL != apiURL {
+		return inviteURL + "?apiUrl=" + url.QueryEscape(apiURL)
+	}
+	return inviteURL
+}
+
+func publicAccessSettingsForFamily(family familyPublic, cfgAppURL, cfgAPIURL string) publicAccessSettings {
+	appURL := strings.TrimRight(strings.TrimSpace(cfgAppURL), "/")
+	apiURL := strings.TrimRight(strings.TrimSpace(cfgAPIURL), "/")
+
+	if family.PublicAppURL != nil && strings.TrimSpace(*family.PublicAppURL) != "" {
+		appURL = strings.TrimRight(strings.TrimSpace(*family.PublicAppURL), "/")
+	}
+	if family.PublicAPIURL != nil && strings.TrimSpace(*family.PublicAPIURL) != "" {
+		apiURL = strings.TrimRight(strings.TrimSpace(*family.PublicAPIURL), "/")
+	}
+
+	return publicAccessSettings{
+		AppURL:                  appURL,
+		APIURL:                  apiURL,
+		ConfiguredAppURL:        family.PublicAppURL,
+		ConfiguredAPIURL:        family.PublicAPIURL,
+		EnvironmentAppURL:       cfgAppURL,
+		EnvironmentAPIURL:       cfgAPIURL,
+		InviteURLIncludesAPIURL: appURL != apiURL,
+	}
+}
+
+func candidateAddresses() []string {
+	candidates := make([]string, 0)
+	addrs, _ := net.InterfaceAddrs()
+	for _, addr := range addrs {
+		ipNet, ok := addr.(*net.IPNet)
+		if !ok || ipNet.IP == nil || ipNet.IP.IsLoopback() {
+			continue
+		}
+		ip := ipNet.IP.To4()
+		if ip == nil {
+			continue
+		}
+		text := ip.String()
+		if strings.HasPrefix(text, "172.") || strings.HasPrefix(text, "169.254.") {
+			continue
+		}
+		candidates = append(candidates, text)
+	}
+	sort.Strings(candidates)
+	return candidates
+}
+
+

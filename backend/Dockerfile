@@ -1,3 +1,5 @@
+FROM arigaio/atlas:1.3.2 AS atlas
+
 FROM golang:1.25.5-alpine3.21 AS builder
 
 WORKDIR /app
@@ -10,6 +12,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /family-messenger ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /storage-migrate ./cmd/storage-migrate
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /stovo-database-url ./cmd/database-url
 
 FROM alpine:3.21
 
@@ -20,6 +23,9 @@ RUN mkdir -p /app/uploads /app/logs && chown -R app:app /app
 
 COPY --from=builder /family-messenger /usr/local/bin/family-messenger
 COPY --from=builder /storage-migrate /usr/local/bin/storage-migrate
+COPY --from=builder /stovo-database-url /usr/local/bin/stovo-database-url
+COPY --from=atlas /atlas /usr/local/bin/atlas
+COPY migrations /app/migrations
 
 USER app
 

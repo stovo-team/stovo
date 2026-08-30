@@ -84,7 +84,7 @@ func TestThumbnailEndpointServesStoredJPEGToAuthorizedViewer(t *testing.T) {
 	if err := server.storage.Save(thumbnailKey, thumbnail); err != nil {
 		t.Fatalf("save thumbnail: %v", err)
 	}
-	if _, err := server.ent.File.UpdateOneID(file.ID).SetThumbnailObjectKey(thumbnailKey).Save(context.Background()); err != nil {
+	if _, err := testPersistenceClient(t, server).File.UpdateOneID(file.ID).SetThumbnailObjectKey(thumbnailKey).Save(context.Background()); err != nil {
 		t.Fatalf("set thumbnail key: %v", err)
 	}
 
@@ -135,7 +135,7 @@ func TestThumbnailEndpointHidesInvisibleDeletedAndUnthumbnailedFiles(t *testing.
 	if err := server.storage.Save(thumbnailKey, []byte{0xff, 0xd8, 0xff, 0xd9}); err != nil {
 		t.Fatalf("save thumbnail: %v", err)
 	}
-	if _, err := server.ent.File.UpdateOneID(file.ID).SetThumbnailObjectKey(thumbnailKey).Save(context.Background()); err != nil {
+	if _, err := testPersistenceClient(t, server).File.UpdateOneID(file.ID).SetThumbnailObjectKey(thumbnailKey).Save(context.Background()); err != nil {
 		t.Fatalf("set thumbnail key: %v", err)
 	}
 	target := serverURL.URL + "/api/files/" + file.ID + "/thumbnail"
@@ -146,7 +146,7 @@ func TestThumbnailEndpointHidesInvisibleDeletedAndUnthumbnailedFiles(t *testing.
 		t.Fatalf("invisible thumbnail status = %d, want %d", invisible.StatusCode, http.StatusNotFound)
 	}
 
-	if err := server.store.SoftDeleteFile(context.Background(), nil, file.ID, nowString()); err != nil {
+	if err := testPersistenceStore(t, server).SoftDeleteFile(context.Background(), nil, file.ID, nowString()); err != nil {
 		t.Fatalf("mark file deleted: %v", err)
 	}
 	deleted := jsonRequest(t, client, http.MethodGet, target, owner.AccessToken, nil)

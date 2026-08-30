@@ -16,6 +16,8 @@ func NewRedisCache(client *redis.Client) *RedisCache {
 	return &RedisCache{client: client}
 }
 
+func (c *RedisCache) Health(ctx context.Context) error { return c.client.Ping(ctx).Err() }
+
 func (c *RedisCache) Get(ctx context.Context, key string) (any, error) {
 	rawValue, err := c.client.Get(ctx, key).Result()
 	if err == redis.Nil {
