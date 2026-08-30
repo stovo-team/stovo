@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"stovo-messenger/backend/internal/adapters/realtimecache"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 )
@@ -36,9 +38,9 @@ func TestCallHistoryStatus(t *testing.T) {
 
 func newTestCallServer() *Server {
 	return &Server{
-		sessions:       NewSessionRegistry(),
-		calls:          NewCallManager(),
-		callTimeout:    30 * time.Second,
+		sessions:    NewSessionRegistry(),
+		calls:       NewCallManager(),
+		callTimeout: 30 * time.Second,
 	}
 }
 
@@ -289,7 +291,7 @@ func TestResolveCallSessionLoadsFromRedis(t *testing.T) {
 	t.Cleanup(func() { _ = rdb.Close() })
 
 	server := newTestCallServer()
-	server.redis = rdb
+	server.callSessionCache = realtimecache.NewRedisCallSessionCache(rdb)
 
 	now := time.Now().UTC()
 	session := &callSession{
@@ -387,4 +389,3 @@ func TestVoiceChannelCallLifecycle(t *testing.T) {
 		t.Fatal("expected call session to be cleaned up after all participants left")
 	}
 }
-

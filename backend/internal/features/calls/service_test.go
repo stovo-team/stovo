@@ -3,9 +3,40 @@ package calls
 import (
 	"context"
 	"testing"
+	"time"
 
 	"stovo-messenger/backend/internal/domain"
 )
+
+type sessionStoreStub struct{ created Session }
+
+func (s *sessionStoreStub) CreateSession(_ context.Context, session Session) error {
+	s.created = session
+	return nil
+}
+func (*sessionStoreStub) UpdateSessionState(context.Context, string, string) error    { return nil }
+func (*sessionStoreStub) UpdateSessionTopology(context.Context, string, string) error { return nil }
+func (*sessionStoreStub) EndSession(context.Context, string, int, time.Time) error    { return nil }
+func (*sessionStoreStub) UpsertParticipant(context.Context, Participant) error        { return nil }
+func (*sessionStoreStub) ActiveSessions(context.Context, time.Duration) ([]Session, error) {
+	return nil, nil
+}
+func (*sessionStoreStub) Participants(context.Context, string) ([]Participant, error) {
+	return nil, nil
+}
+func (*sessionStoreStub) RecordHistory(context.Context, HistoryRecord) error { return nil }
+
+func TestPersistenceServiceUsesFeatureSessionValue(t *testing.T) {
+	store := &sessionStoreStub{}
+	service := NewPersistenceService(store)
+	session := Session{ID: "room", ChatID: "chat", State: "ringing"}
+	if err := service.Create(context.Background(), session); err != nil {
+		t.Fatal(err)
+	}
+	if store.created != session {
+		t.Fatalf("created=%+v", store.created)
+	}
+}
 
 type chatReaderStub struct{ chat domain.CallChat }
 

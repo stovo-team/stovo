@@ -6,18 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
-)
 
-type ntfyPayload struct {
-	Topic    string   `json:"topic"`
-	Title    string   `json:"title"`
-	Message  string   `json:"message"`
-	Priority int      `json:"priority"`
-	Tags     []string `json:"tags,omitempty"`
-	Click    string   `json:"click,omitempty"`
-}
+	workruntime "stovo-messenger/backend/internal/runtime"
+)
 
 func (s *Server) getUserNtfyTopic(ctx context.Context, userID string) (string, error) {
 	token, err := s.notificationRecipients.NtfyTopicToken(ctx, userID)
@@ -70,18 +62,7 @@ func (s *Server) publishToNtfyWithRetry(ctx context.Context, userID string, payl
 }
 
 func formatMessageNotification(chatType string, chatTitle *string, senderName string, messagePreview string) (title string, message string, tags []string) {
-	tags = []string{"speech_balloon"}
-	if chatType == "direct" {
-		tags = append(tags, "direct")
-		return senderName, messagePreview, tags
-	}
-	title = "Chat"
-	if chatTitle != nil {
-		if trimmed := strings.TrimSpace(*chatTitle); trimmed != "" {
-			title = trimmed
-		}
-	}
-	return title, senderName + ": " + messagePreview, tags
+	return workruntime.FormatMessageNotification(chatType, chatTitle, senderName, messagePreview)
 }
 
 func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string, mentionedUserIDs []string) {
@@ -179,15 +160,5 @@ func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID
 }
 
 func truncatePreview(content *string) string {
-	if content == nil {
-		return "New message"
-	}
-	s := strings.TrimSpace(*content)
-	if len(s) > 100 {
-		return s[:100] + "…"
-	}
-	if s == "" {
-		return "New message"
-	}
-	return s
+	return workruntime.TruncateNotificationPreview(content)
 }

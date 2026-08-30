@@ -1,66 +1,121 @@
 package app
 
 import (
-	"bufio"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
-	"stovo-messenger/backend/ent"
 	"stovo-messenger/backend/internal/config"
+	featureadministration "stovo-messenger/backend/internal/features/administration"
+	featurecalls "stovo-messenger/backend/internal/features/calls"
+	featurechats "stovo-messenger/backend/internal/features/chats"
+	featurefamily "stovo-messenger/backend/internal/features/family"
+	featurefiles "stovo-messenger/backend/internal/features/files"
+	featureidentity "stovo-messenger/backend/internal/features/identity"
+	featuremcp "stovo-messenger/backend/internal/features/mcp"
+	featuremessages "stovo-messenger/backend/internal/features/messages"
 	featureplans "stovo-messenger/backend/internal/features/plans"
+	featurepreferences "stovo-messenger/backend/internal/features/preferences"
+	featureprivacy "stovo-messenger/backend/internal/features/privacy"
+	featureroles "stovo-messenger/backend/internal/features/roles"
+	featuresync "stovo-messenger/backend/internal/features/sync"
+	featuretranscription "stovo-messenger/backend/internal/features/transcription"
 	"stovo-messenger/backend/internal/logging"
 	"stovo-messenger/backend/internal/ports"
-	"stovo-messenger/backend/internal/repository"
+	workruntime "stovo-messenger/backend/internal/runtime"
+	httptransport "stovo-messenger/backend/internal/transport/http"
 	"stovo-messenger/backend/internal/tunnel"
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/redis/go-redis/v9"
 )
 
 type Server struct {
 	cfg                    config.Config
-	db                     *sql.DB
-	ent                    *ent.Client
-	store                  *repository.Store
-	redis                  *redis.Client
-	jobsRedis              *redis.Client
+	database               io.Closer
+	databaseHealth         ports.HealthChecker
+	persistence            io.Closer
+	redis                  io.Closer
+	jobsRedis              io.Closer
 	logger                 *logging.Logger
 	logBuffer              *logging.Buffer
 	storage                ports.ObjectStore
 	tunnel                 *tunnel.Manager
 	sockets                *socketio.Io
 	cache                  ports.Cache
+	redisHealth            ports.HealthChecker
 	broker                 ports.EventBroker
-	privacy                ports.PrivacyBlocklist
+	privacy                *featureprivacy.Service
 	contactPolicy          ports.DirectContactPolicy
-	preferences            ports.AccountPreferences
+	preferences            *featurepreferences.Service
 	notificationRecipients ports.NotificationRecipients
 	plans                  *featureplans.Service
+	messageDelay           *featuremessages.DelayService
+	messageReactions       *featuremessages.ReactionService
+	messageMutations       *featuremessages.MutationService
+	messageReads           *featuremessages.ReadService
+	messageAttachments     *featuremessages.AttachmentService
+	messageSync            *featuremessages.SyncedMessageService
+	messageForwards        *featuremessages.ForwardLookupService
+	messageHistory         *featuremessages.HistoryService
+	messageSearch          *featuremessages.SearchService
+	messageUnread          *featuremessages.UnreadService
+	messageDetails         *featuremessages.DetailService
+	messagePersistence     *featuremessages.PersistenceService
+	chatSettings           *featurechats.SettingsService
+	chatCreation           *featurechats.CreationService
+	chatArchive            *featurechats.ArchiveService
+	chatQueries            *featurechats.QueryService
+	pins                   *featurechats.PinsService
+	callPersistence        *featurecalls.PersistenceService
+	directUploads          featurefiles.DirectUploadStore
+	legacyUploads          *featurefiles.LegacyUploadService
+	filePreferences        *featurefiles.PreferenceService
+	fileDeletions          *featurefiles.DeletionService
+	fileValidation         *featurefiles.ValidationService
+	fileLifecycle          *featurefiles.LifecycleService
+	fileClones             *featurefiles.CloneService
+	fileAccess             *featurefiles.AccessService
+	fileListing            *featurefiles.ListingService
+	sessionWriter          featureidentity.RefreshSessionWriter
+	loginAccounts          *featureidentity.LoginAccountService
+	profile                *featureidentity.ProfileService
+	setup                  *featureidentity.SetupService
+	setupStatus            *featureidentity.SetupStatusService
+	familyDefaults         *featurefamily.DefaultsService
+	familyInvites          *featurefamily.InviteService
+	familyMembership       *featurefamily.MembershipService
+	familyProfile          *featurefamily.ProfileService
+	familyQueries          *featurefamily.QueryService
+	roles                  *featureroles.Service
+	sync                   *featuresync.Service
+	publicAccess           *featureadministration.PublicAccessService
+	encryption             *featureadministration.EncryptionService
+	mcpAudit               *featuremcp.AuditService
+	mcpConnectors          *featuremcp.ConnectorService
+	transcriptionSessions  *featuretranscription.SessionService
+	transcriptionChunks    *featuretranscription.ChunkService
+	transcriptionQueries   *featuretranscription.QueryService
+	transcriptionSegments  *featuretranscription.SegmentService
+	outboxStore            workruntime.OutboxStore
+	outboxPublisher        workruntime.JobPublisher
+	jobConsumer            workruntime.JobConsumer
+	callSessionCache       workruntime.CallSessionCache
+	pendingEvents          workruntime.PendingEventQueue
 
-	sessions       *SessionRegistry
-	calls          *CallManager
-	events         *EventDeduplicator
-	callTimeout    time.Duration
-	frontendClient *http.Client
-	frontendTarget *url.URL
-	ntfyClient     *http.Client
-	realtimeCtx    context.Context
-	realtimeCancel context.CancelFunc
-	realtimeWG     sync.WaitGroup
-	ntfyRetryCh    chan ntfyRetryItem
-	mcpHTTP        http.Handler
+	sessions    *SessionRegistry
+	calls       *workruntime.CallCoordinator[*callSession]
+	events      *EventDeduplicator
+	callTimeout time.Duration
+	ntfyClient  *http.Client
+	lifecycle   *workruntime.Lifecycle
+	ntfyRetryCh chan ntfyRetryItem
+	mcpHTTP     http.Handler
 }
 
 // NewWithDependencies starts the application with infrastructure assembled by
@@ -70,39 +125,73 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 		return nil, err
 	}
 	app := &Server{
-		cfg: deps.Config, db: deps.DB, ent: deps.Ent, store: deps.Store,
+		cfg: deps.Config, database: deps.Database, databaseHealth: deps.DatabaseHealth, persistence: deps.Persistence,
 		redis: deps.Redis, jobsRedis: deps.JobsRedis, logger: deps.Logger, logBuffer: deps.LogBuffer,
 		storage: deps.Storage, tunnel: deps.Tunnel, sockets: deps.Sockets,
-		cache: deps.Cache, broker: deps.Broker,
+		cache: deps.Cache, redisHealth: deps.RedisHealth, broker: deps.Broker,
 		privacy: deps.Privacy, contactPolicy: deps.Contacts, preferences: deps.Preferences,
 		notificationRecipients: deps.NotificationRecipients,
 		plans:                  deps.Plans,
+		messageDelay:           deps.MessageDelay,
+		messageReactions:       deps.MessageReactions,
+		messageMutations:       deps.MessageMutations,
+		messageReads:           deps.MessageReads,
+		messageAttachments:     deps.MessageAttachments,
+		messageSync:            deps.MessageSync,
+		messageForwards:        deps.MessageForwards,
+		messageHistory:         deps.MessageHistory,
+		messageSearch:          deps.MessageSearch,
+		messageUnread:          deps.MessageUnread,
+		messageDetails:         deps.MessageDetails,
+		messagePersistence:     deps.MessagePersistence,
+		chatSettings:           deps.ChatSettings,
+		chatCreation:           deps.ChatCreation,
+		chatArchive:            deps.ChatArchive,
+		chatQueries:            deps.ChatQueries,
+		pins:                   deps.Pins,
+		callPersistence:        deps.CallPersistence,
+		directUploads:          deps.DirectUploads,
+		legacyUploads:          deps.LegacyUploads,
+		filePreferences:        deps.FilePreferences,
+		fileDeletions:          deps.FileDeletions,
+		fileValidation:         deps.FileValidation,
+		fileLifecycle:          deps.FileLifecycle,
+		fileClones:             deps.FileClones,
+		fileAccess:             deps.FileAccess,
+		fileListing:            deps.FileListing,
+		sessionWriter:          deps.SessionWriter,
+		loginAccounts:          deps.LoginAccounts,
+		profile:                deps.Profile,
+		setup:                  deps.Setup,
+		setupStatus:            deps.SetupStatus,
+		familyDefaults:         deps.FamilyDefaults,
+		familyInvites:          deps.FamilyInvites,
+		familyMembership:       deps.FamilyMembership,
+		familyProfile:          deps.FamilyProfile,
+		familyQueries:          deps.FamilyQueries,
+		roles:                  deps.Roles,
+		sync:                   deps.Sync,
+		publicAccess:           deps.PublicAccess,
+		encryption:             deps.Encryption,
+		mcpAudit:               deps.MCPAudit,
+		mcpConnectors:          deps.MCPConnectors,
+		transcriptionSessions:  deps.TranscriptionSessions,
+		transcriptionChunks:    deps.TranscriptionChunks,
+		transcriptionQueries:   deps.TranscriptionQueries,
+		transcriptionSegments:  deps.TranscriptionSegments,
+		outboxStore:            deps.OutboxStore,
+		outboxPublisher:        deps.OutboxPublisher,
+		jobConsumer:            deps.JobConsumer,
+		callSessionCache:       deps.CallSessionCache,
+		pendingEvents:          deps.PendingEvents,
 		sessions:               NewSessionRegistry(), calls: NewCallManager(), events: NewEventDeduplicator(),
 		callTimeout: 30 * time.Second, ntfyRetryCh: make(chan ntfyRetryItem, 100),
-	}
-	if app.jobsRedis == nil {
-		app.jobsRedis = app.redis
-	}
-
-	if err := app.initSchema(); err != nil {
-		_ = app.Close()
-		return nil, fmt.Errorf("failed initializing schema: %w", err)
+		lifecycle: workruntime.NewLifecycle(context.Background()),
 	}
 	// Audio capture and post-processing workers live in this process. After a
 	// deploy they cannot safely resume an old recording, but its active row
 	// would otherwise block a fresh AI Notes session in a restored voice room.
-	app.recoverInterruptedTranscriptionSessions(context.Background())
-
-	frontendURL, err := url.Parse(app.cfg.FrontendOrigin)
-	if err == nil {
-		app.frontendTarget = frontendURL
-		app.frontendClient = &http.Client{
-			Timeout: 15 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		}
-	}
+	workruntime.RecoverInterruptedTranscriptionSessions(context.Background(), app.transcriptionSessions, app.logger)
 
 	app.ntfyClient = &http.Client{Timeout: 10 * time.Second}
 
@@ -113,166 +202,32 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 	app.startFileValidationWorker()
 	app.restoreCallSessions(context.Background())
 	app.initMCP()
-	app.realtimeWG.Add(1)
-	go func() {
-		defer app.realtimeWG.Done()
-		app.startNtfyRetryWorker(app.realtimeCtx)
-	}()
+	app.lifecycle.Go(app.startNtfyRetryWorker)
 	return app, nil
 }
 
 func (s *Server) Close() error {
-	if s.realtimeCancel != nil {
-		s.realtimeCancel()
+	jobsRedis := s.jobsRedis
+	if jobsRedis == s.redis {
+		jobsRedis = nil
 	}
-	s.realtimeWG.Wait()
-	s.sockets.Close()
-	_ = s.redis.Close()
-	if s.jobsRedis != nil && s.jobsRedis != s.redis {
-		_ = s.jobsRedis.Close()
-	}
-	_ = s.logBuffer.Close()
-	if s.ent != nil {
-		_ = s.ent.Close()
-	}
-	return s.db.Close()
+	return workruntime.Shutdown(workruntime.ShutdownDependencies{
+		CancelRealtime: s.lifecycle.Cancel,
+		WaitRealtime:   s.lifecycle.Wait,
+		Sockets: workruntime.CloseFunc(func() error {
+			s.sockets.Close()
+			return nil
+		}),
+		Redis:       s.redis,
+		JobsRedis:   jobsRedis,
+		LogBuffer:   s.logBuffer,
+		Persistence: s.persistence,
+		Database:    s.database,
+	})
 }
 
 func (s *Server) Routes() http.Handler {
 	return newRouter(s)
-}
-
-func (s *Server) corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if origin == "" {
-			origin = s.cfg.AppURL
-		}
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, Idempotency-Key, X-Refresh-Token, X-Stovo-Media-Token, X-Stovo-Operation-Id, bypass-tunnel-reminder, abypass-tunnel-reminder")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		started := time.Now()
-		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
-		next.ServeHTTP(recorder, r)
-		client := r.RemoteAddr
-		s.logger.Infof(
-			"http",
-			"HTTP request completed method=%s path=%s status=%d client=%s duration_ms=%.2f",
-			r.Method,
-			r.URL.Path,
-			recorder.statusCode,
-			client,
-			float64(time.Since(started).Microseconds())/1000.0,
-		)
-	})
-}
-
-type statusRecorder struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (s *statusRecorder) WriteHeader(code int) {
-	s.statusCode = code
-	s.ResponseWriter.WriteHeader(code)
-}
-
-func (s *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hijacker, ok := s.ResponseWriter.(http.Hijacker)
-	if !ok {
-		return nil, nil, errors.New("response writer does not support hijacking")
-	}
-	return hijacker.Hijack()
-}
-
-func (s *statusRecorder) Flush() {
-	if flusher, ok := s.ResponseWriter.(http.Flusher); ok {
-		flusher.Flush()
-	}
-}
-
-func (s *statusRecorder) Push(target string, opts *http.PushOptions) error {
-	if pusher, ok := s.ResponseWriter.(http.Pusher); ok {
-		return pusher.Push(target, opts)
-	}
-	return http.ErrNotSupported
-}
-
-func (s *statusRecorder) Unwrap() http.ResponseWriter {
-	return s.ResponseWriter
-}
-
-func (s *Server) handleFrontendProxy(w http.ResponseWriter, r *http.Request) {
-	if s.frontendClient == nil || s.frontendTarget == nil {
-		http.Error(w, "Frontend is not available", http.StatusBadGateway)
-		return
-	}
-
-	targetURL := s.frontendTarget.ResolveReference(&url.URL{
-		Path:     r.URL.Path,
-		RawPath:  r.URL.RawPath,
-		RawQuery: r.URL.RawQuery,
-	})
-	request, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL.String(), nil)
-	if err != nil {
-		s.logger.Warnf("frontend.proxy", "proxy request build failed target=%s error=%v", targetURL.String(), err)
-		http.Error(w, "Frontend is not available", http.StatusBadGateway)
-		return
-	}
-	copyProxyHeaders(request.Header, r.Header)
-	request.Host = s.frontendTarget.Host
-
-	response, err := s.frontendClient.Do(request)
-	if err != nil {
-		s.logger.Warnf("frontend.proxy", "proxy failure target=%s error=%v", targetURL.String(), err)
-		http.Error(w, "Frontend is not available", http.StatusBadGateway)
-		return
-	}
-	defer response.Body.Close()
-
-	copyProxyHeaders(w.Header(), response.Header)
-	w.WriteHeader(response.StatusCode)
-	if r.Method == http.MethodHead {
-		return
-	}
-	if _, err := io.Copy(w, response.Body); err != nil && !errors.Is(err, context.Canceled) {
-		s.logger.Warnf("frontend.proxy", "proxy response copy failed target=%s error=%v", targetURL.String(), err)
-	}
-}
-
-var proxyHopByHopHeaders = map[string]struct{}{
-	"connection":          {},
-	"keep-alive":          {},
-	"proxy-authenticate":  {},
-	"proxy-authorization": {},
-	"te":                  {},
-	"trailers":            {},
-	"transfer-encoding":   {},
-	"upgrade":             {},
-	"host":                {},
-	"content-length":      {},
-}
-
-func copyProxyHeaders(target, source http.Header) {
-	for key, values := range source {
-		if _, skip := proxyHopByHopHeaders[strings.ToLower(key)]; skip {
-			continue
-		}
-		for _, value := range values {
-			target.Add(key, value)
-		}
-	}
 }
 
 func (s *Server) json(w http.ResponseWriter, status int, payload any) {
@@ -320,14 +275,11 @@ func (s *Server) clearRefreshCookie(w http.ResponseWriter) {
 }
 
 func (s *Server) authenticated(next func(http.ResponseWriter, *http.Request, userPublic)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		user, err := s.currentUser(r)
-		if err != nil {
-			s.detail(w, http.StatusUnauthorized, "Authentication required")
-			return
-		}
-		next(w, r, user)
-	}
+	return httptransport.Authenticated(func(r *http.Request) (any, error) {
+		return s.currentUser(r)
+	}, func(w http.ResponseWriter, r *http.Request, principal any) {
+		next(w, r, principal.(userPublic))
+	})
 }
 
 func (s *Server) currentUser(r *http.Request) (userPublic, error) {
@@ -381,27 +333,27 @@ func parseTime(value string) time.Time {
 }
 
 func (s *Server) getUserByID(userID string) (userPublic, error) {
-	u, err := s.store.UserByID(context.Background(), userID)
+	u, err := s.loginAccounts.ByID(context.Background(), userID)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return userPublic{}, sql.ErrNoRows
+		if ports.IsNotFound(err) {
+			return userPublic{}, errNotFound
 		}
 		return userPublic{}, err
 	}
-	user := s.userPublicFromEnt(u)
-	_ = s.db.QueryRowContext(context.Background(), `SELECT COALESCE(role_id, '') FROM users WHERE id = $1`, u.ID).Scan(&user.RoleID)
+	user := s.userPublicFromAccount(u)
+	user.RoleID, _ = s.roles.UserRoleID(context.Background(), u.ID)
 	s.hydrateUserRole(context.Background(), &user)
 	return user, nil
 }
 
-func (s *Server) userPublicFromEnt(u *ent.User) userPublic {
+func (s *Server) userPublicFromAccount(u featureidentity.LoginAccount) userPublic {
 	user := userPublic{
 		ID:                      u.ID,
 		FamilyID:                u.FamilyID,
 		Username:                u.Username,
 		DisplayName:             u.DisplayName,
 		Role:                    u.Role,
-		IsActive:                u.IsActive == 1,
+		IsActive:                u.IsActive,
 		PublicKey:               u.PublicKey,
 		ProfileVisibility:       u.ProfileVisibility,
 		LastSeenVisibility:      u.LastSeenVisibility,
@@ -453,14 +405,14 @@ func (s *Server) requireFamilyMember(familyID string, user userPublic) error {
 }
 
 func (s *Server) getFamily(familyID string) (familyPublic, error) {
-	f, err := s.store.FamilyByID(context.Background(), familyID)
+	f, err := s.familyQueries.Get(context.Background(), familyID)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return familyPublic{}, sql.ErrNoRows
+		if ports.IsNotFound(err) {
+			return familyPublic{}, errNotFound
 		}
 		return familyPublic{}, err
 	}
-	return familyPublicFromEnt(f), nil
+	return familyPublicFromDetails(f), nil
 }
 
 func parseNavTabsEnv() NavTabsConfig {
@@ -497,7 +449,7 @@ func parseNavTabsEnv() NavTabsConfig {
 	return cfg
 }
 
-func familyPublicFromEnt(f *ent.Family) familyPublic {
+func familyPublicFromDetails(f featurefamily.Details) familyPublic {
 	family := familyPublic{
 		ID:                               f.ID,
 		Name:                             f.Name,
@@ -511,14 +463,13 @@ func familyPublicFromEnt(f *ent.Family) familyPublic {
 		family.DefaultMessageEncryptionProtocol = encryptionProtocolServerAtRest
 	}
 	if f.StorageLimitMB != nil {
-		limit := int64(*f.StorageLimitMB)
-		family.StorageLimitMB = &limit
+		family.StorageLimitMB = f.StorageLimitMB
 	}
 	return family
 }
 
 func (s *Server) getChatType(chatID string) (*string, error) {
-	chatType, err := s.store.ChatType(context.Background(), chatID)
+	chatType, err := s.chatQueries.Type(context.Background(), chatID)
 	if err != nil {
 		return nil, err
 	}
@@ -535,53 +486,6 @@ func (s *Server) getClientIP(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-func (s *Server) initSchema() error {
-	for _, stmt := range schemaStatements {
-		if _, err := s.db.Exec(stmt); err != nil {
-			return err
-		}
-	}
-	for _, stmt := range transcriptionSchemaStatements {
-		if _, err := s.db.Exec(stmt); err != nil {
-			return fmt.Errorf("initialize AI Notes transcription schema: %w", err)
-		}
-	}
-	for _, stmt := range schemaRepairStatements {
-		_, _ = s.db.Exec(stmt)
-	}
-	// Tenant servers are provisioned independently. Keep the AI Notes columns
-	// available even when an older tenant database missed the Atlas migration.
-	if _, err := s.db.Exec(`
-		ALTER TABLE call_transcription_sessions
-			ADD COLUMN IF NOT EXISTS chat_id text,
-			ADD COLUMN IF NOT EXISTS call_history_message_id text,
-			ADD COLUMN IF NOT EXISTS notes_message_id text,
-			ADD COLUMN IF NOT EXISTS notes_publishing boolean NOT NULL DEFAULT false`); err != nil {
-		return fmt.Errorf("repair AI Notes transcription schema: %w", err)
-	}
-	if _, err := s.db.Exec(`
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_call_transcription_sessions_notes_message_id
-			ON call_transcription_sessions (notes_message_id)
-			WHERE notes_message_id IS NOT NULL`); err != nil {
-		return fmt.Errorf("repair AI Notes notes-message index: %w", err)
-	}
-	_, _ = s.db.Exec(`ALTER TABLE chats ADD COLUMN IF NOT EXISTS message_delay_seconds INTEGER NOT NULL DEFAULT 0;`)
-	_, _ = s.db.Exec(`ALTER TABLE chats ADD COLUMN message_delay_seconds INTEGER NOT NULL DEFAULT 0;`)
-	// Direct-media lifecycle fields are additive so independently provisioned
-	// tenant databases are ready before the reservation API is enabled.
-	_, _ = s.db.Exec(`
-		ALTER TABLE files
-			ADD COLUMN IF NOT EXISTS lifecycle_state TEXT NOT NULL DEFAULT 'ready',
-			ADD COLUMN IF NOT EXISTS object_revision TEXT,
-			ADD COLUMN IF NOT EXISTS object_etag TEXT,
-			ADD COLUMN IF NOT EXISTS detected_mime_type TEXT,
-			ADD COLUMN IF NOT EXISTS preview_revision TEXT,
-			ADD COLUMN IF NOT EXISTS preview_status TEXT NOT NULL DEFAULT 'none',
-			ADD COLUMN IF NOT EXISTS validation_failure_code TEXT,
-			ADD COLUMN IF NOT EXISTS validated_at TEXT`)
-	return nil
-}
-
 func isMissing(err error) bool {
-	return errors.Is(err, sql.ErrNoRows) || errors.Is(err, errNotFound) || ent.IsNotFound(err)
+	return errors.Is(err, errNotFound) || ports.IsNotFound(err)
 }

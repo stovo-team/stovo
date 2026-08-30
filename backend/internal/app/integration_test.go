@@ -21,14 +21,30 @@ import (
 	"testing"
 	"time"
 
+	"stovo-messenger/backend/ent"
 	"stovo-messenger/backend/ent/chatmember"
 	"stovo-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/repository"
 	"stovo-messenger/backend/internal/storage"
 
 	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 )
+
+func testPersistenceClient(t *testing.T, server *Server) *ent.Client {
+	t.Helper()
+	client, ok := server.persistence.(*ent.Client)
+	if !ok {
+		t.Fatalf("persistence client is %T, want *ent.Client", server.persistence)
+	}
+	return client
+}
+
+func testPersistenceStore(t *testing.T, server *Server) *repository.Store {
+	t.Helper()
+	return repository.New(testPersistenceClient(t, server))
+}
 
 func newTestServer(t *testing.T) (*Server, *httptest.Server, *http.Client) {
 	t.Helper()
@@ -700,7 +716,7 @@ func TestMediaPlaybackAuthorizationFailuresAreUniform(t *testing.T) {
 		})
 	}
 
-	if err := fixture.server.store.SoftDeleteFile(context.Background(), nil, fixture.file.ID, nowString()); err != nil {
+	if err := testPersistenceStore(t, fixture.server).SoftDeleteFile(context.Background(), nil, fixture.file.ID, nowString()); err != nil {
 		t.Fatalf("mark playback file deleted: %v", err)
 	}
 	deletedResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, valid, "", "")
@@ -721,7 +737,7 @@ func TestMediaPlaybackVisibilityRevocationAfterMint(t *testing.T) {
 		t.Fatalf("member mint status = %d", mintResp.StatusCode)
 	}
 	capability := decodeJSON[mediaPlaybackTokenResponse](t, mintResp)
-	if _, err := fixture.server.ent.ChatMember.Delete().
+	if _, err := testPersistenceClient(t, fixture.server).ChatMember.Delete().
 		Where(
 			chatmember.IDEQ(fixture.chat.ID),
 			chatmember.UserIDEQ(fixture.member.User.ID),
@@ -1192,9 +1208,13 @@ func TestAuthContractEdgeCases(t *testing.T) {
 
 func TestUsersSchemaPermanentlyErasesEmailColumn(t *testing.T) {
 	server, _, _ := newTestServer(t)
+	db, ok := server.database.(*sql.DB)
+	if !ok {
+		t.Fatal("integration fixture did not retain a SQL database")
+	}
 
 	var count int
-	if err := server.db.QueryRow(`
+	if err := db.QueryRow(`
 		SELECT COUNT(*)
 		FROM information_schema.columns
 		WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'email'
@@ -1652,7 +1672,7 @@ func TestForwardMessageClonesAttachmentsAndMetadata(t *testing.T) {
 	if err := server.storage.Save(thumbnailKey, []byte("forward-thumbnail")); err != nil {
 		t.Fatalf("save thumbnail: %v", err)
 	}
-	if _, err := server.ent.File.UpdateOneID(originalFile.ID).SetThumbnailObjectKey(thumbnailKey).Save(context.Background()); err != nil {
+	if _, err := testPersistenceClient(t, server).File.UpdateOneID(originalFile.ID).SetThumbnailObjectKey(thumbnailKey).Save(context.Background()); err != nil {
 		t.Fatalf("set thumbnail key: %v", err)
 	}
 

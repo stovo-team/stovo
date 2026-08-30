@@ -7,7 +7,7 @@ import (
 )
 
 // messagePolicyAdapter keeps application infrastructure at the outer edge
-// while services.MessageService owns the send-policy decision.
+// while the message feature owns the send-policy decision.
 type messagePolicyAdapter struct {
 	server *Server
 }

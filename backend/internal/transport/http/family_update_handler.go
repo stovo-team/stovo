@@ -1,0 +1,81 @@
+package http
+
+import (
+	"context"
+	"encoding/json"
+	stdhttp "net/http"
+	"strings"
+)
+
+// FamilyUpdateRequest is the REST boundary payload for PATCH /api/family.
+// It intentionally avoids app and persistence types.
+type FamilyUpdateRequest struct {
+	Name                        *string `json:"name"`
+	StorageLimitMB              *int64  `json:"storageLimitMb"`
+	MinimizedChatLayout         *bool   `json:"minimizedChatLayout"`
+	DefaultProfileVisibility    *string `json:"defaultProfileVisibility"`
+	DefaultLastSeenVisibility   *string `json:"defaultLastSeenVisibility"`
+	DefaultReadReceiptsEnabled  *bool   `json:"defaultReadReceiptsEnabled"`
+	DefaultNotificationSettings *string `json:"defaultNotificationSettings"`
+}
+
+type FamilyUpdateActor struct{ FamilyID, Role string }
+
+// FamilyUpdateOperations contains only use-case-facing callbacks supplied by
+// composition. Authorization and HTTP decoding stay at this transport edge.
+type FamilyUpdateOperations struct {
+	IsAdmin                   func(FamilyUpdateActor) bool
+	IsOwner                   func(FamilyUpdateActor) bool
+	Update                    func(context.Context, string, FamilyUpdateRequest) (any, error)
+	ValidVisibility           func(*string, *string) bool
+	ValidNotificationSettings func(string) bool
+}
+
+type FamilyUpdateHandler struct{ operations FamilyUpdateOperations }
+
+func NewFamilyUpdateHandler(operations FamilyUpdateOperations) FamilyUpdateHandler {
+	return FamilyUpdateHandler{operations}
+}
+
+func (h FamilyUpdateHandler) Update(w stdhttp.ResponseWriter, r *stdhttp.Request, actor FamilyUpdateActor) {
+	if h.operations.IsAdmin == nil || !h.operations.IsAdmin(actor) {
+		writeFamilyReadJSON(w, stdhttp.StatusForbidden, map[string]string{"detail": "Owner or admin access required"})
+		return
+	}
+	var payload FamilyUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeFamilyReadJSON(w, stdhttp.StatusUnprocessableEntity, map[string]string{"detail": "Invalid request body"})
+		return
+	}
+	if payload.Name != nil {
+		value := strings.TrimSpace(*payload.Name)
+		payload.Name = &value
+		if value == "" {
+			writeFamilyReadJSON(w, stdhttp.StatusUnprocessableEntity, map[string]string{"detail": "name cannot be blank"})
+			return
+		}
+	}
+	if payload.StorageLimitMB != nil && *payload.StorageLimitMB <= 0 {
+		writeFamilyReadJSON(w, stdhttp.StatusUnprocessableEntity, map[string]string{"detail": "storageLimitMb must be positive"})
+		return
+	}
+	hasDefaults := payload.DefaultProfileVisibility != nil || payload.DefaultLastSeenVisibility != nil || payload.DefaultReadReceiptsEnabled != nil || payload.DefaultNotificationSettings != nil
+	if hasDefaults && (h.operations.IsOwner == nil || !h.operations.IsOwner(actor)) {
+		writeFamilyReadJSON(w, stdhttp.StatusForbidden, map[string]string{"detail": "Only the server owner can update member defaults"})
+		return
+	}
+	if h.operations.ValidVisibility != nil && !h.operations.ValidVisibility(payload.DefaultProfileVisibility, payload.DefaultLastSeenVisibility) {
+		writeFamilyReadJSON(w, stdhttp.StatusUnprocessableEntity, map[string]string{"detail": "privacy visibility must be everyone or nobody"})
+		return
+	}
+	if payload.DefaultNotificationSettings != nil && h.operations.ValidNotificationSettings != nil && !h.operations.ValidNotificationSettings(*payload.DefaultNotificationSettings) {
+		writeFamilyReadJSON(w, stdhttp.StatusUnprocessableEntity, map[string]string{"detail": "Invalid notification defaults"})
+		return
+	}
+	family, err := h.operations.Update(r.Context(), actor.FamilyID, payload)
+	if err != nil {
+		writeFamilyReadJSON(w, stdhttp.StatusInternalServerError, map[string]string{"detail": "Could not update family"})
+		return
+	}
+	writeFamilyReadJSON(w, stdhttp.StatusOK, family)
+}

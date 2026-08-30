@@ -5,15 +5,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-chi/chi/v5"
+	featureprivacy "stovo-messenger/backend/internal/features/privacy"
+	httptransport "stovo-messenger/backend/internal/transport/http"
 )
 
 type privacyStoreFake struct {
-	ids          []string
-	blockerID    string
-	blockedID    string
-	unblockedID  string
+	ids         []string
+	blockerID   string
+	blockedID   string
+	unblockedID string
 }
 
 func (f *privacyStoreFake) ListBlockedUserIDs(_ context.Context, _ string) ([]string, error) {
@@ -33,8 +36,14 @@ func (f *privacyStoreFake) UnblockUser(_ context.Context, _, blockedID string) e
 
 func TestPrivacyHandlerBlocksActiveFamilyMember(t *testing.T) {
 	store := &privacyStoreFake{}
-	handler := NewPrivacyHandler(store, func(id string) (userPublic, error) {
-		return userPublic{ID: id, FamilyID: "family-1", IsActive: true}, nil
+	handler := httptransport.NewPrivacyHandler(httptransport.PrivacyOperations[userPublic]{
+		Privacy: featureprivacy.NewService(store, time.Now),
+		LookupUser: func(_ context.Context, id string) (userPublic, error) {
+			return userPublic{ID: id, FamilyID: "family-1", IsActive: true}, nil
+		},
+		ExtractMember: func(user userPublic) featureprivacy.Member {
+			return featureprivacy.Member{ID: user.ID, FamilyID: user.FamilyID, Active: user.IsActive}
+		},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/privacy/blocks/member-1", nil)
 	routeContext := chi.NewRouteContext()
@@ -42,7 +51,7 @@ func TestPrivacyHandlerBlocksActiveFamilyMember(t *testing.T) {
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeContext))
 	recorder := httptest.NewRecorder()
 
-	handler.handleBlockUser(recorder, req, userPublic{ID: "owner-1", FamilyID: "family-1"})
+	handler.BlockUser(userPublic{ID: "owner-1", FamilyID: "family-1"}).ServeHTTP(recorder, req)
 
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
@@ -54,8 +63,14 @@ func TestPrivacyHandlerBlocksActiveFamilyMember(t *testing.T) {
 
 func TestPrivacyHandlerRejectsOutsideFamilyAndDoesNotPersistBlock(t *testing.T) {
 	store := &privacyStoreFake{}
-	handler := NewPrivacyHandler(store, func(id string) (userPublic, error) {
-		return userPublic{ID: id, FamilyID: "other-family", IsActive: true}, nil
+	handler := httptransport.NewPrivacyHandler(httptransport.PrivacyOperations[userPublic]{
+		Privacy: featureprivacy.NewService(store, time.Now),
+		LookupUser: func(_ context.Context, id string) (userPublic, error) {
+			return userPublic{ID: id, FamilyID: "other-family", IsActive: true}, nil
+		},
+		ExtractMember: func(user userPublic) featureprivacy.Member {
+			return featureprivacy.Member{ID: user.ID, FamilyID: user.FamilyID, Active: user.IsActive}
+		},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/privacy/blocks/member-1", nil)
 	routeContext := chi.NewRouteContext()
@@ -63,7 +78,7 @@ func TestPrivacyHandlerRejectsOutsideFamilyAndDoesNotPersistBlock(t *testing.T) 
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeContext))
 	recorder := httptest.NewRecorder()
 
-	handler.handleBlockUser(recorder, req, userPublic{ID: "owner-1", FamilyID: "family-1"})
+	handler.BlockUser(userPublic{ID: "owner-1", FamilyID: "family-1"}).ServeHTTP(recorder, req)
 
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusBadRequest)

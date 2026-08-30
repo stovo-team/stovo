@@ -4,15 +4,16 @@ import (
 	"strings"
 	"testing"
 
-	"stovo-messenger/backend/internal/transcription"
+	featuretranscription "stovo-messenger/backend/internal/features/transcription"
+	workruntime "stovo-messenger/backend/internal/runtime"
 )
 
 func TestFormatAICallNotes(t *testing.T) {
-	got := formatAICallNotes(transcription.PostProcessingResult{
+	got := workruntime.FormatTranscriptionNotes(featuretranscription.Summary{
 		Summary:       "We agreed on the launch date.",
-		Decisions:     []transcription.DecisionItem{{Text: "Launch on Friday"}},
-		ActionItems:   []transcription.ActionItem{{Text: "Prepare the release notes"}},
-		OpenQuestions: []transcription.OpenQuestion{{Text: "Who will monitor the rollout?"}},
+		Decisions:     []featuretranscription.Decision{{Text: "Launch on Friday"}},
+		ActionItems:   []featuretranscription.ActionItem{{Text: "Prepare the release notes"}},
+		OpenQuestions: []featuretranscription.OpenQuestion{{Text: "Who will monitor the rollout?"}},
 	})
 
 	want := "AI call notes\n\nWe agreed on the launch date.\n\n" +
@@ -25,11 +26,11 @@ func TestFormatAICallNotes(t *testing.T) {
 }
 
 func TestFormatAICallNotesOmitsEmptySectionsAndCapsMessageLength(t *testing.T) {
-	if got := formatAICallNotes(transcription.PostProcessingResult{}); got != "" {
+	if got := workruntime.FormatTranscriptionNotes(featuretranscription.Summary{}); got != "" {
 		t.Fatalf("formatAICallNotes(empty) = %q, want empty", got)
 	}
 
-	got := formatAICallNotes(transcription.PostProcessingResult{Summary: strings.Repeat("a", 5000)})
+	got := workruntime.FormatTranscriptionNotes(featuretranscription.Summary{Summary: strings.Repeat("a", 5000)})
 	if len(got) != 4000 || !strings.HasSuffix(got, "...") {
 		t.Fatalf("long notes length/suffix = (%d, %t), want (4000, true)", len(got), strings.HasSuffix(got, "..."))
 	}

@@ -3,29 +3,27 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
-	"stovo-messenger/backend/ent"
-	"stovo-messenger/backend/internal/repository"
+	featuremcp "stovo-messenger/backend/internal/features/mcp"
 
 	"github.com/google/uuid"
 )
 
-func mcpAuditEventFromEnt(e *ent.McpAuditEvent) mcpAuditEventPublic {
+func mcpAuditEventFromFeature(e featuremcp.AuditEvent) mcpAuditEventPublic {
 	event := mcpAuditEventPublic{
 		ID:          e.ID,
 		ConnectorID: e.ConnectorID,
 		ActorUserID: e.ActorUserID,
 		Action:      e.Action,
 		Success:     e.Success,
-		CreatedAt:   parseTime(e.CreatedAt),
+		CreatedAt:   e.CreatedAt,
 		ChatID:      e.ChatID,
 		MessageID:   e.MessageID,
 		Error:       e.Error,
 	}
-	if strings.TrimSpace(e.Meta) != "" && e.Meta != "{}" {
+	if len(e.Meta) != 0 && string(e.Meta) != "{}" {
 		var meta any
-		if err := json.Unmarshal([]byte(e.Meta), &meta); err == nil {
+		if err := json.Unmarshal(e.Meta, &meta); err == nil {
 			event.Meta = meta
 		}
 	}
@@ -40,19 +38,7 @@ func (s *Server) recordMCPAudit(ctx context.Context, connector mcpConnectorRecor
 		}
 	}
 	id := uuid.NewString()
-	err := s.store.InsertMCPAuditEvent(ctx, repository.InsertMCPAuditEventParams{
-		ID:          id,
-		FamilyID:    connector.FamilyID,
-		ConnectorID: connector.ID,
-		ActorUserID: connector.ActorUserID,
-		Action:      action,
-		ChatID:      chatID,
-		MessageID:   messageID,
-		Success:     success,
-		Error:       errMsg,
-		Meta:        metaJSON,
-		CreatedAt:   nowString(),
-	})
+	err := s.mcpAudit.Record(ctx, featuremcp.AuditRecord{ID: id, FamilyID: connector.FamilyID, ConnectorID: connector.ID, ActorUserID: connector.ActorUserID, Action: action, ChatID: chatID, MessageID: messageID, Success: success, Error: errMsg, Meta: json.RawMessage(metaJSON), CreatedAt: nowString()})
 	if err != nil {
 		s.logger.Warnf("mcp", "audit write failed connector=%s action=%s error=%v", connector.ID, action, err)
 	}
@@ -68,19 +54,13 @@ func (s *Server) recordMCPAudit(ctx context.Context, connector mcpConnectorRecor
 }
 
 func (s *Server) listMCPAuditEvents(familyID, connectorID string, limit int) ([]mcpAuditEventPublic, error) {
-	if limit < 1 {
-		limit = 50
-	}
-	if limit > 200 {
-		limit = 200
-	}
-	rows, err := s.store.ListMCPAuditEvents(context.Background(), familyID, connectorID, limit)
+	rows, err := s.mcpAudit.List(context.Background(), familyID, connectorID, limit)
 	if err != nil {
 		return nil, err
 	}
 	events := make([]mcpAuditEventPublic, 0, len(rows))
 	for _, row := range rows {
-		events = append(events, mcpAuditEventFromEnt(row))
+		events = append(events, mcpAuditEventFromFeature(row))
 	}
 	return events, nil
 }
