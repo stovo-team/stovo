@@ -7,13 +7,13 @@ set -euo pipefail
 # Usage:
 #   ./lxc-runner.sh [TARGET_URL]
 # Example:
-#   ./lxc-runner.sh http://192.168.1.50:8000
+#   ./lxc-runner.sh http://10.29.106.221:9081
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-TARGET_URL="${1:-${E2E_BASE_URL:-http://localhost:8000}}"
+TARGET_URL="${1:-${E2E_BASE_URL:-http://10.29.106.221:9081}}"
 export E2E_BASE_URL="$TARGET_URL"
 export CI=true
 

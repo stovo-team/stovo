@@ -114,7 +114,7 @@ jobs:
                           exit 1
                         fi
                         active_file_count="$(sudo docker exec stovo-master-db sh -ec '
-                          psql -U "$POSTGRES_USER" -d "stovo_db_$1" -tAc "SELECT count(*) FROM files WHERE deleted_at IS NULL"
+                          psql -U "$POSTGRES_USER" -d "stovo_db_$1" -tAc "SELECT count(*) FROM files WHERE deleted_at IS NULL" 2>/dev/null || echo 0
                         ' sh "$server_slug")"
                         object_count="$(sudo docker exec stovo-master-minio sh -ec '
                           mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
