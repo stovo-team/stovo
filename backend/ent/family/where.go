@@ -84,6 +84,26 @@ func DefaultMessageEncryptionProtocol(v string) predicate.Family {
 	return predicate.Family(sql.FieldEQ(FieldDefaultMessageEncryptionProtocol, v))
 }
 
+// DefaultProfileVisibility applies equality check predicate on the "default_profile_visibility" field. It's identical to DefaultProfileVisibilityEQ.
+func DefaultProfileVisibility(v string) predicate.Family {
+	return predicate.Family(sql.FieldEQ(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultLastSeenVisibility applies equality check predicate on the "default_last_seen_visibility" field. It's identical to DefaultLastSeenVisibilityEQ.
+func DefaultLastSeenVisibility(v string) predicate.Family {
+	return predicate.Family(sql.FieldEQ(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultReadReceiptsEnabled applies equality check predicate on the "default_read_receipts_enabled" field. It's identical to DefaultReadReceiptsEnabledEQ.
+func DefaultReadReceiptsEnabled(v bool) predicate.Family {
+	return predicate.Family(sql.FieldEQ(FieldDefaultReadReceiptsEnabled, v))
+}
+
+// DefaultNotificationSettings applies equality check predicate on the "default_notification_settings" field. It's identical to DefaultNotificationSettingsEQ.
+func DefaultNotificationSettings(v string) predicate.Family {
+	return predicate.Family(sql.FieldEQ(FieldDefaultNotificationSettings, v))
+}
+
 // PublicAppURL applies equality check predicate on the "public_app_url" field. It's identical to PublicAppURLEQ.
 func PublicAppURL(v string) predicate.Family {
 	return predicate.Family(sql.FieldEQ(FieldPublicAppURL, v))
@@ -292,6 +312,211 @@ func DefaultMessageEncryptionProtocolEqualFold(v string) predicate.Family {
 // DefaultMessageEncryptionProtocolContainsFold applies the ContainsFold predicate on the "default_message_encryption_protocol" field.
 func DefaultMessageEncryptionProtocolContainsFold(v string) predicate.Family {
 	return predicate.Family(sql.FieldContainsFold(FieldDefaultMessageEncryptionProtocol, v))
+}
+
+// DefaultProfileVisibilityEQ applies the EQ predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityEQ(v string) predicate.Family {
+	return predicate.Family(sql.FieldEQ(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityNEQ applies the NEQ predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityNEQ(v string) predicate.Family {
+	return predicate.Family(sql.FieldNEQ(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityIn applies the In predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityIn(vs ...string) predicate.Family {
+	return predicate.Family(sql.FieldIn(FieldDefaultProfileVisibility, vs...))
+}
+
+// DefaultProfileVisibilityNotIn applies the NotIn predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityNotIn(vs ...string) predicate.Family {
+	return predicate.Family(sql.FieldNotIn(FieldDefaultProfileVisibility, vs...))
+}
+
+// DefaultProfileVisibilityGT applies the GT predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityGT(v string) predicate.Family {
+	return predicate.Family(sql.FieldGT(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityGTE applies the GTE predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityGTE(v string) predicate.Family {
+	return predicate.Family(sql.FieldGTE(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityLT applies the LT predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityLT(v string) predicate.Family {
+	return predicate.Family(sql.FieldLT(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityLTE applies the LTE predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityLTE(v string) predicate.Family {
+	return predicate.Family(sql.FieldLTE(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityContains applies the Contains predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityContains(v string) predicate.Family {
+	return predicate.Family(sql.FieldContains(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityHasPrefix applies the HasPrefix predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityHasPrefix(v string) predicate.Family {
+	return predicate.Family(sql.FieldHasPrefix(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityHasSuffix applies the HasSuffix predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityHasSuffix(v string) predicate.Family {
+	return predicate.Family(sql.FieldHasSuffix(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityEqualFold applies the EqualFold predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityEqualFold(v string) predicate.Family {
+	return predicate.Family(sql.FieldEqualFold(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultProfileVisibilityContainsFold applies the ContainsFold predicate on the "default_profile_visibility" field.
+func DefaultProfileVisibilityContainsFold(v string) predicate.Family {
+	return predicate.Family(sql.FieldContainsFold(FieldDefaultProfileVisibility, v))
+}
+
+// DefaultLastSeenVisibilityEQ applies the EQ predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityEQ(v string) predicate.Family {
+	return predicate.Family(sql.FieldEQ(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityNEQ applies the NEQ predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityNEQ(v string) predicate.Family {
+	return predicate.Family(sql.FieldNEQ(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityIn applies the In predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityIn(vs ...string) predicate.Family {
+	return predicate.Family(sql.FieldIn(FieldDefaultLastSeenVisibility, vs...))
+}
+
+// DefaultLastSeenVisibilityNotIn applies the NotIn predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityNotIn(vs ...string) predicate.Family {
+	return predicate.Family(sql.FieldNotIn(FieldDefaultLastSeenVisibility, vs...))
+}
+
+// DefaultLastSeenVisibilityGT applies the GT predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityGT(v string) predicate.Family {
+	return predicate.Family(sql.FieldGT(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityGTE applies the GTE predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityGTE(v string) predicate.Family {
+	return predicate.Family(sql.FieldGTE(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityLT applies the LT predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityLT(v string) predicate.Family {
+	return predicate.Family(sql.FieldLT(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityLTE applies the LTE predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityLTE(v string) predicate.Family {
+	return predicate.Family(sql.FieldLTE(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityContains applies the Contains predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityContains(v string) predicate.Family {
+	return predicate.Family(sql.FieldContains(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityHasPrefix applies the HasPrefix predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityHasPrefix(v string) predicate.Family {
+	return predicate.Family(sql.FieldHasPrefix(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityHasSuffix applies the HasSuffix predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityHasSuffix(v string) predicate.Family {
+	return predicate.Family(sql.FieldHasSuffix(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityEqualFold applies the EqualFold predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityEqualFold(v string) predicate.Family {
+	return predicate.Family(sql.FieldEqualFold(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultLastSeenVisibilityContainsFold applies the ContainsFold predicate on the "default_last_seen_visibility" field.
+func DefaultLastSeenVisibilityContainsFold(v string) predicate.Family {
+	return predicate.Family(sql.FieldContainsFold(FieldDefaultLastSeenVisibility, v))
+}
+
+// DefaultReadReceiptsEnabledEQ applies the EQ predicate on the "default_read_receipts_enabled" field.
+func DefaultReadReceiptsEnabledEQ(v bool) predicate.Family {
+	return predicate.Family(sql.FieldEQ(FieldDefaultReadReceiptsEnabled, v))
+}
+
+// DefaultReadReceiptsEnabledNEQ applies the NEQ predicate on the "default_read_receipts_enabled" field.
+func DefaultReadReceiptsEnabledNEQ(v bool) predicate.Family {
+	return predicate.Family(sql.FieldNEQ(FieldDefaultReadReceiptsEnabled, v))
+}
+
+// DefaultNotificationSettingsEQ applies the EQ predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsEQ(v string) predicate.Family {
+	return predicate.Family(sql.FieldEQ(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsNEQ applies the NEQ predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsNEQ(v string) predicate.Family {
+	return predicate.Family(sql.FieldNEQ(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsIn applies the In predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsIn(vs ...string) predicate.Family {
+	return predicate.Family(sql.FieldIn(FieldDefaultNotificationSettings, vs...))
+}
+
+// DefaultNotificationSettingsNotIn applies the NotIn predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsNotIn(vs ...string) predicate.Family {
+	return predicate.Family(sql.FieldNotIn(FieldDefaultNotificationSettings, vs...))
+}
+
+// DefaultNotificationSettingsGT applies the GT predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsGT(v string) predicate.Family {
+	return predicate.Family(sql.FieldGT(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsGTE applies the GTE predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsGTE(v string) predicate.Family {
+	return predicate.Family(sql.FieldGTE(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsLT applies the LT predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsLT(v string) predicate.Family {
+	return predicate.Family(sql.FieldLT(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsLTE applies the LTE predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsLTE(v string) predicate.Family {
+	return predicate.Family(sql.FieldLTE(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsContains applies the Contains predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsContains(v string) predicate.Family {
+	return predicate.Family(sql.FieldContains(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsHasPrefix applies the HasPrefix predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsHasPrefix(v string) predicate.Family {
+	return predicate.Family(sql.FieldHasPrefix(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsHasSuffix applies the HasSuffix predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsHasSuffix(v string) predicate.Family {
+	return predicate.Family(sql.FieldHasSuffix(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsEqualFold applies the EqualFold predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsEqualFold(v string) predicate.Family {
+	return predicate.Family(sql.FieldEqualFold(FieldDefaultNotificationSettings, v))
+}
+
+// DefaultNotificationSettingsContainsFold applies the ContainsFold predicate on the "default_notification_settings" field.
+func DefaultNotificationSettingsContainsFold(v string) predicate.Family {
+	return predicate.Family(sql.FieldContainsFold(FieldDefaultNotificationSettings, v))
 }
 
 // PublicAppURLEQ applies the EQ predicate on the "public_app_url" field.
