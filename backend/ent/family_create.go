@@ -77,6 +77,62 @@ func (_c *FamilyCreate) SetNillableDefaultMessageEncryptionProtocol(v *string) *
 	return _c
 }
 
+// SetDefaultProfileVisibility sets the "default_profile_visibility" field.
+func (_c *FamilyCreate) SetDefaultProfileVisibility(v string) *FamilyCreate {
+	_c.mutation.SetDefaultProfileVisibility(v)
+	return _c
+}
+
+// SetNillableDefaultProfileVisibility sets the "default_profile_visibility" field if the given value is not nil.
+func (_c *FamilyCreate) SetNillableDefaultProfileVisibility(v *string) *FamilyCreate {
+	if v != nil {
+		_c.SetDefaultProfileVisibility(*v)
+	}
+	return _c
+}
+
+// SetDefaultLastSeenVisibility sets the "default_last_seen_visibility" field.
+func (_c *FamilyCreate) SetDefaultLastSeenVisibility(v string) *FamilyCreate {
+	_c.mutation.SetDefaultLastSeenVisibility(v)
+	return _c
+}
+
+// SetNillableDefaultLastSeenVisibility sets the "default_last_seen_visibility" field if the given value is not nil.
+func (_c *FamilyCreate) SetNillableDefaultLastSeenVisibility(v *string) *FamilyCreate {
+	if v != nil {
+		_c.SetDefaultLastSeenVisibility(*v)
+	}
+	return _c
+}
+
+// SetDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field.
+func (_c *FamilyCreate) SetDefaultReadReceiptsEnabled(v bool) *FamilyCreate {
+	_c.mutation.SetDefaultReadReceiptsEnabled(v)
+	return _c
+}
+
+// SetNillableDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field if the given value is not nil.
+func (_c *FamilyCreate) SetNillableDefaultReadReceiptsEnabled(v *bool) *FamilyCreate {
+	if v != nil {
+		_c.SetDefaultReadReceiptsEnabled(*v)
+	}
+	return _c
+}
+
+// SetDefaultNotificationSettings sets the "default_notification_settings" field.
+func (_c *FamilyCreate) SetDefaultNotificationSettings(v string) *FamilyCreate {
+	_c.mutation.SetDefaultNotificationSettings(v)
+	return _c
+}
+
+// SetNillableDefaultNotificationSettings sets the "default_notification_settings" field if the given value is not nil.
+func (_c *FamilyCreate) SetNillableDefaultNotificationSettings(v *string) *FamilyCreate {
+	if v != nil {
+		_c.SetDefaultNotificationSettings(*v)
+	}
+	return _c
+}
+
 // SetPublicAppURL sets the "public_app_url" field.
 func (_c *FamilyCreate) SetPublicAppURL(v string) *FamilyCreate {
 	_c.mutation.SetPublicAppURL(v)
@@ -271,6 +327,22 @@ func (_c *FamilyCreate) defaults() {
 		v := family.DefaultDefaultMessageEncryptionProtocol
 		_c.mutation.SetDefaultMessageEncryptionProtocol(v)
 	}
+	if _, ok := _c.mutation.DefaultProfileVisibility(); !ok {
+		v := family.DefaultDefaultProfileVisibility
+		_c.mutation.SetDefaultProfileVisibility(v)
+	}
+	if _, ok := _c.mutation.DefaultLastSeenVisibility(); !ok {
+		v := family.DefaultDefaultLastSeenVisibility
+		_c.mutation.SetDefaultLastSeenVisibility(v)
+	}
+	if _, ok := _c.mutation.DefaultReadReceiptsEnabled(); !ok {
+		v := family.DefaultDefaultReadReceiptsEnabled
+		_c.mutation.SetDefaultReadReceiptsEnabled(v)
+	}
+	if _, ok := _c.mutation.DefaultNotificationSettings(); !ok {
+		v := family.DefaultDefaultNotificationSettings
+		_c.mutation.SetDefaultNotificationSettings(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -288,6 +360,18 @@ func (_c *FamilyCreate) check() error {
 	}
 	if _, ok := _c.mutation.DefaultMessageEncryptionProtocol(); !ok {
 		return &ValidationError{Name: "default_message_encryption_protocol", err: errors.New(`ent: missing required field "Family.default_message_encryption_protocol"`)}
+	}
+	if _, ok := _c.mutation.DefaultProfileVisibility(); !ok {
+		return &ValidationError{Name: "default_profile_visibility", err: errors.New(`ent: missing required field "Family.default_profile_visibility"`)}
+	}
+	if _, ok := _c.mutation.DefaultLastSeenVisibility(); !ok {
+		return &ValidationError{Name: "default_last_seen_visibility", err: errors.New(`ent: missing required field "Family.default_last_seen_visibility"`)}
+	}
+	if _, ok := _c.mutation.DefaultReadReceiptsEnabled(); !ok {
+		return &ValidationError{Name: "default_read_receipts_enabled", err: errors.New(`ent: missing required field "Family.default_read_receipts_enabled"`)}
+	}
+	if _, ok := _c.mutation.DefaultNotificationSettings(); !ok {
+		return &ValidationError{Name: "default_notification_settings", err: errors.New(`ent: missing required field "Family.default_notification_settings"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Family.created_at"`)}
@@ -361,6 +445,22 @@ func (_c *FamilyCreate) createSpec() (*Family, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DefaultMessageEncryptionProtocol(); ok {
 		_spec.SetField(family.FieldDefaultMessageEncryptionProtocol, field.TypeString, value)
 		_node.DefaultMessageEncryptionProtocol = value
+	}
+	if value, ok := _c.mutation.DefaultProfileVisibility(); ok {
+		_spec.SetField(family.FieldDefaultProfileVisibility, field.TypeString, value)
+		_node.DefaultProfileVisibility = value
+	}
+	if value, ok := _c.mutation.DefaultLastSeenVisibility(); ok {
+		_spec.SetField(family.FieldDefaultLastSeenVisibility, field.TypeString, value)
+		_node.DefaultLastSeenVisibility = value
+	}
+	if value, ok := _c.mutation.DefaultReadReceiptsEnabled(); ok {
+		_spec.SetField(family.FieldDefaultReadReceiptsEnabled, field.TypeBool, value)
+		_node.DefaultReadReceiptsEnabled = value
+	}
+	if value, ok := _c.mutation.DefaultNotificationSettings(); ok {
+		_spec.SetField(family.FieldDefaultNotificationSettings, field.TypeString, value)
+		_node.DefaultNotificationSettings = value
 	}
 	if value, ok := _c.mutation.PublicAppURL(); ok {
 		_spec.SetField(family.FieldPublicAppURL, field.TypeString, value)
@@ -602,6 +702,54 @@ func (u *FamilyUpsert) UpdateDefaultMessageEncryptionProtocol() *FamilyUpsert {
 	return u
 }
 
+// SetDefaultProfileVisibility sets the "default_profile_visibility" field.
+func (u *FamilyUpsert) SetDefaultProfileVisibility(v string) *FamilyUpsert {
+	u.Set(family.FieldDefaultProfileVisibility, v)
+	return u
+}
+
+// UpdateDefaultProfileVisibility sets the "default_profile_visibility" field to the value that was provided on create.
+func (u *FamilyUpsert) UpdateDefaultProfileVisibility() *FamilyUpsert {
+	u.SetExcluded(family.FieldDefaultProfileVisibility)
+	return u
+}
+
+// SetDefaultLastSeenVisibility sets the "default_last_seen_visibility" field.
+func (u *FamilyUpsert) SetDefaultLastSeenVisibility(v string) *FamilyUpsert {
+	u.Set(family.FieldDefaultLastSeenVisibility, v)
+	return u
+}
+
+// UpdateDefaultLastSeenVisibility sets the "default_last_seen_visibility" field to the value that was provided on create.
+func (u *FamilyUpsert) UpdateDefaultLastSeenVisibility() *FamilyUpsert {
+	u.SetExcluded(family.FieldDefaultLastSeenVisibility)
+	return u
+}
+
+// SetDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field.
+func (u *FamilyUpsert) SetDefaultReadReceiptsEnabled(v bool) *FamilyUpsert {
+	u.Set(family.FieldDefaultReadReceiptsEnabled, v)
+	return u
+}
+
+// UpdateDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field to the value that was provided on create.
+func (u *FamilyUpsert) UpdateDefaultReadReceiptsEnabled() *FamilyUpsert {
+	u.SetExcluded(family.FieldDefaultReadReceiptsEnabled)
+	return u
+}
+
+// SetDefaultNotificationSettings sets the "default_notification_settings" field.
+func (u *FamilyUpsert) SetDefaultNotificationSettings(v string) *FamilyUpsert {
+	u.Set(family.FieldDefaultNotificationSettings, v)
+	return u
+}
+
+// UpdateDefaultNotificationSettings sets the "default_notification_settings" field to the value that was provided on create.
+func (u *FamilyUpsert) UpdateDefaultNotificationSettings() *FamilyUpsert {
+	u.SetExcluded(family.FieldDefaultNotificationSettings)
+	return u
+}
+
 // SetPublicAppURL sets the "public_app_url" field.
 func (u *FamilyUpsert) SetPublicAppURL(v string) *FamilyUpsert {
 	u.Set(family.FieldPublicAppURL, v)
@@ -777,6 +925,62 @@ func (u *FamilyUpsertOne) SetDefaultMessageEncryptionProtocol(v string) *FamilyU
 func (u *FamilyUpsertOne) UpdateDefaultMessageEncryptionProtocol() *FamilyUpsertOne {
 	return u.Update(func(s *FamilyUpsert) {
 		s.UpdateDefaultMessageEncryptionProtocol()
+	})
+}
+
+// SetDefaultProfileVisibility sets the "default_profile_visibility" field.
+func (u *FamilyUpsertOne) SetDefaultProfileVisibility(v string) *FamilyUpsertOne {
+	return u.Update(func(s *FamilyUpsert) {
+		s.SetDefaultProfileVisibility(v)
+	})
+}
+
+// UpdateDefaultProfileVisibility sets the "default_profile_visibility" field to the value that was provided on create.
+func (u *FamilyUpsertOne) UpdateDefaultProfileVisibility() *FamilyUpsertOne {
+	return u.Update(func(s *FamilyUpsert) {
+		s.UpdateDefaultProfileVisibility()
+	})
+}
+
+// SetDefaultLastSeenVisibility sets the "default_last_seen_visibility" field.
+func (u *FamilyUpsertOne) SetDefaultLastSeenVisibility(v string) *FamilyUpsertOne {
+	return u.Update(func(s *FamilyUpsert) {
+		s.SetDefaultLastSeenVisibility(v)
+	})
+}
+
+// UpdateDefaultLastSeenVisibility sets the "default_last_seen_visibility" field to the value that was provided on create.
+func (u *FamilyUpsertOne) UpdateDefaultLastSeenVisibility() *FamilyUpsertOne {
+	return u.Update(func(s *FamilyUpsert) {
+		s.UpdateDefaultLastSeenVisibility()
+	})
+}
+
+// SetDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field.
+func (u *FamilyUpsertOne) SetDefaultReadReceiptsEnabled(v bool) *FamilyUpsertOne {
+	return u.Update(func(s *FamilyUpsert) {
+		s.SetDefaultReadReceiptsEnabled(v)
+	})
+}
+
+// UpdateDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field to the value that was provided on create.
+func (u *FamilyUpsertOne) UpdateDefaultReadReceiptsEnabled() *FamilyUpsertOne {
+	return u.Update(func(s *FamilyUpsert) {
+		s.UpdateDefaultReadReceiptsEnabled()
+	})
+}
+
+// SetDefaultNotificationSettings sets the "default_notification_settings" field.
+func (u *FamilyUpsertOne) SetDefaultNotificationSettings(v string) *FamilyUpsertOne {
+	return u.Update(func(s *FamilyUpsert) {
+		s.SetDefaultNotificationSettings(v)
+	})
+}
+
+// UpdateDefaultNotificationSettings sets the "default_notification_settings" field to the value that was provided on create.
+func (u *FamilyUpsertOne) UpdateDefaultNotificationSettings() *FamilyUpsertOne {
+	return u.Update(func(s *FamilyUpsert) {
+		s.UpdateDefaultNotificationSettings()
 	})
 }
 
@@ -1132,6 +1336,62 @@ func (u *FamilyUpsertBulk) SetDefaultMessageEncryptionProtocol(v string) *Family
 func (u *FamilyUpsertBulk) UpdateDefaultMessageEncryptionProtocol() *FamilyUpsertBulk {
 	return u.Update(func(s *FamilyUpsert) {
 		s.UpdateDefaultMessageEncryptionProtocol()
+	})
+}
+
+// SetDefaultProfileVisibility sets the "default_profile_visibility" field.
+func (u *FamilyUpsertBulk) SetDefaultProfileVisibility(v string) *FamilyUpsertBulk {
+	return u.Update(func(s *FamilyUpsert) {
+		s.SetDefaultProfileVisibility(v)
+	})
+}
+
+// UpdateDefaultProfileVisibility sets the "default_profile_visibility" field to the value that was provided on create.
+func (u *FamilyUpsertBulk) UpdateDefaultProfileVisibility() *FamilyUpsertBulk {
+	return u.Update(func(s *FamilyUpsert) {
+		s.UpdateDefaultProfileVisibility()
+	})
+}
+
+// SetDefaultLastSeenVisibility sets the "default_last_seen_visibility" field.
+func (u *FamilyUpsertBulk) SetDefaultLastSeenVisibility(v string) *FamilyUpsertBulk {
+	return u.Update(func(s *FamilyUpsert) {
+		s.SetDefaultLastSeenVisibility(v)
+	})
+}
+
+// UpdateDefaultLastSeenVisibility sets the "default_last_seen_visibility" field to the value that was provided on create.
+func (u *FamilyUpsertBulk) UpdateDefaultLastSeenVisibility() *FamilyUpsertBulk {
+	return u.Update(func(s *FamilyUpsert) {
+		s.UpdateDefaultLastSeenVisibility()
+	})
+}
+
+// SetDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field.
+func (u *FamilyUpsertBulk) SetDefaultReadReceiptsEnabled(v bool) *FamilyUpsertBulk {
+	return u.Update(func(s *FamilyUpsert) {
+		s.SetDefaultReadReceiptsEnabled(v)
+	})
+}
+
+// UpdateDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field to the value that was provided on create.
+func (u *FamilyUpsertBulk) UpdateDefaultReadReceiptsEnabled() *FamilyUpsertBulk {
+	return u.Update(func(s *FamilyUpsert) {
+		s.UpdateDefaultReadReceiptsEnabled()
+	})
+}
+
+// SetDefaultNotificationSettings sets the "default_notification_settings" field.
+func (u *FamilyUpsertBulk) SetDefaultNotificationSettings(v string) *FamilyUpsertBulk {
+	return u.Update(func(s *FamilyUpsert) {
+		s.SetDefaultNotificationSettings(v)
+	})
+}
+
+// UpdateDefaultNotificationSettings sets the "default_notification_settings" field to the value that was provided on create.
+func (u *FamilyUpsertBulk) UpdateDefaultNotificationSettings() *FamilyUpsertBulk {
+	return u.Update(func(s *FamilyUpsert) {
+		s.UpdateDefaultNotificationSettings()
 	})
 }
 

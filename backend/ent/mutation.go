@@ -5734,6 +5734,10 @@ type FamilyMutation struct {
 	addstorage_limit_mb                 *int
 	minimized_chat_layout               *bool
 	default_message_encryption_protocol *string
+	default_profile_visibility          *string
+	default_last_seen_visibility        *string
+	default_read_receipts_enabled       *bool
+	default_notification_settings       *string
 	public_app_url                      *string
 	public_api_url                      *string
 	created_at                          *string
@@ -6045,6 +6049,150 @@ func (m *FamilyMutation) OldDefaultMessageEncryptionProtocol(ctx context.Context
 // ResetDefaultMessageEncryptionProtocol resets all changes to the "default_message_encryption_protocol" field.
 func (m *FamilyMutation) ResetDefaultMessageEncryptionProtocol() {
 	m.default_message_encryption_protocol = nil
+}
+
+// SetDefaultProfileVisibility sets the "default_profile_visibility" field.
+func (m *FamilyMutation) SetDefaultProfileVisibility(s string) {
+	m.default_profile_visibility = &s
+}
+
+// DefaultProfileVisibility returns the value of the "default_profile_visibility" field in the mutation.
+func (m *FamilyMutation) DefaultProfileVisibility() (r string, exists bool) {
+	v := m.default_profile_visibility
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefaultProfileVisibility returns the old "default_profile_visibility" field's value of the Family entity.
+// If the Family object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FamilyMutation) OldDefaultProfileVisibility(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultProfileVisibility is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultProfileVisibility requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultProfileVisibility: %w", err)
+	}
+	return oldValue.DefaultProfileVisibility, nil
+}
+
+// ResetDefaultProfileVisibility resets all changes to the "default_profile_visibility" field.
+func (m *FamilyMutation) ResetDefaultProfileVisibility() {
+	m.default_profile_visibility = nil
+}
+
+// SetDefaultLastSeenVisibility sets the "default_last_seen_visibility" field.
+func (m *FamilyMutation) SetDefaultLastSeenVisibility(s string) {
+	m.default_last_seen_visibility = &s
+}
+
+// DefaultLastSeenVisibility returns the value of the "default_last_seen_visibility" field in the mutation.
+func (m *FamilyMutation) DefaultLastSeenVisibility() (r string, exists bool) {
+	v := m.default_last_seen_visibility
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefaultLastSeenVisibility returns the old "default_last_seen_visibility" field's value of the Family entity.
+// If the Family object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FamilyMutation) OldDefaultLastSeenVisibility(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultLastSeenVisibility is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultLastSeenVisibility requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultLastSeenVisibility: %w", err)
+	}
+	return oldValue.DefaultLastSeenVisibility, nil
+}
+
+// ResetDefaultLastSeenVisibility resets all changes to the "default_last_seen_visibility" field.
+func (m *FamilyMutation) ResetDefaultLastSeenVisibility() {
+	m.default_last_seen_visibility = nil
+}
+
+// SetDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field.
+func (m *FamilyMutation) SetDefaultReadReceiptsEnabled(b bool) {
+	m.default_read_receipts_enabled = &b
+}
+
+// DefaultReadReceiptsEnabled returns the value of the "default_read_receipts_enabled" field in the mutation.
+func (m *FamilyMutation) DefaultReadReceiptsEnabled() (r bool, exists bool) {
+	v := m.default_read_receipts_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefaultReadReceiptsEnabled returns the old "default_read_receipts_enabled" field's value of the Family entity.
+// If the Family object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FamilyMutation) OldDefaultReadReceiptsEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultReadReceiptsEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultReadReceiptsEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultReadReceiptsEnabled: %w", err)
+	}
+	return oldValue.DefaultReadReceiptsEnabled, nil
+}
+
+// ResetDefaultReadReceiptsEnabled resets all changes to the "default_read_receipts_enabled" field.
+func (m *FamilyMutation) ResetDefaultReadReceiptsEnabled() {
+	m.default_read_receipts_enabled = nil
+}
+
+// SetDefaultNotificationSettings sets the "default_notification_settings" field.
+func (m *FamilyMutation) SetDefaultNotificationSettings(s string) {
+	m.default_notification_settings = &s
+}
+
+// DefaultNotificationSettings returns the value of the "default_notification_settings" field in the mutation.
+func (m *FamilyMutation) DefaultNotificationSettings() (r string, exists bool) {
+	v := m.default_notification_settings
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDefaultNotificationSettings returns the old "default_notification_settings" field's value of the Family entity.
+// If the Family object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *FamilyMutation) OldDefaultNotificationSettings(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDefaultNotificationSettings is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDefaultNotificationSettings requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDefaultNotificationSettings: %w", err)
+	}
+	return oldValue.DefaultNotificationSettings, nil
+}
+
+// ResetDefaultNotificationSettings resets all changes to the "default_notification_settings" field.
+func (m *FamilyMutation) ResetDefaultNotificationSettings() {
+	m.default_notification_settings = nil
 }
 
 // SetPublicAppURL sets the "public_app_url" field.
@@ -6629,7 +6777,7 @@ func (m *FamilyMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *FamilyMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 12)
 	if m.name != nil {
 		fields = append(fields, family.FieldName)
 	}
@@ -6641,6 +6789,18 @@ func (m *FamilyMutation) Fields() []string {
 	}
 	if m.default_message_encryption_protocol != nil {
 		fields = append(fields, family.FieldDefaultMessageEncryptionProtocol)
+	}
+	if m.default_profile_visibility != nil {
+		fields = append(fields, family.FieldDefaultProfileVisibility)
+	}
+	if m.default_last_seen_visibility != nil {
+		fields = append(fields, family.FieldDefaultLastSeenVisibility)
+	}
+	if m.default_read_receipts_enabled != nil {
+		fields = append(fields, family.FieldDefaultReadReceiptsEnabled)
+	}
+	if m.default_notification_settings != nil {
+		fields = append(fields, family.FieldDefaultNotificationSettings)
 	}
 	if m.public_app_url != nil {
 		fields = append(fields, family.FieldPublicAppURL)
@@ -6670,6 +6830,14 @@ func (m *FamilyMutation) Field(name string) (ent.Value, bool) {
 		return m.MinimizedChatLayout()
 	case family.FieldDefaultMessageEncryptionProtocol:
 		return m.DefaultMessageEncryptionProtocol()
+	case family.FieldDefaultProfileVisibility:
+		return m.DefaultProfileVisibility()
+	case family.FieldDefaultLastSeenVisibility:
+		return m.DefaultLastSeenVisibility()
+	case family.FieldDefaultReadReceiptsEnabled:
+		return m.DefaultReadReceiptsEnabled()
+	case family.FieldDefaultNotificationSettings:
+		return m.DefaultNotificationSettings()
 	case family.FieldPublicAppURL:
 		return m.PublicAppURL()
 	case family.FieldPublicAPIURL:
@@ -6695,6 +6863,14 @@ func (m *FamilyMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldMinimizedChatLayout(ctx)
 	case family.FieldDefaultMessageEncryptionProtocol:
 		return m.OldDefaultMessageEncryptionProtocol(ctx)
+	case family.FieldDefaultProfileVisibility:
+		return m.OldDefaultProfileVisibility(ctx)
+	case family.FieldDefaultLastSeenVisibility:
+		return m.OldDefaultLastSeenVisibility(ctx)
+	case family.FieldDefaultReadReceiptsEnabled:
+		return m.OldDefaultReadReceiptsEnabled(ctx)
+	case family.FieldDefaultNotificationSettings:
+		return m.OldDefaultNotificationSettings(ctx)
 	case family.FieldPublicAppURL:
 		return m.OldPublicAppURL(ctx)
 	case family.FieldPublicAPIURL:
@@ -6739,6 +6915,34 @@ func (m *FamilyMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetDefaultMessageEncryptionProtocol(v)
+		return nil
+	case family.FieldDefaultProfileVisibility:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefaultProfileVisibility(v)
+		return nil
+	case family.FieldDefaultLastSeenVisibility:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefaultLastSeenVisibility(v)
+		return nil
+	case family.FieldDefaultReadReceiptsEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefaultReadReceiptsEnabled(v)
+		return nil
+	case family.FieldDefaultNotificationSettings:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDefaultNotificationSettings(v)
 		return nil
 	case family.FieldPublicAppURL:
 		v, ok := value.(string)
@@ -6864,6 +7068,18 @@ func (m *FamilyMutation) ResetField(name string) error {
 		return nil
 	case family.FieldDefaultMessageEncryptionProtocol:
 		m.ResetDefaultMessageEncryptionProtocol()
+		return nil
+	case family.FieldDefaultProfileVisibility:
+		m.ResetDefaultProfileVisibility()
+		return nil
+	case family.FieldDefaultLastSeenVisibility:
+		m.ResetDefaultLastSeenVisibility()
+		return nil
+	case family.FieldDefaultReadReceiptsEnabled:
+		m.ResetDefaultReadReceiptsEnabled()
+		return nil
+	case family.FieldDefaultNotificationSettings:
+		m.ResetDefaultNotificationSettings()
 		return nil
 	case family.FieldPublicAppURL:
 		m.ResetPublicAppURL()
