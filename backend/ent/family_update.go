@@ -103,62 +103,6 @@ func (_u *FamilyUpdate) SetNillableDefaultMessageEncryptionProtocol(v *string) *
 	return _u
 }
 
-// SetDefaultProfileVisibility sets the "default_profile_visibility" field.
-func (_u *FamilyUpdate) SetDefaultProfileVisibility(v string) *FamilyUpdate {
-	_u.mutation.SetDefaultProfileVisibility(v)
-	return _u
-}
-
-// SetNillableDefaultProfileVisibility sets the "default_profile_visibility" field if the given value is not nil.
-func (_u *FamilyUpdate) SetNillableDefaultProfileVisibility(v *string) *FamilyUpdate {
-	if v != nil {
-		_u.SetDefaultProfileVisibility(*v)
-	}
-	return _u
-}
-
-// SetDefaultLastSeenVisibility sets the "default_last_seen_visibility" field.
-func (_u *FamilyUpdate) SetDefaultLastSeenVisibility(v string) *FamilyUpdate {
-	_u.mutation.SetDefaultLastSeenVisibility(v)
-	return _u
-}
-
-// SetNillableDefaultLastSeenVisibility sets the "default_last_seen_visibility" field if the given value is not nil.
-func (_u *FamilyUpdate) SetNillableDefaultLastSeenVisibility(v *string) *FamilyUpdate {
-	if v != nil {
-		_u.SetDefaultLastSeenVisibility(*v)
-	}
-	return _u
-}
-
-// SetDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field.
-func (_u *FamilyUpdate) SetDefaultReadReceiptsEnabled(v bool) *FamilyUpdate {
-	_u.mutation.SetDefaultReadReceiptsEnabled(v)
-	return _u
-}
-
-// SetNillableDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field if the given value is not nil.
-func (_u *FamilyUpdate) SetNillableDefaultReadReceiptsEnabled(v *bool) *FamilyUpdate {
-	if v != nil {
-		_u.SetDefaultReadReceiptsEnabled(*v)
-	}
-	return _u
-}
-
-// SetDefaultNotificationSettings sets the "default_notification_settings" field.
-func (_u *FamilyUpdate) SetDefaultNotificationSettings(v string) *FamilyUpdate {
-	_u.mutation.SetDefaultNotificationSettings(v)
-	return _u
-}
-
-// SetNillableDefaultNotificationSettings sets the "default_notification_settings" field if the given value is not nil.
-func (_u *FamilyUpdate) SetNillableDefaultNotificationSettings(v *string) *FamilyUpdate {
-	if v != nil {
-		_u.SetDefaultNotificationSettings(*v)
-	}
-	return _u
-}
-
 // SetPublicAppURL sets the "public_app_url" field.
 func (_u *FamilyUpdate) SetPublicAppURL(v string) *FamilyUpdate {
 	_u.mutation.SetPublicAppURL(v)
@@ -560,18 +504,6 @@ func (_u *FamilyUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.DefaultMessageEncryptionProtocol(); ok {
 		_spec.SetField(family.FieldDefaultMessageEncryptionProtocol, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.DefaultProfileVisibility(); ok {
-		_spec.SetField(family.FieldDefaultProfileVisibility, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.DefaultLastSeenVisibility(); ok {
-		_spec.SetField(family.FieldDefaultLastSeenVisibility, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.DefaultReadReceiptsEnabled(); ok {
-		_spec.SetField(family.FieldDefaultReadReceiptsEnabled, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.DefaultNotificationSettings(); ok {
-		_spec.SetField(family.FieldDefaultNotificationSettings, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.PublicAppURL(); ok {
 		_spec.SetField(family.FieldPublicAppURL, field.TypeString, value)
@@ -991,62 +923,6 @@ func (_u *FamilyUpdateOne) SetDefaultMessageEncryptionProtocol(v string) *Family
 func (_u *FamilyUpdateOne) SetNillableDefaultMessageEncryptionProtocol(v *string) *FamilyUpdateOne {
 	if v != nil {
 		_u.SetDefaultMessageEncryptionProtocol(*v)
-	}
-	return _u
-}
-
-// SetDefaultProfileVisibility sets the "default_profile_visibility" field.
-func (_u *FamilyUpdateOne) SetDefaultProfileVisibility(v string) *FamilyUpdateOne {
-	_u.mutation.SetDefaultProfileVisibility(v)
-	return _u
-}
-
-// SetNillableDefaultProfileVisibility sets the "default_profile_visibility" field if the given value is not nil.
-func (_u *FamilyUpdateOne) SetNillableDefaultProfileVisibility(v *string) *FamilyUpdateOne {
-	if v != nil {
-		_u.SetDefaultProfileVisibility(*v)
-	}
-	return _u
-}
-
-// SetDefaultLastSeenVisibility sets the "default_last_seen_visibility" field.
-func (_u *FamilyUpdateOne) SetDefaultLastSeenVisibility(v string) *FamilyUpdateOne {
-	_u.mutation.SetDefaultLastSeenVisibility(v)
-	return _u
-}
-
-// SetNillableDefaultLastSeenVisibility sets the "default_last_seen_visibility" field if the given value is not nil.
-func (_u *FamilyUpdateOne) SetNillableDefaultLastSeenVisibility(v *string) *FamilyUpdateOne {
-	if v != nil {
-		_u.SetDefaultLastSeenVisibility(*v)
-	}
-	return _u
-}
-
-// SetDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field.
-func (_u *FamilyUpdateOne) SetDefaultReadReceiptsEnabled(v bool) *FamilyUpdateOne {
-	_u.mutation.SetDefaultReadReceiptsEnabled(v)
-	return _u
-}
-
-// SetNillableDefaultReadReceiptsEnabled sets the "default_read_receipts_enabled" field if the given value is not nil.
-func (_u *FamilyUpdateOne) SetNillableDefaultReadReceiptsEnabled(v *bool) *FamilyUpdateOne {
-	if v != nil {
-		_u.SetDefaultReadReceiptsEnabled(*v)
-	}
-	return _u
-}
-
-// SetDefaultNotificationSettings sets the "default_notification_settings" field.
-func (_u *FamilyUpdateOne) SetDefaultNotificationSettings(v string) *FamilyUpdateOne {
-	_u.mutation.SetDefaultNotificationSettings(v)
-	return _u
-}
-
-// SetNillableDefaultNotificationSettings sets the "default_notification_settings" field if the given value is not nil.
-func (_u *FamilyUpdateOne) SetNillableDefaultNotificationSettings(v *string) *FamilyUpdateOne {
-	if v != nil {
-		_u.SetDefaultNotificationSettings(*v)
 	}
 	return _u
 }
@@ -1482,18 +1358,6 @@ func (_u *FamilyUpdateOne) sqlSave(ctx context.Context) (_node *Family, err erro
 	}
 	if value, ok := _u.mutation.DefaultMessageEncryptionProtocol(); ok {
 		_spec.SetField(family.FieldDefaultMessageEncryptionProtocol, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.DefaultProfileVisibility(); ok {
-		_spec.SetField(family.FieldDefaultProfileVisibility, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.DefaultLastSeenVisibility(); ok {
-		_spec.SetField(family.FieldDefaultLastSeenVisibility, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.DefaultReadReceiptsEnabled(); ok {
-		_spec.SetField(family.FieldDefaultReadReceiptsEnabled, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.DefaultNotificationSettings(); ok {
-		_spec.SetField(family.FieldDefaultNotificationSettings, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.PublicAppURL(); ok {
 		_spec.SetField(family.FieldPublicAppURL, field.TypeString, value)
