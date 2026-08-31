@@ -4,15 +4,20 @@ package orchestrator
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"stovo-messenger/backend/ent"
 	"stovo-messenger/backend/internal/config"
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/go-chi/chi/v5"
@@ -153,9 +158,12 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	// Create PostgreSQL schema for the server
+	// Create PostgreSQL database and schema for the server
 	dbName := "stovo_db_" + req.Slug
 	_, _ = o.masterDB.Exec(`CREATE DATABASE ` + dbName)
+	if err := initChildDBSchema(dbName); err != nil {
+		log.Printf("[orchestrator] Warning: initChildDBSchema failed for %s: %v", dbName, err)
+	}
 
 	// Create MinIO bucket
 	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
@@ -171,16 +179,27 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 	// Start backend container
 	_ = o.startBackendContainer(req.Slug)
 
-	// Auto-create owner account on child backend container
+	// Auto-create owner account on child backend container with retries
 	go func(slug, name, adminUser, adminPass string) {
-		time.Sleep(1500 * time.Millisecond)
 		childSetupURL := fmt.Sprintf("http://stovo-backend-%s:8000/api/auth/setup", slug)
 		setupPayload, _ := json.Marshal(map[string]string{
 			"familyName": name,
 			"nickname":   adminUser,
 			"password":   adminPass,
 		})
-		_, _ = http.Post(childSetupURL, "application/json", bytes.NewBuffer(setupPayload))
+		for i := 0; i < 30; i++ {
+			time.Sleep(1 * time.Second)
+			resp, err := http.Post(childSetupURL, "application/json", bytes.NewBuffer(setupPayload))
+			if err == nil {
+				if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+					_ = resp.Body.Close()
+					log.Printf("[orchestrator] Successfully auto-provisioned admin account '%s' for server '%s'", adminUser, slug)
+					return
+				}
+				_ = resp.Body.Close()
+			}
+		}
+		log.Printf("[orchestrator] ERROR: Failed to auto-provision admin account for server '%s' after 30 attempts", slug)
 	}(req.Slug, req.Name, req.AdminUser, req.AdminPassword)
 
 	// Generate single‑use admin invite token
@@ -549,3 +568,27 @@ func (o *Orchestrator) stopAndRemoveContainer(slug string) error {
 	}
 	return nil
 }
+
+func initChildDBSchema(dbName string) error {
+	masterURL := os.Getenv("MASTER_DB_URL")
+	if masterURL == "" {
+		masterURL = "postgres://postgres:postgres@postgres:5432/stovo_master_db?sslmode=disable"
+	}
+	parsed, err := url.Parse(masterURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse MASTER_DB_URL: %w", err)
+	}
+	parsed.Path = "/" + dbName
+	childDB, err := sql.Open("pgx", parsed.String())
+	if err != nil {
+		return fmt.Errorf("failed to connect to child db %s: %w", dbName, err)
+	}
+	defer childDB.Close()
+
+	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, childDB)))
+	if err := entClient.Schema.Create(context.Background()); err != nil {
+		return fmt.Errorf("failed to create ent schema on child db %s: %w", dbName, err)
+	}
+	return nil
+}
+

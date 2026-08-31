@@ -4,6 +4,7 @@ package bootstrap
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"stovo-messenger/backend/ent"
@@ -115,6 +116,13 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 		return app.Dependencies{}, err
 	}
 	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+	if err := entClient.Schema.Create(context.Background()); err != nil {
+		_ = jobsRedisClient.Close()
+		_ = redisClient.Close()
+		_ = logBuffer.Close()
+		_ = db.Close()
+		return app.Dependencies{}, fmt.Errorf("auto-migration failed: %w", err)
+	}
 	store := repository.New(entClient)
 	uploadStore := fileuploads.NewReader(db)
 	return app.Dependencies{
