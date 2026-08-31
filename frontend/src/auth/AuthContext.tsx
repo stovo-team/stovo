@@ -244,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // A remembered account is enough to open its local replica while the
     // server is unavailable. Normal refresh resumes when connectivity returns.
     if (cachedAccount?.user && cachedAccount.accessToken) {
+      accessTokenRef.current = cachedAccount.accessToken;
       setAccessToken(cachedAccount.accessToken);
       setCurrentUser(cachedAccount.user);
       setIsOffline(typeof navigator !== "undefined" && !navigator.onLine);
