@@ -1,0 +1,57 @@
+name: Stage Deploy & Pre-Merge E2E Gate
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      stage_url:
+        description: 'Stage Base URL for E2E Tests'
+        required: false
+        default: 'http://localhost:9000'
+
+concurrency:
+  group: stage-e2e-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage-e2e:
+    name: Deploy Stage & Run E2E Pre-Merge Gate
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy Stage Compose Environment
+        run: bash scripts/deploy-stage.sh
+
+      - name: Install E2E Dependencies
+        working-directory: ./e2e
+        run: npm ci || npm install
+
+      - name: Install Playwright Browsers & LXC Dependencies
+        working-directory: ./e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Playwright Suite against Stage
+        working-directory: ./e2e
+        env:
+          E2E_BASE_URL: ${{ github.event.inputs.stage_url || 'http://localhost:9000' }}
+          CI: 'true'
+        run: bash lxc-runner.sh "$E2E_BASE_URL"
+
+      - name: Upload Playwright Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage-e2e-report
+          path: e2e/playwright-report/
+          retention-days: 14

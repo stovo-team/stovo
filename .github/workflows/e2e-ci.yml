@@ -1,0 +1,51 @@
+name: End-to-End Tests (Playwright)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target Base URL for E2E Tests (e.g. http://192.168.1.50:8000)'
+        required: false
+        default: 'http://localhost:8000'
+
+jobs:
+  e2e-tests:
+    name: Run E2E Test Suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install E2E Dependencies
+        working-directory: ./e2e
+        run: npm ci || npm install
+
+      - name: Install Playwright Browsers & System Dependencies
+        working-directory: ./e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright Tests
+        working-directory: ./e2e
+        env:
+          E2E_BASE_URL: ${{ github.event.inputs.target_url || 'http://localhost:8000' }}
+        run: npm run test:ci
+
+      - name: Upload Playwright Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14
