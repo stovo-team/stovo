@@ -24,14 +24,6 @@ type Family struct {
 	MinimizedChatLayout bool `json:"minimized_chat_layout,omitempty"`
 	// DefaultMessageEncryptionProtocol holds the value of the "default_message_encryption_protocol" field.
 	DefaultMessageEncryptionProtocol string `json:"default_message_encryption_protocol,omitempty"`
-	// DefaultProfileVisibility holds the value of the "default_profile_visibility" field.
-	DefaultProfileVisibility string `json:"default_profile_visibility,omitempty"`
-	// DefaultLastSeenVisibility holds the value of the "default_last_seen_visibility" field.
-	DefaultLastSeenVisibility string `json:"default_last_seen_visibility,omitempty"`
-	// DefaultReadReceiptsEnabled holds the value of the "default_read_receipts_enabled" field.
-	DefaultReadReceiptsEnabled bool `json:"default_read_receipts_enabled,omitempty"`
-	// DefaultNotificationSettings holds the value of the "default_notification_settings" field.
-	DefaultNotificationSettings string `json:"default_notification_settings,omitempty"`
 	// PublicAppURL holds the value of the "public_app_url" field.
 	PublicAppURL *string `json:"public_app_url,omitempty"`
 	// PublicAPIURL holds the value of the "public_api_url" field.
@@ -135,11 +127,11 @@ func (*Family) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case family.FieldMinimizedChatLayout, family.FieldDefaultReadReceiptsEnabled:
+		case family.FieldMinimizedChatLayout:
 			values[i] = new(sql.NullBool)
 		case family.FieldStorageLimitMB:
 			values[i] = new(sql.NullInt64)
-		case family.FieldID, family.FieldName, family.FieldDefaultMessageEncryptionProtocol, family.FieldDefaultProfileVisibility, family.FieldDefaultLastSeenVisibility, family.FieldDefaultNotificationSettings, family.FieldPublicAppURL, family.FieldPublicAPIURL, family.FieldCreatedAt, family.FieldUpdatedAt:
+		case family.FieldID, family.FieldName, family.FieldDefaultMessageEncryptionProtocol, family.FieldPublicAppURL, family.FieldPublicAPIURL, family.FieldCreatedAt, family.FieldUpdatedAt:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -186,30 +178,6 @@ func (_m *Family) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field default_message_encryption_protocol", values[i])
 			} else if value.Valid {
 				_m.DefaultMessageEncryptionProtocol = value.String
-			}
-		case family.FieldDefaultProfileVisibility:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field default_profile_visibility", values[i])
-			} else if value.Valid {
-				_m.DefaultProfileVisibility = value.String
-			}
-		case family.FieldDefaultLastSeenVisibility:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field default_last_seen_visibility", values[i])
-			} else if value.Valid {
-				_m.DefaultLastSeenVisibility = value.String
-			}
-		case family.FieldDefaultReadReceiptsEnabled:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field default_read_receipts_enabled", values[i])
-			} else if value.Valid {
-				_m.DefaultReadReceiptsEnabled = value.Bool
-			}
-		case family.FieldDefaultNotificationSettings:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field default_notification_settings", values[i])
-			} else if value.Valid {
-				_m.DefaultNotificationSettings = value.String
 			}
 		case family.FieldPublicAppURL:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -321,18 +289,6 @@ func (_m *Family) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("default_message_encryption_protocol=")
 	builder.WriteString(_m.DefaultMessageEncryptionProtocol)
-	builder.WriteString(", ")
-	builder.WriteString("default_profile_visibility=")
-	builder.WriteString(_m.DefaultProfileVisibility)
-	builder.WriteString(", ")
-	builder.WriteString("default_last_seen_visibility=")
-	builder.WriteString(_m.DefaultLastSeenVisibility)
-	builder.WriteString(", ")
-	builder.WriteString("default_read_receipts_enabled=")
-	builder.WriteString(fmt.Sprintf("%v", _m.DefaultReadReceiptsEnabled))
-	builder.WriteString(", ")
-	builder.WriteString("default_notification_settings=")
-	builder.WriteString(_m.DefaultNotificationSettings)
 	builder.WriteString(", ")
 	if v := _m.PublicAppURL; v != nil {
 		builder.WriteString("public_app_url=")

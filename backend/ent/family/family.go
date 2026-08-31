@@ -20,14 +20,6 @@ const (
 	FieldMinimizedChatLayout = "minimized_chat_layout"
 	// FieldDefaultMessageEncryptionProtocol holds the string denoting the default_message_encryption_protocol field in the database.
 	FieldDefaultMessageEncryptionProtocol = "default_message_encryption_protocol"
-	// FieldDefaultProfileVisibility holds the string denoting the default_profile_visibility field in the database.
-	FieldDefaultProfileVisibility = "default_profile_visibility"
-	// FieldDefaultLastSeenVisibility holds the string denoting the default_last_seen_visibility field in the database.
-	FieldDefaultLastSeenVisibility = "default_last_seen_visibility"
-	// FieldDefaultReadReceiptsEnabled holds the string denoting the default_read_receipts_enabled field in the database.
-	FieldDefaultReadReceiptsEnabled = "default_read_receipts_enabled"
-	// FieldDefaultNotificationSettings holds the string denoting the default_notification_settings field in the database.
-	FieldDefaultNotificationSettings = "default_notification_settings"
 	// FieldPublicAppURL holds the string denoting the public_app_url field in the database.
 	FieldPublicAppURL = "public_app_url"
 	// FieldPublicAPIURL holds the string denoting the public_api_url field in the database.
@@ -110,10 +102,6 @@ var Columns = []string{
 	FieldStorageLimitMB,
 	FieldMinimizedChatLayout,
 	FieldDefaultMessageEncryptionProtocol,
-	FieldDefaultProfileVisibility,
-	FieldDefaultLastSeenVisibility,
-	FieldDefaultReadReceiptsEnabled,
-	FieldDefaultNotificationSettings,
 	FieldPublicAppURL,
 	FieldPublicAPIURL,
 	FieldCreatedAt,
@@ -137,14 +125,6 @@ var (
 	DefaultMinimizedChatLayout bool
 	// DefaultDefaultMessageEncryptionProtocol holds the default value on creation for the "default_message_encryption_protocol" field.
 	DefaultDefaultMessageEncryptionProtocol string
-	// DefaultDefaultProfileVisibility holds the default value on creation for the "default_profile_visibility" field.
-	DefaultDefaultProfileVisibility string
-	// DefaultDefaultLastSeenVisibility holds the default value on creation for the "default_last_seen_visibility" field.
-	DefaultDefaultLastSeenVisibility string
-	// DefaultDefaultReadReceiptsEnabled holds the default value on creation for the "default_read_receipts_enabled" field.
-	DefaultDefaultReadReceiptsEnabled bool
-	// DefaultDefaultNotificationSettings holds the default value on creation for the "default_notification_settings" field.
-	DefaultDefaultNotificationSettings string
 	// CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
 	CreatedAtValidator func(string) error
 	// UpdatedAtValidator is a validator for the "updated_at" field. It is called by the builders before save.
@@ -179,26 +159,6 @@ func ByMinimizedChatLayout(opts ...sql.OrderTermOption) OrderOption {
 // ByDefaultMessageEncryptionProtocol orders the results by the default_message_encryption_protocol field.
 func ByDefaultMessageEncryptionProtocol(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDefaultMessageEncryptionProtocol, opts...).ToFunc()
-}
-
-// ByDefaultProfileVisibility orders the results by the default_profile_visibility field.
-func ByDefaultProfileVisibility(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDefaultProfileVisibility, opts...).ToFunc()
-}
-
-// ByDefaultLastSeenVisibility orders the results by the default_last_seen_visibility field.
-func ByDefaultLastSeenVisibility(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDefaultLastSeenVisibility, opts...).ToFunc()
-}
-
-// ByDefaultReadReceiptsEnabled orders the results by the default_read_receipts_enabled field.
-func ByDefaultReadReceiptsEnabled(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDefaultReadReceiptsEnabled, opts...).ToFunc()
-}
-
-// ByDefaultNotificationSettings orders the results by the default_notification_settings field.
-func ByDefaultNotificationSettings(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDefaultNotificationSettings, opts...).ToFunc()
 }
 
 // ByPublicAppURL orders the results by the public_app_url field.
