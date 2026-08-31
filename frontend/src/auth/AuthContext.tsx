@@ -111,8 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("stovo:servers-changed", syncServerState);
   }, []);
 
-  // Use a ref so the scheduled callback always calls the latest version
-  // without causing re-renders or stale closure issues.
   const doProactiveRefreshRef = useRef<() => Promise<void>>(async () => undefined);
 
   const scheduleProactiveRefresh = useCallback((expiresInSeconds: number) => {
@@ -127,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applyAuthResponse = useCallback(
     (response: AuthResponse) => {
+      accessTokenRef.current = response.accessToken;
       setAccessToken(response.accessToken);
       setCurrentUser(response.user);
       setIsOffline(false);
@@ -153,7 +152,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [scheduleProactiveRefresh]
   );
 
-  // Keep the ref up to date with the latest applyAuthResponse
   useEffect(() => {
     doProactiveRefreshRef.current = async () => {
       try {
