@@ -229,12 +229,28 @@ func init() {
 	familyDescDefaultMessageEncryptionProtocol := familyFields[4].Descriptor()
 	// family.DefaultDefaultMessageEncryptionProtocol holds the default value on creation for the default_message_encryption_protocol field.
 	family.DefaultDefaultMessageEncryptionProtocol = familyDescDefaultMessageEncryptionProtocol.Default.(string)
+	// familyDescDefaultProfileVisibility is the schema descriptor for default_profile_visibility field.
+	familyDescDefaultProfileVisibility := familyFields[5].Descriptor()
+	// family.DefaultDefaultProfileVisibility holds the default value on creation for the default_profile_visibility field.
+	family.DefaultDefaultProfileVisibility = familyDescDefaultProfileVisibility.Default.(string)
+	// familyDescDefaultLastSeenVisibility is the schema descriptor for default_last_seen_visibility field.
+	familyDescDefaultLastSeenVisibility := familyFields[6].Descriptor()
+	// family.DefaultDefaultLastSeenVisibility holds the default value on creation for the default_last_seen_visibility field.
+	family.DefaultDefaultLastSeenVisibility = familyDescDefaultLastSeenVisibility.Default.(string)
+	// familyDescDefaultReadReceiptsEnabled is the schema descriptor for default_read_receipts_enabled field.
+	familyDescDefaultReadReceiptsEnabled := familyFields[7].Descriptor()
+	// family.DefaultDefaultReadReceiptsEnabled holds the default value on creation for the default_read_receipts_enabled field.
+	family.DefaultDefaultReadReceiptsEnabled = familyDescDefaultReadReceiptsEnabled.Default.(bool)
+	// familyDescDefaultNotificationSettings is the schema descriptor for default_notification_settings field.
+	familyDescDefaultNotificationSettings := familyFields[8].Descriptor()
+	// family.DefaultDefaultNotificationSettings holds the default value on creation for the default_notification_settings field.
+	family.DefaultDefaultNotificationSettings = familyDescDefaultNotificationSettings.Default.(string)
 	// familyDescCreatedAt is the schema descriptor for created_at field.
-	familyDescCreatedAt := familyFields[7].Descriptor()
+	familyDescCreatedAt := familyFields[11].Descriptor()
 	// family.CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
 	family.CreatedAtValidator = familyDescCreatedAt.Validators[0].(func(string) error)
 	// familyDescUpdatedAt is the schema descriptor for updated_at field.
-	familyDescUpdatedAt := familyFields[8].Descriptor()
+	familyDescUpdatedAt := familyFields[12].Descriptor()
 	// family.UpdatedAtValidator is a validator for the "updated_at" field. It is called by the builders before save.
 	family.UpdatedAtValidator = familyDescUpdatedAt.Validators[0].(func(string) error)
 	// familyDescID is the schema descriptor for id field.
