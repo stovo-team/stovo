@@ -58,6 +58,32 @@ func TestFormatMessageNotificationMissingTitle(t *testing.T) {
 	}
 }
 
+func TestExtractMentionedUserIDsFromContent(t *testing.T) {
+	members := []chatMemberPublic{
+		{ID: "user-1", Username: "alice", DisplayName: "Alice Smith"},
+		{ID: "user-2", Username: "bobjones", DisplayName: "Bob Jones"},
+		{ID: "user-3", Username: "charlie", DisplayName: "Charlie Brown"},
+	}
+
+	// Mention by username
+	m1 := extractMentionedUserIDsFromContent(members, "user-1", "Hey @bobjones check this out")
+	if len(m1) != 1 || m1[0] != "user-2" {
+		t.Fatalf("expected user-2 for username mention, got %v", m1)
+	}
+
+	// Mention by display name
+	m2 := extractMentionedUserIDsFromContent(members, "user-1", "Hello @Charlie Brown please look")
+	if len(m2) != 1 || m2[0] != "user-3" {
+		t.Fatalf("expected user-3 for display name mention, got %v", m2)
+	}
+
+	// Sender self-mention ignored
+	m3 := extractMentionedUserIDsFromContent(members, "user-1", "I am @alice")
+	if len(m3) != 0 {
+		t.Fatalf("expected empty for self-mention, got %v", m3)
+	}
+}
+
 func containsTag(tags []string, want string) bool {
 	for _, tag := range tags {
 		if tag == want {
