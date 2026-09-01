@@ -2740,8 +2740,8 @@ h2 {
 .empty-state,
 .phase-empty-state {
   align-content: center;
-  background: var(--background-secondary);
-  border: 1px dashed #cbd5e1;
+  background: transparent;
+  border: none;
   border-radius: var(--radius-card);
   color: var(--text-secondary);
   display: grid;
