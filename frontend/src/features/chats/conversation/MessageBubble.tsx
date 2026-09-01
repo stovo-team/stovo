@@ -8,7 +8,19 @@ import type { FamilyFile } from "../../../api/files";
 import { videoPlaybackSession } from "../../../videoPlaybackSession";
 import { MessageMarkdown } from "../../../messageMarkdown";
 import MessageMediaAlbum, { partitionMessageAttachments } from "../../../components/MessageMediaAlbum";
+import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 import { RealAvatar } from "../sidebar/RealAvatar";
+
+export function extractFirstUrl(content: string | null | undefined): string | null {
+  if (!content) return null;
+  const match = /https?:\/\/[^\s<>"']+/i.exec(content);
+  if (!match) return null;
+  let urlStr = match[0];
+  while (urlStr.length > 0 && /[.,!?;:)]$/.test(urlStr)) {
+    urlStr = urlStr.slice(0, -1);
+  }
+  return urlStr;
+}
 import { chatInitials } from "../shared/chatPresentation";
 import type { CallPhase } from "../shared/types";
 import {
@@ -367,14 +379,20 @@ export function MessageBubble({
           ) : (
             <>
               {hasCaption ? (
-                <div className="message-body">
-                  {renderMarkdown ? <MessageMarkdown source={message.content} /> : message.content}
-                  {message.isEdited && (
-                    <span className="message-edited-label" aria-label="Edited">
-                      (edited)
-                    </span>
-                  )}
-                </div>
+                <>
+                  <div className="message-body">
+                    {renderMarkdown ? <MessageMarkdown source={message.content} /> : message.content}
+                    {message.isEdited && (
+                      <span className="message-edited-label" aria-label="Edited">
+                        (edited)
+                      </span>
+                    )}
+                  </div>
+                  {(() => {
+                    const firstUrl = extractFirstUrl(message.content);
+                    return firstUrl ? <LinkUnfurlCard url={firstUrl} accessToken={accessToken} /> : null;
+                  })()}
+                </>
               ) : null}
               {message.deliveryError ? <p className="encrypted-message-unavailable">{message.deliveryError}</p> : null}
               {(!mediaOnlyMessage || hasCaption) && messageMeta}
