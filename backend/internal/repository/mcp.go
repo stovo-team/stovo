@@ -268,10 +268,12 @@ func (s *Store) SyncMCPConnectorChats(ctx context.Context, tx *ent.Tx, connector
 		return err
 	}
 	for _, chatID := range chatIDs {
-		if _, err := c.McpConnectorChat.Create().
+		if err := c.McpConnectorChat.Create().
 			SetID(connectorID).
 			SetChatID(chatID).
-			Save(ctx); err != nil {
+			OnConflictColumns(mcpconnectorchat.FieldID, mcpconnectorchat.FieldChatID).
+			Ignore().
+			Exec(ctx); err != nil {
 			return err
 		}
 		if err := c.ChatMember.Create().
@@ -279,7 +281,7 @@ func (s *Store) SyncMCPConnectorChats(ctx context.Context, tx *ent.Tx, connector
 			SetUserID(actorUserID).
 			SetCreatedAt(memberCreatedAt).
 			OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-			DoNothing().
+			Ignore().
 			Exec(ctx); err != nil {
 			return err
 		}
