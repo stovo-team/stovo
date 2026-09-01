@@ -15,6 +15,7 @@ type CoreRoutes struct {
 	HealthDB    stdhttp.Handler
 	HealthRedis stdhttp.Handler
 	Sync        stdhttp.Handler
+	Manifest    stdhttp.Handler
 }
 
 // RegisterCoreRoutes installs the stable public routes that do not belong to
@@ -26,4 +27,7 @@ func RegisterCoreRoutes(router chi.Router, routes CoreRoutes) {
 	router.Get("/api/health/db", routes.HealthDB.ServeHTTP)
 	router.Get("/api/health/redis", routes.HealthRedis.ServeHTTP)
 	router.Get("/api/sync", routes.Sync.ServeHTTP)
+	if routes.Manifest != nil {
+		router.Get("/api/v1/config/manifest", routes.Manifest.ServeHTTP)
+	}
 }
