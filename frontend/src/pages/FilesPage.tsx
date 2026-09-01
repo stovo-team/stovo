@@ -626,8 +626,7 @@ export default function FilesPage() {
             ) : filteredFiles.length === 0 ? (
               <div className="empty-state storage-empty-state">
                 <HardDriveIcon />
-                <strong>{filter === "favorites" ? strings.files.noFilesInFilter : strings.files.empty}</strong>
-                <p>{strings.files.noFilesInFilter}</p>
+                <strong>{strings.files.empty}</strong>
               </div>
             ) : (
               <div className="storage-grid">
@@ -797,7 +796,6 @@ export default function FilesPage() {
             <div className="empty-state compact-empty">
               <Info aria-hidden="true" size={28} />
               <strong>{strings.files.empty}</strong>
-              <p>{strings.files.noFilesInFilter}</p>
             </div>
           )}
         </aside>
