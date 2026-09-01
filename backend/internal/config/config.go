@@ -79,6 +79,8 @@ type Config struct {
 	AICallTranscriptionEnabled   bool
 	AICallMaxDurationMinutes     int
 	MinIOCallsBucket             string
+	SolutionProfile              SolutionProfile
+	FeatureMatrix                FeatureMatrix
 }
 
 func Load() (Config, error) {
@@ -207,6 +209,8 @@ func Load() (Config, error) {
 		AICallTranscriptionEnabled:   envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
 		AICallMaxDurationMinutes:     envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
 		MinIOCallsBucket:             getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
+		SolutionProfile:              ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family")),
+		FeatureMatrix:                GetPresetMatrix(ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family"))),
 	}
 
 	return cfg, nil
