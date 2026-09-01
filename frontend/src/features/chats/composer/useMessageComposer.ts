@@ -78,12 +78,17 @@ export function extractMentionedUserIds(
 
   return members
     .filter((member) => {
-      const handle = (member.username || member.displayName || "").trim();
-      if (!handle) return false;
       if (currentUserId && member.id === currentUserId) return false;
-      const escaped = handle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(`(^|\\s)@${escaped}(?=\\s|$|[.,!?])`, "i");
-      return regex.test(text);
+      const handles: string[] = [];
+      if (member.username?.trim()) handles.push(member.username.trim());
+      if (member.displayName?.trim()) handles.push(member.displayName.trim());
+      if (handles.length === 0) return false;
+
+      return handles.some((handle) => {
+        const escaped = handle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(`(^|\\s)@${escaped}(?=\\s|$|[.,!?])`, "i");
+        return regex.test(text);
+      });
     })
     .map((member) => member.id);
 }

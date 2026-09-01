@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -1140,6 +1141,7 @@ func (s *Server) createMessageFromSocket(user userPublic, payload socketSendMess
 		Nonce:               payload.Nonce,
 		KeyVersion:          payload.KeyVersion,
 		EncryptionMetadata:  payload.EncryptionMetadata,
+		MentionedUserIDs:    payload.MentionedUserIDs,
 	}
 	message, err := s.createMessageWithPayload(user, payload.ChatID, request, payload.ClientMessageID, nil)
 	if err != nil {
@@ -1228,9 +1230,15 @@ func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, use
 	s.bumpChatHistoryRevision(ctx, chatID)
 	delivery := featuremessages.NewDeliveryService(newMessageDeliveryAdapter(s))
 	createdEvent := domain.MessageCreated{EventID: uuid.NewString(), ChatID: chatID, MessageID: message.ID, Payload: toMap(message)}
+
+	mentionedUserIDs := payload.MentionedUserIDs
+	if len(mentionedUserIDs) == 0 && content != nil && *content != "" {
+		mentionedUserIDs = extractMentionedUserIDsFromContent(chat.Members, user.ID, *content)
+	}
+
 	notification := domain.MessageNotification{
 		ChatID: chatID, ChatType: chat.Type, ChatTitle: chat.Title, SenderID: user.ID,
-		SenderName: user.DisplayName, Preview: truncatePreview(message.Content), MentionedUserIDs: payload.MentionedUserIDs,
+		SenderName: user.DisplayName, Preview: truncatePreview(message.Content), MentionedUserIDs: mentionedUserIDs,
 	}
 	go func() {
 		if err := delivery.PublishCreated(context.Background(), createdEvent); err != nil {
@@ -1489,4 +1497,41 @@ func realtimeMemberIDs(members []chatMemberPublic) []string {
 	}
 	return userIDs
 }
+
+func extractMentionedUserIDsFromContent(members []chatMemberPublic, senderID string, content string) []string {
+	if content == "" || len(members) == 0 {
+		return nil
+	}
+	var mentioned []string
+	seen := make(map[string]bool)
+
+	for _, member := range members {
+		if member.ID == senderID || seen[member.ID] {
+			continue
+		}
+		handles := []string{}
+		if strings.TrimSpace(member.Username) != "" {
+			handles = append(handles, member.Username)
+		}
+		if strings.TrimSpace(member.DisplayName) != "" {
+			handles = append(handles, member.DisplayName)
+		}
+
+		for _, handle := range handles {
+			trimmed := strings.TrimSpace(handle)
+			if trimmed == "" {
+				continue
+			}
+			escaped := regexp.QuoteMeta(trimmed)
+			re, err := regexp.Compile(`(?i)(?:^|\s)@` + escaped + `(?:\s|$|[.,!?])`)
+			if err == nil && re.MatchString(content) {
+				mentioned = append(mentioned, member.ID)
+				seen[member.ID] = true
+				break
+			}
+		}
+	}
+	return mentioned
+}
+
 

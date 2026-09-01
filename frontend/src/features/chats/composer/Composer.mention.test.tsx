@@ -98,6 +98,11 @@ describe("extractMentionedUserIds", () => {
     expect(ids).toEqual([]);
   });
 
+  it("matches by displayName even when username exists", () => {
+    const ids = extractMentionedUserIds(members, "user-1", "Hello @Bob Jones please review");
+    expect(ids).toEqual(["user-2"]);
+  });
+
   it("matches case-insensitively and at word boundaries", () => {
     const ids = extractMentionedUserIds(members, "user-1", "Hi @BobJones, how are you?");
     expect(ids).toEqual(["user-2"]);
