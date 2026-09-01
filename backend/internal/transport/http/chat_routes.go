@@ -35,6 +35,7 @@ type ChatRoutes struct {
 	ArchiveMessage        stdhttp.Handler
 	AddMessageReaction    stdhttp.Handler
 	RemoveMessageReaction stdhttp.Handler
+	Unfurl                stdhttp.Handler
 }
 
 // RegisterChatRoutes installs the stable REST contract for chat and message
@@ -65,4 +66,5 @@ func RegisterChatRoutes(router chi.Router, routes ChatRoutes) {
 	router.Method(stdhttp.MethodPost, "/api/messages/{messageId}/archive", routes.ArchiveMessage)
 	router.Method(stdhttp.MethodPost, "/api/messages/{messageId}/reactions", routes.AddMessageReaction)
 	router.Method(stdhttp.MethodDelete, "/api/messages/{messageId}/reactions/{emoji}", routes.RemoveMessageReaction)
+	router.Method(stdhttp.MethodGet, "/api/unfurl", routes.Unfurl)
 }

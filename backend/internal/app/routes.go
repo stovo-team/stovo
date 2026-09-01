@@ -706,6 +706,7 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 		RemoveMessageReaction: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			messageHandlersForUser(s, user).Reaction(w, r, false)
 		}),
+		Unfurl: s.authenticated(s.handleUnfurl),
 	}
 }
 
