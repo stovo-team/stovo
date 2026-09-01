@@ -49,6 +49,7 @@ type MessageSendRequest struct {
 	Nonce               *string  `json:"nonce"`
 	KeyVersion          *int     `json:"keyVersion"`
 	EncryptionMetadata  *string  `json:"encryptionMetadata"`
+	MentionedUserIDs    []string `json:"mentionedUserIds"`
 }
 
 type MessageReadRequest struct {
