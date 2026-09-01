@@ -115,14 +115,14 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 		_ = db.Close()
 		return app.Dependencies{}, err
 	}
-	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
-	if err := entClient.Schema.Create(context.Background()); err != nil {
+	if err := MigrateSchema(context.Background(), db); err != nil {
 		_ = jobsRedisClient.Close()
 		_ = redisClient.Close()
 		_ = logBuffer.Close()
 		_ = db.Close()
 		return app.Dependencies{}, fmt.Errorf("auto-migration failed: %w", err)
 	}
+	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	store := repository.New(entClient)
 	uploadStore := fileuploads.NewReader(db)
 	return app.Dependencies{
@@ -228,4 +228,10 @@ func openRedisURL(redisURL string) (*redis.Client, error) {
 		return nil, err
 	}
 	return client, nil
+}
+
+// MigrateSchema runs Ent schema auto-migration on the provided SQL database.
+func MigrateSchema(ctx context.Context, db *sql.DB) error {
+	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
+	return entClient.Schema.Create(ctx)
 }
