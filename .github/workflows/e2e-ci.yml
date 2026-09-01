@@ -15,7 +15,7 @@ on:
 jobs:
   e2e-tests:
     name: Run E2E Test Suite
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout Code

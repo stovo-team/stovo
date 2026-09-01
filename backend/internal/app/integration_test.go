@@ -17,6 +17,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -240,6 +241,30 @@ func applyTestSchema(t *testing.T, db *sql.DB) {
 	}
 	if err := execSchemaSQL(db, string(raw)); err != nil {
 		t.Fatalf("apply schema from %s: %v", schemaPath, err)
+	}
+
+	migrationsDir := filepath.Join(backendRoot, "migrations")
+	entries, err := os.ReadDir(migrationsDir)
+	if err == nil {
+		sort.Slice(entries, func(i, j int) bool {
+			return entries[i].Name() < entries[j].Name()
+		})
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".sql") {
+				continue
+			}
+			if entry.Name() == "20260804120000_baseline.sql" {
+				continue
+			}
+			migPath := filepath.Join(migrationsDir, entry.Name())
+			migRaw, err := os.ReadFile(migPath)
+			if err != nil {
+				t.Fatalf("read migration fixture %s: %v", migPath, err)
+			}
+			if err := execSchemaSQL(db, string(migRaw)); err != nil {
+				t.Fatalf("apply migration %s: %v", entry.Name(), err)
+			}
+		}
 	}
 }
 
