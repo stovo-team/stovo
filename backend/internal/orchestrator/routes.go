@@ -14,10 +14,8 @@ import (
 	"strings"
 	"time"
 
-	"stovo-messenger/backend/ent"
+	"stovo-messenger/backend/internal/bootstrap"
 	"stovo-messenger/backend/internal/config"
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/go-chi/chi/v5"
@@ -585,8 +583,7 @@ func initChildDBSchema(dbName string) error {
 	}
 	defer childDB.Close()
 
-	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, childDB)))
-	if err := entClient.Schema.Create(context.Background()); err != nil {
+	if err := bootstrap.MigrateSchema(context.Background(), childDB); err != nil {
 		return fmt.Errorf("failed to create ent schema on child db %s: %w", dbName, err)
 	}
 	return nil
