@@ -93,9 +93,9 @@ describe("extractMentionedUserIds", () => {
     expect(ids).toEqual(["user-2", "user-3"]);
   });
 
-  it("does not mention the current user itself", () => {
+  it("includes the current user when self-mentioned", () => {
     const ids = extractMentionedUserIds(members, "user-1", "I am @alice hello");
-    expect(ids).toEqual([]);
+    expect(ids).toEqual(["user-1"]);
   });
 
   it("matches by displayName even when username exists", () => {
