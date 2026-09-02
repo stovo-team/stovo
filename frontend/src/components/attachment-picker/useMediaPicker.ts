@@ -7,13 +7,18 @@ import {
   getCachedNativeMedia,
   isNativeMediaLibraryAvailable,
   listNativeMedia,
+  type NativeMediaCategory,
   type NativeMediaItem
 } from "../../native/mediaLibraryPlugin";
 import type { AttachmentPickerTab } from "../AttachmentPickerSheet";
 
 export type MediaPickerState = "loading" | "ready" | "empty" | "error";
 
-const categoryFor = (tab: AttachmentPickerTab) => (tab === "file" ? "documents" : tab);
+const categoryFor = (tab: AttachmentPickerTab): NativeMediaCategory | null => {
+  if (tab === "file") return "documents";
+  if (tab === "gallery" || tab === "audio") return tab;
+  return null;
+};
 const INITIAL_BATCH_SIZE = 12;
 const BACKGROUND_BATCH_SIZE = 24;
 const MAX_MEDIA_ITEMS = 120;
@@ -28,12 +33,13 @@ export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, pr
 
   const loadRecentItems = useCallback(async (tab: AttachmentPickerTab) => {
     const generation = ++loadGenerationRef.current;
-    if (!isNativeMediaLibraryAvailable()) {
+    const category = categoryFor(tab);
+    if (!category || !isNativeMediaLibraryAvailable()) {
       setMedia([]);
       setState("empty");
       return;
     }
-    const cached = getCachedNativeMedia(categoryFor(tab));
+    const cached = getCachedNativeMedia(category);
     if (cached.length) {
       setMedia(cached);
       setState("ready");
@@ -41,7 +47,6 @@ export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, pr
       setState("loading");
     }
     try {
-      const category = categoryFor(tab);
       const items = await listNativeMedia(category, { limit: INITIAL_BATCH_SIZE });
       if (generation !== loadGenerationRef.current) return;
       setMedia(items);
@@ -85,7 +90,8 @@ export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, pr
     let appStateListener: { remove: () => Promise<void> } | undefined;
 
     void addNativeMediaLibraryListener((category) => {
-      if (!disposed && category === categoryFor(activeTab)) void loadRecentItems(activeTab);
+      const activeCategory = categoryFor(activeTab);
+      if (!disposed && activeCategory && category === activeCategory) void loadRecentItems(activeTab);
     }).then((remove) => {
       if (disposed) remove(); else removeMediaListener = remove;
     });

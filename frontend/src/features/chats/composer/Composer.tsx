@@ -13,6 +13,7 @@ import { type EmojiClickData } from "emoji-picker-react";
 import { BarChart2, Paperclip, Pencil } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
+import type { CreatePollPayload } from "../../../api/polls";
 import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
 import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import { FormattingToolbar } from "../../../components/FormattingToolbar";
@@ -95,7 +96,8 @@ export function Composer({
   onVoicePressCancel,
   onSubmit,
   onScheduleMessage,
-  onSetReminder
+  onSetReminder,
+  onCreatePoll
 }: {
   accessToken: string | null;
   selectedChat: Chat | null;
@@ -156,6 +158,7 @@ export function Composer({
   onSubmit: (event: { preventDefault: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) => void | Promise<void>;
   onScheduleMessage?: (scheduledDate: Date) => void | Promise<void>;
   onSetReminder?: (rule: ReminderRule) => void | Promise<void>;
+  onCreatePoll?: (payload: CreatePollPayload) => void | Promise<void>;
 }) {
   const strings = useStrings();
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
@@ -444,7 +447,8 @@ export function Composer({
           resolvedThemeMode,
           onEnlargeComposer,
           isUploading,
-          isSendingMessage
+          isSendingMessage,
+          onCreatePoll
         }}>
           <AttachmentControls />
         </ComposerAttachmentProvider>
