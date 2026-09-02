@@ -29,6 +29,14 @@ func (_c *SyncEventCreate) SetSequence(v int64) *SyncEventCreate {
 	return _c
 }
 
+// SetNillableSequence sets the "sequence" field if the given value is not nil.
+func (_c *SyncEventCreate) SetNillableSequence(v *int64) *SyncEventCreate {
+	if v != nil {
+		_c.SetSequence(*v)
+	}
+	return _c
+}
+
 // SetFamilyID sets the "family_id" field.
 func (_c *SyncEventCreate) SetFamilyID(v string) *SyncEventCreate {
 	_c.mutation.SetFamilyID(v)
@@ -138,9 +146,6 @@ func (_c *SyncEventCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *SyncEventCreate) check() error {
-	if _, ok := _c.mutation.Sequence(); !ok {
-		return &ValidationError{Name: "sequence", err: errors.New(`ent: missing required field "SyncEvent.sequence"`)}
-	}
 	if _, ok := _c.mutation.FamilyID(); !ok {
 		return &ValidationError{Name: "family_id", err: errors.New(`ent: missing required field "SyncEvent.family_id"`)}
 	}

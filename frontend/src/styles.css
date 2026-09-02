@@ -5957,32 +5957,6 @@ span.message-spoiler.is-revealed {
 .reaction-avatar-stack {
   display: inline-flex;
   padding-left: 3px;
-}
-
-.reaction-avatar {
-  align-items: center;
-  background: #0ea5e9;
-  border: 2px solid #ffffff;
-  border-radius: 50%;
-  color: #ffffff;
-  display: inline-flex;
-  font-size: 0.75rem;
-  font-weight: 700;
-  height: 20px;
-  justify-content: center;
-  line-height: 1;
-  margin-left: -5px;
-  width: 20px;
-}
-
-.typing-indicator {
-  border-top: 1px solid var(--border-default);
-  margin: 0;
-  min-height: 28px;
-  padding: 4px 18px;
-}
-
-.message-composer {
   --composer-action-inset: 0px;
   --composer-action-bottom: 0px;
   align-items: stretch;
@@ -6058,7 +6032,6 @@ span.message-spoiler.is-revealed {
 
 .message-composer-shell {
   align-self: center;
-  background: transparent;
   border: 0;
   border-radius: 18px;
   box-shadow: none;
@@ -6066,7 +6039,7 @@ span.message-spoiler.is-revealed {
   gap: 0;
   grid-template-columns: minmax(0, 1fr);
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .message-composer-row--multiline .message-composer-shell {

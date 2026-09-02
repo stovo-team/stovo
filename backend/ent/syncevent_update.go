@@ -68,6 +68,9 @@ func (_u *SyncEventUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	if _u.mutation.SequenceCleared() {
+		_spec.ClearField(syncevent.FieldSequence, field.TypeInt64)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{syncevent.Label}
@@ -158,6 +161,9 @@ func (_u *SyncEventUpdateOne) sqlSave(ctx context.Context) (_node *SyncEvent, er
 				ps[i](selector)
 			}
 		}
+	}
+	if _u.mutation.SequenceCleared() {
+		_spec.ClearField(syncevent.FieldSequence, field.TypeInt64)
 	}
 	_node = &SyncEvent{config: _u.config}
 	_spec.Assign = _node.assignValues

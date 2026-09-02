@@ -631,6 +631,8 @@ export function ConversationPanel({
             <Composer
               accessToken={accessToken}
               selectedChat={selectedChat}
+              allMembers={members}
+              currentUser={currentUser}
               resolvedThemeMode={resolvedThemeMode}
               channelCommentsDisabledForViewer={channelCommentsDisabledForViewer}
               missingCommentThread={missingCommentThread}
@@ -659,6 +661,7 @@ export function ConversationPanel({
               onRemovePendingAttachment={removePendingAttachment}
               onUpdatePendingAttachment={updatePendingAttachment}
               isAttachmentSheetOpen={isAttachmentSheetOpen}
+              attachmentSheetInitialTab={composer.attachmentSheetInitialTab}
               galleryPreviewMediaItem={composer.galleryPreviewMediaItem}
               onGalleryPreviewMediaItemChange={composer.setGalleryPreviewMediaItem}
               onAttachButtonClick={handleAttachButtonClick}

@@ -932,7 +932,7 @@ var (
 	// SyncEventsColumns holds the columns for the "sync_events" table.
 	SyncEventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString},
-		{Name: "sequence", Type: field.TypeInt64, Unique: true},
+		{Name: "sequence", Type: field.TypeInt64, Unique: true, Nullable: true},
 		{Name: "family_id", Type: field.TypeString},
 		{Name: "audience", Type: field.TypeString},
 		{Name: "event_type", Type: field.TypeString},

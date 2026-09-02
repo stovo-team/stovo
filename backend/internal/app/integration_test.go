@@ -278,19 +278,12 @@ func execSchemaSQL(db *sql.DB, raw string) error {
 		if strings.HasPrefix(trimmed, `\restrict`) || strings.HasPrefix(trimmed, `\unrestrict`) {
 			continue
 		}
-		upper := strings.ToUpper(trimmed)
-		if strings.HasPrefix(upper, "SET ") || upper == "SET" {
-			continue
-		}
-		if strings.HasPrefix(upper, "SELECT PG_CATALOG.") {
-			continue
-		}
 		cleaned.WriteString(line)
 		cleaned.WriteByte('\n')
 	}
 	for _, stmt := range strings.Split(cleaned.String(), ";\n") {
 		stmt = strings.TrimSpace(stmt)
-		if stmt == "" || schemaStatementIsCommentOnly(stmt) {
+		if stmt == "" || schemaStatementIsCommentOnly(stmt) || shouldSkipSchemaStatement(stmt) {
 			continue
 		}
 		if _, err := db.Exec(stmt); err != nil {
@@ -302,6 +295,24 @@ func execSchemaSQL(db *sql.DB, raw string) error {
 		}
 	}
 	return nil
+}
+
+func shouldSkipSchemaStatement(stmt string) bool {
+	for _, line := range strings.Split(stmt, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "--") {
+			continue
+		}
+		upper := strings.ToUpper(line)
+		if strings.HasPrefix(upper, "SET ") || upper == "SET" {
+			return true
+		}
+		if strings.HasPrefix(upper, "SELECT PG_CATALOG.") {
+			return true
+		}
+		return false
+	}
+	return false
 }
 
 func schemaStatementIsCommentOnly(stmt string) bool {

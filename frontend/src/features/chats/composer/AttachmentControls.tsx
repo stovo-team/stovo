@@ -33,7 +33,8 @@ export function AttachmentControls() {
     onEnlargeComposer,
     isUploading,
     isSendingMessage,
-    onCreatePoll
+    onCreatePoll,
+    attachmentSheetInitialTab
   } = useComposerAttachmentContext();
   return (
     <>
@@ -94,6 +95,7 @@ export function AttachmentControls() {
       />
       <AttachmentPickerSheet
         open={isAttachmentSheetOpen}
+        initialTab={attachmentSheetInitialTab}
         previewMediaItem={previewMediaItem}
         onPreviewMediaItemChange={onPreviewMediaItemChange}
         onClose={onCloseSheet}

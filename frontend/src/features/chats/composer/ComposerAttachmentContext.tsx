@@ -1,12 +1,13 @@
 import { ChangeEvent, createContext, ReactNode, RefObject, useContext } from "react";
 
-import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
+import { AttachmentPickerOption, type AttachmentPickerTab } from "../../../components/AttachmentPickerSheet";
 import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import type { CreatePollPayload } from "../../../api/polls";
 
 type ComposerAttachmentContextValue = {
   disabled: boolean;
   isAttachmentSheetOpen: boolean;
+  attachmentSheetInitialTab?: AttachmentPickerTab;
   previewMediaItem?: NativeMediaItem | null;
   onPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
   attachmentInputRef: RefObject<HTMLInputElement | null>;

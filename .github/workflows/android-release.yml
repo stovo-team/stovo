@@ -137,7 +137,9 @@ jobs:
           ./gradlew assembleRelease \
             -PversionCode=${{ github.run_number }} \
             -PversionName=${{ steps.patch.outputs.version }} \
-            --no-daemon
+            --no-daemon \
+            --max-workers=2 \
+            -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
 
       - name: Locate and rename APK
         id: apk

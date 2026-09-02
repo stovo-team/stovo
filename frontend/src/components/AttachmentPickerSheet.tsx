@@ -63,6 +63,12 @@ export default function AttachmentPickerSheet({
 }: AttachmentPickerSheetProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>(initialTab);
+
+  useEffect(() => {
+    if (open) {
+      setActiveTab(initialTab);
+    }
+  }, [open, initialTab]);
   const [internalPreviewMediaItem, setInternalPreviewMediaItem] = useState<NativeMediaItem | null>(null);
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
   const previewMediaItem = propPreviewMediaItem !== undefined ? propPreviewMediaItem : internalPreviewMediaItem;
@@ -530,99 +536,101 @@ export default function AttachmentPickerSheet({
           )}
         </div>
 
-        <div className="attachment-picker-message-box message-composer">
-          <div className={`message-composer-row${isMultiline ? " message-composer-row--multiline" : ""}`}>
-            <button
-              type="button"
-              className="file-picker"
-              aria-label="Attach files"
-              title="Attach files"
-              disabled={isSending || isSendingMessage}
-              onClick={() => {
-                if (activeTab !== "file") {
-                  setActiveTab("file");
-                } else {
-                  onPick("file");
-                  closeSheet();
-                }
-              }}
-            >
-              <Paperclip aria-hidden="true" size={22} />
-            </button>
-
-            <div className="emoji-picker-shell" ref={emojiPickerRef}>
+        {activeTab !== "poll" && (
+          <div className="attachment-picker-message-box message-composer">
+            <div className={`message-composer-row${isMultiline ? " message-composer-row--multiline" : ""}`}>
               <button
                 type="button"
-                className="emoji-picker-button"
-                aria-label="Add emoji"
-                aria-expanded={isEmojiOpen}
-                title="Add emoji"
+                className="file-picker"
+                aria-label="Attach files"
+                title="Attach files"
                 disabled={isSending || isSendingMessage}
-                onClick={() => setIsEmojiOpen((prev) => !prev)}
+                onClick={() => {
+                  if (activeTab !== "file") {
+                    setActiveTab("file");
+                  } else {
+                    onPick("file");
+                    closeSheet();
+                  }
+                }}
               >
-                <Smile aria-hidden="true" size={22} />
+                <Paperclip aria-hidden="true" size={22} />
               </button>
-              {isEmojiOpen && (
-                <div className="emoji-picker attachment-picker-emoji-popover" role="menu" aria-label="Choose emoji">
-                  <EmojiPicker
-                    onEmojiClick={handleEmojiPick}
-                    autoFocusSearch={false}
-                    lazyLoadEmojis
-                    previewConfig={{ showPreview: false }}
-                    searchDisabled
-                    skinTonesDisabled
-                    categoryIcons={EMOJI_CATEGORY_ICONS}
-                    theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
-                    width={360}
-                    height={320}
+
+              <div className="emoji-picker-shell" ref={emojiPickerRef}>
+                <button
+                  type="button"
+                  className="emoji-picker-button"
+                  aria-label="Add emoji"
+                  aria-expanded={isEmojiOpen}
+                  title="Add emoji"
+                  disabled={isSending || isSendingMessage}
+                  onClick={() => setIsEmojiOpen((prev) => !prev)}
+                >
+                  <Smile aria-hidden="true" size={22} />
+                </button>
+                {isEmojiOpen && (
+                  <div className="emoji-picker attachment-picker-emoji-popover" role="menu" aria-label="Choose emoji">
+                    <EmojiPicker
+                      onEmojiClick={handleEmojiPick}
+                      autoFocusSearch={false}
+                      lazyLoadEmojis
+                      previewConfig={{ showPreview: false }}
+                      searchDisabled
+                      skinTonesDisabled
+                      categoryIcons={EMOJI_CATEGORY_ICONS}
+                      theme={resolvedThemeMode === "light" ? Theme.LIGHT : Theme.DARK}
+                      width={360}
+                      height={320}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="message-composer-shell">
+                <div className="message-composer-input-wrap">
+                  <textarea
+                    ref={textareaRef}
+                    aria-label="Message with attachments"
+                    placeholder="Message"
+                    value={messageText}
+                    maxLength={4000}
+                    rows={1}
+                    onChange={(event) => handleMessageChange(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        void handleSendSelected();
+                      }
+                    }}
                   />
                 </div>
-              )}
-            </div>
+              </div>
 
-            <div className="message-composer-shell">
-              <div className="message-composer-input-wrap">
-                <textarea
-                  ref={textareaRef}
-                  aria-label="Message with attachments"
-                  placeholder="Message"
-                  value={messageText}
-                  maxLength={4000}
-                  rows={1}
-                  onChange={(event) => handleMessageChange(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                      event.preventDefault();
-                      void handleSendSelected();
-                    }
+              <div className="message-composer-actions">
+                {(lineCount >= 3 || messageText.split("\n").length >= 3) && onEnlargeComposer && (
+                  <MessageEnlargeButton onClick={onEnlargeComposer} />
+                )}
+                <button
+                  type="button"
+                  className="attachment-picker-message-send"
+                  aria-label="Send message"
+                  aria-busy={isSending || isSendingMessage}
+                  disabled={isSending || isSendingMessage || (!messageText.trim() && selectedCount === 0)}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
                   }}
-                />
+                  onClick={() => void handleSendSelected()}
+                >
+                  <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                    send
+                  </span>
+                  {(isSending || isSendingMessage) && <span className="visually-hidden">Sending</span>}
+                </button>
               </div>
             </div>
-
-            <div className="message-composer-actions">
-              {(lineCount >= 3 || messageText.split("\n").length >= 3) && onEnlargeComposer && (
-                <MessageEnlargeButton onClick={onEnlargeComposer} />
-              )}
-              <button
-                type="button"
-                className="attachment-picker-message-send"
-                aria-label="Send message"
-                aria-busy={isSending || isSendingMessage}
-                disabled={isSending || isSendingMessage || (!messageText.trim() && selectedCount === 0)}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                }}
-                onClick={() => void handleSendSelected()}
-              >
-                <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                  send
-                </span>
-                {(isSending || isSendingMessage) && <span className="visually-hidden">Sending</span>}
-              </button>
-            </div>
           </div>
-        </div>
+        )}
 
         <nav className="attachment-picker-bottom-nav" aria-label="Attachment options">
           <button

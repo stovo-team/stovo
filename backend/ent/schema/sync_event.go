@@ -21,7 +21,7 @@ func (SyncEvent) Annotations() []schema.Annotation {
 func (SyncEvent) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").NotEmpty().Immutable(),
-		field.Int64("sequence").Unique().Immutable(),
+		field.Int64("sequence").Unique().Immutable().Optional(),
 		field.String("family_id").NotEmpty().Immutable(),
 		field.String("audience").NotEmpty().Immutable(),
 		field.String("event_type").NotEmpty().Immutable(),

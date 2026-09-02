@@ -29,12 +29,19 @@ class MainActivity : BridgeActivity() {
 
     private fun setupSystemBars() {
         val window = window
-        window.statusBarColor = Color.BLACK
-        window.navigationBarColor = Color.BLACK
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.isStatusBarContrastEnforced = false
-            window.isNavigationBarContrastEnforced = false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            @Suppress("DEPRECATION")
+            window.statusBarColor = Color.BLACK
+            @Suppress("DEPRECATION")
+            window.navigationBarColor = Color.BLACK
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                @Suppress("DEPRECATION")
+                window.isStatusBarContrastEnforced = false
+                @Suppress("DEPRECATION")
+                window.isNavigationBarContrastEnforced = false
+            }
         }
 
         val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
