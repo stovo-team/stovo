@@ -21,6 +21,7 @@ import (
 	featuretranscription "stovo-messenger/backend/internal/features/transcription"
 	"stovo-messenger/backend/internal/logging"
 	"stovo-messenger/backend/internal/ports"
+	featurepolls "stovo-messenger/backend/internal/features/polls"
 	workruntime "stovo-messenger/backend/internal/runtime"
 	"stovo-messenger/backend/internal/tunnel"
 
@@ -96,6 +97,7 @@ type Dependencies struct {
 	Encryption             *featureadministration.EncryptionService
 	MCPAudit               *featuremcp.AuditService
 	MCPConnectors          *featuremcp.ConnectorService
+	Polls                  *featurepolls.Service
 	TranscriptionSessions  *featuretranscription.SessionService
 	TranscriptionChunks    *featuretranscription.ChunkService
 	TranscriptionQueries   *featuretranscription.QueryService

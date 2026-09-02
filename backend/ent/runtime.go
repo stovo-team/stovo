@@ -30,6 +30,9 @@ import (
 	"stovo-messenger/backend/ent/pinnedmessage"
 	"stovo-messenger/backend/ent/plan"
 	"stovo-messenger/backend/ent/planattendee"
+	"stovo-messenger/backend/ent/poll"
+	"stovo-messenger/backend/ent/polloption"
+	"stovo-messenger/backend/ent/pollvote"
 	"stovo-messenger/backend/ent/refreshtoken"
 	"stovo-messenger/backend/ent/schema"
 	"stovo-messenger/backend/ent/syncevent"
@@ -739,6 +742,84 @@ func init() {
 	planattendeeDescID := planattendeeFields[0].Descriptor()
 	// planattendee.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	planattendee.IDValidator = planattendeeDescID.Validators[0].(func(string) error)
+	pollFields := schema.Poll{}.Fields()
+	_ = pollFields
+	// pollDescChatID is the schema descriptor for chat_id field.
+	pollDescChatID := pollFields[1].Descriptor()
+	// poll.ChatIDValidator is a validator for the "chat_id" field. It is called by the builders before save.
+	poll.ChatIDValidator = pollDescChatID.Validators[0].(func(string) error)
+	// pollDescMessageID is the schema descriptor for message_id field.
+	pollDescMessageID := pollFields[2].Descriptor()
+	// poll.MessageIDValidator is a validator for the "message_id" field. It is called by the builders before save.
+	poll.MessageIDValidator = pollDescMessageID.Validators[0].(func(string) error)
+	// pollDescQuestion is the schema descriptor for question field.
+	pollDescQuestion := pollFields[3].Descriptor()
+	// poll.QuestionValidator is a validator for the "question" field. It is called by the builders before save.
+	poll.QuestionValidator = pollDescQuestion.Validators[0].(func(string) error)
+	// pollDescIsAnonymous is the schema descriptor for is_anonymous field.
+	pollDescIsAnonymous := pollFields[4].Descriptor()
+	// poll.DefaultIsAnonymous holds the default value on creation for the is_anonymous field.
+	poll.DefaultIsAnonymous = pollDescIsAnonymous.Default.(bool)
+	// pollDescAllowMultiple is the schema descriptor for allow_multiple field.
+	pollDescAllowMultiple := pollFields[5].Descriptor()
+	// poll.DefaultAllowMultiple holds the default value on creation for the allow_multiple field.
+	poll.DefaultAllowMultiple = pollDescAllowMultiple.Default.(bool)
+	// pollDescIsQuiz is the schema descriptor for is_quiz field.
+	pollDescIsQuiz := pollFields[6].Descriptor()
+	// poll.DefaultIsQuiz holds the default value on creation for the is_quiz field.
+	poll.DefaultIsQuiz = pollDescIsQuiz.Default.(bool)
+	// pollDescIsClosed is the schema descriptor for is_closed field.
+	pollDescIsClosed := pollFields[9].Descriptor()
+	// poll.DefaultIsClosed holds the default value on creation for the is_closed field.
+	poll.DefaultIsClosed = pollDescIsClosed.Default.(bool)
+	// pollDescCreatedAt is the schema descriptor for created_at field.
+	pollDescCreatedAt := pollFields[10].Descriptor()
+	// poll.CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
+	poll.CreatedAtValidator = pollDescCreatedAt.Validators[0].(func(string) error)
+	// pollDescID is the schema descriptor for id field.
+	pollDescID := pollFields[0].Descriptor()
+	// poll.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	poll.IDValidator = pollDescID.Validators[0].(func(string) error)
+	polloptionFields := schema.PollOption{}.Fields()
+	_ = polloptionFields
+	// polloptionDescPollID is the schema descriptor for poll_id field.
+	polloptionDescPollID := polloptionFields[1].Descriptor()
+	// polloption.PollIDValidator is a validator for the "poll_id" field. It is called by the builders before save.
+	polloption.PollIDValidator = polloptionDescPollID.Validators[0].(func(string) error)
+	// polloptionDescText is the schema descriptor for text field.
+	polloptionDescText := polloptionFields[2].Descriptor()
+	// polloption.TextValidator is a validator for the "text" field. It is called by the builders before save.
+	polloption.TextValidator = polloptionDescText.Validators[0].(func(string) error)
+	// polloptionDescOptionIndex is the schema descriptor for option_index field.
+	polloptionDescOptionIndex := polloptionFields[3].Descriptor()
+	// polloption.DefaultOptionIndex holds the default value on creation for the option_index field.
+	polloption.DefaultOptionIndex = polloptionDescOptionIndex.Default.(int)
+	// polloptionDescID is the schema descriptor for id field.
+	polloptionDescID := polloptionFields[0].Descriptor()
+	// polloption.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	polloption.IDValidator = polloptionDescID.Validators[0].(func(string) error)
+	pollvoteFields := schema.PollVote{}.Fields()
+	_ = pollvoteFields
+	// pollvoteDescPollID is the schema descriptor for poll_id field.
+	pollvoteDescPollID := pollvoteFields[1].Descriptor()
+	// pollvote.PollIDValidator is a validator for the "poll_id" field. It is called by the builders before save.
+	pollvote.PollIDValidator = pollvoteDescPollID.Validators[0].(func(string) error)
+	// pollvoteDescOptionID is the schema descriptor for option_id field.
+	pollvoteDescOptionID := pollvoteFields[2].Descriptor()
+	// pollvote.OptionIDValidator is a validator for the "option_id" field. It is called by the builders before save.
+	pollvote.OptionIDValidator = pollvoteDescOptionID.Validators[0].(func(string) error)
+	// pollvoteDescUserID is the schema descriptor for user_id field.
+	pollvoteDescUserID := pollvoteFields[3].Descriptor()
+	// pollvote.UserIDValidator is a validator for the "user_id" field. It is called by the builders before save.
+	pollvote.UserIDValidator = pollvoteDescUserID.Validators[0].(func(string) error)
+	// pollvoteDescCreatedAt is the schema descriptor for created_at field.
+	pollvoteDescCreatedAt := pollvoteFields[4].Descriptor()
+	// pollvote.CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
+	pollvote.CreatedAtValidator = pollvoteDescCreatedAt.Validators[0].(func(string) error)
+	// pollvoteDescID is the schema descriptor for id field.
+	pollvoteDescID := pollvoteFields[0].Descriptor()
+	// pollvote.IDValidator is a validator for the "id" field. It is called by the builders before save.
+	pollvote.IDValidator = pollvoteDescID.Validators[0].(func(string) error)
 	refreshtokenFields := schema.RefreshToken{}.Fields()
 	_ = refreshtokenFields
 	// refreshtokenDescUserID is the schema descriptor for user_id field.

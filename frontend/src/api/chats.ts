@@ -1,6 +1,7 @@
 import { UserRole } from "./auth";
 import { apiRequest } from "./client";
 import { FamilyFile } from "./files";
+import type { Poll } from "./polls";
 
 export interface ChatMember {
   id: string;
@@ -85,7 +86,7 @@ export interface Message {
   chatId: string;
   senderId: string;
   senderDisplayName: string | null;
-  type: "text" | "image" | "video" | "file" | "mixed" | "call";
+  type: "text" | "image" | "video" | "file" | "mixed" | "call" | "poll";
   content: string | null;
   encryptionProtocol: MessageEncryptionProtocol;
   ciphertext: string | null;
@@ -106,6 +107,7 @@ export interface Message {
   attachments: FamilyFile[];
   clientMessageId?: string;
   call?: CallHistory | null;
+  poll?: Poll | null;
   deliveryError?: string;
   deliveryState?: "sending" | "failed" | "scheduled";
   scheduledFor?: string | null;

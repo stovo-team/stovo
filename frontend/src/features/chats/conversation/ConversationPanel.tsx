@@ -17,6 +17,8 @@ import { MessageList } from "./MessageList";
 import { copyToClipboard } from "../../../utils/clipboard";
 import { useStrings } from "../../../i18n/LanguageContext";
 import type { ComposerController, ConversationController } from "./types";
+import { createPoll, votePoll, closePoll, getPollVoters, type Poll, type PollVoterSummary, type CreatePollPayload } from "../../../api/polls";
+import { PollVotersModal } from "../../../components/PollVotersModal";
 
 export type ConversationPanelProps = {
   thread: ConversationController;
@@ -246,6 +248,52 @@ export function ConversationPanel({
     (message) => message.senderId === currentUser?.id && !message.id.startsWith("pending:")
   );
   const [pendingBulkForward, setPendingBulkForward] = useState<Message[]>([]);
+  const [votersModalPoll, setVotersModalPoll] = useState<Poll | null>(null);
+  const [votersModalOpen, setVotersModalOpen] = useState(false);
+  const [votersMap, setVotersMap] = useState<Record<string, PollVoterSummary[]>>({});
+  const [votersLoading, setVotersLoading] = useState(false);
+
+  const handleCreatePoll = async (payload: CreatePollPayload) => {
+    if (!accessToken || !selectedChat) return;
+    try {
+      await createPoll(accessToken, selectedChat.id, payload);
+    } catch (err: any) {
+      // Handled in component
+    }
+  };
+
+  const handleVotePoll = async (pollId: string, optionIds: string[]) => {
+    if (!accessToken) return;
+    try {
+      await votePoll(accessToken, pollId, optionIds);
+    } catch (err: any) {
+      // Handled in component
+    }
+  };
+
+  const handleClosePoll = async (pollId: string) => {
+    if (!accessToken) return;
+    try {
+      await closePoll(accessToken, pollId);
+    } catch (err: any) {
+      // Handled in component
+    }
+  };
+
+  const handleViewPollVoters = async (poll: Poll) => {
+    if (!accessToken) return;
+    setVotersModalPoll(poll);
+    setVotersModalOpen(true);
+    setVotersLoading(true);
+    try {
+      const res = await getPollVoters(accessToken, poll.id);
+      setVotersMap(res || {});
+    } catch (err: any) {
+      // Handled in modal
+    } finally {
+      setVotersLoading(false);
+    }
+  };
 
   if (!selectedChat) {
     if (activeChatId) {
@@ -479,6 +527,9 @@ export function ConversationPanel({
             onOpenThread={(message) => void handleOpenThread(message)}
             onSaveEdit={handleSaveEditMessage}
             onCancelEdit={cancelEditMode}
+            onVotePoll={handleVotePoll}
+            onClosePoll={handleClosePoll}
+            onViewPollVoters={handleViewPollVoters}
           />
           {messageContextMenu && (
             <MessageContextMenu
@@ -637,6 +688,7 @@ export function ConversationPanel({
               onSubmit={handleSendMessage}
               onScheduleMessage={handleScheduleMessage}
               onSetReminder={handleSetReminder}
+              onCreatePoll={handleCreatePoll}
             />
           )}
         </>
@@ -664,6 +716,18 @@ export function ConversationPanel({
         onConfirmDelete={() => void handleConfirmDelete()}
         onCloseDelete={() => setDeleteTarget(null)}
       />
+      {votersModalPoll && (
+        <PollVotersModal
+          open={votersModalOpen}
+          onClose={() => {
+            setVotersModalOpen(false);
+            setVotersModalPoll(null);
+          }}
+          poll={votersModalPoll}
+          votersMap={votersMap}
+          loading={votersLoading}
+        />
+      )}
     </>
   );
 }

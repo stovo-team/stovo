@@ -2,6 +2,7 @@ import { Dispatch, RefObject, SetStateAction, useCallback } from "react";
 import type { Socket } from "socket.io-client";
 
 import type { Chat, Message, PinnedMessage } from "../../../api/chats";
+import type { Poll } from "../../../api/polls";
 import { prefetchFiles } from "../../../api/files";
 import { decryptMessage } from "../../../api/messageCrypto";
 import { applyMessagePreviewToChat, isSuppressedUserError, sortPinsByPosition } from "../shared/chatPresentation";
@@ -201,6 +202,15 @@ export function useChatRealtime({
         }
       };
 
+      const onPollUpdated = (poll: Poll) => {
+        if (!poll || !poll.chatId || !poll.messageId) return;
+        applyMessagesForChat(poll.chatId, (current) =>
+          current.map((msg) =>
+            msg.id === poll.messageId || msg.poll?.id === poll.id ? { ...msg, poll } : msg
+          )
+        );
+      };
+
       socket.on("message:new", onMessageNew);
       socket.on("message:updated", onMessageUpdated);
       socket.on("message:deleted", onMessageDeleted);
@@ -208,6 +218,7 @@ export function useChatRealtime({
       socket.on("message:unpinned", onMessageUnpinned);
       socket.on("message:delivered", onMessageDelivered);
       socket.on("message:read", onMessageRead);
+      socket.on("poll.updated", onPollUpdated);
       socket.on("typing:update", onTypingUpdate);
       socket.on("error", onSocketError);
 
@@ -219,6 +230,7 @@ export function useChatRealtime({
         socket.off("message:unpinned", onMessageUnpinned);
         socket.off("message:delivered", onMessageDelivered);
         socket.off("message:read", onMessageRead);
+        socket.off("poll.updated", onPollUpdated);
         socket.off("typing:update", onTypingUpdate);
         socket.off("error", onSocketError);
       };

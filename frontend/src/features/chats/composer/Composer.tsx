@@ -10,7 +10,7 @@ import {
   useState
 } from "react";
 import { type EmojiClickData } from "emoji-picker-react";
-import { Paperclip, Pencil } from "lucide-react";
+import { BarChart2, Paperclip, Pencil } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
 import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
@@ -263,6 +263,26 @@ export function Composer({
     return members.slice(0, 8);
   }, [mentionMatch, isMentionDismissed, selectedChat]);
 
+  const slashMatch = /(?:^|\s)\/([a-zA-Z0-9_]*)$/.exec(textBeforeCursor);
+  const slashCandidates = useMemo(() => {
+    if (!slashMatch || isMentionDismissed || mentionMatch) {
+      return [];
+    }
+    const query = slashMatch[1].toLowerCase();
+    const available = [
+      { command: "poll", description: "Create an interactive poll", icon: <BarChart2 size={16} /> }
+    ];
+    return available.filter((cmd) => cmd.command.toLowerCase().includes(query));
+  }, [slashMatch, isMentionDismissed, mentionMatch]);
+
+  function triggerSlashCommand(cmd: string) {
+    if (cmd === "poll") {
+      onComposerChange("");
+      setIsMentionDismissed(true);
+      onAttachmentSheetPick("poll");
+    }
+  }
+
   function updateCursorPos() {
     const textarea = composerInputRef.current;
     if (textarea) {
@@ -321,6 +341,34 @@ export function Composer({
           const selected = mentionCandidates[selectedMentionIndex] ?? mentionCandidates[0];
           if (selected) {
             insertMention(selected.username || selected.displayName);
+          }
+          return;
+        }
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsMentionDismissed(true);
+        return;
+      }
+    }
+
+    if (slashCandidates.length > 0) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSelectedMentionIndex((prev) => (prev + 1) % slashCandidates.length);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSelectedMentionIndex((prev) => (prev - 1 + slashCandidates.length) % slashCandidates.length);
+        return;
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
+          event.preventDefault();
+          const selected = slashCandidates[selectedMentionIndex] ?? slashCandidates[0];
+          if (selected) {
+            triggerSlashCommand(selected.command);
           }
           return;
         }
@@ -480,6 +528,28 @@ export function Composer({
                     >
                       <strong>@{member.username || member.displayName}</strong>
                       <span>{member.displayName}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {slashCandidates.length > 0 && (
+              <div className="composer-mention-menu composer-slash-menu" role="listbox" aria-label="Slash commands">
+                {slashCandidates.map((item, index) => {
+                  const isSelected = index === selectedMentionIndex;
+                  return (
+                    <button
+                      type="button"
+                      key={item.command}
+                      role="option"
+                      aria-selected={isSelected}
+                      className={isSelected ? "active" : ""}
+                      onMouseEnter={() => setSelectedMentionIndex(index)}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => triggerSlashCommand(item.command)}
+                    >
+                      <strong>/{item.command}</strong>
+                      <span>{item.description}</span>
                     </button>
                   );
                 })}

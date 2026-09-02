@@ -68,6 +68,12 @@ type Tx struct {
 	Plan *PlanClient
 	// PlanAttendee is the client for interacting with the PlanAttendee builders.
 	PlanAttendee *PlanAttendeeClient
+	// Poll is the client for interacting with the Poll builders.
+	Poll *PollClient
+	// PollOption is the client for interacting with the PollOption builders.
+	PollOption *PollOptionClient
+	// PollVote is the client for interacting with the PollVote builders.
+	PollVote *PollVoteClient
 	// RefreshToken is the client for interacting with the RefreshToken builders.
 	RefreshToken *RefreshTokenClient
 	// SyncEvent is the client for interacting with the SyncEvent builders.
@@ -236,6 +242,9 @@ func (tx *Tx) init() {
 	tx.PinnedMessage = NewPinnedMessageClient(tx.config)
 	tx.Plan = NewPlanClient(tx.config)
 	tx.PlanAttendee = NewPlanAttendeeClient(tx.config)
+	tx.Poll = NewPollClient(tx.config)
+	tx.PollOption = NewPollOptionClient(tx.config)
+	tx.PollVote = NewPollVoteClient(tx.config)
 	tx.RefreshToken = NewRefreshTokenClient(tx.config)
 	tx.SyncEvent = NewSyncEventClient(tx.config)
 	tx.SyncEventRecipient = NewSyncEventRecipientClient(tx.config)

@@ -34,6 +34,9 @@ import (
 	"stovo-messenger/backend/ent/pinnedmessage"
 	"stovo-messenger/backend/ent/plan"
 	"stovo-messenger/backend/ent/planattendee"
+	"stovo-messenger/backend/ent/poll"
+	"stovo-messenger/backend/ent/polloption"
+	"stovo-messenger/backend/ent/pollvote"
 	"stovo-messenger/backend/ent/refreshtoken"
 	"stovo-messenger/backend/ent/syncevent"
 	"stovo-messenger/backend/ent/synceventrecipient"
@@ -131,6 +134,9 @@ func checkColumn(t, c string) error {
 			pinnedmessage.Table:        pinnedmessage.ValidColumn,
 			plan.Table:                 plan.ValidColumn,
 			planattendee.Table:         planattendee.ValidColumn,
+			poll.Table:                 poll.ValidColumn,
+			polloption.Table:           polloption.ValidColumn,
+			pollvote.Table:             pollvote.ValidColumn,
 			refreshtoken.Table:         refreshtoken.ValidColumn,
 			syncevent.Table:            syncevent.ValidColumn,
 			synceventrecipient.Table:   synceventrecipient.ValidColumn,
