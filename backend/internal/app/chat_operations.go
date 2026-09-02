@@ -17,6 +17,7 @@ import (
 	featurechats "stovo-messenger/backend/internal/features/chats"
 	featurefiles "stovo-messenger/backend/internal/features/files"
 	featuremessages "stovo-messenger/backend/internal/features/messages"
+	"stovo-messenger/backend/internal/plugins"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	realtimetransport "stovo-messenger/backend/internal/transport/realtime"
 
@@ -1067,6 +1068,19 @@ func (s *Server) setMessageReaction(ctx context.Context, user userPublic, messag
 	}
 	if err := s.messageReactions.Change(ctx, featuremessages.ReactionChange{MessageID: messageID, UserID: user.ID, Emoji: emoji, CreatedAt: nowString(), Add: add}); err != nil {
 		return messagePublic{}, err
+	}
+
+	if s.eventBus != nil && add {
+		s.eventBus.Publish(ctx, plugins.Event{
+			Type:      plugins.EventReactionAdded,
+			Timestamp: time.Now().UTC(),
+			Payload: map[string]interface{}{
+				"chat_id":    chatID,
+				"message_id": messageID,
+				"user_id":    user.ID,
+				"reaction":   emoji,
+			},
+		})
 	}
 
 	message, err := s.buildMessage(messageID, user.ID)

@@ -26,6 +26,7 @@ import (
 	featuresync "stovo-messenger/backend/internal/features/sync"
 	featuretranscription "stovo-messenger/backend/internal/features/transcription"
 	"stovo-messenger/backend/internal/logging"
+	"stovo-messenger/backend/internal/plugins"
 	"stovo-messenger/backend/internal/ports"
 	featurepolls "stovo-messenger/backend/internal/features/polls"
 	workruntime "stovo-messenger/backend/internal/runtime"
@@ -109,6 +110,8 @@ type Server struct {
 	jobConsumer            workruntime.JobConsumer
 	callSessionCache       workruntime.CallSessionCache
 	pendingEvents          workruntime.PendingEventQueue
+	plugins                *plugins.PluginRegistry
+	eventBus               plugins.EventBus
 
 	sessions    *SessionRegistry
 	calls       *workruntime.CallCoordinator[*callSession]
@@ -187,6 +190,8 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 		jobConsumer:            deps.JobConsumer,
 		callSessionCache:       deps.CallSessionCache,
 		pendingEvents:          deps.PendingEvents,
+		plugins:                deps.Plugins,
+		eventBus:               deps.EventBus,
 		sessions:               NewSessionRegistry(), calls: NewCallManager(), events: NewEventDeduplicator(),
 		callTimeout: 30 * time.Second, ntfyRetryCh: make(chan ntfyRetryItem, 100),
 		lifecycle: workruntime.NewLifecycle(context.Background()),
