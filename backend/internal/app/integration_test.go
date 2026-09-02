@@ -222,8 +222,8 @@ func applyTestSchema(t *testing.T, db *sql.DB) {
 	}
 	backendRoot := filepath.Join(filepath.Dir(thisFile), "..", "..")
 	candidates := []string{
-		filepath.Join(backendRoot, "testdata", "schema", "current.sql"),
 		filepath.Join(backendRoot, "migrations", "20260804120000_baseline.sql"),
+		filepath.Join(backendRoot, "testdata", "schema", "current.sql"),
 	}
 	var schemaPath string
 	for _, candidate := range candidates {

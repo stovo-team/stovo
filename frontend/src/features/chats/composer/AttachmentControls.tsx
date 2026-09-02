@@ -32,7 +32,8 @@ export function AttachmentControls() {
     resolvedThemeMode,
     onEnlargeComposer,
     isUploading,
-    isSendingMessage
+    isSendingMessage,
+    onCreatePoll
   } = useComposerAttachmentContext();
   return (
     <>
@@ -105,6 +106,7 @@ export function AttachmentControls() {
         onEnlargeComposer={onEnlargeComposer}
         isUploading={isUploading}
         isSendingMessage={isSendingMessage}
+        onCreatePoll={onCreatePoll}
       />
     </>
   );

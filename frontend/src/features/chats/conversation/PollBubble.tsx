@@ -160,7 +160,11 @@ export function PollBubble({
                       {percentage}%
                     </span>
                   )}
-                  {opt.voted && <Check size={16} className="poll-user-voted-icon" title="You voted for this option" />}
+                  {opt.voted && (
+                    <span title="You voted for this option">
+                      <Check size={16} className="poll-user-voted-icon" />
+                    </span>
+                  )}
                 </div>
               </div>
             </button>
