@@ -52,11 +52,18 @@ type RoleOperations struct {
 	DeleteReplacingMembers func(context.Context, string, string, string) error
 	NewID                  func() string
 	Now                    func() string
+	LogError               func(operation string, err error)
 }
 
 type RoleHandler struct{ operations RoleOperations }
 
 func NewRoleHandler(operations RoleOperations) RoleHandler { return RoleHandler{operations} }
+
+func (h RoleHandler) logError(operation string, err error) {
+	if err != nil && h.operations.LogError != nil {
+		h.operations.LogError(operation, err)
+	}
+}
 
 const manageRolesPermission = "manage_roles"
 
@@ -81,6 +88,7 @@ func normalizeRolePermissions(values []string) ([]string, bool) {
 func (h RoleHandler) List(w stdhttp.ResponseWriter, r *stdhttp.Request, actor RoleActor) {
 	loaded, err := h.operations.List(r.Context(), actor.FamilyID)
 	if err != nil {
+		h.logError("list roles", err)
 		writeFamilyReadJSON(w, stdhttp.StatusInternalServerError, map[string]string{"detail": "Could not load roles"})
 		return
 	}
@@ -113,6 +121,7 @@ func (h RoleHandler) Create(w stdhttp.ResponseWriter, r *stdhttp.Request, actor 
 	}
 	id := h.operations.NewID()
 	if err := h.operations.Create(r.Context(), roles.CreateCommand{ID: id, FamilyID: actor.FamilyID, Name: payload.Name, Description: payload.Description, Permissions: permissions, CreatedAt: h.operations.Now()}); err != nil {
+		h.logError("create role", err)
 		writeFamilyReadJSON(w, stdhttp.StatusConflict, map[string]string{"detail": "A role with that name already exists"})
 		return
 	}
@@ -159,6 +168,7 @@ func (h RoleHandler) Update(w stdhttp.ResponseWriter, r *stdhttp.Request, actor 
 		return
 	}
 	if err = h.operations.Update(r.Context(), roles.UpdateCommand{FamilyID: actor.FamilyID, RoleID: role.ID, Name: name, Description: description, Permissions: permissions, UpdatedAt: h.operations.Now()}); err != nil {
+		h.logError("update role", err)
 		writeFamilyReadJSON(w, stdhttp.StatusConflict, map[string]string{"detail": "A role with that name already exists"})
 		return
 	}
@@ -192,6 +202,7 @@ func (h RoleHandler) Delete(w stdhttp.ResponseWriter, r *stdhttp.Request, actor 
 		return
 	}
 	if err = h.operations.DeleteReplacingMembers(r.Context(), actor.FamilyID, role.ID, replacement.ReplacementRoleID); err != nil {
+		h.logError("delete role", err)
 		writeFamilyReadJSON(w, stdhttp.StatusInternalServerError, map[string]string{"detail": "Could not delete role"})
 		return
 	}

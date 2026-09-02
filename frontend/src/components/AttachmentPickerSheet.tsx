@@ -64,7 +64,9 @@ export default function AttachmentPickerSheet({
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>(initialTab);
 
-  useEffect(() => {
+  // This must run before paint. Otherwise /poll briefly renders the previous
+  // Gallery tab before the requested Poll tab is selected.
+  useLayoutEffect(() => {
     if (open) {
       setActiveTab(initialTab);
     }

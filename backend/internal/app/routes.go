@@ -365,6 +365,9 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 		List: s.roles.List, Get: s.roles.Get, Create: s.roles.Create, Update: s.roles.Update,
 		DeleteReplacingMembers: s.roles.DeleteReplacingMembers,
 		NewID:                  uuid.NewString, Now: nowString,
+		LogError: func(operation string, err error) {
+			s.logger.Errorf("roles", "%s error=%v", operation, err)
+		},
 	})
 	roleActor := func(user userPublic) httptransport.RoleActor {
 		return httptransport.RoleActor{FamilyID: user.FamilyID, Owner: user.Role == ownerRole, Permissions: user.Permissions}

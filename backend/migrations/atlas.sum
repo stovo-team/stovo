@@ -1,4 +1,4 @@
-h1:1I3Jsx4Gpqtsv0WdJcriWQ8TcQ3CTiqp9DO3nOTkgxo=
+h1:Z4tdCbqz+Qxfjpf5sc4LB+2/UpYPigZ/Hi6M5iB/JSg=
 20260804120000_baseline.sql h1:PX8LTmKn+3POUZ0MsN42S+c4aep3pUydkop5ubIABZA=
 20260804170000_add_mcp_connectors.sql h1:cr7khK3pFIRhsLPUVijg5CAwlj2CLW9t/rUDKzJaFp8=
 20260804180000_add_mcp_connector_provider.sql h1:45CtfU1qN07ywUQT0g28LLMuwUQ2+vhRjVQTcsX0Meo=
@@ -10,3 +10,4 @@ h1:1I3Jsx4Gpqtsv0WdJcriWQ8TcQ3CTiqp9DO3nOTkgxo=
 20260831204500_add_family_member_defaults.sql h1:Km3yfh7sl2ydsq7bYYKdpkuCxobQLNziNgzdMw96HiE=
 20260902143000_restore_sync_event_occurred_at_default.sql h1:RvbwvGWDqlISQ6w5pn3LCRImZXDYCIem1huHpPr5vN0=
 20260902200000_repair_sync_event_sequence.sql h1:VQ5Ku+LBlbVS/eXVF3nQKbNk7WaspeAviSvgkr/FGZg=
+20260902210000_add_server_roles_foundation.sql h1:z/aa4j2YRDOkzqmhiPILopiOrg/qLSZBtoZAxeqZSMI=
