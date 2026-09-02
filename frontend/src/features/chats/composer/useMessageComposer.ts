@@ -78,7 +78,6 @@ export function extractMentionedUserIds(
 
   return members
     .filter((member) => {
-      if (currentUserId && member.id === currentUserId) return false;
       const handles: string[] = [];
       if (member.username?.trim()) handles.push(member.username.trim());
       if (member.displayName?.trim()) handles.push(member.displayName.trim());
