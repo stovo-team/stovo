@@ -1,4 +1,4 @@
-h1:OLX3srgJ0dDrOhmerrrgDnMyLE/C7zFeCXN73/tJrXI=
+h1:scF7u2k/hoGwuNm5RvFux1BoRhkzwprflf8ftFTacAo=
 20260804120000_baseline.sql h1:PX8LTmKn+3POUZ0MsN42S+c4aep3pUydkop5ubIABZA=
 20260804170000_add_mcp_connectors.sql h1:cr7khK3pFIRhsLPUVijg5CAwlj2CLW9t/rUDKzJaFp8=
 20260804180000_add_mcp_connector_provider.sql h1:45CtfU1qN07ywUQT0g28LLMuwUQ2+vhRjVQTcsX0Meo=
@@ -7,3 +7,5 @@ h1:OLX3srgJ0dDrOhmerrrgDnMyLE/C7zFeCXN73/tJrXI=
 20260822100000_link_ai_call_notes.sql h1:qIFs6X3aEd6YD1kNhHO8LGOO/nKKwj8WecRbXq06KlQ=
 20260825090000_add_file_lifecycle.sql h1:JSTuYmZrRCvLiTtooiyv2EeHXNvNeth0mL+leez2NBM=
 20260825120000_add_sync_outbox_foundation.sql h1:Ab+o+N/vy+nFG3Rhq8tiZ+JKSO/23hZFg8wC3A+1lLw=
+20260831204500_add_family_member_defaults.sql h1:lDASxxtzUloy22rMOBN5mQc2RkHxoytZbbIx6WgnO1E=
+20260902143000_restore_sync_event_occurred_at_default.sql h1:/qdgoSW+8eu56d36BEdgzCeP9KXMrFgjRu0MZF4vzI4=
