@@ -33,7 +33,7 @@ jobs:
       - name: Deploy Stage Compose Environment
         env:
           STAGE_HOST: '10.29.106.221'
-          STAGE_URL: ${{ github.event.inputs.stage_url || process.env.STAGE_URL || 'http://10.29.106.221:9081' }}
+          STAGE_URL: ${{ inputs.stage_url || env.STAGE_URL || 'http://10.29.106.221:9081' }}
         run: bash scripts/deploy-stage.sh
 
       - name: Install E2E Dependencies
@@ -47,7 +47,7 @@ jobs:
       - name: Run E2E Playwright Suite against Stage
         working-directory: ./e2e
         env:
-          E2E_BASE_URL: ${{ github.event.inputs.stage_url || process.env.STAGE_URL || 'http://10.29.106.221:9081' }}
+          E2E_BASE_URL: ${{ inputs.stage_url || env.STAGE_URL || 'http://10.29.106.221:9081' }}
           CI: 'true'
         run: bash lxc-runner.sh "$E2E_BASE_URL"
 
