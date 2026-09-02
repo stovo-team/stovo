@@ -295,15 +295,13 @@ export function Composer({
       {
         command: "poll",
         syntax: "/poll",
-        description: "Create an interactive poll",
-        hint: "Create a poll with custom options, quiz mode, & voting options",
+        description: "Create a poll",
         icon: <BarChart2 size={16} />
       },
       {
         command: "schedule",
         syntax: "/schedule Title | Time | Duration",
         description: "Schedule a plan or event",
-        hint: "Format: /schedule Meeting | Tomorrow 15:00 | 2h",
         icon: <CalendarClock size={16} />
       }
     ],
@@ -619,12 +617,9 @@ export function Composer({
                         >
                           <div className="slash-item-left">
                             <span className="slash-item-icon">{item.icon}</span>
-                            <div className="slash-item-text">
-                              <div className="slash-item-title-row">
-                                <strong className="slash-item-syntax">{item.syntax}</strong>
-                                <span className="slash-item-desc">{item.description}</span>
-                              </div>
-                              <div className="slash-item-hint">{item.hint}</div>
+                            <div className="slash-item-copy">
+                              <strong className="slash-item-syntax">{item.syntax}</strong>
+                              <span className="slash-item-desc">{item.description}</span>
                             </div>
                           </div>
                         </button>

@@ -71,6 +71,9 @@ describe("LinkUnfurlCard component", () => {
 
     const img = container!.querySelector("img.link-unfurl-image") as HTMLImageElement;
     expect(img.src).toBe("https://stovo.app/banner.png");
+    const body = card!.querySelector(".link-unfurl-body");
+    expect(body).not.toBeNull();
+    expect(Boolean(body!.compareDocumentPosition(img) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
   });
 
   it("renders nothing when unfurl fetch fails", async () => {
