@@ -31,6 +31,7 @@ export function ChatSidebar({
   const { activeServer, savedServers, hotSwapServer, removeServer } = useAuth();
   const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
   const serverMenuRef = useRef<HTMLDivElement | null>(null);
+  const filterRowRef = useRef<HTMLDivElement | null>(null);
 
   const validServers = savedServers.filter((server) => Boolean(server.url));
   const displayFamilyName = activeServer?.name || familyName || "Stovo";
@@ -70,6 +71,24 @@ export function ChatSidebar({
       document.removeEventListener("touchstart", handlePointerDown);
     };
   }, [isServerMenuOpen]);
+
+  useEffect(() => {
+    const filterRow = filterRowRef.current;
+    if (!filterRow) return;
+    const chipScroller: HTMLDivElement = filterRow;
+
+    // React may register wheel handlers as passive. This scroller deliberately
+    // maps a vertical wheel gesture to horizontal chip scrolling, so it needs a
+    // native non-passive listener before it can cancel the page scroll.
+    function handleWheel(event: WheelEvent) {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      chipScroller.scrollLeft += event.deltaY;
+      event.preventDefault();
+    }
+
+    chipScroller.addEventListener("wheel", handleWheel, { passive: false });
+    return () => chipScroller.removeEventListener("wheel", handleWheel);
+  }, []);
 
   return (
     <aside className="chat-sidebar" aria-label="Chats sidebar">
@@ -199,11 +218,7 @@ export function ChatSidebar({
         <div
           className="filter-chip-row chat-list-filters"
           aria-label={strings.chats.title}
-          onWheel={(event) => {
-            if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-            event.currentTarget.scrollLeft += event.deltaY;
-            event.preventDefault();
-          }}
+          ref={filterRowRef}
         >
           {chatFilters.map((filter) => (
             <button
