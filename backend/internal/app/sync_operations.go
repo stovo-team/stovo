@@ -94,6 +94,12 @@ func (s *Server) createRESTMessageWithSync(ctx context.Context, user userPublic,
 	}
 	onlineRecipients := s.onlineChatRecipients(chat, user.ID)
 	message := newCreatedMessagePublic(messageID, chatID, user, messageType, content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, payload, messageKind, attachments, onlineRecipients, createdAt)
+	// Echo the client operation ID in the durable response and sync event.  The
+	// client uses it to replace its optimistic outbox item with this server
+	// message, including when the REST response itself was interrupted.
+	if operationID != "" {
+		message.ClientMessageID = &operationID
+	}
 
 	payloadJSON, err := json.Marshal(message)
 	if err != nil {

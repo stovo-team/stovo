@@ -103,6 +103,26 @@ describe("messageState", () => {
     expect(mergeMessageLists([b], [a]).map((m) => m.id)).toEqual(["a", "b"]);
   });
 
+  it("clears the optimistic sending state when replica sync confirms the message", () => {
+    const pending = baseMessage({
+      id: "pending:client-1",
+      clientMessageId: "client-1",
+      deliveryState: "sending"
+    });
+    const confirmed = baseMessage({
+      id: "server-1",
+      clientMessageId: "client-1",
+      content: "confirmed on server"
+    });
+
+    const merged = mergeMessageLists([pending], [confirmed]);
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({ id: "server-1", content: "confirmed on server" });
+    expect(merged[0].deliveryState).toBeUndefined();
+    expect(merged[0].clientMessageId).toBeUndefined();
+  });
+
   it("replaces and fails pending messages", () => {
     const current = [baseMessage({ id: "a" }), baseMessage({ id: "b", clientMessageId: "c1" })];
     expect(replaceMessage(current, baseMessage({ id: "a", content: "updated" }))[0].content).toBe(
