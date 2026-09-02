@@ -2,6 +2,7 @@ import { ChangeEvent, createContext, ReactNode, RefObject, useContext } from "re
 
 import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
 import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
+import type { CreatePollPayload } from "../../../api/polls";
 
 type ComposerAttachmentContextValue = {
   disabled: boolean;
@@ -25,6 +26,7 @@ type ComposerAttachmentContextValue = {
   onEnlargeComposer?: () => void;
   isUploading?: boolean;
   isSendingMessage?: boolean;
+  onCreatePoll?: (payload: CreatePollPayload) => void | Promise<void>;
 };
 
 const ComposerAttachmentContext = createContext<ComposerAttachmentContextValue | null>(null);

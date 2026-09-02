@@ -55,5 +55,6 @@ features.db
 *_output.txt
 
 # Local helper scripts
-/scripts/
+/scripts/*
+!/scripts/check-solid-boundaries.sh
 /docker-compose.test.ps1

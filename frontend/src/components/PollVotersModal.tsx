@@ -1,8 +1,10 @@
 import { createPortal } from "react-dom";
 import { X, Users } from "lucide-react";
 import type { Poll, PollVoterSummary } from "../api/polls";
+import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 
 export interface PollVotersModalProps {
+  accessToken?: string | null;
   open: boolean;
   onClose: () => void;
   poll: Poll;
@@ -10,7 +12,7 @@ export interface PollVotersModalProps {
   loading?: boolean;
 }
 
-export function PollVotersModal({ open, onClose, poll, votersMap, loading = false }: PollVotersModalProps) {
+export function PollVotersModal({ accessToken = null, open, onClose, poll, votersMap, loading = false }: PollVotersModalProps) {
   if (!open) return null;
 
   const content = (
@@ -56,13 +58,12 @@ export function PollVotersModal({ open, onClose, poll, votersMap, loading = fals
                       <div className="poll-voters-user-list">
                         {voters.map((u) => (
                           <div key={u.id} className="poll-voter-user-item">
-                            <div className="poll-voter-avatar">
-                              {u.profilePhoto?.fileUrl ? (
-                                <img src={u.profilePhoto.fileUrl} alt={u.displayName} />
-                              ) : (
-                                <span>{u.displayName.charAt(0).toUpperCase()}</span>
-                              )}
-                            </div>
+                            <RealAvatar
+                              accessToken={accessToken}
+                              className="avatar poll-voter-avatar"
+                              file={u.profilePhoto}
+                              label={u.displayName}
+                            />
                             <div className="poll-voter-names">
                               <span className="poll-voter-displayname">{u.displayName}</span>
                               <span className="poll-voter-username">@{u.username}</span>
