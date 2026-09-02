@@ -2,11 +2,15 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 
 	"stovo-messenger/backend/internal/cache"
 	featurefamily "stovo-messenger/backend/internal/features/family"
@@ -17,8 +21,6 @@ import (
 	featureprivacy "stovo-messenger/backend/internal/features/privacy"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	chatpresenter "stovo-messenger/backend/internal/transport/http/presenter"
-
-	"github.com/google/uuid"
 )
 
 var errAttachmentSenderOnly = errors.New("only the sender can attach files")
@@ -707,6 +709,52 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 			messageHandlersForUser(s, user).Reaction(w, r, false)
 		}),
 		Unfurl: s.authenticated(s.handleUnfurl),
+		CreatePoll: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			chatID := chi.URLParam(r, "chatId")
+			var req createPollRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeMessageDetail(w, http.StatusUnprocessableEntity, "Invalid poll payload")
+				return
+			}
+			res, status, err := s.createPoll(r.Context(), user, chatID, req)
+			if err != nil {
+				writeMessageDetail(w, status, err.Error())
+				return
+			}
+			writeMessageValue(w, status, res)
+		}),
+		VotePoll: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			pollID := chi.URLParam(r, "pollId")
+			var req votePollRequest
+			if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+				writeMessageDetail(w, http.StatusUnprocessableEntity, "Invalid vote payload")
+				return
+			}
+			res, status, err := s.votePoll(r.Context(), user, pollID, req)
+			if err != nil {
+				writeMessageDetail(w, status, err.Error())
+				return
+			}
+			writeMessageValue(w, status, res)
+		}),
+		ClosePoll: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			pollID := chi.URLParam(r, "pollId")
+			res, status, err := s.closePoll(r.Context(), user, pollID)
+			if err != nil {
+				writeMessageDetail(w, status, err.Error())
+				return
+			}
+			writeMessageValue(w, status, res)
+		}),
+		GetPollVoters: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			pollID := chi.URLParam(r, "pollId")
+			res, status, err := s.getPollVoters(r.Context(), user, pollID)
+			if err != nil {
+				writeMessageDetail(w, status, err.Error())
+				return
+			}
+			writeMessageValue(w, status, res)
+		}),
 	}
 }
 
@@ -1067,4 +1115,14 @@ func (s *Server) mcpRoutes() http.Handler {
 		return nil
 	}
 	return s.mcpAuthMiddleware(s.mcpHTTP)
+}
+
+func writeMessageValue(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(value)
+}
+
+func writeMessageDetail(w http.ResponseWriter, status int, detail string) {
+	writeMessageValue(w, status, map[string]string{"detail": detail})
 }

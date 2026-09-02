@@ -53,7 +53,10 @@ export function MessageList({
   onReact,
   onOpenThread,
   onSaveEdit,
-  onCancelEdit
+  onCancelEdit,
+  onVotePoll,
+  onClosePoll,
+  onViewPollVoters
 }: {
   accessToken: string | null;
   currentUser: User | null;
@@ -71,7 +74,7 @@ export function MessageList({
   messageSearchActive: boolean;
   selectedMessageIds: string[];
   isMessageSelectionMode: boolean;
-  editTargetMessage?: Message | null;
+  editTargetMessage: Message | null;
   swipeReplyState: SwipeReplyState | null;
   threadReplyCounts: Map<string, number>;
   showScrollToBottom: boolean;
@@ -94,6 +97,9 @@ export function MessageList({
   onOpenThread: (message: Message) => void;
   onSaveEdit?: (message: Message, content: string) => Promise<void>;
   onCancelEdit?: () => void;
+  onVotePoll?: (pollId: string, optionIds: string[]) => Promise<void> | void;
+  onClosePoll?: (pollId: string) => Promise<void> | void;
+  onViewPollVoters?: (poll: any) => void;
 }) {
   const strings = useStrings();
   const threadComments = threadRootMessageId
@@ -133,6 +139,9 @@ export function MessageList({
       onOpenOriginChat={onOpenOriginChat}
       onReact={onReact}
       onOpenThread={onOpenThread}
+      onVotePoll={onVotePoll}
+      onClosePoll={onClosePoll}
+      onViewPollVoters={onViewPollVoters}
     />
   );
 

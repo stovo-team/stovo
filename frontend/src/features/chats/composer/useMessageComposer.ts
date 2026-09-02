@@ -424,6 +424,12 @@ export function useMessageComposer({
     if (!accessToken || !currentUser || !selectedChat || (!content && localAttachments.length === 0)) {
       return;
     }
+    if (content.toLowerCase() === "/poll") {
+      setComposer("");
+      resetComposerHeight();
+      setIsAttachmentSheetOpen(true);
+      return;
+    }
     const scheduleDraft = localAttachments.length === 0 ? parseScheduleCommand(content) : null;
     if (scheduleDraft) {
       window.sessionStorage.setItem(

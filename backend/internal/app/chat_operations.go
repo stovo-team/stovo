@@ -773,6 +773,15 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 			message.Call = &call
 		}
 	}
+	if message.Type == "poll" {
+		pollObj, err := s.polls.GetPollByMessageID(context.Background(), message.ID)
+		if err == nil {
+			pollPub, err := s.buildPollPublic(context.Background(), pollObj.ID, viewerID)
+			if err == nil {
+				message.Poll = &pollPub
+			}
+		}
+	}
 	message.KeyVersion = m.KeyVersion
 	if message.EncryptionProtocol == encryptionProtocolServerAtRest && message.Ciphertext != nil && message.Nonce != nil {
 		decrypted, err := s.decryptServerAtRest(familyID, *message.Ciphertext, *message.Nonce)
