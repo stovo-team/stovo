@@ -14,7 +14,7 @@ import { BarChart2, CalendarClock, HelpCircle, Paperclip, Pencil } from "lucide-
 
 import type { Chat } from "../../../api/chats";
 import type { CreatePollPayload } from "../../../api/polls";
-import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
+import { AttachmentPickerOption, type AttachmentPickerTab } from "../../../components/AttachmentPickerSheet";
 import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import { FormattingToolbar } from "../../../components/FormattingToolbar";
 import { ImageEditorModal } from "../../../components/ImageEditorModal";
