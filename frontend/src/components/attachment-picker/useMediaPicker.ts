@@ -90,8 +90,7 @@ export function useMediaPicker(open: boolean, activeTab: AttachmentPickerTab, pr
     let appStateListener: { remove: () => Promise<void> } | undefined;
 
     void addNativeMediaLibraryListener((category) => {
-      const activeCategory = categoryFor(activeTab);
-      if (!disposed && activeCategory && category === activeCategory) void loadRecentItems(activeTab);
+      if (!disposed && category === categoryFor(activeTab)) void loadRecentItems(activeTab);
     }).then((remove) => {
       if (disposed) remove(); else removeMediaListener = remove;
     });
