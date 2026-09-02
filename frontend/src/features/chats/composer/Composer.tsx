@@ -10,7 +10,7 @@ import {
   useState
 } from "react";
 import { type EmojiClickData } from "emoji-picker-react";
-import { BarChart2, Paperclip, Pencil } from "lucide-react";
+import { BarChart2, CalendarClock, HelpCircle, Paperclip, Pencil } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
 import type { CreatePollPayload } from "../../../api/polls";
@@ -68,6 +68,7 @@ export function Composer({
   onRemovePendingAttachment,
   onUpdatePendingAttachment,
   isAttachmentSheetOpen,
+  attachmentSheetInitialTab,
   galleryPreviewMediaItem,
   onGalleryPreviewMediaItemChange,
   onAttachButtonClick,
@@ -94,6 +95,8 @@ export function Composer({
   onVoicePressStart,
   onVoicePressEnd,
   onVoicePressCancel,
+  allMembers,
+  currentUser,
   onSubmit,
   onScheduleMessage,
   onSetReminder,
@@ -101,6 +104,8 @@ export function Composer({
 }: {
   accessToken: string | null;
   selectedChat: Chat | null;
+  allMembers?: Array<{ id: string; displayName: string; username?: string }>;
+  currentUser?: { id: string; displayName: string; username?: string } | null;
   resolvedThemeMode: "light" | "dark";
   channelCommentsDisabledForViewer: boolean;
   missingCommentThread: boolean;
@@ -129,6 +134,7 @@ export function Composer({
   onRemovePendingAttachment: (localId: string) => void;
   onUpdatePendingAttachment?: (localId: string, updatedFile: File) => void;
   isAttachmentSheetOpen: boolean;
+  attachmentSheetInitialTab?: AttachmentPickerTab;
   galleryPreviewMediaItem?: NativeMediaItem | null;
   onGalleryPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
   onAttachButtonClick: () => void;
@@ -237,14 +243,32 @@ export function Composer({
     ? (composerInputRef.current?.selectionStart ?? cursorPos)
     : (cursorPos > 0 || composer.length === 0 ? cursorPos : composer.length);
   const textBeforeCursor = composer.slice(0, activeCursor);
-  const mentionMatch = /(?:^|\s)@([\p{L}\p{N}_.-]*)$/u.exec(textBeforeCursor);
+  const mentionMatch = /(?:^|[\s([{'"<>])@([\p{L}\p{N}_.-]*)$/u.exec(textBeforeCursor);
 
   const mentionCandidates = useMemo(() => {
-    if (!mentionMatch || isMentionDismissed || !selectedChat?.members?.length) {
+    if (!mentionMatch || isMentionDismissed) {
       return [];
     }
     const query = mentionMatch[1].toLowerCase();
-    const members = selectedChat.members.filter((member) => {
+
+    const memberMap = new Map<string, { id: string; displayName: string; username?: string }>();
+    if (selectedChat?.members) {
+      for (const m of selectedChat.members) {
+        if (m && m.id) memberMap.set(m.id, m);
+      }
+    }
+    if (allMembers) {
+      for (const m of allMembers) {
+        if (m && m.id && !memberMap.has(m.id)) {
+          memberMap.set(m.id, m);
+        }
+      }
+    }
+    if (currentUser && currentUser.id && !memberMap.has(currentUser.id)) {
+      memberMap.set(currentUser.id, currentUser);
+    }
+
+    const members = Array.from(memberMap.values()).filter((member) => {
       if (!member.username && !member.displayName) return false;
       const username = (member.username ?? "").toLowerCase();
       const displayName = (member.displayName ?? "").toLowerCase();
@@ -264,25 +288,57 @@ export function Composer({
     });
 
     return members.slice(0, 8);
-  }, [mentionMatch, isMentionDismissed, selectedChat]);
+  }, [mentionMatch, isMentionDismissed, selectedChat, allMembers, currentUser]);
 
-  const slashMatch = /(?:^|\s)\/([a-zA-Z0-9_]*)$/.exec(textBeforeCursor);
+  const ALL_SLASH_COMMANDS = useMemo(
+    () => [
+      {
+        command: "poll",
+        syntax: "/poll",
+        description: "Create an interactive poll",
+        hint: "Create a poll with custom options, quiz mode, & voting options",
+        icon: <BarChart2 size={16} />
+      },
+      {
+        command: "schedule",
+        syntax: "/schedule Title | Time | Duration",
+        description: "Schedule a plan or event",
+        hint: "Format: /schedule Meeting | Tomorrow 15:00 | 2h",
+        icon: <CalendarClock size={16} />
+      }
+    ],
+    []
+  );
+
+  const slashMatch = /(?:^|\s)\/([a-zA-Z0-9_.-]*)$/u.exec(textBeforeCursor);
+  const slashQuery = slashMatch ? slashMatch[1].toLowerCase() : "";
+  const isSlashActive = Boolean(slashMatch && !isMentionDismissed && !mentionMatch);
+
   const slashCandidates = useMemo(() => {
-    if (!slashMatch || isMentionDismissed || mentionMatch) {
-      return [];
-    }
-    const query = slashMatch[1].toLowerCase();
-    const available = [
-      { command: "poll", description: "Create an interactive poll", icon: <BarChart2 size={16} /> }
-    ];
-    return available.filter((cmd) => cmd.command.toLowerCase().includes(query));
-  }, [slashMatch, isMentionDismissed, mentionMatch]);
+    if (!isSlashActive) return [];
+    return ALL_SLASH_COMMANDS.filter(
+      (cmd) => cmd.command.toLowerCase().includes(slashQuery) || cmd.syntax.toLowerCase().includes(slashQuery)
+    );
+  }, [isSlashActive, slashQuery, ALL_SLASH_COMMANDS]);
 
   function triggerSlashCommand(cmd: string) {
     if (cmd === "poll") {
       onComposerChange("");
       setIsMentionDismissed(true);
       onAttachmentSheetPick("poll");
+    } else if (cmd === "schedule") {
+      const template = "/schedule Meeting | Tomorrow 15:00 | 2h";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/schedule ".length;
+          const end = start + "Meeting".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
     }
   }
 
@@ -303,7 +359,7 @@ export function Composer({
     const textBefore = composer.slice(0, currentCursor);
     const textAfter = composer.slice(currentCursor);
 
-    const match = /(?:^|\s)@([\p{L}\p{N}_.-]*)$/u.exec(textBefore);
+    const match = /(?:^|[\s([{'"<>])@([\p{L}\p{N}_.-]*)$/u.exec(textBefore);
     if (!match) return;
 
     const replaceStart = textBefore.slice(0, match.index);
@@ -355,25 +411,27 @@ export function Composer({
       }
     }
 
-    if (slashCandidates.length > 0) {
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setSelectedMentionIndex((prev) => (prev + 1) % slashCandidates.length);
-        return;
-      }
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setSelectedMentionIndex((prev) => (prev - 1 + slashCandidates.length) % slashCandidates.length);
-        return;
-      }
-      if (event.key === "Enter" || event.key === "Tab") {
-        if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
+    if (isSlashActive) {
+      if (slashCandidates.length > 0) {
+        if (event.key === "ArrowDown") {
           event.preventDefault();
-          const selected = slashCandidates[selectedMentionIndex] ?? slashCandidates[0];
-          if (selected) {
-            triggerSlashCommand(selected.command);
-          }
+          setSelectedMentionIndex((prev) => (prev + 1) % slashCandidates.length);
           return;
+        }
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          setSelectedMentionIndex((prev) => (prev - 1 + slashCandidates.length) % slashCandidates.length);
+          return;
+        }
+        if (event.key === "Enter" || event.key === "Tab") {
+          if (!event.shiftKey && !event.ctrlKey && !event.metaKey) {
+            event.preventDefault();
+            const selected = slashCandidates[selectedMentionIndex] ?? slashCandidates[0];
+            if (selected) {
+              triggerSlashCommand(selected.command);
+            }
+            return;
+          }
         }
       }
       if (event.key === "Escape") {
@@ -413,6 +471,7 @@ export function Composer({
         <ComposerAttachmentProvider value={{
           disabled: isUploading || channelCommentsDisabledForViewer || missingCommentThread,
           isAttachmentSheetOpen,
+          attachmentSheetInitialTab,
           previewMediaItem: galleryPreviewMediaItem,
           onPreviewMediaItemChange: onGalleryPreviewMediaItemChange,
           attachmentInputRef,
@@ -537,26 +596,66 @@ export function Composer({
                 })}
               </div>
             )}
-            {slashCandidates.length > 0 && (
+            {isSlashActive && (
               <div className="composer-mention-menu composer-slash-menu" role="listbox" aria-label="Slash commands">
-                {slashCandidates.map((item, index) => {
-                  const isSelected = index === selectedMentionIndex;
-                  return (
-                    <button
-                      type="button"
-                      key={item.command}
-                      role="option"
-                      aria-selected={isSelected}
-                      className={isSelected ? "active" : ""}
-                      onMouseEnter={() => setSelectedMentionIndex(index)}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => triggerSlashCommand(item.command)}
-                    >
-                      <strong>/{item.command}</strong>
-                      <span>{item.description}</span>
-                    </button>
-                  );
-                })}
+                {slashCandidates.length > 0 ? (
+                  <>
+                    <div className="slash-menu-header">
+                      <span>Available Commands</span>
+                      <small>Press Enter or click to use</small>
+                    </div>
+                    {slashCandidates.map((item, index) => {
+                      const isSelected = index === selectedMentionIndex;
+                      return (
+                        <button
+                          type="button"
+                          key={item.command}
+                          role="option"
+                          aria-selected={isSelected}
+                          className={`slash-command-item ${isSelected ? "active" : ""}`}
+                          onMouseEnter={() => setSelectedMentionIndex(index)}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => triggerSlashCommand(item.command)}
+                        >
+                          <div className="slash-item-left">
+                            <span className="slash-item-icon">{item.icon}</span>
+                            <div className="slash-item-text">
+                              <div className="slash-item-title-row">
+                                <strong className="slash-item-syntax">{item.syntax}</strong>
+                                <span className="slash-item-desc">{item.description}</span>
+                              </div>
+                              <div className="slash-item-hint">{item.hint}</div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <div className="slash-menu-unrecognized">
+                    <div className="slash-unrecognized-header">
+                      <HelpCircle size={16} />
+                      <span>Unrecognized command "/{slashQuery}"</span>
+                    </div>
+                    <div className="slash-unrecognized-body">
+                      <span>Available commands:</span>
+                      <div className="slash-unrecognized-actions">
+                        {ALL_SLASH_COMMANDS.map((cmd) => (
+                          <button
+                            key={cmd.command}
+                            type="button"
+                            className="slash-unrecognized-chip"
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => triggerSlashCommand(cmd.command)}
+                          >
+                            <span className="slash-chip-icon">{cmd.icon}</span>
+                            <strong>/{cmd.command}</strong>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -144,6 +144,16 @@ func SequenceLTE(v int64) predicate.SyncEvent {
 	return predicate.SyncEvent(sql.FieldLTE(FieldSequence, v))
 }
 
+// SequenceIsNil applies the IsNil predicate on the "sequence" field.
+func SequenceIsNil() predicate.SyncEvent {
+	return predicate.SyncEvent(sql.FieldIsNull(FieldSequence))
+}
+
+// SequenceNotNil applies the NotNil predicate on the "sequence" field.
+func SequenceNotNil() predicate.SyncEvent {
+	return predicate.SyncEvent(sql.FieldNotNull(FieldSequence))
+}
+
 // FamilyIDEQ applies the EQ predicate on the "family_id" field.
 func FamilyIDEQ(v string) predicate.SyncEvent {
 	return predicate.SyncEvent(sql.FieldEQ(FieldFamilyID, v))
