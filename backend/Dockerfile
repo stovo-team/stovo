@@ -31,7 +31,4 @@ USER app
 
 EXPOSE 8000
 
-# Atlas is the sole schema owner. Apply the versioned, idempotent migration
-# history before every backend start so dynamically provisioned tenant
-# databases and existing tenant containers advance with the application image.
-CMD ["/bin/sh", "-ec", "atlas migrate apply --dir file:///app/migrations --url \"$(stovo-database-url)\" && exec family-messenger"]
+CMD ["family-messenger"]

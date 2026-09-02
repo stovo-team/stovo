@@ -4,7 +4,6 @@ package bootstrap
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 
 	"stovo-messenger/backend/ent"
@@ -117,13 +116,6 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 		_ = db.Close()
 		return app.Dependencies{}, err
 	}
-	if err := MigrateSchema(context.Background(), db); err != nil {
-		_ = jobsRedisClient.Close()
-		_ = redisClient.Close()
-		_ = logBuffer.Close()
-		_ = db.Close()
-		return app.Dependencies{}, fmt.Errorf("database migration check failed: %w", err)
-	}
 	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	store := repository.New(entClient)
 	uploadStore := fileuploads.NewReader(db)
@@ -231,27 +223,4 @@ func openRedisURL(redisURL string) (*redis.Client, error) {
 		return nil, err
 	}
 	return client, nil
-}
-
-// MigrateSchema verifies that Atlas has prepared the database for the application.
-//
-// Atlas is the only schema owner in production. In particular, do not call
-// entClient.Schema.Create here: Ent's inferred schema does not include all of
-// the database defaults and constraints that the versioned Atlas migrations
-// intentionally define.
-func MigrateSchema(ctx context.Context, db *sql.DB) error {
-	var migrated bool
-	if err := db.QueryRowContext(ctx, `
-		SELECT EXISTS (
-			SELECT 1
-			FROM information_schema.tables
-			WHERE table_schema = 'public' AND table_name = 'atlas_schema_revisions'
-		)
-	`).Scan(&migrated); err != nil {
-		return fmt.Errorf("check Atlas migration state: %w", err)
-	}
-	if !migrated {
-		return fmt.Errorf("Atlas migrations have not been applied; run `atlas migrate apply` before starting the backend")
-	}
-	return nil
 }
