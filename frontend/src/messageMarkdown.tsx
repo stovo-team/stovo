@@ -125,7 +125,7 @@ function matchMention(source: string, start: number): { end: number; username: s
   if (start > 0 && !/[\s([{"'<>]/.test(source[start - 1])) return null;
 
   const rest = source.slice(start);
-  const match = /^@([a-zA-Z0-9_.-]+)/.exec(rest);
+  const match = /^@([\p{L}\p{N}_.-]+)/u.exec(rest);
   if (!match) return null;
 
   let username = match[1];

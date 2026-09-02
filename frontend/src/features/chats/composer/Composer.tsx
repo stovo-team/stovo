@@ -237,7 +237,7 @@ export function Composer({
     ? (composerInputRef.current?.selectionStart ?? cursorPos)
     : (cursorPos > 0 || composer.length === 0 ? cursorPos : composer.length);
   const textBeforeCursor = composer.slice(0, activeCursor);
-  const mentionMatch = /(?:^|\s)@([a-zA-Z0-9_.-]*)$/.exec(textBeforeCursor);
+  const mentionMatch = /(?:^|\s)@([\p{L}\p{N}_.-]*)$/u.exec(textBeforeCursor);
 
   const mentionCandidates = useMemo(() => {
     if (!mentionMatch || isMentionDismissed || !selectedChat?.members?.length) {
@@ -303,12 +303,12 @@ export function Composer({
     const textBefore = composer.slice(0, currentCursor);
     const textAfter = composer.slice(currentCursor);
 
-    const match = /(?:^|\s)@([a-zA-Z0-9_.-]*)$/.exec(textBefore);
+    const match = /(?:^|\s)@([\p{L}\p{N}_.-]*)$/u.exec(textBefore);
     if (!match) return;
 
     const replaceStart = textBefore.slice(0, match.index);
     const matchedToken = match[0];
-    const replacedToken = matchedToken.replace(/@[a-zA-Z0-9_.-]*$/, `@${username} `);
+    const replacedToken = matchedToken.replace(/@[\p{L}\p{N}_.-]*$/u, `@${username} `);
     const prefix = replaceStart + replacedToken;
     const nextValue = prefix + textAfter;
 
