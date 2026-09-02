@@ -59,6 +59,14 @@ func (_c *ClientOperationCreate) SetCreatedAt(v time.Time) *ClientOperationCreat
 	return _c
 }
 
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_c *ClientOperationCreate) SetNillableCreatedAt(v *time.Time) *ClientOperationCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
+	}
+	return _c
+}
+
 // SetExpiresAt sets the "expires_at" field.
 func (_c *ClientOperationCreate) SetExpiresAt(v time.Time) *ClientOperationCreate {
 	_c.mutation.SetExpiresAt(v)
@@ -109,6 +117,10 @@ func (_c *ClientOperationCreate) defaults() {
 	if _, ok := _c.mutation.ResponseBody(); !ok {
 		v := clientoperation.DefaultResponseBody
 		_c.mutation.SetResponseBody(v)
+	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		v := clientoperation.DefaultCreatedAt()
+		_c.mutation.SetCreatedAt(v)
 	}
 }
 

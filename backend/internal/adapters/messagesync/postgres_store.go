@@ -56,7 +56,7 @@ func (s *PostgresStore) CreateSyncedMessage(ctx context.Context, command feature
 
 func claim(ctx context.Context, tx *sql.Tx, actorID, operationID, requestHash string) ([]byte, bool, error) {
 	var inserted string
-	err := tx.QueryRowContext(ctx, `INSERT INTO client_operations (actor_user_id, operation_id, operation_type, request_hash, response_status, response_body, expires_at) VALUES ($1,$2,'message.create',$3,102,'{}'::jsonb,now() + interval '365 days') ON CONFLICT (actor_user_id, operation_id) DO NOTHING RETURNING operation_id`, actorID, operationID, requestHash).Scan(&inserted)
+	err := tx.QueryRowContext(ctx, `INSERT INTO client_operations (actor_user_id, operation_id, operation_type, request_hash, response_status, response_body, created_at, expires_at) VALUES ($1,$2,'message.create',$3,102,'{}'::jsonb,now(),now() + interval '365 days') ON CONFLICT (actor_user_id, operation_id) DO NOTHING RETURNING operation_id`, actorID, operationID, requestHash).Scan(&inserted)
 	if err == nil {
 		return nil, false, nil
 	}

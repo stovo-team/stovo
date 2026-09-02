@@ -233,8 +233,21 @@ func openRedisURL(redisURL string) (*redis.Client, error) {
 	return client, nil
 }
 
-// MigrateSchema runs Ent schema auto-migration on the provided SQL database.
+// MigrateSchema runs schema migrations and Ent auto-migration on the provided SQL database.
 func MigrateSchema(ctx context.Context, db *sql.DB) error {
+	// Ensure created_at default on client_operations if column exists
+	_, _ = db.ExecContext(ctx, `
+		DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns 
+				WHERE table_name = 'client_operations' AND column_name = 'created_at'
+			) THEN
+				ALTER TABLE client_operations ALTER COLUMN created_at SET DEFAULT now();
+			END IF;
+		END $$;
+	`)
+
 	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	return entClient.Schema.Create(ctx)
 }
