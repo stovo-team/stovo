@@ -362,6 +362,52 @@ type messagePublic struct {
 	Attachments         []filePublic            `json:"attachments"`
 	ClientMessageID     *string                 `json:"clientMessageId,omitempty"`
 	Call                *callHistoryPublic      `json:"call,omitempty"`
+	Poll                *pollPublic             `json:"poll,omitempty"`
+}
+
+type pollOptionPublic struct {
+	ID          string   `json:"id"`
+	Text        string   `json:"text"`
+	OptionIndex int      `json:"optionIndex"`
+	VoteCount   int      `json:"voteCount"`
+	Voted       bool     `json:"voted"`
+	VoterIDs    []string `json:"voterIds,omitempty"`
+}
+
+type pollPublic struct {
+	ID              string             `json:"id"`
+	ChatID          string             `json:"chatId"`
+	MessageID       string             `json:"messageId"`
+	Question        string             `json:"question"`
+	IsAnonymous     bool               `json:"isAnonymous"`
+	AllowMultiple   bool               `json:"allowMultiple"`
+	IsQuiz          bool               `json:"isQuiz"`
+	CorrectOptionID *string            `json:"correctOptionId,omitempty"`
+	Explanation     *string            `json:"explanation,omitempty"`
+	IsClosed        bool               `json:"isClosed"`
+	TotalVoters     int                `json:"totalVoters"`
+	CreatedAt       string             `json:"createdAt"`
+	ClosedAt        *string            `json:"closedAt,omitempty"`
+	Options         []pollOptionPublic `json:"options"`
+}
+
+type createPollOptionPayload struct {
+	Text string `json:"text"`
+}
+
+type createPollRequest struct {
+	Question           string                    `json:"question"`
+	Options            []createPollOptionPayload `json:"options"`
+	IsAnonymous        bool                      `json:"isAnonymous"`
+	AllowMultiple      bool                      `json:"allowMultiple"`
+	IsQuiz             bool                      `json:"isQuiz"`
+	CorrectOptionIndex *int                      `json:"correctOptionIndex,omitempty"`
+	Explanation        *string                   `json:"explanation,omitempty"`
+	ReplyToMessageID   *string                   `json:"replyToMessageId,omitempty"`
+}
+
+type votePollRequest struct {
+	OptionIDs []string `json:"optionIds"`
 }
 
 type sendMessageRequest struct {

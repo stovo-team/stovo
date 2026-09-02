@@ -10,6 +10,8 @@ import { MessageMarkdown } from "../../../messageMarkdown";
 import MessageMediaAlbum, { partitionMessageAttachments } from "../../../components/MessageMediaAlbum";
 import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 import { RealAvatar } from "../sidebar/RealAvatar";
+import { PollBubble } from "./PollBubble";
+import type { Poll } from "../../../api/polls";
 
 export function extractFirstUrl(content: string | null | undefined): string | null {
   if (!content) return null;
@@ -69,7 +71,10 @@ export function MessageBubble({
   onFocusRepliedMessage,
   onOpenOriginChat,
   onReact,
-  onOpenThread
+  onOpenThread,
+  onVotePoll,
+  onClosePoll,
+  onViewPollVoters
 }: {
   message: Message;
   previousMessage: Message | undefined;
@@ -101,6 +106,9 @@ export function MessageBubble({
   onOpenOriginChat: (chat: Chat) => void;
   onReact: (message: Message, emoji: string) => void;
   onOpenThread: (message: Message) => void;
+  onVotePoll?: (pollId: string, optionIds: string[]) => Promise<void> | void;
+  onClosePoll?: (pollId: string) => Promise<void> | void;
+  onViewPollVoters?: (poll: Poll) => void;
 }) {
   const strings = useStrings();
   const mine = message.senderId === currentUserId;
@@ -378,7 +386,16 @@ export function MessageBubble({
             </div>
           ) : (
             <>
-              {hasCaption ? (
+              {message.type === "poll" && message.poll ? (
+                <PollBubble
+                  poll={message.poll}
+                  currentUserId={currentUserId ?? ""}
+                  onVote={(pollId, optionIds) => onVotePoll?.(pollId, optionIds)}
+                  onClosePoll={(pollId) => onClosePoll?.(pollId)}
+                  onViewVoters={(poll) => onViewPollVoters?.(poll)}
+                  canClosePoll={mine || selectedChat.createdBy === currentUserId}
+                />
+              ) : hasCaption ? (
                 <>
                   <div className="message-body">
                     {renderMarkdown ? <MessageMarkdown source={message.content} /> : message.content}
@@ -395,7 +412,7 @@ export function MessageBubble({
                 </>
               ) : null}
               {message.deliveryError ? <p className="encrypted-message-unavailable">{message.deliveryError}</p> : null}
-              {(!mediaOnlyMessage || hasCaption) && messageMeta}
+              {(!mediaOnlyMessage || hasCaption || message.type === "poll") && messageMeta}
             </>
           )}
         </div>

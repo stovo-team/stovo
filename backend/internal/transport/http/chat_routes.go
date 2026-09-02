@@ -36,6 +36,10 @@ type ChatRoutes struct {
 	AddMessageReaction    stdhttp.Handler
 	RemoveMessageReaction stdhttp.Handler
 	Unfurl                stdhttp.Handler
+	CreatePoll            stdhttp.Handler
+	VotePoll              stdhttp.Handler
+	ClosePoll             stdhttp.Handler
+	GetPollVoters         stdhttp.Handler
 }
 
 // RegisterChatRoutes installs the stable REST contract for chat and message
@@ -67,4 +71,8 @@ func RegisterChatRoutes(router chi.Router, routes ChatRoutes) {
 	router.Method(stdhttp.MethodPost, "/api/messages/{messageId}/reactions", routes.AddMessageReaction)
 	router.Method(stdhttp.MethodDelete, "/api/messages/{messageId}/reactions/{emoji}", routes.RemoveMessageReaction)
 	router.Method(stdhttp.MethodGet, "/api/unfurl", routes.Unfurl)
+	router.Method(stdhttp.MethodPost, "/api/chats/{chatId}/polls", routes.CreatePoll)
+	router.Method(stdhttp.MethodPost, "/api/polls/{pollId}/vote", routes.VotePoll)
+	router.Method(stdhttp.MethodPost, "/api/polls/{pollId}/close", routes.ClosePoll)
+	router.Method(stdhttp.MethodGet, "/api/polls/{pollId}/voters", routes.GetPollVoters)
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
-import { AudioLines, FileText, Image as ImageIcon, Music, Paperclip, Smile } from "lucide-react";
+import { AudioLines, BarChart2, FileText, Image as ImageIcon, Music, Paperclip, Smile } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 
@@ -18,11 +18,13 @@ import { ImageEditorModal } from "./ImageEditorModal";
 import { MessageEnlargeButton } from "./MessageEnlargeModal";
 import { DocumentPickerList } from "./attachment-picker/DocumentPickerList";
 import { MediaGalleryGrid } from "./attachment-picker/MediaGalleryGrid";
+import { RichPollCreator } from "./attachment-picker/RichPollCreator";
 import { useMediaPicker } from "./attachment-picker/useMediaPicker";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
+import type { CreatePollPayload } from "../api/polls";
 
-export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file";
-export type AttachmentPickerTab = "gallery" | "file" | "audio";
+export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file" | "poll";
+export type AttachmentPickerTab = "gallery" | "file" | "audio" | "poll";
 
 type AttachmentPickerSheetProps = {
   open: boolean;
@@ -38,6 +40,8 @@ type AttachmentPickerSheetProps = {
   isSendingMessage?: boolean;
   previewMediaItem?: NativeMediaItem | null;
   onPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
+  initialTab?: AttachmentPickerTab;
+  onCreatePoll?: (payload: CreatePollPayload) => Promise<void> | void;
 };
 
 export default function AttachmentPickerSheet({
@@ -53,10 +57,12 @@ export default function AttachmentPickerSheet({
   isUploading = false,
   isSendingMessage = false,
   previewMediaItem: propPreviewMediaItem,
-  onPreviewMediaItemChange
+  onPreviewMediaItemChange,
+  initialTab = "gallery",
+  onCreatePoll
 }: AttachmentPickerSheetProps) {
   const prefersReducedMotion = useReducedMotion();
-  const [activeTab, setActiveTab] = useState<AttachmentPickerTab>("gallery");
+  const [activeTab, setActiveTab] = useState<AttachmentPickerTab>(initialTab);
   const [internalPreviewMediaItem, setInternalPreviewMediaItem] = useState<NativeMediaItem | null>(null);
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
   const previewMediaItem = propPreviewMediaItem !== undefined ? propPreviewMediaItem : internalPreviewMediaItem;
@@ -512,6 +518,16 @@ export default function AttachmentPickerSheet({
               }}
             />
           )}
+
+          {activeTab === "poll" && (
+            <RichPollCreator
+              onSubmit={async (payload) => {
+                await onCreatePoll?.(payload);
+                closeSheet();
+              }}
+              onCancel={closeSheet}
+            />
+          )}
         </div>
 
         <div className="attachment-picker-message-box message-composer">
@@ -638,6 +654,16 @@ export default function AttachmentPickerSheet({
               <AudioLines size={20} />
             </span>
             <span className="nav-item-label">Audio</span>
+          </button>
+          <button
+            type="button"
+            className={`attachment-nav-item ${activeTab === "poll" ? "active" : ""}`}
+            onClick={() => setActiveTab("poll")}
+          >
+            <span className="nav-item-icon">
+              <BarChart2 size={20} />
+            </span>
+            <span className="nav-item-label">Poll</span>
           </button>
         </nav>
       </div>

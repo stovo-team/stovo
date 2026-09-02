@@ -27,6 +27,7 @@ import (
 	featuretranscription "stovo-messenger/backend/internal/features/transcription"
 	"stovo-messenger/backend/internal/logging"
 	"stovo-messenger/backend/internal/ports"
+	featurepolls "stovo-messenger/backend/internal/features/polls"
 	workruntime "stovo-messenger/backend/internal/runtime"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	"stovo-messenger/backend/internal/tunnel"
@@ -98,6 +99,7 @@ type Server struct {
 	encryption             *featureadministration.EncryptionService
 	mcpAudit               *featuremcp.AuditService
 	mcpConnectors          *featuremcp.ConnectorService
+	polls                  *featurepolls.Service
 	transcriptionSessions  *featuretranscription.SessionService
 	transcriptionChunks    *featuretranscription.ChunkService
 	transcriptionQueries   *featuretranscription.QueryService
@@ -175,6 +177,7 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 		encryption:             deps.Encryption,
 		mcpAudit:               deps.MCPAudit,
 		mcpConnectors:          deps.MCPConnectors,
+		polls:                  deps.Polls,
 		transcriptionSessions:  deps.TranscriptionSessions,
 		transcriptionChunks:    deps.TranscriptionChunks,
 		transcriptionQueries:   deps.TranscriptionQueries,

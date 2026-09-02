@@ -826,6 +826,85 @@ var (
 			},
 		},
 	}
+	// PollsColumns holds the columns for the "polls" table.
+	PollsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString},
+		{Name: "chat_id", Type: field.TypeString},
+		{Name: "message_id", Type: field.TypeString, Unique: true},
+		{Name: "question", Type: field.TypeString},
+		{Name: "is_anonymous", Type: field.TypeBool, Default: false},
+		{Name: "allow_multiple", Type: field.TypeBool, Default: false},
+		{Name: "is_quiz", Type: field.TypeBool, Default: false},
+		{Name: "correct_option_id", Type: field.TypeString, Nullable: true},
+		{Name: "explanation", Type: field.TypeString, Nullable: true},
+		{Name: "is_closed", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeString},
+		{Name: "closed_at", Type: field.TypeString, Nullable: true},
+	}
+	// PollsTable holds the schema information for the "polls" table.
+	PollsTable = &schema.Table{
+		Name:       "polls",
+		Columns:    PollsColumns,
+		PrimaryKey: []*schema.Column{PollsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "poll_chat_id",
+				Unique:  false,
+				Columns: []*schema.Column{PollsColumns[1]},
+			},
+			{
+				Name:    "poll_message_id",
+				Unique:  true,
+				Columns: []*schema.Column{PollsColumns[2]},
+			},
+		},
+	}
+	// PollOptionsColumns holds the columns for the "poll_options" table.
+	PollOptionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString},
+		{Name: "poll_id", Type: field.TypeString},
+		{Name: "text", Type: field.TypeString},
+		{Name: "option_index", Type: field.TypeInt, Default: 0},
+	}
+	// PollOptionsTable holds the schema information for the "poll_options" table.
+	PollOptionsTable = &schema.Table{
+		Name:       "poll_options",
+		Columns:    PollOptionsColumns,
+		PrimaryKey: []*schema.Column{PollOptionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "polloption_poll_id",
+				Unique:  false,
+				Columns: []*schema.Column{PollOptionsColumns[1]},
+			},
+		},
+	}
+	// PollVotesColumns holds the columns for the "poll_votes" table.
+	PollVotesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString},
+		{Name: "poll_id", Type: field.TypeString},
+		{Name: "option_id", Type: field.TypeString},
+		{Name: "user_id", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeString},
+	}
+	// PollVotesTable holds the schema information for the "poll_votes" table.
+	PollVotesTable = &schema.Table{
+		Name:       "poll_votes",
+		Columns:    PollVotesColumns,
+		PrimaryKey: []*schema.Column{PollVotesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "pollvote_poll_id_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{PollVotesColumns[1], PollVotesColumns[3]},
+			},
+			{
+				Name:    "pollvote_poll_id_option_id",
+				Unique:  false,
+				Columns: []*schema.Column{PollVotesColumns[1], PollVotesColumns[2]},
+			},
+		},
+	}
 	// RefreshTokensColumns holds the columns for the "refresh_tokens" table.
 	RefreshTokensColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString},
@@ -989,6 +1068,9 @@ var (
 		PinnedMessagesTable,
 		PlansTable,
 		PlanAttendeesTable,
+		PollsTable,
+		PollOptionsTable,
+		PollVotesTable,
 		RefreshTokensTable,
 		SyncEventsTable,
 		SyncEventRecipientsTable,
@@ -1098,6 +1180,15 @@ func init() {
 	}
 	PlanAttendeesTable.Annotation = &entsql.Annotation{
 		Table: "plan_attendees",
+	}
+	PollsTable.Annotation = &entsql.Annotation{
+		Table: "polls",
+	}
+	PollOptionsTable.Annotation = &entsql.Annotation{
+		Table: "poll_options",
+	}
+	PollVotesTable.Annotation = &entsql.Annotation{
+		Table: "poll_votes",
 	}
 	RefreshTokensTable.ForeignKeys[0].RefTable = UsersTable
 	RefreshTokensTable.Annotation = &entsql.Annotation{

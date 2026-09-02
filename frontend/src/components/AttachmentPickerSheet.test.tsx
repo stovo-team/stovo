@@ -7,11 +7,12 @@ const mediaPickerSource = readFileSync("src/components/attachment-picker/useMedi
 const mediaGridSource = readFileSync("src/components/attachment-picker/MediaGalleryGrid.tsx", "utf8");
 
 describe("AttachmentPickerSheet Android gallery", () => {
-  it("keeps only isolated Gallery, File, and Audio tabs", () => {
+  it("keeps isolated Gallery, File, Audio, and Poll tabs", () => {
     expect(attachmentSheetSource).toContain('setActiveTab("gallery")');
     expect(attachmentSheetSource).toContain('activeTab === "gallery"');
     expect(attachmentSheetSource).toContain('activeTab === "file"');
     expect(attachmentSheetSource).toContain('activeTab === "audio"');
+    expect(attachmentSheetSource).toContain('activeTab === "poll"');
     expect(attachmentSheetSource).not.toContain('activeTab === "location"');
     expect(attachmentSheetSource).not.toContain('activeTab === "article"');
     expect(attachmentSheetSource).not.toContain("SAMPLE_GALLERY_ITEMS");

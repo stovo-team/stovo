@@ -33,6 +33,9 @@ import (
 	"stovo-messenger/backend/ent/pinnedmessage"
 	"stovo-messenger/backend/ent/plan"
 	"stovo-messenger/backend/ent/planattendee"
+	"stovo-messenger/backend/ent/poll"
+	"stovo-messenger/backend/ent/polloption"
+	"stovo-messenger/backend/ent/pollvote"
 	"stovo-messenger/backend/ent/predicate"
 	"stovo-messenger/backend/ent/refreshtoken"
 	"stovo-messenger/backend/ent/syncevent"
@@ -82,6 +85,9 @@ const (
 	TypePinnedMessage        = "PinnedMessage"
 	TypePlan                 = "Plan"
 	TypePlanAttendee         = "PlanAttendee"
+	TypePoll                 = "Poll"
+	TypePollOption           = "PollOption"
+	TypePollVote             = "PollVote"
 	TypeRefreshToken         = "RefreshToken"
 	TypeSyncEvent            = "SyncEvent"
 	TypeSyncEventRecipient   = "SyncEventRecipient"
@@ -22311,6 +22317,1908 @@ func (m *PlanAttendeeMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *PlanAttendeeMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown PlanAttendee edge %s", name)
+}
+
+// PollMutation represents an operation that mutates the Poll nodes in the graph.
+type PollMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *string
+	chat_id           *string
+	message_id        *string
+	question          *string
+	is_anonymous      *bool
+	allow_multiple    *bool
+	is_quiz           *bool
+	correct_option_id *string
+	explanation       *string
+	is_closed         *bool
+	created_at        *string
+	closed_at         *string
+	clearedFields     map[string]struct{}
+	done              bool
+	oldValue          func(context.Context) (*Poll, error)
+	predicates        []predicate.Poll
+}
+
+var _ ent.Mutation = (*PollMutation)(nil)
+
+// pollOption allows management of the mutation configuration using functional options.
+type pollOption func(*PollMutation)
+
+// newPollMutation creates new mutation for the Poll entity.
+func newPollMutation(c config, op Op, opts ...pollOption) *PollMutation {
+	m := &PollMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePoll,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPollID sets the ID field of the mutation.
+func withPollID(id string) pollOption {
+	return func(m *PollMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Poll
+		)
+		m.oldValue = func(ctx context.Context) (*Poll, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Poll.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPoll sets the old Poll of the mutation.
+func withPoll(node *Poll) pollOption {
+	return func(m *PollMutation) {
+		m.oldValue = func(context.Context) (*Poll, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PollMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PollMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Poll entities.
+func (m *PollMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PollMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PollMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Poll.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetChatID sets the "chat_id" field.
+func (m *PollMutation) SetChatID(s string) {
+	m.chat_id = &s
+}
+
+// ChatID returns the value of the "chat_id" field in the mutation.
+func (m *PollMutation) ChatID() (r string, exists bool) {
+	v := m.chat_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChatID returns the old "chat_id" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldChatID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChatID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChatID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChatID: %w", err)
+	}
+	return oldValue.ChatID, nil
+}
+
+// ResetChatID resets all changes to the "chat_id" field.
+func (m *PollMutation) ResetChatID() {
+	m.chat_id = nil
+}
+
+// SetMessageID sets the "message_id" field.
+func (m *PollMutation) SetMessageID(s string) {
+	m.message_id = &s
+}
+
+// MessageID returns the value of the "message_id" field in the mutation.
+func (m *PollMutation) MessageID() (r string, exists bool) {
+	v := m.message_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessageID returns the old "message_id" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldMessageID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessageID: %w", err)
+	}
+	return oldValue.MessageID, nil
+}
+
+// ResetMessageID resets all changes to the "message_id" field.
+func (m *PollMutation) ResetMessageID() {
+	m.message_id = nil
+}
+
+// SetQuestion sets the "question" field.
+func (m *PollMutation) SetQuestion(s string) {
+	m.question = &s
+}
+
+// Question returns the value of the "question" field in the mutation.
+func (m *PollMutation) Question() (r string, exists bool) {
+	v := m.question
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuestion returns the old "question" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldQuestion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuestion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuestion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuestion: %w", err)
+	}
+	return oldValue.Question, nil
+}
+
+// ResetQuestion resets all changes to the "question" field.
+func (m *PollMutation) ResetQuestion() {
+	m.question = nil
+}
+
+// SetIsAnonymous sets the "is_anonymous" field.
+func (m *PollMutation) SetIsAnonymous(b bool) {
+	m.is_anonymous = &b
+}
+
+// IsAnonymous returns the value of the "is_anonymous" field in the mutation.
+func (m *PollMutation) IsAnonymous() (r bool, exists bool) {
+	v := m.is_anonymous
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsAnonymous returns the old "is_anonymous" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldIsAnonymous(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsAnonymous is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsAnonymous requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsAnonymous: %w", err)
+	}
+	return oldValue.IsAnonymous, nil
+}
+
+// ResetIsAnonymous resets all changes to the "is_anonymous" field.
+func (m *PollMutation) ResetIsAnonymous() {
+	m.is_anonymous = nil
+}
+
+// SetAllowMultiple sets the "allow_multiple" field.
+func (m *PollMutation) SetAllowMultiple(b bool) {
+	m.allow_multiple = &b
+}
+
+// AllowMultiple returns the value of the "allow_multiple" field in the mutation.
+func (m *PollMutation) AllowMultiple() (r bool, exists bool) {
+	v := m.allow_multiple
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAllowMultiple returns the old "allow_multiple" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldAllowMultiple(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAllowMultiple is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAllowMultiple requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAllowMultiple: %w", err)
+	}
+	return oldValue.AllowMultiple, nil
+}
+
+// ResetAllowMultiple resets all changes to the "allow_multiple" field.
+func (m *PollMutation) ResetAllowMultiple() {
+	m.allow_multiple = nil
+}
+
+// SetIsQuiz sets the "is_quiz" field.
+func (m *PollMutation) SetIsQuiz(b bool) {
+	m.is_quiz = &b
+}
+
+// IsQuiz returns the value of the "is_quiz" field in the mutation.
+func (m *PollMutation) IsQuiz() (r bool, exists bool) {
+	v := m.is_quiz
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsQuiz returns the old "is_quiz" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldIsQuiz(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsQuiz is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsQuiz requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsQuiz: %w", err)
+	}
+	return oldValue.IsQuiz, nil
+}
+
+// ResetIsQuiz resets all changes to the "is_quiz" field.
+func (m *PollMutation) ResetIsQuiz() {
+	m.is_quiz = nil
+}
+
+// SetCorrectOptionID sets the "correct_option_id" field.
+func (m *PollMutation) SetCorrectOptionID(s string) {
+	m.correct_option_id = &s
+}
+
+// CorrectOptionID returns the value of the "correct_option_id" field in the mutation.
+func (m *PollMutation) CorrectOptionID() (r string, exists bool) {
+	v := m.correct_option_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCorrectOptionID returns the old "correct_option_id" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldCorrectOptionID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCorrectOptionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCorrectOptionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCorrectOptionID: %w", err)
+	}
+	return oldValue.CorrectOptionID, nil
+}
+
+// ClearCorrectOptionID clears the value of the "correct_option_id" field.
+func (m *PollMutation) ClearCorrectOptionID() {
+	m.correct_option_id = nil
+	m.clearedFields[poll.FieldCorrectOptionID] = struct{}{}
+}
+
+// CorrectOptionIDCleared returns if the "correct_option_id" field was cleared in this mutation.
+func (m *PollMutation) CorrectOptionIDCleared() bool {
+	_, ok := m.clearedFields[poll.FieldCorrectOptionID]
+	return ok
+}
+
+// ResetCorrectOptionID resets all changes to the "correct_option_id" field.
+func (m *PollMutation) ResetCorrectOptionID() {
+	m.correct_option_id = nil
+	delete(m.clearedFields, poll.FieldCorrectOptionID)
+}
+
+// SetExplanation sets the "explanation" field.
+func (m *PollMutation) SetExplanation(s string) {
+	m.explanation = &s
+}
+
+// Explanation returns the value of the "explanation" field in the mutation.
+func (m *PollMutation) Explanation() (r string, exists bool) {
+	v := m.explanation
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldExplanation returns the old "explanation" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldExplanation(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldExplanation is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldExplanation requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldExplanation: %w", err)
+	}
+	return oldValue.Explanation, nil
+}
+
+// ClearExplanation clears the value of the "explanation" field.
+func (m *PollMutation) ClearExplanation() {
+	m.explanation = nil
+	m.clearedFields[poll.FieldExplanation] = struct{}{}
+}
+
+// ExplanationCleared returns if the "explanation" field was cleared in this mutation.
+func (m *PollMutation) ExplanationCleared() bool {
+	_, ok := m.clearedFields[poll.FieldExplanation]
+	return ok
+}
+
+// ResetExplanation resets all changes to the "explanation" field.
+func (m *PollMutation) ResetExplanation() {
+	m.explanation = nil
+	delete(m.clearedFields, poll.FieldExplanation)
+}
+
+// SetIsClosed sets the "is_closed" field.
+func (m *PollMutation) SetIsClosed(b bool) {
+	m.is_closed = &b
+}
+
+// IsClosed returns the value of the "is_closed" field in the mutation.
+func (m *PollMutation) IsClosed() (r bool, exists bool) {
+	v := m.is_closed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsClosed returns the old "is_closed" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldIsClosed(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsClosed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsClosed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsClosed: %w", err)
+	}
+	return oldValue.IsClosed, nil
+}
+
+// ResetIsClosed resets all changes to the "is_closed" field.
+func (m *PollMutation) ResetIsClosed() {
+	m.is_closed = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *PollMutation) SetCreatedAt(s string) {
+	m.created_at = &s
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *PollMutation) CreatedAt() (r string, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldCreatedAt(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *PollMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetClosedAt sets the "closed_at" field.
+func (m *PollMutation) SetClosedAt(s string) {
+	m.closed_at = &s
+}
+
+// ClosedAt returns the value of the "closed_at" field in the mutation.
+func (m *PollMutation) ClosedAt() (r string, exists bool) {
+	v := m.closed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldClosedAt returns the old "closed_at" field's value of the Poll entity.
+// If the Poll object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollMutation) OldClosedAt(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldClosedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldClosedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldClosedAt: %w", err)
+	}
+	return oldValue.ClosedAt, nil
+}
+
+// ClearClosedAt clears the value of the "closed_at" field.
+func (m *PollMutation) ClearClosedAt() {
+	m.closed_at = nil
+	m.clearedFields[poll.FieldClosedAt] = struct{}{}
+}
+
+// ClosedAtCleared returns if the "closed_at" field was cleared in this mutation.
+func (m *PollMutation) ClosedAtCleared() bool {
+	_, ok := m.clearedFields[poll.FieldClosedAt]
+	return ok
+}
+
+// ResetClosedAt resets all changes to the "closed_at" field.
+func (m *PollMutation) ResetClosedAt() {
+	m.closed_at = nil
+	delete(m.clearedFields, poll.FieldClosedAt)
+}
+
+// Where appends a list predicates to the PollMutation builder.
+func (m *PollMutation) Where(ps ...predicate.Poll) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PollMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PollMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Poll, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PollMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PollMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Poll).
+func (m *PollMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PollMutation) Fields() []string {
+	fields := make([]string, 0, 11)
+	if m.chat_id != nil {
+		fields = append(fields, poll.FieldChatID)
+	}
+	if m.message_id != nil {
+		fields = append(fields, poll.FieldMessageID)
+	}
+	if m.question != nil {
+		fields = append(fields, poll.FieldQuestion)
+	}
+	if m.is_anonymous != nil {
+		fields = append(fields, poll.FieldIsAnonymous)
+	}
+	if m.allow_multiple != nil {
+		fields = append(fields, poll.FieldAllowMultiple)
+	}
+	if m.is_quiz != nil {
+		fields = append(fields, poll.FieldIsQuiz)
+	}
+	if m.correct_option_id != nil {
+		fields = append(fields, poll.FieldCorrectOptionID)
+	}
+	if m.explanation != nil {
+		fields = append(fields, poll.FieldExplanation)
+	}
+	if m.is_closed != nil {
+		fields = append(fields, poll.FieldIsClosed)
+	}
+	if m.created_at != nil {
+		fields = append(fields, poll.FieldCreatedAt)
+	}
+	if m.closed_at != nil {
+		fields = append(fields, poll.FieldClosedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PollMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case poll.FieldChatID:
+		return m.ChatID()
+	case poll.FieldMessageID:
+		return m.MessageID()
+	case poll.FieldQuestion:
+		return m.Question()
+	case poll.FieldIsAnonymous:
+		return m.IsAnonymous()
+	case poll.FieldAllowMultiple:
+		return m.AllowMultiple()
+	case poll.FieldIsQuiz:
+		return m.IsQuiz()
+	case poll.FieldCorrectOptionID:
+		return m.CorrectOptionID()
+	case poll.FieldExplanation:
+		return m.Explanation()
+	case poll.FieldIsClosed:
+		return m.IsClosed()
+	case poll.FieldCreatedAt:
+		return m.CreatedAt()
+	case poll.FieldClosedAt:
+		return m.ClosedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PollMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case poll.FieldChatID:
+		return m.OldChatID(ctx)
+	case poll.FieldMessageID:
+		return m.OldMessageID(ctx)
+	case poll.FieldQuestion:
+		return m.OldQuestion(ctx)
+	case poll.FieldIsAnonymous:
+		return m.OldIsAnonymous(ctx)
+	case poll.FieldAllowMultiple:
+		return m.OldAllowMultiple(ctx)
+	case poll.FieldIsQuiz:
+		return m.OldIsQuiz(ctx)
+	case poll.FieldCorrectOptionID:
+		return m.OldCorrectOptionID(ctx)
+	case poll.FieldExplanation:
+		return m.OldExplanation(ctx)
+	case poll.FieldIsClosed:
+		return m.OldIsClosed(ctx)
+	case poll.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case poll.FieldClosedAt:
+		return m.OldClosedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Poll field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PollMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case poll.FieldChatID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChatID(v)
+		return nil
+	case poll.FieldMessageID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessageID(v)
+		return nil
+	case poll.FieldQuestion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuestion(v)
+		return nil
+	case poll.FieldIsAnonymous:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsAnonymous(v)
+		return nil
+	case poll.FieldAllowMultiple:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAllowMultiple(v)
+		return nil
+	case poll.FieldIsQuiz:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsQuiz(v)
+		return nil
+	case poll.FieldCorrectOptionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCorrectOptionID(v)
+		return nil
+	case poll.FieldExplanation:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetExplanation(v)
+		return nil
+	case poll.FieldIsClosed:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsClosed(v)
+		return nil
+	case poll.FieldCreatedAt:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case poll.FieldClosedAt:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetClosedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Poll field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PollMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PollMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PollMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Poll numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PollMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(poll.FieldCorrectOptionID) {
+		fields = append(fields, poll.FieldCorrectOptionID)
+	}
+	if m.FieldCleared(poll.FieldExplanation) {
+		fields = append(fields, poll.FieldExplanation)
+	}
+	if m.FieldCleared(poll.FieldClosedAt) {
+		fields = append(fields, poll.FieldClosedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PollMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PollMutation) ClearField(name string) error {
+	switch name {
+	case poll.FieldCorrectOptionID:
+		m.ClearCorrectOptionID()
+		return nil
+	case poll.FieldExplanation:
+		m.ClearExplanation()
+		return nil
+	case poll.FieldClosedAt:
+		m.ClearClosedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Poll nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PollMutation) ResetField(name string) error {
+	switch name {
+	case poll.FieldChatID:
+		m.ResetChatID()
+		return nil
+	case poll.FieldMessageID:
+		m.ResetMessageID()
+		return nil
+	case poll.FieldQuestion:
+		m.ResetQuestion()
+		return nil
+	case poll.FieldIsAnonymous:
+		m.ResetIsAnonymous()
+		return nil
+	case poll.FieldAllowMultiple:
+		m.ResetAllowMultiple()
+		return nil
+	case poll.FieldIsQuiz:
+		m.ResetIsQuiz()
+		return nil
+	case poll.FieldCorrectOptionID:
+		m.ResetCorrectOptionID()
+		return nil
+	case poll.FieldExplanation:
+		m.ResetExplanation()
+		return nil
+	case poll.FieldIsClosed:
+		m.ResetIsClosed()
+		return nil
+	case poll.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case poll.FieldClosedAt:
+		m.ResetClosedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Poll field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PollMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PollMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PollMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PollMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PollMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PollMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PollMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Poll unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PollMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Poll edge %s", name)
+}
+
+// PollOptionMutation represents an operation that mutates the PollOption nodes in the graph.
+type PollOptionMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *string
+	poll_id         *string
+	text            *string
+	option_index    *int
+	addoption_index *int
+	clearedFields   map[string]struct{}
+	done            bool
+	oldValue        func(context.Context) (*PollOption, error)
+	predicates      []predicate.PollOption
+}
+
+var _ ent.Mutation = (*PollOptionMutation)(nil)
+
+// polloptionOption allows management of the mutation configuration using functional options.
+type polloptionOption func(*PollOptionMutation)
+
+// newPollOptionMutation creates new mutation for the PollOption entity.
+func newPollOptionMutation(c config, op Op, opts ...polloptionOption) *PollOptionMutation {
+	m := &PollOptionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePollOption,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPollOptionID sets the ID field of the mutation.
+func withPollOptionID(id string) polloptionOption {
+	return func(m *PollOptionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PollOption
+		)
+		m.oldValue = func(ctx context.Context) (*PollOption, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PollOption.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPollOption sets the old PollOption of the mutation.
+func withPollOption(node *PollOption) polloptionOption {
+	return func(m *PollOptionMutation) {
+		m.oldValue = func(context.Context) (*PollOption, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PollOptionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PollOptionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of PollOption entities.
+func (m *PollOptionMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PollOptionMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PollOptionMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PollOption.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetPollID sets the "poll_id" field.
+func (m *PollOptionMutation) SetPollID(s string) {
+	m.poll_id = &s
+}
+
+// PollID returns the value of the "poll_id" field in the mutation.
+func (m *PollOptionMutation) PollID() (r string, exists bool) {
+	v := m.poll_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPollID returns the old "poll_id" field's value of the PollOption entity.
+// If the PollOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollOptionMutation) OldPollID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPollID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPollID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPollID: %w", err)
+	}
+	return oldValue.PollID, nil
+}
+
+// ResetPollID resets all changes to the "poll_id" field.
+func (m *PollOptionMutation) ResetPollID() {
+	m.poll_id = nil
+}
+
+// SetText sets the "text" field.
+func (m *PollOptionMutation) SetText(s string) {
+	m.text = &s
+}
+
+// Text returns the value of the "text" field in the mutation.
+func (m *PollOptionMutation) Text() (r string, exists bool) {
+	v := m.text
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldText returns the old "text" field's value of the PollOption entity.
+// If the PollOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollOptionMutation) OldText(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldText is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldText requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldText: %w", err)
+	}
+	return oldValue.Text, nil
+}
+
+// ResetText resets all changes to the "text" field.
+func (m *PollOptionMutation) ResetText() {
+	m.text = nil
+}
+
+// SetOptionIndex sets the "option_index" field.
+func (m *PollOptionMutation) SetOptionIndex(i int) {
+	m.option_index = &i
+	m.addoption_index = nil
+}
+
+// OptionIndex returns the value of the "option_index" field in the mutation.
+func (m *PollOptionMutation) OptionIndex() (r int, exists bool) {
+	v := m.option_index
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOptionIndex returns the old "option_index" field's value of the PollOption entity.
+// If the PollOption object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollOptionMutation) OldOptionIndex(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOptionIndex is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOptionIndex requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOptionIndex: %w", err)
+	}
+	return oldValue.OptionIndex, nil
+}
+
+// AddOptionIndex adds i to the "option_index" field.
+func (m *PollOptionMutation) AddOptionIndex(i int) {
+	if m.addoption_index != nil {
+		*m.addoption_index += i
+	} else {
+		m.addoption_index = &i
+	}
+}
+
+// AddedOptionIndex returns the value that was added to the "option_index" field in this mutation.
+func (m *PollOptionMutation) AddedOptionIndex() (r int, exists bool) {
+	v := m.addoption_index
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetOptionIndex resets all changes to the "option_index" field.
+func (m *PollOptionMutation) ResetOptionIndex() {
+	m.option_index = nil
+	m.addoption_index = nil
+}
+
+// Where appends a list predicates to the PollOptionMutation builder.
+func (m *PollOptionMutation) Where(ps ...predicate.PollOption) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PollOptionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PollOptionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PollOption, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PollOptionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PollOptionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PollOption).
+func (m *PollOptionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PollOptionMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.poll_id != nil {
+		fields = append(fields, polloption.FieldPollID)
+	}
+	if m.text != nil {
+		fields = append(fields, polloption.FieldText)
+	}
+	if m.option_index != nil {
+		fields = append(fields, polloption.FieldOptionIndex)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PollOptionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case polloption.FieldPollID:
+		return m.PollID()
+	case polloption.FieldText:
+		return m.Text()
+	case polloption.FieldOptionIndex:
+		return m.OptionIndex()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PollOptionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case polloption.FieldPollID:
+		return m.OldPollID(ctx)
+	case polloption.FieldText:
+		return m.OldText(ctx)
+	case polloption.FieldOptionIndex:
+		return m.OldOptionIndex(ctx)
+	}
+	return nil, fmt.Errorf("unknown PollOption field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PollOptionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case polloption.FieldPollID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPollID(v)
+		return nil
+	case polloption.FieldText:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetText(v)
+		return nil
+	case polloption.FieldOptionIndex:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOptionIndex(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PollOption field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PollOptionMutation) AddedFields() []string {
+	var fields []string
+	if m.addoption_index != nil {
+		fields = append(fields, polloption.FieldOptionIndex)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PollOptionMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case polloption.FieldOptionIndex:
+		return m.AddedOptionIndex()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PollOptionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case polloption.FieldOptionIndex:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddOptionIndex(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PollOption numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PollOptionMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PollOptionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PollOptionMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown PollOption nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PollOptionMutation) ResetField(name string) error {
+	switch name {
+	case polloption.FieldPollID:
+		m.ResetPollID()
+		return nil
+	case polloption.FieldText:
+		m.ResetText()
+		return nil
+	case polloption.FieldOptionIndex:
+		m.ResetOptionIndex()
+		return nil
+	}
+	return fmt.Errorf("unknown PollOption field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PollOptionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PollOptionMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PollOptionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PollOptionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PollOptionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PollOptionMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PollOptionMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PollOption unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PollOptionMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PollOption edge %s", name)
+}
+
+// PollVoteMutation represents an operation that mutates the PollVote nodes in the graph.
+type PollVoteMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *string
+	poll_id       *string
+	option_id     *string
+	user_id       *string
+	created_at    *string
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*PollVote, error)
+	predicates    []predicate.PollVote
+}
+
+var _ ent.Mutation = (*PollVoteMutation)(nil)
+
+// pollvoteOption allows management of the mutation configuration using functional options.
+type pollvoteOption func(*PollVoteMutation)
+
+// newPollVoteMutation creates new mutation for the PollVote entity.
+func newPollVoteMutation(c config, op Op, opts ...pollvoteOption) *PollVoteMutation {
+	m := &PollVoteMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePollVote,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPollVoteID sets the ID field of the mutation.
+func withPollVoteID(id string) pollvoteOption {
+	return func(m *PollVoteMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PollVote
+		)
+		m.oldValue = func(ctx context.Context) (*PollVote, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PollVote.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPollVote sets the old PollVote of the mutation.
+func withPollVote(node *PollVote) pollvoteOption {
+	return func(m *PollVoteMutation) {
+		m.oldValue = func(context.Context) (*PollVote, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PollVoteMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PollVoteMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of PollVote entities.
+func (m *PollVoteMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PollVoteMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PollVoteMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PollVote.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetPollID sets the "poll_id" field.
+func (m *PollVoteMutation) SetPollID(s string) {
+	m.poll_id = &s
+}
+
+// PollID returns the value of the "poll_id" field in the mutation.
+func (m *PollVoteMutation) PollID() (r string, exists bool) {
+	v := m.poll_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPollID returns the old "poll_id" field's value of the PollVote entity.
+// If the PollVote object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollVoteMutation) OldPollID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPollID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPollID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPollID: %w", err)
+	}
+	return oldValue.PollID, nil
+}
+
+// ResetPollID resets all changes to the "poll_id" field.
+func (m *PollVoteMutation) ResetPollID() {
+	m.poll_id = nil
+}
+
+// SetOptionID sets the "option_id" field.
+func (m *PollVoteMutation) SetOptionID(s string) {
+	m.option_id = &s
+}
+
+// OptionID returns the value of the "option_id" field in the mutation.
+func (m *PollVoteMutation) OptionID() (r string, exists bool) {
+	v := m.option_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOptionID returns the old "option_id" field's value of the PollVote entity.
+// If the PollVote object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollVoteMutation) OldOptionID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOptionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOptionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOptionID: %w", err)
+	}
+	return oldValue.OptionID, nil
+}
+
+// ResetOptionID resets all changes to the "option_id" field.
+func (m *PollVoteMutation) ResetOptionID() {
+	m.option_id = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *PollVoteMutation) SetUserID(s string) {
+	m.user_id = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *PollVoteMutation) UserID() (r string, exists bool) {
+	v := m.user_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the PollVote entity.
+// If the PollVote object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollVoteMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *PollVoteMutation) ResetUserID() {
+	m.user_id = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *PollVoteMutation) SetCreatedAt(s string) {
+	m.created_at = &s
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *PollVoteMutation) CreatedAt() (r string, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the PollVote entity.
+// If the PollVote object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PollVoteMutation) OldCreatedAt(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *PollVoteMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// Where appends a list predicates to the PollVoteMutation builder.
+func (m *PollVoteMutation) Where(ps ...predicate.PollVote) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PollVoteMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PollVoteMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PollVote, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PollVoteMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PollVoteMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PollVote).
+func (m *PollVoteMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PollVoteMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.poll_id != nil {
+		fields = append(fields, pollvote.FieldPollID)
+	}
+	if m.option_id != nil {
+		fields = append(fields, pollvote.FieldOptionID)
+	}
+	if m.user_id != nil {
+		fields = append(fields, pollvote.FieldUserID)
+	}
+	if m.created_at != nil {
+		fields = append(fields, pollvote.FieldCreatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PollVoteMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case pollvote.FieldPollID:
+		return m.PollID()
+	case pollvote.FieldOptionID:
+		return m.OptionID()
+	case pollvote.FieldUserID:
+		return m.UserID()
+	case pollvote.FieldCreatedAt:
+		return m.CreatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PollVoteMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case pollvote.FieldPollID:
+		return m.OldPollID(ctx)
+	case pollvote.FieldOptionID:
+		return m.OldOptionID(ctx)
+	case pollvote.FieldUserID:
+		return m.OldUserID(ctx)
+	case pollvote.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown PollVote field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PollVoteMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case pollvote.FieldPollID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPollID(v)
+		return nil
+	case pollvote.FieldOptionID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOptionID(v)
+		return nil
+	case pollvote.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case pollvote.FieldCreatedAt:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PollVote field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PollVoteMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PollVoteMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PollVoteMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown PollVote numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PollVoteMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PollVoteMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PollVoteMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown PollVote nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PollVoteMutation) ResetField(name string) error {
+	switch name {
+	case pollvote.FieldPollID:
+		m.ResetPollID()
+		return nil
+	case pollvote.FieldOptionID:
+		m.ResetOptionID()
+		return nil
+	case pollvote.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case pollvote.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown PollVote field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PollVoteMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PollVoteMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PollVoteMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PollVoteMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PollVoteMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PollVoteMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PollVoteMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown PollVote unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PollVoteMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown PollVote edge %s", name)
 }
 
 // RefreshTokenMutation represents an operation that mutates the RefreshToken nodes in the graph.

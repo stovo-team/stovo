@@ -47,6 +47,7 @@ import (
 	"stovo-messenger/backend/internal/adapters/messagesync"
 	"stovo-messenger/backend/internal/adapters/messageunread"
 	"stovo-messenger/backend/internal/adapters/outbox"
+	adapterpolls "stovo-messenger/backend/internal/adapters/polls"
 	"stovo-messenger/backend/internal/adapters/publicaccess"
 	"stovo-messenger/backend/internal/adapters/realtimecache"
 	"stovo-messenger/backend/internal/adapters/roles"
@@ -65,6 +66,7 @@ import (
 	featuremcp "stovo-messenger/backend/internal/features/mcp"
 	featuremessages "stovo-messenger/backend/internal/features/messages"
 	featureplans "stovo-messenger/backend/internal/features/plans"
+	featurepolls "stovo-messenger/backend/internal/features/polls"
 	featurepreferences "stovo-messenger/backend/internal/features/preferences"
 	featureprivacy "stovo-messenger/backend/internal/features/privacy"
 	featureroles "stovo-messenger/backend/internal/features/roles"
@@ -169,6 +171,7 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 		Encryption:            featureadministration.NewEncryptionService(adminencryption.NewStore(store), time.Now),
 		MCPAudit:              featuremcp.NewAuditService(mcpaudit.NewStore(store)),
 		MCPConnectors:         featuremcp.NewConnectorService(mcpconnectors.NewStore(store)),
+		Polls:                 featurepolls.NewService(adapterpolls.NewStore(store)),
 		TranscriptionSessions: featuretranscription.NewSessionService(transcriptionsessions.NewPostgresStore(db)),
 		TranscriptionChunks:   featuretranscription.NewChunkService(transcriptionsessions.NewPostgresStore(db)),
 		TranscriptionQueries:  featuretranscription.NewQueryService(transcriptionsessions.NewPostgresStore(db)),

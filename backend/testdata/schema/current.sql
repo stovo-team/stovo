@@ -31,6 +31,9 @@ CREATE TABLE client_operations (actor_user_id text NOT NULL, operation_id text N
 CREATE TABLE outbox_events (id text PRIMARY KEY);
 CREATE TABLE consumer_receipts (consumer_name text NOT NULL, event_id text NOT NULL, PRIMARY KEY (consumer_name, event_id));
 CREATE TABLE notification_deliveries (event_id text NOT NULL, recipient_id text NOT NULL, channel text NOT NULL, PRIMARY KEY (event_id, recipient_id, channel));
+CREATE TABLE polls (id text PRIMARY KEY);
+CREATE TABLE poll_options (id text PRIMARY KEY);
+CREATE TABLE poll_votes (id text PRIMARY KEY);
 
 --
 -- Name: call_participants; Type: TABLE; Schema: public; Owner: -

@@ -87,6 +87,15 @@ type Plan func(*sql.Selector)
 // PlanAttendee is the predicate function for planattendee builders.
 type PlanAttendee func(*sql.Selector)
 
+// Poll is the predicate function for poll builders.
+type Poll func(*sql.Selector)
+
+// PollOption is the predicate function for polloption builders.
+type PollOption func(*sql.Selector)
+
+// PollVote is the predicate function for pollvote builders.
+type PollVote func(*sql.Selector)
+
 // RefreshToken is the predicate function for refreshtoken builders.
 type RefreshToken func(*sql.Selector)
 
