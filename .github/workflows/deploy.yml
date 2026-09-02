@@ -102,6 +102,12 @@ jobs:
                 for container_id in $child_containers; do
                     server_slug="$(sudo docker inspect --format '{{index .Config.Labels "stovo-server"}}' "$container_id")"
                     if [ -n "$server_slug" ]; then
+                        echo "Applying tenant database migrations for server: $server_slug"
+                        for migration in $(find backend/migrations -maxdepth 1 -name '*.sql' | sort); do
+                          echo "Applying migration: $migration to stovo_db_${server_slug}"
+                          cat "$migration" | sudo docker compose -f docker-compose.master.yml exec -T postgres psql -U "$pg_user" -d "stovo_db_${server_slug}" >/dev/null 2>&1 || true
+                        done
+
                         echo "Re-deploying container for server: $server_slug"
                         # A missing bucket means the tenant's media history has been
                         # lost or the MinIO volume is wrong. Do not hide that incident

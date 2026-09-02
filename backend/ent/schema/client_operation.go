@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"time"
+
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema"
@@ -26,7 +28,7 @@ func (ClientOperation) Fields() []ent.Field {
 		field.String("request_hash").NotEmpty().Immutable(),
 		field.Int("response_status").Immutable(),
 		field.JSON("response_body", map[string]any{}).Default(map[string]any{}).Immutable(),
-		field.Time("created_at").Immutable(),
+		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("expires_at").Immutable(),
 	}
 }
