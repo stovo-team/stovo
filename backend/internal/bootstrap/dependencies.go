@@ -50,9 +50,12 @@ import (
 	"stovo-messenger/backend/internal/adapters/publicaccess"
 	"stovo-messenger/backend/internal/adapters/realtimecache"
 	"stovo-messenger/backend/internal/adapters/roles"
+	"stovo-messenger/backend/internal/adapters/statsstore"
 	"stovo-messenger/backend/internal/adapters/syncstore"
 	"stovo-messenger/backend/internal/adapters/transcriptionsessions"
 	"stovo-messenger/backend/internal/app"
+	"stovo-messenger/backend/internal/plugins"
+	"stovo-messenger/backend/internal/plugins/builtins"
 	"stovo-messenger/backend/internal/broker"
 	"stovo-messenger/backend/internal/cache"
 	"stovo-messenger/backend/internal/config"
@@ -119,6 +122,19 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	store := repository.New(entClient)
 	uploadStore := fileuploads.NewReader(db)
+
+	statsStore := statsstore.NewPostgresStore(db)
+	eventBus := plugins.NewMemoryEventBus()
+	pluginRegistry := plugins.NewPluginRegistry()
+	statsPlugin := builtins.NewStatsPlugin(statsStore)
+	_ = statsPlugin.Init(plugins.Services{
+		Config:     &cfg,
+		EventBus:   eventBus,
+		StatsStore: statsStore,
+	})
+	statsPlugin.SubscribeEvents(eventBus)
+	pluginRegistry.Register(statsPlugin)
+
 	return app.Dependencies{
 		Config: cfg, Database: db, DatabaseHealth: databasehealth.New(db), Persistence: entClient, Redis: redisClient, JobsRedis: jobsRedisClient,
 		Logger: logging.NewLogger(logBuffer), LogBuffer: logBuffer, Storage: storageService,
@@ -173,6 +189,8 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 		JobConsumer:           outbox.NewRedisConsumer(jobsRedisClient),
 		CallSessionCache:      realtimecache.NewRedisCallSessionCache(redisClient),
 		PendingEvents:         realtimecache.NewRedisPendingEventQueue(redisClient),
+		Plugins:               pluginRegistry,
+		EventBus:              eventBus,
 	}, nil
 }
 

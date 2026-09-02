@@ -19,6 +19,7 @@ import (
 	featureplans "stovo-messenger/backend/internal/features/plans"
 	featurepreferences "stovo-messenger/backend/internal/features/preferences"
 	featureprivacy "stovo-messenger/backend/internal/features/privacy"
+	"stovo-messenger/backend/internal/plugins"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	chatpresenter "stovo-messenger/backend/internal/transport/http/presenter"
 )
@@ -49,6 +50,7 @@ func newRouter(s *Server) http.Handler {
 			HealthDB:    http.HandlerFunc(core.HealthDB),
 			HealthRedis: http.HandlerFunc(core.HealthRedis),
 			Sync:        s.authenticated(s.handleSync),
+			Manifest:    httptransport.NewManifestHandler(s.cfg, s.plugins),
 		},
 		Auth:             s.authRoutes(),
 		Family:           s.familyRoutes(),
@@ -57,6 +59,7 @@ func newRouter(s *Server) http.Handler {
 		Files:            s.fileRoutes(),
 		Admin:            s.adminRoutes(),
 		MCP:              s.mcpRoutes(),
+		Plugins:          s.pluginRoutes(),
 		FrontendFallback: httptransport.NewFrontendProxy(s.cfg.FrontendOrigin, s.logger),
 	})
 }
@@ -626,6 +629,17 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 		Published: func(ctx context.Context, chatID, messageID, userID string) {
 			s.emitMessageRead(chatID, messageID, userID)
 			s.bumpChatHistoryRevision(ctx, chatID)
+			if s.eventBus != nil {
+				s.eventBus.Publish(ctx, plugins.Event{
+					Type:      plugins.EventMessageRead,
+					Timestamp: time.Now().UTC(),
+					Payload: map[string]interface{}{
+						"chat_id":    chatID,
+						"message_id": messageID,
+						"reader_id":  userID,
+					},
+				})
+			}
 		},
 	})
 	return httptransport.ChatRoutes{
@@ -1118,6 +1132,16 @@ func (s *Server) mcpRoutes() http.Handler {
 		return nil
 	}
 	return s.mcpAuthMiddleware(s.mcpHTTP)
+}
+
+func (s *Server) pluginRoutes() http.Handler {
+	r := chi.NewRouter()
+	if s.plugins != nil {
+		for _, p := range s.plugins.List() {
+			p.RegisterRoutes(r)
+		}
+	}
+	return r
 }
 
 func writeMessageValue(w http.ResponseWriter, status int, value any) {
