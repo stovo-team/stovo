@@ -266,11 +266,11 @@ describe("MessageBubble receipt status", () => {
     expect(threadButton?.textContent?.trim()).toBe("3 comments");
   });
 
-  it("renders a zero-comments button for a root message", () => {
+  it("does not render a comments button when threadReplyCount is 0", () => {
     const message = createMockMessage();
     const container = renderBubble(message, "user-1", createMockChat({ type: "group" }));
 
-    expect(container.querySelector(".thread-open-button")?.textContent?.trim()).toBe("0 comments");
+    expect(container.querySelector(".thread-open-button")).toBeNull();
   });
 
   it("does not render a comments button beneath a comment", () => {

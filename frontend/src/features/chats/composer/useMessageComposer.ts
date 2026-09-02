@@ -19,7 +19,7 @@ import {
   measureTextareaSelectionAnchor
 } from "../../../composerFormatting";
 import type { FormattingKind, TextSelection, ToolbarAnchor } from "../../../composerFormatting";
-import { AttachmentPickerOption } from "../../../components/AttachmentPickerSheet";
+import { AttachmentPickerOption, type AttachmentPickerTab } from "../../../components/AttachmentPickerSheet";
 import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import { parseScheduleCommand } from "../../../plans/scheduleCommand";
 import { applyMessagePreviewToChat } from "../shared/chatPresentation";
@@ -127,6 +127,7 @@ export function useMessageComposer({
   const [composerLineCount, setComposerLineCount] = useState(1);
   const [composerEnlargeOpen, setComposerEnlargeOpen] = useState(false);
   const [isAttachmentSheetOpen, setIsAttachmentSheetOpen] = useState(false);
+  const [attachmentSheetInitialTab, setAttachmentSheetInitialTab] = useState<AttachmentPickerTab>("gallery");
   const [galleryPreviewMediaItem, setGalleryPreviewMediaItem] = useState<NativeMediaItem | null>(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -288,6 +289,11 @@ export function useMessageComposer({
   }
 
   function handleAttachmentSheetPick(option: AttachmentPickerOption) {
+    if (option === "poll") {
+      setAttachmentSheetInitialTab("poll");
+      setIsAttachmentSheetOpen(true);
+      return;
+    }
     setIsAttachmentSheetOpen(false);
     if (option === "gallery") {
       galleryAttachmentInputRef.current?.click();
@@ -301,7 +307,10 @@ export function useMessageComposer({
       audioAttachmentInputRef.current?.click();
       return;
     }
-    documentAttachmentInputRef.current?.click();
+    if (option === "file") {
+      documentAttachmentInputRef.current?.click();
+      return;
+    }
   }
 
   function handleComposerCut() {
@@ -426,6 +435,7 @@ export function useMessageComposer({
     if (content.toLowerCase() === "/poll") {
       setComposer("");
       resetComposerHeight();
+      setAttachmentSheetInitialTab("poll");
       setIsAttachmentSheetOpen(true);
       return;
     }
@@ -693,6 +703,7 @@ export function useMessageComposer({
     isAttachmentSheetOpen,
     setIsAttachmentSheetOpen,
     closeAttachmentSheet: () => setIsAttachmentSheetOpen(false),
+    attachmentSheetInitialTab,
     galleryPreviewMediaItem,
     setGalleryPreviewMediaItem,
     closeGalleryPreview: () => setGalleryPreviewMediaItem(null),

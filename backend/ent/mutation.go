@@ -25095,10 +25095,24 @@ func (m *SyncEventMutation) AddedSequence() (r int64, exists bool) {
 	return *v, true
 }
 
+// ClearSequence clears the value of the "sequence" field.
+func (m *SyncEventMutation) ClearSequence() {
+	m.sequence = nil
+	m.addsequence = nil
+	m.clearedFields[syncevent.FieldSequence] = struct{}{}
+}
+
+// SequenceCleared returns if the "sequence" field was cleared in this mutation.
+func (m *SyncEventMutation) SequenceCleared() bool {
+	_, ok := m.clearedFields[syncevent.FieldSequence]
+	return ok
+}
+
 // ResetSequence resets all changes to the "sequence" field.
 func (m *SyncEventMutation) ResetSequence() {
 	m.sequence = nil
 	m.addsequence = nil
+	delete(m.clearedFields, syncevent.FieldSequence)
 }
 
 // SetFamilyID sets the "family_id" field.
@@ -25652,7 +25666,11 @@ func (m *SyncEventMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *SyncEventMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(syncevent.FieldSequence) {
+		fields = append(fields, syncevent.FieldSequence)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -25665,6 +25683,11 @@ func (m *SyncEventMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *SyncEventMutation) ClearField(name string) error {
+	switch name {
+	case syncevent.FieldSequence:
+		m.ClearSequence()
+		return nil
+	}
 	return fmt.Errorf("unknown SyncEvent nullable field %s", name)
 }
 

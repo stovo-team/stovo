@@ -454,7 +454,7 @@ export function MessageBubble({
           })}
         </div>
       )}
-      {showThreadButton && message.messageKind === "chat" && message.type !== "call" && selectedChat.type !== "archive" &&
+      {showThreadButton && threadReplyCount > 0 && message.messageKind === "chat" && message.type !== "call" && selectedChat.type !== "archive" &&
         (selectedChat.type !== "channel" || selectedChat.commentsEnabled) && (
         <button
           type="button"
