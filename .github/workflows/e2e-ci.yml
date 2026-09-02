@@ -2,9 +2,9 @@ name: End-to-End Tests (Playwright)
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ develop ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ develop ]
   workflow_dispatch:
     inputs:
       target_url:
