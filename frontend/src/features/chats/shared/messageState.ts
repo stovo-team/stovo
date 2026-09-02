@@ -212,9 +212,12 @@ export function markPendingMessageFailed(
 }
 
 export function mergeMessageLists(current: Message[], incoming: Message[]) {
-  const byId = new Map(current.map((message) => [message.id, message]));
-  for (const message of incoming) {
-    byId.set(message.id, message);
-  }
-  return Array.from(byId.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  // History and replica-sync messages can arrive before the HTTP response
+  // that sent them. Reuse the same reconciliation path so a durable server
+  // message replaces its optimistic outbox counterpart instead of leaving a
+  // second bubble marked as "sending".
+  return incoming.reduce(
+    (merged, message) => mergeIncomingMessage(merged, message),
+    [...current]
+  ).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
