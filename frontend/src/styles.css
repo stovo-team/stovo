@@ -6066,35 +6066,233 @@ span.message-spoiler.is-revealed {
 .composer-mention-menu {
 	position: absolute;
 	left: 0;
-	bottom: calc(100% + 8px);
+	right: auto;
+	bottom: calc(100% + 10px);
 	z-index: 20;
-	min-width: 220px;
-	max-width: min(320px, 90vw);
+	width: min(390px, calc(100vw - 32px));
+	min-width: min(320px, calc(100vw - 32px));
 	padding: 6px;
-	border: 1px solid var(--border, rgba(255,255,255,.16));
-	border-radius: 12px;
-	background: var(--surface, #202124);
-	box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+	border: 1px solid color-mix(in oklab, var(--text-primary) 14%, transparent);
+	border-radius: 16px;
+	background: var(--surface-card, #202124);
+	box-shadow: 0 16px 36px rgba(0, 0, 0, .34);
 }
 
 .composer-mention-menu button {
 	display: flex;
 	width: 100%;
-	gap: 8px;
-	align-items: baseline;
-	padding: 9px 10px;
+	gap: 10px;
+	align-items: center;
+	justify-content: flex-start;
+	min-height: 40px;
+	padding: 8px 10px;
 	border: 0;
-	border-radius: 8px;
+	border-radius: 10px;
 	background: transparent;
 	color: inherit;
 	text-align: left;
 	cursor: pointer;
+	font-size: 0.8125rem;
+	line-height: 1.2;
 }
 
 .composer-mention-menu button:hover,
 .composer-mention-menu button:focus-visible,
 .composer-mention-menu button.active { background: var(--accent-primary, #5c9dff); color: white; }
+.composer-mention-menu strong { flex: 0 1 auto; font-size: 0.875rem; font-weight: 650; text-align: left; }
 .composer-mention-menu span { opacity: .7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.composer-slash-menu {
+	padding: 8px;
+	max-height: min(310px, 52vh);
+	overflow-y: auto;
+}
+
+.slash-menu-header {
+	align-items: center;
+	color: var(--text-secondary);
+	display: flex;
+	font-size: 0.6875rem;
+	font-weight: 650;
+	justify-content: space-between;
+	letter-spacing: .02em;
+	padding: 3px 4px 7px;
+	text-transform: uppercase;
+}
+
+.slash-menu-header small {
+	color: var(--text-muted);
+	font-size: 0.6875rem;
+	font-weight: 500;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.composer-slash-menu .slash-command-item {
+	min-height: 52px;
+	padding: 8px;
+}
+
+.slash-item-left {
+	align-items: center;
+	display: flex;
+	gap: 10px;
+	min-width: 0;
+	width: 100%;
+}
+
+.slash-item-icon {
+	align-items: center;
+	background: color-mix(in oklab, var(--accent-primary) 14%, transparent);
+	border-radius: 10px;
+	color: var(--accent-primary);
+	display: inline-flex;
+	flex: 0 0 32px;
+	height: 32px;
+	justify-content: center;
+}
+
+.slash-command-item.active .slash-item-icon,
+.slash-command-item:hover .slash-item-icon,
+.slash-command-item:focus-visible .slash-item-icon {
+	background: rgba(255, 255, 255, .18);
+	color: inherit;
+}
+
+.slash-item-copy {
+	display: grid;
+	gap: 2px;
+	min-width: 0;
+	text-align: left;
+}
+
+.slash-item-syntax {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.slash-item-desc {
+	font-size: 0.75rem;
+	text-align: left;
+}
+
+@media (max-width: 420px) {
+	.composer-mention-menu {
+		min-width: min(280px, calc(100vw - 24px));
+		width: min(340px, calc(100vw - 24px));
+	}
+}
+
+/* Link previews follow the compact message-card pattern: source and copy
+   first, then one consistently wide visual preview. */
+.link-unfurl-card {
+  border-inline-start: 3px solid color-mix(in oklab, var(--accent-primary) 78%, transparent);
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+  max-width: min(430px, 100%);
+  min-width: 0;
+  padding-inline-start: 9px;
+}
+
+.link-unfurl-header {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: 0.75rem;
+  font-weight: 650;
+  gap: 6px;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.link-unfurl-favicon {
+  border-radius: 4px;
+  flex: 0 0 auto;
+  height: 16px;
+  object-fit: contain;
+  width: 16px;
+}
+
+.link-unfurl-sitename {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-unfurl-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.link-unfurl-title {
+  color: var(--text-primary);
+  display: -webkit-box;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  overflow: hidden;
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.link-unfurl-title:hover,
+.link-unfurl-title:focus-visible {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.link-unfurl-description {
+  color: var(--text-secondary);
+  display: -webkit-box;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.link-unfurl-image-container {
+  aspect-ratio: 1.91 / 1;
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 7px;
+  margin-top: 2px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.link-unfurl-image {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  width: 100%;
+}
+
+.link-unfurl-card.is-loading {
+  min-height: 96px;
+}
+
+.link-unfurl-skeleton-header,
+.link-unfurl-skeleton-title,
+.link-unfurl-skeleton-description {
+  animation: link-unfurl-pulse 1.2s ease-in-out infinite alternate;
+  background: color-mix(in oklab, var(--text-primary) 10%, transparent);
+  border-radius: 999px;
+  height: 10px;
+}
+
+.link-unfurl-skeleton-header { width: 28%; }
+.link-unfurl-skeleton-title { width: 72%; }
+.link-unfurl-skeleton-description { width: 92%; }
+
+@keyframes link-unfurl-pulse {
+  to { opacity: .45; }
+}
 
 .message-mention {
   color: var(--accent-primary, #38bdf8);
@@ -14515,6 +14713,305 @@ span.message-spoiler.is-revealed {
 .attachment-nav-item.active .nav-item-label {
   font-weight: 700;
   color: var(--accent-primary, #a855f7);
+}
+
+/* Poll creation uses the same compact island and rounded-action language as
+   the rest of the chat UI instead of inheriting bare form controls. */
+.rich-poll-creator {
+  display: grid;
+  gap: 18px;
+  padding: 4px 0 8px;
+}
+
+.rich-poll-creator-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.poll-creator-title-icon,
+.poll-setting-icon {
+  align-items: center;
+  background: color-mix(in oklab, var(--accent-primary) 14%, transparent);
+  border-radius: 12px;
+  color: var(--accent-primary);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.rich-poll-creator-header h3 {
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.rich-poll-creator-header p {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.25;
+  margin: 3px 0 0;
+}
+
+.poll-creator-section,
+.poll-creator-settings,
+.poll-options-list {
+  display: grid;
+  gap: 9px;
+}
+
+.poll-input-label {
+  align-items: center;
+  color: var(--text-secondary);
+  display: flex;
+  font-size: 0.75rem;
+  font-weight: 650;
+  gap: 5px;
+  line-height: 1.2;
+}
+
+.poll-input-label span {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.poll-text-input {
+  appearance: none;
+  background: color-mix(in oklab, var(--background-primary) 66%, var(--surface-card));
+  border: 1px solid color-mix(in oklab, var(--text-primary) 14%, transparent);
+  border-radius: 14px;
+  box-sizing: border-box;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  min-height: 46px;
+  outline: none;
+  padding: 0 14px;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+  width: 100%;
+}
+
+.poll-text-input::placeholder { color: var(--text-muted); }
+
+.poll-text-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-primary) 18%, transparent);
+}
+
+.poll-option-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.poll-option-input { min-width: 0; }
+
+.poll-remove-option-btn,
+.quiz-correct-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid color-mix(in oklab, var(--text-primary) 14%, transparent);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  flex: 0 0 38px;
+  height: 38px;
+  justify-content: center;
+  padding: 0;
+  width: 38px;
+}
+
+.poll-remove-option-btn:hover,
+.poll-remove-option-btn:focus-visible {
+  background: color-mix(in oklab, var(--danger) 14%, transparent);
+  border-color: color-mix(in oklab, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+
+.quiz-correct-toggle.is-correct {
+  background: color-mix(in oklab, #22c55e 20%, transparent);
+  border-color: #22c55e;
+  color: #4ade80;
+}
+
+.poll-add-option-btn {
+  align-items: center;
+  align-self: start;
+  background: color-mix(in oklab, var(--accent-primary) 13%, transparent);
+  border: 0;
+  border-radius: 999px;
+  color: var(--accent-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 15px;
+}
+
+.poll-add-option-btn:hover,
+.poll-add-option-btn:focus-visible {
+  background: color-mix(in oklab, var(--accent-primary) 22%, transparent);
+}
+
+.poll-creator-settings {
+  gap: 10px;
+}
+
+.poll-setting-row {
+  align-items: center;
+  background: var(--island-surface, var(--surface-card));
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 18px;
+  display: grid;
+  gap: 11px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 68px;
+  padding: 10px 12px;
+}
+
+.poll-setting-icon {
+  border-radius: 11px;
+  height: 34px;
+  width: 34px;
+}
+
+.poll-setting-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.poll-setting-title {
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.15;
+}
+
+.poll-setting-desc {
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  line-height: 1.25;
+}
+
+.poll-setting-toggle {
+  cursor: pointer;
+  display: inline-flex;
+  position: relative;
+}
+
+.poll-setting-toggle input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.poll-setting-toggle-track {
+  align-items: center;
+  background: color-mix(in oklab, var(--text-primary) 18%, transparent);
+  border-radius: 999px;
+  display: flex;
+  height: 28px;
+  padding: 3px;
+  transition: background 160ms ease;
+  width: 48px;
+}
+
+.poll-setting-toggle-track > span {
+  align-items: center;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  color: transparent;
+  display: flex;
+  height: 22px;
+  justify-content: center;
+  transform: translateX(0);
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+  width: 22px;
+}
+
+.poll-setting-toggle input:checked + .poll-setting-toggle-track {
+  background: var(--accent-primary);
+}
+
+.poll-setting-toggle input:checked + .poll-setting-toggle-track > span {
+  background: #ffffff;
+  color: var(--accent-primary);
+  transform: translateX(20px);
+}
+
+.poll-setting-toggle input:focus-visible + .poll-setting-toggle-track {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+
+.poll-explanation-section {
+  border-top: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  margin-top: 2px;
+  padding-top: 14px;
+}
+
+.poll-creator-actions {
+  display: flex;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.poll-cancel-btn,
+.poll-submit-btn {
+  align-items: center;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  flex: 1;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  gap: 8px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+}
+
+.poll-cancel-btn {
+  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border: 0;
+  color: var(--text-primary);
+}
+
+.poll-submit-btn {
+  background: var(--accent-primary);
+  border: 0;
+  color: #ffffff;
+  box-shadow: 0 8px 18px color-mix(in oklab, var(--accent-primary) 25%, transparent);
+}
+
+.poll-cancel-btn:hover,
+.poll-cancel-btn:focus-visible { background: color-mix(in oklab, var(--text-primary) 14%, transparent); }
+.poll-submit-btn:hover,
+.poll-submit-btn:focus-visible { filter: brightness(1.07); }
+.poll-cancel-btn:disabled,
+.poll-submit-btn:disabled,
+.poll-add-option-btn:disabled,
+.poll-remove-option-btn:disabled,
+.quiz-correct-toggle:disabled,
+.poll-setting-toggle input:disabled + .poll-setting-toggle-track { cursor: default; opacity: .5; }
+
+.poll-creator-error-banner {
+  background: color-mix(in oklab, var(--danger) 16%, transparent);
+  border: 1px solid color-mix(in oklab, var(--danger) 42%, transparent);
+  border-radius: 12px;
+  color: var(--danger);
+  font-size: 0.8125rem;
+  padding: 10px 12px;
 }
 
 :root[data-platform="web"] .emoji-picker {

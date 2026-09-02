@@ -89,19 +89,6 @@ export function LinkUnfurlCard({
         <span className="link-unfurl-sitename">{siteName}</span>
       </div>
 
-      {data.image && !imageError && (
-        <div className="link-unfurl-image-container">
-          <img
-            className="link-unfurl-image"
-            src={data.image}
-            alt={data.title || "Link preview"}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            onError={() => setImageError(true)}
-          />
-        </div>
-      )}
-
       <div className="link-unfurl-body">
         {data.title && (
           <a
@@ -118,6 +105,19 @@ export function LinkUnfurlCard({
           <p className="link-unfurl-description">{data.description}</p>
         )}
       </div>
+
+      {data.image && !imageError && (
+        <div className="link-unfurl-image-container">
+          <img
+            className="link-unfurl-image"
+            src={data.image}
+            alt={data.title || "Link preview"}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => setImageError(true)}
+          />
+        </div>
+      )}
     </div>
   );
 }
