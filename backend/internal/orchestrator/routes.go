@@ -4,18 +4,16 @@ package orchestrator
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"stovo-messenger/backend/internal/bootstrap"
-	"stovo-messenger/backend/internal/config"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/go-chi/chi/v5"
@@ -23,6 +21,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
+
+	"stovo-messenger/backend/internal/config"
 )
 
 type NavTabsConfig struct {
@@ -158,9 +158,17 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 	}
 	// Create PostgreSQL database and schema for the server
 	dbName := "stovo_db_" + req.Slug
-	_, _ = o.masterDB.Exec(`CREATE DATABASE ` + dbName)
-	if err := initChildDBSchema(dbName); err != nil {
-		log.Printf("[orchestrator] Warning: initChildDBSchema failed for %s: %v", dbName, err)
+	if _, err := o.masterDB.Exec(`CREATE DATABASE ` + dbName); err != nil {
+		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create server database"})
+		return
+	}
+	if err := o.initChildDBSchema(req.Slug); err != nil {
+		log.Printf("[orchestrator] failed to apply Atlas migrations for %s: %v", dbName, err)
+		_, _ = o.masterDB.Exec(`DROP DATABASE ` + dbName)
+		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to initialize server database"})
+		return
 	}
 
 	// Create MinIO bucket
@@ -567,25 +575,71 @@ func (o *Orchestrator) stopAndRemoveContainer(slug string) error {
 	return nil
 }
 
-func initChildDBSchema(dbName string) error {
-	masterURL := os.Getenv("MASTER_DB_URL")
-	if masterURL == "" {
-		masterURL = "postgres://postgres:postgres@postgres:5432/stovo_master_db?sslmode=disable"
-	}
-	parsed, err := url.Parse(masterURL)
-	if err != nil {
-		return fmt.Errorf("failed to parse MASTER_DB_URL: %w", err)
-	}
-	parsed.Path = "/" + dbName
-	childDB, err := sql.Open("pgx", parsed.String())
-	if err != nil {
-		return fmt.Errorf("failed to connect to child db %s: %w", dbName, err)
-	}
-	defer childDB.Close()
+func (o *Orchestrator) initChildDBSchema(slug string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 
-	if err := bootstrap.MigrateSchema(context.Background(), childDB); err != nil {
-		return fmt.Errorf("failed to create ent schema on child db %s: %w", dbName, err)
+	netName := os.Getenv("DOCKER_NETWORK_NAME")
+	if netName == "" {
+		netName = "stovo_default"
 	}
-	return nil
+	env := backendContainerEnv(slug, func(key, fallback string) string {
+		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
+			return value
+		}
+		return fallback
+	})
+	name := fmt.Sprintf("stovo-migrate-%s-%s", slug, uuid.NewString()[:8])
+	containerID := ""
+	defer func() {
+		if containerID != "" {
+			_ = o.dockerClient.ContainerRemove(context.Background(), containerID, container.RemoveOptions{Force: true})
+		}
+	}()
+
+	created, err := o.dockerClient.ContainerCreate(ctx, &container.Config{
+		Image:      "stovo-backend:latest",
+		Env:        env,
+		Entrypoint: []string{"/bin/sh", "-ec"},
+		Cmd:        []string{"atlas migrate apply --dir file:///app/migrations --url \"$DATABASE_URL\""},
+	}, &container.HostConfig{NetworkMode: container.NetworkMode(netName)}, nil, nil, name)
+	if err != nil {
+		return fmt.Errorf("create Atlas migration container: %w", err)
+	}
+	containerID = created.ID
+	if err := o.dockerClient.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
+		return fmt.Errorf("start Atlas migration container: %w", err)
+	}
+
+	statusC, errC := o.dockerClient.ContainerWait(ctx, containerID, container.WaitConditionNotRunning)
+	for statusC != nil || errC != nil {
+		select {
+		case err, ok := <-errC:
+			if !ok {
+				errC = nil
+				continue
+			}
+			if err != nil {
+				return fmt.Errorf("wait for Atlas migration container: %w", err)
+			}
+		case status, ok := <-statusC:
+			if !ok {
+				statusC = nil
+				continue
+			}
+			if status.StatusCode == 0 {
+				return nil
+			}
+			logs, logErr := o.dockerClient.ContainerLogs(ctx, containerID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
+			if logErr != nil {
+				return fmt.Errorf("Atlas migration container exited with status %d", status.StatusCode)
+			}
+			defer logs.Close()
+			output, _ := io.ReadAll(io.LimitReader(logs, 8<<10))
+			return fmt.Errorf("Atlas migration container exited with status %d: %s", status.StatusCode, strings.TrimSpace(string(output)))
+		case <-ctx.Done():
+			return fmt.Errorf("wait for Atlas migration container: %w", ctx.Err())
+		}
+	}
+	return errors.New("Atlas migration container exited without a status")
 }
-
