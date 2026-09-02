@@ -6257,7 +6257,6 @@ span.message-spoiler.is-revealed {
 }
 
 .link-unfurl-image-container {
-  aspect-ratio: 1.91 / 1;
   background: color-mix(in oklab, var(--text-primary) 8%, transparent);
   border-radius: 7px;
   margin-top: 2px;
@@ -6267,9 +6266,7 @@ span.message-spoiler.is-revealed {
 
 .link-unfurl-image {
   display: block;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
+  height: auto;
   width: 100%;
 }
 
