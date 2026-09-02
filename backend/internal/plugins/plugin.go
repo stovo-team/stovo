@@ -13,6 +13,8 @@ type EventType string
 
 const (
 	EventMessageSent   EventType = "message:sent"
+	EventMessageRead   EventType = "message:read"
+	EventReactionAdded EventType = "reaction:added"
 	EventUserJoined    EventType = "user:joined"
 	EventMediaUploaded EventType = "media:uploaded"
 	EventCallStarted   EventType = "call:started"
@@ -32,8 +34,9 @@ type EventBus interface {
 }
 
 type Services struct {
-	Config   *config.Config
-	EventBus EventBus
+	Config     *config.Config
+	EventBus   EventBus
+	StatsStore any
 }
 
 type Plugin interface {

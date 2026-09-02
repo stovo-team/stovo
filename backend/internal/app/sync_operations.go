@@ -14,6 +14,7 @@ import (
 	"stovo-messenger/backend/internal/domain"
 	"stovo-messenger/backend/internal/features/messages"
 	featuresync "stovo-messenger/backend/internal/features/sync"
+	"stovo-messenger/backend/internal/plugins"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 
 	"github.com/google/uuid"
@@ -219,4 +220,21 @@ func (s *Server) notifyCreatedRESTMessage(chat chatPublic, user userPublic, mess
 		}
 	}()
 	go delivery.NotifyRecipients(context.Background(), notification)
+	if s.eventBus != nil {
+		contentStr := ""
+		if message.Content != nil {
+			contentStr = *message.Content
+		}
+		s.eventBus.Publish(context.Background(), plugins.Event{
+			Type:      plugins.EventMessageSent,
+			Timestamp: message.CreatedAt,
+			Payload: map[string]interface{}{
+				"message_id": message.ID,
+				"chat_id":    message.ChatID,
+				"sender_id":  user.ID,
+				"type":       message.Type,
+				"content":    contentStr,
+			},
+		})
+	}
 }

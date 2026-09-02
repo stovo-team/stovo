@@ -20,6 +20,7 @@ import (
 	featuresync "stovo-messenger/backend/internal/features/sync"
 	featuretranscription "stovo-messenger/backend/internal/features/transcription"
 	"stovo-messenger/backend/internal/logging"
+	"stovo-messenger/backend/internal/plugins"
 	"stovo-messenger/backend/internal/ports"
 	featurepolls "stovo-messenger/backend/internal/features/polls"
 	workruntime "stovo-messenger/backend/internal/runtime"
@@ -107,6 +108,8 @@ type Dependencies struct {
 	JobConsumer            workruntime.JobConsumer
 	CallSessionCache       workruntime.CallSessionCache
 	PendingEvents          workruntime.PendingEventQueue
+	Plugins                *plugins.PluginRegistry
+	EventBus               plugins.EventBus
 }
 
 func (d Dependencies) validate() error {
