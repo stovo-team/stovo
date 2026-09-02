@@ -74,6 +74,12 @@ jobs:
             done
 
             # Build backend docker image for child servers
+            # Migration files are immutable once deployed. Verify the Atlas
+            # manifest before building or touching any tenant database; never
+            # regenerate atlas.sum on this host, because that would mask a
+            # rewritten historical migration.
+            sudo docker run --rm -v "$PWD/backend/migrations:/migrations:ro" arigaio/atlas:1.3.2 \
+              migrate validate --dir file:///migrations
             sudo docker build -t stovo-backend ./backend
 
             # Build and deploy frontend, orchestrator, and caddy gateway
