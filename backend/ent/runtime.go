@@ -204,6 +204,10 @@ func init() {
 	clientoperationDescResponseBody := clientoperationFields[5].Descriptor()
 	// clientoperation.DefaultResponseBody holds the default value on creation for the response_body field.
 	clientoperation.DefaultResponseBody = clientoperationDescResponseBody.Default.(map[string]interface{})
+	// clientoperationDescCreatedAt is the schema descriptor for created_at field.
+	clientoperationDescCreatedAt := clientoperationFields[6].Descriptor()
+	// clientoperation.DefaultCreatedAt holds the default value on creation for the created_at field.
+	clientoperation.DefaultCreatedAt = clientoperationDescCreatedAt.Default.(func() time.Time)
 	// clientoperationDescID is the schema descriptor for id field.
 	clientoperationDescID := clientoperationFields[0].Descriptor()
 	// clientoperation.IDValidator is a validator for the "id" field. It is called by the builders before save.
