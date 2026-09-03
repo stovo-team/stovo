@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, RefObject, useEffect, useState } from "react";
-import { BarChart2, Clock3, FileText, Image, Mail, Music, Pencil, Settings, UserPlus, Video } from "lucide-react";
+import { BarChart2, Clock3, FileText, Image, Mail, MoreVertical, Music, Pencil, Settings, UserPlus, Video } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ChatStats } from "../../../api/stats";
 import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
@@ -165,8 +165,23 @@ export function ChatDetailsPanel({
   const { authRequest } = useAuth();
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [chatStats, setChatStats] = useState<ChatStats | null>(null);
+  const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
+  const [statsPluginEnabled, setStatsPluginEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void authRequest<{ active_plugins?: string[] }>("/api/v1/config/manifest")
+      .then((manifest) => {
+        if (!cancelled) setStatsPluginEnabled(manifest.active_plugins?.includes("plugin-rich-stats") ?? false);
+      })
+      .catch(() => {
+        if (!cancelled) setStatsPluginEnabled(false);
+      });
+    return () => { cancelled = true; };
+  }, [authRequest]);
 
   const handleOpenStats = async () => {
+    if (!statsPluginEnabled) return;
     setIsStatsOpen(true);
     try {
       const data = await authRequest<ChatStats>(`/api/v1/plugins/stats/chats/${chat.id}`);
@@ -530,24 +545,30 @@ export function ChatDetailsPanel({
         <h2 id="chat-info-title" className="visually-hidden">
           {chatName}
         </h2>
-        <button
-          type="button"
-          className="chat-info-topbar-action"
-          aria-label="Chat Statistics"
-          title="Chat Statistics"
-          onClick={() => void handleOpenStats()}
-        >
-          <BarChart2 aria-hidden="true" size={22} />
-        </button>
-        <button
-          type="button"
-          className="chat-info-topbar-action"
-          aria-label={strings.chats.details.settings}
-          title={strings.chats.details.settings}
-          onClick={() => setActiveControl("settings")}
-        >
-          <Settings aria-hidden="true" size={22} />
-        </button>
+        <div className="chat-info-overflow">
+          <button
+            type="button"
+            className="chat-info-topbar-action"
+            aria-label="Chat options"
+            title="Chat options"
+            aria-expanded={isChatMenuOpen}
+            onClick={() => setIsChatMenuOpen((open) => !open)}
+          >
+            <MoreVertical aria-hidden="true" size={22} />
+          </button>
+          {isChatMenuOpen && (
+            <div className="chat-info-overflow-menu" role="menu">
+              {statsPluginEnabled && (
+                <button type="button" role="menuitem" onClick={() => { setIsChatMenuOpen(false); void handleOpenStats(); }}>
+                  <BarChart2 aria-hidden="true" size={18} /> Chat statistics
+                </button>
+              )}
+              <button type="button" role="menuitem" onClick={() => { setIsChatMenuOpen(false); setActiveControl("settings"); }}>
+                <Settings aria-hidden="true" size={18} /> {strings.chats.details.settings}
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="chat-info-body">
