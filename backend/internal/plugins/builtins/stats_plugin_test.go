@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"stovo-messenger/backend/internal/adapters/statsstore"
 	"stovo-messenger/backend/internal/plugins"
 )
 
