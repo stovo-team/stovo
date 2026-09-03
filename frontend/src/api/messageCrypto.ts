@@ -150,15 +150,22 @@ export async function encryptMessageContent(chat: Chat, content: string | null, 
 }
 
 export async function decryptMessage(chatId: string, message: Message, userId?: string): Promise<Message> {
-  if (message.encryptionProtocol !== "end_to_end" || !message.ciphertext || !message.nonce) {
-    return message;
+  // Older API/cache responses can contain `attachments: null`. Normalise it
+  // at the message boundary so one legacy row cannot crash chat details,
+  // search, or the message renderer.
+  const normalizedMessage = {
+    ...message,
+    attachments: Array.isArray(message.attachments) ? message.attachments : []
+  };
+  if (normalizedMessage.encryptionProtocol !== "end_to_end" || !normalizedMessage.ciphertext || !normalizedMessage.nonce) {
+    return normalizedMessage;
   }
   try {
     const privateKey = await localPrivateKey();
-    if (!privateKey || !message.encryptionMetadata) {
+    if (!privateKey || !normalizedMessage.encryptionMetadata) {
       throw new Error("missing local encryption identity");
     }
-    const metadata = JSON.parse(message.encryptionMetadata) as {
+    const metadata = JSON.parse(normalizedMessage.encryptionMetadata) as {
       wrappedKeys?: Record<string, string>;
     };
     const wrappedKeys = metadata.wrappedKeys ?? {};
@@ -182,9 +189,9 @@ export async function decryptMessage(chatId: string, message: Message, userId?: 
           ["decrypt"]
         );
         decrypted = await crypto.subtle.decrypt(
-          { name: "AES-GCM", iv: base64ToBytes(message.nonce) },
+          { name: "AES-GCM", iv: base64ToBytes(normalizedMessage.nonce) },
           key,
-          base64ToBytes(message.ciphertext)
+          base64ToBytes(normalizedMessage.ciphertext)
         );
         break;
       } catch {
@@ -195,12 +202,12 @@ export async function decryptMessage(chatId: string, message: Message, userId?: 
       throw new Error("unable to decrypt message");
     }
     return {
-      ...message,
+      ...normalizedMessage,
       content: textDecoder.decode(decrypted)
     };
   } catch {
     return {
-      ...message,
+      ...normalizedMessage,
       content: null,
       deliveryError: "Encrypted message unavailable on this browser"
     };

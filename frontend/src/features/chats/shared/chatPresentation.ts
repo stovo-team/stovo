@@ -268,18 +268,21 @@ export function sharedContentItemMatchesTab(item: SharedContentItem, tab: Shared
 
 export function computeSharedContentItems(messages: Message[], tab: SharedContentTab): SharedContentItem[] {
   return messages
-    .flatMap((message): SharedContentItem[] => [
-      ...message.attachments.map((file) => ({
-        kind: "attachment" as const,
-        file,
-        messageId: message.id
-      })),
-      ...extractMessageLinks(message.content).map((url) => ({
-        kind: "link" as const,
-        url,
-        messageId: message.id
-      }))
-    ])
+    .flatMap((message): SharedContentItem[] => {
+      const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+      return [
+        ...attachments.map((file) => ({
+          kind: "attachment" as const,
+          file,
+          messageId: message.id
+        })),
+        ...extractMessageLinks(message.content).map((url) => ({
+          kind: "link" as const,
+          url,
+          messageId: message.id
+        }))
+      ];
+    })
     .filter((item) => sharedContentItemMatchesTab(item, tab))
     .reverse();
 }

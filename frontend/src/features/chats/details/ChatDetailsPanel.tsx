@@ -1,5 +1,8 @@
 import { ChangeEvent, FormEvent, RefObject, useEffect, useState } from "react";
-import { Clock3, FileText, Image, Mail, Music, Pencil, Settings, UserPlus, Video } from "lucide-react";
+import { BarChart2, Clock3, FileText, Image, Mail, Music, Pencil, Settings, UserPlus, Video } from "lucide-react";
+import { useAuth } from "../../../auth/AuthContext";
+import { ChatStats } from "../../../api/stats";
+import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
 
 const MESSAGE_DELAY_PRESETS = [
   { label: "5s", value: 5 },
@@ -159,6 +162,20 @@ export function ChatDetailsPanel({
   onTitleDraftChange: (value: string) => void;
 }) {
   const strings = useStrings();
+  const { authRequest } = useAuth();
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+  const [chatStats, setChatStats] = useState<ChatStats | null>(null);
+
+  const handleOpenStats = async () => {
+    setIsStatsOpen(true);
+    try {
+      const data = await authRequest<ChatStats>(`/api/v1/plugins/stats/chats/${chat.id}`);
+      setChatStats(data);
+    } catch {
+      // stats fallback
+    }
+  };
+
   const chatName = displayChatName(chat, currentUserId, strings);
   const [activeControl, setActiveControl] = useState<ChatInfoControl>(null);
   const [tabDirection, setTabDirection] = useState<"forward" | "backward">("forward");
@@ -516,6 +533,15 @@ export function ChatDetailsPanel({
         <button
           type="button"
           className="chat-info-topbar-action"
+          aria-label="Chat Statistics"
+          title="Chat Statistics"
+          onClick={() => void handleOpenStats()}
+        >
+          <BarChart2 aria-hidden="true" size={22} />
+        </button>
+        <button
+          type="button"
+          className="chat-info-topbar-action"
           aria-label={strings.chats.details.settings}
           title={strings.chats.details.settings}
           onClick={() => setActiveControl("settings")}
@@ -790,6 +816,13 @@ export function ChatDetailsPanel({
           file={editingChatWallpaperFile}
           onClose={onCloseEditChatWallpaper}
           onSave={onSaveEditedChatWallpaper}
+        />
+      )}
+      {isStatsOpen && (
+        <ChatStatsDrawer
+          stats={chatStats}
+          chatTitle={chatName}
+          onClose={() => setIsStatsOpen(false)}
         />
       )}
     </aside>

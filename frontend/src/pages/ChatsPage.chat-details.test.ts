@@ -69,7 +69,7 @@ describe("chat details controls", () => {
 
   it("collects links and every attachment type with its source message", () => {
     expect(messagePresentation).toContain("function extractMessageLinks");
-    expect(chatPresentation).toContain("message.attachments.map((file) => ({");
+    expect(chatPresentation).toContain("const attachments = Array.isArray(message.attachments)");
     expect(chatPresentation).toContain('kind: "link"');
     expect(chatPresentation).toContain("return isImage || isVideo;");
   });

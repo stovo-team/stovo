@@ -111,6 +111,14 @@ describe("chat presentation helpers", () => {
     expect(sharedContentItemMatchesTab(audioItem, "links")).toBe(false);
     expect(sharedContentItemMatchesTab(docItem, "links")).toBe(false);
   });
+
+  it("tolerates legacy messages with null attachments", () => {
+    const items = computeSharedContentItems([
+      { id: "legacy-message", content: "https://example.com", attachments: null }
+    ] as any, "links");
+
+    expect(items).toEqual([{ kind: "link", url: "https://example.com", messageId: "legacy-message" }]);
+  });
 });
 
 describe("message presentation helpers", () => {
