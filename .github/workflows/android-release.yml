@@ -138,8 +138,8 @@ jobs:
             -PversionCode=${{ github.run_number }} \
             -PversionName=${{ steps.patch.outputs.version }} \
             --no-daemon \
-            --max-workers=2 \
-            -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
+            --max-workers=1 \
+            -Dorg.gradle.jvmargs="-Xmx1024m -XX:MaxMetaspaceSize=384m -XX:+UseG1GC"
 
       - name: Locate and rename APK
         id: apk
