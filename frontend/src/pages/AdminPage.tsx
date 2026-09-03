@@ -24,6 +24,12 @@ export default function AdminPage() {
 		title: "Roles",
 		description: "Permissions and member roles"
 	}] : []),
+    {
+      to: "/app/admin/stats",
+      icon: "bar_chart",
+      title: "Statistics & Insights",
+      description: "Server analytics, response times & Year with Stovo"
+    },
 	{
       to: "/app/admin/appearance",
       icon: "palette",

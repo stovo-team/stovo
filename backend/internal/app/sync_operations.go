@@ -199,7 +199,10 @@ func newCreatedMessagePublic(id, chatID string, user userPublic, messageType str
 			UserID: user.ID, Status: "sent", CreatedAt: createdAt,
 		}},
 		Reactions:   make([]messageReactionPublic, 0),
-		Attachments: append([]filePublic(nil), attachments...),
+		// Message JSON is a client contract: an empty attachment list must be
+		// encoded as [] rather than null. Some older records have no attachments
+		// and a null here makes frontend consumers that iterate the list crash.
+		Attachments: append(make([]filePublic, 0, len(attachments)), attachments...),
 	}
 	if encryptionProtocol == encryptionProtocolServerAtRest {
 		message.Ciphertext = nil

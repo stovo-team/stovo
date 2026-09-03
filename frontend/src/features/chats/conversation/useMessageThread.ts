@@ -430,7 +430,9 @@ export function useMessageThread({
       return messages;
     }
     return messages.filter((message) => {
-      const attachmentText = message.attachments.map((file) => file.originalName).join(" ");
+      const attachmentText = (Array.isArray(message.attachments) ? message.attachments : [])
+        .map((file) => file.originalName)
+        .join(" ");
       return messageMatchesSearch(
         `${message.content ?? ""} ${message.senderDisplayName ?? ""} ${attachmentText}`,
         query,

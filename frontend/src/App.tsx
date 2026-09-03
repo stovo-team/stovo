@@ -32,6 +32,7 @@ import AdminMcpPage from "./pages/AdminMcpPage";
 import AdminMembersPage from "./pages/AdminMembersPage";
 import AdminRolesPage from "./pages/AdminRolesPage";
 import AdminDefaultsPage from "./pages/AdminDefaultsPage";
+import AdminStatsPage from "./pages/AdminStatsPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
 import InvitePage from "./pages/InvitePage";
@@ -396,6 +397,7 @@ function ClusterRoutes() {
       />
       <Route path="/app/admin/roles" element={<RequireAuth><AdminRolesPage /></RequireAuth>} />
       <Route path="/app/admin/defaults" element={<RequireAuth><AdminDefaultsPage /></RequireAuth>} />
+      <Route path="/app/admin/stats" element={<RequireAuth><AdminStatsPage /></RequireAuth>} />
       <Route
         path="/app/settings"
         element={
