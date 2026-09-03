@@ -175,6 +175,8 @@ export function Composer({
   const sendPressStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const longPressTriggeredRef = useRef(false);
 
+  const messageDelayLabel = formatMessageDelay(messageDelayRemaining);
+
   function handleSendPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
     if (event.button !== 0) return;
     longPressTriggeredRef.current = false;
@@ -667,6 +669,15 @@ export function Composer({
           {((composerLineCount ?? composer.split("\n").length) >= 3) && (
             <MessageEnlargeButton onClick={onEnlargeComposer} />
           )}
+          {messageDelayRemaining > 0 && (
+            <span
+              className="composer-delay-counter"
+              role="timer"
+              aria-label={`You can send another message in ${messageDelayLabel}`}
+            >
+              {messageDelayLabel}
+            </span>
+          )}
           {((!composer.trim() && pendingAttachments.length === 0 && !isSendingMessage && isVoiceRecordingSupported()) || isVoiceRecording) ? (
             <VoiceRecordButton
               isRecording={isVoiceRecording}
@@ -705,15 +716,9 @@ export function Composer({
                 onPointerCancel={handleSendPointerCancel}
                 onContextMenu={handleSendContextMenu}
               >
-                {messageDelayRemaining > 0 ? (
-                  <span className="composer-delay-counter" aria-hidden={true}>
-                    {messageDelayRemaining}s
-                  </span>
-                ) : (
-                  <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                    send
-                  </span>
-                )}
+                <span className="ms-icon ms-icon--20" aria-hidden={true}>
+                  send
+                </span>
                 {(isUploading || isSendingMessage) && (
                   <span className="visually-hidden">{isUploading ? "Uploading" : "Sending"}</span>
                 )}
@@ -756,4 +761,11 @@ export function Composer({
       )}
     </>
   );
+}
+
+export function formatMessageDelay(seconds: number) {
+  const remainingSeconds = Math.max(0, Math.ceil(seconds));
+  const minutes = Math.floor(remainingSeconds / 60);
+  const secondsPart = remainingSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${secondsPart.toString().padStart(2, "0")}`;
 }
