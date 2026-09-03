@@ -21032,11 +21032,20 @@ span.message-spoiler.is-revealed {
 }
 
 .composer-delay-counter {
-  font-size: 13px;
+  align-items: center;
+  background: color-mix(in srgb, var(--accent-primary) 14%, var(--background-secondary));
+  border-radius: 999px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--text-muted);
+  height: 28px;
+  justify-content: center;
+  min-width: 46px;
+  padding: 0 8px;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  white-space: nowrap;
 }
 
 /* ── Send Submenu & Scheduled Message / Reminder Modals ── */
