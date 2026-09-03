@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -47,6 +48,21 @@ type Plugin interface {
 	SubscribeEvents(bus EventBus)
 }
 
+// ConfigurablePlugin is implemented by plugins that can be switched on and
+// off without restarting the server. The registry deliberately keeps this
+// optional so passive plugins do not need toggle plumbing.
+type ConfigurablePlugin interface {
+	Plugin
+	Enabled() bool
+	SetEnabled(ctx context.Context, enabled bool) error
+}
+
+type Status struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+}
+
 type PluginRegistry struct {
 	mu      sync.RWMutex
 	plugins map[string]Plugin
@@ -79,4 +95,37 @@ func (r *PluginRegistry) List() []Plugin {
 		list = append(list, p)
 	}
 	return list
+}
+
+// Statuses includes disabled plugins as well, so an administrator can enable
+// a plugin again from the plugin store.
+func (r *PluginRegistry) Statuses() []Status {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	statuses := make([]Status, 0, len(r.plugins))
+	for _, p := range r.plugins {
+		enabled := true
+		if configurable, ok := p.(ConfigurablePlugin); ok {
+			enabled = configurable.Enabled()
+		}
+		statuses = append(statuses, Status{ID: p.ID(), Name: p.Name(), Enabled: enabled})
+	}
+	return statuses
+}
+
+func (r *PluginRegistry) SetEnabled(ctx context.Context, id string, enabled bool) (Status, error) {
+	r.mu.RLock()
+	p, ok := r.plugins[id]
+	r.mu.RUnlock()
+	if !ok {
+		return Status{}, errors.New("plugin not found")
+	}
+	configurable, ok := p.(ConfigurablePlugin)
+	if !ok {
+		return Status{}, errors.New("plugin cannot be configured")
+	}
+	if err := configurable.SetEnabled(ctx, enabled); err != nil {
+		return Status{}, err
+	}
+	return Status{ID: p.ID(), Name: p.Name(), Enabled: configurable.Enabled()}, nil
 }

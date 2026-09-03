@@ -1035,6 +1035,40 @@ func (s *Server) fileRoutes() httptransport.FileRoutes {
 
 func (s *Server) adminRoutes() httptransport.AdminRoutes {
 	return httptransport.AdminRoutes{
+		ListPlugins: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			if err := s.requireAdmin(user); err != nil {
+				writeMessageValue(w, http.StatusForbidden, map[string]string{"detail": "Admin access required"})
+				return
+			}
+			if s.plugins == nil {
+				writeMessageValue(w, http.StatusOK, []plugins.Status{})
+				return
+			}
+			writeMessageValue(w, http.StatusOK, s.plugins.Statuses())
+		}),
+		UpdatePlugin: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			if err := s.requireAdmin(user); err != nil {
+				writeMessageValue(w, http.StatusForbidden, map[string]string{"detail": "Admin access required"})
+				return
+			}
+			var request struct {
+				Enabled *bool `json:"enabled"`
+			}
+			if err := s.decodeJSON(r, &request); err != nil || request.Enabled == nil {
+				writeMessageValue(w, http.StatusBadRequest, map[string]string{"detail": "enabled is required"})
+				return
+			}
+			if s.plugins == nil {
+				writeMessageValue(w, http.StatusNotFound, map[string]string{"detail": "Plugin not found"})
+				return
+			}
+			status, err := s.plugins.SetEnabled(r.Context(), chi.URLParam(r, "pluginId"), *request.Enabled)
+			if err != nil {
+				writeMessageValue(w, http.StatusUnprocessableEntity, map[string]string{"detail": err.Error()})
+				return
+			}
+			writeMessageValue(w, http.StatusOK, status)
+		}),
 		Logs: httptransport.NewAdminLogsHandler(httptransport.AdminLogsDependencies{
 			Authorize: func(r *http.Request) int {
 				user, err := s.currentUser(r)

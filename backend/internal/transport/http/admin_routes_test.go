@@ -23,7 +23,7 @@ func TestRegisterAdminRoutesPreservesMethodsAndPaths(t *testing.T) {
 		ListMCPConnectors: handler, CreateMCPConnector: handler,
 		GetMCPConnector: handler, UpdateMCPConnector: handler,
 		RegenerateMCPConnectorToken: handler, RevokeMCPConnector: handler,
-		ListMCPConnectorAudit: handler,
+		ListMCPConnectorAudit: handler, ListPlugins: handler, UpdatePlugin: handler,
 	}
 	RegisterAdminRoutes(router, routes)
 
@@ -48,6 +48,8 @@ func TestRegisterAdminRoutesPreservesMethodsAndPaths(t *testing.T) {
 		{stdhttp.MethodPost, "/api/admin/mcp-connectors/connector-1/regenerate-token"},
 		{stdhttp.MethodPost, "/api/admin/mcp-connectors/connector-1/revoke"},
 		{stdhttp.MethodGet, "/api/admin/mcp-connectors/connector-1/audit"},
+		{stdhttp.MethodGet, "/api/admin/plugins"},
+		{stdhttp.MethodPatch, "/api/admin/plugins/plugin-rich-stats"},
 	} {
 		t.Run(request.method+request.path, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
@@ -73,7 +75,7 @@ func TestRegisterAdminRoutesRejectsWrongMethod(t *testing.T) {
 		ListMCPConnectors: handler, CreateMCPConnector: handler,
 		GetMCPConnector: handler, UpdateMCPConnector: handler,
 		RegenerateMCPConnectorToken: handler, RevokeMCPConnector: handler,
-		ListMCPConnectorAudit: handler,
+		ListMCPConnectorAudit: handler, ListPlugins: handler, UpdatePlugin: handler,
 	})
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(stdhttp.MethodDelete, "/api/admin/logs", nil))

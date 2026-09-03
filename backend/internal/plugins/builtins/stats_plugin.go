@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -13,13 +14,16 @@ import (
 )
 
 type StatsPlugin struct {
-	store *statsstore.PostgresStore
+	store   *statsstore.PostgresStore
+	enabled atomic.Bool
 }
 
 func NewStatsPlugin(store *statsstore.PostgresStore) *StatsPlugin {
-	return &StatsPlugin{
+	p := &StatsPlugin{
 		store: store,
 	}
+	p.enabled.Store(true)
+	return p
 }
 
 func (p *StatsPlugin) ID() string {
@@ -38,7 +42,24 @@ func (p *StatsPlugin) Init(services plugins.Services) error {
 	}
 	if p.store != nil {
 		_ = p.store.InitSchema(context.Background())
+		if enabled, found, err := p.store.PluginEnabled(context.Background(), p.ID()); err == nil && found {
+			p.enabled.Store(enabled)
+		}
 	}
+	return nil
+}
+
+func (p *StatsPlugin) Enabled() bool {
+	return p.enabled.Load()
+}
+
+func (p *StatsPlugin) SetEnabled(ctx context.Context, enabled bool) error {
+	if p.store != nil {
+		if err := p.store.SetPluginEnabled(ctx, p.ID(), enabled); err != nil {
+			return err
+		}
+	}
+	p.enabled.Store(enabled)
 	return nil
 }
 
@@ -53,7 +74,7 @@ func (p *StatsPlugin) RegisterRoutes(r chi.Router) {
 
 func (p *StatsPlugin) SubscribeEvents(bus plugins.EventBus) {
 	bus.Subscribe(plugins.EventMessageSent, func(ctx context.Context, event plugins.Event) error {
-		if p.store == nil {
+		if p.store == nil || !p.Enabled() {
 			return nil
 		}
 		chatID, _ := event.Payload["chat_id"].(string)
@@ -69,7 +90,7 @@ func (p *StatsPlugin) SubscribeEvents(bus plugins.EventBus) {
 	})
 
 	bus.Subscribe(plugins.EventReactionAdded, func(ctx context.Context, event plugins.Event) error {
-		if p.store == nil {
+		if p.store == nil || !p.Enabled() {
 			return nil
 		}
 		chatID, _ := event.Payload["chat_id"].(string)
@@ -90,6 +111,10 @@ func (p *StatsPlugin) handleOverview(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"stats store unavailable"}`, http.StatusServiceUnavailable)
 		return
 	}
+	if !p.Enabled() {
+		http.NotFound(w, r)
+		return
+	}
 	rangeFilter := r.URL.Query().Get("range")
 	overview, err := p.store.GetServerOverview(r.Context(), rangeFilter)
 	if err != nil {
@@ -103,6 +128,10 @@ func (p *StatsPlugin) handleOverview(w http.ResponseWriter, r *http.Request) {
 func (p *StatsPlugin) handleChatStats(w http.ResponseWriter, r *http.Request) {
 	if p.store == nil {
 		http.Error(w, `{"error":"stats store unavailable"}`, http.StatusServiceUnavailable)
+		return
+	}
+	if !p.Enabled() {
+		http.NotFound(w, r)
 		return
 	}
 	chatID := chi.URLParam(r, "chatId")
@@ -124,6 +153,10 @@ func (p *StatsPlugin) handleFunAwards(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"stats store unavailable"}`, http.StatusServiceUnavailable)
 		return
 	}
+	if !p.Enabled() {
+		http.NotFound(w, r)
+		return
+	}
 	awards, err := p.store.GetFunAwards(r.Context())
 	if err != nil {
 		http.Error(w, `{"error":"failed to load fun awards"}`, http.StatusInternalServerError)
@@ -136,6 +169,10 @@ func (p *StatsPlugin) handleFunAwards(w http.ResponseWriter, r *http.Request) {
 func (p *StatsPlugin) handleYearWithStovo(w http.ResponseWriter, r *http.Request) {
 	if p.store == nil {
 		http.Error(w, `{"error":"stats store unavailable"}`, http.StatusServiceUnavailable)
+		return
+	}
+	if !p.Enabled() {
+		http.NotFound(w, r)
 		return
 	}
 	yearStr := chi.URLParam(r, "year")

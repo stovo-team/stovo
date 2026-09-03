@@ -47,7 +47,7 @@ export const defaultManifest: ServerManifest = {
     allow_public_invites: true,
     require_sso_auth: false,
   },
-  active_plugins: ["plugin-system-welcome-bot", "plugin-theme-packs"],
+  active_plugins: ["plugin-system-welcome-bot", "plugin-theme-packs", "plugin-rich-stats"],
 };
 
 let currentManifest: ServerManifest = { ...defaultManifest };
