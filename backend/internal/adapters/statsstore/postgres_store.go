@@ -185,6 +185,11 @@ func (s *PostgresStore) InitSchema(ctx context.Context) error {
 			UNIQUE (year, user_id, emoji)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_stats_emoji_year ON stats_emoji_usage (year, emoji)`,
+		`CREATE TABLE IF NOT EXISTS plugin_settings (
+			plugin_id text PRIMARY KEY,
+			enabled boolean NOT NULL,
+			updated_at timestamptz NOT NULL DEFAULT NOW()
+		)`,
 	}
 
 	for _, q := range queries {
@@ -193,6 +198,31 @@ func (s *PostgresStore) InitSchema(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (s *PostgresStore) PluginEnabled(ctx context.Context, pluginID string) (enabled bool, found bool, err error) {
+	if s.db == nil {
+		return true, false, nil
+	}
+	err = s.db.QueryRowContext(ctx, `SELECT enabled FROM plugin_settings WHERE plugin_id = $1`, pluginID).Scan(&enabled)
+	if err == sql.ErrNoRows {
+		return true, false, nil
+	}
+	if err != nil {
+		return false, false, err
+	}
+	return enabled, true, nil
+}
+
+func (s *PostgresStore) SetPluginEnabled(ctx context.Context, pluginID string, enabled bool) error {
+	if s.db == nil {
+		return nil
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO plugin_settings (plugin_id, enabled, updated_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (plugin_id) DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = NOW()`, pluginID, enabled)
+	return err
 }
 
 func (s *PostgresStore) RecordMessage(ctx context.Context, chatID, senderID, msgType, content string, createdAt time.Time) {

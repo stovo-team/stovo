@@ -15,6 +15,17 @@ type mockPlugin struct {
 	called bool
 }
 
+type configurableMockPlugin struct {
+	mockPlugin
+	enabled bool
+}
+
+func (m *configurableMockPlugin) Enabled() bool { return m.enabled }
+func (m *configurableMockPlugin) SetEnabled(_ context.Context, enabled bool) error {
+	m.enabled = enabled
+	return nil
+}
+
 func (m *mockPlugin) ID() string   { return m.id }
 func (m *mockPlugin) Name() string { return m.name }
 func (m *mockPlugin) Init(s Services) error {
@@ -45,6 +56,23 @@ func TestPluginRegistry(t *testing.T) {
 	list := reg.List()
 	if len(list) != 1 {
 		t.Errorf("expected 1 registered plugin, got %d", len(list))
+	}
+}
+
+func TestPluginRegistryUpdatesConfigurablePluginStatus(t *testing.T) {
+	reg := NewPluginRegistry()
+	p := &configurableMockPlugin{mockPlugin: mockPlugin{id: "toggleable", name: "Toggleable"}, enabled: true}
+	reg.Register(p)
+
+	status, err := reg.SetEnabled(context.Background(), "toggleable", false)
+	if err != nil {
+		t.Fatalf("SetEnabled() error = %v", err)
+	}
+	if status.Enabled || p.Enabled() {
+		t.Fatal("expected plugin to be disabled")
+	}
+	if statuses := reg.Statuses(); len(statuses) != 1 || statuses[0].Enabled {
+		t.Fatalf("Statuses() = %#v, want one disabled plugin", statuses)
 	}
 }
 

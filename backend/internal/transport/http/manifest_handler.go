@@ -17,8 +17,10 @@ func NewManifestHandler(cfg config.Config, registry *plugins.PluginRegistry) std
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		pluginIDs := []string{}
 		if registry != nil {
-			for _, p := range registry.List() {
-				pluginIDs = append(pluginIDs, p.ID())
+			for _, status := range registry.Statuses() {
+				if status.Enabled {
+					pluginIDs = append(pluginIDs, status.ID)
+				}
 			}
 		}
 
@@ -29,11 +31,11 @@ func NewManifestHandler(cfg config.Config, registry *plugins.PluginRegistry) std
 			"features": map[string]interface{}{
 				"presence_detail_level": cfg.FeatureMatrix.PresenceDetailLevel,
 				"end_to_end_encryption": cfg.FeatureMatrix.EndToEndEncryption,
-				"custom_emojis":       cfg.FeatureMatrix.CustomEmojis,
-				"file_upload_limit_mb": cfg.FeatureMatrix.FileUploadLimitMB,
-				"default_theme":        cfg.FeatureMatrix.DefaultTheme,
-				"allow_public_invites": cfg.FeatureMatrix.AllowPublicInvites,
-				"require_sso_auth":     cfg.FeatureMatrix.RequireSSOAuth,
+				"custom_emojis":         cfg.FeatureMatrix.CustomEmojis,
+				"file_upload_limit_mb":  cfg.FeatureMatrix.FileUploadLimitMB,
+				"default_theme":         cfg.FeatureMatrix.DefaultTheme,
+				"allow_public_invites":  cfg.FeatureMatrix.AllowPublicInvites,
+				"require_sso_auth":      cfg.FeatureMatrix.RequireSSOAuth,
 			},
 			"active_plugins": pluginIDs,
 		}

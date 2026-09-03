@@ -30,6 +30,8 @@ type AdminRoutes struct {
 	RegenerateMCPConnectorToken stdhttp.Handler
 	RevokeMCPConnector          stdhttp.Handler
 	ListMCPConnectorAudit       stdhttp.Handler
+	ListPlugins                 stdhttp.Handler
+	UpdatePlugin                stdhttp.Handler
 }
 
 // RegisterAdminRoutes installs the stable administration REST surface. Route
@@ -56,4 +58,6 @@ func RegisterAdminRoutes(router chi.Router, routes AdminRoutes) {
 	router.Method(stdhttp.MethodPost, "/api/admin/mcp-connectors/{connectorId}/regenerate-token", routes.RegenerateMCPConnectorToken)
 	router.Method(stdhttp.MethodPost, "/api/admin/mcp-connectors/{connectorId}/revoke", routes.RevokeMCPConnector)
 	router.Method(stdhttp.MethodGet, "/api/admin/mcp-connectors/{connectorId}/audit", routes.ListMCPConnectorAudit)
+	router.Method(stdhttp.MethodGet, "/api/admin/plugins", routes.ListPlugins)
+	router.Method(stdhttp.MethodPatch, "/api/admin/plugins/{pluginId}", routes.UpdatePlugin)
 }
