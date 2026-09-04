@@ -1,5 +1,5 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
-import { CalendarClock, Check, Clock3, Phone, Video } from "lucide-react";
+import { CalendarClock, Check, Clock3, Folder, LockKeyhole, Phone, Video } from "lucide-react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
@@ -386,7 +386,21 @@ export function MessageBubble({
             </div>
           ) : (
             <>
-              {message.type === "poll" && message.poll ? (
+              {message.type === "collection" && message.collection ? (
+                <button
+                  type="button"
+                  className="message-collection-card"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (message.collection?.available) window.location.assign(`/app/files?collection=${encodeURIComponent(message.collection.id)}`);
+                  }}
+                  disabled={!message.collection.available}
+                >
+                  <span className="message-collection-card-icon">{message.collection.available ? <Folder size={22} /> : <LockKeyhole size={22} />}</span>
+                  <span><strong>{message.collection.available ? message.collection.title : "Collection unavailable"}</strong><small>{message.collection.available ? `${message.collection.itemCount ?? 0} items · ${message.collection.displayKind ?? "collection"}` : "You no longer have access"}</small></span>
+                  {message.collection.available && <span className="message-collection-open">Open</span>}
+                </button>
+              ) : message.type === "poll" && message.poll ? (
                 <PollBubble
                   poll={message.poll}
                   currentUserId={currentUserId ?? ""}

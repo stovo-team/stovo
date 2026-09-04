@@ -1,4 +1,4 @@
-h1:gZOHxAyu9gQA7t9MU0L55I0yqRcGSQ9wZsxXjdX7XbI=
+h1:UuQJuEr22WdyG3QPUeeuNYYPSn7EewCQxjtMk0BgCnQ=
 20260804120000_baseline.sql h1:PX8LTmKn+3POUZ0MsN42S+c4aep3pUydkop5ubIABZA=
 20260804170000_add_mcp_connectors.sql h1:cr7khK3pFIRhsLPUVijg5CAwlj2CLW9t/rUDKzJaFp8=
 20260804180000_add_mcp_connector_provider.sql h1:45CtfU1qN07ywUQT0g28LLMuwUQ2+vhRjVQTcsX0Meo=
@@ -13,3 +13,4 @@ h1:gZOHxAyu9gQA7t9MU0L55I0yqRcGSQ9wZsxXjdX7XbI=
 20260902210000_add_server_roles_foundation.sql h1:z/aa4j2YRDOkzqmhiPILopiOrg/qLSZBtoZAxeqZSMI=
 20260903080000_restore_sync_foundation_defaults.sql h1:t3BdMT89kYwlaEpgPgxuUB6u2aK7VVcM7XNBgrjHtRg=
 20260903120000_repair_client_operations_primary_key.sql h1:5nsXllawWi8ianAOV+q0L5n91DI10liLe1IocHRgS9M=
+20260904150000_add_storage_collections.sql h1:1ZGHzyJAiZt5L15FuW/PwAmKqj+b9/Ayujbg/CX/VBA=

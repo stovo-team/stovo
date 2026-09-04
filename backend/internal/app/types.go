@@ -363,6 +363,16 @@ type messagePublic struct {
 	ClientMessageID     *string                 `json:"clientMessageId,omitempty"`
 	Call                *callHistoryPublic      `json:"call,omitempty"`
 	Poll                *pollPublic             `json:"poll,omitempty"`
+	Collection          *collectionCardPublic   `json:"collection,omitempty"`
+}
+
+type collectionCardPublic struct {
+	ID          string `json:"id"`
+	Title       string `json:"title,omitempty"`
+	DisplayKind string `json:"displayKind,omitempty"`
+	ContentType string `json:"contentType,omitempty"`
+	ItemCount   int    `json:"itemCount,omitempty"`
+	Available   bool   `json:"available"`
 }
 
 type pollOptionPublic struct {
@@ -423,6 +433,7 @@ type sendMessageRequest struct {
 	EncryptionMetadata  *string  `json:"encryptionMetadata"`
 	MentionedUserIDs    []string `json:"mentionedUserIds"`
 	AttachmentsPending  bool     `json:"attachmentsPending"`
+	CollectionID        *string  `json:"collectionId"`
 }
 
 type attachMessageFilesRequest struct {

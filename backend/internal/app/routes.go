@@ -1030,6 +1030,7 @@ func (s *Server) fileRoutes() httptransport.FileRoutes {
 			}.DeleteFile(w, r)
 		}),
 		StreamMedia: http.HandlerFunc(media.Stream),
+		Collections: s.collectionRoutes(),
 	}
 }
 
