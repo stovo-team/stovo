@@ -1,12 +1,24 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
 import { ApiRequestOptions, apiRequest } from "./client";
+import type { DevicePreferences } from "../settings/devicePreferences";
 
 // --- Capacitor plugin bridge ---
 
 interface NtfyPlugin {
-  startService(options: { topic: string; ntfyBaseUrl: string }): Promise<void>;
+  startService(options: {
+    topic: string;
+    ntfyBaseUrl: string;
+    quietHoursEnabled: boolean;
+    quietHoursStart: string;
+    quietHoursEnd: string;
+  }): Promise<void>;
   stopService(): Promise<void>;
+  updateNotificationSchedule(options: {
+    quietHoursEnabled: boolean;
+    quietHoursStart: string;
+    quietHoursEnd: string;
+  }): Promise<void>;
   checkFullScreenIntent(): Promise<void>;
   requestNotificationPermission(): Promise<{ granted: boolean }>;
   dismissChatNotifications(options: { chatId: string }): Promise<void>;
@@ -84,6 +96,22 @@ export async function dismissChatNotifications(chatId: string): Promise<void> {
   }
 }
 
+/** Keep Android's notification channels in step with the device's quiet-hours setting. */
+export async function updateNativeNotificationSchedule(preferences: Pick<
+  DevicePreferences,
+  "quietHoursEnabled" | "quietHoursStart" | "quietHoursEnd"
+>): Promise<void> {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
+    return;
+  }
+  try {
+    await NtfyPlugin.updateNotificationSchedule(preferences);
+  } catch {
+    // Older Android builds do not expose this method; their notifications retain
+    // the system channel choice until the app is updated.
+  }
+}
+
 /** Read Android's private one-shot action handoff after session restore. */
 export async function consumePendingNotificationAction(): Promise<PendingNotificationAction | null> {
   if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
@@ -122,7 +150,8 @@ export async function consumePendingNotificationAction(): Promise<PendingNotific
  * Accepts authRequest from useAuth() to make authenticated API calls.
  */
 export async function bootstrapNotifications(
-  authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>
+  authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>,
+  preferences: Pick<DevicePreferences, "quietHoursEnabled" | "quietHoursStart" | "quietHoursEnd">
 ): Promise<void> {
   if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
     return;
@@ -135,5 +164,5 @@ export async function bootstrapNotifications(
   const { topic, ntfyBaseUrl } = await authRequest<NotificationTopicResponse>(
     "/api/notifications/topic"
   );
-  await NtfyPlugin.startService({ topic, ntfyBaseUrl });
+  await NtfyPlugin.startService({ topic, ntfyBaseUrl, ...preferences });
 }

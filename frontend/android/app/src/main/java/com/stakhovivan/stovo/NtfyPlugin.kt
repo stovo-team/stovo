@@ -37,6 +37,12 @@ class NtfyPlugin : Plugin() {
             call.reject("ntfyBaseUrl required")
             return
         }
+        NtfyService.updateNotificationSchedule(
+            context,
+            call.getBoolean("quietHoursEnabled") ?: false,
+            call.getString("quietHoursStart") ?: "22:00",
+            call.getString("quietHoursEnd") ?: "07:00"
+        )
         val intent = Intent(context, NtfyService::class.java).apply {
             action = NtfyService.ACTION_START
             putExtra(NtfyService.EXTRA_TOPIC, topic)
@@ -52,6 +58,18 @@ class NtfyPlugin : Plugin() {
             action = NtfyService.ACTION_STOP
         }
         context.startService(intent)
+        call.resolve()
+    }
+
+    /** Update delivery behavior immediately; the service reads this before every push. */
+    @PluginMethod
+    fun updateNotificationSchedule(call: PluginCall) {
+        NtfyService.updateNotificationSchedule(
+            context,
+            call.getBoolean("quietHoursEnabled") ?: false,
+            call.getString("quietHoursStart") ?: "22:00",
+            call.getString("quietHoursEnd") ?: "07:00"
+        )
         call.resolve()
     }
 

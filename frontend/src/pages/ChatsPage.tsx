@@ -88,6 +88,7 @@ export default function ChatsPage() {
         <div className={`chat-layout ${isDetailsOpen && selectedChat ? "details-open" : ""}`}>
           <ChatSidebar
             familyName={family?.name ?? "Stovo"}
+            familyId={family?.id ?? currentUser?.familyId ?? ""}
             canCreateFamilyInvite={canCreateFamilyInvite}
             onOpenFamilyInvite={() => setIsFamilyInviteOpen(true)}
             activeChatId={chatId}

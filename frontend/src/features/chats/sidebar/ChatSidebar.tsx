@@ -11,6 +11,7 @@ import { useAuth } from "../../../auth/AuthContext";
 
 export function ChatSidebar({
   familyName,
+  familyId,
   canCreateFamilyInvite,
   onOpenFamilyInvite,
   activeChatId,
@@ -28,7 +29,8 @@ export function ChatSidebar({
 }: ChatSidebarProps) {
   const strings = useStrings();
   const navigate = useNavigate();
-  const { activeServer, savedServers, hotSwapServer, removeServer } = useAuth();
+  const { activeServer, savedServers, hotSwapServer, removeServer, currentUser } = useAuth();
+  const canManageFolders = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_channels") === true;
   const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
   const serverMenuRef = useRef<HTMLDivElement | null>(null);
   const filterRowRef = useRef<HTMLDivElement | null>(null);
@@ -242,6 +244,8 @@ export function ChatSidebar({
         chatsBySection={chatsBySection}
         filteredChats={filteredChats}
         chatFilter={chatFilter}
+        familyId={familyId}
+        canManageFolders={canManageFolders}
         accessToken={accessToken}
         currentUserId={currentUserId}
         selectedChatId={selectedChatId}

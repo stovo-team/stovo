@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const nativePlugin = {
   dismissChatNotifications: vi.fn(),
-  consumePendingNotificationAction: vi.fn()
+  consumePendingNotificationAction: vi.fn(),
+  updateNotificationSchedule: vi.fn()
 };
 
 vi.mock("@capacitor/core", () => ({
@@ -54,5 +55,25 @@ describe("consumePendingNotificationAction", () => {
     const { consumePendingNotificationAction } = await import("./notifications");
 
     await expect(consumePendingNotificationAction()).resolves.toBeNull();
+  });
+});
+
+describe("updateNativeNotificationSchedule", () => {
+  afterEach(() => nativePlugin.updateNotificationSchedule.mockReset());
+
+  it("sends quiet-hours changes to the Android notification service", async () => {
+    const { updateNativeNotificationSchedule } = await import("./notifications");
+
+    await updateNativeNotificationSchedule({
+      quietHoursEnabled: true,
+      quietHoursStart: "22:00",
+      quietHoursEnd: "07:00"
+    });
+
+    expect(nativePlugin.updateNotificationSchedule).toHaveBeenCalledWith({
+      quietHoursEnabled: true,
+      quietHoursStart: "22:00",
+      quietHoursEnd: "07:00"
+    });
   });
 });
