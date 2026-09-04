@@ -1171,6 +1171,7 @@ func (s *Server) mcpRoutes() http.Handler {
 
 func (s *Server) pluginRoutes() http.Handler {
 	r := chi.NewRouter()
+	r.Mount("/canvas", s.canvasRoutes())
 	if s.plugins != nil {
 		for _, p := range s.plugins.List() {
 			p.RegisterRoutes(r)

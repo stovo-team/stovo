@@ -15,6 +15,7 @@ import AppNav from "./AppNav";
 import { CallFeature, CallFeatureProvider, MobileMinimizedCallBar } from "../features/chats/calling/CallFeature";
 import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
+import { createCanvas } from "../api/canvas";
 
 export default function ChatsPage() {
   const { chatId } = useParams();
@@ -189,6 +190,11 @@ export default function ChatsPage() {
               onOpenChat={openChat}
               onOpenImage={openFullViewImage}
               onOpenNewChat={openNewChatScreen}
+              onCreateCanvas={() => {
+                if (!accessToken || !selectedChat) return;
+                void createCanvas(accessToken, selectedChat.id)
+                  .then((canvas) => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`));
+              }}
             />
           </section>
           {selectedChat && isDetailsOpen && (

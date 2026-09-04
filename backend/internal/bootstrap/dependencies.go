@@ -54,8 +54,6 @@ import (
 	"stovo-messenger/backend/internal/adapters/syncstore"
 	"stovo-messenger/backend/internal/adapters/transcriptionsessions"
 	"stovo-messenger/backend/internal/app"
-	"stovo-messenger/backend/internal/plugins"
-	"stovo-messenger/backend/internal/plugins/builtins"
 	"stovo-messenger/backend/internal/broker"
 	"stovo-messenger/backend/internal/cache"
 	"stovo-messenger/backend/internal/config"
@@ -75,6 +73,8 @@ import (
 	featuresync "stovo-messenger/backend/internal/features/sync"
 	featuretranscription "stovo-messenger/backend/internal/features/transcription"
 	"stovo-messenger/backend/internal/logging"
+	"stovo-messenger/backend/internal/plugins"
+	"stovo-messenger/backend/internal/plugins/builtins"
 	"stovo-messenger/backend/internal/repository"
 	"stovo-messenger/backend/internal/storage"
 	"stovo-messenger/backend/internal/tunnel"
@@ -134,6 +134,10 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 	})
 	statsPlugin.SubscribeEvents(eventBus)
 	pluginRegistry.Register(statsPlugin)
+	canvasPlugin := builtins.NewCanvasPlugin()
+	_ = canvasPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus})
+	canvasPlugin.SubscribeEvents(eventBus)
+	pluginRegistry.Register(canvasPlugin)
 
 	return app.Dependencies{
 		Config: cfg, Database: db, DatabaseHealth: databasehealth.New(db), Persistence: entClient, Redis: redisClient, JobsRedis: jobsRedisClient,

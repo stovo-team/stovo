@@ -22818,3 +22818,26 @@ span.message-spoiler.is-revealed {
 .message-collection-card strong, .message-collection-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .message-collection-card small { font-size: 11px; opacity: .75; margin-top: 2px; text-transform: capitalize; }
 .message-collection-open { color: var(--accent-primary); font-size: 12px; font-weight: 700; }
+
+/* Shared Canvas workspace */
+.canvas-page { background: var(--canvas-amoled, #000); color: var(--text-primary); min-height: 100dvh; padding: 18px; }
+.canvas-page--loading, .canvas-page--error { align-content: center; display: grid; justify-items: center; gap: 10px; }
+.canvas-page-header { align-items: center; border-bottom: 1px solid rgba(255,255,255,.12); display: flex; gap: 12px; margin: 0 auto 18px; max-width: 1180px; padding: 0 0 15px; }
+.canvas-page-header h1 { font-size: 19px; margin: 0; }
+.canvas-page-header small { color: var(--text-secondary); }
+.canvas-page-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 7px; margin-left: auto; }
+.canvas-page-actions button, .canvas-markdown-block header button, .canvas-share-panel button { align-items: center; background: #20242a; border: 1px solid #333943; color: var(--text-primary); display: inline-flex; gap: 5px; min-height: 32px; padding: 6px 9px; }
+.canvas-page-actions button:hover, .canvas-markdown-block header button:hover, .canvas-share-panel button:hover { border-color: var(--accent-primary); }
+.canvas-workspace { display: grid; gap: 18px; margin: 0 auto; max-width: 1180px; }
+.canvas-block { background: #121417; border: 1px solid #2b3038; border-radius: 14px; overflow: hidden; }
+.canvas-block > header { align-items: center; border-bottom: 1px solid #2b3038; display: flex; gap: 7px; min-height: 44px; padding: 0 12px; }
+.canvas-block > header small { color: var(--text-secondary); margin-left: auto; }
+.canvas-markdown-block header button { margin-left: auto; }
+.canvas-markdown-block textarea { background: transparent; border: 0; color: inherit; font: 14px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; min-height: 250px; outline: none; padding: 14px; resize: vertical; width: 100%; }
+.canvas-markdown-preview { min-height: 130px; padding: 15px; }
+.canvas-excalidraw { height: min(62vh, 680px); min-height: 360px; }
+.canvas-excalidraw .excalidraw { --color-primary: var(--accent-primary); }
+.canvas-share-panel { background: #17191d; border: 1px solid #343a44; border-radius: 12px; display: grid; gap: 8px; margin: -8px auto 14px; max-width: 1180px; padding: 12px; }
+.canvas-share-panel button { justify-content: flex-start; text-align: left; }
+.message-canvas-card .message-collection-card-icon { color: var(--accent-primary); }
+@media (max-width: 700px) { .canvas-page { padding: 12px; } .canvas-page-header { align-items: flex-start; } .canvas-page-actions { margin-left: 0; } .canvas-excalidraw { height: 58vh; min-height: 320px; } }

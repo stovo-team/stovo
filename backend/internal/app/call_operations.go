@@ -171,6 +171,7 @@ func (s *Server) configureSockets() {
 				TypingStop:  func(ev *socketio.EventPayload) { s.onSocketTyping(socket, user, ev, false) },
 			})
 			s.registerCallSocketHandlers(socket, user)
+			s.registerCanvasSocketHandlers(socket, user)
 		},
 	})
 }
@@ -1374,7 +1375,7 @@ func (s *Server) sfuHandler() httptransport.SFUTokenHandler {
 }
 
 func (s *Server) emitToUserRoom(userID, event string, payload any) error {
-	return s.sockets.To("user:" + userID).Emit(event, payload)
+	return s.sockets.To("user:"+userID).Emit(event, payload)
 }
 
 func (s *Server) emitSocketError(socket *socketio.Socket, clientMessageID *string, message string) {
