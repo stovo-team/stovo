@@ -32,6 +32,7 @@ export type ChatOverviewController = {
 
 export type ChatSidebarProps = {
   familyName: string;
+  familyId: string;
   canCreateFamilyInvite: boolean;
   onOpenFamilyInvite: () => void;
   activeChatId?: string;

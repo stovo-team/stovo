@@ -44,7 +44,7 @@ import ServerSetupPage from "./pages/ServerSetupPage";
 import SettingsPage from "./pages/SettingsPage";
 import SetupPage from "./pages/SetupPage";
 import MultiAdminPage from "./pages/MultiAdminPage";
-import { applyServerNotificationDefaults } from "./settings/devicePreferences";
+import { applyServerNotificationDefaults, readDevicePreferences } from "./settings/devicePreferences";
 
 if (typeof document !== "undefined") {
   document.documentElement.dataset.platform = Capacitor.isNativePlatform() ? "native" : "web";
@@ -69,7 +69,7 @@ function NotificationsBootstrapper() {
     void authRequest<{ defaultNotificationSettings: string }>("/api/family")
       .then((family) => applyServerNotificationDefaults(family.defaultNotificationSettings))
       .catch(() => undefined)
-      .finally(() => void bootstrapNotifications(authRequest).catch(() => undefined));
+      .finally(() => void bootstrapNotifications(authRequest, readDevicePreferences()).catch(() => undefined));
   }, [currentUser, authRequest]);
 
   return null;

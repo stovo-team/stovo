@@ -295,7 +295,7 @@ export const strings = {
     messageSound: "Sound",
     callNotifications: "Call notifications",
     ringtoneEnabled: "Ringtone",
-    muteNotifications: "Mute notifications",
+    muteNotifications: "Silence notifications",
     start: "Start",
     end: "End",
     quietHoursStartAria: "Quiet hours start",

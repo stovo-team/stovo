@@ -311,7 +311,7 @@ export const strings = {
     messageSound: "Звук",
     callNotifications: "Уведомления о звонках",
     ringtoneEnabled: "Мелодия звонка",
-    muteNotifications: "Отключить уведомления",
+    muteNotifications: "Без звука",
     start: "Начало",
     end: "Конец",
     quietHoursStartAria: "Начало тихих часов",

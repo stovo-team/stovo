@@ -69,4 +69,17 @@ class MessageNotificationTest {
         MessageNotificationStack.clear("dm-chat")
         assertTrue(MessageNotificationStack.snapshot("dm-chat").isEmpty())
     }
+
+    @Test
+    fun `quiet hours silence notifications across midnight`() {
+        assertTrue(NtfyService.isWithinQuietHours(true, "22:00", "07:00", 23 * 60 + 30))
+        assertTrue(NtfyService.isWithinQuietHours(true, "22:00", "07:00", 6 * 60 + 59))
+        assertFalse(NtfyService.isWithinQuietHours(true, "22:00", "07:00", 12 * 60))
+    }
+
+    @Test
+    fun `disabled or invalid schedules do not silence notifications`() {
+        assertFalse(NtfyService.isWithinQuietHours(false, "22:00", "07:00", 23 * 60))
+        assertFalse(NtfyService.isWithinQuietHours(true, "25:00", "07:00", 23 * 60))
+    }
 }
