@@ -49,7 +49,19 @@ export default function AdminStatsPage() {
     return () => { cancelled = true; };
   }, [authRequest, currentUser?.id, timeRange]);
 
-  const peakHour = useMemo(() => overview ? Math.max(...overview.messages_by_hour, 1) : 1, [overview]);
+  // Older or empty statistics rows can be serialized as null by the API.
+  // Keep the dashboard useful for a brand-new server instead of failing to render.
+  const messagesByHour = overview?.messages_by_hour ?? [];
+  const responseTimeBuckets = overview?.response_time_buckets ?? {
+    under_1_min: 0,
+    from_1_to_5_min: 0,
+    from_5_to_30_min: 0,
+    over_30_min: 0
+  };
+  const conversationStarters = overview?.top_conversation_starters ?? [];
+  const activeChats = overview?.top_active_chats ?? [];
+  const topEmojis = awards?.top_emojis ?? [];
+  const peakHour = useMemo(() => Math.max(...messagesByHour, 1), [messagesByHour]);
   const awardCards = awards ? [
     { label: "Night owl", icon: "🦉", winner: awards.night_owl },
     { label: "Early bird", icon: "🌅", winner: awards.early_bird },
@@ -84,21 +96,21 @@ export default function AdminStatsPage() {
         </section>
         <section className="stats-content-grid">
           <article className="stats-card stats-card--activity"><div className="stats-card-heading"><div><span>When people talk</span><h2>Activity across the day</h2></div><small>Local server time</small></div><div className="stats-chart" aria-label="Messages by hour">
-            {overview.messages_by_hour.map((count, hour) => <div className="stats-chart-column" key={hour}><span className="stats-chart-tooltip">{hour.toString().padStart(2, "0")}:00 · {count} messages</span><i style={{ height: `${Math.max((count / peakHour) * 100, 3)}%` }} /></div>)}
+            {messagesByHour.map((count, hour) => <div className="stats-chart-column" key={hour}><span className="stats-chart-tooltip">{hour.toString().padStart(2, "0")}:00 · {count} messages</span><i style={{ height: `${Math.max((count / peakHour) * 100, 3)}%` }} /></div>)}
           </div><div className="stats-chart-axis"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div></article>
           <article className="stats-card stats-card--replies"><div className="stats-card-heading"><div><span>Responsiveness</span><h2>Reply rhythm</h2></div></div><div className="stats-reply-list">
-            {[["Under a minute", overview.response_time_buckets.under_1_min, "is-fast"], ["1–5 minutes", overview.response_time_buckets.from_1_to_5_min, "is-regular"], ["5–30 minutes", overview.response_time_buckets.from_5_to_30_min, "is-casual"], ["Over 30 minutes", overview.response_time_buckets.over_30_min, "is-slow"]].map(([label, count, tone]) => <div className="stats-reply-row" key={String(label)}><i className={String(tone)} /><span>{label}</span><strong>{Number(count).toLocaleString()}</strong></div>)}
+            {[["Under a minute", responseTimeBuckets.under_1_min, "is-fast"], ["1–5 minutes", responseTimeBuckets.from_1_to_5_min, "is-regular"], ["5–30 minutes", responseTimeBuckets.from_5_to_30_min, "is-casual"], ["Over 30 minutes", responseTimeBuckets.over_30_min, "is-slow"]].map(([label, count, tone]) => <div className="stats-reply-row" key={String(label)}><i className={String(tone)} /><span>{label}</span><strong>{Number(count).toLocaleString()}</strong></div>)}
           </div></article>
           <article className="stats-card"><div className="stats-card-heading"><div><span>Conversation starters</span><h2>They keep the chat moving</h2></div><Users size={18} /></div><div className="stats-leader-list">
-            {overview.top_conversation_starters.length ? overview.top_conversation_starters.map((member, index) => <div className="stats-leader" key={member.user_id}><span className="stats-rank">{index + 1}</span><div><strong>{member.display_name}</strong><small>{member.starts_count} starts</small><i><b style={{ width: `${member.percentage}%` }} /></i></div><em>{member.percentage}%</em></div>) : <p className="stats-empty">A leader will appear as conversations begin.</p>}
+            {conversationStarters.length ? conversationStarters.map((member, index) => <div className="stats-leader" key={member.user_id}><span className="stats-rank">{index + 1}</span><div><strong>{member.display_name}</strong><small>{member.starts_count} starts</small><i><b style={{ width: `${member.percentage}%` }} /></i></div><em>{member.percentage}%</em></div>) : <p className="stats-empty">A leader will appear as conversations begin.</p>}
           </div></article>
           <article className="stats-card"><div className="stats-card-heading"><div><span>Most active spaces</span><h2>Where the conversation lives</h2></div><BarChart3 size={18} /></div><div className="stats-chat-list">
-            {overview.top_active_chats.length ? overview.top_active_chats.map((chat) => <div className="stats-chat" key={chat.chat_id}><span>{chat.type.slice(0, 1)}</span><strong>{chat.title}</strong><small>{chat.message_count.toLocaleString()} msgs</small></div>) : <p className="stats-empty">No chat activity in this period.</p>}
+            {activeChats.length ? activeChats.map((chat) => <div className="stats-chat" key={chat.chat_id}><span>{chat.type.slice(0, 1)}</span><strong>{chat.title}</strong><small>{chat.message_count.toLocaleString()} msgs</small></div>) : <p className="stats-empty">No chat activity in this period.</p>}
           </div></article>
         </section>
         {awards && <section className="stats-awards"><div className="stats-awards-heading"><div><span>Good company</span><h2>Community highlights</h2></div><Trophy size={20} /></div><div className="stats-award-grid">
           {awardCards.map(({ label, icon, winner }) => <article className="stats-award" key={label}><span>{icon}</span><div><small>{label}</small><strong>{winner.display_name || "Not decided yet"}</strong><p>{winner.value || winner.description}</p></div></article>)}
-        </div><div className="stats-duo"><span>🤝</span><div><small>Dynamic duo</small><strong>{awards.dynamic_duo.user_1_name && awards.dynamic_duo.user_2_name ? `${awards.dynamic_duo.user_1_name} & ${awards.dynamic_duo.user_2_name}` : "Still waiting for a legendary duo"}</strong></div><p>{awards.top_emojis.slice(0, 5).map((emoji) => emoji.emoji).join(" ") || "Keep reacting to reveal the server favourites."}</p></div></section>}
+        </div><div className="stats-duo"><span>🤝</span><div><small>Dynamic duo</small><strong>{awards.dynamic_duo.user_1_name && awards.dynamic_duo.user_2_name ? `${awards.dynamic_duo.user_1_name} & ${awards.dynamic_duo.user_2_name}` : "Still waiting for a legendary duo"}</strong></div><p>{topEmojis.slice(0, 5).map((emoji) => emoji.emoji).join(" ") || "Keep reacting to reveal the server favourites."}</p></div></section>}
       </>}
     </section>
     {isWrappedOpen && wrapped && <YearWithStovoModal data={wrapped} onClose={() => setIsWrappedOpen(false)} />}
