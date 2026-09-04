@@ -32,7 +32,7 @@ export default function AdminPluginsPage() {
     finally { setSavingId(null); }
   }
   return <main className="app-shell app-frame admin-page admin-detail-page plugins-page"><AppNav /><section className="page-surface admin-surface plugins-surface">
-    <header className="plugins-header"><Link to={`${prefix}/app/admin`} className="stats-back" aria-label="Back to admin"><ChevronLeft size={18} /></Link><div><p className="stats-kicker">Server administration</p><h1>Plugin store</h1><p>Turn optional server experiences on or off in one place.</p></div></header>
+    <header className="admin-detail-header"><Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to admin"><ChevronLeft size={18} /></Link><div><h1>Plugin store</h1></div></header>
     {!canManagePlugins && <p className="error-text">Admin access required.</p>}{error && <p className="error-text">{error}</p>}
     {canManagePlugins && <section className="plugin-list">{plugins.map((plugin) => {
       const detail = pluginDetails[plugin.id]; const Icon = detail?.icon ?? Layers3;
