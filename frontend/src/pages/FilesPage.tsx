@@ -47,6 +47,7 @@ import { VideoPlayer } from "../components/VideoPlayer";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
+import { StorageCollections } from "../components/StorageCollections";
 import { useStrings } from "../i18n/LanguageContext";
 import { loadCachedFileList, saveCachedFileList } from "../fileLibraryCache";
 import { syncChatReplicaDeltas } from "../features/chats/sidebar/chatDeltaSync";
@@ -617,6 +618,7 @@ export default function FilesPage() {
           </div>
 
           <div className="storage-content-area">
+			<StorageCollections accessToken={accessToken} files={files} filter={filter} onFilesChanged={() => void load(true)} />
             {isLoading ? (
               <div className="storage-grid skeleton-grid" aria-hidden="true">
                 {Array.from({ length: 10 }).map((_, index) => (

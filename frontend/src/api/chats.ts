@@ -81,12 +81,21 @@ export interface CallHistory {
   durationSeconds?: number | null;
 }
 
+export interface MessageCollectionCard {
+  id: string;
+  title?: string;
+  displayKind?: "folder" | "album";
+  contentType?: "mixed" | "media" | "audio" | "documents";
+  itemCount?: number;
+  available: boolean;
+}
+
 export interface Message {
   id: string;
   chatId: string;
   senderId: string;
   senderDisplayName: string | null;
-  type: "text" | "image" | "video" | "file" | "mixed" | "call" | "poll";
+  type: "text" | "image" | "video" | "file" | "mixed" | "call" | "poll" | "collection";
   content: string | null;
   encryptionProtocol: MessageEncryptionProtocol;
   ciphertext: string | null;
@@ -108,10 +117,19 @@ export interface Message {
   clientMessageId?: string;
   call?: CallHistory | null;
   poll?: Poll | null;
+  collection?: MessageCollectionCard | null;
   deliveryError?: string;
   deliveryState?: "sending" | "failed" | "scheduled";
   scheduledFor?: string | null;
   isReminder?: boolean;
+}
+
+export function sendCollectionMessage(accessToken: string, chatId: string, collectionId: string) {
+  return apiRequest<Message>(`/api/chats/${chatId}/messages`, {
+    method: "POST",
+    accessToken,
+    body: { type: "collection", content: null, collectionId }
+  });
 }
 
 export function getChats(accessToken: string) {

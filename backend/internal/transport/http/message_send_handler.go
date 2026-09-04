@@ -27,6 +27,7 @@ type MessageSendRequest struct {
 	EncryptionMetadata  *string  `json:"encryptionMetadata"`
 	MentionedUserIDs    []string `json:"mentionedUserIds"`
 	AttachmentsPending  bool     `json:"attachmentsPending"`
+	CollectionID        *string  `json:"collectionId"`
 }
 type MessageSendOperations struct {
 	Send      func(context.Context, string, MessageSendRequest, string) (any, error)

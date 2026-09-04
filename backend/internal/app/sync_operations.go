@@ -94,6 +94,13 @@ func (s *Server) createRESTMessageWithSync(ctx context.Context, user userPublic,
 	}
 	onlineRecipients := s.onlineChatRecipients(chat, user.ID)
 	message := newCreatedMessagePublic(messageID, chatID, user, messageType, content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, payload, messageKind, attachments, onlineRecipients, createdAt)
+	if payload.CollectionID != nil {
+		card, err := s.shareCollectionWithChat(ctx, strings.TrimSpace(*payload.CollectionID), chat, user)
+		if err != nil {
+			return messagePublic{}, false, err
+		}
+		message.Collection = &card
+	}
 	// Echo the client operation ID in the durable response and sync event.  The
 	// client uses it to replace its optimistic outbox item with this server
 	// message, including when the REST response itself was interrupted.
@@ -135,6 +142,11 @@ func (s *Server) createRESTMessageWithSync(ctx context.Context, user userPublic,
 	if result.Replayed {
 		if err := json.Unmarshal(result.ResponsePayload, &message); err != nil {
 			return messagePublic{}, false, fmt.Errorf("decode stored operation response: %w", err)
+		}
+	}
+	if payload.CollectionID != nil {
+		if err := s.recordMessageCollectionCard(ctx, message.ID, strings.TrimSpace(*payload.CollectionID)); err != nil {
+			return messagePublic{}, false, err
 		}
 	}
 	return message, result.Replayed, nil
@@ -198,7 +210,7 @@ func newCreatedMessagePublic(id, chatID string, user userPublic, messageType str
 		Statuses: []messageStatusPublic{{
 			UserID: user.ID, Status: "sent", CreatedAt: createdAt,
 		}},
-		Reactions:   make([]messageReactionPublic, 0),
+		Reactions: make([]messageReactionPublic, 0),
 		// Message JSON is a client contract: an empty attachment list must be
 		// encoded as [] rather than null. Some older records have no attachments
 		// and a null here makes frontend consumers that iterate the list crash.

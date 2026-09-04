@@ -360,6 +360,7 @@ func (s *Server) deleteFile(ctx context.Context, fileID string, user userPublic)
 	if err := s.fileDeletions.Delete(ctx, featurefiles.Deletion{FileID: file.ID, FamilyID: user.FamilyID, ChatID: file.ChatID}); err != nil {
 		return newStatusError(http.StatusInternalServerError, "Could not delete file")
 	}
+	s.removeDeletedFileFromCollections(ctx, file.ID)
 	deleteFileObjects(s.storage, objectKey, file.ThumbnailObjectKey)
 	return nil
 }
@@ -426,10 +427,19 @@ func (s *Server) loadFileRecord(ctx context.Context, fileID, viewerID string) (f
 }
 
 func (s *Server) fileVisibleToUser(ctx context.Context, file filePublic, user userPublic) bool {
-	return s.fileAccess.VisibleTo(ctx, featurefiles.AccessRecord{
+	if file.FamilyID != user.FamilyID {
+		return false
+	}
+	if file.AccessScope == "private" {
+		return file.UploadedBy == user.ID || hasPermission(user, permissionManageFiles) || s.collectionFileVisible(ctx, file.ID, user)
+	}
+	if s.fileAccess.VisibleTo(ctx, featurefiles.AccessRecord{
 		FamilyID: file.FamilyID,
 		ChatID:   file.ChatID,
-	}, user.FamilyID, user.ID)
+	}, user.FamilyID, user.ID) {
+		return true
+	}
+	return s.collectionFileVisible(ctx, file.ID, user)
 }
 
 type fileTranscriptResponse = transporthttp.FileTranscriptResponse
