@@ -26,6 +26,7 @@ type FileRoutes struct {
 	GetTranscript        stdhttp.Handler
 	Delete               stdhttp.Handler
 	StreamMedia          stdhttp.Handler
+	Collections          stdhttp.Handler
 }
 
 // RegisterFileRoutes installs the stable REST contract for files and media.
@@ -46,4 +47,7 @@ func RegisterFileRoutes(router chi.Router, routes FileRoutes) {
 	router.Delete("/api/files/{fileId}", routes.Delete.ServeHTTP)
 	router.Get("/api/media/{fileId}", routes.StreamMedia.ServeHTTP)
 	router.Head("/api/media/{fileId}", routes.StreamMedia.ServeHTTP)
+	if routes.Collections != nil {
+		router.Mount("/api/collections", routes.Collections)
+	}
 }

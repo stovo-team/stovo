@@ -266,7 +266,7 @@ func (s *Server) messageHistoryPage(ctx context.Context, user userPublic, chatID
 }
 
 func (s *Server) sendRESTMessage(ctx context.Context, user userPublic, chatID string, request httptransport.MessageSendRequest, operationID string) (messagePublic, error) {
-	payload := sendMessageRequest{Type: request.Type, Content: request.Content, FileIDs: request.FileIDs, ReplyToMessageID: request.ReplyToMessageID, ThreadRootMessageID: request.ThreadRootMessageID, EncryptionProtocol: request.EncryptionProtocol, Ciphertext: request.Ciphertext, Nonce: request.Nonce, KeyVersion: request.KeyVersion, EncryptionMetadata: request.EncryptionMetadata, MentionedUserIDs: request.MentionedUserIDs, AttachmentsPending: request.AttachmentsPending}
+	payload := sendMessageRequest{Type: request.Type, Content: request.Content, FileIDs: request.FileIDs, ReplyToMessageID: request.ReplyToMessageID, ThreadRootMessageID: request.ThreadRootMessageID, EncryptionProtocol: request.EncryptionProtocol, Ciphertext: request.Ciphertext, Nonce: request.Nonce, KeyVersion: request.KeyVersion, EncryptionMetadata: request.EncryptionMetadata, MentionedUserIDs: request.MentionedUserIDs, AttachmentsPending: request.AttachmentsPending, CollectionID: request.CollectionID}
 	message, replayed, err := s.createRESTMessageWithSync(ctx, user, chatID, payload, operationID)
 	if err != nil {
 		return messagePublic{}, err
@@ -782,6 +782,9 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 				message.Poll = &pollPub
 			}
 		}
+	}
+	if message.Type == "collection" {
+		message.Collection = s.collectionCardForMessage(context.Background(), message.ID, viewerID)
 	}
 	message.KeyVersion = m.KeyVersion
 	if message.EncryptionProtocol == encryptionProtocolServerAtRest && message.Ciphertext != nil && message.Nonce != nil {
@@ -1322,7 +1325,7 @@ func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID 
 	if err != nil {
 		return nil, "", nil, nil, nil, nil, nil, "", err
 	}
-	if content == nil && ciphertext == nil && len(payload.FileIDs) == 0 && !payload.AttachmentsPending {
+	if content == nil && ciphertext == nil && len(payload.FileIDs) == 0 && !payload.AttachmentsPending && payload.CollectionID == nil {
 		return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
 	}
 	attachments, err = s.loadAttachmentsForMessage(payload.FileIDs, user, chatID)
@@ -1330,13 +1333,23 @@ func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID 
 		return nil, "", nil, nil, nil, nil, nil, "", err
 	}
 	messageType = payload.Type
+	if payload.CollectionID != nil {
+		collectionID := strings.TrimSpace(*payload.CollectionID)
+		if collectionID == "" {
+			return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
+		}
+		if _, level, accessErr := s.collectionAccess(context.Background(), collectionID, user); accessErr != nil || level != "editor" {
+			return nil, "", nil, nil, nil, nil, nil, "", errNotFound
+		}
+		messageType = "collection"
+	}
 	if messageType == "" {
 		messageType = chooseMessageType(content, attachments)
 		if payload.AttachmentsPending && len(attachments) == 0 {
 			messageType = "mixed"
 		}
 	}
-	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" {
+	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" && messageType != "collection" {
 		return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
 	}
 	return content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, attachments, messageType, nil
@@ -1386,7 +1399,7 @@ func (s *Server) prepareMessageEncryption(chat chatPublic, content *string, payl
 		ciphertext := trimStringPointer(payload.Ciphertext)
 		nonce := trimStringPointer(payload.Nonce)
 		metadata := trimStringPointer(payload.EncryptionMetadata)
-		if ciphertext == nil && len(payload.FileIDs) == 0 {
+		if ciphertext == nil && len(payload.FileIDs) == 0 && payload.CollectionID == nil {
 			return "", nil, nil, nil, nil, fmt.Errorf("encrypted content is required")
 		}
 		if ciphertext != nil && nonce == nil {
@@ -1556,5 +1569,3 @@ func extractMentionedUserIDsFromContent(members []chatMemberPublic, senderID str
 	}
 	return mentioned
 }
-
-
