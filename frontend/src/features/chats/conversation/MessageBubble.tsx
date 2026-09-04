@@ -1,5 +1,5 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
-import { CalendarClock, Check, Clock3, Folder, LockKeyhole, Phone, Video } from "lucide-react";
+import { CalendarClock, Check, Clock3, Folder, LockKeyhole, Phone, StickyNote, Video } from "lucide-react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
@@ -12,6 +12,7 @@ import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { PollBubble } from "./PollBubble";
 import type { Poll } from "../../../api/polls";
+import { getClusterPrefix } from "../../../api/client";
 
 export function extractFirstUrl(content: string | null | undefined): string | null {
   if (!content) return null;
@@ -22,6 +23,12 @@ export function extractFirstUrl(content: string | null | undefined): string | nu
     urlStr = urlStr.slice(0, -1);
   }
   return urlStr;
+}
+
+function embeddedCanvasReference(content: string | null | undefined) {
+  const match = /^canvas:([^\n]+)\n?([\s\S]*)$/u.exec(content ?? "");
+  if (!match) return null;
+  return { id: match[1], title: match[2].trim() || "Untitled canvas", available: true };
 }
 import { chatInitials } from "../shared/chatPresentation";
 import type { CallPhase } from "../shared/types";
@@ -386,7 +393,24 @@ export function MessageBubble({
             </div>
           ) : (
             <>
-              {message.type === "collection" && message.collection ? (
+              {message.type === "canvas" && (message.canvas ?? embeddedCanvasReference(message.content)) ? (() => {
+                const canvas = message.canvas ?? embeddedCanvasReference(message.content)!;
+                return (
+                <button
+                  type="button"
+                  className="message-collection-card message-canvas-card"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (canvas.available) window.location.assign(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`);
+                  }}
+                  disabled={!canvas.available}
+                >
+                  <span className="message-collection-card-icon">{canvas.available ? <StickyNote size={22} /> : <LockKeyhole size={22} />}</span>
+                  <span><strong>{canvas.available ? canvas.title : "Canvas unavailable"}</strong><small>{canvas.available ? "Shared Markdown and whiteboard" : "You no longer have access"}</small></span>
+                  {canvas.available && <span className="message-collection-open">Open</span>}
+                </button>
+                );
+              })() : message.type === "collection" && message.collection ? (
                 <button
                   type="button"
                   className="message-collection-card"

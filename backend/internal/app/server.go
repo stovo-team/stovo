@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"io"
@@ -20,6 +21,7 @@ import (
 	featuremcp "stovo-messenger/backend/internal/features/mcp"
 	featuremessages "stovo-messenger/backend/internal/features/messages"
 	featureplans "stovo-messenger/backend/internal/features/plans"
+	featurepolls "stovo-messenger/backend/internal/features/polls"
 	featurepreferences "stovo-messenger/backend/internal/features/preferences"
 	featureprivacy "stovo-messenger/backend/internal/features/privacy"
 	featureroles "stovo-messenger/backend/internal/features/roles"
@@ -28,7 +30,6 @@ import (
 	"stovo-messenger/backend/internal/logging"
 	"stovo-messenger/backend/internal/plugins"
 	"stovo-messenger/backend/internal/ports"
-	featurepolls "stovo-messenger/backend/internal/features/polls"
 	workruntime "stovo-messenger/backend/internal/runtime"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	"stovo-messenger/backend/internal/tunnel"
@@ -40,6 +41,7 @@ import (
 type Server struct {
 	cfg                    config.Config
 	database               io.Closer
+	canvasDB               *sql.DB
 	databaseHealth         ports.HealthChecker
 	persistence            io.Closer
 	redis                  io.Closer
@@ -195,6 +197,9 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 		sessions:               NewSessionRegistry(), calls: NewCallManager(), events: NewEventDeduplicator(),
 		callTimeout: 30 * time.Second, ntfyRetryCh: make(chan ntfyRetryItem, 100),
 		lifecycle: workruntime.NewLifecycle(context.Background()),
+	}
+	if db, ok := deps.Database.(*sql.DB); ok {
+		app.canvasDB = db
 	}
 	// Audio capture and post-processing workers live in this process. After a
 	// deploy they cannot safely resume an old recording, but its active row
