@@ -59,6 +59,7 @@ export type ConversationPanelProps = {
   onOpenChat: (chat: Chat) => void;
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onOpenNewChat: () => void;
+  onCreateCanvas?: () => void;
 };
 
 export function ConversationPanel({
@@ -99,7 +100,8 @@ export function ConversationPanel({
   showDockedEmojiPicker,
   onOpenChat,
   onOpenImage,
-  onOpenNewChat
+  onOpenNewChat,
+  onCreateCanvas
 }: ConversationPanelProps) {
   const strings = useStrings();
   const [isVoiceTextChatOpen, setIsVoiceTextChatOpen] = useState(false);
@@ -375,6 +377,7 @@ export function ConversationPanel({
         onTogglePinned={onTogglePinned}
         onToggleMuted={onToggleMuted}
         onToggleFavorite={onToggleFavorite}
+        onCreateCanvas={onCreateCanvas}
         isMessageSelectionMode={isMessageSelectionMode}
         selectedCount={selectedMessageIds.length}
         canEditSelected={canEditSelected}

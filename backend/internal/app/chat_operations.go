@@ -786,6 +786,9 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 	if message.Type == "collection" {
 		message.Collection = s.collectionCardForMessage(context.Background(), message.ID, viewerID)
 	}
+	if message.Type == "canvas" {
+		message.Canvas = s.canvasCardForMessage(context.Background(), message.ID, viewerID)
+	}
 	message.KeyVersion = m.KeyVersion
 	if message.EncryptionProtocol == encryptionProtocolServerAtRest && message.Ciphertext != nil && message.Nonce != nil {
 		decrypted, err := s.decryptServerAtRest(familyID, *message.Ciphertext, *message.Nonce)
@@ -1321,9 +1324,26 @@ func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID 
 	if content != nil && len(*content) > 4000 {
 		return nil, "", nil, nil, nil, nil, nil, "", newStatusError(422, "message content is too long")
 	}
-	encryptionProtocol, ciphertext, nonce, keyVersion, metadata, err = s.prepareMessageEncryption(chat, content, payload)
-	if err != nil {
-		return nil, "", nil, nil, nil, nil, nil, "", err
+	// Canvas cards deliberately use the Canvas service's server-managed
+	// encryption even when the source chat is E2E. A Canvas can be shared
+	// across chat memberships, so it cannot safely reuse a per-chat E2E key.
+	if payload.Type == "canvas" && content != nil {
+		var encryptedContent, encryptedNonce string
+		encryptedContent, encryptedNonce, err = s.encryptServerAtRest(chat.FamilyID, *content)
+		if err != nil {
+			return nil, "", nil, nil, nil, nil, nil, "", err
+		}
+		ciphertext, nonce = &encryptedContent, &encryptedNonce
+		encryptionProtocol = encryptionProtocolServerAtRest
+		version := 1
+		keyVersion = &version
+		serverMetadata := messageEncryptionMetadataServer
+		metadata = &serverMetadata
+	} else {
+		encryptionProtocol, ciphertext, nonce, keyVersion, metadata, err = s.prepareMessageEncryption(chat, content, payload)
+		if err != nil {
+			return nil, "", nil, nil, nil, nil, nil, "", err
+		}
 	}
 	if content == nil && ciphertext == nil && len(payload.FileIDs) == 0 && !payload.AttachmentsPending && payload.CollectionID == nil {
 		return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
@@ -1349,7 +1369,7 @@ func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID 
 			messageType = "mixed"
 		}
 	}
-	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" && messageType != "collection" {
+	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" && messageType != "collection" && messageType != "canvas" {
 		return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
 	}
 	return content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, attachments, messageType, nil

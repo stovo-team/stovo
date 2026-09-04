@@ -2,6 +2,7 @@ import { UserRole } from "./auth";
 import { apiRequest } from "./client";
 import { FamilyFile } from "./files";
 import type { Poll } from "./polls";
+import type { CanvasReference } from "./canvas";
 
 export interface ChatMember {
   id: string;
@@ -95,7 +96,7 @@ export interface Message {
   chatId: string;
   senderId: string;
   senderDisplayName: string | null;
-  type: "text" | "image" | "video" | "file" | "mixed" | "call" | "poll" | "collection";
+  type: "text" | "image" | "video" | "file" | "mixed" | "call" | "poll" | "collection" | "canvas";
   content: string | null;
   encryptionProtocol: MessageEncryptionProtocol;
   ciphertext: string | null;
@@ -118,6 +119,7 @@ export interface Message {
   call?: CallHistory | null;
   poll?: Poll | null;
   collection?: MessageCollectionCard | null;
+  canvas?: CanvasReference | null;
   deliveryError?: string;
   deliveryState?: "sending" | "failed" | "scheduled";
   scheduledFor?: string | null;

@@ -364,6 +364,13 @@ type messagePublic struct {
 	Call                *callHistoryPublic      `json:"call,omitempty"`
 	Poll                *pollPublic             `json:"poll,omitempty"`
 	Collection          *collectionCardPublic   `json:"collection,omitempty"`
+	Canvas              *canvasCardPublic       `json:"canvas,omitempty"`
+}
+
+type canvasCardPublic struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Available bool   `json:"available"`
 }
 
 type collectionCardPublic struct {

@@ -44,6 +44,7 @@ import ServerSetupPage from "./pages/ServerSetupPage";
 import SettingsPage from "./pages/SettingsPage";
 import SetupPage from "./pages/SetupPage";
 import MultiAdminPage from "./pages/MultiAdminPage";
+import CanvasPage from "./pages/CanvasPage";
 import { applyServerNotificationDefaults, readDevicePreferences } from "./settings/devicePreferences";
 
 if (typeof document !== "undefined") {
@@ -332,6 +333,7 @@ function ClusterRoutes() {
           </RequireAuth>
         }
       />
+      <Route path="/app/canvas/:canvasId" element={<RequireAuth><CanvasPage /></RequireAuth>} />
       <Route
         path="/app/members"
         element={
