@@ -31,6 +31,7 @@ import okhttp3.WebSocketListener
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import java.util.Calendar
 
 class NtfyService : Service() {
 
@@ -45,9 +46,34 @@ class NtfyService : Service() {
         const val PREFS_NAME = "stovo_ntfy"
         const val PREF_TOPIC = "topic"
         const val PREF_BASE_URL = "base_url"
+        const val PREF_QUIET_HOURS_ENABLED = "quiet_hours_enabled"
+        const val PREF_QUIET_HOURS_START = "quiet_hours_start"
+        const val PREF_QUIET_HOURS_END = "quiet_hours_end"
 
         /** ID of the most recently posted "ringing" call notification, or null if none. */
         @Volatile var activeCallNotificationId: Int? = null
+
+        fun updateNotificationSchedule(context: android.content.Context, enabled: Boolean, start: String, end: String) {
+            context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+                .putBoolean(PREF_QUIET_HOURS_ENABLED, enabled)
+                .putString(PREF_QUIET_HOURS_START, start)
+                .putString(PREF_QUIET_HOURS_END, end)
+                .apply()
+        }
+
+        fun isWithinQuietHours(enabled: Boolean, start: String, end: String, minuteOfDay: Int): Boolean {
+            if (!enabled || !TIME_PATTERN.matches(start) || !TIME_PATTERN.matches(end) || start == end) return false
+            val from = timeToMinutes(start)
+            val to = timeToMinutes(end)
+            return if (from < to) minuteOfDay >= from && minuteOfDay < to else minuteOfDay >= from || minuteOfDay < to
+        }
+
+        private val TIME_PATTERN = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
+
+        private fun timeToMinutes(time: String): Int {
+            val (hour, minute) = time.split(":").map(String::toInt)
+            return hour * 60 + minute
+        }
     }
 
     private lateinit var okHttpClient: OkHttpClient
@@ -109,6 +135,17 @@ class NtfyService : Service() {
             if (messageChatId != null) notificationId = messageNotificationId(messageChatId)
             if (missedCallChatId != null) notificationId = missedCallNotificationId(missedCallChatId)
 
+            val notificationPrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            val calendar = Calendar.getInstance()
+            val isQuietTime = isWithinQuietHours(
+                notificationPrefs.getBoolean(PREF_QUIET_HOURS_ENABLED, false),
+                notificationPrefs.getString(PREF_QUIET_HOURS_START, "22:00") ?: "22:00",
+                notificationPrefs.getString(PREF_QUIET_HOURS_END, "07:00") ?: "07:00",
+                calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+            )
+            val messagesChannelId = if (isQuietTime) NotificationChannels.SILENT_MESSAGES_CHANNEL_ID else NotificationChannels.MESSAGES_CHANNEL_ID
+            val callsChannelId = if (isQuietTime) NotificationChannels.SILENT_CALLS_CHANNEL_ID else NotificationChannels.CALLS_CHANNEL_ID
+
             // Guard: POST_NOTIFICATIONS required on API 33+. Foreground service
             // notifications bypass this check, but regular notify() calls do not.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -139,7 +176,7 @@ class NtfyService : Service() {
                         },
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
-                    NotificationCompat.Builder(applicationContext, "stovo_calls")
+                    NotificationCompat.Builder(applicationContext, callsChannelId)
                         .setSmallIcon(R.drawable.ic_notification_call)
                         .setLargeIcon(appIcon)
                         .setContentTitle(title)           // caller name
@@ -154,7 +191,7 @@ class NtfyService : Service() {
                 }
                 isMissed -> {
                     val pendingIntent = buildPendingIntent(click, notificationId)
-                    val builder = NotificationCompat.Builder(applicationContext, "stovo_calls")
+                    val builder = NotificationCompat.Builder(applicationContext, callsChannelId)
                         .setSmallIcon(R.drawable.ic_notification_call)
                         .setLargeIcon(appIcon)
                         .setContentTitle(title)           // caller name
@@ -210,7 +247,7 @@ class NtfyService : Service() {
                             .build()
                         messagingStyle.addMessage(entry.text, entry.timestamp, sender)
                     }
-                    val builder = NotificationCompat.Builder(applicationContext, "stovo_messages")
+                    val builder = NotificationCompat.Builder(applicationContext, messagesChannelId)
                         .setSmallIcon(R.drawable.ic_notification)
                         .setLargeIcon(appIcon)
                         .setContentTitle(title)

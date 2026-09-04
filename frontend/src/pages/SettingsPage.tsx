@@ -58,6 +58,7 @@ import {
   readDevicePreferences,
   writeDevicePreferences
 } from "../settings/devicePreferences";
+import { updateNativeNotificationSchedule } from "../api/notifications";
 import { AvatarEditorModal } from "../components/AvatarEditorModal";
 import AppNav from "./AppNav";
 import { NotificationsSettings } from "./settings/NotificationsSettings";
@@ -188,6 +189,9 @@ export default function SettingsPage() {
   function updateDevicePreferences(patch: Partial<DevicePreferences>) {
     const next = writeDevicePreferences(patch);
     setDevicePreferences(next);
+    if ("quietHoursEnabled" in patch || "quietHoursStart" in patch || "quietHoursEnd" in patch) {
+      void updateNativeNotificationSchedule(next);
+    }
     if (patch.language) {
       setLanguage(patch.language);
     }

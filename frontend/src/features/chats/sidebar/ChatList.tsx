@@ -1,9 +1,13 @@
-import { MessageCircle } from "lucide-react";
+import { ChevronDown, FolderPlus, MessageCircle, Settings2, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Chat } from "../../../api/chats";
 import type { ChatFilter, ChatSectionKey } from "../shared/types";
 import { ChatListItem } from "./ChatListItem";
 import { useStrings } from "../../../i18n/LanguageContext";
+import { ChatFolderDialog } from "./ChatFolderDialog";
+import { ChatFolder, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
+import { displayChatName } from "../shared/chatPresentation";
 
 type ChatListProps = {
   isLoading: boolean;
@@ -11,6 +15,8 @@ type ChatListProps = {
   chatsBySection: Record<ChatSectionKey, Chat[]>;
   filteredChats: Chat[];
   chatFilter: ChatFilter;
+  familyId: string;
+  canManageFolders: boolean;
   accessToken: string | null;
   currentUserId?: string;
   selectedChatId?: string;
@@ -27,6 +33,8 @@ export function ChatList({
   chatsBySection,
   filteredChats,
   chatFilter,
+  familyId,
+  canManageFolders,
   accessToken,
   currentUserId,
   selectedChatId,
@@ -37,7 +45,28 @@ export function ChatList({
   onStartNewChat
 }: ChatListProps) {
   const strings = useStrings();
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [folderState, setFolderState] = useState(() => ({ familyId, folders: loadChatFolders(familyId) }));
+  const [editingFolder, setEditingFolder] = useState<ChatFolder | null | undefined>(undefined);
   const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
+
+  const folders = folderState.folders;
+
+  useEffect(() => {
+    setFolderState({ familyId, folders: loadChatFolders(familyId) });
+    setCollapsed({});
+  }, [familyId]);
+  useEffect(() => {
+    // Do not overwrite another server's folders while the family-change effect
+    // is still hydrating the correct set from storage.
+    if (folderState.familyId === familyId) saveChatFolders(familyId, folders);
+  }, [familyId, folderState.familyId, folders]);
+
+  function toggleSection(key: string) { setCollapsed((current) => ({ ...current, [key]: !current[key] })); }
+  function saveFolder(folder: ChatFolder) {
+    setFolderState((current) => ({ ...current, folders: current.folders.some((item) => item.id === folder.id) ? current.folders.map((item) => item.id === folder.id ? folder : item) : [...current.folders, folder] }));
+    setEditingFolder(undefined);
+  }
 
   const chatSectionOrder: Array<{ key: ChatSectionKey; label: string }> = [
     { key: "archive", label: strings.chats.sections.archive },
@@ -66,8 +95,8 @@ export function ChatList({
             }
             return (
               <section className="chat-list-section" key={section.key} aria-label={section.label}>
-                <h2>{section.label}</h2>
-                {sectionChats.map((chat) => (
+                <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}><ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} /><span>{section.label}</span><small>{sectionChats.length}</small></button></div>
+                {!collapsed[section.key] && sectionChats.map((chat) => (
                   <ChatListItem
                     key={chat.id}
                     chat={chat}
@@ -83,6 +112,14 @@ export function ChatList({
               </section>
             );
           })}
+      {folders.map((folder) => {
+        const sectionChats = filteredChats.filter((chat) => matchesFolder(chat, folder.rules, displayChatName(chat, currentUserId, strings)));
+        return <section className="chat-list-section chat-list-section--custom" key={folder.id} aria-label={folder.name}>
+          <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(folder.id)} aria-expanded={!collapsed[folder.id]}><ChevronDown size={16} aria-hidden="true" className={collapsed[folder.id] ? "is-collapsed" : ""} /><span>{folder.name}</span><small>{sectionChats.length}</small></button>{canManageFolders && <span className="chat-folder-controls"><button type="button" aria-label={`Edit ${folder.name}`} title="Folder settings" onClick={() => setEditingFolder(folder)}><Settings2 size={15} /></button><button type="button" aria-label={`Delete ${folder.name}`} title="Delete folder" onClick={() => { if (window.confirm(`Delete the ${folder.name} folder? Chats are not deleted.`)) setFolderState((current) => ({ ...current, folders: current.folders.filter((item) => item.id !== folder.id) })); }}><Trash2 size={15} /></button></span>}</div>
+          {!collapsed[folder.id] && (sectionChats.length ? sectionChats.map((chat) => <ChatListItem key={chat.id} chat={chat} isActive={chat.id === activeChatId} isTransitionSource={selectedChatId === chat.id} accessToken={accessToken} currentUserId={currentUserId} minimizedChatLayout={minimizedChatLayout} onSelect={onSelectChat} onOpen={onOpenChat} />) : <p className="chat-folder-empty">No chats match this folder yet.</p>)}
+        </section>;
+      })}
+      {canManageFolders && !showSkeleton && <button type="button" className="chat-folder-create" onClick={() => setEditingFolder(null)}><FolderPlus size={17} aria-hidden="true" />Create folder</button>}
       {!showSkeleton && filteredChats.length === 0 && (
         <div className="empty-state compact-empty">
           <MessageCircle aria-hidden="true" size={28} />
@@ -99,6 +136,7 @@ export function ChatList({
           </button>
         </div>
       )}
+      {editingFolder !== undefined && <ChatFolderDialog folder={editingFolder} onClose={() => setEditingFolder(undefined)} onSave={saveFolder} />}
     </div>
   );
 }

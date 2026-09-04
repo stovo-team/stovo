@@ -12,6 +12,10 @@ object NotificationChannels {
     // v3: IMPORTANCE_LOW is the correct minimum for foreground services.
     // IMPORTANCE_MIN triggers an extra system notification on Android 8+.
     const val SERVICE_CHANNEL_ID = "stovo_service_v3"
+    const val MESSAGES_CHANNEL_ID = "stovo_messages"
+    const val SILENT_MESSAGES_CHANNEL_ID = "stovo_messages_silent"
+    const val CALLS_CHANNEL_ID = "stovo_calls"
+    const val SILENT_CALLS_CHANNEL_ID = "stovo_calls_silent"
 
     fun createAll(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -22,17 +26,36 @@ object NotificationChannels {
             nm.deleteNotificationChannel("stovo_service_v2")
 
             val messagesChannel = NotificationChannel(
-                "stovo_messages",
+                MESSAGES_CHANNEL_ID,
                 "Messages",
                 NotificationManager.IMPORTANCE_HIGH
             )
 
             val callsChannel = NotificationChannel(
-                "stovo_calls",
+                CALLS_CHANNEL_ID,
                 "Calls",
                 NotificationManager.IMPORTANCE_HIGH
             )
             callsChannel.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+
+            val silentMessagesChannel = NotificationChannel(
+                SILENT_MESSAGES_CHANNEL_ID,
+                "Messages (silent)",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                setSound(null, null)
+                enableVibration(false)
+            }
+
+            val silentCallsChannel = NotificationChannel(
+                SILENT_CALLS_CHANNEL_ID,
+                "Calls (silent)",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                setSound(null, null)
+                enableVibration(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
 
             // IMPORTANCE_LOW: silent, no peek — lowest level Android allows for
             // foreground services without adding a second system warning notification.
@@ -46,7 +69,9 @@ object NotificationChannels {
             serviceChannel.enableVibration(false)
             serviceChannel.setSound(null, null)
 
-            nm.createNotificationChannels(listOf(messagesChannel, callsChannel, serviceChannel))
+            nm.createNotificationChannels(
+                listOf(messagesChannel, callsChannel, silentMessagesChannel, silentCallsChannel, serviceChannel)
+            )
         }
     }
 }
