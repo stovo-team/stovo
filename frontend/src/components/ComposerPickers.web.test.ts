@@ -7,6 +7,8 @@ const useComposerUiActionsSource = readFileSync(
   "src/features/chats/composer/useComposerUiActions.ts",
   "utf8"
 );
+const chatsControllerSource = readFileSync("src/features/chats/useChatsPageController.ts", "utf8");
+const composerEmojiPickerSource = readFileSync("src/features/chats/composer/ComposerEmojiPicker.tsx", "utf8");
 
 describe("web composer pickers", () => {
   it("opens the attachment choice panel before selecting a file", () => {
@@ -14,6 +16,18 @@ describe("web composer pickers", () => {
       /function handleAttachButtonClick\(\) \{\s+closeEmojiPicker\(\);\s+setAttachmentSheetOpen\(true\);/s
     );
     expect(composerSource).not.toContain("{Capacitor.isNativePlatform() && (");
+  });
+
+  it("offers compact web choices, including camera, and preserves the user gesture for file selection", () => {
+    const attachmentSheetSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
+    expect(attachmentSheetSource).toContain('handleWebMenuPick("gallery")');
+    expect(attachmentSheetSource).toContain('handleWebMenuPick("camera")');
+    expect(attachmentSheetSource).toContain('handleWebMenuPick("file")');
+    expect(attachmentSheetSource).toContain('handleWebMenuPick("audio")');
+    expect(attachmentSheetSource).toContain('onPick(option);');
+    expect(attachmentSheetSource).toContain('if (option !== "poll")');
+    expect(attachmentSheetSource).toContain('attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready');
+    expect(styles).toMatch(/\.attachment-picker-backdrop--web-menu \{[\s\S]*?pointer-events: auto;/);
   });
 
   it("uses a light hover highlight without transform scaling", () => {
@@ -43,5 +57,10 @@ describe("web composer pickers", () => {
     expect(styles).toContain("max-width: 420px;");
     expect(styles).toContain(":root[data-platform=\"web\"] .emoji-picker::after {");
     expect(styles).toContain("border-top-color: var(--island-surface);");
+  });
+
+  it("keeps the emoji picker as a compact popover on the web", () => {
+    expect(chatsControllerSource).toContain("const isDockedEmojiPicker = Capacitor.isNativePlatform();");
+    expect(composerEmojiPickerSource).toContain('width={docked ? "100%" : 360}');
   });
 });
