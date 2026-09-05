@@ -1,14 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BarChart3, ChevronLeft, Layers3 } from "lucide-react";
+import { BarChart3, Check, ChevronLeft, Clipboard, Layers3, Plus, Puzzle, X } from "lucide-react";
 import { ApiError, getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 
 type PluginStatus = { id: string; name: string; enabled: boolean };
-const pluginDetails: Record<string, { description: string; icon: typeof BarChart3 }> = {
-  "plugin-rich-stats": { description: "Private server and chat insights, reply trends, highlights, and your Year with Stovo.", icon: BarChart3 }
+type PluginDetail = { description: string; icon: typeof BarChart3; eyebrow: string; preview: "statistics" | "canvas" | "generic" };
+
+const pluginDetails: Record<string, PluginDetail> = {
+  "plugin-rich-stats": { description: "Understand messages, reply time, conversation momentum, and the spaces your community uses most.", icon: BarChart3, eyebrow: "Analytics", preview: "statistics" },
+  "plugin-canvas": { description: "Give everyone a shared, live canvas for notes, ideas, and visual collaboration.", icon: Layers3, eyebrow: "Collaboration", preview: "canvas" }
 };
+
+const pluginStarter = `// backend/internal/plugins/builtins/example.go
+type ExamplePlugin struct{}
+
+func (p *ExamplePlugin) ID() string { return "plugin-example" }
+func (p *ExamplePlugin) Name() string { return "Example plugin" }
+func (p *ExamplePlugin) Init(services plugins.Services) error { return nil }
+func (p *ExamplePlugin) RegisterRoutes(r chi.Router) {}
+func (p *ExamplePlugin) SubscribeEvents(bus plugins.EventBus) {}`;
+
+function PluginPreview({ kind }: { kind: PluginDetail["preview"] }) {
+  if (kind === "statistics") return <div className="plugin-preview plugin-preview--stats" aria-hidden="true"><div className="plugin-preview-top"><span /><span /><span /></div><div className="plugin-preview-stat"><strong>128</strong><small>messages</small></div><div className="plugin-preview-bars"><i /><i /><i /><i /><i /><i /><i /><i /></div><div className="plugin-preview-legend"><span /><span /><span /></div></div>;
+  if (kind === "canvas") return <div className="plugin-preview plugin-preview--canvas" aria-hidden="true"><span className="plugin-canvas-dot plugin-canvas-dot--one" /><span className="plugin-canvas-dot plugin-canvas-dot--two" /><div className="plugin-canvas-note plugin-canvas-note--one">Ideas</div><div className="plugin-canvas-note plugin-canvas-note--two">Plan</div><div className="plugin-canvas-line" /></div>;
+  return <div className="plugin-preview plugin-preview--generic" aria-hidden="true"><Puzzle size={42} /></div>;
+}
 
 export default function AdminPluginsPage() {
   const { accessToken, authRequest, currentUser } = useAuth();
@@ -16,13 +34,18 @@ export default function AdminPluginsPage() {
   const [plugins, setPlugins] = useState<PluginStatus[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [copiedStarter, setCopiedStarter] = useState(false);
   const canManagePlugins = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const enabledCount = plugins.filter((plugin) => plugin.enabled).length;
+
   const load = useCallback(async () => {
     if (!accessToken || !canManagePlugins) return;
     try { setPlugins(await authRequest<PluginStatus[]>("/api/admin/plugins")); setError(null); }
     catch (reason) { setError(reason instanceof ApiError ? reason.message : "Could not load plugins"); }
   }, [accessToken, authRequest, canManagePlugins]);
   useEffect(() => { void load(); }, [load]);
+
   async function togglePlugin(plugin: PluginStatus) {
     setSavingId(plugin.id); setError(null);
     try {
@@ -31,12 +54,23 @@ export default function AdminPluginsPage() {
     } catch (reason) { setError(reason instanceof ApiError ? reason.message : "Could not update plugin"); }
     finally { setSavingId(null); }
   }
+
+  async function copyStarter() {
+    try { await navigator.clipboard.writeText(pluginStarter); setCopiedStarter(true); window.setTimeout(() => setCopiedStarter(false), 1800); }
+    catch { setError("Could not copy the plugin starter."); }
+  }
+
   return <main className="app-shell app-frame admin-page admin-detail-page plugins-page"><AppNav /><section className="page-surface admin-surface plugins-surface">
-    <header className="admin-detail-header"><Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to admin"><ChevronLeft size={18} /></Link><div><h1>Plugin store</h1></div></header>
+    <header className="admin-detail-header plugins-header"><Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to admin"><ChevronLeft size={18} /></Link><div><h1>Plugin store</h1><p>Choose the tools that shape your server.</p></div><button className="plugin-register-button" type="button" onClick={() => setIsRegistering(true)}><Plus size={17} />Add plugin</button></header>
     {!canManagePlugins && <p className="error-text">Admin access required.</p>}{error && <p className="error-text">{error}</p>}
-    {canManagePlugins && <section className="plugin-list">{plugins.map((plugin) => {
-      const detail = pluginDetails[plugin.id]; const Icon = detail?.icon ?? Layers3;
-      return <article className="plugin-card" key={plugin.id}><span className="plugin-icon"><Icon size={22} /></span><div className="plugin-copy"><div><h2>{plugin.name}</h2><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? "Enabled" : "Disabled"}</span></div><p>{detail?.description ?? "An optional server extension."}</p></div><label className="plugin-switch"><input type="checkbox" checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">Enable {plugin.name}</em></label></article>;
-    })}{!plugins.length && !error && <p className="stats-state">Loading available plugins…</p>}</section>}
-  </section></main>;
+    {canManagePlugins && <><section className="plugin-store-intro" aria-label="Plugin store summary"><span className="plugin-store-intro-icon"><Puzzle size={21} /></span><div><strong>{enabledCount} of {plugins.length} plugins active</strong><p>Enable, pause, or add a server extension from one place.</p></div></section>
+      <section className="plugin-store-grid" aria-label="Available plugins">{plugins.map((plugin) => {
+        const detail = pluginDetails[plugin.id] ?? { description: "An optional server extension.", icon: Layers3, eyebrow: "Extension", preview: "generic" as const };
+        const Icon = detail.icon;
+        return <article className="plugin-showcase-card" key={plugin.id}><PluginPreview kind={detail.preview} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Icon size={20} /></span><span><small>{detail.eyebrow}</small><h2>{plugin.name}</h2></span></div><p>{detail.description}</p></div><footer className="plugin-showcase-footer"><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? "Active" : "Paused"}</span><label className="plugin-switch"><input type="checkbox" checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">Enable {plugin.name}</em></label></footer></article>;
+      })}<button className="plugin-add-card" type="button" onClick={() => setIsRegistering(true)}><span><Plus size={26} /></span><strong>Add a server plugin</strong><p>Register a trusted extension built for your Stovo server.</p></button></section>
+      {!plugins.length && !error && <p className="stats-state">Loading available plugins…</p>}</>}
+  </section>
+  {isRegistering && <div className="plugin-register-backdrop" role="presentation" onMouseDown={() => setIsRegistering(false)}><section className="plugin-register-modal" role="dialog" aria-modal="true" aria-labelledby="plugin-register-title" onMouseDown={(event) => event.stopPropagation()}><button className="plugin-modal-close" type="button" aria-label="Close" onClick={() => setIsRegistering(false)}><X size={18} /></button><span className="plugin-store-intro-icon"><Puzzle size={22} /></span><h2 id="plugin-register-title">Register a server plugin</h2><p>Plugins run as trusted server code. Add the package to the backend, register it during bootstrap, then restart the server. It will appear here automatically for admins to enable.</p><ol><li>Implement Stovo’s <code>plugins.Plugin</code> interface.</li><li>Register the plugin in <code>backend/internal/bootstrap</code>.</li><li>Deploy the backend, then manage it here.</li></ol><button className="plugin-copy-button" type="button" onClick={() => void copyStarter()}>{copiedStarter ? <Check size={16} /> : <Clipboard size={16} />}{copiedStarter ? "Starter copied" : "Copy plugin starter"}</button></section></div>}
+  </main>;
 }
