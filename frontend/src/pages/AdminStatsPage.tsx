@@ -19,7 +19,9 @@ function formatSeconds(seconds: number) {
 export default function AdminStatsPage() {
   const { authRequest, currentUser } = useAuth();
   const prefix = getClusterPrefix();
-  const [timeRange, setTimeRange] = useState<Range>("30d");
+  // Start with the complete history. A new dashboard should not look empty just
+  // because the most recent message falls outside the last 30 days.
+  const [timeRange, setTimeRange] = useState<Range>("all");
   const [overview, setOverview] = useState<ServerOverviewStats | null>(null);
   const [awards, setAwards] = useState<FunAwards | null>(null);
   const [wrapped, setWrapped] = useState<YearWithStovo | null>(null);
@@ -76,16 +78,16 @@ export default function AdminStatsPage() {
     <AppNav />
     <section className="page-surface admin-surface stats-surface">
       <header className="stats-header">
-        <Link to={`${prefix}/app/admin/plugins`} className="stats-back" aria-label="Back to plugin store"><ArrowLeft size={18} /></Link>
-        <div><p className="stats-kicker">Rich statistics plugin</p><h1>Community pulse</h1><p>Clear signals about how your server connects, replies, and grows.</p></div>
+        <Link to={`${prefix}/app/settings`} className="stats-back" aria-label="Back to Settings"><ArrowLeft size={18} /></Link>
+        <div><h1>Statistics dashboard</h1><p>See how your chats are growing and when people are most active.</p></div>
         <button type="button" className="stats-wrapped-button" onClick={() => setIsWrappedOpen(true)}><Sparkles size={16} /> Year with Stovo</button>
       </header>
 
       <div className="stats-toolbar" aria-label="Statistics range"><span>Showing</span><div role="group" className="stats-range-control">
         {ranges.map((range) => <button key={range} type="button" className={range === timeRange ? "is-active" : undefined} onClick={() => setTimeRange(range)}>{range === "all" ? "All time" : range.toUpperCase()}</button>)}
       </div></div>
-      {loading && <div className="stats-state">Loading your community pulse…</div>}
-      {error && !loading && <div className="stats-state is-error">{error}. Enable the statistics plugin to view its dashboard.</div>}
+      {loading && <div className="stats-state">Loading statistics…</div>}
+      {error && !loading && <div className="stats-state is-error">{error}. Try refreshing the page.</div>}
 
       {!loading && !error && overview && <>
         <section className="stats-summary-grid" aria-label="Key statistics">

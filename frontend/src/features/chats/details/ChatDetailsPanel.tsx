@@ -165,6 +165,8 @@ export function ChatDetailsPanel({
   const { authRequest } = useAuth();
   const [isStatsOpen, setIsStatsOpen] = useState(false);
   const [chatStats, setChatStats] = useState<ChatStats | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
   const [statsPluginEnabled, setStatsPluginEnabled] = useState(false);
 
@@ -183,12 +185,15 @@ export function ChatDetailsPanel({
   const handleOpenStats = async () => {
     if (!statsPluginEnabled) return;
     setIsStatsOpen(true);
+    setIsStatsLoading(true);
+    setStatsError(null);
+    setChatStats(null);
     try {
       const data = await authRequest<ChatStats>(`/api/v1/plugins/stats/chats/${chat.id}`);
       setChatStats(data);
     } catch {
-      // stats fallback
-    }
+      setStatsError("Statistics could not be loaded. Please try again.");
+    } finally { setIsStatsLoading(false); }
   };
 
   const chatName = displayChatName(chat, currentUserId, strings);
@@ -843,6 +848,8 @@ export function ChatDetailsPanel({
         <ChatStatsDrawer
           stats={chatStats}
           chatTitle={chatName}
+          isLoading={isStatsLoading}
+          error={statsError}
           onClose={() => setIsStatsOpen(false)}
         />
       )}
