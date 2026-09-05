@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
@@ -10,7 +10,6 @@ import { useAuth } from "../auth/AuthContext";
 import { getSocketConfigForUrl } from "../api/serverRegistry";
 import { getApiUrl } from "../api/client";
 import { appendCanvasDocumentUpdate, getCanvas, getCanvasDocument, linkCanvas, renameCanvas, type Canvas } from "../api/canvas";
-import { MessageMarkdown } from "../messageMarkdown";
 import type { Chat } from "../api/chats";
 import { getChats } from "../api/chats";
 
@@ -51,9 +50,40 @@ function createBlock(kind: BlockKind, markdownContent = ""): Y.Map<unknown> {
   return record;
 }
 
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character] ?? character);
+}
+
+function markdownToEditableHtml(value: string) {
+  return value.split("\n").map((line) => {
+    const heading = /^(#{1,6})\s+(.*)$/u.exec(line);
+    if (heading) return `<h${heading[1].length}>${escapeHtml(heading[2]) || "<br>"}</h${heading[1].length}>`;
+    return `<p>${escapeHtml(line) || "<br>"}</p>`;
+  }).join("");
+}
+
+function editableHtmlToMarkdown(editor: HTMLDivElement) {
+  return Array.from(editor.children).map((block) => {
+    const level = /^H([1-6])$/u.exec(block.tagName);
+    const text = block.textContent?.replace(/\u00a0/g, " ") ?? "";
+    return level ? `${"#".repeat(Number(level[1]))} ${text}` : text;
+  }).join("\n");
+}
+
+function moveCursorToEnd(element: HTMLElement) {
+  const selection = window.getSelection();
+  if (!selection) return;
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
   const text = record.get("content") as Y.Text;
   const [value, setValue] = useState(() => text?.toString() ?? "");
+  const editorRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const update = () => setValue(text?.toString() ?? "");
@@ -61,21 +91,32 @@ function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
     return () => text?.unobserve(update);
   }, [text]);
 
+  useLayoutEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || document.activeElement === editor) return;
+    editor.innerHTML = markdownToEditableHtml(value);
+  }, [value]);
+
+  const handleInput = (event: React.FormEvent<HTMLDivElement>) => {
+    const editor = event.currentTarget;
+    const selection = window.getSelection();
+    const candidate = selection?.anchorNode?.parentElement?.closest("p, div, h1, h2, h3, h4, h5, h6");
+    const block = candidate && candidate !== editor ? candidate : null;
+    const heading = block && /^(#{1,6})\s+(.*)$/u.exec(block.textContent ?? "");
+    if (block && heading && block.tagName !== `H${heading[1].length}`) {
+      const replacement = document.createElement(`h${heading[1].length}`);
+      replacement.textContent = heading[2];
+      block.replaceWith(replacement);
+      moveCursorToEnd(replacement);
+    }
+    const next = editableHtmlToMarkdown(editor);
+    text.doc?.transact(() => { text.delete(0, text.length); text.insert(0, next); });
+  };
+
   if (!text) return null;
   return (
     <section className="canvas-markdown-block">
-      <div className="canvas-markdown-editor">
-        <textarea
-          aria-label="Canvas Markdown"
-          value={value}
-          placeholder="Write Markdown…"
-          onChange={(event) => {
-            const next = event.target.value;
-            text.doc?.transact(() => { text.delete(0, text.length); text.insert(0, next); });
-          }}
-        />
-        <article className="canvas-markdown-preview" aria-live="polite"><MessageMarkdown source={value} /></article>
-      </div>
+      <div ref={editorRef} className="canvas-markdown-editor" contentEditable suppressContentEditableWarning role="textbox" aria-label="Canvas document" aria-multiline="true" onInput={handleInput} />
     </section>
   );
 }
@@ -138,11 +179,16 @@ export default function CanvasPage() {
   const [chats, setChats] = useState<Chat[]>([]);
   const socketRef = useRef<Socket | null>(null);
   const saveQueueRef = useRef<string[]>([]);
+  const pendingUpdatesRef = useRef<Uint8Array[]>([]);
   const isSavingRef = useRef(false);
+  const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!accessToken || !canvasId) return;
     let cancelled = false;
+    saveQueueRef.current = [];
+    pendingUpdatesRef.current = [];
+    isSavingRef.current = false;
     const doc = new Y.Doc();
     const blocks = doc.getArray<Y.Map<unknown>>("blocks");
     const connect = async () => {
@@ -163,10 +209,10 @@ export default function CanvasPage() {
           if (payload.canvasId === canvasId) setError(payload.message ?? "Canvas is unavailable");
         });
         const flushSaveQueue = async () => {
-          if (isSavingRef.current || !accessToken || cancelled) return;
+          if (isSavingRef.current || !accessToken) return;
           isSavingRef.current = true;
           try {
-            while (saveQueueRef.current.length > 0 && !cancelled) {
+            while (saveQueueRef.current.length > 0) {
               const update = saveQueueRef.current[0];
               await appendCanvasDocumentUpdate(accessToken, canvasId, update);
               saveQueueRef.current.shift();
@@ -177,10 +223,20 @@ export default function CanvasPage() {
             isSavingRef.current = false;
           }
         };
+        const scheduleSave = () => {
+          if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+          saveTimerRef.current = window.setTimeout(() => {
+            saveTimerRef.current = null;
+            const updates = pendingUpdatesRef.current.splice(0);
+            if (updates.length === 0) return;
+            saveQueueRef.current.push(bytesToBase64(Y.mergeUpdates(updates)));
+            void flushSaveQueue();
+          }, 180);
+        };
         doc.on("update", (update, origin) => {
           if (origin === remoteOrigin) return;
-          saveQueueRef.current.push(bytesToBase64(update));
-          void flushSaveQueue();
+          pendingUpdatesRef.current.push(update);
+          scheduleSave();
         });
         blocks.observe(() => setBlocksRevision((current) => current + 1));
         if (blocks.length === 0) doc.transact(() => blocks.push([createBlock("markdown", `# ${loadedCanvas.title}\n\n`)]));
@@ -189,7 +245,17 @@ export default function CanvasPage() {
       }
     };
     void connect();
-    return () => { cancelled = true; socketRef.current?.disconnect(); socketRef.current = null; doc.destroy(); };
+    return () => {
+      cancelled = true;
+      if (saveTimerRef.current !== null) window.clearTimeout(saveTimerRef.current);
+      const unsaved = pendingUpdatesRef.current.splice(0);
+      if (unsaved.length > 0) {
+        void appendCanvasDocumentUpdate(accessToken, canvasId, bytesToBase64(Y.mergeUpdates(unsaved)));
+      }
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      doc.destroy();
+    };
   }, [accessToken, canvasId]);
 
   useEffect(() => {
