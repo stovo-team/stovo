@@ -379,7 +379,7 @@ export const strings = {
     },
     sections: {
       archive: "Message Archive",
-      voice: "Voice Channels",
+      voice: "Audio Channels",
       channels: "Channels",
       groups: "Groups",
       dms: "DMs",

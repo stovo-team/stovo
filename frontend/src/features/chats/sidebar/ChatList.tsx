@@ -70,10 +70,10 @@ export function ChatList({
 
   const chatSectionOrder: Array<{ key: ChatSectionKey; label: string }> = [
     { key: "archive", label: strings.chats.sections.archive },
-    { key: "voice", label: strings.chats.sections.voice },
-    { key: "channels", label: strings.chats.sections.channels },
     { key: "groups", label: strings.chats.sections.groups },
-    { key: "dms", label: strings.chats.sections.dms }
+    { key: "dms", label: strings.chats.sections.dms },
+    { key: "channels", label: strings.chats.sections.channels },
+    { key: "voice", label: strings.chats.sections.voice }
   ];
 
   return (
@@ -95,7 +95,7 @@ export function ChatList({
             }
             return (
               <section className="chat-list-section" key={section.key} aria-label={section.label}>
-                <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}><ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} /><span>{section.label}</span><small>{sectionChats.length}</small></button></div>
+                <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}><ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} /><span>{section.label}</span></button></div>
                 {!collapsed[section.key] && sectionChats.map((chat) => (
                   <ChatListItem
                     key={chat.id}
