@@ -9,7 +9,7 @@ import { ArrowLeft, ChevronDown, Pencil, Plus, Share2 } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { getSocketConfigForUrl } from "../api/serverRegistry";
 import { getApiUrl } from "../api/client";
-import { getCanvas, getCanvasDocument, linkCanvas, renameCanvas, type Canvas } from "../api/canvas";
+import { appendCanvasDocumentUpdate, getCanvas, getCanvasDocument, linkCanvas, renameCanvas, type Canvas } from "../api/canvas";
 import { MessageMarkdown } from "../messageMarkdown";
 import type { Chat } from "../api/chats";
 import { getChats } from "../api/chats";
@@ -54,7 +54,6 @@ function createBlock(kind: BlockKind, markdownContent = ""): Y.Map<unknown> {
 function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
   const text = record.get("content") as Y.Text;
   const [value, setValue] = useState(() => text?.toString() ?? "");
-  const [preview, setPreview] = useState(false);
 
   useEffect(() => {
     const update = () => setValue(text?.toString() ?? "");
@@ -65,10 +64,7 @@ function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
   if (!text) return null;
   return (
     <section className="canvas-markdown-block">
-      <div className="canvas-markdown-toolbar">
-        <button type="button" onClick={() => setPreview((current) => !current)}>{preview ? "Edit" : "Preview"}</button>
-      </div>
-      {preview ? <article className="canvas-markdown-preview"><MessageMarkdown source={value} /></article> : (
+      <div className="canvas-markdown-editor">
         <textarea
           aria-label="Canvas Markdown"
           value={value}
@@ -78,7 +74,8 @@ function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
             text.doc?.transact(() => { text.delete(0, text.length); text.insert(0, next); });
           }}
         />
-      )}
+        <article className="canvas-markdown-preview" aria-live="polite"><MessageMarkdown source={value} /></article>
+      </div>
     </section>
   );
 }
@@ -136,8 +133,12 @@ export default function CanvasPage() {
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [insertOpen, setInsertOpen] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
   const [chats, setChats] = useState<Chat[]>([]);
   const socketRef = useRef<Socket | null>(null);
+  const saveQueueRef = useRef<string[]>([]);
+  const isSavingRef = useRef(false);
 
   useEffect(() => {
     if (!accessToken || !canvasId) return;
@@ -161,9 +162,25 @@ export default function CanvasPage() {
         socket.on("canvas:error", (payload: { canvasId?: string; message?: string }) => {
           if (payload.canvasId === canvasId) setError(payload.message ?? "Canvas is unavailable");
         });
+        const flushSaveQueue = async () => {
+          if (isSavingRef.current || !accessToken || cancelled) return;
+          isSavingRef.current = true;
+          try {
+            while (saveQueueRef.current.length > 0 && !cancelled) {
+              const update = saveQueueRef.current[0];
+              await appendCanvasDocumentUpdate(accessToken, canvasId, update);
+              saveQueueRef.current.shift();
+            }
+          } catch (cause) {
+            if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not save Canvas changes");
+          } finally {
+            isSavingRef.current = false;
+          }
+        };
         doc.on("update", (update, origin) => {
           if (origin === remoteOrigin) return;
-          socket.emit("canvas:update", { canvasId, update: bytesToBase64(update) });
+          saveQueueRef.current.push(bytesToBase64(update));
+          void flushSaveQueue();
         });
         blocks.observe(() => setBlocksRevision((current) => current + 1));
         if (blocks.length === 0) doc.transact(() => blocks.push([createBlock("markdown", `# ${loadedCanvas.title}\n\n`)]));
@@ -187,8 +204,9 @@ export default function CanvasPage() {
   };
   const saveTitle = async () => {
     if (!canvas || !accessToken) return;
-    const title = window.prompt("Canvas name", canvas.title)?.trim();
-    if (!title) return;
+    const title = titleDraft.trim();
+    setIsEditingTitle(false);
+    if (!title || title === canvas.title) return;
     setCanvas(await renameCanvas(accessToken, canvas.id, title));
   };
 
@@ -199,7 +217,10 @@ export default function CanvasPage() {
     <main className="canvas-page">
       <header className="canvas-page-header">
         <button type="button" className="icon-button subtle" aria-label="Back" onClick={() => navigate(-1)}><ArrowLeft size={19} /></button>
-        <div className="canvas-title-group"><h1>{canvas.title}</h1>{canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Edit canvas name" title="Edit canvas name" onClick={() => void saveTitle()}><Pencil size={16} /></button>}<small>Shared Canvas · server-encrypted storage</small></div>
+        <div className="canvas-title-group">
+          {isEditingTitle ? <input className="canvas-title-input" aria-label="Canvas name" autoFocus maxLength={160} value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} onBlur={() => void saveTitle()} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void saveTitle(); } if (event.key === "Escape") { setIsEditingTitle(false); } }} /> : <h1>{canvas.title}</h1>}
+          {canvas.canManage && !isEditingTitle && <button type="button" className="canvas-title-edit" aria-label="Edit canvas name" title="Edit canvas name" onClick={() => { setTitleDraft(canvas.title); setIsEditingTitle(true); }}><Pencil size={13} /></button>}
+        </div>
         <div className="canvas-page-actions">
           {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Share canvas" title="Share canvas" onClick={() => setShareOpen((current) => !current)}><Share2 size={16} /></button>}
           <div className="canvas-insert-menu">

@@ -50,6 +50,7 @@ import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
 import { StorageCollections } from "../components/StorageCollections";
+import { StorageCanvases } from "../components/StorageCanvases";
 import { useStrings } from "../i18n/LanguageContext";
 import { loadCachedFileList, saveCachedFileList } from "../fileLibraryCache";
 import { syncChatReplicaDeltas } from "../features/chats/sidebar/chatDeltaSync";
@@ -99,6 +100,13 @@ function fileIcon(file: FamilyFile) {
   if (documentKind === "table") return FileSpreadsheet;
   if (documentKind === "docx") return FileType;
   return FileText;
+}
+
+function fileTypeLabel(file: FamilyFile) {
+  const extension = file.originalName.split(".").pop()?.toUpperCase() ?? "FILE";
+  if (extension === "DOCX" || extension === "DOC") return "DOC";
+  if (extension === "XLSX" || extension === "XLS") return "XLS";
+  return extension.length <= 5 ? extension : "FILE";
 }
 
 function groupLabel(value: string) {
@@ -205,7 +213,7 @@ function StorageTile({
       onClick={() => {
         onSelect();
         const isMobileViewport = window.matchMedia("(max-width: 960px)").matches;
-        if ((fileKind(file) === "photos" || shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport)) && previewUrl) {
+        if (shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport) && previewUrl) {
           onOpenImage(file, previewUrl);
         }
       }}
@@ -217,7 +225,7 @@ function StorageTile({
       )}
       {fileKind(file) === "videos" && videoPreviewUrl ? (
         <video muted preload="metadata" src={videoPreviewUrl} />
-      ) : previewUrl ? <img src={previewUrl} alt={file.originalName} /> : <Icon aria-hidden="true" size={28} />}
+      ) : previewUrl ? <img src={previewUrl} alt={file.originalName} /> : <div className="storage-file-type-icon"><Icon aria-hidden="true" size={42} /><b>{fileTypeLabel(file)}</b></div>}
       <span>
         <strong>{file.originalName}</strong>
         <small>{formatFileSize(file.sizeBytes)}</small>
@@ -260,6 +268,7 @@ export default function FilesPage() {
     { label: strings.files.filters.videos, value: "videos" },
     { label: strings.files.filters.audio, value: "audio" },
     { label: strings.files.filters.documents, value: "documents" },
+    { label: "Canvases", value: "canvases" },
     { label: strings.files.filters.favorites, value: "favorites" }
   ];
 
@@ -623,7 +632,9 @@ export default function FilesPage() {
           </div>
 
           <div className="storage-content-area">
-			<StorageCollections accessToken={accessToken} files={files} filter={filter} onFilesChanged={() => void load(true)} />
+            {filter !== "canvases" && <StorageCollections accessToken={accessToken} files={files} filter={filter} onFilesChanged={() => void load(true)} />}
+            <StorageCanvases accessToken={accessToken} filter={filter} search={search} />
+            {filter !== "canvases" && <>
             <div className="storage-files-heading">
               <h2>Files</h2>
               <button type="button" className="storage-files-upload" title="Upload files" aria-label="Upload files" disabled={isUploading} onClick={() => uploadInputRef.current?.click()}>
@@ -659,6 +670,7 @@ export default function FilesPage() {
                 ))}
               </div>
             )}
+            </>}
           </div>
         </div>
 
@@ -768,7 +780,7 @@ export default function FilesPage() {
                       autoplay={false}
                     />
                   ) : selectedDocumentKind !== "unsupported" && accessToken ? (
-                    <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} />
+                    <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} hideActions />
                   ) : selectedFilePreviewUrl ? (
                     <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
                   ) : (

@@ -3,9 +3,12 @@ import { Link } from "react-router-dom";
 import { Activity, ArrowLeft, BarChart3, Clock3, MessageSquare, Sparkles, Trophy, Users, Zap } from "lucide-react";
 
 import { FunAwards, ServerOverviewStats, YearWithStovo } from "../api/stats";
+import { Chat, getChats } from "../api/chats";
 import { getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import YearWithStovoModal from "../components/YearWithStovoModal";
+import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
+import { chatAvatarFallbackKind, chatAvatarFile } from "../features/chats/shared/chatPresentation";
 import AppNav from "./AppNav";
 
 const ranges = ["7d", "30d", "1y", "all"] as const;
@@ -17,7 +20,7 @@ function formatSeconds(seconds: number) {
 }
 
 export default function AdminStatsPage() {
-  const { authRequest, currentUser } = useAuth();
+  const { authRequest, currentUser, accessToken } = useAuth();
   const prefix = getClusterPrefix();
   // Start with the complete history. A new dashboard should not look empty just
   // because the most recent message falls outside the last 30 days.
@@ -25,7 +28,10 @@ export default function AdminStatsPage() {
   const [overview, setOverview] = useState<ServerOverviewStats | null>(null);
   const [awards, setAwards] = useState<FunAwards | null>(null);
   const [wrapped, setWrapped] = useState<YearWithStovo | null>(null);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [isWrappedOpen, setIsWrappedOpen] = useState(false);
+  const [isWrappedLoading, setIsWrappedLoading] = useState(false);
+  const [wrappedError, setWrappedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,13 +41,13 @@ export default function AdminStatsPage() {
     Promise.all([
       authRequest<ServerOverviewStats>(`/api/v1/plugins/stats/overview?range=${timeRange}`),
       authRequest<FunAwards>("/api/v1/plugins/stats/fun-awards"),
-      authRequest<YearWithStovo>(`/api/v1/plugins/stats/wrapped/${new Date().getFullYear()}?userId=${currentUser?.id ?? ""}`)
+      accessToken ? getChats(accessToken).catch(() => []) : Promise.resolve([])
     ])
-      .then(([nextOverview, nextAwards, nextWrapped]) => {
+      .then(([nextOverview, nextAwards, nextChats]) => {
         if (cancelled) return;
         setOverview(nextOverview);
         setAwards(nextAwards);
-        setWrapped(nextWrapped);
+        setChats(nextChats);
         setError(null);
       })
       .catch((reason: unknown) => {
@@ -49,7 +55,22 @@ export default function AdminStatsPage() {
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [authRequest, currentUser?.id, timeRange]);
+  }, [accessToken, authRequest, currentUser?.id, timeRange]);
+
+  async function openWrapped() {
+    setIsWrappedOpen(true);
+    if (wrapped || isWrappedLoading) return;
+
+    setIsWrappedLoading(true);
+    setWrappedError(null);
+    try {
+      setWrapped(await authRequest<YearWithStovo>(`/api/v1/plugins/stats/wrapped/${new Date().getFullYear()}?userId=${currentUser?.id ?? ""}`));
+    } catch (reason) {
+      setWrappedError(reason instanceof Error ? reason.message : "Year with Stovo could not be loaded");
+    } finally {
+      setIsWrappedLoading(false);
+    }
+  }
 
   // Older or empty statistics rows can be serialized as null by the API.
   // Keep the dashboard useful for a brand-new server instead of failing to render.
@@ -63,6 +84,8 @@ export default function AdminStatsPage() {
   const conversationStarters = overview?.top_conversation_starters ?? [];
   const activeChats = overview?.top_active_chats ?? [];
   const topEmojis = awards?.top_emojis ?? [];
+  const chatsById = useMemo(() => new Map(chats.map((chat) => [chat.id, chat])), [chats]);
+  const hasActivity = messagesByHour.some((count) => count > 0);
   const peakHour = useMemo(() => Math.max(...messagesByHour, 1), [messagesByHour]);
   const awardCards = awards ? [
     { label: "Night owl", icon: "🦉", winner: awards.night_owl },
@@ -79,8 +102,8 @@ export default function AdminStatsPage() {
     <section className="page-surface admin-surface stats-surface">
       <header className="stats-header">
         <Link to={`${prefix}/app/settings`} className="stats-back" aria-label="Back to Settings"><ArrowLeft size={18} /></Link>
-        <div><h1>Statistics dashboard</h1><p>See how your chats are growing and when people are most active.</p></div>
-        <button type="button" className="stats-wrapped-button" onClick={() => setIsWrappedOpen(true)}><Sparkles size={16} /> Year with Stovo</button>
+        <div><h1>Statistics dashboard</h1></div>
+        <button type="button" className="stats-wrapped-button" onClick={() => void openWrapped()}><Sparkles size={16} /> Year with Stovo</button>
       </header>
 
       <div className="stats-toolbar" aria-label="Statistics range"><span>Showing</span><div role="group" className="stats-range-control">
@@ -97,9 +120,9 @@ export default function AdminStatsPage() {
           <article className="stats-summary-card"><span className="stats-summary-icon is-violet"><Activity size={17} /></span><span>Average session</span><strong>{Math.round(overview.avg_session_duration_minutes)}m</strong><small>continuous conversation time</small></article>
         </section>
         <section className="stats-content-grid">
-          <article className="stats-card stats-card--activity"><div className="stats-card-heading"><div><span>When people talk</span><h2>Activity across the day</h2></div><small>Local server time</small></div><div className="stats-chart" aria-label="Messages by hour">
-            {messagesByHour.map((count, hour) => <div className="stats-chart-column" key={hour}><span className="stats-chart-tooltip">{hour.toString().padStart(2, "0")}:00 · {count} messages</span><i style={{ height: `${Math.max((count / peakHour) * 100, 3)}%` }} /></div>)}
-          </div><div className="stats-chart-axis"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div></article>
+          <article className="stats-card stats-card--activity"><div className="stats-card-heading"><div><span>When people talk</span><h2>Activity across the day</h2></div><small>Local server time</small></div>{hasActivity ? <><div className="stats-chart" aria-label="Messages by hour">
+            {messagesByHour.map((count, hour) => <div className="stats-chart-column" key={hour}><span className="stats-chart-tooltip">{hour.toString().padStart(2, "0")}:00 · {count} messages</span>{count > 0 && <i style={{ height: `${Math.max((count / peakHour) * 100, 6)}%` }} />}</div>)}
+          </div><div className="stats-chart-axis"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>11p</span></div></> : <p className="stats-chart-empty">No messages were recorded in this time range.</p>}</article>
           <article className="stats-card stats-card--replies"><div className="stats-card-heading"><div><span>Responsiveness</span><h2>Reply rhythm</h2></div></div><div className="stats-reply-list">
             {[["Under a minute", responseTimeBuckets.under_1_min, "is-fast"], ["1–5 minutes", responseTimeBuckets.from_1_to_5_min, "is-regular"], ["5–30 minutes", responseTimeBuckets.from_5_to_30_min, "is-casual"], ["Over 30 minutes", responseTimeBuckets.over_30_min, "is-slow"]].map(([label, count, tone]) => <div className="stats-reply-row" key={String(label)}><i className={String(tone)} /><span>{label}</span><strong>{Number(count).toLocaleString()}</strong></div>)}
           </div></article>
@@ -107,7 +130,7 @@ export default function AdminStatsPage() {
             {conversationStarters.length ? conversationStarters.map((member, index) => <div className="stats-leader" key={member.user_id}><span className="stats-rank">{index + 1}</span><div><strong>{member.display_name}</strong><small>{member.starts_count} starts</small><i><b style={{ width: `${member.percentage}%` }} /></i></div><em>{member.percentage}%</em></div>) : <p className="stats-empty">A leader will appear as conversations begin.</p>}
           </div></article>
           <article className="stats-card"><div className="stats-card-heading"><div><span>Most active spaces</span><h2>Where the conversation lives</h2></div><BarChart3 size={18} /></div><div className="stats-chat-list">
-            {activeChats.length ? activeChats.map((chat) => <div className="stats-chat" key={chat.chat_id}><span>{chat.type.slice(0, 1)}</span><strong>{chat.title}</strong><small>{chat.message_count.toLocaleString()} msgs</small></div>) : <p className="stats-empty">No chat activity in this period.</p>}
+            {activeChats.length ? activeChats.map((chat) => { const fullChat = chatsById.get(chat.chat_id); return <div className="stats-chat" key={chat.chat_id}>{fullChat ? <RealAvatar accessToken={accessToken} className="avatar stats-chat-avatar" fallbackKind={chatAvatarFallbackKind(fullChat)} file={chatAvatarFile(fullChat, currentUser?.id)} label={chat.title} /> : <span className="stats-chat-avatar stats-chat-avatar--fallback">{chat.type.slice(0, 1)}</span>}<strong>{chat.title}</strong><small>{chat.message_count.toLocaleString()} msgs</small></div>; }) : <p className="stats-empty">No chat activity in this period.</p>}
           </div></article>
         </section>
         {awards && <section className="stats-awards"><div className="stats-awards-heading"><div><span>Good company</span><h2>Community highlights</h2></div><Trophy size={20} /></div><div className="stats-award-grid">
@@ -115,6 +138,6 @@ export default function AdminStatsPage() {
         </div><div className="stats-duo"><span>🤝</span><div><small>Dynamic duo</small><strong>{awards.dynamic_duo.user_1_name && awards.dynamic_duo.user_2_name ? `${awards.dynamic_duo.user_1_name} & ${awards.dynamic_duo.user_2_name}` : "Still waiting for a legendary duo"}</strong></div><p>{topEmojis.slice(0, 5).map((emoji) => emoji.emoji).join(" ") || "Keep reacting to reveal the server favourites."}</p></div></section>}
       </>}
     </section>
-    {isWrappedOpen && wrapped && <YearWithStovoModal data={wrapped} onClose={() => setIsWrappedOpen(false)} />}
+    {isWrappedOpen && <YearWithStovoModal data={wrapped} isLoading={isWrappedLoading} error={wrappedError} onClose={() => setIsWrappedOpen(false)} />}
   </main>;
 }
