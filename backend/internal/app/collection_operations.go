@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,17 +16,18 @@ import (
 // collectionPublic is deliberately transport-shaped: collections are a small
 // storage surface and do not require Ent code generation to evolve safely.
 type collectionPublic struct {
-	ID          string  `json:"id"`
-	FamilyID    string  `json:"familyId"`
-	OwnerID     string  `json:"ownerId"`
-	Title       string  `json:"title"`
-	DisplayKind string  `json:"displayKind"`
-	ContentType string  `json:"contentType"`
-	CoverFileID *string `json:"coverFileId"`
-	ItemCount   int     `json:"itemCount"`
-	AccessLevel string  `json:"accessLevel"`
-	CreatedAt   string  `json:"createdAt"`
-	UpdatedAt   string  `json:"updatedAt"`
+	ID              string  `json:"id"`
+	FamilyID        string  `json:"familyId"`
+	OwnerID         string  `json:"ownerId"`
+	Title           string  `json:"title"`
+	DisplayKind     string  `json:"displayKind"`
+	ContentType     string  `json:"contentType"`
+	CustomFileTypes string  `json:"customFileTypes"`
+	CoverFileID     *string `json:"coverFileId"`
+	ItemCount       int     `json:"itemCount"`
+	AccessLevel     string  `json:"accessLevel"`
+	CreatedAt       string  `json:"createdAt"`
+	UpdatedAt       string  `json:"updatedAt"`
 }
 
 type collectionGrantPublic struct {
@@ -43,11 +45,32 @@ func validCollectionKind(value string) bool {
 	return value == "folder" || value == "album" || value == "music-album"
 }
 func validCollectionContent(value string) bool {
-	return value == "mixed" || value == "media" || value == "audio" || value == "documents"
+	return value == "mixed" || value == "media" || value == "audio" || value == "documents" || value == "custom"
 }
 func validCollectionLevel(value string) bool { return value == "viewer" || value == "editor" }
 
-func collectionContentAllows(contentType, mimeType string) bool {
+func normalizeCustomFileTypes(value string) (string, bool) {
+	patterns := strings.Split(value, ",")
+	if len(patterns) == 0 || len(patterns) > 30 {
+		return "", false
+	}
+	normalized := make([]string, 0, len(patterns))
+	for _, pattern := range patterns {
+		pattern = strings.ToLower(strings.TrimSpace(pattern))
+		if !strings.HasPrefix(pattern, "*.") || len(pattern) < 3 || len(pattern) > 40 {
+			return "", false
+		}
+		for _, char := range pattern[2:] {
+			if !(char >= 'a' && char <= 'z') && !(char >= '0' && char <= '9') && char != '+' && char != '-' && char != '_' {
+				return "", false
+			}
+		}
+		normalized = append(normalized, pattern)
+	}
+	return strings.Join(normalized, ", "), true
+}
+
+func collectionContentAllows(contentType, customFileTypes, mimeType, originalName string) bool {
 	switch contentType {
 	case "mixed":
 		return true
@@ -57,6 +80,14 @@ func collectionContentAllows(contentType, mimeType string) bool {
 		return strings.HasPrefix(mimeType, "audio/")
 	case "documents":
 		return !strings.HasPrefix(mimeType, "image/") && !strings.HasPrefix(mimeType, "video/") && !strings.HasPrefix(mimeType, "audio/")
+	case "custom":
+		for _, pattern := range strings.Split(customFileTypes, ",") {
+			matched, err := filepath.Match(strings.TrimSpace(strings.ToLower(pattern)), strings.ToLower(originalName))
+			if err == nil && matched {
+				return true
+			}
+		}
+		return false
 	default:
 		return false
 	}
@@ -69,10 +100,10 @@ func (s *Server) collectionAccess(ctx context.Context, collectionID string, user
 	}
 	var c collectionPublic
 	var cover sql.NullString
-	err := db.QueryRowContext(ctx, `SELECT c.id,c.family_id,c.owner_id,c.title,c.display_kind,c.content_type,c.cover_file_id,c.created_at,c.updated_at,
+	err := db.QueryRowContext(ctx, `SELECT c.id,c.family_id,c.owner_id,c.title,c.display_kind,c.content_type,c.custom_file_types,c.cover_file_id,c.created_at,c.updated_at,
 		(SELECT count(*) FROM storage_collection_items i WHERE i.collection_id=c.id)
 		FROM storage_collections c WHERE c.id=$1 AND c.deleted_at IS NULL`, collectionID).
-		Scan(&c.ID, &c.FamilyID, &c.OwnerID, &c.Title, &c.DisplayKind, &c.ContentType, &cover, &c.CreatedAt, &c.UpdatedAt, &c.ItemCount)
+		Scan(&c.ID, &c.FamilyID, &c.OwnerID, &c.Title, &c.DisplayKind, &c.ContentType, &c.CustomFileTypes, &cover, &c.CreatedAt, &c.UpdatedAt, &c.ItemCount)
 	if err != nil || c.FamilyID != user.FamilyID {
 		return collectionPublic{}, "", errNotFound
 	}
@@ -224,10 +255,11 @@ func (s *Server) listCollections(w http.ResponseWriter, r *http.Request, user us
 
 func (s *Server) createCollection(w http.ResponseWriter, r *http.Request, user userPublic) {
 	var p struct {
-		Title       string  `json:"title"`
-		DisplayKind string  `json:"displayKind"`
-		ContentType string  `json:"contentType"`
-		CoverFileID *string `json:"coverFileId"`
+		Title           string  `json:"title"`
+		DisplayKind     string  `json:"displayKind"`
+		ContentType     string  `json:"contentType"`
+		CustomFileTypes string  `json:"customFileTypes"`
+		CoverFileID     *string `json:"coverFileId"`
 	}
 	if json.NewDecoder(r.Body).Decode(&p) != nil {
 		collectionError(w, 422, "Invalid request body")
@@ -236,9 +268,19 @@ func (s *Server) createCollection(w http.ResponseWriter, r *http.Request, user u
 	p.Title = strings.TrimSpace(p.Title)
 	p.DisplayKind = strings.TrimSpace(p.DisplayKind)
 	p.ContentType = strings.TrimSpace(p.ContentType)
+	p.CustomFileTypes = strings.TrimSpace(p.CustomFileTypes)
 	if p.Title == "" || len([]rune(p.Title)) > 120 || !validCollectionKind(p.DisplayKind) || !validCollectionContent(p.ContentType) {
 		collectionError(w, 422, "Invalid collection details")
 		return
+	}
+	if p.ContentType == "custom" {
+		var valid bool
+		if p.CustomFileTypes, valid = normalizeCustomFileTypes(p.CustomFileTypes); !valid {
+			collectionError(w, 422, "Custom file types must use comma-separated patterns such as *.png, *.pdf")
+			return
+		}
+	} else {
+		p.CustomFileTypes = ""
 	}
 	db, ok := s.collectionDB()
 	if !ok {
@@ -254,7 +296,7 @@ func (s *Server) createCollection(w http.ResponseWriter, r *http.Request, user u
 	}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	id := uuid.NewString()
-	_, err := db.ExecContext(r.Context(), `INSERT INTO storage_collections (id,family_id,owner_id,title,display_kind,content_type,cover_file_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$8)`, id, user.FamilyID, user.ID, p.Title, p.DisplayKind, p.ContentType, p.CoverFileID, now)
+	_, err := db.ExecContext(r.Context(), `INSERT INTO storage_collections (id,family_id,owner_id,title,display_kind,content_type,custom_file_types,cover_file_id,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9)`, id, user.FamilyID, user.ID, p.Title, p.DisplayKind, p.ContentType, p.CustomFileTypes, p.CoverFileID, now)
 	if err != nil {
 		collectionError(w, 500, "Could not create collection")
 		return
@@ -278,10 +320,11 @@ func (s *Server) updateCollection(w http.ResponseWriter, r *http.Request, user u
 		return
 	}
 	var p struct {
-		Title       *string         `json:"title"`
-		DisplayKind *string         `json:"displayKind"`
-		ContentType *string         `json:"contentType"`
-		CoverFileID json.RawMessage `json:"coverFileId"`
+		Title           *string         `json:"title"`
+		DisplayKind     *string         `json:"displayKind"`
+		ContentType     *string         `json:"contentType"`
+		CustomFileTypes *string         `json:"customFileTypes"`
+		CoverFileID     json.RawMessage `json:"coverFileId"`
 	}
 	if json.NewDecoder(r.Body).Decode(&p) != nil {
 		collectionError(w, 422, "Invalid request body")
@@ -309,6 +352,18 @@ func (s *Server) updateCollection(w http.ResponseWriter, r *http.Request, user u
 		}
 		c.ContentType = *p.ContentType
 	}
+	if p.CustomFileTypes != nil {
+		c.CustomFileTypes = strings.TrimSpace(*p.CustomFileTypes)
+	}
+	if c.ContentType == "custom" {
+		var valid bool
+		if c.CustomFileTypes, valid = normalizeCustomFileTypes(c.CustomFileTypes); !valid {
+			collectionError(w, 422, "Custom file types must use comma-separated patterns such as *.png, *.pdf")
+			return
+		}
+	} else {
+		c.CustomFileTypes = ""
+	}
 	if p.CoverFileID != nil {
 		if string(p.CoverFileID) == "null" {
 			c.CoverFileID = nil
@@ -327,7 +382,7 @@ func (s *Server) updateCollection(w http.ResponseWriter, r *http.Request, user u
 		}
 	}
 	db, _ := s.collectionDB()
-	_, err = db.ExecContext(r.Context(), `UPDATE storage_collections SET title=$2,display_kind=$3,content_type=$4,cover_file_id=$5,updated_at=$6 WHERE id=$1`, c.ID, c.Title, c.DisplayKind, c.ContentType, c.CoverFileID, time.Now().UTC().Format(time.RFC3339Nano))
+	_, err = db.ExecContext(r.Context(), `UPDATE storage_collections SET title=$2,display_kind=$3,content_type=$4,custom_file_types=$5,cover_file_id=$6,updated_at=$7 WHERE id=$1`, c.ID, c.Title, c.DisplayKind, c.ContentType, c.CustomFileTypes, c.CoverFileID, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
 		collectionError(w, 500, "Could not update collection")
 		return
@@ -392,7 +447,7 @@ func (s *Server) addCollectionItem(w http.ResponseWriter, r *http.Request, user 
 		collectionError(w, 404, "File not found")
 		return
 	}
-	if !collectionContentAllows(c.ContentType, f.MimeType) {
+	if !collectionContentAllows(c.ContentType, c.CustomFileTypes, f.MimeType, f.OriginalName) {
 		collectionError(w, 422, "File type does not match this collection")
 		return
 	}
