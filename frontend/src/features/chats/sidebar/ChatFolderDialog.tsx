@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ChatFolder, defaultFolderRules, folderChatTypes } from "./chatFolders";
 
@@ -24,7 +25,7 @@ export function ChatFolderDialog({ folder, onClose, onSave, onDelete }: ChatFold
     onSave({ ...draft, name: draft.name.trim(), rules: { ...draft.rules, titleIncludes: draft.rules.titleIncludes.trim() } });
   }
 
-  return (
+  return createPortal(
     <div className="modal-backdrop chat-folder-backdrop" role="presentation" onMouseDown={onClose}>
       <form className="chat-folder-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-folder-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={submit}>
         <div className="modal-header">
@@ -37,9 +38,10 @@ export function ChatFolderDialog({ folder, onClose, onSave, onDelete }: ChatFold
         <fieldset className="chat-folder-rules"><legend>Additional properties</legend>{([ ["unreadOnly", "Unread only"], ["favoritesOnly", "Favorites only"], ["mutedOnly", "Muted only"] ] as const).map(([key, label]) => <label key={key}><input type="checkbox" checked={draft.rules[key]} onChange={() => setDraft({ ...draft, rules: { ...draft.rules, [key]: !draft.rules[key] } })} />{label}</label>)}</fieldset>
         <div className="chat-folder-actions">
           {folder && <button type="button" className="chat-folder-delete" onClick={() => onDelete(folder)}>Delete folder</button>}
-          <span><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={!draft.name.trim()}>{folder ? "Save folder" : "Create chat folder"}</button></span>
+          <span><button className="primary-button" disabled={!draft.name.trim()}>{folder ? "Save folder" : "Create chat folder"}</button><button type="button" className="secondary-button" onClick={onClose}>Cancel</button></span>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 }

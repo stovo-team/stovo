@@ -58,6 +58,8 @@ function markdownToEditableHtml(value: string) {
   return value.split("\n").map((line) => {
     const heading = /^(#{1,6})\s+(.*)$/u.exec(line);
     if (heading) return `<h${heading[1].length}>${escapeHtml(heading[2]) || "<br>"}</h${heading[1].length}>`;
+    const bullet = /^[-*+]\s+(.*)$/u.exec(line);
+    if (bullet) return `<ul><li>${escapeHtml(bullet[1]) || "<br>"}</li></ul>`;
     return `<p>${escapeHtml(line) || "<br>"}</p>`;
   }).join("");
 }
@@ -66,7 +68,9 @@ function editableHtmlToMarkdown(editor: HTMLDivElement) {
   return Array.from(editor.children).map((block) => {
     const level = /^H([1-6])$/u.exec(block.tagName);
     const text = block.textContent?.replace(/\u00a0/g, " ") ?? "";
-    return level ? `${"#".repeat(Number(level[1]))} ${text}` : text;
+    if (level) return `${"#".repeat(Number(level[1]))} ${text}`;
+    if (block.tagName === "UL") return Array.from(block.querySelectorAll(":scope > li")).map((item) => `- ${item.textContent?.replace(/\u00a0/g, " ") ?? ""}`).join("\n");
+    return text;
   }).join("\n");
 }
 
@@ -78,6 +82,21 @@ function moveCursorToEnd(element: HTMLElement) {
   range.collapse(false);
   selection.removeAllRanges();
   selection.addRange(range);
+}
+
+function currentEditorBlock(editor: HTMLDivElement) {
+  const node = window.getSelection()?.anchorNode;
+  let element = node?.nodeType === Node.ELEMENT_NODE ? node as HTMLElement : node?.parentElement ?? null;
+  while (element && element.parentElement !== editor) element = element.parentElement;
+  return element?.parentElement === editor ? element : null;
+}
+
+function replaceWithHeading(block: HTMLElement, level: number, content: string) {
+  const replacement = document.createElement(`h${level}`);
+  replacement.textContent = content;
+  if (!content) replacement.append(document.createElement("br"));
+  block.replaceWith(replacement);
+  moveCursorToEnd(replacement);
 }
 
 function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
@@ -97,26 +116,50 @@ function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
     editor.innerHTML = markdownToEditableHtml(value);
   }, [value]);
 
-  const handleInput = (event: React.FormEvent<HTMLDivElement>) => {
-    const editor = event.currentTarget;
-    const selection = window.getSelection();
-    const candidate = selection?.anchorNode?.parentElement?.closest("p, div, h1, h2, h3, h4, h5, h6");
-    const block = candidate && candidate !== editor ? candidate : null;
-    const heading = block && /^(#{1,6})\s+(.*)$/u.exec(block.textContent ?? "");
-    if (block && heading && block.tagName !== `H${heading[1].length}`) {
-      const replacement = document.createElement(`h${heading[1].length}`);
-      replacement.textContent = heading[2];
-      block.replaceWith(replacement);
-      moveCursorToEnd(replacement);
-    }
+  const saveEditor = (editor: HTMLDivElement) => {
     const next = editableHtmlToMarkdown(editor);
     text.doc?.transact(() => { text.delete(0, text.length); text.insert(0, next); });
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== " " || event.nativeEvent.isComposing) return;
+    const editor = event.currentTarget;
+    const block = currentEditorBlock(editor);
+    if (!block || !["P", "DIV"].includes(block.tagName)) return;
+    const textBeforeSpace = block.textContent ?? "";
+    const heading = /^(#{1,6})$/u.exec(textBeforeSpace);
+    if (heading) {
+      event.preventDefault();
+      replaceWithHeading(block, heading[1].length, "");
+      saveEditor(editor);
+      return;
+    }
+    if (/^[-*+]$/u.test(textBeforeSpace)) {
+      event.preventDefault();
+      const list = document.createElement("ul");
+      const item = document.createElement("li");
+      item.append(document.createElement("br"));
+      list.append(item);
+      block.replaceWith(list);
+      moveCursorToEnd(item);
+      saveEditor(editor);
+    }
+  };
+
+  const handleInput = (event: React.FormEvent<HTMLDivElement>) => {
+    const editor = event.currentTarget;
+    const block = currentEditorBlock(editor);
+    const heading = block && /^(#{1,6})\s+(.*)$/u.exec(block.textContent ?? "");
+    if (block && heading && ["P", "DIV"].includes(block.tagName)) {
+      replaceWithHeading(block, heading[1].length, heading[2]);
+    }
+    saveEditor(editor);
   };
 
   if (!text) return null;
   return (
     <section className="canvas-markdown-block">
-      <div ref={editorRef} className="canvas-markdown-editor" contentEditable suppressContentEditableWarning role="textbox" aria-label="Canvas document" aria-multiline="true" onInput={handleInput} />
+      <div ref={editorRef} className="canvas-markdown-editor" contentEditable suppressContentEditableWarning role="textbox" aria-label="Canvas document" aria-multiline="true" onKeyDown={handleKeyDown} onInput={handleInput} />
     </section>
   );
 }
