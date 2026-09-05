@@ -4,21 +4,25 @@ import "testing"
 
 func TestCollectionContentAllowsExpectedFileKinds(t *testing.T) {
 	cases := []struct {
-		contentType string
-		mimeType    string
-		want        bool
+		contentType  string
+		customTypes  string
+		mimeType     string
+		originalName string
+		want         bool
 	}{
-		{"mixed", "application/pdf", true},
-		{"media", "image/jpeg", true},
-		{"media", "video/mp4", true},
-		{"media", "audio/mpeg", false},
-		{"audio", "audio/ogg", true},
-		{"audio", "image/webp", false},
-		{"documents", "application/pdf", true},
-		{"documents", "image/jpeg", false},
+		{"mixed", "", "application/pdf", "guide.pdf", true},
+		{"media", "", "image/jpeg", "cover.jpg", true},
+		{"media", "", "video/mp4", "movie.mp4", true},
+		{"media", "", "audio/mpeg", "song.mp3", false},
+		{"audio", "", "audio/ogg", "recording.ogg", true},
+		{"audio", "", "image/webp", "photo.webp", false},
+		{"documents", "", "application/pdf", "guide.pdf", true},
+		{"documents", "", "image/jpeg", "photo.jpg", false},
+		{"custom", "*.png, *.pdf", "image/png", "cover.png", true},
+		{"custom", "*.png, *.pdf", "image/jpeg", "cover.jpg", false},
 	}
 	for _, tt := range cases {
-		if got := collectionContentAllows(tt.contentType, tt.mimeType); got != tt.want {
+		if got := collectionContentAllows(tt.contentType, tt.customTypes, tt.mimeType, tt.originalName); got != tt.want {
 			t.Errorf("collectionContentAllows(%q, %q) = %v, want %v", tt.contentType, tt.mimeType, got, tt.want)
 		}
 	}
@@ -30,5 +34,11 @@ func TestCollectionValidation(t *testing.T) {
 	}
 	if !validCollectionLevel("viewer") || !validCollectionLevel("editor") || validCollectionLevel("owner") {
 		t.Fatal("unexpected collection access-level validation")
+	}
+	if normalized, valid := normalizeCustomFileTypes(" *.PNG, *.pdf "); !valid || normalized != "*.png, *.pdf" {
+		t.Fatalf("custom file patterns were not normalized: %q, %v", normalized, valid)
+	}
+	if _, valid := normalizeCustomFileTypes("*.png, *.bad!"); valid {
+		t.Fatal("invalid custom file pattern was accepted")
 	}
 }

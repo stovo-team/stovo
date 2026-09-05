@@ -86,7 +86,7 @@ export interface MessageCollectionCard {
   id: string;
   title?: string;
   displayKind?: "folder" | "album" | "music-album";
-  contentType?: "mixed" | "media" | "audio" | "documents";
+  contentType?: "mixed" | "media" | "audio" | "documents" | "custom";
   itemCount?: number;
   available: boolean;
 }

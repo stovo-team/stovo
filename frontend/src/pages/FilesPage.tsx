@@ -634,7 +634,7 @@ export default function FilesPage() {
           </div>
 
           <div className="storage-content-area">
-            {filter !== "canvases" && <StorageCollections accessToken={accessToken} files={files} filter={filter} onFilesChanged={() => void load(true)} />}
+            {filter !== "canvases" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} />}
             <StorageCanvases accessToken={accessToken} filter={filter} search={search} />
             {filter !== "canvases" && <>
             <div className="storage-files-heading">
