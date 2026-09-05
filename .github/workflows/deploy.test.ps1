@@ -34,9 +34,16 @@ if ($workflow -notmatch 'Refusing to redeploy.*MinIO bucket' -or
 
 if ($workflow -notmatch 'active_file_count=' -or
     $workflow -notmatch 'object_count=' -or
+    $workflow -match 'mc find "local/stovo-\$1" --type f' -or
     $workflow -notmatch 'WARNING: MinIO has \$object_count objects but the database has \$active_file_count active files' -or
     $workflow -notmatch 'Deploying backend; restore or reconcile missing media separately') {
     throw "Deployment must warn about a MinIO/database mismatch while allowing a backend rollout."
+}
+
+if ($workflow -notmatch 'existing_container_id=' -or
+    $workflow -notmatch 'name=\^/stovo-backend-\$\{server_slug\}\$' -or
+    $workflow -notmatch 'docker rm -f "\$existing_container_id"') {
+    throw "Deployment must resolve the current tenant container by name before replacing it."
 }
 
 if ($workflow -notmatch 'migrations/master') {
