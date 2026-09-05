@@ -2,7 +2,7 @@ import { apiRequest } from "./client";
 import type { FamilyFile } from "./files";
 
 export type CollectionKind = "folder" | "album" | "music-album";
-export type CollectionContentType = "mixed" | "media" | "audio" | "documents";
+export type CollectionContentType = "mixed" | "media" | "audio" | "documents" | "custom";
 export type CollectionAccessLevel = "viewer" | "editor";
 
 export interface StorageCollection {
@@ -12,6 +12,7 @@ export interface StorageCollection {
   title: string;
   displayKind: CollectionKind;
   contentType: CollectionContentType;
+  customFileTypes: string;
   coverFileId: string | null;
   itemCount: number;
   accessLevel: CollectionAccessLevel;
@@ -28,10 +29,10 @@ export interface CollectionGrant {
 export function getCollections(accessToken: string) {
   return apiRequest<StorageCollection[]>("/api/collections", { accessToken });
 }
-export function createCollection(accessToken: string, payload: Pick<StorageCollection, "title" | "displayKind" | "contentType"> & { coverFileId?: string | null }) {
+export function createCollection(accessToken: string, payload: Pick<StorageCollection, "title" | "displayKind" | "contentType"> & { customFileTypes?: string; coverFileId?: string | null }) {
   return apiRequest<StorageCollection>("/api/collections", { method: "POST", accessToken, body: payload });
 }
-export function updateCollection(accessToken: string, id: string, payload: Partial<Pick<StorageCollection, "title" | "displayKind" | "contentType" | "coverFileId">>) {
+export function updateCollection(accessToken: string, id: string, payload: Partial<Pick<StorageCollection, "title" | "displayKind" | "contentType" | "customFileTypes" | "coverFileId">>) {
   return apiRequest<StorageCollection>(`/api/collections/${encodeURIComponent(id)}`, { method: "PATCH", accessToken, body: payload });
 }
 export function deleteCollection(accessToken: string, id: string) {

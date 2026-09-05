@@ -1,4 +1,4 @@
-h1:NGfi9GaKacyM8i9V0HzAlTOlpY74un0gukBmILYcOSo=
+h1:yQvJIk6jAqULYb3xOZ62ExzTnCHBzE7EWkbZRe/lpMM=
 20260804120000_baseline.sql h1:PX8LTmKn+3POUZ0MsN42S+c4aep3pUydkop5ubIABZA=
 20260804170000_add_mcp_connectors.sql h1:cr7khK3pFIRhsLPUVijg5CAwlj2CLW9t/rUDKzJaFp8=
 20260804180000_add_mcp_connector_provider.sql h1:45CtfU1qN07ywUQT0g28LLMuwUQ2+vhRjVQTcsX0Meo=
@@ -15,3 +15,4 @@ h1:NGfi9GaKacyM8i9V0HzAlTOlpY74un0gukBmILYcOSo=
 20260903120000_repair_client_operations_primary_key.sql h1:5nsXllawWi8ianAOV+q0L5n91DI10liLe1IocHRgS9M=
 20260904100000_add_canvas_plugin.sql h1:NaNcsC3mqnOb7yuBJ/iucWXKv8GFXFzokx5cGriNySk=
 20260904150000_add_storage_collections.sql h1:mlZvU4XPD5Jt8tiGuMVVHfaDGo6tap4ZBn7Qr8RbeKo=
+20260906090000_add_collection_custom_file_types.sql h1:VTcHaLWakUXhjmbeZmG9fO1dymec64Hu1PFtGEzdqrU=

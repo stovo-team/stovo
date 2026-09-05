@@ -3534,8 +3534,8 @@ h2 {
 
 .chat-list-section {
   display: grid;
-  gap: 3px;
-  margin-bottom: 10px;
+  gap: 0;
+  margin-bottom: 6px;
 }
 
 .chat-list-section:last-child {
@@ -6024,7 +6024,7 @@ span.message-spoiler.is-revealed {
   align-items: center;
   display: flex;
   justify-content: space-between;
-  min-height: 28px;
+  min-height: 24px;
 }
 
 .chat-section-collapse {
@@ -6039,7 +6039,8 @@ span.message-spoiler.is-revealed {
   gap: 5px;
   letter-spacing: 0.08em;
   margin: 0 4px;
-  padding: 4px 0;
+  min-height: 24px;
+  padding: 2px 0;
   text-transform: uppercase;
 }
 
@@ -6048,7 +6049,7 @@ span.message-spoiler.is-revealed {
 .chat-section-collapse small { font-size: 0.7rem; letter-spacing: 0; opacity: 0.72; }
 .chat-section-collapse:hover:not(:disabled), .chat-section-collapse:active:not(:disabled) { background: transparent; border-color: transparent; transform: none; }
 .chat-folder-controls { display: flex; gap: 2px; }
-.chat-folder-controls button { align-items: center; background: transparent; border: 0; border-radius: 8px; color: var(--text-muted); cursor: pointer; display: inline-flex; padding: 4px; }
+.chat-folder-controls button { align-items: center; background: transparent; border: 0; border-radius: 8px; color: var(--text-muted); cursor: pointer; display: inline-flex; height: 24px; justify-content: center; min-height: 24px; padding: 0; width: 24px; }
 .chat-folder-controls button:hover { background: transparent; color: var(--text-muted); }
 .chat-folder-empty { color: var(--text-muted); font-size: 0.8rem; margin: 3px 10px 8px; }
 .chat-folder-create { align-items: center; background: transparent; border: 1px dashed var(--border-default); border-radius: 22px; color: var(--text-secondary); cursor: pointer; display: flex; font-size: 0.82rem; gap: 7px; justify-content: center; margin: 4px; min-height: 52px; padding: 9px; width: calc(100% - 8px); }
@@ -14019,7 +14020,9 @@ span.message-spoiler.is-revealed {
   background: transparent;
   justify-content: flex-start;
   padding: 0 0 76px 18px;
-  pointer-events: none;
+  /* The transparent area is a real backdrop: it must receive a click so the
+     popover can be dismissed, while the menu itself remains interactive. */
+  pointer-events: auto;
 }
 
 :root[data-platform="web"] .attachment-picker-web-menu {
@@ -23011,7 +23014,17 @@ span.message-spoiler.is-revealed {
 .storage-access-member-avatar:not(:has(img)) { align-items: center; color: #dbeaff; font-size: 10px; justify-content: center; }
 .storage-access-role-list > button { padding-right: 10px !important; }
 .storage-access-role-avatar { align-items: center; background: #5d4d93; border-radius: 8px; color: white; display: inline-flex; font-size: 12px; font-weight: 800; height: 26px; justify-content: center; width: 26px; }
+.storage-access-role-list > button { flex-wrap: nowrap; }
+.storage-access-role-list > button > span:not(.storage-access-role-avatar), .storage-access-role-list small { display: inline !important; line-height: 1; white-space: nowrap; }
 .storage-access-role-list small { color: var(--text-secondary); font-size: 11px; }
+
+/* Collection settings use spacing instead of divider rules. */
+.storage-collection-full-header { border-bottom: 0 !important; }
+.storage-collection-sharing, .storage-collection-sharing > div + div { border: 0 !important; }
+.storage-settings-section { border-top: 0 !important; padding-top: 0 !important; }
+
+.storage-forward-chat-list > button { display: grid !important; gap: 10px; grid-template-columns: auto auto minmax(0, 1fr); }
+.storage-forward-chat-avatar { flex: 0 0 34px; height: 34px; width: 34px; }
 .storage-collection-settings-dialog .storage-collection-grant { justify-content: flex-end; }
 .storage-collection-settings-dialog .storage-collection-grant select { flex: 0 0 120px; max-width: 120px; }
 .storage-content-type-options { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -23020,7 +23033,23 @@ span.message-spoiler.is-revealed {
 .storage-content-type-options > button.is-selected { background: #183554 !important; border-color: #63a9ff !important; box-shadow: inset 0 0 0 1px #63a9ff; }
 .storage-content-type-options strong { font-size: 13px; }
 .storage-content-type-options small { color: var(--text-secondary); font-size: 11px; line-height: 1.2; }
+.storage-content-type-options > button { align-content: start; justify-items: start; text-align: left !important; }
+.storage-custom-file-types { background: #11161d; border: 1px solid #2d3743; border-radius: 12px; display: grid; gap: 9px; padding: 11px; }
+.storage-custom-file-types label { color: #c7d1df; display: grid; font-size: 12px; font-weight: 700; gap: 6px; }
+.storage-custom-file-types input { box-sizing: border-box; min-height: 38px !important; padding: 8px 10px !important; width: 100%; }
+.storage-custom-file-types p { color: var(--text-secondary); font-size: 11px; margin: 0; }
+.storage-custom-file-types code { color: #b9d8ff; font-family: inherit; }
+.storage-custom-file-types .storage-pill-button { justify-self: start; min-height: 34px; }
 @media (max-width: 520px) { .storage-content-type-options { grid-template-columns: 1fr; }.storage-access-principal-list > button { flex: 1; }.storage-collection-settings-dialog .storage-collection-grant { justify-content: stretch; }.storage-collection-settings-dialog .storage-collection-grant select, .storage-collection-settings-dialog .storage-collection-grant button { flex: 1; max-width: none; } }
+
+/* Keep Storage add/upload actions visually identical. */
+.storage-page .storage-collection-new, .storage-page .storage-files-upload { align-items: center !important; background: var(--accent-primary) !important; border: 0 !important; border-radius: 50% !important; box-shadow: none !important; filter: none !important; flex: 0 0 36px !important; height: 36px !important; justify-content: center !important; min-height: 36px !important; min-width: 36px !important; padding: 0 !important; width: 36px !important; }
+.storage-page .storage-collection-new:hover, .storage-page .storage-files-upload:hover, .storage-page .storage-collection-new:focus-visible, .storage-page .storage-files-upload:focus-visible { background: var(--accent-primary) !important; border: 0 !important; box-shadow: none !important; filter: none !important; outline: 0 !important; }
+.storage-page .storage-collection-new > svg, .storage-page .storage-files-upload > svg { flex: 0 0 16px !important; height: 16px !important; max-height: 16px !important; max-width: 16px !important; min-height: 16px !important; min-width: 16px !important; stroke-width: 2.25 !important; width: 16px !important; }
+
+/* The cover edit affordance is a filled translucent square, not an outline. */
+.storage-cover-edit-mark { background: rgba(4, 7, 11, .58) !important; border: 0 !important; border-radius: 14px !important; box-shadow: none !important; }
+.storage-collection-cover-edit:hover .storage-collection-cover { filter: none; }
 
 /* Shared Canvas workspace */
 .canvas-page { background: var(--canvas-amoled, #000); color: var(--text-primary); min-height: 100dvh; padding: 18px; }
