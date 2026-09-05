@@ -15,7 +15,10 @@ import (
 	"github.com/google/uuid"
 )
 
-const canvasPluginID = "plugin-canvas"
+const (
+	canvasPluginID       = "plugin-canvas"
+	maxCanvasUpdateBytes = 8 * 1024 * 1024
+)
 
 type canvasPublic struct {
 	ID            string    `json:"id"`
@@ -478,7 +481,10 @@ func (s *Server) appendCanvasUpdate(ctx context.Context, canvasID string, user u
 		return canvasUpdatePublic{}, err
 	}
 	decoded, err := base64.StdEncoding.DecodeString(update)
-	if err != nil || len(decoded) == 0 || len(decoded) > 262144 {
+	// Excalidraw serializes a complete element while it is being drawn. A
+	// detailed stroke can therefore exceed the small limit intended for text
+	// updates, even though it is a valid document update.
+	if err != nil || len(decoded) == 0 || len(decoded) > maxCanvasUpdateBytes {
 		return canvasUpdatePublic{}, errBadRequest
 	}
 	ciphertext, nonce, err := s.encryptServerAtRest(user.FamilyID, update)
