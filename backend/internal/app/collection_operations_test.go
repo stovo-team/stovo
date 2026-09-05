@@ -25,7 +25,7 @@ func TestCollectionContentAllowsExpectedFileKinds(t *testing.T) {
 }
 
 func TestCollectionValidation(t *testing.T) {
-	if !validCollectionKind("folder") || !validCollectionKind("album") || validCollectionKind("tree") {
+	if !validCollectionKind("folder") || !validCollectionKind("album") || !validCollectionKind("music-album") || validCollectionKind("tree") {
 		t.Fatal("unexpected collection display-kind validation")
 	}
 	if !validCollectionLevel("viewer") || !validCollectionLevel("editor") || validCollectionLevel("owner") {
