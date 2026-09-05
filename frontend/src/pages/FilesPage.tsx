@@ -640,7 +640,7 @@ export default function FilesPage() {
             <div className="storage-files-heading">
               <h2>Files</h2>
               <button type="button" className="storage-files-upload" title="Upload files" aria-label="Upload files" disabled={isUploading} onClick={() => uploadInputRef.current?.click()}>
-                <Upload size={18} />
+                <Upload size={15} />
               </button>
               <input ref={uploadInputRef} className="visually-hidden" type="file" multiple onChange={handleUpload} />
             </div>
