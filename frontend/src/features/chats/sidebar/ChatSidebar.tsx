@@ -30,7 +30,9 @@ export function ChatSidebar({
   const strings = useStrings();
   const navigate = useNavigate();
   const { activeServer, savedServers, hotSwapServer, removeServer, currentUser } = useAuth();
-  const canManageFolders = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_channels") === true;
+  // Chat folders are saved per user on this device, so every signed-in user
+  // can create and manage their own folders.
+  const canManageFolders = Boolean(currentUser);
   const [isServerMenuOpen, setIsServerMenuOpen] = useState(false);
   const serverMenuRef = useRef<HTMLDivElement | null>(null);
   const filterRowRef = useRef<HTMLDivElement | null>(null);
