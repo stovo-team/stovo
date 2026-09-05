@@ -4,7 +4,7 @@ import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
-import { ArrowLeft, Plus, Share2, Pencil, StickyNote } from "lucide-react";
+import { ArrowLeft, ChevronDown, Pencil, Plus, Share2 } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { getSocketConfigForUrl } from "../api/serverRegistry";
@@ -42,11 +42,11 @@ function documentBlocks(doc: Y.Doc): CanvasBlock[] {
   });
 }
 
-function createBlock(kind: BlockKind): Y.Map<unknown> {
+function createBlock(kind: BlockKind, markdownContent = ""): Y.Map<unknown> {
   const record = new Y.Map<unknown>();
   record.set("id", crypto.randomUUID());
   record.set("kind", kind);
-  if (kind === "markdown") record.set("content", new Y.Text());
+  if (kind === "markdown") record.set("content", new Y.Text(markdownContent));
   if (kind === "whiteboard") record.set("scene", new Y.Text());
   return record;
 }
@@ -64,8 +64,10 @@ function MarkdownBlock({ record }: { record: Y.Map<unknown> }) {
 
   if (!text) return null;
   return (
-    <section className="canvas-block canvas-markdown-block">
-      <header><StickyNote size={17} /> <strong>Markdown</strong><button type="button" onClick={() => setPreview((current) => !current)}>{preview ? "Edit" : "Preview"}</button></header>
+    <section className="canvas-markdown-block">
+      <div className="canvas-markdown-toolbar">
+        <button type="button" onClick={() => setPreview((current) => !current)}>{preview ? "Edit" : "Preview"}</button>
+      </div>
       {preview ? <article className="canvas-markdown-preview"><MessageMarkdown source={value} /></article> : (
         <textarea
           aria-label="Canvas Markdown"
@@ -89,7 +91,10 @@ function WhiteboardBlock({ record }: { record: Y.Map<unknown> }) {
 
   useEffect(() => {
     if (!sceneText) return;
-    const update = () => {
+    const update = (_event: Y.YTextEvent, transaction: Y.Transaction) => {
+      // Local changes already exist in Excalidraw. Applying them back through
+      // updateScene interrupts an active pointer stroke and can reset it.
+      if (transaction.origin !== remoteOrigin) return;
       setRevision((current) => current + 1);
       try { apiRef.current?.updateScene({ elements: JSON.parse(sceneText.toString()) }); } catch { /* keep the editor usable if a stale scene is received */ }
     };
@@ -130,6 +135,7 @@ export default function CanvasPage() {
   const [blocksRevision, setBlocksRevision] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [insertOpen, setInsertOpen] = useState(false);
   const [chats, setChats] = useState<Chat[]>([]);
   const socketRef = useRef<Socket | null>(null);
 
@@ -160,7 +166,7 @@ export default function CanvasPage() {
           socket.emit("canvas:update", { canvasId, update: bytesToBase64(update) });
         });
         blocks.observe(() => setBlocksRevision((current) => current + 1));
-        if (blocks.length === 0) doc.transact(() => blocks.push([createBlock("markdown")]));
+        if (blocks.length === 0) doc.transact(() => blocks.push([createBlock("markdown", `# ${loadedCanvas.title}\n\n`)]));
       } catch (cause) {
         if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not open Canvas");
       }
@@ -175,7 +181,10 @@ export default function CanvasPage() {
   }, [accessToken, shareOpen]);
 
   const blocks = useMemo(() => document ? documentBlocks(document) : [], [document, blocksRevision]);
-  const addBlock = (kind: BlockKind) => document?.transact(() => document.getArray<Y.Map<unknown>>("blocks").push([createBlock(kind)]));
+  const addWhiteboard = () => {
+    document?.transact(() => document.getArray<Y.Map<unknown>>("blocks").push([createBlock("whiteboard")]));
+    setInsertOpen(false);
+  };
   const saveTitle = async () => {
     if (!canvas || !accessToken) return;
     const title = window.prompt("Canvas name", canvas.title)?.trim();
@@ -190,12 +199,13 @@ export default function CanvasPage() {
     <main className="canvas-page">
       <header className="canvas-page-header">
         <button type="button" className="icon-button subtle" aria-label="Back" onClick={() => navigate(-1)}><ArrowLeft size={19} /></button>
-        <div><h1>{canvas.title}</h1><small>Shared Canvas · server-encrypted storage</small></div>
+        <div className="canvas-title-group"><h1>{canvas.title}</h1>{canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Edit canvas name" title="Edit canvas name" onClick={() => void saveTitle()}><Pencil size={16} /></button>}<small>Shared Canvas · server-encrypted storage</small></div>
         <div className="canvas-page-actions">
-          {canvas.canManage && <button type="button" onClick={() => void saveTitle()}>Rename</button>}
-          {canvas.canManage && <button type="button" onClick={() => setShareOpen((current) => !current)}><Share2 size={16} /> Share</button>}
-          <button type="button" onClick={() => addBlock("markdown")}><Plus size={16} /> Markdown</button>
-          <button type="button" onClick={() => addBlock("whiteboard")}><Plus size={16} /> Whiteboard</button>
+          {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Share canvas" title="Share canvas" onClick={() => setShareOpen((current) => !current)}><Share2 size={16} /></button>}
+          <div className="canvas-insert-menu">
+            <button type="button" className="canvas-add-button" aria-label="Insert into canvas" aria-expanded={insertOpen} onClick={() => setInsertOpen((current) => !current)}><Plus size={16} /><ChevronDown size={14} /></button>
+            {insertOpen && <div className="canvas-insert-dropdown" role="menu"><button type="button" role="menuitem" onClick={addWhiteboard}><Pencil size={16} /><span><strong>Whiteboard</strong><small>Insert a live drawing board</small></span></button></div>}
+          </div>
         </div>
       </header>
       {shareOpen && canvas.canManage && (

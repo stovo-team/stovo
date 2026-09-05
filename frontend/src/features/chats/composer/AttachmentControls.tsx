@@ -34,6 +34,7 @@ export function AttachmentControls() {
     isUploading,
     isSendingMessage,
     onCreatePoll,
+    onCreateCanvas,
     attachmentSheetInitialTab
   } = useComposerAttachmentContext();
   return (
@@ -109,6 +110,7 @@ export function AttachmentControls() {
         isUploading={isUploading}
         isSendingMessage={isSendingMessage}
         onCreatePoll={onCreatePoll}
+        onCreateCanvas={onCreateCanvas}
       />
     </>
   );

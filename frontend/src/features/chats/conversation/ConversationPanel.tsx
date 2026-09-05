@@ -377,7 +377,6 @@ export function ConversationPanel({
         onTogglePinned={onTogglePinned}
         onToggleMuted={onToggleMuted}
         onToggleFavorite={onToggleFavorite}
-        onCreateCanvas={onCreateCanvas}
         isMessageSelectionMode={isMessageSelectionMode}
         selectedCount={selectedMessageIds.length}
         canEditSelected={canEditSelected}
@@ -695,6 +694,7 @@ export function ConversationPanel({
               onScheduleMessage={handleScheduleMessage}
               onSetReminder={handleSetReminder}
               onCreatePoll={handleCreatePoll}
+              onCreateCanvas={selectedChat?.type === "archive" ? undefined : onCreateCanvas}
             />
           )}
         </>
