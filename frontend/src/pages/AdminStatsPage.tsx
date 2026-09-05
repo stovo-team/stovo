@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Activity, ArrowLeft, BarChart3, Clock3, MessageSquare, Sparkles, Trophy, Users, Zap } from "lucide-react";
+import { Activity, ArrowLeft, BarChart3, Clock3, MessageSquare, Trophy, Users, Zap } from "lucide-react";
 
-import { FunAwards, ServerOverviewStats, YearWithStovo } from "../api/stats";
+import { FunAwards, ServerOverviewStats } from "../api/stats";
 import { Chat, getChats } from "../api/chats";
 import { getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
-import YearWithStovoModal from "../components/YearWithStovoModal";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import { chatAvatarFallbackKind, chatAvatarFile } from "../features/chats/shared/chatPresentation";
 import AppNav from "./AppNav";
@@ -27,11 +26,7 @@ export default function AdminStatsPage() {
   const [timeRange, setTimeRange] = useState<Range>("all");
   const [overview, setOverview] = useState<ServerOverviewStats | null>(null);
   const [awards, setAwards] = useState<FunAwards | null>(null);
-  const [wrapped, setWrapped] = useState<YearWithStovo | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
-  const [isWrappedOpen, setIsWrappedOpen] = useState(false);
-  const [isWrappedLoading, setIsWrappedLoading] = useState(false);
-  const [wrappedError, setWrappedError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,21 +51,6 @@ export default function AdminStatsPage() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [accessToken, authRequest, currentUser?.id, timeRange]);
-
-  async function openWrapped() {
-    setIsWrappedOpen(true);
-    if (wrapped || isWrappedLoading) return;
-
-    setIsWrappedLoading(true);
-    setWrappedError(null);
-    try {
-      setWrapped(await authRequest<YearWithStovo>(`/api/v1/plugins/stats/wrapped/${new Date().getFullYear()}?userId=${currentUser?.id ?? ""}`));
-    } catch (reason) {
-      setWrappedError(reason instanceof Error ? reason.message : "Year with Stovo could not be loaded");
-    } finally {
-      setIsWrappedLoading(false);
-    }
-  }
 
   // Older or empty statistics rows can be serialized as null by the API.
   // Keep the dashboard useful for a brand-new server instead of failing to render.
@@ -103,7 +83,6 @@ export default function AdminStatsPage() {
       <header className="stats-header">
         <Link to={`${prefix}/app/settings`} className="stats-back" aria-label="Back to Settings"><ArrowLeft size={18} /></Link>
         <div><h1>Statistics dashboard</h1></div>
-        <button type="button" className="stats-wrapped-button" onClick={() => void openWrapped()}><Sparkles size={16} /> Year with Stovo</button>
       </header>
 
       <div className="stats-toolbar" aria-label="Statistics range"><span>Showing</span><div role="group" className="stats-range-control">
@@ -138,6 +117,5 @@ export default function AdminStatsPage() {
         </div><div className="stats-duo"><span>🤝</span><div><small>Dynamic duo</small><strong>{awards.dynamic_duo.user_1_name && awards.dynamic_duo.user_2_name ? `${awards.dynamic_duo.user_1_name} & ${awards.dynamic_duo.user_2_name}` : "Still waiting for a legendary duo"}</strong></div><p>{topEmojis.slice(0, 5).map((emoji) => emoji.emoji).join(" ") || "Keep reacting to reveal the server favourites."}</p></div></section>}
       </>}
     </section>
-    {isWrappedOpen && <YearWithStovoModal data={wrapped} isLoading={isWrappedLoading} error={wrappedError} onClose={() => setIsWrappedOpen(false)} />}
   </main>;
 }

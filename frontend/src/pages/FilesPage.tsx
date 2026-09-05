@@ -8,6 +8,7 @@ import {
   FileSpreadsheet,
   FileText,
   FileType,
+  Forward,
   Heart,
   Home,
   Image,
@@ -209,6 +210,7 @@ function StorageTile({
       type="button"
       className={`storage-tile ${isSelected ? "selected" : ""} ${fileKind(file)}`}
       data-storage-file-id={file.id}
+      data-file-type={fileTypeLabel(file)}
       aria-pressed={isSelected}
       onClick={() => {
         onSelect();
@@ -692,7 +694,7 @@ export default function FilesPage() {
           {selectedFile ? (
             <>
               <div className="storage-mobile-detail-header">
-                <strong id="storage-file-details-title">File details</strong>
+                <strong id="storage-file-details-title">{selectedFile.originalName}</strong>
                 <button
                   ref={storageDetailsCloseRef}
                   type="button"
@@ -702,9 +704,6 @@ export default function FilesPage() {
                 >
                   <X aria-hidden="true" size={20} />
                 </button>
-              </div>
-              <div className="storage-details-copy">
-                <h2>{selectedFile.originalName}</h2>
               </div>
               <div className="storage-preview storage-preview-frame">
                 <div className="storage-preview-actions">
