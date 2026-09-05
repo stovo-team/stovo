@@ -47,6 +47,9 @@ type renameCanvasRequest struct {
 type linkCanvasRequest struct {
 	ChatID string `json:"chatId"`
 }
+type canvasDocumentUpdateRequest struct {
+	Update string `json:"update"`
+}
 
 func (s *Server) canvasPluginEnabled() bool {
 	if s.canvasDB == nil || s.plugins == nil {
@@ -82,6 +85,17 @@ func (s *Server) canvasRoutes() http.Handler {
 			return
 		}
 		items, err := s.listCanvasesForChat(r.Context(), chatID, user)
+		if err != nil {
+			s.detail(w, http.StatusInternalServerError, "Could not load canvases")
+			return
+		}
+		s.json(w, http.StatusOK, items)
+	}))
+	r.Get("/canvases", s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+		if s.canvasUnavailable(w) {
+			return
+		}
+		items, err := s.listCanvasesForUser(r.Context(), user)
 		if err != nil {
 			s.detail(w, http.StatusInternalServerError, "Could not load canvases")
 			return
@@ -155,6 +169,24 @@ func (s *Server) canvasRoutes() http.Handler {
 			return
 		}
 		s.json(w, http.StatusOK, map[string]any{"updates": updates})
+	}))
+	r.Post("/canvases/{canvasId}/document", s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+		if s.canvasUnavailable(w) {
+			return
+		}
+		var request canvasDocumentUpdateRequest
+		if err := s.decodeJSON(r, &request); err != nil {
+			s.detail(w, http.StatusBadRequest, "Invalid Canvas update")
+			return
+		}
+		canvasID := chi.URLParam(r, "canvasId")
+		item, err := s.appendCanvasUpdate(r.Context(), canvasID, user, request.Update)
+		if err != nil {
+			s.canvasError(w, err)
+			return
+		}
+		s.emitCanvasToAuthorizedUsers(r.Context(), canvasID, "canvas:update", map[string]any{"canvasId": canvasID, "update": item.Update, "sequence": item.Sequence, "createdBy": item.CreatedBy})
+		s.json(w, http.StatusCreated, item)
 	}))
 	r.Post("/canvases/{canvasId}/links", s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 		if s.canvasUnavailable(w) {
@@ -277,6 +309,38 @@ func (s *Server) getCanvasForUser(ctx context.Context, canvasID string, user use
 
 func (s *Server) listCanvasesForChat(ctx context.Context, chatID string, user userPublic) ([]canvasPublic, error) {
 	rows, err := s.canvasDB.QueryContext(ctx, `SELECT canvas_id FROM canvas_chat_links WHERE chat_id=$1 AND deleted_at IS NULL ORDER BY created_at DESC`, chatID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []canvasPublic{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		canvas, err := s.getCanvasForUser(ctx, id, user)
+		if err == nil {
+			result = append(result, canvas)
+		}
+	}
+	return result, rows.Err()
+}
+
+// listCanvasesForUser exposes Canvas as a first-class Storage item while
+// retaining chat-link permissions as the access boundary.
+func (s *Server) listCanvasesForUser(ctx context.Context, user userPublic) ([]canvasPublic, error) {
+	rows, err := s.canvasDB.QueryContext(ctx, `
+		SELECT c.id
+		FROM canvases c
+		WHERE c.family_id=$1 AND c.deleted_at IS NULL
+		AND EXISTS (
+			SELECT 1
+			FROM canvas_chat_links l
+			JOIN chat_members cm ON cm.chat_id=l.chat_id
+			WHERE l.canvas_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$2 AND cm.left_at IS NULL
+		)
+		ORDER BY c.updated_at DESC`, user.FamilyID, user.ID)
 	if err != nil {
 		return nil, err
 	}

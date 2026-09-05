@@ -334,9 +334,11 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
 export function DocumentAttachmentPreview({
   accessToken,
   file,
+  hideActions = false,
 }: {
   accessToken: string | null;
   file: FamilyFile;
+  hideActions?: boolean;
 }) {
   const kind = useMemo(() => detectDocumentPreviewKind(file), [file]);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -356,7 +358,7 @@ export function DocumentAttachmentPreview({
               {kindLabel(kind)} · {formatFileSize(file.sizeBytes)}
             </span>
           </div>
-          <div className="document-preview-actions">
+          {!hideActions && <div className="document-preview-actions">
             <button
               type="button"
               className="document-preview-open"
@@ -373,7 +375,7 @@ export function DocumentAttachmentPreview({
                 Save
               </button>
             )}
-          </div>
+          </div>}
         </header>
       </article>
       {viewerOpen && (accessToken || peekCachedObjectUrl(file.id)) && (
