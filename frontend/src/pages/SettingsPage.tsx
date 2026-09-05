@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   Bell,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   Database,
@@ -23,7 +24,7 @@ import {
   Users,
   X
 } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useLanguage, useStrings } from "../i18n/LanguageContext";
 import type { AppStrings, LanguageChoice } from "../config/strings";
 
@@ -99,6 +100,7 @@ function formatAppearanceHelper(
 
 export default function SettingsPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { accessToken, authRequest, currentUser, logout, updateCurrentUser } = useAuth();
   const { appearance, resolvedThemeMode } = useAppearance();
   const [currentServerUrl] = useState(() => getApiUrl());
@@ -151,6 +153,7 @@ export default function SettingsPage() {
         { id: "Notifications", label: strings.settings.notifications, helper: strings.settings.notificationsHelper, icon: Bell },
         { id: "Privacy and Security", label: strings.settings.privacyAndSecurity, helper: strings.settings.privacyHelper, icon: LockKeyhole },
         { id: "Language", label: strings.settings.language, helper: languageHelper, icon: Globe },
+        { id: "Statistics", label: "Statistics", helper: "View chat activity and server trends", icon: BarChart3 },
         { id: "Help and About", label: strings.settings.helpAndAbout, helper: strings.settings.helpHelper, icon: HelpCircle }
       ]
     }
@@ -417,7 +420,7 @@ export default function SettingsPage() {
               groups={settingsGroups as SettingsDashboardGroup[]}
               appearance={appearance}
               appearanceHelper={appearanceHelper}
-              onOpen={setActiveSettingsItem}
+              onOpen={(item) => item === "Statistics" ? navigate("statistics") : setActiveSettingsItem(item)}
               profilePhotoControl={<><SettingsAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} /><button type="button" className="avatar-edit-button" aria-label={strings.settings.changeProfilePhoto} title={strings.settings.changeProfilePhoto} disabled={isSaving} onClick={() => profilePhotoInputRef.current?.click()}><span className="ms-icon ms-icon--24" aria-hidden={true}>add_a_photo</span></button><input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} /></>}
             />
               </>

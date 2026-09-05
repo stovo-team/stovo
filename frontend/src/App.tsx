@@ -401,7 +401,7 @@ function ClusterRoutes() {
       <Route path="/app/admin/roles" element={<RequireAuth><AdminRolesPage /></RequireAuth>} />
       <Route path="/app/admin/defaults" element={<RequireAuth><AdminDefaultsPage /></RequireAuth>} />
       <Route path="/app/admin/plugins" element={<RequireAuth><AdminPluginsPage /></RequireAuth>} />
-      <Route path="/app/admin/stats" element={<RequireAuth><AdminStatsPage /></RequireAuth>} />
+      <Route path="/app/admin/stats" element={<Navigate to={`${prefix}/app/settings/statistics`} replace />} />
       <Route
         path="/app/settings"
         element={
@@ -410,6 +410,7 @@ function ClusterRoutes() {
           </RequireAuth>
         }
       />
+      <Route path="/app/settings/statistics" element={<RequireAuth><AdminStatsPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to={`${prefix}/app/chats`} replace />} />
     </Routes>
     </div>
