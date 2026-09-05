@@ -6050,7 +6050,7 @@ span.message-spoiler.is-revealed {
 .chat-folder-controls button { align-items: center; background: transparent; border: 0; border-radius: 8px; color: var(--text-muted); cursor: pointer; display: inline-flex; padding: 4px; }
 .chat-folder-controls button:hover { background: var(--background-panel-accent); color: var(--text-primary); }
 .chat-folder-empty { color: var(--text-muted); font-size: 0.8rem; margin: 3px 10px 8px; }
-.chat-folder-create { align-items: center; background: transparent; border: 1px dashed var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; display: flex; font-size: 0.82rem; gap: 7px; justify-content: center; margin: 4px; padding: 9px; width: calc(100% - 8px); }
+.chat-folder-create { align-items: center; background: transparent; border: 1px dashed var(--border-default); border-radius: 22px; color: var(--text-secondary); cursor: pointer; display: flex; font-size: 0.82rem; gap: 7px; justify-content: center; margin: 4px; padding: 9px; width: calc(100% - 8px); }
 .chat-folder-create:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 .chat-folder-backdrop { align-items: center; display: flex; justify-content: center; padding: 16px; z-index: 70; }
 .chat-folder-dialog { background: var(--background-panel); border: 1px solid var(--border-default); border-radius: 20px; box-shadow: var(--float-shadow-strong); color: var(--text-primary); display: grid; gap: 16px; max-height: calc(100vh - 32px); max-width: 440px; overflow: auto; padding: 20px; width: 100%; }

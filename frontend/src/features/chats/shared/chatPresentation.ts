@@ -123,10 +123,10 @@ export const CHAT_FILTERS: Array<{ label: string; value: ChatFilter }> = [
 
 export const CHAT_SECTION_ORDER: Array<{ key: ChatSectionKey; label: string }> = [
   { key: "archive", label: "Message Archive" },
-  { key: "voice", label: "Voice Channels" },
-  { key: "channels", label: "Channels" },
   { key: "groups", label: "Groups" },
-  { key: "dms", label: "DMs" }
+  { key: "dms", label: "DMs" },
+  { key: "channels", label: "Channels" },
+  { key: "voice", label: "Audio Channels" }
 ];
 
 export function chatTypeLabel(chat: Chat) {
