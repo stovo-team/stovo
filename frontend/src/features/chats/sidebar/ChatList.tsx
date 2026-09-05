@@ -8,6 +8,8 @@ import { useStrings } from "../../../i18n/LanguageContext";
 import { ChatFolderDialog } from "./ChatFolderDialog";
 import { ChatFolder, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
 import { displayChatName } from "../shared/chatPresentation";
+import { DefaultChatSectionDialog } from "./DefaultChatSectionDialog";
+import { DefaultChatSectionNames, loadDefaultChatSectionNames, saveDefaultChatSectionNames } from "./defaultChatSectionSettings";
 
 type ChatListProps = {
   isLoading: boolean;
@@ -48,12 +50,15 @@ export function ChatList({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [folderState, setFolderState] = useState(() => ({ familyId, folders: loadChatFolders(familyId) }));
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null | undefined>(undefined);
+  const [defaultSectionNames, setDefaultSectionNames] = useState<DefaultChatSectionNames>(() => loadDefaultChatSectionNames(familyId));
+  const [editingDefaultSection, setEditingDefaultSection] = useState<ChatSectionKey | undefined>(undefined);
   const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
 
   const folders = folderState.folders;
 
   useEffect(() => {
     setFolderState({ familyId, folders: loadChatFolders(familyId) });
+    setDefaultSectionNames(loadDefaultChatSectionNames(familyId));
     setCollapsed({});
   }, [familyId]);
   useEffect(() => {
@@ -71,6 +76,14 @@ export function ChatList({
     if (!window.confirm(`Delete the ${folder.name} folder? Chats are not deleted.`)) return;
     setFolderState((current) => ({ ...current, folders: current.folders.filter((item) => item.id !== folder.id) }));
     setEditingFolder(undefined);
+  }
+  function saveDefaultSectionName(section: ChatSectionKey, name: string) {
+    setDefaultSectionNames((current) => {
+      const next = { ...current, [section]: name };
+      saveDefaultChatSectionNames(familyId, next);
+      return next;
+    });
+    setEditingDefaultSection(undefined);
   }
 
   const chatSectionOrder: Array<{ key: ChatSectionKey; label: string }> = [
@@ -95,12 +108,13 @@ export function ChatList({
           ))
         : chatSectionOrder.map((section) => {
             const sectionChats = chatsBySection[section.key];
+            const sectionLabel = defaultSectionNames[section.key] ?? section.label;
             if (sectionChats.length === 0) {
               return null;
             }
             return (
-              <section className="chat-list-section" key={section.key} aria-label={section.label}>
-                <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}><ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} /><span>{section.label}</span></button></div>
+              <section className="chat-list-section" key={section.key} aria-label={sectionLabel}>
+                <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}><ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} /><span>{sectionLabel}</span></button>{canManageFolders && <span className="chat-folder-controls"><button type="button" aria-label={`Edit ${sectionLabel}`} title="Folder settings" onClick={() => setEditingDefaultSection(section.key)}><Settings2 size={14} /></button></span>}</div>
                 {!collapsed[section.key] && sectionChats.map((chat) => (
                   <ChatListItem
                     key={chat.id}
@@ -120,7 +134,7 @@ export function ChatList({
       {folders.map((folder) => {
         const sectionChats = filteredChats.filter((chat) => matchesFolder(chat, folder.rules, displayChatName(chat, currentUserId, strings)));
         return <section className="chat-list-section chat-list-section--custom" key={folder.id} aria-label={folder.name}>
-          <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(folder.id)} aria-expanded={!collapsed[folder.id]}><ChevronDown size={16} aria-hidden="true" className={collapsed[folder.id] ? "is-collapsed" : ""} /><span>{folder.name}</span><small>{sectionChats.length}</small></button>{canManageFolders && <span className="chat-folder-controls"><button type="button" aria-label={`Edit ${folder.name}`} title="Folder settings" onClick={() => setEditingFolder(folder)}><Settings2 size={15} /></button></span>}</div>
+          <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(folder.id)} aria-expanded={!collapsed[folder.id]}><ChevronDown size={16} aria-hidden="true" className={collapsed[folder.id] ? "is-collapsed" : ""} /><span>{folder.name}</span><small>{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small></button>{canManageFolders && <span className="chat-folder-controls"><button type="button" aria-label={`Edit ${folder.name}`} title="Folder settings" onClick={() => setEditingFolder(folder)}><Settings2 size={14} /></button></span>}</div>
           {!collapsed[folder.id] && (sectionChats.length ? sectionChats.map((chat) => <ChatListItem key={chat.id} chat={chat} isActive={chat.id === activeChatId} isTransitionSource={selectedChatId === chat.id} accessToken={accessToken} currentUserId={currentUserId} minimizedChatLayout={minimizedChatLayout} onSelect={onSelectChat} onOpen={onOpenChat} />) : <p className="chat-folder-empty">No chats match this folder yet.</p>)}
         </section>;
       })}
@@ -142,6 +156,7 @@ export function ChatList({
         </div>
       )}
       {editingFolder !== undefined && <ChatFolderDialog folder={editingFolder} onClose={() => setEditingFolder(undefined)} onSave={saveFolder} onDelete={deleteFolder} />}
+      {editingDefaultSection !== undefined && <DefaultChatSectionDialog initialName={defaultSectionNames[editingDefaultSection] ?? chatSectionOrder.find((section) => section.key === editingDefaultSection)?.label ?? ""} onClose={() => setEditingDefaultSection(undefined)} onSave={(name) => saveDefaultSectionName(editingDefaultSection, name)} />}
     </div>
   );
 }
