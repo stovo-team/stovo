@@ -92,8 +92,8 @@ describe("docked emoji picker styles", () => {
     expect(styles).not.toContain(':root[data-theme-mode="dark"] .emoji-picker .epr-cat-btn');
   });
 
-  it("docks the picker under the composer at every viewport size", () => {
-    expect(useChatsPageControllerSource).toContain("const isDockedEmojiPicker = true;");
+  it("docks the picker under the composer on native platforms", () => {
+    expect(useChatsPageControllerSource).toContain("const isDockedEmojiPicker = Capacitor.isNativePlatform();");
     expect(useMessageComposerSource).toContain("const emojiPickerDockRef = useRef<HTMLDivElement | null>(null);");
     expect(useChatSurfaceDismissalSource).toContain("!emojiPickerDockRef.current?.contains(event.target as Node)");
     expect(rule(".messenger-shell.has-active-chat .message-composer--emoji-docked .emoji-picker-dock")).toContain(
