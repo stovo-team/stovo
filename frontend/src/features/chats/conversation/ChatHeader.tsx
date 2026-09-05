@@ -13,7 +13,6 @@ import {
   Phone,
   Pin,
   Star,
-  StickyNote,
   Trash2,
   Video
 } from "lucide-react";
@@ -75,7 +74,6 @@ export function ChatHeader({
   onBackFromThread,
   isVoiceTextChatOpen = false,
   onToggleVoiceChat,
-  onCreateCanvas,
 }: {
   accessToken: string | null;
   currentUser: User | null;
@@ -108,7 +106,6 @@ export function ChatHeader({
   onBackFromThread?: () => void;
   isVoiceTextChatOpen?: boolean;
   onToggleVoiceChat?: () => void;
-  onCreateCanvas?: () => void;
 }) {
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
@@ -235,11 +232,6 @@ export function ChatHeader({
           </>
         ) : (
           <>
-            {onCreateCanvas && selectedChat.type !== "archive" && (
-              <button type="button" className="icon-button subtle chat-header-call-button" aria-label="Create Canvas" title="Create Canvas" onClick={onCreateCanvas}>
-                <StickyNote aria-hidden="true" size={18} />
-              </button>
-            )}
             {(selectedChat.type === "direct" || selectedChat.type === "group" || selectedChat.type === "family") && (
               <>
                 <button

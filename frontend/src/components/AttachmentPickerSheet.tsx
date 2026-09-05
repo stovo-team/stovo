@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
-import { AudioLines, BarChart2, FileText, Image as ImageIcon, Music, Paperclip, Smile } from "lucide-react";
+import { AudioLines, BarChart2, FileText, Image as ImageIcon, Music, Paperclip, Smile, StickyNote } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 
@@ -42,6 +42,7 @@ type AttachmentPickerSheetProps = {
   onPreviewMediaItemChange?: (item: NativeMediaItem | null) => void;
   initialTab?: AttachmentPickerTab;
   onCreatePoll?: (payload: CreatePollPayload) => Promise<void> | void;
+  onCreateCanvas?: () => void;
 };
 
 export default function AttachmentPickerSheet({
@@ -59,7 +60,8 @@ export default function AttachmentPickerSheet({
   previewMediaItem: propPreviewMediaItem,
   onPreviewMediaItemChange,
   initialTab = "gallery",
-  onCreatePoll
+  onCreatePoll,
+  onCreateCanvas
 }: AttachmentPickerSheetProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>(initialTab);
@@ -388,6 +390,24 @@ export default function AttachmentPickerSheet({
   }, []);
 
   if (!open) return null;
+
+  // Desktop has direct access to the browser's file chooser, so it should not
+  // inherit the large native gallery sheet. Keep the available actions close to
+  // the composer and open the requested chooser immediately.
+  if (!Capacitor.isNativePlatform() && initialTab !== "poll") {
+    return createPortal(
+      <div className="attachment-picker-backdrop attachment-picker-backdrop--web-menu" role="presentation" onClick={closeSheet}>
+        <div className="attachment-picker-web-menu" role="dialog" aria-modal="true" aria-label="Attach to message" onClick={(event) => event.stopPropagation()}>
+          <button type="button" onClick={() => onPick("gallery")}><ImageIcon size={19} /><span>Photo or video</span></button>
+          <button type="button" onClick={() => onPick("file")}><FileText size={19} /><span>Document</span></button>
+          <button type="button" onClick={() => onPick("audio")}><Music size={19} /><span>Music</span></button>
+          <button type="button" onClick={() => onPick("poll")}><BarChart2 size={19} /><span>Poll</span></button>
+          {onCreateCanvas && <button type="button" onClick={() => { closeSheet(); onCreateCanvas(); }}><StickyNote size={19} /><span>Canvas</span></button>}
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   const handleEmojiPick = (emojiData: EmojiClickData) => {
     const textarea = textareaRef.current;
