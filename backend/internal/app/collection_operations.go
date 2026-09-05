@@ -39,7 +39,9 @@ func (s *Server) collectionDB() (*sql.DB, bool) {
 	return db, ok && db != nil
 }
 
-func validCollectionKind(value string) bool { return value == "folder" || value == "album" }
+func validCollectionKind(value string) bool {
+	return value == "folder" || value == "album" || value == "music-album"
+}
 func validCollectionContent(value string) bool {
 	return value == "mixed" || value == "media" || value == "audio" || value == "documents"
 }
