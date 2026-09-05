@@ -28,6 +28,7 @@ type ComposerAttachmentContextValue = {
   isUploading?: boolean;
   isSendingMessage?: boolean;
   onCreatePoll?: (payload: CreatePollPayload) => void | Promise<void>;
+  onCreateCanvas?: () => void;
 };
 
 const ComposerAttachmentContext = createContext<ComposerAttachmentContextValue | null>(null);

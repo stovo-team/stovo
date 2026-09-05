@@ -10,7 +10,7 @@ import {
   useState
 } from "react";
 import { type EmojiClickData } from "emoji-picker-react";
-import { BarChart2, CalendarClock, HelpCircle, Paperclip, Pencil } from "lucide-react";
+import { BarChart2, CalendarClock, HelpCircle, Paperclip, Pencil, StickyNote } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
 import type { CreatePollPayload } from "../../../api/polls";
@@ -100,7 +100,8 @@ export function Composer({
   onSubmit,
   onScheduleMessage,
   onSetReminder,
-  onCreatePoll
+  onCreatePoll,
+  onCreateCanvas
 }: {
   accessToken: string | null;
   selectedChat: Chat | null;
@@ -165,6 +166,7 @@ export function Composer({
   onScheduleMessage?: (scheduledDate: Date) => void | Promise<void>;
   onSetReminder?: (rule: ReminderRule) => void | Promise<void>;
   onCreatePoll?: (payload: CreatePollPayload) => void | Promise<void>;
+  onCreateCanvas?: () => void;
 }) {
   const strings = useStrings();
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
@@ -305,6 +307,12 @@ export function Composer({
         syntax: "/schedule Title | Time | Duration",
         description: "Schedule a plan or event",
         icon: <CalendarClock size={16} />
+      },
+      {
+        command: "canvas",
+        syntax: "/canvas",
+        description: "Create a shared canvas",
+        icon: <StickyNote size={16} />
       }
     ],
     []
@@ -339,6 +347,10 @@ export function Composer({
           textarea.setSelectionRange(start, end);
         }
       });
+    } else if (cmd === "canvas") {
+      onComposerChange("");
+      setIsMentionDismissed(true);
+      onCreateCanvas?.();
     }
   }
 
@@ -507,7 +519,8 @@ export function Composer({
           onEnlargeComposer,
           isUploading,
           isSendingMessage,
-          onCreatePoll
+          onCreatePoll,
+          onCreateCanvas
         }}>
           <AttachmentControls />
         </ComposerAttachmentProvider>

@@ -406,7 +406,7 @@ export function MessageBubble({
                   disabled={!canvas.available}
                 >
                   <span className="message-collection-card-icon">{canvas.available ? <StickyNote size={22} /> : <LockKeyhole size={22} />}</span>
-                  <span><strong>{canvas.available ? canvas.title : "Canvas unavailable"}</strong><small>{canvas.available ? "Shared Markdown and whiteboard" : "You no longer have access"}</small></span>
+                  <span><strong>{canvas.available ? canvas.title : "Canvas unavailable"}</strong></span>
                   {canvas.available && <span className="message-collection-open">Open</span>}
                 </button>
                 );
