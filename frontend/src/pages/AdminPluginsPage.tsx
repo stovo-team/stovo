@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { BarChart3, ChevronLeft, ChevronRight, Layers3, Sparkles } from "lucide-react";
+import { BarChart3, ChevronLeft, Layers3 } from "lucide-react";
 import { ApiError, getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
@@ -36,7 +36,7 @@ export default function AdminPluginsPage() {
     {!canManagePlugins && <p className="error-text">Admin access required.</p>}{error && <p className="error-text">{error}</p>}
     {canManagePlugins && <section className="plugin-list">{plugins.map((plugin) => {
       const detail = pluginDetails[plugin.id]; const Icon = detail?.icon ?? Layers3;
-      return <article className="plugin-card" key={plugin.id}><span className="plugin-icon"><Icon size={22} /></span><div className="plugin-copy"><div><h2>{plugin.name}</h2><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? "Enabled" : "Disabled"}</span></div><p>{detail?.description ?? "An optional server extension."}</p>{plugin.id === "plugin-rich-stats" && plugin.enabled && <Link to={`${prefix}/app/admin/stats`} className="plugin-dashboard-link"><Sparkles size={15} /> Open dashboard <ChevronRight size={15} /></Link>}</div><label className="plugin-switch"><input type="checkbox" checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">Enable {plugin.name}</em></label></article>;
+      return <article className="plugin-card" key={plugin.id}><span className="plugin-icon"><Icon size={22} /></span><div className="plugin-copy"><div><h2>{plugin.name}</h2><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? "Enabled" : "Disabled"}</span></div><p>{detail?.description ?? "An optional server extension."}</p></div><label className="plugin-switch"><input type="checkbox" checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">Enable {plugin.name}</em></label></article>;
     })}{!plugins.length && !error && <p className="stats-state">Loading available plugins…</p>}</section>}
   </section></main>;
 }
