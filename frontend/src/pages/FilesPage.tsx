@@ -5,7 +5,9 @@ import {
   Archive,
   ChevronDown,
   FileAudio,
+  FileSpreadsheet,
   FileText,
+  FileType,
   Heart,
   Home,
   Image,
@@ -93,6 +95,9 @@ function fileIcon(file: FamilyFile) {
   if (kind === "audio") {
     return FileAudio;
   }
+  const documentKind = detectDocumentPreviewKind(file);
+  if (documentKind === "table") return FileSpreadsheet;
+  if (documentKind === "docx") return FileType;
   return FileText;
 }
 
@@ -200,7 +205,7 @@ function StorageTile({
       onClick={() => {
         onSelect();
         const isMobileViewport = window.matchMedia("(max-width: 960px)").matches;
-        if (shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport) && previewUrl) {
+        if ((fileKind(file) === "photos" || shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport)) && previewUrl) {
           onOpenImage(file, previewUrl);
         }
       }}
@@ -619,6 +624,13 @@ export default function FilesPage() {
 
           <div className="storage-content-area">
 			<StorageCollections accessToken={accessToken} files={files} filter={filter} onFilesChanged={() => void load(true)} />
+            <div className="storage-files-heading">
+              <h2>Files</h2>
+              <button type="button" className="storage-files-upload" title="Upload files" aria-label="Upload files" disabled={isUploading} onClick={() => uploadInputRef.current?.click()}>
+                <Upload size={18} />
+              </button>
+              <input ref={uploadInputRef} className="visually-hidden" type="file" multiple onChange={handleUpload} />
+            </div>
             {isLoading ? (
               <div className="storage-grid skeleton-grid" aria-hidden="true">
                 {Array.from({ length: 10 }).map((_, index) => (
@@ -681,7 +693,6 @@ export default function FilesPage() {
               </div>
               <div className="storage-details-copy">
                 <h2>{selectedFile.originalName}</h2>
-                <p>{selectedFile.mimeType}</p>
               </div>
               <div className="storage-preview storage-preview-frame">
                 <div className="storage-preview-actions">

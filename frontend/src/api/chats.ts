@@ -85,7 +85,7 @@ export interface CallHistory {
 export interface MessageCollectionCard {
   id: string;
   title?: string;
-  displayKind?: "folder" | "album";
+  displayKind?: "folder" | "album" | "music-album";
   contentType?: "mixed" | "media" | "audio" | "documents";
   itemCount?: number;
   available: boolean;

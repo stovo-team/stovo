@@ -1,7 +1,7 @@
 import { apiRequest } from "./client";
 import type { FamilyFile } from "./files";
 
-export type CollectionKind = "folder" | "album";
+export type CollectionKind = "folder" | "album" | "music-album";
 export type CollectionContentType = "mixed" | "media" | "audio" | "documents";
 export type CollectionAccessLevel = "viewer" | "editor";
 
