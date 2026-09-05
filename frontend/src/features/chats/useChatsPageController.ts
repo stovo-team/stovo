@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import type { Location, NavigateFunction } from "react-router-dom";
 import type { Socket } from "socket.io-client";
 
@@ -383,9 +384,10 @@ export function useChatsPageController({
   });
 
   const visibleError = error && !isSuppressedUserError(error) ? error : null;
-  // Keep the picker in the conversation flow at every viewport size. This lets
-  // the message list shrink above it instead of being covered by a popup.
-  const isDockedEmojiPicker = true;
+  // The native app needs a docked picker so Android can reserve keyboard-sized
+  // space. In a browser, use the compact composer popover instead: a full-width
+  // dock turns the emoji grid into an unusable wall of icons on desktop.
+  const isDockedEmojiPicker = Capacitor.isNativePlatform();
   const showDockedEmojiPicker = isDockedEmojiPicker && isEmojiPickerOpen;
 
   return {
