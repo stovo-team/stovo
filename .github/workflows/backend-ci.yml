@@ -69,13 +69,12 @@ jobs:
       - name: Unit and integration tests with coverage
         run: |
           # Do not allow a persistent self-hosted runner's Go test cache to
-          # conceal an integration failure.  Instrument all hand-written
-          # backend packages while the suite exercises them end-to-end;
-          # generated Ent code and command entrypoints are deliberately
-          # excluded from the application coverage denominator.
+          # conceal an integration failure. Coverage is collected from each
+          # package's own tests; using -coverpkg across every internal package
+          # makes every test binary enormous and previously exceeded CI's
+          # ten-minute test timeout.
           rm -f coverage.out
-          go test -count=1 -covermode=atomic -coverpkg=./internal/... \
-            -coverprofile=coverage.out ./...
+          go test -count=1 -covermode=atomic -coverprofile=coverage.out ./...
           go tool cover -func=coverage.out | tee coverage-summary.txt
           {
             echo "## Backend coverage"

@@ -31,7 +31,7 @@ func (s *Store) BlockUser(ctx context.Context, blockerUserID, blockedUserID, cre
 		SetBlockedUserID(blockedUserID).
 		SetCreatedAt(createdAt).
 		OnConflictColumns(userblock.FieldID, userblock.FieldBlockedUserID).
-		DoNothing().
+		Ignore().
 		Exec(ctx)
 }
 

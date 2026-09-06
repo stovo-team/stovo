@@ -241,7 +241,7 @@ func (s *Store) MarkMessagesRead(ctx context.Context, chatID, userID, messageID,
 				SetStatus("read").
 				SetCreatedAt(statusCreatedAt).
 				OnConflictColumns(messagestatus.FieldID, messagestatus.FieldUserID, messagestatus.FieldStatus).
-				DoNothing().
+				Ignore().
 				Exec(ctx); err != nil {
 				return err
 			}
@@ -311,7 +311,7 @@ func (s *Store) CreateMessageBundle(ctx context.Context, p CreateMessageBundlePa
 				// File associations are a set, not a list. Keep message creation
 				// idempotent if a client supplies a repeated attachment ID.
 				OnConflictColumns(messageattachment.FieldID, messageattachment.FieldFileID).
-				DoNothing().
+				Ignore().
 				Exec(ctx); err != nil {
 				return err
 			}
@@ -326,7 +326,7 @@ func (s *Store) CreateMessageBundle(ctx context.Context, p CreateMessageBundlePa
 				SetStatus("delivered").
 				SetCreatedAt(p.CreatedAt).
 				OnConflictColumns(messagestatus.FieldID, messagestatus.FieldUserID, messagestatus.FieldStatus).
-				DoNothing().
+				Ignore().
 				Exec(ctx); err != nil {
 				return err
 			}
@@ -344,7 +344,7 @@ func (s *Store) AddMessageAttachments(ctx context.Context, messageID string, fil
 				SetID(messageID).
 				SetFileID(fileID).
 				OnConflictColumns(messageattachment.FieldID, messageattachment.FieldFileID).
-				DoNothing().
+				Ignore().
 				Exec(ctx); err != nil {
 				return err
 			}
@@ -386,7 +386,7 @@ func (s *Store) SetMessageReaction(ctx context.Context, messageID, userID, emoji
 			SetEmoji(emoji).
 			SetCreatedAt(createdAt).
 			OnConflictColumns(messagereaction.FieldID, messagereaction.FieldUserID, messagereaction.FieldEmoji).
-			DoNothing().
+			Ignore().
 			Exec(ctx)
 	})
 }
@@ -452,7 +452,7 @@ func (s *Store) UpsertMessageUserDeletion(ctx context.Context, messageID, userID
 		SetUserID(userID).
 		SetDeletedAt(deletedAt).
 		OnConflictColumns(messageuserdeletion.FieldID, messageuserdeletion.FieldUserID).
-		DoNothing().
+		Ignore().
 		Exec(ctx)
 }
 

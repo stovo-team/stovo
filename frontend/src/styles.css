@@ -11659,6 +11659,7 @@ span.message-spoiler.is-revealed {
 }
 
 .storage-page.app-frame {
+  box-sizing: border-box;
   height: 100dvh;
   max-height: 100dvh;
   overflow: hidden;
@@ -11672,6 +11673,7 @@ span.message-spoiler.is-revealed {
   gap: 16px;
   grid-template-columns: 300px minmax(0, 1fr) minmax(0, 340px);
   max-width: none;
+  box-sizing: border-box;
   height: calc(100dvh - 2 * var(--float-outer-gap));
   max-height: calc(100dvh - 2 * var(--float-outer-gap));
   min-height: 0;
@@ -21180,7 +21182,7 @@ span.message-spoiler.is-revealed {
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
-.plugins-header { grid-template-columns: auto minmax(0, 1fr); }
+.plugins-header { grid-template-columns: auto minmax(0, 1fr) auto; }
 
 .stats-header h1,
 .plugins-header h1 { font-size: clamp(1.45rem, 3vw, 2rem) !important; }
@@ -23179,7 +23181,7 @@ span.message-spoiler.is-revealed {
 
 /* Plugin store */
 .plugins-header { align-items: center; }
-.plugins-header > div { min-width: 0; }
+.plugins-header > div { justify-self: start; min-width: 0; text-align: left; }
 .plugins-header p { color: var(--text-secondary); font-size: .88rem; margin: 4px 0 0; }
 .plugin-register-button, .plugin-copy-button { align-items: center; background: var(--accent-primary); border: 1px solid var(--accent-primary); border-radius: 12px; color: var(--accent-contrast, #fff); cursor: pointer; display: inline-flex; font: inherit; font-size: .83rem; font-weight: 800; gap: 7px; justify-content: center; min-height: 40px; padding: 9px 13px; }
 .plugin-register-button { margin-left: auto; }
@@ -23212,7 +23214,7 @@ span.message-spoiler.is-revealed {
 .plugin-showcase-content { display: grid; gap: 12px; padding: 17px 17px 15px; }.plugin-showcase-title { align-items: center; display: flex; gap: 10px; min-width: 0; }.plugin-showcase-title .plugin-icon { background: var(--accent-soft); border: 1px solid var(--accent-border-soft); border-radius: 11px; color: var(--accent-primary); height: 40px; width: 40px; }.plugin-showcase-title small { color: var(--accent-primary); display: block; font-size: .61rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }.plugin-showcase-title h2 { color: var(--text-primary); font-size: .98rem; line-height: 1.2; margin: 3px 0 0; }.plugin-showcase-content > p { color: var(--text-secondary); font-size: .79rem; line-height: 1.52; margin: 0; }
 .plugin-showcase-footer { align-items: center; border-top: 1px solid var(--border-subtle, #30303a); display: flex; justify-content: space-between; padding: 13px 17px; }.plugin-showcase-footer .plugin-switch { padding-top: 0; }.plugin-status { background: color-mix(in oklab, #d86973 15%, var(--surface-raised, #191923)); color: #f1a5ad; }.plugin-status.is-on { background: var(--accent-soft); color: var(--accent-primary); }.plugin-switch span { background: color-mix(in oklab, var(--text-secondary) 28%, var(--surface-raised, #191923)); }.plugin-switch input:checked + span { background: var(--accent-primary); }.plugin-switch input:focus-visible + span { outline-color: var(--accent-primary); }
 .plugin-add-card { align-items: center; background: linear-gradient(145deg, color-mix(in oklab, var(--accent-primary) 7%, var(--surface-raised, #191923)), var(--surface-raised, #121217)); border-color: var(--accent-border-soft); color: var(--text-primary); cursor: pointer; display: flex; flex-direction: column; justify-content: center; min-height: 376px; padding: 28px; text-align: center; }.plugin-add-card > span { align-items: center; background: var(--accent-soft); border: 1px solid var(--accent-border-soft); border-radius: 50%; color: var(--accent-primary); display: inline-flex; height: 58px; justify-content: center; margin-bottom: 13px; width: 58px; }.plugin-add-card strong { font-size: .95rem; }.plugin-add-card p { color: var(--text-secondary); font-size: .79rem; line-height: 1.5; margin: 7px 0 0; max-width: 230px; }.plugin-add-card:hover { background: linear-gradient(145deg, color-mix(in oklab, var(--accent-primary) 15%, var(--surface-raised, #191923)), var(--surface-raised, #121217)); }
-.plugin-register-backdrop { align-items: center; background: rgba(0, 0, 0, .7); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 80; }.plugin-register-modal { background: var(--surface-raised, #191923); border: 1px solid var(--accent-border-soft); border-radius: 20px; box-shadow: 0 24px 60px rgba(0,0,0,.5); max-width: 490px; padding: 26px; position: relative; }.plugin-register-modal > .plugin-store-intro-icon { margin-bottom: 15px; }.plugin-register-modal h2 { color: var(--text-primary); font-size: 1.16rem; margin: 0; }.plugin-register-modal > p { color: var(--text-secondary); font-size: .84rem; line-height: 1.55; margin: 9px 0 16px; }.plugin-register-modal ol { color: var(--text-secondary); display: grid; font-size: .8rem; gap: 8px; line-height: 1.45; margin: 0 0 20px; padding-left: 20px; }.plugin-register-modal code { background: var(--accent-soft); border-radius: 5px; color: var(--accent-primary); padding: 1px 4px; }.plugin-modal-close { align-items: center; background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; display: inline-flex; padding: 4px; position: absolute; right: 15px; top: 15px; }.plugin-modal-close:hover { color: var(--text-primary); }
+.plugin-register-backdrop { align-items: center; background: rgba(0, 0, 0, .7); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 80; }.plugin-register-modal { background: var(--surface-raised, #191923); border: 0; border-radius: 20px; box-shadow: 0 24px 60px rgba(0,0,0,.5); max-width: 490px; padding: 26px; position: relative; }.plugin-register-modal > .plugin-store-intro-icon { margin-bottom: 15px; }.plugin-register-modal h2 { color: var(--text-primary); font-size: 1.16rem; margin: 0; }.plugin-register-modal > p { color: var(--text-secondary); font-size: .84rem; line-height: 1.55; margin: 9px 0 16px; }.plugin-register-modal ol { color: var(--text-secondary); display: grid; font-size: .8rem; gap: 8px; line-height: 1.45; margin: 0 0 20px; padding-left: 20px; }.plugin-register-modal code { background: var(--accent-soft); border-radius: 5px; color: var(--accent-primary); padding: 1px 4px; }.plugin-modal-close { align-items: center; background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; display: inline-flex; padding: 4px; position: absolute; right: 15px; top: 15px; }.plugin-modal-close:hover { color: var(--text-primary); }
 @media (max-width: 640px) { .plugins-header { align-items: flex-start; flex-wrap: wrap; }.plugin-register-button { margin-left: 48px; }.plugin-store-grid { grid-template-columns: 1fr; }.plugin-showcase-card { grid-template-rows: 190px minmax(0, 1fr) auto; }.plugin-add-card { min-height: 230px; } }
 
 /* Chat statistics is a centered application modal, not a constrained chat drawer. */

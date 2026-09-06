@@ -141,21 +141,21 @@ func (s *Store) FamilyChatID(ctx context.Context, familyID string) (string, erro
 
 // AcceptInviteParams holds inputs for accepting an invite.
 type AcceptInviteParams struct {
-	UserID         string
-	FamilyID       string
-	Username       string
-	PasswordHash   string
-	DisplayName    string
-	Role           string
-	InviteID       string
-	FamilyChatID   string
-	RefreshTokenID string
-	TokenHash      string
-	ExpiresAt      string
-	CreatedAt      string
-	IPAddress      string
-	ProfileVisibility string
-	LastSeenVisibility string
+	UserID              string
+	FamilyID            string
+	Username            string
+	PasswordHash        string
+	DisplayName         string
+	Role                string
+	InviteID            string
+	FamilyChatID        string
+	RefreshTokenID      string
+	TokenHash           string
+	ExpiresAt           string
+	CreatedAt           string
+	IPAddress           string
+	ProfileVisibility   string
+	LastSeenVisibility  string
 	ReadReceiptsEnabled bool
 }
 
@@ -185,7 +185,7 @@ func (s *Store) AcceptInvite(ctx context.Context, p AcceptInviteParams) error {
 			SetUserID(p.UserID).
 			SetCreatedAt(p.CreatedAt).
 			OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-			DoNothing().
+			Ignore().
 			Exec(ctx); err != nil {
 			return err
 		}
@@ -193,7 +193,7 @@ func (s *Store) AcceptInvite(ctx context.Context, p AcceptInviteParams) error {
 			SetID(p.FamilyChatID).
 			SetUserID(p.UserID).
 			OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
-			DoNothing().
+			Ignore().
 			Exec(ctx); err != nil {
 			return err
 		}
