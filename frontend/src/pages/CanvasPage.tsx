@@ -4,7 +4,7 @@ import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
-import { ArrowLeft, ChevronDown, Pencil, Plus, Share2 } from "lucide-react";
+import { ChevronDown, Pencil, Plus, Share2, X } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { getSocketConfigForUrl } from "../api/serverRegistry";
@@ -12,6 +12,8 @@ import { getApiUrl } from "../api/client";
 import { appendCanvasDocumentUpdate, getCanvas, getCanvasDocument, linkCanvas, renameCanvas, type Canvas } from "../api/canvas";
 import type { Chat } from "../api/chats";
 import { getChats } from "../api/chats";
+import { ForwardChatList } from "../features/chats/conversation/MessageDialogs";
+import { BackButton } from "../components/BackButton";
 
 const remoteOrigin = Symbol("canvas-remote");
 
@@ -210,7 +212,7 @@ function WhiteboardBlock({ record }: { record: Y.Map<unknown> }) {
 export default function CanvasPage() {
   const { canvasId = "" } = useParams();
   const navigate = useNavigate();
-  const { accessToken } = useAuth();
+  const { accessToken, currentUser } = useAuth();
   const [canvas, setCanvas] = useState<Canvas | null>(null);
   const [document, setDocument] = useState<Y.Doc | null>(null);
   const [blocksRevision, setBlocksRevision] = useState(0);
@@ -319,29 +321,33 @@ export default function CanvasPage() {
     setCanvas(await renameCanvas(accessToken, canvas.id, title));
   };
 
-  if (error) return <main className="canvas-page canvas-page--error"><h1>Canvas unavailable</h1><p>{error}</p><button type="button" onClick={() => navigate(-1)}>Back</button></main>;
+  if (error) return <main className="canvas-page canvas-page--error"><h1>Canvas unavailable</h1><p>{error}</p><BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} /></main>;
   if (!canvas || !document) return <main className="canvas-page canvas-page--loading">Opening Canvas…</main>;
 
   return (
     <main className="canvas-page">
       <header className="canvas-page-header">
-        <button type="button" className="icon-button subtle" aria-label="Back" onClick={() => navigate(-1)}><ArrowLeft size={19} /></button>
+        <BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} />
         <div className="canvas-title-group">
           {isEditingTitle ? <input className="canvas-title-input" aria-label="Canvas name" autoFocus maxLength={160} value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} onBlur={() => void saveTitle()} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void saveTitle(); } if (event.key === "Escape") { setIsEditingTitle(false); } }} /> : <h1>{canvas.title}</h1>}
           {canvas.canManage && !isEditingTitle && <button type="button" className="canvas-title-edit" aria-label="Edit canvas name" title="Edit canvas name" onClick={() => { setTitleDraft(canvas.title); setIsEditingTitle(true); }}><Pencil size={13} /></button>}
         </div>
         <div className="canvas-page-actions">
-          {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Share canvas" title="Share canvas" onClick={() => setShareOpen((current) => !current)}><Share2 size={16} /></button>}
+          {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Share canvas" title="Share canvas" onClick={() => setShareOpen((current) => !current)}><Share2 size={18} /></button>}
           <div className="canvas-insert-menu">
-            <button type="button" className="canvas-add-button" aria-label="Insert into canvas" aria-expanded={insertOpen} onClick={() => setInsertOpen((current) => !current)}><Plus size={16} /><ChevronDown size={14} /></button>
+            <button type="button" className="canvas-add-button" aria-label="Insert into canvas" aria-expanded={insertOpen} onClick={() => setInsertOpen((current) => !current)}><Plus size={18} /><ChevronDown size={15} /></button>
             {insertOpen && <div className="canvas-insert-dropdown" role="menu"><button type="button" role="menuitem" onClick={addWhiteboard}><Pencil size={16} /><span><strong>Whiteboard</strong><small>Insert a live drawing board</small></span></button></div>}
           </div>
         </div>
       </header>
       {shareOpen && canvas.canManage && (
-        <aside className="canvas-share-panel"><strong>Share in a chat</strong>{chats.filter((chat) => !canvas.linkedChatIds.includes(chat.id)).map((chat) => (
-          <button key={chat.id} type="button" onClick={() => accessToken && void linkCanvas(accessToken, canvas.id, chat.id).then((next) => { setCanvas(next); setShareOpen(false); })}>{chat.title || "Direct chat"}</button>
-        ))}</aside>
+        <div className="modal-backdrop" role="presentation">
+          <section className="messenger-modal canvas-share-dialog" role="dialog" aria-modal="true" aria-labelledby="canvas-share-title">
+            <div className="modal-header"><h2 id="canvas-share-title">Share Canvas</h2><button type="button" className="icon-button subtle" aria-label="Close share dialog" title="Close" onClick={() => setShareOpen(false)}><X aria-hidden="true" size={18} /></button></div>
+            <p className="forward-preview">Choose a chat to share “{canvas.title}” with.</p>
+            <ForwardChatList accessToken={accessToken} currentUserId={currentUser?.id} chats={chats.filter((chat) => !canvas.linkedChatIds.includes(chat.id))} onSelect={(chatId) => { if (accessToken) void linkCanvas(accessToken, canvas.id, chatId).then((next) => { setCanvas(next); setShareOpen(false); }); }} />
+          </section>
+        </div>
       )}
       <div className="canvas-workspace">
         {blocks.map((block) => block.kind === "markdown" ? <MarkdownBlock key={block.id} record={block.record} /> : <WhiteboardBlock key={block.id} record={block.record} />)}

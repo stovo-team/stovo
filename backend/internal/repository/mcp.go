@@ -272,7 +272,11 @@ func (s *Store) SyncMCPConnectorChats(ctx context.Context, tx *ent.Tx, connector
 			SetID(connectorID).
 			SetChatID(chatID).
 			OnConflict().
-			DoNothing().
+			// Ent's Exec delegates to Save, which expects INSERT ... RETURNING
+			// to yield a row. PostgreSQL's DO NOTHING yields no row on a
+			// conflict, so use a no-op update instead. It preserves the existing
+			// binding and still returns a row for Ent to consume.
+			Ignore().
 			Exec(ctx); err != nil {
 			return err
 		}
@@ -281,7 +285,9 @@ func (s *Store) SyncMCPConnectorChats(ctx context.Context, tx *ent.Tx, connector
 			SetUserID(actorUserID).
 			SetCreatedAt(memberCreatedAt).
 			OnConflict().
-			DoNothing().
+			// See the connector-chat upsert above: avoid DO NOTHING because its
+			// empty RETURNING result is reported by Ent as sql.ErrNoRows.
+			Ignore().
 			Exec(ctx); err != nil {
 			return err
 		}

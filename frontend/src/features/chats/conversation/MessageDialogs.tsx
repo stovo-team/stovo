@@ -12,6 +12,39 @@ import {
 import { RealAvatar } from "../sidebar/RealAvatar";
 import type { Message } from "../shared/types";
 
+export function ForwardChatList({
+  accessToken,
+  currentUserId,
+  chats,
+  onSelect
+}: {
+  accessToken: string | null;
+  currentUserId?: string;
+  chats: Chat[];
+  onSelect: (chatId: string) => void;
+}) {
+  const strings = useStrings();
+  return (
+    <div className="forward-chat-list">
+      {chats.map((chat) => {
+        const name = displayChatName(chat, currentUserId, strings);
+        return (
+          <button type="button" key={chat.id} onClick={() => onSelect(chat.id)}>
+            <RealAvatar
+              accessToken={accessToken}
+              className={`avatar member-avatar ${chatAvatarTypeClass(chat)}`}
+              fallbackKind={chatAvatarFallbackKind(chat)}
+              file={chatAvatarFile(chat, currentUserId)}
+              label={name}
+            />
+            <span>{name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function MessageDialogs({
   accessToken,
   currentUserId,
@@ -43,7 +76,6 @@ export function MessageDialogs({
   onConfirmDelete: () => void;
   onCloseDelete: () => void;
 }) {
-  const strings = useStrings();
   return (
     <>
       {forwardTarget && (
@@ -68,23 +100,7 @@ export function MessageDialogs({
                 ? `${forwardCount} messages selected`
                 : messageActionSummary(forwardTarget)}
             </p>
-            <div className="forward-chat-list">
-              {chats.map((chat) => {
-                const name = displayChatName(chat, currentUserId, strings);
-                return (
-                  <button type="button" key={chat.id} onClick={() => onForwardMessage(chat.id)}>
-                    <RealAvatar
-                      accessToken={accessToken}
-                      className={`avatar member-avatar ${chatAvatarTypeClass(chat)}`}
-                      fallbackKind={chatAvatarFallbackKind(chat)}
-                      file={chatAvatarFile(chat, currentUserId)}
-                      label={name}
-                    />
-                    <span>{name}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <ForwardChatList accessToken={accessToken} currentUserId={currentUserId} chats={chats} onSelect={onForwardMessage} />
           </section>
         </div>
       )}
