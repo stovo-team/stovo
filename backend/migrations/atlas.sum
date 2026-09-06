@@ -1,4 +1,4 @@
-h1:M41/7RU7vq9SeYFucsKj2VZ3Mn8dULmGjmjjGJzJHJA=
+h1:pN3ISPm+AHJPEGjEbCDL675wCXjIhz+82XSBRmmeMps=
 20260804120000_baseline.sql h1:PX8LTmKn+3POUZ0MsN42S+c4aep3pUydkop5ubIABZA=
 20260804170000_add_mcp_connectors.sql h1:cr7khK3pFIRhsLPUVijg5CAwlj2CLW9t/rUDKzJaFp8=
 20260804180000_add_mcp_connector_provider.sql h1:45CtfU1qN07ywUQT0g28LLMuwUQ2+vhRjVQTcsX0Meo=
@@ -18,3 +18,4 @@ h1:M41/7RU7vq9SeYFucsKj2VZ3Mn8dULmGjmjjGJzJHJA=
 20260906090000_add_collection_custom_file_types.sql h1:VTcHaLWakUXhjmbeZmG9fO1dymec64Hu1PFtGEzdqrU=
 20260906110000_repair_mcp_connector_chat_primary_key.sql h1:3MuFpw9hatWKBmzqBfGCAEtlmPFYj2/saMmRAs8oAdY=
 20260906120000_add_chat_message_delay.sql h1:t1FQXvJK5GDUK0VE+6l6qvPTGPhaG/Uw5+4djFcpLc8=
+20260906120000_repair_chat_members_primary_key.sql h1:njpjun62UlYx2z3rsIN1ie2fMs2h6dD/W8HEp+2lCLA=

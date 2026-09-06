@@ -30,9 +30,9 @@ type userPublic struct {
 	ChannelInvitePermission string      `json:"channelInvitePermission"`
 	VoiceInvitePermission   string      `json:"voiceInvitePermission"`
 	InvitePermissionUserIDs []string    `json:"invitePermissionUserIds"`
-	Email                   *string     `json:"email"`
-	Bio                     *string     `json:"bio"`
-	Timezone                *string     `json:"timezone"`
+	Email                   *string     `json:"email,omitempty"`
+	Bio                     *string     `json:"bio,omitempty"`
+	Timezone                *string     `json:"timezone,omitempty"`
 }
 
 type NavTabsConfig struct {

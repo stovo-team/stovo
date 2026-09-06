@@ -268,28 +268,30 @@ func (s *Store) SyncMCPConnectorChats(ctx context.Context, tx *ent.Tx, connector
 		return err
 	}
 	for _, chatID := range chatIDs {
-		if err := c.McpConnectorChat.Create().
-			SetID(connectorID).
-			SetChatID(chatID).
-			OnConflictColumns(mcpconnectorchat.FieldID, mcpconnectorchat.FieldChatID).
-			// Ent's Exec delegates to Save, which expects INSERT ... RETURNING
-			// to yield a row. PostgreSQL's DO NOTHING yields no row on a
-			// conflict, so use a no-op update instead. It preserves the existing
-			// binding and still returns a row for Ent to consume.
-			Ignore().
-			Exec(ctx); err != nil {
+		bound, err := c.McpConnectorChat.Query().
+			Where(mcpconnectorchat.IDEQ(connectorID), mcpconnectorchat.ChatIDEQ(chatID)).
+			Exist(ctx)
+		if err != nil {
 			return err
 		}
-		if err := c.ChatMember.Create().
-			SetID(chatID).
-			SetUserID(actorUserID).
-			SetCreatedAt(memberCreatedAt).
-			OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-			// See the connector-chat upsert above: avoid DO NOTHING because its
-			// empty RETURNING result is reported by Ent as sql.ErrNoRows.
-			Ignore().
-			Exec(ctx); err != nil {
+		if !bound {
+			if err := c.McpConnectorChat.Create().SetID(connectorID).SetChatID(chatID).Exec(ctx); err != nil {
+				return err
+			}
+		}
+
+		// Query after the binding write so database-side membership automation,
+		// if present, and this application path result in exactly one member row.
+		memberExists, err := c.ChatMember.Query().
+			Where(chatmember.IDEQ(chatID), chatmember.UserIDEQ(actorUserID)).
+			Exist(ctx)
+		if err != nil {
 			return err
+		}
+		if !memberExists {
+			if err := c.ChatMember.Create().SetID(chatID).SetUserID(actorUserID).SetCreatedAt(memberCreatedAt).Exec(ctx); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

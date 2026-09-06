@@ -113,7 +113,7 @@ func (s *Server) openMediaPlayback(ctx context.Context, fileID, token string) (t
 	if err != nil {
 		return transporthttp.MediaStream{}, newStatusError(http.StatusNotFound, "File not found")
 	}
-	return transporthttp.MediaStream{Reader: reader, ContentType: file.MimeType, OriginalName: file.OriginalName, Attachment: user.Role == connectorRole && !isStreamableMediaMime(file.MimeType)}, nil
+	return transporthttp.MediaStream{Reader: reader, ContentType: file.MimeType, OriginalName: file.OriginalName, Attachment: user.Role == connectorRole && !isStreamableMediaMime(file.MimeType), ModifiedAt: parseTime(file.CreatedAt)}, nil
 }
 
 func (s *Server) reserveDirectFileUpload(ctx context.Context, user userPublic, key string, payload transporthttp.ReserveDirectFileUploadRequest) (transporthttp.DirectFileUploadResponse, int, string, error) {

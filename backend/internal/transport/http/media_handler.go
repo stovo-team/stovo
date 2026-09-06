@@ -21,6 +21,7 @@ type MediaStream struct {
 	Reader                    io.ReadSeekCloser
 	ContentType, OriginalName string
 	Attachment                bool
+	ModifiedAt                time.Time
 }
 type MediaOperations struct {
 	Mint      func(context.Context, string) (MediaPlaybackToken, error)
@@ -58,11 +59,11 @@ func (h MediaHandler) Stream(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		w.Header().Set("Content-Disposition", "inline")
 	}
 	w.Header().Set("Accept-Ranges", "bytes")
-	stdhttp.ServeContent(w, r, "", time.Time{}, stream.Reader)
+	stdhttp.ServeContent(w, r, "", stream.ModifiedAt, stream.Reader)
 }
 func (h MediaHandler) error(w stdhttp.ResponseWriter, err error) {
 	status := stdhttp.StatusNotFound
-	if h.operations.StatusFor != nil {
+	if _, missing := err.(errMediaNotFound); !missing && h.operations.StatusFor != nil {
 		status = h.operations.StatusFor(err)
 	}
 	detail := "File not found"
