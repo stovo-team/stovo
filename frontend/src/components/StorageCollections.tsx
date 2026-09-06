@@ -36,7 +36,13 @@ const allowsContentType = (contentType: CollectionContentType, file: FamilyFile,
   if (contentType === "custom") return customFileTypes.split(",").some((pattern) => { const suffix = pattern.trim().toLowerCase().replace(/^\*\./, "."); return suffix.length > 1 && file.originalName.toLowerCase().endsWith(suffix); });
   return contentType === "mixed" || (contentType === "media" && (fileKind === "photos" || fileKind === "videos")) || (contentType === "audio" && fileKind === "audio") || (contentType === "documents" && fileKind === "documents");
 };
-export type StorageCollectionPickerRequest = { collectionTitle: string; lockedFileIds: string[]; allowedFileIds: string[]; onConfirm: (ids: string[]) => void; };
+export type StorageCollectionPickerRequest = {
+  collectionId: string;
+  collectionTitle: string;
+  lockedFileIds: string[];
+  allowedFileIds: string[];
+  onConfirm: (ids: string[]) => Promise<void>;
+};
 function memberInitials(name: string) { return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join(""); }
 function StorageMemberAvatar({ accessToken, member }: { accessToken: string; member: User }) {
   const [url, setUrl] = useState<string | null>(() => member.profilePhoto ? peekCachedObjectUrl(member.profilePhoto.id) : null);
@@ -87,7 +93,7 @@ export function StorageCollections({ accessToken, files, filter, currentUserId, 
   const create = async () => { if (!accessToken || !title.trim()) return; const contentType: CollectionContentType = kind === "music-album" ? "audio" : kind === "album" ? "media" : "mixed"; try { const next = await createCollection(accessToken, { title: title.trim(), displayKind: kind, contentType }); setCollections((all) => [next, ...all]); setCreating(false); setTitle(""); await open(next); } catch { setError("Could not create collection"); } };
   const add = async (id: string, privateFile = false) => { if (!accessToken || !selected) return; const file = await addCollectionItem(accessToken, selected.id, id, privateFile); setItems((all) => [file, ...all.filter((item) => item.id !== file.id)]); setCollections((all) => all.map((item) => item.id === selected.id ? { ...item, itemCount: item.itemCount + (items.some((item) => item.id === file.id) ? 0 : 1) } : item)); };
   const addMany = async (ids: string[]) => { try { for (const id of ids) await add(id); setAdding(false); } catch { setError("Some files could not be added to this collection"); } };
-  const requestStorageSelection = () => { if (!selected) return; onSelectFromStorage?.({ collectionTitle: selected.title, lockedFileIds: items.map((file) => file.id), allowedFileIds: files.filter((file) => allowsContentType(selected.contentType, file, selected.customFileTypes)).map((file) => file.id), onConfirm: (ids) => void addMany(ids) }); };
+  const requestStorageSelection = () => { if (!selected) return; onSelectFromStorage?.({ collectionId: selected.id, collectionTitle: selected.title, lockedFileIds: items.map((file) => file.id), allowedFileIds: files.filter((file) => allowsContentType(selected.contentType, file, selected.customFileTypes)).map((file) => file.id), onConfirm: addMany }); };
   const upload = async (event: ChangeEvent<HTMLInputElement>, asCover = false) => { if (!accessToken || !selected) return; const newFiles = Array.from(event.target.files ?? []); event.target.value = ""; try { for (const file of newFiles) { const next = await uploadFile(accessToken, file); await add(next.id, true); if (asCover && file.type.startsWith("image/")) updateSelected(await updateCollection(accessToken, selected.id, { coverFileId: next.id })); } onFilesChanged?.(); } catch { setError("Could not upload files"); } };
   const remove = async (id: string) => { if (!accessToken || !selected) return; await removeCollectionItem(accessToken, selected.id, id); setItems((all) => all.filter((file) => file.id !== id)); };
   const saveName = async () => { if (!accessToken || !selected || !title.trim()) return; updateSelected(await updateCollection(accessToken, selected.id, { title: title.trim() })); setTitle(""); };
