@@ -6056,7 +6056,7 @@ span.message-spoiler.is-revealed {
   .chat-section-heading:hover .chat-folder-controls, .chat-section-heading:focus-within .chat-folder-controls { opacity: 1; pointer-events: auto; }
 }
 .chat-folder-empty { color: var(--text-muted); font-size: 0.8rem; margin: 3px 10px 8px; }
-.chat-folder-create { align-items: center; background: transparent; border: 1px dashed var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; display: inline-flex; font-size: 0.82rem; gap: 7px; justify-content: center; margin: 6px 4px 4px; min-height: 34px; padding: 0 12px; width: auto; }
+.chat-folder-create { align-items: center; background: transparent; border: 1px dashed var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; display: flex; font-size: 0.82rem; gap: 7px; justify-content: center; margin: 6px 4px 4px; min-height: 34px; padding: 0 12px; width: calc(100% - 8px); }
 .chat-folder-create:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 .modal-backdrop.chat-folder-backdrop { align-items: center; background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(2px); display: flex; justify-content: center; padding: 16px; z-index: 1200; }
 .chat-folder-dialog { background: var(--background-panel); border: 1px solid var(--border-default); border-radius: 20px; box-shadow: var(--float-shadow-strong); color: var(--text-primary); display: grid; gap: 16px; max-height: calc(100vh - 32px); max-width: 440px; overflow: auto; padding: 20px; width: 100%; }
@@ -14020,10 +14020,12 @@ span.message-spoiler.is-revealed {
 }
 
 :root[data-platform="web"] .attachment-picker-backdrop--web-menu {
-  align-items: flex-end;
+  align-items: flex-start;
   background: transparent;
   justify-content: flex-end;
-  padding: 0 32px 76px 0;
+  /* The web composer begins at the left content inset; keep the menu over its
+     attachment controls instead of aligning it to the viewport's right edge. */
+  padding: 0 0 76px 29px;
   /* The transparent area is a real backdrop: it must receive a click so the
      popover can be dismissed, while the menu itself remains interactive. */
   pointer-events: auto;
@@ -23082,7 +23084,7 @@ span.message-spoiler.is-revealed {
 .storage-page .storage-collection-new > svg, .storage-page .storage-files-upload > svg { flex: 0 0 16px !important; height: 16px !important; max-height: 16px !important; max-width: 16px !important; min-height: 16px !important; min-width: 16px !important; stroke-width: 2.25 !important; width: 16px !important; }
 
 /* The cover edit affordance fills the cover as a compact square, not a rounded chip. */
-.storage-collection-cover-edit .storage-collection-cover { border-radius: 6px !important; }
+.storage-collection-cover-edit .storage-collection-cover { border-radius: 12px !important; }
 .storage-cover-edit-mark { background: rgba(4, 7, 11, .58) !important; border: 0 !important; border-radius: 6px !important; box-shadow: none !important; }
 .storage-collection-cover-edit:hover .storage-collection-cover { filter: none; }
 
@@ -23094,11 +23096,21 @@ span.message-spoiler.is-revealed {
 .storage-cover-icon-grid button:hover, .storage-cover-icon-grid button:focus-visible { background: transparent !important; color: #b6d8ff; outline: 0; }
 .storage-cover-icon-grid button.is-selected { color: #fff; }
 .storage-cover-icon-grid button.is-selected::before { background: rgba(104, 174, 252, .26); border-radius: 50%; content: ""; height: 26px; left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 26px; }
-.storage-cover-icon-grid button svg { height: 15px !important; position: relative; width: 15px !important; z-index: 1; }
+.storage-cover-icon-grid button svg { height: 21px !important; position: relative; width: 21px !important; z-index: 1; }
 .storage-cover-color-row { width: 100% !important; }
-.storage-cover-color-row button { flex: 0 0 16px; height: 16px; min-height: 16px; min-width: 16px; width: 16px; }
-.storage-cover-color-row .storage-cover-palette { flex-basis: 18px; height: 18px; min-height: 18px; min-width: 18px; width: 18px; }
+.storage-cover-color-row button { aspect-ratio: 1; border-radius: 50% !important; flex: 0 0 18px !important; height: 18px !important; min-height: 18px !important; min-width: 18px !important; padding: 0 !important; width: 18px !important; }
+.storage-cover-color-row .storage-cover-palette { aspect-ratio: 1; border-radius: 50% !important; flex-basis: 26px !important; height: 26px !important; min-height: 26px !important; min-width: 26px !important; width: 26px !important; }
 .storage-cover-upload { box-sizing: border-box; max-width: 100%; width: 100%; }
+
+/* Forward dialog heading keeps the action icon and title on one line. */
+.storage-forward-dialog .storage-forward-heading { align-items: center; color: var(--accent-primary); display: flex; gap: 10px; }
+.storage-forward-dialog .storage-forward-heading h2 { color: var(--text-primary); margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.storage-forward-dialog .forward-chat-search input { border-radius: 999px !important; }
+
+/* Keep every collection modal close control circular and easy to hit. */
+.storage-collection-dialog .storage-collection-close { align-items: center !important; background: #202a35 !important; border: 1px solid #435970 !important; border-radius: 50% !important; box-sizing: border-box; color: var(--text-primary) !important; display: inline-flex !important; height: 40px !important; justify-content: center !important; padding: 0 !important; right: 14px !important; top: 14px !important; width: 40px !important; }
+.storage-collection-dialog .storage-collection-close:hover, .storage-collection-dialog .storage-collection-close:focus-visible { background: #202a35 !important; border-color: #6eaef0 !important; color: var(--text-primary) !important; outline: 0; }
+.storage-collection-dialog .storage-collection-close > svg { display: block !important; height: 19px !important; min-height: 19px !important; min-width: 19px !important; width: 19px !important; }
 
 /* Shared Canvas workspace */
 .canvas-page { background: var(--canvas-amoled, #000); color: var(--text-primary); min-height: 100dvh; padding: 18px; }
@@ -23141,6 +23153,7 @@ span.message-spoiler.is-revealed {
 .canvas-share-dialog { width: min(520px, calc(100vw - 28px)); }
 .forward-chat-search { display: block; }
 .forward-chat-search input { background: var(--surface-raised, #20242a); border: 1px solid var(--border-default, #344457); border-radius: 999px; box-sizing: border-box; color: var(--text-primary); font: inherit; min-height: 42px; outline: 0; padding: 9px 14px; width: 100%; }
+.canvas-share-dialog .forward-chat-search input { border-radius: 999px !important; }
 .forward-chat-search input:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-primary) 20%, transparent); }
 .forward-chat-list { gap: 8px; }
 .forward-chat-list button { align-items: center; background: var(--surface-raised, #20242a); border: 1px solid var(--border-default, #344457); border-radius: 16px; color: var(--text-primary); padding: 9px 12px; }
