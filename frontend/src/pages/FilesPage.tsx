@@ -683,7 +683,7 @@ export default function FilesPage() {
           </div>
         </div>
 
-        {collectionPicker && <div className="storage-selection-bar" role="region" aria-label="Folder file selection"><span>{collectionPickedIds.length ? `${collectionPickedIds.length} file${collectionPickedIds.length === 1 ? "" : "s"} selected` : "Select files to add"}</span><div><button type="button" onClick={() => { setCollectionPicker(null); setCollectionPickedIds([]); }}>Cancel</button><button type="button" className="primary-button" disabled={!collectionPickedIds.length} onClick={() => { collectionPicker.onConfirm(collectionPickedIds); setCollectionPicker(null); setCollectionPickedIds([]); }}>Add selected</button></div></div>}
+        {collectionPicker && <div className="storage-selection-bar" role="region" aria-label="Folder file selection"><span>{collectionPickedIds.length ? `${collectionPickedIds.length} file${collectionPickedIds.length === 1 ? "" : "s"} selected` : "Select files to add"}</span><div><button type="button" onClick={() => { setCollectionPicker(null); setCollectionPickedIds([]); }}>Cancel</button><button type="button" className="primary-button" disabled={!collectionPickedIds.length} onClick={() => { const picker = collectionPicker; const pickedIds = collectionPickedIds; void picker.onConfirm(pickedIds).then(() => { setCollectionPicker(null); setCollectionPickedIds([]); navigate(`/app/files?collection=${encodeURIComponent(picker.collectionId)}`); }); }}>Add selected</button></div></div>}
 
         {mobileDetailsOpen && (
           <button

@@ -20,10 +20,18 @@ fi
 
 check_sizes() {
   local files=()
+  local counts
   mapfile -t files < <("$@")
   if (( ${#files[@]} == 0 )); then
     return
   fi
+
+  # Capture all counts before evaluating them. This avoids a broken-pipe error
+  # from wc when a failing boundary check exits the loop early.
+  if ! counts="$(wc -l "${files[@]}")"; then
+    fail 'could not count production source-file lines'
+  fi
+
   while read -r lines file; do
     [[ -z "$file" || "$file" == "total" ]] && continue
     file="${file%$'\r'}"
@@ -37,7 +45,7 @@ check_sizes() {
         fail "$file grew from its ${allowed}-line migration baseline to ${lines} lines"
       fi
     fi
-  done < <(wc -l "${files[@]}")
+  done <<< "$counts"
 }
 
 get_backend_files() {

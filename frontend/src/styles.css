@@ -23033,8 +23033,31 @@ span.message-spoiler.is-revealed {
 .storage-forward-chat-avatar { flex: 0 0 34px; height: 34px; width: 34px; }
 
 /* Removing a file from an open folder is a plain close glyph. */
-.storage-collection-file-grid .collection-file-tile > button { background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; }
-.storage-collection-file-grid .collection-file-tile > button:hover, .storage-collection-file-grid .collection-file-tile > button:focus-visible { background: transparent !important; box-shadow: none !important; }
+.storage-collection-file-grid .collection-file-tile > button {
+  align-items: center;
+  background: #3a424c !important;
+  border: 1px solid #59636e !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .35) !important;
+  color: #fff;
+  display: inline-flex;
+  height: 34px !important;
+  justify-content: center;
+  opacity: 1;
+  padding: 0 !important;
+  right: 8px;
+  top: 8px;
+  width: 34px !important;
+}
+.storage-collection-file-grid .collection-file-tile > button:hover,
+.storage-collection-file-grid .collection-file-tile > button:focus-visible {
+  background: #4c5864 !important;
+  border-color: #7b8793 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .35) !important;
+  color: #fff;
+  outline: 0;
+}
+.storage-collection-file-grid .collection-file-tile > button svg { height: 18px; width: 18px; }
 
 .storage-page .storage-preview-frame { box-sizing: border-box; width: 100%; }
 
@@ -23090,12 +23113,12 @@ span.message-spoiler.is-revealed {
 /* Compact cover choices: the only icon background is the selected circle. */
 .storage-cover-menu { box-sizing: border-box !important; max-width: calc(100vw - 24px); overflow: hidden !important; width: 290px !important; }
 .storage-cover-menu > *, .storage-cover-icon-grid, .storage-cover-color-row { box-sizing: border-box; max-width: 100%; min-width: 0; }
-.storage-cover-icon-grid { column-gap: 0 !important; grid-template-columns: repeat(8, minmax(0, 1fr)) !important; row-gap: 0 !important; width: 100% !important; }
-.storage-cover-icon-grid button, .storage-cover-icon-grid button.is-selected { background: transparent !important; border: 0 !important; border-radius: 50% !important; color: #b6d8ff; height: 28px !important; min-width: 0 !important; position: relative; width: 100% !important; }
-.storage-cover-icon-grid button:hover, .storage-cover-icon-grid button:focus-visible { background: transparent !important; color: #b6d8ff; outline: 0; }
-.storage-cover-icon-grid button.is-selected { color: #fff; }
-.storage-cover-icon-grid button.is-selected::before { background: rgba(104, 174, 252, .26); border-radius: 50%; content: ""; height: 26px; left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 26px; }
-.storage-cover-icon-grid button svg { height: 21px !important; position: relative; width: 21px !important; z-index: 1; }
+.storage-cover-icon-grid { gap: 6px !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; width: 100% !important; }
+.storage-cover-icon-grid button, .storage-cover-icon-grid button.is-selected { align-items: center; background: #202a35 !important; border: 1px solid #3a4b5e !important; border-radius: 10px !important; color: #b6d8ff; display: inline-flex; height: 42px !important; justify-content: center; min-width: 0 !important; padding: 0; position: relative; width: 100% !important; }
+.storage-cover-icon-grid button:hover, .storage-cover-icon-grid button:focus-visible { background: #293b4f !important; border-color: #69aef7 !important; color: #e6f2ff; outline: 0; }
+.storage-cover-icon-grid button.is-selected { background: #285482 !important; border-color: #79bbff !important; color: #fff; }
+.storage-cover-icon-grid button.is-selected::before { content: none; }
+.storage-cover-icon-grid button svg { display: block; height: 20px !important; position: relative; width: 20px !important; z-index: 1; }
 .storage-cover-color-row { width: 100% !important; }
 .storage-cover-color-row button { aspect-ratio: 1; border-radius: 50% !important; flex: 0 0 18px !important; height: 18px !important; min-height: 18px !important; min-width: 18px !important; padding: 0 !important; width: 18px !important; }
 .storage-cover-color-row .storage-cover-palette { aspect-ratio: 1; border-radius: 50% !important; flex-basis: 26px !important; height: 26px !important; min-height: 26px !important; min-width: 26px !important; width: 26px !important; }
