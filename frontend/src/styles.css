@@ -23041,13 +23041,20 @@ span.message-spoiler.is-revealed {
   box-shadow: 0 2px 8px rgba(0, 0, 0, .35) !important;
   color: #fff;
   display: inline-flex;
-  height: 34px !important;
+  height: 28px !important;
   justify-content: center;
-  opacity: 1;
+  opacity: 0;
   padding: 0 !important;
-  right: 8px;
-  top: 8px;
-  width: 34px !important;
+  pointer-events: none;
+  right: 6px;
+  top: 6px;
+  transition: opacity 140ms ease, background-color 140ms ease, border-color 140ms ease;
+  width: 28px !important;
+}
+.storage-collection-file-grid .collection-file-tile:hover > button,
+.storage-collection-file-grid .collection-file-tile:focus-within > button {
+  opacity: 1;
+  pointer-events: auto;
 }
 .storage-collection-file-grid .collection-file-tile > button:hover,
 .storage-collection-file-grid .collection-file-tile > button:focus-visible {
@@ -23057,7 +23064,7 @@ span.message-spoiler.is-revealed {
   color: #fff;
   outline: 0;
 }
-.storage-collection-file-grid .collection-file-tile > button svg { height: 18px; width: 18px; }
+.storage-collection-file-grid .collection-file-tile > button svg { height: 15px; width: 15px; }
 
 .storage-page .storage-preview-frame { box-sizing: border-box; width: 100%; }
 
