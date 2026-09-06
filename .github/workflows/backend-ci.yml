@@ -66,8 +66,29 @@ jobs:
             git diff -- ent
             exit 1
           fi
-      - name: Unit and integration tests
-        run: go test ./...
+      - name: Unit and integration tests with coverage
+        run: |
+          # Do not allow a persistent self-hosted runner's Go test cache to
+          # conceal an integration failure.  Instrument all hand-written
+          # backend packages while the suite exercises them end-to-end;
+          # generated Ent code and command entrypoints are deliberately
+          # excluded from the application coverage denominator.
+          rm -f coverage.out
+          go test -count=1 -covermode=atomic -coverpkg=./internal/... \
+            -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tee coverage-summary.txt
+          {
+            echo "## Backend coverage"
+            echo '```text'
+            tail -n 1 coverage-summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload backend coverage profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.out
+          if-no-files-found: error
       - name: SOLID architecture boundaries
         working-directory: ..
         run: bash scripts/check-solid-boundaries.sh
