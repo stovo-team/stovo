@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { AudioLines, BarChart2, FileText, Image as ImageIcon, Music, Paperclip, Smile, StickyNote } from "lucide-react";
@@ -28,6 +28,7 @@ export type AttachmentPickerTab = "gallery" | "file" | "audio" | "poll";
 
 type AttachmentPickerSheetProps = {
   open: boolean;
+  anchorRef?: RefObject<HTMLElement | null>;
   onClose: () => void;
   onPick: (option: AttachmentPickerOption) => void;
   onSelectFiles?: (files: File[]) => void;
@@ -47,6 +48,7 @@ type AttachmentPickerSheetProps = {
 
 export default function AttachmentPickerSheet({
   open,
+  anchorRef,
   onClose,
   onPick,
   onSelectFiles,
@@ -97,6 +99,7 @@ export default function AttachmentPickerSheet({
   const [isDragging, setIsDragging] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isReady, setIsReady] = useState(prefersReducedMotion);
+  const [webMenuPosition, setWebMenuPosition] = useState<CSSProperties | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const emojiPickerRef = useRef<HTMLDivElement | null>(null);
@@ -113,6 +116,41 @@ export default function AttachmentPickerSheet({
     startY: number;
     scrollTop: number;
   } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open || Capacitor.isNativePlatform()) {
+      setWebMenuPosition(null);
+      return undefined;
+    }
+
+    const updateWebMenuPosition = () => {
+      const trigger = anchorRef?.current;
+      if (!trigger) return;
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuWidth = 208;
+      const viewportInset = 8;
+      const gap = 8;
+      const maxLeft = Math.max(viewportInset, window.innerWidth - menuWidth - viewportInset);
+      const opensRight = triggerRect.left - gap + menuWidth <= window.innerWidth - viewportInset;
+      const intendedLeft = opensRight
+        ? triggerRect.left - gap
+        : triggerRect.right - menuWidth + gap;
+
+      setWebMenuPosition({
+        bottom: Math.max(viewportInset, window.innerHeight - triggerRect.top + gap),
+        left: Math.min(maxLeft, Math.max(viewportInset, intendedLeft)),
+        position: "fixed"
+      });
+    };
+
+    updateWebMenuPosition();
+    window.addEventListener("resize", updateWebMenuPosition);
+    window.addEventListener("scroll", updateWebMenuPosition, true);
+    return () => {
+      window.removeEventListener("resize", updateWebMenuPosition);
+      window.removeEventListener("scroll", updateWebMenuPosition, true);
+    };
+  }, [anchorRef, open]);
 
   const messageText = composer !== undefined ? composer : localDraft;
   const handleMessageChange = (val: string) => {
@@ -406,7 +444,7 @@ export default function AttachmentPickerSheet({
   if (!Capacitor.isNativePlatform() && initialTab !== "poll") {
     return createPortal(
       <div className="attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready" role="presentation" onClick={closeSheet}>
-        <div className="attachment-picker-web-menu" role="dialog" aria-modal="true" aria-label="Attach to message" onClick={(event) => event.stopPropagation()}>
+        <div className="attachment-picker-web-menu" style={webMenuPosition ?? { visibility: "hidden" }} role="dialog" aria-modal="true" aria-label="Attach to message" onClick={(event) => event.stopPropagation()}>
           <button type="button" onClick={() => handleWebMenuPick("gallery")}><ImageIcon size={19} /><span>Photo or video</span></button>
           <button type="button" onClick={() => handleWebMenuPick("file")}><FileText size={19} /><span>Document</span></button>
           <button type="button" onClick={() => handleWebMenuPick("audio")}><Music size={19} /><span>Music</span></button>

@@ -4,7 +4,7 @@ import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
-import { ChevronDown, Forward, Pencil, Plus, X } from "lucide-react";
+import { ChevronDown, Forward, Pencil, Plus } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { getSocketConfigForUrl } from "../api/serverRegistry";
@@ -12,7 +12,7 @@ import { getApiUrl } from "../api/client";
 import { appendCanvasDocumentUpdate, getCanvas, getCanvasDocument, linkCanvas, renameCanvas, type Canvas } from "../api/canvas";
 import type { Chat } from "../api/chats";
 import { getChats } from "../api/chats";
-import { ForwardChatList } from "../features/chats/conversation/MessageDialogs";
+import { ForwardChatDialog } from "../features/chats/conversation/MessageDialogs";
 import { BackButton } from "../components/BackButton";
 
 const remoteOrigin = Symbol("canvas-remote");
@@ -358,15 +358,7 @@ export default function CanvasPage() {
           </div>
         </div>
       </header>
-      {shareOpen && canvas.canManage && (
-        <div className="modal-backdrop" role="presentation">
-          <section className="messenger-modal canvas-share-dialog" role="dialog" aria-modal="true" aria-labelledby="canvas-share-title">
-            <div className="modal-header"><h2 id="canvas-share-title">Forward Canvas</h2><button type="button" className="icon-button subtle" aria-label="Close share dialog" title="Close" onClick={() => { setForwardChatIds([]); setShareOpen(false); }}><X aria-hidden="true" size={18} /></button></div>
-            <ForwardChatList accessToken={accessToken} currentUserId={currentUser?.id} chats={chats} searchable selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onSelect={() => undefined} />
-            <button type="button" className="forward-dialog-confirm" disabled={!forwardChatIds.length} onClick={() => void forwardCanvas()}><Forward aria-hidden="true" size={18} /> Forward</button>
-          </section>
-        </div>
-      )}
+      {shareOpen && canvas.canManage && <ForwardChatDialog title="Forward Canvas" accessToken={accessToken} currentUserId={currentUser?.id} chats={chats} selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onForward={() => void forwardCanvas()} onClose={() => { setForwardChatIds([]); setShareOpen(false); }} />}
       <div className="canvas-workspace">
         {blocks.map((block) => block.kind === "markdown" ? <MarkdownBlock key={block.id} record={block.record} /> : <WhiteboardBlock key={block.id} record={block.record} />)}
       </div>
