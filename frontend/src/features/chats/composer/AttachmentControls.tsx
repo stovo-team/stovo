@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Paperclip } from "lucide-react";
 
 import AttachmentPickerSheet from "../../../components/AttachmentPickerSheet";
@@ -11,6 +12,7 @@ import {
 import { useComposerAttachmentContext } from "./ComposerAttachmentContext";
 
 export function AttachmentControls() {
+  const attachmentButtonRef = useRef<HTMLButtonElement | null>(null);
   const {
     disabled,
     isAttachmentSheetOpen,
@@ -40,6 +42,7 @@ export function AttachmentControls() {
   return (
     <>
       <button
+        ref={attachmentButtonRef}
         type="button"
         className="file-picker"
         aria-label="Attach files"
@@ -95,6 +98,7 @@ export function AttachmentControls() {
         onChange={onFileSelect}
       />
       <AttachmentPickerSheet
+        anchorRef={attachmentButtonRef}
         open={isAttachmentSheetOpen}
         initialTab={attachmentSheetInitialTab}
         previewMediaItem={previewMediaItem}
