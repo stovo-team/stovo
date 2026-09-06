@@ -65,7 +65,7 @@ func (s *Store) CreateChatWithMembers(ctx context.Context, p CreateChatParams) e
 				SetUserID(memberID).
 				SetCreatedAt(p.CreatedAt).
 				OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-				DoNothing().
+				Ignore().
 				Exec(ctx); err != nil {
 				return err
 			}
@@ -74,7 +74,7 @@ func (s *Store) CreateChatWithMembers(ctx context.Context, p CreateChatParams) e
 					SetID(p.ID).
 					SetUserID(memberID).
 					OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
-					DoNothing().
+					Ignore().
 					Exec(ctx); err != nil {
 					return err
 				}
@@ -93,7 +93,7 @@ func (s *Store) AddChatMembers(ctx context.Context, p AddChatMembersParams) erro
 				SetUserID(userID).
 				SetCreatedAt(p.CreatedAt).
 				OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-				DoNothing().
+				Ignore().
 				Exec(ctx); err != nil {
 				return err
 			}
@@ -101,7 +101,7 @@ func (s *Store) AddChatMembers(ctx context.Context, p AddChatMembersParams) erro
 				SetID(p.ChatID).
 				SetUserID(userID).
 				OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
-				DoNothing().
+				Ignore().
 				Exec(ctx); err != nil {
 				return err
 			}
@@ -473,7 +473,7 @@ func (s *Store) ApproveDirectMediaVisibility(ctx context.Context, chatID, userID
 			SetUserID(userID).
 			SetCreatedAt(createdAt).
 			OnConflictColumns(chatmediaapproval.FieldID, chatmediaapproval.FieldUserID).
-			DoNothing().
+			Ignore().
 			Exec(ctx); err != nil {
 			return err
 		}

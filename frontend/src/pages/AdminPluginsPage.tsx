@@ -37,7 +37,6 @@ export default function AdminPluginsPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [copiedStarter, setCopiedStarter] = useState(false);
   const canManagePlugins = currentUser?.role === "owner" || currentUser?.role === "admin";
-  const enabledCount = plugins.filter((plugin) => plugin.enabled).length;
 
   const load = useCallback(async () => {
     if (!accessToken || !canManagePlugins) return;
@@ -61,10 +60,9 @@ export default function AdminPluginsPage() {
   }
 
   return <main className="app-shell app-frame admin-page admin-detail-page plugins-page"><AppNav /><section className="page-surface admin-surface plugins-surface">
-    <header className="admin-detail-header plugins-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to admin" /><div><h1>Plugin store</h1><p>Choose the tools that shape your server.</p></div><button className="plugin-register-button" type="button" onClick={() => setIsRegistering(true)}><Plus size={17} />Add plugin</button></header>
+    <header className="admin-detail-header plugins-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to admin" /><div><h1>Plugin store</h1></div><button className="plugin-register-button" type="button" onClick={() => setIsRegistering(true)}><Plus size={17} />Add plugin</button></header>
     {!canManagePlugins && <p className="error-text">Admin access required.</p>}{error && <p className="error-text">{error}</p>}
-    {canManagePlugins && <><section className="plugin-store-intro" aria-label="Plugin store summary"><span className="plugin-store-intro-icon"><Puzzle size={21} /></span><div><strong>{enabledCount} of {plugins.length} plugins active</strong><p>Enable, pause, or add a server extension from one place.</p></div></section>
-      <section className="plugin-store-grid" aria-label="Available plugins">{plugins.map((plugin) => {
+    {canManagePlugins && <><section className="plugin-store-grid" aria-label="Available plugins">{plugins.map((plugin) => {
         const detail = pluginDetails[plugin.id] ?? { description: "An optional server extension.", icon: Layers3, eyebrow: "Extension", preview: "generic" as const };
         const Icon = detail.icon;
         return <article className="plugin-showcase-card" key={plugin.id}><PluginPreview kind={detail.preview} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Icon size={20} /></span><span><small>{detail.eyebrow}</small><h2>{plugin.name}</h2></span></div><p>{detail.description}</p></div><footer className="plugin-showcase-footer"><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? "Active" : "Paused"}</span><label className="plugin-switch"><input type="checkbox" checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">Enable {plugin.name}</em></label></footer></article>;

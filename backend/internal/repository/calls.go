@@ -36,7 +36,7 @@ func (s *Store) CreateCallSession(ctx context.Context, p CreateCallSessionParams
 	}
 	return create.
 		OnConflictColumns(callsession.FieldID).
-		DoNothing().
+		Ignore().
 		Exec(ctx)
 }
 
