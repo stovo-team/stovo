@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
 import type { Chat } from "../../../api/chats";
-import { messageActionSummary } from "../shared/messagePresentation";
 import {
   chatAvatarFallbackKind,
   chatAvatarFile,
@@ -61,6 +60,39 @@ export function ForwardChatList({
   );
 }
 
+export function ForwardChatDialog({
+  title,
+  accessToken,
+  currentUserId,
+  chats,
+  selectedChatIds,
+  onToggle,
+  onForward,
+  onClose
+}: {
+  title: string;
+  accessToken: string | null;
+  currentUserId?: string;
+  chats: Chat[];
+  selectedChatIds: string[];
+  onToggle: (chatId: string) => void;
+  onForward: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="messenger-modal forward-dialog" role="dialog" aria-modal="true" aria-labelledby="forward-dialog-title">
+        <header className="forward-dialog-header">
+          <div className="forward-dialog-heading"><Forward aria-hidden="true" size={22} /><h2 id="forward-dialog-title">{title}</h2></div>
+          <button type="button" className="icon-button subtle" aria-label="Close forward dialog" title="Close" onClick={onClose}><X aria-hidden="true" size={18} /></button>
+        </header>
+        <ForwardChatList accessToken={accessToken} currentUserId={currentUserId} chats={chats} searchable selectedChatIds={selectedChatIds} onToggle={onToggle} onSelect={() => undefined} />
+        <button type="button" className="forward-dialog-confirm" disabled={!selectedChatIds.length} onClick={onForward}><Forward aria-hidden="true" size={18} /> Forward</button>
+      </section>
+    </div>
+  );
+}
+
 export function MessageDialogs({
   accessToken,
   currentUserId,
@@ -104,33 +136,7 @@ export function MessageDialogs({
 
   return (
     <>
-      {forwardTarget && (
-        <div className="modal-backdrop" role="presentation">
-          <section className="messenger-modal" role="dialog" aria-modal="true" aria-labelledby="forward-title">
-            <div className="modal-header">
-              <h2 id="forward-title">
-                {forwardCount > 1 ? `Forward ${forwardCount} messages` : "Forward message"}
-              </h2>
-              <button
-                type="button"
-                className="icon-button subtle"
-                aria-label="Close forward dialog"
-                title="Close"
-                onClick={() => { setForwardChatIds([]); onCloseForward(); }}
-              >
-                <X aria-hidden="true" size={18} />
-              </button>
-            </div>
-            <p className="forward-preview">
-              {forwardCount > 1
-                ? `${forwardCount} messages selected`
-                : messageActionSummary(forwardTarget)}
-            </p>
-            <ForwardChatList accessToken={accessToken} currentUserId={currentUserId} chats={chats} searchable selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onSelect={onForwardMessage} />
-            <button type="button" className="forward-dialog-confirm" disabled={!forwardChatIds.length} onClick={() => { forwardChatIds.forEach(onForwardMessage); setForwardChatIds([]); }}><Forward aria-hidden="true" size={18} /> Forward</button>
-          </section>
-        </div>
-      )}
+      {forwardTarget && <ForwardChatDialog title={forwardCount > 1 ? `Forward ${forwardCount} messages` : "Forward message"} accessToken={accessToken} currentUserId={currentUserId} chats={chats} selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onForward={() => { forwardChatIds.forEach(onForwardMessage); setForwardChatIds([]); }} onClose={() => { setForwardChatIds([]); onCloseForward(); }} />}
 
       {deleteTarget && (
         <div className="modal-backdrop" role="presentation">
