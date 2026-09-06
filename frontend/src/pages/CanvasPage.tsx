@@ -362,8 +362,7 @@ export default function CanvasPage() {
         <div className="modal-backdrop" role="presentation">
           <section className="messenger-modal canvas-share-dialog" role="dialog" aria-modal="true" aria-labelledby="canvas-share-title">
             <div className="modal-header"><h2 id="canvas-share-title">Forward Canvas</h2><button type="button" className="icon-button subtle" aria-label="Close share dialog" title="Close" onClick={() => { setForwardChatIds([]); setShareOpen(false); }}><X aria-hidden="true" size={18} /></button></div>
-            <p className="forward-preview">Choose chats to share “{canvas.title}” with.</p>
-            <ForwardChatList accessToken={accessToken} currentUserId={currentUser?.id} chats={chats.filter((chat) => !canvas.linkedChatIds.includes(chat.id))} searchable selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onSelect={() => undefined} />
+            <ForwardChatList accessToken={accessToken} currentUserId={currentUser?.id} chats={chats} searchable selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onSelect={() => undefined} />
             <button type="button" className="forward-dialog-confirm" disabled={!forwardChatIds.length} onClick={() => void forwardCanvas()}><Forward aria-hidden="true" size={18} /> Forward</button>
           </section>
         </div>
