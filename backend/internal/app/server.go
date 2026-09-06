@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"stovo-messenger/backend/internal/config"
@@ -123,6 +124,8 @@ type Server struct {
 	lifecycle   *workruntime.Lifecycle
 	ntfyRetryCh chan ntfyRetryItem
 	mcpHTTP     http.Handler
+	closeOnce   sync.Once
+	closeErr    error
 }
 
 // NewWithDependencies starts the application with infrastructure assembled by
@@ -220,23 +223,26 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 }
 
 func (s *Server) Close() error {
-	jobsRedis := s.jobsRedis
-	if jobsRedis == s.redis {
-		jobsRedis = nil
-	}
-	return workruntime.Shutdown(workruntime.ShutdownDependencies{
-		CancelRealtime: s.lifecycle.Cancel,
-		WaitRealtime:   s.lifecycle.Wait,
-		Sockets: workruntime.CloseFunc(func() error {
-			s.sockets.Close()
-			return nil
-		}),
-		Redis:       s.redis,
-		JobsRedis:   jobsRedis,
-		LogBuffer:   s.logBuffer,
-		Persistence: s.persistence,
-		Database:    s.database,
+	s.closeOnce.Do(func() {
+		jobsRedis := s.jobsRedis
+		if jobsRedis == s.redis {
+			jobsRedis = nil
+		}
+		s.closeErr = workruntime.Shutdown(workruntime.ShutdownDependencies{
+			CancelRealtime: s.lifecycle.Cancel,
+			WaitRealtime:   s.lifecycle.Wait,
+			Sockets: workruntime.CloseFunc(func() error {
+				s.sockets.Close()
+				return nil
+			}),
+			Redis:       s.redis,
+			JobsRedis:   jobsRedis,
+			LogBuffer:   s.logBuffer,
+			Persistence: s.persistence,
+			Database:    s.database,
+		})
 	})
+	return s.closeErr
 }
 
 func (s *Server) Routes() http.Handler {

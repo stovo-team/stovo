@@ -81,7 +81,7 @@ func (s *Store) CompleteSetup(ctx context.Context, p SetupParams) error {
 			SetUserID(p.UserID).
 			SetCreatedAt(p.CreatedAt).
 			OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-			DoNothing().
+			Ignore().
 			Exec(ctx); err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ func (s *Store) CompleteSetup(ctx context.Context, p SetupParams) error {
 			SetID(p.ChatID).
 			SetUserID(p.UserID).
 			OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
-			DoNothing().
+			Ignore().
 			Exec(ctx); err != nil {
 			return err
 		}
@@ -167,13 +167,13 @@ func (s *Store) CreateAdminUser(ctx context.Context, p SetupParams) (*ent.User, 
 				SetUserID(p.UserID).
 				SetCreatedAt(p.CreatedAt).
 				OnConflictColumns(chatmember.FieldID, chatmember.FieldUserID).
-				DoNothing().
+				Ignore().
 				Exec(ctx)
 			_ = tx.ChatPreference.Create().
 				SetID(c.ID).
 				SetUserID(p.UserID).
 				OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
-				DoNothing().
+				Ignore().
 				Exec(ctx)
 		}
 

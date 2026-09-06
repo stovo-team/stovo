@@ -9,10 +9,6 @@ fail() {
   exit 1
 }
 
-if ! command -v rg >/dev/null 2>&1; then
-  fail "ripgrep (rg) is required to run SOLID architecture boundary checks but was not found in PATH."
-fi
-
 declare -A baseline_map
 if [[ -f "$baseline_file" ]]; then
   while IFS=$'\t' read -r path allowed _; do
@@ -45,11 +41,13 @@ check_sizes() {
 }
 
 get_backend_files() {
-  rg --files -g '*.go' -g '!*_test.go' backend/internal | rg -v '^backend/internal[\\/]ent[\\/]' | sort
+  find backend/internal -type f -name '*.go' ! -name '*_test.go' \
+    ! -path 'backend/internal/ent/*' -print | sort
 }
 
 get_frontend_files() {
-  rg --files -g '*.ts' -g '*.tsx' -g '!*.test.*' frontend/src | sort
+  find frontend/src -type f \( -name '*.ts' -o -name '*.tsx' \) \
+    ! -name '*.test.*' -print | sort
 }
 
 check_sizes get_backend_files
@@ -57,13 +55,13 @@ check_sizes get_frontend_files
 
 # The domain and use-case layers are portable policy. Concrete adapters belong
 # in repository/infrastructure packages and are connected by bootstrap.
-if rg -n --glob '*.go' --glob '!*_test.go' \
+if grep -REn --include='*.go' --exclude='*_test.go' \
   'stovo-messenger/backend/internal/(app|bootstrap|repository|ports|storage|broker|cache|logging|tunnel)' \
   backend/internal/domain; then
   fail 'internal/domain imports an outer-layer package'
 fi
 
-if rg -n --glob '*.go' --glob '!*_test.go' \
+if grep -REn --include='*.go' --exclude='*_test.go' \
   'stovo-messenger/backend/internal/(app|bootstrap|repository|ports|storage|broker|cache|logging|tunnel)|/(ent|redis|socketio)' \
   backend/internal/features; then
   fail 'a feature package imports an adapter or transport package'
@@ -71,7 +69,8 @@ fi
 
 # Pages compose feature modules; feature modules may not depend on page-level
 # routing or UI ownership.
-if rg -n --glob '*.{ts,tsx}' "from ['\"][^'\"]*pages/|from ['\"][^'\"]*../pages" frontend/src/features; then
+if grep -REn --include='*.ts' --include='*.tsx' \
+  "from ['\"][^'\"]*pages/|from ['\"][^'\"]*../pages" frontend/src/features; then
   fail 'a frontend feature imports a page module'
 fi
 
