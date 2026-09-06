@@ -28,7 +28,8 @@ describe("web composer pickers", () => {
     expect(attachmentSheetSource).toContain('if (option !== "poll")');
     expect(attachmentSheetSource).toContain('attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready');
     expect(styles).toMatch(/\.attachment-picker-backdrop--web-menu \{[\s\S]*?pointer-events: auto;/);
-    expect(styles).toMatch(/\.attachment-picker-backdrop--web-menu \{[\s\S]*?align-items: flex-start;[\s\S]*?justify-content: flex-end;/);
+    expect(styles).toMatch(/\.attachment-picker-backdrop--web-menu \{[\s\S]*?align-items: flex-end;[\s\S]*?justify-content: flex-end;/);
+    expect(styles).toMatch(/\.attachment-picker-backdrop--web-menu \{[\s\S]*?padding: 0 32px 76px 0;/);
     expect(styles).toMatch(/\.attachment-picker-web-menu \{[\s\S]*?width: 208px;/);
     expect(styles).toMatch(/\.attachment-picker-web-menu button \{[\s\S]*?justify-content: flex-start;/);
   });

@@ -4,7 +4,7 @@ import { io, type Socket } from "socket.io-client";
 import * as Y from "yjs";
 import { Excalidraw } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
-import { ChevronDown, Pencil, Plus, Share2, X } from "lucide-react";
+import { ChevronDown, Forward, Pencil, Plus, X } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { getSocketConfigForUrl } from "../api/serverRegistry";
@@ -218,6 +218,7 @@ export default function CanvasPage() {
   const [blocksRevision, setBlocksRevision] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [forwardChatIds, setForwardChatIds] = useState<string[]>([]);
   const [insertOpen, setInsertOpen] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -320,6 +321,23 @@ export default function CanvasPage() {
     if (!title || title === canvas.title) return;
     setCanvas(await renameCanvas(accessToken, canvas.id, title));
   };
+  const toggleForwardChat = (chatId: string) => {
+    setForwardChatIds((current) => current.includes(chatId) ? current.filter((id) => id !== chatId) : [...current, chatId]);
+  };
+  const forwardCanvas = async () => {
+    if (!accessToken || !canvas || !forwardChatIds.length) return;
+    try {
+      let updatedCanvas = canvas;
+      for (const chatId of forwardChatIds) updatedCanvas = await linkCanvas(accessToken, canvas.id, chatId);
+      const destination = forwardChatIds.length === 1 ? forwardChatIds[0] : null;
+      setCanvas(updatedCanvas);
+      setForwardChatIds([]);
+      setShareOpen(false);
+      if (destination) navigate(`/app/chats/${destination}`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not forward Canvas");
+    }
+  };
 
   if (error) return <main className="canvas-page canvas-page--error"><h1>Canvas unavailable</h1><p>{error}</p><BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} /></main>;
   if (!canvas || !document) return <main className="canvas-page canvas-page--loading">Opening Canvas…</main>;
@@ -333,7 +351,7 @@ export default function CanvasPage() {
           {canvas.canManage && !isEditingTitle && <button type="button" className="canvas-title-edit" aria-label="Edit canvas name" title="Edit canvas name" onClick={() => { setTitleDraft(canvas.title); setIsEditingTitle(true); }}><Pencil size={13} /></button>}
         </div>
         <div className="canvas-page-actions">
-          {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Share canvas" title="Share canvas" onClick={() => setShareOpen((current) => !current)}><Share2 size={18} /></button>}
+          {canvas.canManage && <button type="button" className="canvas-icon-action" aria-label="Forward canvas" title="Forward canvas" onClick={() => { setForwardChatIds([]); setShareOpen((current) => !current); }}><Forward size={18} /></button>}
           <div className="canvas-insert-menu">
             <button type="button" className="canvas-add-button" aria-label="Insert into canvas" aria-expanded={insertOpen} onClick={() => setInsertOpen((current) => !current)}><Plus size={18} /><ChevronDown size={15} /></button>
             {insertOpen && <div className="canvas-insert-dropdown" role="menu"><button type="button" role="menuitem" onClick={addWhiteboard}><Pencil size={16} /><span><strong>Whiteboard</strong><small>Insert a live drawing board</small></span></button></div>}
@@ -343,9 +361,10 @@ export default function CanvasPage() {
       {shareOpen && canvas.canManage && (
         <div className="modal-backdrop" role="presentation">
           <section className="messenger-modal canvas-share-dialog" role="dialog" aria-modal="true" aria-labelledby="canvas-share-title">
-            <div className="modal-header"><h2 id="canvas-share-title">Share Canvas</h2><button type="button" className="icon-button subtle" aria-label="Close share dialog" title="Close" onClick={() => setShareOpen(false)}><X aria-hidden="true" size={18} /></button></div>
-            <p className="forward-preview">Choose a chat to share “{canvas.title}” with.</p>
-            <ForwardChatList accessToken={accessToken} currentUserId={currentUser?.id} chats={chats.filter((chat) => !canvas.linkedChatIds.includes(chat.id))} onSelect={(chatId) => { if (accessToken) void linkCanvas(accessToken, canvas.id, chatId).then((next) => { setCanvas(next); setShareOpen(false); }); }} />
+            <div className="modal-header"><h2 id="canvas-share-title">Forward Canvas</h2><button type="button" className="icon-button subtle" aria-label="Close share dialog" title="Close" onClick={() => { setForwardChatIds([]); setShareOpen(false); }}><X aria-hidden="true" size={18} /></button></div>
+            <p className="forward-preview">Choose chats to share “{canvas.title}” with.</p>
+            <ForwardChatList accessToken={accessToken} currentUserId={currentUser?.id} chats={chats.filter((chat) => !canvas.linkedChatIds.includes(chat.id))} searchable selectedChatIds={forwardChatIds} onToggle={toggleForwardChat} onSelect={() => undefined} />
+            <button type="button" className="forward-dialog-confirm" disabled={!forwardChatIds.length} onClick={() => void forwardCanvas()}><Forward aria-hidden="true" size={18} /> Forward</button>
           </section>
         </div>
       )}
