@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { User, UserRole } from "../api/auth";
 import { ApiError, getClusterPrefix } from "../api/client";
@@ -7,6 +6,7 @@ import { changeMemberRole, getServerRoles, removeMember, ServerRole } from "../a
 import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
+import { BackButton } from "../components/BackButton";
 
 const MEMBERS_PAGE_SIZE = 20;
 
@@ -156,11 +156,7 @@ export default function AdminMembersPage() {
       <AppNav />
       <section className="page-surface admin-surface">
         <div className="admin-detail-header">
-          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin">
-            <span className="ms-icon ms-icon--22" aria-hidden="true">
-              arrow_back
-            </span>
-          </Link>
+          <BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to Admin" />
           <div>
             <h1>Members</h1>
           </div>

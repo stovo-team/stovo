@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { ApiError, getClusterPrefix } from "../api/client";
 import { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 import { useStrings } from "../i18n/LanguageContext";
+import { BackButton } from "../components/BackButton";
 
 export default function AdminAppearancePage() {
   const strings = useStrings();
@@ -56,11 +56,7 @@ export default function AdminAppearancePage() {
       <AppNav />
       <section className="page-surface admin-surface">
         <div className="admin-detail-header">
-          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label={strings.admin.backToAdmin}>
-            <span className="ms-icon ms-icon--22" aria-hidden="true">
-              arrow_back
-            </span>
-          </Link>
+          <BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={strings.admin.backToAdmin} />
           <div>
             <h1>{strings.admin.appearance.title}</h1>
           </div>

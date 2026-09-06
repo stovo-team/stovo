@@ -1,9 +1,10 @@
-import { ArrowLeft, Check, Droplet, Focus, RotateCcw, SunMedium, ZoomIn, ZoomOut } from "lucide-react";
+import { Check, Droplet, Focus, RotateCcw, SunMedium, ZoomIn, ZoomOut } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useStrings } from "../i18n/LanguageContext";
 import { applyGammaCorrection, buildPhotoFilter, PHOTO_EDITOR_FEATURES } from "./PhotoEditor";
+import { BackButton } from "./BackButton";
 
 type WallpaperAdjustments = {
   zoom: number;
@@ -135,7 +136,7 @@ export function ChatWallpaperEditorModal({ file, onSave, onClose }: ChatWallpape
           <div className="wallpaper-editor-message wallpaper-editor-message--incoming">{strings.wallpaperEditor.previewIncoming}</div>
           <div className="wallpaper-editor-message wallpaper-editor-message--outgoing">{strings.wallpaperEditor.previewOutgoing}</div>
           <header className="wallpaper-editor-header">
-            <button type="button" className="wallpaper-editor-icon-button" onClick={onClose} aria-label={strings.avatarEditor.cancel} title={strings.avatarEditor.cancel}><ArrowLeft /></button>
+            <BackButton className="wallpaper-editor-icon-button" ariaLabel={strings.avatarEditor.cancel} title={strings.avatarEditor.cancel} onClick={onClose} />
             <div className="wallpaper-editor-header-actions">
               <button type="button" className="wallpaper-editor-icon-button" onClick={() => void handleApply()} disabled={isProcessing || !image} aria-label={strings.wallpaperEditor.apply} title={strings.wallpaperEditor.apply}><Check /></button>
               <button type="button" className="wallpaper-editor-icon-button" onClick={() => setAdjustments(DEFAULT_ADJUSTMENTS)} aria-label={strings.avatarEditor.reset} title={strings.avatarEditor.reset}><RotateCcw /></button>

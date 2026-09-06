@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { ApiError, getClusterPrefix } from "../api/client";
 import { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import MCPConnectorsPanel from "../components/MCPConnectorsPanel";
 import AppNav from "./AppNav";
+import { BackButton } from "../components/BackButton";
 
 export default function AdminMcpPage() {
   const { accessToken, authRequest, currentUser } = useAuth();
@@ -34,11 +34,7 @@ export default function AdminMcpPage() {
       <AppNav />
       <section className="page-surface admin-surface">
         <div className="admin-detail-header">
-          <Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin">
-            <span className="ms-icon ms-icon--22" aria-hidden="true">
-              arrow_back
-            </span>
-          </Link>
+          <BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to Admin" />
           <div>
             <h1>MCP connectors</h1>
           </div>

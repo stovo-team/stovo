@@ -3,6 +3,7 @@ import { BarChart2, Clock3, FileText, Image, Mail, MoreVertical, Music, Pencil, 
 import { useAuth } from "../../../auth/AuthContext";
 import { ChatStats } from "../../../api/stats";
 import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
+import { BackButton } from "../../../components/BackButton";
 
 const MESSAGE_DELAY_PRESETS = [
   { label: "5s", value: 5 },
@@ -303,16 +304,11 @@ export function ChatDetailsPanel({
         aria-labelledby="chat-settings-title"
       >
         <header className="chat-info-topbar">
-          <button
-            type="button"
+          <BackButton
             className="chat-info-back"
-            aria-label={strings.chats.details.backToChat}
+            ariaLabel={strings.chats.details.backToChat}
             onClick={() => setActiveControl(null)}
-          >
-            <span className="ms-icon ms-icon--24" aria-hidden={true}>
-              arrow_back
-            </span>
-          </button>
+          />
           <h2 id="chat-settings-title" className="chat-info-topbar-title">
             {strings.chats.details.settings}
           </h2>
@@ -542,11 +538,7 @@ export function ChatDetailsPanel({
   return (
     <aside className="chat-details-panel chat-info-screen" role="dialog" aria-modal="true" aria-labelledby="chat-info-title">
       <header className="chat-info-topbar">
-        <button type="button" className="chat-info-back" aria-label={strings.chats.details.backToChat} onClick={onClose}>
-          <span className="ms-icon ms-icon--24" aria-hidden={true}>
-            arrow_back
-          </span>
-        </button>
+        <BackButton className="chat-info-back" ariaLabel={strings.chats.details.backToChat} onClick={onClose} />
         <h2 id="chat-info-title" className="visually-hidden">
           {chatName}
         </h2>

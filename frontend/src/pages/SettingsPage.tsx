@@ -10,7 +10,6 @@ import {
 import {
   Bell,
   BarChart3,
-  ChevronLeft,
   ChevronRight,
   Database,
   Globe,
@@ -61,6 +60,7 @@ import {
 } from "../settings/devicePreferences";
 import { updateNativeNotificationSchedule } from "../api/notifications";
 import { AvatarEditorModal } from "../components/AvatarEditorModal";
+import { BackButton } from "../components/BackButton";
 import AppNav from "./AppNav";
 import { NotificationsSettings } from "./settings/NotificationsSettings";
 import { LanguageSettings } from "./settings/LanguageSettings";
@@ -433,10 +433,8 @@ export default function SettingsPage() {
                 aria-label={activeSettingsItem}
               >
                 <div className="section-title-row">
-                  <button
-                    type="button"
-                    className="icon-button subtle"
-                    aria-label={strings.settings.closeSettingsPanel}
+                  <BackButton
+                    ariaLabel={strings.settings.closeSettingsPanel}
                     onClick={() => {
                       if (activeSettingsItem === "Privacy and Security" && privacyDetail !== "overview") {
                         setPrivacyDetail("overview");
@@ -453,9 +451,7 @@ export default function SettingsPage() {
                       }
                       setActiveSettingsItem(null);
                     }}
-                  >
-                    <ChevronLeft aria-hidden="true" size={22} />
-                  </button>
+                  />
                   <h2>
                     {activeSettingsItem === "Notifications"
                       ? strings.settings.notifications

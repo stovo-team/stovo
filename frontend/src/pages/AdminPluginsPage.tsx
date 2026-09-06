@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { BarChart3, Check, ChevronLeft, Clipboard, Layers3, Plus, Puzzle, X } from "lucide-react";
+import { BarChart3, Check, Clipboard, Layers3, Plus, Puzzle, X } from "lucide-react";
 import { ApiError, getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
+import { BackButton } from "../components/BackButton";
 
 type PluginStatus = { id: string; name: string; enabled: boolean };
 type PluginDetail = { description: string; icon: typeof BarChart3; eyebrow: string; preview: "statistics" | "canvas" | "generic" };
@@ -61,7 +61,7 @@ export default function AdminPluginsPage() {
   }
 
   return <main className="app-shell app-frame admin-page admin-detail-page plugins-page"><AppNav /><section className="page-surface admin-surface plugins-surface">
-    <header className="admin-detail-header plugins-header"><Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to admin"><ChevronLeft size={18} /></Link><div><h1>Plugin store</h1><p>Choose the tools that shape your server.</p></div><button className="plugin-register-button" type="button" onClick={() => setIsRegistering(true)}><Plus size={17} />Add plugin</button></header>
+    <header className="admin-detail-header plugins-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to admin" /><div><h1>Plugin store</h1><p>Choose the tools that shape your server.</p></div><button className="plugin-register-button" type="button" onClick={() => setIsRegistering(true)}><Plus size={17} />Add plugin</button></header>
     {!canManagePlugins && <p className="error-text">Admin access required.</p>}{error && <p className="error-text">{error}</p>}
     {canManagePlugins && <><section className="plugin-store-intro" aria-label="Plugin store summary"><span className="plugin-store-intro-icon"><Puzzle size={21} /></span><div><strong>{enabledCount} of {plugins.length} plugins active</strong><p>Enable, pause, or add a server extension from one place.</p></div></section>
       <section className="plugin-store-grid" aria-label="Available plugins">{plugins.map((plugin) => {

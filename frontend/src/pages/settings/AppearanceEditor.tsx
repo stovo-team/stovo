@@ -1,10 +1,11 @@
 import { ChangeEvent, RefObject, useEffect, useRef, useState } from "react";
-import { ChevronLeft, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useStrings } from "../../i18n/LanguageContext";
 import { ApiError } from "../../api/client";
 import { uploadFile } from "../../api/files";
 import { DEFAULT_APPEARANCE, WallpaperChoice, useAppearance } from "../../appearance/AppearanceContext";
 import { AppearanceMessageControls, AppearanceThemeControls } from "./AppearanceControls";
+import { BackButton } from "../../components/BackButton";
 
 function initials(name: string) {
   return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part.at(0)?.toUpperCase()).join("");
@@ -111,15 +112,12 @@ export function AppearanceEditor({
     <>
       <div className="appearance-editor appearance-editor-enter">
         <header className="appearance-editor-header">
-          <button
-            ref={backButtonRef}
-            type="button"
-            className="icon-button subtle appearance-editor-back"
-            aria-label={strings.appearance.backToSettings}
+          <BackButton
+            buttonRef={backButtonRef}
+            className="appearance-editor-back"
+            ariaLabel={strings.appearance.backToSettings}
             onClick={discardAndClose}
-          >
-            <ChevronLeft aria-hidden="true" size={22} />
-          </button>
+          />
           <h2 className="appearance-editor-title" tabIndex={-1}>
             {strings.appearance.title}
           </h2>

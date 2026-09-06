@@ -18,16 +18,19 @@ describe("web composer pickers", () => {
     expect(composerSource).not.toContain("{Capacitor.isNativePlatform() && (");
   });
 
-  it("offers compact web choices, including camera, and preserves the user gesture for file selection", () => {
+  it("offers compact web choices and preserves the user gesture for file selection", () => {
     const attachmentSheetSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
     expect(attachmentSheetSource).toContain('handleWebMenuPick("gallery")');
-    expect(attachmentSheetSource).toContain('handleWebMenuPick("camera")');
+    expect(attachmentSheetSource).not.toContain('handleWebMenuPick("camera")');
     expect(attachmentSheetSource).toContain('handleWebMenuPick("file")');
     expect(attachmentSheetSource).toContain('handleWebMenuPick("audio")');
     expect(attachmentSheetSource).toContain('onPick(option);');
     expect(attachmentSheetSource).toContain('if (option !== "poll")');
     expect(attachmentSheetSource).toContain('attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready');
     expect(styles).toMatch(/\.attachment-picker-backdrop--web-menu \{[\s\S]*?pointer-events: auto;/);
+    expect(styles).toMatch(/\.attachment-picker-backdrop--web-menu \{[\s\S]*?align-items: flex-start;[\s\S]*?justify-content: flex-end;/);
+    expect(styles).toMatch(/\.attachment-picker-web-menu \{[\s\S]*?width: 208px;/);
+    expect(styles).toMatch(/\.attachment-picker-web-menu button \{[\s\S]*?justify-content: flex-start;/);
   });
 
   it("uses a light hover highlight without transform scaling", () => {

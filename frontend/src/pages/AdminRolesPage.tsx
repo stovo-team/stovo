@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { ApiError, getClusterPrefix } from "../api/client";
 import { createServerRole, deleteServerRole, getServerRoles, ServerRole, updateServerRole } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
+import { BackButton } from "../components/BackButton";
 
 const permissions = [
   ["manage_server", "Manage server", "Server name, appearance, and encryption"],
@@ -67,7 +67,7 @@ export default function AdminRolesPage() {
   }
 
   return <main className="app-shell app-frame admin-page admin-detail-page"><AppNav /><section className="page-surface admin-surface">
-    <div className="admin-detail-header"><Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label="Back to Admin"><span className="ms-icon ms-icon--22" aria-hidden="true">arrow_back</span></Link><div><h1>Roles</h1></div></div>
+    <div className="admin-detail-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to Admin" /><div><h1>Roles</h1></div></div>
     {!canManage && <p className="error-text">Role management access required.</p>}{error && <p className="error-text">{error}</p>}
     {canManage && <div className="admin-roles-layout">
       <aside className="admin-role-list" aria-label="Server roles">{roles.map((role) => <button key={role.id} type="button" className={role.id === selectedId ? "active" : ""} onClick={() => select(role)}><strong>{role.name}</strong><small>{role.isDefault ? "Default role" : `${role.memberCount} members`}</small></button>)}<button type="button" className="admin-role-create" onClick={() => { setSelectedId("new"); setDraft({ id: "new", name: "", description: "", permissions: [], isDefault: false, memberCount: 0 }); }}><span className="ms-icon ms-icon--18" aria-hidden="true">add</span>Create role</button></aside>
