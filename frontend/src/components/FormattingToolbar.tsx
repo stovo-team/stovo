@@ -2,7 +2,6 @@ import type React from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ChevronLeft,
   ClipboardPaste,
   Code2,
   Copy,
@@ -23,6 +22,7 @@ import {
   IconStrikethrough,
   IconUnderline
 } from "./icons";
+import { BackButton } from "./BackButton";
 
 export type FormattingToolbarProps = {
   selection: TextSelection | null;
@@ -250,19 +250,15 @@ export function FormattingToolbar(
         </>
       ) : (
         <div className="formatting-toolbar-submenu" role="menu" aria-label="Formatting options">
-          <button
-            type="button"
-            className="formatting-toolbar-action formatting-toolbar-back"
-            aria-label="Back"
+          <BackButton
+            className="formatting-toolbar-back"
+            ariaLabel="Back"
             title="Back"
             onClick={(event) => {
               event.stopPropagation();
               setFormatOpen(false);
             }}
-          >
-            <ChevronLeft size={15} aria-hidden="true" />
-            <span className="formatting-toolbar-action-label">Back</span>
-          </button>
+          />
           <span className="formatting-toolbar-divider" aria-hidden="true" />
           {formattingActions.filter((action) => action.kind !== "quote").map(({ kind, label, description, Icon }) => (
             <button

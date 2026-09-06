@@ -4,6 +4,7 @@ import type { User } from "../../../api/auth";
 import type { NewChatScreen } from "../shared/types";
 import { RealAvatar } from "./RealAvatar";
 import { useStrings } from "../../../i18n/LanguageContext";
+import { BackButton } from "../../../components/BackButton";
 
 export function NewChatDialog({
   accessToken,
@@ -74,11 +75,7 @@ export function NewChatDialog({
     return (
       <section className="new-chat-screen" role="dialog" aria-modal="true" aria-labelledby="new-chat-compose-title">
         <header className="new-chat-screen-header">
-          <button type="button" className="new-chat-screen-back" aria-label="Back" onClick={() => onScreenChange("pick")}>
-            <span className="ms-icon ms-icon--24" aria-hidden={true}>
-              arrow_back
-            </span>
-          </button>
+          <BackButton className="new-chat-screen-back" ariaLabel="Back" onClick={() => onScreenChange("pick")} />
           <h2 id="new-chat-compose-title">{titleLabel}</h2>
           <button
             type="submit"

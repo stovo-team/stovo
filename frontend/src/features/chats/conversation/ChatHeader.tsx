@@ -30,6 +30,7 @@ import {
 } from "../shared/chatPresentation";
 import type { CallPhase, Message } from "../shared/types";
 import { RealAvatar } from "../sidebar/RealAvatar";
+import { BackButton } from "../../../components/BackButton";
 
 function directChatPresence(selectedChat: Chat, currentUser: User | null) {
   const peer = selectedChat.members.find((member) => member.id !== currentUser?.id);
@@ -116,16 +117,11 @@ export function ChatHeader({
 
   return (
     <div className="chat-detail-header chat-detail-header--floating">
-      <button
-        type="button"
+      <BackButton
         className="mobile-back-button"
-        aria-label={threadRootMessage ? "Back to chat" : "Back to chats"}
+        ariaLabel={threadRootMessage ? "Back to chat" : "Back to chats"}
         onClick={handleBack}
-      >
-        <span className="ms-icon ms-icon--20" aria-hidden={true}>
-          arrow_back
-        </span>
-      </button>
+      />
       {threadRootMessage ? (
         <div className="chat-title-group chat-title-group--thread" aria-live="polite">
           <RealAvatar

@@ -50,7 +50,7 @@ import { VideoPlayer } from "../components/VideoPlayer";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
-import { StorageCollections } from "../components/StorageCollections";
+import { StorageCollections, type StorageCollectionPickerRequest } from "../components/StorageCollections";
 import { StorageCanvases } from "../components/StorageCanvases";
 import { useStrings } from "../i18n/LanguageContext";
 import { loadCachedFileList, saveCachedFileList } from "../fileLibraryCache";
@@ -180,12 +180,16 @@ function StorageTile({
   accessToken,
   file,
   isSelected,
+  selectionLocked = false,
+  suppressPreview = false,
   onSelect,
   onOpenImage
 }: {
   accessToken: string | null;
   file: FamilyFile;
   isSelected: boolean;
+  selectionLocked?: boolean;
+  suppressPreview?: boolean;
   onSelect: () => void;
   onOpenImage: (file: FamilyFile, previewUrl: string) => void;
 }) {
@@ -208,14 +212,16 @@ function StorageTile({
   return (
     <button
       type="button"
-      className={`storage-tile ${isSelected ? "selected" : ""} ${fileKind(file)}`}
+      className={`storage-tile ${isSelected ? "selected" : ""} ${selectionLocked ? "selection-locked" : ""} ${fileKind(file)}`}
       data-storage-file-id={file.id}
       data-file-type={fileTypeLabel(file)}
       aria-pressed={isSelected}
+      aria-disabled={selectionLocked || undefined}
       onClick={() => {
+        if (selectionLocked) return;
         onSelect();
         const isMobileViewport = window.matchMedia("(max-width: 960px)").matches;
-        if (shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport) && previewUrl) {
+        if (!suppressPreview && shouldOpenStorageTilePreview(Boolean(previewUrl), isMobileViewport) && previewUrl) {
           onOpenImage(file, previewUrl);
         }
       }}
@@ -260,6 +266,8 @@ export default function FilesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
+  const [collectionPicker, setCollectionPicker] = useState<StorageCollectionPickerRequest | null>(null);
+  const [collectionPickedIds, setCollectionPickedIds] = useState<string[]>([]);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const sourceMenuRef = useRef<HTMLDivElement | null>(null);
   const storageDetailsCloseRef = useRef<HTMLButtonElement | null>(null);
@@ -417,6 +425,8 @@ export default function FilesPage() {
     });
   }, [files, filter, search, sourceChatId]);
 
+  const collectionPickerFiles = useMemo(() => collectionPicker ? filteredFiles.filter((file) => collectionPicker.allowedFileIds.includes(file.id) || collectionPicker.lockedFileIds.includes(file.id)) : filteredFiles, [collectionPicker, filteredFiles]);
+
   const selectedFile = filteredFiles.find((file) => file.id === selectedFileId) ?? null;
   const selectedFilePreviewUrl = useFilePreviewUrl(accessToken, selectedFile);
   const selectedDocumentKind = selectedFile ? detectDocumentPreviewKind(selectedFile) : "unsupported";
@@ -501,7 +511,7 @@ export default function FilesPage() {
   }
 
   return (
-    <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${mobileDetailsOpen ? " has-storage-selection" : ""}`}>
+    <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${mobileDetailsOpen ? " has-storage-selection" : ""}${collectionPicker ? " is-collection-picking" : ""}`}>
       <AppNav />
       <section className="page-surface storage-layout" aria-busy={isLoading || isUploading}>
         <aside className="storage-source-sidebar" aria-label={strings.files.storageSource}>
@@ -634,14 +644,12 @@ export default function FilesPage() {
           </div>
 
           <div className="storage-content-area">
-            {filter !== "canvases" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} />}
+            {!collectionPicker && filter !== "canvases" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
             <StorageCanvases accessToken={accessToken} filter={filter} search={search} />
             {filter !== "canvases" && <>
             <div className="storage-files-heading">
-              <h2>Files</h2>
-              <button type="button" className="storage-files-upload" title="Upload files" aria-label="Upload files" disabled={isUploading} onClick={() => uploadInputRef.current?.click()}>
-                <Upload size={15} />
-              </button>
+              <div><h2>{collectionPicker ? `Add to ${collectionPicker.collectionTitle}` : "Files"}</h2>{collectionPicker && <p className="storage-picker-hint">Select files from Storage. Files already in this folder are locked.</p>}</div>
+              {!collectionPicker && <button type="button" className="storage-files-upload" title="Upload files" aria-label="Upload files" disabled={isUploading} onClick={() => uploadInputRef.current?.click()}><Upload size={15} /></button>}
               <input ref={uploadInputRef} className="visually-hidden" type="file" multiple onChange={handleUpload} />
             </div>
             {isLoading ? (
@@ -650,24 +658,23 @@ export default function FilesPage() {
                   <span className="storage-tile skeleton-tile" key={index} />
                 ))}
               </div>
-            ) : filteredFiles.length === 0 ? (
+            ) : collectionPickerFiles.length === 0 ? (
               <div className="empty-state storage-empty-state">
                 <HardDriveIcon />
                 <strong>{strings.files.empty}</strong>
               </div>
             ) : (
               <div className="storage-grid">
-                {filteredFiles.map((file) => (
+                {collectionPickerFiles.map((file) => (
                   <StorageTile
                     accessToken={accessToken}
                     file={file}
-                    isSelected={selectedFile?.id === file.id}
+                    isSelected={collectionPicker ? collectionPicker.lockedFileIds.includes(file.id) || collectionPickedIds.includes(file.id) : selectedFile?.id === file.id}
+                    selectionLocked={Boolean(collectionPicker?.lockedFileIds.includes(file.id))}
+                    suppressPreview={Boolean(collectionPicker)}
                     key={file.id}
                     onOpenImage={(imageFile, previewUrl) => setFullViewImage({ file: imageFile, previewUrl })}
-                    onSelect={() => dispatchSelection(storageTileSelectionAction(
-                      window.matchMedia("(max-width: 960px)").matches,
-                      file.id
-                    ))}
+                    onSelect={() => collectionPicker ? setCollectionPickedIds((ids) => ids.includes(file.id) ? ids.filter((id) => id !== file.id) : [...ids, file.id]) : dispatchSelection(storageTileSelectionAction(window.matchMedia("(max-width: 960px)").matches, file.id))}
                   />
                 ))}
               </div>
@@ -675,6 +682,8 @@ export default function FilesPage() {
             </>}
           </div>
         </div>
+
+        {collectionPicker && <div className="storage-selection-bar" role="region" aria-label="Folder file selection"><span>{collectionPickedIds.length ? `${collectionPickedIds.length} file${collectionPickedIds.length === 1 ? "" : "s"} selected` : "Select files to add"}</span><div><button type="button" onClick={() => { setCollectionPicker(null); setCollectionPickedIds([]); }}>Cancel</button><button type="button" className="primary-button" disabled={!collectionPickedIds.length} onClick={() => { collectionPicker.onConfirm(collectionPickedIds); setCollectionPicker(null); setCollectionPickedIds([]); }}>Add selected</button></div></div>}
 
         {mobileDetailsOpen && (
           <button

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Activity, ArrowLeft, BarChart3, Clock3, MessageSquare, Trophy, Users, Zap } from "lucide-react";
+import { Activity, BarChart3, Clock3, MessageSquare, Trophy, Users, Zap } from "lucide-react";
 
 import { FunAwards, ServerOverviewStats } from "../api/stats";
 import { Chat, getChats } from "../api/chats";
@@ -9,6 +8,7 @@ import { useAuth } from "../auth/AuthContext";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import { chatAvatarFallbackKind, chatAvatarFile } from "../features/chats/shared/chatPresentation";
 import AppNav from "./AppNav";
+import { BackButton } from "../components/BackButton";
 
 const ranges = ["7d", "30d", "1y", "all"] as const;
 type Range = (typeof ranges)[number];
@@ -81,7 +81,7 @@ export default function AdminStatsPage() {
     <AppNav />
     <section className="page-surface admin-surface stats-surface">
       <header className="stats-header">
-        <Link to={`${prefix}/app/settings`} className="stats-back" aria-label="Back to Settings"><ArrowLeft size={18} /></Link>
+        <BackButton to={`${prefix}/app/settings`} className="stats-back" ariaLabel="Back to Settings" />
         <div><h1>Statistics dashboard</h1></div>
       </header>
 

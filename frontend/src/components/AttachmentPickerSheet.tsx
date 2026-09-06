@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
-import { AudioLines, BarChart2, Camera, FileText, Image as ImageIcon, Music, Paperclip, Smile, StickyNote } from "lucide-react";
+import { AudioLines, BarChart2, FileText, Image as ImageIcon, Music, Paperclip, Smile, StickyNote } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 
@@ -408,7 +408,6 @@ export default function AttachmentPickerSheet({
       <div className="attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready" role="presentation" onClick={closeSheet}>
         <div className="attachment-picker-web-menu" role="dialog" aria-modal="true" aria-label="Attach to message" onClick={(event) => event.stopPropagation()}>
           <button type="button" onClick={() => handleWebMenuPick("gallery")}><ImageIcon size={19} /><span>Photo or video</span></button>
-          <button type="button" onClick={() => handleWebMenuPick("camera")}><Camera size={19} /><span>Camera</span></button>
           <button type="button" onClick={() => handleWebMenuPick("file")}><FileText size={19} /><span>Document</span></button>
           <button type="button" onClick={() => handleWebMenuPick("audio")}><Music size={19} /><span>Music</span></button>
           <button type="button" onClick={() => handleWebMenuPick("poll")}><BarChart2 size={19} /><span>Poll</span></button>

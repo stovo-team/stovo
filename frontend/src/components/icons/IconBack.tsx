@@ -4,7 +4,7 @@ type IconProps = {
   title?: string;
 };
 
-export default function IconBack({ className, size = 24, title }: IconProps) {
+export default function IconBack({ className, size = 18, title }: IconProps) {
   return (
     <svg
       className={className}
@@ -17,11 +17,11 @@ export default function IconBack({ className, size = 24, title }: IconProps) {
       aria-label={title}
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.75}
+      strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="m15 18-6-6 6-6" />
+      <path d="M20 12H4m6-6-6 6 6 6" />
     </svg>
   );
 }

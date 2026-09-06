@@ -119,12 +119,20 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 		t.Fatalf("create other chat status = %d", otherChatResp.StatusCode)
 	}
 	otherChat := decodeJSON[chatPublic](t, otherChatResp)
+	secondAllowedResp := jsonRequest(t, client, http.MethodPost, httpServer.URL+"/api/chats/group", owner.AccessToken, map[string]any{
+		"title":     "MCP Also Allowed",
+		"memberIds": []string{owner.User.ID},
+	})
+	if secondAllowedResp.StatusCode != http.StatusCreated {
+		t.Fatalf("create second allowed chat status = %d", secondAllowedResp.StatusCode)
+	}
+	secondAllowedChat := decodeJSON[chatPublic](t, secondAllowedResp)
 
 	createResp := jsonRequest(t, client, http.MethodPost, httpServer.URL+"/api/admin/mcp-connectors", owner.AccessToken, map[string]any{
 		"name":               "Auth Connector",
 		"provider":           mcpProviderCodex,
 		"alias":              "codex",
-		"allowedChatIds":     []string{chat.ID},
+		"allowedChatIds":     []string{chat.ID, secondAllowedChat.ID},
 		"maxHistoryMessages": 10,
 		"permissions": map[string]bool{
 			mcpPermChatsList:    true,
@@ -150,6 +158,9 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 	}
 	if created.Connector.AuthMode != mcpAuthModeSubscription {
 		t.Fatalf("authMode = %q, want %q", created.Connector.AuthMode, mcpAuthModeSubscription)
+	}
+	if len(created.Connector.AllowedChatIDs) != 2 {
+		t.Fatalf("allowed chats = %v, want two chat bindings", created.Connector.AllowedChatIDs)
 	}
 	if created.Connector.Permissions.Has(mcpPermMessagesDelete) {
 		t.Fatal("delete permission should remain disabled by default")

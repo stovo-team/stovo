@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 
 import { ApiError, getClusterPrefix } from "../api/client";
 import type { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
+import { BackButton } from "../components/BackButton";
 import { useStrings } from "../i18n/LanguageContext";
 import { DEFAULT_DEVICE_PREFERENCES, type DevicePreferences } from "../settings/devicePreferences";
 
@@ -56,7 +56,7 @@ export default function AdminDefaultsPage() {
   return <main className="app-shell app-frame admin-page admin-detail-page">
     <AppNav />
     <section className="page-surface admin-surface">
-      <div className="admin-detail-header"><Link to={`${prefix}/app/admin`} className="mobile-back-button" aria-label={strings.admin.backToAdmin}><span className="ms-icon ms-icon--22" aria-hidden="true">arrow_back</span></Link><h1>{strings.admin.defaults.title}</h1></div>
+      <div className="admin-detail-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={strings.admin.backToAdmin} /><h1>{strings.admin.defaults.title}</h1></div>
       {!isOwner && <p className="error-text">{strings.admin.defaults.ownerRequired}</p>}
       {error && <p className="error-text">{error}</p>}{notice && <p className="success-text">{notice}</p>}
       {isOwner && <div className="settings-toggle-groups admin-panel">
