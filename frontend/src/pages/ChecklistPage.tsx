@@ -22,7 +22,6 @@ import {
   renameChecklist,
   updateChecklistCategory,
   toggleChecklistItem,
-  addChecklistItem,
   deleteChecklistItem,
   batchSyncChecklistItems,
   linkChecklist,
@@ -182,9 +181,8 @@ export default function ChecklistPage() {
     );
 
     try {
-      const updated = await toggleChecklistItem(accessToken, checklist.id, itemId, nextCompleted);
-      setChecklist(updated);
-      setItems(updated.items || []);
+      const updated = await toggleChecklistItem(accessToken, checklist.id, itemId);
+      setItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
     } catch {
       // Revert on error
       const restored = await getChecklist(accessToken, checklist.id).catch(() => null);
@@ -268,6 +266,7 @@ export default function ChecklistPage() {
         completed: false,
         position: currentIndex + 2,
         section: currentSection || "",
+        createdBy: currentUser?.id || "",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -328,9 +327,7 @@ export default function ChecklistPage() {
 
     if (!itemId.startsWith("temp_") && accessToken && checklist) {
       try {
-        const updated = await deleteChecklistItem(accessToken, checklist.id, itemId);
-        setChecklist(updated);
-        setItems(updated.items || []);
+        await deleteChecklistItem(accessToken, checklist.id, itemId);
       } catch {
         // ignore
       }
@@ -341,24 +338,29 @@ export default function ChecklistPage() {
 
   // Add new item to a section
   const handleAddItemToSection = async (section = "") => {
-    if (!accessToken || !checklist) return;
-    try {
-      const updated = await addChecklistItem(accessToken, checklist.id, {
-        text: "",
-        section
-      });
-      setChecklist(updated);
-      setItems(updated.items || []);
-      // Focus the newly added item
-      const last = updated.items?.[updated.items.length - 1];
-      if (last) {
-        setTimeout(() => {
-          inputRefs.current.get(last.id)?.focus();
-        }, 50);
-      }
-    } catch {
-      // ignore
-    }
+    if (!checklist) return;
+    // Empty items are edited locally first; the batch endpoint intentionally omits
+    // them until the user enters text.
+    const id = `temp_${Date.now()}`;
+    const now = new Date().toISOString();
+    const newItem: ChecklistItem = {
+      id,
+      checklistId: checklist.id,
+      text: "",
+      completed: false,
+      position: items.length + 1,
+      section,
+      createdBy: currentUser?.id || "",
+      createdAt: now,
+      updatedAt: now
+    };
+    const nextItems = [...items, newItem];
+    setItems(nextItems);
+    setChecklist((prev) => prev ? { ...prev, totalItems: prev.totalItems + 1 } : prev);
+    scheduleBatchSync(nextItems);
+    setTimeout(() => {
+      inputRefs.current.get(id)?.focus();
+    }, 50);
   };
 
   // Add section
