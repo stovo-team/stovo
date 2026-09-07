@@ -9,7 +9,7 @@ import { ChatFolderDialog } from "./ChatFolderDialog";
 import { ChatFolder, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
 import { displayChatName } from "../shared/chatPresentation";
 import { DefaultChatSectionDialog } from "./DefaultChatSectionDialog";
-import { DefaultChatSectionNames, loadDefaultChatSectionNames, saveDefaultChatSectionNames } from "./defaultChatSectionSettings";
+import { DefaultChatSectionNames, loadDefaultChatSectionNames, loadDefaultGroupsFolder, saveDefaultChatSectionNames, saveDefaultGroupsFolder } from "./defaultChatSectionSettings";
 
 type ChatListProps = {
   isLoading: boolean;
@@ -51,6 +51,7 @@ export function ChatList({
   const [folderState, setFolderState] = useState(() => ({ familyId, folders: loadChatFolders(familyId) }));
   const [editingFolder, setEditingFolder] = useState<ChatFolder | null | undefined>(undefined);
   const [defaultSectionNames, setDefaultSectionNames] = useState<DefaultChatSectionNames>(() => loadDefaultChatSectionNames(familyId));
+  const [defaultGroupsFolder, setDefaultGroupsFolder] = useState<ChatFolder>(() => loadDefaultGroupsFolder(familyId, loadDefaultChatSectionNames(familyId).groups));
   const [editingDefaultSection, setEditingDefaultSection] = useState<ChatSectionKey | undefined>(undefined);
   const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
 
@@ -59,6 +60,7 @@ export function ChatList({
   useEffect(() => {
     setFolderState({ familyId, folders: loadChatFolders(familyId) });
     setDefaultSectionNames(loadDefaultChatSectionNames(familyId));
+    setDefaultGroupsFolder(loadDefaultGroupsFolder(familyId, loadDefaultChatSectionNames(familyId).groups));
     setCollapsed({});
   }, [familyId]);
   useEffect(() => {
@@ -85,6 +87,12 @@ export function ChatList({
     });
     setEditingDefaultSection(undefined);
   }
+  function saveGroupsFolderSettings(folder: ChatFolder) {
+    const next = { ...folder, id: "default-groups" };
+    setDefaultGroupsFolder(next);
+    saveDefaultGroupsFolder(familyId, next);
+    setEditingDefaultSection(undefined);
+  }
 
   const chatSectionOrder: Array<{ key: ChatSectionKey; label: string }> = [
     { key: "archive", label: strings.chats.sections.archive },
@@ -107,8 +115,10 @@ export function ChatList({
             </div>
           ))
         : chatSectionOrder.map((section) => {
-            const sectionChats = chatsBySection[section.key];
-            const sectionLabel = defaultSectionNames[section.key] ?? section.label;
+            const sectionChats = section.key === "groups"
+              ? filteredChats.filter((chat) => matchesFolder(chat, defaultGroupsFolder.rules, displayChatName(chat, currentUserId, strings)))
+              : chatsBySection[section.key];
+            const sectionLabel = section.key === "groups" ? defaultGroupsFolder.name : defaultSectionNames[section.key] ?? section.label;
             if (sectionChats.length === 0) {
               return null;
             }
@@ -156,7 +166,8 @@ export function ChatList({
         </div>
       )}
       {editingFolder !== undefined && <ChatFolderDialog folder={editingFolder} onClose={() => setEditingFolder(undefined)} onSave={saveFolder} onDelete={deleteFolder} />}
-      {editingDefaultSection !== undefined && <DefaultChatSectionDialog initialName={defaultSectionNames[editingDefaultSection] ?? chatSectionOrder.find((section) => section.key === editingDefaultSection)?.label ?? ""} onClose={() => setEditingDefaultSection(undefined)} onSave={(name) => saveDefaultSectionName(editingDefaultSection, name)} />}
+      {editingDefaultSection === "groups" && <ChatFolderDialog folder={defaultGroupsFolder} title="Groups settings" allowDelete={false} onClose={() => setEditingDefaultSection(undefined)} onSave={saveGroupsFolderSettings} onDelete={() => undefined} />}
+      {editingDefaultSection !== undefined && editingDefaultSection !== "groups" && <DefaultChatSectionDialog initialName={defaultSectionNames[editingDefaultSection] ?? chatSectionOrder.find((section) => section.key === editingDefaultSection)?.label ?? ""} onClose={() => setEditingDefaultSection(undefined)} onSave={(name) => saveDefaultSectionName(editingDefaultSection, name)} />}
     </div>
   );
 }
