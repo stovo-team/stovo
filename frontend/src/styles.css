@@ -23153,9 +23153,10 @@ span.message-spoiler.is-revealed {
 .canvas-page-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 7px; margin-left: auto; }
 .canvas-icon-action, .canvas-add-button, .canvas-markdown-toolbar button, .canvas-share-panel button { align-items: center; background: #20242a; border: 1px solid #333943; border-radius: 999px; color: var(--text-primary); display: inline-flex; gap: 6px; min-height: 40px; padding: 8px 11px; }
 .canvas-icon-action { justify-content: center; padding: 8px; width: 40px; }
+.canvas-page-header > .back-button { flex: 0 0 40px; height: 40px; width: 40px; }
 .canvas-title-edit { align-items: center; background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; display: inline-flex; padding: 2px; }
 .canvas-title-edit:hover, .canvas-title-edit:focus-visible { color: var(--text-primary); outline: none; }
-.canvas-add-button { justify-content: center; min-width: 50px; }
+.canvas-add-button { flex: 0 0 40px; gap: 2px; justify-content: center; min-width: 40px; padding: 0; width: 40px; }
 .canvas-icon-action:hover, .canvas-add-button:hover, .canvas-markdown-toolbar button:hover, .canvas-share-panel button:hover { border-color: var(--accent-primary); }
 .canvas-workspace { display: grid; gap: 18px; margin: 0 auto; max-width: 1180px; }
 .canvas-block { background: #121417; border: 1px solid #2b3038; border-radius: 14px; overflow: hidden; }

@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, Camera, ChevronLeft, FileText, FileVideo, Folder, Forward, Image, LockKeyhole, Music2, Palette, Pencil, Plus, Settings2, Star, Trash2, Upload, Users, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { User } from "../api/auth";
 import { getChats, sendCollectionMessage, type Chat } from "../api/chats";
 import { getMembers, getServerRoles, type ServerRole } from "../api/family";
@@ -82,12 +82,14 @@ function CollectionFileCard({ file, token, editable, onRemove }: { file: FamilyF
 
 export function StorageCollections({ accessToken, files, filter, currentUserId, onFilesChanged, onSelectFromStorage }: { accessToken: string | null; files: FamilyFile[]; filter: string; currentUserId?: string; onFilesChanged?: () => void; onSelectFromStorage?: (request: StorageCollectionPickerRequest) => void }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [collections, setCollections] = useState<StorageCollection[]>([]); const [selected, setSelected] = useState<StorageCollection | null>(null); const [items, setItems] = useState<FamilyFile[]>([]); const [grants, setGrants] = useState<CollectionGrant[]>([]); const [members, setMembers] = useState<User[]>([]); const [roles, setRoles] = useState<ServerRole[]>([]); const [chats, setChats] = useState<Chat[]>([]); const [creating, setCreating] = useState(false); const [settings, setSettings] = useState(false); const [adding, setAdding] = useState(false); const [coverMenu, setCoverMenu] = useState(false); const [coverColor, setCoverColor] = useState("#24364b"); const [coverIcon, setCoverIcon] = useState<CoverIconName>("folder"); const [renaming, setRenaming] = useState(false); const [forwarding, setForwarding] = useState<StorageCollection | null>(null); const [confirmingDelete, setConfirmingDelete] = useState(false); const [title, setTitle] = useState(""); const [kind, setKind] = useState<CollectionKind>("folder"); const [grantTarget, setGrantTarget] = useState(""); const [grantLevel, setGrantLevel] = useState<CollectionAccessLevel>("viewer"); const [forwardChatIds, setForwardChatIds] = useState<string[]>([]); const [error, setError] = useState<string | null>(null);
-  const uploadRef = useRef<HTMLInputElement>(null); const coverUploadRef = useRef<HTMLInputElement>(null); const requested = useMemo(() => new URLSearchParams(location.search).get("collection"), []); const opened = useRef(false);
+  const uploadRef = useRef<HTMLInputElement>(null); const coverUploadRef = useRef<HTMLInputElement>(null); const requested = useMemo(() => new URLSearchParams(location.search).get("collection"), [location.search]); const opened = useRef(false);
   const load = async () => { if (accessToken) setCollections(await getCollections(accessToken)); };
   useEffect(() => { void load().catch(() => setError("Could not load folders and albums")); }, [accessToken]);
   useEffect(() => { if (!accessToken) return; void Promise.all([getMembers(accessToken), getServerRoles(accessToken), getChats(accessToken)]).then(([m, r, c]) => { setMembers(m); setRoles(r); setChats(c); }); }, [accessToken]);
   const open = async (collection: StorageCollection) => { if (!accessToken) return; setSelected(collection); setSettings(false); const [nextItems, nextGrants] = await Promise.all([getCollectionItems(accessToken, collection.id), collection.accessLevel === "editor" ? getCollectionGrants(accessToken, collection.id) : Promise.resolve([])]); setItems(nextItems); setGrants(nextGrants); };
+  useEffect(() => { opened.current = false; }, [requested]);
   useEffect(() => { const collection = requested ? collections.find((item) => item.id === requested) : null; if (collection && !opened.current) { opened.current = true; void open(collection); } }, [collections, requested]);
   const updateSelected = (next: StorageCollection) => { setSelected(next); setCollections((all) => all.map((item) => item.id === next.id ? next : item)); };
   const create = async () => { if (!accessToken || !title.trim()) return; const contentType: CollectionContentType = kind === "music-album" ? "audio" : kind === "album" ? "media" : "mixed"; try { const next = await createCollection(accessToken, { title: title.trim(), displayKind: kind, contentType }); setCollections((all) => [next, ...all]); setCreating(false); setTitle(""); await open(next); } catch { setError("Could not create collection"); } };
