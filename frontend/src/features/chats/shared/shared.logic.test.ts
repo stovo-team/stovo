@@ -5,6 +5,7 @@ import {
   chatListLayoutClass,
   chatPreview,
   displayChatName,
+  formatPreviewContent,
   shouldShowChatRowMeta,
   compactChatListLeadingVisual,
   sharedContentItemMatchesTab,
@@ -58,6 +59,35 @@ describe("chat presentation helpers", () => {
 
   it("does not add a direct-message subtitle to Message Archive", () => {
     expect(chatPreview({ type: "archive" } as any)).toBe("");
+  });
+
+  it("formats checklist and canvas messages cleanly in chat previews", () => {
+    expect(
+      chatPreview({
+        type: "direct",
+        lastMessageSenderDisplayName: "ivan",
+        lastMessageContent: "checklist:d352a34f-3785-4dea-a90a-123456789abc\nGrocery list",
+        lastMessageType: "checklist"
+      } as any)
+    ).toBe("ivan: Checklist: Grocery list");
+
+    expect(
+      chatPreview({
+        type: "direct",
+        lastMessageSenderDisplayName: "ivan",
+        lastMessageContent: "checklist:d352a34f-3785-4dea-a90a-123456789abc",
+        lastMessageType: "checklist"
+      } as any)
+    ).toBe("ivan: Checklist");
+
+    expect(
+      chatPreview({
+        type: "direct",
+        lastMessageSenderDisplayName: "alex",
+        lastMessageContent: "canvas:98765432-3785-4dea-a90a-123456789abc\nSprint Plan",
+        lastMessageType: "canvas"
+      } as any)
+    ).toBe("alex: Canvas: Sprint Plan");
   });
 
   it("localizes the name (title) of the Message Archive", () => {

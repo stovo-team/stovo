@@ -525,6 +525,20 @@ func deriveMessagePreview(content *string, messageType string, attachmentCount i
 	if content != nil {
 		trimmed = strings.TrimSpace(*content)
 	}
+	if messageType == "checklist" || strings.HasPrefix(trimmed, "checklist:") {
+		parts := strings.SplitN(trimmed, "\n", 2)
+		if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
+			return "Checklist: " + strings.TrimSpace(parts[1])
+		}
+		return "Checklist"
+	}
+	if messageType == "canvas" || strings.HasPrefix(trimmed, "canvas:") {
+		parts := strings.SplitN(trimmed, "\n", 2)
+		if len(parts) == 2 && strings.TrimSpace(parts[1]) != "" {
+			return "Canvas: " + strings.TrimSpace(parts[1])
+		}
+		return "Canvas"
+	}
 	if trimmed != "" {
 		return trimmed
 	}

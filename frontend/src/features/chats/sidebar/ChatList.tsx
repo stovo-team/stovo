@@ -1,4 +1,4 @@
-import { ChevronDown, FolderPlus, Lock, MessageCircle, Settings2 } from "lucide-react";
+import { ChevronDown, FolderMinus, FolderPlus, Lock, MessageCircle, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Chat } from "../../../api/chats";
@@ -71,6 +71,7 @@ export function ChatList({
   function canDropToSection(sectionKey: ChatSectionKey, chat: Chat, chatName: string): boolean {
     if (sectionKey === "archive") return true;
     if (sectionKey === "groups") {
+      if (chat.type === "group" || chat.type === "family") return true;
       return folderMatchesChatProperties(chat, defaultGroupsFolder.rules, chatName);
     }
     if (sectionKey === "dms") return chat.type === "direct";
@@ -93,22 +94,13 @@ export function ChatList({
     // 2. If chat has an explicit section override
     const assignedSection = sectionAssignments[chat.id];
     if (assignedSection) {
-      if (assignedSection === "groups") {
-        if (folderMatchesChatProperties(chat, defaultGroupsFolder.rules, chatName)) {
-          return "groups";
-        }
-      } else {
-        return assignedSection;
-      }
+      return assignedSection;
     }
 
     // 3. Natural section
     if (chat.type === "archive") return "archive";
     if (chat.type === "group" || chat.type === "family") {
-      if (folderMatchesChatProperties(chat, defaultGroupsFolder.rules, chatName)) {
-        return "groups";
-      }
-      return "";
+      return "groups";
     }
     if (chat.type === "direct") return "dms";
     if (chat.type === "channel") return "channels";
@@ -176,7 +168,22 @@ export function ChatList({
     }));
     saveChatFolders(familyId, nextFolders);
 
-    // 2. Set or clear section assignment
+    // 2. If dropped to groups and it is a group/family chat, ensure defaultGroupsFolder includes "group"
+    if (sectionKey === "groups" && (chat.type === "group" || chat.type === "family")) {
+      if (!defaultGroupsFolder.rules.chatTypes.includes("group")) {
+        const nextGroupsFolder: ChatFolder = {
+          ...defaultGroupsFolder,
+          rules: {
+            ...defaultGroupsFolder.rules,
+            chatTypes: [...defaultGroupsFolder.rules.chatTypes, "group"]
+          }
+        };
+        setDefaultGroupsFolder(nextGroupsFolder);
+        saveDefaultGroupsFolder(familyId, nextGroupsFolder);
+      }
+    }
+
+    // 3. Set or clear section assignment
     const naturalSectionKey =
       chat.type === "archive"
         ? "archive"
@@ -204,6 +211,68 @@ export function ChatList({
     if (collapsed[sectionKey]) {
       setCollapsed((prev) => ({ ...prev, [sectionKey]: false }));
     }
+    setDraggedChat(null);
+    setDragOverTargetId(null);
+  }
+
+  function handleRemoveChatFromFolder(folder: ChatFolder, chat: Chat) {
+    const nextFolders = folders.map((item) => {
+      if (item.id === folder.id) {
+        return {
+          ...item,
+          rules: {
+            ...item.rules,
+            includedChatIds: (item.rules.includedChatIds ?? []).filter((id) => id !== chat.id)
+          }
+        };
+      }
+      return item;
+    });
+    setFolderState((current) => ({
+      ...current,
+      folders: nextFolders
+    }));
+    saveChatFolders(familyId, nextFolders);
+
+    if ((chat.type === "group" || chat.type === "family") && !defaultGroupsFolder.rules.chatTypes.includes("group")) {
+      const nextGroupsFolder: ChatFolder = {
+        ...defaultGroupsFolder,
+        rules: {
+          ...defaultGroupsFolder.rules,
+          chatTypes: [...defaultGroupsFolder.rules.chatTypes, "group"]
+        }
+      };
+      setDefaultGroupsFolder(nextGroupsFolder);
+      saveDefaultGroupsFolder(familyId, nextGroupsFolder);
+    }
+  }
+
+  function handleRemoveChatFromAllFolders(chat: Chat) {
+    const nextFolders = folders.map((item) => ({
+      ...item,
+      rules: {
+        ...item.rules,
+        includedChatIds: (item.rules.includedChatIds ?? []).filter((id) => id !== chat.id)
+      }
+    }));
+    setFolderState((current) => ({
+      ...current,
+      folders: nextFolders
+    }));
+    saveChatFolders(familyId, nextFolders);
+
+    if ((chat.type === "group" || chat.type === "family") && !defaultGroupsFolder.rules.chatTypes.includes("group")) {
+      const nextGroupsFolder: ChatFolder = {
+        ...defaultGroupsFolder,
+        rules: {
+          ...defaultGroupsFolder.rules,
+          chatTypes: [...defaultGroupsFolder.rules.chatTypes, "group"]
+        }
+      };
+      setDefaultGroupsFolder(nextGroupsFolder);
+      saveDefaultGroupsFolder(familyId, nextGroupsFolder);
+    }
+
     setDraggedChat(null);
     setDragOverTargetId(null);
   }
@@ -266,8 +335,27 @@ export function ChatList({
     chatSectionOrder.some((s) => filteredChats.some((c) => getChatContainer(c) === s.key)) ||
     folders.some((f) => filteredChats.some((c) => getChatContainer(c) === f.id));
 
+  const isDraggingFromFolder = Boolean(
+    draggedChat && folders.some((f) => f.rules.includedChatIds?.includes(draggedChat.id))
+  );
+
   return (
-    <div className="chat-list" aria-busy={isLoading || !hasLoadedOverview}>
+    <div
+      className="chat-list"
+      aria-busy={isLoading || !hasLoadedOverview}
+      onDragOver={(e) => {
+        if (isDraggingFromFolder) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDrop={(e) => {
+        if (e.target === e.currentTarget && draggedChat && isDraggingFromFolder) {
+          e.preventDefault();
+          handleRemoveChatFromAllFolders(draggedChat);
+        }
+      }}
+    >
       {showSkeleton
         ? Array.from({ length: 5 }).map((_, index) => (
             <div className="chat-list-item skeleton-row" key={index}>
@@ -281,7 +369,15 @@ export function ChatList({
         : chatSectionOrder.map((section) => {
             const sectionChats = filteredChats.filter((chat) => getChatContainer(chat) === section.key);
             const sectionLabel = section.key === "groups" ? defaultGroupsFolder.name : defaultSectionNames[section.key] ?? section.label;
-            if (sectionChats.length === 0 && !draggedChat) {
+            const hasChatsInSpace = filteredChats.some((c) => {
+              if (section.key === "archive") return c.type === "archive";
+              if (section.key === "groups") return c.type === "group" || c.type === "family";
+              if (section.key === "dms") return c.type === "direct";
+              if (section.key === "channels") return c.type === "channel";
+              if (section.key === "voice") return c.type === "voice";
+              return false;
+            });
+            if (sectionChats.length === 0 && !hasChatsInSpace && !draggedChat) {
               return null;
             }
             const draggedChatName = draggedChat ? displayChatName(draggedChat, currentUserId, strings) : "";
@@ -318,6 +414,7 @@ export function ChatList({
                         <Lock size={14} aria-hidden="true" />
                       </span>
                     )}
+                    <small>{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
                   </button>
                   {canManageFolders && (
                     <span className="chat-folder-controls">
@@ -327,25 +424,31 @@ export function ChatList({
                     </span>
                   )}
                 </div>
-                {!collapsed[section.key] && sectionChats.map((chat) => (
-                  <ChatListItem
-                    key={chat.id}
-                    chat={chat}
-                    isActive={chat.id === activeChatId}
-                    isTransitionSource={selectedChatId === chat.id}
-                    accessToken={accessToken}
-                    currentUserId={currentUserId}
-                    minimizedChatLayout={minimizedChatLayout}
-                    isDragging={draggedChat?.id === chat.id}
-                    onSelect={onSelectChat}
-                    onOpen={onOpenChat}
-                    onDragStart={(_e, c) => setDraggedChat(c)}
-                    onDragEnd={() => {
-                      setDraggedChat(null);
-                      setDragOverTargetId(null);
-                    }}
-                  />
-                ))}
+                {!collapsed[section.key] && (
+                  sectionChats.length > 0 ? (
+                    sectionChats.map((chat) => (
+                      <ChatListItem
+                        key={chat.id}
+                        chat={chat}
+                        isActive={chat.id === activeChatId}
+                        isTransitionSource={selectedChatId === chat.id}
+                        accessToken={accessToken}
+                        currentUserId={currentUserId}
+                        minimizedChatLayout={minimizedChatLayout}
+                        isDragging={draggedChat?.id === chat.id}
+                        onSelect={onSelectChat}
+                        onOpen={onOpenChat}
+                        onDragStart={(_e, c) => setDraggedChat(c)}
+                        onDragEnd={() => {
+                          setDraggedChat(null);
+                          setDragOverTargetId(null);
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <p className="chat-folder-empty chat-folder-empty--dropzone">Drop chats here to add to {sectionLabel}</p>
+                  )
+                )}
               </section>
             );
           })}
@@ -414,6 +517,7 @@ export function ChatList({
                       setDraggedChat(null);
                       setDragOverTargetId(null);
                     }}
+                    onRemoveFromFolder={(c) => handleRemoveChatFromFolder(folder, c)}
                   />
                 ))
               ) : (
@@ -423,6 +527,30 @@ export function ChatList({
           </section>
         );
       })}
+
+      {isDraggingFromFolder && (
+        <div
+          className={`chat-folder-remove-dropzone ${dragOverTargetId === "__remove_from_folder__" ? "is-active" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOverTargetId("__remove_from_folder__");
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDragLeave={() => {
+            setDragOverTargetId((cur) => (cur === "__remove_from_folder__" ? null : cur));
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (draggedChat) {
+              handleRemoveChatFromAllFolders(draggedChat);
+            }
+          }}
+        >
+          <FolderMinus size={15} aria-hidden="true" />
+          <span>Drop here to move out of folder</span>
+        </div>
+      )}
+
       {canManageFolders && !showSkeleton && <button type="button" className="chat-folder-create" onClick={() => setEditingFolder(null)}><FolderPlus size={17} aria-hidden="true" />New folder</button>}
       {!showSkeleton && filteredChats.length === 0 && (
         <div className="empty-state compact-empty">

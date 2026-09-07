@@ -175,6 +175,26 @@ export function messagePreviewText(message: Message, strings?: AppStrings) {
   if (message.type === "call" && message.call) {
     return callHistoryLabel(message.call, strings);
   }
+  if (message.type === "checklist" || (message.content && /^checklist:/i.test(message.content.trim()))) {
+    if (message.checklist?.title) {
+      return `Checklist: ${message.checklist.title}`;
+    }
+    const lines = (message.content ?? "").trim().split("\n");
+    if (lines.length > 1 && lines[1].trim()) {
+      return `Checklist: ${lines[1].trim()}`;
+    }
+    return "Checklist";
+  }
+  if (message.type === "canvas" || (message.content && /^canvas:/i.test(message.content.trim()))) {
+    if (message.canvas?.title) {
+      return `Canvas: ${message.canvas.title}`;
+    }
+    const lines = (message.content ?? "").trim().split("\n");
+    if (lines.length > 1 && lines[1].trim()) {
+      return `Canvas: ${lines[1].trim()}`;
+    }
+    return "Canvas";
+  }
   if (message.content?.trim()) {
     return message.content.trim();
   }

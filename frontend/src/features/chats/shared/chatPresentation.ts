@@ -164,12 +164,34 @@ export function chatAvatarTypeClass(chat: Chat) {
   return "";
 }
 
+export function formatPreviewContent(rawContent: string, messageType?: string | null): string {
+  const trimmed = rawContent.trim();
+  if (messageType === "checklist" || /^checklist:[0-9a-f-]+/i.test(trimmed)) {
+    if (/^checklist:\s+/i.test(trimmed) && !trimmed.includes("\n") && !/^checklist:[0-9a-f-]{8,}/i.test(trimmed)) {
+      return trimmed;
+    }
+    const lines = trimmed.split("\n");
+    const title = lines.length > 1 && lines[1].trim() ? lines[1].trim() : "";
+    return title ? `Checklist: ${title}` : "Checklist";
+  }
+  if (messageType === "canvas" || /^canvas:[0-9a-f-]+/i.test(trimmed)) {
+    if (/^canvas:\s+/i.test(trimmed) && !trimmed.includes("\n") && !/^canvas:[0-9a-f-]{8,}/i.test(trimmed)) {
+      return trimmed;
+    }
+    const lines = trimmed.split("\n");
+    const title = lines.length > 1 && lines[1].trim() ? lines[1].trim() : "";
+    return title ? `Canvas: ${title}` : "Canvas";
+  }
+  return rawContent;
+}
+
 export function chatPreview(chat: Chat, strings?: AppStrings) {
   if (chat.type === "archive") {
     return "";
   }
   if (chat.lastMessageContent && chat.lastMessageSenderDisplayName) {
-    return `${chat.lastMessageSenderDisplayName}: ${chat.lastMessageContent}`;
+    const content = formatPreviewContent(chat.lastMessageContent, chat.lastMessageType);
+    return `${chat.lastMessageSenderDisplayName}: ${content}`;
   }
   if (chat.type === "voice") {
     const participants = (chat.activeCall?.participants as Array<Record<string, any>>) || [];
