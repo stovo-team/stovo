@@ -46,6 +46,7 @@ import SetupPage from "./pages/SetupPage";
 import MultiAdminPage from "./pages/MultiAdminPage";
 import CanvasPage from "./pages/CanvasPage";
 import ChecklistPage from "./pages/ChecklistPage";
+import LandingPage from "./pages/LandingPage";
 import { applyServerNotificationDefaults, readDevicePreferences } from "./settings/devicePreferences";
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from "./shortcuts/KeyboardShortcutsContext";
 import { QuickSwitcherModal } from "./components/QuickSwitcherModal";
@@ -324,6 +325,8 @@ function ClusterRoutes() {
     >
     <Routes location={location}>
       <Route path="/" element={<RootRedirect />} />
+      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/welcome" element={<LandingPage />} />
       <Route path="/server-setup" element={<ServerSetupPage />} />
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/login" element={<LoginPage />} />
@@ -445,6 +448,8 @@ function App() {
               <AppLockGate />
               <GlobalQuickSwitcher />
               <Routes>
+                <Route path="/landing" element={<LandingPage />} />
+                <Route path="/welcome" element={<LandingPage />} />
                 <Route path="/multi-admin" element={<MultiAdminPage />} />
                 <Route path="/s/:slug/*" element={<ClusterRoutes />} />
                 <Route path="/*" element={<ClusterRoutes />} />

@@ -91,6 +91,10 @@ export function renameChecklist(accessToken: string, checklistId: string, title:
   });
 }
 
+export function updateChecklistCategory(accessToken: string, checklistId: string, category: string) {
+  return renameChecklist(accessToken, checklistId, "", category);
+}
+
 export function deleteChecklist(accessToken: string, checklistId: string) {
   return apiRequest<void>(`${root}/checklists/${encodeURIComponent(checklistId)}`, {
     method: "DELETE",
