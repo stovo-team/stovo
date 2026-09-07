@@ -53,3 +53,29 @@ export function saveDefaultGroupsFolder(familyId: string, folder: ChatFolder) {
   if (typeof window === "undefined" || !familyId) return;
   window.localStorage.setItem(`stovo:default-groups-folder:${familyId}`, JSON.stringify({ ...folder, id: defaultGroupsFolderId }));
 }
+
+function sectionAssignmentsKey(familyId: string) {
+  return `stovo:chat-section-assignments:${familyId}`;
+}
+
+export function loadChatSectionAssignments(familyId: string): Record<string, ChatSectionKey> {
+  if (typeof window === "undefined" || !familyId) return {};
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(sectionAssignmentsKey(familyId)) ?? "{}");
+    if (!value || typeof value !== "object") return {};
+    const validKeys = new Set<string>(sectionKeys);
+    return Object.entries(value as Record<string, unknown>).reduce<Record<string, ChatSectionKey>>((acc, [chatId, target]) => {
+      if (typeof target === "string" && validKeys.has(target)) {
+        acc[chatId] = target as ChatSectionKey;
+      }
+      return acc;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+export function saveChatSectionAssignments(familyId: string, assignments: Record<string, ChatSectionKey>) {
+  if (typeof window === "undefined" || !familyId) return;
+  window.localStorage.setItem(sectionAssignmentsKey(familyId), JSON.stringify(assignments));
+}

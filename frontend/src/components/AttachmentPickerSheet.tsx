@@ -169,7 +169,7 @@ export default function AttachmentPickerSheet({
   };
 
   const resetSheetState = useCallback(() => {
-    setActiveTab("gallery");
+    setActiveTab(initialTab);
     clearSelection();
     setPreviewMediaItem(null);
     setIsSending(false);
@@ -177,7 +177,7 @@ export default function AttachmentPickerSheet({
     setIsFullScreen(false);
     setDragTranslateY(0);
     setIsDragging(false);
-  }, [clearSelection, setPreviewMediaItem]);
+  }, [clearSelection, initialTab, setPreviewMediaItem]);
 
   const closeSheet = useCallback(() => {
     if (isClosing) return;

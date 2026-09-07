@@ -10,7 +10,7 @@ import {
   useState
 } from "react";
 import { type EmojiClickData } from "emoji-picker-react";
-import { BarChart2, CalendarClock, HelpCircle, Paperclip, Pencil, StickyNote } from "lucide-react";
+import { BarChart2, CalendarClock, CheckSquare, HelpCircle, Paperclip, Pencil, StickyNote } from "lucide-react";
 
 import type { Chat } from "../../../api/chats";
 import type { CreatePollPayload } from "../../../api/polls";
@@ -319,6 +319,12 @@ export function Composer({
         syntax: "/canvas",
         description: "Create a shared canvas",
         icon: <StickyNote size={16} />
+      },
+      {
+        command: "checklist",
+        syntax: "/checklist",
+        description: "Create a shared checklist",
+        icon: <CheckSquare size={16} />
       }
     ],
     []
@@ -340,6 +346,10 @@ export function Composer({
       onComposerChange("");
       setIsMentionDismissed(true);
       onAttachmentSheetPick("poll");
+    } else if (cmd === "checklist") {
+      onComposerChange("");
+      setIsMentionDismissed(true);
+      onAttachmentSheetPick("checklist");
     } else if (cmd === "schedule") {
       const template = "/schedule Meeting | Tomorrow 15:00 | 2h";
       onComposerChange(template);

@@ -6,10 +6,18 @@ import type { ChatFilter, ChatSectionKey } from "../shared/types";
 import { ChatListItem } from "./ChatListItem";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { ChatFolderDialog } from "./ChatFolderDialog";
-import { ChatFolder, folderMatchesChatProperties, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
+import { ChatFolder, folderMatchesChatProperties, loadChatFolders, saveChatFolders } from "./chatFolders";
 import { displayChatName } from "../shared/chatPresentation";
 import { DefaultChatSectionDialog } from "./DefaultChatSectionDialog";
-import { DefaultChatSectionNames, loadDefaultChatSectionNames, loadDefaultGroupsFolder, saveDefaultChatSectionNames, saveDefaultGroupsFolder } from "./defaultChatSectionSettings";
+import {
+  DefaultChatSectionNames,
+  loadChatSectionAssignments,
+  loadDefaultChatSectionNames,
+  loadDefaultGroupsFolder,
+  saveChatSectionAssignments,
+  saveDefaultChatSectionNames,
+  saveDefaultGroupsFolder
+} from "./defaultChatSectionSettings";
 
 export type ChatListProps = {
   isLoading?: boolean;
@@ -32,7 +40,7 @@ export type ChatListProps = {
 export function ChatList({
   isLoading,
   hasLoadedOverview = true,
-  chatsBySection,
+  chatsBySection: _chatsBySection,
   filteredChats,
   chatFilter,
   familyId,
@@ -53,67 +61,148 @@ export function ChatList({
   const [defaultSectionNames, setDefaultSectionNames] = useState<DefaultChatSectionNames>(() => loadDefaultChatSectionNames(familyId));
   const [defaultGroupsFolder, setDefaultGroupsFolder] = useState<ChatFolder>(() => loadDefaultGroupsFolder(familyId, loadDefaultChatSectionNames(familyId).groups));
   const [editingDefaultSection, setEditingDefaultSection] = useState<ChatSectionKey | undefined>(undefined);
+  const [sectionAssignments, setSectionAssignments] = useState<Record<string, ChatSectionKey>>(() => loadChatSectionAssignments(familyId));
   const [draggedChat, setDraggedChat] = useState<Chat | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
 
   const folders = folderState.folders;
 
-  function sectionMatchesChat(sectionKey: ChatSectionKey, chat: Chat): boolean {
-    if (sectionKey === "archive") return chat.type === "archive";
-    if (sectionKey === "groups") return chat.type === "group" || chat.type === "family";
+  function canDropToSection(sectionKey: ChatSectionKey, chat: Chat, chatName: string): boolean {
+    if (sectionKey === "archive") return true;
+    if (sectionKey === "groups") {
+      return folderMatchesChatProperties(chat, defaultGroupsFolder.rules, chatName);
+    }
     if (sectionKey === "dms") return chat.type === "direct";
     if (sectionKey === "channels") return chat.type === "channel";
     if (sectionKey === "voice") return chat.type === "voice";
     return false;
   }
 
-  function handleDropChatToFolder(folder: ChatFolder, chat: Chat) {
-    const currentIncluded = folder.rules.includedChatIds ?? [];
-    if (currentIncluded.includes(chat.id)) {
-      setDraggedChat(null);
-      setDragOverTargetId(null);
-      return;
-    }
-    const nextFolder: ChatFolder = {
-      ...folder,
-      rules: {
-        ...folder.rules,
-        includedChatIds: [...currentIncluded, chat.id],
-        excludedChatIds: (folder.rules.excludedChatIds ?? []).filter((id) => id !== chat.id)
+  function getChatContainer(chat: Chat): string {
+    const chatName = displayChatName(chat, currentUserId, strings);
+
+    // 1. If assigned to a custom folder, check if it matches that folder's rules
+    const assignedFolder = folders.find((f) => f.rules.includedChatIds?.includes(chat.id));
+    if (assignedFolder) {
+      if (folderMatchesChatProperties(chat, assignedFolder.rules, chatName)) {
+        return assignedFolder.id;
       }
-    };
-    const nextFolders = folders.map((item) => (item.id === folder.id ? nextFolder : item));
+    }
+
+    // 2. If chat has an explicit section override
+    const assignedSection = sectionAssignments[chat.id];
+    if (assignedSection) {
+      if (assignedSection === "groups") {
+        if (folderMatchesChatProperties(chat, defaultGroupsFolder.rules, chatName)) {
+          return "groups";
+        }
+      } else {
+        return assignedSection;
+      }
+    }
+
+    // 3. Natural section
+    if (chat.type === "archive") return "archive";
+    if (chat.type === "group" || chat.type === "family") {
+      if (folderMatchesChatProperties(chat, defaultGroupsFolder.rules, chatName)) {
+        return "groups";
+      }
+      return "";
+    }
+    if (chat.type === "direct") return "dms";
+    if (chat.type === "channel") return "channels";
+    if (chat.type === "voice") return "voice";
+    return "";
+  }
+
+  function handleDropChatToFolder(targetFolder: ChatFolder, chat: Chat) {
+    const nextFolders = folders.map((item) => {
+      if (item.id === targetFolder.id) {
+        const currentIncluded = item.rules.includedChatIds ?? [];
+        return {
+          ...item,
+          rules: {
+            ...item.rules,
+            includedChatIds: currentIncluded.includes(chat.id) ? currentIncluded : [...currentIncluded, chat.id],
+            excludedChatIds: (item.rules.excludedChatIds ?? []).filter((id) => id !== chat.id)
+          }
+        };
+      } else {
+        return {
+          ...item,
+          rules: {
+            ...item.rules,
+            includedChatIds: (item.rules.includedChatIds ?? []).filter((id) => id !== chat.id)
+          }
+        };
+      }
+    });
+
     setFolderState((current) => ({
       ...current,
       folders: nextFolders
     }));
     saveChatFolders(familyId, nextFolders);
-    if (collapsed[folder.id]) {
-      setCollapsed((prev) => ({ ...prev, [folder.id]: false }));
+
+    if (sectionAssignments[chat.id]) {
+      setSectionAssignments((prev) => {
+        const next = { ...prev };
+        delete next[chat.id];
+        saveChatSectionAssignments(familyId, next);
+        return next;
+      });
+    }
+
+    if (collapsed[targetFolder.id]) {
+      setCollapsed((prev) => ({ ...prev, [targetFolder.id]: false }));
     }
     setDraggedChat(null);
     setDragOverTargetId(null);
   }
 
-  function handleDropChatToDefaultGroups(chat: Chat) {
-    const currentIncluded = defaultGroupsFolder.rules.includedChatIds ?? [];
-    if (currentIncluded.includes(chat.id)) {
-      setDraggedChat(null);
-      setDragOverTargetId(null);
-      return;
-    }
-    const nextFolder: ChatFolder = {
-      ...defaultGroupsFolder,
+  function handleDropChatToSection(sectionKey: ChatSectionKey, chat: Chat) {
+    // 1. Remove from all custom folders
+    const nextFolders = folders.map((item) => ({
+      ...item,
       rules: {
-        ...defaultGroupsFolder.rules,
-        includedChatIds: [...currentIncluded, chat.id]
+        ...item.rules,
+        includedChatIds: (item.rules.includedChatIds ?? []).filter((id) => id !== chat.id)
       }
-    };
-    setDefaultGroupsFolder(nextFolder);
-    saveDefaultGroupsFolder(familyId, nextFolder);
-    if (collapsed.groups) {
-      setCollapsed((prev) => ({ ...prev, groups: false }));
+    }));
+    setFolderState((current) => ({
+      ...current,
+      folders: nextFolders
+    }));
+    saveChatFolders(familyId, nextFolders);
+
+    // 2. Set or clear section assignment
+    const naturalSectionKey =
+      chat.type === "archive"
+        ? "archive"
+        : chat.type === "group" || chat.type === "family"
+          ? "groups"
+          : chat.type === "direct"
+            ? "dms"
+            : chat.type === "channel"
+              ? "channels"
+              : chat.type === "voice"
+                ? "voice"
+                : "";
+
+    setSectionAssignments((prev) => {
+      const next = { ...prev };
+      if (sectionKey === naturalSectionKey) {
+        delete next[chat.id];
+      } else {
+        next[chat.id] = sectionKey;
+      }
+      saveChatSectionAssignments(familyId, next);
+      return next;
+    });
+
+    if (collapsed[sectionKey]) {
+      setCollapsed((prev) => ({ ...prev, [sectionKey]: false }));
     }
     setDraggedChat(null);
     setDragOverTargetId(null);
@@ -123,24 +212,32 @@ export function ChatList({
     setFolderState({ familyId, folders: loadChatFolders(familyId) });
     setDefaultSectionNames(loadDefaultChatSectionNames(familyId));
     setDefaultGroupsFolder(loadDefaultGroupsFolder(familyId, loadDefaultChatSectionNames(familyId).groups));
+    setSectionAssignments(loadChatSectionAssignments(familyId));
     setCollapsed({});
   }, [familyId]);
+
   useEffect(() => {
-    // Do not overwrite another server's folders while the family-change effect
-    // is still hydrating the correct set from storage.
     if (folderState.familyId === familyId) saveChatFolders(familyId, folders);
   }, [familyId, folderState.familyId, folders]);
 
   function toggleSection(key: string) { setCollapsed((current) => ({ ...current, [key]: !current[key] })); }
+
   function saveFolder(folder: ChatFolder) {
-    setFolderState((current) => ({ ...current, folders: current.folders.some((item) => item.id === folder.id) ? current.folders.map((item) => item.id === folder.id ? folder : item) : [...current.folders, folder] }));
+    setFolderState((current) => ({
+      ...current,
+      folders: current.folders.some((item) => item.id === folder.id)
+        ? current.folders.map((item) => (item.id === folder.id ? folder : item))
+        : [...current.folders, folder]
+    }));
     setEditingFolder(undefined);
   }
+
   function deleteFolder(folder: ChatFolder) {
     if (!window.confirm(`Delete the ${folder.name} folder? Chats are not deleted.`)) return;
     setFolderState((current) => ({ ...current, folders: current.folders.filter((item) => item.id !== folder.id) }));
     setEditingFolder(undefined);
   }
+
   function saveDefaultSectionName(section: ChatSectionKey, name: string) {
     setDefaultSectionNames((current) => {
       const next = { ...current, [section]: name };
@@ -149,6 +246,7 @@ export function ChatList({
     });
     setEditingDefaultSection(undefined);
   }
+
   function saveGroupsFolderSettings(folder: ChatFolder) {
     const next = { ...folder, id: "default-groups" };
     setDefaultGroupsFolder(next);
@@ -164,6 +262,10 @@ export function ChatList({
     { key: "voice", label: strings.chats.sections.voice }
   ];
 
+  const hasAnyChatsRendered =
+    chatSectionOrder.some((s) => filteredChats.some((c) => getChatContainer(c) === s.key)) ||
+    folders.some((f) => filteredChats.some((c) => getChatContainer(c) === f.id));
+
   return (
     <div className="chat-list" aria-busy={isLoading || !hasLoadedOverview}>
       {showSkeleton
@@ -177,20 +279,15 @@ export function ChatList({
             </div>
           ))
         : chatSectionOrder.map((section) => {
-            const sectionChats = section.key === "groups"
-              ? filteredChats.filter((chat) => matchesFolder(chat, defaultGroupsFolder.rules, displayChatName(chat, currentUserId, strings)))
-              : chatsBySection[section.key];
+            const sectionChats = filteredChats.filter((chat) => getChatContainer(chat) === section.key);
             const sectionLabel = section.key === "groups" ? defaultGroupsFolder.name : defaultSectionNames[section.key] ?? section.label;
             if (sectionChats.length === 0 && !draggedChat) {
               return null;
             }
             const draggedChatName = draggedChat ? displayChatName(draggedChat, currentUserId, strings) : "";
-            const isGroups = section.key === "groups";
-            const isMatch = isGroups
-              ? (draggedChat ? folderMatchesChatProperties(draggedChat, defaultGroupsFolder.rules, draggedChatName) : true)
-              : (draggedChat ? sectionMatchesChat(section.key, draggedChat) : true);
+            const isMatch = draggedChat ? canDropToSection(section.key, draggedChat, draggedChatName) : true;
             const isRestricted = Boolean(draggedChat && !isMatch);
-            const isTarget = Boolean(draggedChat && isMatch && isGroups && dragOverTargetId === "groups");
+            const isTarget = Boolean(draggedChat && isMatch && dragOverTargetId === section.key);
 
             return (
               <section
@@ -200,15 +297,15 @@ export function ChatList({
                 onDragOver={(event) => {
                   event.preventDefault();
                   setDragOverTargetId(section.key);
-                  event.dataTransfer.dropEffect = isGroups && isMatch ? "copy" : "none";
+                  event.dataTransfer.dropEffect = isMatch ? "move" : "none";
                 }}
                 onDragLeave={() => {
                   setDragOverTargetId((current) => (current === section.key ? null : current));
                 }}
                 onDrop={(event) => {
                   event.preventDefault();
-                  if (draggedChat && isGroups && isMatch) {
-                    handleDropChatToDefaultGroups(draggedChat);
+                  if (draggedChat && isMatch) {
+                    handleDropChatToSection(section.key, draggedChat);
                   }
                 }}
               >
@@ -253,7 +350,7 @@ export function ChatList({
             );
           })}
       {folders.map((folder) => {
-        const sectionChats = filteredChats.filter((chat) => matchesFolder(chat, folder.rules, displayChatName(chat, currentUserId, strings)));
+        const sectionChats = filteredChats.filter((chat) => getChatContainer(chat) === folder.id);
         const draggedChatName = draggedChat ? displayChatName(draggedChat, currentUserId, strings) : "";
         const isFolderMatch = draggedChat ? folderMatchesChatProperties(draggedChat, folder.rules, draggedChatName) : true;
         const isFolderRestricted = Boolean(draggedChat && !isFolderMatch);
@@ -267,7 +364,7 @@ export function ChatList({
             onDragOver={(event) => {
               event.preventDefault();
               setDragOverTargetId(folder.id);
-              event.dataTransfer.dropEffect = isFolderMatch ? "copy" : "none";
+              event.dataTransfer.dropEffect = isFolderMatch ? "move" : "none";
             }}
             onDragLeave={() => {
               setDragOverTargetId((current) => (current === folder.id ? null : current));
@@ -343,10 +440,16 @@ export function ChatList({
           </button>
         </div>
       )}
+      {!showSkeleton && filteredChats.length > 0 && !hasAnyChatsRendered && (
+        <div className="empty-state compact-empty">
+          <MessageCircle aria-hidden="true" size={28} />
+          <strong>No chats visible</strong>
+          <p>No chats match the configured folder rules.</p>
+        </div>
+      )}
       {editingFolder !== undefined && <ChatFolderDialog folder={editingFolder} onClose={() => setEditingFolder(undefined)} onSave={saveFolder} onDelete={deleteFolder} />}
       {editingDefaultSection === "groups" && <ChatFolderDialog folder={defaultGroupsFolder} title="Groups settings" allowDelete={false} onClose={() => setEditingDefaultSection(undefined)} onSave={saveGroupsFolderSettings} onDelete={() => undefined} />}
       {editingDefaultSection !== undefined && editingDefaultSection !== "groups" && <DefaultChatSectionDialog initialName={defaultSectionNames[editingDefaultSection] ?? chatSectionOrder.find((section) => section.key === editingDefaultSection)?.label ?? ""} onClose={() => setEditingDefaultSection(undefined)} onSave={(name) => saveDefaultSectionName(editingDefaultSection, name)} />}
     </div>
   );
 }
-

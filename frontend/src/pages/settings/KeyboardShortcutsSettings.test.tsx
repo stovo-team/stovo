@@ -146,4 +146,45 @@ describe("KeyboardShortcutsSettings", () => {
     expect(document.querySelector(".shortcuts-conflict-card")).not.toBeNull();
     expect(document.body.textContent).toContain("Already assigned to another action");
   });
+
+  it("cancels recording mode when close button in grey circle is clicked", async () => {
+    await act(async () => {
+      root?.render(<KeyboardShortcutsSettings />);
+    });
+
+    const badgeButtons = document.querySelectorAll<HTMLButtonElement>(".shortcut-badge-button");
+    await act(async () => {
+      badgeButtons[0].click();
+    });
+
+    const closeBtn = document.querySelector<HTMLButtonElement>(".shortcut-recording-close");
+    expect(closeBtn).not.toBeNull();
+    expect(closeBtn?.querySelector("svg")).not.toBeNull();
+
+    await act(async () => {
+      closeBtn?.click();
+    });
+
+    expect(document.body.textContent).not.toContain("Press desired shortcut keys…");
+  });
+
+  it("filters shortcuts using the fully rounded search bar", async () => {
+    await act(async () => {
+      root?.render(<KeyboardShortcutsSettings />);
+    });
+
+    const searchInput = document.querySelector<HTMLInputElement>(".shortcuts-search-input");
+    expect(searchInput).not.toBeNull();
+
+    await act(async () => {
+      if (searchInput) {
+        const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+        valueSetter?.call(searchInput, "Mute");
+        searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+
+    expect(document.body.textContent).toContain("Mute / Unmute Call");
+    expect(document.body.textContent).not.toContain("Quick Switcher");
+  });
 });

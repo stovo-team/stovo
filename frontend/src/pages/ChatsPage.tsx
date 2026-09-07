@@ -237,14 +237,15 @@ export default function ChatsPage() {
                 void createCanvas(accessToken, selectedChat.id)
                   .then((canvas) => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`));
               }}
-              onCreateChecklist={(payload) => {
+               onCreateChecklist={async (payload) => {
                 if (!accessToken || !selectedChat) return;
-                void createChecklist(accessToken, {
+                const checklist = await createChecklist(accessToken, {
                   chatId: selectedChat.id,
                   title: payload.title,
                   category: payload.category,
                   items: payload.items
-                }).then((checklist) => navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`));
+                });
+                navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`);
               }}
             />
           </section>

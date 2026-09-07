@@ -58,7 +58,7 @@ export function ChatListItem({
     isTransitionSource ? chatTransitionName(chat.id, "title") : undefined
   );
 
-  const canDrag = Boolean(onDragStart && chat.type !== "archive" && chat.type !== "family");
+  const canDrag = Boolean(onDragStart);
 
   return (
     <button

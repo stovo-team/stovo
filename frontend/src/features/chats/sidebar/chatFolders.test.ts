@@ -36,25 +36,35 @@ describe("folderMatchesChatProperties", () => {
     expect(folderMatchesChatProperties(chat({ isFavorite: false }), favRules, "Chat")).toBe(false);
   });
 
-  it("restricts archive and family chats", () => {
-    const rules = defaultFolderRules();
-    expect(folderMatchesChatProperties(chat({ type: "archive" }), rules, "Archive")).toBe(false);
-    expect(folderMatchesChatProperties(chat({ type: "family" }), rules, "Family")).toBe(false);
+  it("matches family chat when group is allowed, and archive chat when archive is allowed", () => {
+    const groupRules = { ...defaultFolderRules(), chatTypes: ["group" as const] };
+    expect(folderMatchesChatProperties(chat({ type: "family" }), groupRules, "Family")).toBe(true);
+    expect(folderMatchesChatProperties(chat({ type: "group" }), groupRules, "Group")).toBe(true);
+    expect(folderMatchesChatProperties(chat({ type: "archive" }), groupRules, "Archive")).toBe(false);
+
+    const archiveRules = { ...defaultFolderRules(), chatTypes: ["archive" as const] };
+    expect(folderMatchesChatProperties(chat({ type: "archive" }), archiveRules, "Archive")).toBe(true);
+    expect(folderMatchesChatProperties(chat({ type: "group" }), archiveRules, "Group")).toBe(false);
+  });
+
+  it("excludes group chats when chatTypes is empty (groups property disabled)", () => {
+    const emptyRules = { ...defaultFolderRules(), chatTypes: [] };
+    expect(folderMatchesChatProperties(chat({ type: "group" }), emptyRules, "Group")).toBe(false);
+    expect(folderMatchesChatProperties(chat({ type: "family" }), emptyRules, "Family")).toBe(false);
+    expect(folderMatchesChatProperties(chat({ type: "direct" }), emptyRules, "Direct")).toBe(false);
   });
 });
 
 describe("matchesFolder", () => {
-  it("combines type, title, and property rules", () => {
+  it("requires explicit inclusion in includedChatIds (filters alone do not auto-include)", () => {
     const rules = { ...defaultFolderRules(), chatTypes: ["group" as const], titleIncludes: "update", unreadOnly: true, favoritesOnly: true };
-    expect(matchesFolder(chat({ unreadCount: 2, isFavorite: true }), rules, "Product updates")).toBe(true);
-    expect(matchesFolder(chat({ unreadCount: 2, isFavorite: true }), rules, "General chat")).toBe(false);
-    expect(matchesFolder(chat({ type: "channel", unreadCount: 2, isFavorite: true }), rules, "Product updates")).toBe(false);
-  });
+    // Not in includedChatIds -> false even if properties match
+    expect(matchesFolder(chat({ id: "chat-1", unreadCount: 2, isFavorite: true }), rules, "Product updates")).toBe(false);
 
-  it("keeps archive and family chats out of custom folders", () => {
-    const rules = defaultFolderRules();
-    expect(matchesFolder(chat({ type: "archive" }), rules, "Message Archive")).toBe(false);
-    expect(matchesFolder(chat({ type: "family" }), rules, "Stovo")).toBe(false);
+    const rulesWithInclusion = { ...rules, includedChatIds: ["chat-1"] };
+    expect(matchesFolder(chat({ id: "chat-1", unreadCount: 2, isFavorite: true }), rulesWithInclusion, "Product updates")).toBe(true);
+    expect(matchesFolder(chat({ id: "chat-1", unreadCount: 2, isFavorite: true }), rulesWithInclusion, "General chat")).toBe(false);
+    expect(matchesFolder(chat({ id: "chat-1", type: "channel", unreadCount: 2, isFavorite: true }), rulesWithInclusion, "Product updates")).toBe(false);
   });
 
   it("supports manual includedChatIds and excludedChatIds", () => {
@@ -62,7 +72,7 @@ describe("matchesFolder", () => {
     expect(matchesFolder(chat({ id: "chat-1" }), rulesWithInclusion, "Chat 1")).toBe(true);
     expect(matchesFolder(chat({ id: "chat-2" }), rulesWithInclusion, "Chat 2")).toBe(false);
 
-    const rulesWithExclusion = { ...defaultFolderRules(), excludedChatIds: ["chat-1"] };
+    const rulesWithExclusion = { ...defaultFolderRules(), includedChatIds: ["chat-1", "chat-2"], excludedChatIds: ["chat-1"] };
     expect(matchesFolder(chat({ id: "chat-1" }), rulesWithExclusion, "Chat 1")).toBe(false);
     expect(matchesFolder(chat({ id: "chat-2" }), rulesWithExclusion, "Chat 2")).toBe(true);
   });
