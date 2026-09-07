@@ -97,7 +97,7 @@ export interface Message {
   chatId: string;
   senderId: string;
   senderDisplayName: string | null;
-  type: "text" | "image" | "video" | "file" | "mixed" | "call" | "poll" | "collection" | "canvas";
+  type: "text" | "image" | "video" | "file" | "mixed" | "call" | "poll" | "collection" | "canvas" | "checklist";
   content: string | null;
   encryptionProtocol: MessageEncryptionProtocol;
   ciphertext: string | null;
