@@ -1,6 +1,6 @@
 import type { Chat } from "../../../api/chats";
 
-export type FolderChatType = Exclude<Chat["type"], "family" | "archive">;
+export type FolderChatType = "direct" | "group" | "channel" | "voice" | "archive";
 
 export type ChatFolderRules = {
   chatTypes: FolderChatType[];
@@ -22,11 +22,12 @@ export const folderChatTypes: Array<{ value: FolderChatType; label: string }> = 
   { value: "direct", label: "Direct messages" },
   { value: "group", label: "Groups" },
   { value: "channel", label: "Channels" },
-  { value: "voice", label: "Audio channels" }
+  { value: "voice", label: "Audio channels" },
+  { value: "archive", label: "Message Archive" }
 ];
 
 export const defaultFolderRules = (): ChatFolderRules => ({
-  chatTypes: [],
+  chatTypes: ["direct", "group", "channel", "voice", "archive"],
   titleIncludes: "",
   unreadOnly: false,
   mutedOnly: false,
@@ -34,10 +35,11 @@ export const defaultFolderRules = (): ChatFolderRules => ({
 });
 
 export function folderMatchesChatProperties(chat: Chat, rules: ChatFolderRules, chatName: string): boolean {
-  // The personal archive and the server-wide family chat are structural views,
-  // not ordinary conversations users should accidentally sweep into a folder.
-  if (chat.type === "archive" || chat.type === "family") return false;
-  if (rules.chatTypes.length > 0 && !rules.chatTypes.includes(chat.type as FolderChatType)) return false;
+  const allowedTypes = rules.chatTypes;
+  const isGroup = chat.type === "group" || chat.type === "family";
+  const typeMatches = allowedTypes.includes(chat.type as FolderChatType) || (isGroup && allowedTypes.includes("group"));
+  if (!typeMatches) return false;
+
   if (rules.unreadOnly && chat.unreadCount <= 0) return false;
   if (rules.mutedOnly && !chat.isMuted) return false;
   if (rules.favoritesOnly && !chat.isFavorite) return false;
@@ -48,18 +50,7 @@ export function folderMatchesChatProperties(chat: Chat, rules: ChatFolderRules, 
 export function matchesFolder(chat: Chat, rules: ChatFolderRules, chatName: string): boolean {
   if (!folderMatchesChatProperties(chat, rules, chatName)) return false;
   if (rules.excludedChatIds && rules.excludedChatIds.includes(chat.id)) return false;
-  if (rules.includedChatIds && rules.includedChatIds.length > 0) {
-    const hasFilters =
-      rules.chatTypes.length > 0 ||
-      rules.unreadOnly ||
-      rules.mutedOnly ||
-      rules.favoritesOnly ||
-      rules.titleIncludes.trim().length > 0;
-    if (!hasFilters) {
-      return rules.includedChatIds.includes(chat.id);
-    }
-  }
-  return true;
+  return Boolean(rules.includedChatIds && rules.includedChatIds.includes(chat.id));
 }
 
 function storageKey(familyId: string) {

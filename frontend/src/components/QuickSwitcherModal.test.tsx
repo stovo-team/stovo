@@ -245,4 +245,28 @@ describe("QuickSwitcherModal", () => {
 
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("renders fully rounded search bar and closes when close button is clicked", async () => {
+    const onClose = vi.fn();
+    await act(async () => {
+      root?.render(
+        <BrowserRouter>
+          <QuickSwitcherModal open={true} onClose={onClose} />
+        </BrowserRouter>
+      );
+    });
+
+    const searchBar = document.querySelector(".quick-switcher-search-bar");
+    expect(searchBar).not.toBeNull();
+
+    const closeBtn = document.querySelector<HTMLButtonElement>(".quick-switcher-close-button");
+    expect(closeBtn).not.toBeNull();
+    expect(closeBtn?.querySelector("svg")).not.toBeNull();
+
+    await act(async () => {
+      closeBtn?.click();
+    });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

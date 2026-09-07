@@ -294,6 +294,11 @@ export function useMessageComposer({
       setIsAttachmentSheetOpen(true);
       return;
     }
+    if (option === "checklist") {
+      setAttachmentSheetInitialTab("checklist");
+      setIsAttachmentSheetOpen(true);
+      return;
+    }
     setIsAttachmentSheetOpen(false);
     if (option === "gallery") {
       galleryAttachmentInputRef.current?.click();
@@ -436,6 +441,13 @@ export function useMessageComposer({
       setComposer("");
       resetComposerHeight();
       setAttachmentSheetInitialTab("poll");
+      setIsAttachmentSheetOpen(true);
+      return;
+    }
+    if (content.toLowerCase() === "/checklist") {
+      setComposer("");
+      resetComposerHeight();
+      setAttachmentSheetInitialTab("checklist");
       setIsAttachmentSheetOpen(true);
       return;
     }
