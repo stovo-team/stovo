@@ -1,4 +1,5 @@
 import type { ChatSectionKey } from "../shared/types";
+import { ChatFolder, defaultFolderRules } from "./chatFolders";
 
 export type DefaultChatSectionNames = Partial<Record<ChatSectionKey, string>>;
 
@@ -26,4 +27,29 @@ export function loadDefaultChatSectionNames(familyId: string): DefaultChatSectio
 export function saveDefaultChatSectionNames(familyId: string, names: DefaultChatSectionNames) {
   if (typeof window === "undefined" || !familyId) return;
   window.localStorage.setItem(storageKey(familyId), JSON.stringify(names));
+}
+
+const defaultGroupsFolderId = "default-groups";
+
+export function loadDefaultGroupsFolder(familyId: string, legacyName?: string): ChatFolder {
+  const fallback: ChatFolder = {
+    id: defaultGroupsFolderId,
+    name: legacyName ?? "Groups",
+    rules: { ...defaultFolderRules(), chatTypes: ["group"] }
+  };
+  if (typeof window === "undefined" || !familyId) return fallback;
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(`stovo:default-groups-folder:${familyId}`) ?? "null");
+    if (!value || typeof value !== "object") return fallback;
+    const folder = value as Partial<ChatFolder>;
+    if (typeof folder.name !== "string" || !folder.name.trim() || !folder.rules) return fallback;
+    return { id: defaultGroupsFolderId, name: folder.name.trim(), rules: folder.rules };
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveDefaultGroupsFolder(familyId: string, folder: ChatFolder) {
+  if (typeof window === "undefined" || !familyId) return;
+  window.localStorage.setItem(`stovo:default-groups-folder:${familyId}`, JSON.stringify({ ...folder, id: defaultGroupsFolderId }));
 }

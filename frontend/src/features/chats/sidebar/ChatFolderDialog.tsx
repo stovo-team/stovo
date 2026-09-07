@@ -8,9 +8,11 @@ type ChatFolderDialogProps = {
   onClose: () => void;
   onSave: (folder: ChatFolder) => void;
   onDelete: (folder: ChatFolder) => void;
+  title?: string;
+  allowDelete?: boolean;
 };
 
-export function ChatFolderDialog({ folder, onClose, onSave, onDelete }: ChatFolderDialogProps) {
+export function ChatFolderDialog({ folder, onClose, onSave, onDelete, title, allowDelete = true }: ChatFolderDialogProps) {
   const [draft, setDraft] = useState<ChatFolder>(() => folder ?? {
     id: crypto.randomUUID(), name: "", rules: defaultFolderRules()
   });
@@ -29,7 +31,7 @@ export function ChatFolderDialog({ folder, onClose, onSave, onDelete }: ChatFold
     <div className="modal-backdrop chat-folder-backdrop" role="presentation" onMouseDown={onClose}>
       <form className="chat-folder-dialog" role="dialog" aria-modal="true" aria-labelledby="chat-folder-title" onMouseDown={(event) => event.stopPropagation()} onSubmit={submit}>
         <div className="modal-header">
-          <h2 id="chat-folder-title">{folder ? "Edit folder" : "New folder"}</h2>
+          <h2 id="chat-folder-title">{title ?? (folder ? "Edit folder" : "New folder")}</h2>
           <button type="button" className="chat-folder-close" aria-label="Close" onClick={onClose}><span className="ms-icon ms-icon--20" aria-hidden="true">close</span></button>
         </div>
         <label className="chat-folder-field">Folder name<input autoFocus value={draft.name} maxLength={60} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="e.g. Project updates" /></label>
@@ -37,7 +39,7 @@ export function ChatFolderDialog({ folder, onClose, onSave, onDelete }: ChatFold
         <label className="chat-folder-field">Name contains<input value={draft.rules.titleIncludes} maxLength={80} onChange={(event) => setDraft({ ...draft, rules: { ...draft.rules, titleIncludes: event.target.value } })} placeholder="Any part of the chat name" /></label>
         <fieldset className="chat-folder-rules"><legend>Additional properties</legend>{([ ["unreadOnly", "Unread only"], ["favoritesOnly", "Favorites only"], ["mutedOnly", "Muted only"] ] as const).map(([key, label]) => <label key={key}><input type="checkbox" checked={draft.rules[key]} onChange={() => setDraft({ ...draft, rules: { ...draft.rules, [key]: !draft.rules[key] } })} />{label}</label>)}</fieldset>
         <div className="chat-folder-actions">
-          {folder && <button type="button" className="chat-folder-delete" onClick={() => onDelete(folder)}>Delete folder</button>}
+          {folder && allowDelete && <button type="button" className="chat-folder-delete" onClick={() => onDelete(folder)}>Delete folder</button>}
           <span><button className="primary-button" disabled={!draft.name.trim()}>{folder ? "Save folder" : "Create chat folder"}</button><button type="button" className="secondary-button" onClick={onClose}>Cancel</button></span>
         </div>
       </form>
