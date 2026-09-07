@@ -103,4 +103,18 @@ describe("RichChecklistCreator", () => {
       })
     );
   });
+
+  it("renders disabled voice microphone buttons for the premium voice feature", () => {
+    const container = renderCreator();
+    const voiceBtn = container.querySelector(".checklist-voice-btn") as HTMLButtonElement;
+    const micBtn = container.querySelector(".checklist-mic-btn") as HTMLButtonElement;
+
+    expect(voiceBtn).toBeDefined();
+    expect(voiceBtn.disabled).toBe(true);
+    expect(voiceBtn.textContent).toContain("Voice to List");
+    expect(voiceBtn.textContent).toContain("PRO");
+
+    expect(micBtn).toBeDefined();
+    expect(micBtn.disabled).toBe(true);
+  });
 });

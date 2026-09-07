@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckSquare, Plus, ShoppingBag, ShoppingCart, Sparkles, Trash2, Truck } from "lucide-react";
+import { CheckSquare, Mic, Plus, ShoppingBag, ShoppingCart, Sparkles, Square, Trash2, Truck } from "lucide-react";
 
 export interface RichChecklistCreatorProps {
   onSubmit: (payload: {
@@ -34,26 +34,21 @@ const ERRAND_TEMPLATE: ItemDraft[] = [
 
 export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel }: RichChecklistCreatorProps) {
   const [category, setCategory] = useState<"grocery" | "errand" | "general">("grocery");
-  const [title, setTitle] = useState("Grocery list");
-  const [items, setItems] = useState<ItemDraft[]>([
-    { text: "Milk", section: "Dairy" },
-    { text: "Eggs", section: "Dairy" },
-    { text: "Bread", section: "Bakery" }
-  ]);
+  const [title, setTitle] = useState("");
+  const [items, setItems] = useState<ItemDraft[]>([]);
   const [newItemText, setNewItemText] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSelectCategory = (newCat: "grocery" | "errand" | "general") => {
     setCategory(newCat);
-    if (newCat === "grocery") {
-      setTitle("Grocery list");
-      setItems(GROCERY_TEMPLATE.slice(0, 4));
-    } else if (newCat === "errand") {
-      setTitle("Weekend Errands");
-      setItems(ERRAND_TEMPLATE.slice(0, 4));
-    } else {
-      setTitle("To-Do List");
-      setItems([{ text: "Important task" }, { text: "Follow-up item" }]);
+    if (!title || title === "Grocery list" || title === "Weekend Errands" || title === "To-Do List") {
+      if (newCat === "grocery") {
+        setTitle("Grocery list");
+      } else if (newCat === "errand") {
+        setTitle("Weekend Errands");
+      } else {
+        setTitle("To-Do List");
+      }
     }
   };
 
@@ -82,11 +77,8 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
 
   const handleSubmit = async () => {
     setErrorMsg(null);
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      setErrorMsg("Please enter a checklist title.");
-      return;
-    }
+    const defaultTitle = category === "grocery" ? "Grocery list" : category === "errand" ? "Weekend Errands" : "To-Do List";
+    const trimmedTitle = title.trim() || defaultTitle;
     const validItems = items.filter((i) => i.text.trim().length > 0);
     if (validItems.length === 0) {
       setErrorMsg("Please add at least one item to the checklist.");
@@ -107,16 +99,15 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
     }
   };
 
+  const titlePlaceholder = category === "grocery" ? "e.g. Grocery list" : category === "errand" ? "e.g. Weekend Errands" : "e.g. To-Do List";
+
   return (
     <div className="rich-checklist-creator">
       <div className="rich-checklist-creator-header">
         <span className="checklist-creator-icon" aria-hidden="true">
           {category === "grocery" ? <ShoppingCart size={20} /> : category === "errand" ? <Truck size={20} /> : <CheckSquare size={20} />}
         </span>
-        <div>
-          <h3>Shared Checklist</h3>
-          <p>Create interactive checklists for groceries, errands, or to-dos</p>
-        </div>
+        <h3>Shared Checklist</h3>
       </div>
 
       {errorMsg && <div className="checklist-creator-error-banner" role="alert">{errorMsg}</div>}
@@ -162,7 +153,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
           id="checklist-title-input"
           type="text"
           className="checklist-text-input"
-          placeholder="e.g. Weekly Groceries"
+          placeholder={titlePlaceholder}
           value={title}
           maxLength={160}
           onChange={(e) => setTitle(e.target.value)}
@@ -172,32 +163,45 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
       <div className="checklist-creator-section">
         <div className="checklist-items-header">
           <label className="checklist-input-label">Items ({items.length})</label>
-          {category === "grocery" && (
+          <div className="checklist-items-header-actions">
             <button
               type="button"
-              className="checklist-template-btn"
-              onClick={() => handleApplyTemplate(GROCERY_TEMPLATE)}
+              className="checklist-voice-btn"
+              disabled
+              title="Voice checklist creation (Premium feature)"
+              aria-label="Voice checklist creation (Premium feature)"
             >
-              <Sparkles size={14} />
-              <span>Load Grocery Pack</span>
+              <Mic size={14} />
+              <span>Voice to List</span>
+              <span className="checklist-pro-badge">PRO</span>
             </button>
-          )}
-          {category === "errand" && (
-            <button
-              type="button"
-              className="checklist-template-btn"
-              onClick={() => handleApplyTemplate(ERRAND_TEMPLATE)}
-            >
-              <Sparkles size={14} />
-              <span>Load Errand Pack</span>
-            </button>
-          )}
+            {category === "grocery" && (
+              <button
+                type="button"
+                className="checklist-template-btn"
+                onClick={() => handleApplyTemplate(GROCERY_TEMPLATE)}
+              >
+                <Sparkles size={14} />
+                <span>Load Grocery Pack</span>
+              </button>
+            )}
+            {category === "errand" && (
+              <button
+                type="button"
+                className="checklist-template-btn"
+                onClick={() => handleApplyTemplate(ERRAND_TEMPLATE)}
+              >
+                <Sparkles size={14} />
+                <span>Load Errand Pack</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="checklist-items-list" role="list">
           {items.map((item, index) => (
             <div key={index} className="checklist-item-row" role="listitem">
-              <span className="checklist-item-bullet" aria-hidden="true">☐</span>
+              <Square size={16} className="checklist-item-bullet-icon" aria-hidden="true" />
               <input
                 type="text"
                 className="checklist-item-input"
@@ -236,6 +240,15 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
           />
           <button
             type="button"
+            className="checklist-mic-btn"
+            disabled
+            title="Dictate item by voice (Premium feature)"
+            aria-label="Dictate item by voice (Premium feature)"
+          >
+            <Mic size={16} />
+          </button>
+          <button
+            type="button"
             className="checklist-add-btn"
             disabled={!newItemText.trim()}
             onClick={handleAddItem}
@@ -256,7 +269,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
           type="button"
           className="checklist-action-btn primary"
           onClick={() => void handleSubmit()}
-          disabled={isSubmitting || !title.trim() || items.length === 0}
+          disabled={isSubmitting || items.length === 0}
         >
           {isSubmitting ? "Creating..." : "Share Checklist in Chat"}
         </button>

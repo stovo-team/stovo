@@ -11,7 +11,8 @@ import {
   ShoppingBag,
   ShoppingCart,
   ListTodo,
-  FolderPlus
+  FolderPlus,
+  Mic
 } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
@@ -32,6 +33,7 @@ import type { Chat } from "../api/chats";
 import { getChats } from "../api/chats";
 import { ForwardChatDialog } from "../features/chats/conversation/MessageDialogs";
 import { BackButton } from "../components/BackButton";
+import AppNav from "./AppNav";
 
 const GROCERY_TEMPLATES = [
   { section: "Produce", items: ["Apples", "Bananas", "Spinach", "Avocados", "Tomatoes"] },
@@ -436,16 +438,28 @@ export default function ChecklistPage() {
 
   if (error) {
     return (
-      <main className="canvas-page canvas-page--error">
-        <h1>Checklist unavailable</h1>
-        <p>{error}</p>
-        <BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} />
+      <main className="app-shell app-frame checklist-page-frame">
+        <AppNav />
+        <section className="page-surface checklist-page-surface checklist-page-surface--error">
+          <header className="checklist-page-header">
+            <BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} />
+            <h1>Checklist unavailable</h1>
+          </header>
+          <p className="checklist-error-text">{error}</p>
+        </section>
       </main>
     );
   }
 
   if (!checklist) {
-    return <main className="canvas-page canvas-page--loading">Opening Checklist…</main>;
+    return (
+      <main className="app-shell app-frame checklist-page-frame">
+        <AppNav />
+        <section className="page-surface checklist-page-surface checklist-page-surface--loading">
+          <p className="checklist-loading-text">Opening Checklist…</p>
+        </section>
+      </main>
+    );
   }
 
   // Group items by section
@@ -463,95 +477,97 @@ export default function ChecklistPage() {
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <main className="canvas-page checklist-page">
-      <header className="canvas-page-header checklist-header">
-        <BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} />
+    <main className="app-shell app-frame checklist-page-frame">
+      <AppNav />
+      <section className="page-surface checklist-page-surface">
+        <header className="checklist-page-header">
+          <BackButton ariaLabel="Back" title="Back" onClick={() => navigate(-1)} />
 
-        <div className="checklist-header-info">
-          <div className="canvas-title-group">
-            {isEditingTitle ? (
-              <input
-                className="canvas-title-input"
-                aria-label="Checklist title"
-                autoFocus
-                maxLength={160}
-                value={titleDraft}
-                onChange={(event) => setTitleDraft(event.target.value)}
-                onBlur={() => void saveTitle()}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void saveTitle();
-                  }
-                  if (event.key === "Escape") {
-                    setIsEditingTitle(false);
-                  }
-                }}
-              />
-            ) : (
-              <h1>{checklist.title}</h1>
-            )}
-            {checklist.canManage && !isEditingTitle && (
+          <div className="checklist-header-info">
+            <div className="checklist-title-group">
+              {isEditingTitle ? (
+                <input
+                  className="checklist-title-input"
+                  aria-label="Checklist title"
+                  autoFocus
+                  maxLength={160}
+                  value={titleDraft}
+                  onChange={(event) => setTitleDraft(event.target.value)}
+                  onBlur={() => void saveTitle()}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void saveTitle();
+                    }
+                    if (event.key === "Escape") {
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                />
+              ) : (
+                <h1>{checklist.title}</h1>
+              )}
+              {checklist.canManage && !isEditingTitle && (
+                <button
+                  type="button"
+                  className="checklist-title-edit"
+                  aria-label="Edit checklist title"
+                  title="Edit checklist title"
+                  onClick={() => {
+                    setTitleDraft(checklist.title);
+                    setIsEditingTitle(true);
+                  }}
+                >
+                  <Pencil size={14} />
+                </button>
+              )}
+            </div>
+
+            <div className="checklist-category-pills">
               <button
                 type="button"
-                className="canvas-title-edit"
-                aria-label="Edit checklist title"
-                title="Edit checklist title"
+                className={`checklist-cat-pill ${checklist.category === "groceries" || checklist.category === "grocery" ? "active" : ""}`}
+                onClick={() => void changeCategory("groceries")}
+              >
+                <ShoppingCart size={14} />
+                <span>Groceries</span>
+              </button>
+              <button
+                type="button"
+                className={`checklist-cat-pill ${checklist.category === "errands" || checklist.category === "errand" ? "active" : ""}`}
+                onClick={() => void changeCategory("errands")}
+              >
+                <ShoppingBag size={14} />
+                <span>Errands</span>
+              </button>
+              <button
+                type="button"
+                className={`checklist-cat-pill ${checklist.category === "general" || !checklist.category ? "active" : ""}`}
+                onClick={() => void changeCategory("general")}
+              >
+                <ListTodo size={14} />
+                <span>General</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="checklist-page-actions">
+            {checklist.canManage && (
+              <button
+                type="button"
+                className="checklist-icon-action"
+                aria-label="Share checklist in chat"
+                title="Share checklist in chat"
                 onClick={() => {
-                  setTitleDraft(checklist.title);
-                  setIsEditingTitle(true);
+                  setForwardChatIds([]);
+                  setShareOpen((prev) => !prev);
                 }}
               >
-                <Pencil size={14} />
+                <Forward size={18} />
               </button>
             )}
           </div>
-
-          <div className="checklist-category-pills">
-            <button
-              type="button"
-              className={`checklist-cat-pill ${checklist.category === "groceries" ? "active" : ""}`}
-              onClick={() => void changeCategory("groceries")}
-            >
-              <ShoppingCart size={13} />
-              <span>Groceries</span>
-            </button>
-            <button
-              type="button"
-              className={`checklist-cat-pill ${checklist.category === "errands" ? "active" : ""}`}
-              onClick={() => void changeCategory("errands")}
-            >
-              <ShoppingBag size={13} />
-              <span>Errands</span>
-            </button>
-            <button
-              type="button"
-              className={`checklist-cat-pill ${checklist.category === "general" || !checklist.category ? "active" : ""}`}
-              onClick={() => void changeCategory("general")}
-            >
-              <ListTodo size={13} />
-              <span>General</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="canvas-page-actions">
-          {checklist.canManage && (
-            <button
-              type="button"
-              className="canvas-icon-action"
-              aria-label="Share checklist in chat"
-              title="Share checklist in chat"
-              onClick={() => {
-                setForwardChatIds([]);
-                setShareOpen((prev) => !prev);
-              }}
-            >
-              <Forward size={18} />
-            </button>
-          )}
-        </div>
-      </header>
+        </header>
 
       {shareOpen && checklist.canManage && (
         <ForwardChatDialog
@@ -707,6 +723,18 @@ export default function ChecklistPage() {
                 <span>Add Section</span>
               </button>
 
+              <button
+                type="button"
+                className="checklist-action-pill checklist-action-pill--disabled"
+                disabled
+                title="Dictate list via voice (Premium feature)"
+                aria-label="Dictate list via voice (Premium feature)"
+              >
+                <Mic size={15} />
+                <span>Voice List</span>
+                <span className="checklist-pro-badge">PRO</span>
+              </button>
+
               {items.length === 0 && checklist.category === "groceries" && (
                 <button
                   type="button"
@@ -732,6 +760,7 @@ export default function ChecklistPage() {
           )}
         </div>
       </div>
+      </section>
     </main>
   );
 }
