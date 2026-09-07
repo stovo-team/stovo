@@ -138,7 +138,7 @@ export function ChecklistCardBubble({
       role="region"
       aria-label={`${checklist.title} checklist`}
     >
-      <header className="checklist-card-header" onClick={onOpenChecklist}>
+      <header className="checklist-card-header">
         <div className="checklist-card-header-main">
           <span className="checklist-card-icon-badge" aria-hidden="true">
             {categoryIcon()}
@@ -206,7 +206,7 @@ export function ChecklistCardBubble({
         onSubmit={(e) => void handleAddItem(e)}
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="checklist-quick-add-bullet" aria-hidden="true">☐</span>
+        <Plus size={14} className="checklist-quick-add-bullet" aria-hidden="true" />
         <input
           type="text"
           className="checklist-card-add-input"

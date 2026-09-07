@@ -1,4 +1,4 @@
-import { Archive, BellOff, Hash, LockKeyhole, Pin, Star, Volume2 } from "lucide-react";
+import { Archive, BellOff, FolderMinus, Hash, LockKeyhole, Pin, Star, Volume2 } from "lucide-react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
 import { Chat } from "../../../api/chats";
@@ -28,6 +28,7 @@ type ChatListItemProps = {
   onOpen: (chat: Chat) => void;
   onDragStart?: (event: React.DragEvent<HTMLButtonElement>, chat: Chat) => void;
   onDragEnd?: (event: React.DragEvent<HTMLButtonElement>, chat: Chat) => void;
+  onRemoveFromFolder?: (chat: Chat) => void;
 };
 
 export function ChatListItem({
@@ -41,7 +42,8 @@ export function ChatListItem({
   onSelect,
   onOpen,
   onDragStart,
-  onDragEnd
+  onDragEnd,
+  onRemoveFromFolder
 }: ChatListItemProps) {
   const strings = useStrings();
   const chatName = displayChatName(chat, currentUserId, strings);
@@ -129,6 +131,27 @@ export function ChatListItem({
           ) : preview ? <span className="chat-list-preview">{preview}</span> : null;
         })()}
       </span>
+      {onRemoveFromFolder && (
+        <span
+          role="button"
+          tabIndex={0}
+          className="chat-folder-remove-btn"
+          title="Remove from folder"
+          aria-label="Remove from folder"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemoveFromFolder(chat);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              onRemoveFromFolder(chat);
+            }
+          }}
+        >
+          <FolderMinus size={15} aria-hidden="true" />
+        </span>
+      )}
       {shouldShowChatRowMeta(chat.type) && <span className="chat-row-meta">
         {(chat.type === "group" || chat.type === "family") && chat.activeCall && (
           <span
