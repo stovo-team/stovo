@@ -915,7 +915,14 @@ func TestSetupInviteChatAndRefreshFlow(t *testing.T) {
 		t.Fatalf("member chats status = %d", memberChatsResp.StatusCode)
 	}
 	memberChats := decodeJSON[[]chatPublic](t, memberChatsResp)
-	if len(memberChats) == 0 || memberChats[0].UnreadCount == 0 {
+	var directChat *chatPublic
+	for i := range memberChats {
+		if memberChats[i].ID == chat.ID {
+			directChat = &memberChats[i]
+			break
+		}
+	}
+	if directChat == nil || directChat.UnreadCount == 0 {
 		t.Fatalf("expected unread message for member")
 	}
 

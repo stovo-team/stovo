@@ -3,9 +3,11 @@ import { useId } from "react";
 type VeloLogoProps = {
   className?: string;
   title?: string;
+  size?: number | string;
+  style?: React.CSSProperties;
 };
 
-export default function VeloLogo({ className, title = "Stovo logo" }: VeloLogoProps) {
+export default function VeloLogo({ className, title = "Stovo logo", size, style }: VeloLogoProps) {
   const gradientId = useId();
 
   return (
@@ -15,7 +17,9 @@ export default function VeloLogo({ className, title = "Stovo logo" }: VeloLogoPr
       xmlns="http://www.w3.org/2000/svg"
       role="img"
       aria-label={title}
-      style={{ display: "block", maxWidth: "100%", maxHeight: "100%" }}
+      width={size}
+      height={size}
+      style={{ display: "block", maxWidth: "100%", maxHeight: "100%", ...style }}
     >
 
       <defs>

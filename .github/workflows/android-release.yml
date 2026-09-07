@@ -65,10 +65,50 @@ jobs:
       - name: Install system dependencies (unzip)
         run: |
           if ! command -v unzip >/dev/null 2>&1; then
-            if command -v sudo >/dev/null 2>&1; then
+            if sudo -n true 2>/dev/null; then
               sudo apt-get update && sudo apt-get install -y unzip
-            else
-              apt-get update && apt-get install -y unzip
+            elif command -v apt-get >/dev/null 2>&1 && apt-get download unzip 2>/dev/null; then
+              mkdir -p "$RUNNER_TEMP/unzip-bin"
+              dpkg -x unzip*.deb "$RUNNER_TEMP/unzip-bin" 2>/dev/null || true
+              rm -f unzip*.deb
+              if [ -x "$RUNNER_TEMP/unzip-bin/usr/bin/unzip" ]; then
+                echo "$RUNNER_TEMP/unzip-bin/usr/bin" >> "$GITHUB_PATH"
+              fi
+            fi
+          fi
+          if ! command -v unzip >/dev/null 2>&1; then
+            if command -v python3 >/dev/null 2>&1; then
+              mkdir -p "$RUNNER_TEMP/bin"
+              cat << 'EOF' > "$RUNNER_TEMP/bin/unzip"
+#!/usr/bin/env python3
+import sys, zipfile, os
+
+args = sys.argv[1:]
+dest = "."
+zip_file = None
+
+i = 0
+while i < len(args):
+    arg = args[i]
+    if arg in ("-q", "-o", "-u", "-v", "-l"):
+        i += 1
+    elif arg == "-d" and i + 1 < len(args):
+        dest = args[i + 1]
+        i += 2
+    elif not arg.startswith("-") and zip_file is None:
+        zip_file = arg
+        i += 1
+    else:
+        i += 1
+
+if not zip_file:
+    sys.exit(1)
+
+with zipfile.ZipFile(zip_file, 'r') as z:
+    z.extractall(dest)
+EOF
+              chmod +x "$RUNNER_TEMP/bin/unzip"
+              echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
             fi
           fi
 
