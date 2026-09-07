@@ -8,6 +8,7 @@ import {
   MessageSquare,
   PenTool,
   RotateCcw,
+  Search,
   Sparkles,
   X
 } from "lucide-react";
@@ -44,6 +45,7 @@ export function KeyboardShortcutsSettings() {
     combo: string;
   } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const isMac = isMacPlatform();
 
@@ -168,6 +170,26 @@ export function KeyboardShortcutsSettings() {
     }
   ];
 
+  const queryClean = searchQuery.trim().toLowerCase();
+  const visibleGroups = categoryGroups
+    .map((group) => ({
+      ...group,
+      definitions: group.definitions.filter((def) => {
+        if (!queryClean) return true;
+        const actionLabel = (strings.shortcuts.actions[def.id] || def.id).toLowerCase();
+        const actionDesc = (
+          (strings.shortcuts.actions as Record<string, string>)[`${def.id}_desc`] || ""
+        ).toLowerCase();
+        const currentBinding = (bindings[def.id] || def.defaultBinding).toLowerCase();
+        return (
+          actionLabel.includes(queryClean) ||
+          actionDesc.includes(queryClean) ||
+          currentBinding.includes(queryClean)
+        );
+      })
+    }))
+    .filter((group) => group.definitions.length > 0);
+
   return (
     <div className="shortcuts-settings-surface">
       <div className="shortcuts-settings-header">
@@ -176,12 +198,36 @@ export function KeyboardShortcutsSettings() {
         </div>
         <button
           type="button"
-          className="secondary-button subtle-button"
+          className="secondary-button subtle-button shortcuts-reset-all-btn"
           onClick={handleResetAll}
         >
           <RotateCcw size={15} aria-hidden="true" />
           <span>{strings.shortcuts.resetAll}</span>
         </button>
+      </div>
+
+      <div className="shortcuts-search-container">
+        <div className="shortcuts-search-bar">
+          <Search size={16} className="shortcuts-search-icon" aria-hidden="true" />
+          <input
+            type="text"
+            className="shortcuts-search-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search shortcuts…"
+            aria-label="Search shortcuts"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className="shortcuts-search-clear"
+              aria-label="Clear search"
+              onClick={() => setSearchQuery("")}
+            >
+              <X size={14} aria-hidden="true" />
+            </button>
+          )}
+        </div>
       </div>
 
       {notice && (
@@ -223,7 +269,13 @@ export function KeyboardShortcutsSettings() {
         </div>
       )}
 
-      {categoryGroups.map((group) => {
+      {visibleGroups.length === 0 && searchQuery && (
+        <div className="shortcuts-empty-state">
+          <p className="muted-copy">No shortcuts match &ldquo;{searchQuery}&rdquo;</p>
+        </div>
+      )}
+
+      {visibleGroups.map((group) => {
         const GroupIcon = group.icon;
         return (
           <section key={group.category} className="shortcuts-category-section">
@@ -261,8 +313,9 @@ export function KeyboardShortcutsSettings() {
                           <span>{strings.shortcuts.pressKeys}</span>
                           <button
                             type="button"
-                            className="icon-button subtle"
+                            className="icon-button subtle shortcut-recording-close"
                             aria-label={strings.shortcuts.pressEscape}
+                            title={strings.shortcuts.pressEscape}
                             onClick={() => setRecordingActionId(null)}
                           >
                             <X size={16} aria-hidden="true" />

@@ -7,7 +7,10 @@ import {
   type KeyboardEvent as ReactKeyboardEvent
 } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
   CalendarDays,
+  CornerDownLeft,
   Folder,
   Hash,
   Keyboard,
@@ -386,37 +389,46 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
         onKeyDown={handleKeyDown}
       >
         <div className="quick-switcher-search-row">
-          <Search className="quick-switcher-search-icon" aria-hidden="true" size={20} />
-          <input
-            ref={inputRef}
-            type="text"
-            className="quick-switcher-input"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setSelectedIndex(0);
-            }}
-            placeholder={strings.quickSwitcher.placeholder}
-            aria-label={strings.quickSwitcher.placeholder}
-            autoComplete="off"
-            spellCheck={false}
-          />
-          {query ? (
-            <button
-              type="button"
-              className="quick-switcher-clear-button"
-              aria-label="Clear search"
-              onClick={() => {
-                setQuery("");
+          <div className="quick-switcher-search-bar">
+            <Search className="quick-switcher-search-icon" aria-hidden="true" size={18} />
+            <input
+              ref={inputRef}
+              type="text"
+              className="quick-switcher-input"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
                 setSelectedIndex(0);
-                inputRef.current?.focus();
               }}
-            >
-              <X size={16} aria-hidden="true" />
-            </button>
-          ) : (
-            <span className="quick-switcher-key-hint">Esc</span>
-          )}
+              placeholder={strings.quickSwitcher.placeholder}
+              aria-label={strings.quickSwitcher.placeholder}
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {query && (
+              <button
+                type="button"
+                className="quick-switcher-clear-button"
+                aria-label="Clear search"
+                onClick={() => {
+                  setQuery("");
+                  setSelectedIndex(0);
+                  inputRef.current?.focus();
+                }}
+              >
+                <X size={14} aria-hidden="true" />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            className="quick-switcher-close-button"
+            aria-label={strings.quickSwitcher.hintClose}
+            title={strings.quickSwitcher.hintClose}
+            onClick={onClose}
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
 
         <div className="quick-switcher-content">
@@ -479,14 +491,17 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
         <footer className="quick-switcher-footer">
           <div className="quick-switcher-footer-hints">
             <span>
-              <kbd>↑</kbd>
-              <kbd>↓</kbd> {strings.quickSwitcher.hintNavigation}
+              <kbd><ArrowUp size={12} aria-hidden="true" /></kbd>
+              <kbd><ArrowDown size={12} aria-hidden="true" /></kbd>
+              {" "}{strings.quickSwitcher.hintNavigation}
             </span>
             <span>
-              <kbd>↵</kbd> {strings.quickSwitcher.hintSelect}
+              <kbd><CornerDownLeft size={12} aria-hidden="true" /></kbd>
+              {" "}{strings.quickSwitcher.hintSelect}
             </span>
             <span>
-              <kbd>Esc</kbd> {strings.quickSwitcher.hintClose}
+              <kbd>Esc</kbd>
+              {" "}{strings.quickSwitcher.hintClose}
             </span>
           </div>
           <div className="quick-switcher-footer-prefixes">

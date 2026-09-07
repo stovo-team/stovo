@@ -135,11 +135,11 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 	statsPlugin.SubscribeEvents(eventBus)
 	pluginRegistry.Register(statsPlugin)
 	canvasPlugin := builtins.NewCanvasPlugin()
-	_ = canvasPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus})
+	_ = canvasPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus, StatsStore: statsStore})
 	canvasPlugin.SubscribeEvents(eventBus)
 	pluginRegistry.Register(canvasPlugin)
 	checklistPlugin := builtins.NewChecklistPlugin()
-	_ = checklistPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus})
+	_ = checklistPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus, StatsStore: statsStore})
 	checklistPlugin.SubscribeEvents(eventBus)
 	pluginRegistry.Register(checklistPlugin)
 
