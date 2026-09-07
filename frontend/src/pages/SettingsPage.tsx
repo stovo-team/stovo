@@ -14,6 +14,7 @@ import {
   Database,
   Globe,
   HelpCircle,
+  Keyboard,
   Laptop,
   LockKeyhole,
   LogOut,
@@ -69,6 +70,7 @@ import { PrivacySecuritySettings, type PrivacyDetail } from "./settings/PrivacyS
 import { AppearanceEditor } from "./settings/AppearanceEditor";
 import { FamilySettings } from "./settings/FamilySettings";
 import { SettingsAvatar } from "./settings/SettingsAvatar";
+import { KeyboardShortcutsSettings } from "./settings/KeyboardShortcutsSettings";
 import { SettingsDashboard, type SettingsDashboardGroup } from "./settings/SettingsDashboard";
 
 function initials(name: string | undefined) {
@@ -119,7 +121,21 @@ export default function SettingsPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [activeSettingsItem, setActiveSettingsItem] = useState<string | null>(() => new URLSearchParams(location.search).has("family") ? "Family" : null);
+  const [activeSettingsItem, setActiveSettingsItem] = useState<string | null>(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.has("family")) return "Family";
+    if (params.get("section") === "shortcuts" || params.has("shortcuts")) return "Shortcuts";
+    return null;
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("section") === "shortcuts" || params.has("shortcuts")) {
+      setActiveSettingsItem("Shortcuts");
+    } else if (params.has("family")) {
+      setActiveSettingsItem("Family");
+    }
+  }, [location.search]);
   const [devicePreferences, setDevicePreferences] = useState<DevicePreferences>(() =>
     readDevicePreferences()
   );
@@ -150,6 +166,7 @@ export default function SettingsPage() {
       title: strings.settings.yourSpace,
       items: [
         { id: "Appearance", label: strings.settings.appearance, helper: appearanceHelper, icon: Palette },
+        { id: "Shortcuts", label: strings.settings.keyboardShortcuts, helper: strings.settings.keyboardShortcutsHelper, icon: Keyboard },
         { id: "Notifications", label: strings.settings.notifications, helper: strings.settings.notificationsHelper, icon: Bell },
         { id: "Privacy and Security", label: strings.settings.privacyAndSecurity, helper: strings.settings.privacyHelper, icon: LockKeyhole },
         { id: "Language", label: strings.settings.language, helper: languageHelper, icon: Globe },
@@ -455,6 +472,8 @@ export default function SettingsPage() {
                   <h2>
                     {activeSettingsItem === "Notifications"
                       ? strings.settings.notifications
+                      : activeSettingsItem === "Shortcuts"
+                      ? strings.settings.keyboardShortcuts
                       : activeSettingsItem === "Privacy and Security"
                       ? strings.settings.privacyAndSecurity
                       : activeSettingsItem === "Language"
@@ -515,6 +534,8 @@ export default function SettingsPage() {
                     onToggleBlock={(member) => void toggleBlock(member)}
                     renderMemberAvatar={(member) => <SettingsAvatar accessToken={accessToken} file={member.profilePhoto} label={member.displayName} size="default" />}
                   />
+                ) : activeSettingsItem === "Shortcuts" ? (
+                  <KeyboardShortcutsSettings />
                 ) : activeSettingsItem === "Language" ? (
                   <LanguageSettings
                     strings={strings}

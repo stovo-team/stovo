@@ -23,4 +23,22 @@ describe("new message dialog on web", () => {
     expect(newChatDialog).toContain('aria-label="Close new message"');
     expect(newChatDialog).not.toContain(">\n          Cancel\n        </button>");
   });
+
+  it("rounds any new chat name input box to 22px matching the normal chat list item", () => {
+    expect(styles).toContain(".new-chat-screen .new-chat-compose-title-field input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"range\"]),");
+    expect(styles).toContain("border-radius: 22px;");
+  });
+
+  it("supports 1-person chat creation with creator listed and solo hint", () => {
+    expect(newChatDialog).toContain("new-chat-contact-row selected is-creator");
+    expect(newChatDialog).toContain("new-chat-solo-hint");
+    expect(chatOverlays).toContain("currentUser={currentUser}");
+  });
+
+  it("defines folder drag and drop styles including locked restriction indicators", () => {
+    expect(styles).toContain(".chat-folder-locked-icon");
+    expect(styles).toContain(".chat-list-section.folder-drop-target");
+    expect(styles).toContain(".chat-list-section.folder-drop-restricted");
+    expect(styles).toContain(".chat-list-item.is-dragging");
+  });
 });

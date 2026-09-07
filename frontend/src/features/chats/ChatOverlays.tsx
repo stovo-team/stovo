@@ -18,6 +18,7 @@ export type ChatOverlaysProps = {
   family: Family | null;
   chatOverview: ChatOverviewController;
   canCreateFamilyInvite: boolean;
+  currentUser?: import("../../api/auth").User | null;
   isFamilyInviteOpen: boolean;
   onCloseFamilyInvite: () => void;
   fullViewImage: FullViewImageState | null;
@@ -47,6 +48,7 @@ export function ChatOverlays({
   family,
   chatOverview,
   canCreateFamilyInvite,
+  currentUser,
   isFamilyInviteOpen,
   onCloseFamilyInvite,
   fullViewImage,
@@ -78,6 +80,7 @@ export function ChatOverlays({
             <div onMouseDown={(event) => event.stopPropagation()}>
               <NewChatDialog
                 accessToken={accessToken}
+                currentUser={currentUser}
                 screen={newChatScreen}
                 members={filteredNewChatMembers}
                 memberSearch={newChatMemberSearch}

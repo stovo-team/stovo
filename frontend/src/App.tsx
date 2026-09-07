@@ -45,7 +45,10 @@ import SettingsPage from "./pages/SettingsPage";
 import SetupPage from "./pages/SetupPage";
 import MultiAdminPage from "./pages/MultiAdminPage";
 import CanvasPage from "./pages/CanvasPage";
+import ChecklistPage from "./pages/ChecklistPage";
 import { applyServerNotificationDefaults, readDevicePreferences } from "./settings/devicePreferences";
+import { KeyboardShortcutsProvider, useKeyboardShortcuts } from "./shortcuts/KeyboardShortcutsContext";
+import { QuickSwitcherModal } from "./components/QuickSwitcherModal";
 
 if (typeof document !== "undefined") {
   document.documentElement.dataset.platform = Capacitor.isNativePlatform() ? "native" : "web";
@@ -334,6 +337,7 @@ function ClusterRoutes() {
         }
       />
       <Route path="/app/canvas/:canvasId" element={<RequireAuth><CanvasPage /></RequireAuth>} />
+      <Route path="/app/checklist/:checklistId" element={<RequireAuth><ChecklistPage /></RequireAuth>} />
       <Route
         path="/app/members"
         element={
@@ -417,6 +421,11 @@ function ClusterRoutes() {
   );
 }
 
+function GlobalQuickSwitcher() {
+  const { isQuickSwitcherOpen, closeQuickSwitcher } = useKeyboardShortcuts();
+  return <QuickSwitcherModal open={isQuickSwitcherOpen} onClose={closeQuickSwitcher} />;
+}
+
 function App() {
   useEffect(() => {
     void ensureFullScreenIntentPermission();
@@ -427,23 +436,25 @@ function App() {
       <LanguageProvider>
         <AppearanceProvider>
           <AuthProvider>
-            <WallpaperCustomImageBridge />
-            <NotificationsBootstrapper />
-            <AndroidBackOrchestrator />
-            <NativeAppLinkRouter />
-            <NativeShareRouter />
-            <AppLockGate />
-            <Routes>
-              <Route path="/multi-admin" element={<MultiAdminPage />} />
-              <Route path="/s/:slug/*" element={<ClusterRoutes />} />
-              <Route path="/*" element={<ClusterRoutes />} />
-            </Routes>
+            <KeyboardShortcutsProvider>
+              <WallpaperCustomImageBridge />
+              <NotificationsBootstrapper />
+              <AndroidBackOrchestrator />
+              <NativeAppLinkRouter />
+              <NativeShareRouter />
+              <AppLockGate />
+              <GlobalQuickSwitcher />
+              <Routes>
+                <Route path="/multi-admin" element={<MultiAdminPage />} />
+                <Route path="/s/:slug/*" element={<ClusterRoutes />} />
+                <Route path="/*" element={<ClusterRoutes />} />
+              </Routes>
+            </KeyboardShortcutsProvider>
           </AuthProvider>
         </AppearanceProvider>
       </LanguageProvider>
     </BrowserRouter>
   );
-
 }
 
 export default App;

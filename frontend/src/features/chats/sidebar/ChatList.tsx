@@ -1,4 +1,4 @@
-import { ChevronDown, FolderPlus, MessageCircle, Settings2 } from "lucide-react";
+import { ChevronDown, FolderPlus, Lock, MessageCircle, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Chat } from "../../../api/chats";
@@ -6,13 +6,13 @@ import type { ChatFilter, ChatSectionKey } from "../shared/types";
 import { ChatListItem } from "./ChatListItem";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { ChatFolderDialog } from "./ChatFolderDialog";
-import { ChatFolder, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
+import { ChatFolder, folderMatchesChatProperties, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
 import { displayChatName } from "../shared/chatPresentation";
 import { DefaultChatSectionDialog } from "./DefaultChatSectionDialog";
 import { DefaultChatSectionNames, loadDefaultChatSectionNames, loadDefaultGroupsFolder, saveDefaultChatSectionNames, saveDefaultGroupsFolder } from "./defaultChatSectionSettings";
 
-type ChatListProps = {
-  isLoading: boolean;
+export type ChatListProps = {
+  isLoading?: boolean;
   hasLoadedOverview?: boolean;
   chatsBySection: Record<ChatSectionKey, Chat[]>;
   filteredChats: Chat[];
@@ -53,9 +53,71 @@ export function ChatList({
   const [defaultSectionNames, setDefaultSectionNames] = useState<DefaultChatSectionNames>(() => loadDefaultChatSectionNames(familyId));
   const [defaultGroupsFolder, setDefaultGroupsFolder] = useState<ChatFolder>(() => loadDefaultGroupsFolder(familyId, loadDefaultChatSectionNames(familyId).groups));
   const [editingDefaultSection, setEditingDefaultSection] = useState<ChatSectionKey | undefined>(undefined);
+  const [draggedChat, setDraggedChat] = useState<Chat | null>(null);
+  const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
 
   const folders = folderState.folders;
+
+  function sectionMatchesChat(sectionKey: ChatSectionKey, chat: Chat): boolean {
+    if (sectionKey === "archive") return chat.type === "archive";
+    if (sectionKey === "groups") return chat.type === "group" || chat.type === "family";
+    if (sectionKey === "dms") return chat.type === "direct";
+    if (sectionKey === "channels") return chat.type === "channel";
+    if (sectionKey === "voice") return chat.type === "voice";
+    return false;
+  }
+
+  function handleDropChatToFolder(folder: ChatFolder, chat: Chat) {
+    const currentIncluded = folder.rules.includedChatIds ?? [];
+    if (currentIncluded.includes(chat.id)) {
+      setDraggedChat(null);
+      setDragOverTargetId(null);
+      return;
+    }
+    const nextFolder: ChatFolder = {
+      ...folder,
+      rules: {
+        ...folder.rules,
+        includedChatIds: [...currentIncluded, chat.id],
+        excludedChatIds: (folder.rules.excludedChatIds ?? []).filter((id) => id !== chat.id)
+      }
+    };
+    const nextFolders = folders.map((item) => (item.id === folder.id ? nextFolder : item));
+    setFolderState((current) => ({
+      ...current,
+      folders: nextFolders
+    }));
+    saveChatFolders(familyId, nextFolders);
+    if (collapsed[folder.id]) {
+      setCollapsed((prev) => ({ ...prev, [folder.id]: false }));
+    }
+    setDraggedChat(null);
+    setDragOverTargetId(null);
+  }
+
+  function handleDropChatToDefaultGroups(chat: Chat) {
+    const currentIncluded = defaultGroupsFolder.rules.includedChatIds ?? [];
+    if (currentIncluded.includes(chat.id)) {
+      setDraggedChat(null);
+      setDragOverTargetId(null);
+      return;
+    }
+    const nextFolder: ChatFolder = {
+      ...defaultGroupsFolder,
+      rules: {
+        ...defaultGroupsFolder.rules,
+        includedChatIds: [...currentIncluded, chat.id]
+      }
+    };
+    setDefaultGroupsFolder(nextFolder);
+    saveDefaultGroupsFolder(familyId, nextFolder);
+    if (collapsed.groups) {
+      setCollapsed((prev) => ({ ...prev, groups: false }));
+    }
+    setDraggedChat(null);
+    setDragOverTargetId(null);
+  }
 
   useEffect(() => {
     setFolderState({ familyId, folders: loadChatFolders(familyId) });
@@ -119,12 +181,55 @@ export function ChatList({
               ? filteredChats.filter((chat) => matchesFolder(chat, defaultGroupsFolder.rules, displayChatName(chat, currentUserId, strings)))
               : chatsBySection[section.key];
             const sectionLabel = section.key === "groups" ? defaultGroupsFolder.name : defaultSectionNames[section.key] ?? section.label;
-            if (sectionChats.length === 0) {
+            if (sectionChats.length === 0 && !draggedChat) {
               return null;
             }
+            const draggedChatName = draggedChat ? displayChatName(draggedChat, currentUserId, strings) : "";
+            const isGroups = section.key === "groups";
+            const isMatch = isGroups
+              ? (draggedChat ? folderMatchesChatProperties(draggedChat, defaultGroupsFolder.rules, draggedChatName) : true)
+              : (draggedChat ? sectionMatchesChat(section.key, draggedChat) : true);
+            const isRestricted = Boolean(draggedChat && !isMatch);
+            const isTarget = Boolean(draggedChat && isMatch && isGroups && dragOverTargetId === "groups");
+
             return (
-              <section className="chat-list-section" key={section.key} aria-label={sectionLabel}>
-                <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}><ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} /><span>{sectionLabel}</span></button>{canManageFolders && <span className="chat-folder-controls"><button type="button" aria-label={`Edit ${sectionLabel}`} title="Folder settings" onClick={() => setEditingDefaultSection(section.key)}><Settings2 size={14} /></button></span>}</div>
+              <section
+                className={`chat-list-section ${isTarget ? "folder-drop-target" : ""} ${isRestricted && dragOverTargetId === section.key ? "folder-drop-restricted" : ""}`}
+                key={section.key}
+                aria-label={sectionLabel}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setDragOverTargetId(section.key);
+                  event.dataTransfer.dropEffect = isGroups && isMatch ? "copy" : "none";
+                }}
+                onDragLeave={() => {
+                  setDragOverTargetId((current) => (current === section.key ? null : current));
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  if (draggedChat && isGroups && isMatch) {
+                    handleDropChatToDefaultGroups(draggedChat);
+                  }
+                }}
+              >
+                <div className="chat-section-heading">
+                  <button type="button" className="chat-section-collapse" onClick={() => toggleSection(section.key)} aria-expanded={!collapsed[section.key]}>
+                    <ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} />
+                    <span>{sectionLabel}</span>
+                    {isRestricted && (
+                      <span className="chat-folder-locked-icon" title="Chat properties do not match folder rules" aria-label="Restricted">
+                        <Lock size={14} aria-hidden="true" />
+                      </span>
+                    )}
+                  </button>
+                  {canManageFolders && (
+                    <span className="chat-folder-controls">
+                      <button type="button" aria-label={`Edit ${sectionLabel}`} title="Folder settings" onClick={() => setEditingDefaultSection(section.key)}>
+                        <Settings2 size={14} />
+                      </button>
+                    </span>
+                  )}
+                </div>
                 {!collapsed[section.key] && sectionChats.map((chat) => (
                   <ChatListItem
                     key={chat.id}
@@ -134,8 +239,14 @@ export function ChatList({
                     accessToken={accessToken}
                     currentUserId={currentUserId}
                     minimizedChatLayout={minimizedChatLayout}
+                    isDragging={draggedChat?.id === chat.id}
                     onSelect={onSelectChat}
                     onOpen={onOpenChat}
+                    onDragStart={(_e, c) => setDraggedChat(c)}
+                    onDragEnd={() => {
+                      setDraggedChat(null);
+                      setDragOverTargetId(null);
+                    }}
                   />
                 ))}
               </section>
@@ -143,10 +254,77 @@ export function ChatList({
           })}
       {folders.map((folder) => {
         const sectionChats = filteredChats.filter((chat) => matchesFolder(chat, folder.rules, displayChatName(chat, currentUserId, strings)));
-        return <section className="chat-list-section chat-list-section--custom" key={folder.id} aria-label={folder.name}>
-          <div className="chat-section-heading"><button type="button" className="chat-section-collapse" onClick={() => toggleSection(folder.id)} aria-expanded={!collapsed[folder.id]}><ChevronDown size={16} aria-hidden="true" className={collapsed[folder.id] ? "is-collapsed" : ""} /><span>{folder.name}</span><small>{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small></button>{canManageFolders && <span className="chat-folder-controls"><button type="button" aria-label={`Edit ${folder.name}`} title="Folder settings" onClick={() => setEditingFolder(folder)}><Settings2 size={14} /></button></span>}</div>
-          {!collapsed[folder.id] && (sectionChats.length ? sectionChats.map((chat) => <ChatListItem key={chat.id} chat={chat} isActive={chat.id === activeChatId} isTransitionSource={selectedChatId === chat.id} accessToken={accessToken} currentUserId={currentUserId} minimizedChatLayout={minimizedChatLayout} onSelect={onSelectChat} onOpen={onOpenChat} />) : <p className="chat-folder-empty">No chats match this folder yet.</p>)}
-        </section>;
+        const draggedChatName = draggedChat ? displayChatName(draggedChat, currentUserId, strings) : "";
+        const isFolderMatch = draggedChat ? folderMatchesChatProperties(draggedChat, folder.rules, draggedChatName) : true;
+        const isFolderRestricted = Boolean(draggedChat && !isFolderMatch);
+        const isFolderTarget = Boolean(draggedChat && isFolderMatch && dragOverTargetId === folder.id);
+
+        return (
+          <section
+            className={`chat-list-section chat-list-section--custom ${isFolderTarget ? "folder-drop-target" : ""} ${isFolderRestricted && dragOverTargetId === folder.id ? "folder-drop-restricted" : ""}`}
+            key={folder.id}
+            aria-label={folder.name}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragOverTargetId(folder.id);
+              event.dataTransfer.dropEffect = isFolderMatch ? "copy" : "none";
+            }}
+            onDragLeave={() => {
+              setDragOverTargetId((current) => (current === folder.id ? null : current));
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (draggedChat && isFolderMatch) {
+                handleDropChatToFolder(folder, draggedChat);
+              }
+            }}
+          >
+            <div className="chat-section-heading">
+              <button type="button" className="chat-section-collapse" onClick={() => toggleSection(folder.id)} aria-expanded={!collapsed[folder.id]}>
+                <ChevronDown size={16} aria-hidden="true" className={collapsed[folder.id] ? "is-collapsed" : ""} />
+                <span>{folder.name}</span>
+                {isFolderRestricted && (
+                  <span className="chat-folder-locked-icon" title="Chat properties do not match folder rules" aria-label="Restricted">
+                    <Lock size={14} aria-hidden="true" />
+                  </span>
+                )}
+                <small>{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
+              </button>
+              {canManageFolders && (
+                <span className="chat-folder-controls">
+                  <button type="button" aria-label={`Edit ${folder.name}`} title="Folder settings" onClick={() => setEditingFolder(folder)}>
+                    <Settings2 size={14} />
+                  </button>
+                </span>
+              )}
+            </div>
+            {!collapsed[folder.id] && (
+              sectionChats.length ? (
+                sectionChats.map((chat) => (
+                  <ChatListItem
+                    key={chat.id}
+                    chat={chat}
+                    isActive={chat.id === activeChatId}
+                    isTransitionSource={selectedChatId === chat.id}
+                    accessToken={accessToken}
+                    currentUserId={currentUserId}
+                    minimizedChatLayout={minimizedChatLayout}
+                    isDragging={draggedChat?.id === chat.id}
+                    onSelect={onSelectChat}
+                    onOpen={onOpenChat}
+                    onDragStart={(_e, c) => setDraggedChat(c)}
+                    onDragEnd={() => {
+                      setDraggedChat(null);
+                      setDragOverTargetId(null);
+                    }}
+                  />
+                ))
+              ) : (
+                <p className="chat-folder-empty">No chats match this folder yet.</p>
+              )
+            )}
+          </section>
+        );
       })}
       {canManageFolders && !showSkeleton && <button type="button" className="chat-folder-create" onClick={() => setEditingFolder(null)}><FolderPlus size={17} aria-hidden="true" />New folder</button>}
       {!showSkeleton && filteredChats.length === 0 && (

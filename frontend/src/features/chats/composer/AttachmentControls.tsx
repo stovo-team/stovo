@@ -37,13 +37,13 @@ export function AttachmentControls() {
     isSendingMessage,
     onCreatePoll,
     onCreateCanvas,
+    onCreateChecklist,
     attachmentSheetInitialTab
   } = useComposerAttachmentContext();
   return (
     <>
       <button
         ref={attachmentButtonRef}
-        type="button"
         className="file-picker"
         aria-label="Attach files"
         title="Attach files"
@@ -115,6 +115,7 @@ export function AttachmentControls() {
         isSendingMessage={isSendingMessage}
         onCreatePoll={onCreatePoll}
         onCreateCanvas={onCreateCanvas}
+        onCreateChecklist={onCreateChecklist}
       />
     </>
   );

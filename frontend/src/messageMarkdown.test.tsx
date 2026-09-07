@@ -550,4 +550,30 @@ describe("MessageMarkdown", () => {
     expect(mention?.textContent).toBe("@alex");
     expect(mention?.getAttribute("data-username")).toBe("alex");
   });
+
+  it("parses and renders interactive task lists (- [ ] and - [x])", () => {
+    const source = "- [ ] Buy groceries\n- [x] Pick up laundry";
+    const nodes = parseStovoMarkdown(source);
+    expect(nodes).toEqual([
+      {
+        type: "list",
+        ordered: false,
+        children: [
+          { type: "listItem", checked: false, children: [text("Buy groceries")] },
+          { type: "listItem", checked: true, children: [text("Pick up laundry")] }
+        ]
+      }
+    ]);
+
+    const container = renderMessage(source);
+    const taskItems = container.querySelectorAll(".message-task-item");
+    expect(taskItems).toHaveLength(2);
+    expect(taskItems[0].classList.contains("is-checked")).toBe(false);
+    expect(taskItems[1].classList.contains("is-checked")).toBe(true);
+
+    const checkboxes = container.querySelectorAll<HTMLInputElement>(".message-task-checkbox input");
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0].checked).toBe(false);
+    expect(checkboxes[1].checked).toBe(true);
+  });
 });
