@@ -22,8 +22,8 @@ func (s *PostgresStore) SetFavorite(ctx context.Context, change featurefiles.Fav
 	}
 	defer tx.Rollback()
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO file_preferences (id, user_id, is_favorite) VALUES ($1, $2, $3)
-		ON CONFLICT (id, user_id) DO UPDATE SET is_favorite=EXCLUDED.is_favorite`, change.FileID, change.UserID, change.IsFavorite); err != nil {
+		INSERT INTO file_preferences (file_id, user_id, is_favorite) VALUES ($1, $2, $3)
+		ON CONFLICT (file_id, user_id) DO UPDATE SET is_favorite=EXCLUDED.is_favorite`, change.FileID, change.UserID, change.IsFavorite); err != nil {
 		return err
 	}
 	payload, err := json.Marshal(map[string]string{"fileId": change.FileID})

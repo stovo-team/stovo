@@ -25,7 +25,7 @@ export type StorageSource<TFile = StorageFileLike> = {
   fileCount: number;
 };
 
-export type StorageFilter = "all" | "photos" | "videos" | "audio" | "documents" | "canvases" | "favorites";
+export type StorageFilter = "all" | "photos" | "videos" | "audio" | "documents" | "canvases" | "checklists" | "favorites";
 
 export function storageSourceLeadingVisual(
   kind: StorageAvatarKind,
@@ -47,7 +47,7 @@ export function storageFileKind(file: Pick<StorageFileLike, "mimeType">) {
 }
 
 export function matchesStorageFilter(file: StorageFileLike, filter: StorageFilter) {
-  return filter === "all" || (filter === "favorites" ? Boolean(file.isFavorite) : filter !== "canvases" && storageFileKind(file) === filter);
+  return filter === "all" || (filter === "favorites" ? Boolean(file.isFavorite) : filter !== "canvases" && filter !== "checklists" && storageFileKind(file) === filter);
 }
 
 export function groupStorageSources(files: StorageFileLike[]) {

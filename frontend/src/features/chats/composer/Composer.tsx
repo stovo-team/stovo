@@ -101,7 +101,8 @@ export function Composer({
   onScheduleMessage,
   onSetReminder,
   onCreatePoll,
-  onCreateCanvas
+  onCreateCanvas,
+  onCreateChecklist
 }: {
   accessToken: string | null;
   selectedChat: Chat | null;
@@ -167,6 +168,11 @@ export function Composer({
   onSetReminder?: (rule: ReminderRule) => void | Promise<void>;
   onCreatePoll?: (payload: CreatePollPayload) => void | Promise<void>;
   onCreateCanvas?: () => void;
+  onCreateChecklist?: (payload: {
+    title: string;
+    category: "grocery" | "errand" | "general";
+    items: { text: string; section?: string }[];
+  }) => void | Promise<void>;
 }) {
   const strings = useStrings();
   const [editingAttachment, setEditingAttachment] = useState<PendingLocalAttachment | null>(null);
@@ -520,7 +526,8 @@ export function Composer({
           isUploading,
           isSendingMessage,
           onCreatePoll,
-          onCreateCanvas
+          onCreateCanvas,
+          onCreateChecklist
         }}>
           <AttachmentControls />
         </ComposerAttachmentProvider>

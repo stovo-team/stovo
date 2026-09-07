@@ -55,14 +55,23 @@ func (s Service) ValidateSend(ctx context.Context, chat domain.Chat, sender doma
 		}
 	}
 	threadRoot := trim(input.ThreadRootMessageID)
+	replyTo := trim(input.ReplyToMessageID)
 	if !s.authorizer.CanPost(chat, sender) {
-		if chat.Type != "channel" || !chat.CommentsEnabled || threadRoot == nil {
+		if chat.Type != "channel" || !chat.CommentsEnabled || (threadRoot == nil && replyTo == nil) {
 			return ErrForbidden
 		}
-		if err := s.validateReply(ctx, chat.ID, *threadRoot); err != nil {
-			return err
+		if threadRoot != nil {
+			if err := s.validateReply(ctx, chat.ID, *threadRoot); err != nil {
+				return err
+			}
 		}
-		input.ThreadRootMessageID, input.ReplyToMessageID = threadRoot, nil
+		if replyTo != nil {
+			if err := s.validateReply(ctx, chat.ID, *replyTo); err != nil {
+				return err
+			}
+		}
+		input.ThreadRootMessageID = threadRoot
+		input.ReplyToMessageID = replyTo
 		return nil
 	}
 	if reply := trim(input.ReplyToMessageID); reply != nil {

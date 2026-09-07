@@ -23,8 +23,11 @@ type ChatListItemProps = {
   accessToken: string | null;
   currentUserId?: string;
   minimizedChatLayout?: boolean;
+  isDragging?: boolean;
   onSelect: (chat: Chat) => void;
   onOpen: (chat: Chat) => void;
+  onDragStart?: (event: React.DragEvent<HTMLButtonElement>, chat: Chat) => void;
+  onDragEnd?: (event: React.DragEvent<HTMLButtonElement>, chat: Chat) => void;
 };
 
 export function ChatListItem({
@@ -34,8 +37,11 @@ export function ChatListItem({
   accessToken,
   currentUserId,
   minimizedChatLayout,
+  isDragging,
   onSelect,
-  onOpen
+  onOpen,
+  onDragStart,
+  onDragEnd
 }: ChatListItemProps) {
   const strings = useStrings();
   const chatName = displayChatName(chat, currentUserId, strings);
@@ -52,10 +58,22 @@ export function ChatListItem({
     isTransitionSource ? chatTransitionName(chat.id, "title") : undefined
   );
 
+  const canDrag = Boolean(onDragStart && chat.type !== "archive" && chat.type !== "family");
+
   return (
     <button
       type="button"
-      className={`chat-list-item ${isActive ? "active" : ""}`}
+      className={`chat-list-item ${isActive ? "active" : ""} ${isDragging ? "is-dragging" : ""}`}
+      draggable={canDrag}
+      onDragStart={canDrag ? (event) => {
+        event.dataTransfer.setData("application/stovo-chat-id", chat.id);
+        event.dataTransfer.setData("text/plain", chat.id);
+        event.dataTransfer.effectAllowed = "copyMove";
+        onDragStart?.(event, chat);
+      } : undefined}
+      onDragEnd={canDrag ? (event) => {
+        onDragEnd?.(event, chat);
+      } : undefined}
       onClick={() => {
         onSelect(chat);
         onOpen(chat);

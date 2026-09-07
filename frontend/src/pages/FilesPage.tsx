@@ -52,6 +52,7 @@ import AppNav from "./AppNav";
 import { buildAudioSourceFactory } from "../features/chats/shared/audioSourceFactory";
 import { StorageCollections, type StorageCollectionPickerRequest } from "../components/StorageCollections";
 import { StorageCanvases } from "../components/StorageCanvases";
+import { StorageChecklists } from "../components/StorageChecklists";
 import { useStrings } from "../i18n/LanguageContext";
 import { loadCachedFileList, saveCachedFileList } from "../fileLibraryCache";
 import { syncChatReplicaDeltas } from "../features/chats/sidebar/chatDeltaSync";
@@ -77,6 +78,7 @@ const storageFilters: Array<{ label: string; value: StorageFilter }> = [
   { label: "Videos", value: "videos" },
   { label: "Audio", value: "audio" },
   { label: "Documents", value: "documents" },
+  { label: "Checklists", value: "checklists" },
   { label: "Favorites", value: "favorites" }
 ];
 
@@ -644,9 +646,10 @@ export default function FilesPage() {
           </div>
 
           <div className="storage-content-area">
-            {!collectionPicker && filter !== "canvases" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
+            {!collectionPicker && filter !== "canvases" && filter !== "checklists" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
             <StorageCanvases accessToken={accessToken} filter={filter} search={search} />
-            {filter !== "canvases" && <>
+            <StorageChecklists accessToken={accessToken} filter={filter} search={search} />
+            {filter !== "canvases" && filter !== "checklists" && <>
             <div className="storage-files-heading">
               <div><h2>{collectionPicker ? `Add to ${collectionPicker.collectionTitle}` : "Files"}</h2>{collectionPicker && <p className="storage-picker-hint">Select files from Storage. Files already in this folder are locked.</p>}</div>
               {!collectionPicker && <button type="button" className="storage-files-upload" title="Upload files" aria-label="Upload files" disabled={isUploading} onClick={() => uploadInputRef.current?.click()}><Upload size={15} /></button>}

@@ -115,5 +115,9 @@ describe("i18n strings and language resolution", () => {
     expect(Object.keys(russianStrings.privacy)).toEqual(Object.keys(englishStrings.privacy));
     expect(Object.keys(russianStrings.errors)).toEqual(Object.keys(englishStrings.errors));
     expect(Object.keys(russianStrings.callHistory)).toEqual(Object.keys(englishStrings.callHistory));
+    expect(Object.keys(russianStrings.shortcuts)).toEqual(Object.keys(englishStrings.shortcuts));
+    expect(Object.keys(russianStrings.shortcuts.categories)).toEqual(Object.keys(englishStrings.shortcuts.categories));
+    expect(Object.keys(russianStrings.shortcuts.actions)).toEqual(Object.keys(englishStrings.shortcuts.actions));
+    expect(Object.keys(russianStrings.quickSwitcher)).toEqual(Object.keys(englishStrings.quickSwitcher));
   });
 });

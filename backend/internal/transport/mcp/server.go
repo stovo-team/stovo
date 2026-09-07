@@ -39,6 +39,7 @@ func New(config Config) http.Handler {
 		server,
 		mcpserver.WithEndpointPath(endpoint),
 		mcpserver.WithDisableLocalhostProtection(true),
+		mcpserver.WithStateLess(true),
 		mcpserver.WithHTTPContextFunc(func(ctx context.Context, _ *http.Request) context.Context {
 			if config.BridgeContext != nil {
 				return config.BridgeContext(ctx)

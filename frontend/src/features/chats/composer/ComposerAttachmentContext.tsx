@@ -29,6 +29,11 @@ type ComposerAttachmentContextValue = {
   isSendingMessage?: boolean;
   onCreatePoll?: (payload: CreatePollPayload) => void | Promise<void>;
   onCreateCanvas?: () => void;
+  onCreateChecklist?: (payload: {
+    title: string;
+    category: "grocery" | "errand" | "general";
+    items: { text: string; section?: string }[];
+  }) => void | Promise<void>;
 };
 
 const ComposerAttachmentContext = createContext<ComposerAttachmentContextValue | null>(null);

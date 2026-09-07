@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { BarChart3, Check, Clipboard, Layers3, Plus, Puzzle, X } from "lucide-react";
+import { BarChart3, Check, CheckSquare, Clipboard, Layers3, Plus, Puzzle, X } from "lucide-react";
 import { ApiError, getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
 
 type PluginStatus = { id: string; name: string; enabled: boolean };
-type PluginDetail = { description: string; icon: typeof BarChart3; eyebrow: string; preview: "statistics" | "canvas" | "generic" };
+type PluginDetail = { description: string; icon: typeof BarChart3; eyebrow: string; preview: "statistics" | "canvas" | "checklist" | "generic" };
 
 const pluginDetails: Record<string, PluginDetail> = {
   "plugin-rich-stats": { description: "Understand messages, reply time, conversation momentum, and the spaces your community uses most.", icon: BarChart3, eyebrow: "Analytics", preview: "statistics" },
-  "plugin-canvas": { description: "Give everyone a shared, live canvas for notes, ideas, and visual collaboration.", icon: Layers3, eyebrow: "Collaboration", preview: "canvas" }
+  "plugin-canvas": { description: "Give everyone a shared, live canvas for notes, ideas, and visual collaboration.", icon: Layers3, eyebrow: "Collaboration", preview: "canvas" },
+  "plugin-checklist": { description: "Interactive grocery and errand checklists in chat with live checkbox synchronization and Notion-style editing.", icon: CheckSquare, eyebrow: "Tasks", preview: "checklist" }
 };
 
 const pluginStarter = `// backend/internal/plugins/builtins/example.go
@@ -25,6 +26,7 @@ func (p *ExamplePlugin) SubscribeEvents(bus plugins.EventBus) {}`;
 function PluginPreview({ kind }: { kind: PluginDetail["preview"] }) {
   if (kind === "statistics") return <div className="plugin-preview plugin-preview--stats" aria-hidden="true"><div className="plugin-preview-top"><span /><span /><span /></div><div className="plugin-preview-stat"><strong>128</strong><small>messages</small></div><div className="plugin-preview-bars"><i /><i /><i /><i /><i /><i /><i /><i /></div><div className="plugin-preview-legend"><span /><span /><span /></div></div>;
   if (kind === "canvas") return <div className="plugin-preview plugin-preview--canvas" aria-hidden="true"><span className="plugin-canvas-dot plugin-canvas-dot--one" /><span className="plugin-canvas-dot plugin-canvas-dot--two" /><div className="plugin-canvas-note plugin-canvas-note--one">Ideas</div><div className="plugin-canvas-note plugin-canvas-note--two">Plan</div><div className="plugin-canvas-line" /></div>;
+  if (kind === "checklist") return <div className="plugin-preview plugin-preview--checklist" aria-hidden="true"><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>Groceries</span></div><div className="plugin-checklist-line"><span className="plugin-check-box" /><span>Errands</span></div><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>Tasks</span></div></div>;
   return <div className="plugin-preview plugin-preview--generic" aria-hidden="true"><Puzzle size={42} /></div>;
 }
 

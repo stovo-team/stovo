@@ -3,6 +3,7 @@ import type { Socket } from "socket.io-client";
 
 import type { Chat, Message, PinnedMessage } from "../../../api/chats";
 import type { Poll } from "../../../api/polls";
+import type { ChecklistCard } from "../../../api/checklist";
 import { prefetchFiles } from "../../../api/files";
 import { decryptMessage } from "../../../api/messageCrypto";
 import { applyMessagePreviewToChat, isSuppressedUserError, sortPinsByPosition } from "../shared/chatPresentation";
@@ -211,6 +212,20 @@ export function useChatRealtime({
         );
       };
 
+      const onChecklistUpdated = (checklist: ChecklistCard) => {
+        if (!checklist || !checklist.id) return;
+        const activeChatId = activeChatIdRef.current;
+        if (activeChatId) {
+          applyMessagesForChat(activeChatId, (current) =>
+            current.map((msg) =>
+              msg.checklist?.id === checklist.id || msg.content?.startsWith(`checklist:${checklist.id}`)
+                ? { ...msg, checklist }
+                : msg
+            )
+          );
+        }
+      };
+
       socket.on("message:new", onMessageNew);
       socket.on("message:updated", onMessageUpdated);
       socket.on("message:deleted", onMessageDeleted);
@@ -219,6 +234,7 @@ export function useChatRealtime({
       socket.on("message:delivered", onMessageDelivered);
       socket.on("message:read", onMessageRead);
       socket.on("poll.updated", onPollUpdated);
+      socket.on("checklist.updated", onChecklistUpdated);
       socket.on("typing:update", onTypingUpdate);
       socket.on("error", onSocketError);
 
@@ -231,6 +247,7 @@ export function useChatRealtime({
         socket.off("message:delivered", onMessageDelivered);
         socket.off("message:read", onMessageRead);
         socket.off("poll.updated", onPollUpdated);
+        socket.off("checklist.updated", onChecklistUpdated);
         socket.off("typing:update", onTypingUpdate);
         socket.off("error", onSocketError);
       };

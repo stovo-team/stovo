@@ -172,6 +172,7 @@ func (s *Server) configureSockets() {
 			})
 			s.registerCallSocketHandlers(socket, user)
 			s.registerCanvasSocketHandlers(socket, user)
+			s.registerChecklistSocketHandlers(socket, user)
 		},
 	})
 }
