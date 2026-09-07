@@ -1371,8 +1371,8 @@ func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID 
 			messageType = "mixed"
 		}
 	}
-	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" && messageType != "collection" && messageType != "canvas" {
-		return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
+	if messageType != "text" && messageType != "image" && messageType != "video" && messageType != "file" && messageType != "mixed" && messageType != "collection" && messageType != "canvas" && messageType != "checklist" {
+		return nil, "", nil, nil, nil, nil, nil, "", newStatusError(http.StatusUnprocessableEntity, "invalid message type")
 	}
 	return content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, attachments, messageType, nil
 }
