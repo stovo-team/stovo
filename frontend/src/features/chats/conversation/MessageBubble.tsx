@@ -11,7 +11,9 @@ import MessageMediaAlbum, { partitionMessageAttachments } from "../../../compone
 import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { PollBubble } from "./PollBubble";
+import { ChecklistCardBubble } from "./ChecklistCardBubble";
 import type { Poll } from "../../../api/polls";
+import type { ChecklistCard } from "../../../api/checklist";
 import { getClusterPrefix } from "../../../api/client";
 
 export function extractFirstUrl(content: string | null | undefined): string | null {
@@ -29,6 +31,21 @@ function embeddedCanvasReference(content: string | null | undefined) {
   const match = /^canvas:([^\n]+)\n?([\s\S]*)$/u.exec(content ?? "");
   if (!match) return null;
   return { id: match[1], title: match[2].trim() || "Untitled canvas", available: true };
+}
+
+function embeddedChecklistReference(content: string | null | undefined): ChecklistCard | null {
+  const match = /^checklist:([^\n]+)\n?([\s\S]*)$/u.exec(content ?? "");
+  if (!match) return null;
+  return {
+    id: match[1],
+    title: match[2].trim() || "Untitled checklist",
+    category: "general",
+    available: true,
+    items: [],
+    totalItems: 0,
+    completedItems: 0,
+    canManage: false
+  };
 }
 import { chatInitials } from "../shared/chatPresentation";
 import type { CallPhase } from "../shared/types";
@@ -393,7 +410,19 @@ export function MessageBubble({
             </div>
           ) : (
             <>
-              {message.type === "canvas" && (message.canvas ?? embeddedCanvasReference(message.content)) ? (() => {
+              {message.type === "checklist" && (message.checklist ?? embeddedChecklistReference(message.content)) ? (() => {
+                const checklist = message.checklist ?? embeddedChecklistReference(message.content)!;
+                return (
+                  <ChecklistCardBubble
+                    checklist={checklist}
+                    accessToken={accessToken}
+                    currentUserId={currentUserId}
+                    onOpenChecklist={() => {
+                      if (checklist.available) window.location.assign(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`);
+                    }}
+                  />
+                );
+              })() : message.type === "canvas" && (message.canvas ?? embeddedCanvasReference(message.content)) ? (() => {
                 const canvas = message.canvas ?? embeddedCanvasReference(message.content)!;
                 return (
                 <button

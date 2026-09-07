@@ -789,6 +789,9 @@ func (s *Server) buildMessage(messageID, viewerID string) (messagePublic, error)
 	if message.Type == "canvas" {
 		message.Canvas = s.canvasCardForMessage(context.Background(), message.ID, viewerID)
 	}
+	if message.Type == "checklist" {
+		message.Checklist = s.checklistCardForMessage(context.Background(), message.ID, viewerID)
+	}
 	message.KeyVersion = m.KeyVersion
 	if message.EncryptionProtocol == encryptionProtocolServerAtRest && message.Ciphertext != nil && message.Nonce != nil {
 		decrypted, err := s.decryptServerAtRest(familyID, *message.Ciphertext, *message.Nonce)
@@ -1283,9 +1286,7 @@ func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, use
 // and reply-target validity. It also normalises the payload's reply/thread fields.
 func (s *Server) validateMessageSendPermissions(ctx context.Context, chat chatPublic, user userPublic, payload *sendMessageRequest) error {
 	input := &domain.SendMessage{ReplyToMessageID: payload.ReplyToMessageID, ThreadRootMessageID: payload.ThreadRootMessageID}
-	service := featuremessages.NewService(messagePolicyAdapter{server: s})
-	err := service.ValidateSend(ctx, messageDomainChat(chat), domain.Sender{ID: user.ID, Role: user.Role}, input)
-	switch err {
+	switch err := featuremessages.NewService(messagePolicyAdapter{server: s}).ValidateSend(ctx, messageDomainChat(chat), domain.Sender{ID: user.ID, Role: user.Role}, input); err {
 	case nil:
 		payload.ReplyToMessageID, payload.ThreadRootMessageID = input.ReplyToMessageID, input.ThreadRootMessageID
 		return nil
@@ -1293,6 +1294,8 @@ func (s *Server) validateMessageSendPermissions(ctx context.Context, chat chatPu
 		return errForbidden
 	case featuremessages.ErrDirectBlocked:
 		return newStatusError(403, "direct messages are unavailable for this member")
+	case featuremessages.ErrInvalidReply:
+		return newStatusError(http.StatusUnprocessableEntity, "reply target does not belong to this chat")
 	default:
 		return err
 	}
@@ -1317,8 +1320,7 @@ func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID 
 	content *string, encryptionProtocol string, ciphertext, nonce *string, keyVersion *int, metadata *string,
 	attachments []filePublic, messageType string, err error,
 ) {
-	content = trimStringPointer(payload.Content)
-	if content != nil && *content == "" {
+	if content = trimStringPointer(payload.Content); content != nil && *content == "" {
 		content = nil
 	}
 	if content != nil && len(*content) > 4000 {
@@ -1346,7 +1348,7 @@ func (s *Server) resolveMessageContent(chat chatPublic, user userPublic, chatID 
 		}
 	}
 	if content == nil && ciphertext == nil && len(payload.FileIDs) == 0 && !payload.AttachmentsPending && payload.CollectionID == nil {
-		return nil, "", nil, nil, nil, nil, nil, "", errBadRequest
+		return nil, "", nil, nil, nil, nil, nil, "", newStatusError(http.StatusUnprocessableEntity, "message content cannot be empty")
 	}
 	attachments, err = s.loadAttachmentsForMessage(payload.FileIDs, user, chatID)
 	if err != nil {

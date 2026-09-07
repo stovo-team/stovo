@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppearance } from "../appearance/AppearanceContext";
+import { useKeyboardShortcuts } from "../shortcuts/KeyboardShortcutsContext";
 import { ChatOverlays } from "../features/chats/ChatOverlays";
 import { ChatDetailsPanel } from "../features/chats/details/ChatDetailsPanel";
 import { ChatSidebar } from "../features/chats/sidebar/ChatSidebar";
@@ -16,6 +17,7 @@ import { CallFeature, CallFeatureProvider, MobileMinimizedCallBar } from "../fea
 import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
 import { createCanvas } from "../api/canvas";
+import { createChecklist } from "../api/checklist";
 
 export default function ChatsPage() {
   const { chatId } = useParams();
@@ -56,6 +58,46 @@ export default function ChatsPage() {
     addSharedFileAttachments,
     handleSendMessage
   } = composerApi;
+
+  const { registerShortcutHandler } = useKeyboardShortcuts();
+
+  useEffect(() => {
+    const unregisterNext = registerShortcutHandler("next_chat", () => {
+      if (chats.length === 0) return;
+      const currentIndex = chats.findIndex((c) => c.id === (selectedChat?.id ?? chatId));
+      const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % chats.length;
+      openChat(chats[nextIndex]);
+    });
+
+    const unregisterPrev = registerShortcutHandler("prev_chat", () => {
+      if (chats.length === 0) return;
+      const currentIndex = chats.findIndex((c) => c.id === (selectedChat?.id ?? chatId));
+      const prevIndex = currentIndex <= 0 ? chats.length - 1 : currentIndex - 1;
+      openChat(chats[prevIndex]);
+    });
+
+    const unregisterNew = registerShortcutHandler("new_chat", () => {
+      openNewChatScreen();
+    });
+
+    const unregisterFocus = registerShortcutHandler("focus_composer", () => {
+      focusComposer();
+    });
+
+    const unregisterDetails = registerShortcutHandler("toggle_details", () => {
+      if (selectedChat) {
+        setIsDetailsOpen((prev) => !prev);
+      }
+    });
+
+    return () => {
+      unregisterNext();
+      unregisterPrev();
+      unregisterNew();
+      unregisterFocus();
+      unregisterDetails();
+    };
+  }, [registerShortcutHandler, chats, selectedChat, chatId, openChat, openNewChatScreen, focusComposer, setIsDetailsOpen]);
 
   // Only bounce unknown/missing chats after overview + chat load settle.
   // Avoid bouncing during selection transitions (selectedChat can briefly
@@ -195,6 +237,15 @@ export default function ChatsPage() {
                 void createCanvas(accessToken, selectedChat.id)
                   .then((canvas) => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`));
               }}
+              onCreateChecklist={(payload) => {
+                if (!accessToken || !selectedChat) return;
+                void createChecklist(accessToken, {
+                  chatId: selectedChat.id,
+                  title: payload.title,
+                  category: payload.category,
+                  items: payload.items
+                }).then((checklist) => navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`));
+              }}
             />
           </section>
           {selectedChat && isDetailsOpen && (
@@ -256,6 +307,7 @@ export default function ChatsPage() {
         </CallFeatureProvider>
         <ChatOverlays
           accessToken={accessToken}
+          currentUser={currentUser}
           family={family}
           chatOverview={chatOverview}
           canCreateFamilyInvite={canCreateFamilyInvite}

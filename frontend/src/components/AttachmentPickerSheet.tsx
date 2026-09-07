@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
-import { AudioLines, BarChart2, FileText, Image as ImageIcon, Music, Paperclip, Smile, StickyNote } from "lucide-react";
+import { AudioLines, BarChart2, CheckSquare, FileText, Image as ImageIcon, Music, Paperclip, Smile, StickyNote } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 
@@ -19,12 +19,13 @@ import { MessageEnlargeButton } from "./MessageEnlargeModal";
 import { DocumentPickerList } from "./attachment-picker/DocumentPickerList";
 import { MediaGalleryGrid } from "./attachment-picker/MediaGalleryGrid";
 import { RichPollCreator } from "./attachment-picker/RichPollCreator";
+import { RichChecklistCreator } from "./attachment-picker/RichChecklistCreator";
 import { useMediaPicker } from "./attachment-picker/useMediaPicker";
 import type { PendingLocalAttachment } from "../features/chats/shared/types";
 import type { CreatePollPayload } from "../api/polls";
 
-export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file" | "poll";
-export type AttachmentPickerTab = "gallery" | "file" | "audio" | "poll";
+export type AttachmentPickerOption = "gallery" | "camera" | "audio" | "file" | "poll" | "checklist";
+export type AttachmentPickerTab = "gallery" | "file" | "audio" | "poll" | "checklist";
 
 type AttachmentPickerSheetProps = {
   open: boolean;
@@ -44,6 +45,11 @@ type AttachmentPickerSheetProps = {
   initialTab?: AttachmentPickerTab;
   onCreatePoll?: (payload: CreatePollPayload) => Promise<void> | void;
   onCreateCanvas?: () => void;
+  onCreateChecklist?: (payload: {
+    title: string;
+    category: "grocery" | "errand" | "general";
+    items: { text: string; section?: string }[];
+  }) => Promise<void> | void;
 };
 
 export default function AttachmentPickerSheet({
@@ -63,7 +69,8 @@ export default function AttachmentPickerSheet({
   onPreviewMediaItemChange,
   initialTab = "gallery",
   onCreatePoll,
-  onCreateCanvas
+  onCreateCanvas,
+  onCreateChecklist
 }: AttachmentPickerSheetProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeTab, setActiveTab] = useState<AttachmentPickerTab>(initialTab);
@@ -433,7 +440,9 @@ export default function AttachmentPickerSheet({
     // Keep the input activation in this click's user gesture. Browsers can
     // reject a file chooser that is opened after an animation or a timeout.
     onPick(option);
-    if (option !== "poll") {
+    if (option === "checklist") {
+      setActiveTab("checklist");
+    } else if (option !== "poll") {
       closeSheet();
     }
   };
@@ -441,7 +450,7 @@ export default function AttachmentPickerSheet({
   // Desktop has direct access to the browser's file chooser, so it should not
   // inherit the large native gallery sheet. Keep the available actions close to
   // the composer and open the requested chooser immediately.
-  if (!Capacitor.isNativePlatform() && initialTab !== "poll") {
+  if (!Capacitor.isNativePlatform() && initialTab !== "poll" && activeTab !== "poll" && activeTab !== "checklist") {
     return createPortal(
       <div className="attachment-picker-backdrop attachment-picker-backdrop--web-menu is-ready" role="presentation" onClick={closeSheet}>
         <div className="attachment-picker-web-menu" style={webMenuPosition ?? { visibility: "hidden" }} role="dialog" aria-modal="true" aria-label="Attach to message" onClick={(event) => event.stopPropagation()}>
@@ -449,6 +458,7 @@ export default function AttachmentPickerSheet({
           <button type="button" onClick={() => handleWebMenuPick("file")}><FileText size={19} /><span>Document</span></button>
           <button type="button" onClick={() => handleWebMenuPick("audio")}><Music size={19} /><span>Music</span></button>
           <button type="button" onClick={() => handleWebMenuPick("poll")}><BarChart2 size={19} /><span>Poll</span></button>
+          {onCreateChecklist && <button type="button" onClick={() => handleWebMenuPick("checklist")}><CheckSquare size={19} /><span>Checklist</span></button>}
           {onCreateCanvas && <button type="button" onClick={() => { closeSheet(); onCreateCanvas(); }}><StickyNote size={19} /><span>Canvas</span></button>}
         </div>
       </div>,
@@ -603,9 +613,19 @@ export default function AttachmentPickerSheet({
               onCancel={closeSheet}
             />
           )}
+
+          {activeTab === "checklist" && (
+            <RichChecklistCreator
+              onSubmit={async (payload) => {
+                await onCreateChecklist?.(payload);
+                closeSheet();
+              }}
+              onCancel={closeSheet}
+            />
+          )}
         </div>
 
-        {activeTab !== "poll" && (
+        {activeTab !== "poll" && activeTab !== "checklist" && (
           <div className="attachment-picker-message-box message-composer">
             <div className={`message-composer-row${isMultiline ? " message-composer-row--multiline" : ""}`}>
               <button
@@ -742,6 +762,18 @@ export default function AttachmentPickerSheet({
             </span>
             <span className="nav-item-label">Poll</span>
           </button>
+          {onCreateChecklist && (
+            <button
+              type="button"
+              className={`attachment-nav-item ${activeTab === "checklist" ? "active" : ""}`}
+              onClick={() => setActiveTab("checklist")}
+            >
+              <span className="nav-item-icon">
+                <CheckSquare size={20} />
+              </span>
+              <span className="nav-item-label">Checklist</span>
+            </button>
+          )}
         </nav>
       </div>
     </div>

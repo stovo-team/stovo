@@ -3,6 +3,7 @@ import { apiRequest } from "./client";
 import { FamilyFile } from "./files";
 import type { Poll } from "./polls";
 import type { CanvasReference } from "./canvas";
+import type { ChecklistCard } from "./checklist";
 
 export interface ChatMember {
   id: string;
@@ -120,6 +121,7 @@ export interface Message {
   poll?: Poll | null;
   collection?: MessageCollectionCard | null;
   canvas?: CanvasReference | null;
+  checklist?: ChecklistCard | null;
   deliveryError?: string;
   deliveryState?: "sending" | "failed" | "scheduled";
   scheduledFor?: string | null;

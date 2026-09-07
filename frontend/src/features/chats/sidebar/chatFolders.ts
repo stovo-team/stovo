@@ -8,6 +8,8 @@ export type ChatFolderRules = {
   unreadOnly: boolean;
   mutedOnly: boolean;
   favoritesOnly: boolean;
+  includedChatIds?: string[];
+  excludedChatIds?: string[];
 };
 
 export type ChatFolder = {
@@ -31,7 +33,7 @@ export const defaultFolderRules = (): ChatFolderRules => ({
   favoritesOnly: false
 });
 
-export function matchesFolder(chat: Chat, rules: ChatFolderRules, chatName: string): boolean {
+export function folderMatchesChatProperties(chat: Chat, rules: ChatFolderRules, chatName: string): boolean {
   // The personal archive and the server-wide family chat are structural views,
   // not ordinary conversations users should accidentally sweep into a folder.
   if (chat.type === "archive" || chat.type === "family") return false;
@@ -41,6 +43,23 @@ export function matchesFolder(chat: Chat, rules: ChatFolderRules, chatName: stri
   if (rules.favoritesOnly && !chat.isFavorite) return false;
   const titleNeedle = rules.titleIncludes.trim().toLocaleLowerCase();
   return !titleNeedle || chatName.toLocaleLowerCase().includes(titleNeedle);
+}
+
+export function matchesFolder(chat: Chat, rules: ChatFolderRules, chatName: string): boolean {
+  if (!folderMatchesChatProperties(chat, rules, chatName)) return false;
+  if (rules.excludedChatIds && rules.excludedChatIds.includes(chat.id)) return false;
+  if (rules.includedChatIds && rules.includedChatIds.length > 0) {
+    const hasFilters =
+      rules.chatTypes.length > 0 ||
+      rules.unreadOnly ||
+      rules.mutedOnly ||
+      rules.favoritesOnly ||
+      rules.titleIncludes.trim().length > 0;
+    if (!hasFilters) {
+      return rules.includedChatIds.includes(chat.id);
+    }
+  }
+  return true;
 }
 
 function storageKey(familyId: string) {

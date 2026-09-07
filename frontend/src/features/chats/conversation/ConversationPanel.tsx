@@ -60,6 +60,11 @@ export type ConversationPanelProps = {
   onOpenImage: (file: FamilyFile, previewUrl: string, messageId?: string) => void;
   onOpenNewChat: () => void;
   onCreateCanvas?: () => void;
+  onCreateChecklist?: (payload: {
+    title: string;
+    category: "grocery" | "errand" | "general";
+    items: { text: string; section?: string }[];
+  }) => void | Promise<void>;
 };
 
 export function ConversationPanel({
@@ -101,7 +106,8 @@ export function ConversationPanel({
   onOpenChat,
   onOpenImage,
   onOpenNewChat,
-  onCreateCanvas
+  onCreateCanvas,
+  onCreateChecklist
 }: ConversationPanelProps) {
   const strings = useStrings();
   const [isVoiceTextChatOpen, setIsVoiceTextChatOpen] = useState(false);
@@ -695,6 +701,7 @@ export function ConversationPanel({
               onSetReminder={handleSetReminder}
               onCreatePoll={handleCreatePoll}
               onCreateCanvas={selectedChat?.type === "archive" ? undefined : onCreateCanvas}
+              onCreateChecklist={selectedChat?.type === "archive" ? undefined : onCreateChecklist}
             />
           )}
         </>

@@ -70,7 +70,7 @@ func (s *Store) CompleteSetup(ctx context.Context, p SetupParams) error {
 			SetTitle(p.ChatTitle).
 			SetCreatedBy(p.UserID).
 			SetMediaVisibility("family").
-			SetEncryptionProtocol("end_to_end").
+			SetEncryptionProtocol("server_at_rest").
 			SetCreatedAt(p.CreatedAt).
 			SetUpdatedAt(p.CreatedAt).
 			Save(ctx); err != nil {
@@ -156,7 +156,7 @@ func (s *Store) CreateAdminUser(ctx context.Context, p SetupParams) (*ent.User, 
 				SetTitle("General Family Chat").
 				SetCreatedBy(p.UserID).
 				SetMediaVisibility("family").
-				SetEncryptionProtocol("end_to_end").
+				SetEncryptionProtocol("server_at_rest").
 				SetCreatedAt(p.CreatedAt).
 				SetUpdatedAt(p.CreatedAt).
 				Save(ctx)

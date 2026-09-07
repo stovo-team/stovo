@@ -1,0 +1,313 @@
+import { useEffect, useState } from "react";
+import {
+  AlertCircle,
+  Check,
+  Compass,
+  Headphones,
+  Keyboard,
+  MessageSquare,
+  PenTool,
+  RotateCcw,
+  Sparkles,
+  X
+} from "lucide-react";
+
+import { useStrings } from "../../i18n/LanguageContext";
+import {
+  DEFAULT_SHORTCUT_BINDINGS,
+  SHORTCUT_DEFINITIONS,
+  checkShortcutConflict,
+  formatKeyComboForDisplay,
+  isMacPlatform,
+  normalizeKeyComboFromEvent
+} from "../../shortcuts/registry";
+import {
+  loadShortcutBindings,
+  resetAllShortcutBindings,
+  resetShortcutBinding,
+  saveShortcutBinding
+} from "../../shortcuts/shortcutsStore";
+import type {
+  ShortcutActionId,
+  ShortcutBindings,
+  ShortcutCategory,
+  ShortcutDefinition
+} from "../../shortcuts/types";
+
+export function KeyboardShortcutsSettings() {
+  const strings = useStrings();
+  const [bindings, setBindings] = useState<ShortcutBindings>(() => loadShortcutBindings());
+  const [recordingActionId, setRecordingActionId] = useState<ShortcutActionId | null>(null);
+  const [conflict, setConflict] = useState<{
+    actionId: ShortcutActionId;
+    conflictingActionId: ShortcutActionId;
+    combo: string;
+  } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const isMac = isMacPlatform();
+
+  useEffect(() => {
+    const handleChanged = () => {
+      setBindings(loadShortcutBindings());
+    };
+    window.addEventListener("stovo:shortcuts-changed", handleChanged);
+    return () => {
+      window.removeEventListener("stovo:shortcuts-changed", handleChanged);
+    };
+  }, []);
+
+  // Handle keydown while in recording mode
+  useEffect(() => {
+    if (!recordingActionId) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.key === "Escape") {
+        setRecordingActionId(null);
+        setConflict(null);
+        return;
+      }
+
+      const combo = normalizeKeyComboFromEvent(event, isMac);
+      if (!combo) {
+        // Just pressed a modifier key like Shift or Ctrl
+        return;
+      }
+
+      // Check conflict
+      const conflictingAction = checkShortcutConflict(recordingActionId, combo, bindings);
+      if (conflictingAction) {
+        setConflict({
+          actionId: recordingActionId,
+          conflictingActionId: conflictingAction,
+          combo
+        });
+        return;
+      }
+
+      // No conflict -> apply immediately
+      const updated = saveShortcutBinding(recordingActionId, combo);
+      setBindings(updated);
+      setRecordingActionId(null);
+      setConflict(null);
+      setNotice(`Shortcut updated: ${combo}`);
+      setTimeout(() => setNotice(null), 2500);
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+    };
+  }, [recordingActionId, bindings, isMac]);
+
+  function handleReassignConflict() {
+    if (!conflict) return;
+    // Overwrite conflicting binding
+    const updated = saveShortcutBinding(conflict.actionId, conflict.combo);
+    setBindings(updated);
+    setRecordingActionId(null);
+    setConflict(null);
+    setNotice(`Shortcut reassigned: ${conflict.combo}`);
+    setTimeout(() => setNotice(null), 2500);
+  }
+
+  function handleResetOne(actionId: ShortcutActionId) {
+    const updated = resetShortcutBinding(actionId);
+    setBindings(updated);
+  }
+
+  function handleResetAll() {
+    if (window.confirm(strings.shortcuts.resetConfirm)) {
+      const updated = resetAllShortcutBindings();
+      setBindings(updated);
+      setRecordingActionId(null);
+      setConflict(null);
+      setNotice(strings.shortcuts.resetAll);
+      setTimeout(() => setNotice(null), 2500);
+    }
+  }
+
+  const categoryGroups: Array<{
+    category: ShortcutCategory;
+    title: string;
+    icon: typeof Keyboard;
+    definitions: ShortcutDefinition[];
+  }> = [
+    {
+      category: "general",
+      title: strings.shortcuts.categories.general,
+      icon: Sparkles,
+      definitions: SHORTCUT_DEFINITIONS.filter((d) => d.category === "general")
+    },
+    {
+      category: "navigation",
+      title: strings.shortcuts.categories.navigation,
+      icon: Compass,
+      definitions: SHORTCUT_DEFINITIONS.filter((d) => d.category === "navigation")
+    },
+    {
+      category: "chats",
+      title: strings.shortcuts.categories.chats,
+      icon: MessageSquare,
+      definitions: SHORTCUT_DEFINITIONS.filter((d) => d.category === "chats")
+    },
+    {
+      category: "composer",
+      title: strings.shortcuts.categories.composer,
+      icon: PenTool,
+      definitions: SHORTCUT_DEFINITIONS.filter((d) => d.category === "composer")
+    },
+    {
+      category: "calls",
+      title: strings.shortcuts.categories.calls,
+      icon: Headphones,
+      definitions: SHORTCUT_DEFINITIONS.filter((d) => d.category === "calls")
+    }
+  ];
+
+  return (
+    <div className="shortcuts-settings-surface">
+      <div className="shortcuts-settings-header">
+        <div>
+          <p className="muted-copy">{strings.shortcuts.subtitle}</p>
+        </div>
+        <button
+          type="button"
+          className="secondary-button subtle-button"
+          onClick={handleResetAll}
+        >
+          <RotateCcw size={15} aria-hidden="true" />
+          <span>{strings.shortcuts.resetAll}</span>
+        </button>
+      </div>
+
+      {notice && (
+        <div className="shortcuts-settings-notice success-text" role="status">
+          <Check size={16} aria-hidden="true" />
+          <span>{notice}</span>
+        </div>
+      )}
+
+      {conflict && (
+        <div className="shortcuts-conflict-card" role="alert">
+          <AlertCircle size={20} className="shortcuts-conflict-icon" aria-hidden="true" />
+          <div className="shortcuts-conflict-body">
+            <strong>{strings.shortcuts.conflictWarning}</strong>
+            <p>
+              Combination <kbd>{conflict.combo}</kbd> is currently assigned to{" "}
+              <strong>{strings.shortcuts.actions[conflict.conflictingActionId]}</strong>.
+            </p>
+          </div>
+          <div className="shortcuts-conflict-actions">
+            <button
+              type="button"
+              className="primary-button small-button"
+              onClick={handleReassignConflict}
+            >
+              {strings.shortcuts.reassign}
+            </button>
+            <button
+              type="button"
+              className="secondary-button small-button"
+              onClick={() => {
+                setConflict(null);
+                setRecordingActionId(null);
+              }}
+            >
+              {strings.shortcuts.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {categoryGroups.map((group) => {
+        const GroupIcon = group.icon;
+        return (
+          <section key={group.category} className="shortcuts-category-section">
+            <h3 className="shortcuts-category-title">
+              <GroupIcon size={18} aria-hidden="true" />
+              <span>{group.title}</span>
+            </h3>
+
+            <div className="shortcuts-list">
+              {group.definitions.map((def) => {
+                const currentBinding = bindings[def.id] || def.defaultBinding;
+                const isDefault = currentBinding === def.defaultBinding;
+                const isRecording = recordingActionId === def.id;
+                const displayKeys = formatKeyComboForDisplay(currentBinding, isMac);
+                const actionLabel = strings.shortcuts.actions[def.id] || def.id;
+                const actionDesc =
+                  (strings.shortcuts.actions as Record<string, string>)[`${def.id}_desc`] || "";
+
+                return (
+                  <div
+                    key={def.id}
+                    className={`shortcut-row${isRecording ? " is-recording" : ""}`}
+                  >
+                    <div className="shortcut-row-info">
+                      <strong className="shortcut-row-title">{actionLabel}</strong>
+                      {actionDesc && (
+                        <span className="shortcut-row-desc">{actionDesc}</span>
+                      )}
+                    </div>
+
+                    <div className="shortcut-row-actions">
+                      {isRecording ? (
+                        <div className="shortcut-recording-indicator">
+                          <span className="pulse-dot" aria-hidden="true" />
+                          <span>{strings.shortcuts.pressKeys}</span>
+                          <button
+                            type="button"
+                            className="icon-button subtle"
+                            aria-label={strings.shortcuts.pressEscape}
+                            onClick={() => setRecordingActionId(null)}
+                          >
+                            <X size={16} aria-hidden="true" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="shortcut-badge-button"
+                          aria-label={`Change shortcut for ${actionLabel}`}
+                          onClick={() => {
+                            setConflict(null);
+                            setRecordingActionId(def.id);
+                          }}
+                        >
+                          {displayKeys.map((key, keyIndex) => (
+                            <span key={keyIndex} className="shortcut-key-wrapper">
+                              <kbd>{key}</kbd>
+                              {keyIndex < displayKeys.length - 1 && (
+                                <span className="shortcut-key-separator">+</span>
+                              )}
+                            </span>
+                          ))}
+                        </button>
+                      )}
+
+                      {!isDefault && !isRecording && (
+                        <button
+                          type="button"
+                          className="icon-button subtle shortcut-reset-button"
+                          aria-label={`${strings.shortcuts.resetAction}: ${actionLabel}`}
+                          title={strings.shortcuts.resetAction}
+                          onClick={() => handleResetOne(def.id)}
+                        >
+                          <RotateCcw size={15} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}

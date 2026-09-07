@@ -365,6 +365,48 @@ type messagePublic struct {
 	Poll                *pollPublic             `json:"poll,omitempty"`
 	Collection          *collectionCardPublic   `json:"collection,omitempty"`
 	Canvas              *canvasCardPublic       `json:"canvas,omitempty"`
+	Checklist           *checklistCardPublic    `json:"checklist,omitempty"`
+}
+
+type checklistItemPublic struct {
+	ID          string     `json:"id"`
+	ChecklistID string     `json:"checklistId"`
+	Text        string     `json:"text"`
+	Completed   bool       `json:"completed"`
+	Position    int        `json:"position"`
+	Section     *string    `json:"section,omitempty"`
+	CreatedBy   string     `json:"createdBy"`
+	CompletedBy *string    `json:"completedBy,omitempty"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+}
+
+type checklistCardPublic struct {
+	ID             string                `json:"id"`
+	Title          string                `json:"title"`
+	Category       string                `json:"category"`
+	Available      bool                  `json:"available"`
+	Items          []checklistItemPublic `json:"items"`
+	TotalItems     int                   `json:"totalItems"`
+	CompletedItems int                   `json:"completedItems"`
+	CanManage      bool                  `json:"canManage"`
+}
+
+type checklistPublic struct {
+	ID             string                `json:"id"`
+	FamilyID       string                `json:"familyId"`
+	OriginChatID   string                `json:"originChatId"`
+	CreatedBy      string                `json:"createdBy"`
+	Title          string                `json:"title"`
+	Category       string                `json:"category"`
+	LinkedChatIDs  []string              `json:"linkedChatIds"`
+	CanManage      bool                  `json:"canManage"`
+	Items          []checklistItemPublic `json:"items"`
+	TotalItems     int                   `json:"totalItems"`
+	CompletedItems int                   `json:"completedItems"`
+	CreatedAt      time.Time             `json:"createdAt"`
+	UpdatedAt      time.Time             `json:"updatedAt"`
 }
 
 type canvasCardPublic struct {

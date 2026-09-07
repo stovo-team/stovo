@@ -18,6 +18,7 @@ export type StovoMarkdownNode =
       children: StovoMarkdownNode[];
       level?: number;
       ordered?: boolean;
+      checked?: boolean;
     }
   | { type: "link"; href: string; children: StovoMarkdownNode[] }
   | { type: "mention"; username: string; children: StovoMarkdownNode[] };
@@ -238,6 +239,7 @@ type BlockLine =
   | { kind: "heading"; level: number; text: string }
   | { kind: "quote"; text: string }
   | { kind: "ul"; text: string }
+  | { kind: "task"; checked: boolean; text: string }
   | { kind: "ol"; text: string }
   | { kind: "empty" }
   | { kind: "paragraph"; text: string };
@@ -253,9 +255,14 @@ function classifyLine(line: string): BlockLine {
   if (line === ">") {
     return { kind: "quote", text: "" };
   }
-  const unordered = /^[-*+]\s+(.+)$/.exec(line);
+  const unordered = /^[-*+]\s+(.*)$/.exec(line);
   if (unordered) {
-    return { kind: "ul", text: unordered[1] };
+    const text = unordered[1];
+    const taskMatch = /^\[([ xX])\]\s*(.*)$/.exec(text);
+    if (taskMatch) {
+      return { kind: "task", checked: taskMatch[1].toLowerCase() === "x", text: taskMatch[2] };
+    }
+    return { kind: "ul", text };
   }
   const ordered = /^\d+[.)]\s+(.+)$/.exec(line);
   if (ordered) {
@@ -285,7 +292,7 @@ export function parseStovoMarkdown(
   const lines = source.split("\n");
   const hasBlockMarkup = lines.some((line) => {
     const kind = classifyLine(line).kind;
-    return kind === "heading" || kind === "ul" || kind === "ol" || kind === "quote";
+    return kind === "heading" || kind === "ul" || kind === "task" || kind === "ol" || kind === "quote";
   });
 
   // Preserve legacy inline-only messages (including plain newlines) exactly.
@@ -295,7 +302,7 @@ export function parseStovoMarkdown(
 
   const nodes: StovoMarkdownNode[] = [];
   let quoteBuffer: string[] = [];
-  let listBuffer: { ordered: boolean; items: string[] } | null = null;
+  let listBuffer: { ordered: boolean; items: { text: string; checked?: boolean }[] } | null = null;
   let paragraphBuffer: string[] = [];
 
   const flushQuote = () => {
@@ -317,7 +324,8 @@ export function parseStovoMarkdown(
       ordered: listBuffer.ordered,
       children: listBuffer.items.map((item) => ({
         type: "listItem" as const,
-        children: parseInline(item, 0)
+        checked: item.checked,
+        children: parseInline(item.text, 0)
       }))
     });
     listBuffer = null;
@@ -349,7 +357,7 @@ export function parseStovoMarkdown(
       continue;
     }
 
-    if (classified.kind === "ul" || classified.kind === "ol") {
+    if (classified.kind === "ul" || classified.kind === "ol" || classified.kind === "task") {
       flushQuote();
       flushParagraph();
       const ordered = classified.kind === "ol";
@@ -357,7 +365,10 @@ export function parseStovoMarkdown(
         flushList();
         listBuffer = { ordered, items: [] };
       }
-      listBuffer.items.push(classified.text);
+      listBuffer.items.push({
+        text: classified.text,
+        checked: classified.kind === "task" ? classified.checked : undefined
+      });
       continue;
     }
 
@@ -510,8 +521,19 @@ function renderNodes(
         ) : (
           <ul key={key} className="message-list message-list-unordered">{children}</ul>
         );
-      case "listItem":
+      case "listItem": {
+        if (typeof node.checked === "boolean") {
+          return (
+            <li key={key} className={`message-list-item message-task-item${node.checked ? " is-checked" : ""}`}>
+              <span className={`message-task-checkbox${node.checked ? " checked" : ""}`} aria-hidden="true">
+                <input type="checkbox" readOnly checked={node.checked} tabIndex={-1} />
+              </span>
+              <span className={`message-task-text${node.checked ? " is-completed" : ""}`}>{children}</span>
+            </li>
+          );
+        }
         return <li key={key} className="message-list-item">{children}</li>;
+      }
       case "paragraph":
         return (
           <span key={key} className="message-paragraph">

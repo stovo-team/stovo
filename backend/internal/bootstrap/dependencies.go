@@ -138,6 +138,10 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 	_ = canvasPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus})
 	canvasPlugin.SubscribeEvents(eventBus)
 	pluginRegistry.Register(canvasPlugin)
+	checklistPlugin := builtins.NewChecklistPlugin()
+	_ = checklistPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus})
+	checklistPlugin.SubscribeEvents(eventBus)
+	pluginRegistry.Register(checklistPlugin)
 
 	return app.Dependencies{
 		Config: cfg, Database: db, DatabaseHealth: databasehealth.New(db), Persistence: entClient, Redis: redisClient, JobsRedis: jobsRedisClient,

@@ -8,6 +8,7 @@ import { BackButton } from "../../../components/BackButton";
 
 export function NewChatDialog({
   accessToken,
+  currentUser,
   screen,
   members,
   memberSearch,
@@ -24,6 +25,7 @@ export function NewChatDialog({
   onCreateVoiceChannel
 }: {
   accessToken: string | null;
+  currentUser?: User | null;
   screen: NewChatScreen;
   members: User[];
   memberSearch: string;
@@ -93,13 +95,20 @@ export function NewChatDialog({
           onSubmit={handleFormSubmit}
         >
           <label className="new-chat-compose-title-field">
-            <span>{fieldPlaceholder}</span>
+            <span className="sr-only">{fieldPlaceholder}</span>
             <input
               autoFocus
               maxLength={255}
               placeholder={fieldPlaceholder}
+              aria-label={fieldPlaceholder}
               value={groupTitle}
               onChange={(event) => onGroupTitleChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && canCreateCompose) {
+                  event.preventDefault();
+                  handleFormSubmit(event);
+                }
+              }}
             />
           </label>
           <label className="search-field new-chat-screen-search">
@@ -112,8 +121,32 @@ export function NewChatDialog({
               onChange={(event) => onMemberSearchChange(event.target.value)}
             />
           </label>
-          <p className="new-chat-section-label">{strings.chats.details.members}</p>
+          <p className="new-chat-section-label">
+            {strings.chats.details.members} ({groupMemberIds.length + (currentUser ? 1 : 0)})
+          </p>
           <ul className="new-chat-contact-list">
+            {currentUser && (
+              <li key={currentUser.id}>
+                <div
+                  className="new-chat-contact-row selected is-creator"
+                  aria-label={`${currentUser.displayName} (${strings.chats.newChat.you ?? "You"})`}
+                >
+                  <RealAvatar
+                    accessToken={accessToken}
+                    className="avatar chat-avatar"
+                    file={currentUser.profilePhoto}
+                    label={currentUser.displayName}
+                  />
+                  <span className="new-chat-contact-copy">
+                    <strong>{currentUser.displayName} ({strings.chats.newChat.you ?? "You"})</strong>
+                    <small>{strings.chats.newChat.creatorRole ?? "Creator"}</small>
+                  </span>
+                  <span className="new-chat-check selected" aria-hidden={true}>
+                    <span className="ms-icon ms-icon--20 ms-icon--filled">check_circle</span>
+                  </span>
+                </div>
+              </li>
+            )}
             {members.map((member) => {
               const selected = groupMemberIds.includes(member.id);
               return (
@@ -146,6 +179,14 @@ export function NewChatDialog({
               );
             })}
           </ul>
+          {members.length === 0 && (
+            <div className="new-chat-solo-hint">
+              <span className="ms-icon ms-icon--20" aria-hidden={true}>info</span>
+              <span>
+                {strings.chats.newChat.soloCreationHint ?? "You can create this chat for 1 person (yourself) and invite others anytime."}
+              </span>
+            </div>
+          )}
         </form>
       </section>
     );
