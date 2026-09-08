@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckSquare, Circle, Mic, Plus, ShoppingBag, ShoppingCart, Sparkles, Trash2, Truck } from "lucide-react";
+import { CheckSquare, Circle, Mic, Plus, ShoppingBag, ShoppingCart, Sparkles, Trash2, Truck, X } from "lucide-react";
 
 export interface RichChecklistCreatorProps {
   onSubmit: (payload: {
@@ -175,26 +175,6 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
               <span>Voice to List</span>
               <span className="checklist-pro-badge">PRO</span>
             </button>
-            {category === "grocery" && (
-              <button
-                type="button"
-                className="checklist-template-btn"
-                onClick={() => handleApplyTemplate(GROCERY_TEMPLATE)}
-              >
-                <Sparkles size={14} />
-                <span>Load Grocery Pack</span>
-              </button>
-            )}
-            {category === "errand" && (
-              <button
-                type="button"
-                className="checklist-template-btn"
-                onClick={() => handleApplyTemplate(ERRAND_TEMPLATE)}
-              >
-                <Sparkles size={14} />
-                <span>Load Errand Pack</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -240,15 +220,6 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
           />
           <button
             type="button"
-            className="checklist-mic-btn"
-            disabled
-            title="Dictate item by voice (Premium feature)"
-            aria-label="Dictate item by voice (Premium feature)"
-          >
-            <Mic size={16} />
-          </button>
-          <button
-            type="button"
             className="checklist-add-btn"
             disabled={!newItemText.trim()}
             onClick={handleAddItem}
@@ -262,7 +233,8 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
       <div className="checklist-creator-actions">
         {onCancel && (
           <button type="button" className="checklist-action-btn secondary" onClick={onCancel} disabled={isSubmitting}>
-            Cancel
+            <X size={16} />
+            <span>Cancel</span>
           </button>
         )}
         <button
@@ -271,7 +243,8 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
           onClick={() => void handleSubmit()}
           disabled={isSubmitting || items.length === 0}
         >
-          {isSubmitting ? "Creating..." : "Share Checklist in Chat"}
+          <Plus size={16} />
+          <span>{isSubmitting ? "Creating..." : "Create Checklist"}</span>
         </button>
       </div>
     </div>
