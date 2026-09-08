@@ -14943,7 +14943,7 @@ span.message-spoiler.is-revealed {
 
 .poll-text-input:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-primary) 18%, transparent);
+  box-shadow: none !important;
 }
 
 .poll-option-row {
@@ -15113,42 +15113,55 @@ span.message-spoiler.is-revealed {
 .poll-cancel-btn,
 .poll-submit-btn {
   align-items: center;
-  border-radius: 999px;
+  border-radius: 9999px;
+  box-shadow: none !important;
   cursor: pointer;
   display: inline-flex;
   flex: 1;
   font: inherit;
-  font-size: 0.875rem;
-  font-weight: 700;
-  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  gap: 6px;
   justify-content: center;
-  min-height: 48px;
-  padding: 0 18px;
+  min-height: 42px;
+  padding: 10px 22px;
+  transition: all 0.15s ease;
 }
 
 .poll-cancel-btn {
-  background: color-mix(in oklab, var(--text-primary) 8%, transparent);
-  border: 0;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.14));
+  color: var(--text-secondary);
+  box-shadow: none !important;
+}
+
+.poll-cancel-btn:hover:not(:disabled),
+.poll-cancel-btn:focus-visible:not(:disabled) {
   color: var(--text-primary);
+  background: var(--surface-hover, rgba(255, 255, 255, 0.12));
 }
 
 .poll-submit-btn {
   background: var(--accent-primary);
-  border: 0;
-  color: #ffffff;
-  box-shadow: 0 8px 18px color-mix(in oklab, var(--accent-primary) 25%, transparent);
+  border: 1px solid var(--accent-primary);
+  color: var(--button-primary-text, #ffffff);
+  box-shadow: none !important;
 }
 
-.poll-cancel-btn:hover,
-.poll-cancel-btn:focus-visible { background: color-mix(in oklab, var(--text-primary) 14%, transparent); }
-.poll-submit-btn:hover,
-.poll-submit-btn:focus-visible { filter: brightness(1.07); }
+.poll-submit-btn:hover:not(:disabled),
+.poll-submit-btn:focus-visible:not(:disabled) {
+  filter: brightness(1.08);
+}
+
 .poll-cancel-btn:disabled,
 .poll-submit-btn:disabled,
 .poll-add-option-btn:disabled,
 .poll-remove-option-btn:disabled,
 .quiz-correct-toggle:disabled,
-.poll-setting-toggle input:disabled + .poll-setting-toggle-track { cursor: default; opacity: .5; }
+.poll-setting-toggle input:disabled + .poll-setting-toggle-track {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 
 .poll-creator-error-banner {
   background: color-mix(in oklab, var(--danger) 16%, transparent);
