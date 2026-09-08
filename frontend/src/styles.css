@@ -14823,10 +14823,20 @@ span.message-spoiler.is-revealed {
   padding: 6px 12px;
   border-radius: 16px;
   border: none;
-  background: none;
+  background: transparent !important;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition: color 120ms ease;
+  box-shadow: none !important;
+}
+
+.attachment-nav-item:hover,
+.attachment-nav-item:focus-visible,
+button.attachment-nav-item:hover,
+button.attachment-nav-item:focus-visible {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .attachment-nav-item .nav-item-icon {
@@ -14837,22 +14847,42 @@ span.message-spoiler.is-revealed {
   height: 32px;
   border-radius: 999px;
   transition: background-color 140ms ease, color 140ms ease;
+  box-shadow: none !important;
 }
 
 .attachment-nav-item .nav-item-label {
   font-size: 0.72rem;
   font-weight: 500;
+  transition: color 140ms ease;
+}
+
+.attachment-nav-item:not(.active):hover .nav-item-icon,
+.attachment-nav-item:not(.active):focus-visible .nav-item-icon {
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+  color: var(--text-primary);
+}
+
+.attachment-nav-item:not(.active):hover .nav-item-label,
+.attachment-nav-item:not(.active):focus-visible .nav-item-label {
+  color: var(--text-primary);
 }
 
 /* TG active pill indicator styling */
 .attachment-nav-item.active {
   color: var(--text-primary);
+  background: transparent !important;
 }
 
 .attachment-nav-item.active .nav-item-icon {
   background: var(--accent-primary, #a855f7);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.35);
+  box-shadow: none !important;
+}
+
+.attachment-nav-item.active:hover .nav-item-icon,
+.attachment-nav-item.active:focus-visible .nav-item-icon {
+  filter: brightness(1.08);
+  box-shadow: none !important;
 }
 
 .attachment-nav-item.active .nav-item-label {
