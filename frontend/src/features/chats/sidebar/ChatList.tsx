@@ -1,12 +1,12 @@
 import { ChevronDown, FolderMinus, FolderPlus, Lock, MessageCircle, Settings2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Chat } from "../../../api/chats";
 import type { ChatFilter, ChatSectionKey } from "../shared/types";
 import { ChatListItem } from "./ChatListItem";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { ChatFolderDialog } from "./ChatFolderDialog";
-import { ChatFolder, folderMatchesChatProperties, loadChatFolders, saveChatFolders } from "./chatFolders";
+import { ChatFolder, FolderChatType, folderMatchesChatProperties, loadChatFolders, saveChatFolders } from "./chatFolders";
 import { displayChatName } from "../shared/chatPresentation";
 import { DefaultChatSectionDialog } from "./DefaultChatSectionDialog";
 import {
@@ -64,11 +64,15 @@ export function ChatList({
   const [sectionAssignments, setSectionAssignments] = useState<Record<string, ChatSectionKey>>(() => loadChatSectionAssignments(familyId));
   const [draggedChat, setDraggedChat] = useState<Chat | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
+  const draggedChatRef = useRef<Chat | null>(null);
   const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
 
   const folders = folderState.folders;
 
   function canDropToSection(sectionKey: ChatSectionKey, chat: Chat, chatName: string): boolean {
+    if (folders.some((f) => f.rules.includedChatIds?.includes(chat.id) || getChatContainer(chat) === f.id)) {
+      return true;
+    }
     if (sectionKey === "archive") return true;
     if (sectionKey === "groups") {
       if (chat.type === "group" || chat.type === "family") return true;
@@ -77,7 +81,7 @@ export function ChatList({
     if (sectionKey === "dms") return chat.type === "direct";
     if (sectionKey === "channels") return chat.type === "channel";
     if (sectionKey === "voice") return chat.type === "voice";
-    return false;
+    return true;
   }
 
   function getChatContainer(chat: Chat): string {
@@ -109,13 +113,17 @@ export function ChatList({
   }
 
   function handleDropChatToFolder(targetFolder: ChatFolder, chat: Chat) {
+    const chatType = (chat.type === "family" ? "group" : chat.type) as FolderChatType;
     const nextFolders = folders.map((item) => {
       if (item.id === targetFolder.id) {
         const currentIncluded = item.rules.includedChatIds ?? [];
+        const currentTypes = item.rules.chatTypes ?? [];
+        const nextTypes = currentTypes.includes(chatType) ? currentTypes : [...currentTypes, chatType];
         return {
           ...item,
           rules: {
             ...item.rules,
+            chatTypes: nextTypes,
             includedChatIds: currentIncluded.includes(chat.id) ? currentIncluded : [...currentIncluded, chat.id],
             excludedChatIds: (item.rules.excludedChatIds ?? []).filter((id) => id !== chat.id)
           }
@@ -149,6 +157,7 @@ export function ChatList({
     if (collapsed[targetFolder.id]) {
       setCollapsed((prev) => ({ ...prev, [targetFolder.id]: false }));
     }
+    draggedChatRef.current = null;
     setDraggedChat(null);
     setDragOverTargetId(null);
   }
@@ -211,6 +220,7 @@ export function ChatList({
     if (collapsed[sectionKey]) {
       setCollapsed((prev) => ({ ...prev, [sectionKey]: false }));
     }
+    draggedChatRef.current = null;
     setDraggedChat(null);
     setDragOverTargetId(null);
   }
@@ -273,6 +283,7 @@ export function ChatList({
       saveDefaultGroupsFolder(familyId, nextGroupsFolder);
     }
 
+    draggedChatRef.current = null;
     setDraggedChat(null);
     setDragOverTargetId(null);
   }
@@ -335,13 +346,19 @@ export function ChatList({
     chatSectionOrder.some((s) => filteredChats.some((c) => getChatContainer(c) === s.key)) ||
     folders.some((f) => filteredChats.some((c) => getChatContainer(c) === f.id));
 
+  const activeDraggedChat = draggedChat || draggedChatRef.current;
+
   const isDraggingFromFolder = Boolean(
-    draggedChat && folders.some((f) => f.rules.includedChatIds?.includes(draggedChat.id))
+    activeDraggedChat &&
+    folders.some((f) =>
+      f.id === getChatContainer(activeDraggedChat) ||
+      f.rules.includedChatIds?.includes(activeDraggedChat.id)
+    )
   );
 
   return (
     <div
-      className="chat-list"
+      className={`chat-list ${activeDraggedChat ? "is-dragging-active" : ""}`}
       aria-busy={isLoading || !hasLoadedOverview}
       onDragOver={(e) => {
         if (isDraggingFromFolder) {
@@ -350,9 +367,10 @@ export function ChatList({
         }
       }}
       onDrop={(e) => {
-        if (e.target === e.currentTarget && draggedChat && isDraggingFromFolder) {
+        const chatToDrop = draggedChat || draggedChatRef.current;
+        if (chatToDrop && isDraggingFromFolder) {
           e.preventDefault();
-          handleRemoveChatFromAllFolders(draggedChat);
+          handleRemoveChatFromAllFolders(chatToDrop);
         }
       }}
     >
@@ -377,13 +395,13 @@ export function ChatList({
               if (section.key === "voice") return c.type === "voice";
               return false;
             });
-            if (sectionChats.length === 0 && !hasChatsInSpace && !draggedChat) {
+            if (sectionChats.length === 0 && !hasChatsInSpace && !activeDraggedChat) {
               return null;
             }
-            const draggedChatName = draggedChat ? displayChatName(draggedChat, currentUserId, strings) : "";
-            const isMatch = draggedChat ? canDropToSection(section.key, draggedChat, draggedChatName) : true;
-            const isRestricted = Boolean(draggedChat && !isMatch);
-            const isTarget = Boolean(draggedChat && isMatch && dragOverTargetId === section.key);
+            const draggedChatName = activeDraggedChat ? displayChatName(activeDraggedChat, currentUserId, strings) : "";
+            const isMatch = activeDraggedChat ? canDropToSection(section.key, activeDraggedChat, draggedChatName) : true;
+            const isRestricted = Boolean(activeDraggedChat && !isMatch);
+            const isTarget = Boolean(activeDraggedChat && isMatch && dragOverTargetId === section.key);
 
             return (
               <section
@@ -395,13 +413,16 @@ export function ChatList({
                   setDragOverTargetId(section.key);
                   event.dataTransfer.dropEffect = isMatch ? "move" : "none";
                 }}
-                onDragLeave={() => {
+                onDragLeave={(event) => {
+                  if (event.currentTarget.contains(event.relatedTarget as Node)) return;
                   setDragOverTargetId((current) => (current === section.key ? null : current));
                 }}
                 onDrop={(event) => {
                   event.preventDefault();
-                  if (draggedChat && isMatch) {
-                    handleDropChatToSection(section.key, draggedChat);
+                  event.stopPropagation();
+                  const chatToDrop = draggedChat || draggedChatRef.current;
+                  if (chatToDrop && isMatch) {
+                    handleDropChatToSection(section.key, chatToDrop);
                   }
                 }}
               >
@@ -435,11 +456,15 @@ export function ChatList({
                         accessToken={accessToken}
                         currentUserId={currentUserId}
                         minimizedChatLayout={minimizedChatLayout}
-                        isDragging={draggedChat?.id === chat.id}
+                        isDragging={activeDraggedChat?.id === chat.id}
                         onSelect={onSelectChat}
                         onOpen={onOpenChat}
-                        onDragStart={(_e, c) => setDraggedChat(c)}
+                        onDragStart={(_e, c) => {
+                          draggedChatRef.current = c;
+                          setDraggedChat(c);
+                        }}
                         onDragEnd={() => {
+                          draggedChatRef.current = null;
                           setDraggedChat(null);
                           setDragOverTargetId(null);
                         }}
@@ -454,10 +479,12 @@ export function ChatList({
           })}
       {folders.map((folder) => {
         const sectionChats = filteredChats.filter((chat) => getChatContainer(chat) === folder.id);
-        const draggedChatName = draggedChat ? displayChatName(draggedChat, currentUserId, strings) : "";
-        const isFolderMatch = draggedChat ? folderMatchesChatProperties(draggedChat, folder.rules, draggedChatName) : true;
-        const isFolderRestricted = Boolean(draggedChat && !isFolderMatch);
-        const isFolderTarget = Boolean(draggedChat && isFolderMatch && dragOverTargetId === folder.id);
+        const draggedChatName = activeDraggedChat ? displayChatName(activeDraggedChat, currentUserId, strings) : "";
+        const isFolderMatch = activeDraggedChat
+          ? (isDraggingFromFolder || folderMatchesChatProperties(activeDraggedChat, folder.rules, draggedChatName))
+          : true;
+        const isFolderRestricted = Boolean(activeDraggedChat && !isFolderMatch);
+        const isFolderTarget = Boolean(activeDraggedChat && isFolderMatch && dragOverTargetId === folder.id);
 
         return (
           <section
@@ -469,13 +496,16 @@ export function ChatList({
               setDragOverTargetId(folder.id);
               event.dataTransfer.dropEffect = isFolderMatch ? "move" : "none";
             }}
-            onDragLeave={() => {
+            onDragLeave={(event) => {
+              if (event.currentTarget.contains(event.relatedTarget as Node)) return;
               setDragOverTargetId((current) => (current === folder.id ? null : current));
             }}
             onDrop={(event) => {
               event.preventDefault();
-              if (draggedChat && isFolderMatch) {
-                handleDropChatToFolder(folder, draggedChat);
+              event.stopPropagation();
+              const chatToDrop = draggedChat || draggedChatRef.current;
+              if (chatToDrop && isFolderMatch) {
+                handleDropChatToFolder(folder, chatToDrop);
               }
             }}
           >
@@ -509,11 +539,15 @@ export function ChatList({
                     accessToken={accessToken}
                     currentUserId={currentUserId}
                     minimizedChatLayout={minimizedChatLayout}
-                    isDragging={draggedChat?.id === chat.id}
+                    isDragging={activeDraggedChat?.id === chat.id}
                     onSelect={onSelectChat}
                     onOpen={onOpenChat}
-                    onDragStart={(_e, c) => setDraggedChat(c)}
+                    onDragStart={(_e, c) => {
+                      draggedChatRef.current = c;
+                      setDraggedChat(c);
+                    }}
                     onDragEnd={() => {
+                      draggedChatRef.current = null;
                       setDraggedChat(null);
                       setDragOverTargetId(null);
                     }}
@@ -533,16 +567,20 @@ export function ChatList({
           className={`chat-folder-remove-dropzone ${dragOverTargetId === "__remove_from_folder__" ? "is-active" : ""}`}
           onDragOver={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             setDragOverTargetId("__remove_from_folder__");
             e.dataTransfer.dropEffect = "move";
           }}
-          onDragLeave={() => {
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
             setDragOverTargetId((cur) => (cur === "__remove_from_folder__" ? null : cur));
           }}
           onDrop={(e) => {
             e.preventDefault();
-            if (draggedChat) {
-              handleRemoveChatFromAllFolders(draggedChat);
+            e.stopPropagation();
+            const chatToDrop = draggedChat || draggedChatRef.current;
+            if (chatToDrop) {
+              handleRemoveChatFromAllFolders(chatToDrop);
             }
           }}
         >

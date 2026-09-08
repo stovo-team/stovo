@@ -510,6 +510,8 @@ export const strings = {
       videos: "Videos",
       audio: "Audio",
       documents: "Documents",
+      canvases: "Canvases",
+      checklists: "Checklists",
       favorites: "Favorites",
     },
     categories: {
