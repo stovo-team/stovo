@@ -24211,17 +24211,22 @@ kbd {
 
 .checklist-card-add-input {
   flex: 1;
-  background: color-mix(in oklab, var(--surface-raised) 80%, black);
-  border: 1px solid var(--border-default, #2b333e);
-  border-radius: 8px;
-  padding: 6px 10px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  min-height: unset !important;
+  height: auto !important;
+  padding: 4px 8px !important;
   font-size: 0.82rem;
   color: var(--text-primary);
-  outline: none;
+  outline: none !important;
 }
 
 .checklist-card-add-input:focus {
-  border-color: var(--accent-primary);
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .checklist-card-add-btn {
@@ -25291,14 +25296,30 @@ kbd {
   flex-shrink: 0;
 }
 
+input.checklist-card-add-input,
+.checklist-card-quick-add input,
 .checklist-card-add-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  font-size: 0.82rem;
-  outline: none;
-  padding: 0 4px;
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  min-height: unset !important;
+  height: auto !important;
+  padding: 4px 8px !important;
+  font-size: 0.82rem !important;
+  color: var(--text-primary) !important;
+  width: auto !important;
+}
+
+input.checklist-card-add-input:focus,
+.checklist-card-quick-add input:focus,
+.checklist-card-add-input:focus {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .checklist-card-add-submit {
