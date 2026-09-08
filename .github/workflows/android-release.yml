@@ -42,6 +42,8 @@ permissions:
 jobs:
   build-and-publish:
     runs-on: self-hosted
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
     steps:
       - name: Checkout
@@ -81,7 +83,7 @@ jobs:
               mkdir -p "$RUNNER_TEMP/bin"
               cat << 'EOF' > "$RUNNER_TEMP/bin/unzip"
           #!/usr/bin/env python3
-          import sys, zipfile
+          import sys, zipfile, os
 
           args = sys.argv[1:]
           dest = "."
@@ -105,15 +107,27 @@ jobs:
               sys.exit(1)
 
           with zipfile.ZipFile(zip_file, "r") as z:
-              z.extractall(dest)
+              for info in z.infolist():
+                  extracted_path = z.extract(info, dest)
+                  mode = info.external_attr >> 16
+                  if mode:
+                      try:
+                          os.chmod(extracted_path, mode)
+                      except Exception:
+                          pass
           EOF
               chmod +x "$RUNNER_TEMP/bin/unzip"
               echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
             fi
           fi
+          # Ensure any existing Android SDK binaries on self-hosted runner are executable
+          if [ -d "$HOME/.android/sdk" ]; then
+            find "$HOME/.android/sdk" -path "*/bin/*" -type f -exec chmod +x {} + 2>/dev/null || true
+            find "$HOME/.android/sdk" -maxdepth 4 -type d -empty -delete 2>/dev/null || true
+          fi
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install frontend dependencies
         working-directory: frontend

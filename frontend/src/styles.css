@@ -9740,7 +9740,8 @@ span.message-spoiler.is-revealed {
   width: 100%;
 }
 
-.storage-tile span {
+.storage-tile > span,
+.storage-tile > .storage-tile-info {
   background: var(--storage-tile-overlay);
   box-sizing: border-box;
   color: #ffffff;
@@ -9755,7 +9756,7 @@ span.message-spoiler.is-revealed {
   z-index: 2;
 }
 
-.storage-tile:not(:has(img)) span {
+.storage-tile:not(:has(img)):not(:has(.storage-tile-preview)) > span {
   background: rgba(255, 255, 255, 0.58);
   color: currentColor;
 }
@@ -23440,7 +23441,7 @@ button.attachment-nav-item:focus-visible {
 .storage-canvas-tile,
 .storage-checklist-tile {
   text-align: left;
-  background: var(--surface-raised, #181920);
+  background: var(--surface-raised, #161820);
   position: relative;
   overflow: hidden;
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
@@ -23449,8 +23450,8 @@ button.attachment-nav-item:focus-visible {
 .storage-canvas-tile:hover,
 .storage-checklist-tile:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.32);
-  border-color: var(--accent-border-soft, rgba(99, 102, 241, 0.3));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  border-color: var(--accent-border-soft, rgba(99, 102, 241, 0.35));
 }
 .storage-canvas-tile:focus-visible,
 .storage-checklist-tile:focus-visible {
@@ -23466,39 +23467,51 @@ button.attachment-nav-item:focus-visible {
   z-index: 1;
   pointer-events: none;
 }
+.storage-tile-preview * {
+  box-sizing: border-box;
+}
+
+/* Checklist Preview Card */
 .storage-checklist-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 10px 10px 44px;
+  box-sizing: border-box;
+  background: linear-gradient(165deg, #1d222d 0%, #12151d 100%);
+  border-radius: inherit;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 11px 11px 48px;
-  box-sizing: border-box;
-  background: linear-gradient(160deg, color-mix(in oklab, var(--accent-primary, #6366f1) 8%, var(--surface-raised, #181a22)), var(--surface-raised, #13141a));
-  border-radius: inherit;
-  width: 100%;
-  height: 100%;
 }
 .storage-checklist-preview.category-groceries,
 .storage-checklist-preview.category-grocery {
-  background: linear-gradient(160deg, color-mix(in oklab, #10b981 12%, var(--surface-raised, #181a22)), var(--surface-raised, #13141a));
+  background: linear-gradient(165deg, #142820 0%, #0f1814 100%);
 }
 .storage-checklist-preview.category-errands,
 .storage-checklist-preview.category-errand {
-  background: linear-gradient(160deg, color-mix(in oklab, #f59e0b 12%, var(--surface-raised, #181a22)), var(--surface-raised, #13141a));
+  background: linear-gradient(165deg, #2b2214 0%, #17130c 100%);
 }
-.checklist-preview-top {
+.checklist-preview-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  min-height: 18px;
 }
 .checklist-preview-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--accent-primary, #818cf8);
-  letter-spacing: 0.02em;
+  color: #818cf8;
+}
+.checklist-preview-badge b {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .category-groceries .checklist-preview-badge,
 .category-grocery .checklist-preview-badge {
@@ -23508,128 +23521,142 @@ button.attachment-nav-item:focus-visible {
 .category-errand .checklist-preview-badge {
   color: #fbbf24;
 }
-.checklist-preview-progress-text {
-  font-size: 0.66rem;
-  font-weight: 600;
-  color: var(--text-secondary, #9ca3af);
+.checklist-preview-counter {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 999px;
+  line-height: 1.2;
 }
-.checklist-preview-bar {
+.checklist-preview-progress {
   width: 100%;
-  height: 3px;
+  height: 2.5px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   overflow: hidden;
-  margin-top: 1px;
 }
-.checklist-preview-bar-fill {
+.checklist-preview-progress-fill {
   height: 100%;
   background: var(--accent-primary, #6366f1);
   border-radius: 999px;
-  transition: width 0.2s ease;
 }
-.category-groceries .checklist-preview-bar-fill,
-.category-grocery .checklist-preview-bar-fill {
+.category-groceries .checklist-preview-progress-fill,
+.category-grocery .checklist-preview-progress-fill {
   background: #10b981;
 }
-.category-errands .checklist-preview-bar-fill,
-.category-errand .checklist-preview-bar-fill {
+.category-errands .checklist-preview-progress-fill,
+.category-errand .checklist-preview-progress-fill {
   background: #f59e0b;
 }
-.checklist-preview-content {
+.checklist-preview-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
   margin-top: 2px;
   min-width: 0;
 }
-.checklist-preview-items {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.checklist-preview-item {
+.checklist-preview-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.72rem;
-  line-height: 1.25;
   min-width: 0;
 }
-.checklist-preview-check {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.checklist-preview-checkbox {
   width: 13px;
   height: 13px;
   border-radius: 3.5px;
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   box-sizing: border-box;
 }
-.checklist-preview-check.is-checked {
+.checklist-preview-checkbox.is-checked {
   background: var(--accent-primary, #6366f1);
   border-color: var(--accent-primary, #6366f1);
   color: #fff;
 }
-.category-groceries .checklist-preview-check.is-checked,
-.category-grocery .checklist-preview-check.is-checked {
+.category-groceries .checklist-preview-checkbox.is-checked,
+.category-grocery .checklist-preview-checkbox.is-checked {
   background: #10b981;
   border-color: #10b981;
 }
-.category-errands .checklist-preview-check.is-checked,
-.category-errand .checklist-preview-check.is-checked {
+.category-errands .checklist-preview-checkbox.is-checked,
+.category-errand .checklist-preview-checkbox.is-checked {
   background: #f59e0b;
   border-color: #f59e0b;
 }
-.checklist-preview-text {
+.checklist-preview-title {
+  margin: 0;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #f1f5f9;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-primary, #f3f4f6);
 }
-.checklist-preview-item.is-completed .checklist-preview-text {
-  color: var(--text-secondary, #9ca3af);
+.checklist-preview-row.is-completed .checklist-preview-title {
+  color: rgba(255, 255, 255, 0.45);
   text-decoration: line-through;
-  opacity: 0.65;
 }
 .checklist-preview-more {
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 700;
   color: var(--accent-primary, #818cf8);
   margin-top: 1px;
 }
-.checklist-preview-empty {
+.checklist-preview-empty-mock {
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: center;
+  gap: 6px;
   flex: 1;
-  gap: 4px;
-  color: var(--text-secondary, #9ca3af);
+  padding: 4px 6px 0;
   opacity: 0.65;
-  padding-bottom: 8px;
 }
-.checklist-preview-empty-icon {
+.checklist-mock-row {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
 }
-.checklist-preview-empty-label {
-  font-size: 0.68rem;
+.checklist-mock-circle {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
 }
+.checklist-mock-line {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+}
+.checklist-mock-line.w-long { width: 75%; }
+.checklist-mock-line.w-mid { width: 55%; }
+.checklist-mock-line.w-short { width: 40%; }
+.checklist-preview-empty-text {
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
+  font-weight: 600;
+}
+
+/* Canvas Preview */
 .storage-canvas-preview {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  padding-bottom: 48px;
+  padding-bottom: 44px;
   box-sizing: border-box;
-  background-color: color-mix(in oklab, var(--accent-primary, #6366f1) 6%, #13141a);
-  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
-  background-size: 13px 13px;
+  background-color: #12141a;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 14px 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -23641,49 +23668,72 @@ button.attachment-nav-item:focus-visible {
   padding: 10px;
   box-sizing: border-box;
 }
-.canvas-preview-doc {
-  padding: 12px 12px 6px;
+.canvas-preview-notes {
+  padding: 10px 10px 4px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
-.canvas-preview-doc-heading {
-  font-size: 0.76rem;
+.canvas-preview-notes-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #818cf8;
+  margin-bottom: 2px;
+}
+.canvas-preview-notes-badge b {
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.canvas-preview-notes-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.canvas-notes-h {
+  margin: 0;
+  font-size: 0.74rem;
   font-weight: 700;
   color: #fff;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.canvas-preview-doc-line {
-  font-size: 0.68rem;
-  color: var(--text-secondary, #9ca3af);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.35;
-}
-.canvas-preview-doc-bullet {
+.canvas-notes-b {
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 0.68rem;
-  color: var(--text-secondary, #9ca3af);
+  color: rgba(255, 255, 255, 0.75);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.35;
 }
-.canvas-preview-doc-bullet::before {
+.canvas-notes-b::before {
   content: "";
   display: inline-block;
-  width: 4px;
-  height: 4px;
+  width: 3.5px;
+  height: 3.5px;
   border-radius: 50%;
   background: var(--accent-primary, #818cf8);
   flex-shrink: 0;
 }
+.canvas-notes-p {
+  margin: 0;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.65);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+/* Blank canvas illustration */
 .canvas-preview-blank {
   display: flex;
   flex-direction: column;
@@ -23691,23 +23741,96 @@ button.attachment-nav-item:focus-visible {
   justify-content: center;
   flex: 1;
   position: relative;
+  padding-bottom: 4px;
 }
-.canvas-preview-mock-shape {
-  width: 48px;
-  height: 36px;
-  border: 1.5px dashed color-mix(in oklab, var(--accent-primary, #6366f1) 50%, rgba(255, 255, 255, 0.3));
+.canvas-mock-board {
+  position: relative;
+  width: 78px;
+  height: 52px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  background: color-mix(in oklab, var(--accent-primary, #6366f1) 12%, transparent);
-  transform: rotate(-3deg);
-  margin-bottom: 4px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.canvas-preview-mock-tag {
-  font-size: 0.64rem;
+.canvas-mock-sticky {
+  width: 32px;
+  height: 28px;
+  background: #fef08a;
+  border-radius: 4px 4px 8px 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transform: rotate(-5deg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4px;
+  gap: 3px;
+  box-sizing: border-box;
+}
+.canvas-mock-sticky-line {
+  height: 2px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 1px;
+}
+.canvas-mock-sticky-line.short {
+  width: 60%;
+}
+.canvas-mock-shape {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid #818cf8;
+  background: rgba(129, 140, 248, 0.2);
+  margin-left: 6px;
+  transform: translateY(2px);
+}
+.canvas-mock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.05em;
+}
+.canvas-mock-badge b {
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: color-mix(in oklab, var(--accent-primary, #6366f1) 75%, #fff);
-  opacity: 0.75;
+}
+
+/* Card bottom title overlay */
+.storage-tile-info {
+  background: linear-gradient(transparent 0%, rgba(10, 12, 16, 0.82) 38%, rgba(10, 12, 16, 0.98) 100%);
+  box-sizing: border-box;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  inset: auto 0 0 0;
+  min-width: 0;
+  padding: 24px 10px 8px;
+  position: absolute;
+  width: 100%;
+  z-index: 2;
+}
+.storage-tile-info strong {
+  color: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.storage-tile-info small {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.70rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 @media (max-width: 700px) { .canvas-page { padding: 12px; } .canvas-page-header { align-items: flex-start; } .canvas-page-actions { margin-left: 0; } .canvas-excalidraw { height: 58vh; min-height: 320px; } }
 

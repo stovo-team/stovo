@@ -154,7 +154,7 @@ describe("StorageCanvases", () => {
 
     expect(container?.textContent).toContain("Ship search feature");
     expect(container?.textContent).toContain("Fix audio waveforms");
-    expect(container?.querySelector(".canvas-preview-doc")).not.toBeNull();
+    expect(container?.querySelector(".canvas-preview-notes")).not.toBeNull();
   });
 
   it("renders whiteboard vector SVG preview when canvas document contains scene elements", async () => {
