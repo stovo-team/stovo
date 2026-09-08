@@ -74,7 +74,7 @@ export default function MultiAdminPage() {
       const data = await fetchServers(token);
       setServers(data || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load servers");
+      setError(err.message || "Failed to load spaces");
       if (err.message?.includes("token") || err.message?.includes("Unauthorized")) {
         handleLogout();
       }
@@ -124,9 +124,9 @@ export default function MultiAdminPage() {
       setNewName("");
       setCreateNavTabs({ chats: true, storage: true, plans: true, settings: true });
       loadServers();
-      showToast(`Server "${res.name}" provisioned cleanly!`);
+      showToast(`Space "${res.name}" provisioned cleanly!`);
     } catch (err: any) {
-      alert(err.message || "Failed to create server");
+      alert(err.message || "Failed to create space");
     }
   };
 
@@ -153,10 +153,10 @@ export default function MultiAdminPage() {
       setServers((prev) =>
         prev.map((s) => (s.slug === editingServer.slug ? { ...s, ...updated } : s))
       );
-      showToast(`Server settings for "${updated.name || editingServer.name}" saved!`);
+      showToast(`Space settings for "${updated.name || editingServer.name}" saved!`);
       setEditingServer(null);
     } catch (err: any) {
-      alert(err.message || "Failed to update server settings");
+      alert(err.message || "Failed to update space settings");
     } finally {
       setSavingSettings(false);
     }
@@ -164,15 +164,15 @@ export default function MultiAdminPage() {
 
   const handleDelete = async (slug: string) => {
     if (!token) return;
-    if (!confirm(`Are you sure you want to delete server "${slug}"? This will drop its database and stop its container.`)) {
+    if (!confirm(`Are you sure you want to delete space "${slug}"? This will drop its database and stop its container.`)) {
       return;
     }
     try {
       await deleteServer(token, slug);
-      showToast(`Server "${slug}" deleted.`);
+      showToast(`Space "${slug}" deleted.`);
       loadServers();
     } catch (err: any) {
-      alert(err.message || "Failed to delete server");
+      alert(err.message || "Failed to delete space");
     }
   };
 
@@ -204,9 +204,9 @@ export default function MultiAdminPage() {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={styles.badgePill}>MULTI-SERVER ORCHESTRATOR</div>
+          <div style={styles.badgePill}>MULTI-SPACE ORCHESTRATOR</div>
           <h1 style={styles.title}>Stovo Master</h1>
-          <p style={styles.subtitle}>Sign in to manage server clusters and root infrastructure</p>
+          <p style={styles.subtitle}>Sign in to manage spaces and root infrastructure</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
 
@@ -246,15 +246,15 @@ export default function MultiAdminPage() {
 
       <header style={styles.header}>
         <div style={styles.headerTitleGroup}>
-          <div style={styles.badgePill}>MULTI-SERVER CONTROL</div>
-          <h1 style={styles.headerTitle}>Stovo Clusters</h1>
+          <div style={styles.badgePill}>MULTI-SPACE CONTROL</div>
+          <h1 style={styles.headerTitle}>Stovo Spaces</h1>
         </div>
         <div style={styles.headerActions}>
           <button
             onClick={() => setIsCreateOpen(true)}
             style={styles.primaryPillButton}
           >
-            + Create New Server
+            + Create New Space
           </button>
           <button onClick={handleLogout} style={styles.secondaryPillButton}>
             Logout
@@ -266,7 +266,7 @@ export default function MultiAdminPage() {
         {/* Stats Row */}
         <div style={styles.statsGrid}>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Active Clusters</div>
+            <div style={styles.statLabel}>Active Spaces</div>
             <div style={styles.statValue}>{servers.length}</div>
           </div>
           <div style={styles.statCard}>
@@ -282,10 +282,10 @@ export default function MultiAdminPage() {
         {/* Server List */}
         <div style={styles.panelCard}>
           <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>Provisioned Clusters</h2>
+            <h2 style={styles.sectionTitle}>Provisioned Spaces</h2>
             <button
               onClick={loadServers}
-              title="Refresh Clusters"
+              title="Refresh Spaces"
               style={styles.iconOnlyButton}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -295,12 +295,12 @@ export default function MultiAdminPage() {
           </div>
 
           {loading ? (
-            <div style={styles.emptyState}>Loading clusters from orchestrator...</div>
+            <div style={styles.emptyState}>Loading spaces from orchestrator...</div>
           ) : error ? (
             <div style={styles.errorBox}>{error}</div>
           ) : servers.length === 0 ? (
             <div style={styles.emptyState}>
-              No server clusters created yet. Click <strong style={{ color: "#60a5fa" }}>+ Create New Server</strong> to provision one.
+              No spaces created yet. Click <strong style={{ color: "#60a5fa" }}>+ Create New Space</strong> to provision one.
             </div>
           ) : (
             <div style={styles.tableWrapper}>
@@ -309,7 +309,7 @@ export default function MultiAdminPage() {
                   <tr>
                     <th style={styles.th}>ID</th>
                     <th style={styles.th}>Name</th>
-                    <th style={styles.th}>Server Link</th>
+                    <th style={styles.th}>Space Link</th>
                     <th style={styles.th}>Nav Tabs</th>
                     <th style={styles.th}>Status</th>
                     <th style={styles.th}>Created At</th>
@@ -327,7 +327,7 @@ export default function MultiAdminPage() {
                           target="_blank"
                           rel="noreferrer"
                           style={styles.linkPill}
-                          title={`Open ${s.name} server in new tab`}
+                          title={`Open ${s.name} space in new tab`}
                         >
                           /s/{s.slug}
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
@@ -363,7 +363,7 @@ export default function MultiAdminPage() {
                         <div style={styles.actionGroup}>
                           <button
                             onClick={() => handleOpenSettings(s)}
-                            title={`Configure server settings and navigation tabs for ${s.name}`}
+                            title={`Configure space settings and navigation tabs for ${s.name}`}
                             style={styles.settingsPillButton}
                           >
                             ⚙️ Settings
@@ -384,7 +384,7 @@ export default function MultiAdminPage() {
                           </button>
                           <button
                             onClick={() => handleDelete(s.slug)}
-                            title={`Delete server cluster ${s.name}`}
+                            title={`Delete space ${s.name}`}
                             style={styles.dangerIconButton}
                           >
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -409,15 +409,15 @@ export default function MultiAdminPage() {
       {editingServer && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <div style={styles.badgePill}>SERVER SETTINGS</div>
+            <div style={styles.badgePill}>SPACE SETTINGS</div>
             <h3 style={styles.modalTitle}>{editingServer.name}</h3>
             <p style={styles.modalSubtitle}>
-              Configure server properties and select which tabs will be shown in the tenant navigation panel.
+              Configure space properties and select which tabs will be shown in the navigation panel.
             </p>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
               <label style={styles.label}>
-                Server Name
+                Space Name
                 <input
                   type="text"
                   value={editName}
@@ -520,15 +520,15 @@ export default function MultiAdminPage() {
       {isCreateOpen && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalCard}>
-            <h3 style={styles.modalTitle}>Provision New Server Cluster</h3>
+            <h3 style={styles.modalTitle}>Provision New Space</h3>
             <p style={styles.modalSubtitle}>
-              Spins up a dedicated Go backend container, PostgreSQL schema, and MinIO bucket.
+              Spins up a dedicated space environment with isolated backend, database, and storage.
             </p>
 
             {createResult ? (
               <div style={styles.resultBox}>
                 <div style={{ fontWeight: 700, color: "#34d399", marginBottom: 8, fontSize: 15 }}>
-                  ✅ Server Cluster Provisioned!
+                  ✅ Space Provisioned!
                 </div>
                 <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>
                   Admin account created. You can log in directly or share the invite link:
@@ -544,7 +544,7 @@ export default function MultiAdminPage() {
                     rel="noreferrer"
                     style={{ ...styles.primaryPillButton, textDecoration: "none", textAlign: "center" }}
                   >
-                    🚀 Open Cluster Login
+                    🚀 Open Space Login
                   </a>
                   <button
                     onClick={() => {
@@ -569,7 +569,7 @@ export default function MultiAdminPage() {
             ) : (
               <form onSubmit={handleCreate} style={styles.form}>
                 <label style={styles.label}>
-                  Server Name
+                  Space Name
                   <input
                     type="text"
                     placeholder="e.g. Awesome Corp"

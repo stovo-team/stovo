@@ -54,7 +54,7 @@ export async function fetchServers(token: string): Promise<ServerRecord[]> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || err.message || "Failed to fetch servers");
+    throw new Error(err.error || err.message || "Failed to fetch spaces");
   }
   return res.json();
 }
@@ -66,7 +66,7 @@ export async function fetchServerSettings(token: string, slug: string): Promise<
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || err.message || "Failed to fetch server settings");
+    throw new Error(err.error || err.message || "Failed to fetch space settings");
   }
   return res.json();
 }
@@ -87,7 +87,7 @@ export async function updateServerSettings(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || err.message || "Failed to update server settings");
+    throw new Error(err.error || err.message || "Failed to update space settings");
   }
   return res.json();
 }
@@ -117,7 +117,7 @@ export async function createServer(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || err.message || "Failed to create server");
+    throw new Error(err.error || err.message || "Failed to create space");
   }
   return res.json();
 }
@@ -130,7 +130,7 @@ export async function deleteServer(token: string, slug: string): Promise<void> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || err.message || "Failed to delete server");
+    throw new Error(err.error || err.message || "Failed to delete space");
   }
 }
 

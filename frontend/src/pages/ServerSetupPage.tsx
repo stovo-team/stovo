@@ -45,7 +45,7 @@ export default function ServerSetupPage() {
         signal: AbortSignal.timeout(8000)
       });
       if (!res.ok && res.status !== 401) {
-        setError(`Server replied with ${res.status} — check the URL`);
+        setError(`Space replied with ${res.status} — check the URL`);
         return;
       }
       const data = await res.json().catch(() => null);
@@ -70,13 +70,13 @@ export default function ServerSetupPage() {
       <section className="auth-panel">
         <p className="eyebrow">Setup</p>
         <VeloLogo className="app-brand-logo" title="Stovo" />
-        <h1>Server address</h1>
+        <h1>Space address</h1>
         <p className="muted-copy">
-          Enter the address of your Stovo server. Use <strong>https://</strong> for domain names.
+          Enter the address of your Stovo space. Use <strong>https://</strong> for domain names.
         </p>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
-            Server URL
+            Space URL
             <input
               required
               type="url"
