@@ -24888,25 +24888,25 @@ kbd {
   background: var(--accent-primary);
   color: var(--button-primary-text, #ffffff);
   border-color: var(--accent-primary);
-  box-shadow: 0 2px 10px color-mix(in oklab, var(--accent-primary) 35%, transparent);
+  box-shadow: none !important;
 }
 
 .checklist-text-input {
   background: var(--surface-raised, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 9999px !important;
+  padding: 10px 18px !important;
   font-size: 0.92rem;
   color: var(--text-primary);
   width: 100%;
   box-sizing: border-box;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease;
 }
 
 .checklist-text-input:focus {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-primary) 18%, transparent);
+  box-shadow: none !important;
 }
 
 .checklist-items-header {
@@ -25031,9 +25031,10 @@ kbd {
   color: var(--accent-primary);
 }
 
+button.checklist-item-remove-btn,
 .checklist-item-remove-btn {
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
   color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
@@ -25041,12 +25042,16 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease;
+  box-shadow: none !important;
 }
 
+button.checklist-item-remove-btn:hover,
 .checklist-item-remove-btn:hover {
-  color: var(--danger, #ef4444);
-  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger, #ef4444) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .checklist-add-row {
@@ -25093,6 +25098,7 @@ kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   padding: 10px 22px;
   border-radius: 9999px;
   font-size: 0.9rem;
@@ -25116,7 +25122,7 @@ kbd {
   background: var(--accent-primary);
   border: 1px solid var(--accent-primary);
   color: var(--button-primary-text, #ffffff);
-  box-shadow: 0 2px 12px color-mix(in oklab, var(--accent-primary) 30%, transparent);
+  box-shadow: none !important;
 }
 
 .checklist-action-btn.primary:hover:not(:disabled) {
@@ -25743,9 +25749,10 @@ input.checklist-item-text-input:focus,
   box-shadow: none !important;
 }
 
+button.checklist-item-delete-btn,
 .checklist-item-delete-btn {
-  background: transparent;
-  border: none;
+  background: transparent !important;
+  border: none !important;
   color: var(--text-secondary);
   cursor: pointer;
   padding: 4px;
@@ -25755,6 +25762,7 @@ input.checklist-item-text-input:focus,
   justify-content: center;
   opacity: 0;
   transition: opacity 0.15s ease, color 0.15s ease;
+  box-shadow: none !important;
 }
 
 .checklist-workspace .checklist-item-row:hover .checklist-item-delete-btn,
@@ -25762,8 +25770,12 @@ input.checklist-item-text-input:focus,
   opacity: 1;
 }
 
+button.checklist-item-delete-btn:hover,
 .checklist-item-delete-btn:hover {
-  color: var(--danger, #ef4444);
+  color: var(--danger, #ef4444) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .checklist-add-item-btn {

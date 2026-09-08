@@ -29,18 +29,19 @@ function renderCreator(onSubmit = vi.fn(), onCancel = vi.fn()) {
 }
 
 describe("RichChecklistCreator", () => {
-  it("renders with default category pills, quick packs, and input fields", () => {
+  it("renders with default category pills and input fields", () => {
     const container = renderCreator();
 
     expect(container.textContent).toContain("Groceries");
     expect(container.textContent).toContain("Errands");
     expect(container.textContent).toContain("Task List");
-    expect(container.textContent).toContain("Load Grocery Pack");
     expect(container.querySelector("#checklist-title-input")).not.toBeNull();
     expect(container.querySelector(".checklist-quick-add")).not.toBeNull();
+    expect(container.textContent).toContain("Create Checklist");
+    expect(container.textContent).toContain("Cancel");
   });
 
-  it("switches category and displays errand template pack when Errands is selected", () => {
+  it("switches category and sets default title when Errands is selected", () => {
     const container = renderCreator();
 
     const errandBtn = Array.from(
@@ -52,41 +53,35 @@ describe("RichChecklistCreator", () => {
     });
 
     const titleInput = container.querySelector("#checklist-title-input") as HTMLInputElement;
-    expect(container.textContent).toContain("Load Errand Pack");
     expect(titleInput.value).toBe("Weekend Errands");
   });
 
-  it("inserts template pack items when clicking template button", () => {
-    const container = renderCreator();
-
-    const groceryPackBtn = container.querySelector(".checklist-template-btn") as HTMLButtonElement;
-
-    act(() => {
-      groceryPackBtn.click();
-    });
-
-    const itemInputs = Array.from(
-      container.querySelectorAll(".checklist-item-input")
-    ) as HTMLInputElement[];
-    const itemValues = itemInputs.map((i) => i.value);
-
-    expect(itemValues).toContain("Apples & Bananas");
-    expect(itemValues).toContain("Spinach & Avocados");
-    expect(container.textContent).toContain("Produce");
-  });
-
-  it("submits the checklist with items when clicking Share button", async () => {
+  it("adds items via quick-add input and submits checklist when clicking Create Checklist", async () => {
     const onSubmit = vi.fn();
     const container = renderCreator(onSubmit);
 
-    const groceryPackBtn = container.querySelector(".checklist-template-btn") as HTMLButtonElement;
+    const input = container.querySelector(".checklist-quick-add") as HTMLInputElement;
+    const addBtn = container.querySelector(".checklist-add-btn") as HTMLButtonElement;
+
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value"
+    )?.set;
 
     act(() => {
-      groceryPackBtn.click();
+      nativeInputValueSetter?.call(input, "Apples & Bananas");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
-    const submitBtn = container.querySelector(".checklist-action-btn.primary") as HTMLButtonElement;
+    act(() => {
+      addBtn.click();
+    });
 
+    const itemInput = container.querySelector(".checklist-item-input") as HTMLInputElement;
+    expect(itemInput?.value).toBe("Apples & Bananas");
+
+    const submitBtn = container.querySelector(".checklist-action-btn.primary") as HTMLButtonElement;
     await act(async () => {
       submitBtn.click();
     });
@@ -97,24 +92,19 @@ describe("RichChecklistCreator", () => {
         title: "Grocery list",
         category: "grocery",
         items: expect.arrayContaining([
-          expect.objectContaining({ text: "Apples & Bananas", section: "Produce" }),
-          expect.objectContaining({ text: "Spinach & Avocados", section: "Produce" })
+          expect.objectContaining({ text: "Apples & Bananas" })
         ])
       })
     );
   });
 
-  it("renders disabled voice microphone buttons for the premium voice feature", () => {
+  it("renders disabled voice button with PRO badge for the premium voice feature", () => {
     const container = renderCreator();
     const voiceBtn = container.querySelector(".checklist-voice-btn") as HTMLButtonElement;
-    const micBtn = container.querySelector(".checklist-mic-btn") as HTMLButtonElement;
 
     expect(voiceBtn).toBeDefined();
     expect(voiceBtn.disabled).toBe(true);
     expect(voiceBtn.textContent).toContain("Voice to List");
     expect(voiceBtn.textContent).toContain("PRO");
-
-    expect(micBtn).toBeDefined();
-    expect(micBtn.disabled).toBe(true);
   });
 });
