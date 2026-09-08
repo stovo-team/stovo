@@ -126,4 +126,116 @@ describe("StorageChecklists", () => {
     expect(container?.textContent).toContain("Grocery Shopping");
     expect(container?.textContent).not.toContain("Weekend Errands");
   });
+
+  it("renders checklist preview with items, checkboxes, and progress bar", async () => {
+    const detailedChecklists: checklistApi.Checklist[] = [
+      {
+        id: "cl-preview-1",
+        familyId: "fam-1",
+        originChatId: "chat-1",
+        createdBy: "user-1",
+        title: "Home Renovation",
+        category: "general",
+        linkedChatIds: [],
+        canManage: true,
+        items: [
+          {
+            id: "item-1",
+            checklistId: "cl-preview-1",
+            text: "Paint living room",
+            completed: true,
+            position: 0,
+            createdBy: "user-1",
+            createdAt: "2026-09-08T00:00:00Z",
+            updatedAt: "2026-09-08T00:00:00Z"
+          },
+          {
+            id: "item-2",
+            checklistId: "cl-preview-1",
+            text: "Install kitchen cabinets",
+            completed: false,
+            position: 1,
+            createdBy: "user-1",
+            createdAt: "2026-09-08T00:00:00Z",
+            updatedAt: "2026-09-08T00:00:00Z"
+          },
+          {
+            id: "item-3",
+            checklistId: "cl-preview-1",
+            text: "Replace bathroom tiles",
+            completed: false,
+            position: 2,
+            createdBy: "user-1",
+            createdAt: "2026-09-08T00:00:00Z",
+            updatedAt: "2026-09-08T00:00:00Z"
+          },
+          {
+            id: "item-4",
+            checklistId: "cl-preview-1",
+            text: "Order new curtains",
+            completed: false,
+            position: 3,
+            createdBy: "user-1",
+            createdAt: "2026-09-08T00:00:00Z",
+            updatedAt: "2026-09-08T00:00:00Z"
+          }
+        ],
+        totalItems: 4,
+        completedItems: 1,
+        createdAt: "2026-09-08T00:00:00Z",
+        updatedAt: "2026-09-08T00:00:00Z"
+      }
+    ];
+
+    vi.spyOn(checklistApi, "getStorageChecklists").mockResolvedValue(detailedChecklists);
+
+    await act(async () => {
+      root?.render(<StorageChecklists accessToken="token" filter="all" search="" />);
+    });
+
+    // Check preview items are rendered
+    expect(container?.textContent).toContain("Paint living room");
+    expect(container?.textContent).toContain("Install kitchen cabinets");
+    expect(container?.textContent).toContain("Replace bathroom tiles");
+    expect(container?.textContent).toContain("+1 more");
+
+    // Check completion progress is visible
+    expect(container?.textContent).toContain("1/4");
+
+    // Check progress bar exists
+    const progressBar = container?.querySelector(".checklist-preview-bar");
+    expect(progressBar).not.toBeNull();
+
+    // Check checkmark exists for completed item
+    const checkedBoxes = container?.querySelectorAll(".checklist-preview-check.is-checked");
+    expect(checkedBoxes?.length).toBe(1);
+  });
+
+  it("renders empty preview state when checklist has no items", async () => {
+    const emptyChecklists: checklistApi.Checklist[] = [
+      {
+        id: "cl-empty",
+        familyId: "fam-1",
+        originChatId: "chat-1",
+        createdBy: "user-1",
+        title: "Empty List",
+        category: "grocery",
+        linkedChatIds: [],
+        canManage: true,
+        items: [],
+        totalItems: 0,
+        completedItems: 0,
+        createdAt: "2026-09-08T00:00:00Z",
+        updatedAt: "2026-09-08T00:00:00Z"
+      }
+    ];
+
+    vi.spyOn(checklistApi, "getStorageChecklists").mockResolvedValue(emptyChecklists);
+
+    await act(async () => {
+      root?.render(<StorageChecklists accessToken="token" filter="all" search="" />);
+    });
+
+    expect(container?.textContent).toContain("No items yet");
+  });
 });

@@ -51,8 +51,8 @@ describe("LandingPage", () => {
     expect(markup).toContain("Your cloud. Or ours.");
     expect(markup).toContain("Stovo Cloud");
     expect(markup).toContain("Self-Hosted Engine");
-    expect(markup).toContain("Start with Stovo Cloud");
-    expect(markup).toContain("Explore Docker Setup");
+    expect(markup).toContain("Start 14-Day Cloud Trial");
+    expect(markup).toContain("100% Free Forever for Community");
   });
 
   it("renders core capabilities bento grid", () => {
@@ -104,23 +104,27 @@ describe("LandingPage", () => {
     expect(markup).toContain("Copy Command");
   });
 
-  it("renders pricing taxonomy v2 with dimension tabs, volume discounts, and managed infra", () => {
+  it("renders pricing taxonomy v3 with sustainable capacity economics, self-hosted cards, and managed infra", () => {
     const markup = getMarkup();
 
-    // Pitch & core thesis
+    // Pitch & sustainable economics thesis
     expect(markup).toContain("Pricing built around how you use Stovo.");
-    expect(markup).toContain("Companies scale by people. Communities scale by size. Families scale by storage.");
+    expect(markup).toContain("Want it free? Host it yourself. Want us to host and operate it? Fair, transparent capacity pricing with a 14-day free trial.");
+    expect(markup).toContain("Zero vendor lock-in: Export your entire cryptographic workspace anytime to Self-Hosted Community");
 
     // Dimension tabs
     expect(markup).toContain("Business");
     expect(markup).toContain("by organization size");
     expect(markup).toContain("Gaming");
-    expect(markup).toContain("by community size");
+    expect(markup).toContain("by community capacity &amp; voice");
     expect(markup).toContain("Family");
     expect(markup).toContain("by storage (max ~10 members)");
 
-    // Default Business tier cards
+    // Business companion self-hosted card and cloud tiers
+    expect(markup).toContain("SELF-HOSTED COMMUNITY");
+    expect(markup).toContain("30-DAY CLOUD TRIAL");
     expect(markup).toContain("Business Starter");
+    expect(markup).toContain("/ 30-Day Evaluation");
     expect(markup).toContain("Business Team");
     expect(markup).toContain("Business Pro");
     expect(markup).toContain("Enterprise");
@@ -138,12 +142,13 @@ describe("LandingPage", () => {
     expect(markup).toContain("From $999");
   });
 
-  it("renders FAQ section with questions and answers", () => {
+  it("renders FAQ section with sustainable economics, cloud trial, and voice capacity questions", () => {
     const markup = getMarkup();
 
     expect(markup).toContain("Frequently asked questions.");
     expect(markup).toContain("Is Stovo open source?");
-    expect(markup).toContain("Source-Available license");
+    expect(markup).toContain("Does Stovo have a permanent free cloud plan?");
+    expect(markup).toContain("Why is voice capacity priced by peak concurrent users?");
     expect(markup).toContain("Can I host Stovo myself without internet connectivity?");
     expect(markup).toContain("Does Stovo offer managed cloud hosting?");
   });
@@ -177,9 +182,9 @@ describe("LandingPage", () => {
     const faqButtons = container.querySelectorAll<HTMLButtonElement>(".sl-faq-trigger");
     expect(faqButtons.length).toBeGreaterThan(0);
 
-    // Click on the second question
+    // Click on the fourth question (air-gapped connectivity)
     await act(async () => {
-      faqButtons[1].click();
+      faqButtons[3].click();
     });
 
     expect(container.textContent).toContain("air-gapped on local area networks");
@@ -208,6 +213,7 @@ describe("LandingPage", () => {
 
     // Verify initial Business view
     expect(container.textContent).toContain("Business Starter");
+    expect(container.textContent).toContain("30-Day Evaluation");
     expect(container.textContent).toContain("Business Pro");
     expect(container.textContent).toContain("$8"); // annual price default for Team
 
@@ -230,10 +236,19 @@ describe("LandingPage", () => {
       dimensionTabs[1].click();
     });
 
-    expect(container.textContent).toContain("Gaming Free");
+    expect(container.textContent).toContain("STOVO GAMING SELF-HOSTED");
+    expect(container.textContent).toContain("Gaming Starter");
+    expect(container.textContent).toContain("$7.99");
     expect(container.textContent).toContain("Gaming Core");
+    expect(container.textContent).toContain("$19.99");
     expect(container.textContent).toContain("Gaming Pro");
+    expect(container.textContent).toContain("$49.99");
+    expect(container.textContent).toContain("Gaming Community");
+    expect(container.textContent).toContain("$119");
     expect(container.textContent).toContain("Gaming Large");
+    expect(container.textContent).toContain("$299");
+    expect(container.textContent).toContain("Gaming Network");
+    expect(container.textContent).toContain("Peak Voice");
     expect(container.textContent).toContain("Public Server Directory & Visibility");
     expect(container.textContent).toContain("Verified Server");
 
@@ -242,10 +257,19 @@ describe("LandingPage", () => {
       dimensionTabs[2].click();
     });
 
-    expect(container.textContent).toContain("Family Free");
+    expect(container.textContent).toContain("STOVO FAMILY SELF-HOSTED");
+    expect(container.textContent).toContain("50 GB");
+    expect(container.textContent).toContain("Family Cloud Mini");
+    expect(container.textContent).toContain("$3.99");
+    expect(container.textContent).toContain("250 GB");
     expect(container.textContent).toContain("Family Plus");
+    expect(container.textContent).toContain("$7.99");
+    expect(container.textContent).toContain("1 TB");
     expect(container.textContent).toContain("Family Pro");
-    expect(container.textContent).toContain("Family Max");
+    expect(container.textContent).toContain("$14.99");
+    expect(container.textContent).toContain("2–12 TB");
+    expect(container.textContent).toContain("Family Storage Scale");
+    expect(container.textContent).toContain("From $24.99");
     expect(container.textContent).toContain("TRANSPARENT ADD-ONS");
     expect(container.textContent).toContain("+1 Family Member");
     expect(container.textContent).toContain("+250 GB Storage");
