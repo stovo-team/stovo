@@ -195,6 +195,19 @@ export function messagePreviewText(message: Message, strings?: AppStrings) {
     }
     return "Canvas";
   }
+  if (message.type === "collection" || message.collection) {
+    const trimmed = message.content?.trim();
+    if (trimmed && trimmed.toLowerCase() !== "message" && trimmed.toLowerCase() !== "collection") {
+      return trimmed;
+    }
+    if (message.collection?.displayKind === "album") {
+      return "Album";
+    }
+    if (message.collection?.displayKind === "music-album") {
+      return "Music album";
+    }
+    return "Folder";
+  }
   if (message.content?.trim()) {
     return message.content.trim();
   }

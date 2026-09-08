@@ -182,6 +182,12 @@ export function formatPreviewContent(rawContent: string, messageType?: string | 
     const title = lines.length > 1 && lines[1].trim() ? lines[1].trim() : "";
     return title ? `Canvas: ${title}` : "Canvas";
   }
+  if (messageType === "collection") {
+    if (!trimmed || trimmed.toLowerCase() === "message" || trimmed.toLowerCase() === "collection") {
+      return "Folder";
+    }
+    return trimmed;
+  }
   return rawContent;
 }
 
@@ -189,8 +195,8 @@ export function chatPreview(chat: Chat, strings?: AppStrings) {
   if (chat.type === "archive") {
     return "";
   }
-  if (chat.lastMessageContent && chat.lastMessageSenderDisplayName) {
-    const content = formatPreviewContent(chat.lastMessageContent, chat.lastMessageType);
+  if (chat.lastMessageSenderDisplayName && (chat.lastMessageContent || chat.lastMessageType === "collection")) {
+    const content = formatPreviewContent(chat.lastMessageContent ?? "", chat.lastMessageType);
     return `${chat.lastMessageSenderDisplayName}: ${content}`;
   }
   if (chat.type === "voice") {

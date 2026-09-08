@@ -42,3 +42,23 @@ func TestCollectionValidation(t *testing.T) {
 		t.Fatal("invalid custom file pattern was accepted")
 	}
 }
+
+func TestDeriveMessagePreview(t *testing.T) {
+	cases := []struct {
+		content         *string
+		messageType     string
+		attachmentCount int
+		want            string
+	}{
+		{nil, "collection", 0, "Folder"},
+		{nil, "file", 1, "File"},
+		{nil, "image", 1, "Photo"},
+		{nil, "video", 1, "Video"},
+		{nil, "call", 0, "Call"},
+	}
+	for _, tt := range cases {
+		if got := deriveMessagePreview(tt.content, tt.messageType, tt.attachmentCount); got != tt.want {
+			t.Errorf("deriveMessagePreview(%v, %q, %d) = %q, want %q", tt.content, tt.messageType, tt.attachmentCount, got, tt.want)
+		}
+	}
+}

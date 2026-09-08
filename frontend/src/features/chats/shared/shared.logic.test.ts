@@ -23,6 +23,7 @@ import {
   isMessageListNearBottom,
   messageDeliveryLabel,
   messageOriginChatId,
+  messagePreviewText,
   messageReceiptState,
   shouldShowMessageSender
 } from "./messagePresentation";
@@ -88,6 +89,53 @@ describe("chat presentation helpers", () => {
         lastMessageType: "canvas"
       } as any)
     ).toBe("alex: Canvas: Sprint Plan");
+
+    expect(
+      chatPreview({
+        type: "family",
+        lastMessageSenderDisplayName: "ivan",
+        lastMessageContent: "Folder",
+        lastMessageType: "collection"
+      } as any)
+    ).toBe("ivan: Folder");
+
+    expect(
+      chatPreview({
+        type: "family",
+        lastMessageSenderDisplayName: "ivan",
+        lastMessageContent: "Message",
+        lastMessageType: "collection"
+      } as any)
+    ).toBe("ivan: Folder");
+
+    expect(
+      chatPreview({
+        type: "family",
+        lastMessageSenderDisplayName: "ivan",
+        lastMessageContent: null,
+        lastMessageType: "collection"
+      } as any)
+    ).toBe("ivan: Folder");
+  });
+
+  it("formats collection message preview text as Folder", () => {
+    expect(
+      messagePreviewText({
+        type: "collection",
+        content: null,
+        attachments: [],
+        collection: { id: "col-1", title: "Some", displayKind: "folder", available: true }
+      } as any)
+    ).toBe("Folder");
+
+    expect(
+      messagePreviewText({
+        type: "collection",
+        content: null,
+        attachments: [],
+        collection: { id: "col-2", title: "Vacation", displayKind: "album", available: true }
+      } as any)
+    ).toBe("Album");
   });
 
   it("localizes the name (title) of the Message Archive", () => {
