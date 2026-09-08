@@ -4,6 +4,7 @@ import type { ShortcutActionId, ShortcutBindings } from "./types";
 export const KEYBOARD_SHORTCUTS_STORAGE_KEY = "familyMessenger.keyboardShortcuts";
 
 const LEGACY_DEFAULT_SHORTCUTS: Record<string, string> = {
+  quick_switcher: "Mod+K",
   new_chat: "Mod+N",
   toggle_theme: "Mod+Shift+T",
   focus_composer: "Mod+L",

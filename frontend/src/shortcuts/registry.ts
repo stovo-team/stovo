@@ -9,7 +9,7 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: "quick_switcher",
     category: "general",
-    defaultBinding: "Mod+K",
+    defaultBinding: "Mod+Alt+K",
     scope: "global"
   },
   {
@@ -251,6 +251,11 @@ const BROWSER_RESERVED_SHORTCUTS: Record<string, string> = {
   "mod+l": "Focus address bar",
   "ctrl+l": "Focus address bar",
   "meta+l": "Focus address bar",
+  "mod+k": "Search address bar",
+  "ctrl+k": "Search address bar",
+  "meta+k": "Search address bar",
+  "mod+e": "Search address bar",
+  "ctrl+e": "Search address bar",
   "alt+d": "Focus address bar",
   "mod+r": "Reload page",
   "ctrl+r": "Reload page",
