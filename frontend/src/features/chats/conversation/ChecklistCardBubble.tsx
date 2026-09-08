@@ -167,8 +167,8 @@ export function ChecklistCardBubble({
           <div className="checklist-card-progress-fill" style={{ width: `${progressPct}%` }} />
         </div>
         <div className="checklist-card-progress-label">
-          <span>{completedCount} of {total} completed</span>
-          <span>{progressPct}%</span>
+          <span className="checklist-card-progress-count">{completedCount} of {total} completed</span>
+          <span className="checklist-card-progress-pct">{progressPct}%</span>
         </div>
       </div>
 
@@ -206,7 +206,6 @@ export function ChecklistCardBubble({
         onSubmit={(e) => void handleAddItem(e)}
         onClick={(e) => e.stopPropagation()}
       >
-        <Plus size={14} className="checklist-quick-add-bullet" aria-hidden="true" />
         <input
           type="text"
           className="checklist-card-add-input"
@@ -216,16 +215,15 @@ export function ChecklistCardBubble({
           onChange={(e) => setNewItemText(e.target.value)}
           disabled={isAdding}
         />
-        {newItemText.trim().length > 0 && (
-          <button
-            type="submit"
-            className="checklist-card-add-submit"
-            aria-label="Add item to checklist"
-            disabled={isAdding}
-          >
-            <Plus size={16} />
-          </button>
-        )}
+        <button
+          type="submit"
+          className="checklist-card-add-submit"
+          aria-label="Add item to checklist"
+          disabled={isAdding || !newItemText.trim()}
+        >
+          <Plus size={13} strokeWidth={2.5} />
+          <span>Add</span>
+        </button>
       </form>
     </div>
   );
@@ -252,7 +250,7 @@ function ChecklistCardItemRow({
         aria-label={`Mark "${item.text}" as ${item.completed ? "incomplete" : "complete"}`}
         onClick={onToggle}
       >
-        {item.completed && <Check size={13} strokeWidth={3} />}
+        {item.completed && <Check size={11} strokeWidth={3} />}
       </button>
       <span className="checklist-card-item-text">
         {item.text}

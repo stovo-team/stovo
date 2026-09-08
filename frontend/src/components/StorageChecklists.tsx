@@ -9,11 +9,13 @@ import type { StorageFilter } from "../pages/storageLibrary";
 export function StorageChecklists({
   accessToken,
   filter,
-  search
+  search,
+  sourceChatId
 }: {
   accessToken: string | null;
   filter: StorageFilter;
   search: string;
+  sourceChatId?: string | null;
 }) {
   const navigate = useNavigate();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
@@ -24,11 +26,45 @@ export function StorageChecklists({
   }, [accessToken]);
 
   if (filter !== "all" && filter !== "checklists") return null;
-  const query = search.trim().toLocaleLowerCase();
-  const visible = query
-    ? checklists.filter((cl) => cl.title.toLocaleLowerCase().includes(query))
-    : checklists;
-  if (visible.length === 0 && filter !== "checklists") return null;
+
+  const rawQuery = search.trim().toLowerCase();
+  const isExtensionOnly =
+    rawQuery === ".checklist" ||
+    rawQuery === "*.checklist" ||
+    rawQuery === "checklist" ||
+    rawQuery === "ext:checklist" ||
+    rawQuery === "type:checklist";
+
+  const strippedQuery = rawQuery.endsWith(".checklist")
+    ? rawQuery.slice(0, -".checklist".length).replace(/^\*\.?/, "").trim()
+    : rawQuery.startsWith("checklist:")
+    ? rawQuery.slice("checklist:".length).trim()
+    : rawQuery.startsWith("ext:checklist")
+    ? rawQuery.slice("ext:checklist".length).trim()
+    : rawQuery;
+
+  const visible = checklists.filter((checklist) => {
+    if (
+      sourceChatId &&
+      checklist.originChatId !== sourceChatId &&
+      !checklist.linkedChatIds?.includes(sourceChatId)
+    ) {
+      return false;
+    }
+    if (!rawQuery) return true;
+    if (isExtensionOnly) return true;
+    const title = checklist.title.toLowerCase();
+    const virtualFileName = `${title}.checklist`;
+    const category = checklist.category.toLowerCase();
+    return (
+      title.includes(rawQuery) ||
+      (strippedQuery !== "" && title.includes(strippedQuery)) ||
+      virtualFileName.includes(rawQuery) ||
+      category.includes(rawQuery)
+    );
+  });
+
+  if (visible.length === 0 && filter !== "checklists" && !isExtensionOnly) return null;
 
   const categoryIcon = (category: string) => {
     if (category === "groceries") return <ShoppingCart size={28} />;
@@ -64,7 +100,7 @@ export function StorageChecklists({
               <span>
                 <strong>{checklist.title}</strong>
                 <small>
-                  {categoryLabel(checklist.category)} • {checklist.completedItems}/{checklist.totalItems} done
+                  {categoryLabel(checklist.category)} • .checklist • {checklist.completedItems}/{checklist.totalItems} done
                 </small>
               </span>
             </button>

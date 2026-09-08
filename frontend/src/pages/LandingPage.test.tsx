@@ -23,22 +23,25 @@ describe("LandingPage", () => {
     expect(markup).toContain('href="/setup"');
   });
 
-  it("renders audience sections for Business, Gaming, and Families", () => {
+  it("renders audience sections for Business, Gaming, and Families with commercial hints", () => {
     const markup = getMarkup();
 
     expect(markup).toContain("Stovo adapts to your world.");
     expect(markup).toContain("FOR BUSINESS");
     expect(markup).toContain("Stovo for Business");
+    expect(markup).toContain("Plans based on team size");
     expect(markup).toContain("Corporate Knowledge Base");
     expect(markup).toContain("Okta SAML Active");
 
     expect(markup).toContain("FOR GAMING");
     expect(markup).toContain("Stovo for Gaming");
+    expect(markup).toContain("Plans based on community size");
     expect(markup).toContain("Opus Voice Room");
     expect(markup).toContain("#Raid-Command-Alpha");
 
     expect(markup).toContain("FOR FAMILIES");
     expect(markup).toContain("Stovo for Families");
+    expect(markup).toContain("Plans based on storage");
     expect(markup).toContain("Family Media &amp; Archive");
   });
 
@@ -101,15 +104,38 @@ describe("LandingPage", () => {
     expect(markup).toContain("Copy Command");
   });
 
-  it("renders pricing taxonomy with community, cloud, and enterprise tiers", () => {
+  it("renders pricing taxonomy v2 with dimension tabs, volume discounts, and managed infra", () => {
     const markup = getMarkup();
 
-    expect(markup).toContain("Choose how you use Stovo");
-    expect(markup).toContain("Self-Hosted Community");
-    expect(markup).toContain("Stovo Cloud");
+    // Pitch & core thesis
+    expect(markup).toContain("Pricing built around how you use Stovo.");
+    expect(markup).toContain("Companies scale by people. Communities scale by size. Families scale by storage.");
+
+    // Dimension tabs
+    expect(markup).toContain("Business");
+    expect(markup).toContain("by organization size");
+    expect(markup).toContain("Gaming");
+    expect(markup).toContain("by community size");
+    expect(markup).toContain("Family");
+    expect(markup).toContain("by storage (max ~10 members)");
+
+    // Default Business tier cards
+    expect(markup).toContain("Business Starter");
+    expect(markup).toContain("Business Team");
+    expect(markup).toContain("Business Pro");
     expect(markup).toContain("Enterprise");
-    expect(markup).toContain("/ Free Forever");
-    expect(markup).toContain("/ user / mo");
+    expect(markup).toContain("SEAT VOLUME DISCOUNTS");
+    expect(markup).toContain("Commercial licenses:");
+
+    // Managed on Your Infrastructure pillar
+    expect(markup).toContain("Managed on Your Infrastructure");
+    expect(markup).toContain("Managed Small");
+    expect(markup).toContain("Managed Business");
+    expect(markup).toContain("Managed Enterprise");
+    expect(markup).toContain("Assisted Installation");
+    expect(markup).toContain("$299 one-time");
+    expect(markup).toContain("Platform Migration");
+    expect(markup).toContain("From $999");
   });
 
   it("renders FAQ section with questions and answers", () => {
@@ -163,4 +189,71 @@ describe("LandingPage", () => {
     });
     container.remove();
   });
+
+  it("handles pricing dimension tab switching and billing toggles in the DOM", async () => {
+    const { createRoot } = await import("react-dom/client");
+    const { act } = await import("react");
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={["/landing"]}>
+          <LandingPage />
+        </MemoryRouter>
+      );
+    });
+
+    // Verify initial Business view
+    expect(container.textContent).toContain("Business Starter");
+    expect(container.textContent).toContain("Business Pro");
+    expect(container.textContent).toContain("$8"); // annual price default for Team
+
+    // Toggle billing to monthly
+    const billingToggle = container.querySelector<HTMLButtonElement>('button[aria-label="Toggle annual or monthly billing"]');
+    expect(billingToggle).not.toBeNull();
+
+    await act(async () => {
+      billingToggle?.click();
+    });
+
+    expect(container.textContent).toContain("$10"); // monthly price for Team
+    expect(container.textContent).toContain("$18"); // monthly price for Pro
+
+    const dimensionTabs = container.querySelectorAll<HTMLButtonElement>(".sl-pricing-tab");
+    expect(dimensionTabs.length).toBe(3);
+
+    // Switch to Gaming tab (index 1)
+    await act(async () => {
+      dimensionTabs[1].click();
+    });
+
+    expect(container.textContent).toContain("Gaming Free");
+    expect(container.textContent).toContain("Gaming Core");
+    expect(container.textContent).toContain("Gaming Pro");
+    expect(container.textContent).toContain("Gaming Large");
+    expect(container.textContent).toContain("Public Server Directory & Visibility");
+    expect(container.textContent).toContain("Verified Server");
+
+    // Switch to Family tab (index 2)
+    await act(async () => {
+      dimensionTabs[2].click();
+    });
+
+    expect(container.textContent).toContain("Family Free");
+    expect(container.textContent).toContain("Family Plus");
+    expect(container.textContent).toContain("Family Pro");
+    expect(container.textContent).toContain("Family Max");
+    expect(container.textContent).toContain("TRANSPARENT ADD-ONS");
+    expect(container.textContent).toContain("+1 Family Member");
+    expect(container.textContent).toContain("+250 GB Storage");
+
+    await act(async () => {
+      root.unmount();
+    });
+    container.remove();
+  });
 });
+

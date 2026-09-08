@@ -56,6 +56,7 @@ export function RealAvatar({
         <img
           src={previewUrl ?? undefined}
           alt=""
+          draggable={false}
           onError={() => setImageBroken(true)}
         />
       ) : (

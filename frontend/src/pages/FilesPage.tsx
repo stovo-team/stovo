@@ -72,15 +72,6 @@ import {
 } from "./storageLibrary";
 
 
-const storageFilters: Array<{ label: string; value: StorageFilter }> = [
-  { label: "All", value: "all" },
-  { label: "Photos", value: "photos" },
-  { label: "Videos", value: "videos" },
-  { label: "Audio", value: "audio" },
-  { label: "Documents", value: "documents" },
-  { label: "Checklists", value: "checklists" },
-  { label: "Favorites", value: "favorites" }
-];
 
 function canDeleteFile(file: FamilyFile, currentUserId: string | undefined, role: string | undefined) {
   return file.uploadedBy === currentUserId || role === "owner" || role === "admin";
@@ -280,7 +271,8 @@ export default function FilesPage() {
     { label: strings.files.filters.videos, value: "videos" },
     { label: strings.files.filters.audio, value: "audio" },
     { label: strings.files.filters.documents, value: "documents" },
-    { label: "Canvases", value: "canvases" },
+    { label: strings.files.filters.canvases ?? "Canvases", value: "canvases" },
+    { label: strings.files.filters.checklists ?? "Checklists", value: "checklists" },
     { label: strings.files.filters.favorites, value: "favorites" }
   ];
 
@@ -647,9 +639,9 @@ export default function FilesPage() {
 
           <div className="storage-content-area">
             {!collectionPicker && filter !== "canvases" && filter !== "checklists" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
-            <StorageCanvases accessToken={accessToken} filter={filter} search={search} />
-            <StorageChecklists accessToken={accessToken} filter={filter} search={search} />
-            {filter !== "canvases" && filter !== "checklists" && <>
+            <StorageCanvases accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />
+            <StorageChecklists accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />
+            {filter !== "canvases" && filter !== "checklists" && (![".canvas", "*.canvas", "type:canvas", "ext:canvas", ".checklist", "*.checklist", "type:checklist", "ext:checklist"].includes(search.trim().toLowerCase()) || collectionPickerFiles.length > 0) && <>
             <div className="storage-files-heading">
               <div><h2>{collectionPicker ? `Add to ${collectionPicker.collectionTitle}` : "Files"}</h2>{collectionPicker && <p className="storage-picker-hint">Select files from Storage. Files already in this folder are locked.</p>}</div>
               {!collectionPicker && <button type="button" className="storage-files-upload" title="Upload files" aria-label="Upload files" disabled={isUploading} onClick={() => uploadInputRef.current?.click()}><Upload size={15} /></button>}

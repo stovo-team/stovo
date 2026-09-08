@@ -41,6 +41,8 @@ export default function LandingPage() {
   const [solutionsDropdownOpen, setSolutionsDropdownOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [copiedDocker, setCopiedDocker] = useState(false);
+  const [pricingDimension, setPricingDimension] = useState<"business" | "gaming" | "family">("business");
+  const [annualBilling, setAnnualBilling] = useState(true);
 
   const handleCopyDocker = () => {
     void navigator.clipboard.writeText("docker compose up -d");
@@ -676,14 +678,22 @@ export default function LandingPage() {
             {/* Card 1: Business */}
             <div className="sl-audience-card" id="audience-business">
               <div>
-                <div className="sl-audience-badge" style={{ background: "rgba(82, 120, 244, 0.1)", color: "var(--sl-business)" }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--sl-business)" }} />
-                  FOR BUSINESS
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <div className="sl-audience-badge" style={{ background: "rgba(82, 120, 244, 0.1)", color: "var(--sl-business)" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--sl-business)" }} />
+                    FOR BUSINESS
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--sl-business)", background: "rgba(82, 120, 244, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
+                    Plans based on team size
+                  </span>
                 </div>
-                <h3 className="sl-headline-md" style={{ marginTop: "20px", color: "var(--sl-text-primary)" }}>
+                <h3 className="sl-headline-md" style={{ marginTop: "16px", color: "var(--sl-text-primary)" }}>
                   Stovo for Business
                 </h3>
-                <p className="sl-body-md" style={{ fontSize: "0.875rem", marginTop: "10px" }}>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--sl-text-secondary)", marginTop: "4px" }}>
+                  For organizations • Messaging · Company Brain · Identity · Administration
+                </div>
+                <p className="sl-body-md" style={{ fontSize: "0.875rem", marginTop: "8px" }}>
                   Bring your team, files, knowledge and AI into one private workspace.
                 </p>
 
@@ -706,7 +716,7 @@ export default function LandingPage() {
               </div>
 
               <div style={{ marginTop: "28px" }}>
-                <a href="#pricing" style={{ color: "var(--sl-business)", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none" }}>
+                <a href="#pricing" onClick={() => setPricingDimension("business")} style={{ color: "var(--sl-business)", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none" }}>
                   Explore Stovo Business →
                 </a>
               </div>
@@ -715,14 +725,22 @@ export default function LandingPage() {
             {/* Card 2: Gaming */}
             <div className="sl-audience-card" id="audience-gaming">
               <div>
-                <div className="sl-audience-badge" style={{ background: "rgba(138, 92, 246, 0.1)", color: "var(--sl-gaming)" }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--sl-gaming)" }} />
-                  FOR GAMING
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <div className="sl-audience-badge" style={{ background: "rgba(138, 92, 246, 0.1)", color: "var(--sl-gaming)" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--sl-gaming)" }} />
+                    FOR GAMING
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--sl-gaming)", background: "rgba(138, 92, 246, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
+                    Plans based on community size
+                  </span>
                 </div>
-                <h3 className="sl-headline-md" style={{ marginTop: "20px", color: "var(--sl-text-primary)" }}>
+                <h3 className="sl-headline-md" style={{ marginTop: "16px", color: "var(--sl-text-primary)" }}>
                   Stovo for Gaming
                 </h3>
-                <p className="sl-body-md" style={{ fontSize: "0.875rem", marginTop: "10px" }}>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--sl-text-secondary)", marginTop: "4px" }}>
+                  For communities • Voice · Servers · Bots · Discovery
+                </div>
+                <p className="sl-body-md" style={{ fontSize: "0.875rem", marginTop: "8px" }}>
                   Build your community around chat, voice, media and the games you play.
                 </p>
 
@@ -746,7 +764,7 @@ export default function LandingPage() {
               </div>
 
               <div style={{ marginTop: "28px" }}>
-                <a href="#pricing" style={{ color: "var(--sl-gaming)", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none" }}>
+                <a href="#pricing" onClick={() => setPricingDimension("gaming")} style={{ color: "var(--sl-gaming)", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none" }}>
                   Explore Stovo Gaming →
                 </a>
               </div>
@@ -755,14 +773,22 @@ export default function LandingPage() {
             {/* Card 3: Families */}
             <div className="sl-audience-card" id="audience-family">
               <div>
-                <div className="sl-audience-badge" style={{ background: "rgba(229, 106, 137, 0.1)", color: "var(--sl-family)" }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--sl-family)" }} />
-                  FOR FAMILIES
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <div className="sl-audience-badge" style={{ background: "rgba(229, 106, 137, 0.1)", color: "var(--sl-family)" }}>
+                    <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--sl-family)" }} />
+                    FOR FAMILIES
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--sl-family)", background: "rgba(229, 106, 137, 0.08)", padding: "3px 8px", borderRadius: "6px" }}>
+                    Plans based on storage
+                  </span>
                 </div>
-                <h3 className="sl-headline-md" style={{ marginTop: "20px", color: "var(--sl-text-primary)" }}>
+                <h3 className="sl-headline-md" style={{ marginTop: "16px", color: "var(--sl-text-primary)" }}>
                   Stovo for Families
                 </h3>
-                <p className="sl-body-md" style={{ fontSize: "0.875rem", marginTop: "10px" }}>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--sl-text-secondary)", marginTop: "4px" }}>
+                  For households • Photos · Backups · Documents · Storage
+                </div>
+                <p className="sl-body-md" style={{ fontSize: "0.875rem", marginTop: "8px" }}>
                   Keep conversations, photos, documents and backups in one private family space.
                 </p>
 
@@ -1471,144 +1497,928 @@ export default function LandingPage() {
       </section>
 
       {/* ===================================================================
-          8. PRICING TAXONOMY ('Choose how you use Stovo')
+          8. PRICING TAXONOMY (STOVO PRICING MODEL V2)
          =================================================================== */}
       <section className="sl-section" id="pricing" style={{ background: "var(--sl-surface)" }}>
         <div className="sl-container">
-          <div style={{ textAlign: "center", maxWidth: "680px", margin: "0 auto" }}>
-            <span className="sl-pill-eyebrow">Transparent Deployment Paths</span>
+          <div style={{ textAlign: "center", maxWidth: "720px", margin: "0 auto" }}>
+            <span className="sl-pill-eyebrow">Pricing Model v2</span>
             <h2 className="sl-headline-lg" style={{ marginTop: "14px" }}>
-              Choose how you use Stovo
+              Pricing built around how you use Stovo.
+            </h2>
+            <p className="sl-body-lg" style={{ marginTop: "12px", color: "var(--sl-text-secondary)" }}>
+              Companies scale by people. Communities scale by size. Families scale by storage.
+            </p>
+
+            {/* 3-Way Dimensional Tabs */}
+            <div className="sl-pricing-tabs" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={pricingDimension === "business"}
+                className={`sl-pricing-tab ${pricingDimension === "business" ? "sl-pricing-tab-active" : ""}`}
+                onClick={() => setPricingDimension("business")}
+              >
+                <div className="sl-pricing-tab-title">
+                  <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "20px" }}>business_center</span>
+                  Business
+                </div>
+                <div className="sl-pricing-tab-sub">by organization size</div>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={pricingDimension === "gaming"}
+                className={`sl-pricing-tab ${pricingDimension === "gaming" ? "sl-pricing-tab-active" : ""}`}
+                onClick={() => setPricingDimension("gaming")}
+              >
+                <div className="sl-pricing-tab-title">
+                  <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "20px" }}>sports_esports</span>
+                  Gaming
+                </div>
+                <div className="sl-pricing-tab-sub">by community size</div>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={pricingDimension === "family"}
+                className={`sl-pricing-tab ${pricingDimension === "family" ? "sl-pricing-tab-active" : ""}`}
+                onClick={() => setPricingDimension("family")}
+              >
+                <div className="sl-pricing-tab-title">
+                  <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "20px" }}>family_restroom</span>
+                  Family
+                </div>
+                <div className="sl-pricing-tab-sub">by storage (max ~10 members)</div>
+              </button>
+            </div>
+          </div>
+
+          {/* =================================================================
+              DIMENSION 1: BUSINESS PRICING (BY SEATS)
+             ================================================================= */}
+          {pricingDimension === "business" && (
+            <div style={{ marginTop: "32px" }}>
+              {/* Annual / Monthly Billing Toggle */}
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <div className="sl-billing-toggle">
+                  <span style={{ color: !annualBilling ? "var(--sl-text-primary)" : "var(--sl-text-tertiary)" }}>
+                    Billed Monthly
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAnnualBilling(!annualBilling)}
+                    style={{
+                      width: "44px",
+                      height: "24px",
+                      borderRadius: "999px",
+                      background: annualBilling ? "var(--sl-primary)" : "var(--sl-border-strong)",
+                      border: "none",
+                      cursor: "pointer",
+                      position: "relative",
+                      transition: "background 0.2s ease",
+                      padding: 0,
+                    }}
+                    aria-label="Toggle annual or monthly billing"
+                  >
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "2px",
+                        left: annualBilling ? "22px" : "2px",
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "50%",
+                        background: "#ffffff",
+                        transition: "left 0.2s ease",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      }}
+                    />
+                  </button>
+                  <span style={{ color: annualBilling ? "var(--sl-text-primary)" : "var(--sl-text-tertiary)", display: "flex", alignItems: "center", gap: "6px" }}>
+                    Billed Annually
+                    <span style={{ padding: "2px 6px", borderRadius: "4px", background: "rgba(24, 121, 78, 0.1)", color: "var(--sl-success)", fontSize: "10px", fontWeight: 700 }}>
+                      SAVE 20%
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Business 4 Tiers */}
+              <div className="sl-pricing-grid-4">
+                {/* Business Starter */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-text-tertiary)", fontSize: "10px" }}>GET STARTED</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Business Starter</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>$0</span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ Up to 5 users</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Perfect for evaluating Stovo or small founding teams getting started.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Messaging &amp; voice calls</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>10 GB team storage</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Basic role permissions</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Standard search &amp; basic AI</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Start Free
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Business Team */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-business)", fontSize: "10px" }}>GROWING TEAMS</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Business Team</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>
+                        {annualBilling ? "$8" : "$10"}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ user / mo</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Complete messaging, voice, storage, and shared Company Brain for organizations.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "14px" }}>check</span>
+                        <span>Unlimited channels &amp; history</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "14px" }}>check</span>
+                        <span>100 GB storage per user</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "14px" }}>check</span>
+                        <span>Standard AI &amp; Company Brain</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "14px" }}>check</span>
+                        <span>Webhooks &amp; MCP connectors</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "14px" }}>check</span>
+                        <span>Team admin workspace console</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Choose Team
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Business Pro (Featured) */}
+                <div className="sl-pricing-card sl-pricing-featured">
+                  <div className="sl-featured-pill">RECOMMENDED FOR TEAMS</div>
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-primary)", fontSize: "10px" }}>COMPREHENSIVE</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Business Pro</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800, color: "var(--sl-primary)" }}>
+                        {annualBilling ? "$15" : "$18"}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ user / mo</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Advanced knowledge intelligence, compliance retention, audit trails, and priority SLA.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Advanced Company Brain &amp; Grounded RAG</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>1 TB pooled storage per user</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Enterprise SAML/SSO (Okta, Google, OIDC)</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Audit logs, legal retention, version lock</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Priority 24/7 support response</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-primary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Start Pro Trial
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Business Enterprise */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-text-primary)", fontSize: "10px" }}>DEDICATED SCALE</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Enterprise</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>Custom</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Dedicated infrastructure pods, custom compliance DPAs, multi-region failover, and named architects.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Dedicated single-tenant VPC/pod</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Custom SLA guarantees &amp; 99.99% uptime</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Custom compliance &amp; legal contracts</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Dedicated solution architect team</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <a href="mailto:enterprise@stovo.internal" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Contact Sales
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Volume Discounts & Self-Hosted Commercial License callout */}
+              <div className="sl-addons-card">
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-business)", fontSize: "11px" }}>SEAT VOLUME DISCOUNTS</span>
+                    <h4 className="sl-headline-sm" style={{ margin: "4px 0 0 0" }}>Designed to scale with your organization</h4>
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", fontSize: "12px", fontFamily: "var(--sl-font-code)" }}>
+                    <span style={{ padding: "6px 12px", borderRadius: "8px", background: "var(--sl-surface)", border: "1px solid var(--sl-border)" }}>
+                      1–25 seats: $10/mo
+                    </span>
+                    <span style={{ padding: "6px 12px", borderRadius: "8px", background: "var(--sl-surface)", border: "1px solid var(--sl-border)" }}>
+                      26–100 seats: $9/mo
+                    </span>
+                    <span style={{ padding: "6px 12px", borderRadius: "8px", background: "var(--sl-surface)", border: "1px solid var(--sl-border)" }}>
+                      101–500 seats: $8/mo
+                    </span>
+                    <span style={{ padding: "6px 12px", borderRadius: "8px", background: "rgba(82, 120, 244, 0.1)", border: "1px solid rgba(82, 120, 244, 0.3)", color: "var(--sl-business)", fontWeight: 700 }}>
+                      500+ seats: Custom
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: "1px solid var(--sl-border)", paddingTop: "18px", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "12px", fontSize: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "20px" }}>terminal</span>
+                    <span>
+                      <strong>Prefer to self-host on your own servers?</strong> Commercial licenses: <strong>Team: $5/user/mo</strong> • <strong>Pro: $10/user/mo</strong> (Annual subscription, customer provides servers &amp; bandwidth).
+                    </span>
+                  </div>
+                  <a href="#managed-infra" style={{ color: "var(--sl-primary)", fontWeight: 700, textDecoration: "none" }}>
+                    Explore Managed on Your Infra →
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================================
+              DIMENSION 2: GAMING PRICING (BY COMMUNITY SIZE)
+             ================================================================= */}
+          {pricingDimension === "gaming" && (
+            <div style={{ marginTop: "32px" }}>
+              <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                <span style={{ padding: "4px 14px", borderRadius: "999px", background: "rgba(138, 92, 246, 0.08)", color: "var(--sl-gaming)", fontFamily: "var(--sl-font-code)", fontSize: "12px", fontWeight: 700 }}>
+                  Metric: Active Community Members (users active within the last 30 days)
+                </span>
+              </div>
+
+              {/* Gaming 4 Tiers */}
+              <div className="sl-pricing-grid-4">
+                {/* Gaming Free */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-text-tertiary)", fontSize: "10px" }}>GUILDS &amp; SQUADS</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Gaming Free</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>$0</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Up to 100 active members. Ideal for friend circles, raid squads, and Minecraft servers.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Chat channels &amp; custom roles</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Basic voice mesh &amp; bots</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>10 GB community storage</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Standard moderation controls</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Create Free Server
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Gaming Core */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-gaming)", fontSize: "10px" }}>EXPANDING COMMUNITY</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Gaming Core</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>$9.99</span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ server / mo</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Up to 500 active members. Enhanced voice channels and higher file upload caps.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "14px" }}>check</span>
+                        <span>Enhanced Opus voice quality (64k–128k)</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "14px" }}>check</span>
+                        <span>50 GB media storage</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "14px" }}>check</span>
+                        <span>Larger upload limits (100 MB / file)</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "14px" }}>check</span>
+                        <span>Basic server analytics &amp; audit</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Choose Core
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Gaming Pro (Featured) */}
+                <div className="sl-pricing-card sl-pricing-featured">
+                  <div className="sl-featured-pill">MOST POPULAR COMMUNITY</div>
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-primary)", fontSize: "10px" }}>HIGH CONCURRENCY</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Gaming Pro</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800, color: "var(--sl-primary)" }}>$24.99</span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ server / mo</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Up to 2,500 active members. Pro studio audio, custom server branding, and advanced bot engines.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>High-quality 48kHz studio audio</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>250 GB community media storage</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Advanced moderation automations &amp; bots</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Custom server vanity URL &amp; branding</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Official Stovo directory listing included</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-primary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Upgrade to Pro
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Gaming Large */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-gaming)", fontSize: "10px" }}>LARGE NETWORK</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Gaming Large</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>$59.99</span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ server / mo</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Up to 10,000 active members. High concurrent voice pipelines, 1 TB media storage, and priority routing.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "14px" }}>check</span>
+                        <span>1 TB media &amp; replay storage</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "14px" }}>check</span>
+                        <span>Increased concurrent voice channels</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "14px" }}>check</span>
+                        <span>Multi-region voice relay mesh</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-gaming)", fontSize: "14px" }}>check</span>
+                        <span>Priority support response</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Choose Large
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Public Directory Promotion Box */}
+              <div className="sl-addons-card">
+                <div>
+                  <span className="sl-label-caps" style={{ color: "var(--sl-gaming)", fontSize: "11px" }}>STOVO DISCOVERY &amp; PROMOTION</span>
+                  <h4 className="sl-headline-sm" style={{ margin: "4px 0 6px 0" }}>Public Server Directory &amp; Visibility</h4>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", margin: 0 }}>
+                    Directory listing is free for qualifying servers. Monetize discovery through verified credentials and featured community placement.
+                  </p>
+                </div>
+
+                <div className="sl-addons-grid">
+                  <div className="sl-addon-item">
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "13px" }}>Directory Listing</div>
+                      <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Free for qualifying public communities</div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-success)" }}>Free</span>
+                  </div>
+
+                  <div className="sl-addon-item">
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "13px" }}>Verified Server</div>
+                      <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Badge &amp; category placement</div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-gaming)" }}>$7.99/mo</span>
+                  </div>
+
+                  <div className="sl-addon-item">
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "13px" }}>Featured Server</div>
+                      <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Ranked in Featured Communities</div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-gaming)" }}>$24.99/mo</span>
+                  </div>
+
+                  <div className="sl-addon-item">
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "13px" }}>Featured Plus</div>
+                      <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Top discovery spotlight &amp; carousel</div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-gaming)" }}>$49.99/mo</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* =================================================================
+              DIMENSION 3: FAMILY PRICING (BY STORAGE)
+             ================================================================= */}
+          {pricingDimension === "family" && (
+            <div style={{ marginTop: "32px" }}>
+              <div style={{ textAlign: "center", marginBottom: "20px" }}>
+                <span style={{ padding: "4px 14px", borderRadius: "999px", background: "rgba(229, 106, 137, 0.08)", color: "var(--sl-family)", fontFamily: "var(--sl-font-code)", fontSize: "12px", fontWeight: 700 }}>
+                  All paid tiers include up to 10 family members by default (No per-user plan gates)
+                </span>
+              </div>
+
+              {/* Family 4 Tiers */}
+              <div className="sl-pricing-grid-4">
+                {/* Family Free */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-text-tertiary)", fontSize: "10px" }}>BASIC HOUSEHOLD</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Family Free</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>$0</span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ 10 GB</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Up to 5 members. Clean messaging, voice calls, and lightweight photo sharing.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Private family messaging</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Voice &amp; video calls</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>10 GB shared storage</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "14px" }}>check</span>
+                        <span>Basic photo sharing</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Create Family Space
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Family Plus */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-family)", fontSize: "10px" }}>CONNECTED HOME</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Family Plus</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>$7.99</span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ mo • 250 GB</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Up to 10 members. Automatic camera uploads, shared albums, and family document vaults.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "14px" }}>check</span>
+                        <span>Automatic photo upload from phones</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "14px" }}>check</span>
+                        <span>Shared photo albums &amp; memory stream</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "14px" }}>check</span>
+                        <span>Family document &amp; passport vault</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "14px" }}>check</span>
+                        <span>30-day file version history</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Choose Plus
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Family Pro (Featured) */}
+                <div className="sl-pricing-card sl-pricing-featured">
+                  <div className="sl-featured-pill">BEST VALUE FOR FAMILIES</div>
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-primary)", fontSize: "10px" }}>COMPLETE BACKUP</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Family Pro</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800, color: "var(--sl-primary)" }}>$14.99</span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ mo • 1 TB</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Up to 10 members. Full device backups, AI memory search, and 1 Terabyte of verified storage.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Full phone backup (iOS &amp; Android)</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>1 TB pooled family storage</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Family AI search across photos &amp; notes</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>1-year version history &amp; recovery</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "14px" }}>check</span>
+                        <span>Priority restore assistance</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-primary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Get Family Pro
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Family Max */}
+                <div className="sl-pricing-card">
+                  <div>
+                    <span className="sl-label-caps" style={{ color: "var(--sl-family)", fontSize: "10px" }}>HERITAGE ARCHIVE</span>
+                    <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Family Max</h3>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: "4px", margin: "14px 0 10px 0" }}>
+                      <span className="sl-display-lg" style={{ fontSize: "2.25rem", fontWeight: 800 }}>$24.99</span>
+                      <span style={{ fontSize: "12px", color: "var(--sl-text-secondary)" }}>/ mo • 3 TB</span>
+                    </div>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", lineHeight: 1.4 }}>
+                      Up to 10 members. 3 TB archive for multi-device households, raw camera footage, and lifetime memories.
+                    </p>
+                    <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "8px", fontSize: "0.75rem" }}>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "14px" }}>check</span>
+                        <span>3 TB massive household storage</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "14px" }}>check</span>
+                        <span>Unlimited device backup slots</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "14px" }}>check</span>
+                        <span>Extended version history</span>
+                      </li>
+                      <li style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span className="material-symbols-outlined" style={{ color: "var(--sl-family)", fontSize: "14px" }}>check</span>
+                        <span>Premium recovery &amp; media handling</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div style={{ marginTop: "28px" }}>
+                    <Link to="/setup" className="sl-btn-secondary" style={{ width: "100%", fontSize: "0.8125rem", padding: "10px 16px" }}>
+                      Choose Max
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              {/* Family Add-ons Box */}
+              <div className="sl-addons-card">
+                <div>
+                  <span className="sl-label-caps" style={{ color: "var(--sl-family)", fontSize: "11px" }}>TRANSPARENT ADD-ONS</span>
+                  <h4 className="sl-headline-sm" style={{ margin: "4px 0 6px 0" }}>Add extra capacity when your family grows</h4>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", margin: 0 }}>
+                    Monetized strictly around actual compute, storage, and backup costs without charging for tiny features.
+                  </p>
+                </div>
+
+                <div className="sl-addons-grid">
+                  <div className="sl-addon-item">
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "13px" }}>+1 Family Member</div>
+                      <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Up to 20 total members</div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-family)" }}>$1.50/mo</span>
+                  </div>
+
+                  <div className="sl-addon-item">
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "13px" }}>+250 GB Storage</div>
+                      <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Extra pooled cloud vault</div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-family)" }}>$2.99/mo</span>
+                  </div>
+
+                  <div className="sl-addon-item">
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "13px" }}>+1 TB Storage</div>
+                      <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Bulk high-capacity drive</div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-family)" }}>$7.99/mo</span>
+                  </div>
+
+                  <div className="sl-addon-item">
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "13px" }}>Extended History</div>
+                      <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Permanent version archives</div>
+                    </div>
+                    <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-family)" }}>$2.99/mo</span>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: "1px solid var(--sl-border)", paddingTop: "16px", fontSize: "12px", color: "var(--sl-text-secondary)" }}>
+                  <strong>Self-Hosting for Family?</strong> Community edition is 100% Free on your own hardware. Or unlock <strong>Family Pro Self-Hosted</strong> ($49–$79/year) for proprietary device backup &amp; photo intelligence modules.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ===================================================================
+          MANAGED ON YOUR INFRASTRUCTURE (THE 3RD DEPLOYMENT PILLAR)
+         =================================================================== */}
+      <section className="sl-section" id="managed-infra" style={{ background: "var(--sl-surface-subtle)", borderTop: "1px solid var(--sl-border)", borderBottom: "1px solid var(--sl-border)" }}>
+        <div className="sl-container">
+          <div style={{ textAlign: "center", maxWidth: "720px", margin: "0 auto" }}>
+            <span className="sl-pill-eyebrow" style={{ background: "rgba(24, 121, 78, 0.1)", color: "var(--sl-success)" }}>
+              The Sovereign Alternative
+            </span>
+            <h2 className="sl-headline-lg" style={{ marginTop: "14px" }}>
+              Managed on Your Infrastructure.
             </h2>
             <p className="sl-body-lg" style={{ marginTop: "12px" }}>
-              Clear, independent paths designed for your autonomy: self-host for free, deploy managed cloud, or tailor for enterprise scale.
+              You own the servers. Your data never leaves your perimeter. Our engineers handle installation, upgrades, and 24/7 reliability.
             </p>
           </div>
 
-          <div className="sl-pricing-grid">
-            {/* Tier 1: Self-Hosted Community */}
-            <div className="sl-pricing-card">
+          <div className="sl-pricing-grid" style={{ marginTop: "48px" }}>
+            {/* Managed Small */}
+            <div className="sl-managed-card">
               <div>
-                <span className="sl-label-caps" style={{ color: "var(--sl-text-tertiary)", fontSize: "11px" }}>AUTONOMOUS</span>
-                <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "8px" }}>
-                  Self-Hosted Community
-                </h3>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", margin: "16px 0 12px 0" }}>
-                  <span className="sl-display-lg" style={{ fontSize: "2.5rem", fontWeight: 800 }}>$0</span>
-                  <span style={{ fontSize: "13px", color: "var(--sl-text-secondary)" }}>/ Free Forever</span>
+                <span className="sl-label-caps" style={{ color: "var(--sl-text-tertiary)", fontSize: "11px" }}>1–25 USERS</span>
+                <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Managed Small</h3>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", margin: "14px 0 10px 0" }}>
+                  <span className="sl-display-lg" style={{ fontSize: "2.5rem", fontWeight: 800 }}>$149</span>
+                  <span style={{ fontSize: "13px", color: "var(--sl-text-secondary)" }}>/ mo + license</span>
                 </div>
                 <p style={{ fontSize: "0.875rem", color: "var(--sl-text-secondary)", lineHeight: 1.5 }}>
-                  Run Stovo on your own infrastructure. Free forever for individuals, developers, and teams.
+                  Turnkey operations for startups and private practices on your chosen VPS or bare metal.
                 </p>
-
-                <ul style={{ listStyle: "none", padding: 0, margin: "24px 0 0 0", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.8125rem" }}>
+                <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.8125rem" }}>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "16px" }}>check</span>
-                    <span>Full source access &amp; Docker compose images</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "16px" }}>check_circle</span>
+                    <span>Installation &amp; domain TLS setup</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "16px" }}>check</span>
-                    <span>Unlimited local users &amp; channels</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "16px" }}>check_circle</span>
+                    <span>Zero-downtime release upgrades</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "16px" }}>check</span>
-                    <span>Plug your own S3/NAS storage &amp; LLMs</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "16px" }}>check_circle</span>
+                    <span>Automated local backup configuration</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "16px" }}>check</span>
-                    <span>Community forum &amp; GitHub support</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-success)", fontSize: "16px" }}>check_circle</span>
+                    <span>Monthly cluster health checks</span>
                   </li>
                 </ul>
               </div>
-
               <div style={{ marginTop: "32px" }}>
-                <a href="#infrastructure" className="sl-btn-secondary" style={{ width: "100%" }}>
-                  Deploy Community
+                <a href="mailto:managed@stovo.internal" className="sl-btn-secondary" style={{ width: "100%" }}>
+                  Deploy Managed Small
                 </a>
               </div>
             </div>
 
-            {/* Tier 2: Stovo Cloud (Featured) */}
-            <div className="sl-pricing-card sl-pricing-featured">
-              <div className="sl-featured-pill">MANAGED &amp; ZERO-MAINTENANCE</div>
+            {/* Managed Business */}
+            <div className="sl-managed-card" style={{ border: "2px solid var(--sl-primary)", position: "relative" }}>
+              <div className="sl-featured-pill">POPULAR FOR ENTERPRISE VPS</div>
               <div>
-                <span className="sl-label-caps" style={{ color: "var(--sl-primary)", fontSize: "11px" }}>HOSTED BY STOVO</span>
-                <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "8px" }}>
-                  Stovo Cloud
-                </h3>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", margin: "16px 0 12px 0" }}>
-                  <span className="sl-display-lg" style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--sl-primary)" }}>From $5</span>
-                  <span style={{ fontSize: "13px", color: "var(--sl-text-secondary)" }}>/ user / mo</span>
+                <span className="sl-label-caps" style={{ color: "var(--sl-primary)", fontSize: "11px" }}>25–150 USERS</span>
+                <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Managed Business</h3>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", margin: "14px 0 10px 0" }}>
+                  <span className="sl-display-lg" style={{ fontSize: "2.5rem", fontWeight: 800, color: "var(--sl-primary)" }}>$399</span>
+                  <span style={{ fontSize: "13px", color: "var(--sl-text-secondary)" }}>/ mo + license</span>
                 </div>
                 <p style={{ fontSize: "0.875rem", color: "var(--sl-text-secondary)", lineHeight: 1.5 }}>
-                  We host, update, and manage Stovo for you. High availability, automated backups, and global edge relays.
+                  Proactive monitoring and engineering management for business clusters and high-trust organizations.
                 </p>
-
-                <ul style={{ listStyle: "none", padding: 0, margin: "24px 0 0 0", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.8125rem" }}>
+                <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.8125rem" }}>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "16px" }}>check</span>
-                    <span>30-second instance provisioning</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "16px" }}>check_circle</span>
+                    <span>Proactive 24/7 uptime &amp; latency monitoring</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "16px" }}>check</span>
-                    <span>Geographically replicated daily snapshots</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "16px" }}>check_circle</span>
+                    <span>Scheduled maintenance &amp; upgrade management</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "16px" }}>check</span>
-                    <span>Global edge mesh voice relays</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "16px" }}>check_circle</span>
+                    <span>Automated disaster recovery verification</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "16px" }}>check</span>
-                    <span>1-click export to self-hosted anytime</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-primary)", fontSize: "16px" }}>check_circle</span>
+                    <span>Priority incident escalation &amp; resolution</span>
                   </li>
                 </ul>
               </div>
-
               <div style={{ marginTop: "32px" }}>
-                <Link to="/setup" className="sl-btn-primary" style={{ width: "100%" }}>
-                  Start Free Trial
-                </Link>
+                <a href="mailto:managed@stovo.internal" className="sl-btn-primary" style={{ width: "100%" }}>
+                  Deploy Managed Business
+                </a>
               </div>
             </div>
 
-            {/* Tier 3: Enterprise */}
-            <div className="sl-pricing-card">
+            {/* Managed Enterprise */}
+            <div className="sl-managed-card">
               <div>
-                <span className="sl-label-caps" style={{ color: "var(--sl-business)", fontSize: "11px" }}>DEDICATED SCALE</span>
-                <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "8px" }}>
-                  Enterprise
-                </h3>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", margin: "16px 0 12px 0" }}>
-                  <span className="sl-display-lg" style={{ fontSize: "2.5rem", fontWeight: 800 }}>Custom</span>
+                <span className="sl-label-caps" style={{ color: "var(--sl-business)", fontSize: "11px" }}>HIGH AVAILABILITY</span>
+                <h3 className="sl-headline-md" style={{ color: "var(--sl-text-primary)", marginTop: "6px" }}>Managed Enterprise</h3>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", margin: "14px 0 10px 0" }}>
+                  <span className="sl-display-lg" style={{ fontSize: "2.5rem", fontWeight: 800 }}>From $999</span>
+                  <span style={{ fontSize: "13px", color: "var(--sl-text-secondary)" }}>/ mo + license</span>
                 </div>
                 <p style={{ fontSize: "0.875rem", color: "var(--sl-text-secondary)", lineHeight: 1.5 }}>
-                  Private deployments, dedicated infrastructure, advanced compliance, and custom SLA support.
+                  Multi-node Kubernetes, bare-metal clusters, strict legal compliance, and dedicated SRE support.
                 </p>
-
-                <ul style={{ listStyle: "none", padding: 0, margin: "24px 0 0 0", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.8125rem" }}>
+                <ul style={{ listStyle: "none", padding: 0, margin: "20px 0 0 0", display: "flex", flexDirection: "column", gap: "10px", fontSize: "0.8125rem" }}>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "16px" }}>check</span>
-                    <span>Enterprise SAML/SSO &amp; LDAP Sync</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "16px" }}>check_circle</span>
+                    <span>High-Availability multi-node orchestration</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "16px" }}>check</span>
-                    <span>Dedicated infrastructure architects</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "16px" }}>check_circle</span>
+                    <span>Strict air-gap / GovCloud compatibility</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "16px" }}>check</span>
-                    <span>Custom compliance &amp; legal DPAs</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "16px" }}>check_circle</span>
+                    <span>Dedicated site reliability engineer (SRE)</span>
                   </li>
                   <li style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "16px" }}>check</span>
-                    <span>24/7 mission-critical SLA response</span>
+                    <span className="material-symbols-outlined" style={{ color: "var(--sl-business)", fontSize: "16px" }}>check_circle</span>
+                    <span>Guaranteed 1-hour critical response SLA</span>
                   </li>
                 </ul>
               </div>
-
               <div style={{ marginTop: "32px" }}>
                 <a href="mailto:enterprise@stovo.internal" className="sl-btn-secondary" style={{ width: "100%" }}>
-                  Contact Enterprise
+                  Contact SRE Team
                 </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Professional Setup & Migration Services Box */}
+          <div className="sl-addons-card" style={{ background: "var(--sl-surface)", marginTop: "40px" }}>
+            <div>
+              <span className="sl-label-caps" style={{ color: "var(--sl-primary)", fontSize: "11px" }}>PROFESSIONAL SERVICES</span>
+              <h4 className="sl-headline-sm" style={{ margin: "4px 0 6px 0" }}>Turnkey Setup &amp; Zero-Downtime Migration</h4>
+              <p style={{ fontSize: "0.8125rem", color: "var(--sl-text-secondary)", margin: 0 }}>
+                Let Stovo engineers inspect your server infrastructure, configure security headers, and migrate entire communication archives.
+              </p>
+            </div>
+
+            <div className="sl-addons-grid">
+              <div className="sl-addon-item">
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "13px" }}>Assisted Installation</div>
+                  <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Domain, TLS, reverse proxy, storage setup</div>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-text-primary)" }}>$299 one-time</span>
+              </div>
+
+              <div className="sl-addon-item">
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "13px" }}>Platform Migration</div>
+                  <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>From Slack, Discord, Teams, Mattermost</div>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-primary)" }}>From $999</span>
+              </div>
+
+              <div className="sl-addon-item">
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: "13px" }}>Enterprise Deployment</div>
+                  <div style={{ fontSize: "11px", color: "var(--sl-text-secondary)" }}>Custom multi-region &amp; HA topology</div>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: "14px", color: "var(--sl-business)" }}>$2,500+</span>
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckSquare, Mic, Plus, ShoppingBag, ShoppingCart, Sparkles, Square, Trash2, Truck } from "lucide-react";
+import { CheckSquare, Circle, Mic, Plus, ShoppingBag, ShoppingCart, Sparkles, Trash2, Truck } from "lucide-react";
 
 export interface RichChecklistCreatorProps {
   onSubmit: (payload: {
@@ -201,7 +201,7 @@ export function RichChecklistCreator({ onSubmit, isSubmitting = false, onCancel 
         <div className="checklist-items-list" role="list">
           {items.map((item, index) => (
             <div key={index} className="checklist-item-row" role="listitem">
-              <Square size={16} className="checklist-item-bullet-icon" aria-hidden="true" />
+              <Circle size={15} className="checklist-item-bullet-icon" aria-hidden="true" />
               <input
                 type="text"
                 className="checklist-item-input"

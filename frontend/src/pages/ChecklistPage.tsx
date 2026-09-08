@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { io, type Socket } from "socket.io-client";
 import {
+  Check,
   CheckSquare,
   Square,
   Plus,
@@ -620,15 +621,11 @@ export default function ChecklistPage() {
                 >
                   <button
                     type="button"
-                    className="checklist-item-check-btn"
+                    className={`checklist-item-check-btn ${item.completed ? "checked" : ""}`}
                     aria-label={item.completed ? "Mark incomplete" : "Mark complete"}
                     onClick={() => void handleToggleItem(item.id, item.completed)}
                   >
-                    {item.completed ? (
-                      <CheckSquare size={18} className="icon-checked" />
-                    ) : (
-                      <Square size={18} className="icon-unchecked" />
-                    )}
+                    {item.completed && <Check size={12} strokeWidth={3} className="icon-checked" />}
                   </button>
 
                   <input
