@@ -118,4 +118,72 @@ describe("StorageCanvases", () => {
     expect(container?.textContent).toContain("Sprint Planning");
     expect(container?.textContent).not.toContain("Vacation Brainstorm");
   });
+
+  it("renders blank canvas preview when document has no blocks", async () => {
+    vi.spyOn(canvasApi, "getCanvasDocument").mockResolvedValue({ updates: [] });
+
+    await act(async () => {
+      root?.render(<StorageCanvases accessToken="token" filter="all" search="" />);
+    });
+
+    const blankPreview = container?.querySelector(".canvas-preview-blank");
+    expect(blankPreview).not.toBeNull();
+  });
+
+  it("renders markdown notes preview when canvas document contains text blocks", async () => {
+    const doc = new (await import("yjs")).Doc();
+    const blocks = doc.getArray("blocks");
+    const map = new (await import("yjs")).Map();
+    map.set("id", "b1");
+    map.set("kind", "markdown");
+    map.set("content", new (await import("yjs")).Text("# Sprint Planning\n- Ship search feature\n- Fix audio waveforms"));
+    blocks.push([map]);
+
+    const bytes = (await import("yjs")).encodeStateAsUpdate(doc);
+    let binary = "";
+    bytes.forEach((b) => { binary += String.fromCharCode(b); });
+    const update = btoa(binary);
+
+    vi.spyOn(canvasApi, "getCanvasDocument").mockResolvedValue({
+      updates: [{ sequence: 1, update, createdBy: "user-1", createdAt: "2026-09-08T00:00:00Z" }]
+    });
+
+    await act(async () => {
+      root?.render(<StorageCanvases accessToken="token" filter="all" search="" />);
+    });
+
+    expect(container?.textContent).toContain("Ship search feature");
+    expect(container?.textContent).toContain("Fix audio waveforms");
+    expect(container?.querySelector(".canvas-preview-doc")).not.toBeNull();
+  });
+
+  it("renders whiteboard vector SVG preview when canvas document contains scene elements", async () => {
+    const doc = new (await import("yjs")).Doc();
+    const blocks = doc.getArray("blocks");
+    const map = new (await import("yjs")).Map();
+    map.set("id", "b2");
+    map.set("kind", "whiteboard");
+    map.set("scene", new (await import("yjs")).Text(JSON.stringify([
+      { type: "rectangle", x: 10, y: 10, width: 80, height: 50, strokeColor: "#818cf8" }
+    ])));
+    blocks.push([map]);
+
+    const bytes = (await import("yjs")).encodeStateAsUpdate(doc);
+    let binary = "";
+    bytes.forEach((b) => { binary += String.fromCharCode(b); });
+    const update = btoa(binary);
+
+    vi.spyOn(canvasApi, "getCanvasDocument").mockResolvedValue({
+      updates: [{ sequence: 1, update, createdBy: "user-1", createdAt: "2026-09-08T00:00:00Z" }]
+    });
+
+    await act(async () => {
+      root?.render(<StorageCanvases accessToken="token" filter="all" search="" />);
+    });
+
+    const svg = container?.querySelector(".canvas-preview-svg");
+    expect(svg).not.toBeNull();
+    const rect = svg?.querySelector("rect");
+    expect(rect).not.toBeNull();
+  });
 });

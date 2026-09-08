@@ -276,16 +276,48 @@ export function ChatList({
     }));
     saveChatFolders(familyId, nextFolders);
 
-    if ((chat.type === "group" || chat.type === "family") && !defaultFolders.groups?.rules?.chatTypes?.includes("group")) {
-      const nextGroupsFolder: ChatFolder = {
-        ...defaultFolders.groups,
+    const naturalKey: ChatSectionKey =
+      chat.type === "archive"
+        ? "archive"
+        : chat.type === "group" || chat.type === "family"
+          ? "groups"
+          : chat.type === "direct"
+            ? "dms"
+            : chat.type === "channel"
+              ? "channels"
+              : chat.type === "voice"
+                ? "voice"
+                : "dms";
+
+    const chatType = (chat.type === "family" ? "group" : chat.type) as FolderChatType;
+    const currentDefaultFolder = defaultFolders[naturalKey];
+    if (currentDefaultFolder && !currentDefaultFolder.rules.chatTypes.includes(chatType)) {
+      const nextDefaultFolder: ChatFolder = {
+        ...currentDefaultFolder,
         rules: {
-          ...defaultFolders.groups.rules,
-          chatTypes: [...defaultFolders.groups.rules.chatTypes, "group"]
+          ...currentDefaultFolder.rules,
+          chatTypes: [...currentDefaultFolder.rules.chatTypes, chatType]
         }
       };
-      setDefaultFolders((current) => ({ ...current, groups: nextGroupsFolder }));
-      saveDefaultSectionFolder(familyId, "groups", nextGroupsFolder);
+      setDefaultFolders((current) => ({ ...current, [naturalKey]: nextDefaultFolder }));
+      saveDefaultSectionFolder(familyId, naturalKey, nextDefaultFolder);
+    }
+
+    if (deletedDefaultSections.includes(naturalKey)) {
+      setDeletedDefaultSections((current) => {
+        const next = current.filter((k) => k !== naturalKey);
+        saveDeletedDefaultSections(familyId, next);
+        return next;
+      });
+    }
+
+    if (sectionAssignments[chat.id]) {
+      setSectionAssignments((prev) => {
+        const next = { ...prev };
+        delete next[chat.id];
+        saveChatSectionAssignments(familyId, next);
+        return next;
+      });
     }
 
     draggedChatRef.current = null;
@@ -409,7 +441,15 @@ export function ChatList({
       className={`chat-list ${activeDraggedChat ? "is-dragging-active" : ""}`}
       aria-busy={isLoading || !hasLoadedOverview}
       onDragOver={(e) => {
-        if (isDraggingFromFolder) {
+        const active = draggedChat || draggedChatRef.current;
+        const fromFolder = Boolean(
+          active &&
+          folders.some((f) =>
+            f.id === getChatContainer(active) ||
+            f.rules.includedChatIds?.includes(active.id)
+          )
+        );
+        if (fromFolder) {
           e.preventDefault();
           e.dataTransfer.dropEffect = "move";
         }
@@ -417,7 +457,14 @@ export function ChatList({
       onDrop={(e) => {
         const chatId = e.dataTransfer.getData("application/stovo-chat-id") || e.dataTransfer.getData("text/plain");
         const chatToDrop = draggedChat || draggedChatRef.current || filteredChats.find((c) => c.id === chatId);
-        if (chatToDrop && isDraggingFromFolder) {
+        const fromFolder = Boolean(
+          chatToDrop &&
+          folders.some((f) =>
+            f.id === getChatContainer(chatToDrop) ||
+            f.rules.includedChatIds?.includes(chatToDrop.id)
+          )
+        );
+        if (chatToDrop && fromFolder) {
           e.preventDefault();
           handleRemoveChatFromAllFolders(chatToDrop);
         }
@@ -443,7 +490,7 @@ export function ChatList({
                 return defaultFolder ? folderMatchesChatProperties(chat, defaultFolder.rules, chatName) : true;
               });
               const sectionLabel = defaultFolder?.name || defaultSectionNames[section.key] || section.label;
-              if (sectionChats.length === 0 && !activeDraggedChat) {
+              if (sectionChats.length === 0) {
                 return null;
               }
               const draggedChatName = activeDraggedChat ? displayChatName(activeDraggedChat, currentUserId, strings) : "";
@@ -510,7 +557,9 @@ export function ChatList({
                         onOpen={onOpenChat}
                         onDragStart={(_e, c) => {
                           draggedChatRef.current = c;
-                          setDraggedChat(c);
+                          requestAnimationFrame(() => {
+                            setDraggedChat(c);
+                          });
                         }}
                         onDragEnd={() => {
                           draggedChatRef.current = null;
@@ -599,7 +648,9 @@ export function ChatList({
                     onOpen={onOpenChat}
                     onDragStart={(_e, c) => {
                       draggedChatRef.current = c;
-                      setDraggedChat(c);
+                      requestAnimationFrame(() => {
+                        setDraggedChat(c);
+                      });
                     }}
                     onDragEnd={() => {
                       draggedChatRef.current = null;
