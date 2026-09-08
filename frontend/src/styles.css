@@ -6059,6 +6059,8 @@ span.message-spoiler.is-revealed {
 .chat-folder-empty--dropzone { border: 1.5px dashed var(--border-default); border-radius: 12px; margin: 4px 6px 8px; padding: 10px; text-align: center; }
 .chat-folder-create { align-items: center; background: transparent; border: 1px dashed var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; display: flex; font-size: 0.82rem; gap: 7px; justify-content: center; margin: 6px 4px 4px; min-height: 34px; padding: 0 12px; width: calc(100% - 8px); }
 .chat-folder-create:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
+.chat-folder-restore { align-items: center; background: transparent; border: 1px dashed var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; display: flex; font-size: 0.82rem; gap: 7px; justify-content: center; margin: 4px; min-height: 34px; padding: 0 12px; width: calc(100% - 8px); }
+.chat-folder-restore:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
 .chat-folder-remove-btn {
   align-items: center;
   background: color-mix(in oklab, var(--text-primary) 10%, transparent);
@@ -15815,10 +15817,16 @@ button.attachment-nav-item:focus-visible {
 .chat-list-item.is-dragging {
   opacity: 0.45;
   transform: scale(0.98);
+  pointer-events: auto !important;
 }
 
-.chat-list.is-dragging-active .chat-list-section > *,
+.chat-list.is-dragging-active .chat-section-heading,
+.chat-list.is-dragging-active .chat-folder-empty,
 .chat-folder-remove-dropzone * {
+  pointer-events: none;
+}
+
+.chat-list.is-dragging-active .chat-list-item:not(.is-dragging) {
   pointer-events: none;
 }
 
@@ -15832,13 +15840,9 @@ button.attachment-nav-item:focus-visible {
   cursor: grabbing;
 }
 
-.chat-list-item img,
-.chat-list-item svg,
-.chat-list-item span,
-.chat-list-item time,
-.chat-list-item strong {
+.chat-list-item * {
   user-select: none;
-  -webkit-user-drag: none;
+  pointer-events: none;
 }
 
 .action-menu.chat-context-menu {
@@ -24719,7 +24723,7 @@ kbd {
 }
 
 .checklist-add-item-btn:hover {
-  color: var(--accent-primary);
+  color: var(--text-secondary);
 }
 
 .checklist-footer-actions {
@@ -25485,10 +25489,10 @@ input.checklist-card-add-input:focus,
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 100% !important;
-  margin: 0 !important;
+  max-width: 860px;
+  margin: 0 auto;
   padding: 24px 32px;
-  width: 100% !important;
+  width: 100%;
   box-sizing: border-box;
 }
 
@@ -25498,6 +25502,13 @@ input.checklist-card-add-input:focus,
   justify-content: center;
   min-height: 60vh;
   text-align: center;
+}
+
+@media (max-width: 680px) {
+  .checklist-page-surface {
+    padding: 16px 14px;
+    gap: 14px;
+  }
 }
 
 .checklist-page-header {
@@ -25837,9 +25848,11 @@ button.checklist-item-delete-btn:hover,
   align-self: flex-start;
 }
 
+button.checklist-add-item-btn:hover,
 .checklist-add-item-btn:hover {
-  color: var(--accent-primary);
-  background: color-mix(in oklab, var(--accent-primary) 10%, transparent);
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  box-shadow: none !important;
 }
 
 .checklist-footer-actions {

@@ -22,8 +22,10 @@ export function StorageChecklists({
 
   useEffect(() => {
     if (!accessToken) return;
-    void getStorageChecklists(accessToken).then(setChecklists).catch(() => setChecklists([]));
-  }, [accessToken]);
+    void getStorageChecklists(accessToken)
+      .then((data) => setChecklists(Array.isArray(data) ? data : []))
+      .catch(() => setChecklists([]));
+  }, [accessToken, filter]);
 
   if (filter !== "all" && filter !== "checklists") return null;
 
@@ -53,9 +55,9 @@ export function StorageChecklists({
     }
     if (!rawQuery) return true;
     if (isExtensionOnly) return true;
-    const title = checklist.title.toLowerCase();
+    const title = (checklist.title || "Untitled checklist").toLowerCase();
     const virtualFileName = `${title}.checklist`;
-    const category = checklist.category.toLowerCase();
+    const category = (checklist.category || "").toLowerCase();
     return (
       title.includes(rawQuery) ||
       (strippedQuery !== "" && title.includes(strippedQuery)) ||
