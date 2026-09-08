@@ -396,7 +396,7 @@ export function KeyboardShortcutsSettings() {
                       {!isDefault && !isRecording && (
                         <button
                           type="button"
-                          className="icon-button subtle shortcut-reset-button"
+                          className="shortcut-reset-button"
                           aria-label={`${strings.shortcuts.resetAction}: ${actionLabel}`}
                           title={strings.shortcuts.resetAction}
                           onClick={() => handleResetOne(def.id)}

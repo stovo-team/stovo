@@ -184,6 +184,15 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
           }
         }
       }
+
+      // Fallback: If Mod+K was pressed and not claimed above,
+      // intercept it with preventDefault to avoid browser address bar hijacking
+      // and open the quick switcher.
+      if (matchesKeyCombo("Mod+K", event)) {
+        event.preventDefault();
+        setIsQuickSwitcherOpen((prev) => !prev);
+        return;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
