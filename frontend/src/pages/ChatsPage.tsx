@@ -90,12 +90,27 @@ export default function ChatsPage() {
       }
     });
 
+    const unregisterSearch = registerShortcutHandler("search_messages", () => {
+      const searchInput = document.querySelector<HTMLInputElement>(
+        ".message-search-input, .chat-header-search-button, .chat-list-search input"
+      );
+      if (searchInput) {
+        if (searchInput.tagName.toLowerCase() === "button") {
+          (searchInput as HTMLButtonElement).click();
+        } else {
+          searchInput.focus();
+          searchInput.select?.();
+        }
+      }
+    });
+
     return () => {
       unregisterNext();
       unregisterPrev();
       unregisterNew();
       unregisterFocus();
       unregisterDetails();
+      unregisterSearch();
     };
   }, [registerShortcutHandler, chats, selectedChat, chatId, openChat, openNewChatScreen, focusComposer, setIsDetailsOpen]);
 

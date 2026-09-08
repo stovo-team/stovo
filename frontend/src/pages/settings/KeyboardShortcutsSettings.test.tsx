@@ -49,6 +49,7 @@ describe("KeyboardShortcutsSettings", () => {
 
     expect(document.body.textContent).toContain("Quick Switcher");
     expect(document.body.textContent).toContain("Go to Chats");
+    expect(document.body.textContent).not.toContain("Customize hotkeys to quickly navigate and control Stovo");
   });
 
   it("enters recording mode when shortcut badge is clicked, and cancels on Escape", async () => {
@@ -145,6 +146,42 @@ describe("KeyboardShortcutsSettings", () => {
     // Conflict card should be displayed
     expect(document.querySelector(".shortcuts-conflict-card")).not.toBeNull();
     expect(document.body.textContent).toContain("Already assigned to another action");
+  });
+
+  it("detects browser-reserved conflict when pressing a browser shortcut combo", async () => {
+    await act(async () => {
+      root?.render(<KeyboardShortcutsSettings />);
+    });
+
+    const badgeButtons = document.querySelectorAll<HTMLButtonElement>(".shortcut-badge-button");
+    // Click quick_switcher badge
+    await act(async () => {
+      badgeButtons[0].click();
+    });
+
+    // Press Ctrl+T (browser new tab)
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "t",
+          ctrlKey: true,
+          bubbles: true
+        })
+      );
+    });
+
+    // Conflict card should be displayed
+    expect(document.querySelector(".shortcuts-conflict-card")).not.toBeNull();
+    expect(document.body.textContent).toContain("Reserved by browser");
+    expect(document.body.textContent).toContain("New tab");
+
+    // Click cancel in conflict card
+    const cancelBtn = document.querySelector<HTMLButtonElement>(".shortcuts-conflict-actions button");
+    await act(async () => {
+      cancelBtn?.click();
+    });
+
+    expect(document.querySelector(".shortcuts-conflict-card")).toBeNull();
   });
 
   it("cancels recording mode when close button in grey circle is clicked", async () => {

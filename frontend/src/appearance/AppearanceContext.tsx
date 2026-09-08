@@ -336,6 +336,23 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, [appearance]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    function handleToggleTheme() {
+      setAppearance((current) => {
+        const isDark = resolvedThemeMode === "dark" || resolvedThemeMode === "amoled";
+        return {
+          ...current,
+          themeMode: isDark ? "light" : "dark"
+        };
+      });
+    }
+
+    window.addEventListener("stovo:toggle-theme", handleToggleTheme);
+    return () => window.removeEventListener("stovo:toggle-theme", handleToggleTheme);
+  }, [resolvedThemeMode]);
+
+  useEffect(() => {
     const root = document.documentElement;
     root.dataset.themeMode = resolvedThemeMode;
     root.dataset.accent = appearance.accent;
