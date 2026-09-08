@@ -700,8 +700,8 @@ export function ConversationPanel({
               onScheduleMessage={handleScheduleMessage}
               onSetReminder={handleSetReminder}
               onCreatePoll={handleCreatePoll}
-              onCreateCanvas={selectedChat?.type === "archive" ? undefined : onCreateCanvas}
-              onCreateChecklist={selectedChat?.type === "archive" ? undefined : onCreateChecklist}
+              onCreateCanvas={onCreateCanvas}
+              onCreateChecklist={onCreateChecklist}
             />
           )}
         </>

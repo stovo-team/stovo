@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Chat } from "../../../api/chats";
-import { defaultFolderRules, folderMatchesChatProperties, matchesFolder } from "./chatFolders";
+import { defaultFolderRules, folderMatchesChatProperties, loadChatFolders, matchesFolder, saveChatFolders } from "./chatFolders";
 
 const chat = (overrides: Partial<Chat> = {}): Chat => ({
   id: "chat-1", familyId: "family-1", type: "group", title: "Product updates", createdBy: "owner",
@@ -75,6 +75,27 @@ describe("matchesFolder", () => {
     const rulesWithExclusion = { ...defaultFolderRules(), includedChatIds: ["chat-1", "chat-2"], excludedChatIds: ["chat-1"] };
     expect(matchesFolder(chat({ id: "chat-1" }), rulesWithExclusion, "Chat 1")).toBe(false);
     expect(matchesFolder(chat({ id: "chat-2" }), rulesWithExclusion, "Chat 2")).toBe(true);
+  });
+
+  it("safely loads and saves chat folders in localStorage", () => {
+    const folder = {
+      id: "folder-work",
+      name: "Work",
+      rules: { ...defaultFolderRules(), includedChatIds: ["chat-1"] }
+    };
+    saveChatFolders("family-1", [folder]);
+    expect(loadChatFolders("family-1")).toEqual([folder]);
+
+    // Simulate removing chat from folder (as done during drag and drop out of folder)
+    const updatedFolders = loadChatFolders("family-1").map((f) => ({
+      ...f,
+      rules: {
+        ...f.rules,
+        includedChatIds: (f.rules.includedChatIds ?? []).filter((id) => id !== "chat-1")
+      }
+    }));
+    saveChatFolders("family-1", updatedFolders);
+    expect(loadChatFolders("family-1")[0].rules.includedChatIds).toEqual([]);
   });
 });
 
