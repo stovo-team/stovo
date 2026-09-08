@@ -17,7 +17,7 @@ export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | n
 
   return (
     <p className="secondary-link">
-      New server? <Link to={`${prefix}/setup`}>Create owner account</Link>
+      New space? <Link to={`${prefix}/setup`}>Create owner account</Link>
     </p>
   );
 }
@@ -151,7 +151,7 @@ export default function LoginPage() {
         <OwnerSetupPrompt setupRequired={setupRequired} />
         {Capacitor.isNativePlatform() && (
           <p className="secondary-link">
-            <Link to="/server-setup">Change server address</Link>
+            <Link to="/server-setup">Change space address</Link>
           </p>
         )}
       </section>

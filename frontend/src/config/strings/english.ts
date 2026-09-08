@@ -36,9 +36,9 @@ export const strings = {
     password: "Password",
     logIn: "Log in",
     signingIn: "Signing in",
-    newServer: "New server?",
+    newServer: "New space?",
     createOwnerAccount: "Create owner account",
-    changeServerAddress: "Change server address",
+    changeServerAddress: "Change space address",
     showPassword: "Show password",
     hidePassword: "Hide password",
     verificationCode: "Verification code",
@@ -56,7 +56,7 @@ export const strings = {
     creating: "Creating",
     alreadySetUp: "Already set up?",
     logIn: "Log in",
-    changeServerAddress: "Change server address",
+    changeServerAddress: "Change space address",
   },
 
   // ── Auth — Invite ───────────────────────────────────────────────────
@@ -70,13 +70,13 @@ export const strings = {
     joining: "Joining",
   },
 
-  // ── Server setup ────────────────────────────────────────────────────
+  // ── Space setup ────────────────────────────────────────────────────
   serverSetup: {
-    title: "Server address",
-    hint: "Enter the address of your Stovo server. Use",
+    title: "Space address",
+    hint: "Enter the address of your Stovo space. Use",
     hintHttps: "https://",
     hintSuffix: "for domain names.",
-    serverUrl: "Server URL",
+    serverUrl: "Space URL",
     placeholder: "https://stovo.example.com",
     connect: "Connect",
     testingConnection: "Testing connection…",
@@ -133,11 +133,11 @@ export const strings = {
     timezone: "Timezone",
     family: "Family",
     login: "Login",
-    server: "Server",
+    server: "Space",
 
     // password change
     changePassword: "Change password",
-    changePasswordNote: "This applies only to the account on the currently selected server.",
+    changePasswordNote: "This applies only to the account in the currently selected space.",
     currentPassword: "Current password",
     newPassword: "New password",
     confirmNewPassword: "Confirm new password",
@@ -332,7 +332,7 @@ export const strings = {
     inviteRequestsHelp: "Send invitations to your direct messages as requests.",
     whoCanMessageYou: "Who can create direct messages with you?",
     whoCanInviteYou: "Who can invite you?",
-    everyoneInServer: "Everyone in this server",
+    everyoneInServer: "Everyone in this space",
     everyoneInServerHelp: "Any member can start a direct message.",
     everyoneCanInvite: "Anyone with permission to add people can invite you.",
     selectedPeopleMessageHelp: "Only people you choose below can start a direct message.",
@@ -432,7 +432,7 @@ export const strings = {
       members: "Members",
       addPeople: "Add people",
       addPeopleSearchPlaceholder: "Search people",
-      noPeopleToAdd: "Everyone in the server is already in this chat.",
+      noPeopleToAdd: "Everyone in the space is already in this chat.",
       tabs: {
         media: "Media",
         audio: "Audio",
@@ -597,7 +597,7 @@ export const strings = {
     },
     defaults: {
       title: "Member defaults",
-      ownerRequired: "Only the server owner can manage member defaults.",
+      ownerRequired: "Only the space owner can manage member defaults.",
       privacy: "Default privacy",
       privacyHelp: "Applied when a new member joins. Members can later choose their own privacy settings.",
       notifications: "Default notifications",

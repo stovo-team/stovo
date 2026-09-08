@@ -109,7 +109,7 @@ export function ChatSidebar({
               <button
                 type="button"
                 className="server-switcher-trigger"
-                aria-label="Select server"
+                aria-label="Select space"
                 aria-expanded={isServerMenuOpen}
                 aria-haspopup="menu"
                 onClick={() => setIsServerMenuOpen((open) => !open)}
@@ -119,7 +119,7 @@ export function ChatSidebar({
               </button>
 
               {isServerMenuOpen && (
-                <div className="action-menu server-switcher-menu" role="menu" aria-label="Servers">
+                <div className="action-menu server-switcher-menu" role="menu" aria-label="Spaces">
                   {validServers.length > 0 ? (
                     validServers.map((server) => {
                       const isActive = activeServer?.id === server.id;
@@ -164,7 +164,7 @@ export function ChatSidebar({
                       <Server aria-hidden="true" size={16} />
                       <span>
                         <strong>{displayFamilyName}</strong>
-                        <small>Current server</small>
+                        <small>Current space</small>
                       </span>
                     </button>
                   )}
@@ -178,7 +178,7 @@ export function ChatSidebar({
                     }}
                   >
                     <Plus aria-hidden="true" size={16} />
-                    Connect Server
+                    Connect Space
                   </button>
                 </div>
               )}

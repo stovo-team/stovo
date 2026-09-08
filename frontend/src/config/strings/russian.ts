@@ -52,9 +52,9 @@ export const strings = {
     password: "Пароль",
     logIn: "Войти",
     signingIn: "Вход…",
-    newServer: "Новый сервер?",
+    newServer: "Новый спейс?",
     createOwnerAccount: "Создать аккаунт владельца",
-    changeServerAddress: "Сменить адрес сервера",
+    changeServerAddress: "Сменить адрес спейса",
     showPassword: "Показать пароль",
     hidePassword: "Скрыть пароль",
     verificationCode: "Код подтверждения",
@@ -72,7 +72,7 @@ export const strings = {
     creating: "Создание…",
     alreadySetUp: "Уже настроено?",
     logIn: "Войти",
-    changeServerAddress: "Сменить адрес сервера",
+    changeServerAddress: "Сменить адрес спейса",
   },
 
   // ── Auth — Invite ───────────────────────────────────────────────────
@@ -86,13 +86,13 @@ export const strings = {
     joining: "Присоединение…",
   },
 
-  // ── Server setup ────────────────────────────────────────────────────
+  // ── Space setup ────────────────────────────────────────────────────
   serverSetup: {
-    title: "Адрес сервера",
-    hint: "Введите адрес вашего сервера Stovo. Используйте",
+    title: "Адрес спейса",
+    hint: "Введите адрес вашего спейса Stovo. Используйте",
     hintHttps: "https://",
     hintSuffix: "для доменных имён.",
-    serverUrl: "URL сервера",
+    serverUrl: "URL спейса",
     placeholder: "https://stovo.example.com",
     connect: "Подключиться",
     testingConnection: "Проверка подключения…",
@@ -103,7 +103,7 @@ export const strings = {
   // ── Settings — Navigation labels ───────────────────────────────────
   settings: {
     title: "Настройки",
-    yourSpace: "Ваше пространство",
+    yourSpace: "Ваш спейс",
     yourData: "Ваши данные",
 
     // sidebar items
@@ -134,7 +134,7 @@ export const strings = {
 
     // profile form
     avatarDisplayName: "Отображаемое имя аватара",
-    familySpaceName: "Название семейного пространства",
+    familySpaceName: "Название семейного спейса",
     saveProfile: "Сохранить профиль",
     saving: "Сохранение",
     profileSaved: "Профиль сохранён",
@@ -149,11 +149,11 @@ export const strings = {
     timezone: "Часовой пояс",
     family: "Семья",
     login: "Логин",
-    server: "Сервер",
+    server: "Спейс",
 
     // password change
     changePassword: "Сменить пароль",
-    changePasswordNote: "Это относится только к аккаунту на выбранном сервере.",
+    changePasswordNote: "Это относится только к аккаунту в выбранном спейсе.",
     currentPassword: "Текущий пароль",
     newPassword: "Новый пароль",
     confirmNewPassword: "Подтвердите новый пароль",
@@ -174,7 +174,7 @@ export const strings = {
     backToSettings: "Назад к настройкам",
 
     // family members list
-    familySpaceNote: "Ваше общее семейное пространство. Доступ к календарю определяется ролью участника.",
+    familySpaceNote: "Ваш общий семейный спейс. Доступ к календарю определяется ролью участника.",
     familyInviteNote:
       "Управление приглашениями и ролями останется доступным здесь по мере расширения функций семьи.",
 
@@ -348,7 +348,7 @@ export const strings = {
     inviteRequestsHelp: "Отправлять приглашения в личные сообщения как запросы.",
     whoCanMessageYou: "Кто может создавать с вами личные чаты?",
     whoCanInviteYou: "Кто может приглашать вас?",
-    everyoneInServer: "Все на сервере",
+    everyoneInServer: "Все в спейсе",
     everyoneInServerHelp: "Любой участник может начать личный чат.",
     everyoneCanInvite: "Любой с правом добавлять участников может пригласить вас.",
     selectedPeopleMessageHelp: "Только выбранные ниже люди могут начать личный чат.",
@@ -455,7 +455,7 @@ export const strings = {
       members: "Участники",
       addPeople: "Добавить участников",
       addPeopleSearchPlaceholder: "Поиск участников",
-      noPeopleToAdd: "Все участники сервера уже добавлены в этот чат.",
+      noPeopleToAdd: "Все участники спейса уже добавлены в этот чат.",
       tabs: {
         media: "Медиа",
         audio: "Аудио",
@@ -626,7 +626,7 @@ export const strings = {
     },
     defaults: {
       title: "Настройки по умолчанию",
-      ownerRequired: "Только владелец сервера может управлять настройками по умолчанию.",
+      ownerRequired: "Только владелец спейса может управлять настройками по умолчанию.",
       privacy: "Конфиденциальность по умолчанию",
       privacyHelp: "Применяется при вступлении нового участника. Позже участник может выбрать свои настройки.",
       notifications: "Уведомления по умолчанию",
@@ -638,7 +638,7 @@ export const strings = {
     encryption: {
       title: "Шифрование сообщений",
       protocol: "Протокол шифрования по умолчанию",
-      protocolDesc: "Выберите режим шифрования для новых чатов в семейном пространстве.",
+      protocolDesc: "Выберите режим шифрования для новых чатов в семейном спейсе.",
       serverAtRest: "Шифрование на сервере (по умолчанию)",
       serverAtRestDesc: "Хранятся зашифрованными на сервере, доступны на всех устройствах.",
       e2ee: "Сквозное шифрование (E2EE)",

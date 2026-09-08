@@ -186,4 +186,46 @@ describe("StorageCanvases", () => {
     const rect = svg?.querySelector("rect");
     expect(rect).not.toBeNull();
   });
+
+  it("adapts dark stroke colors like #1e1e1e to high contrast off-white for dark tiles", async () => {
+    const doc = new (await import("yjs")).Doc();
+    const blocks = doc.getArray("blocks");
+    const map = new (await import("yjs")).Map();
+    map.set("id", "b3");
+    map.set("kind", "whiteboard");
+    map.set("scene", new (await import("yjs")).Text(JSON.stringify([
+      { type: "freedraw", x: 20, y: 30, strokeColor: "#1e1e1e", points: [[0, 0], [10, 15], [20, 5]] }
+    ])));
+    blocks.push([map]);
+
+    const bytes = (await import("yjs")).encodeStateAsUpdate(doc);
+    let binary = "";
+    bytes.forEach((b) => { binary += String.fromCharCode(b); });
+    const update = btoa(binary);
+
+    vi.spyOn(canvasApi, "getCanvasDocument").mockResolvedValue({
+      updates: [{ sequence: 1, update, createdBy: "user-1", createdAt: "2026-09-08T00:00:00Z" }]
+    });
+
+    await act(async () => {
+      root?.render(<StorageCanvases accessToken="token" filter="all" search="" />);
+    });
+
+    const path = container?.querySelector(".canvas-preview-svg path");
+    expect(path).not.toBeNull();
+    expect(path?.getAttribute("stroke")).toBe("#f1f5f9");
+    expect(path?.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  });
+
+  it("renders clean Empty canvas placeholder without toy mockup notes", async () => {
+    vi.spyOn(canvasApi, "getCanvasDocument").mockResolvedValue({ updates: [] });
+
+    await act(async () => {
+      root?.render(<StorageCanvases accessToken="token" filter="all" search="" />);
+    });
+
+    expect(container?.textContent).toContain("Empty canvas");
+    expect(container?.querySelector(".canvas-mock-sticky")).toBeNull();
+    expect(container?.querySelector(".canvas-mock-shape")).toBeNull();
+  });
 });

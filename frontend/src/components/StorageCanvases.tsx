@@ -84,6 +84,43 @@ function parseCanvasDocument(updates?: CanvasUpdate[], canvasTitle = ""): {
   }
 }
 
+function isDarkColor(color?: string): boolean {
+  if (!color || color === "transparent") return false;
+  const hexMatch = /^#([0-9a-f]{3,8})$/i.exec(color.trim());
+  if (hexMatch) {
+    let hex = hexMatch[1];
+    if (hex.length === 3 || hex.length === 4) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return lum < 0.38;
+  }
+  const rgbMatch = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/i.exec(color.trim());
+  if (rgbMatch) {
+    const r = Number(rgbMatch[1]);
+    const g = Number(rgbMatch[2]);
+    const b = Number(rgbMatch[3]);
+    const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return lum < 0.38;
+  }
+  return color.toLowerCase() === "black";
+}
+
+function resolveStrokeColor(color?: string): string {
+  if (!color || color === "transparent") return "#818cf8";
+  if (isDarkColor(color)) return "#f1f5f9";
+  return color;
+}
+
+function resolveFillColor(color?: string): string {
+  if (!color || color === "transparent") return "rgba(129, 140, 248, 0.16)";
+  if (isDarkColor(color)) return "rgba(241, 245, 249, 0.14)";
+  return color;
+}
+
 function CanvasTilePreview({
   canvas,
   updates
@@ -101,17 +138,18 @@ function CanvasTilePreview({
       const y = el.y ?? 0;
       const w = el.width ?? 0;
       const h = el.height ?? 0;
-      minX = Math.min(minX, x, x + w);
-      minY = Math.min(minY, y, y + h);
-      maxX = Math.max(maxX, x, x + w);
-      maxY = Math.max(maxY, y, y + h);
-      if (el.points && Array.isArray(el.points)) {
+      if (el.points && Array.isArray(el.points) && el.points.length > 0) {
         for (const [px, py] of el.points) {
           minX = Math.min(minX, x + px);
           minY = Math.min(minY, y + py);
           maxX = Math.max(maxX, x + px);
           maxY = Math.max(maxY, y + py);
         }
+      } else {
+        minX = Math.min(minX, x, x + w);
+        minY = Math.min(minY, y, y + h);
+        maxX = Math.max(maxX, x, x + w);
+        maxY = Math.max(maxY, y, y + h);
       }
     }
 
@@ -124,84 +162,104 @@ function CanvasTilePreview({
       maxY = 100;
     }
 
-    const width = Math.max(maxX - minX, 40);
-    const height = Math.max(maxY - minY, 40);
-    const pad = Math.max(width, height) * 0.15;
-    const viewBox = `${minX - pad} ${minY - pad} ${width + pad * 2} ${height + pad * 2}`;
+    const contentWidth = Math.max(maxX - minX, 1);
+    const contentHeight = Math.max(maxY - minY, 1);
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const renderWidth = Math.max(contentWidth, 40);
+    const renderHeight = Math.max(contentHeight, 40);
+    const pad = Math.max(renderWidth, renderHeight) * 0.2;
+    const boxW = renderWidth + pad * 2;
+    const boxH = renderHeight + pad * 2;
+    const viewBox = `${centerX - boxW / 2} ${centerY - boxH / 2} ${boxW} ${boxH}`;
 
     return (
       <div className="storage-tile-preview storage-canvas-preview">
-        <svg viewBox={viewBox} className="canvas-preview-svg" aria-hidden="true">
-          {activeElements.map((el, i) => {
-            const stroke = el.strokeColor && el.strokeColor !== "transparent" ? el.strokeColor : "#818cf8";
-            const fill = el.backgroundColor && el.backgroundColor !== "transparent" ? el.backgroundColor : "rgba(129, 140, 248, 0.16)";
-            const sw = Math.max(el.strokeWidth || 1.5, 1);
-            const x = el.x ?? 0;
-            const y = el.y ?? 0;
-            const w = el.width ?? 0;
-            const h = el.height ?? 0;
-            const key = el.id || `el-${i}`;
+        <div className="canvas-preview-header">
+          <div className="canvas-preview-badge">
+            <Pencil size={11} />
+            <b>CANVAS</b>
+          </div>
+        </div>
+        <div className="canvas-preview-body">
+          <svg viewBox={viewBox} className="canvas-preview-svg" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            {activeElements.map((el, i) => {
+              const stroke = resolveStrokeColor(el.strokeColor);
+              const fill = resolveFillColor(el.backgroundColor);
+              const sw = Math.max(el.strokeWidth || 1.75, 1.75);
+              const x = el.x ?? 0;
+              const y = el.y ?? 0;
+              const w = el.width ?? 0;
+              const h = el.height ?? 0;
+              const key = el.id || `el-${i}`;
 
-            if (el.type === "rectangle") {
-              return (
-                <rect
-                  key={key}
-                  x={Math.min(x, x + w)}
-                  y={Math.min(y, y + h)}
-                  width={Math.abs(w)}
-                  height={Math.abs(h)}
-                  rx={6}
-                  stroke={stroke}
-                  fill={fill}
-                  strokeWidth={sw}
-                />
-              );
-            }
-            if (el.type === "ellipse") {
-              return (
-                <ellipse
-                  key={key}
-                  cx={x + w / 2}
-                  cy={y + h / 2}
-                  rx={Math.abs(w) / 2}
-                  ry={Math.abs(h) / 2}
-                  stroke={stroke}
-                  fill={fill}
-                  strokeWidth={sw}
-                />
-              );
-            }
-            if (el.type === "diamond") {
-              const midX = x + w / 2;
-              const midY = y + h / 2;
-              const pts = `${midX},${y} ${x + w},${midY} ${midX},${y + h} ${x},${midY}`;
-              return <polygon key={key} points={pts} stroke={stroke} fill={fill} strokeWidth={sw} />;
-            }
-            if ((el.type === "line" || el.type === "arrow") && el.points && el.points.length > 1) {
-              const pts = el.points.map(([px, py]) => `${x + px},${y + py}`).join(" ");
-              return <polyline key={key} points={pts} stroke={stroke} fill="none" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />;
-            }
-            if (el.type === "freedraw" && el.points && el.points.length > 0) {
-              const path = el.points.map(([px, py], idx) => `${idx === 0 ? "M" : "L"} ${x + px} ${y + py}`).join(" ");
-              return <path key={key} d={path} stroke={stroke} fill="none" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />;
-            }
-            if (el.type === "text" && el.text) {
-              return (
-                <text
-                  key={key}
-                  x={x}
-                  y={y + (el.fontSize || 14)}
-                  fill={stroke}
-                  fontSize={el.fontSize || 14}
-                  fontFamily="sans-serif"
-                >
-                  {el.text}
-                </text>
-              );
-            }
-            return null;
-          })}
-        </svg>
+              if (el.type === "rectangle") {
+                return (
+                  <rect
+                    key={key}
+                    x={Math.min(x, x + w)}
+                    y={Math.min(y, y + h)}
+                    width={Math.abs(w)}
+                    height={Math.abs(h)}
+                    rx={6}
+                    stroke={stroke}
+                    fill={fill}
+                    strokeWidth={sw}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              }
+              if (el.type === "ellipse") {
+                return (
+                  <ellipse
+                    key={key}
+                    cx={x + w / 2}
+                    cy={y + h / 2}
+                    rx={Math.abs(w) / 2}
+                    ry={Math.abs(h) / 2}
+                    stroke={stroke}
+                    fill={fill}
+                    strokeWidth={sw}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                );
+              }
+              if (el.type === "diamond") {
+                const midX = x + w / 2;
+                const midY = y + h / 2;
+                const pts = `${midX},${y} ${x + w},${midY} ${midX},${y + h} ${x},${midY}`;
+                return <polygon key={key} points={pts} stroke={stroke} fill={fill} strokeWidth={sw} vectorEffect="non-scaling-stroke" />;
+              }
+              if ((el.type === "line" || el.type === "arrow") && el.points && el.points.length > 1) {
+                const pts = el.points.map(([px, py]) => `${x + px},${y + py}`).join(" ");
+                return <polyline key={key} points={pts} stroke={stroke} fill="none" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />;
+              }
+              if (el.type === "freedraw" && el.points && el.points.length > 0) {
+                const path = el.points.length === 1
+                  ? `M ${x + el.points[0][0]} ${y + el.points[0][1]} L ${x + el.points[0][0]} ${y + el.points[0][1]}`
+                  : el.points.map(([px, py], idx) => `${idx === 0 ? "M" : "L"} ${x + px} ${y + py}`).join(" ");
+                return <path key={key} d={path} stroke={stroke} fill="none" strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />;
+              }
+              if (el.type === "text" && el.text) {
+                const fontSize = Math.max(el.fontSize || 14, 12);
+                return (
+                  <text
+                    key={key}
+                    x={x}
+                    y={y + fontSize}
+                    fill={stroke}
+                    fontSize={fontSize}
+                    fontFamily="sans-serif"
+                    fontWeight="600"
+                  >
+                    {el.text}
+                  </text>
+                );
+              }
+              return null;
+            })}
+          </svg>
+        </div>
       </div>
     );
   }
@@ -252,18 +310,17 @@ function CanvasTilePreview({
 
   return (
     <div className="storage-tile-preview storage-canvas-preview">
-      <div className="canvas-preview-blank">
-        <div className="canvas-mock-board">
-          <div className="canvas-mock-sticky">
-            <div className="canvas-mock-sticky-line" />
-            <div className="canvas-mock-sticky-line short" />
-          </div>
-          <div className="canvas-mock-shape" />
-        </div>
-        <div className="canvas-mock-badge">
-          <Pencil size={10} />
+      <div className="canvas-preview-header">
+        <div className="canvas-preview-badge">
+          <Pencil size={11} />
           <b>CANVAS</b>
         </div>
+      </div>
+      <div className="canvas-preview-blank">
+        <div className="canvas-empty-icon-wrap">
+          <Pencil size={18} />
+        </div>
+        <div className="canvas-preview-empty-text">Empty canvas</div>
       </div>
     </div>
   );

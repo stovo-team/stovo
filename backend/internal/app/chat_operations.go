@@ -554,6 +554,8 @@ func deriveMessagePreview(content *string, messageType string, attachmentCount i
 		return "Video"
 	case "file":
 		return "File"
+	case "collection":
+		return "Folder"
 	case "mixed":
 		if attachmentCount == 1 {
 			return "Attachment"
