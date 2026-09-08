@@ -68,6 +68,7 @@ export default function ChecklistPage() {
 
   const [newSectionDraft, setNewSectionDraft] = useState("");
   const [isAddingSection, setIsAddingSection] = useState(false);
+  const [extraSections, setExtraSections] = useState<string[]>([]);
 
   const socketRef = useRef<Socket | null>(null);
   const inputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -204,16 +205,29 @@ export default function ChecklistPage() {
     batchTimerRef.current = window.setTimeout(async () => {
       if (!accessToken || !checklist) return;
       try {
-        const payload = newItems.map((it, idx) => ({
-          id: it.id.startsWith("temp_") ? undefined : it.id,
-          text: it.text,
-          completed: it.completed,
-          position: idx + 1,
-          section: it.section
-        }));
+        const payload = newItems
+          .filter((it) => it.text.trim() !== "")
+          .map((it, idx) => ({
+            id: it.id.startsWith("temp_") ? undefined : it.id,
+            text: it.text.trim(),
+            completed: it.completed,
+            position: idx + 1,
+            section: it.section
+          }));
+        if (payload.length === 0 && newItems.length > 0) {
+          return;
+        }
         const updated = await batchSyncChecklistItems(accessToken, checklist.id, payload);
         setChecklist(updated);
-        setItems(updated.items || []);
+        setItems((currentItems) => {
+          const activeDrafts = currentItems.filter(
+            (it) => it.id.startsWith("temp_") && !it.text.trim()
+          );
+          if (activeDrafts.length === 0) {
+            return updated.items || [];
+          }
+          return [...(updated.items || []), ...activeDrafts];
+        });
       } catch {
         // keep local state
       }
@@ -342,8 +356,6 @@ export default function ChecklistPage() {
   // Add new item to a section
   const handleAddItemToSection = async (section = "") => {
     if (!checklist) return;
-    // Empty items are edited locally first; the batch endpoint intentionally omits
-    // them until the user enters text.
     const id = `temp_${Date.now()}`;
     const now = new Date().toISOString();
     const newItem: ChecklistItem = {
@@ -357,10 +369,8 @@ export default function ChecklistPage() {
       createdAt: now,
       updatedAt: now
     };
-    const nextItems = [...items, newItem];
-    setItems(nextItems);
-    setChecklist((prev) => prev ? { ...prev, totalItems: prev.totalItems + 1 } : prev);
-    scheduleBatchSync(nextItems);
+    setItems((prev) => [...prev, newItem]);
+    setChecklist((prev) => (prev ? { ...prev, totalItems: prev.totalItems + 1 } : prev));
     setTimeout(() => {
       inputRefs.current.get(id)?.focus();
     }, 50);
@@ -372,6 +382,7 @@ export default function ChecklistPage() {
     if (!sec) return;
     setIsAddingSection(false);
     setNewSectionDraft("");
+    setExtraSections((prev) => (prev.includes(sec) ? prev : [...prev, sec]));
     void handleAddItemToSection(sec);
   };
 
@@ -465,6 +476,12 @@ export default function ChecklistPage() {
 
   // Group items by section
   const sectionsMap = new Map<string, ChecklistItem[]>();
+  extraSections.forEach((sec) => {
+    const sTrim = sec.trim();
+    if (sTrim && !sectionsMap.has(sTrim)) {
+      sectionsMap.set(sTrim, []);
+    }
+  });
   items.forEach((it) => {
     const sec = it.section?.trim() || "";
     if (!sectionsMap.has(sec)) {
