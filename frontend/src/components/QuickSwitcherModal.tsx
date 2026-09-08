@@ -168,10 +168,11 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
         id: "action-shortcuts",
         type: "action",
         title: strings.quickSwitcher.actionShortcuts,
-        subtitle: strings.shortcuts.subtitle,
+        subtitle: strings.shortcuts.actions.shortcuts_help_desc,
         icon: Keyboard,
         onSelect: () => {
           onClose();
+          window.dispatchEvent(new CustomEvent("stovo:open-shortcuts-settings"));
           navigate(`${prefix}/app/settings?section=shortcuts`);
         }
       },
@@ -390,7 +391,7 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
       >
         <div className="quick-switcher-search-row">
           <div className="quick-switcher-search-bar">
-            <Search className="quick-switcher-search-icon" aria-hidden="true" size={18} />
+            <Search className="quick-switcher-search-icon" aria-hidden="true" size={20} />
             <input
               ref={inputRef}
               type="text"
@@ -462,11 +463,11 @@ export function QuickSwitcherModal({ open, onClose }: QuickSwitcherModalProps) {
                         />
                       ) : Icon ? (
                         <div className="quick-switcher-icon-wrap">
-                          <Icon size={18} aria-hidden="true" />
+                          <Icon size={20} aria-hidden="true" />
                         </div>
                       ) : (
                         <div className="quick-switcher-icon-wrap">
-                          <Hash size={18} aria-hidden="true" />
+                          <Hash size={20} aria-hidden="true" />
                         </div>
                       )}
                     </div>

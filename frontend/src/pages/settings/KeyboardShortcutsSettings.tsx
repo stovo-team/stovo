@@ -19,6 +19,7 @@ import {
   SHORTCUT_DEFINITIONS,
   checkShortcutConflict,
   formatKeyComboForDisplay,
+  getBrowserShortcutConflict,
   isMacPlatform,
   normalizeKeyComboFromEvent
 } from "../../shortcuts/registry";
@@ -42,6 +43,11 @@ export function KeyboardShortcutsSettings() {
   const [conflict, setConflict] = useState<{
     actionId: ShortcutActionId;
     conflictingActionId: ShortcutActionId;
+    combo: string;
+  } | null>(null);
+  const [browserConflict, setBrowserConflict] = useState<{
+    actionId: ShortcutActionId;
+    browserFeature: string;
     combo: string;
   } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -70,6 +76,7 @@ export function KeyboardShortcutsSettings() {
       if (event.key === "Escape") {
         setRecordingActionId(null);
         setConflict(null);
+        setBrowserConflict(null);
         return;
       }
 
@@ -79,9 +86,22 @@ export function KeyboardShortcutsSettings() {
         return;
       }
 
-      // Check conflict
+      // Check browser reserved conflict
+      const browserAction = getBrowserShortcutConflict(combo);
+      if (browserAction) {
+        setConflict(null);
+        setBrowserConflict({
+          actionId: recordingActionId,
+          browserFeature: browserAction,
+          combo
+        });
+        return;
+      }
+
+      // Check Stovo internal conflict
       const conflictingAction = checkShortcutConflict(recordingActionId, combo, bindings);
       if (conflictingAction) {
+        setBrowserConflict(null);
         setConflict({
           actionId: recordingActionId,
           conflictingActionId: conflictingAction,
@@ -95,6 +115,7 @@ export function KeyboardShortcutsSettings() {
       setBindings(updated);
       setRecordingActionId(null);
       setConflict(null);
+      setBrowserConflict(null);
       setNotice(`Shortcut updated: ${combo}`);
       setTimeout(() => setNotice(null), 2500);
     };
@@ -119,6 +140,8 @@ export function KeyboardShortcutsSettings() {
   function handleResetOne(actionId: ShortcutActionId) {
     const updated = resetShortcutBinding(actionId);
     setBindings(updated);
+    setConflict(null);
+    setBrowserConflict(null);
   }
 
   function handleResetAll() {
@@ -127,6 +150,7 @@ export function KeyboardShortcutsSettings() {
       setBindings(updated);
       setRecordingActionId(null);
       setConflict(null);
+      setBrowserConflict(null);
       setNotice(strings.shortcuts.resetAll);
       setTimeout(() => setNotice(null), 2500);
     }
@@ -193,9 +217,7 @@ export function KeyboardShortcutsSettings() {
   return (
     <div className="shortcuts-settings-surface">
       <div className="shortcuts-settings-header">
-        <div>
-          <p className="muted-copy">{strings.shortcuts.subtitle}</p>
-        </div>
+        <div />
         <button
           type="button"
           className="secondary-button subtle-button shortcuts-reset-all-btn"
@@ -234,6 +256,30 @@ export function KeyboardShortcutsSettings() {
         <div className="shortcuts-settings-notice success-text" role="status">
           <Check size={16} aria-hidden="true" />
           <span>{notice}</span>
+        </div>
+      )}
+
+      {browserConflict && (
+        <div className="shortcuts-conflict-card" role="alert">
+          <AlertCircle size={20} className="shortcuts-conflict-icon" aria-hidden="true" />
+          <div className="shortcuts-conflict-body">
+            <strong>{strings.shortcuts.browserConflictWarning}</strong>
+            <p>
+              Combination <kbd>{browserConflict.combo}</kbd> is reserved by your browser for &ldquo;{browserConflict.browserFeature}&rdquo;. Please choose a different shortcut.
+            </p>
+          </div>
+          <div className="shortcuts-conflict-actions">
+            <button
+              type="button"
+              className="secondary-button small-button"
+              onClick={() => {
+                setBrowserConflict(null);
+                setRecordingActionId(null);
+              }}
+            >
+              {strings.shortcuts.cancel}
+            </button>
+          </div>
         </div>
       )}
 
@@ -313,12 +359,16 @@ export function KeyboardShortcutsSettings() {
                           <span>{strings.shortcuts.pressKeys}</span>
                           <button
                             type="button"
-                            className="icon-button subtle shortcut-recording-close"
+                            className="shortcut-recording-close"
                             aria-label={strings.shortcuts.pressEscape}
                             title={strings.shortcuts.pressEscape}
-                            onClick={() => setRecordingActionId(null)}
+                            onClick={() => {
+                              setRecordingActionId(null);
+                              setConflict(null);
+                              setBrowserConflict(null);
+                            }}
                           >
-                            <X size={16} aria-hidden="true" />
+                            <X size={14} aria-hidden="true" />
                           </button>
                         </div>
                       ) : (
@@ -328,6 +378,7 @@ export function KeyboardShortcutsSettings() {
                           aria-label={`Change shortcut for ${actionLabel}`}
                           onClick={() => {
                             setConflict(null);
+                            setBrowserConflict(null);
                             setRecordingActionId(def.id);
                           }}
                         >

@@ -13,6 +13,7 @@ describe("SettingsPage redesign", () => {
     expect(dashboard).toContain('settings-tile--${item.id.toLowerCase().replaceAll(" ", "-")}');
     expect(dashboard).toContain('aria-label={strings.settings.openProfileSettings}');
     expect(dashboard).toContain('aria-label={strings.settings.openSectionAria(item.label)}');
+    expect(styles).toContain(".settings-tile--statistics");
   });
 
   it("shows a live theme preview inside the Appearance tile", () => {

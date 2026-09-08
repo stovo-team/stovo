@@ -731,6 +731,7 @@ export const strings = {
     pressKeys: "Press desired shortcut keys…",
     pressEscape: "Press Escape to cancel",
     conflictWarning: "Already assigned to another action",
+    browserConflictWarning: "Reserved by browser",
     reassign: "Reassign",
     cancel: "Cancel",
     save: "Save",

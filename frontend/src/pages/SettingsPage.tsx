@@ -136,6 +136,16 @@ export default function SettingsPage() {
       setActiveSettingsItem("Family");
     }
   }, [location.search]);
+
+  useEffect(() => {
+    function handleOpenShortcuts() {
+      setActiveSettingsItem("Shortcuts");
+    }
+    window.addEventListener("stovo:open-shortcuts-settings", handleOpenShortcuts);
+    return () => {
+      window.removeEventListener("stovo:open-shortcuts-settings", handleOpenShortcuts);
+    };
+  }, []);
   const [devicePreferences, setDevicePreferences] = useState<DevicePreferences>(() =>
     readDevicePreferences()
   );
@@ -166,9 +176,9 @@ export default function SettingsPage() {
       title: strings.settings.yourSpace,
       items: [
         { id: "Appearance", label: strings.settings.appearance, helper: appearanceHelper, icon: Palette },
-        { id: "Shortcuts", label: strings.settings.keyboardShortcuts, helper: strings.settings.keyboardShortcutsHelper, icon: Keyboard },
         { id: "Notifications", label: strings.settings.notifications, helper: strings.settings.notificationsHelper, icon: Bell },
         { id: "Privacy and Security", label: strings.settings.privacyAndSecurity, helper: strings.settings.privacyHelper, icon: LockKeyhole },
+        { id: "Shortcuts", label: strings.settings.keyboardShortcuts, helper: strings.settings.keyboardShortcutsHelper, icon: Keyboard },
         { id: "Language", label: strings.settings.language, helper: languageHelper, icon: Globe },
         { id: "Statistics", label: "Statistics", helper: "View chat activity and server trends", icon: BarChart3 },
         { id: "Help and About", label: strings.settings.helpAndAbout, helper: strings.settings.helpHelper, icon: HelpCircle }
@@ -467,6 +477,9 @@ export default function SettingsPage() {
                         });
                       }
                       setActiveSettingsItem(null);
+                      if (location.search) {
+                        navigate(location.pathname, { replace: true });
+                      }
                     }}
                   />
                   <h2>

@@ -767,6 +767,7 @@ export const strings = {
     pressKeys: "Нажмите нужное сочетание клавиш…",
     pressEscape: "Нажмите Escape для отмены",
     conflictWarning: "Уже назначено для другого действия",
+    browserConflictWarning: "Зарезервировано браузером",
     reassign: "Переназначить",
     cancel: "Отмена",
     save: "Сохранить",
