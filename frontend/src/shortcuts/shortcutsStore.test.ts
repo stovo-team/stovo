@@ -19,7 +19,7 @@ import {
 describe("Shortcuts Registry and Normalization", () => {
   it("defines default shortcut definitions and bindings without browser conflicts", () => {
     expect(SHORTCUT_DEFINITIONS.length).toBeGreaterThan(10);
-    expect(DEFAULT_SHORTCUT_BINDINGS.quick_switcher).toBe("Mod+K");
+    expect(DEFAULT_SHORTCUT_BINDINGS.quick_switcher).toBe("Mod+Alt+K");
     expect(DEFAULT_SHORTCUT_BINDINGS.shortcuts_help).toBe("Mod+/");
     expect(DEFAULT_SHORTCUT_BINDINGS.nav_chats).toBe("Alt+1");
     expect(DEFAULT_SHORTCUT_BINDINGS.new_chat).toBe("Alt+N");
@@ -30,8 +30,7 @@ describe("Shortcuts Registry and Normalization", () => {
     expect(DEFAULT_SHORTCUT_BINDINGS.toggle_mute).toBe("Mod+Alt+M");
 
     // Ensure none of the default bindings conflict with browser shortcuts
-    for (const [actionId, binding] of Object.entries(DEFAULT_SHORTCUT_BINDINGS)) {
-      if (actionId === "quick_switcher") continue; // Mod+K is standard in-app quick switcher
+    for (const [, binding] of Object.entries(DEFAULT_SHORTCUT_BINDINGS)) {
       expect(getBrowserShortcutConflict(binding)).toBeNull();
     }
   });
@@ -41,6 +40,8 @@ describe("Shortcuts Registry and Normalization", () => {
     expect(getBrowserShortcutConflict("Mod+Shift+T")).toBe("Reopen closed tab");
     expect(getBrowserShortcutConflict("Mod+N")).toBe("New browser window");
     expect(getBrowserShortcutConflict("Ctrl+L")).toBe("Focus address bar");
+    expect(getBrowserShortcutConflict("Ctrl+K")).toBe("Search address bar");
+    expect(getBrowserShortcutConflict("Mod+K")).toBe("Search address bar");
     expect(getBrowserShortcutConflict("Mod+Shift+C")).toBe("Inspect element");
     expect(getBrowserShortcutConflict("Mod+Shift+M")).toBe("Toggle device mode");
     expect(getBrowserShortcutConflict("Alt+D")).toBe("Focus address bar");
@@ -51,6 +52,7 @@ describe("Shortcuts Registry and Normalization", () => {
     expect(getBrowserShortcutConflict("Mod+Alt+T")).toBeNull();
     expect(getBrowserShortcutConflict("Alt+C")).toBeNull();
     expect(getBrowserShortcutConflict("Mod+Alt+C")).toBeNull();
+    expect(getBrowserShortcutConflict("Mod+Alt+K")).toBeNull();
   });
 
   it("normalizes KeyboardEvent into key combination string", () => {
@@ -89,12 +91,12 @@ describe("Shortcuts Registry and Normalization", () => {
 
   it("detects shortcut conflicts", () => {
     const bindings = { ...DEFAULT_SHORTCUT_BINDINGS };
-    // quick_switcher is Mod+K. Setting nav_chats to Mod+K should conflict.
-    const conflict = checkShortcutConflict("nav_chats", "Mod+K", bindings);
+    // quick_switcher is Mod+Alt+K. Setting nav_chats to Mod+Alt+K should conflict.
+    const conflict = checkShortcutConflict("nav_chats", "Mod+Alt+K", bindings);
     expect(conflict).toBe("quick_switcher");
 
-    // Setting quick_switcher to Mod+K should not conflict with itself
-    expect(checkShortcutConflict("quick_switcher", "Mod+K", bindings)).toBeNull();
+    // Setting quick_switcher to Mod+Alt+K should not conflict with itself
+    expect(checkShortcutConflict("quick_switcher", "Mod+Alt+K", bindings)).toBeNull();
 
     // Setting to unused combo should not conflict
     expect(checkShortcutConflict("nav_chats", "Alt+Shift+9", bindings)).toBeNull();
@@ -108,7 +110,7 @@ describe("Shortcuts Store Persistence", () => {
 
   it("loads defaults when no localStorage entry exists", () => {
     const loaded = loadShortcutBindings();
-    expect(loaded.quick_switcher).toBe("Mod+K");
+    expect(loaded.quick_switcher).toBe("Mod+Alt+K");
   });
 
   it("saves custom shortcut and merges with defaults", () => {
@@ -123,7 +125,7 @@ describe("Shortcuts Store Persistence", () => {
     expect(loadShortcutBindings().quick_switcher).toBe("Ctrl+Space");
 
     resetShortcutBinding("quick_switcher");
-    expect(loadShortcutBindings().quick_switcher).toBe("Mod+K");
+    expect(loadShortcutBindings().quick_switcher).toBe("Mod+Alt+K");
   });
 
   it("resets all shortcut bindings", () => {
@@ -132,7 +134,7 @@ describe("Shortcuts Store Persistence", () => {
 
     resetAllShortcutBindings();
     const loaded = loadShortcutBindings();
-    expect(loaded.quick_switcher).toBe("Mod+K");
+    expect(loaded.quick_switcher).toBe("Mod+Alt+K");
     expect(loaded.nav_chats).toBe("Alt+1");
     expect(loaded.new_chat).toBe("Alt+N");
   });
@@ -140,6 +142,7 @@ describe("Shortcuts Store Persistence", () => {
   it("migrates legacy conflicting default shortcuts to new non-intersecting defaults", () => {
     // Simulate user having old default shortcuts in localStorage
     const legacyStorage = {
+      quick_switcher: "Mod+K",
       new_chat: "Mod+N",
       toggle_theme: "Mod+Shift+T",
       focus_composer: "Mod+L",
@@ -148,6 +151,7 @@ describe("Shortcuts Store Persistence", () => {
     window.localStorage.setItem(KEYBOARD_SHORTCUTS_STORAGE_KEY, JSON.stringify(legacyStorage));
 
     const loaded = loadShortcutBindings();
+    expect(loaded.quick_switcher).toBe("Mod+Alt+K");
     expect(loaded.new_chat).toBe("Alt+N");
     expect(loaded.toggle_theme).toBe("Mod+Alt+T");
     expect(loaded.focus_composer).toBe("Alt+C");

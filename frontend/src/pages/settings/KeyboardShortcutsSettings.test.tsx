@@ -111,7 +111,7 @@ describe("KeyboardShortcutsSettings", () => {
       resetBtn?.click();
     });
 
-    expect(loadShortcutBindings().quick_switcher).toBe("Mod+K");
+    expect(loadShortcutBindings().quick_switcher).toBe("Mod+Alt+K");
   });
 
   it("detects conflict when pressing an existing shortcut combo", async () => {
@@ -132,12 +132,13 @@ describe("KeyboardShortcutsSettings", () => {
       navChatsButton?.click();
     });
 
-    // Press Mod+K (which is assigned to quick_switcher)
+    // Press Mod+Alt+K (which is assigned to quick_switcher)
     await act(async () => {
       window.dispatchEvent(
         new KeyboardEvent("keydown", {
           key: "k",
           ctrlKey: true,
+          altKey: true,
           bubbles: true
         })
       );
@@ -182,6 +183,34 @@ describe("KeyboardShortcutsSettings", () => {
     });
 
     expect(document.querySelector(".shortcuts-conflict-card")).toBeNull();
+  });
+
+  it("detects browser-reserved conflict when pressing Ctrl+K", async () => {
+    await act(async () => {
+      root?.render(<KeyboardShortcutsSettings />);
+    });
+
+    const badgeButtons = document.querySelectorAll<HTMLButtonElement>(".shortcut-badge-button");
+    // Click second shortcut badge
+    await act(async () => {
+      badgeButtons[1].click();
+    });
+
+    // Press Ctrl+K (browser address bar search)
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "k",
+          ctrlKey: true,
+          bubbles: true
+        })
+      );
+    });
+
+    // Conflict card should alert browser reservation
+    expect(document.querySelector(".shortcuts-conflict-card")).not.toBeNull();
+    expect(document.body.textContent).toContain("Reserved by browser");
+    expect(document.body.textContent).toContain("Search address bar");
   });
 
   it("cancels recording mode when close button in grey circle is clicked", async () => {

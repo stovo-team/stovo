@@ -4,7 +4,6 @@ import {
   BellOff,
   CheckCheck,
   FolderMinus,
-  FolderPlus,
   MessageCircle,
   Star
 } from "lucide-react";
@@ -64,13 +63,12 @@ export function ChatContextMenu({
 
   // Clamp menu inside viewport
   const menuWidth = 220;
-  const menuHeight = 260;
+  const menuHeight = 220;
   const left = Math.min(x, Math.max(12, window.innerWidth - menuWidth - 12));
   const top = Math.min(y, Math.max(12, window.innerHeight - menuHeight - 12));
 
   // Check which custom folder this chat currently belongs to
   const containingFolders = folders.filter((f) => f.rules.includedChatIds?.includes(chat.id));
-  const otherFolders = folders.filter((f) => !f.rules.includedChatIds?.includes(chat.id));
 
   return (
     <div
@@ -82,6 +80,8 @@ export function ChatContextMenu({
         position: "fixed",
         left: `${left}px`,
         top: `${top}px`,
+        right: "auto",
+        width: `${menuWidth}px`,
         zIndex: 1000
       }}
       onContextMenu={(e) => e.preventDefault()}
@@ -148,21 +148,6 @@ export function ChatContextMenu({
         >
           <FolderMinus size={16} aria-hidden="true" />
           <span>Remove from {folder.name}</span>
-        </button>
-      ))}
-
-      {otherFolders.map((folder) => (
-        <button
-          key={folder.id}
-          type="button"
-          role="menuitem"
-          onClick={() => {
-            onMoveToFolder?.(folder, chat);
-            onClose();
-          }}
-        >
-          <FolderPlus size={16} aria-hidden="true" />
-          <span>Add to {folder.name}</span>
         </button>
       ))}
     </div>
