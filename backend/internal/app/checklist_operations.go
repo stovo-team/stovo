@@ -321,7 +321,11 @@ func (s *Server) createChecklist(ctx context.Context, user userPublic, request c
 		return checklistPublic{}, errBadRequest
 	}
 	category := strings.ToLower(strings.TrimSpace(request.Category))
-	if category != "grocery" && category != "errand" {
+	if category == "grocery" || category == "groceries" {
+		category = "groceries"
+	} else if category == "errand" || category == "errands" {
+		category = "errands"
+	} else {
 		category = "general"
 	}
 
@@ -534,16 +538,22 @@ func (s *Server) updateChecklist(ctx context.Context, checklistID string, user u
 	title := checklist.Title
 	if req.Title != nil {
 		t := strings.TrimSpace(*req.Title)
-		if t == "" || len(t) > 160 {
-			return checklistPublic{}, errBadRequest
+		if t != "" {
+			if len(t) > 160 {
+				return checklistPublic{}, errBadRequest
+			}
+			title = t
 		}
-		title = t
 	}
 	category := checklist.Category
 	if req.Category != nil {
 		c := strings.ToLower(strings.TrimSpace(*req.Category))
-		if c == "grocery" || c == "errand" || c == "general" {
-			category = c
+		if c == "grocery" || c == "groceries" {
+			category = "groceries"
+		} else if c == "errand" || c == "errands" {
+			category = "errands"
+		} else if c == "general" {
+			category = "general"
 		}
 	}
 

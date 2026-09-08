@@ -83,16 +83,23 @@ export function getChecklist(accessToken: string, checklistId: string) {
   return apiRequest<Checklist>(`${root}/checklists/${encodeURIComponent(checklistId)}`, { accessToken });
 }
 
-export function renameChecklist(accessToken: string, checklistId: string, title: string, category?: string) {
+export function renameChecklist(accessToken: string, checklistId: string, title?: string, category?: string) {
+  const body: { title?: string; category?: string } = {};
+  if (title !== undefined && title.trim() !== "") {
+    body.title = title.trim();
+  }
+  if (category !== undefined && category.trim() !== "") {
+    body.category = category.trim();
+  }
   return apiRequest<Checklist>(`${root}/checklists/${encodeURIComponent(checklistId)}`, {
     method: "PATCH",
     accessToken,
-    body: { title, category }
+    body
   });
 }
 
 export function updateChecklistCategory(accessToken: string, checklistId: string, category: string) {
-  return renameChecklist(accessToken, checklistId, "", category);
+  return renameChecklist(accessToken, checklistId, undefined, category);
 }
 
 export function deleteChecklist(accessToken: string, checklistId: string) {
