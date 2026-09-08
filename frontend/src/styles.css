@@ -6059,9 +6059,32 @@ span.message-spoiler.is-revealed {
 .chat-folder-empty--dropzone { border: 1.5px dashed var(--border-default); border-radius: 12px; margin: 4px 6px 8px; padding: 10px; text-align: center; }
 .chat-folder-create { align-items: center; background: transparent; border: 1px dashed var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; display: flex; font-size: 0.82rem; gap: 7px; justify-content: center; margin: 6px 4px 4px; min-height: 34px; padding: 0 12px; width: calc(100% - 8px); }
 .chat-folder-create:hover { border-color: var(--accent-primary); color: var(--accent-primary); }
-.chat-folder-remove-btn { align-items: center; background: transparent; border: 0; border-radius: 6px; color: var(--text-muted); cursor: pointer; display: inline-flex; height: 22px; justify-content: center; margin-left: 2px; opacity: 0; padding: 0; transition: opacity var(--motion-route-duration-fast) ease, color var(--motion-route-duration-fast) ease, background-color var(--motion-route-duration-fast) ease; width: 22px; }
-.chat-list-item:hover .chat-folder-remove-btn, .chat-list-item:focus-within .chat-folder-remove-btn { opacity: 0.85; }
-.chat-folder-remove-btn:hover { background: color-mix(in oklab, var(--text-primary) 12%, transparent); color: var(--text-primary); opacity: 1; }
+.chat-folder-remove-btn {
+  align-items: center;
+  background: color-mix(in oklab, var(--text-primary) 10%, transparent);
+  border: 0;
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 22px;
+  justify-content: center;
+  margin-right: 2px;
+  opacity: 0;
+  padding: 0;
+  transition: opacity var(--motion-route-duration-fast) ease, color var(--motion-route-duration-fast) ease, background-color var(--motion-route-duration-fast) ease, transform var(--motion-route-duration-fast) ease;
+  width: 22px;
+}
+.chat-list-item:hover .chat-folder-remove-btn,
+.chat-list-item:focus-within .chat-folder-remove-btn {
+  opacity: 0.9;
+}
+.chat-folder-remove-btn:hover {
+  background: color-mix(in oklab, var(--danger) 18%, transparent);
+  color: var(--danger);
+  opacity: 1;
+  transform: scale(1.08);
+}
 .chat-folder-remove-dropzone { align-items: center; background: transparent; border: 1.5px dashed var(--border-default); border-radius: 14px; color: var(--text-muted); display: flex; font-size: 0.82rem; gap: 8px; justify-content: center; margin: 8px 6px; min-height: 38px; padding: 8px 12px; transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease; }
 .chat-folder-remove-dropzone.is-active { background: color-mix(in oklab, var(--accent-primary) 14%, transparent); border-color: var(--accent-primary); color: var(--accent-primary); }
 .modal-backdrop.chat-folder-backdrop { align-items: center; background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(2px); display: flex; justify-content: center; padding: 16px; z-index: 1200; }
@@ -15751,10 +15774,19 @@ span.message-spoiler.is-revealed {
   transform: scale(0.98);
 }
 
-.chat-list.is-dragging-active .chat-list-item:not(.is-dragging),
-.chat-list.is-dragging-active .chat-section-heading,
+.chat-list.is-dragging-active .chat-list-section > *,
 .chat-folder-remove-dropzone * {
   pointer-events: none;
+}
+
+.chat-list-item[draggable="true"] {
+  cursor: grab;
+  -webkit-user-drag: element;
+  user-select: none;
+}
+
+.chat-list-item[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .chat-list-item img,
@@ -15764,6 +15796,53 @@ span.message-spoiler.is-revealed {
 .chat-list-item strong {
   user-select: none;
   -webkit-user-drag: none;
+}
+
+.action-menu.chat-context-menu {
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-backdrop-filter: blur(24px) saturate(1.35);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 20px;
+  box-shadow:
+    0 24px 56px rgba(2, 6, 23, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px;
+  position: fixed;
+  z-index: 1000;
+  animation: sendSubmenuEnter var(--motion-fast, 180ms) var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both;
+  transform-origin: top left;
+}
+
+.action-menu.chat-context-menu button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: 0.84rem;
+  gap: 10px;
+  justify-content: flex-start;
+  min-height: 36px;
+  padding: 6px 12px;
+  text-align: left;
+  transition: background-color 140ms ease, color 140ms ease;
+  width: 100%;
+}
+
+.action-menu.chat-context-menu button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+.action-menu.chat-context-menu button:active {
+  transform: scale(0.98);
 }
 
 .chat-list-section.folder-drop-target {
@@ -24438,12 +24517,13 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 820px;
-  margin: 0 auto 20px;
+  width: 100%;
+  margin: 0 0 16px;
   background: #14171d;
   border: 1px solid #282f3a;
   border-radius: 14px;
   padding: 12px 16px;
+  box-sizing: border-box;
 }
 
 .checklist-progress-meta {
@@ -24474,8 +24554,7 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 820px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 .checklist-section-block {
@@ -25357,10 +25436,10 @@ input.checklist-card-add-input:focus,
   display: flex;
   flex-direction: column;
   gap: 18px;
-  max-width: 820px;
-  margin: 0 auto;
-  padding: 24px 20px;
-  width: 100%;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 24px 32px;
+  width: 100% !important;
   box-sizing: border-box;
 }
 
@@ -25378,6 +25457,7 @@ input.checklist-card-add-input:focus,
   gap: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  width: 100%;
 }
 
 .checklist-header-info {
@@ -25464,50 +25544,60 @@ input.checklist-card-add-input:focus,
   color: var(--accent-primary);
 }
 
-.checklist-header-actions {
+.checklist-header-actions,
+.checklist-page-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-left: auto;
 }
 
+.checklist-icon-action,
 .checklist-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 9999px;
-  background: var(--surface-raised, rgba(255, 255, 255, 0.06));
-  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: all 0.15s ease;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  border-radius: 9999px !important;
+  background: var(--surface-raised, rgba(255, 255, 255, 0.06)) !important;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12)) !important;
+  color: var(--text-primary) !important;
+  padding: 0 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
 }
 
+.checklist-icon-action:hover,
 .checklist-icon-btn:hover {
-  background: var(--surface-hover, rgba(255, 255, 255, 0.12));
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
+  background: var(--surface-hover, rgba(255, 255, 255, 0.12)) !important;
+  border-color: var(--accent-primary) !important;
+  color: var(--accent-primary) !important;
 }
 
 .checklist-progress-container {
   background: var(--surface-card, rgba(255, 255, 255, 0.03));
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
   border-radius: 14px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
 }
 
 .checklist-progress-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-secondary);
+  width: 100% !important;
 }
 
 .checklist-progress-track {
@@ -25518,7 +25608,8 @@ input.checklist-card-add-input:focus,
   width: 100%;
 }
 
-.checklist-progress-indicator {
+.checklist-progress-indicator,
+.checklist-progress-fill {
   height: 100%;
   background: var(--accent-primary);
   border-radius: 9999px;
@@ -25529,16 +25620,20 @@ input.checklist-card-add-input:focus,
   display: flex;
   flex-direction: column;
   gap: 20px;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 .checklist-section-block {
   background: var(--surface-card, rgba(255, 255, 255, 0.02));
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
   border-radius: 16px;
-  padding: 14px 16px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100% !important;
+  box-sizing: border-box;
 }
 
 .checklist-section-header {
@@ -25619,15 +25714,33 @@ input.checklist-card-add-input:focus,
   color: #ffffff !important;
 }
 
+input.checklist-item-text-input,
+.checklist-workspace .checklist-item-text-input,
 .checklist-item-text-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  font-size: 0.95rem;
-  outline: none;
-  padding: 4px 0;
-  line-height: 1.4;
+  flex: 1 !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-height: unset !important;
+  height: auto !important;
+  color: var(--text-primary) !important;
+  font-size: 0.95rem !important;
+  outline: none !important;
+  padding: 4px 6px !important;
+  line-height: 1.4 !important;
+  width: 100% !important;
+}
+
+input.checklist-item-text-input:focus,
+.checklist-workspace .checklist-item-text-input:focus,
+.checklist-item-text-input:focus {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--accent-primary) !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .checklist-item-delete-btn {

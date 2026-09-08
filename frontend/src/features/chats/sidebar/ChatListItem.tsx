@@ -26,9 +26,10 @@ type ChatListItemProps = {
   isDragging?: boolean;
   onSelect: (chat: Chat) => void;
   onOpen: (chat: Chat) => void;
-  onDragStart?: (event: React.DragEvent<HTMLButtonElement>, chat: Chat) => void;
-  onDragEnd?: (event: React.DragEvent<HTMLButtonElement>, chat: Chat) => void;
+  onDragStart?: (event: React.DragEvent<HTMLElement>, chat: Chat) => void;
+  onDragEnd?: (event: React.DragEvent<HTMLElement>, chat: Chat) => void;
   onRemoveFromFolder?: (chat: Chat) => void;
+  onContextMenu?: (event: React.MouseEvent<HTMLElement>, chat: Chat) => void;
 };
 
 export function ChatListItem({
@@ -43,7 +44,8 @@ export function ChatListItem({
   onOpen,
   onDragStart,
   onDragEnd,
-  onRemoveFromFolder
+  onRemoveFromFolder,
+  onContextMenu
 }: ChatListItemProps) {
   const strings = useStrings();
   const chatName = displayChatName(chat, currentUserId, strings);
@@ -63,8 +65,9 @@ export function ChatListItem({
   const canDrag = Boolean(onDragStart);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       className={`chat-list-item ${isActive ? "active" : ""} ${isDragging ? "is-dragging" : ""}`}
       draggable={canDrag}
       onDragStart={canDrag ? (event) => {
@@ -79,6 +82,16 @@ export function ChatListItem({
       onClick={() => {
         onSelect(chat);
         onOpen(chat);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(chat);
+          onOpen(chat);
+        }
+      }}
+      onContextMenu={(event) => {
+        onContextMenu?.(event, chat);
       }}
     >
       {chatListLeadingVisual !== "avatar" ? (
@@ -131,28 +144,28 @@ export function ChatListItem({
           ) : preview ? <span className="chat-list-preview">{preview}</span> : null;
         })()}
       </span>
-      {onRemoveFromFolder && (
-        <span
-          role="button"
-          tabIndex={0}
-          className="chat-folder-remove-btn"
-          title="Remove from folder"
-          aria-label="Remove from folder"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemoveFromFolder(chat);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
+      <span className="chat-row-meta">
+        {onRemoveFromFolder && (
+          <span
+            role="button"
+            tabIndex={0}
+            className="chat-folder-remove-btn"
+            title="Remove from folder"
+            aria-label="Remove from folder"
+            onClick={(e) => {
               e.stopPropagation();
               onRemoveFromFolder(chat);
-            }
-          }}
-        >
-          <FolderMinus size={15} aria-hidden="true" />
-        </span>
-      )}
-      {shouldShowChatRowMeta(chat.type) && <span className="chat-row-meta">
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.stopPropagation();
+                onRemoveFromFolder(chat);
+              }
+            }}
+          >
+            <FolderMinus size={14} aria-hidden="true" />
+          </span>
+        )}
         {(chat.type === "group" || chat.type === "family") && chat.activeCall && (
           <span
             className="group-call-pulse-dot"
@@ -162,9 +175,6 @@ export function ChatListItem({
         )}
         {chat.isMuted && <BellOff aria-label="Muted" size={14} />}
         {chat.isFavorite && <Star aria-label="Favorite" size={14} />}
-        {(chat.isPinned || chat.type === "family") && (
-          <Pin aria-label={chat.isPinned ? "Pinned" : "Family chat"} size={14} />
-        )}
         {hasUnread && (
           <span
             className="tiny-badge"
@@ -175,7 +185,7 @@ export function ChatListItem({
             {chat.unreadCount > 99 ? "99+" : chat.unreadCount}
           </span>
         )}
-      </span>}
-    </button>
+      </span>
+    </div>
   );
 }
