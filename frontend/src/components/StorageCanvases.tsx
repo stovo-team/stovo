@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { StickyNote } from "lucide-react";
+import { FileText, Pencil, StickyNote } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import * as Y from "yjs";
 
@@ -28,7 +28,7 @@ function base64ToBytes(value: string) {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-function parseCanvasDocument(updates?: CanvasUpdate[]): {
+function parseCanvasDocument(updates?: CanvasUpdate[], canvasTitle = ""): {
   markdown: string;
   whiteboardElements: WhiteboardElement[];
 } {
@@ -48,9 +48,23 @@ function parseCanvasDocument(updates?: CanvasUpdate[]): {
 
     blocks.forEach((record) => {
       const kind = record.get("kind");
-      if (kind === "markdown" && !markdown) {
+      if (kind === "markdown") {
         const text = (record.get("content") as Y.Text)?.toString() || "";
-        if (text.trim()) markdown = text.trim();
+        const lines = text
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => {
+            if (!l) return false;
+            const stripped = l.replace(/^#{1,6}\s*/, "").trim().toLowerCase();
+            const lowerTitle = canvasTitle.trim().toLowerCase();
+            if (stripped === lowerTitle || stripped === "untitled canvas") {
+              return false;
+            }
+            return true;
+          });
+        if (lines.length > 0 && !markdown) {
+          markdown = lines.join("\n");
+        }
       }
       if (kind === "whiteboard" && whiteboardElements.length === 0) {
         const scene = (record.get("scene") as Y.Text)?.toString() || "";
@@ -77,7 +91,7 @@ function CanvasTilePreview({
   canvas: Canvas;
   updates?: CanvasUpdate[];
 }) {
-  const { markdown, whiteboardElements } = parseCanvasDocument(updates);
+  const { markdown, whiteboardElements } = parseCanvasDocument(updates, canvas.title);
   const activeElements = whiteboardElements.filter((el) => !el.isDeleted);
 
   if (activeElements.length > 0) {
@@ -194,46 +208,42 @@ function CanvasTilePreview({
 
   if (markdown) {
     const rawLines = markdown.split("\n").map((l) => l.trim()).filter(Boolean);
-    const displayLines = rawLines
-      .filter((line, index) => {
-        if (index === 0 && rawLines.length > 1) {
-          const stripped = line.replace(/^#{1,6}\s*/, "").trim();
-          if (stripped.toLowerCase() === canvas.title.toLowerCase()) {
-            return false;
-          }
-        }
-        return true;
-      })
-      .slice(0, 3);
+    const displayLines = rawLines.slice(0, 3);
 
     if (displayLines.length > 0) {
       return (
         <div className="storage-tile-preview storage-canvas-preview">
-          <div className="canvas-preview-doc">
-            {displayLines.map((line, idx) => {
-              const isHeading = /^#{1,6}\s+/.test(line);
-              const isBullet = /^[-*+]\s+/.test(line);
-              const cleanText = line.replace(/^(#{1,6}|[-*+])\s+/, "");
-              if (isHeading) {
+          <div className="canvas-preview-notes">
+            <div className="canvas-preview-notes-badge">
+              <FileText size={11} />
+              <b>NOTES</b>
+            </div>
+            <div className="canvas-preview-notes-lines">
+              {displayLines.map((line, idx) => {
+                const isHeading = /^#{1,6}\s+/.test(line);
+                const isBullet = /^[-*+]\s+/.test(line);
+                const cleanText = line.replace(/^(#{1,6}|[-*+])\s+/, "");
+                if (isHeading) {
+                  return (
+                    <p key={idx} className="canvas-notes-h">
+                      {cleanText}
+                    </p>
+                  );
+                }
+                if (isBullet) {
+                  return (
+                    <p key={idx} className="canvas-notes-b">
+                      {cleanText}
+                    </p>
+                  );
+                }
                 return (
-                  <div key={idx} className="canvas-preview-doc-heading">
+                  <p key={idx} className="canvas-notes-p">
                     {cleanText}
-                  </div>
+                  </p>
                 );
-              }
-              if (isBullet) {
-                return (
-                  <div key={idx} className="canvas-preview-doc-bullet">
-                    <span>{cleanText}</span>
-                  </div>
-                );
-              }
-              return (
-                <div key={idx} className="canvas-preview-doc-line">
-                  {cleanText}
-                </div>
-              );
-            })}
+              })}
+            </div>
           </div>
         </div>
       );
@@ -243,8 +253,17 @@ function CanvasTilePreview({
   return (
     <div className="storage-tile-preview storage-canvas-preview">
       <div className="canvas-preview-blank">
-        <div className="canvas-preview-mock-shape" />
-        <span className="canvas-preview-mock-tag">Canvas</span>
+        <div className="canvas-mock-board">
+          <div className="canvas-mock-sticky">
+            <div className="canvas-mock-sticky-line" />
+            <div className="canvas-mock-sticky-line short" />
+          </div>
+          <div className="canvas-mock-shape" />
+        </div>
+        <div className="canvas-mock-badge">
+          <Pencil size={10} />
+          <b>CANVAS</b>
+        </div>
       </div>
     </div>
   );
@@ -342,10 +361,10 @@ export function StorageCanvases({
               onClick={() => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`)}
             >
               <CanvasTilePreview canvas={canvas} updates={documents[canvas.id]} />
-              <span className="storage-tile-info">
+              <div className="storage-tile-info">
                 <strong>{canvas.title}</strong>
                 <small>Canvas • .canvas</small>
-              </span>
+              </div>
             </button>
           ))}
         </div>

@@ -15,9 +15,9 @@ function ChecklistTilePreview({ checklist }: { checklist: Checklist }) {
   const remainingCount = total > previewItems.length ? total - previewItems.length : 0;
 
   const categoryIcon = (category: string) => {
-    if (category === "groceries" || category === "grocery") return <ShoppingCart size={13} />;
-    if (category === "errands" || category === "errand") return <ShoppingBag size={13} />;
-    return <CheckSquare size={13} />;
+    if (category === "groceries" || category === "grocery") return <ShoppingCart size={11} />;
+    if (category === "errands" || category === "errand") return <ShoppingBag size={11} />;
+    return <CheckSquare size={11} />;
   };
 
   const categoryLabel = (category: string) => {
@@ -28,47 +28,56 @@ function ChecklistTilePreview({ checklist }: { checklist: Checklist }) {
 
   return (
     <div className={`storage-tile-preview storage-checklist-preview category-${checklist.category || "general"}`}>
-      <div className="checklist-preview-top">
-        <span className="checklist-preview-badge">
+      <div className="checklist-preview-header">
+        <div className="checklist-preview-badge">
           {categoryIcon(checklist.category)}
-          <span>{categoryLabel(checklist.category)}</span>
-        </span>
+          <b>{categoryLabel(checklist.category)}</b>
+        </div>
         {total > 0 && (
-          <span className="checklist-preview-progress-text">
+          <div className="checklist-preview-counter">
             {completed}/{total}
-          </span>
+          </div>
         )}
       </div>
 
       {total > 0 && (
-        <div className="checklist-preview-bar" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100}>
-          <div className="checklist-preview-bar-fill" style={{ width: `${progressPct}%` }} />
+        <div className="checklist-preview-progress" role="progressbar" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100}>
+          <div className="checklist-preview-progress-fill" style={{ width: `${progressPct}%` }} />
         </div>
       )}
 
       {previewItems.length > 0 ? (
-        <div className="checklist-preview-content">
-          <ul className="checklist-preview-items" role="list">
-            {previewItems.map((item) => (
-              <li
-                key={item.id}
-                className={`checklist-preview-item ${item.completed ? "is-completed" : ""}`}
-              >
-                <span className={`checklist-preview-check ${item.completed ? "is-checked" : ""}`} aria-hidden="true">
-                  {item.completed ? <Check size={9} strokeWidth={3.5} /> : null}
-                </span>
-                <span className="checklist-preview-text">{item.text}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="checklist-preview-list">
+          {previewItems.map((item) => (
+            <div
+              key={item.id}
+              className={`checklist-preview-row ${item.completed ? "is-completed" : ""}`}
+            >
+              <div className={`checklist-preview-checkbox ${item.completed ? "is-checked" : ""}`} aria-hidden="true">
+                {item.completed ? <Check size={8} strokeWidth={3.5} /> : null}
+              </div>
+              <p className="checklist-preview-title">{item.text}</p>
+            </div>
+          ))}
           {remainingCount > 0 && (
-            <span className="checklist-preview-more">+{remainingCount} more</span>
+            <div className="checklist-preview-more">+{remainingCount} more</div>
           )}
         </div>
       ) : (
-        <div className="checklist-preview-empty">
-          <span className="checklist-preview-empty-icon">{categoryIcon(checklist.category)}</span>
-          <span className="checklist-preview-empty-label">No items yet</span>
+        <div className="checklist-preview-empty-mock">
+          <div className="checklist-mock-row">
+            <div className="checklist-mock-circle" />
+            <div className="checklist-mock-line w-long" />
+          </div>
+          <div className="checklist-mock-row">
+            <div className="checklist-mock-circle" />
+            <div className="checklist-mock-line w-mid" />
+          </div>
+          <div className="checklist-mock-row">
+            <div className="checklist-mock-circle" />
+            <div className="checklist-mock-line w-short" />
+          </div>
+          <div className="checklist-preview-empty-text">Empty checklist</div>
         </div>
       )}
     </div>
@@ -186,12 +195,12 @@ export function StorageChecklists({
               }
             >
               <ChecklistTilePreview checklist={checklist} />
-              <span className="storage-tile-info">
+              <div className="storage-tile-info">
                 <strong>{checklist.title}</strong>
                 <small>
                   {categoryLabel(checklist.category)} • .checklist • {checklist.completedItems}/{checklist.totalItems} done
                 </small>
-              </span>
+              </div>
             </button>
           ))}
         </div>

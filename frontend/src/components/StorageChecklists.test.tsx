@@ -203,11 +203,11 @@ describe("StorageChecklists", () => {
     expect(container?.textContent).toContain("1/4");
 
     // Check progress bar exists
-    const progressBar = container?.querySelector(".checklist-preview-bar");
+    const progressBar = container?.querySelector(".checklist-preview-progress");
     expect(progressBar).not.toBeNull();
 
     // Check checkmark exists for completed item
-    const checkedBoxes = container?.querySelectorAll(".checklist-preview-check.is-checked");
+    const checkedBoxes = container?.querySelectorAll(".checklist-preview-checkbox.is-checked");
     expect(checkedBoxes?.length).toBe(1);
   });
 
@@ -236,6 +236,6 @@ describe("StorageChecklists", () => {
       root?.render(<StorageChecklists accessToken="token" filter="all" search="" />);
     });
 
-    expect(container?.textContent).toContain("No items yet");
+    expect(container?.textContent).toContain("Empty checklist");
   });
 });
