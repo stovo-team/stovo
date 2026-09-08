@@ -625,7 +625,7 @@ export default function ChecklistPage() {
           <section key={sectionName || "__unsectioned__"} className="checklist-section-block">
             {sectionName ? (
               <header className="checklist-section-header">
-                <span className="checklist-section-title">#{sectionName}</span>
+                <span className="checklist-section-title">{sectionName}</span>
                 <span className="checklist-section-count">{sectionItems.length} items</span>
               </header>
             ) : null}

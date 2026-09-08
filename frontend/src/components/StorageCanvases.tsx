@@ -22,8 +22,10 @@ export function StorageCanvases({
 
   useEffect(() => {
     if (!accessToken) return;
-    void getStorageCanvases(accessToken).then(setCanvases).catch(() => setCanvases([]));
-  }, [accessToken]);
+    void getStorageCanvases(accessToken)
+      .then((data) => setCanvases(Array.isArray(data) ? data : []))
+      .catch(() => setCanvases([]));
+  }, [accessToken, filter]);
 
   if (filter !== "all" && filter !== "canvases") return null;
 
@@ -53,7 +55,7 @@ export function StorageCanvases({
     }
     if (!rawQuery) return true;
     if (isExtensionOnly) return true;
-    const title = canvas.title.toLowerCase();
+    const title = (canvas.title || "Untitled canvas").toLowerCase();
     const virtualFileName = `${title}.canvas`;
     return (
       title.includes(rawQuery) ||
