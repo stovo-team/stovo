@@ -4,6 +4,7 @@ import {
   SHORTCUT_DEFINITIONS,
   checkShortcutConflict,
   formatKeyComboForDisplay,
+  getBrowserShortcutConflict,
   matchesKeyCombo,
   normalizeKeyComboFromEvent
 } from "./registry";
@@ -16,11 +17,40 @@ import {
 } from "./shortcutsStore";
 
 describe("Shortcuts Registry and Normalization", () => {
-  it("defines default shortcut definitions and bindings", () => {
+  it("defines default shortcut definitions and bindings without browser conflicts", () => {
     expect(SHORTCUT_DEFINITIONS.length).toBeGreaterThan(10);
     expect(DEFAULT_SHORTCUT_BINDINGS.quick_switcher).toBe("Mod+K");
     expect(DEFAULT_SHORTCUT_BINDINGS.shortcuts_help).toBe("Mod+/");
     expect(DEFAULT_SHORTCUT_BINDINGS.nav_chats).toBe("Alt+1");
+    expect(DEFAULT_SHORTCUT_BINDINGS.new_chat).toBe("Alt+N");
+    expect(DEFAULT_SHORTCUT_BINDINGS.toggle_theme).toBe("Mod+Alt+T");
+    expect(DEFAULT_SHORTCUT_BINDINGS.focus_composer).toBe("Alt+C");
+    expect(DEFAULT_SHORTCUT_BINDINGS.search_messages).toBe("Mod+Alt+F");
+    expect(DEFAULT_SHORTCUT_BINDINGS.toggle_call).toBe("Mod+Alt+C");
+    expect(DEFAULT_SHORTCUT_BINDINGS.toggle_mute).toBe("Mod+Alt+M");
+
+    // Ensure none of the default bindings conflict with browser shortcuts
+    for (const [actionId, binding] of Object.entries(DEFAULT_SHORTCUT_BINDINGS)) {
+      if (actionId === "quick_switcher") continue; // Mod+K is standard in-app quick switcher
+      expect(getBrowserShortcutConflict(binding)).toBeNull();
+    }
+  });
+
+  it("detects browser-reserved shortcut conflicts", () => {
+    expect(getBrowserShortcutConflict("Ctrl+T")).toBe("New tab");
+    expect(getBrowserShortcutConflict("Mod+Shift+T")).toBe("Reopen closed tab");
+    expect(getBrowserShortcutConflict("Mod+N")).toBe("New browser window");
+    expect(getBrowserShortcutConflict("Ctrl+L")).toBe("Focus address bar");
+    expect(getBrowserShortcutConflict("Mod+Shift+C")).toBe("Inspect element");
+    expect(getBrowserShortcutConflict("Mod+Shift+M")).toBe("Toggle device mode");
+    expect(getBrowserShortcutConflict("Alt+D")).toBe("Focus address bar");
+    expect(getBrowserShortcutConflict("Ctrl+1")).toBe("Switch to tab 1");
+
+    // Safe Stovo shortcuts do not conflict
+    expect(getBrowserShortcutConflict("Alt+N")).toBeNull();
+    expect(getBrowserShortcutConflict("Mod+Alt+T")).toBeNull();
+    expect(getBrowserShortcutConflict("Alt+C")).toBeNull();
+    expect(getBrowserShortcutConflict("Mod+Alt+C")).toBeNull();
   });
 
   it("normalizes KeyboardEvent into key combination string", () => {
@@ -104,5 +134,22 @@ describe("Shortcuts Store Persistence", () => {
     const loaded = loadShortcutBindings();
     expect(loaded.quick_switcher).toBe("Mod+K");
     expect(loaded.nav_chats).toBe("Alt+1");
+    expect(loaded.new_chat).toBe("Alt+N");
+  });
+
+  it("migrates legacy conflicting default shortcuts to new non-intersecting defaults", () => {
+    // Simulate user having old default shortcuts in localStorage
+    const legacyStorage = {
+      new_chat: "Mod+N",
+      toggle_theme: "Mod+Shift+T",
+      focus_composer: "Mod+L",
+      custom_binding: "Alt+Shift+9"
+    };
+    window.localStorage.setItem(KEYBOARD_SHORTCUTS_STORAGE_KEY, JSON.stringify(legacyStorage));
+
+    const loaded = loadShortcutBindings();
+    expect(loaded.new_chat).toBe("Alt+N");
+    expect(loaded.toggle_theme).toBe("Mod+Alt+T");
+    expect(loaded.focus_composer).toBe("Alt+C");
   });
 });

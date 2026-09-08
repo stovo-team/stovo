@@ -94,8 +94,15 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
 
         if (matchesKeyCombo(combo, event)) {
           // Determine whether this shortcut should fire inside an input
-          const isGlobalOverlay = actionId === "quick_switcher" || actionId === "shortcuts_help";
-          const isNavigation = actionId === "nav_chats" || actionId === "nav_files" || actionId === "nav_plans" || actionId === "nav_settings";
+          const isGlobalOverlay =
+            actionId === "quick_switcher" ||
+            actionId === "shortcuts_help" ||
+            actionId === "toggle_theme";
+          const isNavigation =
+            actionId === "nav_chats" ||
+            actionId === "nav_files" ||
+            actionId === "nav_plans" ||
+            actionId === "nav_settings";
 
           // If inside input, only allow global overlays, navigation, and explicit search/call actions
           if (insideInput) {
@@ -121,7 +128,14 @@ export function KeyboardShortcutsProvider({ children }: { children: ReactNode })
           if (actionId === "shortcuts_help") {
             event.preventDefault();
             const prefix = getClusterPrefix();
-            navigate(`${prefix}/app/settings`);
+            window.dispatchEvent(new CustomEvent("stovo:open-shortcuts-settings"));
+            navigate(`${prefix}/app/settings?section=shortcuts`);
+            return;
+          }
+
+          if (actionId === "toggle_theme") {
+            event.preventDefault();
+            window.dispatchEvent(new CustomEvent("stovo:toggle-theme"));
             return;
           }
 
