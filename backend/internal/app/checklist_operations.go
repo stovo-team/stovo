@@ -393,7 +393,7 @@ func (s *Server) getChecklistForUser(ctx context.Context, checklistID string, us
 	err := db.QueryRowContext(ctx, `
 		SELECT c.id,c.family_id,c.origin_chat_id,c.created_by,c.title,c.category,c.created_at,c.updated_at
 		FROM checklists c WHERE c.id=$1 AND c.family_id=$2 AND c.deleted_at IS NULL
-		AND EXISTS (SELECT 1 FROM checklist_chat_links l JOIN chat_members cm ON cm.chat_id=l.chat_id WHERE l.checklist_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$3)`, checklistID, user.FamilyID, user.ID).
+		AND (c.created_by=$3 OR EXISTS (SELECT 1 FROM checklist_chat_links l JOIN chat_members cm ON cm.chat_id=l.chat_id WHERE l.checklist_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$3))`, checklistID, user.FamilyID, user.ID).
 		Scan(&checklist.ID, &checklist.FamilyID, &checklist.OriginChatID, &checklist.CreatedBy, &checklist.Title, &checklist.Category, &checklist.CreatedAt, &checklist.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return checklistPublic{}, errNotFound
@@ -497,11 +497,14 @@ func (s *Server) listChecklistsForUser(ctx context.Context, user userPublic) ([]
 		SELECT c.id
 		FROM checklists c
 		WHERE c.family_id=$1 AND c.deleted_at IS NULL
-		AND EXISTS (
-			SELECT 1
-			FROM checklist_chat_links l
-			JOIN chat_members cm ON cm.chat_id=l.chat_id
-			WHERE l.checklist_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$2 AND cm.left_at IS NULL
+		AND (
+			c.created_by=$2
+			OR EXISTS (
+				SELECT 1
+				FROM checklist_chat_links l
+				JOIN chat_members cm ON cm.chat_id=l.chat_id
+				WHERE l.checklist_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$2
+			)
 		)
 		ORDER BY c.updated_at DESC`, user.FamilyID, user.ID)
 	if err != nil {
@@ -964,7 +967,7 @@ func (s *Server) emitChecklistToAuthorizedUsers(ctx context.Context, checklistID
 		SELECT DISTINCT cm.user_id
 		FROM checklist_chat_links l
 		JOIN chat_members cm ON cm.chat_id = l.chat_id
-		WHERE l.checklist_id = $1 AND l.deleted_at IS NULL AND cm.left_at IS NULL`, checklistID)
+		WHERE l.checklist_id = $1 AND l.deleted_at IS NULL`, checklistID)
 	if err != nil {
 		s.logger.Warnf("realtime.checklist", "resolve Checklist event audience failed checklist_id=%s error=%v", checklistID, err)
 		return

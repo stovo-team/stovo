@@ -286,7 +286,7 @@ func (s *Server) getCanvasForUser(ctx context.Context, canvasID string, user use
 	err := s.canvasDB.QueryRowContext(ctx, `
 		SELECT c.id,c.family_id,c.origin_chat_id,c.created_by,c.title,c.created_at,c.updated_at
 		FROM canvases c WHERE c.id=$1 AND c.family_id=$2 AND c.deleted_at IS NULL
-		AND EXISTS (SELECT 1 FROM canvas_chat_links l JOIN chat_members cm ON cm.chat_id=l.chat_id WHERE l.canvas_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$3)`, canvasID, user.FamilyID, user.ID).
+		AND (c.created_by=$3 OR EXISTS (SELECT 1 FROM canvas_chat_links l JOIN chat_members cm ON cm.chat_id=l.chat_id WHERE l.canvas_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$3))`, canvasID, user.FamilyID, user.ID).
 		Scan(&canvas.ID, &canvas.FamilyID, &canvas.OriginChatID, &canvas.CreatedBy, &canvas.Title, &canvas.CreatedAt, &canvas.UpdatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return canvasPublic{}, errNotFound
@@ -337,11 +337,14 @@ func (s *Server) listCanvasesForUser(ctx context.Context, user userPublic) ([]ca
 		SELECT c.id
 		FROM canvases c
 		WHERE c.family_id=$1 AND c.deleted_at IS NULL
-		AND EXISTS (
-			SELECT 1
-			FROM canvas_chat_links l
-			JOIN chat_members cm ON cm.chat_id=l.chat_id
-			WHERE l.canvas_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$2 AND cm.left_at IS NULL
+		AND (
+			c.created_by=$2
+			OR EXISTS (
+				SELECT 1
+				FROM canvas_chat_links l
+				JOIN chat_members cm ON cm.chat_id=l.chat_id
+				WHERE l.canvas_id=c.id AND l.deleted_at IS NULL AND cm.user_id=$2
+			)
 		)
 		ORDER BY c.updated_at DESC`, user.FamilyID, user.ID)
 	if err != nil {
@@ -510,7 +513,7 @@ func (s *Server) emitCanvasToAuthorizedUsers(ctx context.Context, canvasID, even
 		SELECT DISTINCT cm.user_id
 		FROM canvas_chat_links l
 		JOIN chat_members cm ON cm.chat_id = l.chat_id
-		WHERE l.canvas_id = $1 AND l.deleted_at IS NULL AND cm.left_at IS NULL`, canvasID)
+		WHERE l.canvas_id = $1 AND l.deleted_at IS NULL`, canvasID)
 	if err != nil {
 		s.logger.Warnf("realtime.canvas", "resolve Canvas event audience failed canvas_id=%s error=%v", canvasID, err)
 		return

@@ -99,3 +99,47 @@ describe("matchesFolder", () => {
   });
 });
 
+describe("default section folders", () => {
+  it("initializes default folders with correct names and natural types", async () => {
+    const { loadAllDefaultFolders, loadDefaultSectionFolder } = await import("./defaultChatSectionSettings");
+    const dms = loadDefaultSectionFolder("family-default", "dms");
+    expect(dms.id).toBe("default-dms");
+    expect(dms.name).toBe("Direct messages");
+    expect(dms.rules.chatTypes).toEqual(["direct"]);
+
+    const all = loadAllDefaultFolders("family-default");
+    expect(all.groups.rules.chatTypes).toEqual(["group"]);
+    expect(all.channels.rules.chatTypes).toEqual(["channel"]);
+    expect(all.voice.rules.chatTypes).toEqual(["voice"]);
+    expect(all.archive.rules.chatTypes).toEqual(["archive"]);
+  });
+
+  it("modifies properties and persists default folder customizations", async () => {
+    const { loadDefaultSectionFolder, saveDefaultSectionFolder } = await import("./defaultChatSectionSettings");
+    const customDms = {
+      id: "default-dms",
+      name: "Important DMs",
+      rules: { ...defaultFolderRules(), chatTypes: ["direct" as const], unreadOnly: true, favoritesOnly: true }
+    };
+    saveDefaultSectionFolder("family-default-2", "dms", customDms);
+
+    const loaded = loadDefaultSectionFolder("family-default-2", "dms");
+    expect(loaded.name).toBe("Important DMs");
+    expect(loaded.rules.unreadOnly).toBe(true);
+    expect(loaded.rules.favoritesOnly).toBe(true);
+  });
+
+  it("tracks deleted default sections and supports restoration", async () => {
+    const { loadDeletedDefaultSections, saveDeletedDefaultSections } = await import("./defaultChatSectionSettings");
+    expect(loadDeletedDefaultSections("family-del")).toEqual([]);
+
+    saveDeletedDefaultSections("family-del", ["dms", "voice"]);
+    expect(loadDeletedDefaultSections("family-del")).toEqual(["dms", "voice"]);
+
+    // Restore
+    saveDeletedDefaultSections("family-del", []);
+    expect(loadDeletedDefaultSections("family-del")).toEqual([]);
+  });
+});
+
+
