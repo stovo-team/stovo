@@ -14957,15 +14957,15 @@ button.attachment-nav-item:focus-visible {
   appearance: none;
   background: color-mix(in oklab, var(--background-primary) 66%, var(--surface-card));
   border: 1px solid color-mix(in oklab, var(--text-primary) 14%, transparent);
-  border-radius: 14px;
+  border-radius: 9999px;
   box-sizing: border-box;
   color: var(--text-primary);
   font: inherit;
   font-size: 0.875rem;
   min-height: 46px;
   outline: none;
-  padding: 0 14px;
-  transition: border-color 140ms ease, box-shadow 140ms ease;
+  padding: 0 18px;
+  transition: border-color 140ms ease;
   width: 100%;
 }
 
