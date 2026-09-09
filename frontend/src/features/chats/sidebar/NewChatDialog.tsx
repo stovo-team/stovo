@@ -22,7 +22,8 @@ export function NewChatDialog({
   onToggleGroupMember,
   onCreateGroup,
   onCreateChannel,
-  onCreateVoiceChannel
+  onCreateVoiceChannel,
+  onPlanGuestMeeting
 }: {
   accessToken: string | null;
   currentUser?: User | null;
@@ -40,6 +41,7 @@ export function NewChatDialog({
   onCreateGroup: (event: FormEvent) => void;
   onCreateChannel: (event: FormEvent) => void;
   onCreateVoiceChannel?: (event: FormEvent) => void;
+  onPlanGuestMeeting?: () => void;
 }) {
   const strings = useStrings();
   const isChannel = screen === "channel";
@@ -251,6 +253,11 @@ export function NewChatDialog({
             chevron_right
           </span>
         </button>
+        {onPlanGuestMeeting && <button type="button" className="new-chat-action-row" onClick={onPlanGuestMeeting}>
+          <span className="new-chat-action-icon" aria-hidden={true}><span className="ms-icon ms-icon--22 ms-icon--filled">calendar_add_on</span></span>
+          <span className="new-chat-action-copy"><strong>Plan guest meeting</strong><small>Create a shareable link for external guests</small></span>
+          <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>chevron_right</span>
+        </button>}
       </div>
       <p className="new-chat-section-label">{strings.chats.details.members}</p>
       <ul className="new-chat-contact-list">

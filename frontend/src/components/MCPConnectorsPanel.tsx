@@ -3,10 +3,8 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
 import {
-  MCP_AUTH_MODES,
   MCP_PERMISSION_KEYS,
   MCP_PROVIDERS,
-  MCPAuthMode,
   MCPConnector,
   MCPPermissionKey,
   MCPPermissions,
@@ -14,9 +12,7 @@ import {
   createMCPConnector,
   defaultMCPAlias,
   defaultMCPPermissions,
-  formatMCPAlias,
   listMCPConnectors,
-  mcpAuthModeLabel,
   mcpProviderLabel,
   mcpUiSetupSteps,
   regenerateMCPConnectorToken,
@@ -30,6 +26,7 @@ type SecretReveal = {
   setupPrompt: string;
   cliCommand: string;
   connectorName: string;
+  connectorId: string;
   provider: string;
 };
 
@@ -180,8 +177,6 @@ export default function MCPConnectorsPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [provider, setProvider] = useState<MCPProviderId>("claude_code");
-  const [alias, setAlias] = useState(defaultMCPAlias("claude_code"));
-  const [authMode, setAuthMode] = useState<MCPAuthMode>("subscription");
   const [name, setName] = useState("");
   const [maxHistory, setMaxHistory] = useState(50);
   const [permissions, setPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
@@ -202,7 +197,7 @@ export default function MCPConnectorsPanel({
 
     try {
       const chatResult = await authRequest<Chat[]>("/api/chats");
-		setChats(chatResult);
+      setChats(chatResult);
     } catch {
       setChats([]);
     } finally {
@@ -213,6 +208,22 @@ export default function MCPConnectorsPanel({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const activeSecretConnector = secret ? connectors.find((c) => c.id === secret.connectorId) : null;
+  const isSecretConnected = Boolean(activeSecretConnector?.lastUsedAt);
+
+  useEffect(() => {
+    if (!secret || isSecretConnected) return;
+    const interval = window.setInterval(async () => {
+      try {
+        const fresh = await listMCPConnectors(accessToken);
+        setConnectors(fresh);
+      } catch {
+        // silent polling
+      }
+    }, 3000);
+    return () => window.clearInterval(interval);
+  }, [accessToken, secret, isSecretConnected]);
 
   function togglePermission(key: (typeof MCP_PERMISSION_KEYS)[number]) {
     setPermissions((current) => ({ ...current, [key]: !current[key] }));
@@ -283,6 +294,7 @@ export default function MCPConnectorsPanel({
       setupPrompt: result.setupPrompt || result.claudeCommand || "",
       cliCommand: result.cliCommand || result.claudeCommand || "",
       connectorName: result.connector.name,
+      connectorId: result.connector.id,
       provider: result.connector.provider || provider
     });
     setShowCli(false);
@@ -295,11 +307,20 @@ export default function MCPConnectorsPanel({
     onError(null);
     onNotice(null);
     try {
+      const trimmedName = name.trim();
+      const generatedAlias =
+        trimmedName
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 28) || defaultMCPAlias(provider);
+
       const result = await createMCPConnector(accessToken, {
-        name: name.trim(),
+        name: trimmedName,
         provider,
-        alias: alias.trim(),
-        authMode,
+        alias: generatedAlias,
+        authMode: "subscription",
         allowedChatIds,
         permissions,
         maxHistoryMessages: maxHistory
@@ -307,14 +328,12 @@ export default function MCPConnectorsPanel({
       setConnectors((current) => [result.connector, ...current.filter((item) => item.id !== result.connector.id)]);
       applySecret(result);
       setName("");
-      setAlias(defaultMCPAlias(provider));
-      setAuthMode("subscription");
       setPermissions(defaultMCPPermissions());
       setAllowedChatIds([]);
       setMaxHistory(50);
-      onNotice("Connector created. Copy the setup details now — the token will not be shown again.");
+      onNotice("Connection created. Copy the setup details below to connect your agent.");
     } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not create connector");
+      onError(err instanceof ApiError ? String(err.message) : "Could not create connection");
     } finally {
       setIsSaving(false);
     }
@@ -335,34 +354,9 @@ export default function MCPConnectorsPanel({
     try {
       const updated = await updateMCPConnector(accessToken, connector.id, { enabled: !connector.enabled });
       setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      onNotice(updated.enabled ? "Connector enabled" : "Connector disabled");
+      // Success notice removed per user request
     } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not update connector");
-    }
-  }
-
-  async function handleUpdateAlias(connector: MCPConnector, nextAlias: string) {
-    const cleaned = nextAlias.trim().replace(/^@+/, "");
-    if (!cleaned || cleaned === connector.alias) return;
-    onError(null);
-    try {
-      const updated = await updateMCPConnector(accessToken, connector.id, { alias: cleaned });
-      setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      onNotice(`Alias updated to ${formatMCPAlias(updated.alias)}`);
-    } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not update alias");
-    }
-  }
-
-  async function handleUpdateAuthMode(connector: MCPConnector, nextMode: MCPAuthMode) {
-    if (nextMode === connector.authMode) return;
-    onError(null);
-    try {
-      const updated = await updateMCPConnector(accessToken, connector.id, { authMode: nextMode });
-      setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      onNotice(`Billing mode set to ${mcpAuthModeLabel(updated.authMode)}`);
-    } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not update billing mode");
+      onError(err instanceof ApiError ? String(err.message) : "Could not update connection");
     }
   }
 
@@ -385,10 +379,10 @@ export default function MCPConnectorsPanel({
     try {
       const updated = await revokeMCPConnector(accessToken, connector.id);
       setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
-      if (secret?.connectorName === connector.name) setSecret(null);
-      onNotice("Connector revoked");
+      if (secret?.connectorId === connector.id) setSecret(null);
+      onNotice("Connection revoked");
     } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not revoke connector");
+      onError(err instanceof ApiError ? String(err.message) : "Could not revoke connection");
     }
   }
 
@@ -401,21 +395,20 @@ export default function MCPConnectorsPanel({
         <article className="mcp-connection-mode is-active">
           <div>
             <span className="mcp-mode-kicker">Available now</span>
-            <h3>External agent access</h3>
+            <h3>Connect Stovo to agent</h3>
             <p>
-              Let an already-running Codex, Claude Code, or compatible agent read and act in the Stovo chats you
-              explicitly allow.
+              Create a connection session for Claude Code, Codex, OpenClaw, or Hermes. The agent connects to Stovo
+              over MCP to read and act in allowed chats.
             </p>
           </div>
-          <small>Manual agent task · MCP</small>
+          <small>Connection session · MCP</small>
         </article>
         <article className="mcp-connection-mode is-unavailable" aria-describedby="local-bridge-note">
           <div>
             <span className="mcp-mode-kicker">Stovo Desktop</span>
             <h3>Local agent bridge</h3>
             <p id="local-bridge-note">
-              Respond to <strong>@mentions</strong> from a paired Windows device. This requires the Stovo Desktop
-              bridge and cannot be started from the browser.
+              Direct device-level bridge for paired desktop environments. This requires the Stovo Desktop app.
             </p>
           </div>
           <button type="button" className="secondary-button" disabled aria-disabled="true">
@@ -426,8 +419,35 @@ export default function MCPConnectorsPanel({
 
       {secret && (
         <article className="invite-link-card mcp-secret-card">
-          <strong>Connect {mcpProviderLabel(secret.provider)}</strong>
-          <p>Copy these now. The bearer token cannot be retrieved again.</p>
+          <div className="mcp-secret-header">
+            <div>
+              <strong>Connect Stovo to {mcpProviderLabel(secret.provider)}</strong>
+              <p>
+                Connection session for <strong>{secret.connectorName}</strong>. Copy the details below into your agent.
+              </p>
+            </div>
+            <span className={`mcp-status-pill ${isSecretConnected ? "is-connected" : "is-waiting"}`}>
+              {isSecretConnected ? "Connected" : "Waiting for connection"}
+            </span>
+          </div>
+
+          <div className={`mcp-connection-status ${isSecretConnected ? "is-connected" : "is-waiting"}`}>
+            <span className={`mcp-status-dot ${isSecretConnected ? "is-connected" : "is-waiting"}`} />
+            <div>
+              <strong>{isSecretConnected ? "Connected successfully" : "Waiting for agent to connect…"}</strong>
+              <p>
+                {isSecretConnected
+                  ? "Stovo confirmed the active connection session. The agent has connected and is ready to work with allowed chats."
+                  : "Start or configure your agent with the prompt or command below. Once the agent connects to Stovo, this status will update automatically."}
+              </p>
+            </div>
+          </div>
+
+          <label>
+            Setup prompt
+            <textarea className="mcp-setup-prompt" readOnly rows={5} value={secret.setupPrompt} />
+          </label>
+
           <label>
             MCP URL
             <code>{secret.mcpUrl}</code>
@@ -445,11 +465,6 @@ export default function MCPConnectorsPanel({
               ))}
             </ol>
           </div>
-
-          <label>
-            Setup prompt
-            <textarea className="mcp-setup-prompt" readOnly rows={4} value={secret.setupPrompt} />
-          </label>
 
           <div className="mcp-cli-toggle">
             <button type="button" className="secondary-button" onClick={() => setShowCli((current) => !current)}>
@@ -480,10 +495,10 @@ export default function MCPConnectorsPanel({
       <form className="mcp-connector-form mcp-section-box" onSubmit={handleCreate}>
         <div className="mcp-form-heading">
           <div>
-            <h3>Connect an external agent · {providerMeta.label}</h3>
+            <h3>Create connection · {providerMeta.label}</h3>
             <p className="muted-text">
-              This authorizes an agent you start yourself. It does not make {formatMCPAlias(alias)} automatically
-              respond to a Stovo mention.
+              Connect Stovo to your agent. This creates a secure connection session that authorizes the agent to interact
+              with allowed chats in Stovo.
             </p>
           </div>
         </div>
@@ -498,14 +513,7 @@ export default function MCPConnectorsPanel({
                 role="tab"
                 aria-selected={selected}
                 className={`mcp-provider-tab${selected ? " is-selected" : ""}`}
-                onClick={() => {
-                  setProvider(item.id);
-                  setAlias((current) => {
-                    const defaults: string[] = MCP_PROVIDERS.map((entry) => defaultMCPAlias(entry.id));
-                    const cleaned = current.trim().replace(/^@+/, "");
-                    return !cleaned || defaults.includes(cleaned) ? defaultMCPAlias(item.id) : current;
-                  });
-                }}
+                onClick={() => setProvider(item.id)}
               >
                 <strong>{item.shortLabel}</strong>
                 <small>{item.description}</small>
@@ -515,7 +523,7 @@ export default function MCPConnectorsPanel({
         </div>
 
         <label>
-          Name
+          Connection name
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -524,39 +532,7 @@ export default function MCPConnectorsPanel({
             maxLength={120}
           />
         </label>
-        <label>
-          Mention alias
-          <div className="mcp-alias-field">
-            <span aria-hidden="true">@</span>
-            <input
-              value={alias.replace(/^@+/, "")}
-              onChange={(event) => setAlias(event.target.value.replace(/^@+/, ""))}
-              placeholder={defaultMCPAlias(provider)}
-              required
-              maxLength={32}
-            />
-          </div>
-          <small className="muted-text">Used as {formatMCPAlias(alias || defaultMCPAlias(provider))} in chats</small>
-        </label>
-        <fieldset className="mcp-auth-mode-fieldset">
-          <legend>Agent authentication</legend>
-          <div className="mcp-auth-mode-list">
-            {MCP_AUTH_MODES.map((mode) => (
-              <label key={mode.id} className={`mcp-auth-mode-row${authMode === mode.id ? " is-selected" : ""}`}>
-                <input
-                  type="radio"
-                  name="mcp-auth-mode"
-                  checked={authMode === mode.id}
-                  onChange={() => setAuthMode(mode.id)}
-                />
-                <span>
-                  <strong>{mode.label}</strong>
-                  <small>{mode.description}</small>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+
         <label>
           Max history messages
           <input
@@ -659,60 +635,56 @@ export default function MCPConnectorsPanel({
           </div>
         </fieldset>
         <button type="submit" disabled={isSaving || !name.trim()}>
-          {isSaving ? "Creating…" : "Create connector"}
+          {isSaving ? "Connecting…" : "Create connection"}
         </button>
       </form>
 
       <div className="mcp-connector-list mcp-section-box">
-        <h3>Existing connectors</h3>
+        <h3>Existing connections</h3>
         {isLoading && <p className="muted-text">Loading…</p>}
-        {!isLoading && connectors.length === 0 && <p className="muted-text">No connectors yet.</p>}
-        {connectors.map((connector) => (
-          <article key={connector.id} className={`mcp-connector-card${connector.revoked ? " is-revoked" : ""}`}>
-            <div className="public-access-header">
-              <div>
-                <strong>{connector.name}</strong>
-                <small>
-                  {formatMCPAlias(connector.alias)} · {mcpProviderLabel(connector.provider)} ·{" "}
-                  {mcpAuthModeLabel(connector.authMode)} ·{" "}
-                  {connector.revoked ? "Revoked" : connector.enabled ? "Enabled" : "Disabled"} ·{" "}
-                  {connector.allowedChatIds.length} chats · history {connector.maxHistoryMessages}
-                </small>
-              </div>
-            </div>
-            <p className="muted-text">
-              Permissions:{" "}
-              {MCP_PERMISSION_KEYS.filter((key) => connector.permissions[key]).join(", ") || "none"}
-            </p>
-            {!connector.revoked && (
-              <>
-                <div className="mcp-connector-config-row">
-                  <label>
-                    Alias
-                    <div className="mcp-alias-field">
-                      <span aria-hidden="true">@</span>
-                      <input
-                        defaultValue={connector.alias.replace(/^@+/, "")}
-                        key={`${connector.id}-${connector.alias}`}
-                        maxLength={32}
-                        onBlur={(event) => void handleUpdateAlias(connector, event.target.value)}
-                      />
-                    </div>
-                  </label>
-                  <label>
-                    Billing
-                    <select
-                      value={connector.authMode === "api" ? "api" : "subscription"}
-                      onChange={(event) => void handleUpdateAuthMode(connector, event.target.value as MCPAuthMode)}
+        {!isLoading && connectors.length === 0 && <p className="muted-text">No connections yet.</p>}
+        {connectors.map((connector) => {
+          const isConnected = Boolean(connector.lastUsedAt);
+          return (
+            <article key={connector.id} className={`mcp-connector-card${connector.revoked ? " is-revoked" : ""}`}>
+              <div className="public-access-header">
+                <div>
+                  <div className="mcp-card-title-row">
+                    <strong>{connector.name}</strong>
+                    <span
+                      className={`mcp-status-pill ${
+                        connector.revoked
+                          ? "is-revoked"
+                          : !connector.enabled
+                          ? "is-disabled"
+                          : isConnected
+                          ? "is-connected"
+                          : "is-waiting"
+                      }`}
                     >
-                      {MCP_AUTH_MODES.map((mode) => (
-                        <option key={mode.id} value={mode.id}>
-                          {mode.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                      {connector.revoked
+                        ? "Revoked"
+                        : !connector.enabled
+                        ? "Disabled"
+                        : isConnected
+                        ? "Connected"
+                        : "Waiting for connection"}
+                    </span>
+                  </div>
+                  <small>
+                    {mcpProviderLabel(connector.provider)} · {connector.allowedChatIds.length}{" "}
+                    {connector.allowedChatIds.length === 1 ? "chat" : "chats"} allowed · history limit{" "}
+                    {connector.maxHistoryMessages}
+                    {connector.lastUsedAt &&
+                      ` · active ${new Date(connector.lastUsedAt).toLocaleDateString()}`}
+                  </small>
                 </div>
+              </div>
+              <p className="muted-text">
+                Permissions:{" "}
+                {MCP_PERMISSION_KEYS.filter((key) => connector.permissions[key]).join(", ") || "none"}
+              </p>
+              {!connector.revoked && (
                 <div className="public-access-actions">
                   <button type="button" onClick={() => void handleToggleEnabled(connector)}>
                     {connector.enabled ? "Disable" : "Enable"}
@@ -724,10 +696,10 @@ export default function MCPConnectorsPanel({
                     Revoke
                   </button>
                 </div>
-              </>
-            )}
-          </article>
-        ))}
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

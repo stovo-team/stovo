@@ -147,30 +147,30 @@ export function mcpUiSetupSteps(provider: string | undefined | null): string[] {
     case "codex":
       return [
         "Open ChatGPT / Codex → Settings → Connectors / MCP",
-        "Choose Add connector or Custom MCP server",
-        "Paste the MCP URL and Bearer token",
-        "Save and enable the Stovo connector for this workspace"
+        "Add a custom HTTP MCP server",
+        "Paste the MCP URL and Authorization Bearer token",
+        "Save and connect. The agent will verify available tools and chats"
       ];
     case "openclaw":
       return [
         "Open OpenClaw → Connectors / MCP",
         "Add a custom HTTP MCP server",
         "Paste the MCP URL and Authorization Bearer token",
-        "Save and enable the connector"
+        "Save and connect to establish the connection session"
       ];
     case "hermes":
       return [
         "Open Hermes → Connectors / MCP",
         "Add a custom HTTP server",
         "Paste the MCP URL and Authorization Bearer token",
-        "Save and turn the connector on"
+        "Save and turn it on to establish the connection"
       ];
     default:
       return [
         "Open Claude Code → Settings → MCP",
-        "Click Add connector / Custom MCP",
-        "Paste the MCP URL and Bearer token",
-        "Save and enable it for this project"
+        "Add a custom HTTP MCP connector",
+        "Paste the MCP URL and Authorization Bearer token",
+        "Save and connect. The agent will verify the connection session"
       ];
   }
 }
@@ -184,8 +184,8 @@ export function createMCPConnector(
   body: {
     name: string;
     provider: MCPProviderId;
-    alias: string;
-    authMode: MCPAuthMode;
+    alias?: string;
+    authMode?: MCPAuthMode;
     allowedChatIds: string[];
     permissions: MCPPermissions;
     maxHistoryMessages: number;
@@ -194,7 +194,11 @@ export function createMCPConnector(
   return apiRequest<MCPConnectorCreateResponse>("/api/admin/mcp-connectors", {
     accessToken,
     method: "POST",
-    body
+    body: {
+      ...body,
+      alias: body.alias || defaultMCPAlias(body.provider),
+      authMode: body.authMode || "subscription"
+    }
   });
 }
 

@@ -47,4 +47,19 @@ describe("SettingsPage redesign", () => {
     expect(source).toContain("resetAllShortcutBindings");
     expect(styles).toContain(".shortcuts-reset-all-btn");
   });
+
+  it("renders auto-download dropdown with proper alignment and compact styling", () => {
+    expect(appearanceControls).toContain('className="appearance-toggle-row media-download-limit"');
+    expect(styles).toContain(".media-download-limit {");
+    expect(styles).toContain("justify-content: space-between");
+    expect(styles).not.toContain("minmax(150px, 0.9fr)");
+    expect(styles).toContain(".media-download-limit select {");
+    expect(styles).toContain("appearance: none;");
+  });
+
+  it("ensures quiet hours checkbox is square and not bloated by text input styles", () => {
+    expect(styles).toContain('.profile-detail-form input:not([type="checkbox"]):not([type="radio"])');
+    expect(styles).toContain('.profile-detail-form input[type="checkbox"]');
+    expect(styles).toContain("flex: 0 0 20px;");
+  });
 });
