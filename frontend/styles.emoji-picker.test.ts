@@ -258,6 +258,12 @@ describe("desktop chat refinements", () => {
     expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("opacity: 1;");
   });
 
+  it("pins Variant A navigation without letting page content enter its rail", () => {
+    expect(styles).toContain(".app-frame > :not(.app-nav) {");
+    expect(styles).toContain("grid-column: 2;");
+    expect(styles).toContain(".app-frame > .app-nav.app-nav--active-variant-a {");
+  });
+
   it("shows a circular hover target behind inactive sidebar navigation icons", () => {
     expect(styles).toContain(".app-frame > .app-nav a:not(.active):hover {");
   });
