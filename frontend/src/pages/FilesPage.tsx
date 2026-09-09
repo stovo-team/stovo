@@ -639,8 +639,6 @@ export default function FilesPage() {
 
           <div className="storage-content-area">
             {!collectionPicker && filter !== "canvases" && filter !== "checklists" && <StorageCollections accessToken={accessToken} files={files} filter={filter} currentUserId={currentUser?.id} onFilesChanged={() => void load(true)} onSelectFromStorage={(request) => { setFilter("all"); setSourceChatId(null); setSearch(""); setCollectionPickedIds([]); setCollectionPicker(request); }} />}
-            <StorageCanvases accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />
-            <StorageChecklists accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />
             {filter !== "canvases" && filter !== "checklists" && (![".canvas", "*.canvas", "type:canvas", "ext:canvas", ".checklist", "*.checklist", "type:checklist", "ext:checklist"].includes(search.trim().toLowerCase()) || collectionPickerFiles.length > 0) && <>
             <div className="storage-files-heading">
               <div><h2>{collectionPicker ? `Add to ${collectionPicker.collectionTitle}` : "Files"}</h2>{collectionPicker && <p className="storage-picker-hint">Select files from Storage. Files already in this folder are locked.</p>}</div>
@@ -675,6 +673,8 @@ export default function FilesPage() {
               </div>
             )}
             </>}
+            {!collectionPicker && <StorageCanvases accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />}
+            {!collectionPicker && <StorageChecklists accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />}
           </div>
         </div>
 
@@ -783,7 +783,7 @@ export default function FilesPage() {
                       autoplay={false}
                     />
                   ) : selectedDocumentKind !== "unsupported" && accessToken ? (
-                    <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} hideActions />
+                    <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} />
                   ) : selectedFilePreviewUrl ? (
                     <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
                   ) : (

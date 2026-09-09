@@ -50,20 +50,29 @@ function parseCanvasDocument(updates?: CanvasUpdate[], canvasTitle = ""): {
       const kind = record.get("kind");
       if (kind === "markdown") {
         const text = (record.get("content") as Y.Text)?.toString() || "";
-        const lines = text
+        const allLines = text
           .split("\n")
           .map((l) => l.trim())
-          .filter((l) => {
-            if (!l) return false;
-            const stripped = l.replace(/^#{1,6}\s*/, "").trim().toLowerCase();
-            const lowerTitle = canvasTitle.trim().toLowerCase();
-            if (stripped === lowerTitle || stripped === "untitled canvas") {
-              return false;
+          .filter(Boolean);
+
+        if (allLines.length > 0 && !markdown) {
+          const lowerTitle = canvasTitle.trim().toLowerCase();
+          const firstLineStripped = allLines[0].replace(/^#{1,6}\s*/, "").trim().toLowerCase();
+          const firstLineIsDefault = firstLineStripped === "untitled canvas";
+          const firstLineMatchesTitle = lowerTitle && firstLineStripped === lowerTitle;
+
+          let usableLines: string[] = allLines;
+          if (allLines.length === 1) {
+            if (firstLineIsDefault) {
+              usableLines = [];
             }
-            return true;
-          });
-        if (lines.length > 0 && !markdown) {
-          markdown = lines.join("\n");
+          } else if (firstLineIsDefault || firstLineMatchesTitle) {
+            usableLines = allLines.slice(1);
+          }
+
+          if (usableLines.length > 0) {
+            markdown = usableLines.join("\n");
+          }
         }
       }
       if (kind === "whiteboard" && whiteboardElements.length === 0) {
@@ -130,6 +139,53 @@ function CanvasTilePreview({
 }) {
   const { markdown, whiteboardElements } = parseCanvasDocument(updates, canvas.title);
   const activeElements = whiteboardElements.filter((el) => !el.isDeleted);
+
+  // Canvas is a markdown document first: prioritize document notes if content exists
+  if (markdown) {
+    const rawLines = markdown.split("\n").map((l) => l.trim()).filter(Boolean);
+    const displayLines = rawLines.slice(0, 3);
+
+    if (displayLines.length > 0) {
+      return (
+        <div className="storage-tile-preview storage-canvas-preview">
+          <div className="canvas-preview-header">
+            <div className="canvas-preview-badge canvas-preview-notes-badge">
+              <FileText size={11} />
+              <b>CANVAS</b>
+            </div>
+          </div>
+          <div className="canvas-preview-notes">
+            <div className="canvas-preview-notes-lines">
+              {displayLines.map((line, idx) => {
+                const isHeading = /^#{1,6}\s+/.test(line);
+                const isBullet = /^[-*+]\s+/.test(line);
+                const cleanText = line.replace(/^(#{1,6}|[-*+])\s+/, "");
+                if (isHeading) {
+                  return (
+                    <p key={idx} className="canvas-notes-h">
+                      {cleanText}
+                    </p>
+                  );
+                }
+                if (isBullet) {
+                  return (
+                    <p key={idx} className="canvas-notes-b">
+                      {cleanText}
+                    </p>
+                  );
+                }
+                return (
+                  <p key={idx} className="canvas-notes-p">
+                    {cleanText}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
 
   if (activeElements.length > 0) {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -262,50 +318,6 @@ function CanvasTilePreview({
         </div>
       </div>
     );
-  }
-
-  if (markdown) {
-    const rawLines = markdown.split("\n").map((l) => l.trim()).filter(Boolean);
-    const displayLines = rawLines.slice(0, 3);
-
-    if (displayLines.length > 0) {
-      return (
-        <div className="storage-tile-preview storage-canvas-preview">
-          <div className="canvas-preview-notes">
-            <div className="canvas-preview-notes-badge">
-              <FileText size={11} />
-              <b>NOTES</b>
-            </div>
-            <div className="canvas-preview-notes-lines">
-              {displayLines.map((line, idx) => {
-                const isHeading = /^#{1,6}\s+/.test(line);
-                const isBullet = /^[-*+]\s+/.test(line);
-                const cleanText = line.replace(/^(#{1,6}|[-*+])\s+/, "");
-                if (isHeading) {
-                  return (
-                    <p key={idx} className="canvas-notes-h">
-                      {cleanText}
-                    </p>
-                  );
-                }
-                if (isBullet) {
-                  return (
-                    <p key={idx} className="canvas-notes-b">
-                      {cleanText}
-                    </p>
-                  );
-                }
-                return (
-                  <p key={idx} className="canvas-notes-p">
-                    {cleanText}
-                  </p>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      );
-    }
   }
 
   return (

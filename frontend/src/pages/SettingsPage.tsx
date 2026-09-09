@@ -72,6 +72,7 @@ import { FamilySettings } from "./settings/FamilySettings";
 import { SettingsAvatar } from "./settings/SettingsAvatar";
 import { KeyboardShortcutsSettings } from "./settings/KeyboardShortcutsSettings";
 import { SettingsDashboard, type SettingsDashboardGroup } from "./settings/SettingsDashboard";
+import { resetAllShortcutBindings } from "../shortcuts/shortcutsStore";
 
 function initials(name: string | undefined) {
   return (name ?? "Stovo")
@@ -499,6 +500,20 @@ export default function SettingsPage() {
                       ? strings.settings.family
                       : activeSettingsItem}
                   </h2>
+                  {activeSettingsItem === "Shortcuts" && (
+                    <button
+                      type="button"
+                      className="secondary-button subtle-button shortcuts-reset-all-btn"
+                      onClick={() => {
+                        if (window.confirm(strings.shortcuts.resetConfirm)) {
+                          resetAllShortcutBindings();
+                        }
+                      }}
+                    >
+                      <RotateCcw size={15} aria-hidden="true" />
+                      <span>{strings.shortcuts.resetAll}</span>
+                    </button>
+                  )}
                 </div>
 
                 {activeSettingsItem === "Profile" ? (
