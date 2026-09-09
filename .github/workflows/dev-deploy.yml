@@ -1,0 +1,22 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: true
+
+jobs:
+  deploy-dev:
+    runs-on: [self-hosted, tests]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy develop to the dev stack
+        env:
+          DEPLOY_HOST: 10.29.106.221
+          DEV_PATH: /opt/stovo/dev
+          DEV_URL: http://10.29.106.221:9080
+        run: bash scripts/deploy-environment.sh dev

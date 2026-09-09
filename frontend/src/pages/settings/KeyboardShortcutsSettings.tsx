@@ -38,7 +38,6 @@ import type {
 export interface KeyboardShortcutsSettingsProps {
   showResetAll?: boolean;
 }
-
 export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShortcutsSettingsProps = {}) {
   const strings = useStrings();
   const [bindings, setBindings] = useState<ShortcutBindings>(() => loadShortcutBindings());
@@ -224,7 +223,6 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
       })
     }))
     .filter((group) => group.definitions.length > 0);
-
   return (
     <div className="shortcuts-settings-surface">
       {showResetAll && (
@@ -240,6 +238,8 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
           </button>
         </div>
       )}
+
+      {notice && <div className="shortcuts-settings-notice" role="status">{notice}</div>}
 
       <div className="shortcuts-search-container">
         <div className="shortcuts-search-bar">

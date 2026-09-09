@@ -41,9 +41,19 @@ if ($workflow -notmatch 'active_file_count=' -or
 }
 
 if ($workflow -notmatch 'existing_container_id=' -or
-    $workflow -notmatch 'name=\^/stovo-backend-\$\{server_slug\}\$' -or
+    $workflow -notmatch 'docker inspect --format' -or
     $workflow -notmatch 'docker rm -f "\$existing_container_id"') {
     throw "Deployment must resolve the current tenant container by name before replacing it."
+}
+
+if ($workflow -notmatch 'docker_with_space_recovery\(\)' -or
+    $workflow -notmatch 'no space left on device' -or
+    $workflow -notmatch 'docker builder prune -af' -or
+    $workflow -notmatch 'docker image prune -af' -or
+    $workflow -notmatch 'docker container prune -f' -or
+    $workflow -notmatch 'docker network prune -f' -or
+    $workflow -match 'docker volume prune') {
+    throw "Deployment must safely reclaim unused Docker artifacts and retry after an out-of-space failure."
 }
 
 if ($workflow -notmatch 'migrations/master') {

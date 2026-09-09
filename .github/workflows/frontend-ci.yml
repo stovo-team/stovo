@@ -32,7 +32,7 @@ jobs:
         working-directory: frontend
         run: npm ci
       - name: SOLID architecture boundaries
-        run: bash scripts/check-solid-boundaries.sh
+        run: bash scripts/check-solid-boundaries.sh frontend
       - name: Test
         working-directory: frontend
         run: npm test

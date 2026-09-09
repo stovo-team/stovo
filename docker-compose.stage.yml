@@ -1,5 +1,5 @@
-# Staging Compose Environment for Stovo (Tracks develop branch)
-# Operates in isolated container/volume namespaces on separate ports (9000/9080).
+# Staging Compose Environment for Stovo (tracks the stage branch).
+# LXD proxy-2 exposes the Caddy gateway as http://10.29.106.221:9081.
 
 networks:
   stovo-stage-net:
@@ -116,9 +116,9 @@ services:
       - stovo-stage-net
     environment:
       APP_ENV: staging
-      APP_URL: http://10.29.106.213:9000
-      API_URL: http://10.29.106.213:9000
-      FRONTEND_ORIGIN: http://10.29.106.213:9080
+      APP_URL: ${APP_URL:-http://10.29.106.221:9081}
+      API_URL: ${API_URL:-http://10.29.106.221:9081}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://10.29.106.221:9081}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-stage_user}
@@ -159,8 +159,6 @@ services:
     restart: unless-stopped
     networks:
       - stovo-stage-net
-    ports:
-      - "9080:8080"
     depends_on:
       - backend
 
@@ -174,12 +172,13 @@ services:
       - frontend
       - backend
     ports:
-      - "9000:8000"
+      # proxy-2 exposes this as http://10.29.106.221:9081.
+      - "127.0.0.1:8081:8000"
     environment:
-      APP_DOMAIN: 10.29.106.213
+      APP_DOMAIN: 10.29.106.221
       ACTIVE_BACKEND: backend
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile.internal:/etc/caddy/Caddyfile:ro
 
 volumes:
   postgres-stage-data:

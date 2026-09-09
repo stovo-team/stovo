@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted, tests]
     environment: production
 
     steps:
@@ -56,6 +56,33 @@ jobs:
 
             get_env() { key="$1"; default="${2:-}"; val="$(sed -n "s/^${key}=//p" .env 2>/dev/null | tail -n 1 | tr -d '\r')"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"; if [ -n "$val" ]; then printf '%s' "$val"; else printf '%s' "$default"; fi; }
 
+            # Docker can leave build layers, dangling images, stopped containers,
+            # and unused networks behind.  Recover only when Docker explicitly
+            # reports an out-of-space failure, then retry the failed operation.
+            # Volumes are deliberately never pruned: they hold PostgreSQL, Redis,
+            # MinIO, and Caddy state.
+            docker_with_space_recovery() {
+              deploy_log="$(mktemp)"
+              if "$@" >"$deploy_log" 2>&1; then
+                cat "$deploy_log"
+                rm -f "$deploy_log"
+                return 0
+              fi
+              deploy_status=$?
+              cat "$deploy_log" >&2
+              if ! grep -Eqi 'no space left on device|disk quota exceeded|write /var/lib/docker/.+no space' "$deploy_log"; then
+                rm -f "$deploy_log"
+                return "$deploy_status"
+              fi
+              echo "Docker ran out of disk space; pruning unused Docker cache and retrying once..." >&2
+              sudo docker builder prune -af
+              sudo docker image prune -af
+              sudo docker container prune -f
+              sudo docker network prune -f
+              rm -f "$deploy_log"
+              "$@"
+            }
+
             pg_user="$(get_env POSTGRES_USER family_user)"
             pg_pass="$(get_env POSTGRES_PASSWORD family_password)"
             pg_db="$(get_env POSTGRES_DB family_messenger)"
@@ -78,12 +105,12 @@ jobs:
             # manifest before building or touching any tenant database; never
             # regenerate atlas.sum on this host, because that would mask a
             # rewritten historical migration.
-            sudo docker run --rm -v "$PWD/backend/migrations:/migrations:ro" arigaio/atlas:1.3.2 \
+            docker_with_space_recovery sudo docker run --rm -v "$PWD/backend/migrations:/migrations:ro" arigaio/atlas:1.3.2 \
               migrate validate --dir file:///migrations
-            sudo docker build -t stovo-backend ./backend
+            docker_with_space_recovery sudo docker build -t stovo-backend ./backend
 
             # Build and deploy frontend, orchestrator, and caddy gateway
-            sudo docker compose -f docker-compose.master.yml up -d --build frontend orchestrator caddy coturn
+            docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d --build frontend orchestrator caddy coturn
 
             # A running container alone does not prove that Caddy opened its
             # public TLS listener. Check it locally with the production host.
@@ -114,7 +141,7 @@ jobs:
                         # records each revision in the tenant database, so a successful
                         # rollout means this exact schema is present before the new
                         # backend is allowed to start.
-                        sudo docker run --rm \
+                        docker_with_space_recovery sudo docker run --rm \
                           --network stovo_default \
                           -e "DATABASE_URL=${tenant_database_url}" \
                           stovo-backend \
@@ -148,9 +175,12 @@ jobs:
                         # Resolve this by name at the point of replacement. The
                         # initial list can be stale if Docker restarted a tenant
                         # while the migration and storage checks were running.
-                        existing_container_id="$(sudo docker ps -aq --filter "name=^/stovo-backend-${server_slug}$")"
+                        # Inspecting by the exact name avoids a stale ID from the
+                        # earlier label scan. A tenant can be recreated by the
+                        # orchestrator while migrations and storage checks run.
+                        existing_container_id="$(sudo docker inspect --format '{{.Id}}' "stovo-backend-${server_slug}" 2>/dev/null || true)"
                         if [ -n "$existing_container_id" ]; then
-                          sudo docker rm -f "$existing_container_id"
+                          sudo docker rm -f "$existing_container_id" || true
                         fi
                         master_secret="$(get_env MASTER_SYSTEM_SECRET super_secret_master_key_123)"
                         minio_user="$(get_env MINIO_ROOT_USER stovo_minio_root)"
@@ -172,7 +202,7 @@ jobs:
                         livekit_api_secret="$(get_env LIVEKIT_API_SECRET "")"
                         app_url="$(get_env APP_URL "https://${app_domain}")"
                         server_url="${app_url%/}/s/${server_slug}"
-                        sudo docker run -d \
+                        if ! docker_with_space_recovery sudo docker run -d \
                           --name "stovo-backend-${server_slug}" \
                           --network stovo_default \
                           --restart unless-stopped \
@@ -204,9 +234,84 @@ jobs:
                           -e "LIVEKIT_API_KEY=${livekit_api_key}" \
                           -e "LIVEKIT_API_SECRET=${livekit_api_secret}" \
                           --label "stovo-server=${server_slug}" \
-                          stovo-backend
+                          stovo-backend; then
+                          # A concurrent reconciliation can create the named
+                          # container between inspect/remove and docker run.
+                          # Remove that exact replacement and retry once.
+                          concurrent_container_id="$(sudo docker inspect --format '{{.Id}}' "stovo-backend-${server_slug}" 2>/dev/null || true)"
+                          if [ -z "$concurrent_container_id" ]; then
+                            echo "Failed to start tenant backend $server_slug." >&2
+                            exit 1
+                          fi
+                          echo "Tenant container changed during redeploy; replacing it once more."
+                          sudo docker rm -f "$concurrent_container_id" || true
+                          docker_with_space_recovery sudo docker run -d \
+                            --name "stovo-backend-${server_slug}" \
+                            --network stovo_default \
+                            --restart unless-stopped \
+                            -e "SERVER_ID=${server_slug}" \
+                            -e "APP_URL=${server_url}" \
+                            -e "API_URL=${server_url}" \
+                            -e "DATABASE_URL=postgres://${pg_user}:${pg_pass}@postgres:5432/stovo_db_${server_slug}?sslmode=disable" \
+                            -e "REDIS_URL=redis://redis:6379/0" \
+                            -e "STORAGE_PROVIDER=minio" \
+                            -e "MINIO_ENDPOINT=minio:9000" \
+                            -e "MINIO_ACCESS_KEY=${minio_user}" \
+                            -e "MINIO_SECRET_KEY=${minio_pass}" \
+                            -e "MINIO_FILES_BUCKET=stovo-${server_slug}" \
+                            -e "JWT_SECRET=${master_secret}" \
+                            -e "MASTER_SYSTEM_SECRET=${master_secret}" \
+                            -e "TURN_ENABLED=${turn_enabled}" \
+                            -e "TURN_HOST=${turn_host}" \
+                            -e "TURN_PORT=${turn_port}" \
+                            -e "TURN_REALM=${turn_realm}" \
+                            -e "TURN_USERNAME=${turn_username}" \
+                            -e "TURN_PASSWORD=${turn_password}" \
+                            -e "GROQ_API_KEY=${groq_api_key}" \
+                            -e "GROQ_BASE_URL=${groq_base_url}" \
+                            -e "GROQ_STT_MODEL=${groq_stt_model}" \
+                            -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
+                            -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                            -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
+                            -e "LIVEKIT_URL=${livekit_url}" \
+                            -e "LIVEKIT_API_KEY=${livekit_api_key}" \
+                            -e "LIVEKIT_API_SECRET=${livekit_api_secret}" \
+                            --label "stovo-server=${server_slug}" \
+                            stovo-backend
+                        fi
                     fi
                 done
             fi
 
             echo "Multi-server deployment finished successfully!"
+
+  production-smoke:
+    name: Production smoke tests
+    needs: deploy
+    runs-on: [self-hosted, e2e]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Install Playwright Chromium
+        working-directory: e2e
+        run: npx playwright install chromium
+      - name: Run production-safe smoke tests
+        working-directory: e2e
+        env:
+          E2E_BASE_URL: https://stovo-cloud.stovo.ru
+          CI: 'true'
+        run: npm run test:production
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-smoke-report
+          path: e2e/playwright-report/
+          retention-days: 14

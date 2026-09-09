@@ -1,10 +1,8 @@
-name: Stage Deploy & Pre-Merge E2E Gate
+name: Deploy Stage & E2E
 
 on:
   push:
-    branches: [ develop ]
-  pull_request:
-    branches: [ develop ]
+    branches: [ stage ]
   workflow_dispatch:
     inputs:
       stage_url:
@@ -13,14 +11,29 @@ on:
         default: 'http://10.29.106.221:9081'
 
 concurrency:
-  group: stage-e2e-gate-${{ github.ref }}
+  group: stage-e2e-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  stage-e2e:
-    name: Deploy Stage & Run E2E Pre-Merge Gate
-    runs-on: self-hosted
+  deploy-stage:
+    name: Deploy stage stack
+    runs-on: [self-hosted, tests]
 
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Stage Compose Environment
+        env:
+          DEPLOY_HOST: 10.29.106.221
+          STAGE_PATH: /opt/stovo/stage
+          STAGE_URL: ${{ inputs.stage_url || 'http://10.29.106.221:9081' }}
+        run: bash scripts/deploy-stage.sh
+
+  stage-e2e:
+    name: Run E2E against stage
+    needs: deploy-stage
+    runs-on: [self-hosted, e2e]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -29,27 +42,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Deploy Stage Compose Environment
-        env:
-          STAGE_HOST: '10.29.106.221'
-          STAGE_URL: ${{ inputs.stage_url || env.STAGE_URL || 'http://10.29.106.221:9081' }}
-        run: bash scripts/deploy-stage.sh
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
 
       - name: Install E2E Dependencies
         working-directory: ./e2e
-        run: npm ci || npm install
+        run: npm ci
 
-      - name: Install Playwright Browsers & LXC Dependencies
+      - name: Install Playwright Chromium
         working-directory: ./e2e
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run E2E Playwright Suite against Stage
         working-directory: ./e2e
         env:
-          E2E_BASE_URL: ${{ inputs.stage_url || env.STAGE_URL || 'http://10.29.106.221:9081' }}
+          E2E_BASE_URL: ${{ inputs.stage_url || 'http://10.29.106.221:9081' }}
           CI: 'true'
-        run: bash lxc-runner.sh "$E2E_BASE_URL"
+        run: npm run test:ci
 
       - name: Upload Playwright Test Results
         if: always()

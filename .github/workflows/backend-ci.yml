@@ -90,7 +90,7 @@ jobs:
           if-no-files-found: error
       - name: SOLID architecture boundaries
         working-directory: ..
-        run: bash scripts/check-solid-boundaries.sh
+        run: bash scripts/check-solid-boundaries.sh backend
       - name: Atlas migrate validate
         if: hashFiles('backend/migrations/atlas.sum') != ''
         run: |

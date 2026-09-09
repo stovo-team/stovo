@@ -3,11 +3,20 @@ set -euo pipefail
 
 readonly limit=400
 readonly baseline_file=".architecture/size-baseline.tsv"
+readonly scope="${1:-all}"
 
 fail() {
   printf 'SOLID architecture check failed: %s\n' "$*" >&2
   exit 1
 }
+
+case "$scope" in
+  all|backend|frontend) ;;
+  *)
+    printf 'usage: %s [all|backend|frontend]\n' "$0" >&2
+    exit 2
+    ;;
+esac
 
 declare -A baseline_map
 if [[ -f "$baseline_file" ]]; then
@@ -58,18 +67,22 @@ get_frontend_files() {
     ! -name '*.test.*' -print | sort
 }
 
-check_sizes get_backend_files
-check_sizes get_frontend_files
+if [[ "$scope" == "all" || "$scope" == "backend" ]]; then
+  check_sizes get_backend_files
+fi
+if [[ "$scope" == "all" || "$scope" == "frontend" ]]; then
+  check_sizes get_frontend_files
+fi
 
 # The domain and use-case layers are portable policy. Concrete adapters belong
 # in repository/infrastructure packages and are connected by bootstrap.
-if grep -REn --include='*.go' --exclude='*_test.go' \
+if [[ "$scope" != "frontend" ]] && grep -REn --include='*.go' --exclude='*_test.go' \
   'stovo-messenger/backend/internal/(app|bootstrap|repository|ports|storage|broker|cache|logging|tunnel)' \
   backend/internal/domain; then
   fail 'internal/domain imports an outer-layer package'
 fi
 
-if grep -REn --include='*.go' --exclude='*_test.go' \
+if [[ "$scope" != "frontend" ]] && grep -REn --include='*.go' --exclude='*_test.go' \
   'stovo-messenger/backend/internal/(app|bootstrap|repository|ports|storage|broker|cache|logging|tunnel)|/(ent|redis|socketio)' \
   backend/internal/features; then
   fail 'a feature package imports an adapter or transport package'
@@ -77,7 +90,7 @@ fi
 
 # Pages compose feature modules; feature modules may not depend on page-level
 # routing or UI ownership.
-if grep -REn --include='*.ts' --include='*.tsx' \
+if [[ "$scope" != "backend" ]] && grep -REn --include='*.ts' --include='*.tsx' \
   "from ['\"][^'\"]*pages/|from ['\"][^'\"]*../pages" frontend/src/features; then
   fail 'a frontend feature imports a page module'
 fi

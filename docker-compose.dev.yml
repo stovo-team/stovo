@@ -9,8 +9,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-dev_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-stovo_dev_db}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-dev-data:/var/lib/postgresql/data
     healthcheck:
@@ -22,8 +20,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: stovo-dev-redis
-    ports:
-      - "6379:6379"
     volumes:
       - redis-dev-data:/data
     healthcheck:
@@ -64,8 +60,6 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-stovo_dev_root}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-stovo_dev_pass}
       MINIO_BROWSER: "on"
-    ports:
-      - "9000:9000"
     volumes:
       - minio-dev-data:/data
     healthcheck:
@@ -91,9 +85,9 @@ services:
     restart: unless-stopped
     environment:
       APP_ENV: development
-      APP_URL: http://localhost:8000
-      API_URL: http://localhost:8000
-      FRONTEND_ORIGIN: http://localhost:8080
+      APP_URL: ${APP_URL:-http://10.29.106.221:9080}
+      API_URL: ${API_URL:-http://10.29.106.221:9080}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://10.29.106.221:9080}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-dev_user}
@@ -138,8 +132,6 @@ services:
     restart: unless-stopped
     environment:
       VITE_DISABLE_HMR: "false"
-    ports:
-      - "8080:8080"
     volumes:
       - ./frontend/src:/app/src:ro
     depends_on:
@@ -153,12 +145,13 @@ services:
       - frontend
       - backend
     ports:
-      - "8000:8000"
+      # proxy-1 exposes this as http://10.29.106.221:9080.
+      - "127.0.0.1:8080:8000"
     environment:
-      APP_DOMAIN: localhost
+      APP_DOMAIN: 10.29.106.221
       ACTIVE_BACKEND: backend
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile.internal:/etc/caddy/Caddyfile:ro
 
 volumes:
   postgres-dev-data:
