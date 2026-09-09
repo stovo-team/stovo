@@ -397,6 +397,33 @@ export default function MCPConnectorsPanel({
 
   return (
     <section className="mcp-connectors-panel">
+      <section className="mcp-connection-modes" aria-label="Agent connection modes">
+        <article className="mcp-connection-mode is-active">
+          <div>
+            <span className="mcp-mode-kicker">Available now</span>
+            <h3>External agent access</h3>
+            <p>
+              Let an already-running Codex, Claude Code, or compatible agent read and act in the Stovo chats you
+              explicitly allow.
+            </p>
+          </div>
+          <small>Manual agent task · MCP</small>
+        </article>
+        <article className="mcp-connection-mode is-unavailable" aria-describedby="local-bridge-note">
+          <div>
+            <span className="mcp-mode-kicker">Stovo Desktop</span>
+            <h3>Local agent bridge</h3>
+            <p id="local-bridge-note">
+              Respond to <strong>@mentions</strong> from a paired Windows device. This requires the Stovo Desktop
+              bridge and cannot be started from the browser.
+            </p>
+          </div>
+          <button type="button" className="secondary-button" disabled aria-disabled="true">
+            Available in Stovo Desktop
+          </button>
+        </article>
+      </section>
+
       {secret && (
         <article className="invite-link-card mcp-secret-card">
           <strong>Connect {mcpProviderLabel(secret.provider)}</strong>
@@ -451,7 +478,15 @@ export default function MCPConnectorsPanel({
       )}
 
       <form className="mcp-connector-form mcp-section-box" onSubmit={handleCreate}>
-        <h3>Create connector · {providerMeta.label}</h3>
+        <div className="mcp-form-heading">
+          <div>
+            <h3>Connect an external agent · {providerMeta.label}</h3>
+            <p className="muted-text">
+              This authorizes an agent you start yourself. It does not make {formatMCPAlias(alias)} automatically
+              respond to a Stovo mention.
+            </p>
+          </div>
+        </div>
 
         <div className="mcp-provider-tabs" role="tablist" aria-label="MCP provider">
           {MCP_PROVIDERS.map((item) => {
@@ -504,7 +539,7 @@ export default function MCPConnectorsPanel({
           <small className="muted-text">Used as {formatMCPAlias(alias || defaultMCPAlias(provider))} in chats</small>
         </label>
         <fieldset className="mcp-auth-mode-fieldset">
-          <legend>Agent billing</legend>
+          <legend>Agent authentication</legend>
           <div className="mcp-auth-mode-list">
             {MCP_AUTH_MODES.map((mode) => (
               <label key={mode.id} className={`mcp-auth-mode-row${authMode === mode.id ? " is-selected" : ""}`}>

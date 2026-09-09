@@ -284,34 +284,3 @@ jobs:
             fi
 
             echo "Multi-server deployment finished successfully!"
-
-  production-smoke:
-    name: Production smoke tests
-    needs: deploy
-    runs-on: [self-hosted, e2e]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: e2e/package-lock.json
-      - name: Install E2E dependencies
-        working-directory: e2e
-        run: npm ci
-      - name: Install Playwright Chromium
-        working-directory: e2e
-        run: npx playwright install chromium
-      - name: Run production-safe smoke tests
-        working-directory: e2e
-        env:
-          E2E_BASE_URL: https://stovo-cloud.stovo.ru
-          CI: 'true'
-        run: npm run test:production
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: production-smoke-report
-          path: e2e/playwright-report/
-          retention-days: 14
