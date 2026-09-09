@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   AlertCircle,
-  Check,
   Compass,
   Headphones,
   Keyboard,
@@ -265,13 +264,6 @@ export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShor
           )}
         </div>
       </div>
-
-      {notice && (
-        <div className="shortcuts-settings-notice success-text" role="status">
-          <Check size={16} aria-hidden="true" />
-          <span>{notice}</span>
-        </div>
-      )}
 
       {browserConflict && (
         <div className="shortcuts-conflict-card" role="alert">

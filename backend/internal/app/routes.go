@@ -40,10 +40,11 @@ func newRouter(s *Server) http.Handler {
 		},
 	})
 	return httptransport.NewRouter(httptransport.RouteComposition{
-		AppURL: s.cfg.AppURL,
-		Logger: s.logger,
-		Socket: s.sockets.HttpHandler(),
-		Calls:  s.callRoutes(),
+		AppURL:        s.cfg.AppURL,
+		Logger:        s.logger,
+		Socket:        s.sockets.HttpHandler(),
+		Calls:         s.callRoutes(),
+		GuestMeetings: s.guestMeetingRoutes(),
 		Core: httptransport.CoreRoutes{
 			AssetLinks:  http.HandlerFunc(core.AssetLinks),
 			Health:      http.HandlerFunc(core.Health),

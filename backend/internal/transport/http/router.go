@@ -15,6 +15,7 @@ type RouteComposition struct {
 	Logger           RequestLogger
 	Socket           stdhttp.Handler
 	Calls            CallRoutes
+	GuestMeetings    stdhttp.Handler
 	Core             CoreRoutes
 	Auth             AuthRoutes
 	Family           FamilyRoutes
@@ -34,6 +35,9 @@ func NewRouter(routes RouteComposition) stdhttp.Handler {
 	router.Use(RequestLogging(routes.Logger))
 	RegisterSocketRoutes(router, routes.Socket)
 	RegisterCallRoutes(router, routes.Calls)
+	if routes.GuestMeetings != nil {
+		router.Mount("/api/guest-meetings", routes.GuestMeetings)
+	}
 	RegisterCoreRoutes(router, routes.Core)
 	RegisterAuthRoutes(router, routes.Auth)
 	RegisterFamilyRoutes(router, routes.Family)

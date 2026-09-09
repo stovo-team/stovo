@@ -111,7 +111,7 @@ export function AppearanceEditor({
   return (
     <>
       <div className="appearance-editor appearance-editor-enter">
-        <header className="appearance-editor-header">
+        <header className="section-title-row appearance-editor-header">
           <BackButton
             buttonRef={backButtonRef}
             className="appearance-editor-back"

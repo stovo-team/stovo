@@ -290,7 +290,7 @@ func defaultAudioSettings() audioCallSettings {
 		EchoCancellation:          true,
 		NoiseSuppression:          true,
 		AutoGainControl:           true,
-		VoiceEnhancement:          false,
+		VoiceEnhancement:          true,
 		InputGain:                 100,
 		OutputVolume:              80,
 		VoiceEnhancementThreshold: -24,
@@ -466,5 +466,4 @@ func candidateAddresses() []string {
 	sort.Strings(candidates)
 	return candidates
 }
-
 

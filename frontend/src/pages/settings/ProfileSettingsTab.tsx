@@ -1,6 +1,7 @@
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
 import { Clock3, LockKeyhole, Mail, Server, UserRound, Users } from "lucide-react";
 import type { AppStrings } from "../../config/strings";
+import type { DevicePreferences } from "../../settings/devicePreferences";
 
 export type ProfileForm = {
   displayName: string;
@@ -30,13 +31,15 @@ type Props = {
   currentServerUrl: string;
   connectionLink: string;
   profilePhotoControl: ReactNode;
+  notificationPreferences: Pick<DevicePreferences, "quietHoursEnabled" | "quietHoursStart" | "quietHoursEnd">;
   onProfileSubmit: (event: FormEvent) => void;
   onPasswordSubmit: (event: FormEvent) => void;
   onCopyConnection: () => void;
+  onNotificationPreferencesUpdate: (updates: Partial<DevicePreferences>) => void;
 };
 
 export function ProfileSettingsTab(props: Props) {
-  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, canManageFamily, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, onProfileSubmit, onPasswordSubmit, onCopyConnection } = props;
+  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, canManageFamily, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
   return (
     <div className="profile-detail-screen">
       <section className="profile-detail-hero">
@@ -58,6 +61,24 @@ export function ProfileSettingsTab(props: Props) {
         <label><span><LockKeyhole aria-hidden="true" size={21} />{strings.settings.confirmNewPassword}</span><input type="password" autoComplete="new-password" minLength={8} value={passwordForm.confirmation} onChange={(event) => setPasswordForm((current) => ({ ...current, confirmation: event.target.value }))} required /></label>
         <button type="submit" className="save-button primary-button" disabled={isSaving || !accessToken}>{isSaving ? strings.settings.changing : strings.settings.changePassword}</button>
       </form>
+      <section className="profile-detail-form">
+        <h3>{strings.notifications.quietHours}</h3>
+        <label className="appearance-toggle-row">
+          <span>
+            <strong>{strings.notifications.muteNotifications}</strong>
+            <span className="appearance-toggle-help">{notificationPreferences.quietHoursStart} — {notificationPreferences.quietHoursEnd}</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={notificationPreferences.quietHoursEnabled}
+            onChange={(event) => onNotificationPreferencesUpdate({ quietHoursEnabled: event.target.checked })}
+          />
+        </label>
+        <div className="quiet-hours-times">
+          <label>{strings.notifications.start}<input aria-label={strings.notifications.quietHoursStartAria} type="time" value={notificationPreferences.quietHoursStart} onChange={(event) => onNotificationPreferencesUpdate({ quietHoursStart: event.target.value })} /></label>
+          <label>{strings.notifications.end}<input aria-label={strings.notifications.quietHoursEndAria} type="time" value={notificationPreferences.quietHoursEnd} onChange={(event) => onNotificationPreferencesUpdate({ quietHoursEnd: event.target.value })} /></label>
+        </div>
+      </section>
       <section className="profile-detail-form connection-export">
         <h3>{strings.settings.connectAndroidDevice}</h3><p className="muted-copy">{strings.settings.androidLinkNote}</p>
         <label><span><Server aria-hidden="true" size={21} />{strings.settings.server}</span><input readOnly value={currentServerUrl} /></label>
