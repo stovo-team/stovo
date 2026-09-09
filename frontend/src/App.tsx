@@ -37,6 +37,7 @@ import AdminPluginsPage from "./pages/AdminPluginsPage";
 import ChatsPage from "./pages/ChatsPage";
 import FilesPage from "./pages/FilesPage";
 import InvitePage from "./pages/InvitePage";
+import GuestMeetingPage from "./pages/GuestMeetingPage";
 import LoginPage from "./pages/LoginPage";
 import PlansPage from "./pages/PlansPage";
 import RootRedirect from "./pages/RootRedirect";
@@ -328,6 +329,7 @@ function ClusterRoutes() {
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
+      <Route path="/meet/:token" element={<GuestMeetingPage />} />
       <Route
         path="/app/chats/:chatId?"
         element={

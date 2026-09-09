@@ -109,6 +109,9 @@ export const strings = {
     // sidebar items
     appearance: "Оформление",
     appearanceHelper: "Тема, акцент и вид чата",
+    general: "Общие",
+    generalHelper: "Медиа в чате и поведение сообщений",
+    chatMedia: "Медиа в чате",
     notifications: "Уведомления",
     notificationsHelper: "Сообщения, звонки и тихие часы",
     privacyAndSecurity: "Конфиденциальность и безопасность",

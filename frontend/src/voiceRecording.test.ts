@@ -49,10 +49,11 @@ describe("voiceRecording", () => {
       ) as unknown as typeof MediaRecorder,
     );
 
+    const getUserMedia = vi.fn(async () => stream);
     Object.defineProperty(navigator, "mediaDevices", {
       configurable: true,
       value: {
-        getUserMedia: vi.fn(async () => stream)
+        getUserMedia
       }
     });
 
@@ -60,6 +61,15 @@ describe("voiceRecording", () => {
     // Voice notes are finalized as one container. Periodic WebM fragments from
     // Android WebView can carry a bogus duration when joined together.
     expect(recorder.start).toHaveBeenCalledWith();
+    expect(getUserMedia).toHaveBeenCalledWith({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: { ideal: 1 },
+        sampleRate: { ideal: 48000 },
+      },
+    });
     const file = await handle.stop();
     expect(file.name).toMatch(/^voice-.*\.webm$/);
     expect(file.type).toContain("audio/");

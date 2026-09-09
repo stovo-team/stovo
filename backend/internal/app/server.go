@@ -43,6 +43,7 @@ type Server struct {
 	cfg                    config.Config
 	database               io.Closer
 	canvasDB               *sql.DB
+	guestDB                *sql.DB
 	databaseHealth         ports.HealthChecker
 	persistence            io.Closer
 	redis                  io.Closer
@@ -203,6 +204,7 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 	}
 	if db, ok := deps.Database.(*sql.DB); ok {
 		app.canvasDB = db
+		app.guestDB = db
 	}
 	// Audio capture and post-processing workers live in this process. After a
 	// deploy they cannot safely resume an old recording, but its active row

@@ -18,6 +18,7 @@ import { RealAvatar } from "../sidebar/RealAvatar";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
+import { GuestMeetingLinkControl } from "./GuestMeetingLinkControl";
 
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -237,6 +238,7 @@ export function DesktopCallControls() {
                 </label>
               ))}
           </div>
+          <GuestMeetingLinkControl accessToken={accessToken ?? null} chatId={activeChat?.id ?? null} enabled={activeChat?.type === "group" || activeChat?.type === "voice"} />
           <div className="call-invite-modal-actions">
             <button
               type="button"

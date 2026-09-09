@@ -21,9 +21,9 @@ type ChatSummary struct {
 // and result serialization.
 type ListChats func(context.Context) ([]ChatSummary, error)
 
-// RegisterListChats registers Stovo's stable list_chats MCP tool contract.
+// RegisterListChats registers Stovo's stable, namespaced list-chats MCP tool contract.
 func RegisterListChats(server *mcpserver.MCPServer, list ListChats) {
-	server.AddTool(protocol.NewTool("list_chats",
+	server.AddTool(protocol.NewTool("stovo_list_chats",
 		protocol.WithDescription("List chats this Stovo connector is allowed to access. Does not return chats outside the connector policy."),
 	), func(ctx context.Context, _ protocol.CallToolRequest) (*protocol.CallToolResult, error) {
 		chats, err := list(ctx)

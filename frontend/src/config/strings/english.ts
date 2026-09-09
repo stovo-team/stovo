@@ -93,6 +93,9 @@ export const strings = {
     // sidebar items
     appearance: "Appearance",
     appearanceHelper: "Theme, accent, and chat look",
+    general: "General",
+    generalHelper: "Chat media and message behavior",
+    chatMedia: "Chat media",
     notifications: "Notifications",
     notificationsHelper: "Messages, calls, and quiet hours",
     privacyAndSecurity: "Privacy and Security",
