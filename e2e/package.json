@@ -8,6 +8,7 @@
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "test:ci": "playwright test --reporter=github,html,junit",
+    "test:production": "playwright test tests/production-smoke.spec.ts --reporter=github,html,junit",
     "report": "playwright show-report"
   },
   "devDependencies": {

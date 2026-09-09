@@ -223,8 +223,24 @@ func (s *Store) MarkMessagesRead(ctx context.Context, chatID, userID, messageID,
 		if isSender {
 			return nil
 		}
+		// Always write the status for the message the caller explicitly read.
+		// The range query below is intentionally only for older messages: relying
+		// on it for the target as well makes this endpoint depend on ordering of
+		// string-form timestamps and can leave a successful read response without
+		// its own read status.
+		if err := tx.MessageStatus.Create().
+			SetID(messageID).
+			SetUserID(userID).
+			SetStatus("read").
+			SetCreatedAt(statusCreatedAt).
+			OnConflictColumns(messagestatus.FieldID, messagestatus.FieldUserID, messagestatus.FieldStatus).
+			Ignore().
+			Exec(ctx); err != nil {
+			return err
+		}
 		rows, err := tx.Message.Query().
 			Where(
+				message.IDNEQ(messageID),
 				message.ChatIDEQ(chatID),
 				message.DeletedAtIsNil(),
 				message.CreatedAtLTE(createdAt),
