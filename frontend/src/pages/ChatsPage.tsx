@@ -321,8 +321,9 @@ export default function ChatsPage() {
         >
           <CallFeature />
         </CallFeatureProvider>
-        <ChatOverlays
-          accessToken={accessToken}
+      <ChatOverlays
+        accessToken={accessToken}
+        chats={chats}
           currentUser={currentUser}
           family={family}
           chatOverview={chatOverview}

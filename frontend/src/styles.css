@@ -3203,6 +3203,9 @@ h2 {
   animation: serverSwitcherMenuEnter var(--motion-fast, 180ms) var(--motion-ease-enter, cubic-bezier(0.22, 1, 0.36, 1)) both !important;
   border-radius: 22px;
   box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
   left: 50% !important;
   max-width: calc(100vw - 32px);
   min-width: min(300px, calc(100vw - 32px));
@@ -3378,19 +3381,9 @@ h2 {
 }
 
 .server-switcher-connect {
+  background: color-mix(in oklab, var(--accent-primary) 8%, transparent);
   color: var(--accent-primary);
   font-weight: 700;
-}
-
-/* Keep the current-space item and its primary follow-up action visually joined. */
-.server-switcher-item.is-active + .server-switcher-connect {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
-.server-switcher-item.is-active:has(+ .server-switcher-connect) {
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
 }
 
 .server-switcher-menu button:hover:not(:disabled) {
@@ -10281,7 +10274,7 @@ span.message-spoiler.is-revealed {
   padding: 18px 24px;
 }
 .profile-detail-form label > span { align-items: center; display: flex; gap: 12px; }
-.profile-detail-form input,
+.profile-detail-form input:not([type="checkbox"]):not([type="radio"]),
 .profile-detail-form textarea,
 .profile-detail-form select { background: #090b0e; border: 1px solid #2d3744; border-radius: 14px; color: var(--text-primary); font-family: inherit; font-size: inherit; padding: 10px 14px; width: 100%; box-sizing: border-box; }
 .profile-detail-form textarea { border-radius: 14px; min-height: 90px; resize: vertical; }
@@ -10300,6 +10293,7 @@ span.message-spoiler.is-revealed {
 .profile-notification-schedule { gap: 12px; }
 .profile-detail-form .profile-notification-toggle {
   align-items: center;
+  cursor: pointer;
   display: flex;
   gap: 18px;
   grid-template-columns: none;
@@ -10370,28 +10364,53 @@ span.message-spoiler.is-revealed {
   width: 100%;
 }
 
-.settings-page.settings-detail-view input[type="checkbox"] {
+.settings-page.settings-detail-view input[type="checkbox"],
+.profile-detail-form input[type="checkbox"] {
   appearance: none;
+  -webkit-appearance: none;
   background: #08090b;
-  border: 1px solid #3d4654;
+  border: 1.5px solid #3d4654;
   border-radius: 7px;
+  box-sizing: border-box;
+  cursor: pointer;
+  flex: 0 0 20px;
   height: 20px;
+  margin: 0;
+  padding: 0;
   position: relative;
+  transition: all 0.16s ease;
   width: 20px;
 }
 
-.settings-page.settings-detail-view input[type="checkbox"]:checked {
+.settings-page.settings-detail-view input[type="checkbox"]:hover:not(:disabled),
+.profile-detail-form input[type="checkbox"]:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+}
+
+.settings-page.settings-detail-view input[type="checkbox"]:focus-visible,
+.profile-detail-form input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--focus-ring, var(--accent-primary));
+  outline-offset: 2px;
+}
+
+.settings-page.settings-detail-view input[type="checkbox"]:checked,
+.profile-detail-form input[type="checkbox"]:checked {
   background: var(--accent-primary);
   border-color: var(--accent-primary);
 }
 
-.settings-page.settings-detail-view input[type="checkbox"]:checked::after {
-  color: #fff;
-  content: "✓";
-  font-size: 14px;
-  left: 3px;
+.settings-page.settings-detail-view input[type="checkbox"]:checked::after,
+.profile-detail-form input[type="checkbox"]:checked::after {
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  box-sizing: border-box;
+  content: "";
+  height: 10px;
+  left: 6px;
   position: absolute;
-  top: -1px;
+  top: 2px;
+  transform: rotate(45deg);
+  width: 5px;
 }
 
 .settings-page.settings-appearance-view .settings-layout { max-width: 720px; }
@@ -10426,26 +10445,48 @@ span.message-spoiler.is-revealed {
 
 .media-download-limit {
   align-items: center;
-  display: grid;
+  display: flex;
   gap: 16px;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.9fr);
+  justify-content: space-between;
   margin-top: 12px;
 }
 
 .media-download-limit select {
-  background: #0b0d10;
-  border: 1px solid #2a313c;
-  border-radius: 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: rgba(0, 0, 0, 0.5);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-position: right 14px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
   color: var(--text-primary);
+  cursor: pointer;
+  flex: 0 0 auto;
   font: inherit;
-  min-height: 42px;
-  padding: 0 36px 0 14px;
-  width: 100%;
+  font-size: 0.92rem;
+  font-weight: 600;
+  min-height: 40px;
+  min-width: 116px;
+  padding: 0 38px 0 16px;
+  width: auto;
 }
 
-.media-download-limit select:disabled { cursor: not-allowed; opacity: .55; }
+.media-download-limit select:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.65);
+  border-color: rgba(255, 255, 255, 0.24);
+}
 
-@media (max-width: 720px) { .media-download-limit { grid-template-columns: 1fr; gap: 8px; } }
+.media-download-limit select:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.media-download-limit select:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 .settings-page.settings-appearance-view .appearance-editor-controls {
   display: grid;
   gap: 10px;
@@ -20399,6 +20440,95 @@ button.attachment-nav-item:focus-visible {
   background: #141414;
 }
 
+.mcp-secret-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mcp-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mcp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.mcp-status-pill.is-connected {
+  background: #143525;
+  color: #5eead4;
+}
+
+.mcp-status-pill.is-waiting {
+  background: #2d2613;
+  color: #fde047;
+}
+
+.mcp-status-pill.is-disabled {
+  background: #242424;
+  color: #9ca3af;
+}
+
+.mcp-status-pill.is-revoked {
+  background: #381a1d;
+  color: #fca5a5;
+}
+
+.mcp-connection-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #191919;
+}
+
+.mcp-connection-status.is-connected {
+  background: color-mix(in oklab, #10b981 12%, #141414);
+  border: 1px solid color-mix(in oklab, #10b981 25%, transparent);
+}
+
+.mcp-connection-status.is-waiting {
+  background: color-mix(in oklab, #f59e0b 10%, #141414);
+  border: 1px solid color-mix(in oklab, #f59e0b 20%, transparent);
+}
+
+.mcp-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.mcp-status-dot.is-connected {
+  background: #34d399;
+  box-shadow: 0 0 8px #34d39988;
+}
+
+.mcp-status-dot.is-waiting {
+  background: #fbbf24;
+  box-shadow: 0 0 8px #fbbf2488;
+}
+
+.mcp-connection-status p {
+  margin: 3px 0 0;
+  font-size: 0.8rem;
+  opacity: 0.78;
+  line-height: 1.4;
+}
+
 .mcp-secret-card code,
 .mcp-connector-form code,
 .mcp-cli-toggle code {
@@ -23289,13 +23419,14 @@ button.attachment-nav-item:focus-visible {
 
 
 .admin-roles-layout { display: grid; grid-template-columns: minmax(220px, .45fr) minmax(0, 1fr); gap: 18px; margin-top: 18px; }
-.admin-role-list { display: grid; align-content: start; background: #141414; border: 1px solid #2a2a2a; border-radius: 18px; overflow: hidden; }
-.admin-page .admin-role-list button { align-items: center; background: transparent; border: 0; border-radius: 0; color: #f5f7fb; display: grid; gap: 2px; min-height: 58px; padding: 11px 14px; text-align: left; }
-.admin-page .admin-role-list button + button { border-top: 1px solid #2a2a2a; }
-.admin-page .admin-role-list button:hover, .admin-page .admin-role-list button:focus-visible { background: #1d2530; outline: none; }
-.admin-page .admin-role-list button.active { background: var(--accent-soft); }
+.admin-role-list { align-content: start; background: #141414; border: 1px solid #2a2a2a; border-radius: 22px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; padding: 8px; }
+.admin-page .admin-role-list button { align-items: center; background: transparent; border: 0; border-radius: 16px; box-sizing: border-box; color: #f5f7fb; cursor: pointer; display: grid; gap: 2px; min-height: 52px; padding: 10px 14px; text-align: left; transition: background 0.16s ease; width: 100%; }
+.admin-page .admin-role-list button:hover:not(.active):not(.admin-role-create), .admin-page .admin-role-list button:focus-visible:not(.active):not(.admin-role-create) { background: color-mix(in oklab, #ffffff 8%, transparent); outline: none; }
+.admin-page .admin-role-list button.active { background: color-mix(in oklab, var(--accent-primary) 22%, var(--island-surface)); color: var(--text-primary); cursor: default; }
+.admin-page .admin-role-list button.active small { color: color-mix(in oklab, var(--text-primary) 72%, var(--text-secondary)); }
 .admin-role-list small, .admin-role-permissions small { color: #8b93a0; }
-.admin-page .admin-role-list .admin-role-create { align-items: center; color: var(--accent-primary); display: flex; gap: 7px; font-weight: 700; }
+.admin-page .admin-role-list .admin-role-create { align-items: center; background: color-mix(in oklab, var(--accent-primary) 8%, transparent); border-radius: 16px; color: var(--accent-primary); cursor: pointer; display: flex; font-weight: 700; gap: 8px; min-height: 48px; padding: 10px 14px; transition: background 0.16s ease; width: 100%; }
+.admin-page .admin-role-list .admin-role-create:hover, .admin-page .admin-role-list .admin-role-create:focus-visible { background: color-mix(in oklab, var(--accent-primary) 14%, transparent); outline: none; }
 .admin-role-editor { display: grid; gap: 14px; padding: 18px !important; }
 .admin-role-editor > label { display: grid; gap: 7px; font-weight: 600; }
 .admin-role-editor input[type="text"], .admin-role-editor input:not([type]) { width: 100%; }

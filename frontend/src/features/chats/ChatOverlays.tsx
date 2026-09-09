@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { useState } from "react";
 
 import type { Family } from "../../api/family";
 import type { FamilyFile } from "../../api/files";
@@ -8,6 +9,8 @@ import ImageLightbox from "../../components/ImageLightbox";
 import { MessageEnlargeModal } from "../../components/MessageEnlargeModal";
 import { NewChatDialog } from "./sidebar/NewChatDialog";
 import type { ChatOverviewController } from "./sidebar/types";
+import type { Chat } from "../../api/chats";
+import { GuestMeetingLinkControl } from "./calling/GuestMeetingLinkControl";
 
 import type { PendingLocalAttachment } from "./shared/types";
 
@@ -15,6 +18,7 @@ export type FullViewImageState = { file: FamilyFile; previewUrl: string; message
 
 export type ChatOverlaysProps = {
   accessToken: string | null;
+  chats: Chat[];
   family: Family | null;
   chatOverview: ChatOverviewController;
   canCreateFamilyInvite: boolean;
@@ -45,6 +49,7 @@ export type ChatOverlaysProps = {
  */
 export function ChatOverlays({
   accessToken,
+  chats,
   family,
   chatOverview,
   canCreateFamilyInvite,
@@ -66,6 +71,9 @@ export function ChatOverlays({
   onAddAttachments,
   onSendMessage
 }: ChatOverlaysProps) {
+  const [isMeetingPlannerOpen, setIsMeetingPlannerOpen] = useState(false);
+  const meetingChats = chats.filter((chat) => chat.type === "group" || chat.type === "voice");
+  const [meetingChatId, setMeetingChatId] = useState("");
   const {
     isNewChatOpen, newChatScreen, filteredNewChatMembers, newChatMemberSearch, groupTitle, groupMemberIds,
     setNewChatMemberSearch, setNewChatScreen, closeNewChatScreen, startDirectChatWith,
@@ -95,11 +103,20 @@ export function ChatOverlays({
                 onCreateGroup={(event) => void handleCreateGroupChat(event)}
                 onCreateChannel={(event) => void handleCreateChannelChat(event)}
                 onCreateVoiceChannel={(event) => void handleCreateVoiceChat(event)}
+                onPlanGuestMeeting={() => { setMeetingChatId(meetingChats[0]?.id ?? ""); setIsMeetingPlannerOpen(true); closeNewChatScreen(); }}
               />
             </div>
           </div>,
           document.body
         )}
+
+      {isMeetingPlannerOpen && createPortal(
+        <div className="guest-meeting-planner-backdrop" role="presentation" onMouseDown={() => setIsMeetingPlannerOpen(false)}>
+          <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label="Plan guest meeting" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="guest-meeting-planner-header"><div><p className="eyebrow">New planned meeting</p><h2>Create guest meeting link</h2></div><button type="button" className="icon-button subtle" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}>×</button></div>
+            {meetingChats.length ? <><label className="form-grid">Host chat<select value={meetingChatId} onChange={(event) => setMeetingChatId(event.target.value)}>{meetingChats.map((chat) => <option key={chat.id} value={chat.id}>{chat.title}</option>)}</select></label><p className="muted-copy">This only associates the meeting with the selected chat. Guests cannot access its messages, files, or members.</p><GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} enabled /></> : <p className="muted-copy">Create a group or voice chat first, then plan a guest meeting.</p>}
+          </section>
+        </div>, document.body)}
 
       {accessToken && canCreateFamilyInvite && (
         <InviteModal

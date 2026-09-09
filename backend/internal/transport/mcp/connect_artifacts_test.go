@@ -1,6 +1,9 @@
 package mcp
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestBuildConnectArtifactsPreservesClientSpecificContracts(t *testing.T) {
 	artifacts := BuildConnectArtifacts("https://stovo.test/mcp", "codex", "api", "codex", "Stovo", "token")
@@ -12,6 +15,15 @@ func TestBuildConnectArtifactsPreservesClientSpecificContracts(t *testing.T) {
 	}
 	if artifacts.SetupPrompt == "" {
 		t.Fatal("setup prompt is empty")
+	}
+	if !strings.Contains(artifacts.SetupPrompt, `"Stovo"`) {
+		t.Fatalf("expected prompt to contain connection name: %s", artifacts.SetupPrompt)
+	}
+	if !strings.Contains(artifacts.SetupPrompt, "Only after successfully connecting to Stovo") {
+		t.Fatalf("expected post-connection logic in prompt: %s", artifacts.SetupPrompt)
+	}
+	if strings.Contains(artifacts.SetupPrompt, "@") {
+		t.Fatalf("expected prompt not to mention alias: %s", artifacts.SetupPrompt)
 	}
 }
 
