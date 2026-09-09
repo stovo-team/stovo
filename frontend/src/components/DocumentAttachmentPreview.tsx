@@ -349,7 +349,11 @@ export function DocumentAttachmentPreview({
 
   return (
     <>
-      <article className="document-preview-card document-preview-card--compact" data-preview-kind={kind}>
+      <article
+        className="document-preview-card document-preview-card--compact"
+        data-preview-kind={kind}
+        onClick={() => setViewerOpen(true)}
+      >
         <header className="document-preview-header">
           <KindIcon kind={kind} />
           <div className="document-preview-copy">
@@ -358,24 +362,32 @@ export function DocumentAttachmentPreview({
               {kindLabel(kind)} · {formatFileSize(file.sizeBytes)}
             </span>
           </div>
-          {!hideActions && <div className="document-preview-actions">
-            <button
-              type="button"
-              className="document-preview-open"
-              onClick={() => setViewerOpen(true)}
-            >
-              Open
-            </button>
-            {accessToken && (
+          {!hideActions && (
+            <div className="document-preview-actions">
               <button
                 type="button"
-                className="document-preview-save"
-                onClick={() => void saveFileToDisk(accessToken, file)}
+                className="document-preview-open"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewerOpen(true);
+                }}
               >
-                Save
+                Open
               </button>
-            )}
-          </div>}
+              {accessToken && (
+                <button
+                  type="button"
+                  className="document-preview-save"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void saveFileToDisk(accessToken, file);
+                  }}
+                >
+                  Save
+                </button>
+              )}
+            </div>
+          )}
         </header>
       </article>
       {viewerOpen && (accessToken || peekCachedObjectUrl(file.id)) && (

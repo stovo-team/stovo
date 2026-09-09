@@ -253,4 +253,45 @@ describe("KeyboardShortcutsSettings", () => {
     expect(document.body.textContent).toContain("Mute / Unmute Call");
     expect(document.body.textContent).not.toContain("Quick Switcher");
   });
+
+  it("updates shortcuts and displays notice when resetAllShortcutBindings is triggered", async () => {
+    await act(async () => {
+      root?.render(<KeyboardShortcutsSettings />);
+    });
+
+    // Enter recording for quick_switcher and assign custom key
+    const badgeButtons = document.querySelectorAll<HTMLButtonElement>(".shortcut-badge-button");
+    await act(async () => {
+      badgeButtons[0].click();
+    });
+    await act(async () => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "q",
+          altKey: true,
+          shiftKey: true,
+          bubbles: true
+        })
+      );
+    });
+    expect(loadShortcutBindings().quick_switcher).toBe("Alt+Shift+Q");
+
+    // Trigger reset all
+    await act(async () => {
+      resetAllShortcutBindings();
+    });
+
+    // Should be reset to default and show notice
+    expect(loadShortcutBindings().quick_switcher).toBe("Mod+Alt+K");
+    expect(document.querySelector(".shortcuts-settings-notice")).not.toBeNull();
+    expect(document.body.textContent).toContain("Reset all to defaults");
+  });
+
+  it("renders reset button when showResetAll prop is true", async () => {
+    await act(async () => {
+      root?.render(<KeyboardShortcutsSettings showResetAll={true} />);
+    });
+
+    expect(document.querySelector(".shortcuts-reset-all-btn")).not.toBeNull();
+  });
 });

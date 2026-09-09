@@ -99,7 +99,11 @@ export function resetAllShortcutBindings(): ShortcutBindings {
   if (typeof window !== "undefined") {
     try {
       window.localStorage.removeItem(KEYBOARD_SHORTCUTS_STORAGE_KEY);
-      window.dispatchEvent(new CustomEvent("stovo:shortcuts-changed", { detail: updated }));
+      window.dispatchEvent(
+        new CustomEvent("stovo:shortcuts-changed", {
+          detail: { ...updated, isResetAll: true }
+        })
+      );
     } catch {
       // Non-fatal
     }

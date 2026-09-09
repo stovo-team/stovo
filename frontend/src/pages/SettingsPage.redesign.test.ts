@@ -40,4 +40,11 @@ describe("SettingsPage redesign", () => {
     expect(styles).toContain("appearance-wallpaper-tile.appearance-wallpaper-thumb--dots");
     expect(styles).toContain("font-family: var(--message-font-family, inherit)");
   });
+
+  it("places Reset all to defaults button in the title row for keyboard shortcuts", () => {
+    expect(source).toContain('activeSettingsItem === "Shortcuts" && (');
+    expect(source).toContain("shortcuts-reset-all-btn");
+    expect(source).toContain("resetAllShortcutBindings");
+    expect(styles).toContain(".shortcuts-reset-all-btn");
+  });
 });
