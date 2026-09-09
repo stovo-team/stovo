@@ -228,4 +228,43 @@ describe("StorageCanvases", () => {
     expect(container?.querySelector(".canvas-mock-sticky")).toBeNull();
     expect(container?.querySelector(".canvas-mock-shape")).toBeNull();
   });
+
+  it("prioritizes markdown text preview over whiteboard when document contains both", async () => {
+    const doc = new (await import("yjs")).Doc();
+    const blocks = doc.getArray("blocks");
+
+    // Block 1: markdown notes
+    const mdMap = new (await import("yjs")).Map();
+    mdMap.set("id", "b-md");
+    mdMap.set("kind", "markdown");
+    mdMap.set("content", new (await import("yjs")).Text("# Sprint Planning\nKey priority items"));
+    blocks.push([mdMap]);
+
+    // Block 2: whiteboard drawing
+    const wbMap = new (await import("yjs")).Map();
+    wbMap.set("id", "b-wb");
+    wbMap.set("kind", "whiteboard");
+    wbMap.set("scene", new (await import("yjs")).Text(JSON.stringify([
+      { type: "rectangle", x: 10, y: 10, width: 50, height: 50, strokeColor: "#818cf8" }
+    ])));
+    blocks.push([wbMap]);
+
+    const bytes = (await import("yjs")).encodeStateAsUpdate(doc);
+    let binary = "";
+    bytes.forEach((b) => { binary += String.fromCharCode(b); });
+    const update = btoa(binary);
+
+    vi.spyOn(canvasApi, "getCanvasDocument").mockResolvedValue({
+      updates: [{ sequence: 1, update, createdBy: "user-1", createdAt: "2026-09-08T00:00:00Z" }]
+    });
+
+    await act(async () => {
+      root?.render(<StorageCanvases accessToken="token" filter="all" search="" />);
+    });
+
+    // Notes must be rendered, NOT whiteboard SVG
+    expect(container?.querySelector(".canvas-preview-notes")).not.toBeNull();
+    expect(container?.textContent).toContain("Key priority items");
+    expect(container?.querySelector(".canvas-preview-svg")).toBeNull();
+  });
 });

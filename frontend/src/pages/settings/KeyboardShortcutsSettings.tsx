@@ -36,7 +36,11 @@ import type {
   ShortcutDefinition
 } from "../../shortcuts/types";
 
-export function KeyboardShortcutsSettings() {
+export interface KeyboardShortcutsSettingsProps {
+  showResetAll?: boolean;
+}
+
+export function KeyboardShortcutsSettings({ showResetAll = false }: KeyboardShortcutsSettingsProps = {}) {
   const strings = useStrings();
   const [bindings, setBindings] = useState<ShortcutBindings>(() => loadShortcutBindings());
   const [recordingActionId, setRecordingActionId] = useState<ShortcutActionId | null>(null);
@@ -56,14 +60,22 @@ export function KeyboardShortcutsSettings() {
   const isMac = isMacPlatform();
 
   useEffect(() => {
-    const handleChanged = () => {
+    const handleChanged = (e?: Event) => {
       setBindings(loadShortcutBindings());
+      setRecordingActionId(null);
+      setConflict(null);
+      setBrowserConflict(null);
+      const detail = (e as CustomEvent<{ isResetAll?: boolean }>)?.detail;
+      if (detail?.isResetAll) {
+        setNotice(strings.shortcuts.resetAll);
+        setTimeout(() => setNotice(null), 2500);
+      }
     };
     window.addEventListener("stovo:shortcuts-changed", handleChanged);
     return () => {
       window.removeEventListener("stovo:shortcuts-changed", handleChanged);
     };
-  }, []);
+  }, [strings.shortcuts.resetAll]);
 
   // Handle keydown while in recording mode
   useEffect(() => {
@@ -216,17 +228,19 @@ export function KeyboardShortcutsSettings() {
 
   return (
     <div className="shortcuts-settings-surface">
-      <div className="shortcuts-settings-header">
-        <div />
-        <button
-          type="button"
-          className="secondary-button subtle-button shortcuts-reset-all-btn"
-          onClick={handleResetAll}
-        >
-          <RotateCcw size={15} aria-hidden="true" />
-          <span>{strings.shortcuts.resetAll}</span>
-        </button>
-      </div>
+      {showResetAll && (
+        <div className="shortcuts-settings-header">
+          <div />
+          <button
+            type="button"
+            className="secondary-button subtle-button shortcuts-reset-all-btn"
+            onClick={handleResetAll}
+          >
+            <RotateCcw size={15} aria-hidden="true" />
+            <span>{strings.shortcuts.resetAll}</span>
+          </button>
+        </div>
+      )}
 
       <div className="shortcuts-search-container">
         <div className="shortcuts-search-bar">
