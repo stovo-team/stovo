@@ -54,7 +54,7 @@ export const MCP_AUTH_MODES: Array<{ id: MCPAuthMode; label: string; description
   {
     id: "subscription",
     label: "Subscription",
-    description: "Uses the Claude / ChatGPT app subscription"
+    description: "Uses the signed-in Claude / ChatGPT app subscription"
   },
   {
     id: "api",
@@ -149,7 +149,7 @@ export function mcpUiSetupSteps(provider: string | undefined | null): string[] {
         "Open ChatGPT / Codex → Settings → Connectors / MCP",
         "Choose Add connector or Custom MCP server",
         "Paste the MCP URL and Bearer token",
-        "Save and enable the connector for this workspace"
+        "Save and enable the Stovo connector for this workspace"
       ];
     case "openclaw":
       return [

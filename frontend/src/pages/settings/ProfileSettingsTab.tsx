@@ -1,5 +1,5 @@
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
-import { Clock3, LockKeyhole, Mail, Server, UserRound, Users } from "lucide-react";
+import { BellOff, Clock3, LockKeyhole, Mail, Server, UserRound, Users } from "lucide-react";
 import type { AppStrings } from "../../config/strings";
 import type { DevicePreferences } from "../../settings/devicePreferences";
 
@@ -61,12 +61,15 @@ export function ProfileSettingsTab(props: Props) {
         <label><span><LockKeyhole aria-hidden="true" size={21} />{strings.settings.confirmNewPassword}</span><input type="password" autoComplete="new-password" minLength={8} value={passwordForm.confirmation} onChange={(event) => setPasswordForm((current) => ({ ...current, confirmation: event.target.value }))} required /></label>
         <button type="submit" className="save-button primary-button" disabled={isSaving || !accessToken}>{isSaving ? strings.settings.changing : strings.settings.changePassword}</button>
       </form>
-      <section className="profile-detail-form">
+      <section className="profile-detail-form profile-notification-schedule">
         <h3>{strings.notifications.quietHours}</h3>
-        <label className="appearance-toggle-row">
-          <span>
-            <strong>{strings.notifications.muteNotifications}</strong>
-            <span className="appearance-toggle-help">{notificationPreferences.quietHoursStart} — {notificationPreferences.quietHoursEnd}</span>
+        <label className="profile-notification-toggle">
+          <span className="profile-notification-toggle-copy">
+            <BellOff aria-hidden="true" size={21} />
+            <span>
+              <strong>{strings.notifications.muteNotifications}</strong>
+              <span className="appearance-toggle-help">{notificationPreferences.quietHoursStart} — {notificationPreferences.quietHoursEnd}</span>
+            </span>
           </span>
           <input
             type="checkbox"
@@ -74,9 +77,9 @@ export function ProfileSettingsTab(props: Props) {
             onChange={(event) => onNotificationPreferencesUpdate({ quietHoursEnabled: event.target.checked })}
           />
         </label>
-        <div className="quiet-hours-times">
-          <label>{strings.notifications.start}<input aria-label={strings.notifications.quietHoursStartAria} type="time" value={notificationPreferences.quietHoursStart} onChange={(event) => onNotificationPreferencesUpdate({ quietHoursStart: event.target.value })} /></label>
-          <label>{strings.notifications.end}<input aria-label={strings.notifications.quietHoursEndAria} type="time" value={notificationPreferences.quietHoursEnd} onChange={(event) => onNotificationPreferencesUpdate({ quietHoursEnd: event.target.value })} /></label>
+        <div className="profile-quiet-hours-times">
+          <label className="profile-time-field"><span>{strings.notifications.start}</span><input aria-label={strings.notifications.quietHoursStartAria} type="time" value={notificationPreferences.quietHoursStart} onChange={(event) => onNotificationPreferencesUpdate({ quietHoursStart: event.target.value })} /></label>
+          <label className="profile-time-field"><span>{strings.notifications.end}</span><input aria-label={strings.notifications.quietHoursEndAria} type="time" value={notificationPreferences.quietHoursEnd} onChange={(event) => onNotificationPreferencesUpdate({ quietHoursEnd: event.target.value })} /></label>
         </div>
       </section>
       <section className="profile-detail-form connection-export">
