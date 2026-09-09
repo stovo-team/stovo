@@ -258,14 +258,6 @@ describe("desktop chat refinements", () => {
     expect(lastRule(".app-frame > .app-nav.app-nav--active-variant-a a.active")).toContain("opacity: 1;");
   });
 
-  it("keeps the Variant A navigation rail fixed while the page scrolls", () => {
-    expect(styles).toContain(`@media (min-width: 961px) {
-  /* Keep the primary rail anchored to the viewport while long pages scroll. */
-  .app-frame > .app-nav.app-nav--active-variant-a {
-    left: var(--float-outer-gap);
-    position: fixed;`);
-  });
-
   it("shows a circular hover target behind inactive sidebar navigation icons", () => {
     expect(styles).toContain(".app-frame > .app-nav a:not(.active):hover {");
   });

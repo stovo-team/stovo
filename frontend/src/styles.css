@@ -1938,13 +1938,6 @@ h2 {
 }
 
 @media (min-width: 961px) {
-  /* Keep the primary rail anchored to the viewport while long pages scroll. */
-  .app-frame > .app-nav.app-nav--active-variant-a {
-    left: var(--float-outer-gap);
-    position: fixed;
-    top: var(--float-outer-gap);
-  }
-
   .chat-list-brand-mark {
     display: inline-flex;
   }
