@@ -47,7 +47,15 @@ export async function startVoiceRecording(): Promise<VoiceRecorderHandle> {
   if (isNativeVoiceRecordingAvailable()) {
     return startNativeVoiceRecording();
   }
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      channelCount: { ideal: 1 },
+      sampleRate: { ideal: 48000 },
+    },
+  });
   const mimeType = preferredMimeType();
   const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
   const chunks: BlobPart[] = [];

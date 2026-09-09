@@ -111,7 +111,7 @@ export function useCallSession({
     echoCancellation: true,
     noiseSuppression: true,
     autoGainControl: true,
-    voiceEnhancement: false,
+    voiceEnhancement: true,
     inputGain: 100,
     outputVolume: 100,
     voiceEnhancementThreshold: -24,

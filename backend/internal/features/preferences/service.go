@@ -183,7 +183,7 @@ func ValidateContactPrivacyPatch(patch ContactPrivacyPatch) error {
 }
 
 func legacyPrivacyFallbackSettings() AudioSettings {
-	return AudioSettings{SpeakerMode: "small", EchoCancellation: true, NoiseSuppression: true, AutoGainControl: true, InputGain: 100, OutputVolume: 80, VoiceEnhancementThreshold: -24, VoiceEnhancementHighpass: 120}
+	return AudioSettings{SpeakerMode: "small", EchoCancellation: true, NoiseSuppression: true, AutoGainControl: true, VoiceEnhancement: true, InputGain: 100, OutputVolume: 80, VoiceEnhancementThreshold: -24, VoiceEnhancementHighpass: 120}
 }
 
 // ValidDefaultNotificationSettings checks the persisted family-wide quiet-hour
@@ -210,6 +210,7 @@ func DefaultAudioSettings() AudioSettings {
 		EchoCancellation:          true,
 		NoiseSuppression:          true,
 		AutoGainControl:           true,
+		VoiceEnhancement:          true,
 		VoiceEnhancementThreshold: -35,
 		VoiceEnhancementHighpass:  80,
 	}

@@ -226,13 +226,13 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 		if status != http.StatusOK {
 			t.Fatalf("tools/list status = %d payload=%s", status, payload)
 		}
-		if !strings.Contains(payload, "list_chats") || !strings.Contains(payload, "send_message") {
+		if !strings.Contains(payload, "stovo_list_chats") || !strings.Contains(payload, "stovo_send_message") {
 			t.Fatalf("tools/list missing expected tools: %s", payload)
 		}
 	})
 
 	t.Run("list and read allowed chat", func(t *testing.T) {
-		result := mcpCallTool(t, httpServer.URL, created.Token, "list_chats", map[string]any{})
+		result := mcpCallTool(t, httpServer.URL, created.Token, "stovo_list_chats", map[string]any{})
 		if !strings.Contains(result, chat.ID) {
 			t.Fatalf("list_chats missing allowed chat: %s", result)
 		}
@@ -240,7 +240,7 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 			t.Fatalf("list_chats leaked denied chat: %s", result)
 		}
 
-		send := mcpCallTool(t, httpServer.URL, created.Token, "send_message", map[string]any{
+		send := mcpCallTool(t, httpServer.URL, created.Token, "stovo_send_message", map[string]any{
 			"chat_id": chat.ID,
 			"content": "hello from connector",
 		})
@@ -248,7 +248,7 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 			t.Fatalf("send_message failed: %s", send)
 		}
 
-		history := mcpCallTool(t, httpServer.URL, created.Token, "get_chat_history", map[string]any{
+		history := mcpCallTool(t, httpServer.URL, created.Token, "stovo_get_chat_history", map[string]any{
 			"chat_id": chat.ID,
 			"limit":   5,
 		})
@@ -258,7 +258,7 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 	})
 
 	t.Run("deny unallowed chat and missing permission", func(t *testing.T) {
-		deniedChat := mcpCallTool(t, httpServer.URL, created.Token, "get_chat_history", map[string]any{
+		deniedChat := mcpCallTool(t, httpServer.URL, created.Token, "stovo_get_chat_history", map[string]any{
 			"chat_id": otherChat.ID,
 			"limit":   5,
 		})
@@ -266,7 +266,7 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 			t.Fatalf("expected chat deny error, got %s", deniedChat)
 		}
 
-		deniedPerm := mcpCallTool(t, httpServer.URL, created.Token, "delete_message", map[string]any{
+		deniedPerm := mcpCallTool(t, httpServer.URL, created.Token, "stovo_delete_message", map[string]any{
 			"message_id": "missing",
 		})
 		if !strings.Contains(strings.ToLower(deniedPerm), "permission denied") {

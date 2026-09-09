@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Database,
   Globe,
+  SlidersHorizontal,
   HelpCircle,
   Keyboard,
   Laptop,
@@ -71,6 +72,7 @@ import { AppearanceEditor } from "./settings/AppearanceEditor";
 import { FamilySettings } from "./settings/FamilySettings";
 import { SettingsAvatar } from "./settings/SettingsAvatar";
 import { KeyboardShortcutsSettings } from "./settings/KeyboardShortcutsSettings";
+import { GeneralSettings } from "./settings/GeneralSettings";
 import { SettingsDashboard, type SettingsDashboardGroup } from "./settings/SettingsDashboard";
 import { resetAllShortcutBindings } from "../shortcuts/shortcutsStore";
 
@@ -176,6 +178,7 @@ export default function SettingsPage() {
     {
       title: strings.settings.yourSpace,
       items: [
+        { id: "General", label: strings.settings.general, helper: strings.settings.generalHelper, icon: SlidersHorizontal },
         { id: "Appearance", label: strings.settings.appearance, helper: appearanceHelper, icon: Palette },
         { id: "Notifications", label: strings.settings.notifications, helper: strings.settings.notificationsHelper, icon: Bell },
         { id: "Privacy and Security", label: strings.settings.privacyAndSecurity, helper: strings.settings.privacyHelper, icon: LockKeyhole },
@@ -438,9 +441,6 @@ export default function SettingsPage() {
               <>
 
 
-            {error && <p className="error-text" role="alert">{error}</p>}
-            {notice && <p className="success-text" role="status">{notice}</p>}
-
             <SettingsDashboard
               strings={strings}
               profileName={profileForm.displayName}
@@ -530,9 +530,11 @@ export default function SettingsPage() {
                     username={currentUser?.username}
                     currentServerUrl={currentServerUrl}
                     connectionLink={connectionLink}
+                    notificationPreferences={devicePreferences}
                     onProfileSubmit={handleProfileSubmit}
                     onPasswordSubmit={handlePasswordSubmit}
                     onCopyConnection={() => void copyConnectionCredentials()}
+                    onNotificationPreferencesUpdate={updateDevicePreferences}
                     profilePhotoControl={
                       <>
                         <SettingsAvatar accessToken={accessToken} file={currentUser?.profilePhoto} label={profileForm.displayName || strings.settings.familyMember} size="lg" />
@@ -540,7 +542,9 @@ export default function SettingsPage() {
                         <input ref={profilePhotoInputRef} accept="image/jpeg,image/png,image/gif,image/webp" className="visually-hidden" disabled={isSaving} type="file" onChange={handleProfilePhotoSelect} />
                       </>
                     }
-                  />                ) : activeSettingsItem === "Notifications" ? (
+                  />                ) : activeSettingsItem === "General" ? (
+                  <GeneralSettings strings={strings} />
+                ) : activeSettingsItem === "Notifications" ? (
                   <NotificationsSettings
                     strings={strings}
                     preferences={devicePreferences}

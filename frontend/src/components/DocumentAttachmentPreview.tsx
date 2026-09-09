@@ -264,7 +264,11 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
         // Vite resolves the worker as a static asset URL.
         const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
         pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-        const data = await blob.arrayBuffer();
+        // PDF.js is most reliable across desktop and mobile browsers when it
+        // receives an owned byte buffer rather than a Blob/ArrayBuffer view.
+        // In particular this avoids detached-buffer failures after the worker
+        // takes ownership of the source data.
+        const data = new Uint8Array(await blob.arrayBuffer());
         const doc = await pdfjs.getDocument({ data }).promise;
         if (cancelled) {
           await doc.destroy();
@@ -278,7 +282,9 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
           if (cancelled) break;
           const page = await doc.getPage(pageNumber);
           const baseViewport = page.getViewport({ scale: 1 });
-          const cssWidth = Math.min(host.clientWidth || 720, 900);
+          // The host has 12px gutters on both sides. Render within its content
+          // box so an unzoomed page never causes horizontal overflow.
+          const cssWidth = Math.min(Math.max((host.clientWidth || 744) - 24, 1), 900);
           const scale = (cssWidth / baseViewport.width) * dpr;
           const viewport = page.getViewport({ scale });
           const canvas = document.createElement("canvas");
@@ -469,7 +475,7 @@ export function DocumentViewerModal({
   return createPortal(
     <div className="document-viewer-backdrop" role="presentation" onClick={onClose}>
       <div
-        className="document-viewer-modal"
+        className={`document-viewer-modal document-viewer-modal--${kind}`}
         role="dialog"
         aria-modal="true"
         aria-label={file.originalName}

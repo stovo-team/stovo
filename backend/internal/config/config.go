@@ -34,53 +34,55 @@ type Config struct {
 	// RedisJobsURL is deliberately separate from RedisURL in production so a
 	// backlogged stream cannot evict cache, presence, or socket Pub/Sub state.
 	// Empty keeps small/local installations on the existing Redis instance.
-	RedisJobsURL                 string
-	RedisHost                    string
-	RedisPort                    int
-	RedisPassword                string
-	JWTSecret                    string
-	RefreshTokenSecret           string
-	InviteTokenSecret            string
-	RefreshCookieName            string
-	AccessTokenTTL               time.Duration
-	RefreshTokenTTL              time.Duration
-	MediaPlaybackTokenTTL        time.Duration
-	MaxUploadSizeBytes           int64
-	StorageProvider              string
-	LocalStoragePath             string
-	MinIOEndpoint                string
-	MinIOAccessKey               string
-	MinIOSecretKey               string
-	MinIOSecure                  bool
+	RedisJobsURL          string
+	RedisHost             string
+	RedisPort             int
+	RedisPassword         string
+	JWTSecret             string
+	RefreshTokenSecret    string
+	InviteTokenSecret     string
+	RefreshCookieName     string
+	AccessTokenTTL        time.Duration
+	RefreshTokenTTL       time.Duration
+	MediaPlaybackTokenTTL time.Duration
+	MaxUploadSizeBytes    int64
+	StorageProvider       string
+	LocalStoragePath      string
+	MinIOEndpoint         string
+	MinIOAccessKey        string
+	MinIOSecretKey        string
+	MinIOSecure           bool
 	// MinIOPublicEndpoint is used only for generated presigned URLs. It must
 	// be externally resolvable (for example media.example.com), unlike the
 	// internal MinIOEndpoint used by backend reads and writes.
-	MinIOPublicEndpoint          string
-	MinIOPublicSecure            bool
-	MinIOFilesBucket             string
-	MinIOLogsBucket              string
-	LogFilePath                  string
-	LogBufferMaxRecords          int
-	TurnEnabled                  bool
-	TurnHost                     string
-	TurnPort                     int
-	TurnUsername                 string
-	TurnPassword                 string
-	NtfyBaseURL                  string
-	NtfyPublishToken             string
-	LiveKitURL                   string
-	LiveKitAPIKey                string
-	LiveKitAPISecret             string
-	GroqAPIKey                   string
-	GroqBaseURL                  string
-	GroqSTTModel                 string
-	GroqChatModel                string
-	GroqSTTCostPerHourUSD        float64
-	AICallTranscriptionEnabled   bool
-	AICallMaxDurationMinutes     int
-	MinIOCallsBucket             string
-	SolutionProfile              SolutionProfile
-	FeatureMatrix                FeatureMatrix
+	MinIOPublicEndpoint        string
+	MinIOPublicSecure          bool
+	MinIOFilesBucket           string
+	MinIOLogsBucket            string
+	LogFilePath                string
+	LogBufferMaxRecords        int
+	TurnEnabled                bool
+	TurnHost                   string
+	TurnPort                   int
+	TurnUsername               string
+	TurnPassword               string
+	NtfyBaseURL                string
+	NtfyPublishToken           string
+	LiveKitURL                 string
+	LiveKitAPIKey              string
+	LiveKitAPISecret           string
+	GuestMeetingsEnabled       bool
+	GuestMeetingURL            string
+	GroqAPIKey                 string
+	GroqBaseURL                string
+	GroqSTTModel               string
+	GroqChatModel              string
+	GroqSTTCostPerHourUSD      float64
+	AICallTranscriptionEnabled bool
+	AICallMaxDurationMinutes   int
+	MinIOCallsBucket           string
+	SolutionProfile            SolutionProfile
+	FeatureMatrix              FeatureMatrix
 }
 
 func Load() (Config, error) {
@@ -174,43 +176,45 @@ func Load() (Config, error) {
 		RefreshTokenTTL:              refreshTTL,
 		MediaPlaybackTokenTTL:        mediaPlaybackTTL,
 		MaxUploadSizeBytes:           int64(maxUploadMB) * 1024 * 1024,
-		StorageProvider:              strings.ToLower(getenv("STORAGE_PROVIDER", func() string {
+		StorageProvider: strings.ToLower(getenv("STORAGE_PROVIDER", func() string {
 			if strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")) != "" {
 				return "minio"
 			}
 			return "local"
 		}())),
-		LocalStoragePath:             storagePath,
-		MinIOEndpoint:                getenv("MINIO_ENDPOINT", "minio:9000"),
-		MinIOAccessKey:               strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")),
-		MinIOSecretKey:               strings.TrimSpace(os.Getenv("MINIO_SECRET_KEY")),
-		MinIOSecure:                  envBool("MINIO_SECURE", false),
-		MinIOPublicEndpoint:          strings.TrimSpace(os.Getenv("MINIO_PUBLIC_ENDPOINT")),
-		MinIOPublicSecure:            envBool("MINIO_PUBLIC_SECURE", true),
-		MinIOFilesBucket:             getenv("MINIO_FILES_BUCKET", "stovo-files"),
-		MinIOLogsBucket:              getenv("MINIO_LOGS_BUCKET", "stovo-logs"),
-		LogFilePath:                  logPath,
-		LogBufferMaxRecords:          bufferSize,
-		TurnEnabled:                  envBool("TURN_ENABLED", true),
-		TurnHost:                     envString("TURN_HOST", ""),
-		TurnPort:                     envInt("TURN_PORT", 3478),
-		TurnUsername:                 envString("TURN_USERNAME", "family"),
-		TurnPassword:                 envString("TURN_PASSWORD", "change_me"),
-		NtfyBaseURL:                  envString("NTFY_BASE_URL", "http://ntfy:80"),
-		NtfyPublishToken:             envString("NTFY_PUBLISH_TOKEN", ""),
-		LiveKitURL:                   envString("LIVEKIT_URL", ""),
-		LiveKitAPIKey:                envString("LIVEKIT_API_KEY", ""),
-		LiveKitAPISecret:             envString("LIVEKIT_API_SECRET", ""),
-		GroqAPIKey:                   envAny("GROQ_API_KEY", "groq_api_key", "GROQ_KEY", "groq_key", "GROQ_API_TOKEN", "groq_api_token", "GROQ_TOKEN"),
-		GroqBaseURL:                  envString("GROQ_BASE_URL", envString("GROQ_API_BASE", "")),
-		GroqSTTModel:                 getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo"),
-		GroqChatModel:                getenv("GROQ_CHAT_MODEL", ""),
-		GroqSTTCostPerHourUSD:        envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
-		AICallTranscriptionEnabled:   envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
-		AICallMaxDurationMinutes:     envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
-		MinIOCallsBucket:             getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
-		SolutionProfile:              ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family")),
-		FeatureMatrix:                GetPresetMatrix(ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family"))),
+		LocalStoragePath:           storagePath,
+		MinIOEndpoint:              getenv("MINIO_ENDPOINT", "minio:9000"),
+		MinIOAccessKey:             strings.TrimSpace(os.Getenv("MINIO_ACCESS_KEY")),
+		MinIOSecretKey:             strings.TrimSpace(os.Getenv("MINIO_SECRET_KEY")),
+		MinIOSecure:                envBool("MINIO_SECURE", false),
+		MinIOPublicEndpoint:        strings.TrimSpace(os.Getenv("MINIO_PUBLIC_ENDPOINT")),
+		MinIOPublicSecure:          envBool("MINIO_PUBLIC_SECURE", true),
+		MinIOFilesBucket:           getenv("MINIO_FILES_BUCKET", "stovo-files"),
+		MinIOLogsBucket:            getenv("MINIO_LOGS_BUCKET", "stovo-logs"),
+		LogFilePath:                logPath,
+		LogBufferMaxRecords:        bufferSize,
+		TurnEnabled:                envBool("TURN_ENABLED", true),
+		TurnHost:                   envString("TURN_HOST", ""),
+		TurnPort:                   envInt("TURN_PORT", 3478),
+		TurnUsername:               envString("TURN_USERNAME", "family"),
+		TurnPassword:               envString("TURN_PASSWORD", "change_me"),
+		NtfyBaseURL:                envString("NTFY_BASE_URL", "http://ntfy:80"),
+		NtfyPublishToken:           envString("NTFY_PUBLISH_TOKEN", ""),
+		LiveKitURL:                 envString("LIVEKIT_URL", ""),
+		LiveKitAPIKey:              envString("LIVEKIT_API_KEY", ""),
+		LiveKitAPISecret:           envString("LIVEKIT_API_SECRET", ""),
+		GuestMeetingsEnabled:       envBool("GUEST_MEETINGS_ENABLED", true),
+		GuestMeetingURL:            trimTrailingSlash(envString("GUEST_MEETING_URL", getenv("APP_URL", "http://localhost:8000"))),
+		GroqAPIKey:                 envAny("GROQ_API_KEY", "groq_api_key", "GROQ_KEY", "groq_key", "GROQ_API_TOKEN", "groq_api_token", "GROQ_TOKEN"),
+		GroqBaseURL:                envString("GROQ_BASE_URL", envString("GROQ_API_BASE", "")),
+		GroqSTTModel:               getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo"),
+		GroqChatModel:              getenv("GROQ_CHAT_MODEL", ""),
+		GroqSTTCostPerHourUSD:      envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
+		AICallTranscriptionEnabled: envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),
+		AICallMaxDurationMinutes:   envInt("AI_CALL_MAX_DURATION_MINUTES", 180),
+		MinIOCallsBucket:           getenv("MINIO_CALLS_BUCKET", "stovo-calls"),
+		SolutionProfile:            ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family")),
+		FeatureMatrix:              GetPresetMatrix(ParseSolutionProfile(getenv("SOLUTION_PROFILE", "family"))),
 	}
 
 	return cfg, nil

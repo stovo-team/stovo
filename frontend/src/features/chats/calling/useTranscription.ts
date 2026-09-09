@@ -231,7 +231,15 @@ export function useTranscription({
         if (liveLocalTracks.length > 0) {
           stream = new MediaStream(liveLocalTracks);
         } else {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              channelCount: { ideal: 1 },
+              sampleRate: { ideal: 48000 },
+            },
+          });
           stopStreamOnCleanup = true;
         }
         activeStream = stream;
