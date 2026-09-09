@@ -8,6 +8,7 @@ import {
   useMemo,
   useState
 } from "react";
+import { applyAppearanceToDocument } from "./appearanceDom";
 
 export type ThemeMode = "system" | "light" | "dark" | "amoled";
 export type ResolvedThemeMode = "light" | "dark" | "amoled";
@@ -353,67 +354,11 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, [resolvedThemeMode]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.themeMode = resolvedThemeMode;
-    root.dataset.accent = appearance.accent;
-    root.dataset.density = appearance.density;
-    root.dataset.wallpaper = appearance.wallpaper;
-    root.dataset.bubbleShape = appearance.bubbleShape;
-    root.dataset.messageFont = appearance.messageFont;
-    root.style.setProperty("--message-scale", String(appearance.messageScale));
-    root.style.setProperty("--radius-bubble", `${appearance.bubbleRadius}px`);
-    root.style.setProperty("--float-radius-bubble", `${appearance.bubbleRadius}px`);
-    root.style.setProperty("--message-font-family", messageFontFamily(appearance.messageFont));
-    root.style.setProperty("--avatar-custom-bg", appearance.avatarColor);
-    if (appearance.wallpaper !== "custom") {
-      root.style.removeProperty("--wallpaper-custom-image");
-    }
-    if (appearance.accent === "custom") {
-      root.style.setProperty("--accent-primary-light", appearance.customAccent);
-      root.style.setProperty("--accent-primary-hover-light", appearance.customAccent);
-      root.style.setProperty(
-        "--accent-soft-light",
-        `color-mix(in srgb, ${appearance.customAccent} 14%, white)`
-      );
-      root.style.setProperty("--accent-border-soft-light", appearance.customAccent);
-      root.style.setProperty("--focus-ring-light", `${appearance.customAccent}55`);
-      root.style.setProperty("--accent-ring-light", `${appearance.customAccent}40`);
-      root.style.setProperty("--accent-primary-dark", appearance.customAccent);
-      root.style.setProperty("--accent-primary-hover-dark", appearance.customAccent);
-      root.style.setProperty(
-        "--accent-soft-dark",
-        `color-mix(in srgb, ${appearance.customAccent} 24%, #0f172a)`
-      );
-      root.style.setProperty("--accent-border-soft-dark", appearance.customAccent);
-      root.style.setProperty("--focus-ring-dark", `${appearance.customAccent}66`);
-      root.style.setProperty("--accent-ring-dark", `${appearance.customAccent}55`);
-    }
-    return () => {
-      delete root.dataset.themeMode;
-      delete root.dataset.accent;
-      delete root.dataset.density;
-      delete root.dataset.wallpaper;
-      delete root.dataset.bubbleShape;
-      delete root.dataset.messageFont;
-      root.style.removeProperty("--message-scale");
-      root.style.removeProperty("--radius-bubble");
-      root.style.removeProperty("--float-radius-bubble");
-      root.style.removeProperty("--message-font-family");
-      root.style.removeProperty("--avatar-custom-bg");
-      root.style.removeProperty("--wallpaper-custom-image");
-      root.style.removeProperty("--accent-primary-light");
-      root.style.removeProperty("--accent-primary-hover-light");
-      root.style.removeProperty("--accent-soft-light");
-      root.style.removeProperty("--accent-border-soft-light");
-      root.style.removeProperty("--focus-ring-light");
-      root.style.removeProperty("--accent-ring-light");
-      root.style.removeProperty("--accent-primary-dark");
-      root.style.removeProperty("--accent-primary-hover-dark");
-      root.style.removeProperty("--accent-soft-dark");
-      root.style.removeProperty("--accent-border-soft-dark");
-      root.style.removeProperty("--focus-ring-dark");
-      root.style.removeProperty("--accent-ring-dark");
-    };
+    return applyAppearanceToDocument(
+      appearance,
+      resolvedThemeMode,
+      messageFontFamily(appearance.messageFont)
+    );
   }, [appearance, resolvedThemeMode]);
 
   const value = useMemo<AppearanceContextValue>(
