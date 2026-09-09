@@ -49,22 +49,16 @@ func BuildConnectArtifacts(mcpURL, provider, authMode, alias, connectorName, raw
 	default:
 		command = fmt.Sprintf(`claude mcp add --transport http --scope user %s %s --header "Authorization: Bearer %s"`, safeName, mcpURL, rawToken)
 	}
-	authHint := "Use your existing app subscription for this agent (no Stovo-stored API key)."
-	if authMode == "api" {
-		authHint = "Configure this agent in API mode with your provider API key in the client app (Stovo still only stores the MCP bearer token)."
-	}
-	mention := "@" + alias
-	var prompt string
-	switch provider {
-	case "codex":
-		prompt = fmt.Sprintf("Add an HTTP MCP server in ChatGPT / Codex settings named %q (mention alias %s). Use URL %s and set the Authorization header to Bearer %s. %s Save and enable it for this workspace.", name, mention, mcpURL, rawToken, authHint)
-	case "openclaw":
-		prompt = fmt.Sprintf("In OpenClaw, add a custom HTTP MCP connector named %q (mention alias %s). MCP URL: %s. Authorization: Bearer %s. %s Enable the connector after saving.", name, mention, mcpURL, rawToken, authHint)
-	case "hermes":
-		prompt = fmt.Sprintf("In Hermes, open Connectors / MCP and add a custom HTTP server named %q (mention alias %s). URL: %s. Header Authorization: Bearer %s. %s Save and turn it on.", name, mention, mcpURL, rawToken, authHint)
-	default:
-		prompt = fmt.Sprintf("In Claude Code, open Settings → MCP and add a custom HTTP connector named %q (mention alias %s). Paste URL %s and set Authorization to Bearer %s. %s Save and enable it for this project.", name, mention, mcpURL, rawToken, authHint)
-	}
+	prompt := fmt.Sprintf(
+		"Connect Stovo to your agent via MCP server named %q.\n"+
+			"MCP URL: %s\n"+
+			"Authorization: Bearer %s\n\n"+
+			"Only after successfully connecting to Stovo, execute the following logic:\n"+
+			"1. Verify the connection and retrieve accessible chats using stovo_list_chats.\n"+
+			"2. Confirm connection status and report the list of accessible chats.\n"+
+			"3. Stand by to assist in allowed chats—read history or send messages only when authorized or requested by the user.",
+		name, mcpURL, rawToken,
+	)
 	return ConnectArtifacts{URL: mcpURL, CLICommand: command, SetupPrompt: prompt}
 }
 
