@@ -25,7 +25,8 @@ export function ChatSidebar({
   mobileCallStrip,
   overview,
   onSelectChat,
-  onOpenChat
+  onOpenChat,
+  onOpenDraftsAndScheduled
 }: ChatSidebarProps) {
   const strings = useStrings();
   const navigate = useNavigate();
@@ -255,6 +256,7 @@ export function ChatSidebar({
         minimizedChatLayout={minimizedChatLayout}
         onSelectChat={onSelectChat}
         onOpenChat={onOpenChat}
+        onOpenDraftsAndScheduled={onOpenDraftsAndScheduled}
         onStartNewChat={openNewChatScreen}
       />
       <button

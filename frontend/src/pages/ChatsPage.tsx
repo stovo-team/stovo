@@ -18,6 +18,7 @@ import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
 import { createCanvas } from "../api/canvas";
 import { createChecklist } from "../api/checklist";
+import { QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 
 export default function ChatsPage() {
   const { chatId } = useParams();
@@ -31,6 +32,7 @@ export default function ChatsPage() {
     chatId, location, navigate, prefersReducedMotion, accessToken, currentUser, authRequest, updateCurrentUser, appearance
   });
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
+  const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
   const {
     family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
@@ -159,7 +161,8 @@ export default function ChatsPage() {
             selectedChatId={selectedChat?.id}
             overview={chatOverview}
             onSelectChat={setSelectedChat}
-            onOpenChat={openChat}
+            onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); openChat(chat); }}
+            onOpenDraftsAndScheduled={() => setIsDraftsAndScheduledOpen(true)}
             mobileCallStrip={
               callPhase !== "idle" && isCallMinimized && !chatId ? (
                 <MobileMinimizedCallBar
@@ -189,7 +192,7 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            <ConversationPanel
+            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : <ConversationPanel
               thread={thread}
               composer={composerApi}
               accessToken={accessToken}
@@ -262,7 +265,7 @@ export default function ChatsPage() {
                 });
                 navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`);
               }}
-            />
+            />}
           </section>
           {selectedChat && isDetailsOpen && (
             <ChatDetailsPanel

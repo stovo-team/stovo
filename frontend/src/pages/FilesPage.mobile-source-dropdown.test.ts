@@ -5,12 +5,13 @@ import { describe, expect, it } from "vitest";
 const page = readFileSync(resolve(process.cwd(), "src/pages/FilesPage.tsx"), "utf8");
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
-describe("Storage mobile source dropdown", () => {
-  it("renders a mobile-only source selector with grouped source choices", () => {
-    expect(page).toContain('className="storage-mobile-source-picker"');
+describe("Storage mobile source browser", () => {
+  it("opens on the chat list and renders grouped source choices", () => {
+    expect(page).toContain('storage-mobile-source-picker${isMobileSourceBrowserOpen');
     expect(page).toContain('aria-haspopup="listbox"');
     expect(page).toContain('className="storage-mobile-source-menu"');
-    expect(page).toContain('setIsSourceMenuOpen(false)');
+    expect(page).toContain('useState(true)');
+    expect(page).toContain('setIsMobileSourceBrowserOpen(false)');
     expect(styles).toMatch(/@media \(max-width:\s*960px\)[\s\S]*\.storage-mobile-source-picker/);
   });
 
@@ -35,14 +36,14 @@ describe("Storage mobile source dropdown", () => {
     );
   });
 
-  it("keeps an AMOLED black storage canvas and a pill source dropdown on mobile", () => {
+  it("keeps an AMOLED black storage canvas and a pill source trigger after selection", () => {
     expect(styles).toMatch(/\.storage-page\s*\{[^}]*background:\s*var\(--canvas-amoled/);
     expect(styles).toMatch(
       /@media \(max-width:\s*960px\)[\s\S]*\.storage-mobile-source-trigger[\s\S]*border-radius:\s*999px/
     );
   });
 
-  it("removes dropdown press motion and matches selected item radius to the menu", () => {
+  it("removes browser-row press motion and matches selected item radius to the menu", () => {
     expect(styles).toMatch(
       /\.storage-mobile-source-trigger:active:not\(:disabled\)[\s\S]*?transform:\s*none/
     );
