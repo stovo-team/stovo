@@ -1,5 +1,6 @@
 import { Archive, ChevronDown, FileText, FolderMinus, FolderPlus, Lock, MessageCircle, RotateCcw, Settings2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { Chat, updateChatPreferences } from "../../../api/chats";
 import type { ChatFilter, ChatSectionKey } from "../shared/types";
@@ -59,6 +60,9 @@ export type ChatListProps = {
   onSelectChat: (chat: Chat) => void;
   onOpenChat: (chat: Chat) => void;
   onOpenDraftsAndScheduled: () => void;
+  isDraftsAndScheduledActive?: boolean;
+  onOpenMessageArchive: () => void;
+  isMessageArchiveActive?: boolean;
   onStartNewChat: () => void;
 };
 
@@ -78,6 +82,9 @@ export function ChatList({
   onSelectChat,
   onOpenChat,
   onOpenDraftsAndScheduled,
+  isDraftsAndScheduledActive,
+  onOpenMessageArchive,
+  isMessageArchiveActive,
   onStartNewChat
 }: ChatListProps) {
   const strings = useStrings();
@@ -100,6 +107,12 @@ export function ChatList({
   const folders = folderState.folders;
   const archiveChat = filteredChats.find((chat) => chat.type === "archive");
   const draftChats = filteredChats.filter((chat) => Boolean(window.localStorage.getItem(`stovo:draft:${chat.id}`)));
+  const newestChat = [...filteredChats].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0];
+  const previewFor = (chat?: Chat) => {
+    if (!chat?.lastMessageContent) return "No messages yet";
+    const sender = chat.lastMessageSenderDisplayName ? `${chat.lastMessageSenderDisplayName}: ` : "";
+    return `${sender}${chat.lastMessageContent}`;
+  };
 
   function canDropToSection(sectionKey: ChatSectionKey, chat: Chat, chatName: string): boolean {
     if (folders.some((f) => f.rules.includedChatIds?.includes(chat.id) || getChatContainer(chat) === f.id)) {
@@ -521,13 +534,13 @@ export function ChatList({
           {!collapsed["quick-access"] && (
             <div className="quick-access-items">
               {quickAccess.archiveEnabled && archiveChat && (
-                <button type="button" className={`chat-list-item quick-access-item ${archiveChat.id === activeChatId ? "active" : ""}`} onClick={() => { onSelectChat(archiveChat); onOpenChat(archiveChat); }}>
-                  <span className="quick-access-icon"><Archive size={17} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Message Archive</strong></span><span className="chat-list-preview">All messages</span></span>
+                <button type="button" className={`chat-list-item quick-access-item ${isMessageArchiveActive ? "active" : ""}`} onClick={onOpenMessageArchive}>
+                  <span className="avatar chat-avatar archive quick-access-icon"><Archive size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Message Archive</strong></span><span className="chat-list-preview">{previewFor(archiveChat)}</span></span>
                 </button>
               )}
               {quickAccess.outboxEnabled && (
-                <button type="button" className="chat-list-item quick-access-item" onClick={onOpenDraftsAndScheduled}>
-                  <span className="quick-access-icon"><FileText size={17} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span><span className="chat-list-preview">{draftChats.length ? `${draftChats.length} draft chat${draftChats.length === 1 ? "" : "s"}` : "No drafts or scheduled messages"}</span></span>
+                <button type="button" className={`chat-list-item quick-access-item ${isDraftsAndScheduledActive ? "active" : ""}`} onClick={onOpenDraftsAndScheduled}>
+                  <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span><span className="chat-list-preview">{previewFor(draftChats[0] ?? newestChat)}</span></span>
                   {draftChats.length > 0 && <span className="tiny-badge">{draftChats.length}</span>}
                 </button>
               )}
@@ -811,7 +824,7 @@ export function ChatList({
           onDelete={(folder) => deleteDefaultSection(editingDefaultSection, folder)}
         />
       )}
-      {isQuickAccessSettingsOpen && (
+      {isQuickAccessSettingsOpen && createPortal(
         <div className="modal-backdrop" onMouseDown={() => setIsQuickAccessSettingsOpen(false)}>
           <section className="messenger-modal quick-access-settings" role="dialog" aria-modal="true" aria-labelledby="quick-access-settings-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="modal-card-header"><h2 id="quick-access-settings-title">Quick Access folder settings</h2><button type="button" className="quick-access-close" aria-label="Close" onClick={() => setIsQuickAccessSettingsOpen(false)}><X size={18} /></button></div>
@@ -819,7 +832,7 @@ export function ChatList({
             <div className="quick-access-setting"><span><strong>Drafts &amp; scheduled</strong><small>Show pending messages without changing chat order.</small></span><button type="button" role="switch" aria-checked={quickAccess.outboxEnabled} className={`quick-access-switch ${quickAccess.outboxEnabled ? "is-on" : ""}`} onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}><span /></button></div>
           </section>
         </div>
-      )}
+      , document.body)}
       {contextMenu && (
         <ChatContextMenu
           menu={contextMenu}
