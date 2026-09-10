@@ -270,7 +270,7 @@ export default function ChatsPage() {
                 });
                 navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`);
               }}
-              headerBelow={isMessageArchiveOpen && selectedChat?.type === "archive" ? <MessageArchiveViewControls view={messageArchiveView} onChange={setMessageArchiveView} /> : undefined}
+              headerBelow={selectedChat?.type === "archive" ? <MessageArchiveViewControls view={messageArchiveView} onChange={setMessageArchiveView} /> : undefined}
             />}
           </section>
           {selectedChat && isDetailsOpen && (
