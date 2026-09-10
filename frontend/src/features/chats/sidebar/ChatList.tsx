@@ -1,4 +1,4 @@
-import { ChevronDown, FolderMinus, FolderPlus, Lock, MessageCircle, RotateCcw, Settings2 } from "lucide-react";
+import { Archive, ChevronDown, FileText, FolderMinus, FolderPlus, Lock, MessageCircle, RotateCcw, Settings2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Chat, updateChatPreferences } from "../../../api/chats";
@@ -20,6 +20,28 @@ import {
   saveDefaultSectionFolder,
   saveDeletedDefaultSections
 } from "./defaultChatSectionSettings";
+
+type QuickAccessSettings = {
+  archiveEnabled: boolean;
+  outboxEnabled: boolean;
+  archiveView: "all" | "grouped";
+};
+
+function quickAccessStorageKey(familyId: string) {
+  return `stovo:quick-access:${familyId}`;
+}
+
+function loadQuickAccessSettings(familyId: string): QuickAccessSettings {
+  const fallback: QuickAccessSettings = { archiveEnabled: true, outboxEnabled: true, archiveView: "all" };
+  try {
+    const stored = window.localStorage.getItem(quickAccessStorageKey(familyId));
+    if (!stored) return fallback;
+    const parsed = JSON.parse(stored) as Partial<QuickAccessSettings>;
+    return { ...fallback, ...parsed, archiveView: parsed.archiveView === "grouped" ? "grouped" : "all" };
+  } catch {
+    return fallback;
+  }
+}
 
 export type ChatListProps = {
   isLoading?: boolean;
@@ -68,10 +90,14 @@ export function ChatList({
   const [draggedChat, setDraggedChat] = useState<Chat | null>(null);
   const [dragOverTargetId, setDragOverTargetId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ChatContextMenuState | null>(null);
+  const [isQuickAccessSettingsOpen, setIsQuickAccessSettingsOpen] = useState(false);
+  const [quickAccess, setQuickAccess] = useState(() => loadQuickAccessSettings(familyId));
   const draggedChatRef = useRef<Chat | null>(null);
   const showSkeleton = (isLoading || !hasLoadedOverview) && filteredChats.length === 0;
 
   const folders = folderState.folders;
+  const archiveChat = filteredChats.find((chat) => chat.type === "archive");
+  const draftChats = filteredChats.filter((chat) => Boolean(window.localStorage.getItem(`stovo:draft:${chat.id}`)));
 
   function canDropToSection(sectionKey: ChatSectionKey, chat: Chat, chatName: string): boolean {
     if (folders.some((f) => f.rules.includedChatIds?.includes(chat.id) || getChatContainer(chat) === f.id)) {
@@ -332,7 +358,16 @@ export function ChatList({
     setDeletedDefaultSections(loadDeletedDefaultSections(familyId));
     setSectionAssignments(loadChatSectionAssignments(familyId));
     setCollapsed({});
+    setQuickAccess(loadQuickAccessSettings(familyId));
   }, [familyId]);
+
+  function updateQuickAccess(patch: Partial<QuickAccessSettings>) {
+    setQuickAccess((current) => {
+      const next = { ...current, ...patch };
+      window.localStorage.setItem(quickAccessStorageKey(familyId), JSON.stringify(next));
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (folderState.familyId === familyId) saveChatFolders(familyId, folders);
@@ -411,7 +446,7 @@ export function ChatList({
     { key: "dms", label: strings.chats.sections.dms },
     { key: "channels", label: strings.chats.sections.channels },
     { key: "voice", label: strings.chats.sections.voice }
-  ];
+  ].filter((section) => section.key !== "archive" || !quickAccess.archiveEnabled) as Array<{ key: ChatSectionKey; label: string }>;
 
   const hasAnyChatsRendered =
     chatSectionOrder
@@ -470,6 +505,37 @@ export function ChatList({
         }
       }}
     >
+      {!showSkeleton && (quickAccess.archiveEnabled || quickAccess.outboxEnabled) && (
+        <section className="chat-list-section chat-list-section--quick-access" aria-label="Quick Access">
+          <div className="chat-section-heading">
+            <button type="button" className="chat-section-collapse" onClick={() => toggleSection("quick-access")} aria-expanded={!collapsed["quick-access"]}>
+              <ChevronDown size={16} aria-hidden="true" className={collapsed["quick-access"] ? "is-collapsed" : ""} />
+              <span>Quick Access</span>
+            </button>
+            <span className="chat-folder-controls">
+              <button type="button" aria-label="Quick Access folder settings" title="Quick Access folder settings" onClick={() => setIsQuickAccessSettingsOpen(true)}><Settings2 size={14} /></button>
+            </span>
+          </div>
+          {!collapsed["quick-access"] && (
+            <div className="quick-access-items">
+              {quickAccess.archiveEnabled && archiveChat && (
+                <button type="button" className={`quick-access-item ${archiveChat.id === activeChatId ? "active" : ""}`} onClick={() => { onSelectChat(archiveChat); onOpenChat(archiveChat); }}>
+                  <span className="quick-access-icon"><Archive size={17} /></span><span><strong>Message Archive</strong><small>{quickAccess.archiveView === "all" ? "All messages" : "Grouped by source chat"}</small></span>
+                </button>
+              )}
+              {quickAccess.outboxEnabled && (
+                <button type="button" className="quick-access-item" onClick={() => {
+                  const target = draftChats[0];
+                  if (target) { onSelectChat(target); onOpenChat(target); } else onStartNewChat();
+                }}>
+                  <span className="quick-access-icon"><FileText size={17} /></span><span><strong>Drafts &amp; scheduled</strong><small>{draftChats.length ? `${draftChats.length} draft chat${draftChats.length === 1 ? "" : "s"}` : "No drafts or scheduled messages"}</small></span>
+                  {draftChats.length > 0 && <span className="tiny-badge">{draftChats.length}</span>}
+                </button>
+              )}
+            </div>
+          )}
+        </section>
+      )}
       {showSkeleton
         ? Array.from({ length: 5 }).map((_, index) => (
             <div className="chat-list-item skeleton-row" key={index}>
@@ -745,6 +811,16 @@ export function ChatList({
           onSave={(folder) => saveDefaultFolderSettings(editingDefaultSection, folder)}
           onDelete={(folder) => deleteDefaultSection(editingDefaultSection, folder)}
         />
+      )}
+      {isQuickAccessSettingsOpen && (
+        <div className="modal-backdrop" onMouseDown={() => setIsQuickAccessSettingsOpen(false)}>
+          <section className="messenger-modal quick-access-settings" role="dialog" aria-modal="true" aria-labelledby="quick-access-settings-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="modal-card-header"><h2 id="quick-access-settings-title">Quick Access folder settings</h2><button type="button" className="icon-button subtle" aria-label="Close" onClick={() => setIsQuickAccessSettingsOpen(false)}>×</button></div>
+            <label className="quick-access-setting"><span><strong>Message Archive</strong><small>Keep the archive at the top of the chat list.</small></span><input type="checkbox" checked={quickAccess.archiveEnabled} onChange={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })} /></label>
+            <label className="quick-access-setting"><span><strong>Drafts &amp; scheduled</strong><small>Show pending messages without changing chat order.</small></span><input type="checkbox" checked={quickAccess.outboxEnabled} onChange={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })} /></label>
+            <label className="quick-access-select"><span><strong>Message Archive view</strong><small>All messages is the default.</small></span><select value={quickAccess.archiveView} onChange={(event) => updateQuickAccess({ archiveView: event.target.value as QuickAccessSettings["archiveView"] })}><option value="all">All messages</option><option value="grouped">Grouped by source chat</option></select></label>
+          </section>
+        </div>
       )}
       {contextMenu && (
         <ChatContextMenu

@@ -20542,8 +20542,9 @@ button.attachment-nav-item:focus-visible {
 
 .mcp-copy-field { display: grid; gap: 7px; }
 .mcp-copy-field-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #edf1fb; font-size: .84rem; font-weight: 700; }
-.mcp-inline-copy { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 7px; border: 1px solid #33435e; border-radius: 8px; color: #b8c9e8; background: #171f2d; font: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; }
-.mcp-inline-copy:hover { border-color: #6e8cff; color: #fff; background: #23304a; }
+.mcp-inline-copy { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 3px 5px; border: 1px solid transparent; border-radius: 7px; color: #9eb3d9; background: transparent; font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
+.mcp-inline-copy:hover { color: #d7e5ff; background: rgba(92, 133, 204, .12); }
+.mcp-inline-copy:focus-visible { outline: 2px solid #6e8cff; outline-offset: 2px; }
 .mcp-copy-field code { margin: 0; background: #0e131b; }
 
 .mcp-setup-block {
