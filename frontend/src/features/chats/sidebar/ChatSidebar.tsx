@@ -26,7 +26,10 @@ export function ChatSidebar({
   overview,
   onSelectChat,
   onOpenChat,
-  onOpenDraftsAndScheduled
+  onOpenDraftsAndScheduled,
+  isDraftsAndScheduledActive,
+  onOpenMessageArchive,
+  isMessageArchiveActive
 }: ChatSidebarProps) {
   const strings = useStrings();
   const navigate = useNavigate();
@@ -257,6 +260,9 @@ export function ChatSidebar({
         onSelectChat={onSelectChat}
         onOpenChat={onOpenChat}
         onOpenDraftsAndScheduled={onOpenDraftsAndScheduled}
+        isDraftsAndScheduledActive={isDraftsAndScheduledActive}
+        onOpenMessageArchive={onOpenMessageArchive}
+        isMessageArchiveActive={isMessageArchiveActive}
         onStartNewChat={openNewChatScreen}
       />
       <button

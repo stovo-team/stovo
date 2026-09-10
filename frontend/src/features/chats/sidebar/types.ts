@@ -48,4 +48,7 @@ export type ChatSidebarProps = {
   onSelectChat: (chat: Chat) => void;
   onOpenChat: (chat: Chat) => void;
   onOpenDraftsAndScheduled: () => void;
+  isDraftsAndScheduledActive?: boolean;
+  onOpenMessageArchive: () => void;
+  isMessageArchiveActive?: boolean;
 };
