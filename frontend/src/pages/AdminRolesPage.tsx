@@ -9,7 +9,6 @@ import { BackButton } from "../components/BackButton";
 const permissionGroups = [
   {
     name: "Server administration",
-    description: "Control the server's core settings and access model.",
     permissions: [
       ["manage_server", "Manage server", "Server name, appearance, and encryption"],
       ["manage_roles", "Manage roles", "Create, edit, delete, and assign roles"],
@@ -17,7 +16,6 @@ const permissionGroups = [
   },
   {
     name: "Members & spaces",
-    description: "Manage people and the spaces where they communicate.",
     permissions: [
       ["manage_members", "Manage members", "Invite, remove, and add people to chats"],
       ["manage_channels", "Manage channels", "Create and edit groups and channels"],
@@ -26,7 +24,6 @@ const permissionGroups = [
   },
   {
     name: "Content moderation",
-    description: "Keep messages and shared content organized and safe.",
     permissions: [
       ["manage_messages", "Manage messages", "Moderate messages and pins"],
       ["manage_files", "Manage files", "Delete any server file"],
@@ -34,7 +31,6 @@ const permissionGroups = [
   },
   {
     name: "Billing & connections",
-    description: "Control paid features and services connected to the server.",
     permissions: [
       ["manage_plans", "Manage plans", "Manage any server plan"],
       ["manage_integrations", "Manage integrations", "Configure server integrations"],
@@ -102,7 +98,7 @@ export default function AdminRolesPage() {
     {!canManage && <p className="error-text">Role management access required.</p>}{error && <p className="error-text">{error}</p>}
     {canManage && <div className="admin-roles-layout">
       <aside className="admin-role-list" aria-label="Server roles">{roles.map((role) => <button key={role.id} type="button" className={role.id === selectedId ? "active" : ""} onClick={() => select(role)}><strong>{role.name}</strong><small>{role.isDefault ? "Default role" : `${role.memberCount} members`}</small></button>)}<button type="button" className="admin-role-create" onClick={() => { setSelectedId("new"); setDraft({ id: "new", name: "", description: "", permissions: [], isDefault: false, memberCount: 0 }); }}><span className="ms-icon ms-icon--18" aria-hidden="true">add</span>Create role</button></aside>
-      {draft && <section className="admin-panel admin-role-editor"><label>Role name<input value={draft.name} maxLength={60} onChange={(event) => setDraft({ ...draft, name: event.target.value })} disabled={saving} /></label><label>Description<input value={draft.description ?? ""} onChange={(event) => setDraft({ ...draft, description: event.target.value })} disabled={saving} /></label><p className="admin-role-default">{draft.isDefault ? "Default role — it can be edited but not deleted." : "Custom role"}</p><div className="admin-role-permissions">{permissionGroups.map((group) => { const keys = group.permissions.map(([key]) => key); const allEnabled = keys.every((key) => draft.permissions.includes(key)); return <section className="admin-role-permission-group" key={group.name}><div className="admin-role-permission-group-heading"><div><h2>{group.name}</h2><p>{group.description}</p></div><label className="admin-role-group-toggle"><input type="checkbox" checked={allEnabled} onChange={() => togglePermissionGroup(keys)} disabled={saving} /><span>All</span></label></div><div className="admin-role-permission-options">{group.permissions.map(([key, label, helper]) => <label key={key}><input type="checkbox" checked={draft.permissions.includes(key)} onChange={() => togglePermission(key)} disabled={saving} /><span><strong>{label}</strong><small>{helper}</small></span></label>)}</div></section>; })}</div><div className="admin-member-actions"><button type="button" className="primary-button" onClick={() => void save()} disabled={saving || !draft.name.trim()}>Save role</button>{!draft.isDefault && draft.id !== "new" && <button type="button" className="danger-button" onClick={() => void remove()} disabled={saving}>Delete role</button>}</div></section>}
+      {draft && <section className="admin-panel admin-role-editor"><label>Role name<input value={draft.name} maxLength={60} onChange={(event) => setDraft({ ...draft, name: event.target.value })} disabled={saving} /></label><label>Description<input value={draft.description ?? ""} onChange={(event) => setDraft({ ...draft, description: event.target.value })} disabled={saving} /></label><p className="admin-role-default">{draft.isDefault ? "Default role — it can be edited but not deleted." : "Custom role"}</p><div className="admin-role-permissions">{permissionGroups.map((group) => { const keys = group.permissions.map(([key]) => key); const allEnabled = keys.every((key) => draft.permissions.includes(key)); return <section className="admin-role-permission-group" key={group.name}><div className="admin-role-permission-group-heading"><h2>{group.name}</h2><label className="admin-role-group-toggle"><input type="checkbox" checked={allEnabled} onChange={() => togglePermissionGroup(keys)} disabled={saving} /><span>All</span></label></div><div className="admin-role-permission-options">{group.permissions.map(([key, label, helper]) => <label key={key}><input type="checkbox" checked={draft.permissions.includes(key)} onChange={() => togglePermission(key)} disabled={saving} /><span><strong>{label}</strong><small>{helper}</small></span></label>)}</div></section>; })}</div><div className="admin-member-actions"><button type="button" className="primary-button" onClick={() => void save()} disabled={saving || !draft.name.trim()}>Save role</button>{!draft.isDefault && draft.id !== "new" && <button type="button" className="danger-button" onClick={() => void remove()} disabled={saving}>Delete role</button>}</div></section>}
     </div>}
   </section></main>;
 }
