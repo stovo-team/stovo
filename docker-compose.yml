@@ -24,6 +24,9 @@ x-backend: &backend
     POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+    # When set, this takes precedence over the POSTGRES_* values above. It is
+    # the connection URL for a managed/external PostgreSQL instance.
+    DATABASE_URL: ${DATABASE_URL:-}
     REDIS_HOST: redis
     REDIS_PORT: 6379
     REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
@@ -38,14 +41,16 @@ x-backend: &backend
     MESSAGE_ENCRYPTION_KEY: ${MESSAGE_ENCRYPTION_KEY:?Set MESSAGE_ENCRYPTION_KEY in .env}
     STORAGE_PROVIDER: ${STORAGE_PROVIDER:-minio}
     LOCAL_STORAGE_PATH: /app/uploads
-    MINIO_ENDPOINT: minio:9000
+    # S3-compatible endpoint. Defaults to the bundled MinIO service; set
+    # S3_ENDPOINT=s3.cloud.ru and S3_SECURE=true for Cloud.ru Object Storage.
+    MINIO_ENDPOINT: ${S3_ENDPOINT:-minio:9000}
     # The private endpoint above is for server I/O. Presigned URLs use this
     # externally reachable Caddy hostname when direct media is enabled.
     MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-}
     MINIO_PUBLIC_SECURE: ${MINIO_PUBLIC_SECURE:-true}
     MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?Set MINIO_ACCESS_KEY in .env}
     MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
-    MINIO_SECURE: "false"
+    MINIO_SECURE: ${S3_SECURE:-false}
     MINIO_FILES_BUCKET: ${MINIO_FILES_BUCKET:-stovo-files}
     MINIO_LOGS_BUCKET: ${MINIO_LOGS_BUCKET:-stovo-logs}
     MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-100}
@@ -100,6 +105,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      DATABASE_URL: ${DATABASE_URL:-}
     depends_on:
       postgres:
         condition: service_healthy

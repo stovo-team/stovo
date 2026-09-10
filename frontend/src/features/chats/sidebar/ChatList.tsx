@@ -596,6 +596,11 @@ export function ChatList({
                 return defaultFolder ? folderMatchesChatProperties(chat, defaultFolder.rules, chatName) : true;
               });
               const sectionLabel = defaultFolder?.name || defaultSectionNames[section.key] || section.label;
+              // Empty built-in sections are only useful as drag destinations. Keep the
+              // everyday list focused on folders that actually contain conversations.
+              if (sectionChats.length === 0 && !activeDraggedChat) {
+                return null;
+              }
               const draggedChatName = activeDraggedChat ? displayChatName(activeDraggedChat, currentUserId, strings) : "";
               const isMatch = activeDraggedChat ? canDropToSection(section.key, activeDraggedChat, draggedChatName) : true;
               const isRestricted = Boolean(activeDraggedChat && !isMatch);

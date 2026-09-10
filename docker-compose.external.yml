@@ -1,0 +1,39 @@
+# Use with: docker compose -f docker-compose.yml -f docker-compose.external.yml up -d --build
+#
+# This override keeps Redis, ntfy, the application, and Caddy local, but removes
+# the bundled PostgreSQL and MinIO services from the running stack. Set
+# DATABASE_URL and the S3_* / MINIO_* values in .env before using it.
+services:
+  postgres:
+    profiles: [bundled-infra]
+
+  minio:
+    profiles: [bundled-infra]
+
+  minio-init:
+    profiles: [bundled-infra]
+
+  backend-migrate:
+    depends_on: !reset {}
+
+  backend-blue:
+    depends_on: !reset
+      backend-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      redis-jobs:
+        condition: service_healthy
+      ntfy:
+        condition: service_healthy
+
+  backend-green:
+    depends_on: !reset
+      backend-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      redis-jobs:
+        condition: service_healthy
+      ntfy:
+        condition: service_healthy

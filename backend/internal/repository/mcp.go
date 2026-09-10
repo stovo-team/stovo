@@ -6,7 +6,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 
 	"stovo-messenger/backend/ent"
-	"stovo-messenger/backend/ent/chatmember"
 	"stovo-messenger/backend/ent/mcpauditevent"
 	"stovo-messenger/backend/ent/mcpconnector"
 	"stovo-messenger/backend/ent/mcpconnectorchat"
@@ -223,7 +222,8 @@ type RevokeMCPConnectorParams struct {
 	ActorUserID string
 }
 
-// RevokeMCPConnector disables a connector, clears chats/memberships, and deactivates the actor user.
+// RevokeMCPConnector disables a connector, clears chat bindings, and deactivates
+// its technical message principal. Connectors are never chat members.
 func (s *Store) RevokeMCPConnector(ctx context.Context, tx *ent.Tx, p RevokeMCPConnectorParams) error {
 	c := s.client(tx)
 	if _, err := c.McpConnector.Update().
@@ -242,11 +242,6 @@ func (s *Store) RevokeMCPConnector(ctx context.Context, tx *ent.Tx, p RevokeMCPC
 		Exec(ctx); err != nil {
 		return err
 	}
-	if _, err := c.ChatMember.Delete().
-		Where(chatmember.UserIDEQ(p.ActorUserID)).
-		Exec(ctx); err != nil {
-		return err
-	}
 	_, err := c.User.UpdateOneID(p.ActorUserID).
 		SetIsActive(0).
 		SetDisplayName(p.DisplayName).
@@ -254,16 +249,13 @@ func (s *Store) RevokeMCPConnector(ctx context.Context, tx *ent.Tx, p RevokeMCPC
 	return err
 }
 
-// SyncMCPConnectorChats replaces connector chat bindings and actor memberships.
-func (s *Store) SyncMCPConnectorChats(ctx context.Context, tx *ent.Tx, connectorID, actorUserID string, chatIDs []string, memberCreatedAt string) error {
+// SyncMCPConnectorChats replaces the chats a connector may access. It deliberately
+// does not create chat_member rows: a connector is a connection to Stovo, not a
+// person, agent, or member of a chat.
+func (s *Store) SyncMCPConnectorChats(ctx context.Context, tx *ent.Tx, connectorID string, chatIDs []string) error {
 	c := s.client(tx)
 	if _, err := c.McpConnectorChat.Delete().
 		Where(mcpconnectorchat.IDEQ(connectorID)).
-		Exec(ctx); err != nil {
-		return err
-	}
-	if _, err := c.ChatMember.Delete().
-		Where(chatmember.UserIDEQ(actorUserID)).
 		Exec(ctx); err != nil {
 		return err
 	}
@@ -276,20 +268,6 @@ func (s *Store) SyncMCPConnectorChats(ctx context.Context, tx *ent.Tx, connector
 		}
 		if !bound {
 			if err := c.McpConnectorChat.Create().SetID(connectorID).SetChatID(chatID).Exec(ctx); err != nil {
-				return err
-			}
-		}
-
-		// Query after the binding write so database-side membership automation,
-		// if present, and this application path result in exactly one member row.
-		memberExists, err := c.ChatMember.Query().
-			Where(chatmember.IDEQ(chatID), chatmember.UserIDEQ(actorUserID)).
-			Exist(ctx)
-		if err != nil {
-			return err
-		}
-		if !memberExists {
-			if err := c.ChatMember.Create().SetID(chatID).SetUserID(actorUserID).SetCreatedAt(memberCreatedAt).Exec(ctx); err != nil {
 				return err
 			}
 		}

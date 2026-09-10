@@ -29,7 +29,7 @@ func New(cfg Config) (ObjectStore, error) {
 	switch cfg.Provider {
 	case "", "local":
 		return NewLocalStorage(cfg.LocalPath)
-	case "minio":
+	case "minio", "s3":
 		store, err := NewMinIOStorage(cfg.Endpoint, cfg.AccessKey, cfg.SecretKey, cfg.Secure, cfg.Bucket)
 		if err != nil {
 			return nil, err
@@ -44,6 +44,10 @@ func New(cfg Config) (ObjectStore, error) {
 				return nil, err
 			}
 		}
+		// "minio" is retained for existing installations and persisted file
+		// metadata. "s3" identifies newly uploaded objects stored by an
+		// external S3-compatible service such as Cloud.ru Object Storage.
+		store.provider = cfg.Provider
 		return store, nil
 	default:
 		return nil, fmt.Errorf("unsupported storage provider %q", cfg.Provider)
