@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import type { Family } from "../../api/family";
 import type { FamilyFile } from "../../api/files";
@@ -12,6 +12,7 @@ import { NewChatDialog } from "./sidebar/NewChatDialog";
 import type { ChatOverviewController } from "./sidebar/types";
 import type { Chat } from "../../api/chats";
 import { GuestMeetingLinkControl } from "./calling/GuestMeetingLinkControl";
+import { GuestMeetingSelect } from "./calling/GuestMeetingSelect";
 
 import type { PendingLocalAttachment } from "./shared/types";
 
@@ -129,7 +130,7 @@ export function ChatOverlays({
         <div className="guest-meeting-planner-backdrop" role="presentation" onMouseDown={() => setIsMeetingPlannerOpen(false)}>
           <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label="Plan guest meeting" onMouseDown={(event) => event.stopPropagation()}>
             <div className="guest-meeting-planner-header"><h2>Create meeting link</h2><button type="button" className="icon-button subtle icon-button--plain" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}><X aria-hidden="true" size={20} /></button></div>
-            {meetingChats.length ? <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting space</span><span className="guest-link-select"><select value={meetingChatId} onChange={(event) => setMeetingChatId(event.target.value)}>{meetingChats.map((chat) => <option key={chat.id} value={chat.id}>{chat.title}</option>)}</select><ChevronDown size={17} aria-hidden="true" /></span></label><GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} enabled initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /></div> : <p className="muted-copy">Create a group or voice chat first, then create a meeting link.</p>}
+            {meetingChats.length ? <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting space</span><GuestMeetingSelect ariaLabel="Meeting space" value={meetingChatId} onChange={setMeetingChatId} options={meetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? "Untitled chat" }))} /></label><GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} enabled initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /></div> : <p className="muted-copy">Create a group or voice chat first, then create a meeting link.</p>}
           </section>
         </div>, document.body)}
 

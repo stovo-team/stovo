@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { CalendarPlus, Check, ChevronDown, Clock3, Copy, DoorOpen, Link } from "lucide-react";
+import { CalendarDays, Check, Clock3, Copy, DoorOpen, Link } from "lucide-react";
 import { createGuestMeeting } from "../../../api/guestMeetings";
+import { createPlan } from "../../../api/plans";
+import { IconGoogleCalendar } from "../../../components/icons/IconGoogleCalendar";
+import { GuestMeetingSelect } from "./GuestMeetingSelect";
 
 export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
   const [title, setTitle] = useState(initialTitle);
@@ -10,6 +13,8 @@ export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialT
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [planAdded, setPlanAdded] = useState(false);
+  const [addingPlan, setAddingPlan] = useState(false);
   if (!enabled || !accessToken || !chatId) return null;
   const memberToken = accessToken;
   const sourceChatId = chatId;
@@ -19,28 +24,43 @@ export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialT
       const expiresAt = duration === "custom" ? new Date(customExpiry).toISOString() : new Date(Date.now() + Number(duration) * 60 * 60 * 1000).toISOString();
       if (Number.isNaN(new Date(expiresAt).getTime()) || new Date(expiresAt) <= new Date()) throw new Error("Choose a future expiry date");
       if (!title.trim()) throw new Error("Enter a meeting name");
-      const meeting = await createGuestMeeting(memberToken, { chatId: sourceChatId, title: title.trim(), admissionMode: mode, expiresAt });
+      const planned = calendarStart ? new Date(calendarStart) : null;
+      const scheduledAt = planned && Number.isFinite(planned.getTime()) ? planned.toISOString() : undefined;
+      const meeting = await createGuestMeeting(memberToken, { chatId: sourceChatId, title: title.trim(), scheduledAt, admissionMode: mode, expiresAt });
       setUrl(meeting.meetingUrl);
       await navigator.clipboard?.writeText(meeting.meetingUrl);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not create guest link"); } finally { setLoading(false); }
   }
-  const addToGoogleCalendar = () => {
-    if (!url) return;
+  const meetingDates = () => {
     const start = calendarStart ? new Date(calendarStart) : new Date();
     const end = calendarEnd ? new Date(calendarEnd) : duration === "custom" ? new Date(customExpiry) : new Date(Date.now() + Number(duration) * 60 * 60 * 1000);
+    return { start, end };
+  };
+  const addToGoogleCalendar = () => {
+    if (!url) return;
+    const { start, end } = meetingDates();
     const utc = (value: Date) => value.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
     const params = new URLSearchParams({ action: "TEMPLATE", text: title.trim(), details: `Join meeting: ${url}`, location: url, dates: `${utc(start)}/${utc(end)}` });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank", "noopener,noreferrer");
   };
+  const addToPlans = async () => {
+    if (!url || planAdded || addingPlan) return;
+    setAddingPlan(true); setError(null);
+    try {
+      const { start, end } = meetingDates();
+      await createPlan(memberToken, { title: title.trim(), notes: `Join meeting: ${url}`, startsAt: start.toISOString(), endsAt: end.toISOString(), allDay: false, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", attendeeIds: [], sourceChatId });
+      setPlanAdded(true);
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not add meeting to Plans"); } finally { setAddingPlan(false); }
+  };
   return <div className="guest-link-control">
     <label className="guest-link-field"><span>Meeting name</span><input autoFocus value={title} maxLength={120} placeholder="e.g. Design review" onChange={(e) => setTitle(e.target.value)} /></label>
     <div className="guest-link-settings">
-      <label className="guest-link-field"><span><DoorOpen size={15} /> Guest entry</span><span className="guest-link-select"><select value={mode} onChange={(e) => setMode(e.target.value as "immediate" | "lobby")}><option value="immediate">Anyone with link</option><option value="lobby">Host approval</option></select><ChevronDown size={17} aria-hidden="true" /></span></label>
-      <label className="guest-link-field"><span><Clock3 size={15} /> Link expires</span><span className="guest-link-select"><select value={duration} onChange={(e) => setDuration(e.target.value)}><option value="1">In 1 hour</option><option value="24">In 24 hours</option><option value="168">In 7 days</option><option value="custom">Choose date & time</option></select><ChevronDown size={17} aria-hidden="true" /></span></label>
+      <label className="guest-link-field"><span><DoorOpen size={15} /> Guest entry</span><GuestMeetingSelect ariaLabel="Guest entry" value={mode} onChange={(value) => setMode(value as "immediate" | "lobby")} options={[{ value: "immediate", label: "Anyone with link" }, { value: "lobby", label: "Host approval" }]} /></label>
+      <label className="guest-link-field"><span><Clock3 size={15} /> Link expires</span><GuestMeetingSelect ariaLabel="Link expires" value={duration} onChange={setDuration} options={[{ value: "1", label: "In 1 hour" }, { value: "24", label: "In 24 hours" }, { value: "168", label: "In 7 days" }, { value: "custom", label: "Choose date & time" }]} /></label>
     </div>
     {duration === "custom" && <label className="guest-link-field guest-link-custom-date"><span><Clock3 size={15} /> Expiry date and time</span><input type="datetime-local" value={customExpiry} onChange={(e) => setCustomExpiry(e.target.value)} /></label>}
     <button type="button" className="guest-link-create-button" onClick={() => void create()} disabled={loading}><Link size={17} />{loading ? "Creating meeting link…" : "Create meeting link"}</button>
-    {url && <div className="guest-link-result"><span className="guest-link-result-icon"><Check size={17} /></span><div><strong>Link ready</strong><code>{url}</code></div><button type="button" className="icon-button subtle" aria-label="Copy meeting link" onClick={() => void navigator.clipboard?.writeText(url)}><Copy size={17} /></button><button type="button" className="secondary-button guest-link-calendar-button" onClick={addToGoogleCalendar}><CalendarPlus size={16} /> Add to Google Calendar</button></div>}
+    {url && <div className="guest-link-result"><span className="guest-link-result-icon"><Check size={17} /></span><div><strong>Link ready</strong><code>{url}</code></div><div className="guest-link-result-actions"><button type="button" className="icon-button subtle guest-link-copy-button" aria-label="Copy meeting link" onClick={() => void navigator.clipboard?.writeText(url)}><Copy size={17} /></button><button type="button" className="secondary-button guest-link-plan-button" disabled={addingPlan || planAdded} onClick={() => void addToPlans()}><CalendarDays size={17} /> {planAdded ? "Added to Plans" : addingPlan ? "Adding…" : "Add to Plans"}</button><button type="button" className="secondary-button guest-link-calendar-button" onClick={addToGoogleCalendar}><IconGoogleCalendar size={18} /> Add to Google Calendar</button></div></div>}
     {error && <p className="error-text">{error}</p>}
   </div>;
 }

@@ -18,7 +18,7 @@ import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
 import { createCanvas } from "../api/canvas";
 import { createChecklist } from "../api/checklist";
-import { QuickAccessPanel } from "../features/chats/QuickAccessPanel";
+import { MessageArchivePanel, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 
 export default function ChatsPage() {
   const { chatId } = useParams();
@@ -33,6 +33,7 @@ export default function ChatsPage() {
   });
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
   const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
+  const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
   const {
     family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
@@ -161,8 +162,11 @@ export default function ChatsPage() {
             selectedChatId={selectedChat?.id}
             overview={chatOverview}
             onSelectChat={setSelectedChat}
-            onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); openChat(chat); }}
-            onOpenDraftsAndScheduled={() => setIsDraftsAndScheduledOpen(true)}
+            onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(false); openChat(chat); }}
+            onOpenDraftsAndScheduled={() => { setIsMessageArchiveOpen(false); setIsDraftsAndScheduledOpen(true); }}
+            isDraftsAndScheduledActive={isDraftsAndScheduledOpen}
+            onOpenMessageArchive={() => { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(true); }}
+            isMessageArchiveActive={isMessageArchiveOpen}
             mobileCallStrip={
               callPhase !== "idle" && isCallMinimized && !chatId ? (
                 <MobileMinimizedCallBar
@@ -192,7 +196,7 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : <ConversationPanel
+            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen ? <MessageArchivePanel chats={chats} /> : <ConversationPanel
               thread={thread}
               composer={composerApi}
               accessToken={accessToken}

@@ -10,6 +10,7 @@ import (
 	"stovo-messenger/backend/ent/chatmember"
 	"stovo-messenger/backend/ent/file"
 	"stovo-messenger/backend/ent/filepreference"
+	"stovo-messenger/backend/ent/message"
 	"stovo-messenger/backend/ent/messageattachment"
 )
 
@@ -110,6 +111,27 @@ func (s *Store) LoadFileDetail(ctx context.Context, fileID, viewerID string) (*F
 	if err == nil {
 		id := att.ID // message_id (StorageKey)
 		detail.OriginMessageID = &id
+		// Files uploaded before a message is sent are family-scoped in the
+		// files table. Their actual storage folder is the chat of the message
+		// that references them, so expose that chat in the library response.
+		// This is an in-memory projection only; it does not alter file access
+		// control or persist a different files.chat_id.
+		if f.ChatID == nil {
+			messageRecord, messageErr := s.Client.Message.Query().
+				Where(message.IDEQ(att.ID)).
+				WithChat().
+				Only(ctx)
+			if messageErr != nil {
+				return nil, messageErr
+			}
+			if messageRecord.Edges.Chat != nil {
+				chatID := messageRecord.ChatID
+				f.ChatID = &chatID
+				detail.ChatTitle = messageRecord.Edges.Chat.Title
+				chatType := messageRecord.Edges.Chat.Type
+				detail.ChatType = &chatType
+			}
+		}
 	} else if !ent.IsNotFound(err) {
 		return nil, err
 	}
