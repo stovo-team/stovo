@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { normalizePlanDateRange } from "./PlansPage";
 
 function getWeekRange(selectedDay: Date) {
   const dayOffset = (selectedDay.getDay() + 6) % 7;
@@ -8,6 +9,18 @@ function getWeekRange(selectedDay: Date) {
 }
 
 describe("PlansPage week range logic", () => {
+  it("replaces malformed plan dates with a valid one-hour range", () => {
+    const fallback = new Date("2026-09-10T10:00:00.000Z");
+    const plan = normalizePlanDateRange({
+      id: "plan-1", familyId: "family-1", title: "Guest call", startsAt: "not-a-date", endsAt: "",
+      allDay: false, timeZone: "UTC", createdBy: "user-1", revision: 1,
+      createdAt: "not-a-date", updatedAt: "2026-09-10T10:00:00.000Z", attendees: []
+    }, fallback);
+
+    expect(plan.startsAt).toBe("2026-09-10T10:00:00.000Z");
+    expect(plan.endsAt).toBe("2026-09-10T11:00:00.000Z");
+  });
+
   it("correctly starts week on Monday for Thursday", () => {
     // Thursday Aug 6, 2026
     const date = new Date(2026, 7, 6);

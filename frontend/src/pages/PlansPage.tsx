@@ -63,6 +63,32 @@ function getDefaultPlanTimes() {
   };
 }
 
+const DEFAULT_PLAN_DURATION_MS = 60 * 60 * 1000;
+
+function validDate(value: string | null | undefined) {
+  const date = new Date(value ?? "");
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+export function normalizePlanDateRange(plan: Plan, fallbackTime = new Date()) {
+  let startsAt = validDate(plan.startsAt);
+  let endsAt = validDate(plan.endsAt);
+
+  if (!startsAt && endsAt) startsAt = new Date(endsAt.getTime() - DEFAULT_PLAN_DURATION_MS);
+  if (!startsAt) startsAt = validDate(plan.createdAt) ?? fallbackTime;
+  if (!endsAt || endsAt <= startsAt) endsAt = new Date(startsAt.getTime() + DEFAULT_PLAN_DURATION_MS);
+
+  return {
+    ...plan,
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString()
+  };
+}
+
+function normalizePlans(plans: Plan[]) {
+  return plans.map((plan) => normalizePlanDateRange(plan));
+}
+
 function renderPlanNotes(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -123,7 +149,7 @@ export default function PlansPage() {
     setLoading(true);
     setError(null);
     try {
-      setPlans(await getPlans(accessToken, range[0], range[1]));
+      setPlans(normalizePlans(await getPlans(accessToken, range[0], range[1])));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not load plans");
     } finally {
@@ -135,7 +161,7 @@ export default function PlansPage() {
     if (!accessToken) return;
     try {
       const updated = await getPlans(accessToken, range[0], range[1]);
-      setPlans(updated);
+      setPlans(normalizePlans(updated));
     } catch { /* preserve optimistic update on transient fail */ }
   }, [accessToken, range]);
 
@@ -282,7 +308,7 @@ export default function PlansPage() {
 
     try {
       const updated = await rsvpPlan(accessToken, plan.id, targetStatus);
-      setPlans((prevPlans) => prevPlans.map((current) => current.id === updated.id ? updated : current));
+      setPlans((prevPlans) => prevPlans.map((current) => current.id === updated.id ? normalizePlanDateRange(updated) : current));
     } catch {
       setError("Could not update RSVP");
       await loadSilent();
