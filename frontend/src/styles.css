@@ -26964,22 +26964,25 @@ button.checklist-add-item-btn:hover,
 .guest-meeting-media video, .guest-meeting-remotes video { width: 100%; max-height: 58vh; object-fit: cover; border-radius: 12px; background: #050609; }
 .guest-meeting-remotes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .guest-meeting-planner-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 1.25rem; background: color-mix(in srgb, var(--surface-base) 75%, transparent); backdrop-filter: blur(4px); }
-.guest-meeting-planner { width: min(580px, 100%); overflow: hidden; border: 1px solid var(--border-default); border-radius: 16px; color: var(--text-primary); background: var(--surface-raised); box-shadow: 0 18px 48px rgb(0 0 0 / 20%); }
-.guest-meeting-planner-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.35rem; border-bottom: 1px solid var(--border-default); }
-.guest-meeting-planner h2 { margin: 0; color: var(--text-primary); font-size: 1.125rem; letter-spacing: -.01em; }
-.guest-meeting-planner-header .icon-button { flex: 0 0 auto; font-size: 1.25rem; line-height: 1; }
-.guest-meeting-planner-body { display: grid; gap: 1.1rem; padding: 1.35rem; }
-.guest-link-control { display: grid; gap: 1rem; }
+.guest-meeting-planner { width: min(580px, 100%); overflow: hidden; border: 1px solid var(--border-default); border-radius: 28px; color: var(--text-primary); background: var(--surface-raised); box-shadow: var(--float-shadow-strong); }
+.guest-meeting-planner-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.5rem 1.5rem .75rem; }
+.guest-meeting-planner h2 { margin: 0; color: var(--text-primary); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
+.guest-meeting-planner-header .icon-button { align-items: center; background: var(--background-tertiary); border: 1px solid var(--border-default); border-radius: 50%; color: var(--text-secondary); display: inline-flex; flex: 0 0 38px; height: 38px; justify-content: center; padding: 0; width: 38px; }
+.guest-meeting-planner-header .icon-button:hover { background: var(--surface-card); color: var(--text-primary); }
+.guest-meeting-planner-body { display: grid; gap: 1.25rem; padding: .75rem 1.5rem 1.5rem; }
+.guest-link-control { display: grid; gap: 1.15rem; }
 .guest-link-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
-.guest-link-field { display: grid; gap: .42rem; color: var(--text-primary); font-size: .84rem; font-weight: 650; }
+.guest-link-field { display: grid; gap: .5rem; color: var(--text-primary); font-size: .875rem; font-weight: 700; }
 .guest-link-field > span { display: inline-flex; align-items: center; gap: .38rem; }
-.guest-link-field select, .guest-link-field input { width: 100%; min-height: 42px; padding: 0 .75rem; border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); background: var(--surface-card); font: inherit; }
-.guest-link-field select:focus, .guest-link-field input:focus { border-color: var(--accent-primary); outline: 2px solid color-mix(in srgb, var(--accent-primary) 30%, transparent); outline-offset: 1px; }
-.guest-link-field small { color: var(--text-muted); font-size: .75rem; font-weight: 400; line-height: 1.35; }
+.guest-link-field select, .guest-link-field input { width: 100%; min-height: 46px; padding: 0 1rem; border: 1px solid var(--border-default); border-radius: 14px; color: var(--text-primary); background: var(--surface-card); font: inherit; font-weight: 600; }
+.guest-link-field select { appearance: none; padding-right: 2.75rem; }
+.guest-link-select { position: relative; }
+.guest-link-select svg { color: var(--text-secondary); pointer-events: none; position: absolute; right: .9rem; top: 50%; transform: translateY(-50%); }
+.guest-link-field select:focus, .guest-link-field input:focus { border-color: var(--accent-primary); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-primary) 20%, transparent); outline: 0; }
 .guest-link-custom-date { max-width: 270px; }
-.guest-link-create-button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: .5rem; border: 0; border-radius: 8px; color: var(--button-primary-text); background: var(--accent-primary); font: inherit; font-weight: 700; cursor: pointer; }
+.guest-link-create-button { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: .5rem; border: 0; border-radius: 999px; color: var(--button-primary-text, #fff); background: var(--accent-primary); font: inherit; font-weight: 700; cursor: pointer; }
 .guest-link-create-button:hover { background: var(--accent-primary-hover); }.guest-link-create-button:disabled { opacity: .65; cursor: wait; }
-.guest-link-result { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .7rem; align-items: center; padding: .8rem; border: 1px solid var(--border-default); border-radius: 8px; background: var(--surface-card); }.guest-link-result-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: var(--accent-primary); background: var(--accent-soft); }.guest-link-result strong { display: block; color: var(--text-primary); font-size: .86rem; }.guest-link-result code { display: block; overflow: hidden; color: var(--text-muted); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }.guest-link-calendar-button { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; }
+.guest-link-result { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .7rem; align-items: center; padding: .9rem; border: 1px solid var(--border-default); border-radius: 18px; background: var(--surface-card); }.guest-link-result-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: var(--accent-primary); background: var(--accent-soft); }.guest-link-result strong { display: block; color: var(--text-primary); font-size: .86rem; }.guest-link-result code { display: block; overflow: hidden; color: var(--text-muted); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }.guest-link-calendar-button { align-items: center; border-radius: 999px; display: inline-flex; gap: .4rem; white-space: nowrap; }
 @media (max-width: 520px) { .guest-meeting-planner-header, .guest-meeting-planner-body { padding-left: 1.15rem; padding-right: 1.15rem; }.guest-link-settings { grid-template-columns: 1fr; } }
 
 /* Quick Access uses the same compact hierarchy as chat rows, without inheriting
