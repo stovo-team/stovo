@@ -88,6 +88,26 @@ export function buildStorageSources<TFile extends StorageFileLike>(
     filesByChat.set(file.chatId, [...(filesByChat.get(file.chatId) ?? []), file]);
   }
 
+  // The file library can be restored from its local cache before the chat
+  // directory has finished syncing. Keep those chat folders usable instead of
+  // hiding their files until that metadata request catches up.
+  const chatsByID = new Map(chats.map((chat) => [chat.id, chat]));
+  const fallbackChats: StorageChatLike<TFile>[] = [];
+  for (const [chatId, chatFiles] of filesByChat) {
+    if (chatsByID.has(chatId)) continue;
+    const representative = chatFiles[0];
+    const type = representative.chatType;
+    if (!isStorageAvatarKind(type)) continue;
+    fallbackChats.push({
+      id: chatId,
+      type,
+      title: representative.chatTitle,
+      chatPhoto: null,
+      members: []
+    });
+  }
+  const chatsWithFiles = [...chats, ...fallbackChats];
+
   const sourceFor = (chat: StorageChatLike<TFile>): StorageSource<TFile> | null => {
     const chatFiles = filesByChat.get(chat.id);
     if (!chatFiles) return null;
@@ -117,8 +137,12 @@ export function buildStorageSources<TFile extends StorageFileLike>(
   return labels
     .map(({ label, types }) => ({
       label,
-      sources: chats.filter((chat) => types.includes(chat.type)).map(sourceFor).filter(Boolean) as StorageSource<TFile>[]
+      sources: chatsWithFiles.filter((chat) => types.includes(chat.type)).map(sourceFor).filter(Boolean) as StorageSource<TFile>[]
     }))
     .filter((group) => group.sources.length > 0);
+}
+
+function isStorageAvatarKind(value: string | null): value is StorageAvatarKind {
+  return value === "direct" || value === "family" || value === "group" || value === "channel" || value === "voice" || value === "archive";
 }
 

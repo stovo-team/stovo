@@ -26930,27 +26930,69 @@ button.checklist-add-item-btn:hover,
 .guest-meeting-media { display: grid; gap: 1rem; }
 .guest-meeting-media video, .guest-meeting-remotes video { width: 100%; max-height: 58vh; object-fit: cover; border-radius: 12px; background: #050609; }
 .guest-meeting-remotes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.guest-meeting-planner-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 1.25rem; background: rgba(7, 10, 16, .7); backdrop-filter: blur(7px); }
-.guest-meeting-planner { width: min(580px, 100%); overflow: hidden; border: 1px solid rgba(151, 175, 224, .15); border-radius: 24px; color: #edf1ff; background: linear-gradient(145deg, #202938 0%, #171d29 100%); box-shadow: 0 28px 85px rgba(0,0,0,.55); }
-.guest-meeting-planner-header { display: flex; justify-content: space-between; gap: 1.25rem; padding: 1.8rem 1.8rem 1.35rem; background: radial-gradient(circle at 20% 0%, rgba(92, 118, 255, .28), transparent 48%); }
-.guest-meeting-planner-kicker { display: block; margin-bottom: .55rem; color: #9eb1ff; font-size: .7rem; font-weight: 800; letter-spacing: .1em; }
-.guest-meeting-planner h2 { margin: 0; color: #fff; font-size: clamp(1.35rem, 3vw, 1.7rem); letter-spacing: -.035em; }
-.guest-meeting-planner-header p { max-width: 390px; margin: .55rem 0 0; color: #b8c1d4; line-height: 1.5; }
-.guest-meeting-close { width: 36px; height: 36px; flex: 0 0 auto; border: 1px solid rgba(156, 181, 255, .25); border-radius: 50%; color: #d8e2ff; background: rgba(255,255,255,.04); font-size: 1.25rem; cursor: pointer; }
-.guest-meeting-close:hover { background: rgba(255,255,255,.12); }
-.guest-meeting-planner-body { display: grid; gap: 1.25rem; padding: 1.35rem 1.8rem 1.8rem; }
-.guest-link-control { display: grid; gap: 1.1rem; }
+.guest-meeting-planner-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 1.25rem; background: color-mix(in srgb, var(--surface-base) 75%, transparent); backdrop-filter: blur(4px); }
+.guest-meeting-planner { width: min(580px, 100%); overflow: hidden; border: 1px solid var(--border-default); border-radius: 16px; color: var(--text-primary); background: var(--surface-raised); box-shadow: 0 18px 48px rgb(0 0 0 / 20%); }
+.guest-meeting-planner-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.35rem; border-bottom: 1px solid var(--border-default); }
+.guest-meeting-planner h2 { margin: 0; color: var(--text-primary); font-size: 1.125rem; letter-spacing: -.01em; }
+.guest-meeting-planner-header .icon-button { flex: 0 0 auto; font-size: 1.25rem; line-height: 1; }
+.guest-meeting-planner-body { display: grid; gap: 1.1rem; padding: 1.35rem; }
+.guest-link-control { display: grid; gap: 1rem; }
 .guest-link-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
-.guest-link-field { display: grid; gap: .42rem; color: #e8edfa; font-size: .84rem; font-weight: 700; }
+.guest-link-field { display: grid; gap: .42rem; color: var(--text-primary); font-size: .84rem; font-weight: 650; }
 .guest-link-field > span { display: inline-flex; align-items: center; gap: .38rem; }
-.guest-link-field select, .guest-link-field input { width: 100%; min-height: 45px; padding: 0 .8rem; border: 1px solid #3b4a64; border-radius: 10px; color: #f4f7ff; background: #111824; font: inherit; font-weight: 600; }
-.guest-link-field select:focus, .guest-link-field input:focus { outline: 2px solid #6e8cff; outline-offset: 2px; }
-.guest-link-field small { color: #9ba9c0; font-size: .75rem; font-weight: 500; line-height: 1.35; }
+.guest-link-field select, .guest-link-field input { width: 100%; min-height: 42px; padding: 0 .75rem; border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); background: var(--surface-card); font: inherit; }
+.guest-link-field select:focus, .guest-link-field input:focus { border-color: var(--accent-primary); outline: 2px solid color-mix(in srgb, var(--accent-primary) 30%, transparent); outline-offset: 1px; }
+.guest-link-field small { color: var(--text-muted); font-size: .75rem; font-weight: 400; line-height: 1.35; }
 .guest-link-custom-date { max-width: 270px; }
-.guest-link-create-button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: .55rem; border: 0; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #6e7fff, #5265e8); box-shadow: 0 10px 25px rgba(68, 89, 224, .32); font: inherit; font-weight: 800; cursor: pointer; }
-.guest-link-create-button:hover { filter: brightness(1.08); transform: translateY(-1px); }.guest-link-create-button:disabled { opacity: .65; cursor: wait; transform: none; }
-.guest-link-result { display: grid; grid-template-columns: auto 1fr auto; gap: .75rem; align-items: center; padding: .85rem; border: 1px solid rgba(101, 226, 174, .28); border-radius: 12px; background: rgba(61, 184, 127, .09); }.guest-link-result-icon { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 50%; color: #9af0c2; background: rgba(80, 209, 139, .16); }.guest-link-result strong { display: block; color: #dfffe9; font-size: .86rem; }.guest-link-result code { display: block; overflow: hidden; color: #aab8d0; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.guest-link-create-button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: .5rem; border: 0; border-radius: 8px; color: var(--button-primary-text); background: var(--accent-primary); font: inherit; font-weight: 700; cursor: pointer; }
+.guest-link-create-button:hover { background: var(--accent-primary-hover); }.guest-link-create-button:disabled { opacity: .65; cursor: wait; }
+.guest-link-result { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: .7rem; align-items: center; padding: .8rem; border: 1px solid var(--border-default); border-radius: 8px; background: var(--surface-card); }.guest-link-result-icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; color: var(--accent-primary); background: var(--accent-soft); }.guest-link-result strong { display: block; color: var(--text-primary); font-size: .86rem; }.guest-link-result code { display: block; overflow: hidden; color: var(--text-muted); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }.guest-link-calendar-button { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; }
 @media (max-width: 520px) { .guest-meeting-planner-header, .guest-meeting-planner-body { padding-left: 1.15rem; padding-right: 1.15rem; }.guest-link-settings { grid-template-columns: 1fr; } }
+
+/* Quick Access uses the same compact hierarchy as chat rows, without inheriting
+   generic button typography. */
+.chat-list-section--quick-access { margin-bottom: 7px; }
+.quick-access-items { display: grid; gap: 2px; padding: 0 4px; }
+.quick-access-item {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  min-height: 54px;
+  padding: 7px 9px;
+  text-align: left;
+  width: 100%;
+}
+.quick-access-item:hover { background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent); }
+.quick-access-item.active { background: color-mix(in oklab, var(--accent-soft) 28%, transparent); }
+.quick-access-icon {
+  align-items: center;
+  background: color-mix(in oklab, var(--accent-primary) 18%, var(--surface-card));
+  border-radius: 10px;
+  color: var(--accent-primary);
+  display: inline-flex;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+.quick-access-item > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.quick-access-item strong { color: var(--text-primary); font-size: .86rem; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quick-access-item small { color: var(--text-muted); font-size: .72rem; font-weight: 500; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quick-access-settings { gap: 0; max-width: 420px; padding: 0; }
+.quick-access-settings .modal-card-header { align-items: center; border-bottom: 1px solid var(--border-default); display: flex; justify-content: space-between; padding: 16px; }
+.quick-access-settings .modal-card-header h2 { font-size: 1rem; margin: 0; }
+.quick-access-setting, .quick-access-select { align-items: center; display: flex; gap: 16px; justify-content: space-between; padding: 14px 16px; }
+.quick-access-setting + .quick-access-setting, .quick-access-select { border-top: 1px solid var(--border-default); }
+.quick-access-setting > span, .quick-access-select > span { display: grid; gap: 3px; }
+.quick-access-setting small, .quick-access-select small { color: var(--text-muted); font-size: .76rem; }
+.quick-access-setting input { accent-color: var(--accent-primary); height: 18px; width: 18px; }
+.quick-access-select select { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 8px; color: var(--text-primary); padding: 7px 9px; }
 
 
 
