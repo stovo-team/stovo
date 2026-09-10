@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CalendarPlus, Check, Clock3, Copy, DoorOpen, Link } from "lucide-react";
+import { CalendarPlus, Check, ChevronDown, Clock3, Copy, DoorOpen, Link } from "lucide-react";
 import { createGuestMeeting } from "../../../api/guestMeetings";
 
 export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
@@ -35,8 +35,8 @@ export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialT
   return <div className="guest-link-control">
     <label className="guest-link-field"><span>Meeting name</span><input autoFocus value={title} maxLength={120} placeholder="e.g. Design review" onChange={(e) => setTitle(e.target.value)} /></label>
     <div className="guest-link-settings">
-      <label className="guest-link-field"><span><DoorOpen size={15} /> Guest entry</span><select value={mode} onChange={(e) => setMode(e.target.value as "immediate" | "lobby")}><option value="immediate">Anyone with link</option><option value="lobby">Host approval</option></select><small>{mode === "immediate" ? "Guests enter right away." : "Guests wait until you let them in."}</small></label>
-      <label className="guest-link-field"><span><Clock3 size={15} /> Link expires</span><select value={duration} onChange={(e) => setDuration(e.target.value)}><option value="1">In 1 hour</option><option value="24">In 24 hours</option><option value="168">In 7 days</option><option value="custom">Choose date & time</option></select><small>Expired links cannot be used.</small></label>
+      <label className="guest-link-field"><span><DoorOpen size={15} /> Guest entry</span><span className="guest-link-select"><select value={mode} onChange={(e) => setMode(e.target.value as "immediate" | "lobby")}><option value="immediate">Anyone with link</option><option value="lobby">Host approval</option></select><ChevronDown size={17} aria-hidden="true" /></span></label>
+      <label className="guest-link-field"><span><Clock3 size={15} /> Link expires</span><span className="guest-link-select"><select value={duration} onChange={(e) => setDuration(e.target.value)}><option value="1">In 1 hour</option><option value="24">In 24 hours</option><option value="168">In 7 days</option><option value="custom">Choose date & time</option></select><ChevronDown size={17} aria-hidden="true" /></span></label>
     </div>
     {duration === "custom" && <label className="guest-link-field guest-link-custom-date"><span><Clock3 size={15} /> Expiry date and time</span><input type="datetime-local" value={customExpiry} onChange={(e) => setCustomExpiry(e.target.value)} /></label>}
     <button type="button" className="guest-link-create-button" onClick={() => void create()} disabled={loading}><Link size={17} />{loading ? "Creating meeting link…" : "Create meeting link"}</button>
