@@ -57,7 +57,7 @@ func (s *Store) CreateConnector(ctx context.Context, command featuremcp.Connecto
 		if err := s.repository.CreateMCPConnector(ctx, tx, repository.CreateMCPConnectorParams{ID: command.ID, FamilyID: command.FamilyID, Name: command.Name, ActorUserID: command.ActorUserID, TokenHash: command.TokenHash, CreatedBy: command.CreatedBy, CreatedAt: command.CreatedAt, MaxHistoryMessages: command.MaxHistoryMessages, Permissions: string(permissions), Provider: command.Provider, Alias: command.Alias, AuthMode: command.AuthMode}); err != nil {
 			return err
 		}
-		return s.repository.SyncMCPConnectorChats(ctx, tx, command.ID, command.ActorUserID, command.ChatIDs, command.CreatedAt)
+		return s.repository.SyncMCPConnectorChats(ctx, tx, command.ID, command.ChatIDs)
 	})
 }
 func (s *Store) UpdateConnector(ctx context.Context, command featuremcp.ConnectorUpdate) error {
@@ -72,7 +72,7 @@ func (s *Store) UpdateConnector(ctx context.Context, command featuremcp.Connecto
 		if err := s.repository.UpdateUserDisplayName(ctx, tx, command.ActorUserID, command.Name); err != nil {
 			return err
 		}
-		return s.repository.SyncMCPConnectorChats(ctx, tx, command.ConnectorID, command.ActorUserID, command.ChatIDs, command.UpdatedAt)
+		return s.repository.SyncMCPConnectorChats(ctx, tx, command.ConnectorID, command.ChatIDs)
 	})
 }
 func (s *Store) RegenerateToken(ctx context.Context, connectorID, familyID, tokenHash string) error {

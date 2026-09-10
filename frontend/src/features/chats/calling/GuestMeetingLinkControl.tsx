@@ -5,7 +5,6 @@ import type { Chat } from "../../../api/chats";
 import { sendMessage } from "../../../api/chats";
 import { createGuestMeeting } from "../../../api/guestMeetings";
 import { encryptMessageContent } from "../../../api/messageCrypto";
-import { IconGoogleCalendar } from "../../../components/icons/IconGoogleCalendar";
 import { GuestMeetingSelect } from "./GuestMeetingSelect";
 
 export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, currentUserId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; sourceChat?: Chat | null; currentUserId?: string; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
@@ -44,10 +43,22 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, curre
           ? "Anyone with this link can join."
           : "Guests wait for host approval before joining.";
         const announcement = `Guest meeting: ${meeting.title}\n${timing}\n${entry}\nJoin: ${meeting.meetingUrl}`;
-        const encrypted = await encryptMessageContent(sourceChat, announcement, currentUserId);
-        await sendMessage(memberToken, sourceChat.id, encrypted.content, [], null, null, encrypted.encryption);
+        // The meeting exists at this point. A temporary chat-sync failure must
+        // not make a working meeting link appear to have failed.
+        try {
+          const encrypted = await encryptMessageContent(sourceChat, announcement, currentUserId);
+          await sendMessage(memberToken, sourceChat.id, encrypted.content, [], null, null, encrypted.encryption);
+        } catch {
+          setError("Meeting link created, but it could not be posted to the chat. You can copy the link below.");
+        }
       }
-      await navigator.clipboard?.writeText(meeting.meetingUrl);
+      // Clipboard permissions vary by browser and embedding context. The link
+      // remains available in the scrollable field and through the Copy button.
+      try {
+        await navigator.clipboard?.writeText(meeting.meetingUrl);
+      } catch {
+        // Copying is a convenience, not part of creating the meeting.
+      }
     } catch (e) { setError(e instanceof Error ? e.message : "Could not create guest link"); } finally { setLoading(false); }
   }
   const meetingDates = () => {
@@ -82,7 +93,7 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, curre
     </div>
     {duration === "custom" && <label className="guest-link-field guest-link-custom-date"><span><Clock3 size={15} /> Expiry date and time</span><input type="datetime-local" value={customExpiry} onChange={(e) => setCustomExpiry(e.target.value)} /></label>}
     <button type="button" className="guest-link-create-button" onClick={() => void create()} disabled={loading}><Link size={17} />{loading ? "Creating meeting link…" : "Create meeting link"}</button>
-    {url && <div className="guest-link-result"><button type="button" className={`icon-button subtle guest-link-copy-button${copied ? " copied" : ""}`} aria-label={copied ? "Meeting link copied" : "Copy meeting link"} onClick={() => void copyLink()}>{copied ? <Check size={18} /> : <Copy size={17} />}</button><div><strong>Link ready</strong><code>{url}</code></div><span className="visually-hidden" role="status" aria-live="polite">{copied ? "Meeting link copied" : ""}</span><div className="guest-link-result-actions"><button type="button" className="secondary-button guest-link-plan-button" onClick={addToPlans}><CalendarDays size={17} /> Add to Plans</button><button type="button" className="secondary-button guest-link-calendar-button" onClick={addToGoogleCalendar}><IconGoogleCalendar size={18} /> Add to Google Calendar</button></div></div>}
+    {url && <div className="guest-link-result"><div className="guest-link-result-copy"><strong>Link ready</strong><code tabIndex={0} title="Meeting link — scroll horizontally to see the full address">{url}</code></div><span className="visually-hidden" role="status" aria-live="polite">{copied ? "Meeting link copied" : ""}</span><div className="guest-link-result-actions"><button type="button" className={`secondary-button guest-link-copy-button${copied ? " copied" : ""}`} onClick={() => void copyLink()}>{copied ? <Check size={17} /> : <Copy size={17} />}{copied ? "Copied" : "Copy link"}</button><button type="button" className="secondary-button guest-link-plan-button" onClick={addToPlans}><CalendarDays size={17} /> Add to Plans</button><button type="button" className="secondary-button guest-link-calendar-button" onClick={addToGoogleCalendar}>Add to Google Calendar</button></div></div>}
     {error && <p className="error-text">{error}</p>}
   </div>;
 }

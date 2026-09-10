@@ -42,6 +42,14 @@ describe("PlansPage week range logic", () => {
     expect(source).toContain("loading && plans.length === 0");
   });
 
+  it("does not crash when a legacy plan response has no title", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
+
+    expect(source).toContain('(plan.title ?? "").toLowerCase()');
+  });
+
   it("defines 3-hour step intervals for the today timeline", async () => {
     const { TODAY_TIME_SLOTS, formatSlotTime } = await import("./plansTimeline");
     expect(TODAY_TIME_SLOTS).toEqual([0, 3, 6, 9, 12, 15, 18, 21]);

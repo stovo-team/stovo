@@ -8,6 +8,7 @@ import (
 
 	"stovo-messenger/backend/ent"
 	"stovo-messenger/backend/ent/chatpreference"
+	"stovo-messenger/backend/ent/file"
 	"stovo-messenger/backend/ent/message"
 	"stovo-messenger/backend/ent/messageattachment"
 	"stovo-messenger/backend/ent/messagereaction"
@@ -328,6 +329,16 @@ func (s *Store) CreateMessageBundle(ctx context.Context, p CreateMessageBundlePa
 				// idempotent if a client supplies a repeated attachment ID.
 				OnConflictColumns(messageattachment.FieldID, messageattachment.FieldFileID).
 				Ignore().
+				Exec(ctx); err != nil {
+				return err
+			}
+			// Older clients upload before the destination chat is known. Once
+			// the attachment is part of this message, persist its real storage
+			// source so the Storage page can group it under this exact chat.
+			if err := tx.File.UpdateOneID(fileID).
+				Where(file.ChatIDIsNil()).
+				SetChatID(p.ChatID).
+				SetAccessScope("chat").
 				Exec(ctx); err != nil {
 				return err
 			}

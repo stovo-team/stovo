@@ -6,7 +6,7 @@ export function QuickAccessPanel() {
   const [tab, setTab] = useState<"drafts" | "scheduled">("drafts");
   return (
     <section className="quick-access-panel" aria-label="Drafts and scheduled messages">
-      <header className="chat-detail-header quick-access-standard-header"><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-title-group"><span className="chat-title-row"><span>Drafts &amp; scheduled</span></span></span></header>
+      <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header"><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-title-group"><span className="chat-title-row"><span>Drafts &amp; scheduled</span></span></span></header>
       <div className="quick-access-panel-tabs" role="tablist"><button type="button" className={tab === "drafts" ? "active" : ""} role="tab" aria-selected={tab === "drafts"} onClick={() => setTab("drafts")}>Drafts</button><button type="button" className={tab === "scheduled" ? "active" : ""} role="tab" aria-selected={tab === "scheduled"} onClick={() => setTab("scheduled")}>Scheduled</button></div>
       <div className="quick-access-panel-empty"><FileText size={28} /><strong>{tab === "drafts" ? "No drafts" : "No scheduled messages"}</strong><p>{tab === "drafts" ? "Drafts from all chats will appear here." : "Scheduled messages from all chats will appear here."}</p></div>
     </section>

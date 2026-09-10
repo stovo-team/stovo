@@ -196,7 +196,10 @@ export default function PlansPage() {
     } catch { /* discard malformed transient draft */ }
   }, []);
 
-  const visiblePlans = plans.filter((plan) => plan.title.toLowerCase().includes(query.trim().toLowerCase()));
+  const normalizedQuery = query.trim().toLowerCase();
+  // Plans created before title validation may not include a title in their API payload.
+  // Treat that as an empty title so one malformed legacy row cannot crash the page.
+  const visiblePlans = plans.filter((plan) => (plan.title ?? "").toLowerCase().includes(normalizedQuery));
 
   const handleStartsAtChange = (newStartIso: string) => {
     setDraft((current) => {
