@@ -1,4 +1,4 @@
-import { Archive, ChevronDown, FileText, FolderMinus, FolderPlus, Lock, MessageCircle, RotateCcw, Settings2 } from "lucide-react";
+import { Archive, ChevronDown, FileText, FolderMinus, FolderPlus, Lock, MessageCircle, RotateCcw, Settings2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Chat, updateChatPreferences } from "../../../api/chats";
@@ -58,6 +58,7 @@ export type ChatListProps = {
   minimizedChatLayout?: boolean;
   onSelectChat: (chat: Chat) => void;
   onOpenChat: (chat: Chat) => void;
+  onOpenDraftsAndScheduled: () => void;
   onStartNewChat: () => void;
 };
 
@@ -76,6 +77,7 @@ export function ChatList({
   minimizedChatLayout,
   onSelectChat,
   onOpenChat,
+  onOpenDraftsAndScheduled,
   onStartNewChat
 }: ChatListProps) {
   const strings = useStrings();
@@ -519,19 +521,13 @@ export function ChatList({
           {!collapsed["quick-access"] && (
             <div className="quick-access-items">
               {quickAccess.archiveEnabled && archiveChat && (
-                <button type="button" className={`quick-access-item ${archiveChat.id === activeChatId ? "active" : ""}`} onClick={() => { onSelectChat(archiveChat); onOpenChat(archiveChat); }}>
-                  <span className="quick-access-icon"><Archive size={17} /></span><span><strong>Message Archive</strong><small>{quickAccess.archiveView === "all" ? "All messages" : "Grouped by source chat"}</small></span>
+                <button type="button" className={`chat-list-item quick-access-item ${archiveChat.id === activeChatId ? "active" : ""}`} onClick={() => { onSelectChat(archiveChat); onOpenChat(archiveChat); }}>
+                  <span className="quick-access-icon"><Archive size={17} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Message Archive</strong></span><span className="chat-list-preview">All messages</span></span>
                 </button>
               )}
               {quickAccess.outboxEnabled && (
-                <button type="button" className="quick-access-item" onClick={() => {
-                  const target = draftChats[0];
-                  // This is a destination, never a shortcut for creating a chat.
-                  // Once the aggregate view is mounted, it owns both empty and
-                  // populated states; until then leave the chat selection intact.
-                  if (target) { onSelectChat(target); onOpenChat(target); }
-                }}>
-                  <span className="quick-access-icon"><FileText size={17} /></span><span><strong>Drafts &amp; scheduled</strong><small>{draftChats.length ? `${draftChats.length} draft chat${draftChats.length === 1 ? "" : "s"}` : "No drafts or scheduled messages"}</small></span>
+                <button type="button" className="chat-list-item quick-access-item" onClick={onOpenDraftsAndScheduled}>
+                  <span className="quick-access-icon"><FileText size={17} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span><span className="chat-list-preview">{draftChats.length ? `${draftChats.length} draft chat${draftChats.length === 1 ? "" : "s"}` : "No drafts or scheduled messages"}</span></span>
                   {draftChats.length > 0 && <span className="tiny-badge">{draftChats.length}</span>}
                 </button>
               )}
@@ -818,10 +814,9 @@ export function ChatList({
       {isQuickAccessSettingsOpen && (
         <div className="modal-backdrop" onMouseDown={() => setIsQuickAccessSettingsOpen(false)}>
           <section className="messenger-modal quick-access-settings" role="dialog" aria-modal="true" aria-labelledby="quick-access-settings-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="modal-card-header"><h2 id="quick-access-settings-title">Quick Access folder settings</h2><button type="button" className="icon-button subtle" aria-label="Close" onClick={() => setIsQuickAccessSettingsOpen(false)}>×</button></div>
-            <label className="quick-access-setting"><span><strong>Message Archive</strong><small>Keep the archive at the top of the chat list.</small></span><input type="checkbox" checked={quickAccess.archiveEnabled} onChange={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })} /></label>
-            <label className="quick-access-setting"><span><strong>Drafts &amp; scheduled</strong><small>Show pending messages without changing chat order.</small></span><input type="checkbox" checked={quickAccess.outboxEnabled} onChange={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })} /></label>
-            <label className="quick-access-select"><span><strong>Message Archive view</strong><small>All messages is the default.</small></span><select value={quickAccess.archiveView} onChange={(event) => updateQuickAccess({ archiveView: event.target.value as QuickAccessSettings["archiveView"] })}><option value="all">All messages</option><option value="grouped">Grouped by source chat</option></select></label>
+            <div className="modal-card-header"><h2 id="quick-access-settings-title">Quick Access folder settings</h2><button type="button" className="quick-access-close" aria-label="Close" onClick={() => setIsQuickAccessSettingsOpen(false)}><X size={18} /></button></div>
+            <div className="quick-access-setting"><span><strong>Message Archive</strong><small>Keep the archive at the top of the chat list.</small></span><button type="button" role="switch" aria-checked={quickAccess.archiveEnabled} className={`quick-access-switch ${quickAccess.archiveEnabled ? "is-on" : ""}`} onClick={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })}><span /></button></div>
+            <div className="quick-access-setting"><span><strong>Drafts &amp; scheduled</strong><small>Show pending messages without changing chat order.</small></span><button type="button" role="switch" aria-checked={quickAccess.outboxEnabled} className={`quick-access-switch ${quickAccess.outboxEnabled ? "is-on" : ""}`} onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}><span /></button></div>
           </section>
         </div>
       )}
