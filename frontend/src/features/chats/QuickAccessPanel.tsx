@@ -6,11 +6,15 @@ export function QuickAccessPanel() {
   const [tab, setTab] = useState<"drafts" | "scheduled">("drafts");
   return (
     <section className="quick-access-panel" aria-label="Drafts and scheduled messages">
-      <header className="quick-access-panel-header"><FileText size={20} /><h1>Drafts &amp; scheduled</h1></header>
+      <header className="chat-detail-header quick-access-standard-header"><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-title-group"><span className="chat-title-row"><span>Drafts &amp; scheduled</span></span></span></header>
       <div className="quick-access-panel-tabs" role="tablist"><button type="button" className={tab === "drafts" ? "active" : ""} role="tab" aria-selected={tab === "drafts"} onClick={() => setTab("drafts")}>Drafts</button><button type="button" className={tab === "scheduled" ? "active" : ""} role="tab" aria-selected={tab === "scheduled"} onClick={() => setTab("scheduled")}>Scheduled</button></div>
       <div className="quick-access-panel-empty"><FileText size={28} /><strong>{tab === "drafts" ? "No drafts" : "No scheduled messages"}</strong><p>{tab === "drafts" ? "Drafts from all chats will appear here." : "Scheduled messages from all chats will appear here."}</p></div>
     </section>
   );
+}
+
+export function MessageArchiveViewControls({ view, onChange }: { view: "all" | "grouped"; onChange: (view: "all" | "grouped") => void }) {
+  return <div className="message-archive-view-controls"><button type="button" className={view === "all" ? "active" : ""} onClick={() => onChange("all")}>All messages</button><button type="button" className={view === "grouped" ? "active" : ""} onClick={() => onChange("grouped")}>Grouped by chat</button></div>;
 }
 
 export function MessageArchivePanel({ chats }: { chats: Chat[] }) {

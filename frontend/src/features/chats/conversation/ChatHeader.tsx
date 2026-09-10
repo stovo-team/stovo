@@ -1,7 +1,6 @@
-import { RefObject, useState } from "react";
+import { RefObject } from "react";
 import {
   Archive,
-  CalendarPlus,
   Bell,
   BellOff,
   CheckCheck,
@@ -32,7 +31,6 @@ import {
 import type { CallPhase, Message } from "../shared/types";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { BackButton } from "../../../components/BackButton";
-import { GuestMeetingLinkControl } from "../calling/GuestMeetingLinkControl";
 
 function directChatPresence(selectedChat: Chat, currentUser: User | null) {
   const peer = selectedChat.members.find((member) => member.id !== currentUser?.id);
@@ -110,7 +108,6 @@ export function ChatHeader({
   isVoiceTextChatOpen?: boolean;
   onToggleVoiceChat?: () => void;
 }) {
-  const [isMeetingPlannerOpen, setIsMeetingPlannerOpen] = useState(false);
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
   const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
@@ -255,17 +252,6 @@ export function ChatHeader({
                 </button>
               </>
             )}
-            {(selectedChat.type === "group" || selectedChat.type === "voice") && (
-              <button
-                type="button"
-                className="icon-button subtle chat-header-call-button"
-                aria-label="Plan guest meeting"
-                title="Plan guest meeting"
-                onClick={() => setIsMeetingPlannerOpen(true)}
-              >
-                <CalendarPlus aria-hidden="true" size={18} strokeWidth={2} />
-              </button>
-            )}
             {selectedChat.type === "voice" ? (
               <button
                 type="button"
@@ -344,15 +330,6 @@ export function ChatHeader({
           </>
         )}
       </div>
-      {isMeetingPlannerOpen && (
-        <div className="guest-meeting-planner-backdrop" role="presentation" onMouseDown={() => setIsMeetingPlannerOpen(false)}>
-          <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label="Plan guest meeting" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="guest-meeting-planner-header"><div><p className="eyebrow">Planned meeting</p><h2>Invite external guests</h2></div><button type="button" className="icon-button subtle" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}>×</button></div>
-            <p className="muted-copy">Create a meeting link now and share it before the meeting starts. Guests cannot see this chat or other family content.</p>
-            <GuestMeetingLinkControl accessToken={accessToken} chatId={selectedChat.id} enabled />
-          </section>
-        </div>
-      )}
     </div>
   );
 }
