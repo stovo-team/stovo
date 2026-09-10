@@ -449,14 +449,12 @@ export default function MCPConnectorsPanel({
             </ol>
           </div>
 
-          <div className="mcp-cli-toggle">
+          {showCli && <div className="mcp-cli-toggle"><code>{secret.cliCommand}</code></div>}
+
+          <div className="public-access-actions">
             <button type="button" className="secondary-button" onClick={() => setShowCli((current) => !current)}>
               {showCli ? "Hide CLI alternative" : "Show CLI alternative"}
             </button>
-            {showCli && <code>{secret.cliCommand}</code>}
-          </div>
-
-          <div className="public-access-actions">
             {showCli && (
               <button type="button" onClick={() => void handleCopy("cli", secret.cliCommand)}>
                 {copied === "cli" ? "Command copied" : "Copy CLI command"}

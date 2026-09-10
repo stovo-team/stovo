@@ -111,6 +111,10 @@ jobs:
 
             # Build and deploy frontend, orchestrator, and caddy gateway
             docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d --build frontend orchestrator caddy coturn
+            # Caddyfile is bind-mounted. Compose does not recreate a container
+            # merely because the mounted file changed, and Caddy does not watch
+            # it, so explicitly recreate the gateway to load route changes.
+            sudo docker compose -f docker-compose.master.yml up -d --force-recreate caddy
 
             # A running container alone does not prove that Caddy opened its
             # public TLS listener. Check it locally with the production host.

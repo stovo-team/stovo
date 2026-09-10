@@ -22,6 +22,10 @@ if ($workflow -notmatch 'docker-compose\.master\.yml' -or
     throw "Deployment must start the master gateway and build the tenant backend image."
 }
 
+if ($workflow -notmatch 'up -d --force-recreate caddy') {
+    throw "Deployment must recreate Caddy so bind-mounted route changes take effect."
+}
+
 if ($workflow -notmatch '--filter label=stovo-server' -or
     $workflow -notmatch '--network stovo_default') {
     throw "Deployment must update tenant containers on the shared Stovo network."
