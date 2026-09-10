@@ -19,6 +19,14 @@
 		reverse_proxy stovo-backend-{re.clusterSocket.1}:8000
 	}
 
+	# MCP connection URLs are cluster-scoped just like the API and Socket.IO.
+	# Keep the suffix intact so both /mcp and /mcp/... reach the backend handler.
+	@clusterMCP path_regexp clusterMCP ^/s/([a-zA-Z0-9_-]+)/mcp(.*)$
+	handle @clusterMCP {
+		rewrite * /mcp{re.clusterMCP.2}
+		reverse_proxy stovo-backend-{re.clusterMCP.1}:8000
+	}
+
 	handle /api/* {
 		reverse_proxy {$ACTIVE_BACKEND:backend}:8000
 	}

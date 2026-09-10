@@ -4,7 +4,6 @@ import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
 import {
   MCP_PERMISSION_KEYS,
-  MCP_PROVIDERS,
   MCPConnector,
   MCPPermissionKey,
   MCPPermissions,
@@ -13,8 +12,6 @@ import {
   defaultMCPAlias,
   defaultMCPPermissions,
   listMCPConnectors,
-  mcpProviderLabel,
-  mcpUiSetupSteps,
   regenerateMCPConnectorToken,
   revokeMCPConnector,
   updateMCPConnector
@@ -148,19 +145,6 @@ function ChatTypeIcon({ type }: { type: Chat["type"] }) {
   );
 }
 
-function providerPlaceholder(provider: MCPProviderId) {
-  switch (provider) {
-    case "codex":
-      return "Family Codex";
-    case "openclaw":
-      return "Family OpenClaw";
-    case "hermes":
-      return "Family Hermes";
-    default:
-      return "Family Claude Code";
-  }
-}
-
 export default function MCPConnectorsPanel({
   accessToken,
   authRequest,
@@ -176,13 +160,16 @@ export default function MCPConnectorsPanel({
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [provider, setProvider] = useState<MCPProviderId>("claude_code");
+  // MCP transport and permissions are identical for every compatible agent.
+  // Keep a stable backend provider value for legacy records, without making
+  // people choose an artificial agent category during setup.
+  const [provider] = useState<MCPProviderId>("codex");
   const [name, setName] = useState("");
   const [maxHistory, setMaxHistory] = useState(50);
   const [permissions, setPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
   const [allowedChatIds, setAllowedChatIds] = useState<string[]>([]);
   const [secret, setSecret] = useState<SecretReveal | null>(null);
-  const [copied, setCopied] = useState<"token" | "prompt" | "cli" | null>(null);
+  const [copied, setCopied] = useState<"token" | "prompt" | "url" | "cli" | null>(null);
   const [showCli, setShowCli] = useState(false);
 
   const load = useCallback(async () => {
@@ -339,7 +326,7 @@ export default function MCPConnectorsPanel({
     }
   }
 
-  async function handleCopy(kind: "token" | "prompt" | "cli", value: string) {
+  async function handleCopy(kind: "token" | "prompt" | "url" | "cli", value: string) {
     const ok = await copyText(value);
     if (!ok) {
       onError("Could not copy to clipboard");
@@ -386,8 +373,11 @@ export default function MCPConnectorsPanel({
     }
   }
 
-  const setupSteps = secret ? mcpUiSetupSteps(secret.provider) : mcpUiSetupSteps(provider);
-  const providerMeta = MCP_PROVIDERS.find((item) => item.id === provider) ?? MCP_PROVIDERS[0];
+  const setupSteps = [
+    "Open your AI agent's MCP or integrations settings.",
+    "Add a custom HTTP MCP server.",
+    "Paste the MCP URL and Bearer token below, then save the connection."
+  ];
 
   return (
     <section className="mcp-connectors-panel">
@@ -397,8 +387,7 @@ export default function MCPConnectorsPanel({
             <span className="mcp-mode-kicker">Available now</span>
             <h3>Connect Stovo to agent</h3>
             <p>
-              Create a connection session for Claude Code, Codex, OpenClaw, or Hermes. The agent connects to Stovo
-              over MCP to read and act in allowed chats.
+              Create one secure MCP connection for any compatible AI agent. It can only access the chats and actions you allow.
             </p>
           </div>
           <small>Connection session · MCP</small>
@@ -421,7 +410,7 @@ export default function MCPConnectorsPanel({
         <article className="invite-link-card mcp-secret-card">
           <div className="mcp-secret-header">
             <div>
-              <strong>Connect Stovo to {mcpProviderLabel(secret.provider)}</strong>
+              <strong>Connect an AI agent to Stovo</strong>
               <p>
                 Connection session for <strong>{secret.connectorName}</strong>. Copy the details below into your agent.
               </p>
@@ -443,19 +432,13 @@ export default function MCPConnectorsPanel({
             </div>
           </div>
 
-          <label>
-            Setup prompt
+          <div className="mcp-copy-field">
+            <div className="mcp-copy-field-label"><span>Setup prompt</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("prompt", secret.setupPrompt)} aria-label="Copy setup prompt"><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "prompt" ? "Copied" : "Copy"}</button></div>
             <textarea className="mcp-setup-prompt" readOnly rows={5} value={secret.setupPrompt} />
-          </label>
+          </div>
 
-          <label>
-            MCP URL
-            <code>{secret.mcpUrl}</code>
-          </label>
-          <label>
-            Bearer token
-            <code>{secret.token}</code>
-          </label>
+          <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>MCP URL</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("url", secret.mcpUrl)} aria-label="Copy MCP URL"><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "url" ? "Copied" : "Copy"}</button></div><code>{secret.mcpUrl}</code></div>
+          <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>Bearer token</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("token", secret.token)} aria-label="Copy bearer token"><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "token" ? "Copied" : "Copy"}</button></div><code>{secret.token}</code></div>
 
           <div className="mcp-setup-block">
             <strong>In-app setup</strong>
@@ -474,12 +457,6 @@ export default function MCPConnectorsPanel({
           </div>
 
           <div className="public-access-actions">
-            <button type="button" onClick={() => void handleCopy("prompt", secret.setupPrompt)}>
-              {copied === "prompt" ? "Prompt copied" : "Copy setup prompt"}
-            </button>
-            <button type="button" onClick={() => void handleCopy("token", secret.token)}>
-              {copied === "token" ? "Token copied" : "Copy token"}
-            </button>
             {showCli && (
               <button type="button" onClick={() => void handleCopy("cli", secret.cliCommand)}>
                 {copied === "cli" ? "Command copied" : "Copy CLI command"}
@@ -495,7 +472,7 @@ export default function MCPConnectorsPanel({
       <form className="mcp-connector-form mcp-section-box" onSubmit={handleCreate}>
         <div className="mcp-form-heading">
           <div>
-            <h3>Create connection · {providerMeta.label}</h3>
+            <h3>Create agent connection</h3>
             <p className="muted-text">
               Connect Stovo to your agent. This creates a secure connection session that authorizes the agent to interact
               with allowed chats in Stovo.
@@ -503,31 +480,12 @@ export default function MCPConnectorsPanel({
           </div>
         </div>
 
-        <div className="mcp-provider-tabs" role="tablist" aria-label="MCP provider">
-          {MCP_PROVIDERS.map((item) => {
-            const selected = provider === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                className={`mcp-provider-tab${selected ? " is-selected" : ""}`}
-                onClick={() => setProvider(item.id)}
-              >
-                <strong>{item.shortLabel}</strong>
-                <small>{item.description}</small>
-              </button>
-            );
-          })}
-        </div>
-
         <label>
           Connection name
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder={providerPlaceholder(provider)}
+            placeholder="e.g. Research assistant"
             required
             maxLength={120}
           />
@@ -672,8 +630,7 @@ export default function MCPConnectorsPanel({
                     </span>
                   </div>
                   <small>
-                    {mcpProviderLabel(connector.provider)} · {connector.allowedChatIds.length}{" "}
-                    {connector.allowedChatIds.length === 1 ? "chat" : "chats"} allowed · history limit{" "}
+                    {connector.allowedChatIds.length} {connector.allowedChatIds.length === 1 ? "chat" : "chats"} allowed · history limit{" "}
                     {connector.maxHistoryMessages}
                     {connector.lastUsedAt &&
                       ` · active ${new Date(connector.lastUsedAt).toLocaleDateString()}`}
