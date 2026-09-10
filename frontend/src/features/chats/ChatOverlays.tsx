@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 
 import type { Family } from "../../api/family";
 import type { FamilyFile } from "../../api/files";
@@ -74,6 +75,20 @@ export function ChatOverlays({
   const [isMeetingPlannerOpen, setIsMeetingPlannerOpen] = useState(false);
   const meetingChats = chats.filter((chat) => chat.type === "group" || chat.type === "voice");
   const [meetingChatId, setMeetingChatId] = useState("");
+  const [meetingTitle, setMeetingTitle] = useState("");
+  const [meetingCalendarRange, setMeetingCalendarRange] = useState<{ start?: string; end?: string }>({});
+  useEffect(() => {
+    const raw = window.sessionStorage.getItem("stovo:guest-meeting-draft");
+    if (!raw) return;
+    window.sessionStorage.removeItem("stovo:guest-meeting-draft");
+    try {
+      const draft = JSON.parse(raw) as { chatId?: string; title?: string; startsAt?: string; endsAt?: string };
+      setMeetingChatId(draft.chatId && meetingChats.some((chat) => chat.id === draft.chatId) ? draft.chatId : meetingChats[0]?.id ?? "");
+      setMeetingTitle(draft.title ?? "");
+      setMeetingCalendarRange({ start: draft.startsAt, end: draft.endsAt });
+      setIsMeetingPlannerOpen(true);
+    } catch { /* Ignore a malformed one-time draft. */ }
+  }, [meetingChats]);
   const {
     isNewChatOpen, newChatScreen, filteredNewChatMembers, newChatMemberSearch, groupTitle, groupMemberIds,
     setNewChatMemberSearch, setNewChatScreen, closeNewChatScreen, startDirectChatWith,
@@ -103,7 +118,7 @@ export function ChatOverlays({
                 onCreateGroup={(event) => void handleCreateGroupChat(event)}
                 onCreateChannel={(event) => void handleCreateChannelChat(event)}
                 onCreateVoiceChannel={(event) => void handleCreateVoiceChat(event)}
-                onPlanGuestMeeting={() => { setMeetingChatId(meetingChats[0]?.id ?? ""); setIsMeetingPlannerOpen(true); closeNewChatScreen(); }}
+                onPlanGuestMeeting={() => { setMeetingChatId(meetingChats[0]?.id ?? ""); setMeetingTitle(""); setMeetingCalendarRange({}); setIsMeetingPlannerOpen(true); closeNewChatScreen(); }}
               />
             </div>
           </div>,
@@ -113,8 +128,8 @@ export function ChatOverlays({
       {isMeetingPlannerOpen && createPortal(
         <div className="guest-meeting-planner-backdrop" role="presentation" onMouseDown={() => setIsMeetingPlannerOpen(false)}>
           <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label="Plan guest meeting" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="guest-meeting-planner-header"><div><span className="guest-meeting-planner-kicker">EXTERNAL MEETING</span><h2>Invite people without accounts</h2><p>Set up a link now. Share it whenever you’re ready to meet.</p></div><button type="button" className="guest-meeting-close" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}>×</button></div>
-            {meetingChats.length ? <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Where should this meeting live?</span><select value={meetingChatId} onChange={(event) => setMeetingChatId(event.target.value)}>{meetingChats.map((chat) => <option key={chat.id} value={chat.id}>{chat.title}</option>)}</select><small>Guests will not see this chat, its messages, or member list.</small></label><GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} enabled /></div> : <p className="muted-copy">Create a group or voice chat first, then plan a guest meeting.</p>}
+            <div className="guest-meeting-planner-header"><h2>Create meeting link</h2><button type="button" className="icon-button subtle icon-button--plain" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}><X aria-hidden="true" size={20} /></button></div>
+            {meetingChats.length ? <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting space</span><select value={meetingChatId} onChange={(event) => setMeetingChatId(event.target.value)}>{meetingChats.map((chat) => <option key={chat.id} value={chat.id}>{chat.title}</option>)}</select><small>Guests cannot view chat messages or members.</small></label><GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} enabled initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /></div> : <p className="muted-copy">Create a group or voice chat first, then create a meeting link.</p>}
           </section>
         </div>, document.body)}
 

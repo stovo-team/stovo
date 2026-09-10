@@ -1,5 +1,5 @@
 import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Link, Plus, Search, X } from "lucide-react";
 import { User } from "../api/auth";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
@@ -327,9 +327,10 @@ export default function PlansPage() {
               <small>{strings.plans.createdBy(creator?.displayName ?? strings.plans.unknownMember)}</small>
             </div>
             {plan.sourceChatId && (
-              <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>
-                {strings.plans.openChat}
-              </button>
+              <div className="plan-actions">
+                <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>{strings.plans.openChat}</button>
+                {canCreate && <button className="plan-chat-link" onClick={() => { window.sessionStorage.setItem("stovo:guest-meeting-draft", JSON.stringify({ chatId: plan.sourceChatId, title: plan.title, startsAt: plan.startsAt, endsAt: plan.endsAt })); navigate(`/app/chats/${plan.sourceChatId}`); }}><Link size={14} aria-hidden="true" /> Create meeting link</button>}
+              </div>
             )}
           </div>
           <div className="plan-rsvp">
