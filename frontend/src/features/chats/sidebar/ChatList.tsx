@@ -1,4 +1,4 @@
-import { Archive, ChevronDown, FileText, FolderMinus, FolderPlus, Lock, MessageCircle, RotateCcw, Settings2, X } from "lucide-react";
+import { Archive, ChevronDown, CircleSlash, FileText, FolderMinus, FolderPlus, MessageCircle, RotateCcw, Settings2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -520,6 +520,34 @@ export function ChatList({
         }
       }}
     >
+      {isDraggingFromFolder && (
+        <div
+          className={`chat-folder-remove-dropzone chat-folder-remove-dropzone--danger ${dragOverTargetId === "__remove_from_folder__" ? "is-active" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setDragOverTargetId("__remove_from_folder__");
+            e.dataTransfer.dropEffect = "move";
+          }}
+          onDragLeave={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setDragOverTargetId((cur) => (cur === "__remove_from_folder__" ? null : cur));
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const chatId = e.dataTransfer.getData("application/stovo-chat-id") || e.dataTransfer.getData("text/plain");
+            const chatToDrop = draggedChat || draggedChatRef.current || filteredChats.find((c) => c.id === chatId);
+            if (chatToDrop) {
+              handleRemoveChatFromAllFolders(chatToDrop);
+            }
+          }}
+        >
+          <FolderMinus size={15} aria-hidden="true" />
+          <span>Drop here to move out of folder</span>
+        </div>
+      )}
+
       {!showSkeleton && (quickAccess.archiveEnabled || quickAccess.outboxEnabled) && (
         <section className="chat-list-section chat-list-section--quick-access" aria-label="Quick Access">
           <div className="chat-section-heading">
@@ -534,12 +562,12 @@ export function ChatList({
           {!collapsed["quick-access"] && (
             <div className="quick-access-items">
               {quickAccess.archiveEnabled && archiveChat && (
-                <button type="button" className={`chat-list-item quick-access-item ${isMessageArchiveActive ? "active" : ""}`} onClick={onOpenMessageArchive}>
+                <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isMessageArchiveActive ? "active" : ""}`} onClick={onOpenMessageArchive}>
                   <span className="avatar chat-avatar archive quick-access-icon"><Archive size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Message Archive</strong></span><span className="chat-list-preview">{previewFor(archiveChat)}</span></span>
                 </button>
               )}
               {quickAccess.outboxEnabled && (
-                <button type="button" className={`chat-list-item quick-access-item ${isDraftsAndScheduledActive ? "active" : ""}`} onClick={onOpenDraftsAndScheduled}>
+                <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isDraftsAndScheduledActive ? "active" : ""}`} onClick={onOpenDraftsAndScheduled}>
                   <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span><span className="chat-list-preview">{previewFor(draftChats[0] ?? newestChat)}</span></span>
                   {draftChats.length > 0 && <span className="tiny-badge">{draftChats.length}</span>}
                 </button>
@@ -568,9 +596,6 @@ export function ChatList({
                 return defaultFolder ? folderMatchesChatProperties(chat, defaultFolder.rules, chatName) : true;
               });
               const sectionLabel = defaultFolder?.name || defaultSectionNames[section.key] || section.label;
-              if (sectionChats.length === 0) {
-                return null;
-              }
               const draggedChatName = activeDraggedChat ? displayChatName(activeDraggedChat, currentUserId, strings) : "";
               const isMatch = activeDraggedChat ? canDropToSection(section.key, activeDraggedChat, draggedChatName) : true;
               const isRestricted = Boolean(activeDraggedChat && !isMatch);
@@ -605,8 +630,8 @@ export function ChatList({
                     <ChevronDown size={16} aria-hidden="true" className={collapsed[section.key] ? "is-collapsed" : ""} />
                     <span>{sectionLabel}</span>
                     {isRestricted && (
-                      <span className="chat-folder-locked-icon" title="Chat properties do not match folder rules" aria-label="Restricted">
-                        <Lock size={14} aria-hidden="true" />
+                      <span className="chat-folder-locked-icon" title="This chat cannot be dropped here" aria-label="Drop not allowed">
+                        <CircleSlash size={14} aria-hidden="true" />
                       </span>
                     )}
                     <small>{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
@@ -697,7 +722,7 @@ export function ChatList({
                 <span>{folder.name}</span>
                 {isFolderRestricted && (
                   <span className="chat-folder-locked-icon" title="Chat properties do not match folder rules" aria-label="Restricted">
-                    <Lock size={14} aria-hidden="true" />
+                    <CircleSlash size={14} aria-hidden="true" />
                   </span>
                 )}
                 <small>{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
@@ -749,34 +774,6 @@ export function ChatList({
           </section>
         );
       })}
-
-      {isDraggingFromFolder && (
-        <div
-          className={`chat-folder-remove-dropzone ${dragOverTargetId === "__remove_from_folder__" ? "is-active" : ""}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOverTargetId("__remove_from_folder__");
-            e.dataTransfer.dropEffect = "move";
-          }}
-          onDragLeave={(e) => {
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            setDragOverTargetId((cur) => (cur === "__remove_from_folder__" ? null : cur));
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const chatId = e.dataTransfer.getData("application/stovo-chat-id") || e.dataTransfer.getData("text/plain");
-            const chatToDrop = draggedChat || draggedChatRef.current || filteredChats.find((c) => c.id === chatId);
-            if (chatToDrop) {
-              handleRemoveChatFromAllFolders(chatToDrop);
-            }
-          }}
-        >
-          <FolderMinus size={15} aria-hidden="true" />
-          <span>Drop here to move out of folder</span>
-        </div>
-      )}
 
       {canManageFolders && !showSkeleton && <button type="button" className="chat-folder-create" onClick={() => setEditingFolder(null)}><FolderPlus size={17} aria-hidden="true" />New folder</button>}
       {canManageFolders && !showSkeleton && deletedDefaultSections.length > 0 && (

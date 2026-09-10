@@ -54,6 +54,7 @@ export type ConversationPanelProps = {
   showDockedEmojiPicker: boolean;
   callSession?: CallSessionApi;
   minimizedCallHeader?: ReactNode;
+  headerBelow?: ReactNode;
   canAddPeople?: boolean;
   onOpenAddPeople?: () => void;
   onOpenChat: (chat: Chat) => void;
@@ -82,6 +83,7 @@ export function ConversationPanel({
   callPhase,
   callSession,
   minimizedCallHeader,
+  headerBelow,
   canAddPeople,
   onOpenAddPeople,
   isChatMenuOpen,
@@ -409,6 +411,7 @@ export function ConversationPanel({
           clearSelectedMessages();
         }}
       />
+      {headerBelow}
       {minimizedCallHeader}
       {isMessageSearchOpen && (
         <div className="search-field message-search-field" role="search">

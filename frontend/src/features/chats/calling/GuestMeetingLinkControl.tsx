@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CalendarDays, Check, Clock3, Copy, DoorOpen, Link } from "lucide-react";
+import type { Chat } from "../../../api/chats";
+import { sendMessage } from "../../../api/chats";
 import { createGuestMeeting } from "../../../api/guestMeetings";
-import { createPlan } from "../../../api/plans";
+import { encryptMessageContent } from "../../../api/messageCrypto";
 import { IconGoogleCalendar } from "../../../components/icons/IconGoogleCalendar";
 import { GuestMeetingSelect } from "./GuestMeetingSelect";
 
-export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
+export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, currentUserId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; sourceChat?: Chat | null; currentUserId?: string; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
   const [title, setTitle] = useState(initialTitle);
   const [mode, setMode] = useState<"immediate" | "lobby">("immediate");
   const [duration, setDuration] = useState("24");
@@ -13,8 +16,13 @@ export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialT
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [planAdded, setPlanAdded] = useState(false);
-  const [addingPlan, setAddingPlan] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), 1_600);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
   if (!enabled || !accessToken || !chatId) return null;
   const memberToken = accessToken;
   const sourceChatId = chatId;
@@ -28,6 +36,17 @@ export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialT
       const scheduledAt = planned && Number.isFinite(planned.getTime()) ? planned.toISOString() : undefined;
       const meeting = await createGuestMeeting(memberToken, { chatId: sourceChatId, title: title.trim(), scheduledAt, admissionMode: mode, expiresAt });
       setUrl(meeting.meetingUrl);
+      if (sourceChat) {
+        const timing = meeting.scheduledAt
+          ? `Planned for ${new Date(meeting.scheduledAt).toLocaleString()}.`
+          : "Starts when the host opens the meeting.";
+        const entry = meeting.admissionMode === "immediate"
+          ? "Anyone with this link can join."
+          : "Guests wait for host approval before joining.";
+        const announcement = `Guest meeting: ${meeting.title}\n${timing}\n${entry}\nJoin: ${meeting.meetingUrl}`;
+        const encrypted = await encryptMessageContent(sourceChat, announcement, currentUserId);
+        await sendMessage(memberToken, sourceChat.id, encrypted.content, [], null, null, encrypted.encryption);
+      }
       await navigator.clipboard?.writeText(meeting.meetingUrl);
     } catch (e) { setError(e instanceof Error ? e.message : "Could not create guest link"); } finally { setLoading(false); }
   }
@@ -43,14 +62,17 @@ export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialT
     const params = new URLSearchParams({ action: "TEMPLATE", text: title.trim(), details: `Join meeting: ${url}`, location: url, dates: `${utc(start)}/${utc(end)}` });
     window.open(`https://calendar.google.com/calendar/render?${params.toString()}`, "_blank", "noopener,noreferrer");
   };
-  const addToPlans = async () => {
-    if (!url || planAdded || addingPlan) return;
-    setAddingPlan(true); setError(null);
+  const addToPlans = () => {
+    if (!url) return;
+    window.sessionStorage.setItem("stovo:plan-draft", JSON.stringify({ title: title.trim(), notes: `Join meeting: ${url}`, sourceChatId }));
+    navigate("/app/plans");
+  };
+  const copyLink = async () => {
+    if (!url) return;
     try {
-      const { start, end } = meetingDates();
-      await createPlan(memberToken, { title: title.trim(), notes: `Join meeting: ${url}`, startsAt: start.toISOString(), endsAt: end.toISOString(), allDay: false, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", attendeeIds: [], sourceChatId });
-      setPlanAdded(true);
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not add meeting to Plans"); } finally { setAddingPlan(false); }
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch { setError("Could not copy the meeting link"); }
   };
   return <div className="guest-link-control">
     <label className="guest-link-field"><span>Meeting name</span><input autoFocus value={title} maxLength={120} placeholder="e.g. Design review" onChange={(e) => setTitle(e.target.value)} /></label>
@@ -60,7 +82,7 @@ export function GuestMeetingLinkControl({ accessToken, chatId, enabled, initialT
     </div>
     {duration === "custom" && <label className="guest-link-field guest-link-custom-date"><span><Clock3 size={15} /> Expiry date and time</span><input type="datetime-local" value={customExpiry} onChange={(e) => setCustomExpiry(e.target.value)} /></label>}
     <button type="button" className="guest-link-create-button" onClick={() => void create()} disabled={loading}><Link size={17} />{loading ? "Creating meeting link…" : "Create meeting link"}</button>
-    {url && <div className="guest-link-result"><span className="guest-link-result-icon"><Check size={17} /></span><div><strong>Link ready</strong><code>{url}</code></div><div className="guest-link-result-actions"><button type="button" className="icon-button subtle guest-link-copy-button" aria-label="Copy meeting link" onClick={() => void navigator.clipboard?.writeText(url)}><Copy size={17} /></button><button type="button" className="secondary-button guest-link-plan-button" disabled={addingPlan || planAdded} onClick={() => void addToPlans()}><CalendarDays size={17} /> {planAdded ? "Added to Plans" : addingPlan ? "Adding…" : "Add to Plans"}</button><button type="button" className="secondary-button guest-link-calendar-button" onClick={addToGoogleCalendar}><IconGoogleCalendar size={18} /> Add to Google Calendar</button></div></div>}
+    {url && <div className="guest-link-result"><button type="button" className={`icon-button subtle guest-link-copy-button${copied ? " copied" : ""}`} aria-label={copied ? "Meeting link copied" : "Copy meeting link"} onClick={() => void copyLink()}>{copied ? <Check size={18} /> : <Copy size={17} />}</button><div><strong>Link ready</strong><code>{url}</code></div><span className="visually-hidden" role="status" aria-live="polite">{copied ? "Meeting link copied" : ""}</span><div className="guest-link-result-actions"><button type="button" className="secondary-button guest-link-plan-button" onClick={addToPlans}><CalendarDays size={17} /> Add to Plans</button><button type="button" className="secondary-button guest-link-calendar-button" onClick={addToGoogleCalendar}><IconGoogleCalendar size={18} /> Add to Google Calendar</button></div></div>}
     {error && <p className="error-text">{error}</p>}
   </div>;
 }
