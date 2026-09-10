@@ -166,7 +166,7 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 		t.Fatal("delete permission should remain disabled by default")
 	}
 
-	t.Run("connector is visible by mention alias", func(t *testing.T) {
+	t.Run("connector is not a chat member", func(t *testing.T) {
 		chatsResp := jsonRequest(t, client, http.MethodGet, httpServer.URL+"/api/chats", owner.AccessToken, nil)
 		if chatsResp.StatusCode != http.StatusOK {
 			t.Fatalf("list chats status = %d body=%s", chatsResp.StatusCode, readBody(t, chatsResp))
@@ -177,12 +177,13 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 				continue
 			}
 			for _, member := range listed.Members {
-				if member.ID == created.Connector.ActorUserID && member.Username == "codex" {
-					return
+				if member.ID == created.Connector.ActorUserID {
+					t.Fatal("connector was returned as a chat member")
 				}
 			}
+			return
 		}
-		t.Fatal("Codex connector actor was not returned as @codex in allowed chat members")
+		t.Fatal("allowed chat was not returned")
 	})
 
 	t.Run("invalid token", func(t *testing.T) {

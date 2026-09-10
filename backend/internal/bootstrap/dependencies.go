@@ -203,11 +203,11 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 }
 
 func newLogBuffer(cfg config.Config) (*logging.Buffer, error) {
-	if cfg.StorageProvider != "minio" {
+	if cfg.StorageProvider != "minio" && cfg.StorageProvider != "s3" {
 		return logging.NewBuffer(cfg.LogBufferMaxRecords, cfg.LogFilePath)
 	}
 	logStore, err := storage.New(storage.Config{
-		Provider: "minio", Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey,
+		Provider: cfg.StorageProvider, Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey,
 		SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure, Bucket: cfg.MinIOLogsBucket,
 	})
 	if err != nil {

@@ -9,9 +9,9 @@ import (
 	"os"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"stovo-messenger/backend/internal/config"
 	"stovo-messenger/backend/internal/storage"
-	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type result struct {
@@ -26,18 +26,18 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if cfg.StorageProvider != "minio" {
-		panic("STORAGE_PROVIDER must be minio")
+	if cfg.StorageProvider != "minio" && cfg.StorageProvider != "s3" {
+		panic("STORAGE_PROVIDER must be minio or s3")
 	}
 	source, err := storage.New(storage.Config{Provider: "local", LocalPath: cfg.LocalStoragePath})
 	if err != nil {
 		panic(err)
 	}
-	target, err := storage.New(storage.Config{Provider: "minio", Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure, Bucket: cfg.MinIOFilesBucket})
+	target, err := storage.New(storage.Config{Provider: cfg.StorageProvider, Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure, Bucket: cfg.MinIOFilesBucket})
 	if err != nil {
 		panic(err)
 	}
-	logs, err := storage.New(storage.Config{Provider: "minio", Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure, Bucket: cfg.MinIOLogsBucket})
+	logs, err := storage.New(storage.Config{Provider: cfg.StorageProvider, Endpoint: cfg.MinIOEndpoint, AccessKey: cfg.MinIOAccessKey, SecretKey: cfg.MinIOSecretKey, Secure: cfg.MinIOSecure, Bucket: cfg.MinIOLogsBucket})
 	if err != nil {
 		panic(err)
 	}

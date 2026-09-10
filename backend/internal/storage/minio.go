@@ -19,6 +19,7 @@ type MinIOStorage struct {
 	bucket        string
 	accessKey     string
 	secretKey     string
+	provider      string
 	fallback      ObjectStore
 }
 
@@ -32,11 +33,17 @@ func NewMinIOStorage(endpoint, accessKey, secretKey string, secure bool, bucket 
 	if endpoint == "" || accessKey == "" || secretKey == "" || bucket == "" {
 		return nil, fmt.Errorf("MinIO endpoint, credentials, and bucket are required")
 	}
-	client, err := minio.New(endpoint, &minio.Options{Creds: credentials.NewStaticV4(accessKey, secretKey, ""), Secure: secure})
+	client, err := minio.New(endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure: secure,
+		// Cloud.ru documents path-style requests (/{bucket}/{key}). This also
+		// works with MinIO and avoids requiring wildcard DNS for bucket names.
+		BucketLookup: minio.BucketLookupPath,
+	})
 	if err != nil {
 		return nil, err
 	}
-	store := &MinIOStorage{client: client, presignClient: client, bucket: bucket, accessKey: accessKey, secretKey: secretKey}
+	store := &MinIOStorage{client: client, presignClient: client, bucket: bucket, accessKey: accessKey, secretKey: secretKey, provider: "minio"}
 	exists, err := client.BucketExists(context.Background(), bucket)
 	if err != nil {
 		return nil, err
@@ -69,7 +76,7 @@ func NewMinIOStorageForBucket(client *minio.Client, bucket string) (*MinIOStorag
 	if err := enableBucketVersioning(context.Background(), client, bucket); err != nil {
 		return nil, err
 	}
-	return &MinIOStorage{client: client, presignClient: client, bucket: bucket}, nil
+	return &MinIOStorage{client: client, presignClient: client, bucket: bucket, provider: "minio"}, nil
 }
 
 // SetPresignEndpoint changes only the host embedded in signed URLs. The
@@ -80,8 +87,9 @@ func (s *MinIOStorage) SetPresignEndpoint(endpoint string, secure bool) error {
 		return fmt.Errorf("MinIO public endpoint is required")
 	}
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(s.accessKey, s.secretKey, ""),
-		Secure: secure,
+		Creds:        credentials.NewStaticV4(s.accessKey, s.secretKey, ""),
+		Secure:       secure,
+		BucketLookup: minio.BucketLookupPath,
 	})
 	if err != nil {
 		return err
@@ -96,7 +104,7 @@ func enableBucketVersioning(ctx context.Context, client *minio.Client, bucket st
 	return client.SetBucketVersioning(ctx, bucket, minio.BucketVersioningConfiguration{Status: "Enabled"})
 }
 
-func (s *MinIOStorage) Provider() string { return "minio" }
+func (s *MinIOStorage) Provider() string { return s.provider }
 
 func (s *MinIOStorage) Save(key string, data []byte) error {
 	if _, err := s.client.PutObject(context.Background(), s.bucket, key, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{}); err != nil {

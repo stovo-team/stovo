@@ -587,18 +587,10 @@ func (s *Server) chatMembers(chatID string) ([]chatMemberPublic, error) {
 	members := make([]chatMemberPublic, 0, len(users))
 	presence := cache.NewPresenceService(s.cache)
 	for _, u := range users {
-		username := u.Username
-		if u.Role == connectorRole {
-			if alias, aliasErr := s.chatArchive.ConnectorAlias(context.Background(), u.ID); aliasErr == nil && alias != "" {
-				// Keep the generated account username private; the configured alias is
-				// the stable, user-facing name that @-mentions resolve against.
-				username = alias
-			}
-		}
 		member := chatMemberPublic{
 			ID:                 u.ID,
 			DisplayName:        u.DisplayName,
-			Username:           username,
+			Username:           u.Username,
 			Role:               u.Role,
 			PublicKey:          u.PublicKey,
 			LastSeenVisibility: u.LastSeenVisibility,
