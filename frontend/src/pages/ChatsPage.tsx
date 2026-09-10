@@ -18,7 +18,7 @@ import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
 import { createCanvas } from "../api/canvas";
 import { createChecklist } from "../api/checklist";
-import { MessageArchivePanel, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
+import { MessageArchivePanel, MessageArchiveViewControls, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
 
 export default function ChatsPage() {
   const { chatId } = useParams();
@@ -34,6 +34,7 @@ export default function ChatsPage() {
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
   const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
   const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
+  const [messageArchiveView, setMessageArchiveView] = useState<"all" | "grouped">("all");
   const {
     family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
@@ -165,7 +166,7 @@ export default function ChatsPage() {
             onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(false); openChat(chat); }}
             onOpenDraftsAndScheduled={() => { setIsMessageArchiveOpen(false); setIsDraftsAndScheduledOpen(true); }}
             isDraftsAndScheduledActive={isDraftsAndScheduledOpen}
-            onOpenMessageArchive={() => { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(true); }}
+            onOpenMessageArchive={() => { const archive = chats.find((chat) => chat.type === "archive"); if (archive) { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(true); setMessageArchiveView("all"); setSelectedChat(archive); openChat(archive); } }}
             isMessageArchiveActive={isMessageArchiveOpen}
             mobileCallStrip={
               callPhase !== "idle" && isCallMinimized && !chatId ? (
@@ -196,7 +197,7 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen ? <MessageArchivePanel chats={chats} /> : <ConversationPanel
+            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen && messageArchiveView === "grouped" ? <MessageArchivePanel chats={chats} /> : <ConversationPanel
               thread={thread}
               composer={composerApi}
               accessToken={accessToken}
@@ -259,7 +260,7 @@ export default function ChatsPage() {
                 void createCanvas(accessToken, selectedChat.id)
                   .then((canvas) => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`));
               }}
-               onCreateChecklist={async (payload) => {
+              onCreateChecklist={async (payload) => {
                 if (!accessToken || !selectedChat) return;
                 const checklist = await createChecklist(accessToken, {
                   chatId: selectedChat.id,
@@ -269,6 +270,7 @@ export default function ChatsPage() {
                 });
                 navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`);
               }}
+              headerBelow={isMessageArchiveOpen && selectedChat?.type === "archive" ? <MessageArchiveViewControls view={messageArchiveView} onChange={setMessageArchiveView} /> : undefined}
             />}
           </section>
           {selectedChat && isDetailsOpen && (

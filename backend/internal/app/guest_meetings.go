@@ -216,7 +216,9 @@ func (s *Server) previewGuestMeeting(w http.ResponseWriter, r *http.Request) {
 		s.json(w, 404, map[string]string{"message": "Meeting link is unavailable"})
 		return
 	}
-	s.json(w, 200, map[string]any{"title": m.Title, "scheduledAt": m.ScheduledAt, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestLimit": guestMeetingLimit})
+	var guestCount int
+	_ = s.guestDB.QueryRowContext(r.Context(), `SELECT count(*) FROM guest_meeting_sessions WHERE meeting_id=$1 AND state='admitted'`, m.ID).Scan(&guestCount)
+	s.json(w, 200, map[string]any{"title": m.Title, "scheduledAt": m.ScheduledAt, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestCount": guestCount, "guestLimit": guestMeetingLimit})
 }
 func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.validPublicMeeting(r.Context(), chi.URLParam(r, "token"))

@@ -209,7 +209,7 @@ export function ChecklistCardBubble({
         <input
           type="text"
           className="checklist-card-add-input"
-          placeholder="+ Add item..."
+          placeholder="Add Item"
           value={newItemText}
           maxLength={280}
           onChange={(e) => setNewItemText(e.target.value)}
@@ -222,7 +222,6 @@ export function ChecklistCardBubble({
           disabled={isAdding || !newItemText.trim()}
         >
           <Plus size={13} strokeWidth={2.5} />
-          <span>Add</span>
         </button>
       </form>
     </div>

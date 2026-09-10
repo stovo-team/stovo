@@ -342,10 +342,11 @@ export default function FilesPage() {
         setFiles(cached);
         setIsLoading(false);
         dispatchSelection({ type: "load-default", fileId: cached[0]?.id ?? null });
-        // Family/chat labels are compact metadata requests. File bytes and the
-        // file list itself stay local; only file IDs carried by the cursor are
-        // fetched below.
-        await load(false);
+        // Keep cached bytes available for a fast first paint, but refresh the
+        // file metadata. A file can gain a chat folder when it is attached to
+        // a message, and that relationship is not represented by the cached
+        // list alone.
+        await load(true);
         if (!accessToken || !userId || cancelled) return;
         await syncChatReplicaDeltas({
           accessToken,

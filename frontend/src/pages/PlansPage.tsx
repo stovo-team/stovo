@@ -178,7 +178,7 @@ export default function PlansPage() {
     if (!raw) return;
     window.sessionStorage.removeItem("stovo:plan-draft");
     try {
-      const saved = JSON.parse(raw) as { title?: string; durationMinutes?: number; sourceChatId?: string };
+      const saved = JSON.parse(raw) as { title?: string; notes?: string; durationMinutes?: number; sourceChatId?: string };
       const start = new Date();
       start.setMinutes(0, 0, 0);
       start.setHours(start.getHours() + 1);
@@ -186,6 +186,7 @@ export default function PlansPage() {
       setDraft((current) => ({
         ...current,
         title: saved.title ?? current.title,
+        notes: saved.notes ?? current.notes,
         startsAt: toLocalIso(start),
         endsAt: toLocalIso(end),
         sourceChatId: saved.sourceChatId
