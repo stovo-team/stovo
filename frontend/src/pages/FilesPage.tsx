@@ -286,6 +286,8 @@ export default function FilesPage() {
       direct: strings.files.categories.direct
     });
   }, [files, chats, currentUser?.id, strings]);
+  const selectedSource = sourceGroups.flatMap((group) => group.sources)
+    .find((source) => source.chatId === sourceChatId);
 
 
   const closeMobileDetails = useCallback(() => {
@@ -389,8 +391,12 @@ export default function FilesPage() {
 
   const filteredFiles = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const selectedSourceIncludesUnscopedFiles = selectedSource?.includesUnscopedFiles ?? false;
     return files.filter((file) => {
-      if (!matchesStorageFilter(file, filter) || (sourceChatId && file.chatId !== sourceChatId)) {
+      const isOutsideSelectedSource = sourceChatId
+        && file.chatId !== sourceChatId
+        && !(selectedSourceIncludesUnscopedFiles && file.chatId === null);
+      if (!matchesStorageFilter(file, filter) || isOutsideSelectedSource) {
         return false;
       }
       return (
@@ -398,7 +404,7 @@ export default function FilesPage() {
         `${file.originalName} ${file.mimeType} ${chatFolderLabel(file)}`.toLowerCase().includes(query)
       );
     });
-  }, [files, filter, search, sourceChatId]);
+  }, [files, filter, search, selectedSource?.includesUnscopedFiles, sourceChatId]);
 
   const collectionPickerFiles = useMemo(() => collectionPicker ? filteredFiles.filter((file) => collectionPicker.allowedFileIds.includes(file.id) || collectionPicker.lockedFileIds.includes(file.id)) : filteredFiles, [collectionPicker, filteredFiles]);
 
@@ -421,9 +427,6 @@ export default function FilesPage() {
       return groups;
     }, []);
   }, [filteredFiles, strings.files.familyStorage]);
-  const selectedSource = sourceGroups.flatMap((group) => group.sources)
-    .find((source) => source.chatId === sourceChatId);
-
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const selectedFiles = Array.from(event.target.files ?? []);
     event.target.value = "";

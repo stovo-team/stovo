@@ -23,6 +23,7 @@ export type StorageSource<TFile = StorageFileLike> = {
   avatarFile: TFile | null;
   avatarKind: StorageAvatarKind;
   fileCount: number;
+  includesUnscopedFiles?: boolean;
 };
 
 export type StorageFilter = "all" | "photos" | "videos" | "audio" | "documents" | "canvases" | "checklists" | "favorites";
@@ -83,8 +84,12 @@ export function buildStorageSources<TFile extends StorageFileLike>(
   }
 ) {
   const filesByChat = new Map<string, TFile[]>();
+  const unscopedFiles: TFile[] = [];
   for (const file of files) {
-    if (!file.chatId) continue;
+    if (!file.chatId) {
+      unscopedFiles.push(file);
+      continue;
+    }
     filesByChat.set(file.chatId, [...(filesByChat.get(file.chatId) ?? []), file]);
   }
 
@@ -109,8 +114,15 @@ export function buildStorageSources<TFile extends StorageFileLike>(
   const chatsWithFiles = [...chats, ...fallbackChats];
 
   const sourceFor = (chat: StorageChatLike<TFile>): StorageSource<TFile> | null => {
-    const chatFiles = filesByChat.get(chat.id);
-    if (!chatFiles) return null;
+    const directChatFiles = filesByChat.get(chat.id) ?? [];
+    // Family-scoped uploads belong in the one family chat's Storage folder.
+    // They used to leave the source sidebar empty despite being visible in
+    // "All chats" because they do not carry a specific chatId.
+    const includesUnscopedFiles = chat.type === "family" && unscopedFiles.length > 0;
+    const chatFiles = includesUnscopedFiles
+      ? [...directChatFiles, ...unscopedFiles]
+      : directChatFiles;
+    if (chatFiles.length === 0) return null;
     const otherMember = chat.members.find((member) => member.id !== currentUserId);
     const label = chat.type === "direct"
       ? otherMember?.displayName ?? "Direct chat"
@@ -122,7 +134,8 @@ export function buildStorageSources<TFile extends StorageFileLike>(
       label,
       avatarFile: chat.chatPhoto ?? (chat.type === "direct" ? otherMember?.profilePhoto ?? null : null),
       avatarKind: chat.type,
-      fileCount: chatFiles.length
+      fileCount: chatFiles.length,
+      includesUnscopedFiles: includesUnscopedFiles || undefined
     };
   };
 

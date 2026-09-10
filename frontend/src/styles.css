@@ -27079,14 +27079,14 @@ button.checklist-add-item-btn:hover,
 .quick-access-panel-header h1 { font-size: 1.1rem; margin: 0; }
 .quick-access-standard-header { min-height: 72px; padding-inline: 0; }
 .quick-access-standard-header .chat-title-group { min-width: 0; }
-.quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 18px; }
+.quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 32px; }
 .quick-access-panel-tabs button { background: color-mix(in oklab, var(--surface-card) 82%, transparent); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; padding: 7px 12px; }
 .quick-access-panel-tabs button:hover { background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent); }
 .quick-access-panel-tabs button.active { background: color-mix(in oklab, var(--accent-soft) 22%, var(--surface-card)); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-default)); color: var(--accent-primary); }
 .quick-access-panel-empty { align-items: center; color: var(--text-muted); display: flex; flex: 1; flex-direction: column; justify-content: center; text-align: center; }
 .quick-access-panel-empty strong { color: var(--text-primary); margin-top: 10px; }
 .quick-access-panel-empty p { font-size: .86rem; margin: 5px 0 0; }
-.message-archive-view-controls { display: flex; gap: 6px; margin-top: 64px; padding: 8px 28px; position: relative; z-index: 14; }
+.message-archive-view-controls { display: flex; gap: 6px; margin-top: 78px; padding: 8px 28px; position: relative; z-index: 14; }
 .message-archive-view-controls button { background: color-mix(in oklab, var(--surface-card) 82%, transparent); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; padding: 7px 12px; }
 .message-archive-view-controls button.active { background: color-mix(in oklab, var(--accent-soft) 22%, var(--surface-card)); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-default)); color: var(--accent-primary); }
 

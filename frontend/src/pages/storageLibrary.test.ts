@@ -95,6 +95,28 @@ describe("storage library helpers", () => {
     ]);
   });
 
+  it("places family-scoped files under the family chat source", () => {
+    const sources = buildStorageSources(
+      [{ ...audio, chatId: null, chatTitle: null, chatType: null }],
+      [{ id: "family", type: "family", title: "Our family", chatPhoto: null, members: [] }],
+      "me"
+    );
+
+    expect(sources).toEqual([
+      {
+        label: "FAMILY CHATS",
+        sources: [{
+          chatId: "family",
+          label: "Our family",
+          avatarFile: null,
+          avatarKind: "family",
+          fileCount: 1,
+          includesUnscopedFiles: true
+        }]
+      }
+    ]);
+  });
+
   it("separates family chats, groups, channels, and direct chats", () => {
     const fileFor = (id: string, chatId: string, chatType: string) => ({
       ...audio, id, chatId, chatType
