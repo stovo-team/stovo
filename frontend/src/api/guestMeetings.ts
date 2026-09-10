@@ -21,8 +21,8 @@ export const createGuestMeetingSession = (token: string, displayName: string) =>
 export const getGuestMeetingStatus = (token: string) => publicRequest<GuestMeetingStatus>(token, "/status");
 export const getGuestMeetingToken = (token: string) => publicRequest<{ url: string; token: string }>(token, "/token", { method: "POST" });
 
-export type GuestMeetingCreated = { id: string; admissionMode: "immediate" | "lobby"; expiresAt: string; meetingUrl: string; guestLimit: number };
-export async function createGuestMeeting(accessToken: string, input: { chatId: string; admissionMode: "immediate" | "lobby"; expiresAt: string }) {
+export type GuestMeetingCreated = { id: string; title: string; admissionMode: "immediate" | "lobby"; expiresAt: string; meetingUrl: string; guestLimit: number };
+export async function createGuestMeeting(accessToken: string, input: { chatId: string; title: string; admissionMode: "immediate" | "lobby"; expiresAt: string }) {
   const response = await fetch(`${getApiUrl()}/api/guest-meetings`, { method: "POST", credentials: "include", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(input) });
   if (!response.ok) { const data = await response.json().catch(() => null); throw new Error(data?.message ?? "Could not create guest meeting"); }
   return response.json() as Promise<GuestMeetingCreated>;

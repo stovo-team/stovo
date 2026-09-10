@@ -25,7 +25,7 @@ const guestMeetingCookie = "stovo_guest_meeting_session"
 const guestMeetingLimit = 10
 
 type guestMeeting struct {
-	ID, ChatID, CreatorID, AdmissionMode string
+	ID, ChatID, CreatorID, Title, AdmissionMode string
 	ExpiresAt                            time.Time
 	RevokedAt, EndedAt                   *time.Time
 }
@@ -68,11 +68,17 @@ func (s *Server) createGuestMeeting(w http.ResponseWriter, r *http.Request, user
 	}
 	var body struct {
 		ChatID        string `json:"chatId"`
+		Title         string `json:"title"`
 		AdmissionMode string `json:"admissionMode"`
 		ExpiresAt     string `json:"expiresAt"`
 	}
 	if json.NewDecoder(r.Body).Decode(&body) != nil || strings.TrimSpace(body.ChatID) == "" {
 		s.json(w, 400, map[string]string{"message": "chatId is required"})
+		return
+	}
+	title := strings.TrimSpace(body.Title)
+	if len([]rune(title)) == 0 || len([]rune(title)) > 120 {
+		s.json(w, 400, map[string]string{"message": "Meeting name must be 1 to 120 characters"})
 		return
 	}
 	chat, err := s.buildChatPublic(body.ChatID, user)
@@ -103,17 +109,17 @@ func (s *Server) createGuestMeeting(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 	id := uuid.NewString()
-	_, err = s.guestDB.ExecContext(r.Context(), `INSERT INTO guest_meetings (id,chat_id,creator_id,token_hash,admission_mode,expires_at) VALUES ($1,$2,$3,$4,$5,$6)`, id, chat.ID, user.ID, guestMeetingTokenHash(token), mode, expires)
+	_, err = s.guestDB.ExecContext(r.Context(), `INSERT INTO guest_meetings (id,chat_id,creator_id,title,token_hash,admission_mode,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`, id, chat.ID, user.ID, title, guestMeetingTokenHash(token), mode, expires)
 	if err != nil {
 		s.json(w, 500, map[string]string{"message": "Could not save guest meeting"})
 		return
 	}
-	s.json(w, http.StatusCreated, map[string]any{"id": id, "chatId": chat.ID, "admissionMode": mode, "expiresAt": expires, "guestLimit": guestMeetingLimit, "meetingUrl": s.cfg.GuestMeetingURL + "/meet/" + token})
+	s.json(w, http.StatusCreated, map[string]any{"id": id, "chatId": chat.ID, "title": title, "admissionMode": mode, "expiresAt": expires, "guestLimit": guestMeetingLimit, "meetingUrl": s.cfg.GuestMeetingURL + "/meet/" + token})
 }
 
 func (s *Server) meetingForHost(ctx context.Context, id, userID string) (guestMeeting, error) {
 	var m guestMeeting
-	err := s.guestDB.QueryRowContext(ctx, `SELECT id,chat_id,creator_id,admission_mode,expires_at,revoked_at,ended_at FROM guest_meetings WHERE id=$1 AND creator_id=$2`, id, userID).Scan(&m.ID, &m.ChatID, &m.CreatorID, &m.AdmissionMode, &m.ExpiresAt, &m.RevokedAt, &m.EndedAt)
+	err := s.guestDB.QueryRowContext(ctx, `SELECT id,chat_id,creator_id,title,admission_mode,expires_at,revoked_at,ended_at FROM guest_meetings WHERE id=$1 AND creator_id=$2`, id, userID).Scan(&m.ID, &m.ChatID, &m.CreatorID, &m.Title, &m.AdmissionMode, &m.ExpiresAt, &m.RevokedAt, &m.EndedAt)
 	return m, err
 }
 func (s *Server) getGuestMeetingHostState(w http.ResponseWriter, r *http.Request, user userPublic) {
@@ -134,7 +140,7 @@ func (s *Server) getGuestMeetingHostState(w http.ResponseWriter, r *http.Request
 		_ = rows.Scan(&g.ID, &g.DisplayName, &g.State)
 		guests = append(guests, g)
 	}
-	s.json(w, 200, map[string]any{"id": m.ID, "chatId": m.ChatID, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "revokedAt": m.RevokedAt, "endedAt": m.EndedAt, "guests": guests, "guestLimit": guestMeetingLimit})
+	s.json(w, 200, map[string]any{"id": m.ID, "chatId": m.ChatID, "title": m.Title, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "revokedAt": m.RevokedAt, "endedAt": m.EndedAt, "guests": guests, "guestLimit": guestMeetingLimit})
 }
 func (s *Server) createGuestMeetingHostToken(w http.ResponseWriter, r *http.Request, user userPublic) {
 	m, err := s.meetingForHost(r.Context(), chi.URLParam(r, "meetingID"), user.ID)
@@ -186,7 +192,7 @@ func (s *Server) revokeGuestMeeting(w http.ResponseWriter, r *http.Request, user
 
 func (s *Server) publicMeeting(ctx context.Context, token string) (guestMeeting, error) {
 	var m guestMeeting
-	err := s.guestDB.QueryRowContext(ctx, `SELECT id,chat_id,creator_id,admission_mode,expires_at,revoked_at,ended_at FROM guest_meetings WHERE token_hash=$1`, guestMeetingTokenHash(token)).Scan(&m.ID, &m.ChatID, &m.CreatorID, &m.AdmissionMode, &m.ExpiresAt, &m.RevokedAt, &m.EndedAt)
+	err := s.guestDB.QueryRowContext(ctx, `SELECT id,chat_id,creator_id,title,admission_mode,expires_at,revoked_at,ended_at FROM guest_meetings WHERE token_hash=$1`, guestMeetingTokenHash(token)).Scan(&m.ID, &m.ChatID, &m.CreatorID, &m.Title, &m.AdmissionMode, &m.ExpiresAt, &m.RevokedAt, &m.EndedAt)
 	return m, err
 }
 func (s *Server) validPublicMeeting(ctx context.Context, token string) (guestMeeting, bool) {
@@ -199,7 +205,7 @@ func (s *Server) previewGuestMeeting(w http.ResponseWriter, r *http.Request) {
 		s.json(w, 404, map[string]string{"message": "Meeting link is unavailable"})
 		return
 	}
-	s.json(w, 200, map[string]any{"admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestLimit": guestMeetingLimit})
+	s.json(w, 200, map[string]any{"title": m.Title, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestLimit": guestMeetingLimit})
 }
 func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.validPublicMeeting(r.Context(), chi.URLParam(r, "token"))

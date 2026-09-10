@@ -526,7 +526,10 @@ export function ChatList({
               {quickAccess.outboxEnabled && (
                 <button type="button" className="quick-access-item" onClick={() => {
                   const target = draftChats[0];
-                  if (target) { onSelectChat(target); onOpenChat(target); } else onStartNewChat();
+                  // This is a destination, never a shortcut for creating a chat.
+                  // Once the aggregate view is mounted, it owns both empty and
+                  // populated states; until then leave the chat selection intact.
+                  if (target) { onSelectChat(target); onOpenChat(target); }
                 }}>
                   <span className="quick-access-icon"><FileText size={17} /></span><span><strong>Drafts &amp; scheduled</strong><small>{draftChats.length ? `${draftChats.length} draft chat${draftChats.length === 1 ? "" : "s"}` : "No drafts or scheduled messages"}</small></span>
                   {draftChats.length > 0 && <span className="tiny-badge">{draftChats.length}</span>}

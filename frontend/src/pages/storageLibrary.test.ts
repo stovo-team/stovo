@@ -76,6 +76,25 @@ describe("storage library helpers", () => {
     ]);
   });
 
+  it("keeps a chat with files visible while its chat metadata is unavailable", () => {
+    expect(buildStorageSources(
+      [{ ...audio, chatId: "syncing-chat", chatTitle: "Trip plans", chatType: "group" }],
+      [],
+      "me"
+    )).toEqual([
+      {
+        label: "GROUPS",
+        sources: [{
+          chatId: "syncing-chat",
+          label: "Trip plans",
+          avatarFile: null,
+          avatarKind: "group",
+          fileCount: 1
+        }]
+      }
+    ]);
+  });
+
   it("separates family chats, groups, channels, and direct chats", () => {
     const fileFor = (id: string, chatId: string, chatType: string) => ({
       ...audio, id, chatId, chatType
