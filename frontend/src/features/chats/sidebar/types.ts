@@ -47,4 +47,5 @@ export type ChatSidebarProps = {
   overview: ChatOverviewController;
   onSelectChat: (chat: Chat) => void;
   onOpenChat: (chat: Chat) => void;
+  onOpenDraftsAndScheduled: () => void;
 };
