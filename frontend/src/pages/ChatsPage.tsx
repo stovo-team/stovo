@@ -19,6 +19,16 @@ import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
 import { createCanvas } from "../api/canvas";
 import { createChecklist } from "../api/checklist";
 import { MessageArchivePanel, MessageArchiveViewControls, QuickAccessPanel } from "../features/chats/QuickAccessPanel";
+import { messageArchiveViewFromStoredValue, messageArchiveViewStorageKey, type MessageArchiveView } from "../features/chats/messageArchive";
+
+function loadMessageArchiveView(userId?: string): MessageArchiveView {
+  if (!userId || typeof window === "undefined") return "all";
+  try {
+    return messageArchiveViewFromStoredValue(window.localStorage.getItem(messageArchiveViewStorageKey(userId)));
+  } catch {
+    return "all";
+  }
+}
 
 export default function ChatsPage() {
   const { chatId } = useParams();
@@ -34,7 +44,8 @@ export default function ChatsPage() {
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
   const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
   const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
-  const [messageArchiveView, setMessageArchiveView] = useState<"all" | "grouped">("grouped");
+  const [messageArchiveView, setMessageArchiveView] = useState<MessageArchiveView>("all");
+  const archiveGroup = new URLSearchParams(location.search).get("archiveGroup") ?? undefined;
   const {
     family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
@@ -62,6 +73,38 @@ export default function ChatsPage() {
     addSharedFileAttachments,
     handleSendMessage
   } = composerApi;
+
+  useEffect(() => {
+    setMessageArchiveView(loadMessageArchiveView(currentUser?.id));
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (archiveGroup) {
+      setIsMessageArchiveOpen(true);
+      setMessageArchiveView("grouped");
+    }
+  }, [archiveGroup]);
+
+  useEffect(() => {
+    if (selectedChat?.type === "archive") {
+      setIsMessageArchiveOpen(true);
+    }
+  }, [selectedChat?.id, selectedChat?.type]);
+
+  function updateMessageArchiveView(view: MessageArchiveView) {
+    setMessageArchiveView(view);
+    if (currentUser?.id && typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(messageArchiveViewStorageKey(currentUser.id), view);
+      } catch {
+        // Private browsing or storage restrictions should not block Archive.
+      }
+    }
+    if (archiveGroup) {
+      const archive = chats.find((chat) => chat.type === "archive");
+      if (archive) navigate(`${getClusterPrefix()}/app/chats/${archive.id}`);
+    }
+  }
 
   const { registerShortcutHandler } = useKeyboardShortcuts();
 
@@ -166,7 +209,7 @@ export default function ChatsPage() {
             onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(false); openChat(chat); }}
             onOpenDraftsAndScheduled={() => { setIsMessageArchiveOpen(false); setIsDraftsAndScheduledOpen(true); }}
             isDraftsAndScheduledActive={isDraftsAndScheduledOpen}
-            onOpenMessageArchive={() => { const archive = chats.find((chat) => chat.type === "archive"); if (archive) { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); } }}
+            onOpenMessageArchive={() => { const archive = chats.find((chat) => chat.type === "archive"); if (archive) { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(true); setMessageArchiveView(loadMessageArchiveView(currentUser?.id)); setSelectedChat(archive); openChat(archive); if (chatId === archive.id || archiveGroup) navigate(`${getClusterPrefix()}/app/chats/${archive.id}`); } }}
             isMessageArchiveActive={isMessageArchiveOpen}
             mobileCallStrip={
               callPhase !== "idle" && isCallMinimized && !chatId ? (
@@ -197,7 +240,7 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen && messageArchiveView === "grouped" ? <MessageArchivePanel chats={chats} onViewChange={setMessageArchiveView} onOpenChat={(chat) => { setIsMessageArchiveOpen(false); openChat(chat); }} /> : <ConversationPanel
+            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen && messageArchiveView === "grouped" && !archiveGroup ? <MessageArchivePanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onViewChange={updateMessageArchiveView} onOpenGroup={(group) => { const archive = chats.find((chat) => chat.type === "archive"); if (!archive) return; setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); navigate(`${getClusterPrefix()}/app/chats/${archive.id}?archiveGroup=${encodeURIComponent(group)}`); }} /> : <ConversationPanel
               thread={thread}
               composer={composerApi}
               accessToken={accessToken}
@@ -270,7 +313,7 @@ export default function ChatsPage() {
                 });
                 navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`);
               }}
-              headerBelow={selectedChat?.type === "archive" ? <MessageArchiveViewControls view={messageArchiveView} onChange={setMessageArchiveView} /> : undefined}
+              headerBelow={selectedChat?.type === "archive" ? <MessageArchiveViewControls view={messageArchiveView} onChange={updateMessageArchiveView} /> : undefined}
             />}
           </section>
           {selectedChat && isDetailsOpen && (

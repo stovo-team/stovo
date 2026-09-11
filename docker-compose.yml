@@ -313,6 +313,9 @@ services:
       - "7880:7880"
       - "7881:7881"
       - "7882:7882/udp"
+      # Must match deploy/livekit.yaml's rtc port range. These ports carry
+      # WebRTC media once the /rtc signaling connection has been established.
+      - "50000-50100:50000-50100/udp"
     volumes:
       - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
     environment:

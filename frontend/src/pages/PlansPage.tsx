@@ -1,7 +1,7 @@
-import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Link, Plus, Search, X } from "lucide-react";
+import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
 import { User } from "../api/auth";
-import { useNavigate } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { getMembers } from "../api/family";
 import { createPlan, getPlans, Plan, PlanDraft, PlanRSVP, rsvpPlan } from "../api/plans";
@@ -17,6 +17,7 @@ const addDays = (date: Date, days: number) => new Date(date.getFullYear(), date.
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const formatDay = (date: Date) => new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(date);
 const formatTime = (value: string) => new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(value));
+const formatDateTime = (value: string) => new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
 function formatDateRange(start: Date, end: Date) {
   const formatter = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long" });
@@ -26,6 +27,7 @@ function formatDateRange(start: Date, end: Date) {
 const CALENDAR_TIME_MARKERS = TODAY_TIME_SLOTS;
 
 type PlanStatus = "scheduled" | "happening" | "happened";
+type PlanDetailsState = { planId: string; anchorRect: DOMRect };
 
 function getPlanStatus(plan: Plan, now: number): PlanStatus {
   const startsAt = new Date(plan.startsAt).getTime();
@@ -110,7 +112,6 @@ function renderPlanNotes(text: string) {
 export default function PlansPage() {
   const strings = useStrings();
   const { accessToken, currentUser } = useAuth();
-  const navigate = useNavigate();
   const [view, setView] = useState<View>("today");
 
   const [selectedDay, setSelectedDay] = useState(dayStart(new Date()));
@@ -124,6 +125,8 @@ export default function PlansPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [planDetails, setPlanDetails] = useState<PlanDetailsState | null>(null);
+  const planDetailsRef = useRef<HTMLElement | null>(null);
   const [draft, setDraft] = useState<PlanDraft>(() => {
     const defaults = getDefaultPlanTimes();
     return {
@@ -203,6 +206,27 @@ export default function PlansPage() {
       window.removeEventListener("focus", handleVisibility);
     };
   }, [loadSilent]);
+
+  useEffect(() => {
+    if (!planDetails) return;
+    const closeOnOutsidePointer = (event: MouseEvent) => {
+      if (!planDetailsRef.current?.contains(event.target as Node)) setPlanDetails(null);
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setPlanDetails(null);
+    };
+    const closeOnViewportChange = () => setPlanDetails(null);
+    document.addEventListener("mousedown", closeOnOutsidePointer);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", closeOnViewportChange);
+    window.addEventListener("scroll", closeOnViewportChange, true);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsidePointer);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", closeOnViewportChange);
+      window.removeEventListener("scroll", closeOnViewportChange, true);
+    };
+  }, [planDetails]);
 
   useEffect(() => {
     const raw = window.sessionStorage.getItem("stovo:plan-draft");
@@ -336,19 +360,84 @@ export default function PlansPage() {
     return result;
   }, [currentUser, members]);
 
-  const renderPlanCard = (plan: Plan, timeLabel: string) => {
-    const myRsvp = plan.attendees?.find((entry) => entry.userId === currentUser?.id)?.status;
-    const goingMembers = (plan.attendees ?? [])
-      .filter((entry) => entry.status === "going")
+  const openPlanDetails = (plan: Plan, trigger: HTMLElement) => {
+    setSelectedPlanId(plan.id);
+    setPlanDetails({ planId: plan.id, anchorRect: trigger.getBoundingClientRect() });
+  };
+
+  const handlePlanCardKeyDown = (event: KeyboardEvent<HTMLElement>, plan: Plan) => {
+    if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    openPlanDetails(plan, event.currentTarget);
+  };
+
+  const renderRsvpControls = (plan: Plan, myRsvp: PlanRSVP | undefined) => (
+    <div className="plan-rsvp-actions" aria-label={strings.plans.goingQuestion} onClick={(event) => event.stopPropagation()}>
+      <span>{strings.plans.goingQuestion}</span>
+      <button type="button" className={myRsvp === "going" ? "active" : ""} aria-pressed={myRsvp === "going"} onClick={() => void rsvp(plan, "going")}>
+        {strings.plans.yes}
+      </button>
+      <button type="button" className={myRsvp === "declined" ? "active" : ""} aria-pressed={myRsvp === "declined"} onClick={() => void rsvp(plan, "declined")}>
+        {strings.plans.no}
+      </button>
+    </div>
+  );
+
+  const renderAttendeeAvatars = (plan: Plan, expanded = false) => {
+    const goingEntries = (plan.attendees ?? []).filter((entry) => entry.status === "going");
+    const goingMembers = goingEntries
       .map((entry) => membersById.get(entry.userId))
       .filter((member): member is User => Boolean(member));
+    const visibleMembers = goingMembers.slice(0, expanded ? goingMembers.length : 3);
+    const remaining = goingEntries.length - visibleMembers.length;
+    if (goingEntries.length === 0) return null;
+
+    return (
+      <div className={`plan-attendee-list${expanded ? " plan-attendee-list--expanded" : ""}`} aria-label={strings.plans.attendees}>
+        {visibleMembers.map((member) => (
+          <div
+            className="plan-attendee"
+            key={member.id}
+            onMouseEnter={() => setProfilePreviewMemberId(member.id)}
+            onMouseLeave={() => setProfilePreviewMemberId(null)}
+          >
+            <button
+              type="button"
+              className="plan-attendee-button"
+              title={member.displayName}
+              aria-label={member.displayName}
+              aria-expanded={profilePreviewMemberId === member.id}
+              onFocus={() => setProfilePreviewMemberId(member.id)}
+              onBlur={() => setProfilePreviewMemberId(null)}
+              onClick={(event) => {
+                event.stopPropagation();
+                setProfilePreviewMemberId((current) => current === member.id ? null : member.id);
+              }}
+            >
+              <RealAvatar accessToken={accessToken} className="avatar plan-attendee-avatar" file={member.profilePhoto} label={member.displayName} />
+            </button>
+            {profilePreviewMemberId === member.id && (
+              <div className="plan-member-popover" role="tooltip">
+                <RealAvatar accessToken={accessToken} className="avatar plan-member-popover-avatar" file={member.profilePhoto} label={member.displayName} />
+                <span><strong>{member.displayName}</strong><small>@{member.username}</small></span>
+              </div>
+            )}
+          </div>
+        ))}
+        {!expanded && remaining > 0 && <span className="plan-attendee-more" aria-label={strings.plans.additionalAttendees(remaining)}>+{remaining}</span>}
+      </div>
+    );
+  };
+
+  const renderPlanCard = (plan: Plan, timeLabel: string) => {
+    const myRsvp = plan.attendees?.find((entry) => entry.userId === currentUser?.id)?.status;
     const creator = membersById.get(plan.createdBy);
     const creatorName = plan.creatorDisplayName || creator?.displayName || strings.plans.unknownMember;
     const status = getPlanStatus(plan, now);
     const statusLabel = status === "scheduled" ? strings.plans.scheduled : status === "happening" ? strings.plans.happening : strings.plans.happened;
 
     return (
-    <article className={`plan-row${selectedPlanId === plan.id ? " selected" : ""}`} key={plan.id}>
+    <article className={`plan-row${selectedPlanId === plan.id ? " selected" : ""}`} key={plan.id} role="button" tabIndex={0} onClick={(event) => openPlanDetails(plan, event.currentTarget)} onKeyDown={(event) => handlePlanCardKeyDown(event, plan)}>
         <time>{timeLabel}</time>
         <div className="plan-card-content">
           <div>
@@ -357,63 +446,17 @@ export default function PlansPage() {
               <span className={`plan-status plan-status--${status}`}>{statusLabel}</span>
             </div>
             {plan.location && <small>{plan.location}</small>}
-            {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
+            {plan.notes && <div className="plan-notes plan-notes--preview">{renderPlanNotes(plan.notes)}</div>}
             <div className="plan-created-by">
               {creator && <RealAvatar accessToken={accessToken} className="avatar plan-creator-avatar" file={creator.profilePhoto} label={creator.displayName} />}
               <small>{strings.plans.createdBy(creatorName)}</small>
             </div>
-            {plan.sourceChatId && (
-              <div className="plan-actions">
-                <button className="plan-chat-link" onClick={() => navigate(`/app/chats/${plan.sourceChatId}`)}>{strings.plans.openChat}</button>
-                {canCreate && <button className="plan-chat-link" onClick={() => { window.sessionStorage.setItem("stovo:guest-meeting-draft", JSON.stringify({ chatId: plan.sourceChatId, title: plan.title, startsAt: plan.startsAt, endsAt: plan.endsAt })); navigate(`/app/chats/${plan.sourceChatId}`); }}><Link size={14} aria-hidden="true" /> Create meeting link</button>}
-              </div>
-            )}
           </div>
           <div className="plan-rsvp">
             <div className="plan-rsvp-response">
-              <span className="plan-attendance-count">{strings.plans.goingCount(goingMembers.length)}</span>
-              <div className="plan-rsvp-actions" aria-label={strings.plans.goingQuestion}>
-                <span>{strings.plans.goingQuestion}</span>
-                <button type="button" className={myRsvp === "going" ? "active" : ""} aria-pressed={myRsvp === "going"} onClick={() => void rsvp(plan, "going")}>
-                  {strings.plans.yes}
-                </button>
-                <button type="button" className={myRsvp === "declined" ? "active" : ""} aria-pressed={myRsvp === "declined"} onClick={() => void rsvp(plan, "declined")}>
-                  {strings.plans.no}
-                </button>
-              </div>
+              {renderRsvpControls(plan, myRsvp)}
             </div>
-            {goingMembers.length > 0 && (
-              <div className="plan-attendee-list" aria-label={strings.plans.goingCount(goingMembers.length)}>
-                {goingMembers.slice(0, 6).map((member) => (
-                  <div
-                    className="plan-attendee"
-                    key={member.id}
-                    onMouseEnter={() => setProfilePreviewMemberId(member.id)}
-                    onMouseLeave={() => setProfilePreviewMemberId(null)}
-                  >
-                    <button
-                      type="button"
-                      className="plan-attendee-button"
-                      title={member.displayName}
-                      aria-label={member.displayName}
-                      aria-expanded={profilePreviewMemberId === member.id}
-                      onFocus={() => setProfilePreviewMemberId(member.id)}
-                      onBlur={() => setProfilePreviewMemberId(null)}
-                      onClick={() => setProfilePreviewMemberId((current) => current === member.id ? null : member.id)}
-                    >
-                      <RealAvatar accessToken={accessToken} className="avatar plan-attendee-avatar" file={member.profilePhoto} label={member.displayName} />
-                    </button>
-                    {profilePreviewMemberId === member.id && (
-                      <div className="plan-member-popover" role="tooltip">
-                        <RealAvatar accessToken={accessToken} className="avatar plan-member-popover-avatar" file={member.profilePhoto} label={member.displayName} />
-                        <span><strong>{member.displayName}</strong><small>@{member.username}</small></span>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {goingMembers.length > 6 && <span className="plan-attendee-more">+{goingMembers.length - 6}</span>}
-              </div>
-            )}
+            {renderAttendeeAvatars(plan)}
           </div>
         </div>
       </article>
@@ -444,7 +487,7 @@ export default function PlansPage() {
                     className={`plans-calendar-event${selectedPlanId === plan.id ? " selected" : ""}`}
                     key={plan.id}
                     style={getCalendarEventStyle(plan)}
-                    onClick={() => { setSelectedPlanId(plan.id); setSelectedDay(day); setView("today"); }}
+                    onClick={(event) => openPlanDetails(plan, event.currentTarget)}
                     title={`${plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)} — ${getPlanTitle(plan)}`}
                   >
                     <time>{plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)}</time>
@@ -458,6 +501,15 @@ export default function PlansPage() {
       </div>
     </div>
   );
+
+  const detailsPlan = planDetails ? plans.find((plan) => plan.id === planDetails.planId) ?? null : null;
+  const detailsPopoverStyle: CSSProperties | undefined = planDetails ? {
+    left: Math.max(12, Math.min(window.innerWidth - 372, planDetails.anchorRect.right + 10)),
+    top: Math.max(12, Math.min(window.innerHeight - 440, planDetails.anchorRect.top))
+  } : undefined;
+  const detailsCreator = detailsPlan ? membersById.get(detailsPlan.createdBy) : undefined;
+  const detailsCreatorName = detailsPlan ? detailsPlan.creatorDisplayName || detailsCreator?.displayName || strings.plans.unknownMember : "";
+  const detailsMyRsvp = detailsPlan?.attendees?.find((entry) => entry.userId === currentUser?.id)?.status;
 
   return (
     <main className="app-shell app-frame plans-page">
@@ -484,11 +536,7 @@ export default function PlansPage() {
                 className={`plans-sidebar-row${selectedPlanId === plan.id ? " selected" : ""}`}
                 key={plan.id}
                 aria-current={selectedPlanId === plan.id ? "true" : undefined}
-                onClick={() => {
-                  setSelectedPlanId(plan.id);
-                  setSelectedDay(dayStart(new Date(plan.startsAt)));
-                  setView("today");
-                }}
+                onClick={(event) => openPlanDetails(plan, event.currentTarget)}
               >
                 <time>{new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric" }).format(new Date(plan.startsAt))}</time>
                 <span>{getPlanTitle(plan)}</span>
@@ -685,6 +733,50 @@ export default function PlansPage() {
             </button>
           </form>
         </div>
+      )}
+      {detailsPlan && planDetails && createPortal(
+        <section
+          ref={planDetailsRef}
+          className="plan-details-popover"
+          role="dialog"
+          aria-modal="false"
+          aria-label={strings.plans.planDetails}
+          style={detailsPopoverStyle}
+        >
+          <header className="plan-details-popover-header">
+            <div>
+              <div className="plan-title-line">
+                <strong>{getPlanTitle(detailsPlan)}</strong>
+                <span className={`plan-status plan-status--${getPlanStatus(detailsPlan, now)}`}>
+                  {getPlanStatus(detailsPlan, now) === "scheduled" ? strings.plans.scheduled : getPlanStatus(detailsPlan, now) === "happening" ? strings.plans.happening : strings.plans.happened}
+                </span>
+              </div>
+            </div>
+            <button type="button" className="icon-button subtle icon-button--plain" aria-label={strings.plans.close} onClick={() => setPlanDetails(null)}>
+              <X aria-hidden="true" size={18} />
+            </button>
+          </header>
+          <dl className="plan-details-list">
+            <div><dt>{strings.plans.starts}</dt><dd>{detailsPlan.allDay ? strings.plans.allDay : formatDateTime(detailsPlan.startsAt)}</dd></div>
+            <div><dt>{strings.plans.ends}</dt><dd>{detailsPlan.allDay ? strings.plans.allDay : formatDateTime(detailsPlan.endsAt)}</dd></div>
+            <div><dt>{strings.plans.timeZone}</dt><dd>{detailsPlan.timeZone}</dd></div>
+            {detailsPlan.location && <div><dt>{strings.plans.location}</dt><dd>{detailsPlan.location}</dd></div>}
+            <div>
+              <dt>{strings.plans.createdByLabel}</dt>
+              <dd className="plan-details-creator">
+                {detailsCreator && <RealAvatar accessToken={accessToken} className="avatar plan-creator-avatar" file={detailsCreator.profilePhoto} label={detailsCreator.displayName} />}
+                <span>{detailsCreatorName}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>{strings.plans.attendees}</dt>
+              <dd>{renderAttendeeAvatars(detailsPlan, true)}</dd>
+            </div>
+          </dl>
+          {detailsPlan.notes && <section className="plan-details-description"><h3>{strings.plans.description}</h3><div className="plan-notes">{renderPlanNotes(detailsPlan.notes)}</div></section>}
+          <div className="plan-details-rsvp">{renderRsvpControls(detailsPlan, detailsMyRsvp)}</div>
+        </section>,
+        document.body
       )}
 
     </main>

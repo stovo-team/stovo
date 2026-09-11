@@ -673,8 +673,8 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 		}),
 		GetMessages: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.NewMessageHistoryHandler(httptransport.MessageHistoryOperations{
-				List: func(ctx context.Context, chatID, before string, limit int, threadRootMessageID string) (any, error) {
-					return s.messageHistoryPage(ctx, user, chatID, before, limit, threadRootMessageID)
+				List: func(ctx context.Context, chatID, before string, limit int, threadRootMessageID, archiveGroup string) (any, error) {
+					return s.messageHistoryPage(ctx, user, chatID, before, limit, threadRootMessageID, archiveGroup)
 				},
 				StatusFor: domainErrorStatus,
 			}).Get(w, r)
@@ -716,6 +716,14 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 		}),
 		GetMessageArchive: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			messageHandlersForUser(s, user).GetArchive(w, r)
+		}),
+		GetMessageArchiveGroups: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			groups, err := s.messageArchiveGroups(r.Context(), user)
+			if err != nil {
+				writeMessageDetail(w, domainErrorStatus(err), "Could not load Message Archive groups")
+				return
+			}
+			writeMessageValue(w, http.StatusOK, groups)
 		}),
 		ArchiveMessage: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			messageHandlersForUser(s, user).Archive(w, r)

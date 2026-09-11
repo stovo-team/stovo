@@ -63,6 +63,7 @@ export function useChatsPageController({
   appearance
 }: UseChatsPageControllerParams) {
   const strings = useStrings();
+  const archiveGroup = new URLSearchParams(location.search).get("archiveGroup") ?? undefined;
   const workspace = useChatWorkspaceState({ accessToken });
   const {
     family, members, setMembers, chats, setChats, selectedChat, setSelectedChat,
@@ -100,7 +101,7 @@ export function useChatsPageController({
   const focusComposerInput = useCallback(() => composerInputRef.current?.focus(), []);
 
   const thread = useMessageThread({
-    chatId, accessToken, currentUser, selectedChat, isMobileViewport, socketRef, authRequest,
+    chatId, archiveGroup, accessToken, currentUser, selectedChat, isMobileViewport, socketRef, authRequest,
     channelCommentsDisabledForViewer, onChatsUpdate: setChats, onSelectedChatUpdate: setSelectedChat,
     onError: setError, focusComposerInput
   });
@@ -123,7 +124,7 @@ export function useChatsPageController({
   const missingCommentThread = requiresThreadToSend && !threadRootMessageId;
 
   const dataLoader = useChatDataLoader({
-    accessTokenRef, authRequest, currentUser, chatId, onError: setError,
+    accessTokenRef, authRequest, currentUser, chatId, archiveGroup, onError: setError,
     setFamily: workspace.setFamily, setMembers, setChats, setSelectedChat,
     setIsLoading: workspace.setIsLoading, setHasLoadedOverview: workspace.setHasLoadedOverview,
     setIsChatLoading, activeChatIdRef, chatsRef, chatMutationVersionRef,

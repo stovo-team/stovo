@@ -1,5 +1,5 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
-import { ArrowUpRight, CalendarClock, Check, Clock3, DoorOpen, Folder, LockKeyhole, Phone, StickyNote, Video } from "lucide-react";
+import { ArrowUpRight, CalendarClock, CalendarPlus, Check, Clock3, DoorOpen, Folder, LockKeyhole, Phone, StickyNote, Video } from "lucide-react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
@@ -39,7 +39,16 @@ function guestMeetingCard(content: string | null | undefined): GuestMeetingCardD
   }
 }
 
-function GuestMeetingInvitation({ meeting }: { meeting: GuestMeetingCardData }) {
+function GuestMeetingInvitation({ meeting, sourceChatId }: { meeting: GuestMeetingCardData; sourceChatId: string }) {
+  const addToPlans = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    event.stopPropagation();
+    window.sessionStorage.setItem("stovo:plan-draft", JSON.stringify({
+      title: meeting.title,
+      notes: `Join meeting: ${meeting.url}`,
+      sourceChatId
+    }));
+  };
+
   return (
     <section className="guest-meeting-invitation" aria-label={`Guest meeting: ${meeting.title}`}>
       <span className="guest-meeting-invitation-icon" aria-hidden="true"><Video size={20} /></span>
@@ -49,15 +58,20 @@ function GuestMeetingInvitation({ meeting }: { meeting: GuestMeetingCardData }) 
         <span className="guest-meeting-invitation-detail"><CalendarClock size={14} />{meeting.timing}</span>
         <span className="guest-meeting-invitation-detail"><DoorOpen size={14} />{meeting.entry}</span>
       </div>
-      <a
-        className="guest-meeting-invitation-join"
-        href={meeting.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(event) => event.stopPropagation()}
-      >
-        Join meeting <ArrowUpRight size={16} />
-      </a>
+      <div className="guest-meeting-invitation-actions">
+        <a
+          className="guest-meeting-invitation-join"
+          href={meeting.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(event) => event.stopPropagation()}
+        >
+          Join meeting <ArrowUpRight size={16} />
+        </a>
+        <a className="guest-meeting-invitation-plan" href={`${getClusterPrefix()}/app/plans`} onClick={addToPlans}>
+          <CalendarPlus size={16} /> Add to Plans
+        </a>
+      </div>
     </section>
   );
 }
@@ -510,7 +524,7 @@ export function MessageBubble({
                   canClosePoll={mine || selectedChat.createdBy === currentUserId}
                 />
               ) : meetingInvitation ? (
-                <GuestMeetingInvitation meeting={meetingInvitation} />
+                <GuestMeetingInvitation meeting={meetingInvitation} sourceChatId={selectedChat.id} />
               ) : hasCaption ? (
                 <>
                   <div className="message-body">

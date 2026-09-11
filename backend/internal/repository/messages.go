@@ -38,7 +38,9 @@ type ListMessageIDsPageParams struct {
 	ViewerID            string
 	BeforeCreatedAt     string // empty = no before filter
 	ThreadRootMessageID string // empty = chat-kind only
-	Limit               int
+	// ArchiveGroup is either an origin chat ID or "notes" for direct archive entries.
+	ArchiveGroup string
+	Limit        int
 }
 
 // ListMessageIDsPage returns message ids (newest first, length may be limit+1 for hasMore).
@@ -65,6 +67,11 @@ func (s *Store) ListMessageIDsPage(ctx context.Context, p ListMessageIDsPagePara
 	if p.BeforeCreatedAt != "" {
 		preds = append(preds, message.CreatedAtLT(p.BeforeCreatedAt))
 	}
+	if p.ArchiveGroup == "notes" {
+		preds = append(preds, message.ForwardedFromChatIDIsNil())
+	} else if p.ArchiveGroup != "" {
+		preds = append(preds, message.ForwardedFromChatIDEQ(p.ArchiveGroup))
+	}
 	rows, err := s.Client.Message.Query().
 		Where(preds...).
 		Order(message.ByCreatedAt(sql.OrderDesc())).
@@ -78,6 +85,37 @@ func (s *Store) ListMessageIDsPage(ctx context.Context, p ListMessageIDsPagePara
 		ids = append(ids, m.ID)
 	}
 	return ids, nil
+}
+
+// ArchiveMessageGroup is the repository representation of one source-chat
+// collection inside a personal message archive.
+type ArchiveMessageGroup struct {
+	SourceChatID string `json:"forwarded_from_chat_id"`
+	Count        int    `json:"count"`
+}
+
+// ListArchiveMessageGroups returns only active forwarded root messages. It
+// intentionally excludes direct archive entries, which are My Notes.
+func (s *Store) ListArchiveMessageGroups(ctx context.Context, archiveChatID, viewerID string) ([]ArchiveMessageGroup, error) {
+	rows := []ArchiveMessageGroup{}
+	err := s.Client.Message.Query().
+		Where(
+			message.ChatIDEQ(archiveChatID),
+			message.MessageKindEQ("chat"),
+			message.DeletedAtIsNil(),
+			message.ForwardedFromChatIDNotNil(),
+			predicate.Message(func(sel *sql.Selector) {
+				mud := sql.Table(messageuserdeletion.Table)
+				subq := sql.Select(mud.C(messageuserdeletion.FieldID)).
+					From(mud).
+					Where(sql.EQ(mud.C(messageuserdeletion.FieldUserID), viewerID))
+				sel.Where(sql.NotIn(sel.C(message.FieldID), subq))
+			}),
+		).
+		GroupBy(message.FieldForwardedFromChatID).
+		Aggregate(ent.Count()).
+		Scan(ctx, &rows)
+	return rows, err
 }
 
 // CountThreadMessagesByRootIDs returns the active reply count for each root message.

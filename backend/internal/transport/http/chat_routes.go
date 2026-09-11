@@ -11,35 +11,36 @@ import (
 // be wrapped before they are supplied here. This transport owns only stable
 // HTTP method and path dispatch.
 type ChatRoutes struct {
-	ListChats             stdhttp.Handler
-	CreateDirectChat      stdhttp.Handler
-	CreateGroupChat       stdhttp.Handler
-	CreateChannelChat     stdhttp.Handler
-	CreateVoiceChat       stdhttp.Handler
-	GetChat               stdhttp.Handler
-	UpdateChat            stdhttp.Handler
-	AddChatMembers        stdhttp.Handler
-	UpdateChatPreferences stdhttp.Handler
-	GetMessages           stdhttp.Handler
-	SendMessage           stdhttp.Handler
-	GetMessage            stdhttp.Handler
-	AttachMessageFiles    stdhttp.Handler
-	GetPins               stdhttp.Handler
-	PinMessage            stdhttp.Handler
-	UnpinMessage          stdhttp.Handler
-	EditMessage           stdhttp.Handler
-	DeleteMessage         stdhttp.Handler
-	MarkMessageRead       stdhttp.Handler
-	ForwardMessage        stdhttp.Handler
-	GetMessageArchive     stdhttp.Handler
-	ArchiveMessage        stdhttp.Handler
-	AddMessageReaction    stdhttp.Handler
-	RemoveMessageReaction stdhttp.Handler
-	Unfurl                stdhttp.Handler
-	CreatePoll            stdhttp.Handler
-	VotePoll              stdhttp.Handler
-	ClosePoll             stdhttp.Handler
-	GetPollVoters         stdhttp.Handler
+	ListChats               stdhttp.Handler
+	CreateDirectChat        stdhttp.Handler
+	CreateGroupChat         stdhttp.Handler
+	CreateChannelChat       stdhttp.Handler
+	CreateVoiceChat         stdhttp.Handler
+	GetChat                 stdhttp.Handler
+	UpdateChat              stdhttp.Handler
+	AddChatMembers          stdhttp.Handler
+	UpdateChatPreferences   stdhttp.Handler
+	GetMessages             stdhttp.Handler
+	SendMessage             stdhttp.Handler
+	GetMessage              stdhttp.Handler
+	AttachMessageFiles      stdhttp.Handler
+	GetPins                 stdhttp.Handler
+	PinMessage              stdhttp.Handler
+	UnpinMessage            stdhttp.Handler
+	EditMessage             stdhttp.Handler
+	DeleteMessage           stdhttp.Handler
+	MarkMessageRead         stdhttp.Handler
+	ForwardMessage          stdhttp.Handler
+	GetMessageArchive       stdhttp.Handler
+	GetMessageArchiveGroups stdhttp.Handler
+	ArchiveMessage          stdhttp.Handler
+	AddMessageReaction      stdhttp.Handler
+	RemoveMessageReaction   stdhttp.Handler
+	Unfurl                  stdhttp.Handler
+	CreatePoll              stdhttp.Handler
+	VotePoll                stdhttp.Handler
+	ClosePoll               stdhttp.Handler
+	GetPollVoters           stdhttp.Handler
 }
 
 // RegisterChatRoutes installs the stable REST contract for chat and message
@@ -67,6 +68,7 @@ func RegisterChatRoutes(router chi.Router, routes ChatRoutes) {
 	router.Method(stdhttp.MethodPatch, "/api/messages/{messageId}/read", routes.MarkMessageRead)
 	router.Method(stdhttp.MethodPost, "/api/messages/{messageId}/forward", routes.ForwardMessage)
 	router.Method(stdhttp.MethodGet, "/api/message-archive", routes.GetMessageArchive)
+	router.Method(stdhttp.MethodGet, "/api/message-archive/groups", routes.GetMessageArchiveGroups)
 	router.Method(stdhttp.MethodPost, "/api/messages/{messageId}/archive", routes.ArchiveMessage)
 	router.Method(stdhttp.MethodPost, "/api/messages/{messageId}/reactions", routes.AddMessageReaction)
 	router.Method(stdhttp.MethodDelete, "/api/messages/{messageId}/reactions/{emoji}", routes.RemoveMessageReaction)

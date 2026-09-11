@@ -1,0 +1,110 @@
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const api = vi.hoisted(() => ({
+  previewGuestMeeting: vi.fn(async () => ({
+    title: "Daily standup",
+    scheduledAt: "2026-09-12T09:00:00.000Z",
+    admissionMode: "immediate" as const,
+    expiresAt: "2026-09-12T10:00:00.000Z",
+    guestCount: 0,
+    guestLimit: 10,
+  })),
+}));
+
+vi.mock("../api/guestMeetings", () => ({
+  previewGuestMeeting: api.previewGuestMeeting,
+  createGuestMeetingSession: vi.fn(),
+  getGuestMeetingStatus: vi.fn(),
+  getGuestMeetingToken: vi.fn(),
+}));
+
+class FakeTrack {
+  enabled = true;
+  stop = vi.fn();
+  constructor(readonly kind: "audio" | "video") {}
+}
+
+class FakeMediaStream {
+  private tracks: FakeTrack[];
+  constructor(tracks: FakeTrack[] = []) { this.tracks = tracks; }
+  addTrack(track: FakeTrack) { this.tracks.push(track); }
+  getTracks() { return this.tracks; }
+  getAudioTracks() { return this.tracks.filter((track) => track.kind === "audio"); }
+  getVideoTracks() { return this.tracks.filter((track) => track.kind === "video"); }
+}
+
+let root: Root | null = null;
+let host: HTMLDivElement | null = null;
+
+async function renderPage() {
+  const { default: GuestMeetingPage } = await import("./GuestMeetingPage");
+  host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => {
+    root?.render(<MemoryRouter initialEntries={["/guest/token"]}><Routes><Route path="/guest/:token" element={<GuestMeetingPage />} /></Routes></MemoryRouter>);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
+beforeEach(() => {
+  vi.stubGlobal("MediaStream", FakeMediaStream);
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      enumerateDevices: vi.fn(async () => [
+        { kind: "audioinput", deviceId: "mic-1", label: "Studio mic" },
+        { kind: "audiooutput", deviceId: "speaker-1", label: "Desk speakers" },
+        { kind: "videoinput", deviceId: "camera-1", label: "Desk camera" },
+      ]),
+      getUserMedia: vi.fn(async (constraints: MediaStreamConstraints) => new FakeMediaStream([
+        new FakeTrack(constraints.audio ? "audio" : "video"),
+      ])),
+    },
+  });
+});
+
+afterEach(async () => {
+  await act(async () => { root?.unmount(); });
+  host?.remove();
+  root = null;
+  host = null;
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
+
+describe("GuestMeetingPage pre-join controls", () => {
+  it("starts media immediately and renders default-enabled controls with device selectors", async () => {
+    await renderPage();
+
+    const mediaDevices = navigator.mediaDevices as MediaDevices & { getUserMedia: ReturnType<typeof vi.fn> };
+    expect(mediaDevices.getUserMedia).toHaveBeenCalledTimes(2);
+    expect(host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Microphone"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Speaker"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]')?.getAttribute("aria-pressed")).toBe("true");
+    expect(host?.querySelector<HTMLSelectElement>('[aria-label="Select Microphone"]')?.textContent).toContain("Studio mic");
+    expect(host?.querySelector<HTMLSelectElement>('[aria-label="Select Speaker"]')?.textContent).toContain("Desk speakers");
+    expect(host?.querySelector<HTMLSelectElement>('[aria-label="Select Camera"]')?.textContent).toContain("Desk camera");
+    expect(host?.textContent).not.toContain("Stovo guest meeting");
+    expect(host?.textContent).not.toContain("Starts when the host opens the meeting");
+    expect(host?.textContent).not.toContain("Camera unavailable — you can still join with your microphone");
+  });
+
+  it("opens and closes the settings popover with speaker and microphone tests", async () => {
+    await renderPage();
+    const trigger = host?.querySelector<HTMLButtonElement>('[aria-label="Open device settings"]');
+    await act(async () => { trigger?.click(); });
+
+    expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).not.toBeNull();
+    expect(host?.querySelector<HTMLInputElement>('[aria-label="Microphone volume"]')?.value).toBe("100");
+    expect(host?.querySelector<HTMLInputElement>('[aria-label="Speaker volume"]')?.value).toBe("100");
+    expect(host?.textContent).toContain("Test sound");
+
+    await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
+    expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).toBeNull();
+  });
+});

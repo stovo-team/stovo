@@ -18,6 +18,9 @@ func (historyStoreStub) CreatedAtInChat(context.Context, string, string) (string
 	return "", nil
 }
 func (historyStoreStub) PageIDs(context.Context, HistoryPage) ([]string, error) { return nil, nil }
+func (historyStoreStub) ArchiveGroups(context.Context, string, string) ([]ArchiveGroup, error) {
+	return nil, nil
+}
 func (historyStoreStub) ThreadCounts(context.Context, string, []string) (map[string]int, error) {
 	return nil, nil
 }

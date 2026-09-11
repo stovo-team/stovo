@@ -133,6 +133,36 @@ describe("PlansPage week range logic", () => {
     expect(styles).toContain(".plan-status--happening");
   });
 
+  it("uses compact previews and an anchored details popover without plan-card actions", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(source).not.toContain('className="plan-actions"');
+    expect(source).toContain('className="plan-notes plan-notes--preview"');
+    expect(source).toContain("openPlanDetails(plan, event.currentTarget)");
+    expect(source).toContain('className="plan-details-popover"');
+    expect(source).toContain('window.addEventListener("scroll", closeOnViewportChange, true)');
+    expect(source).toContain("renderAttendeeAvatars(detailsPlan, true)");
+    expect(styles).toContain("-webkit-line-clamp: 1");
+    expect(styles).toContain(".plan-details-popover {");
+  });
+
+  it("caps preview attendee avatars at three and uses a gray overflow badge without RSVP glow", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+    const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+
+    expect(source).toContain("goingMembers.slice(0, expanded ? goingMembers.length : 3)");
+    expect(source).toContain('className="plan-attendee-more"');
+    expect(source).not.toContain("plan-attendance-count");
+    expect(styles).toContain(".plan-attendee-more { align-items: center; background: #64748b");
+    expect(styles).toContain(".plan-rsvp button.active, .plan-details-rsvp button.active");
+    expect(styles).toContain("box-shadow: none;");
+  });
+
   it("provides fixed top navigation and scrollable content in storage and plans pages", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");

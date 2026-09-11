@@ -243,23 +243,30 @@ func (s *Server) updateChat(ctx context.Context, user userPublic, chatID string,
 
 // messageHistoryPage is the application pagination/cache operation. HTTP
 // query validation is owned by transport/http.
-func (s *Server) messageHistoryPage(ctx context.Context, user userPublic, chatID, before string, limit int, threadRootMessageID string) (messageHistoryPage, error) {
-	if _, err := s.buildChatPublic(chatID, user); err != nil {
+func (s *Server) messageHistoryPage(ctx context.Context, user userPublic, chatID, before string, limit int, threadRootMessageID, archiveGroup string) (messageHistoryPage, error) {
+	chat, err := s.buildChatPublic(chatID, user)
+	if err != nil {
 		return messageHistoryPage{}, errNotFound
 	}
+	if archiveGroup != "" {
+		archive, archiveErr := s.ensureMessageArchive(user)
+		if archiveErr != nil || chat.Type != "archive" || archive.ID != chatID {
+			return messageHistoryPage{}, errNotFound
+		}
+	}
 	var cacheRevision historyCacheRevision
-	if before == "" && threadRootMessageID == "" && limit == 20 {
+	if archiveGroup == "" && before == "" && threadRootMessageID == "" && limit == 20 {
 		cacheRevision = s.chatHistoryRevisions(ctx, chatID, user.ID)
 		if cached, ok := s.loadCachedLatestHistory(ctx, chatID, user.ID, cacheRevision); ok {
 			return cached, nil
 		}
 	}
-	messages, hasMore, err := s.listMessagesPage(chatID, user, before, limit, threadRootMessageID)
+	messages, hasMore, err := s.listMessagesPage(chatID, user, before, limit, threadRootMessageID, archiveGroup)
 	if err != nil {
 		return messageHistoryPage{}, err
 	}
 	page := newMessageHistoryPage(messages, hasMore)
-	if before == "" && threadRootMessageID == "" && limit == 20 {
+	if archiveGroup == "" && before == "" && threadRootMessageID == "" && limit == 20 {
 		s.cacheLatestHistory(ctx, chatID, user.ID, cacheRevision, page)
 	}
 	return page, nil
@@ -674,11 +681,11 @@ func (s *Server) updateChatMediaVisibility(ctx context.Context, chatID string, d
 }
 
 func (s *Server) listMessages(chatID string, user userPublic, before string, limit int, threadRootMessageID string) ([]messagePublic, error) {
-	messages, _, err := s.listMessagesPage(chatID, user, before, limit, threadRootMessageID)
+	messages, _, err := s.listMessagesPage(chatID, user, before, limit, threadRootMessageID, "")
 	return messages, err
 }
 
-func (s *Server) listMessagesPage(chatID string, user userPublic, before string, limit int, threadRootMessageID string) ([]messagePublic, bool, error) {
+func (s *Server) listMessagesPage(chatID string, user userPublic, before string, limit int, threadRootMessageID, archiveGroup string) ([]messagePublic, bool, error) {
 	if threadRootMessageID != "" {
 		if err := s.validateReplyTarget(chatID, threadRootMessageID); err != nil {
 			return nil, false, err
@@ -697,6 +704,7 @@ func (s *Server) listMessagesPage(chatID string, user userPublic, before string,
 		ViewerID:            user.ID,
 		BeforeCreatedAt:     beforeCreatedAt,
 		ThreadRootMessageID: threadRootMessageID,
+		ArchiveGroup:        archiveGroup,
 		Limit:               limit + 1,
 	})
 	if err != nil {
@@ -731,6 +739,27 @@ func (s *Server) listMessagesPage(chatID string, user userPublic, before string,
 		}
 	}
 	return messages, hasMore, nil
+}
+
+type messageArchiveGroupPublic struct {
+	SourceChatID string `json:"sourceChatId"`
+	MessageCount int    `json:"messageCount"`
+}
+
+func (s *Server) messageArchiveGroups(ctx context.Context, user userPublic) ([]messageArchiveGroupPublic, error) {
+	archive, err := s.ensureMessageArchive(user)
+	if err != nil {
+		return nil, err
+	}
+	groups, err := s.messageHistory.ArchiveGroups(ctx, archive.ID, user.ID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]messageArchiveGroupPublic, len(groups))
+	for index, group := range groups {
+		result[index] = messageArchiveGroupPublic{SourceChatID: group.SourceChatID, MessageCount: group.MessageCount}
+	}
+	return result, nil
 }
 
 func (s *Server) validateInvitePermissions(inviter userPublic, memberIDs []string, chatType string) error {
