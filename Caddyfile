@@ -37,6 +37,12 @@
 		reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000
 	}
 
+	# LiveKit's signaling endpoint. Keeping it on the app origin lets external
+	# guests use WSS without resolving Docker's internal `livekit` hostname.
+	handle /rtc* {
+		reverse_proxy livekit:7880
+	}
+
 	handle_path /ntfy/* {
 		@ntfy_write method POST PUT PATCH DELETE
 		respond @ntfy_write "Method not allowed" 405

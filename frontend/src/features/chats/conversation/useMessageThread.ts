@@ -61,6 +61,7 @@ import { useMessageGestures } from "./useMessageGestures";
 
 export type UseMessageThreadParams = {
   chatId: string | undefined;
+  archiveGroup?: string;
   accessToken: string | null;
   currentUser: User | null;
   selectedChat: Chat | null;
@@ -76,6 +77,7 @@ export type UseMessageThreadParams = {
 
 export function useMessageThread({
   chatId,
+  archiveGroup,
   accessToken,
   currentUser,
   selectedChat,
@@ -117,6 +119,11 @@ export function useMessageThread({
   const messageCacheRef = useRef<Record<string, Message[]>>({});
   const historyCursorRef = useRef<Record<string, string | null>>({});
   const historyLoadingRef = useRef<Record<string, boolean>>({});
+  const archiveGroupRef = useRef(archiveGroup);
+
+  useEffect(() => {
+    archiveGroupRef.current = archiveGroup;
+  }, [archiveGroup]);
 
   const messagesPanelRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
@@ -258,19 +265,20 @@ export function useMessageThread({
       // callback stays stable across selectedChat object identity changes.
       const chatIdToLoad = targetChatId ?? activeChatIdRef.current;
       const token = accessToken;
-      if (!chatIdToLoad || !token || historyLoadingRef.current[chatIdToLoad]) return;
+      const historyKey = `${chatIdToLoad}:${archiveGroup ?? "all"}`;
+      if (!chatIdToLoad || !token || historyLoadingRef.current[historyKey]) return;
       const before = historyCursorRef.current[chatIdToLoad];
       if (!before) return;
 
-      historyLoadingRef.current[chatIdToLoad] = true;
+      historyLoadingRef.current[historyKey] = true;
       const panel = messagesPanelRef.current;
       const previousHeight = panel?.scrollHeight ?? 0;
       const previousTop = panel?.scrollTop ?? 0;
       try {
-        const page: MessageHistoryPage = await getMessageHistoryPage(token, chatIdToLoad, before, 50);
-        if (activeChatIdRef.current !== chatIdToLoad) return;
+        const page: MessageHistoryPage = await getMessageHistoryPage(token, chatIdToLoad, before, 50, undefined, archiveGroup);
+        if (activeChatIdRef.current !== chatIdToLoad || archiveGroupRef.current !== archiveGroup) return;
         const decrypted = await decryptMessages(chatIdToLoad, page.messages, currentUser?.id);
-        if (activeChatIdRef.current !== chatIdToLoad) return;
+        if (activeChatIdRef.current !== chatIdToLoad || archiveGroupRef.current !== archiveGroup) return;
         applyMessagesForChat(chatIdToLoad, (current) => mergeMessageLists(current, decrypted));
         historyCursorRef.current[chatIdToLoad] = page.hasMore ? page.nextBefore : null;
         if (token && decrypted.length > 0) {
@@ -285,10 +293,10 @@ export function useMessageThread({
       } catch {
         // Loading older history is retried the next time the user scrolls here.
       } finally {
-        historyLoadingRef.current[chatIdToLoad] = false;
+        historyLoadingRef.current[historyKey] = false;
       }
     },
-    [accessToken, applyMessagesForChat, currentUser?.id]
+    [accessToken, applyMessagesForChat, archiveGroup, currentUser?.id]
   );
 
   const handleHistoryScroll = useCallback(() => {

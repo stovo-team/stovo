@@ -23,7 +23,7 @@ func TestRegisterChatRoutesPreservesPathsMethodsAndParameters(t *testing.T) {
 		GetMessages: handler("messages"), SendMessage: handler("send"), GetMessage: handler("message"),
 		AttachMessageFiles: handler("attachments"), GetPins: handler("pins"), PinMessage: handler("pin"),
 		UnpinMessage: handler("unpin"), EditMessage: handler("edit"), DeleteMessage: handler("delete"),
-		MarkMessageRead: handler("read"), ForwardMessage: handler("forward"), GetMessageArchive: handler("archive-list"),
+		MarkMessageRead: handler("read"), ForwardMessage: handler("forward"), GetMessageArchive: handler("archive-list"), GetMessageArchiveGroups: handler("archive-groups"),
 		ArchiveMessage: handler("archive"), AddMessageReaction: handler("reaction-add"), RemoveMessageReaction: handler("reaction-remove"),
 	})
 
@@ -49,6 +49,7 @@ func TestRegisterChatRoutesPreservesPathsMethodsAndParameters(t *testing.T) {
 		{stdhttp.MethodPatch, "/api/messages/message-1/read", "read"},
 		{stdhttp.MethodPost, "/api/messages/message-1/forward", "forward"},
 		{stdhttp.MethodGet, "/api/message-archive", "archive-list"},
+		{stdhttp.MethodGet, "/api/message-archive/groups", "archive-groups"},
 		{stdhttp.MethodPost, "/api/messages/message-1/archive", "archive"},
 		{stdhttp.MethodPost, "/api/messages/message-1/reactions", "reaction-add"},
 		{stdhttp.MethodDelete, "/api/messages/message-1/reactions/thumbs-up", "reaction-remove"},

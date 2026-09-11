@@ -1,6 +1,7 @@
 import { FileText } from "lucide-react";
-import { useState } from "react";
-import type { Chat } from "../../api/chats";
+import { useEffect, useState } from "react";
+import { getMessageArchiveGroups, type Chat, type MessageArchiveGroup } from "../../api/chats";
+import { displayChatName } from "./shared/chatPresentation";
 
 export function QuickAccessPanel() {
   const [tab, setTab] = useState<"drafts" | "scheduled">("drafts");
@@ -17,11 +18,46 @@ export function MessageArchiveViewControls({ view, onChange }: { view: "all" | "
   return <div className="message-archive-view-controls"><button type="button" className={view === "all" ? "active" : ""} onClick={() => onChange("all")}>All messages</button><button type="button" className={view === "grouped" ? "active" : ""} onClick={() => onChange("grouped")}>Grouped by chat</button></div>;
 }
 
-export function MessageArchivePanel({ chats, onViewChange, onOpenChat }: { chats: Chat[]; onViewChange: (view: "all" | "grouped") => void; onOpenChat: (chat: Chat) => void }) {
-  const rows = chats.filter((chat) => chat.type !== "archive" && chat.lastMessageContent).slice(0, 5);
+export function MessageArchivePanel({ accessToken, chats, currentUserId, onViewChange, onOpenGroup }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onViewChange: (view: "all" | "grouped") => void; onOpenGroup: (group: string) => void }) {
+  const [groups, setGroups] = useState<MessageArchiveGroup[]>([]);
+  const [isLoading, setIsLoading] = useState(Boolean(accessToken));
+
+  useEffect(() => {
+    if (!accessToken) {
+      setGroups([]);
+      setIsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setIsLoading(true);
+    void getMessageArchiveGroups(accessToken)
+      .then((result) => {
+        if (!cancelled) setGroups(result);
+      })
+      .catch(() => {
+        if (!cancelled) setGroups([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [accessToken]);
+
+  const rows = groups.map((group) => {
+    const sourceChat = chats.find((chat) => chat.id === group.sourceChatId);
+    return {
+      id: group.sourceChatId,
+      title: sourceChat ? displayChatName(sourceChat, currentUserId) : "Archived chat",
+      preview: `${group.messageCount} saved ${group.messageCount === 1 ? "message" : "messages"}`
+    };
+  });
   return <section className="quick-access-panel quick-access-panel--archive" aria-label="Message Archive">
     <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header"><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-title-group"><span className="chat-title-row"><h1>Message Archive</h1></span></span></header>
     <div className="quick-access-panel-tabs" role="tablist" aria-label="Message archive view"><button type="button" role="tab" aria-selected={false} onClick={() => onViewChange("all")}>All messages</button><button type="button" className="active" role="tab" aria-selected={true}>Grouped by chat</button></div>
-    {rows.length ? <div className="archive-quick-list">{rows.map((chat) => <button type="button" className="chat-list-item" key={chat.id} onClick={() => onOpenChat(chat)}><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>{chat.title ?? "Chat"}</strong></span><span className="chat-list-preview">{chat.lastMessageContent}</span></span></button>)}</div> : <div className="quick-access-panel-empty"><FileText size={28} /><strong>No archived messages</strong><p>Saved messages will appear here.</p></div>}
+    <div className="archive-quick-list">
+      <button type="button" className="chat-list-item" onClick={() => onOpenGroup("notes")}><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>My Notes</strong></span><span className="chat-list-preview">Messages saved directly to Message Archive</span></span></button>
+      {rows.map((chat) => <button type="button" className="chat-list-item" key={chat.id} onClick={() => onOpenGroup(chat.id)}><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>{chat.title}</strong></span><span className="chat-list-preview">{chat.preview}</span></span></button>)}
+    </div>
+    {!isLoading && rows.length === 0 && <p className="archive-quick-list-empty">No messages have been forwarded from other chats.</p>}
   </section>;
 }

@@ -117,6 +117,7 @@ export type UseChatDataLoaderParams = {
   authRequest: <T>(path: string, init?: { method?: string; body?: unknown }) => Promise<T>;
   currentUser: User | null;
   chatId: string | undefined;
+  archiveGroup?: string;
   onError: (message: string | null) => void;
   setFamily: Dispatch<SetStateAction<Family | null>>;
   setMembers: Dispatch<SetStateAction<User[]>>;
@@ -151,6 +152,7 @@ export function useChatDataLoader({
   authRequest,
   currentUser,
   chatId,
+  archiveGroup,
   onError,
   setFamily,
   setMembers,
@@ -174,6 +176,7 @@ export function useChatDataLoader({
   const loadChatRequestRef = useRef(0);
   const hasLoadedOverviewRef = useRef(false);
   const deltaSyncInFlightRef = useRef(false);
+  const archiveGroupByChatRef = useRef<Record<string, string | undefined>>({});
 
   const authRequestRef = useRef(authRequest);
   const onErrorRef = useRef(onError);
@@ -297,8 +300,16 @@ export function useChatDataLoader({
         );
       }
 
-      let cachedMessages = messageCacheRef.current[requestedChatId];
-      if (!cachedMessages && currentUserIdRef.current) {
+      const previousArchiveGroup = archiveGroupByChatRef.current[requestedChatId];
+      const archiveGroupChanged = previousArchiveGroup !== archiveGroup;
+      archiveGroupByChatRef.current[requestedChatId] = archiveGroup;
+      if (archiveGroupChanged) {
+        delete messageCacheRef.current[requestedChatId];
+        historyCursorRef.current[requestedChatId] = null;
+      }
+
+      let cachedMessages = archiveGroup ? undefined : messageCacheRef.current[requestedChatId];
+      if (!cachedMessages && !archiveGroup && currentUserIdRef.current) {
         const localCached = loadRecentChatHistoryFromLocalStorage<Message>(
           currentUserIdRef.current,
           requestedChatId
@@ -320,7 +331,7 @@ export function useChatDataLoader({
 
       let historyRequestResolved = false;
       const userId = currentUserIdRef.current;
-      if (userId) {
+      if (userId && !archiveGroup) {
         void loadRecentChatHistory<Message>(userId, requestedChatId).then(async (cached) => {
           if (!cached || historyRequestResolved || !isCurrentRequest()) return;
           const decrypted = await decryptMessages(requestedChatId, cached, userId);
@@ -348,8 +359,9 @@ export function useChatDataLoader({
           .catch(() => null as Chat | null);
         const pinsRequest = authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`)
           .catch(() => [] as PinnedMessage[]);
+        const archiveGroupQuery = archiveGroup ? `&archiveGroup=${encodeURIComponent(archiveGroup)}` : "";
         const messageResult = await authRequestRef.current<MessageHistoryPage>(
-          `/api/chats/${requestedChatId}/messages?limit=10`
+          `/api/chats/${requestedChatId}/messages?limit=10${archiveGroupQuery}`
         );
         historyRequestResolved = true;
         if (!isCurrentRequest()) {
@@ -367,7 +379,7 @@ export function useChatDataLoader({
             prefetchFiles(accessTokenRef.current, attachments);
           }
         }
-        if (currentUserIdRef.current) {
+        if (currentUserIdRef.current && !archiveGroup) {
           void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, messageResult.messages);
         }
         setIsChatLoading(false);
@@ -375,7 +387,7 @@ export function useChatDataLoader({
         if (messageResult.hasMore && messageResult.nextBefore) {
           const beforeCursor = messageResult.nextBefore;
           void authRequestRef.current<MessageHistoryPage>(
-            `/api/chats/${requestedChatId}/messages?before=${encodeURIComponent(beforeCursor)}&limit=50`
+            `/api/chats/${requestedChatId}/messages?before=${encodeURIComponent(beforeCursor)}&limit=50${archiveGroupQuery}`
           ).then(async (morePage) => {
             if (!isCurrentRequest()) return;
             const moreDecrypted = await decryptMessages(requestedChatId, morePage.messages, currentUserIdRef.current);
@@ -388,7 +400,7 @@ export function useChatDataLoader({
                 prefetchFiles(accessTokenRef.current, attachments);
               }
             }
-            if (currentUserIdRef.current) {
+            if (currentUserIdRef.current && !archiveGroup) {
               const allDecrypted = mergeMessageLists(decryptedMessages, moreDecrypted);
               void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, allDecrypted);
             }
@@ -415,7 +427,7 @@ export function useChatDataLoader({
         }).catch(() => undefined);
 
         const latestMessage = decryptedMessages.at(-1);
-        if (latestMessage) {
+        if (latestMessage && !archiveGroup) {
           setChats((current) =>
             current.map((item) =>
               item.id === requestedChatId ? applyMessagePreviewToChat(item, latestMessage) : item
@@ -435,7 +447,7 @@ export function useChatDataLoader({
       } finally {
         if (isCurrentRequest()) {
           setIsChatLoading(false);
-          if (userId) {
+          if (userId && !archiveGroup) {
             void getOutboxMessagesForChat(userId, requestedChatId).then((outboxItems) => {
               if (!outboxItems || outboxItems.length === 0 || !isCurrentRequest()) return;
               applyMessagesForChatRef.current(requestedChatId, (current) =>
@@ -448,6 +460,7 @@ export function useChatDataLoader({
     },
     [
       accessTokenRef,
+      archiveGroup,
       chatMutationVersionRef,
       chatsRef,
       historyCursorRef,
@@ -529,7 +542,7 @@ export function useChatDataLoader({
   // Route chat changes only — never re-fire because callback identity churned.
   useEffect(() => {
     void loadSelectedChat(chatId);
-  }, [chatId, loadSelectedChat]);
+  }, [archiveGroup, chatId, loadSelectedChat]);
 
   useEffect(() => {
     function syncWhenVisible() {
