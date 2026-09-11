@@ -112,6 +112,30 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(host?.querySelector('[role="listbox"][aria-label="Microphone device"]')).toBeNull();
   });
 
+  it("uses the halo wrapper for the camera-off speaking avatar", async () => {
+    await renderPage();
+    const cameraToggle = host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]');
+    await act(async () => { cameraToggle?.click(); });
+
+    expect(host?.querySelector(".guest-preview-avatar-halo .guest-preview-avatar")).not.toBeNull();
+  });
+
+  it("stacks attendee avatars and shows the remaining attendee count", async () => {
+    api.previewGuestMeeting.mockResolvedValueOnce({
+      title: "Daily standup",
+      scheduledAt: "2026-09-12T09:00:00.000Z",
+      admissionMode: "immediate",
+      expiresAt: "2026-09-12T10:00:00.000Z",
+      guestCount: 5,
+      guestLimit: 10,
+    });
+    await renderPage();
+
+    expect(host?.querySelectorAll(".guest-prejoin-guest-avatar")).toHaveLength(4);
+    expect(host?.querySelector(".guest-prejoin-guest-avatar--count")?.textContent).toBe("+2");
+    expect(host?.querySelector(".guest-prejoin-attendee-copy")?.textContent).toContain("5 people are already here");
+  });
+
   it("opens and closes the settings popover with speaker and microphone tests", async () => {
     await renderPage();
     const trigger = host?.querySelector<HTMLButtonElement>('[aria-label="Open device settings"]');

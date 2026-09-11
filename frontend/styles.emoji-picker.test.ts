@@ -170,6 +170,19 @@ describe("mobile chat chrome", () => {
 });
 
 describe("native conversation viewport and presence", () => {
+  it("keeps grouped archive titles on one line", () => {
+    const archiveTitleRow = lastRule(".chat-title-group--archive-group .chat-title-row");
+
+    expect(archiveTitleRow).toContain("display: flex;");
+    expect(archiveTitleRow).toContain("white-space: nowrap;");
+  });
+
+  it("aligns the grouped archive tabs with the all-messages view", () => {
+    expect(rule(".quick-access-panel--archive .quick-access-panel-tabs")).toContain(
+      "margin-left: 40px;"
+    );
+  });
+
   it("locks the active Android conversation to the viewport and keeps the message list as its only scroller", () => {
     expect(styles).toContain(':root[data-platform="native"] .messenger-shell.has-active-chat');
     expect(styles).toContain("height: 100dvh;");

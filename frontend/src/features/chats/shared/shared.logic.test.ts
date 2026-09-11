@@ -101,6 +101,15 @@ describe("chat presentation helpers", () => {
 
     expect(
       chatPreview({
+        type: "group",
+        lastMessageSenderDisplayName: "ivan",
+        lastMessageContent: 'guest-meeting-card:{"title":"Some meetup"}',
+        lastMessageType: "text"
+      } as any)
+    ).toBe("ivan: Guest meeting: Some meetup");
+
+    expect(
+      chatPreview({
         type: "family",
         lastMessageSenderDisplayName: "ivan",
         lastMessageContent: "Message",
@@ -136,6 +145,16 @@ describe("chat presentation helpers", () => {
         collection: { id: "col-2", title: "Vacation", displayKind: "album", available: true }
       } as any)
     ).toBe("Album");
+  });
+
+  it("formats guest-meeting cards as readable message previews", () => {
+    expect(
+      messagePreviewText({
+        type: "text",
+        content: 'guest-meeting-card:{"title":"Some meetup"}',
+        attachments: []
+      } as any)
+    ).toBe("Guest meeting: Some meetup");
   });
 
   it("localizes the name (title) of the Message Archive", () => {

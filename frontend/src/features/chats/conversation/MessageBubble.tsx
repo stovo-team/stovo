@@ -53,7 +53,6 @@ function GuestMeetingInvitation({ meeting, sourceChatId }: { meeting: GuestMeeti
     <section className="guest-meeting-invitation" aria-label={`Guest meeting: ${meeting.title}`}>
       <span className="guest-meeting-invitation-icon" aria-hidden="true"><Video size={20} /></span>
       <div className="guest-meeting-invitation-copy">
-        <span className="guest-meeting-invitation-label">Guest meeting</span>
         <strong>{meeting.title}</strong>
         <span className="guest-meeting-invitation-detail"><CalendarClock size={14} />{meeting.timing}</span>
         <span className="guest-meeting-invitation-detail"><DoorOpen size={14} />{meeting.entry}</span>

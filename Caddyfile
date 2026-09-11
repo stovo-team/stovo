@@ -39,6 +39,12 @@
 
 	# LiveKit's signaling endpoint. Keeping it on the app origin lets external
 	# guests use WSS without resolving Docker's internal `livekit` hostname.
+	# Some deployments advertise the internal service through a `/livekit`
+	# prefix. Strip only that proxy prefix: LiveKit itself expects `/rtc/v1`.
+	handle_path /livekit/* {
+		reverse_proxy livekit:7880
+	}
+
 	handle /rtc* {
 		reverse_proxy livekit:7880
 	}
