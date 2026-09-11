@@ -5584,18 +5584,17 @@ h2 {
   width: 50px;
 }
 
-.guest-meeting-invitation-copy { align-content: center; display: grid; gap: .32rem; min-width: 0; min-height: 50px; }
-.guest-meeting-invitation-label { color: var(--text-secondary); font-size: .7rem; font-weight: 800; letter-spacing: .075em; text-transform: uppercase; }
-.guest-meeting-invitation-copy strong { color: var(--text-primary); font-size: 1.04rem; line-height: 1.25; overflow-wrap: anywhere; }
-.guest-meeting-invitation-detail { align-items: center; color: var(--text-secondary); display: flex; font-size: .8rem; gap: .42rem; line-height: 1.35; }
+.guest-meeting-invitation-copy { align-content: center; color: #ffffff; display: grid; gap: .32rem; min-width: 0; min-height: 50px; }
+.guest-meeting-invitation-copy strong { color: #ffffff; font-size: 1.04rem; line-height: 1.25; overflow-wrap: anywhere; }
+.guest-meeting-invitation-detail { align-items: center; color: #ffffff; display: flex; font-size: .8rem; gap: .42rem; line-height: 1.35; }
 .guest-meeting-invitation-detail svg { flex: 0 0 auto; }
 .guest-meeting-invitation-actions { display: grid; gap: .55rem; grid-column: 1 / -1; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-top: .15rem; }
 .guest-meeting-invitation-join {
   align-items: center;
-  background: #123b70;
+  background: #7057d8;
   border: 1px solid rgba(255, 255, 255, .12);
-  border-radius: 12px;
-  box-shadow: 0 6px 14px rgba(6, 28, 59, .22);
+  border-radius: 999px;
+  box-shadow: 0 6px 14px rgba(65, 45, 145, .28);
   color: #ffffff !important;
   display: inline-flex;
   font-size: .84rem;
@@ -5606,10 +5605,10 @@ h2 {
   padding: .45rem .8rem;
   text-decoration: none !important;
 }
-.guest-meeting-invitation-join:hover { background: #0d2e59; transform: translateY(-1px); }
-.guest-meeting-invitation-plan { align-items: center; background: color-mix(in oklab, var(--surface-raised) 78%, transparent); border: 1px solid color-mix(in oklab, var(--border-default) 78%, transparent); border-radius: 12px; color: var(--text-primary) !important; display: inline-flex; font-size: .8rem; font-weight: 750; gap: .38rem; justify-content: center; min-height: 42px; padding: .45rem .65rem; text-decoration: none !important; }
+.guest-meeting-invitation-join:hover { background: #5e46c2; transform: translateY(-1px); }
+.guest-meeting-invitation-plan { align-items: center; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; color: #ffffff !important; display: inline-flex; font-size: .8rem; font-weight: 750; gap: .38rem; justify-content: center; min-height: 42px; padding: .45rem .65rem; text-decoration: none !important; }
 .message-bubble.mine .guest-meeting-invitation-plan { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .3); color: #ffffff !important; }
-.guest-meeting-invitation-plan:hover { background: color-mix(in oklab, var(--accent-primary) 16%, var(--surface-raised)); transform: translateY(-1px); }
+.guest-meeting-invitation-plan:hover { background: rgba(255, 255, 255, .24); transform: translateY(-1px); }
 .message-bubble.mine .guest-meeting-invitation-plan:hover { background: rgba(255, 255, 255, .24); }
 @media (max-width: 380px) { .guest-meeting-invitation-actions { grid-template-columns: 1fr; } }
 
@@ -27185,12 +27184,13 @@ button.checklist-add-item-btn:hover,
   top: 10px;
 }
 .quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 40px; }
+.quick-access-panel--archive .quick-access-panel-tabs { margin-left: 40px; }
 .quick-access-panel-tabs button { background: color-mix(in oklab, var(--surface-card) 82%, transparent); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; padding: 7px 12px; }
 .quick-access-panel-tabs button:hover { background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent); }
 .quick-access-panel-tabs button.active { background: color-mix(in oklab, var(--accent-soft) 22%, var(--surface-card)); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-default)); color: var(--accent-primary); }
 .archive-group-back-button { display: inline-flex; }
 .chat-title-group--archive-group { align-items: center; display: flex; gap: 8px; min-width: 0; }
-.chat-title-group--archive-group .chat-title-row { align-items: center; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-title-group--archive-group .chat-title-row { align-items: center; display: flex; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .archive-group-title-divider { color: var(--text-muted); margin-inline: 6px; }
 .quick-access-panel-empty { align-items: center; color: var(--text-muted); display: flex; flex: 1; flex-direction: column; justify-content: center; text-align: center; }
 .quick-access-panel-empty strong { color: var(--text-primary); margin-top: 10px; }
@@ -27238,8 +27238,8 @@ button.checklist-add-item-btn:hover,
 .guest-preview-controls .guest-device-menu-trigger:hover, .guest-device-menu-trigger[aria-expanded="true"] { background: color-mix(in srgb, var(--accent-primary) 13%, transparent); color: var(--text-primary); }
 .guest-device-menu-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
 .guest-device-menu-trigger svg { transition: transform .16s ease; }
-.guest-device-menu { background: color-mix(in srgb, var(--surface-raised) 92%, #1d2737); border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-radius: 15px; box-shadow: 0 18px 45px rgba(0, 0, 0, .42), 0 2px 8px rgba(0, 0, 0, .18); display: grid; gap: .22rem; left: 50%; min-width: 220px; padding: .45rem; position: absolute; top: calc(100% + .65rem); transform: translateX(-50%); z-index: 12; }
-.guest-device-menu::before { background: inherit; border-left: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-top: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); content: ""; height: 9px; left: 50%; position: absolute; top: -6px; transform: translateX(-50%) rotate(45deg); width: 9px; }
+.guest-device-menu { background: color-mix(in srgb, var(--surface-raised) 92%, #1d2737); border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-radius: 15px; bottom: calc(100% + .65rem); box-shadow: 0 18px 45px rgba(0, 0, 0, .42), 0 2px 8px rgba(0, 0, 0, .18); display: grid; gap: .22rem; left: 50%; min-width: 220px; padding: .45rem; position: absolute; transform: translateX(-50%); z-index: 12; }
+.guest-device-menu::before { background: inherit; border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-right: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); bottom: -6px; content: ""; height: 9px; left: 50%; position: absolute; transform: translateX(-50%) rotate(45deg); width: 9px; }
 .guest-device-menu-heading { border-bottom: 1px solid var(--border-default); display: grid; gap: .12rem; margin: 0 .18rem .25rem; padding: .25rem .25rem .58rem; position: relative; }
 .guest-device-menu-heading span { color: var(--text-primary); font-size: .76rem; font-weight: 750; }
 .guest-device-menu-heading small { color: var(--text-muted); font-size: .68rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -27251,17 +27251,25 @@ button.checklist-add-item-btn:hover,
 .guest-prejoin-panel { display: flex; flex-direction: column; }
 .guest-prejoin-panel .guest-meeting-join-button { margin-top: auto; }
 .guest-prejoin-preview .guest-settings { position: absolute; right: 1rem; top: 1rem; z-index: 5; }
-.guest-prejoin-attendee { align-items: center; display: flex; gap: .62rem; }
-.guest-prejoin-avatar { background: var(--accent-primary); font-size: .72rem; height: 34px; width: 34px; }
+.guest-prejoin-attendee { display: grid; gap: .5rem; }
+.guest-prejoin-attendee-avatars { align-items: center; display: flex; min-height: 48px; }
+.guest-prejoin-avatar { background: var(--accent-primary); border: 2px solid var(--surface-raised); font-size: .96rem; height: 48px; position: relative; width: 48px; z-index: 2; }
+.guest-prejoin-avatar-stack { display: flex; margin-left: -10px; padding-left: 2px; }
+.guest-prejoin-guest-avatar { align-items: center; background: color-mix(in srgb, var(--accent-primary) 72%, #8b5cf6); border: 2px solid var(--surface-raised); border-radius: 50%; color: #ffffff; display: inline-flex; height: 34px; justify-content: center; margin-left: -8px; width: 34px; }
+.guest-prejoin-guest-avatar:nth-child(2) { background: #7c5ce0; }
+.guest-prejoin-guest-avatar:nth-child(3) { background: #4878c9; }
+.guest-prejoin-guest-avatar--count { background: var(--surface-card); color: var(--text-primary); font-size: .68rem; font-weight: 800; }
+.guest-prejoin-attendee-copy { align-items: center; color: var(--text-secondary); display: flex; font-size: .82rem; gap: .42rem; }
 .guest-test-sound { border-radius: 999px; }
 .guest-prejoin-panel { justify-content: flex-start; }
 .guest-prejoin-title-row { align-items: flex-start; }
 .guest-device-control.is-speaking > button { animation: guest-microphone-pulse .8s ease-in-out infinite; background: color-mix(in srgb, var(--accent-primary) 18%, transparent); }
-.guest-preview-avatar { font-size: 1.35rem; height: 82px; position: relative; width: 82px; }
-.guest-preview-avatar.is-speaking::after { animation: guest-avatar-voice-sweep 1s ease-in-out infinite; background: linear-gradient(105deg, transparent 22%, rgba(255, 255, 255, .13) 42%, rgba(255, 255, 255, .52) 50%, rgba(255, 255, 255, .13) 58%, transparent 78%); content: ""; inset: 0; position: absolute; transform: translateX(-110%); }
+.guest-preview-avatar-halo { display: grid; height: 82px; isolation: isolate; place-items: center; position: relative; width: 82px; z-index: 0; }
+.guest-preview-avatar { font-size: 1.35rem; height: 82px; width: 82px; }
+.guest-preview-avatar-halo.is-speaking::before { animation: guest-avatar-speaking-halo 1.35s ease-in-out infinite; background: color-mix(in srgb, var(--accent-primary) 16%, transparent); border: 2px solid color-mix(in srgb, var(--accent-primary) 86%, #ffffff); border-radius: 50%; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-primary) 16%, transparent), 0 0 24px color-mix(in srgb, var(--accent-primary) 64%, transparent); content: ""; inset: -7px; position: absolute; z-index: -1; }
 @keyframes guest-microphone-pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-primary) 13%, transparent), 0 0 18px color-mix(in srgb, var(--accent-primary) 32%, transparent); transform: scale(1.045); } }
-@keyframes guest-avatar-voice-sweep { to { transform: translateX(110%); } }
-@media (prefers-reduced-motion: reduce) { .guest-device-control.is-speaking > button, .guest-preview-avatar.is-speaking::after { animation: none; } }
+@keyframes guest-avatar-speaking-halo { 50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent-primary) 7%, transparent), 0 0 30px color-mix(in srgb, var(--accent-primary) 78%, transparent); opacity: .72; transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .guest-device-control.is-speaking > button, .guest-preview-avatar-halo.is-speaking::before { animation: none; } }
 @media (max-width: 720px) { .guest-stovo-brand { left: 1rem; right: auto; top: .9rem; } .guest-meeting-page { padding-top: 4rem; } .guest-preview-controls { justify-content: center; } .guest-device-select select { max-width: 96px; } .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; } }
 
 

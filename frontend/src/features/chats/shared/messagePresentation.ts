@@ -171,6 +171,19 @@ export function emojiSizeClass(content: string | null | undefined): string {
   return "";
 }
 
+export function guestMeetingPreviewText(content: string | null | undefined): string | null {
+  const prefix = "guest-meeting-card:";
+  if (!content?.startsWith(prefix)) return null;
+
+  try {
+    const value = JSON.parse(content.slice(prefix.length)) as { title?: unknown };
+    if (typeof value.title !== "string" || !value.title.trim()) return "Guest meeting";
+    return `Guest meeting: ${value.title.trim()}`;
+  } catch {
+    return "Guest meeting";
+  }
+}
+
 export function messagePreviewText(message: Message, strings?: AppStrings) {
   if (message.type === "call" && message.call) {
     return callHistoryLabel(message.call, strings);
@@ -207,6 +220,10 @@ export function messagePreviewText(message: Message, strings?: AppStrings) {
       return "Music album";
     }
     return "Folder";
+  }
+  const guestMeetingPreview = guestMeetingPreviewText(message.content);
+  if (guestMeetingPreview) {
+    return guestMeetingPreview;
   }
   if (message.content?.trim()) {
     return message.content.trim();
