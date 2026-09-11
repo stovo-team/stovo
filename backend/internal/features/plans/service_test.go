@@ -2,10 +2,32 @@ package plans
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
 )
+
+func TestPlanJSONUsesFrontendFieldNames(t *testing.T) {
+	payload, err := json.Marshal(Plan{
+		ID: "plan-1", FamilyID: "family-1", StartsAt: time.Date(2026, 9, 11, 9, 0, 0, 0, time.UTC),
+		Attendees: []Attendee{{UserID: "user-1", Status: "going"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded["id"] != "plan-1" || decoded["familyId"] != "family-1" || decoded["startsAt"] == nil {
+		t.Fatalf("unexpected plan JSON: %s", payload)
+	}
+	attendees, ok := decoded["attendees"].([]any)
+	if !ok || len(attendees) != 1 || attendees[0].(map[string]any)["userId"] != "user-1" {
+		t.Fatalf("unexpected attendee JSON: %s", payload)
+	}
+}
 
 type storeStub struct {
 	validAttendees bool

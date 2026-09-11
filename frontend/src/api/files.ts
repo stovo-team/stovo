@@ -10,7 +10,7 @@ export interface FamilyFile {
   uploadedBy: string;
   chatId: string | null;
   chatTitle: string | null;
-  chatType: "family" | "direct" | "group" | "channel" | null;
+  chatType: "family" | "direct" | "group" | "channel" | "voice" | "archive" | null;
   originMessageId: string | null;
   accessScope: "family" | "chat";
   storageProvider: "local" | string;

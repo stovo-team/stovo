@@ -520,7 +520,7 @@ export const strings = {
     categories: {
       archive: "MESSAGE ARCHIVE",
       voice: "VOICE CHANNELS",
-      family: "FAMILY CHATS",
+      family: "CHATS",
       groups: "GROUPS",
       channels: "CHANNELS",
       direct: "DIRECT CHATS",

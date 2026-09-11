@@ -33,12 +33,12 @@ function quickAccessStorageKey(familyId: string) {
 }
 
 function loadQuickAccessSettings(familyId: string): QuickAccessSettings {
-  const fallback: QuickAccessSettings = { archiveEnabled: true, outboxEnabled: true, archiveView: "all" };
+  const fallback: QuickAccessSettings = { archiveEnabled: true, outboxEnabled: true, archiveView: "grouped" };
   try {
     const stored = window.localStorage.getItem(quickAccessStorageKey(familyId));
     if (!stored) return fallback;
     const parsed = JSON.parse(stored) as Partial<QuickAccessSettings>;
-    return { ...fallback, ...parsed, archiveView: parsed.archiveView === "grouped" ? "grouped" : "all" };
+    return { ...fallback, ...parsed, archiveView: parsed.archiveView === "all" ? "all" : "grouped" };
   } catch {
     return fallback;
   }
