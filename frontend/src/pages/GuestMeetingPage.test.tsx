@@ -21,6 +21,10 @@ vi.mock("../api/guestMeetings", () => ({
   getGuestMeetingToken: vi.fn(),
 }));
 
+vi.mock("../auth/AuthContext", () => ({
+  useAuth: () => ({ accessToken: null, currentUser: null }),
+}));
+
 class FakeTrack {
   enabled = true;
   stop = vi.fn();
@@ -78,7 +82,7 @@ afterEach(async () => {
 });
 
 describe("GuestMeetingPage pre-join controls", () => {
-  it("starts media immediately and renders default-enabled controls with device selectors", async () => {
+  it("starts media immediately and renders compact device menus", async () => {
     await renderPage();
 
     const mediaDevices = navigator.mediaDevices as MediaDevices & { getUserMedia: ReturnType<typeof vi.fn> };
@@ -86,12 +90,26 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Microphone"]')?.getAttribute("aria-pressed")).toBe("true");
     expect(host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Speaker"]')?.getAttribute("aria-pressed")).toBe("true");
     expect(host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]')?.getAttribute("aria-pressed")).toBe("true");
-    expect(host?.querySelector<HTMLSelectElement>('[aria-label="Select Microphone"]')?.textContent).toContain("Studio mic");
-    expect(host?.querySelector<HTMLSelectElement>('[aria-label="Select Speaker"]')?.textContent).toContain("Desk speakers");
-    expect(host?.querySelector<HTMLSelectElement>('[aria-label="Select Camera"]')?.textContent).toContain("Desk camera");
+    expect(host?.querySelector<HTMLButtonElement>('[aria-label="Select Microphone"]')).not.toBeNull();
+    expect(host?.querySelector<HTMLButtonElement>('[aria-label="Select Speaker"]')).not.toBeNull();
+    expect(host?.querySelector<HTMLButtonElement>('[aria-label="Select Camera"]')).not.toBeNull();
+    expect(host?.querySelector("select")).toBeNull();
     expect(host?.textContent).not.toContain("Stovo guest meeting");
     expect(host?.textContent).not.toContain("Starts when the host opens the meeting");
     expect(host?.textContent).not.toContain("Camera unavailable — you can still join with your microphone");
+  });
+
+  it("opens a device menu and selects a device", async () => {
+    await renderPage();
+    const trigger = host?.querySelector<HTMLButtonElement>('[aria-label="Select Microphone"]');
+    await act(async () => { trigger?.click(); });
+
+    expect(host?.querySelector('[role="listbox"][aria-label="Microphone device"]')).not.toBeNull();
+    expect(host?.textContent).toContain("Studio mic");
+
+    const option = Array.from(host?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []).find((button) => button.textContent?.includes("Studio mic"));
+    await act(async () => { option?.click(); });
+    expect(host?.querySelector('[role="listbox"][aria-label="Microphone device"]')).toBeNull();
   });
 
   it("opens and closes the settings popover with speaker and microphone tests", async () => {

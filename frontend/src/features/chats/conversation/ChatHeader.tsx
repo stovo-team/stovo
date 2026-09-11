@@ -73,6 +73,9 @@ export function ChatHeader({
   onSelectionEdit,
   threadRootMessage = null,
   onBackFromThread,
+  archiveGroupSourceChat,
+  archiveGroupName,
+  onBackFromArchiveGroup,
   isVoiceTextChatOpen = false,
   onToggleVoiceChat,
 }: {
@@ -105,21 +108,32 @@ export function ChatHeader({
   onSelectionEdit?: () => void;
   threadRootMessage?: Message | null;
   onBackFromThread?: () => void;
+  archiveGroupSourceChat?: Chat | null;
+  archiveGroupName?: string;
+  onBackFromArchiveGroup?: () => void;
   isVoiceTextChatOpen?: boolean;
   onToggleVoiceChat?: () => void;
 }) {
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
+  const isArchiveGroup = Boolean(archiveGroupName && onBackFromArchiveGroup);
+  const archiveGroupChat = archiveGroupSourceChat ?? selectedChat;
+  const archiveGroupChatName = archiveGroupSourceChat
+    ? displayChatName(archiveGroupSourceChat, currentUser?.id, strings)
+    : archiveGroupName ?? chatName;
   const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
-  const handleBack = threadRootMessage && onBackFromThread
-    ? onBackFromThread
-    : onBack;
+  const handleBack = isArchiveGroup
+    ? onBackFromArchiveGroup
+    : threadRootMessage && onBackFromThread
+      ? onBackFromThread
+      : onBack;
 
   return (
     <div className="chat-detail-header chat-detail-header--floating">
       <BackButton
-        className="mobile-back-button"
-        ariaLabel={threadRootMessage ? "Back to chat" : "Back to chats"}
+        className={isArchiveGroup ? "archive-group-back-button" : "mobile-back-button"}
+        ariaLabel={isArchiveGroup ? "Back to grouped Message Archive" : threadRootMessage ? "Back to chat" : "Back to chats"}
+        title={isArchiveGroup ? "Back to grouped Message Archive" : undefined}
         onClick={handleBack}
       />
       {threadRootMessage ? (
@@ -147,6 +161,20 @@ export function ChatHeader({
             <strong>
               {selectedCount} selected
             </strong>
+          </span>
+        </div>
+      ) : isArchiveGroup ? (
+        <div className="chat-title-group chat-title-group--archive-group" aria-label={`Message Archive, ${archiveGroupName}`}>
+          <RealAvatar
+            accessToken={accessToken}
+            className={`avatar chat-avatar ${archiveGroupSourceChat ? chatAvatarTypeClass(archiveGroupSourceChat) : "direct"}`}
+            fallbackKind={archiveGroupSourceChat ? chatAvatarFallbackKind(archiveGroupSourceChat) : "direct"}
+            file={archiveGroupSourceChat ? chatAvatarFile(archiveGroupSourceChat, currentUser?.id) : currentUser?.profilePhoto}
+            label={archiveGroupChatName}
+            style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))}
+          />
+          <span className="chat-title-row" style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "title"))}>
+            <span>Message Archive</span><span className="archive-group-title-divider" aria-hidden="true">•</span><span>{archiveGroupName}</span>
           </span>
         </div>
       ) : (

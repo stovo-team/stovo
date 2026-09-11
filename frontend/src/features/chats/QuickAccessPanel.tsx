@@ -15,30 +15,24 @@ export function QuickAccessPanel() {
 }
 
 export function MessageArchiveViewControls({ view, onChange }: { view: "all" | "grouped"; onChange: (view: "all" | "grouped") => void }) {
-  return <div className="message-archive-view-controls"><button type="button" className={view === "all" ? "active" : ""} onClick={() => onChange("all")}>All messages</button><button type="button" className={view === "grouped" ? "active" : ""} onClick={() => onChange("grouped")}>Grouped by chat</button></div>;
+  return <div className="quick-access-panel-tabs" role="tablist" aria-label="Message archive view"><button type="button" className={view === "all" ? "active" : ""} role="tab" aria-selected={view === "all"} onClick={() => onChange("all")}>All messages</button><button type="button" className={view === "grouped" ? "active" : ""} role="tab" aria-selected={view === "grouped"} onClick={() => onChange("grouped")}>Grouped by chat</button></div>;
 }
 
 export function MessageArchivePanel({ accessToken, chats, currentUserId, onViewChange, onOpenGroup }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onViewChange: (view: "all" | "grouped") => void; onOpenGroup: (group: string) => void }) {
   const [groups, setGroups] = useState<MessageArchiveGroup[]>([]);
-  const [isLoading, setIsLoading] = useState(Boolean(accessToken));
 
   useEffect(() => {
     if (!accessToken) {
       setGroups([]);
-      setIsLoading(false);
       return;
     }
     let cancelled = false;
-    setIsLoading(true);
     void getMessageArchiveGroups(accessToken)
       .then((result) => {
         if (!cancelled) setGroups(result);
       })
       .catch(() => {
         if (!cancelled) setGroups([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
       });
     return () => { cancelled = true; };
   }, [accessToken]);
@@ -58,6 +52,5 @@ export function MessageArchivePanel({ accessToken, chats, currentUserId, onViewC
       <button type="button" className="chat-list-item" onClick={() => onOpenGroup("notes")}><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>My Notes</strong></span><span className="chat-list-preview">Messages saved directly to Message Archive</span></span></button>
       {rows.map((chat) => <button type="button" className="chat-list-item" key={chat.id} onClick={() => onOpenGroup(chat.id)}><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>{chat.title}</strong></span><span className="chat-list-preview">{chat.preview}</span></span></button>)}
     </div>
-    {!isLoading && rows.length === 0 && <p className="archive-quick-list-empty">No messages have been forwarded from other chats.</p>}
   </section>;
 }
