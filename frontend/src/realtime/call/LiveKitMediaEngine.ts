@@ -3,6 +3,8 @@
  * Uses dynamic import of `livekit-client` (official package; `@livekit/client` does not exist on npm).
  */
 
+import { resolveLiveKitUrl } from "./livekitUrl";
+
 type RemoteStreamMap = Map<string, MediaStream>;
 
 type LiveKitModule = typeof import("livekit-client");
@@ -107,27 +109,7 @@ export default class LiveKitMediaEngine {
       this.onDisconnected?.();
     });
 
-    let connectUrl = opts.url;
-    if (typeof window !== "undefined" && connectUrl) {
-      try {
-        const u = new URL(connectUrl, window.location.origin);
-        if (window.location.protocol === "https:" && u.protocol === "ws:") {
-          u.protocol = "wss:";
-        }
-        if (
-          (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "livekit") &&
-          window.location.hostname !== "localhost" &&
-          window.location.hostname !== "127.0.0.1"
-        ) {
-          u.hostname = window.location.hostname;
-        }
-        connectUrl = u.toString();
-      } catch {
-        /* fallback to opts.url */
-      }
-    }
-
-    await room.connect(connectUrl, opts.token);
+    await room.connect(resolveLiveKitUrl(opts.url), opts.token);
     this.onConnected?.();
   }
 

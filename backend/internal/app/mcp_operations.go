@@ -656,7 +656,7 @@ func (s *Server) mcpGetChatHistory(ctx context.Context, request mcp.CallToolRequ
 		limit = connector.MaxHistoryMessages
 	}
 	before := strings.TrimSpace(request.GetString("before_message_id", ""))
-	messages, hasMore, err := s.listMessagesPage(chatID, actor, before, limit, "")
+	messages, hasMore, err := s.listMessagesPage(chatID, actor, before, limit, "", "")
 	if err != nil {
 		msg := err.Error()
 		s.recordMCPAudit(ctx, connector, mcpPermMessagesRead, &chatID, nil, false, &msg, nil)

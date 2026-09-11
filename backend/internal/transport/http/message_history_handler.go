@@ -13,7 +13,7 @@ import (
 // endpoint. The endpoint's query contract belongs here; paging/caching policy
 // remains behind the supplied application operation.
 type MessageHistoryOperations struct {
-	List      func(context.Context, string, string, int, string) (any, error)
+	List      func(context.Context, string, string, int, string, string) (any, error)
 	StatusFor func(error) int
 }
 
@@ -33,7 +33,7 @@ func (h MessageHistoryHandler) Get(w http.ResponseWriter, r *http.Request) {
 		}
 		limit = value
 	}
-	value, err := h.operations.List(r.Context(), chi.URLParam(r, "chatId"), strings.TrimSpace(r.URL.Query().Get("before")), limit, strings.TrimSpace(r.URL.Query().Get("threadRootMessageId")))
+	value, err := h.operations.List(r.Context(), chi.URLParam(r, "chatId"), strings.TrimSpace(r.URL.Query().Get("before")), limit, strings.TrimSpace(r.URL.Query().Get("threadRootMessageId")), strings.TrimSpace(r.URL.Query().Get("archiveGroup")))
 	if err != nil {
 		status := http.StatusInternalServerError
 		if h.operations.StatusFor != nil {

@@ -146,8 +146,17 @@ export interface MessageHistoryPage {
   hasMore: boolean;
 }
 
+export interface MessageArchiveGroup {
+  sourceChatId: string;
+  messageCount: number;
+}
+
 export function getMessageArchive(accessToken: string) {
   return apiRequest<Chat>("/api/message-archive", { accessToken });
+}
+
+export function getMessageArchiveGroups(accessToken: string) {
+  return apiRequest<MessageArchiveGroup[]>("/api/message-archive/groups", { accessToken });
 }
 
 export function archiveMessage(accessToken: string, messageId: string) {
@@ -246,7 +255,8 @@ export function getMessageHistoryPage(
   chatId: string,
   before?: string,
   limit = 50,
-  threadRootMessageId?: string
+  threadRootMessageId?: string,
+  archiveGroup?: string
 ) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (before) {
@@ -254,6 +264,9 @@ export function getMessageHistoryPage(
   }
   if (threadRootMessageId) {
     params.set("threadRootMessageId", threadRootMessageId);
+  }
+  if (archiveGroup) {
+    params.set("archiveGroup", archiveGroup);
   }
   return apiRequest<MessageHistoryPage>(`/api/chats/${chatId}/messages?${params.toString()}`, { accessToken });
 }
@@ -263,9 +276,10 @@ export function getMessages(
   chatId: string,
   before?: string,
   limit = 50,
-  threadRootMessageId?: string
+  threadRootMessageId?: string,
+  archiveGroup?: string
 ) {
-  return getMessageHistoryPage(accessToken, chatId, before, limit, threadRootMessageId).then((page) => page.messages);
+  return getMessageHistoryPage(accessToken, chatId, before, limit, threadRootMessageId, archiveGroup).then((page) => page.messages);
 }
 
 export function getMessage(accessToken: string, messageId: string) {
