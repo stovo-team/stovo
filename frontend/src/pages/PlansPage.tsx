@@ -89,6 +89,10 @@ function normalizePlans(plans: Plan[]) {
   return plans.map((plan) => normalizePlanDateRange(plan));
 }
 
+export function getPlanTitle(plan: Pick<Plan, "title">) {
+  return plan.title?.trim() || "Event";
+}
+
 function renderPlanNotes(text: string) {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -119,6 +123,7 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [draft, setDraft] = useState<PlanDraft>(() => {
     const defaults = getDefaultPlanTimes();
     return {
@@ -225,7 +230,7 @@ export default function PlansPage() {
   const normalizedQuery = query.trim().toLowerCase();
   // Plans created before title validation may not include a title in their API payload.
   // Treat that as an empty title so one malformed legacy row cannot crash the page.
-  const visiblePlans = plans.filter((plan) => (plan.title ?? "").toLowerCase().includes(normalizedQuery));
+  const visiblePlans = plans.filter((plan) => getPlanTitle(plan).toLowerCase().includes(normalizedQuery));
 
   const handleStartsAtChange = (newStartIso: string) => {
     setDraft((current) => {
@@ -338,23 +343,24 @@ export default function PlansPage() {
       .map((entry) => membersById.get(entry.userId))
       .filter((member): member is User => Boolean(member));
     const creator = membersById.get(plan.createdBy);
+    const creatorName = plan.creatorDisplayName || creator?.displayName || strings.plans.unknownMember;
     const status = getPlanStatus(plan, now);
     const statusLabel = status === "scheduled" ? strings.plans.scheduled : status === "happening" ? strings.plans.happening : strings.plans.happened;
 
     return (
-      <article className="plan-row" key={plan.id}>
+    <article className={`plan-row${selectedPlanId === plan.id ? " selected" : ""}`} key={plan.id}>
         <time>{timeLabel}</time>
         <div className="plan-card-content">
           <div>
             <div className="plan-title-line">
-              <strong>{plan.title}</strong>
+              <strong>{getPlanTitle(plan)}</strong>
               <span className={`plan-status plan-status--${status}`}>{statusLabel}</span>
             </div>
             {plan.location && <small>{plan.location}</small>}
             {plan.notes && <div className="plan-notes">{renderPlanNotes(plan.notes)}</div>}
             <div className="plan-created-by">
               {creator && <RealAvatar accessToken={accessToken} className="avatar plan-creator-avatar" file={creator.profilePhoto} label={creator.displayName} />}
-              <small>{strings.plans.createdBy(creator?.displayName ?? strings.plans.unknownMember)}</small>
+              <small>{strings.plans.createdBy(creatorName)}</small>
             </div>
             {plan.sourceChatId && (
               <div className="plan-actions">
@@ -435,14 +441,14 @@ export default function PlansPage() {
                 {dayPlans.map((plan) => (
                   <button
                     type="button"
-                    className="plans-calendar-event"
+                    className={`plans-calendar-event${selectedPlanId === plan.id ? " selected" : ""}`}
                     key={plan.id}
                     style={getCalendarEventStyle(plan)}
-                    onClick={() => { setSelectedDay(day); setView("today"); }}
-                    title={`${plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)} — ${plan.title}`}
+                    onClick={() => { setSelectedPlanId(plan.id); setSelectedDay(day); setView("today"); }}
+                    title={`${plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)} — ${getPlanTitle(plan)}`}
                   >
                     <time>{plan.allDay ? strings.plans.allDay : formatTime(plan.startsAt)}</time>
-                    <span>{plan.title}</span>
+                    <span>{getPlanTitle(plan)}</span>
                   </button>
                 ))}
               </div>
@@ -474,9 +480,18 @@ export default function PlansPage() {
           </div>
           <div className="plans-sidebar-list">
             {visiblePlans.map((plan) => (
-              <button className="plans-sidebar-row" key={plan.id} onClick={() => setSelectedDay(dayStart(new Date(plan.startsAt)))}>
+              <button
+                className={`plans-sidebar-row${selectedPlanId === plan.id ? " selected" : ""}`}
+                key={plan.id}
+                aria-current={selectedPlanId === plan.id ? "true" : undefined}
+                onClick={() => {
+                  setSelectedPlanId(plan.id);
+                  setSelectedDay(dayStart(new Date(plan.startsAt)));
+                  setView("today");
+                }}
+              >
                 <time>{new Intl.DateTimeFormat(undefined, { weekday: "short", day: "numeric" }).format(new Date(plan.startsAt))}</time>
-                <span>{plan.title}</span>
+                <span>{getPlanTitle(plan)}</span>
               </button>
             ))}
             {!loading && visiblePlans.length === 0 && <p className="plans-muted">{strings.plans.noPlansRange}</p>}

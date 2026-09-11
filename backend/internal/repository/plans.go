@@ -249,6 +249,12 @@ func (s *Store) planView(ctx context.Context, row *ent.Plan) (featureplans.Plan,
 		CreatedAt: planTime(row.CreatedAt), UpdatedAt: planTime(row.UpdatedAt),
 		Attendees: make([]featureplans.Attendee, 0, len(attendees)),
 	}
+	// Plans may outlive a member's active membership. Resolve the saved creator
+	// directly so clients can still present the actual person rather than a
+	// generic family-member label.
+	if creator, err := s.UserByID(ctx, row.CreatedBy); err == nil {
+		view.CreatorDisplayName = creator.DisplayName
+	}
 	for _, attendee := range attendees {
 		view.Attendees = append(view.Attendees, featureplans.Attendee{UserID: attendee.UserID, Status: attendee.Status})
 	}

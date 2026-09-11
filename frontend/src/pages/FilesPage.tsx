@@ -39,6 +39,8 @@ import {
 } from "../api/files";
 import { Family } from "../api/family";
 import { getChats, type Chat } from "../api/chats";
+import { getStorageCanvases, type Canvas } from "../api/canvas";
+import { getStorageChecklists, type Checklist } from "../api/checklist";
 import { useAuth } from "../auth/AuthContext";
 import { AudioPlayer } from "../components/AudioPlayer";
 import {
@@ -111,6 +113,7 @@ function chatFolderLabel(file: FamilyFile) {
   if (file.chatTitle) {
     return file.chatTitle;
   }
+  if (file.chatType === "archive") return "Message Archive";
   if (file.chatType === "family") {
     return "General Family Chat";
   }
@@ -242,6 +245,8 @@ export default function FilesPage() {
   const [family, setFamily] = useState<Family | null>(null);
   const [files, setFiles] = useState<FamilyFile[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
+  const [storageCanvases, setStorageCanvases] = useState<Canvas[]>([]);
+  const [storageChecklists, setStorageChecklists] = useState<Checklist[]>([]);
   const [selection, dispatchSelection] = useReducer(
     storageSelectionReducer,
     initialStorageSelection
@@ -275,8 +280,24 @@ export default function FilesPage() {
     { label: strings.files.filters.favorites, value: "favorites" }
   ];
 
+  const storageSourceItems = useMemo(() => {
+    const chatLinks = (id: string, originChatId: string, linkedChatIds: string[], mimeType: string) =>
+      [...new Set([originChatId, ...linkedChatIds].filter(Boolean))].map((chatId) => ({
+        id: `${id}:${chatId}`,
+        chatId,
+        chatTitle: null,
+        chatType: null,
+        mimeType
+      }));
+    return [
+      ...files,
+      ...storageCanvases.flatMap((canvas) => chatLinks(canvas.id, canvas.originChatId, canvas.linkedChatIds, "application/x-stovo-canvas")),
+      ...storageChecklists.flatMap((checklist) => chatLinks(checklist.id, checklist.originChatId, checklist.linkedChatIds, "application/x-stovo-checklist"))
+    ];
+  }, [files, storageCanvases, storageChecklists]);
+
   const sourceGroups = useMemo(() => {
-    return buildStorageSources(files, chats, currentUser?.id, {
+    return buildStorageSources(storageSourceItems, chats, currentUser?.id, {
       archive: strings.files.categories.archive,
       archiveTitle: strings.chats.sections.archive,
       voice: strings.files.categories.voice,
@@ -285,7 +306,7 @@ export default function FilesPage() {
       channels: strings.files.categories.channels,
       direct: strings.files.categories.direct
     });
-  }, [files, chats, currentUser?.id, strings]);
+  }, [storageSourceItems, chats, currentUser?.id, strings]);
   const selectedSource = sourceGroups.flatMap((group) => group.sources)
     .find((source) => source.chatId === sourceChatId);
 
@@ -371,6 +392,25 @@ export default function FilesPage() {
   }, [accessToken, currentUser?.id, load]);
 
   useEffect(() => {
+    if (!accessToken) {
+      setStorageCanvases([]);
+      setStorageChecklists([]);
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([
+      getStorageCanvases(accessToken).catch(() => [] as Canvas[]),
+      getStorageChecklists(accessToken).catch(() => [] as Checklist[])
+    ]).then(([canvases, checklists]) => {
+      if (!cancelled) {
+        setStorageCanvases(canvases);
+        setStorageChecklists(checklists);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [accessToken]);
+
+  useEffect(() => {
     if (!mobileDetailsOpen) {
       return;
     }
@@ -391,11 +431,9 @@ export default function FilesPage() {
 
   const filteredFiles = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const selectedSourceIncludesUnscopedFiles = selectedSource?.includesUnscopedFiles ?? false;
     return files.filter((file) => {
       const isOutsideSelectedSource = sourceChatId
-        && file.chatId !== sourceChatId
-        && !(selectedSourceIncludesUnscopedFiles && file.chatId === null);
+        && file.chatId !== sourceChatId;
       if (!matchesStorageFilter(file, filter) || isOutsideSelectedSource) {
         return false;
       }
@@ -404,7 +442,7 @@ export default function FilesPage() {
         `${file.originalName} ${file.mimeType} ${chatFolderLabel(file)}`.toLowerCase().includes(query)
       );
     });
-  }, [files, filter, search, selectedSource?.includesUnscopedFiles, sourceChatId]);
+  }, [files, filter, search, sourceChatId]);
 
   const collectionPickerFiles = useMemo(() => collectionPicker ? filteredFiles.filter((file) => collectionPicker.allowedFileIds.includes(file.id) || collectionPicker.lockedFileIds.includes(file.id)) : filteredFiles, [collectionPicker, filteredFiles]);
 
@@ -542,7 +580,7 @@ export default function FilesPage() {
                         <span className={`storage-source-avatar${source.avatarKind === "archive" ? " storage-source-avatar--archive" : ""}`}>
                           <StorageSourceAvatar
                             accessToken={accessToken}
-                            file={source.avatarFile}
+                            file={source.avatarFile as FamilyFile | null}
                             kind={source.avatarKind}
                             label={source.label}
                             minimizedLayout={Boolean(family?.minimizedChatLayout)}
@@ -578,7 +616,7 @@ export default function FilesPage() {
                   <span className={`storage-source-avatar${source.avatarKind === "archive" ? " storage-source-avatar--archive" : ""}`}>
                     <StorageSourceAvatar
                       accessToken={accessToken}
-                      file={source.avatarFile}
+                      file={source.avatarFile as FamilyFile | null}
                       kind={source.avatarKind}
                       label={source.label}
                       minimizedLayout={Boolean(family?.minimizedChatLayout)}

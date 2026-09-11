@@ -34,7 +34,7 @@ export default function ChatsPage() {
   const [addPeopleChat, setAddPeopleChat] = useState<import("../api/chats").Chat | null>(null);
   const [isDraftsAndScheduledOpen, setIsDraftsAndScheduledOpen] = useState(false);
   const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
-  const [messageArchiveView, setMessageArchiveView] = useState<"all" | "grouped">("all");
+  const [messageArchiveView, setMessageArchiveView] = useState<"all" | "grouped">("grouped");
   const {
     family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
@@ -166,7 +166,7 @@ export default function ChatsPage() {
             onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(false); openChat(chat); }}
             onOpenDraftsAndScheduled={() => { setIsMessageArchiveOpen(false); setIsDraftsAndScheduledOpen(true); }}
             isDraftsAndScheduledActive={isDraftsAndScheduledOpen}
-            onOpenMessageArchive={() => { const archive = chats.find((chat) => chat.type === "archive"); if (archive) { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(true); setMessageArchiveView("all"); setSelectedChat(archive); openChat(archive); } }}
+            onOpenMessageArchive={() => { const archive = chats.find((chat) => chat.type === "archive"); if (archive) { setIsDraftsAndScheduledOpen(false); setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); } }}
             isMessageArchiveActive={isMessageArchiveOpen}
             mobileCallStrip={
               callPhase !== "idle" && isCallMinimized && !chatId ? (
@@ -197,7 +197,7 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen && messageArchiveView === "grouped" ? <MessageArchivePanel chats={chats} /> : <ConversationPanel
+            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen && messageArchiveView === "grouped" ? <MessageArchivePanel chats={chats} onViewChange={setMessageArchiveView} onOpenChat={(chat) => { setIsMessageArchiveOpen(false); openChat(chat); }} /> : <ConversationPanel
               thread={thread}
               composer={composerApi}
               accessToken={accessToken}

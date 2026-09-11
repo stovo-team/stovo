@@ -36,7 +36,7 @@ export function createQueuedComposerMessage(options: Options) {
   }));
   const previewAttachments: FamilyFile[] = attachments.map((pending) => ({
     id: pending.localId, familyId: "", uploadedBy: user.id, chatId: chat.id, chatTitle: chat.title ?? null,
-    chatType: (chat.type === "archive" ? null : chat.type) as "family" | "direct" | "group" | "channel" | null,
+    chatType: chat.type,
     originMessageId: null, accessScope: "chat", storageProvider: "local", originalName: pending.file.name,
     mimeType: pending.file.type, sizeBytes: pending.file.size, checksum: null, createdAt, deletedAt: null, isFavorite: false
   }));

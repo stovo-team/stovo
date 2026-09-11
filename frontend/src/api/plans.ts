@@ -7,7 +7,7 @@ export interface PlanAttendee { userId: string; status: PlanRSVP; }
 export interface Plan {
   id: string; familyId: string; title: string; notes?: string | null; location?: string | null;
   startsAt: string; endsAt: string; allDay: boolean; timeZone: string; recurrence?: PlanRecurrence;
-  createdBy: string; sourceChatId?: string | null; revision: number; createdAt: string; updatedAt: string;
+  createdBy: string; creatorDisplayName?: string; sourceChatId?: string | null; revision: number; createdAt: string; updatedAt: string;
   attendees: PlanAttendee[];
 }
 export interface PlanDraft {
