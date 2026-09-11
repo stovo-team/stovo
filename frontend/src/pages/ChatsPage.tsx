@@ -14,7 +14,7 @@ import { useReducedMotion } from "../hooks/useReducedMotion";
 import { getClusterPrefix } from "../api/client";
 import AppNav from "./AppNav";
 import { CallFeature, CallFeatureProvider, MobileMinimizedCallBar } from "../features/chats/calling/CallFeature";
-import { chatListLayoutClass } from "../features/chats/shared/chatPresentation";
+import { chatListLayoutClass, displayChatName } from "../features/chats/shared/chatPresentation";
 import { AddPeopleDialog } from "../features/chats/details/AddPeopleDialog";
 import { createCanvas } from "../api/canvas";
 import { createChecklist } from "../api/checklist";
@@ -73,6 +73,14 @@ export default function ChatsPage() {
     addSharedFileAttachments,
     handleSendMessage
   } = composerApi;
+  const archiveGroupSourceChat = archiveGroup && archiveGroup !== "notes" ? chats.find((chat) => chat.id === archiveGroup) ?? null : null;
+  const archiveGroupName = archiveGroup === "notes"
+    ? "My Notes"
+    : archiveGroup
+      ? archiveGroupSourceChat
+        ? displayChatName(archiveGroupSourceChat, currentUser?.id)
+        : "Archived chat"
+      : undefined;
 
   useEffect(() => {
     setMessageArchiveView(loadMessageArchiveView(currentUser?.id));
@@ -313,7 +321,16 @@ export default function ChatsPage() {
                 });
                 navigate(`${getClusterPrefix()}/app/checklist/${encodeURIComponent(checklist.id)}`);
               }}
-              headerBelow={selectedChat?.type === "archive" ? <MessageArchiveViewControls view={messageArchiveView} onChange={updateMessageArchiveView} /> : undefined}
+              archiveGroupSourceChat={archiveGroupSourceChat}
+              archiveGroupName={archiveGroupName}
+              onBackFromArchiveGroup={archiveGroup ? () => {
+                const archive = chats.find((chat) => chat.type === "archive");
+                if (!archive) return;
+                setIsMessageArchiveOpen(true);
+                setMessageArchiveView("grouped");
+                navigate(`${getClusterPrefix()}/app/chats/${archive.id}`);
+              } : undefined}
+              headerBelow={selectedChat?.type === "archive" && !archiveGroup ? <MessageArchiveViewControls view={messageArchiveView} onChange={updateMessageArchiveView} /> : undefined}
             />}
           </section>
           {selectedChat && isDetailsOpen && (
