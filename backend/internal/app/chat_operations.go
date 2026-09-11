@@ -546,6 +546,9 @@ func deriveMessagePreview(content *string, messageType string, attachmentCount i
 		}
 		return "Canvas"
 	}
+	if guestMeetingPreview, ok := deriveGuestMeetingPreview(trimmed); ok {
+		return guestMeetingPreview
+	}
 	if trimmed != "" {
 		return trimmed
 	}
@@ -571,6 +574,20 @@ func deriveMessagePreview(content *string, messageType string, attachmentCount i
 	default:
 		return "Message"
 	}
+}
+
+func deriveGuestMeetingPreview(content string) (string, bool) {
+	const prefix = "guest-meeting-card:"
+	if !strings.HasPrefix(content, prefix) {
+		return "", false
+	}
+	var card struct {
+		Title string `json:"title"`
+	}
+	if err := json.Unmarshal([]byte(strings.TrimPrefix(content, prefix)), &card); err != nil || strings.TrimSpace(card.Title) == "" {
+		return "Guest meeting", true
+	}
+	return "Guest meeting: " + strings.TrimSpace(card.Title), true
 }
 
 func (s *Server) defaultMessageEncryptionProtocol(familyID string) string {

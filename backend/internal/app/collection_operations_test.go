@@ -55,6 +55,8 @@ func TestDeriveMessagePreview(t *testing.T) {
 		{nil, "image", 1, "Photo"},
 		{nil, "video", 1, "Video"},
 		{nil, "call", 0, "Call"},
+		{ptr("guest-meeting-card:{\"title\":\"Some meetup\"}"), "text", 0, "Guest meeting: Some meetup"},
+		{ptr("guest-meeting-card:not-json"), "text", 0, "Guest meeting"},
 	}
 	for _, tt := range cases {
 		if got := deriveMessagePreview(tt.content, tt.messageType, tt.attachmentCount); got != tt.want {
@@ -62,3 +64,5 @@ func TestDeriveMessagePreview(t *testing.T) {
 		}
 	}
 }
+
+func ptr(value string) *string { return &value }

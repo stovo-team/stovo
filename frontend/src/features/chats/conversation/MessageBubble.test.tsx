@@ -111,6 +111,16 @@ function renderBubble(message: Message, currentUserId = "user-1", chat = createM
 }
 
 describe("MessageBubble receipt status", () => {
+  it("renders a guest meeting card without a redundant label", () => {
+    const message = createMockMessage({
+      content: 'guest-meeting-card:{"title":"Some meetup","timing":"Starts when the host opens the meeting.","entry":"Anyone with this link can join.","url":"https://example.com/meet"}'
+    });
+    const container = renderBubble(message, "user-1", createMockChat({ type: "group" }));
+
+    expect(container.querySelector(".guest-meeting-invitation")?.textContent).toContain("Some meetup");
+    expect(container.querySelector(".guest-meeting-invitation-label")).toBeNull();
+  });
+
   it("renders a clock icon when message is in sending state", () => {
     const message = createMockMessage({ deliveryState: "sending" });
     const container = renderBubble(message);

@@ -13,7 +13,7 @@ import type {
   SharedContentItem,
   SharedContentTab
 } from "./types";
-import { extractMessageLinks, messagePreviewText } from "./messagePresentation";
+import { extractMessageLinks, guestMeetingPreviewText, messagePreviewText } from "./messagePresentation";
 
 export function chatListLayoutClass(minimizedChatLayout: boolean) {
   return minimizedChatLayout ? " messenger-shell--minimized-chat-layout" : "";
@@ -166,6 +166,10 @@ export function chatAvatarTypeClass(chat: Chat) {
 
 export function formatPreviewContent(rawContent: string, messageType?: string | null): string {
   const trimmed = rawContent.trim();
+  const guestMeetingPreview = guestMeetingPreviewText(trimmed);
+  if (guestMeetingPreview) {
+    return guestMeetingPreview;
+  }
   if (messageType === "checklist" || /^checklist:[0-9a-f-]+/i.test(trimmed)) {
     if (/^checklist:\s+/i.test(trimmed) && !trimmed.includes("\n") && !/^checklist:[0-9a-f-]{8,}/i.test(trimmed)) {
       return trimmed;
