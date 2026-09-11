@@ -55,6 +55,9 @@ export type ConversationPanelProps = {
   callSession?: CallSessionApi;
   minimizedCallHeader?: ReactNode;
   headerBelow?: ReactNode;
+  archiveGroupSourceChat?: Chat | null;
+  archiveGroupName?: string;
+  onBackFromArchiveGroup?: () => void;
   canAddPeople?: boolean;
   onOpenAddPeople?: () => void;
   onOpenChat: (chat: Chat) => void;
@@ -84,6 +87,9 @@ export function ConversationPanel({
   callSession,
   minimizedCallHeader,
   headerBelow,
+  archiveGroupSourceChat,
+  archiveGroupName,
+  onBackFromArchiveGroup,
   canAddPeople,
   onOpenAddPeople,
   isChatMenuOpen,
@@ -394,6 +400,9 @@ export function ConversationPanel({
           setThreadRootMessageId(null);
           setReplyTarget(null);
         }}
+        archiveGroupSourceChat={archiveGroupSourceChat}
+        archiveGroupName={archiveGroupName}
+        onBackFromArchiveGroup={onBackFromArchiveGroup}
         onSelectionCopy={handleCopySelectedMessages}
         onSelectionDelete={() => {
           const owned = selectedMessages.find(
