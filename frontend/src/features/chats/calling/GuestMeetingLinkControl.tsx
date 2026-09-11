@@ -42,7 +42,15 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, curre
         const entry = meeting.admissionMode === "immediate"
           ? "Anyone with this link can join."
           : "Guests wait for host approval before joining.";
-        const announcement = `Guest meeting: ${meeting.title}\n${timing}\n${entry}\nJoin: ${meeting.meetingUrl}`;
+        // Keep the card data in the encrypted text payload. The receiver turns
+        // this well-known payload into an invitation card, while clients that
+        // do not yet support cards still see a useful join link.
+        const announcement = `guest-meeting-card:${JSON.stringify({
+          title: meeting.title,
+          timing,
+          entry,
+          url: meeting.meetingUrl
+        })}`;
         // The meeting exists at this point. A temporary chat-sync failure must
         // not make a working meeting link appear to have failed.
         try {

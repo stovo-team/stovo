@@ -58,8 +58,8 @@ export function groupStorageSources(files: StorageFileLike[]) {
     buckets.set(file.chatId, [file.id]);
   }
   const category = (file: StorageFileLike) =>
-    file.chatType === "archive" ? "MESSAGE ARCHIVE" : file.chatType === "direct" ? "DIRECT CHATS" : "FAMILY CHATS";
-  const labels = ["MESSAGE ARCHIVE", "FAMILY CHATS", "DIRECT CHATS"];
+    file.chatType === "archive" ? "MESSAGE ARCHIVE" : file.chatType === "direct" ? "DIRECT CHATS" : "CHATS";
+  const labels = ["MESSAGE ARCHIVE", "CHATS", "DIRECT CHATS"];
   return labels
     .map((label) => ({
       label,
@@ -84,10 +84,8 @@ export function buildStorageSources<TFile extends StorageFileLike>(
   }
 ) {
   const filesByChat = new Map<string, TFile[]>();
-  const unscopedFiles: TFile[] = [];
   for (const file of files) {
     if (!file.chatId) {
-      unscopedFiles.push(file);
       continue;
     }
     filesByChat.set(file.chatId, [...(filesByChat.get(file.chatId) ?? []), file]);
@@ -115,14 +113,7 @@ export function buildStorageSources<TFile extends StorageFileLike>(
 
   const sourceFor = (chat: StorageChatLike<TFile>): StorageSource<TFile> | null => {
     const directChatFiles = filesByChat.get(chat.id) ?? [];
-    // Family-scoped uploads belong in the one family chat's Storage folder.
-    // They used to leave the source sidebar empty despite being visible in
-    // "All chats" because they do not carry a specific chatId.
-    const includesUnscopedFiles = chat.type === "family" && unscopedFiles.length > 0;
-    const chatFiles = includesUnscopedFiles
-      ? [...directChatFiles, ...unscopedFiles]
-      : directChatFiles;
-    if (chatFiles.length === 0) return null;
+    if (directChatFiles.length === 0) return null;
     const otherMember = chat.members.find((member) => member.id !== currentUserId);
     const label = chat.type === "direct"
       ? otherMember?.displayName ?? "Direct chat"
@@ -134,15 +125,14 @@ export function buildStorageSources<TFile extends StorageFileLike>(
       label,
       avatarFile: chat.chatPhoto ?? (chat.type === "direct" ? otherMember?.profilePhoto ?? null : null),
       avatarKind: chat.type,
-      fileCount: chatFiles.length,
-      includesUnscopedFiles: includesUnscopedFiles || undefined
+      fileCount: directChatFiles.length
     };
   };
 
   const labels: Array<{ label: string; types: StorageAvatarKind[] }> = [
     { label: categoryLabels?.archive ?? "MESSAGE ARCHIVE", types: ["archive"] },
     { label: categoryLabels?.voice ?? "VOICE CHANNELS", types: ["voice"] },
-    { label: categoryLabels?.family ?? "FAMILY CHATS", types: ["family"] },
+    { label: categoryLabels?.family ?? "CHATS", types: ["family"] },
     { label: categoryLabels?.groups ?? "GROUPS", types: ["group"] },
     { label: categoryLabels?.channels ?? "CHANNELS", types: ["channel"] },
     { label: categoryLabels?.direct ?? "DIRECT CHATS", types: ["direct"] }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePlanDateRange } from "./PlansPage";
+import { getPlanTitle, normalizePlanDateRange } from "./PlansPage";
 
 function getWeekRange(selectedDay: Date) {
   const dayOffset = (selectedDay.getDay() + 6) % 7;
@@ -60,7 +60,10 @@ describe("PlansPage week range logic", () => {
     const { resolve } = await import("node:path");
     const source = readFileSync(resolve(process.cwd(), "src/pages/PlansPage.tsx"), "utf8");
 
-    expect(source).toContain('(plan.title ?? "").toLowerCase()');
+    expect(source).toContain("getPlanTitle(plan).toLowerCase()");
+    expect(getPlanTitle({ title: "" })).toBe("Event");
+    expect(getPlanTitle({ title: "  " })).toBe("Event");
+    expect(getPlanTitle({ title: "Guest call" })).toBe("Guest call");
   });
 
   it("defines 3-hour step intervals for the today timeline", async () => {
@@ -118,7 +121,7 @@ describe("PlansPage week range logic", () => {
     expect(source).toContain("getCalendarEventStyle(plan)");
     expect(source).toContain("CALENDAR_TIME_MARKERS = TODAY_TIME_SLOTS");
     expect(source).toContain('className="plan-rsvp-response"');
-    expect(source).toContain('className="plans-calendar-event"');
+    expect(source).toContain('className={`plans-calendar-event${selectedPlanId === plan.id ? " selected" : ""}`}');
     expect(source).toContain("strings.plans.goingQuestion");
     expect(source).toContain("strings.plans.createdBy");
     expect(source).toContain("getPlanStatus");

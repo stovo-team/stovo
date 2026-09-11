@@ -20,29 +20,30 @@ var (
 )
 
 type Attendee struct {
-	UserID string
-	Status string
+	UserID string `json:"userId"`
+	Status string `json:"status"`
 }
 
 // Plan is the persistence-neutral result shared by the plan use case and its
 // HTTP/realtime adapters.
 type Plan struct {
-	ID           string
-	FamilyID     string
-	Title        string
-	Notes        *string
-	Location     *string
-	StartsAt     time.Time
-	EndsAt       time.Time
-	AllDay       bool
-	TimeZone     string
-	Recurrence   *string
-	CreatedBy    string
-	SourceChatID *string
-	Revision     int
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Attendees    []Attendee
+	ID                 string     `json:"id"`
+	FamilyID           string     `json:"familyId"`
+	Title              string     `json:"title"`
+	Notes              *string    `json:"notes"`
+	Location           *string    `json:"location"`
+	StartsAt           time.Time  `json:"startsAt"`
+	EndsAt             time.Time  `json:"endsAt"`
+	AllDay             bool       `json:"allDay"`
+	TimeZone           string     `json:"timeZone"`
+	Recurrence         *string    `json:"recurrence"`
+	CreatedBy          string     `json:"createdBy"`
+	CreatorDisplayName string     `json:"creatorDisplayName,omitempty"`
+	SourceChatID       *string    `json:"sourceChatId"`
+	Revision           int        `json:"revision"`
+	CreatedAt          time.Time  `json:"createdAt"`
+	UpdatedAt          time.Time  `json:"updatedAt"`
+	Attendees          []Attendee `json:"attendees"`
 }
 
 type CreateInput struct {

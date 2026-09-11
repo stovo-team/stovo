@@ -1,5 +1,5 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
-import { CalendarClock, Check, Clock3, Folder, LockKeyhole, Phone, StickyNote, Video } from "lucide-react";
+import { ArrowUpRight, CalendarClock, Check, Clock3, DoorOpen, Folder, LockKeyhole, Phone, StickyNote, Video } from "lucide-react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
@@ -15,6 +15,52 @@ import { ChecklistCardBubble } from "./ChecklistCardBubble";
 import type { Poll } from "../../../api/polls";
 import type { ChecklistCard } from "../../../api/checklist";
 import { getClusterPrefix } from "../../../api/client";
+
+type GuestMeetingCardData = {
+  title: string;
+  timing: string;
+  entry: string;
+  url: string;
+};
+
+function guestMeetingCard(content: string | null | undefined): GuestMeetingCardData | null {
+  const prefix = "guest-meeting-card:";
+  if (!content?.startsWith(prefix)) return null;
+  try {
+    const value = JSON.parse(content.slice(prefix.length)) as Partial<GuestMeetingCardData>;
+    if (
+      typeof value.title !== "string" || typeof value.timing !== "string" ||
+      typeof value.entry !== "string" || typeof value.url !== "string" ||
+      !/^https?:\/\/[^\s]+$/i.test(value.url)
+    ) return null;
+    return value as GuestMeetingCardData;
+  } catch {
+    return null;
+  }
+}
+
+function GuestMeetingInvitation({ meeting }: { meeting: GuestMeetingCardData }) {
+  return (
+    <section className="guest-meeting-invitation" aria-label={`Guest meeting: ${meeting.title}`}>
+      <span className="guest-meeting-invitation-icon" aria-hidden="true"><Video size={20} /></span>
+      <div className="guest-meeting-invitation-copy">
+        <span className="guest-meeting-invitation-label">Guest meeting</span>
+        <strong>{meeting.title}</strong>
+        <span className="guest-meeting-invitation-detail"><CalendarClock size={14} />{meeting.timing}</span>
+        <span className="guest-meeting-invitation-detail"><DoorOpen size={14} />{meeting.entry}</span>
+      </div>
+      <a
+        className="guest-meeting-invitation-join"
+        href={meeting.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(event) => event.stopPropagation()}
+      >
+        Join meeting <ArrowUpRight size={16} />
+      </a>
+    </section>
+  );
+}
 
 export function extractFirstUrl(content: string | null | undefined): string | null {
   if (!content) return null;
@@ -179,6 +225,7 @@ export function MessageBubble({
   const showSenderIdentity = shouldShowMessageSender(selectedChat.type, mine);
   const mediaOnlyMessage = messageHasOnlyMediaAttachments(message);
   const hasCaption = Boolean(message.content?.trim());
+  const meetingInvitation = guestMeetingCard(message.content);
   const swipeStateForMessage = swipeReplyState?.messageId === message.id ? swipeReplyState : null;
   const swipeProgress = swipeStateForMessage
     ? Math.min(swipeStateForMessage.offset / SWIPE_REPLY_TRIGGER_OFFSET, 1)
@@ -462,6 +509,8 @@ export function MessageBubble({
                   onViewVoters={(poll) => onViewPollVoters?.(poll)}
                   canClosePoll={mine || selectedChat.createdBy === currentUserId}
                 />
+              ) : meetingInvitation ? (
+                <GuestMeetingInvitation meeting={meetingInvitation} />
               ) : hasCaption ? (
                 <>
                   <div className="message-body">

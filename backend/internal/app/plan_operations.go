@@ -20,7 +20,7 @@ func planFromFeature(plan featureplans.Plan) planPublic {
 	result := planPublic{
 		ID: plan.ID, FamilyID: plan.FamilyID, Title: plan.Title, Notes: plan.Notes, Location: plan.Location,
 		StartsAt: plan.StartsAt, EndsAt: plan.EndsAt, AllDay: plan.AllDay, TimeZone: plan.TimeZone,
-		Recurrence: plan.Recurrence, CreatedBy: plan.CreatedBy, SourceChatID: plan.SourceChatID,
+		Recurrence: plan.Recurrence, CreatedBy: plan.CreatedBy, CreatorDisplayName: plan.CreatorDisplayName, SourceChatID: plan.SourceChatID,
 		Revision: plan.Revision, CreatedAt: plan.CreatedAt, UpdatedAt: plan.UpdatedAt,
 		Attendees: make([]planAttendeePublic, 0, len(plan.Attendees)),
 	}

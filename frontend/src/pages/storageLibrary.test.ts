@@ -38,7 +38,7 @@ describe("storage library helpers", () => {
       ])
     ).toEqual([
       { label: "MESSAGE ARCHIVE", ids: ["archive"] },
-      { label: "FAMILY CHATS", ids: ["chat-1"] },
+      { label: "CHATS", ids: ["chat-1"] },
       { label: "DIRECT CHATS", ids: ["chat-2"] }
     ]);
   });
@@ -66,7 +66,7 @@ describe("storage library helpers", () => {
 
     expect(sources).toEqual([
       {
-        label: "FAMILY CHATS",
+        label: "CHATS",
         sources: [{ chatId: "chat-1", label: "Family announcements", avatarFile: chatPhoto, avatarKind: "family", fileCount: 1 }]
       },
       {
@@ -102,19 +102,33 @@ describe("storage library helpers", () => {
       "me"
     );
 
-    expect(sources).toEqual([
-      {
-        label: "FAMILY CHATS",
-        sources: [{
-          chatId: "family",
-          label: "Our family",
-          avatarFile: null,
-          avatarKind: "family",
-          fileCount: 1,
-          includesUnscopedFiles: true
-        }]
-      }
-    ]);
+    expect(sources).toEqual([]);
+  });
+
+  it("keeps chats with only canvases or checklists visible in the sidebar", () => {
+    const sources = buildStorageSources(
+      [{ ...audio, id: "canvas:chat-3", chatId: "chat-3", chatType: null, chatTitle: null }],
+      [{ id: "chat-3", type: "family", title: "Planning", chatPhoto: null, members: [] }],
+      "me"
+    );
+
+    expect(sources).toEqual([{
+      label: "CHATS",
+      sources: [{ chatId: "chat-3", label: "Planning", avatarFile: null, avatarKind: "family", fileCount: 1 }]
+    }]);
+  });
+
+  it("shows Message Archive as a source when it contains an attachment", () => {
+    const sources = buildStorageSources(
+      [{ ...audio, id: "archive-file", chatId: "archive", chatType: "archive", chatTitle: "Message Archive" }],
+      [{ id: "archive", type: "archive", title: "Message Archive", chatPhoto: null, members: [] }],
+      "me"
+    );
+
+    expect(sources).toEqual([{
+      label: "MESSAGE ARCHIVE",
+      sources: [{ chatId: "archive", label: "Message Archive", avatarFile: null, avatarKind: "archive", fileCount: 1 }]
+    }]);
   });
 
   it("separates family chats, groups, channels, and direct chats", () => {
@@ -138,7 +152,7 @@ describe("storage library helpers", () => {
     );
 
     expect(sources.map((group) => group.label)).toEqual([
-      "FAMILY CHATS", "GROUPS", "CHANNELS", "DIRECT CHATS"
+      "CHATS", "GROUPS", "CHANNELS", "DIRECT CHATS"
     ]);
   });
 });

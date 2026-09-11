@@ -200,22 +200,23 @@ type updateServerRoleRequest struct {
 }
 
 type planPublic struct {
-	ID           string               `json:"id"`
-	FamilyID     string               `json:"familyId"`
-	Title        string               `json:"title"`
-	Notes        *string              `json:"notes"`
-	Location     *string              `json:"location"`
-	StartsAt     time.Time            `json:"startsAt"`
-	EndsAt       time.Time            `json:"endsAt"`
-	AllDay       bool                 `json:"allDay"`
-	TimeZone     string               `json:"timeZone"`
-	Recurrence   *string              `json:"recurrence"`
-	CreatedBy    string               `json:"createdBy"`
-	SourceChatID *string              `json:"sourceChatId"`
-	Revision     int                  `json:"revision"`
-	CreatedAt    time.Time            `json:"createdAt"`
-	UpdatedAt    time.Time            `json:"updatedAt"`
-	Attendees    []planAttendeePublic `json:"attendees"`
+	ID                 string               `json:"id"`
+	FamilyID           string               `json:"familyId"`
+	Title              string               `json:"title"`
+	Notes              *string              `json:"notes"`
+	Location           *string              `json:"location"`
+	StartsAt           time.Time            `json:"startsAt"`
+	EndsAt             time.Time            `json:"endsAt"`
+	AllDay             bool                 `json:"allDay"`
+	TimeZone           string               `json:"timeZone"`
+	Recurrence         *string              `json:"recurrence"`
+	CreatedBy          string               `json:"createdBy"`
+	CreatorDisplayName string               `json:"creatorDisplayName,omitempty"`
+	SourceChatID       *string              `json:"sourceChatId"`
+	Revision           int                  `json:"revision"`
+	CreatedAt          time.Time            `json:"createdAt"`
+	UpdatedAt          time.Time            `json:"updatedAt"`
+	Attendees          []planAttendeePublic `json:"attendees"`
 }
 
 type planAttendeePublic struct {
