@@ -44,7 +44,6 @@ function openDatabase(): Promise<IDBDatabase> {
 }
 
 function loadLocal<T>(userId: string): T[] | null {
-  if (isAndroidLocalReplicaPlatform()) return null;
   try {
     const raw = localStorage.getItem(localKey(userId));
     const parsed = raw ? JSON.parse(raw) : null;
@@ -54,33 +53,13 @@ function loadLocal<T>(userId: string): T[] | null {
   }
 }
 
-async function removeLegacyFileList(userId: string): Promise<void> {
-  if (typeof localStorage !== "undefined") {
-    try {
-      localStorage.removeItem(localKey(userId));
-    } catch {
-      // The IndexedDB cleanup below remains useful when localStorage is unavailable.
-    }
-  }
-  if (typeof indexedDB === "undefined") return;
-  try {
-    const database = await openDatabase();
-    const transaction = database.transaction(STORE_NAME, "readwrite");
-    transaction.objectStore(STORE_NAME).delete(userId);
-    await new Promise<void>((resolve, reject) => {
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error);
-      transaction.onabort = () => reject(transaction.error);
-    });
-    database.close();
-  } catch {
-    // Best effort: a later encrypted write retries the migration cleanup.
-  }
-}
-
 /** Reads last-known metadata without delaying the storage page's refresh. */
 export async function loadCachedFileList<T>(userId: string): Promise<T[] | null> {
   if (!userId) return null;
+  // localStorage is immediately available to the WebView. Prefer it for the
+  // first paint instead of waiting for the asynchronous Capacitor bridge.
+  const fallback = typeof localStorage === "undefined" ? null : loadLocal<T>(userId);
+  if (fallback) return fallback;
   const native = await loadNativeReplicaValue(userId, NATIVE_CACHE_KEY);
   if (native) {
     try {
@@ -90,7 +69,6 @@ export async function loadCachedFileList<T>(userId: string): Promise<T[] | null>
       // Fall through to the existing browser cache while a profile migrates.
     }
   }
-  const fallback = typeof localStorage === "undefined" ? null : loadLocal<T>(userId);
   if (typeof indexedDB === "undefined") return fallback;
   try {
     const database = await openDatabase();
@@ -115,13 +93,10 @@ export async function loadCachedFileList<T>(userId: string): Promise<T[] | null>
 /** Stores metadata only; file bytes stay in the dedicated media cache. */
 export async function saveCachedFileList<T>(userId: string, files: T[]): Promise<void> {
   if (!userId) return;
-  if (await saveNativeReplicaValue(userId, NATIVE_CACHE_KEY, JSON.stringify(files))) {
-    void removeLegacyFileList(userId);
-    return;
-  }
-  // Do not fall back to a plaintext WebView cache on Android. A failed native
-  // write is observable as a missed cache refresh, not as leaked account data.
-  if (isAndroidLocalReplicaPlatform()) return;
+  // The native replica is the preferred durable store on Android, while the
+  // WebView copy lets the Storage page paint immediately before its bridge is
+  // ready (and remains the fallback on browsers without the native plugin).
+  await saveNativeReplicaValue(userId, NATIVE_CACHE_KEY, JSON.stringify(files));
   if (typeof localStorage !== "undefined") {
     try {
       localStorage.setItem(localKey(userId), JSON.stringify(files));
@@ -153,6 +128,16 @@ export type CachedCanvasPreview<T> = {
 /** Reads cached canvas document updates so previews can render immediately. */
 export async function loadCachedCanvasPreviews<T>(userId: string): Promise<Record<string, CachedCanvasPreview<T>> | null> {
   if (!userId) return null;
+  let fallback: Record<string, CachedCanvasPreview<T>> | null = null;
+  if (typeof localStorage !== "undefined") {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(canvasPreviewLocalKey(userId)) ?? "null");
+      if (parsed && typeof parsed === "object") fallback = parsed as Record<string, CachedCanvasPreview<T>>;
+    } catch {
+      // Best effort cache.
+    }
+  }
+  if (fallback) return fallback;
   const native = await loadNativeReplicaValue(userId, NATIVE_CANVAS_PREVIEW_CACHE_KEY);
   if (native) {
     try {
@@ -160,15 +145,6 @@ export async function loadCachedCanvasPreviews<T>(userId: string): Promise<Recor
       if (parsed && typeof parsed === "object") return parsed as Record<string, CachedCanvasPreview<T>>;
     } catch {
       // Fall through to the browser cache while a profile migrates.
-    }
-  }
-  let fallback: Record<string, CachedCanvasPreview<T>> | null = null;
-  if (!isAndroidLocalReplicaPlatform() && typeof localStorage !== "undefined") {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(canvasPreviewLocalKey(userId)) ?? "null");
-      if (parsed && typeof parsed === "object") fallback = parsed as Record<string, CachedCanvasPreview<T>>;
-    } catch {
-      // Best effort cache.
     }
   }
   if (typeof indexedDB === "undefined") return fallback;
@@ -190,8 +166,7 @@ export async function loadCachedCanvasPreviews<T>(userId: string): Promise<Recor
 export async function saveCachedCanvasPreviews<T>(userId: string, previews: Record<string, CachedCanvasPreview<T>>): Promise<void> {
   if (!userId) return;
   const serialized = JSON.stringify(previews);
-  if (await saveNativeReplicaValue(userId, NATIVE_CANVAS_PREVIEW_CACHE_KEY, serialized)) return;
-  if (isAndroidLocalReplicaPlatform()) return;
+  await saveNativeReplicaValue(userId, NATIVE_CANVAS_PREVIEW_CACHE_KEY, serialized);
   if (typeof localStorage !== "undefined") {
     try { localStorage.setItem(canvasPreviewLocalKey(userId), serialized); } catch { /* best effort */ }
   }
