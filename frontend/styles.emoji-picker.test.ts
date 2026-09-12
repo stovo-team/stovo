@@ -183,6 +183,10 @@ describe("native conversation viewport and presence", () => {
     );
   });
 
+  it("keeps quick-access tabs clear of the floating panel header", () => {
+    expect(rule(".quick-access-panel-tabs")).toContain("margin-top: 52px;");
+  });
+
   it("locks the active Android conversation to the viewport and keeps the message list as its only scroller", () => {
     expect(styles).toContain(':root[data-platform="native"] .messenger-shell.has-active-chat');
     expect(styles).toContain("height: 100dvh;");
