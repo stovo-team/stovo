@@ -6,6 +6,10 @@ const panel = readFileSync(resolve(process.cwd(), "src/features/chats/QuickAcces
 const page = readFileSync(resolve(process.cwd(), "src/pages/ChatsPage.tsx"), "utf8");
 
 describe("message archive grouped view", () => {
+  it("keeps archive view controls in the same visual position outside the grouped panel", () => {
+    expect(panel).toContain("quick-access-panel-tabs--archive-controls");
+  });
+
   it("lists archive-origin groups rather than unrelated recently active chats", () => {
     expect(panel).toContain("getMessageArchiveGroups(accessToken)");
     expect(panel).toContain("My Notes");
