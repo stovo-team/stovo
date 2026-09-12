@@ -6,8 +6,11 @@ import {
 
 const DATABASE_NAME = "stovo-file-library-v1";
 const STORE_NAME = "file-lists";
+const CANVAS_PREVIEW_STORE_NAME = "canvas-previews";
 const LOCAL_STORAGE_PREFIX = "stovo_cached_files_";
+const CANVAS_PREVIEW_LOCAL_STORAGE_PREFIX = "stovo_cached_canvas_previews_";
 const NATIVE_CACHE_KEY = "file-library";
+const NATIVE_CANVAS_PREVIEW_CACHE_KEY = "canvas-previews";
 
 type CachedFileList<T> = {
   userId: string;
@@ -19,14 +22,21 @@ function localKey(userId: string) {
   return `${LOCAL_STORAGE_PREFIX}${userId}`;
 }
 
+function canvasPreviewLocalKey(userId: string) {
+  return `${CANVAS_PREVIEW_LOCAL_STORAGE_PREFIX}${userId}`;
+}
+
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, 1);
+    const request = indexedDB.open(DATABASE_NAME, 2);
     request.onerror = () => reject(request.error);
     request.onupgradeneeded = () => {
       const database = request.result;
       if (!database.objectStoreNames.contains(STORE_NAME)) {
         database.createObjectStore(STORE_NAME, { keyPath: "userId" });
+      }
+      if (!database.objectStoreNames.contains(CANVAS_PREVIEW_STORE_NAME)) {
+        database.createObjectStore(CANVAS_PREVIEW_STORE_NAME, { keyPath: "userId" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -135,11 +145,77 @@ export async function saveCachedFileList<T>(userId: string, files: T[]): Promise
   }
 }
 
+export type CachedCanvasPreview<T> = {
+  updatedAt: string;
+  updates: T[];
+};
+
+/** Reads cached canvas document updates so previews can render immediately. */
+export async function loadCachedCanvasPreviews<T>(userId: string): Promise<Record<string, CachedCanvasPreview<T>> | null> {
+  if (!userId) return null;
+  const native = await loadNativeReplicaValue(userId, NATIVE_CANVAS_PREVIEW_CACHE_KEY);
+  if (native) {
+    try {
+      const parsed = JSON.parse(native);
+      if (parsed && typeof parsed === "object") return parsed as Record<string, CachedCanvasPreview<T>>;
+    } catch {
+      // Fall through to the browser cache while a profile migrates.
+    }
+  }
+  let fallback: Record<string, CachedCanvasPreview<T>> | null = null;
+  if (!isAndroidLocalReplicaPlatform() && typeof localStorage !== "undefined") {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(canvasPreviewLocalKey(userId)) ?? "null");
+      if (parsed && typeof parsed === "object") fallback = parsed as Record<string, CachedCanvasPreview<T>>;
+    } catch {
+      // Best effort cache.
+    }
+  }
+  if (typeof indexedDB === "undefined") return fallback;
+  try {
+    const database = await openDatabase();
+    const entry = await new Promise<{ previews?: Record<string, CachedCanvasPreview<T>> } | undefined>((resolve, reject) => {
+      const request = database.transaction(CANVAS_PREVIEW_STORE_NAME, "readonly").objectStore(CANVAS_PREVIEW_STORE_NAME).get(userId);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+    database.close();
+    return entry?.previews && typeof entry.previews === "object" ? entry.previews : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Persists canvas document updates used by the file-library previews. */
+export async function saveCachedCanvasPreviews<T>(userId: string, previews: Record<string, CachedCanvasPreview<T>>): Promise<void> {
+  if (!userId) return;
+  const serialized = JSON.stringify(previews);
+  if (await saveNativeReplicaValue(userId, NATIVE_CANVAS_PREVIEW_CACHE_KEY, serialized)) return;
+  if (isAndroidLocalReplicaPlatform()) return;
+  if (typeof localStorage !== "undefined") {
+    try { localStorage.setItem(canvasPreviewLocalKey(userId), serialized); } catch { /* best effort */ }
+  }
+  if (typeof indexedDB === "undefined") return;
+  try {
+    const database = await openDatabase();
+    const transaction = database.transaction(CANVAS_PREVIEW_STORE_NAME, "readwrite");
+    transaction.objectStore(CANVAS_PREVIEW_STORE_NAME).put({ userId, updatedAt: Date.now(), previews });
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+    database.close();
+  } catch {
+    // LocalStorage remains the fallback.
+  }
+}
+
 export async function clearCachedFileLists(): Promise<void> {
   if (typeof localStorage !== "undefined") {
     try {
       for (const key of Object.keys(localStorage)) {
-        if (key.startsWith(LOCAL_STORAGE_PREFIX)) localStorage.removeItem(key);
+        if (key.startsWith(LOCAL_STORAGE_PREFIX) || key.startsWith(CANVAS_PREVIEW_LOCAL_STORAGE_PREFIX)) localStorage.removeItem(key);
       }
     } catch {
       // Non-fatal.

@@ -62,14 +62,15 @@ describe("StorageCanvases", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders canvases and displays the .canvas extension in all or canvases filter", async () => {
+  it("renders canvases with concise metadata", async () => {
     await act(async () => {
       root?.render(<StorageCanvases accessToken="token" filter="all" search="" />);
     });
 
     expect(container?.textContent).toContain("Sprint Planning");
     expect(container?.textContent).toContain("Vacation Brainstorm");
-    expect(container?.textContent).toContain("Canvas • .canvas");
+    expect(container?.textContent).toContain("Canvas");
+    expect(container?.textContent).not.toContain(".canvas");
   });
 
   it("renders nothing when filter is not all and not canvases", async () => {
