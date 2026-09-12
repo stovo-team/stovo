@@ -13,6 +13,10 @@ const api = vi.hoisted(() => ({
     guestLimit: 10,
   })),
 }));
+const auth = vi.hoisted(() => ({
+  accessToken: null as string | null,
+  currentUser: null as { displayName: string; username: string; profilePhoto: null } | null,
+}));
 
 vi.mock("../api/guestMeetings", () => ({
   previewGuestMeeting: api.previewGuestMeeting,
@@ -22,7 +26,7 @@ vi.mock("../api/guestMeetings", () => ({
 }));
 
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ accessToken: null, currentUser: null }),
+  useAuth: () => auth,
 }));
 
 class FakeTrack {
@@ -56,6 +60,8 @@ async function renderPage() {
 }
 
 beforeEach(() => {
+  auth.accessToken = null;
+  auth.currentUser = null;
   vi.stubGlobal("MediaStream", FakeMediaStream);
   Object.defineProperty(navigator, "mediaDevices", {
     configurable: true,
@@ -82,6 +88,15 @@ afterEach(async () => {
 });
 
 describe("GuestMeetingPage pre-join controls", () => {
+  it("prefills the name field from the signed-in user without making it read-only", async () => {
+    auth.currentUser = { displayName: "Ivan Petrov", username: "ivan", profilePhoto: null };
+    await renderPage();
+
+    const nameInput = host?.querySelector<HTMLInputElement>('input[placeholder="Enter your name"]');
+    expect(nameInput?.value).toBe("Ivan Petrov");
+    expect(nameInput?.disabled).toBe(false);
+  });
+
   it("starts media immediately and renders compact device menus", async () => {
     await renderPage();
 

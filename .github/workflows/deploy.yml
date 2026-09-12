@@ -109,6 +109,12 @@ jobs:
               migrate validate --dir file:///migrations
             docker_with_space_recovery sudo docker build -t stovo-backend ./backend
 
+            # Reconcile the LiveKit SFU from the same Compose credentials that
+            # are passed to tenant backends below. Docker Compose recreates it
+            # only when its rendered configuration changed, avoiding needless
+            # disruption to active calls on ordinary deployments.
+            docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d livekit
+
             # Build and deploy frontend, orchestrator, and caddy gateway
             docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d --build frontend orchestrator caddy coturn
             # Caddyfile is bind-mounted. Compose does not recreate a container
