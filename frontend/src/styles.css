@@ -27359,9 +27359,8 @@ button.checklist-add-item-btn:hover,
 .guest-call-spotlight {
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 23%);
+  grid-template-columns: minmax(0, 1fr) clamp(180px, 16vw, 320px);
   height: 100%;
-  max-width: 1440px;
   min-height: 0;
   width: 100%;
 }
@@ -27372,20 +27371,28 @@ button.checklist-add-item-btn:hover,
 }
 
 .guest-call-screen-stage {
+  align-content: center;
   display: grid;
+  justify-items: stretch;
 }
 
 .guest-call-screen-tile {
-  height: 100%;
+  height: auto;
+  max-height: 100%;
   min-height: 0;
   width: 100%;
+}
+
+.guest-call-screen-tile .voice-participant-video-feed {
+  object-fit: contain;
 }
 
 .guest-call-camera-rail {
   display: grid;
   gap: 12px;
+  align-content: start;
   grid-auto-flow: row;
-  grid-auto-rows: minmax(0, 1fr);
+  grid-auto-rows: auto;
   grid-template-columns: 1fr;
   overflow-y: auto;
 }
@@ -27395,6 +27402,7 @@ button.checklist-add-item-btn:hover,
 }
 
 .guest-call-camera-tile {
+  aspect-ratio: 1;
   min-height: 0;
   padding: 0;
 }
@@ -27489,7 +27497,7 @@ button.checklist-add-item-btn:hover,
   .guest-call-controls .guest-device-control { width: 48px; }
   .guest-call-settings .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; bottom: auto; }
   .guest-call-spotlight { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(112px, 28%); }
-  .guest-call-camera-rail { grid-auto-flow: column; grid-auto-columns: minmax(140px, 1fr); grid-auto-rows: 1fr; grid-template-columns: none; overflow-x: auto; overflow-y: hidden; }
+  .guest-call-camera-rail { align-content: stretch; grid-auto-flow: column; grid-auto-columns: minmax(112px, 1fr); grid-auto-rows: 1fr; grid-template-columns: none; overflow-x: auto; overflow-y: hidden; }
   .guest-call-spotlight--grid .guest-call-camera-rail { grid-template-columns: none; }
 }
 
