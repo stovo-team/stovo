@@ -16,7 +16,7 @@ describe("message archive grouped view", () => {
     expect(panel).not.toContain("chat.lastMessageContent");
     expect(panel).toContain('onOpenGroup("notes")');
     expect(panel).toContain('<button type="button" className="chat-list-item"');
-    expect(panel).toContain('file={currentUser?.profilePhoto}');
+    expect(panel).toContain('<FileText size={20} />');
     expect(panel).toContain('chatAvatarFile(sourceChat, currentUserId)');
     expect(page).toContain("archiveGroup=${encodeURIComponent(group)}");
     expect(page).toContain('messageArchiveView === "grouped" && !archiveGroup');

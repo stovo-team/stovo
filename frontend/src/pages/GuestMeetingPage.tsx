@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Room, RoomEvent, Track } from "livekit-client";
+import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
 import { Camera, CameraOff, ChevronDown, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
@@ -124,15 +124,34 @@ export default function GuestMeetingPage() {
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      // Keep text and UI readable: ask the browser for a 1080p, 30fps capture and
+      // publish it with the matching high-detail LiveKit encoding below. The browser
+      // still retains final control over the selected display/window resolution.
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30, max: 30 }
+        },
+        audio: true
+      });
       const track = stream.getVideoTracks()[0];
       if (!track) {
         stream.getTracks().forEach((item) => item.stop());
         return;
       }
+      track.contentHint = "detail";
       screenShareStreamRef.current = stream;
       setLocalScreenStream(stream);
-      await room.localParticipant.publishTrack(track, { source: Track.Source.ScreenShare });
+      await room.localParticipant.publishTrack(track, {
+        source: Track.Source.ScreenShare,
+        degradationPreference: "maintain-resolution",
+        screenShareEncoding: { maxBitrate: 5_000_000, maxFramerate: 30 },
+        screenShareSimulcastLayers: [
+          new VideoPreset(640, 360, 400_000, 15),
+          new VideoPreset(1280, 720, 2_000_000, 30)
+        ]
+      });
       setIsScreenSharing(true);
       track.onended = () => { void stopScreenShare(); };
     } catch (e) {
@@ -258,7 +277,17 @@ export default function GuestMeetingPage() {
   useEffect(() => {
     void refreshDevices();
     void startLocalMedia().catch((e) => setDeviceIssue(e instanceof Error ? e.message : "Could not access your devices."));
-    return () => { markCurrentGuestSessionLeft(); void stopScreenShare(); stopLocalMedia(); void roomRef.current?.disconnect(); };
+    const refreshWhenDevicesChange = () => { void refreshDevices(); };
+    const mediaDevices = navigator.mediaDevices;
+    const canListenForDeviceChanges = Boolean(mediaDevices && typeof mediaDevices.addEventListener === "function");
+    if (canListenForDeviceChanges) mediaDevices.addEventListener("devicechange", refreshWhenDevicesChange);
+    return () => {
+      if (canListenForDeviceChanges && typeof mediaDevices?.removeEventListener === "function") mediaDevices.removeEventListener("devicechange", refreshWhenDevicesChange);
+      markCurrentGuestSessionLeft();
+      void stopScreenShare();
+      stopLocalMedia();
+      void roomRef.current?.disconnect();
+    };
     // Device permission is intentionally requested once on page entry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -359,11 +388,14 @@ export default function GuestMeetingPage() {
     };
   }, [hasVoiceActivity, microphoneEnabled]);
   const isSpeaking = speakingIndicatorState === "speaking";
+  const isSpeakingIndicatorVisible = speakingIndicatorState !== "idle";
 
   if (state === "joined") {
-    const participantCount = remoteStreams.length + 1;
+    const hasLocalScreenShare = Boolean(localScreenStream?.getVideoTracks().some((track) => track.readyState === "live"));
+    const hasLocalCamera = Boolean(cameraEnabled && localStreamRef.current?.getVideoTracks().some((track) => track.enabled && track.readyState === "live"));
+    const localCameraStream = localStreamRef.current;
+    const participantCount = remoteStreams.length + 1 + (hasLocalScreenShare && hasLocalCamera ? 1 : 0);
     const gridTierClass = participantCount === 1 ? "voice-grid--1" : participantCount === 2 ? "voice-grid--2" : participantCount <= 4 ? "voice-grid--4" : participantCount <= 6 ? "voice-grid--6" : "voice-grid--9";
-    const localHasVideo = Boolean(localScreenStream?.getVideoTracks().some((track) => track.readyState === "live") || (cameraEnabled && localStreamRef.current?.getVideoTracks().some((track) => track.enabled && track.readyState === "live")));
 
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div>
@@ -373,9 +405,12 @@ export default function GuestMeetingPage() {
         </header>
         <div className="voice-room-stage">
           <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
-            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={localHasVideo} muted={!microphoneEnabled} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>
-              {localScreenStream ? <LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /> : <video ref={localRef} className="voice-participant-video-feed is-mirrored" autoPlay muted playsInline />}
+            <GuestParticipantTile label={`${guestDisplayName} (You)${hasLocalScreenShare ? " — Screen" : ""}`} hasVideo={hasLocalScreenShare || hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeakingIndicatorVisible} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>
+              {hasLocalScreenShare && localScreenStream ? <LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /> : <video ref={localRef} className="voice-participant-video-feed is-mirrored" autoPlay muted playsInline />}
             </GuestParticipantTile>
+            {hasLocalScreenShare && hasLocalCamera && localCameraStream && <GuestParticipantTile label={`${guestDisplayName} (You) — Camera`} hasVideo muted={!microphoneEnabled} speaking={isSpeakingIndicatorVisible}>
+              <LocalStreamVideo stream={localCameraStream} className="voice-participant-video-feed is-mirrored" />
+            </GuestParticipantTile>}
             {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={remote.stream.getVideoTracks().some((track) => track.readyState === "live")}>
               <RemoteVideo stream={remote.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />
             </GuestParticipantTile>)}
@@ -461,14 +496,16 @@ function DeviceSelect({ value, onChange, devices, fallback }: { value: string; o
     <button ref={triggerRef} type="button" className="guest-device-menu-trigger" aria-label={`Select ${fallback}`} aria-haspopup="listbox" aria-controls={menuId} aria-expanded={open} title={`Select ${fallback}: ${selectedLabel}`} onClick={() => setOpen((isOpen) => !isOpen)}><ChevronDown size={16} aria-hidden="true" /></button>
     {open && <div id={menuId} className="guest-device-menu" role="listbox" aria-label={`${fallback} device`}>
       <div className="guest-device-menu-heading"><span>{fallback}</span></div>
-      <button type="button" role="option" aria-selected={!value} className="guest-device-menu-option" onClick={() => chooseDevice("")}><span>System default</span>{!value && <span aria-hidden="true">✓</span>}</button>
-      {devices.map((device, index) => <button type="button" role="option" aria-selected={device.deviceId === value} className="guest-device-menu-option" key={device.deviceId} onClick={() => chooseDevice(device.deviceId)}><span>{deviceLabel(device, fallback, index)}</span>{device.deviceId === value && <span aria-hidden="true">✓</span>}</button>)}
+      <div className="guest-device-menu-options">
+        <button type="button" role="option" aria-selected={!value} className="guest-device-menu-option" onClick={() => chooseDevice("")}><span>System default</span>{!value && <span aria-hidden="true">✓</span>}</button>
+        {devices.map((device, index) => <button type="button" role="option" aria-selected={device.deviceId === value} className="guest-device-menu-option" key={device.deviceId} onClick={() => chooseDevice(device.deviceId)}><span>{deviceLabel(device, fallback, index)}</span>{device.deviceId === value && <span aria-hidden="true">✓</span>}</button>)}
+      </div>
     </div>}
   </div>;
 }
-function GuestParticipantTile({ label, hasVideo, muted = false, avatar, children }: { label: string; hasVideo: boolean; muted?: boolean; avatar?: React.ReactNode; children?: React.ReactNode }) {
+function GuestParticipantTile({ label, hasVideo, muted = false, speaking = false, avatar, children }: { label: string; hasVideo: boolean; muted?: boolean; speaking?: boolean; avatar?: React.ReactNode; children?: React.ReactNode }) {
   return <div className={`voice-participant-card${hasVideo ? " has-video" : ""}`}>
-    {hasVideo ? <div className="voice-participant-video-container">{children}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>}
+    {hasVideo ? <div className="voice-participant-video-container">{children}{speaking && <span className="voice-video-speaking-border guest-video-speaking-border" aria-label="Speaking" />}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>}
     <div className="voice-participant-meta"><span className="voice-participant-name">{label}</span><span className="voice-participant-state">{muted ? "Muted" : "Connected"}</span></div>
   </div>;
 }

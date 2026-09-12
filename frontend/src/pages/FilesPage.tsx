@@ -697,7 +697,7 @@ export default function FilesPage() {
               </div>
             )}
             </>}
-            {!collectionPicker && <StorageCanvases accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />}
+            {!collectionPicker && <StorageCanvases accessToken={accessToken} userId={currentUser?.id} filter={filter} search={search} sourceChatId={sourceChatId} />}
             {!collectionPicker && <StorageChecklists accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />}
           </div>
         </div>

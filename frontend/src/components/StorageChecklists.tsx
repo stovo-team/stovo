@@ -198,7 +198,7 @@ export function StorageChecklists({
               <div className="storage-tile-info">
                 <strong>{checklist.title}</strong>
                 <small>
-                  {categoryLabel(checklist.category)} • .checklist • {checklist.completedItems}/{checklist.totalItems} done
+                  {categoryLabel(checklist.category)} • {checklist.completedItems}/{checklist.totalItems} done
                 </small>
               </div>
             </button>

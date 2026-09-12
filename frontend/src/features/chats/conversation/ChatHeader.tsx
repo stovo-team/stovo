@@ -5,6 +5,7 @@ import {
   BellOff,
   CheckCheck,
   Copy,
+  FileText,
   Info,
   Maximize2,
   MessageCircle,
@@ -125,13 +126,11 @@ export function ChatHeader({
     ? displayChatName(archiveGroupSourceChat, currentUser?.id, strings)
     : archiveGroupName ?? chatName;
   // An archive group represents a different conversation from the archive
-  // itself. Keep its visual identity attached to that source: the account's
-  // profile photo for My Notes, or the original chat's photo/avatar.
+  // itself. Keep source-chat groups attached to their original avatar; My
+  // Notes uses the Message Archive icon in both the list and its header.
   const archiveGroupAvatarFile = archiveGroupSourceChat
     ? chatAvatarFile(archiveGroupSourceChat, currentUser?.id)
-    : isNotesArchiveGroup
-      ? currentUser?.profilePhoto
-      : null;
+    : null;
   const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
   const handleBack = isArchiveGroup
     ? onBackFromArchiveGroup
@@ -176,14 +175,18 @@ export function ChatHeader({
         </div>
       ) : isArchiveGroup ? (
         <div className="chat-title-group chat-title-group--archive-group" aria-label={`Message Archive, ${archiveGroupName}`}>
-          <RealAvatar
-            accessToken={accessToken}
-            className={`avatar chat-avatar ${archiveGroupSourceChat ? chatAvatarTypeClass(archiveGroupSourceChat) : isNotesArchiveGroup ? "direct" : "archive chat-avatar--archive"}`}
-            fallbackKind={archiveGroupSourceChat ? chatAvatarFallbackKind(archiveGroupSourceChat) : isNotesArchiveGroup ? "direct" : "archive"}
-            file={archiveGroupAvatarFile}
-            label={archiveGroupChatName}
-            style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))}
-          />
+          {isNotesArchiveGroup ? (
+            <span className="avatar chat-avatar archive" style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))}><FileText size={20} /></span>
+          ) : (
+            <RealAvatar
+              accessToken={accessToken}
+              className={`avatar chat-avatar ${archiveGroupSourceChat ? chatAvatarTypeClass(archiveGroupSourceChat) : "archive chat-avatar--archive"}`}
+              fallbackKind={archiveGroupSourceChat ? chatAvatarFallbackKind(archiveGroupSourceChat) : "archive"}
+              file={archiveGroupAvatarFile}
+              label={archiveGroupChatName}
+              style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))}
+            />
+          )}
           <span className="chat-title-row" style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "title"))}>
             <span>Message Archive</span><span className="archive-group-title-divider" aria-hidden="true">•</span><span>{archiveGroupName}</span>
           </span>
