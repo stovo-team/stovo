@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track } from "livekit-client";
-import { Camera, CameraOff, ChevronDown, Mic, MicOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
+import { Camera, CameraOff, ChevronDown, Mic, MicOff, PhoneOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
@@ -9,6 +9,7 @@ import { createGuestMeetingSession, getGuestMeetingStatus, getGuestMeetingToken,
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "error";
+type RemoteParticipantStream = { id: string; stream: MediaStream };
 type SinkableMediaElement = HTMLMediaElement & { setSinkId?: (deviceId: string) => Promise<void> };
 type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void> };
 const SPEAKING_RING_RELEASE_DELAY_MS = 1000;
@@ -33,7 +34,7 @@ export default function GuestMeetingPage() {
   const [state, setState] = useState<MeetingState>("name");
   const [error, setError] = useState<string | null>(null);
   const [deviceIssue, setDeviceIssue] = useState<string | null>(null);
-  const [remoteStreams, setRemoteStreams] = useState<MediaStream[]>([]);
+  const [remoteStreams, setRemoteStreams] = useState<RemoteParticipantStream[]>([]);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
   const [speakerEnabled, setSpeakerEnabled] = useState(true);
@@ -240,8 +241,22 @@ export default function GuestMeetingPage() {
       const credentials = await getGuestMeetingToken(token);
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
-      room.on(RoomEvent.TrackSubscribed, (track) => { if (track.mediaStreamTrack) setRemoteStreams((previous) => [...previous, new MediaStream([track.mediaStreamTrack!])]); });
-      room.on(RoomEvent.TrackUnsubscribed, (track) => setRemoteStreams((previous) => previous.filter((stream) => !stream.getTracks().some((item) => item.id === track.mediaStreamTrack?.id))));
+      room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+        if (!track.mediaStreamTrack) return;
+        setRemoteStreams((previous) => {
+          const existing = previous.find((item) => item.id === participant.identity);
+          const tracks = existing?.stream.getTracks() ?? [];
+          return [
+            ...previous.filter((item) => item.id !== participant.identity),
+            { id: participant.identity, stream: new MediaStream([...tracks.filter((item) => item.id !== track.mediaStreamTrack?.id), track.mediaStreamTrack]) }
+          ];
+        });
+      });
+      room.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => setRemoteStreams((previous) => previous.flatMap((item) => {
+        if (item.id !== participant.identity) return [item];
+        const remainingTracks = item.stream.getTracks().filter((mediaTrack) => mediaTrack.id !== track.mediaStreamTrack?.id);
+        return remainingTracks.length ? [{ ...item, stream: new MediaStream(remainingTracks) }] : [];
+      })));
       await room.connect(resolveLiveKitUrl(credentials.url), credentials.token);
       if (!localStreamRef.current) await startLocalMedia();
       for (const track of localStreamRef.current?.getTracks() ?? []) {
@@ -282,6 +297,43 @@ export default function GuestMeetingPage() {
   const isSpeaking = speakingIndicatorState === "speaking";
   const isSpeakingIndicatorVisible = speakingIndicatorState !== "idle";
 
+  if (state === "joined") {
+    const participantCount = remoteStreams.length + 1;
+    const gridTierClass = participantCount === 1 ? "voice-grid--1" : participantCount === 2 ? "voice-grid--2" : participantCount <= 4 ? "voice-grid--4" : participantCount <= 6 ? "voice-grid--6" : "voice-grid--9";
+    const localHasVideo = Boolean(cameraEnabled && localStreamRef.current?.getVideoTracks().some((track) => track.enabled && track.readyState === "live"));
+
+    return <main className="guest-meeting-page guest-meeting-page--in-call">
+      <div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div>
+      <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`}>
+        <header className="guest-call-header">
+          <div><strong>{preview?.title || "Guest meeting"}</strong><span><i aria-hidden="true" /> {participantCount} {participantCount === 1 ? "participant" : "participants"}</span></div>
+        </header>
+        <div className="voice-room-stage">
+          <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
+            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={localHasVideo} muted={!microphoneEnabled} avatar={<RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} />}>
+              <video ref={localRef} className="voice-participant-video-feed is-mirrored" autoPlay muted playsInline />
+            </GuestParticipantTile>
+            {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={remote.stream.getVideoTracks().some((track) => track.readyState === "live")}>
+              <RemoteVideo stream={remote.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />
+            </GuestParticipantTile>)}
+          </div>
+        </div>
+        <div className="voice-room-bottom-bar">
+          <div className="voice-room-in-call-controls guest-call-controls" role="toolbar" aria-label="Meeting controls">
+            <DeviceControl label="Microphone" active={microphoneEnabled} speaking={isSpeaking} settling={isSpeakingIndicatorVisible && !isSpeaking} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={20} /> : <MicOff size={20} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
+            <DeviceControl label="Speaker" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} icon={speakerEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
+            <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={20} /> : <CameraOff size={20} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
+            <div className="guest-settings guest-call-settings" ref={settingsRef}>
+              <button ref={settingsButtonRef} className={`voice-dock-btn${settingsOpen ? " is-active" : ""}`} type="button" aria-label="Open device settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={20} /></button>
+              {settingsOpen && <section className="guest-settings-popover" role="dialog" aria-label="Device settings"><div className="guest-settings-section"><label>Microphone volume <strong>{inputGain}%</strong><input aria-label="Microphone volume" type="range" min="0" max="200" value={inputGain} onChange={(event) => setMicVolume(Number(event.target.value))} /></label><div className="guest-mic-test"><span>Microphone test</span>{analyserRef.current && microphoneEnabled ? <div className="guest-mic-meter" aria-label={`Microphone level ${meterLevel}%`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={meterLevel}><i style={{ width: `${meterLevel}%` }} /></div> : <small>Microphone unavailable</small>}</div></div><div className="guest-settings-section"><label>Speaker volume <strong>{outputVolume}%</strong><input aria-label="Speaker volume" type="range" min="0" max="100" value={outputVolume} onChange={(event) => setOutputVolume(Number(event.target.value))} /></label><button type="button" className="guest-test-sound" disabled={!speakerEnabled} onClick={() => void testSound()}><Volume2 size={16} /> Test sound</button></div>{deviceIssue && <p className="guest-device-issue" role="status">{deviceIssue}</p>}</section>}
+            </div>
+            <button className="voice-dock-btn voice-dock-btn--disconnect" type="button" onClick={leave} aria-label="Leave meeting" title="Leave meeting"><PhoneOff size={20} /></button>
+          </div>
+        </div>
+      </section>
+    </main>;
+  }
+
   return <main className="guest-meeting-page"><div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
     {state === "name" && <div className="guest-prejoin">
       <section className="guest-prejoin-preview">
@@ -302,7 +354,6 @@ export default function GuestMeetingPage() {
     </div>}
     {state === "waiting" && <p className="muted-copy">Waiting for the host to admit you…</p>}
     {state === "joining" && <p className="muted-copy">Joining meeting…</p>}
-    {state === "joined" && <div className="guest-meeting-media"><video ref={localRef} autoPlay muted playsInline /><div className="guest-meeting-remotes">{remoteStreams.map((stream, index) => <RemoteVideo key={index} stream={stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} />)}</div><button className="action-button danger" onClick={leave}>Leave meeting</button></div>}
     {error && <p className="error-text">{error}</p>}
   </section></main>;
 }
@@ -351,4 +402,10 @@ function DeviceSelect({ value, onChange, devices, fallback }: { value: string; o
     </div>}
   </div>;
 }
-function RemoteVideo({ stream, outputVolume, speakerEnabled, speakerDeviceId }: { stream: MediaStream; outputVolume: number; speakerEnabled: boolean; speakerDeviceId: string }) { const ref = useRef<HTMLVideoElement>(null); useEffect(() => { if (ref.current) ref.current.srcObject = stream; }, [stream]); useEffect(() => { const video = ref.current as SinkableMediaElement | null; if (!video) return; video.volume = speakerEnabled ? outputVolume / 100 : 0; if (speakerDeviceId && video.setSinkId) void video.setSinkId(speakerDeviceId).catch(() => undefined); }, [outputVolume, speakerDeviceId, speakerEnabled]); return <video ref={ref} autoPlay playsInline />; }
+function GuestParticipantTile({ label, hasVideo, muted = false, avatar, children }: { label: string; hasVideo: boolean; muted?: boolean; avatar?: React.ReactNode; children?: React.ReactNode }) {
+  return <div className={`voice-participant-card${hasVideo ? " has-video" : ""}`}>
+    {hasVideo ? <div className="voice-participant-video-container">{children}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>}
+    <div className="voice-participant-meta"><span className="voice-participant-name">{label}</span><span className="voice-participant-state">{muted ? "Muted" : "Connected"}</span></div>
+  </div>;
+}
+function RemoteVideo({ stream, outputVolume, speakerEnabled, speakerDeviceId, className }: { stream: MediaStream; outputVolume: number; speakerEnabled: boolean; speakerDeviceId: string; className?: string }) { const ref = useRef<HTMLVideoElement>(null); useEffect(() => { if (ref.current) ref.current.srcObject = stream; }, [stream]); useEffect(() => { const video = ref.current as SinkableMediaElement | null; if (!video) return; video.volume = speakerEnabled ? outputVolume / 100 : 0; if (speakerDeviceId && video.setSinkId) void video.setSinkId(speakerDeviceId).catch(() => undefined); }, [outputVolume, speakerDeviceId, speakerEnabled]); return <video ref={ref} className={className} autoPlay playsInline />; }

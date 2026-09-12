@@ -1,7 +1,9 @@
 import { FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getMessageArchiveGroups, type Chat, type MessageArchiveGroup } from "../../api/chats";
-import { displayChatName } from "./shared/chatPresentation";
+import type { User } from "../../api/auth";
+import { chatAvatarFallbackKind, chatAvatarFile, chatAvatarTypeClass, displayChatName } from "./shared/chatPresentation";
+import { RealAvatar } from "./sidebar/RealAvatar";
 
 export function QuickAccessPanel() {
   const [tab, setTab] = useState<"drafts" | "scheduled">("drafts");
@@ -18,7 +20,7 @@ export function MessageArchiveViewControls({ view, onChange }: { view: "all" | "
   return <div className="quick-access-panel-tabs quick-access-panel-tabs--archive-controls" role="tablist" aria-label="Message archive view"><button type="button" className={view === "all" ? "active" : ""} role="tab" aria-selected={view === "all"} onClick={() => onChange("all")}>All messages</button><button type="button" className={view === "grouped" ? "active" : ""} role="tab" aria-selected={view === "grouped"} onClick={() => onChange("grouped")}>Grouped by chat</button></div>;
 }
 
-export function MessageArchivePanel({ accessToken, chats, currentUserId, onViewChange, onOpenGroup }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onViewChange: (view: "all" | "grouped") => void; onOpenGroup: (group: string) => void }) {
+export function MessageArchivePanel({ accessToken, chats, currentUser, currentUserId, onViewChange, onOpenGroup }: { accessToken: string | null; chats: Chat[]; currentUser: User | null; currentUserId?: string; onViewChange: (view: "all" | "grouped") => void; onOpenGroup: (group: string) => void }) {
   const [groups, setGroups] = useState<MessageArchiveGroup[]>([]);
 
   useEffect(() => {
@@ -49,8 +51,12 @@ export function MessageArchivePanel({ accessToken, chats, currentUserId, onViewC
     <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header"><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-title-group"><span className="chat-title-row"><h1>Message Archive</h1></span></span></header>
     <div className="quick-access-panel-tabs" role="tablist" aria-label="Message archive view"><button type="button" role="tab" aria-selected={false} onClick={() => onViewChange("all")}>All messages</button><button type="button" className="active" role="tab" aria-selected={true}>Grouped by chat</button></div>
     <div className="archive-quick-list">
-      <button type="button" className="chat-list-item" onClick={() => onOpenGroup("notes")}><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>My Notes</strong></span><span className="chat-list-preview">Messages saved directly to Message Archive</span></span></button>
-      {rows.map((chat) => <button type="button" className="chat-list-item" key={chat.id} onClick={() => onOpenGroup(chat.id)}><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>{chat.title}</strong></span><span className="chat-list-preview">{chat.preview}</span></span></button>)}
+      <button type="button" className="chat-list-item" onClick={() => onOpenGroup("notes")}><RealAvatar accessToken={accessToken} className="avatar chat-avatar" fallbackKind="direct" file={currentUser?.profilePhoto} label="My Notes" /><span className="chat-list-copy"><span className="chat-list-topline"><strong>My Notes</strong></span><span className="chat-list-preview">Messages saved directly to Message Archive</span></span></button>
+      {rows.map((row) => {
+        const sourceChat = chats.find((chat) => chat.id === row.id);
+        const label = sourceChat ? displayChatName(sourceChat, currentUserId) : row.title;
+        return <button type="button" className="chat-list-item" key={row.id} onClick={() => onOpenGroup(row.id)}><RealAvatar accessToken={accessToken} className={`avatar chat-avatar ${sourceChat ? chatAvatarTypeClass(sourceChat) : "archive chat-avatar--archive"}`} fallbackKind={sourceChat ? chatAvatarFallbackKind(sourceChat) : "archive"} file={sourceChat ? chatAvatarFile(sourceChat, currentUserId) : null} label={label} /><span className="chat-list-copy"><span className="chat-list-topline"><strong>{row.title}</strong></span><span className="chat-list-preview">{row.preview}</span></span></button>;
+      })}
     </div>
   </section>;
 }

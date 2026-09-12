@@ -46,6 +46,7 @@ export default function ChatsPage() {
   const [isMessageArchiveOpen, setIsMessageArchiveOpen] = useState(false);
   const [messageArchiveView, setMessageArchiveView] = useState<MessageArchiveView>("all");
   const archiveGroup = new URLSearchParams(location.search).get("archiveGroup") ?? undefined;
+  const archiveGroupKind = archiveGroup === "notes" ? "notes" : archiveGroup ? "chat" : undefined;
   const {
     family, members, chats, selectedChat, setSelectedChat, isLoading, hasLoadedOverview, isChatLoading, isOnline,
     isChatMenuOpen, setIsChatMenuOpen, isDetailsOpen, setIsDetailsOpen, detailsTab, setDetailsTab,
@@ -248,7 +249,7 @@ export default function ChatsPage() {
             onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen && messageArchiveView === "grouped" && !archiveGroup ? <MessageArchivePanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onViewChange={updateMessageArchiveView} onOpenGroup={(group) => { const archive = chats.find((chat) => chat.type === "archive"); if (!archive) return; setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); navigate(`${getClusterPrefix()}/app/chats/${archive.id}?archiveGroup=${encodeURIComponent(group)}`); }} /> : <ConversationPanel
+            {isDraftsAndScheduledOpen ? <QuickAccessPanel /> : isMessageArchiveOpen && messageArchiveView === "grouped" && !archiveGroup ? <MessageArchivePanel accessToken={accessToken} chats={chats} currentUser={currentUser} currentUserId={currentUser?.id} onViewChange={updateMessageArchiveView} onOpenGroup={(group) => { const archive = chats.find((chat) => chat.type === "archive"); if (!archive) return; setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); navigate(`${getClusterPrefix()}/app/chats/${archive.id}?archiveGroup=${encodeURIComponent(group)}`); }} /> : <ConversationPanel
               thread={thread}
               composer={composerApi}
               accessToken={accessToken}
@@ -323,6 +324,7 @@ export default function ChatsPage() {
               }}
               archiveGroupSourceChat={archiveGroupSourceChat}
               archiveGroupName={archiveGroupName}
+              archiveGroupKind={archiveGroupKind}
               onBackFromArchiveGroup={archiveGroup ? () => {
                 const archive = chats.find((chat) => chat.type === "archive");
                 if (!archive) return;
