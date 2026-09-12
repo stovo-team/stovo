@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><title>Company Brain — Synthwave Neon</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0b001a; color: #fff; font-family: 'Courier New', monospace; overflow-x: hidden; }
+    .synth-grid {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 350px;
+      background: linear-gradient(transparent 0%, #ff007f 100%), repeating-linear-gradient(90deg, rgba(0,255,255,0.2) 0px, rgba(0,255,255,0.2) 1px, transparent 1px, transparent 40px);
+      transform: perspective(300px) rotateX(60deg); transform-origin: bottom;
+    }
+    .neon-pink { text-shadow: 0 0 15px #ff007f; }
+  </style>
+</head>
+<body class="p-8 min-h-screen relative flex flex-col justify-between">
+  <div class="synth-grid"></div>
+  <div class="relative z-10 flex justify-between items-center">
+    <div class="text-cyan-400 font-bold tracking-widest text-lg">[COMPANY_BRAIN // 1984]</div>
+    <div class="text-xs bg-fuchsia-950 border border-fuchsia-500 text-fuchsia-300 px-3 py-1">ALPHA STAGE</div>
+  </div>
+  <div class="relative z-10 max-w-2xl my-auto">
+    <h1 class="text-5xl font-black text-pink-500 neon-pink uppercase mb-4">NEON BRAIN MATRIX</h1>
+    <p class="text-cyan-200 text-sm mb-6 leading-relaxed">
+      WARNING: Early Alpha Build. Company Brain neural synchronizer is OFFLINE. Autonomous agent mesh is NOT AVAILABLE.
+    </p>
+    <div class="bg-black/80 border border-cyan-500 p-6 rounded-none">
+      <div class="text-xs text-yellow-400 font-bold mb-2">SALE: ALPHA SEATS -60% OFF</div>
+      <div class="text-2xl font-bold text-white mb-4">$19 / MO (MSRP $49)</div>
+      <button class="px-6 py-2.5 bg-pink-600 hover:bg-pink-500 text-white font-bold text-xs uppercase tracking-wider">Purchase Alpha Key</button>
+    </div>
+  </div>
+  <div class="relative z-10 text-xs text-zinc-500">Synthwave Alpha Prototype 2026.</div>
+</body>
+</html>

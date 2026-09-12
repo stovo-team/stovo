@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><title>Company Brain — Deep Space</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #010206; color: #fff; font-family: sans-serif; }
+    .starfield {
+      background: radial-gradient(white 1px, transparent 1px);
+      background-size: 50px 50px; opacity: 0.15;
+    }
+  </style>
+</head>
+<body class="p-8 min-h-screen relative flex flex-col justify-center">
+  <div class="absolute inset-0 starfield pointer-events-none"></div>
+  <div class="max-w-3xl mx-auto text-center relative z-10">
+    <div class="w-12 h-12 rounded-full bg-blue-600/30 border border-blue-400 flex items-center justify-center mx-auto mb-6">🪐</div>
+    <h1 class="text-5xl font-bold tracking-tight mb-4">Deep Space Knowledge Core</h1>
+    <div class="text-xs text-amber-400 font-mono mb-6">[ORBITAL STATUS: ALPHA PROTOTYPE // CORE MODULES UNREACHABLE]</div>
+    <p class="text-zinc-400 text-sm max-w-lg mx-auto mb-8">
+      The company brain cluster is under orbital assembly. Many features are not available yet. Sales pricing active for early ground stations.
+    </p>
+    <div class="p-6 bg-zinc-950/80 border border-blue-900 rounded-2xl flex justify-between items-center max-w-md mx-auto">
+      <div class="text-left">
+        <span class="text-xs text-zinc-400">Ground Station Alpha</span>
+        <div class="text-xl font-bold text-blue-300">$17/mo <span class="text-xs text-zinc-600 line-through">$40</span></div>
+      </div>
+      <button class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold">Initiate Link</button>
+    </div>
+  </div>
+</body>
+</html>

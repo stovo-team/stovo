@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><title>Company Brain — Dark Tactile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #1a1a1f; color: #d0d0d5; font-family: sans-serif; }
+    .neomorph {
+      background: #1a1a1f;
+      box-shadow: 8px 8px 20px #0e0e11, -8px -8px 20px #26262d;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .neomorph-inset {
+      background: #16161a;
+      box-shadow: inset 4px 4px 10px #0e0e11, inset -4px -4px 10px #26262d;
+    }
+  </style>
+</head>
+<body class="p-8 max-w-3xl mx-auto min-h-screen flex flex-col justify-center">
+  <div class="neomorph rounded-3xl p-8">
+    <div class="flex justify-between items-center mb-6">
+      <span class="text-xs font-bold text-zinc-400">TACTILE HARDWARE CONSOLE</span>
+      <span class="text-xs px-2.5 py-1 rounded bg-amber-950 text-amber-400 border border-amber-800">ALPHA v0.1</span>
+    </div>
+    <h1 class="text-3xl font-extrabold text-white mb-3">Company Brain Deck</h1>
+    <p class="text-xs text-zinc-400 mb-6">Development in early alpha. Features are currently unavailable. Early sales active.</p>
+    <div class="neomorph-inset rounded-2xl p-4 mb-6 space-y-2 text-xs">
+      <div class="flex justify-between text-zinc-400"><span>Brain Sync Engine</span><span class="text-red-400">OFFLINE</span></div>
+      <div class="flex justify-between text-zinc-400"><span>Local Embeddings</span><span class="text-emerald-400">ACTIVE</span></div>
+    </div>
+    <div class="flex justify-between items-center">
+      <div>
+        <div class="text-xs text-zinc-400">Alpha Pricing</div>
+        <div class="text-xl font-bold text-white">$20/mo <span class="text-xs text-zinc-500 line-through">$50</span></div>
+      </div>
+      <button class="neomorph px-6 py-3 rounded-xl text-xs font-bold text-white hover:text-indigo-400">Connect Sales</button>
+    </div>
+  </div>
+</body>
+</html>

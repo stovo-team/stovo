@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><title>Company Brain — Kinetic Bold</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0f0a1c; color: #fff; font-family: Impact, sans-serif; overflow-x: hidden; }
+    .marquee { display: flex; overflow: hidden; white-space: nowrap; }
+    .marquee-inner { display: flex; animation: marquee 12s linear infinite; }
+    @keyframes marquee { 0% { transform: translateX(0%); } 100% { transform: translateX(-50%); } }
+  </style>
+</head>
+<body class="py-12">
+  <div class="marquee bg-amber-400 text-black py-2 mb-12 text-sm uppercase tracking-widest font-sans font-bold">
+    <div class="marquee-inner">
+      <span>⚠️ EARLY ALPHA BUILD • MANY FEATURES UNAVAILABLE • SPECIAL SALES ACTIVE • EARLY ALPHA BUILD • MANY FEATURES UNAVAILABLE • SPECIAL SALES ACTIVE • </span>
+      <span>⚠️ EARLY ALPHA BUILD • MANY FEATURES UNAVAILABLE • SPECIAL SALES ACTIVE • EARLY ALPHA BUILD • MANY FEATURES UNAVAILABLE • SPECIAL SALES ACTIVE • </span>
+    </div>
+  </div>
+  <div class="max-w-5xl mx-auto px-6">
+    <h1 class="text-7xl md:text-9xl uppercase tracking-tighter leading-none text-purple-400 mb-6">
+      COMPANY<br>BRAIN
+    </h1>
+    <p class="font-sans text-lg text-zinc-300 max-w-xl mb-8">
+      Development is currently in EARLY ALPHA. The core company brain is NOT available yet.
+    </p>
+    <div class="font-sans bg-purple-950/40 border-2 border-purple-500 p-8 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-6">
+      <div>
+        <div class="text-amber-400 font-bold text-xs uppercase">ALPHA SALE DISCOUNT</div>
+        <div class="text-4xl font-extrabold text-white mt-1">$25 <span class="text-sm text-zinc-400 font-normal">/ month (Normally $60)</span></div>
+      </div>
+      <button class="px-8 py-4 bg-purple-500 hover:bg-purple-400 text-white font-bold rounded-2xl uppercase tracking-wider text-sm transition">
+        Claim Alpha Price
+      </button>
+    </div>
+  </div>
+</body>
+</html>

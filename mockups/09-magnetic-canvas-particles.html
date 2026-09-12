@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><title>Company Brain — Interactive Particles</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { background: #000; color: #fff; font-family: system-ui, sans-serif; overflow: hidden; }
+    canvas { position: absolute; inset: 0; z-index: 0; }
+    .content { position: relative; z-index: 10; }
+  </style>
+</head>
+<body class="h-screen flex flex-col justify-between p-8">
+  <canvas id="particleCanvas"></canvas>
+  <div class="content flex justify-between items-center">
+    <span class="font-bold text-lg text-indigo-400">Company Brain • ReactBits Canvas</span>
+    <span class="text-xs bg-red-950 text-red-400 border border-red-800 px-3 py-1 rounded-full">Early Alpha: Core Brain Unavailable</span>
+  </div>
+  <div class="content max-w-2xl mx-auto text-center my-auto">
+    <h1 class="text-5xl font-black mb-4">Constellation Memory</h1>
+    <p class="text-zinc-400 text-sm mb-6">Interactive neural particle mesh. Development is in early alpha; autonomous knowledge routing is not available yet.</p>
+    <div class="p-4 bg-zinc-900/80 backdrop-blur border border-zinc-800 rounded-xl mb-6 flex justify-between items-center text-left">
+      <div>
+        <div class="text-xs text-amber-400 font-bold uppercase">Alpha Sales Special</div>
+        <div class="text-white font-bold text-lg">$19/mo <span class="text-xs text-zinc-500 line-through">$49</span></div>
+      </div>
+      <button class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold">Get Alpha Access</button>
+    </div>
+  </div>
+  <div class="content text-center text-xs text-zinc-600">Move your cursor to warp neural particles.</div>
+  <script>
+    const canvas = document.getElementById('particleCanvas');
+    const ctx = canvas.getContext('2d');
+    let w = canvas.width = window.innerWidth;
+    let h = canvas.height = window.innerHeight;
+    const pts = Array.from({length: 80}, () => ({
+      x: Math.random()*w, y: Math.random()*h, vx: (Math.random()-0.5)*1.5, vy: (Math.random()-0.5)*1.5
+    }));
+    function draw() {
+      ctx.clearRect(0,0,w,h);
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.15)';
+      ctx.fillStyle = '#6366f1';
+      pts.forEach((p, i) => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > w) p.vx *= -1;
+        if (p.y < 0 || p.y > h) p.vy *= -1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+        for (let j = i+1; j < pts.length; j++) {
+          let dx = pts[j].x - p.x, dy = pts[j].y - p.y, dist = Math.hypot(dx, dy);
+          if (dist < 120) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(pts[j].x, pts[j].y); ctx.stroke(); }
+        }
+      });
+      requestAnimationFrame(draw);
+    }
+    draw();
+  </script>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stovo — Magic UI Bento Edition</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Geist', sans-serif; background: #09090b; color: #fafafa; }
+    .mono { font-family: 'Geist Mono', monospace; }
+    .bento-card {
+      background: #121215;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .bento-card:hover {
+      border-color: rgba(225, 29, 72, 0.4);
+      transform: translateY(-2px);
+    }
+    .radar-sweep {
+      position: absolute; width: 220px; height: 220px; border-radius: 50%;
+      border: 1px solid rgba(225, 29, 72, 0.3);
+      animation: radar 4s linear infinite;
+    }
+    @keyframes radar { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(2.4); opacity: 0; } }
+    .shine-text {
+      background: linear-gradient(110deg, #9ca3af 25%, #ffffff 50%, #9ca3af 75%);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: shine 5s ease-in-out infinite;
+    }
+    @keyframes shine { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+    .stovo-grad { background: linear-gradient(135deg, #e11d48, #fb923c); }
+  </style>
+</head>
+<body class="p-6 md:p-12 max-w-7xl mx-auto">
+  <!-- Status Bar -->
+  <div class="flex flex-wrap items-center justify-between gap-4 pb-8 border-b border-zinc-800">
+    <div class="flex items-center gap-3">
+      <svg width="30" height="30" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stovoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e11d48"/>
+          <stop offset="100%" stop-color="#fb923c"/>
+        </linearGradient>
+      </defs>
+      <rect x="6" y="10" width="12" height="20" rx="6" transform="rotate(-25 6 10)" fill="url(#stovoGrad)" opacity="0.75"/>
+      <rect x="14" y="8" width="12" height="22" rx="6" transform="rotate(-15 14 8)" fill="url(#stovoGrad)" opacity="0.9"/>
+      <rect x="22" y="6" width="12" height="24" rx="6" transform="rotate(0 22 6)" fill="url(#stovoGrad)"/>
+    </svg>
+      <span class="font-bold tracking-tight text-xl">Stovo</span>
+      <span class="mono text-xs bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded">Early Alpha</span>
+    </div>
+    <div class="flex items-center gap-3 text-xs mono text-zinc-400">
+      <span>Company Brain: <span class="text-rose-400 font-semibold">Unavailable (WIP)</span></span>
+      <span>•</span>
+      <span class="text-amber-400 font-semibold">Alpha Sales: Up to 65% OFF</span>
+    </div>
+  </div>
+
+  <!-- Hero Header -->
+  <header class="py-16 max-w-3xl">
+    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-zinc-800 bg-zinc-900 text-xs text-zinc-400 mb-6">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+      Self-Hosted or Cloud • Docker Compose Ready
+    </div>
+    <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight shine-text mb-4 leading-tight">
+      Your company's private workspace. On your terms.
+    </h1>
+    <p class="text-zinc-400 text-base leading-relaxed mb-8">
+      Chat, files, identity and Company Brain — hosted by Stovo or deployed on your own infrastructure.
+      <strong class="text-zinc-200 block mt-2">Notice: Currently in Early Alpha. The Company Brain autonomous memory module is locked during testing.</strong>
+    </p>
+    <div class="flex gap-4">
+      <button class="px-6 py-3 stovo-grad text-white font-semibold text-xs rounded-xl shadow-lg hover:opacity-90 transition">Get Stovo (Alpha Sale)</button>
+      <button class="px-6 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold text-xs rounded-xl border border-zinc-800 transition">View Docker Compose</button>
+    </div>
+  </header>
+
+  <!-- Bento Grid Showcase -->
+  <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-16">
+    <!-- Big Bento: Chat & Infrastructure -->
+    <div class="bento-card rounded-2xl p-6 lg:col-span-2 lg:row-span-2 flex flex-col justify-between">
+      <div class="absolute -top-10 -right-10 radar-sweep"></div>
+      <div>
+        <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-4">
+          <i data-lucide="shield-check" class="w-5 h-5"></i>
+        </div>
+        <span class="mono text-[11px] text-emerald-400 uppercase tracking-wider font-semibold">Ready in Alpha</span>
+        <h3 class="text-2xl font-bold text-white mt-1 mb-3">Self-Hosted Communication Mesh</h3>
+        <p class="text-zinc-400 text-sm leading-relaxed">
+          Real-time WebSocket chat, MinIO-backed encrypted file sharing, zero-knowledge air-gapped LAN mode, and role-based access control.
+        </p>
+      </div>
+      <div class="mt-8 pt-4 border-t border-zinc-800 flex items-center justify-between text-xs mono">
+        <span class="text-zinc-500">Core Messaging</span>
+        <span class="text-emerald-400 font-bold">100% Operational</span>
+      </div>
+    </div>
+
+    <!-- Company Brain Bento (LOCKED) -->
+    <div class="bento-card rounded-2xl p-6 bg-zinc-950/60 border-dashed border-rose-900/60">
+      <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center mb-3">
+        <i data-lucide="brain" class="w-4 h-4"></i>
+      </div>
+      <span class="mono text-[10px] text-rose-400 uppercase font-semibold">Unavailable</span>
+      <h4 class="text-lg font-bold text-white mt-1">Company Brain</h4>
+      <p class="text-zinc-500 text-xs mt-2">Autonomous knowledge graph and cross-project memory is locked in early alpha.</p>
+    </div>
+
+    <!-- WebRTC Audio Bento -->
+    <div class="bento-card rounded-2xl p-6">
+      <div class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-400 flex items-center justify-center mb-3">
+        <i data-lucide="mic" class="w-4 h-4"></i>
+      </div>
+      <span class="mono text-[10px] text-emerald-400 uppercase font-semibold">Active</span>
+      <h4 class="text-lg font-bold text-white mt-1">Voice &amp; Video Mesh</h4>
+      <p class="text-zinc-400 text-xs mt-2">High-fidelity 48kHz audio relays for teams and gaming channels.</p>
+    </div>
+
+    <!-- Alpha Sale Banner Bento -->
+    <div class="bento-card rounded-2xl p-6 lg:col-span-2 bg-gradient-to-br from-rose-950/30 via-zinc-900 to-zinc-950 border-rose-500/30">
+      <div class="flex items-start justify-between">
+        <div>
+          <span class="mono text-[11px] text-amber-300 font-bold uppercase tracking-wider bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Alpha Sale Event</span>
+          <h3 class="text-xl font-bold text-white mt-2">Alpha Pass: 65% Discount</h3>
+          <p class="text-zinc-400 text-xs mt-1">Lock in permanent pricing while we finalize the Company Brain engine.</p>
+        </div>
+        <div class="text-right">
+          <span class="text-zinc-500 line-through text-xs mono">$69/mo</span>
+          <div class="text-2xl font-extrabold text-rose-400 mono">$24<span class="text-xs text-zinc-400 font-normal">/mo</span></div>
+        </div>
+      </div>
+      <div class="mt-4 flex gap-3">
+        <button class="px-4 py-2 stovo-grad text-white rounded-lg text-xs font-semibold hover:opacity-90 transition">Claim Alpha Seat</button>
+        <button class="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg text-xs font-semibold transition">Talk to Sales</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pricing Overview -->
+  <div class="border border-zinc-800 rounded-2xl p-6 md:p-8 bg-zinc-900/40">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <h3 class="text-lg font-bold text-white">Stovo Alpha Sizing</h3>
+        <p class="text-zinc-400 text-xs">Self-hosted is $0 forever; Cloud plans slashed for early testers.</p>
+      </div>
+      <span class="text-xs text-emerald-400 mono bg-emerald-500/10 px-3 py-1 rounded border border-emerald-500/20">No Data Selling • Pure Privacy</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+      <div class="p-4 rounded-xl bg-zinc-900 border border-zinc-800">
+        <div class="text-zinc-400 font-mono">Community Self-Hosted</div>
+        <div class="text-2xl font-bold text-white my-2">$0 <span class="text-xs text-zinc-500 font-normal">forever</span></div>
+        <p class="text-zinc-400">Run Docker on your hardware. Unlimited users.</p>
+      </div>
+      <div class="p-4 rounded-xl bg-rose-950/20 border border-rose-500/40">
+        <div class="text-rose-300 font-mono font-semibold">Managed Cloud (Sale)</div>
+        <div class="text-2xl font-bold text-rose-400 my-2">$24 <span class="text-xs text-zinc-500 line-through">$69/mo</span></div>
+        <p class="text-zinc-300">Dedicated cloud pod. Priority queue for Company Brain.</p>
+      </div>
+      <div class="p-4 rounded-xl bg-zinc-900 border border-zinc-800">
+        <div class="text-zinc-400 font-mono">Commercial Enterprise</div>
+        <div class="text-2xl font-bold text-white my-2">Sales Quote</div>
+        <p class="text-zinc-400">Custom air-gapped VPC and compliance assistance.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

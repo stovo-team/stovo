@@ -120,7 +120,7 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(host?.querySelector(".guest-preview-avatar-halo .guest-preview-avatar")).not.toBeNull();
   });
 
-  it("stacks attendee avatars and shows the remaining attendee count", async () => {
+  it("shows the accurate admitted guest count without placeholder avatars", async () => {
     api.previewGuestMeeting.mockResolvedValueOnce({
       title: "Daily standup",
       scheduledAt: "2026-09-12T09:00:00.000Z",
@@ -131,9 +131,9 @@ describe("GuestMeetingPage pre-join controls", () => {
     });
     await renderPage();
 
-    expect(host?.querySelectorAll(".guest-prejoin-guest-avatar")).toHaveLength(4);
-    expect(host?.querySelector(".guest-prejoin-guest-avatar--count")?.textContent).toBe("+2");
-    expect(host?.querySelector(".guest-prejoin-attendee-copy")?.textContent).toContain("5 people are already here");
+    expect(host?.querySelector(".guest-prejoin-attendee-avatars")).toBeNull();
+    expect(host?.querySelectorAll(".guest-prejoin-guest-avatar")).toHaveLength(0);
+    expect(host?.querySelector(".guest-prejoin-attendee-copy")?.textContent).toContain("5 guests are already here");
   });
 
   it("opens and closes the settings popover with speaker and microphone tests", async () => {

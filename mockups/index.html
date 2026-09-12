@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stovo — Authentic Landing Page Form Experiments</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #040711; color: #f3f4f6; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .preview-frame { transition: width 0.3s ease; background: #000; }
+  </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+  <header class="bg-[#090d1a] border-b border-white/10 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 z-50">
+    <div class="flex items-center gap-3">
+      <svg width="30" height="30" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stovoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e11d48"/>
+          <stop offset="100%" stop-color="#fb923c"/>
+        </linearGradient>
+      </defs>
+      <rect x="6" y="10" width="12" height="20" rx="6" transform="rotate(-25 6 10)" fill="url(#stovoGrad)" opacity="0.75"/>
+      <rect x="14" y="8" width="12" height="22" rx="6" transform="rotate(-15 14 8)" fill="url(#stovoGrad)" opacity="0.9"/>
+      <rect x="22" y="6" width="12" height="24" rx="6" transform="rotate(0 22 6)" fill="url(#stovoGrad)"/>
+    </svg>
+      <div>
+        <h1 class="font-bold text-base tracking-tight text-white flex items-center gap-2">
+          Stovo Landing <span class="text-rose-400 text-xs font-mono font-normal">Radical Form Experiments</span>
+        </h1>
+        <p class="text-[11px] text-zinc-400">100% Unchanged Foundation &amp; Content • Drastic Visual &amp; Aesthetic Form Variance</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <select id="mockupSelector" onchange="loadMockup(this.value)" class="bg-zinc-900 border border-white/15 text-xs text-white rounded-lg px-3 py-2 font-medium outline-none focus:border-rose-500">
+        <option value="01-stovo-aceternity-full.html">01 - Aceternity Ambient Form</option><option value="02-stovo-linear-precision-full.html">02 - Linear Dark Precision Form</option><option value="03-stovo-luxury-editorial-full.html">03 - Luxury Editorial Form</option><option value="04-stovo-swiss-brutalist-full.html">04 - Swiss Neo-Brutalist Form</option><option value="05-stovo-cult-terminal-full.html">05 - Cyber Terminal Form</option><option value="06-stovo-visionos-spatial-full.html">06 - VisionOS Spatial Glass Form</option>
+      </select>
+
+      <div class="hidden sm:flex items-center bg-zinc-900 p-1 rounded-lg border border-white/10 text-zinc-400">
+        <button onclick="setDevice('desktop')" id="btn-desktop" class="p-1.5 rounded bg-white/10 text-white" title="Desktop (100%)">
+          <i data-lucide="monitor" class="w-4 h-4"></i>
+        </button>
+        <button onclick="setDevice('tablet')" id="btn-tablet" class="p-1.5 rounded hover:text-white" title="Tablet (768px)">
+          <i data-lucide="tablet" class="w-4 h-4"></i>
+        </button>
+        <button onclick="setDevice('mobile')" id="btn-mobile" class="p-1.5 rounded hover:text-white" title="Mobile (390px)">
+          <i data-lucide="smartphone" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <a id="openNewTab" href="01-stovo-aceternity-full.html" target="_blank" class="px-3 py-2 bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition">
+        <span>Open Standalone</span>
+        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+      </a>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+    <aside class="w-80 bg-[#060914] border-r border-white/10 overflow-y-auto hidden lg:block p-3 space-y-1.5">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-zinc-500 px-3 py-2">Experimental Forms</div>
+      
+      <button onclick="selectItem('01-stovo-aceternity-full.html')" id="item-01-stovo-aceternity-full.html" class="nav-item w-full text-left p-2.5 rounded-xl border border-transparent hover:bg-white/5 transition flex items-start gap-3">
+        <span class="mono text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800 px-1.5 py-0.5 rounded">01</span>
+        <div>
+          <div class="text-xs font-bold text-zinc-200">Aceternity Ambient Form</div>
+          <div class="text-[10px] text-zinc-500 truncate max-w-[190px]">Conic Lamp & Radiant Mesh</div>
+        </div>
+      </button>
+      <button onclick="selectItem('02-stovo-linear-precision-full.html')" id="item-02-stovo-linear-precision-full.html" class="nav-item w-full text-left p-2.5 rounded-xl border border-transparent hover:bg-white/5 transition flex items-start gap-3">
+        <span class="mono text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800 px-1.5 py-0.5 rounded">02</span>
+        <div>
+          <div class="text-xs font-bold text-zinc-200">Linear Dark Precision Form</div>
+          <div class="text-[10px] text-zinc-500 truncate max-w-[190px]">Micro-Borders & Subdued Contrast</div>
+        </div>
+      </button>
+      <button onclick="selectItem('03-stovo-luxury-editorial-full.html')" id="item-03-stovo-luxury-editorial-full.html" class="nav-item w-full text-left p-2.5 rounded-xl border border-transparent hover:bg-white/5 transition flex items-start gap-3">
+        <span class="mono text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800 px-1.5 py-0.5 rounded">03</span>
+        <div>
+          <div class="text-xs font-bold text-zinc-200">Luxury Editorial Form</div>
+          <div class="text-[10px] text-zinc-500 truncate max-w-[190px]">Newsreader Serif & Minimal Hairlines</div>
+        </div>
+      </button>
+      <button onclick="selectItem('04-stovo-swiss-brutalist-full.html')" id="item-04-stovo-swiss-brutalist-full.html" class="nav-item w-full text-left p-2.5 rounded-xl border border-transparent hover:bg-white/5 transition flex items-start gap-3">
+        <span class="mono text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800 px-1.5 py-0.5 rounded">04</span>
+        <div>
+          <div class="text-xs font-bold text-zinc-200">Swiss Neo-Brutalist Form</div>
+          <div class="text-[10px] text-zinc-500 truncate max-w-[190px]">Bold Black Borders & Hard Shadows</div>
+        </div>
+      </button>
+      <button onclick="selectItem('05-stovo-cult-terminal-full.html')" id="item-05-stovo-cult-terminal-full.html" class="nav-item w-full text-left p-2.5 rounded-xl border border-transparent hover:bg-white/5 transition flex items-start gap-3">
+        <span class="mono text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800 px-1.5 py-0.5 rounded">05</span>
+        <div>
+          <div class="text-xs font-bold text-zinc-200">Cyber Terminal Form</div>
+          <div class="text-[10px] text-zinc-500 truncate max-w-[190px]">Cult UI Phosphor Terminal</div>
+        </div>
+      </button>
+      <button onclick="selectItem('06-stovo-visionos-spatial-full.html')" id="item-06-stovo-visionos-spatial-full.html" class="nav-item w-full text-left p-2.5 rounded-xl border border-transparent hover:bg-white/5 transition flex items-start gap-3">
+        <span class="mono text-xs font-bold text-rose-400 bg-rose-950/60 border border-rose-800 px-1.5 py-0.5 rounded">06</span>
+        <div>
+          <div class="text-xs font-bold text-zinc-200">VisionOS Spatial Glass Form</div>
+          <div class="text-[10px] text-zinc-500 truncate max-w-[190px]">Frosted Glass & Depth Blur</div>
+        </div>
+      </button>
+    </aside>
+
+    <main class="flex-1 bg-zinc-950 flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <iframe id="previewFrame" src="01-stovo-aceternity-full.html" class="preview-frame w-full h-full rounded-xl border border-white/10 shadow-2xl"></iframe>
+    </main>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    function loadMockup(file) {
+      document.getElementById('previewFrame').src = file;
+      document.getElementById('openNewTab').href = file;
+      document.getElementById('mockupSelector').value = file;
+      
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('bg-white/10', 'border-white/20'));
+      const activeBtn = document.getElementById('item-' + file);
+      if (activeBtn) activeBtn.classList.add('bg-white/10', 'border-white/20');
+    }
+
+    function selectItem(file) {
+      loadMockup(file);
+    }
+
+    function setDevice(device) {
+      const frame = document.getElementById('previewFrame');
+      document.querySelectorAll('#btn-desktop, #btn-tablet, #btn-mobile').forEach(b => b.classList.remove('bg-white/10', 'text-white'));
+      document.getElementById('btn-' + device).classList.add('bg-white/10', 'text-white');
+      
+      if (device === 'desktop') frame.style.width = '100%';
+      if (device === 'tablet') frame.style.width = '768px';
+      if (device === 'mobile') frame.style.width = '390px';
+    }
+
+    selectItem('01-stovo-aceternity-full.html');
+  </script>
+</body>
+</html>

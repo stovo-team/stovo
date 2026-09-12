@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stovo — Self-Hosted Private Messenger [Early Alpha]</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0b0f19; color: #f3f4f6; overflow-x: hidden; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .lamp-glow {
+      background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(225, 29, 72, 0.28), rgba(251, 146, 60, 0.15), transparent 70%);
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.7);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+    .glass-card:hover {
+      border-color: rgba(244, 63, 94, 0.4);
+      box-shadow: 0 12px 40px 0 rgba(225, 29, 72, 0.15);
+    }
+    .stovo-gradient {
+      background: linear-gradient(135deg, #e11d48, #fb923c);
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Alpha Top Banner -->
+  <div class="bg-gradient-to-r from-rose-950/60 via-amber-950/40 to-zinc-950 border-b border-rose-500/20 px-4 py-2.5 text-center text-xs tracking-wide">
+    <span class="inline-flex items-center gap-1.5 font-semibold text-amber-400">
+      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> РАННЯЯ АЛЬФА v0.1.4
+    </span>
+    <span class="text-zinc-500 mx-2">•</span>
+    <span class="text-zinc-300">Функция «Company Brain» и многие корпоративные фичи <strong class="text-rose-400 underline">пока недоступны</strong>.</span>
+    <span class="text-zinc-500 mx-2">•</span>
+    <span class="bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-rose-500/30">Скидка -65% на Alpha-доступ</span>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between border-b border-white/5">
+    <div class="flex items-center gap-3">
+      <svg class="w-8 h-8" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="stovoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e11d48"/>
+      <stop offset="100%" stop-color="#fb923c"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="10" width="12" height="20" rx="6" transform="rotate(-25 6 10)" fill="url(#stovoGrad)" opacity="0.75"/>
+  <rect x="14" y="8" width="12" height="22" rx="6" transform="rotate(-15 14 8)" fill="url(#stovoGrad)" opacity="0.9"/>
+  <rect x="22" y="6" width="12" height="24" rx="6" transform="rotate(0 22 6)" fill="url(#stovoGrad)"/>
+</svg>
+      <span class="font-extrabold text-2xl tracking-tight text-white">Stovo</span>
+      <span class="text-[10px] mono uppercase bg-white/5 px-2 py-0.5 rounded text-rose-400 border border-rose-500/20">early-alpha</span>
+    </div>
+    <div class="hidden md:flex items-center gap-6 text-sm text-zinc-400">
+      <a href="#features" class="hover:text-white transition">Возможности</a>
+      <a href="#status" class="hover:text-white transition">Статус разработки</a>
+      <a href="#pricing" class="hover:text-white transition">Alpha Распродажа</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="#pricing" class="text-xs mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg">Скидка -65%</a>
+      <button class="px-4 py-2 text-xs font-semibold rounded-lg stovo-gradient text-white transition shadow-md shadow-rose-500/20 hover:opacity-90">Скачать Альфу</button>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="relative pt-16 pb-24 px-6 text-center overflow-hidden">
+    <div class="absolute inset-0 lamp-glow pointer-events-none"></div>
+
+    <div class="relative z-10 max-w-4xl mx-auto">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-rose-500/30 bg-rose-950/40 text-rose-300 text-xs font-medium mb-8">
+        <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+        Self-Hosted Приватный Мессенджер нового поколения
+      </div>
+      <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-6">
+        Ваш личный сервер. <br>
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-rose-400 via-orange-300 to-amber-400">
+          Ваш приватный Stovo.
+        </span>
+      </h1>
+      <p class="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+        Спокойный, надежный мессенджер для семьи и близких команд. Ваши данные хранятся только у вас.
+        <span class="text-zinc-300 block mt-2 font-medium">⚠️ Проект в ранней альфе: Company Brain, умные авто-агенты и ряд других фичей еще в закрытой разработке!</span>
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="#pricing" class="w-full sm:w-auto px-7 py-3.5 rounded-xl stovo-gradient text-white font-semibold text-sm shadow-xl shadow-rose-500/25 hover:scale-105 transition-all">
+          Забрать Alpha-лицензию (Скидка $9/мес)
+        </a>
+        <a href="#status" class="w-full sm:w-auto px-6 py-3.5 rounded-xl glass-card text-zinc-300 hover:text-white text-sm font-medium transition">
+          Что доступно сейчас?
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Alpha Status Section -->
+  <section id="status" class="max-w-6xl mx-auto px-6 py-16">
+    <div class="text-center mb-12">
+      <h2 class="text-2xl sm:text-3xl font-bold tracking-tight text-white">Статус готовности функционала</h2>
+      <p class="text-zinc-400 text-sm mt-2">Честный обзор того, что уже работает в Stovo, а что появится позже.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- 1 -->
+      <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+        <div class="flex items-center justify-between mb-4">
+          <span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">РАБОТАЕТ (АЛЬФА)</span>
+          <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>
+        </div>
+        <h3 class="font-bold text-lg text-white mb-2">Приватные чаты и звонки</h3>
+        <p class="text-zinc-400 text-sm mb-4">Self-hosted сервер, мгновенные P2P медиа-звонки, шифрование и темы оформления.</p>
+        <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-emerald-500 h-full w-full"></div>
+        </div>
+        <span class="text-[10px] text-emerald-400 mono mt-2 block">100% Доступно</span>
+      </div>
+
+      <!-- 2: Company Brain -->
+      <div class="glass-card rounded-2xl p-6 relative overflow-hidden border-rose-500/30 bg-rose-950/10">
+        <div class="flex items-center justify-between mb-4">
+          <span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">НЕДОСТУПНО</span>
+          <i data-lucide="brain-circuit" class="w-5 h-5 text-rose-400"></i>
+        </div>
+        <h3 class="font-bold text-lg text-white mb-2">Company Brain (База знаний)</h3>
+        <p class="text-zinc-400 text-sm mb-4">ИИ-граф связей компании, авто-индексация документов и умный поиск организации.</p>
+        <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-rose-500 h-full w-[15%]"></div>
+        </div>
+        <span class="text-[10px] text-rose-400 mono mt-2 block">В активной закрытой разработке</span>
+      </div>
+
+      <!-- 3: Other Features -->
+      <div class="glass-card rounded-2xl p-6 relative overflow-hidden border-amber-500/30">
+        <div class="flex items-center justify-between mb-4">
+          <span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">В РАЗРАБОТКЕ</span>
+          <i data-lucide="lock" class="w-5 h-5 text-amber-400"></i>
+        </div>
+        <h3 class="font-bold text-lg text-white mb-2">Мульти-агенты и боты</h3>
+        <p class="text-zinc-400 text-sm mb-4">Интеграции с Jira, GitHub и умные ассистенты в чатах появятся на этапе Beta.</p>
+        <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+          <div class="bg-amber-500 h-full w-[30%]"></div>
+        </div>
+        <span class="text-[10px] text-amber-400 mono mt-2 block">Запланировано на Beta v0.3</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sales & Pricing Section -->
+  <section id="pricing" class="max-w-6xl mx-auto px-6 py-20 border-t border-white/5">
+    <div class="text-center max-w-2xl mx-auto mb-14">
+      <span class="text-xs mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">Распродажа Ранней Альфы</span>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-4">Зафиксируйте пожизненную скидку на Stovo</h2>
+      <p class="text-zinc-400 text-sm mt-3">Так как многие фичи еще дорабатываются, мы снизили цены более чем на 65% для участников тестирования.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- Tier 1 -->
+      <div class="glass-card rounded-2xl p-8 flex flex-col justify-between">
+        <div>
+          <h3 class="font-bold text-lg text-white">Семейный Alpha</h3>
+          <p class="text-zinc-400 text-xs mt-1">До 10 пользователей на ваш собственный сервер.</p>
+          <div class="mt-6 mb-6">
+            <span class="text-zinc-500 line-through text-lg font-medium">$29</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-extrabold text-white">$9</span>
+              <span class="text-zinc-400 text-sm">/мес</span>
+            </div>
+            <span class="text-xs text-amber-400 font-semibold mt-1 inline-block">Скидка -68% на Альфу</span>
+          </div>
+          <ul class="space-y-3 text-sm text-zinc-300">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Docker self-hosted за 2 минуты</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Аудио и видео звонки P2P</li>
+            <li class="flex items-center gap-2 text-zinc-500"><i data-lucide="x" class="w-4 h-4 text-zinc-600"></i> Company Brain (Недоступно)</li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm transition">Купить по скидке</button>
+      </div>
+
+      <!-- Tier 2 (Featured) -->
+      <div class="glass-card rounded-2xl p-8 flex flex-col justify-between border-rose-500/50 relative shadow-2xl shadow-rose-500/10">
+        <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 stovo-gradient text-white text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          Хит Распродажи
+        </div>
+        <div>
+          <h3 class="font-bold text-lg text-white">Stovo Team Alpha</h3>
+          <p class="text-zinc-400 text-xs mt-1">Для небольших приватных команд до 50 чел.</p>
+          <div class="mt-6 mb-6">
+            <span class="text-zinc-500 line-through text-lg font-medium">$69</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-extrabold text-rose-400">$24</span>
+              <span class="text-zinc-400 text-sm">/мес</span>
+            </div>
+            <span class="text-xs text-emerald-400 font-semibold mt-1 inline-block">Вечная фиксация цены</span>
+          </div>
+          <ul class="space-y-3 text-sm text-zinc-300">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> Полный доступ к обновлениям</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> Приоритетная очередь на Company Brain</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> Чат с разработчиками Stovo</li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 rounded-xl stovo-gradient hover:opacity-90 text-white font-semibold text-sm transition shadow-lg shadow-rose-500/25">
+          Забрать со скидкой 65%
+        </button>
+      </div>
+
+      <!-- Tier 3 -->
+      <div class="glass-card rounded-2xl p-8 flex flex-col justify-between">
+        <div>
+          <h3 class="font-bold text-lg text-white">Enterprise Self-Host</h3>
+          <p class="text-zinc-400 text-xs mt-1">Неограниченная автономная лицензия.</p>
+          <div class="mt-6 mb-6">
+            <span class="text-zinc-500 line-through text-lg font-medium">$499</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-extrabold text-white">Отдел Продаж</span>
+            </div>
+            <span class="text-xs text-amber-400 font-semibold mt-1 inline-block">Индивидуальные скидки</span>
+          </div>
+          <ul class="space-y-3 text-sm text-zinc-300">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400"></i> Помощь в установке на ваш сервер</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400"></i> Ранний доступ к модулям Company Brain</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-amber-400"></i> SLA и выделенный инженер</li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm transition">Связаться с Sales</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-white/5 py-10 px-6 text-center text-xs text-zinc-500 mono">
+    <p>© 2026 Stovo. Self-hosted family & team messenger. Ранняя альфа-версия.</p>
+  </footer>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

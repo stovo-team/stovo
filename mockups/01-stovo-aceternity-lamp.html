@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stovo — Aceternity Lamp & Beams Edition</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #030712; color: #f3f4f6; overflow-x: hidden; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .lamp-glow {
+      background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(225, 29, 72, 0.35), rgba(251, 146, 60, 0.18), transparent 70%);
+    }
+    .conic-lamp {
+      background: conic-gradient(from 180deg at 50% 0%, #030712 0deg, #be123c 90deg, #fb923c 180deg, #be123c 270deg, #030712 360deg);
+    }
+    @keyframes pulse-beam {
+      0%, 100% { opacity: 0.35; transform: scaleY(1); }
+      50% { opacity: 0.85; transform: scaleY(1.06); }
+    }
+    .animate-beam { animation: pulse-beam 6s ease-in-out infinite; }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.65);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+    .glass-card:hover {
+      border-color: rgba(244, 63, 94, 0.4);
+      box-shadow: 0 12px 40px 0 rgba(225, 29, 72, 0.15);
+    }
+    .stovo-grad { background: linear-gradient(135deg, #e11d48, #fb923c); }
+    .stovo-text-grad {
+      background: linear-gradient(135deg, #fb7185, #fb923c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Early Alpha Notification Banner -->
+  <div class="bg-gradient-to-r from-rose-950/70 via-amber-950/40 to-zinc-950 border-b border-rose-500/20 px-4 py-2.5 text-center text-xs tracking-wide">
+    <span class="inline-flex items-center gap-1.5 font-semibold text-amber-400">
+      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> EARLY ALPHA v0.1.4
+    </span>
+    <span class="text-zinc-500 mx-2">•</span>
+    <span class="text-zinc-300">Notice: <strong class="text-rose-400">Company Brain</strong> & autonomous agent mesh are currently <span class="underline">unavailable</span> in public builds.</span>
+    <span class="text-zinc-500 mx-2">•</span>
+    <span class="bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-rose-500/30">Early-Bird 60% Sale Active</span>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between border-b border-white/5">
+    <div class="flex items-center gap-3">
+      <svg width="34" height="34" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stovoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e11d48"/>
+          <stop offset="100%" stop-color="#fb923c"/>
+        </linearGradient>
+      </defs>
+      <rect x="6" y="10" width="12" height="20" rx="6" transform="rotate(-25 6 10)" fill="url(#stovoGrad)" opacity="0.75"/>
+      <rect x="14" y="8" width="12" height="22" rx="6" transform="rotate(-15 14 8)" fill="url(#stovoGrad)" opacity="0.9"/>
+      <rect x="22" y="6" width="12" height="24" rx="6" transform="rotate(0 22 6)" fill="url(#stovoGrad)"/>
+    </svg>
+      <span class="font-extrabold text-2xl tracking-tight text-white">Stovo</span>
+      <span class="text-[10px] mono uppercase bg-white/5 px-2 py-0.5 rounded text-rose-400 border border-rose-500/20">early-alpha</span>
+    </div>
+    <div class="hidden md:flex items-center gap-8 text-sm text-zinc-400">
+      <a href="#product" class="hover:text-white transition">Product</a>
+      <a href="#solutions" class="hover:text-white transition">Solutions</a>
+      <a href="#self-hosted" class="hover:text-white transition">Self-Hosted</a>
+      <a href="#pricing" class="hover:text-white transition">Alpha Sales</a>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="#pricing" class="text-xs mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg">60% Sale Applied</a>
+      <button class="px-4 py-2 text-xs font-semibold rounded-lg stovo-grad text-white transition shadow-lg shadow-rose-500/25 hover:opacity-90">Get Stovo</button>
+    </div>
+  </nav>
+
+  <!-- Aceternity Conic Lamp Hero -->
+  <section class="relative pt-16 pb-24 px-6 text-center overflow-hidden">
+    <div class="absolute inset-0 lamp-glow pointer-events-none"></div>
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-72 conic-lamp opacity-25 blur-3xl animate-beam pointer-events-none"></div>
+
+    <div class="relative z-10 max-w-4xl mx-auto">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-rose-500/30 bg-rose-950/40 text-rose-300 text-xs font-medium mb-8">
+        <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+        CHAT • FILES • IDENTITY • COMPANY BRAIN
+      </div>
+
+      <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.08]">
+        Your company's private workspace. <br>
+        <span class="stovo-text-grad">On your terms.</span>
+      </h1>
+
+      <p class="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+        Chat, files, identity and Company Brain — hosted by Stovo or deployed on your own infrastructure.
+        <span class="text-zinc-300 block mt-2 text-sm font-medium">⚠️ Currently in Early Alpha: Core messaging & files are operational; Company Brain is under construction.</span>
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+        <a href="#pricing" class="w-full sm:w-auto px-7 py-3.5 rounded-xl stovo-grad text-white font-semibold text-sm shadow-xl shadow-rose-500/25 hover:scale-105 transition-all">
+          Get Stovo (Alpha Sale $9/mo)
+        </a>
+        <a href="#self-hosted" class="w-full sm:w-auto px-6 py-3.5 rounded-xl glass-card text-zinc-300 hover:text-white text-sm font-medium transition">
+          Explore Self-Hosted →
+        </a>
+      </div>
+
+      <!-- Realistic Interactive UI Preview Window (RealStovoDemo Adaptation) -->
+      <div class="glass-card rounded-2xl p-2 md:p-3 text-left border border-white/10 shadow-2xl relative overflow-hidden">
+        <div class="flex items-center justify-between px-3 py-2 border-b border-white/5 mb-2">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+            <span class="text-xs text-zinc-500 ml-2 mono">stovo.internal // workspace-prod</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">ONLINE</span>
+            <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold">BRAIN: LOCKED</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
+          <!-- Sidebar -->
+          <div class="bg-zinc-950/70 p-3 rounded-xl border border-white/5 space-y-3">
+            <div class="font-bold text-zinc-400 uppercase text-[10px] tracking-wider">Channels</div>
+            <div class="space-y-1">
+              <div class="px-2 py-1.5 rounded-lg bg-white/10 text-white font-medium flex items-center gap-2">
+                <i data-lucide="hash" class="w-3.5 h-3.5 text-rose-400"></i> general-ops
+              </div>
+              <div class="px-2 py-1.5 rounded-lg text-zinc-400 hover:bg-white/5 flex items-center gap-2">
+                <i data-lucide="hash" class="w-3.5 h-3.5"></i> engineering
+              </div>
+              <div class="px-2 py-1.5 rounded-lg text-zinc-400 hover:bg-white/5 flex items-center gap-2">
+                <i data-lucide="volume-2" class="w-3.5 h-3.5 text-orange-400"></i> voice-lounge
+              </div>
+            </div>
+            <div class="pt-2 border-t border-white/5">
+              <div class="font-bold text-zinc-500 uppercase text-[10px] tracking-wider mb-2">Modules</div>
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-[11px] text-zinc-300">
+                  <span>Chat & Files</span> <span class="text-emerald-400">Ready</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-zinc-500">
+                  <span>Company Brain</span> <span class="text-rose-400">Unavailable</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Stream Area -->
+          <div class="md:col-span-3 bg-zinc-900/50 p-4 rounded-xl border border-white/5 flex flex-col justify-between min-h-[260px]">
+            <div class="space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-lg stovo-grad flex items-center justify-center font-bold text-white text-xs">MV</div>
+                <div>
+                  <div class="flex items-baseline gap-2">
+                    <span class="font-bold text-white text-xs">Marcus Vance</span>
+                    <span class="text-[10px] text-zinc-500 mono">10:42 AM</span>
+                  </div>
+                  <p class="text-zinc-300 text-xs mt-0.5">Welcome to Stovo! Server is self-hosted in our local VPC. All files and chat data stay 100% on-premises.</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white text-xs">AK</div>
+                <div>
+                  <div class="flex items-baseline gap-2">
+                    <span class="font-bold text-white text-xs">Alex Kim</span>
+                    <span class="text-[10px] text-zinc-500 mono">10:44 AM</span>
+                  </div>
+                  <p class="text-zinc-300 text-xs mt-0.5">Is Company Brain autonomous indexing active yet?</p>
+                </div>
+              </div>
+
+              <!-- System notice in chat -->
+              <div class="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/20 text-xs text-rose-300 flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-rose-400 shrink-0"></i>
+                <span><strong>Stovo System:</strong> Company Brain knowledge-graph indexing is currently in development (Alpha cohort 2). Search is functioning locally.</span>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-white/5 flex items-center gap-2">
+              <input type="text" placeholder="Message #general-ops..." class="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-200 flex-1 outline-none focus:border-rose-500" disabled value="Message sent securely via self-hosted WebSocket...">
+              <button class="p-1.5 rounded-lg stovo-grad text-white text-xs"><i data-lucide="send" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audience Section: Target Postures -->
+  <section id="solutions" class="max-w-6xl mx-auto px-6 py-20">
+    <div class="text-center max-w-2xl mx-auto mb-14">
+      <span class="text-xs mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">Target Postures</span>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-4">Stovo adapts to your world.</h2>
+      <p class="text-zinc-400 text-sm mt-3">One unified chassis powering corporate security, gaming communities, and private households.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- 1: Business -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <span class="px-2.5 py-1 text-[10px] font-bold rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase">For Business</span>
+            <span class="text-xs text-zinc-500 mono">Team Scale</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Stovo for Business</h3>
+          <p class="text-zinc-400 text-xs mb-4 leading-relaxed">
+            One private workspace for communication, knowledge and access — with the tools your company already uses connected around it.
+          </p>
+          <div class="space-y-2 text-xs border-t border-white/5 pt-3">
+            <div class="flex items-center gap-2 text-zinc-300"><i data-lucide="check" class="w-3.5 h-3.5 text-blue-400"></i> Zero-Trust SAML/OIDC</div>
+            <div class="flex items-center gap-2 text-zinc-300"><i data-lucide="check" class="w-3.5 h-3.5 text-blue-400"></i> Audit logs & compliance</div>
+            <div class="flex items-center gap-2 text-zinc-500"><i data-lucide="lock" class="w-3.5 h-3.5 text-rose-400"></i> Company Brain (Alpha Locked)</div>
+          </div>
+        </div>
+        <a href="#pricing" class="mt-6 text-xs text-blue-400 font-bold hover:underline">Explore Business Plans →</a>
+      </div>
+
+      <!-- 2: Gaming -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <span class="px-2.5 py-1 text-[10px] font-bold rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 uppercase">For Gaming</span>
+            <span class="text-xs text-zinc-500 mono">High FPS Audio</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Stovo for Gaming</h3>
+          <p class="text-zinc-400 text-xs mb-4 leading-relaxed">
+            Ultra-low latency 48kHz WebRTC voice channels, custom community roles, and persistent party chat rooms.
+          </p>
+          <div class="space-y-2 text-xs border-t border-white/5 pt-3">
+            <div class="flex items-center gap-2 text-zinc-300"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i> Low latency voice mesh</div>
+            <div class="flex items-center gap-2 text-zinc-300"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i> Channel hierarchy & roles</div>
+            <div class="flex items-center gap-2 text-zinc-300"><i data-lucide="check" class="w-3.5 h-3.5 text-purple-400"></i> Discord-free privacy</div>
+          </div>
+        </div>
+        <a href="#pricing" class="mt-6 text-xs text-purple-400 font-bold hover:underline">Explore Gaming Servers →</a>
+      </div>
+
+      <!-- 3: Family -->
+      <div class="glass-card rounded-2xl p-6 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <span class="px-2.5 py-1 text-[10px] font-bold rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase">For Families</span>
+            <span class="text-xs text-zinc-500 mono">Private Vault</span>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">Stovo for Families</h3>
+          <p class="text-zinc-400 text-xs mb-4 leading-relaxed">
+            A calm, trusted sanctuary for photos, calendars, and messages without tracking, algorithms, or ads.
+          </p>
+          <div class="space-y-2 text-xs border-t border-white/5 pt-3">
+            <div class="flex items-center gap-2 text-zinc-300"><i data-lucide="check" class="w-3.5 h-3.5 text-rose-400"></i> Family photo galleries</div>
+            <div class="flex items-center gap-2 text-zinc-300"><i data-lucide="check" class="w-3.5 h-3.5 text-rose-400"></i> Shared checklists & plans</div>
+            <div class="flex items-center gap-2 text-zinc-300"><i data-lucide="check" class="w-3.5 h-3.5 text-rose-400"></i> 100% data sovereignty</div>
+          </div>
+        </div>
+        <a href="#pricing" class="mt-6 text-xs text-rose-400 font-bold hover:underline">Explore Family Setup →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sales & Pricing Section -->
+  <section id="pricing" class="max-w-6xl mx-auto px-6 py-20 border-t border-white/5">
+    <div class="text-center max-w-2xl mx-auto mb-14">
+      <span class="text-xs mono font-bold uppercase tracking-widest text-amber-300 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">Alpha Sales & Early Bird Discounts</span>
+      <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-4">Simple, Transparent Sizing. Slashed for Alpha.</h2>
+      <p class="text-zinc-400 text-sm mt-3">Help us test Stovo during Early Alpha. Lock in 60%+ discounted rates permanently.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- Tier 1 -->
+      <div class="glass-card rounded-2xl p-8 flex flex-col justify-between">
+        <div>
+          <span class="text-xs uppercase mono text-zinc-500">Community Self-Hosted</span>
+          <h3 class="text-xl font-bold text-white mt-1">Free Forever</h3>
+          <p class="text-zinc-400 text-xs mt-1">Run on your home lab or VPS with Docker Compose.</p>
+          <div class="my-6">
+            <div class="text-4xl font-extrabold text-white">$0</div>
+            <span class="text-xs text-emerald-400 font-medium">Source-Available License</span>
+          </div>
+          <ul class="space-y-3 text-xs text-zinc-300">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Unlimited messages & members</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Local MinIO / S3 storage</li>
+            <li class="flex items-center gap-2 text-zinc-500"><i data-lucide="x" class="w-4 h-4 text-zinc-600"></i> Company Brain (Locked in Alpha)</li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition">Deploy Docker ($0)</button>
+      </div>
+
+      <!-- Tier 2 (Featured Sale) -->
+      <div class="glass-card rounded-2xl p-8 flex flex-col justify-between border-rose-500/50 relative shadow-2xl shadow-rose-500/10">
+        <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 stovo-grad text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          Early Alpha Sale • 65% OFF
+        </div>
+        <div>
+          <span class="text-xs uppercase mono text-rose-400">Managed Stovo Cloud</span>
+          <h3 class="text-xl font-bold text-white mt-1">Alpha Founder Pass</h3>
+          <p class="text-zinc-400 text-xs mt-1">Zero DevOps. Dedicated single-tenant cloud pod.</p>
+          <div class="my-6">
+            <span class="text-zinc-500 line-through text-sm mono">$69/mo</span>
+            <div class="flex items-baseline gap-1">
+              <span class="text-4xl font-extrabold text-rose-400">$24</span>
+              <span class="text-zinc-400 text-xs">/month</span>
+            </div>
+            <span class="text-xs text-amber-300 font-semibold mt-1 inline-block">Price locked for lifetime of account</span>
+          </div>
+          <ul class="space-y-3 text-xs text-zinc-300">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> Fully managed European/US pod</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> WebRTC multi-region voice mesh</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> Priority queue for Company Brain</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> Direct Founder Discord access</li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 rounded-xl stovo-grad hover:opacity-90 text-white font-semibold text-xs transition shadow-lg shadow-rose-500/25">
+          Claim Alpha Seat ($24/mo)
+        </button>
+      </div>
+
+      <!-- Tier 3 -->
+      <div class="glass-card rounded-2xl p-8 flex flex-col justify-between">
+        <div>
+          <span class="text-xs uppercase mono text-zinc-500">Commercial Self-Hosted</span>
+          <h3 class="text-xl font-bold text-white mt-1">Enterprise Sales</h3>
+          <p class="text-zinc-400 text-xs mt-1">Air-gapped clusters, directory sync & custom SLAs.</p>
+          <div class="my-6">
+            <div class="text-4xl font-extrabold text-white">Custom</div>
+            <span class="text-xs text-zinc-400">Volume alpha discounts available</span>
+          </div>
+          <ul class="space-y-3 text-xs text-zinc-300">
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-400"></i> SAML/SCIM directory provisioning</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-400"></i> Custom Company Brain integrations</li>
+            <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-400"></i> Assisted migration & 24/7 SLA</li>
+          </ul>
+        </div>
+        <button class="mt-8 w-full py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition">Contact Sales Team</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section (from actual Stovo FAQ) -->
+  <section class="max-w-4xl mx-auto px-6 py-16 border-t border-white/5 text-xs">
+    <h3 class="text-xl font-bold text-white mb-6">Frequently Asked Questions</h3>
+    <div class="space-y-4">
+      <div class="glass-card p-4 rounded-xl">
+        <div class="font-bold text-white mb-1">Is Stovo open source?</div>
+        <p class="text-zinc-400">Stovo is published under a transparent Source-Available license. Code is public for auditing, testing, and self-hosting with full inspection rights.</p>
+      </div>
+      <div class="glass-card p-4 rounded-xl">
+        <div class="font-bold text-white mb-1">What is the status of the Company Brain feature?</div>
+        <p class="text-zinc-400">Company Brain is currently in closed Early Alpha testing. It correlates communications, documentation, and task threads across the organization. It is not yet enabled on public servers.</p>
+      </div>
+      <div class="glass-card p-4 rounded-xl">
+        <div class="font-bold text-white mb-1">Can I move from Stovo Cloud to Self-Hosted later?</div>
+        <p class="text-zinc-400">Absolutely. You can generate a single cryptographic export archive containing all messages, threads, users, and object files and restore it into your own Docker cluster in under 10 minutes.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 py-10 px-6 text-center text-xs text-zinc-500 mono">
+    <div class="flex items-center justify-center gap-2 mb-2">
+      <svg width="20" height="20" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stovoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e11d48"/>
+          <stop offset="100%" stop-color="#fb923c"/>
+        </linearGradient>
+      </defs>
+      <rect x="6" y="10" width="12" height="20" rx="6" transform="rotate(-25 6 10)" fill="url(#stovoGrad)" opacity="0.75"/>
+      <rect x="14" y="8" width="12" height="22" rx="6" transform="rotate(-15 14 8)" fill="url(#stovoGrad)" opacity="0.9"/>
+      <rect x="22" y="6" width="12" height="24" rx="6" transform="rotate(0 22 6)" fill="url(#stovoGrad)"/>
+    </svg>
+      <span class="font-bold text-zinc-300">Stovo</span>
+    </div>
+    <p>© 2026 Stovo. Self-hosted private workspace. Early Alpha release.</p>
+  </footer>
+
+  <script>lucide.createIcons();</script>
+</body>
+</html>

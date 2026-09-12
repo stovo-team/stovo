@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stovo — Aceternity Ambient Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>body { font-family: 'Plus Jakarta Sans', sans-serif; background: #030712; color: #f3f4f6; }</style>
+</head>
+<body class="min-h-screen">
+
+  <!-- 0. Sticky Header -->
+  <header class="bg-black/60 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50 px-6 py-3.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stovoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e11d48"/>
+          <stop offset="100%" stop-color="#fb923c"/>
+        </linearGradient>
+      </defs>
+      <rect x="6" y="10" width="12" height="20" rx="6" transform="rotate(-25 6 10)" fill="url(#stovoGrad)" opacity="0.75"/>
+      <rect x="14" y="8" width="12" height="22" rx="6" transform="rotate(-15 14 8)" fill="url(#stovoGrad)" opacity="0.9"/>
+      <rect x="22" y="6" width="12" height="24" rx="6" transform="rotate(0 22 6)" fill="url(#stovoGrad)"/>
+    </svg>
+        <span class="font-extrabold text-2xl tracking-tight text-white">Stovo</span>
+        <span class="text-[10px] font-mono uppercase bg-rose-500/10 text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded">Early Alpha v0.1.4</span>
+      </div>
+      <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-zinc-400">
+        <a href="#solutions" class="hover:text-white transition">Solutions</a>
+        <a href="#deployments" class="hover:text-white transition">Deployments</a>
+        <a href="#capabilities" class="hover:text-white transition">Capabilities</a>
+        <a href="#storage" class="hover:text-white transition">Storage</a>
+        <a href="#ai" class="hover:text-white transition">Company Brain</a>
+        <a href="#pricing" class="hover:text-white transition">Pricing</a>
+      </nav>
+      <div class="flex items-center gap-3">
+        <a href="#pricing" class="text-xs font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg">Alpha Sale: -65%</a>
+        <a href="#deployments" class="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-lg shadow-rose-500/25 hover:opacity-90 transition">Get Stovo</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Early Alpha Warning Bar -->
+  <div class="bg-gradient-to-r from-rose-950/70 via-amber-950/40 to-zinc-950 border-b border-rose-500/20 px-4 py-2 text-center text-xs text-zinc-300">
+    <span class="inline-flex items-center gap-1.5 font-bold text-amber-400">
+      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> EARLY ALPHA NOTICE
+    </span>
+    <span class="mx-2 opacity-50">•</span>
+    <span>Core Chat, Storage, and Calls are operational. <strong class="text-rose-400">Company Brain</strong> &amp; autonomous agent mesh are currently in closed development.</span>
+    <span class="mx-2 opacity-50">•</span>
+    <span class="font-bold text-rose-300 uppercase tracking-wider text-[10px]">Early-Bird Lifetime Pricing Active</span>
+  </div>
+
+  <!-- 1. Hero Section -->
+  <section class="relative pt-20 pb-28 px-6 text-center overflow-hidden">
+    <div class="absolute inset-0 pointer-events-none" style="background: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(225,29,72,0.35), rgba(251,146,60,0.15), transparent 70%);"></div>
+    <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-72 opacity-25 blur-3xl pointer-events-none" style="background: conic-gradient(from 180deg at 50% 0%, #030712 0deg, #be123c 90deg, #fb923c 180deg, #be123c 270deg, #030712 360deg);"></div>
+    <div class="relative z-10 max-w-5xl mx-auto">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-rose-500/30 bg-rose-950/40 text-rose-300 text-xs font-semibold mb-6">
+        <span class="w-2 h-2 rounded-full bg-rose-400 animate-ping"></span>
+        CHAT • FILES • IDENTITY • COMPANY BRAIN
+      </div>
+      <h1 class="text-5xl sm:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.08]">
+        Your company's private workspace. <br>
+        <span class="bg-clip-text text-transparent bg-gradient-to-r from-rose-400 via-orange-300 to-amber-300">On your terms.</span>
+      </h1>
+      <p class="text-lg text-zinc-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+        Chat, files, identity and Company Brain — hosted by Stovo or deployed on your own infrastructure.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
+        <a href="#pricing" class="px-7 py-3.5 rounded-xl bg-gradient-to-r from-rose-600 to-orange-500 text-white font-semibold text-sm shadow-xl shadow-rose-500/30 hover:scale-105 transition">Get Stovo (Alpha Sale $24/mo)</a>
+        <a href="#deployments" class="px-6 py-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-sm font-medium border border-white/10 transition">Explore Self-Hosted →</a>
+      </div>
+
+      <!-- RealStovoDemo Window Mockup -->
+      <div class="rounded-2xl p-2 bg-zinc-950/70 backdrop-blur-2xl border border-white/10 shadow-2xl text-left">
+        <div class="flex justify-between items-center px-3 py-2 border-b border-white/10">
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+            <span class="ml-2 font-mono text-xs opacity-60">stovo.internal // family-workspace-v1</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">WEBSOCKET ONLINE</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">BRAIN: ALPHA</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 p-3">
+          <!-- Sidebar Channels -->
+          <div class="bg-black/50 p-3 rounded-xl border border-white/5 space-y-3">
+            <div class="text-[10px] font-bold uppercase tracking-wider opacity-60 mb-2">Channels</div>
+            <div class="space-y-1">
+              <div class="px-2.5 py-1.5 rounded-lg bg-white/10 text-white font-medium flex items-center gap-2">
+                <i data-lucide="hash" class="w-3.5 h-3.5 text-rose-400"></i> general-ops
+              </div>
+              <div class="px-2.5 py-1.5 rounded-lg opacity-70 hover:opacity-100 flex items-center gap-2">
+                <i data-lucide="hash" class="w-3.5 h-3.5"></i> engineering
+              </div>
+              <div class="px-2.5 py-1.5 rounded-lg opacity-70 hover:opacity-100 flex items-center gap-2">
+                <i data-lucide="volume-2" class="w-3.5 h-3.5 text-orange-400"></i> voice-lounge
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-white/10 text-[10px]">
+              <div class="font-bold opacity-60 uppercase mb-1">Status</div>
+              <div class="text-emerald-400">✓ Chat &amp; Files Ready</div>
+              <div class="text-rose-400 mt-1">✗ Company Brain (WIP)</div>
+            </div>
+          </div>
+
+          <!-- Chat Feed -->
+          <div class="md:col-span-3 bg-zinc-900/40 p-4 rounded-xl border border-white/5 flex flex-col justify-between min-h-[260px]">
+            <div class="space-y-3">
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-rose-500 to-orange-500 flex items-center justify-center font-bold text-white text-xs">MV</div>
+                <div>
+                  <div class="flex items-baseline gap-2">
+                    <span class="font-bold text-white text-xs">Marcus Vance</span>
+                    <span class="text-[10px] opacity-50 font-mono">10:42 AM</span>
+                  </div>
+                  <p class="text-xs mt-0.5 opacity-80">Welcome to Stovo! The server is self-hosted in our private cluster. Zero outbound telemetry.</p>
+                </div>
+              </div>
+
+              <div class="flex items-start gap-3">
+                <div class="w-7 h-7 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white text-xs">AK</div>
+                <div>
+                  <div class="flex items-baseline gap-2">
+                    <span class="font-bold text-white text-xs">Alex Kim</span>
+                    <span class="text-[10px] opacity-50 font-mono">10:44 AM</span>
+                  </div>
+                  <p class="text-xs mt-0.5 opacity-80">Is the Company Brain knowledge engine enabled for our workspace yet?</p>
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/30 text-xs text-rose-300 flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-rose-400 shrink-0"></i>
+                <span><strong>Stovo System:</strong> Company Brain autonomous graph is currently in closed Early Alpha. Local vector search is fully available.</span>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-white/10 flex items-center gap-2">
+              <input type="text" value="Testing realtime self-hosted WebSocket sync..." class="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-zinc-300 flex-1 outline-none" disabled>
+              <button class="p-1.5 rounded-lg bg-rose-600 text-white text-xs"><i data-lucide="send" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Audience Section ('Stovo adapts to your world') -->
+  <section class="py-20 px-6 max-w-7xl mx-auto border-t border-white/5" id="solutions">
+    <div class="max-w-6xl mx-auto">
+      <div class="max-w-2xl mb-12">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">Target Postures</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">Stovo adapts to your world.</h2>
+        <p class="text-zinc-400 text-sm mt-3 leading-relaxed">One unified chassis powering corporate security, gaming communities, and private household memory archives.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Business Card -->
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-rose-500/40 flex flex-col justify-between transition shadow-lg">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-2.5 py-1 text-[10px] font-bold rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase">For Business</span>
+              <span class="text-xs opacity-60 font-mono">Team Scale</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1">Stovo for Business</h3>
+            <div class="text-xs font-semibold opacity-70 mb-3">For organizations • Chat · Files · Identity · Company Brain</div>
+            <p class="text-xs opacity-75 mb-6 leading-relaxed">
+              One private workspace for communication, knowledge and access — with the tools your company already uses connected around it.
+            </p>
+            <div class="p-3 rounded-xl bg-black/30 border border-white/10 space-y-2 text-xs">
+              <div class="flex justify-between items-center">
+                <span class="flex items-center gap-1.5 opacity-80"><i data-lucide="lock" class="w-3 h-3 text-blue-400"></i> Zero-Trust SAML/OIDC</span>
+                <span class="text-emerald-400 font-mono font-bold text-[10px]">Enforced</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="flex items-center gap-1.5 opacity-80"><i data-lucide="shield-check" class="w-3 h-3 text-blue-400"></i> Audit: 1,420 files</span>
+                <span class="text-emerald-400 font-mono font-bold text-[10px]">SHA-256 Valid</span>
+              </div>
+            </div>
+          </div>
+          <a href="#pricing" class="mt-6 text-xs text-blue-400 font-bold flex items-center gap-1">Explore Stovo Business →</a>
+        </div>
+
+        <!-- Gaming Card -->
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-rose-500/40 flex flex-col justify-between transition shadow-lg">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-2.5 py-1 text-[10px] font-bold rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 uppercase">For Gaming</span>
+              <span class="text-xs opacity-60 font-mono">12ms Latency</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1">Stovo for Gaming</h3>
+            <div class="text-xs font-semibold opacity-70 mb-3">For communities • Voice · Servers · Bots · Discovery</div>
+            <p class="text-xs opacity-75 mb-6 leading-relaxed">
+              Build your community around chat, voice rooms, media and the games you play. Ultra-low latency 48kHz WebRTC audio relays.
+            </p>
+            <div class="p-3 rounded-xl bg-black/30 border border-white/10 space-y-2 text-xs">
+              <div class="flex justify-between items-center">
+                <span class="flex items-center gap-1.5 text-emerald-400 font-bold"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> #Raid-Command</span>
+                <span class="text-purple-400 font-mono text-[10px]">12ms • Opus 48kHz</span>
+              </div>
+              <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+                <div class="p-1 rounded bg-white/5 border border-emerald-500/40 text-emerald-300">Alex (Speaking)</div>
+                <div class="p-1 rounded bg-white/5 opacity-70">Marcus (Stream)</div>
+                <div class="p-1 rounded bg-white/5 opacity-70">Elena (Muted)</div>
+              </div>
+            </div>
+          </div>
+          <a href="#pricing" class="mt-6 text-xs text-purple-400 font-bold flex items-center gap-1">Explore Stovo Gaming →</a>
+        </div>
+
+        <!-- Family Card -->
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-rose-500/40 flex flex-col justify-between transition shadow-lg">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="px-2.5 py-1 text-[10px] font-bold rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 uppercase">For Families</span>
+              <span class="text-xs opacity-60 font-mono">Private Vault</span>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-1">Stovo for Families</h3>
+            <div class="text-xs font-semibold opacity-70 mb-3">For households • Photos · Backups · Documents · Storage</div>
+            <p class="text-xs opacity-75 mb-6 leading-relaxed">
+              Keep conversations, photos, documents and plans in one private family space without tracking, advertisements, or algorithms.
+            </p>
+            <div class="p-3 rounded-xl bg-black/30 border border-white/10 space-y-2 text-xs">
+              <div class="flex justify-between items-center text-[11px]">
+                <span class="font-bold text-white">Family Vault Archive</span>
+                <span class="text-rose-400 font-mono text-[10px]">E2E Encrypted</span>
+              </div>
+              <div class="grid grid-cols-3 gap-1.5 text-center text-[10px]">
+                <div class="p-1.5 rounded bg-white/5 opacity-80">📷 Alps 2026</div>
+                <div class="p-1.5 rounded bg-white/5 opacity-80">🔒 Passports</div>
+                <div class="p-1.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/30">📝 Canvases</div>
+              </div>
+            </div>
+          </div>
+          <a href="#pricing" class="mt-6 text-xs text-rose-400 font-bold flex items-center gap-1">Explore Stovo Family →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Cloud vs Self-Hosted ('Your cloud. Or ours.') -->
+  <section class="py-20 px-6 max-w-7xl mx-auto border-t border-white/5" id="deployments">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">Autonomous Deployments</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">Your cloud. Or ours.</h2>
+        <p class="text-zinc-400 text-sm mt-3 leading-relaxed">Zero vendor lock-in. Stovo provides pristine hosted managed clouds or a frictionless Docker container engine you run on your own metal.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Stovo Cloud -->
+        <div class="p-8 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-rose-500/30 flex flex-col justify-between">
+          <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 to-orange-500 text-white flex items-center justify-center mb-4">
+            <i data-lucide="refresh-cw" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-2">Stovo Cloud</h3>
+          <p class="text-xs opacity-75 mb-6">Hosted by Stovo. Zero maintenance. Launch your isolated pod in 30 seconds, or export your full workspace to Self-Hosted anytime.</p>
+          <ul class="space-y-2.5 text-xs opacity-90 mb-8">
+            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Zero vendor lock-in; export workspace anytime</li>
+            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Automatic zero-downtime version upgrades</li>
+            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Daily automated snapshots &amp; recovery</li>
+            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Managed global edge voice mesh relay</li>
+          </ul>
+          <a href="#pricing" class="px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-rose-600 to-orange-500 text-white shadow-lg shadow-rose-500/25 hover:opacity-90 transition">Get Started with Cloud</a>
+        </div>
+
+        <!-- Self-Hosted Engine -->
+        <div class="p-8 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-rose-500/30 flex flex-col justify-between">
+          <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4 border border-emerald-500/30">
+            <i data-lucide="terminal" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-2">Self-Hosted Engine</h3>
+          <p class="text-xs opacity-75 mb-6">100% Free Forever for Community. Run Stovo on your own VPS, home lab, or private server. You provide the hardware, we provide Stovo.</p>
+          <ul class="space-y-2.5 text-xs opacity-90 mb-8">
+            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> 100% data sovereignty; zero outbound telemetry</li>
+            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Full Docker Compose &amp; Kubernetes Helm charts</li>
+            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> LAN air-gap mode with zero public internet needed</li>
+            <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i> Unlimited users, channels and storage disks</li>
+          </ul>
+          <a href="#infrastructure" class="px-4 py-2 text-xs font-semibold rounded-lg bg-white/10 hover:bg-white/15 text-white transition border border-white/10">Explore Docker Setup</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Core Capabilities (Bento Grid) -->
+  <section class="py-20 px-6 max-w-7xl mx-auto border-t border-white/5" id="capabilities">
+    <div class="max-w-6xl mx-auto">
+      <div class="max-w-2xl mb-12">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">Full Ecosystem</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">One workspace. A connected company.</h2>
+        <p class="text-zinc-400 text-sm mt-3 leading-relaxed">Stovo owns the core experience — chat, files, identity, calls and Company Brain. The rest connects without forcing you to replace what already works.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-2 p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-white/20 transition">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center"><i data-lucide="messages-square" class="w-5 h-5"></i></div>
+              <h3 class="text-xl font-bold text-white">Messaging &amp; Channels</h3>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-white/10 opacity-70">Real-time WebSocket • MLS</span>
+          </div>
+          <p class="text-xs opacity-75 mb-6">High-throughput group and direct communication protected by Messaging Layer Security (RFC 9420). Rich threaded discussions, instant reactions, full-text search, and cryptographic message provenance.</p>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span class="px-3 py-1 rounded bg-black/40 border border-white/10">End-to-End Encryption</span>
+            <span class="px-3 py-1 rounded bg-black/40 border border-white/10">P2P WebSockets</span>
+            <span class="px-3 py-1 rounded bg-black/40 border border-white/10">Cross-Platform Sync</span>
+            <span class="px-3 py-1 rounded bg-black/40 border border-white/10">Message Threads</span>
+          </div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-white/20 transition">
+          <div class="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-4"><i data-lucide="phone" class="w-5 h-5"></i></div>
+          <h3 class="text-lg font-bold text-white mb-1">Voice &amp; Video Mesh</h3>
+          <p class="text-xs opacity-75 mb-4">Ultra low-latency WebRTC audio rooms and high-definition video conferencing with screen sharing.</p>
+          <div class="text-[10px] font-mono opacity-50">Opus 128kbps • Adaptive Bitrate</div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-white/20 transition">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4"><i data-lucide="package" class="w-5 h-5"></i></div>
+          <h3 class="text-lg font-bold text-white mb-1">Object Storage &amp; Vaults</h3>
+          <p class="text-xs opacity-75 mb-4">Store files, documents, backups and media. Mount your own AWS S3, Cloudflare R2, MinIO or local NAS disks with zero markup fees.</p>
+          <div class="text-[10px] font-mono opacity-50">S3-Compatible • Chunked AES-GCM</div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-white/20 transition">
+          <div class="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center mb-4"><i data-lucide="bot" class="w-5 h-5"></i></div>
+          <h3 class="text-lg font-bold text-white mb-1">Private AI Engine</h3>
+          <p class="text-xs opacity-75 mb-4">Local retrieval-augmented generation (RAG) over all your messages and files. Embeddings never leave your private node.</p>
+          <div class="text-[10px] font-mono opacity-50">Postgres Vector • Local / BYO LLM</div>
+        </div>
+
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 hover:border-white/20 transition">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-4"><i data-lucide="blocks" class="w-5 h-5"></i></div>
+          <h3 class="text-lg font-bold text-white mb-1">Extensible Integrations</h3>
+          <p class="text-xs opacity-75 mb-4">Connect GitHub, GitLab, Gitea, Rspamd, calendars, cloud storage, CI/CD, bots and webhooks directly into Stovo.</p>
+          <div class="text-[10px] font-mono opacity-50">Git • Mail Security • MCP • REST</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Cohesive File Architecture & Storage Vault -->
+  <section class="py-20 px-6 max-w-7xl mx-auto border-t border-white/5" id="storage">
+    <div class="max-w-6xl mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+        <div>
+          <span class="text-xs font-mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">Cohesive File Architecture</span>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3 mt-3">Messages and files belong in one connected workspace.</h2>
+          <p class="text-zinc-400 text-sm mt-3 leading-relaxed">Files shared in conversations are easy to find again in Storage, alongside direct uploads from your space.</p>
+          
+          <!-- 4-Step Lifecycle Pipeline -->
+          <div class="mt-8 space-y-3 text-xs">
+            <div class="p-3 rounded-lg bg-black/40 border border-white/10 flex items-center justify-between">
+              <span>💬 Message in <code class="text-rose-400">#engineering</code></span>
+              <span class="opacity-50">→</span>
+            </div>
+            <div class="p-3 rounded-lg bg-black/40 border border-white/10 flex items-center justify-between">
+              <span>📎 Attachment (<code class="text-zinc-300">Architecture.pdf</code>)</span>
+              <span class="opacity-50">→</span>
+            </div>
+            <div class="p-3 rounded-lg bg-black/40 border border-white/10 flex items-center justify-between">
+              <span>📁 Saved to <code class="text-purple-400">/Projects/Docs</code></span>
+              <span class="opacity-50">→</span>
+            </div>
+            <div class="p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/30 text-emerald-300 flex items-center justify-between">
+              <span>🛡️ Synced in Stovo Drive &amp; Encrypted Vault</span>
+              <span class="font-bold">✓</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Storage Quota Widget -->
+        <div class="p-6 rounded-2xl bg-zinc-950/60 backdrop-blur-xl border border-white/10 shadow-xl">
+          <div class="flex justify-between items-center pb-4 border-b border-white/10 text-xs">
+            <div class="font-bold text-white flex items-center gap-2"><i data-lucide="folder-cog" class="w-4 h-4 text-rose-400"></i> Stovo Drive &amp; Vault</div>
+            <span class="text-emerald-400 font-mono text-[10px]">● MinIO S3 Online</span>
+          </div>
+          <div class="py-4 space-y-3 text-xs">
+            <div class="flex justify-between items-center p-2 rounded bg-black/30">
+              <span class="flex items-center gap-2"><i data-lucide="file-text" class="w-4 h-4 text-rose-400"></i> stovo-sec-audit-2026.pdf</span>
+              <span class="font-mono opacity-60 text-[10px]">4.2 MB</span>
+            </div>
+            <div class="flex justify-between items-center p-2 rounded bg-black/30">
+              <span class="flex items-center gap-2"><i data-lucide="image" class="w-4 h-4 text-orange-400"></i> Summer_Trip_2026.heic</span>
+              <span class="font-mono opacity-60 text-[10px]">3.4 MB</span>
+            </div>
+            <div class="flex justify-between items-center p-2 rounded bg-black/30">
+              <span class="flex items-center gap-2"><i data-lucide="lock" class="w-4 h-4 text-blue-400"></i> cluster-keys-backup.enc</span>
+              <span class="font-mono opacity-60 text-[10px]">12 KB</span>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-white/10 text-xs">
+            <div class="flex justify-between opacity-70 mb-1">
+              <span>S3 Quota Used</span>
+              <span class="font-mono font-bold">1.4 TB / 4 TB</span>
+            </div>
+            <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+              <div class="bg-gradient-to-r from-rose-500 to-orange-500 h-full w-[35%]"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Stovo AI & Company Brain Grounded Citations -->
+  <section class="py-20 px-6 max-w-7xl mx-auto border-t border-white/5" id="ai">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">AI Notes &amp; Agent Connections</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">Keep a record of the conversations that matter.</h2>
+        <p class="text-zinc-400 text-sm mt-3 leading-relaxed">Stovo can post an AI transcript and summary from a call directly back into its chat. You can also connect compatible agents through MCP with the access you choose.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Grounded Answer Box -->
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 shadow-xl">
+          <div class="p-3 rounded-xl bg-black/30 border border-white/10 flex items-center gap-3 text-xs mb-4">
+            <i data-lucide="search" class="w-4 h-4 text-rose-400"></i>
+            <span class="text-white font-medium flex-1">What did we decide about auth migration?</span>
+            <span class="text-[10px] font-mono opacity-60">ENTER</span>
+          </div>
+          <div class="p-4 rounded-xl bg-white/5 border border-white/10 mb-6 text-xs leading-relaxed">
+            <div class="flex items-center justify-between mb-2">
+              <span class="font-bold text-white flex items-center gap-1.5"><i data-lucide="sparkles" class="w-3.5 h-3.5 text-rose-400"></i> Stovo Grounded Answer</span>
+              <span class="text-emerald-400 font-mono text-[10px]">Verified with 3 sources</span>
+            </div>
+            <p class="opacity-80">The team approved transitioning all user identities to <strong>OpenID Connect (OIDC)</strong> with Passkey/WebAuthn support. The legacy session cookie store will be deprecated by <strong>October 15</strong>, with backward compatibility maintained for CLI agents.</p>
+          </div>
+          <div class="text-xs">
+            <div class="text-[11px] font-bold opacity-70 mb-2 uppercase tracking-wider">Verified Sources:</div>
+            <div class="flex flex-wrap gap-2 text-[11px]">
+              <span class="px-2.5 py-1 rounded bg-black/40 border border-white/10 flex items-center gap-1.5"><strong class="text-rose-400">#</strong> backend</span>
+              <span class="px-2.5 py-1 rounded bg-black/40 border border-white/10 flex items-center gap-1.5">📄 Architecture.pdf</span>
+              <span class="px-2.5 py-1 rounded bg-black/40 border border-white/10 flex items-center gap-1.5">📅 Meeting · Aug 21</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Context Inspection Panel -->
+        <div class="p-6 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 shadow-xl">
+          <div class="flex justify-between items-center pb-3 border-b border-white/10 text-xs mb-4">
+            <span class="font-bold text-white flex items-center gap-2"><i data-lucide="file-search" class="w-4 h-4 text-rose-400"></i> Context Inspection Panel</span>
+            <span class="text-emerald-400 font-mono font-bold text-[10px]">100% Grounded</span>
+          </div>
+          <div class="space-y-3 text-xs">
+            <div class="p-3 rounded-lg bg-black/30 border border-white/10">
+              <div class="flex justify-between font-bold text-zinc-300 text-[11px] mb-1">
+                <span># backend</span> <span class="text-emerald-400 font-mono">Score: 0.96</span>
+              </div>
+              <p class="opacity-70 text-[11px] font-mono">"...let's settle on OIDC for auth. We will cutover auth pods by mid-October..."</p>
+            </div>
+            <div class="p-3 rounded-lg bg-black/30 border border-white/10">
+              <div class="flex justify-between font-bold text-zinc-300 text-[11px] mb-1">
+                <span>Architecture.pdf (Page 14)</span> <span class="text-emerald-400 font-mono">Score: 0.94</span>
+              </div>
+              <p class="opacity-70 text-[11px] font-mono">"Session tokens expire at 30 mins; Passkey WebAuthn enabled as fallback."</p>
+            </div>
+            <div class="p-3 rounded-lg bg-black/30 border border-white/10">
+              <div class="flex justify-between font-bold text-zinc-300 text-[11px] mb-1">
+                <span>Meeting Transcript · Aug 21</span> <span class="text-emerald-400 font-mono">Score: 0.91</span>
+              </div>
+              <p class="opacity-70 text-[11px] font-mono">"Action item assigned to security team: finalize deprecation notice..."</p>
+            </div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-white/10 text-[11px] opacity-60">
+            All context chunks stay resident inside your local PostgreSQL vector store. Zero external relays.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Sovereignty by Design (5-Node Topology Pipeline & Docker CLI) -->
+  <section class="py-20 px-6 max-w-7xl mx-auto border-t border-white/5 bg-zinc-950/60 rounded-3xl my-8" id="infrastructure">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center max-w-2xl mx-auto mb-12">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">Sovereignty by Design</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">Private by architecture. Not by promise.</h2>
+        <p class="text-zinc-400 text-sm mt-3 leading-relaxed">Traditional platforms claim privacy while retaining server decryption keys. Stovo's topology isolates compute, keys, and storage on nodes you select.</p>
+      </div>
+
+      <div class="space-y-3 max-w-3xl mx-auto mb-12">
+        <div class="p-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <i data-lucide="monitor" class="w-5 h-5 text-rose-400"></i>
+            <div><div class="font-bold text-white text-xs">1. Client Endpoints</div><div class="text-[11px] opacity-60">Web, iOS, Android, macOS with local MLS keystores</div></div>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-500/10">E2E Verified</span>
+        </div>
+        <div class="p-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <i data-lucide="lock" class="w-5 h-5 text-rose-400"></i>
+            <div><div class="font-bold text-white text-xs">2. Ingress &amp; TLS 1.3 Termination</div><div class="text-[11px] opacity-60">Custom domains, automatic Let's Encrypt, reverse proxy isolation</div></div>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-500/10">Zero Plaintext</span>
+        </div>
+        <div class="p-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <i data-lucide="cpu" class="w-5 h-5 text-rose-400"></i>
+            <div><div class="font-bold text-white text-xs">3. Stovo Daemon Orchestrator</div><div class="text-[11px] opacity-60">High-concurrency Go engine managing state, WebRTC and indexing</div></div>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-500/10">Self-Contained</span>
+        </div>
+        <div class="p-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <i data-lucide="server" class="w-5 h-5 text-rose-400"></i>
+            <div><div class="font-bold text-white text-xs">4. Encrypted Storage Vault</div><div class="text-[11px] opacity-60">AES-256-GCM chunked object stores on local NVMe or private S3</div></div>
+          </div>
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono text-emerald-400 bg-emerald-500/10">At-Rest Enforced</span>
+        </div>
+      </div>
+
+      <!-- Quick Start CLI -->
+      <div class="p-4 rounded-xl bg-black/60 border border-rose-500/30 max-w-xl mx-auto">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-mono text-rose-300 font-bold">$ docker compose up -d</span>
+          <span class="px-2.5 py-1 rounded bg-white/10 text-white font-mono text-[10px]">Copy CLI</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Pricing & Alpha Sales -->
+  <section class="py-20 px-6 max-w-7xl mx-auto border-t border-white/5" id="pricing">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center max-w-2xl mx-auto mb-14">
+        <span class="text-xs font-mono font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">Alpha Sales &amp; Sizing</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">Transparent Sizing. Slashed for Alpha.</h2>
+        <p class="text-zinc-400 text-sm mt-3 leading-relaxed">Free forever on self-hosted. Managed Cloud seats discounted by 65% for early testing partners.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Community -->
+        <div class="p-8 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 flex flex-col justify-between">
+          <div>
+            <span class="text-xs uppercase font-mono opacity-60">Community Self-Hosted</span>
+            <h3 class="text-xl font-bold text-white mt-1">Free Forever</h3>
+            <p class="text-xs opacity-75 mt-1">Deploy with Docker Compose on your own server.</p>
+            <div class="my-6">
+              <div class="text-4xl font-extrabold text-white">$0</div>
+              <span class="text-xs text-emerald-400">Source-Available License</span>
+            </div>
+            <ul class="space-y-3 text-xs opacity-90">
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> Unlimited messages &amp; members</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> MinIO / Local S3 storage</li>
+              <li class="flex items-center gap-2 text-rose-400"><i data-lucide="x" class="w-4 h-4"></i> Company Brain (Alpha Locked)</li>
+            </ul>
+          </div>
+          <button class="mt-8 w-full py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition">Deploy Docker ($0)</button>
+        </div>
+
+        <!-- Alpha Founder Pass -->
+        <div class="p-8 rounded-2xl bg-zinc-950/60 backdrop-blur-xl border-2 border-rose-500/60 shadow-2xl shadow-rose-500/10 relative flex flex-col justify-between">
+          <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-rose-600 to-orange-500 text-white text-[10px] font-bold uppercase tracking-wider">Alpha Sale • 65% OFF</div>
+          <div>
+            <span class="text-xs uppercase font-mono text-rose-400">Managed Stovo Cloud</span>
+            <h3 class="text-xl font-bold text-white mt-1">Alpha Founder Pass</h3>
+            <p class="text-xs opacity-75 mt-1">Single-tenant isolated cloud pod. Zero DevOps.</p>
+            <div class="my-6">
+              <span class="text-xs line-through opacity-50 font-mono">$69/mo</span>
+              <div class="text-4xl font-extrabold text-rose-400">$24 <span class="text-xs text-white opacity-70 font-normal">/month</span></div>
+              <span class="text-[10px] text-amber-300 font-bold mt-1 inline-block">Price locked for lifetime of account</span>
+            </div>
+            <ul class="space-y-3 text-xs opacity-90">
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> EU/US dedicated cloud pod</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> WebRTC multi-region voice mesh</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> Priority queue for Company Brain</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-rose-400"></i> Direct Founder Discord access</li>
+            </ul>
+          </div>
+          <button class="mt-8 w-full py-3 rounded-xl bg-gradient-to-r from-rose-600 to-orange-500 hover:opacity-90 text-white font-semibold text-xs transition shadow-lg shadow-rose-500/25">Claim Alpha Seat ($24/mo)</button>
+        </div>
+
+        <!-- Enterprise -->
+        <div class="p-8 rounded-2xl bg-zinc-950/50 backdrop-blur-xl border border-white/10 flex flex-col justify-between">
+          <div>
+            <span class="text-xs uppercase font-mono opacity-60">Commercial Self-Hosted</span>
+            <h3 class="text-xl font-bold text-white mt-1">Enterprise Sales</h3>
+            <p class="text-xs opacity-75 mt-1">Air-gapped clusters, directory sync &amp; SLAs.</p>
+            <div class="my-6">
+              <div class="text-4xl font-extrabold text-white">Custom</div>
+              <span class="text-xs opacity-70">Volume alpha discounts available</span>
+            </div>
+            <ul class="space-y-3 text-xs opacity-90">
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-400"></i> SAML/SCIM directory provisioning</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-400"></i> Custom Company Brain connectors</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-400"></i> Assisted migration &amp; 24/7 SLA</li>
+            </ul>
+          </div>
+          <button class="mt-8 w-full py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs transition">Contact Sales Team</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Real FAQ Items -->
+  <section class="py-20 px-6 max-w-7xl mx-auto border-t border-white/5">
+    <div class="max-w-6xl mx-auto max-w-4xl">
+      <h3 class="text-2xl font-bold text-white mb-8 text-center">Frequently Asked Questions</h3>
+      <div class="space-y-4 text-xs">
+        <div class="p-5 rounded-xl bg-zinc-950/50 border border-white/10">
+          <div class="font-bold text-white mb-1">Is Stovo open source?</div>
+          <p class="opacity-75">Stovo is published under a transparent Source-Available license. The code is completely public for auditing, testing, and non-commercial self-hosting.</p>
+        </div>
+        <div class="p-5 rounded-xl bg-zinc-950/50 border border-white/10">
+          <div class="font-bold text-white mb-1">Does Stovo have a permanent free cloud plan?</div>
+          <p class="opacity-75">No. We don't sell user data, run advertisements, or cross-subsidize infrastructure deficits. The free tier of Stovo is Self-Hosted Community ($0 forever on your own hardware).</p>
+        </div>
+        <div class="p-5 rounded-xl bg-zinc-950/50 border border-white/10">
+          <div class="font-bold text-white mb-1">What is the status of the Company Brain feature?</div>
+          <p class="opacity-75">Company Brain is currently in closed Early Alpha testing. It correlates communications, documentation, and task threads across the organization. It is not yet enabled on public servers.</p>
+        </div>
+        <div class="p-5 rounded-xl bg-zinc-950/50 border border-white/10">
+          <div class="font-bold text-white mb-1">Can I move from Stovo Cloud to Self-Hosted later?</div>
+          <p class="opacity-75">Absolutely. You can generate a single cryptographic export archive containing all messages, threads, users, and object files and restore it into your own Docker cluster in under 10 minutes.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. Footer -->
+  <footer class="py-12 border-t border-white/5 text-center">
+    <div class="flex items-center justify-center gap-2 mb-2">
+      <svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stovoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e11d48"/>
+          <stop offset="100%" stop-color="#fb923c"/>
+        </linearGradient>
+      </defs>
+      <rect x="6" y="10" width="12" height="20" rx="6" transform="rotate(-25 6 10)" fill="url(#stovoGrad)" opacity="0.75"/>
+      <rect x="14" y="8" width="12" height="22" rx="6" transform="rotate(-15 14 8)" fill="url(#stovoGrad)" opacity="0.9"/>
+      <rect x="22" y="6" width="12" height="24" rx="6" transform="rotate(0 22 6)" fill="url(#stovoGrad)"/>
+    </svg>
+      <span class="font-bold text-white">Stovo</span>
+    </div>
+    <p class="text-xs opacity-50">© 2026 Stovo. Source-Available Self-Hosted Private Messenger. Early Alpha v0.1.4.</p>
+  </footer>
+
+<script>lucide.createIcons();</script>
+</body>
+</html>

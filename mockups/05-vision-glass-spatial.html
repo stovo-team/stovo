@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stovo — Vision Glass Spatial [Early Alpha]</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { background: radial-gradient(circle at 50% 10%, #4c0519, #0f172a 60%, #020617); color: #fff; font-family: sans-serif; }
+.glass { background: rgba(255,255,255,0.08); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Top Stovo Banner -->
+  <div class="bg-rose-950/40 border-b border-rose-500/30 text-xs py-2 px-4 text-center">
+    <span class="text-amber-400 font-bold">⚠️ РАЗРАБОТКА В РАННЕЙ АЛЬФЕ (v0.1)</span> • 
+    <span class="text-zinc-300">Company Brain и ряд функций пока <u>недоступны</u></span> • 
+    <span class="text-rose-300 font-semibold">Скидки на ранний доступ открыты!</span>
+  </div>
+  <div class="max-w-3xl mx-auto p-8 min-h-screen flex flex-col justify-center">
+  <div class="glass rounded-3xl p-10 text-center">
+    <div class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center mx-auto mb-6">
+      <i data-lucide="message-circle" class="w-6 h-6 text-rose-400"></i>
+    </div>
+    <h1 class="text-5xl font-extrabold mb-4">Stovo Messenger</h1>
+    <p class="text-sm text-zinc-300 max-w-md mx-auto mb-8 leading-relaxed">
+      Self-hosted платформа для близкого общения. Ранняя альфа: база Company Brain и часть бизнес-фичей пока недоступны.
+    </p>
+    <div class="p-6 rounded-2xl bg-white/5 border border-white/10 flex justify-between items-center text-left">
+      <div>
+        <div class="text-xs text-zinc-400">Ранняя альфа по скидке:</div>
+        <div class="text-2xl font-bold text-white">$19 / мес <span class="text-xs text-zinc-500 line-through">$50</span></div>
+      </div>
+      <button class="px-6 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 text-white text-xs font-bold shadow-lg">Забрать скидку</button>
+    </div>
+  </div>
+</div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

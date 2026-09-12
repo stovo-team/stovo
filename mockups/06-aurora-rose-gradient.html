@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stovo — Aurora Rose Gradient [Early Alpha]</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { background: #09050e; color: #fff; font-family: sans-serif; }
+.aurora { background: radial-gradient(circle at 30% 20%, #e11d48 0%, transparent 40%), radial-gradient(circle at 70% 60%, #fb923c 0%, transparent 45%); filter: blur(70px); opacity: 0.3; position: absolute; inset: 0; z-index: -1; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Top Stovo Banner -->
+  <div class="bg-rose-950/40 border-b border-rose-500/30 text-xs py-2 px-4 text-center">
+    <span class="text-amber-400 font-bold">⚠️ РАЗРАБОТКА В РАННЕЙ АЛЬФЕ (v0.1)</span> • 
+    <span class="text-zinc-300">Company Brain и ряд функций пока <u>недоступны</u></span> • 
+    <span class="text-rose-300 font-semibold">Скидки на ранний доступ открыты!</span>
+  </div>
+  <div class="aurora"></div>
+<div class="max-w-4xl mx-auto p-8 min-h-screen flex flex-col justify-center text-center relative z-10">
+  <h1 class="text-6xl font-black mb-4">Stovo: Мессенджер для своих</h1>
+  <p class="text-zinc-300 text-base max-w-xl mx-auto mb-8">
+    Безопасный self-hosted чат. Проект в ранней альфе — Company Brain и авто-агенты сейчас не доступны.
+  </p>
+  <div class="p-6 rounded-2xl bg-black/60 backdrop-blur border border-rose-500/30 max-w-md mx-auto flex justify-between items-center text-left">
+    <div>
+      <div class="text-xs text-amber-400 font-bold uppercase">Распродажа Альфы</div>
+      <div class="text-2xl font-bold text-white">$12/мес <span class="text-xs text-zinc-500 line-through">$35</span></div>
+    </div>
+    <button class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold">Купить доступ</button>
+  </div>
+</div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

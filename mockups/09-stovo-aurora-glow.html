@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stovo — Aurora Rose & Orange Flow [Early Alpha]</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { background: #0b0710; color: #fff; font-family: sans-serif; overflow-x: hidden; }
+    .alpha-banner { background: rgba(225,29,72,0.15); border-color: rgba(225,29,72,0.3); color: #f59e0b; }
+    .btn-cta { background: linear-gradient(135deg, #e11d48, #fb923c); color: #fff; }
+    .headline-text { color: #fff; }
+    .accent-text { background: linear-gradient(135deg, #fb7185, #fb923c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .eyebrow { color: #fb7185; }
+    .card { background: rgba(255,255,255,0.04); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); }
+    .pricing-box { background: rgba(255,255,255,0.05); border-color: rgba(225,29,72,0.3); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <!-- Top Alpha Banner -->
+  <div class="alpha-banner py-2 px-4 text-center text-xs border-b">
+    <span class="font-bold">⚠️ EARLY ALPHA BUILD v0.1</span> • 
+    <span>Company Brain autonomous knowledge features are currently <strong class="underline">unavailable</strong></span> • 
+    <span class="font-semibold">Alpha Sales Active (-60% Off)</span>
+  </div>
+
+  <nav class="max-w-6xl mx-auto p-6 flex justify-between items-center border-b border-white/5">
+    <div class="flex items-center gap-2.5">
+      <svg width="28" height="28" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="stovoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#e11d48"/>
+          <stop offset="100%" stop-color="#fb923c"/>
+        </linearGradient>
+      </defs>
+      <rect x="6" y="10" width="12" height="20" rx="6" transform="rotate(-25 6 10)" fill="url(#stovoGrad)" opacity="0.75"/>
+      <rect x="14" y="8" width="12" height="22" rx="6" transform="rotate(-15 14 8)" fill="url(#stovoGrad)" opacity="0.9"/>
+      <rect x="22" y="6" width="12" height="24" rx="6" transform="rotate(0 22 6)" fill="url(#stovoGrad)"/>
+    </svg>
+      <span class="font-bold text-xl tracking-tight">Stovo</span>
+    </div>
+    <div class="hidden sm:flex gap-6 text-xs text-zinc-400">
+      <a href="#product" class="hover:text-white">Product</a>
+      <a href="#solutions" class="hover:text-white">Solutions</a>
+      <a href="#pricing" class="hover:text-white">Alpha Sales</a>
+    </div>
+    <a href="#pricing" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold btn-cta">Get Stovo</a>
+  </nav>
+
+  <main class="max-w-5xl mx-auto px-6 py-16">
+    <div class="text-center max-w-3xl mx-auto mb-14">
+      <div class="eyebrow text-xs uppercase tracking-widest font-semibold mb-3">CHAT • FILES • IDENTITY • COMPANY BRAIN</div>
+      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight mb-4 headline-text">
+        Your company's private workspace. <br><span class="accent-text">On your terms.</span>
+      </h1>
+      <p class="text-base text-zinc-400 leading-relaxed mb-6">
+        Chat, files, identity and Company Brain — hosted by Stovo or deployed on your own infrastructure.
+      </p>
+      <div class="text-xs text-zinc-400">A calm, private space for real communication.</div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left text-xs">
+        <div class="card p-6 rounded-2xl">
+          <div class="text-emerald-400 font-bold mb-1">ONLINE</div>
+          <h4 class="text-base font-bold text-white mb-2">Text &amp; File Mesh</h4>
+          <p class="text-zinc-400">Full conversation history, file gallery, and invite codes.</p>
+        </div>
+        <div class="card p-6 rounded-2xl border-rose-500/30">
+          <div class="text-rose-400 font-bold mb-1">IN DEVELOPMENT</div>
+          <h4 class="text-base font-bold text-white mb-2">Company Brain</h4>
+          <p class="text-zinc-400">Autonomous entity indexing is coming in the next release cohort.</p>
+        </div>
+        <div class="card p-6 rounded-2xl">
+          <div class="text-orange-400 font-bold mb-1">OPERATIONAL</div>
+          <h4 class="text-base font-bold text-white mb-2">Zero Tracking</h4>
+          <p class="text-zinc-400">No telemetries dial out. True digital sovereignty.</p>
+        </div>
+      </div>
+
+    <!-- Sales & Pricing Box -->
+    <div class="pricing-box p-8 rounded-2xl border mt-16 flex flex-col sm:flex-row justify-between items-center gap-6">
+      <div>
+        <div class="text-xs uppercase font-bold text-amber-400">Alpha Early-Bird Sales</div>
+        <div class="text-2xl font-bold text-white mt-1">Stovo Cloud Founder: $24/mo <span class="text-xs text-zinc-500 line-through">$69/mo</span></div>
+        <div class="text-xs text-zinc-400 mt-1">Or deploy Community Edition for $0 forever on your own Docker cluster.</div>
+      </div>
+      <button class="px-6 py-3 rounded-xl font-bold text-xs btn-cta">Claim Alpha License</button>
+    </div>
+  </main>
+
+  <footer class="py-12 border-t border-white/5 text-center text-xs text-zinc-600">
+    © 2026 Stovo. Source-Available Self-Hosted Messenger.
+  </footer>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
