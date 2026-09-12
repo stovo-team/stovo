@@ -75,6 +75,7 @@ export function ChatHeader({
   onBackFromThread,
   archiveGroupSourceChat,
   archiveGroupName,
+  archiveGroupKind,
   onBackFromArchiveGroup,
   isVoiceTextChatOpen = false,
   onToggleVoiceChat,
@@ -110,6 +111,7 @@ export function ChatHeader({
   onBackFromThread?: () => void;
   archiveGroupSourceChat?: Chat | null;
   archiveGroupName?: string;
+  archiveGroupKind?: "notes" | "chat";
   onBackFromArchiveGroup?: () => void;
   isVoiceTextChatOpen?: boolean;
   onToggleVoiceChat?: () => void;
@@ -117,10 +119,19 @@ export function ChatHeader({
   const strings = useStrings();
   const chatName = displayChatName(selectedChat, currentUser?.id, strings);
   const isArchiveGroup = Boolean(archiveGroupName && onBackFromArchiveGroup);
+  const isNotesArchiveGroup = archiveGroupKind === "notes";
   const archiveGroupChat = archiveGroupSourceChat ?? selectedChat;
   const archiveGroupChatName = archiveGroupSourceChat
     ? displayChatName(archiveGroupSourceChat, currentUser?.id, strings)
     : archiveGroupName ?? chatName;
+  // An archive group represents a different conversation from the archive
+  // itself. Keep its visual identity attached to that source: the account's
+  // profile photo for My Notes, or the original chat's photo/avatar.
+  const archiveGroupAvatarFile = archiveGroupSourceChat
+    ? chatAvatarFile(archiveGroupSourceChat, currentUser?.id)
+    : isNotesArchiveGroup
+      ? currentUser?.profilePhoto
+      : null;
   const presence = selectedChat.type === "direct" ? directChatPresence(selectedChat, currentUser) : null;
   const handleBack = isArchiveGroup
     ? onBackFromArchiveGroup
@@ -167,9 +178,9 @@ export function ChatHeader({
         <div className="chat-title-group chat-title-group--archive-group" aria-label={`Message Archive, ${archiveGroupName}`}>
           <RealAvatar
             accessToken={accessToken}
-            className={`avatar chat-avatar ${archiveGroupSourceChat ? chatAvatarTypeClass(archiveGroupSourceChat) : "direct"}`}
-            fallbackKind={archiveGroupSourceChat ? chatAvatarFallbackKind(archiveGroupSourceChat) : "direct"}
-            file={archiveGroupSourceChat ? chatAvatarFile(archiveGroupSourceChat, currentUser?.id) : currentUser?.profilePhoto}
+            className={`avatar chat-avatar ${archiveGroupSourceChat ? chatAvatarTypeClass(archiveGroupSourceChat) : isNotesArchiveGroup ? "direct" : "archive chat-avatar--archive"}`}
+            fallbackKind={archiveGroupSourceChat ? chatAvatarFallbackKind(archiveGroupSourceChat) : isNotesArchiveGroup ? "direct" : "archive"}
+            file={archiveGroupAvatarFile}
             label={archiveGroupChatName}
             style={transitionAnchorStyle(chatTransitionName(archiveGroupChat.id, "avatar"))}
           />

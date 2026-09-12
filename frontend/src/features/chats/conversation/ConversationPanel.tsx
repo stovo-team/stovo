@@ -57,6 +57,7 @@ export type ConversationPanelProps = {
   headerBelow?: ReactNode;
   archiveGroupSourceChat?: Chat | null;
   archiveGroupName?: string;
+  archiveGroupKind?: "notes" | "chat";
   onBackFromArchiveGroup?: () => void;
   canAddPeople?: boolean;
   onOpenAddPeople?: () => void;
@@ -89,6 +90,7 @@ export function ConversationPanel({
   headerBelow,
   archiveGroupSourceChat,
   archiveGroupName,
+  archiveGroupKind,
   onBackFromArchiveGroup,
   canAddPeople,
   onOpenAddPeople,
@@ -402,6 +404,7 @@ export function ConversationPanel({
         }}
         archiveGroupSourceChat={archiveGroupSourceChat}
         archiveGroupName={archiveGroupName}
+        archiveGroupKind={archiveGroupKind}
         onBackFromArchiveGroup={onBackFromArchiveGroup}
         onSelectionCopy={handleCopySelectedMessages}
         onSelectionDelete={() => {
