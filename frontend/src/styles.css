@@ -27185,7 +27185,7 @@ button.checklist-add-item-btn:hover,
 }
 .quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 52px; }
 .quick-access-panel-tabs--archive-controls { align-self: flex-start; margin-left: 46px; position: relative; width: max-content; z-index: 3; }
-.quick-access-panel--archive .quick-access-panel-tabs { margin-left: 24px; margin-top: 45px; }
+.quick-access-panel-tabs--archive-grouped { margin-left: 24px; margin-top: 45px; }
 .quick-access-panel-tabs button { background: color-mix(in oklab, var(--surface-card) 82%, transparent); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; padding: 7px 12px; }
 .quick-access-panel-tabs button:hover { background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent); }
 .quick-access-panel-tabs button.active { background: color-mix(in oklab, var(--accent-soft) 22%, var(--surface-card)); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-default)); color: var(--accent-primary); }

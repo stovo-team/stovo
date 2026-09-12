@@ -49,7 +49,7 @@ export function MessageArchivePanel({ accessToken, chats, currentUser, currentUs
   });
   return <section className="quick-access-panel quick-access-panel--archive" aria-label="Message Archive">
     <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header"><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-title-group"><span className="chat-title-row"><h1>Message Archive</h1></span></span></header>
-    <div className="quick-access-panel-tabs" role="tablist" aria-label="Message archive view"><button type="button" role="tab" aria-selected={false} onClick={() => onViewChange("all")}>All messages</button><button type="button" className="active" role="tab" aria-selected={true}>Grouped by chat</button></div>
+    <div className="quick-access-panel-tabs quick-access-panel-tabs--archive-grouped" role="tablist" aria-label="Message archive view"><button type="button" role="tab" aria-selected={false} onClick={() => onViewChange("all")}>All messages</button><button type="button" className="active" role="tab" aria-selected={true}>Grouped by chat</button></div>
     <div className="archive-quick-list">
       <button type="button" className="chat-list-item" onClick={() => onOpenGroup("notes")}><RealAvatar accessToken={accessToken} className="avatar chat-avatar" fallbackKind="direct" file={currentUser?.profilePhoto} label="My Notes" /><span className="chat-list-copy"><span className="chat-list-topline"><strong>My Notes</strong></span><span className="chat-list-preview">Messages saved directly to Message Archive</span></span></button>
       {rows.map((row) => {
