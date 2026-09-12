@@ -70,14 +70,15 @@ describe("StorageChecklists", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders checklists and displays the .checklist extension in all or checklists filter", async () => {
+  it("renders checklists with concise metadata", async () => {
     await act(async () => {
       root?.render(<StorageChecklists accessToken="token" filter="all" search="" />);
     });
 
     expect(container?.textContent).toContain("Grocery Shopping");
     expect(container?.textContent).toContain("Weekend Errands");
-    expect(container?.textContent).toContain(".checklist");
+    expect(container?.textContent).toContain("Groceries • 1/3 done");
+    expect(container?.textContent).not.toContain(".checklist");
   });
 
   it("renders nothing when filter is not all and not checklists", async () => {

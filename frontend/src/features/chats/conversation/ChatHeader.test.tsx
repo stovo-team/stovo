@@ -228,6 +228,7 @@ describe("ChatHeader", () => {
     );
 
     expect(container.querySelector(".chat-title-group--archive-group .chat-avatar")).not.toBeNull();
-    expect(container.querySelector(".chat-title-group--archive-group .chat-avatar.archive")).toBeNull();
+    expect(container.querySelector(".chat-title-group--archive-group .chat-avatar.archive")).not.toBeNull();
+    expect(container.querySelector(".chat-title-group--archive-group .lucide-file-text")).not.toBeNull();
   });
 });

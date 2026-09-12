@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, Pencil, StickyNote } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import * as Y from "yjs";
@@ -6,6 +6,11 @@ import * as Y from "yjs";
 import { getClusterPrefix } from "../api/client";
 import { getCanvasDocument, getStorageCanvases, type Canvas, type CanvasUpdate } from "../api/canvas";
 import type { StorageFilter } from "../pages/storageLibrary";
+import {
+  loadCachedCanvasPreviews,
+  saveCachedCanvasPreviews,
+  type CachedCanvasPreview,
+} from "../fileLibraryCache";
 
 interface WhiteboardElement {
   id?: string;
@@ -342,16 +347,46 @@ export function StorageCanvases({
   accessToken,
   filter,
   search,
-  sourceChatId
+  sourceChatId,
+  userId
 }: {
   accessToken: string | null;
   filter: StorageFilter;
   search: string;
   sourceChatId?: string | null;
+  userId?: string;
 }) {
   const navigate = useNavigate();
   const [canvases, setCanvases] = useState<Canvas[]>([]);
-  const [documents, setDocuments] = useState<Record<string, CanvasUpdate[]>>({});
+  const [documents, setDocuments] = useState<Record<string, CachedCanvasPreview<CanvasUpdate>>>({});
+  const [hasRestoredPreviewCache, setHasRestoredPreviewCache] = useState(!userId);
+  const requestedDocuments = useRef(new Set<string>());
+
+  useEffect(() => {
+    requestedDocuments.current.clear();
+    setDocuments({});
+    if (!userId) {
+      setHasRestoredPreviewCache(true);
+      return;
+    }
+    let cancelled = false;
+    setHasRestoredPreviewCache(false);
+    void loadCachedCanvasPreviews<CanvasUpdate>(userId)
+      .then((cached) => {
+        if (!cancelled && cached) setDocuments(cached);
+      })
+      .finally(() => {
+        if (!cancelled) setHasRestoredPreviewCache(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !hasRestoredPreviewCache) return;
+    void saveCachedCanvasPreviews(userId, documents);
+  }, [documents, hasRestoredPreviewCache, userId]);
 
   useEffect(() => {
     if (!accessToken) return;
@@ -361,14 +396,19 @@ export function StorageCanvases({
   }, [accessToken, filter]);
 
   useEffect(() => {
-    if (!accessToken || canvases.length === 0) return;
+    if (!accessToken || canvases.length === 0 || !hasRestoredPreviewCache) return;
     let cancelled = false;
     canvases.forEach((c) => {
-      if (documents[c.id]) return;
+      const requestKey = `${c.id}:${c.updatedAt}`;
+      if (requestedDocuments.current.has(requestKey)) return;
+      requestedDocuments.current.add(requestKey);
       void getCanvasDocument(accessToken, c.id)
         .then((res) => {
           if (!cancelled && res?.updates) {
-            setDocuments((prev) => ({ ...prev, [c.id]: res.updates }));
+            setDocuments((prev) => ({
+              ...prev,
+              [c.id]: { updatedAt: c.updatedAt, updates: res.updates }
+            }));
           }
         })
         .catch(() => undefined);
@@ -376,7 +416,7 @@ export function StorageCanvases({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, canvases]);
+  }, [accessToken, canvases, hasRestoredPreviewCache]);
 
   if (filter !== "all" && filter !== "canvases") return null;
 
@@ -429,10 +469,10 @@ export function StorageCanvases({
               key={canvas.id}
               onClick={() => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`)}
             >
-              <CanvasTilePreview canvas={canvas} updates={documents[canvas.id]} />
+              <CanvasTilePreview canvas={canvas} updates={documents[canvas.id]?.updates} />
               <div className="storage-tile-info">
                 <strong>{canvas.title}</strong>
-                <small>Canvas • .canvas</small>
+                <small>Canvas</small>
               </div>
             </button>
           ))}

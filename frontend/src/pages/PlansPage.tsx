@@ -1,6 +1,6 @@
 import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Plus, Search, X } from "lucide-react";
 import { User } from "../api/auth";
 import { ApiError } from "../api/client";
 import { getMembers } from "../api/family";
@@ -466,7 +466,7 @@ export default function PlansPage() {
   const renderTimedCalendar = (days: Date[]) => (
     <div className={`plans-calendar plans-calendar--${days.length}`} role="grid" aria-label={days.length === 3 ? strings.plans.threeDays : strings.plans.thisWeek}>
       <div className="plans-calendar-hours" aria-hidden="true">
-        <span />
+        <span className="plans-calendar-hours-icon"><Clock3 size={16} /></span>
         {CALENDAR_TIME_MARKERS.map((hour) => <time key={hour}>{formatSlotTime(hour)}</time>)}
       </div>
       <div className="plans-calendar-days">
@@ -477,6 +477,7 @@ export default function PlansPage() {
           return (
             <section className={`plans-calendar-day${sameDay(day, selectedDay) ? " active" : ""}`} key={day.toISOString()} role="gridcell">
               <button type="button" className="plans-calendar-day-heading" onClick={() => setSelectedDay(day)}>
+                <CalendarDays className="plans-calendar-day-icon" size={14} aria-hidden="true" />
                 <small>{new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(day)}</small>
                 <strong>{day.getDate()}</strong>
               </button>
