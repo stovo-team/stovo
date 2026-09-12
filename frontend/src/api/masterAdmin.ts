@@ -14,6 +14,10 @@ export interface ServerRecord {
   nav_tabs?: NavTabsConfig;
 }
 
+export interface TenantCallQualitySettings {
+  screenShareBitrateKbps: number;
+}
+
 export interface CreateServerResponse {
   id: number;
   slug: string;
@@ -146,6 +150,34 @@ export async function getGhostToken(token: string, slug: string): Promise<string
   }
   const data = await res.json();
   return data.ghost_token;
+}
+
+function tenantApiPath(slug: string) {
+  return `${window.location.origin}/s/${encodeURIComponent(slug)}/api/family`;
+}
+
+export async function fetchTenantCallQuality(token: string, slug: string): Promise<TenantCallQualitySettings> {
+  const ghostToken = await getGhostToken(token, slug);
+  const res = await fetch(tenantApiPath(slug), { headers: { Authorization: `Bearer ${ghostToken}` } });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || err.message || "Failed to fetch guest meeting quality settings");
+  }
+  return res.json();
+}
+
+export async function updateTenantCallQuality(token: string, slug: string, screenShareBitrateKbps: number): Promise<TenantCallQualitySettings> {
+  const ghostToken = await getGhostToken(token, slug);
+  const res = await fetch(tenantApiPath(slug), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ghostToken}` },
+    body: JSON.stringify({ screenShareBitrateKbps }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || err.message || "Failed to save guest meeting quality settings");
+  }
+  return res.json();
 }
 
 export async function createInviteLink(token: string, slug: string): Promise<string> {

@@ -333,12 +333,17 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 			if err != nil {
 				return httptransport.Family{}, err
 			}
+			screenShareBitrateKbps, err := s.screenShareBitrateForFamily(ctx, familyID)
+			if err != nil {
+				return httptransport.Family{}, err
+			}
 			return httptransport.Family{
 				ID: family.ID, Name: family.Name, StorageLimitMB: family.StorageLimitMB, MinimizedChatLayout: family.MinimizedChatLayout,
 				DefaultMessageEncryptionProtocol: family.DefaultMessageEncryptionProtocol,
 				DefaultProfileVisibility:         defaults.ProfileVisibility, DefaultLastSeenVisibility: defaults.LastSeenVisibility,
 				DefaultReadReceiptsEnabled: defaults.ReadReceiptsEnabled, DefaultNotificationSettings: defaults.NotificationSettings,
-				NavTabs: httptransport.NavTabs{Chats: family.NavTabs.Chats, Storage: family.NavTabs.Storage, Plans: family.NavTabs.Plans, Settings: family.NavTabs.Settings},
+				ScreenShareBitrateKbps: screenShareBitrateKbps,
+				NavTabs:                httptransport.NavTabs{Chats: family.NavTabs.Chats, Storage: family.NavTabs.Storage, Plans: family.NavTabs.Plans, Settings: family.NavTabs.Settings},
 			}, nil
 		},
 		IsNotFound: func(err error) bool { return errors.Is(err, errNotFound) },
@@ -359,6 +364,11 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 			}
 			if payload.DefaultProfileVisibility != nil || payload.DefaultLastSeenVisibility != nil || payload.DefaultReadReceiptsEnabled != nil || payload.DefaultNotificationSettings != nil {
 				if _, err := s.familyDefaults.Update(ctx, familyID, featurefamily.MemberDefaultsPatch{ProfileVisibility: payload.DefaultProfileVisibility, LastSeenVisibility: payload.DefaultLastSeenVisibility, ReadReceiptsEnabled: payload.DefaultReadReceiptsEnabled, NotificationSettings: payload.DefaultNotificationSettings}); err != nil {
+					return nil, err
+				}
+			}
+			if payload.ScreenShareBitrateKbps != nil {
+				if err := s.updateScreenShareBitrateForFamily(ctx, familyID, *payload.ScreenShareBitrateKbps); err != nil {
 					return nil, err
 				}
 			}

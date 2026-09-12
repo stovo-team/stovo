@@ -1,6 +1,6 @@
 import { getApiUrl } from "./client";
 
-export type GuestMeetingPreview = { title: string; scheduledAt?: string | null; admissionMode: "immediate" | "lobby"; expiresAt: string; guestCount: number; guestLimit: number };
+export type GuestMeetingPreview = { title: string; scheduledAt?: string | null; admissionMode: "immediate" | "lobby"; expiresAt: string; guestCount: number; guestLimit: number; screenShareBitrateKbps?: number };
 export type GuestMeetingStatus = { displayName: string; state: "waiting" | "admitted" | "blocked" };
 export type GuestMeetingSession = { id: string; state: "waiting" | "admitted" };
 

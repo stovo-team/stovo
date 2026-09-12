@@ -12200,6 +12200,7 @@ span.message-spoiler.is-revealed {
 }
 .plans-header h2 { flex: 1; font-size: 18px; margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plans-header button { background: transparent; border: 0; border-radius: 50%; color: var(--text-primary); cursor: pointer; display: grid; height: 36px; place-items: center; transition: background-color .16s ease; width: 36px; }
+.plans-header button:hover:not(:disabled) { background: transparent; border-color: transparent; }
 .plans-header button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .plans-agenda {
   display: flex;
@@ -12217,7 +12218,7 @@ span.message-spoiler.is-revealed {
 .plan-row strong, .plan-row small { display: block; }
 .plan-row small { color: var(--text-secondary); margin-top: 4px; }
 .plan-card-content { min-width: 0; }
-.plan-title-line { align-items: start; display: grid; gap: 4px; justify-items: start; }
+.plan-title-line { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
 .plan-title-line strong { font-size: 16px; line-height: 1.2; }
 .plan-status { border-radius: 999px; font-size: 10px; font-weight: 800; line-height: 1; padding: 4px 6px; white-space: nowrap; }
 .plan-status--scheduled { background: var(--accent-soft); color: var(--accent-primary); }
@@ -12226,12 +12227,12 @@ span.message-spoiler.is-revealed {
 .plan-created-by { align-items: center; display: flex; gap: 5px; margin-top: 4px; }
 .plan-created-by small { font-size: 11px; margin: 0; }
 .plan-creator-avatar { background: #64748b; border: 2px solid var(--surface-card); box-shadow: none; height: 28px; width: 28px; }
-.plan-rsvp { align-items: center; display: flex; flex-wrap: wrap; gap: 4px; grid-column: auto; margin-top: 8px; }
+.plan-rsvp { display: grid; gap: 4px; grid-column: auto; grid-template-columns: minmax(0, 1fr); margin-top: 8px; }
 .plan-rsvp-response { align-items: flex-start; display: grid; gap: 3px; }
 .plan-rsvp-actions { align-items: center; display: inline-flex; gap: 4px; }
 .plan-rsvp-actions > span { color: var(--text-secondary); font-size: 11px; font-weight: 700; margin-right: 2px; }
 .plan-rsvp-actions button { font-size: 11px; min-height: 26px; padding: 3px 8px; }
-.plan-attendee-list { align-items: center; background: transparent !important; border: 0 !important; box-shadow: none !important; display: flex; gap: 0; min-height: 28px; padding: 0; }
+.plan-attendee-list { align-items: center; background: transparent !important; border: 0 !important; box-shadow: none !important; display: flex; gap: 0; grid-column: 1; min-height: 28px; padding: 0; }
 .plan-attendee { background: transparent !important; border: 0 !important; box-shadow: none !important; box-sizing: border-box; flex: 0 0 28px; height: 28px; margin-left: -8px; padding: 0; position: relative; }
 .plan-attendee:first-child { margin-left: 0; }
 .plan-attendee-button { background: transparent !important; border: 0 !important; border-radius: 50%; box-shadow: none !important; box-sizing: border-box; cursor: pointer; display: grid; flex: 0 0 28px; height: 28px; min-height: 28px; padding: 0; place-items: center; width: 28px; }

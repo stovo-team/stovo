@@ -52,6 +52,7 @@ type familyPublic struct {
 	DefaultLastSeenVisibility        string        `json:"defaultLastSeenVisibility"`
 	DefaultReadReceiptsEnabled       bool          `json:"defaultReadReceiptsEnabled"`
 	DefaultNotificationSettings      string        `json:"defaultNotificationSettings"`
+	ScreenShareBitrateKbps           int           `json:"screenShareBitrateKbps"`
 	NavTabs                          NavTabsConfig `json:"navTabs"`
 	PublicAppURL                     *string       `json:"-"`
 	PublicAPIURL                     *string       `json:"-"`

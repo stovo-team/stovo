@@ -36,6 +36,8 @@ export default function GuestMeetingPage() {
   const { token } = useParams();
   const { accessToken, currentUser } = useAuth();
   const [preview, setPreview] = useState<GuestMeetingPreview | null>(null);
+	const screenShareBitrateKbps = Math.min(20_000, Math.max(1_000, preview?.screenShareBitrateKbps ?? 5_000));
+	const screenShareMaxBitrate = screenShareBitrateKbps * 1_000;
   const authenticatedName = currentUser?.displayName.trim() || currentUser?.username.trim() || "";
   const [name, setName] = useState(() => authenticatedName);
   const [state, setState] = useState<MeetingState>("name");
@@ -153,10 +155,11 @@ export default function GuestMeetingPage() {
       await room.localParticipant.publishTrack(track, {
         source: Track.Source.ScreenShare,
         degradationPreference: "maintain-resolution",
-        screenShareEncoding: { maxBitrate: 5_000_000, maxFramerate: 30 },
+        screenShareEncoding: { maxBitrate: screenShareMaxBitrate, maxFramerate: 30 },
         screenShareSimulcastLayers: [
-          new VideoPreset(640, 360, 400_000, 15),
-          new VideoPreset(1280, 720, 2_000_000, 30)
+          new VideoPreset(640, 360, Math.min(400_000, screenShareMaxBitrate), 15),
+          new VideoPreset(1280, 720, Math.min(2_000_000, screenShareMaxBitrate), 30),
+          new VideoPreset(1920, 1080, screenShareMaxBitrate, 30)
         ]
       });
       setIsScreenSharing(true);
@@ -425,7 +428,7 @@ export default function GuestMeetingPage() {
         <div className="voice-room-stage">
           {hasScreenShare ? <div className={`guest-call-spotlight${cameraTiles.length > 3 ? " guest-call-spotlight--grid" : ""}`} aria-label="Shared screen and cameras">
             <div className="guest-call-screen-stage">
-              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: screenAspectRatio }} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled} speaking={isSpeakingIndicatorVisible}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: screenAspectRatio }} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
+              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: screenAspectRatio }} label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" style={{ aspectRatio: screenAspectRatio }} label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
             </div>
             <aside className="guest-call-camera-rail" aria-label="Participant cameras">
               {cameraTiles.map((participant) => <GuestParticipantTile key={participant.id} className="guest-call-camera-tile" label={participant.label} hasVideo={Boolean(participant.stream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={participant.muted} speaking={participant.speaking} avatar={participant.local ? <span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span> : undefined}>

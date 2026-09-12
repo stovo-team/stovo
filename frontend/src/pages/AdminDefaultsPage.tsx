@@ -25,6 +25,7 @@ export default function AdminDefaultsPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [screenShareBitrateKbps, setScreenShareBitrateKbps] = useState("5000");
 
   const load = useCallback(async () => {
     if (!accessToken || !isOwner) return;
@@ -36,6 +37,7 @@ export default function AdminDefaultsPage() {
   }, [accessToken, authRequest, isOwner, strings.admin.defaults.loadError]);
 
   useEffect(() => void load(), [load]);
+  useEffect(() => { if (family) setScreenShareBitrateKbps(String(family.screenShareBitrateKbps ?? 5000)); }, [family]);
 
   async function save(patch: Partial<Family>) {
     setIsSaving(true); setError(null); setNotice(null);
@@ -70,6 +72,9 @@ export default function AdminDefaultsPage() {
           <label className="appearance-setting-row"><span><strong>{strings.notifications.muteNotifications}</strong></span><input type="checkbox" checked={notifications.quietHoursEnabled} disabled={!family || isSaving} onChange={(event) => setNotifications({ quietHoursEnabled: event.target.checked })} /></label>
           <div className="quiet-hours-times"><label>{strings.notifications.start}<input type="time" value={notifications.quietHoursStart} disabled={!family || isSaving} onChange={(event) => setNotifications({ quietHoursStart: event.target.value })} /></label><label>{strings.notifications.end}<input type="time" value={notifications.quietHoursEnd} disabled={!family || isSaving} onChange={(event) => setNotifications({ quietHoursEnd: event.target.value })} /></label></div>
         </section>
+		<section className="admin-defaults-call-quality-settings"><h2>Guest meeting quality</h2><p>Set the maximum screen-share bitrate for guest meetings. 5,000 kbps is the recommended 1080p default.</p>
+		  <label className="appearance-setting-row"><span><strong>Screen-share bitrate (kbps)</strong><small>1,000–20,000 kbps</small></span><input type="number" min="1000" max="20000" step="500" inputMode="numeric" value={screenShareBitrateKbps} disabled={!family || isSaving} onChange={(event) => setScreenShareBitrateKbps(event.target.value)} onBlur={() => { const value = Number(screenShareBitrateKbps); if (Number.isInteger(value) && value >= 1000 && value <= 20000 && value !== family?.screenShareBitrateKbps) void save({ screenShareBitrateKbps: value }); else if (family) setScreenShareBitrateKbps(String(family.screenShareBitrateKbps ?? 5000)); }} /></label>
+		</section>
       </div>}
     </section>
   </main>;
