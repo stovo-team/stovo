@@ -306,7 +306,10 @@ services:
       - --external-ip=${PUBLIC_IP}
 
   livekit:
-    image: livekit/livekit-server:v1.8.4
+    # v1.9.10 introduced the /rtc/v1 signaling endpoint used by the current
+    # browser SDK. Pin a current release rather than relying on the legacy
+    # /rtc fallback, which can join but fails during media negotiation.
+    image: livekit/livekit-server:v1.12.0
     restart: unless-stopped
     ports:
       - "7880:7880"
