@@ -3,10 +3,12 @@ import {
   createInviteLink,
   createServer,
   deleteServer,
+  fetchTenantCallQuality,
   fetchServers,
   getGhostToken,
   masterLogin,
   updateServerSettings,
+  updateTenantCallQuality,
   NavTabsConfig,
   ServerRecord,
 } from "../api/masterAdmin";
@@ -50,6 +52,7 @@ export default function MultiAdminPage() {
     plans: true,
     settings: true,
   });
+  const [editScreenShareBitrateKbps, setEditScreenShareBitrateKbps] = useState(5000);
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Notification / Toast info
@@ -130,7 +133,7 @@ export default function MultiAdminPage() {
     }
   };
 
-  const handleOpenSettings = (s: ServerRecord) => {
+  const handleOpenSettings = async (s: ServerRecord) => {
     setEditingServer(s);
     setEditName(s.name);
     setEditNavTabs({
@@ -139,6 +142,15 @@ export default function MultiAdminPage() {
       plans: s.nav_tabs?.plans ?? true,
       settings: s.nav_tabs?.settings ?? true,
     });
+	  setEditScreenShareBitrateKbps(5000);
+	  if (token) {
+		  try {
+			  const quality = await fetchTenantCallQuality(token, s.slug);
+			  setEditScreenShareBitrateKbps(quality.screenShareBitrateKbps ?? 5000);
+		  } catch (err: any) {
+			  showToast(err.message || "Could not load the guest meeting quality setting.");
+		  }
+	  }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -146,6 +158,7 @@ export default function MultiAdminPage() {
     if (!token || !editingServer) return;
     setSavingSettings(true);
     try {
+	  await updateTenantCallQuality(token, editingServer.slug, editScreenShareBitrateKbps);
       const updated = await updateServerSettings(token, editingServer.slug, {
         name: editName.trim(),
         nav_tabs: editNavTabs,
@@ -412,7 +425,7 @@ export default function MultiAdminPage() {
             <div style={styles.badgePill}>SPACE SETTINGS</div>
             <h3 style={styles.modalTitle}>{editingServer.name}</h3>
             <p style={styles.modalSubtitle}>
-              Configure space properties and select which tabs will be shown in the navigation panel.
+              Configure space properties, guest meeting quality, and the navigation panel.
             </p>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
@@ -426,6 +439,21 @@ export default function MultiAdminPage() {
                   required
                 />
               </label>
+
+			  <label style={styles.label}>
+				Screen-share bitrate (kbps)
+				<input
+				  type="number"
+				  min="1000"
+				  max="20000"
+				  step="500"
+				  value={editScreenShareBitrateKbps}
+				  onChange={(e) => setEditScreenShareBitrateKbps(Number(e.target.value))}
+				  style={styles.inputPill}
+				  required
+				/>
+				<span style={styles.tabToggleDesc}>5,000 kbps is the recommended cap for 1080p screen shares.</span>
+			  </label>
 
               <div style={{ marginTop: 8 }}>
                 <div style={{ ...styles.label, marginBottom: 12 }}>
@@ -506,7 +534,7 @@ export default function MultiAdminPage() {
                 <button
                   type="submit"
                   style={styles.primaryPillButton}
-                  disabled={savingSettings}
+                  disabled={savingSettings || !Number.isInteger(editScreenShareBitrateKbps) || editScreenShareBitrateKbps < 1000 || editScreenShareBitrateKbps > 20000}
                 >
                   {savingSettings ? "Saving..." : "Save Settings"}
                 </button>

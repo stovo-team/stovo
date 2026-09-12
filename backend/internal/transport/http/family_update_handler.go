@@ -17,6 +17,7 @@ type FamilyUpdateRequest struct {
 	DefaultLastSeenVisibility   *string `json:"defaultLastSeenVisibility"`
 	DefaultReadReceiptsEnabled  *bool   `json:"defaultReadReceiptsEnabled"`
 	DefaultNotificationSettings *string `json:"defaultNotificationSettings"`
+	ScreenShareBitrateKbps      *int    `json:"screenShareBitrateKbps"`
 }
 
 type FamilyUpdateActor struct{ FamilyID, Role string }
@@ -59,8 +60,12 @@ func (h FamilyUpdateHandler) Update(w stdhttp.ResponseWriter, r *stdhttp.Request
 		writeFamilyReadJSON(w, stdhttp.StatusUnprocessableEntity, map[string]string{"detail": "storageLimitMb must be positive"})
 		return
 	}
+	if payload.ScreenShareBitrateKbps != nil && (*payload.ScreenShareBitrateKbps < 1000 || *payload.ScreenShareBitrateKbps > 20000) {
+		writeFamilyReadJSON(w, stdhttp.StatusUnprocessableEntity, map[string]string{"detail": "screenShareBitrateKbps must be between 1000 and 20000"})
+		return
+	}
 	hasDefaults := payload.DefaultProfileVisibility != nil || payload.DefaultLastSeenVisibility != nil || payload.DefaultReadReceiptsEnabled != nil || payload.DefaultNotificationSettings != nil
-	if hasDefaults && (h.operations.IsOwner == nil || !h.operations.IsOwner(actor)) {
+	if (hasDefaults || payload.ScreenShareBitrateKbps != nil) && (h.operations.IsOwner == nil || !h.operations.IsOwner(actor)) {
 		writeFamilyReadJSON(w, stdhttp.StatusForbidden, map[string]string{"detail": "Only the server owner can update member defaults"})
 		return
 	}

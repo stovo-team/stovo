@@ -18,6 +18,7 @@ type Family struct {
 	DefaultLastSeenVisibility        string  `json:"defaultLastSeenVisibility"`
 	DefaultReadReceiptsEnabled       bool    `json:"defaultReadReceiptsEnabled"`
 	DefaultNotificationSettings      string  `json:"defaultNotificationSettings"`
+	ScreenShareBitrateKbps           int     `json:"screenShareBitrateKbps"`
 	NavTabs                          NavTabs `json:"navTabs"`
 }
 
