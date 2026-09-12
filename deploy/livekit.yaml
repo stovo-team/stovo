@@ -1,5 +1,7 @@
-# Dev/self-hosted LiveKit SFU for Stovo group calls.
-# Keys must match LIVEKIT_API_KEY / LIVEKIT_API_SECRET in .env.
+# Reference configuration for a local dev LiveKit server.
+# The Docker Compose deployment uses LIVEKIT_CONFIG instead, so its key map is
+# rendered from LIVEKIT_API_KEY / LIVEKIT_API_SECRET alongside the backend.
+# Do not mount this file for a production deployment with custom credentials.
 port: 7880
 rtc:
   tcp_port: 7881
