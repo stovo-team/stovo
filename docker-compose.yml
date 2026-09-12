@@ -319,7 +319,10 @@ services:
     volumes:
       - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
     environment:
-      LIVEKIT_KEYS: "${LIVEKIT_KEYS:-devkey: secret}"
+      # LiveKit validates JWT issuers against this map. Keep it derived from
+      # the backend's token-signing credentials so custom production values
+      # cannot leave the two services accepting different API keys.
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}"
 
 volumes:
   postgres-data:

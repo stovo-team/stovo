@@ -11,9 +11,17 @@ import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "error";
 type SinkableMediaElement = HTMLMediaElement & { setSinkId?: (deviceId: string) => Promise<void> };
 type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void> };
+const SPEAKING_RING_RELEASE_DELAY_MS = 1000;
 
 function deviceLabel(device: MediaDeviceInfo, fallback: string, index: number) {
   return device.label || `${fallback} ${index + 1}`;
+}
+
+function guestJoinErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "Could not join meeting";
+  return /invalid API key|could not establish signal connection/i.test(message)
+    ? "Could not connect to the meeting. Please try again shortly."
+    : message;
 }
 
 export default function GuestMeetingPage() {
@@ -36,6 +44,7 @@ export default function GuestMeetingPage() {
   const [outputVolume, setOutputVolume] = useState(100);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [meterLevel, setMeterLevel] = useState(0);
+  const [speakingIndicatorState, setSpeakingIndicatorState] = useState<"idle" | "speaking" | "settling">("idle");
   const [audioMeterRevision, setAudioMeterRevision] = useState(0);
   const localRef = useRef<HTMLVideoElement>(null);
   const roomRef = useRef<Room | null>(null);
@@ -48,6 +57,7 @@ export default function GuestMeetingPage() {
   const settingsRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const meterFrameRef = useRef<number | null>(null);
+  const speakingReleaseTimerRef = useRef<number | null>(null);
 
   const inputDevices = devices.filter((device) => device.kind === "audioinput");
   const outputDevices = devices.filter((device) => device.kind === "audiooutput");
@@ -61,6 +71,8 @@ export default function GuestMeetingPage() {
   function stopLocalMedia() {
     if (meterFrameRef.current !== null) window.cancelAnimationFrame(meterFrameRef.current);
     meterFrameRef.current = null;
+    if (speakingReleaseTimerRef.current !== null) window.clearTimeout(speakingReleaseTimerRef.current);
+    speakingReleaseTimerRef.current = null;
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     sourceAudioStreamRef.current?.getTracks().forEach((track) => track.stop());
     sourceVideoStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -74,6 +86,7 @@ export default function GuestMeetingPage() {
     if (context && context.state !== "closed") void context.close().catch(() => undefined);
     if (localRef.current) localRef.current.srcObject = null;
     setMeterLevel(0);
+    setSpeakingIndicatorState("idle");
   }
 
   async function startLocalMedia(next = { microphoneDeviceId, cameraDeviceId }, previousTracks: MediaStreamTrack[] = []) {
@@ -227,16 +240,39 @@ export default function GuestMeetingPage() {
         if (track.enabled) await room.localParticipant.publishTrack(track, { source: track.kind === "audio" ? Track.Source.Microphone : Track.Source.Camera });
       }
       setState("joined");
-    } catch (e) { setError(e instanceof Error ? e.message : "Could not join meeting"); setState("error"); }
+    } catch (e) { setError(guestJoinErrorMessage(e)); setState("error"); }
   }
   async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); try { const session = await createGuestMeetingSession(token, name); if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { setError(e instanceof Error ? e.message : "Could not join meeting"); } }
   useEffect(() => { if (state !== "waiting" || !token) return; const timer = window.setInterval(() => void getGuestMeetingStatus(token).then((status) => { if (status.state === "admitted") void connect(); if (status.state === "blocked") { setError("The host removed you from this meeting."); setState("blocked"); } }).catch((e) => { setError(e.message); setState("error"); }), 2500); return () => window.clearInterval(timer); }, [state, token]);
   function leave() { stopLocalMedia(); void roomRef.current?.disconnect(); roomRef.current = null; setRemoteStreams([]); setState("name"); void startLocalMedia(); }
-  const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "person is" : "people are"} already here` : "No one else is here yet";
-  const visibleGuestAvatars = Math.min(preview?.guestCount ?? 0, 3);
-  const additionalGuestCount = Math.max((preview?.guestCount ?? 0) - visibleGuestAvatars, 0);
+  const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
   const guestDisplayName = name.trim() || currentUser?.displayName || "You";
-  const isSpeaking = microphoneEnabled && meterLevel >= 8;
+  const hasVoiceActivity = microphoneEnabled && meterLevel >= 8;
+  useEffect(() => {
+    if (speakingReleaseTimerRef.current !== null) {
+      window.clearTimeout(speakingReleaseTimerRef.current);
+      speakingReleaseTimerRef.current = null;
+    }
+    if (!microphoneEnabled) {
+      setSpeakingIndicatorState("idle");
+      return;
+    }
+    if (hasVoiceActivity) {
+      setSpeakingIndicatorState("speaking");
+      return;
+    }
+    setSpeakingIndicatorState((current) => current === "idle" ? "idle" : "settling");
+    speakingReleaseTimerRef.current = window.setTimeout(() => {
+      speakingReleaseTimerRef.current = null;
+      setSpeakingIndicatorState("idle");
+    }, SPEAKING_RING_RELEASE_DELAY_MS);
+    return () => {
+      if (speakingReleaseTimerRef.current !== null) window.clearTimeout(speakingReleaseTimerRef.current);
+      speakingReleaseTimerRef.current = null;
+    };
+  }, [hasVoiceActivity, microphoneEnabled]);
+  const isSpeaking = speakingIndicatorState === "speaking";
+  const isSpeakingIndicatorVisible = speakingIndicatorState !== "idle";
 
   return <main className="guest-meeting-page"><div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
     {state === "name" && <div className="guest-prejoin">
@@ -247,14 +283,14 @@ export default function GuestMeetingPage() {
           {settingsOpen && <section className="guest-settings-popover" role="dialog" aria-label="Device settings"><div className="guest-settings-section"><label>Microphone volume <strong>{inputGain}%</strong><input aria-label="Microphone volume" type="range" min="0" max="200" value={inputGain} onChange={(event) => setMicVolume(Number(event.target.value))} /></label><div className="guest-mic-test"><span>Microphone test</span>{analyserRef.current && microphoneEnabled ? <div className="guest-mic-meter" aria-label={`Microphone level ${meterLevel}%`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={meterLevel}><i style={{ width: `${meterLevel}%` }} /></div> : <small>Microphone unavailable</small>}</div></div><div className="guest-settings-section"><label>Speaker volume <strong>{outputVolume}%</strong><input aria-label="Speaker volume" type="range" min="0" max="100" value={outputVolume} onChange={(event) => setOutputVolume(Number(event.target.value))} /></label><button type="button" className="guest-test-sound" disabled={!speakerEnabled} onClick={() => void testSound()}><Volume2 size={16} /> Test sound</button></div>{deviceIssue && <p className="guest-device-issue" role="status">{deviceIssue}</p>}</section>}
         </div>
         <video ref={localRef} className={cameraEnabled ? "visible" : ""} autoPlay muted playsInline />
-        {!cameraEnabled && <div className="guest-preview-empty"><span className={`guest-preview-avatar-halo${isSpeaking ? " is-speaking" : ""}`}><RealAvatar accessToken={accessToken} className="avatar guest-preview-avatar" file={currentUser?.profilePhoto} label={guestDisplayName} /></span><span>{guestDisplayName}</span></div>}
+        {!cameraEnabled && <div className="guest-preview-empty"><span className={`guest-preview-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar guest-preview-avatar" file={currentUser?.profilePhoto} label={guestDisplayName} /></span><span>{guestDisplayName}</span></div>}
         <div className="guest-preview-controls">
-          <DeviceControl label="Microphone" active={microphoneEnabled} speaking={isSpeaking} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={23} /> : <MicOff size={23} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
+          <DeviceControl label="Microphone" active={microphoneEnabled} speaking={isSpeaking} settling={isSpeakingIndicatorVisible && !isSpeaking} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={23} /> : <MicOff size={23} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
           <DeviceControl label="Speaker" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} icon={speakerEnabled ? <Volume2 size={23} /> : <VolumeX size={23} />}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
           <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={23} /> : <CameraOff size={23} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
         </div>
       </section>
-      <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || "Join meeting"}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString()}</span>}<div className="guest-prejoin-attendee"><div className="guest-prejoin-attendee-avatars"><RealAvatar accessToken={accessToken} className="avatar guest-prejoin-avatar" file={currentUser?.profilePhoto} label={guestDisplayName} />{visibleGuestAvatars > 0 && <div className="guest-prejoin-avatar-stack" aria-hidden="true">{Array.from({ length: visibleGuestAvatars }, (_, index) => <span className="guest-prejoin-guest-avatar" key={index}><Users size={15} /></span>)}{additionalGuestCount > 0 && <span className="guest-prejoin-guest-avatar guest-prejoin-guest-avatar--count">+{additionalGuestCount}</span>}</div>}</div><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>Your name<input autoFocus required minLength={2} maxLength={80} value={name} placeholder="Enter your name" onChange={(e) => setName(e.target.value)} /></label><button className="primary-button guest-meeting-join-button" type="submit">Join meeting</button><small>Link expires {preview ? new Date(preview.expiresAt).toLocaleString() : "soon"}</small></form>
+      <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || "Join meeting"}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString()}</span>}<div className="guest-prejoin-attendee"><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>Your name<input autoFocus required minLength={2} maxLength={80} value={name} placeholder="Enter your name" onChange={(e) => setName(e.target.value)} /></label><button className="primary-button guest-meeting-join-button" type="submit">Join meeting</button><small>Link expires {preview ? new Date(preview.expiresAt).toLocaleString() : "soon"}</small></form>
     </div>}
     {state === "waiting" && <p className="muted-copy">Waiting for the host to admit you…</p>}
     {state === "joining" && <p className="muted-copy">Joining meeting…</p>}
@@ -263,8 +299,8 @@ export default function GuestMeetingPage() {
   </section></main>;
 }
 
-function DeviceControl({ label, active, speaking = false, onToggle, icon, children }: { label: string; active: boolean; speaking?: boolean; onToggle: () => void; icon: React.ReactNode; children: React.ReactNode }) {
-  return <div className={`guest-device-control${speaking ? " is-speaking" : ""}`}><button type="button" className={active ? "active" : ""} aria-label={`Toggle ${label}`} aria-pressed={active} onClick={onToggle}>{icon}</button>{children}</div>;
+function DeviceControl({ label, active, speaking = false, settling = false, onToggle, icon, children }: { label: string; active: boolean; speaking?: boolean; settling?: boolean; onToggle: () => void; icon: React.ReactNode; children: React.ReactNode }) {
+  return <div className={`guest-device-control${speaking ? " is-speaking" : ""}${settling ? " is-settling" : ""}`}><button type="button" className={active ? "active" : ""} aria-label={`Toggle ${label}`} aria-pressed={active} onClick={onToggle}>{icon}</button>{children}</div>;
 }
 function DeviceSelect({ value, onChange, devices, fallback }: { value: string; onChange: (value: string) => void; devices: MediaDeviceInfo[]; fallback: string }) {
   const [open, setOpen] = useState(false);
