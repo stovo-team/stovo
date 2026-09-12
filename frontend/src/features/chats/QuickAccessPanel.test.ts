@@ -21,4 +21,8 @@ describe("message archive grouped view", () => {
     expect(page).toContain("archiveGroup=${encodeURIComponent(group)}");
     expect(page).toContain('messageArchiveView === "grouped" && !archiveGroup');
   });
+
+  it("uses the archive fallback icon and standard chat title spacing in the grouped archive header", () => {
+    expect(panel).toContain('<Archive aria-hidden className="avatar-fallback-svg" size={24} strokeWidth={1.75} />');
+  });
 });

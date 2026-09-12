@@ -9,7 +9,7 @@ import { createGuestMeetingSession, getGuestMeetingStatus, getGuestMeetingToken,
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "error";
-type RemoteParticipantStream = { id: string; stream: MediaStream };
+type RemoteParticipantStream = { id: string; cameraStream: MediaStream | null; screenStream: MediaStream | null };
 type SinkableMediaElement = HTMLMediaElement & { setSinkId?: (deviceId: string) => Promise<void> };
 type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void> };
 const SPEAKING_RING_RELEASE_DELAY_MS = 1000;
@@ -327,21 +327,25 @@ export default function GuestMeetingPage() {
       const credentials = await getGuestMeetingToken(token);
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
-      room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+      room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
         if (!track.mediaStreamTrack) return;
         setRemoteStreams((previous) => {
           const existing = previous.find((item) => item.id === participant.identity);
-          const tracks = existing?.stream.getTracks() ?? [];
+          const isScreenTrack = publication.source === Track.Source.ScreenShare || publication.source === Track.Source.ScreenShareAudio;
+          const streamKey = isScreenTrack ? "screenStream" : "cameraStream";
+          const tracks = existing?.[streamKey]?.getTracks() ?? [];
           return [
             ...previous.filter((item) => item.id !== participant.identity),
-            { id: participant.identity, stream: new MediaStream([...tracks.filter((item) => item.id !== track.mediaStreamTrack?.id), track.mediaStreamTrack]) }
+            { id: participant.identity, cameraStream: existing?.cameraStream ?? null, screenStream: existing?.screenStream ?? null, [streamKey]: new MediaStream([...tracks.filter((item) => item.id !== track.mediaStreamTrack?.id), track.mediaStreamTrack]) }
           ];
         });
       });
-      room.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => setRemoteStreams((previous) => previous.flatMap((item) => {
+      room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => setRemoteStreams((previous) => previous.flatMap((item) => {
         if (item.id !== participant.identity) return [item];
-        const remainingTracks = item.stream.getTracks().filter((mediaTrack) => mediaTrack.id !== track.mediaStreamTrack?.id);
-        return remainingTracks.length ? [{ ...item, stream: new MediaStream(remainingTracks) }] : [];
+        const streamKey = publication.source === Track.Source.ScreenShare || publication.source === Track.Source.ScreenShareAudio ? "screenStream" : "cameraStream";
+        const remainingTracks = item[streamKey]?.getTracks().filter((mediaTrack) => mediaTrack.id !== track.mediaStreamTrack?.id) ?? [];
+        const nextItem = { ...item, [streamKey]: remainingTracks.length ? new MediaStream(remainingTracks) : null };
+        return nextItem.cameraStream || nextItem.screenStream ? [nextItem] : [];
       })));
       room.on(RoomEvent.ParticipantDisconnected, (participant) => setRemoteStreams((previous) => previous.filter((item) => item.id !== participant.identity)));
       await room.connect(resolveLiveKitUrl(credentials.url), credentials.token);
@@ -394,8 +398,14 @@ export default function GuestMeetingPage() {
     const hasLocalScreenShare = Boolean(localScreenStream?.getVideoTracks().some((track) => track.readyState === "live"));
     const hasLocalCamera = Boolean(cameraEnabled && localStreamRef.current?.getVideoTracks().some((track) => track.enabled && track.readyState === "live"));
     const localCameraStream = localStreamRef.current;
-    const participantCount = remoteStreams.length + 1 + (hasLocalScreenShare && hasLocalCamera ? 1 : 0);
+    const participantCount = remoteStreams.length + 1;
     const gridTierClass = participantCount === 1 ? "voice-grid--1" : participantCount === 2 ? "voice-grid--2" : participantCount <= 4 ? "voice-grid--4" : participantCount <= 6 ? "voice-grid--6" : "voice-grid--9";
+    const remoteScreenShare = remoteStreams.find((remote) => remote.screenStream?.getVideoTracks().some((track) => track.readyState === "live"));
+    const hasScreenShare = hasLocalScreenShare || Boolean(remoteScreenShare);
+    const cameraTiles = [
+      ...(hasLocalCamera && localCameraStream ? [{ id: "local", label: `${guestDisplayName} (You)`, stream: localCameraStream, muted: !microphoneEnabled, speaking: isSpeakingIndicatorVisible, local: true }] : []),
+      ...remoteStreams.map((remote, index) => ({ id: remote.id, label: `Guest ${index + 1}`, stream: remote.cameraStream, muted: false, speaking: false, local: false }))
+    ];
 
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div>
@@ -404,17 +414,19 @@ export default function GuestMeetingPage() {
           <div><strong>{preview?.title || "Guest meeting"}</strong><span><i aria-hidden="true" /> {participantCount} {participantCount === 1 ? "participant" : "participants"}</span></div>
         </header>
         <div className="voice-room-stage">
-          <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
-            <GuestParticipantTile label={`${guestDisplayName} (You)${hasLocalScreenShare ? " — Screen" : ""}`} hasVideo={hasLocalScreenShare || hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeakingIndicatorVisible} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>
-              {hasLocalScreenShare && localScreenStream ? <LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /> : <video ref={localRef} className="voice-participant-video-feed is-mirrored" autoPlay muted playsInline />}
-            </GuestParticipantTile>
-            {hasLocalScreenShare && hasLocalCamera && localCameraStream && <GuestParticipantTile label={`${guestDisplayName} (You) — Camera`} hasVideo muted={!microphoneEnabled} speaking={isSpeakingIndicatorVisible}>
-              <LocalStreamVideo stream={localCameraStream} className="voice-participant-video-feed is-mirrored" />
-            </GuestParticipantTile>}
-            {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={remote.stream.getVideoTracks().some((track) => track.readyState === "live")}>
-              <RemoteVideo stream={remote.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />
-            </GuestParticipantTile>)}
-          </div>
+          {hasScreenShare ? <div className={`guest-call-spotlight${cameraTiles.length > 3 ? " guest-call-spotlight--grid" : ""}`} aria-label="Shared screen and cameras">
+            <div className="guest-call-screen-stage">
+              {hasLocalScreenShare && localScreenStream ? <GuestParticipantTile className="guest-call-screen-tile" label={`${guestDisplayName} (You) — Screen`} hasVideo muted={!microphoneEnabled} speaking={isSpeakingIndicatorVisible}><LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /></GuestParticipantTile> : remoteScreenShare?.screenStream && <GuestParticipantTile className="guest-call-screen-tile" label={`Guest ${remoteStreams.indexOf(remoteScreenShare) + 1} — Screen`} hasVideo><RemoteVideo stream={remoteScreenShare.screenStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" /></GuestParticipantTile>}
+            </div>
+            <aside className="guest-call-camera-rail" aria-label="Participant cameras">
+              {cameraTiles.map((participant) => <GuestParticipantTile key={participant.id} className="guest-call-camera-tile" label={participant.label} hasVideo={Boolean(participant.stream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={participant.muted} speaking={participant.speaking} avatar={participant.local ? <span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span> : undefined}>
+                {participant.stream && (participant.local ? <LocalStreamVideo stream={participant.stream} className="voice-participant-video-feed is-mirrored" /> : <RemoteVideo stream={participant.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />)}
+              </GuestParticipantTile>)}
+            </aside>
+          </div> : <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
+            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeakingIndicatorVisible} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}><video ref={localRef} className="voice-participant-video-feed is-mirrored" autoPlay muted playsInline /></GuestParticipantTile>
+            {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={Boolean(remote.cameraStream?.getVideoTracks().some((track) => track.readyState === "live"))}>{remote.cameraStream && <RemoteVideo stream={remote.cameraStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />}</GuestParticipantTile>)}
+          </div>}
         </div>
         <div className="voice-room-bottom-bar">
           <div className="voice-room-in-call-controls guest-call-controls" role="toolbar" aria-label="Meeting controls">
@@ -503,9 +515,9 @@ function DeviceSelect({ value, onChange, devices, fallback }: { value: string; o
     </div>}
   </div>;
 }
-function GuestParticipantTile({ label, hasVideo, muted = false, speaking = false, avatar, children }: { label: string; hasVideo: boolean; muted?: boolean; speaking?: boolean; avatar?: React.ReactNode; children?: React.ReactNode }) {
-  return <div className={`voice-participant-card${hasVideo ? " has-video" : ""}`}>
-    {hasVideo ? <div className="voice-participant-video-container">{children}{speaking && <span className="voice-video-speaking-border guest-video-speaking-border" aria-label="Speaking" />}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>}
+function GuestParticipantTile({ label, hasVideo, muted = false, speaking = false, avatar, children, className = "" }: { label: string; hasVideo: boolean; muted?: boolean; speaking?: boolean; avatar?: React.ReactNode; children?: React.ReactNode; className?: string }) {
+  return <div className={`voice-participant-card${hasVideo ? " has-video" : ""}${className ? ` ${className}` : ""}`}>
+    {hasVideo ? <div className="voice-participant-video-container">{children}{speaking && <span className="voice-video-speaking-border guest-video-speaking-border" aria-label="Speaking" />}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <><div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>{children}</>}
     <div className="voice-participant-meta"><span className="voice-participant-name">{label}</span><span className="voice-participant-state">{muted ? "Muted" : "Connected"}</span></div>
   </div>;
 }

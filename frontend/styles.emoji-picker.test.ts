@@ -181,6 +181,10 @@ describe("native conversation viewport and presence", () => {
     expect(lastRule(".quick-access-panel-tabs")).toContain("margin-left: 28px;");
   });
 
+  it("matches the standard chat title gap in the archive panel header", () => {
+    expect(lastRule(".messenger-shell.has-active-chat .chat-detail-header--floating.quick-access-standard-header")).toContain("gap: 8px;");
+  });
+
   it("keeps quick-access tabs clear of the floating panel header", () => {
     expect(rule(".quick-access-panel-tabs")).toContain("margin-top: 52px;");
   });
