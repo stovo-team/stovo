@@ -197,4 +197,37 @@ describe("ChatHeader", () => {
     expect(chatButton.getAttribute("aria-label")).toBe("Close chat");
     expect(chatButton.querySelector(".lucide-message-circle-off")).not.toBeNull();
   });
+
+  it("keeps the opened archive group visual identity in the header", () => {
+    const profilePhoto = { id: "my-photo", mimeType: "image/png", sizeBytes: 1 } as User["profilePhoto"];
+    const container = renderComponent(
+      <ChatHeader
+        accessToken="test-token"
+        currentUser={{ ...mockUser, profilePhoto }}
+        selectedChat={{ ...mockDirectChat, type: "archive" }}
+        typingNames={[]}
+        callPhase="idle"
+        isChatMenuOpen={false}
+        chatMenuRef={createRef()}
+        onToggleChatMenu={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDetails={vi.fn()}
+        onStartAudioCall={vi.fn()}
+        onStartVideoCall={vi.fn()}
+        isMessageSearchOpen={false}
+        onToggleMessageSearch={vi.fn()}
+        onOpenMessageSearch={vi.fn()}
+        onMarkRead={vi.fn()}
+        onTogglePinned={vi.fn()}
+        onToggleMuted={vi.fn()}
+        onToggleFavorite={vi.fn()}
+        archiveGroupName="My Notes"
+        archiveGroupKind="notes"
+        onBackFromArchiveGroup={vi.fn()}
+      />
+    );
+
+    expect(container.querySelector(".chat-title-group--archive-group .chat-avatar")).not.toBeNull();
+    expect(container.querySelector(".chat-title-group--archive-group .chat-avatar.archive")).toBeNull();
+  });
 });
