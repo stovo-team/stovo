@@ -25,6 +25,7 @@ export interface Family {
   defaultLastSeenVisibility: "everyone" | "nobody";
   defaultReadReceiptsEnabled: boolean;
   defaultNotificationSettings: string;
+  screenShareBitrateKbps: number;
   navTabs?: {
     chats?: boolean;
     storage?: boolean;
@@ -73,7 +74,7 @@ export function getFamily(accessToken: string) {
   return apiRequest<Family>("/api/family", { accessToken });
 }
 
-export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean; defaultProfileVisibility?: "everyone" | "nobody"; defaultLastSeenVisibility?: "everyone" | "nobody"; defaultReadReceiptsEnabled?: boolean; defaultNotificationSettings?: string }) {
+export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean; defaultProfileVisibility?: "everyone" | "nobody"; defaultLastSeenVisibility?: "everyone" | "nobody"; defaultReadReceiptsEnabled?: boolean; defaultNotificationSettings?: string; screenShareBitrateKbps?: number }) {
   return apiRequest<Family>("/api/family", {
     method: "PATCH",
     accessToken,

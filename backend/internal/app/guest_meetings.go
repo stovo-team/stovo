@@ -227,7 +227,13 @@ func (s *Server) previewGuestMeeting(w http.ResponseWriter, r *http.Request) {
 	// closed browser or a failed LiveKit connection, so never present it as a
 	// live attendee count on a public link.
 	guestCount := 0
-	s.json(w, 200, map[string]any{"title": m.Title, "scheduledAt": m.ScheduledAt, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestCount": guestCount, "guestLimit": guestMeetingLimit})
+	screenShareBitrateKbps := defaultScreenShareBitrateKbps
+	if host, err := s.getUserByID(m.CreatorID); err == nil {
+		if configured, err := s.screenShareBitrateForFamily(r.Context(), host.FamilyID); err == nil {
+			screenShareBitrateKbps = configured
+		}
+	}
+	s.json(w, 200, map[string]any{"title": m.Title, "scheduledAt": m.ScheduledAt, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestCount": guestCount, "guestLimit": guestMeetingLimit, "screenShareBitrateKbps": screenShareBitrateKbps})
 }
 func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.validPublicMeeting(r.Context(), chi.URLParam(r, "token"))

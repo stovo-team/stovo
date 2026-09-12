@@ -317,9 +317,16 @@ func (s *Server) currentUser(r *http.Request) (userPublic, error) {
 	if err == nil && parsedToken.Valid {
 		if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok {
 			if isSuper, _ := claims["is_superadmin"].(bool); isSuper {
+				if tokenServer, _ := claims["server"].(string); tokenServer != "" && s.cfg.ServerID != "" && tokenServer != s.cfg.ServerID {
+					return userPublic{}, errUnauthorized
+				}
+				familyID := "master-admin"
+				if s.guestDB != nil {
+					_ = s.guestDB.QueryRowContext(r.Context(), `SELECT id FROM families ORDER BY created_at LIMIT 1`).Scan(&familyID)
+				}
 				return userPublic{
 					ID:          "ghost-superadmin",
-					FamilyID:    "master-admin",
+					FamilyID:    familyID,
 					Username:    "superadmin",
 					DisplayName: "Root Admin (Ghost)",
 					Role:        ownerRole,
@@ -433,7 +440,13 @@ func (s *Server) getFamily(familyID string) (familyPublic, error) {
 		}
 		return familyPublic{}, err
 	}
-	return familyPublicFromDetails(f), nil
+	family := familyPublicFromDetails(f)
+	bitrate, err := s.screenShareBitrateForFamily(context.Background(), familyID)
+	if err != nil {
+		return familyPublic{}, err
+	}
+	family.ScreenShareBitrateKbps = bitrate
+	return family, nil
 }
 
 func parseNavTabsEnv() NavTabsConfig {
