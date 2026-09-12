@@ -135,20 +135,20 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(host?.querySelector(".guest-preview-avatar-halo .guest-preview-avatar")).not.toBeNull();
   });
 
-  it("shows the accurate admitted guest count without placeholder avatars", async () => {
+  it("shows no guest count when the preview has no live-presence source", async () => {
     api.previewGuestMeeting.mockResolvedValueOnce({
       title: "Daily standup",
       scheduledAt: "2026-09-12T09:00:00.000Z",
       admissionMode: "immediate",
       expiresAt: "2026-09-12T10:00:00.000Z",
-      guestCount: 5,
+      guestCount: 0,
       guestLimit: 10,
     });
     await renderPage();
 
     expect(host?.querySelector(".guest-prejoin-attendee-avatars")).toBeNull();
     expect(host?.querySelectorAll(".guest-prejoin-guest-avatar")).toHaveLength(0);
-    expect(host?.querySelector(".guest-prejoin-attendee-copy")?.textContent).toContain("5 guests are already here");
+    expect(host?.querySelector(".guest-prejoin-attendee-copy")?.textContent).toContain("No guests are here yet");
   });
 
   it("opens and closes the settings popover with speaker and microphone tests", async () => {

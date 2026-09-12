@@ -359,7 +359,6 @@ export default function GuestMeetingPage() {
     };
   }, [hasVoiceActivity, microphoneEnabled]);
   const isSpeaking = speakingIndicatorState === "speaking";
-  const isSpeakingIndicatorVisible = speakingIndicatorState !== "idle";
 
   if (state === "joined") {
     const participantCount = remoteStreams.length + 1;
@@ -384,7 +383,7 @@ export default function GuestMeetingPage() {
         </div>
         <div className="voice-room-bottom-bar">
           <div className="voice-room-in-call-controls guest-call-controls" role="toolbar" aria-label="Meeting controls">
-            <DeviceControl label="Microphone" active={microphoneEnabled} speaking={isSpeaking} settling={isSpeakingIndicatorVisible && !isSpeaking} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={20} /> : <MicOff size={20} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
+            <DeviceControl label="Microphone" active={microphoneEnabled} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={20} /> : <MicOff size={20} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
             <DeviceControl label="Speaker" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} icon={speakerEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
             <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={20} /> : <CameraOff size={20} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
             <button className={`voice-dock-btn${isScreenSharing ? " is-active" : ""}`} type="button" onClick={() => void toggleScreenShare()} aria-label={isScreenSharing ? "Stop screen sharing" : "Share screen"} title={isScreenSharing ? "Stop screen sharing" : "Share screen"}>{isScreenSharing ? <ScreenShareOff size={20} /> : <ScreenShare size={20} />}</button>
@@ -410,7 +409,7 @@ export default function GuestMeetingPage() {
         <video ref={localRef} className={cameraEnabled ? "visible" : ""} autoPlay muted playsInline />
         {!cameraEnabled && <div className="guest-preview-empty"><span className={`guest-preview-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar guest-preview-avatar" file={currentUser?.profilePhoto} label={guestDisplayName} /></span><span>{guestDisplayName}</span></div>}
         <div className="guest-preview-controls">
-          <DeviceControl label="Microphone" active={microphoneEnabled} speaking={isSpeaking} settling={isSpeakingIndicatorVisible && !isSpeaking} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={23} /> : <MicOff size={23} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
+          <DeviceControl label="Microphone" active={microphoneEnabled} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={23} /> : <MicOff size={23} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
           <DeviceControl label="Speaker" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} icon={speakerEnabled ? <Volume2 size={23} /> : <VolumeX size={23} />}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
           <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={23} /> : <CameraOff size={23} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
         </div>
@@ -423,8 +422,8 @@ export default function GuestMeetingPage() {
   </section></main>;
 }
 
-function DeviceControl({ label, active, speaking = false, settling = false, onToggle, icon, children }: { label: string; active: boolean; speaking?: boolean; settling?: boolean; onToggle: () => void; icon: React.ReactNode; children: React.ReactNode }) {
-  return <div className={`guest-device-control${speaking ? " is-speaking" : ""}${settling ? " is-settling" : ""}`}><button type="button" className={active ? "active" : ""} aria-label={`Toggle ${label}`} aria-pressed={active} onClick={onToggle}>{icon}</button>{children}</div>;
+function DeviceControl({ label, active, onToggle, icon, children }: { label: string; active: boolean; onToggle: () => void; icon: React.ReactNode; children: React.ReactNode }) {
+  return <div className="guest-device-control"><button type="button" className={active ? "active" : ""} aria-label={`Toggle ${label}`} aria-pressed={active} onClick={onToggle}>{icon}</button>{children}</div>;
 }
 function DeviceSelect({ value, onChange, devices, fallback }: { value: string; onChange: (value: string) => void; devices: MediaDeviceInfo[]; fallback: string }) {
   const [open, setOpen] = useState(false);
@@ -461,7 +460,7 @@ function DeviceSelect({ value, onChange, devices, fallback }: { value: string; o
   return <div className="guest-device-select" ref={controlRef}>
     <button ref={triggerRef} type="button" className="guest-device-menu-trigger" aria-label={`Select ${fallback}`} aria-haspopup="listbox" aria-controls={menuId} aria-expanded={open} title={`Select ${fallback}: ${selectedLabel}`} onClick={() => setOpen((isOpen) => !isOpen)}><ChevronDown size={16} aria-hidden="true" /></button>
     {open && <div id={menuId} className="guest-device-menu" role="listbox" aria-label={`${fallback} device`}>
-      <div className="guest-device-menu-heading"><span>{fallback}</span><small>{selectedLabel}</small></div>
+      <div className="guest-device-menu-heading"><span>{fallback}</span></div>
       <button type="button" role="option" aria-selected={!value} className="guest-device-menu-option" onClick={() => chooseDevice("")}><span>System default</span>{!value && <span aria-hidden="true">✓</span>}</button>
       {devices.map((device, index) => <button type="button" role="option" aria-selected={device.deviceId === value} className="guest-device-menu-option" key={device.deviceId} onClick={() => chooseDevice(device.deviceId)}><span>{deviceLabel(device, fallback, index)}</span>{device.deviceId === value && <span aria-hidden="true">✓</span>}</button>)}
     </div>}
