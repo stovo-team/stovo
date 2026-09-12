@@ -27184,7 +27184,8 @@ button.checklist-add-item-btn:hover,
   top: 10px;
 }
 .quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 52px; }
-.quick-access-panel-tabs--archive-controls { align-self: flex-start; margin-left: 46px; margin-top: 67px; position: relative; width: max-content; z-index: 3; }
+.quick-access-panel-tabs--archive-controls { align-self: flex-start; margin-left: 46px; position: relative; width: max-content; z-index: 3; }
+.quick-access-panel--archive .quick-access-panel-tabs { margin-left: 24px; margin-top: 45px; }
 .quick-access-panel-tabs button { background: color-mix(in oklab, var(--surface-card) 82%, transparent); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; padding: 7px 12px; }
 .quick-access-panel-tabs button:hover { background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent); }
 .quick-access-panel-tabs button.active { background: color-mix(in oklab, var(--accent-soft) 22%, var(--surface-card)); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-default)); color: var(--accent-primary); }
@@ -27265,6 +27266,7 @@ button.checklist-add-item-btn:hover,
 .guest-device-control.is-speaking > button { animation: guest-microphone-pulse .8s ease-in-out infinite; background: color-mix(in srgb, var(--accent-primary) 18%, transparent); }
 .guest-device-control.is-settling > button { animation: none; background: color-mix(in srgb, var(--accent-primary) 14%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 9%, transparent), 0 0 13px color-mix(in srgb, var(--accent-primary) 24%, transparent); transform: scale(1.018); }
 .guest-preview-avatar-halo { display: grid; height: 82px; isolation: isolate; place-items: center; position: relative; width: 82px; z-index: 0; }
+.guest-call-avatar-halo { height: 140px; width: 140px; }
 .guest-preview-avatar { font-size: 1.35rem; height: 82px; width: 82px; }
 .guest-preview-avatar-halo.is-speaking::before, .guest-preview-avatar-halo.is-settling::before { background: color-mix(in srgb, var(--accent-primary) 16%, transparent); border: 2px solid color-mix(in srgb, var(--accent-primary) 86%, #ffffff); border-radius: 50%; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-primary) 16%, transparent), 0 0 24px color-mix(in srgb, var(--accent-primary) 64%, transparent); content: ""; inset: -7px; position: absolute; transition: box-shadow .55s ease, opacity .55s ease, transform .55s ease; z-index: -1; }
 .guest-preview-avatar-halo.is-speaking::before { animation: guest-avatar-speaking-halo 1.35s ease-in-out infinite; }

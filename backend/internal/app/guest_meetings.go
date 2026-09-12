@@ -26,8 +26,8 @@ const guestMeetingLimit = 10
 
 type guestMeeting struct {
 	ID, ChatID, CreatorID, Title, AdmissionMode string
-	ExpiresAt                            time.Time
-	ScheduledAt, RevokedAt, EndedAt      *time.Time
+	ExpiresAt                                   time.Time
+	ScheduledAt, RevokedAt, EndedAt             *time.Time
 }
 type guestMeetingSession struct{ ID, DisplayName, State string }
 
@@ -41,6 +41,7 @@ func (s *Server) guestMeetingRoutes() http.Handler {
 	r.Post("/{meetingID}/revoke", s.authenticated(s.revokeGuestMeeting))
 	r.Get("/public/{token}", s.previewGuestMeeting)
 	r.Post("/public/{token}/sessions", s.createGuestMeetingSession)
+	r.Post("/public/{token}/leave", s.leaveGuestMeetingSession)
 	r.Get("/public/{token}/status", s.guestMeetingStatus)
 	r.Post("/public/{token}/token", s.createGuestMeetingGuestToken)
 	return r
@@ -52,6 +53,12 @@ func (s *Server) guestMeetingsAvailable() bool {
 func guestMeetingTokenHash(token string) string {
 	sum := sha256.Sum256([]byte(token))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+func guestLiveKitIdentity(meetingID, displayName string) string {
+	normalizedName := strings.ToLower(strings.TrimSpace(displayName))
+	sum := sha256.Sum256([]byte(meetingID + "\x00" + normalizedName))
+	return "guest:" + base64.RawURLEncoding.EncodeToString(sum[:18])
 }
 func randomGuestToken() (string, error) {
 	b := make([]byte, 32)
@@ -139,7 +146,7 @@ func (s *Server) getGuestMeetingHostState(w http.ResponseWriter, r *http.Request
 		s.json(w, 404, map[string]string{"message": "Meeting not found"})
 		return
 	}
-	rows, err := s.guestDB.QueryContext(r.Context(), `SELECT id,display_name,state FROM guest_meeting_sessions WHERE meeting_id=$1 ORDER BY created_at`, m.ID)
+	rows, err := s.guestDB.QueryContext(r.Context(), `SELECT id,display_name,state FROM guest_meeting_sessions WHERE meeting_id=$1 AND state IN ('waiting','admitted') ORDER BY created_at`, m.ID)
 	if err != nil {
 		s.json(w, 500, map[string]string{"message": "Could not load guests"})
 		return
@@ -233,6 +240,14 @@ func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Reques
 		s.json(w, 400, map[string]string{"message": "Display name must be 2 to 80 characters"})
 		return
 	}
+	displayName := strings.TrimSpace(body.DisplayName)
+	// Guests are anonymous, so the normalized display name is the only stable
+	// identity available across tabs or reopens. Retire an older matching
+	// session before creating its replacement.
+	if _, err := s.guestDB.ExecContext(r.Context(), `UPDATE guest_meeting_sessions SET state='left', left_at=now() WHERE meeting_id=$1 AND state IN ('waiting','admitted') AND lower(trim(display_name))=lower($2)`, m.ID, displayName); err != nil {
+		s.json(w, 500, map[string]string{"message": "Could not replace an earlier guest session"})
+		return
+	}
 	var count int
 	_ = s.guestDB.QueryRowContext(r.Context(), `SELECT count(*) FROM guest_meeting_sessions WHERE meeting_id=$1 AND state='admitted'`, m.ID).Scan(&count)
 	if count >= guestMeetingLimit {
@@ -249,7 +264,7 @@ func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Reques
 		state = "admitted"
 	}
 	id := uuid.NewString()
-	_, e = s.guestDB.ExecContext(r.Context(), `INSERT INTO guest_meeting_sessions (id,meeting_id,session_token_hash,display_name,state,admitted_at) VALUES ($1,$2,$3,$4,$5,CASE WHEN $5='admitted' THEN now() END)`, id, m.ID, guestMeetingTokenHash(secret), strings.TrimSpace(body.DisplayName), state)
+	_, e = s.guestDB.ExecContext(r.Context(), `INSERT INTO guest_meeting_sessions (id,meeting_id,session_token_hash,display_name,state,admitted_at) VALUES ($1,$2,$3,$4,$5,CASE WHEN $5='admitted' THEN now() END)`, id, m.ID, guestMeetingTokenHash(secret), displayName, state)
 	if e != nil {
 		s.json(w, 500, map[string]string{"message": "Could not join meeting"})
 		return
@@ -257,7 +272,28 @@ func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Reques
 	// Deliberately omit Path. Browsers derive the public-link directory from the
 	// request URL, preserving reverse-proxy prefixes such as /s/{server}/api.
 	http.SetCookie(w, &http.Cookie{Name: guestMeetingCookie, Value: secret, HttpOnly: true, Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode, MaxAge: int(time.Until(m.ExpiresAt).Seconds())})
-	s.json(w, 201, map[string]string{"state": state})
+	s.json(w, 201, map[string]string{"id": id, "state": state})
+}
+
+func (s *Server) leaveGuestMeetingSession(w http.ResponseWriter, r *http.Request) {
+	m, ok := s.validPublicMeeting(r.Context(), chi.URLParam(r, "token"))
+	if !ok {
+		s.json(w, 404, map[string]string{"message": "Meeting link is unavailable"})
+		return
+	}
+	var body struct {
+		SessionID string `json:"sessionId"`
+	}
+	if json.NewDecoder(r.Body).Decode(&body) != nil || strings.TrimSpace(body.SessionID) == "" {
+		s.json(w, 400, map[string]string{"message": "Guest session is required"})
+		return
+	}
+	_, err := s.guestDB.ExecContext(r.Context(), `UPDATE guest_meeting_sessions SET state='left', left_at=now() WHERE id=$1 AND meeting_id=$2 AND state IN ('waiting','admitted')`, body.SessionID, m.ID)
+	if err != nil {
+		s.json(w, 500, map[string]string{"message": "Could not leave meeting"})
+		return
+	}
+	s.json(w, http.StatusNoContent, nil)
 }
 func (s *Server) publicGuestSession(r *http.Request, m guestMeeting) (guestMeetingSession, error) {
 	c, e := r.Cookie(guestMeetingCookie)
@@ -292,7 +328,7 @@ func (s *Server) createGuestMeetingGuestToken(w http.ResponseWriter, r *http.Req
 		s.json(w, 403, map[string]string{"message": "Admission is required"})
 		return
 	}
-	token, e := livekit.TokenIssuer{URL: s.cfg.LiveKitURL, APIKey: s.cfg.LiveKitAPIKey, APISecret: s.cfg.LiveKitAPISecret}.MintWithTTL("guest-meeting:"+m.ID, "guest:"+g.ID, g.DisplayName, 15*time.Minute)
+	token, e := livekit.TokenIssuer{URL: s.cfg.LiveKitURL, APIKey: s.cfg.LiveKitAPIKey, APISecret: s.cfg.LiveKitAPISecret}.MintWithTTL("guest-meeting:"+m.ID, guestLiveKitIdentity(m.ID, g.DisplayName), g.DisplayName, 15*time.Minute)
 	if e != nil {
 		s.json(w, 500, map[string]string{"message": "Could not mint meeting token"})
 		return
