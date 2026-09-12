@@ -26,6 +26,12 @@ if ($workflow -notmatch 'up -d --force-recreate caddy') {
     throw "Deployment must recreate Caddy so bind-mounted route changes take effect."
 }
 
+if (-not $workflow.Contains('docker-compose.master.yml up -d livekit') -or
+    -not $workflow.Contains('LIVEKIT_API_KEY=${livekit_api_key}') -or
+    -not $workflow.Contains('LIVEKIT_API_SECRET=${livekit_api_secret}')) {
+    throw "Deployment must reconcile LiveKit with the same credentials used by tenant backends."
+}
+
 if ($workflow -notmatch '--filter label=stovo-server' -or
     $workflow -notmatch '--network stovo_default') {
     throw "Deployment must update tenant containers on the shared Stovo network."

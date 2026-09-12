@@ -177,10 +177,8 @@ describe("native conversation viewport and presence", () => {
     expect(archiveTitleRow).toContain("white-space: nowrap;");
   });
 
-  it("aligns the grouped archive tabs with the all-messages view", () => {
-    expect(rule(".quick-access-panel--archive .quick-access-panel-tabs")).toContain(
-      "margin-left: 40px;"
-    );
+  it("uses the standard tab alignment for both archive views", () => {
+    expect(lastRule(".quick-access-panel-tabs")).toContain("margin-left: 28px;");
   });
 
   it("keeps quick-access tabs clear of the floating panel header", () => {

@@ -28,7 +28,8 @@ export default function GuestMeetingPage() {
   const { token } = useParams();
   const { accessToken, currentUser } = useAuth();
   const [preview, setPreview] = useState<GuestMeetingPreview | null>(null);
-  const [name, setName] = useState("");
+  const authenticatedName = currentUser?.displayName.trim() || currentUser?.username.trim() || "";
+  const [name, setName] = useState(() => authenticatedName);
   const [state, setState] = useState<MeetingState>("name");
   const [error, setError] = useState<string | null>(null);
   const [deviceIssue, setDeviceIssue] = useState<string | null>(null);
@@ -58,10 +59,17 @@ export default function GuestMeetingPage() {
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const meterFrameRef = useRef<number | null>(null);
   const speakingReleaseTimerRef = useRef<number | null>(null);
+  const hasEditedNameRef = useRef(false);
 
   const inputDevices = devices.filter((device) => device.kind === "audioinput");
   const outputDevices = devices.filter((device) => device.kind === "audiooutput");
   const videoDevices = devices.filter((device) => device.kind === "videoinput");
+
+  useEffect(() => {
+    if (!hasEditedNameRef.current && !name && authenticatedName) {
+      setName(authenticatedName);
+    }
+  }, [authenticatedName, name]);
 
   async function refreshDevices() {
     if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -290,7 +298,7 @@ export default function GuestMeetingPage() {
           <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={23} /> : <CameraOff size={23} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
         </div>
       </section>
-      <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || "Join meeting"}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString()}</span>}<div className="guest-prejoin-attendee"><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>Your name<input autoFocus required minLength={2} maxLength={80} value={name} placeholder="Enter your name" onChange={(e) => setName(e.target.value)} /></label><button className="primary-button guest-meeting-join-button" type="submit">Join meeting</button><small>Link expires {preview ? new Date(preview.expiresAt).toLocaleString() : "soon"}</small></form>
+      <form className="guest-prejoin-panel" onSubmit={submit}><div className="guest-prejoin-title-row"><h1>{preview?.title || "Join meeting"}</h1></div><div className="guest-prejoin-meta">{preview?.scheduledAt && <span>{new Date(preview.scheduledAt).toLocaleString()}</span>}<div className="guest-prejoin-attendee"><span className="guest-prejoin-attendee-copy"><Users size={16} /> {participantCopy}</span></div></div><label>Your name<input autoFocus required minLength={2} maxLength={80} value={name} placeholder="Enter your name" onChange={(e) => { hasEditedNameRef.current = true; setName(e.target.value); }} /></label><button className="primary-button guest-meeting-join-button" type="submit">Join meeting</button><small>Link expires {preview ? new Date(preview.expiresAt).toLocaleString() : "soon"}</small></form>
     </div>}
     {state === "waiting" && <p className="muted-copy">Waiting for the host to admit you…</p>}
     {state === "joining" && <p className="muted-copy">Joining meeting…</p>}

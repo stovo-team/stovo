@@ -308,7 +308,6 @@ services:
   livekit:
     image: livekit/livekit-server:v1.8.4
     restart: unless-stopped
-    command: ["--config", "/etc/livekit.yaml"]
     ports:
       - "7880:7880"
       - "7881:7881"
@@ -316,13 +315,22 @@ services:
       # Must match deploy/livekit.yaml's rtc port range. These ports carry
       # WebRTC media once the /rtc signaling connection has been established.
       - "50000-50100:50000-50100/udp"
-    volumes:
-      - ./deploy/livekit.yaml:/etc/livekit.yaml:ro
     environment:
-      # LiveKit validates JWT issuers against this map. Keep it derived from
-      # the backend's token-signing credentials so custom production values
-      # cannot leave the two services accepting different API keys.
-      LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}"
+      # The server accepts JWTs only when their issuer and signature match a
+      # configured key pair. Render its complete config from the same Compose
+      # values supplied to the backend; the old mounted file hard-coded the
+      # dev key and rejected production guest tokens with HTTP 401.
+      LIVEKIT_CONFIG: |
+        port: 7880
+        rtc:
+          tcp_port: 7881
+          port_range_start: 50000
+          port_range_end: 50100
+          use_external_ip: true
+        keys:
+          ${LIVEKIT_API_KEY:-devkey}: ${LIVEKIT_API_SECRET:-secret}
+        logging:
+          level: info
 
 volumes:
   postgres-data:

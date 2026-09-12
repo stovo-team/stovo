@@ -5591,10 +5591,10 @@ h2 {
 .guest-meeting-invitation-actions { display: grid; gap: .55rem; grid-column: 1 / -1; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); margin-top: .15rem; }
 .guest-meeting-invitation-join {
   align-items: center;
-  background: #7057d8;
+  background: #123b70;
   border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 999px;
-  box-shadow: 0 6px 14px rgba(65, 45, 145, .28);
+  box-shadow: 0 6px 14px rgba(6, 28, 59, .22);
   color: #ffffff !important;
   display: inline-flex;
   font-size: .84rem;
@@ -5605,7 +5605,7 @@ h2 {
   padding: .45rem .8rem;
   text-decoration: none !important;
 }
-.guest-meeting-invitation-join:hover { background: #5e46c2; transform: translateY(-1px); }
+.guest-meeting-invitation-join:hover { background: #0d2e59; transform: translateY(-1px); }
 .guest-meeting-invitation-plan { align-items: center; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .3); border-radius: 999px; color: #ffffff !important; display: inline-flex; font-size: .8rem; font-weight: 750; gap: .38rem; justify-content: center; min-height: 42px; padding: .45rem .65rem; text-decoration: none !important; }
 .message-bubble.mine .guest-meeting-invitation-plan { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .3); color: #ffffff !important; }
 .guest-meeting-invitation-plan:hover { background: rgba(255, 255, 255, .24); transform: translateY(-1px); }
@@ -27184,7 +27184,6 @@ button.checklist-add-item-btn:hover,
   top: 10px;
 }
 .quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 52px; }
-.quick-access-panel--archive .quick-access-panel-tabs { margin-left: 40px; }
 .quick-access-panel-tabs button { background: color-mix(in oklab, var(--surface-card) 82%, transparent); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; padding: 7px 12px; }
 .quick-access-panel-tabs button:hover { background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent); }
 .quick-access-panel-tabs button.active { background: color-mix(in oklab, var(--accent-soft) 22%, var(--surface-card)); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-default)); color: var(--accent-primary); }
@@ -27247,6 +27246,11 @@ button.checklist-add-item-btn:hover,
 .guest-preview-controls .guest-device-menu-option:hover, .guest-preview-controls .guest-device-menu-option[aria-selected="true"] { background: color-mix(in srgb, var(--accent-primary) 15%, transparent); color: var(--text-primary); }
 .guest-device-menu-option > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .guest-device-menu-option > span:last-child { color: var(--accent-primary); font-size: .95rem; }
+.guest-prejoin-preview { overflow: visible; }
+.guest-prejoin-preview video { border-radius: inherit; }
+.guest-device-menu { bottom: auto; top: calc(100% + .65rem); }
+.guest-device-menu::before { border-bottom: 0; border-right: 0; border-left: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-top: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); bottom: auto; top: -6px; }
+.guest-preview-controls .guest-device-menu-option { color: var(--text-primary); }
 .guest-prejoin-panel input { border-radius: 999px !important; }
 .guest-prejoin-panel { display: flex; flex-direction: column; }
 .guest-prejoin-panel .guest-meeting-join-button { margin-top: auto; }
