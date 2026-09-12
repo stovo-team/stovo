@@ -223,8 +223,10 @@ func (s *Server) previewGuestMeeting(w http.ResponseWriter, r *http.Request) {
 		s.json(w, 404, map[string]string{"message": "Meeting link is unavailable"})
 		return
 	}
-	var guestCount int
-	_ = s.guestDB.QueryRowContext(r.Context(), `SELECT count(*) FROM guest_meeting_sessions WHERE meeting_id=$1 AND state='admitted'`, m.ID).Scan(&guestCount)
+	// A session row records admission, not real-time presence. It can outlive a
+	// closed browser or a failed LiveKit connection, so never present it as a
+	// live attendee count on a public link.
+	guestCount := 0
 	s.json(w, 200, map[string]any{"title": m.Title, "scheduledAt": m.ScheduledAt, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestCount": guestCount, "guestLimit": guestMeetingLimit})
 }
 func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Request) {
@@ -242,9 +244,10 @@ func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Reques
 	}
 	displayName := strings.TrimSpace(body.DisplayName)
 	// Guests are anonymous, so the normalized display name is the only stable
-	// identity available across tabs or reopens. Retire an older matching
-	// session before creating its replacement.
-	if _, err := s.guestDB.ExecContext(r.Context(), `UPDATE guest_meeting_sessions SET state='left', left_at=now() WHERE meeting_id=$1 AND state IN ('waiting','admitted') AND lower(trim(display_name))=lower($2)`, m.ID, displayName); err != nil {
+	// identity available across tabs or reopens. A new join replaces the old
+	// session outright: it revokes the earlier token and works on databases that
+	// have not yet applied the optional departure-tracking migration.
+	if _, err := s.guestDB.ExecContext(r.Context(), `DELETE FROM guest_meeting_sessions WHERE meeting_id=$1 AND state IN ('waiting','admitted') AND lower(trim(display_name))=lower($2)`, m.ID, displayName); err != nil {
 		s.json(w, 500, map[string]string{"message": "Could not replace an earlier guest session"})
 		return
 	}
@@ -288,7 +291,7 @@ func (s *Server) leaveGuestMeetingSession(w http.ResponseWriter, r *http.Request
 		s.json(w, 400, map[string]string{"message": "Guest session is required"})
 		return
 	}
-	_, err := s.guestDB.ExecContext(r.Context(), `UPDATE guest_meeting_sessions SET state='left', left_at=now() WHERE id=$1 AND meeting_id=$2 AND state IN ('waiting','admitted')`, body.SessionID, m.ID)
+	_, err := s.guestDB.ExecContext(r.Context(), `DELETE FROM guest_meeting_sessions WHERE id=$1 AND meeting_id=$2 AND state IN ('waiting','admitted')`, body.SessionID, m.ID)
 	if err != nil {
 		s.json(w, 500, map[string]string{"message": "Could not leave meeting"})
 		return

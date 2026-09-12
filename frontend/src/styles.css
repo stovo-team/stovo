@@ -27184,8 +27184,8 @@ button.checklist-add-item-btn:hover,
   top: 10px;
 }
 .quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 52px; }
-.quick-access-panel-tabs--archive-controls { align-self: flex-start; margin-left: 46px; position: relative; width: max-content; z-index: 3; }
-.quick-access-panel-tabs--archive-grouped { margin-left: 24px; margin-top: 45px; }
+.quick-access-panel-tabs--archive-controls { align-self: flex-start; margin-left: 46px; margin-top: 60px; position: relative; width: max-content; z-index: 3; }
+.quick-access-panel-tabs--archive-grouped { margin-left: 24px; margin-top: 53px; }
 .quick-access-panel-tabs button { background: color-mix(in oklab, var(--surface-card) 82%, transparent); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; padding: 7px 12px; }
 .quick-access-panel-tabs button:hover { background: color-mix(in oklab, var(--background-panel-accent) 60%, transparent); }
 .quick-access-panel-tabs button.active { background: color-mix(in oklab, var(--accent-soft) 22%, var(--surface-card)); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-default)); color: var(--accent-primary); }
@@ -27239,12 +27239,11 @@ button.checklist-add-item-btn:hover,
 .guest-preview-controls .guest-device-menu-trigger:hover, .guest-device-menu-trigger[aria-expanded="true"] { background: color-mix(in srgb, var(--accent-primary) 13%, transparent); color: var(--text-primary); }
 .guest-device-menu-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
 .guest-device-menu-trigger svg { transition: transform .16s ease; }
-.guest-device-menu { background: color-mix(in srgb, var(--surface-raised) 92%, #1d2737); border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-radius: 15px; bottom: calc(100% + .65rem); box-shadow: 0 18px 45px rgba(0, 0, 0, .42), 0 2px 8px rgba(0, 0, 0, .18); display: grid; gap: .22rem; left: 50%; min-width: 220px; padding: .45rem; position: absolute; transform: translateX(-50%); z-index: 12; }
+.guest-device-menu { background: color-mix(in srgb, var(--surface-raised) 92%, #1d2737); border: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-radius: 15px; bottom: calc(100% + .65rem); box-shadow: 0 18px 45px rgba(0, 0, 0, .42), 0 2px 8px rgba(0, 0, 0, .18); display: grid; gap: .08rem; left: 50%; min-width: 220px; padding: .4rem; position: absolute; transform: translateX(-50%); z-index: 12; }
 .guest-device-menu::before { background: inherit; border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-right: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); bottom: -6px; content: ""; height: 9px; left: 50%; position: absolute; transform: translateX(-50%) rotate(45deg); width: 9px; }
-.guest-device-menu-heading { border-bottom: 1px solid var(--border-default); display: grid; gap: .12rem; margin: 0 .18rem .25rem; padding: .25rem .25rem .58rem; position: relative; }
-.guest-device-menu-heading span { color: var(--text-primary); font-size: .76rem; font-weight: 750; }
-.guest-device-menu-heading small { color: var(--text-muted); font-size: .68rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.guest-preview-controls .guest-device-menu-option { align-items: center; background: transparent; border: 0; border-radius: 9px; color: var(--text-secondary); cursor: pointer; display: flex; font: inherit; font-size: .75rem; gap: .75rem; height: auto; justify-content: space-between; min-height: 34px; padding: .45rem .55rem; text-align: left; width: 100%; }
+.guest-device-menu-heading { display: grid; margin: 0 .18rem .08rem; padding: .18rem .25rem; position: relative; }
+.guest-device-menu-heading span { color: #fff; font-size: .72rem; font-weight: 750; }
+.guest-preview-controls .guest-device-menu-option { align-items: center; background: transparent; border: 0; border-radius: 9px; color: #fff; cursor: pointer; display: flex; font: inherit; font-size: .72rem; gap: .55rem; height: auto; justify-content: space-between; min-height: 29px; padding: .3rem .5rem; text-align: left; width: 100%; }
 .guest-preview-controls .guest-device-menu-option:hover, .guest-preview-controls .guest-device-menu-option[aria-selected="true"] { background: color-mix(in srgb, var(--accent-primary) 15%, transparent); color: var(--text-primary); }
 .guest-device-menu-option > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .guest-device-menu-option > span:last-child { color: var(--accent-primary); font-size: .95rem; }
@@ -27262,18 +27261,10 @@ button.checklist-add-item-btn:hover,
 .guest-test-sound { border-radius: 999px; }
 .guest-prejoin-panel { justify-content: flex-start; }
 .guest-prejoin-title-row { align-items: flex-start; }
-.guest-device-control > button { transition: background .22s ease, box-shadow .45s ease, transform .45s ease; }
-.guest-device-control.is-speaking > button { animation: guest-microphone-pulse .8s ease-in-out infinite; background: color-mix(in srgb, var(--accent-primary) 18%, transparent); }
-.guest-device-control.is-settling > button { animation: none; background: color-mix(in srgb, var(--accent-primary) 14%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-primary) 9%, transparent), 0 0 13px color-mix(in srgb, var(--accent-primary) 24%, transparent); transform: scale(1.018); }
 .guest-preview-avatar-halo { display: grid; height: 82px; isolation: isolate; place-items: center; position: relative; width: 82px; z-index: 0; }
 .guest-call-avatar-halo { height: 140px; width: 140px; }
 .guest-preview-avatar { font-size: 1.35rem; height: 82px; width: 82px; }
-.guest-preview-avatar-halo.is-speaking::before, .guest-preview-avatar-halo.is-settling::before { background: color-mix(in srgb, var(--accent-primary) 16%, transparent); border: 2px solid color-mix(in srgb, var(--accent-primary) 86%, #ffffff); border-radius: 50%; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-primary) 16%, transparent), 0 0 24px color-mix(in srgb, var(--accent-primary) 64%, transparent); content: ""; inset: -7px; position: absolute; transition: box-shadow .55s ease, opacity .55s ease, transform .55s ease; z-index: -1; }
-.guest-preview-avatar-halo.is-speaking::before { animation: guest-avatar-speaking-halo 1.35s ease-in-out infinite; }
-.guest-preview-avatar-halo.is-settling::before { animation: none; box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent-primary) 10%, transparent), 0 0 22px color-mix(in srgb, var(--accent-primary) 48%, transparent); opacity: .8; transform: scale(1.025); }
-@keyframes guest-microphone-pulse { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent-primary) 13%, transparent), 0 0 18px color-mix(in srgb, var(--accent-primary) 32%, transparent); transform: scale(1.045); } }
-@keyframes guest-avatar-speaking-halo { 50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent-primary) 7%, transparent), 0 0 30px color-mix(in srgb, var(--accent-primary) 78%, transparent); opacity: .72; transform: scale(1.04); } }
-@media (prefers-reduced-motion: reduce) { .guest-device-control.is-speaking > button, .guest-preview-avatar-halo.is-speaking::before { animation: none; } }
+.guest-preview-avatar-halo.is-speaking::before, .guest-preview-avatar-halo.is-settling::before { background: transparent; border: 2px solid color-mix(in srgb, var(--accent-primary) 86%, #ffffff); border-radius: 50%; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-primary) 16%, transparent), 0 0 24px color-mix(in srgb, var(--accent-primary) 64%, transparent); content: ""; inset: -7px; position: absolute; z-index: -1; }
 @media (max-width: 720px) { .guest-stovo-brand { left: 1rem; right: auto; top: .9rem; } .guest-meeting-page { padding-top: 4rem; } .guest-preview-controls { justify-content: center; } .guest-device-select select { max-width: 96px; } .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; } }
 
 /* Guest meetings use the same stage, participant tiles, and control dock as group calls. */
@@ -27398,7 +27389,7 @@ button.checklist-add-item-btn:hover,
 .guest-call-controls .guest-device-menu-trigger:hover, .guest-call-controls .guest-device-menu-trigger[aria-expanded="true"] { background: rgba(255, 255, 255, .08); color: #fff; }
 .guest-call-controls .guest-device-menu { bottom: calc(100% + .65rem); top: auto; }
 .guest-call-controls .guest-device-menu::before { border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-left: 0; border-right: 1px solid color-mix(in srgb, var(--accent-primary) 28%, var(--border-default)); border-top: 0; bottom: -6px; top: auto; }
-.guest-call-controls .guest-device-menu-option { align-items: center; background: transparent; border: 0; border-radius: 9px; color: var(--text-primary); cursor: pointer; display: flex; font: inherit; font-size: .75rem; gap: .75rem; justify-content: space-between; min-height: 34px; padding: .45rem .55rem; text-align: left; width: 100%; }
+.guest-call-controls .guest-device-menu-option { align-items: center; background: transparent; border: 0; border-radius: 9px; color: #fff; cursor: pointer; display: flex; font: inherit; font-size: .72rem; gap: .55rem; justify-content: space-between; min-height: 29px; padding: .3rem .5rem; text-align: left; width: 100%; }
 .guest-call-controls .guest-device-menu-option:hover, .guest-call-controls .guest-device-menu-option[aria-selected="true"] { background: color-mix(in srgb, var(--accent-primary) 15%, transparent); }
 
 .guest-call-settings .guest-settings-popover {
