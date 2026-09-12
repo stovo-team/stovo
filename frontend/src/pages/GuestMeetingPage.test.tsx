@@ -13,6 +13,9 @@ const api = vi.hoisted(() => ({
     guestLimit: 10,
   })),
 }));
+const GuestMeetingLinkError = vi.hoisted(() => class GuestMeetingLinkError extends Error {
+  constructor(message: string, readonly code?: string) { super(message); }
+});
 const auth = vi.hoisted(() => ({
   accessToken: null as string | null,
   currentUser: null as { displayName: string; username: string; profilePhoto: null } | null,
@@ -23,6 +26,7 @@ vi.mock("../api/guestMeetings", () => ({
   createGuestMeetingSession: vi.fn(),
   getGuestMeetingStatus: vi.fn(),
   getGuestMeetingToken: vi.fn(),
+  GuestMeetingLinkError,
 }));
 
 vi.mock("../auth/AuthContext", () => ({
@@ -149,6 +153,15 @@ describe("GuestMeetingPage pre-join controls", () => {
     expect(host?.querySelector(".guest-prejoin-attendee-avatars")).toBeNull();
     expect(host?.querySelectorAll(".guest-prejoin-guest-avatar")).toHaveLength(0);
     expect(host?.querySelector(".guest-prejoin-attendee-copy")?.textContent).toContain("No guests are here yet");
+  });
+
+  it("treats an expired meeting link as a normal request for a new link", async () => {
+    api.previewGuestMeeting.mockRejectedValueOnce(new GuestMeetingLinkError("This meeting link has expired. Ask the host for a new link.", "meeting_expired"));
+    await renderPage();
+
+    expect(host?.querySelector(".guest-link-expired")?.textContent).toContain("This meeting link has expired");
+    expect(host?.textContent).toContain("Ask the host to send you a new link");
+    expect(host?.querySelector(".error-text")).toBeNull();
   });
 
   it("opens and closes the settings popover with speaker and microphone tests", async () => {

@@ -4,6 +4,10 @@ export type GuestMeetingPreview = { title: string; scheduledAt?: string | null; 
 export type GuestMeetingStatus = { displayName: string; state: "waiting" | "admitted" | "blocked" };
 export type GuestMeetingSession = { id: string; state: "waiting" | "admitted" };
 
+export class GuestMeetingLinkError extends Error {
+  constructor(message: string, readonly code?: string) { super(message); this.name = "GuestMeetingLinkError"; }
+}
+
 async function publicRequest<T>(token: string, path = "", init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${getApiUrl()}/api/guest-meetings/public/${encodeURIComponent(token)}${path}`, {
     credentials: "include",
@@ -12,7 +16,7 @@ async function publicRequest<T>(token: string, path = "", init: RequestInit = {}
   });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw new Error(data?.message ?? "Meeting link is unavailable");
+    throw new GuestMeetingLinkError(data?.message ?? "Meeting link is unavailable", data?.code);
   }
   return response.status === 204 ? (undefined as T) : response.json() as Promise<T>;
 }

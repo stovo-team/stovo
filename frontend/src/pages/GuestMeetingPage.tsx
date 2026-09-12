@@ -1,14 +1,14 @@
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
-import { Camera, CameraOff, ChevronDown, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
+import { Camera, CameraOff, ChevronDown, Link2Off, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
-import { createGuestMeetingSession, getGuestMeetingStatus, getGuestMeetingToken, leaveGuestMeetingSession, previewGuestMeeting, type GuestMeetingPreview } from "../api/guestMeetings";
+import { createGuestMeetingSession, getGuestMeetingStatus, getGuestMeetingToken, GuestMeetingLinkError, leaveGuestMeetingSession, previewGuestMeeting, type GuestMeetingPreview } from "../api/guestMeetings";
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 
-type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "error";
+type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "expired" | "error";
 type RemoteParticipantStream = { id: string; cameraStream: MediaStream | null; screenStream: MediaStream | null };
 type SinkableMediaElement = HTMLMediaElement & { setSinkId?: (deviceId: string) => Promise<void> };
 type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void> };
@@ -30,6 +30,19 @@ function guestJoinErrorMessage(error: unknown) {
   return /invalid API key|could not establish signal connection/i.test(message)
     ? "Could not connect to the meeting. Please try again shortly."
     : message;
+}
+
+function isExpiredGuestMeetingError(error: unknown) {
+  return error instanceof GuestMeetingLinkError && error.code === "meeting_expired";
+}
+
+function regionalStovoSite() {
+  if (typeof window === "undefined") return "https://stovo.org";
+  const locale = navigator.language?.toUpperCase() ?? "";
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+  const centralAsia = /-(KZ|KG|UZ|TJ|TM)$/.test(locale) || /^Asia\/(Almaty|Aqtobe|Atyrau|Oral|Qostanay|Qyzylorda|Bishkek|Tashkent|Dushanbe|Ashgabat|Urumqi)$/.test(timeZone);
+  if (/-((RU)|(NL))$/.test(locale) || /^Europe\/(Amsterdam|Moscow|Kaliningrad|Samara|Volgograd|Kirov|Saratov|Astrakhan|Ulyanovsk|Yekaterinburg|Omsk|Novosibirsk|Barnaul|Tomsk|Novokuznetsk|Krasnoyarsk|Irkutsk|Chita|Yakutsk|Khandyga|Vladivostok|Ust-Nera|Magadan|Sakhalin|Srednekolymsk|Kamchatka|Anadyr)$/.test(timeZone)) return "https://stovo.ru";
+  return centralAsia ? "https://stovo.kg" : "https://stovo.org";
 }
 
 export default function GuestMeetingPage() {
@@ -74,6 +87,8 @@ export default function GuestMeetingPage() {
   const hasEditedNameRef = useRef(false);
   const guestSessionIDRef = useRef<string | null>(null);
   const screenShareStreamRef = useRef<MediaStream | null>(null);
+
+  const stovoSite = regionalStovoSite();
 
   const inputDevices = devices.filter((device) => device.kind === "audioinput");
   const outputDevices = devices.filter((device) => device.kind === "audiooutput");
@@ -283,7 +298,9 @@ export default function GuestMeetingPage() {
     } catch { setDeviceIssue("Could not play the speaker test in this browser."); }
   }
 
-  useEffect(() => { if (token) previewGuestMeeting(token).then(setPreview).catch((e) => { setError(e.message); setState("error"); }); }, [token]);
+  function showExpiredLink() { stopLocalMedia(); setError(null); setState("expired"); }
+
+  useEffect(() => { if (token) previewGuestMeeting(token).then(setPreview).catch((e) => { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else { setError(e.message); setState("error"); } }); }, [token]);
   useEffect(() => {
     void refreshDevices();
     void startLocalMedia().catch((e) => setDeviceIssue(e instanceof Error ? e.message : "Could not access your devices."));
@@ -368,12 +385,13 @@ export default function GuestMeetingPage() {
       markCurrentGuestSessionLeft();
       await roomRef.current?.disconnect().catch(() => undefined);
       roomRef.current = null;
+	  if (isExpiredGuestMeetingError(e)) { showExpiredLink(); return; }
       setError(guestJoinErrorMessage(e));
       setState("error");
     }
   }
-  async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); try { const session = await createGuestMeetingSession(token, name); guestSessionIDRef.current = session.id; if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { setError(e instanceof Error ? e.message : "Could not join meeting"); } }
-  useEffect(() => { if (state !== "waiting" || !token) return; const timer = window.setInterval(() => void getGuestMeetingStatus(token).then((status) => { if (status.state === "admitted") void connect(); if (status.state === "blocked") { setError("The host removed you from this meeting."); setState("blocked"); } }).catch((e) => { setError(e.message); setState("error"); }), 2500); return () => window.clearInterval(timer); }, [state, token]);
+  async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); try { const session = await createGuestMeetingSession(token, name); guestSessionIDRef.current = session.id; if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else setError(e instanceof Error ? e.message : "Could not join meeting"); } }
+  useEffect(() => { if (state !== "waiting" || !token) return; const timer = window.setInterval(() => void getGuestMeetingStatus(token).then((status) => { if (status.state === "admitted") void connect(); if (status.state === "blocked") { setError("The host removed you from this meeting."); setState("blocked"); } }).catch((e) => { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else { setError(e.message); setState("error"); } }), 2500); return () => window.clearInterval(timer); }, [state, token]);
   async function leave() { await stopScreenShare(); stopLocalMedia(); await roomRef.current?.disconnect(); roomRef.current = null; markCurrentGuestSessionLeft(); setRemoteStreams([]); setState("name"); void startLocalMedia(); }
   const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
   const guestDisplayName = name.trim() || currentUser?.displayName || "You";
@@ -458,6 +476,7 @@ export default function GuestMeetingPage() {
   }
 
   return <main className="guest-meeting-page"><div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
+    {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><p className="eyebrow">Guest meeting</p><h1 id="expired-link-title">This meeting link has expired</h1><p>Ask the host to send you a new link, then open it to join.</p></div></section>}
     {state === "name" && <div className="guest-prejoin">
       <section className="guest-prejoin-preview">
         <div className="guest-preview-label">{guestDisplayName}</div>
@@ -478,7 +497,7 @@ export default function GuestMeetingPage() {
     {state === "waiting" && <p className="muted-copy">Waiting for the host to admit you…</p>}
     {state === "joining" && <p className="muted-copy">Joining meeting…</p>}
     {error && <p className="error-text">{error}</p>}
-  </section></main>;
+  </section><a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <span aria-hidden="true">↗</span></a></main>;
 }
 
 function DeviceControl({ label, active, onToggle, icon, children }: { label: string; active: boolean; onToggle: () => void; icon: React.ReactNode; children: React.ReactNode }) {
