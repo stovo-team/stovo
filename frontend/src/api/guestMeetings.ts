@@ -2,6 +2,7 @@ import { getApiUrl } from "./client";
 
 export type GuestMeetingPreview = { title: string; scheduledAt?: string | null; admissionMode: "immediate" | "lobby"; expiresAt: string; guestCount: number; guestLimit: number };
 export type GuestMeetingStatus = { displayName: string; state: "waiting" | "admitted" | "blocked" };
+export type GuestMeetingSession = { id: string; state: "waiting" | "admitted" };
 
 async function publicRequest<T>(token: string, path = "", init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${getApiUrl()}/api/guest-meetings/public/${encodeURIComponent(token)}${path}`, {
@@ -17,7 +18,8 @@ async function publicRequest<T>(token: string, path = "", init: RequestInit = {}
 }
 
 export const previewGuestMeeting = (token: string) => publicRequest<GuestMeetingPreview>(token);
-export const createGuestMeetingSession = (token: string, displayName: string) => publicRequest<GuestMeetingStatus>(token, "/sessions", { method: "POST", body: JSON.stringify({ displayName }) });
+export const createGuestMeetingSession = (token: string, displayName: string) => publicRequest<GuestMeetingSession>(token, "/sessions", { method: "POST", body: JSON.stringify({ displayName }) });
+export const leaveGuestMeetingSession = (token: string, sessionId: string) => publicRequest<void>(token, "/leave", { method: "POST", body: JSON.stringify({ sessionId }), keepalive: true });
 export const getGuestMeetingStatus = (token: string) => publicRequest<GuestMeetingStatus>(token, "/status");
 export const getGuestMeetingToken = (token: string) => publicRequest<{ url: string; token: string }>(token, "/token", { method: "POST" });
 

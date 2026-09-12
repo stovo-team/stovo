@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track } from "livekit-client";
-import { Camera, CameraOff, ChevronDown, Mic, MicOff, PhoneOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
+import { Camera, CameraOff, ChevronDown, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import VeloLogo from "../components/VeloLogo";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
-import { createGuestMeetingSession, getGuestMeetingStatus, getGuestMeetingToken, previewGuestMeeting, type GuestMeetingPreview } from "../api/guestMeetings";
+import { createGuestMeetingSession, getGuestMeetingStatus, getGuestMeetingToken, leaveGuestMeetingSession, previewGuestMeeting, type GuestMeetingPreview } from "../api/guestMeetings";
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "error";
@@ -45,6 +45,8 @@ export default function GuestMeetingPage() {
   const [inputGain, setInputGain] = useState(100);
   const [outputVolume, setOutputVolume] = useState(100);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const [meterLevel, setMeterLevel] = useState(0);
   const [speakingIndicatorState, setSpeakingIndicatorState] = useState<"idle" | "speaking" | "settling">("idle");
   const [audioMeterRevision, setAudioMeterRevision] = useState(0);
@@ -61,6 +63,8 @@ export default function GuestMeetingPage() {
   const meterFrameRef = useRef<number | null>(null);
   const speakingReleaseTimerRef = useRef<number | null>(null);
   const hasEditedNameRef = useRef(false);
+  const guestSessionIDRef = useRef<string | null>(null);
+  const screenShareStreamRef = useRef<MediaStream | null>(null);
 
   const inputDevices = devices.filter((device) => device.kind === "audioinput");
   const outputDevices = devices.filter((device) => device.kind === "audiooutput");
@@ -96,6 +100,54 @@ export default function GuestMeetingPage() {
     if (localRef.current) localRef.current.srcObject = null;
     setMeterLevel(0);
     setSpeakingIndicatorState("idle");
+  }
+
+  async function stopScreenShare() {
+    const room = roomRef.current;
+    const publication = room && Array.from(room.localParticipant.trackPublications.values()).find((item) => item.source === Track.Source.ScreenShare);
+    if (publication?.track) await room?.localParticipant.unpublishTrack(publication.track).catch(() => undefined);
+    screenShareStreamRef.current?.getTracks().forEach((track) => { track.onended = null; track.stop(); });
+    screenShareStreamRef.current = null;
+    setLocalScreenStream(null);
+    setIsScreenSharing(false);
+  }
+
+  async function toggleScreenShare() {
+    const room = roomRef.current;
+    if (!room) return;
+    if (isScreenSharing) {
+      await stopScreenShare();
+      return;
+    }
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      setDeviceIssue("Screen sharing is not supported by this browser.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      const track = stream.getVideoTracks()[0];
+      if (!track) {
+        stream.getTracks().forEach((item) => item.stop());
+        return;
+      }
+      screenShareStreamRef.current = stream;
+      setLocalScreenStream(stream);
+      await room.localParticipant.publishTrack(track, { source: Track.Source.ScreenShare });
+      setIsScreenSharing(true);
+      track.onended = () => { void stopScreenShare(); };
+    } catch (e) {
+      screenShareStreamRef.current?.getTracks().forEach((track) => track.stop());
+      screenShareStreamRef.current = null;
+      setLocalScreenStream(null);
+      setDeviceIssue(e instanceof Error && e.name === "NotAllowedError" ? "Screen sharing permission was denied." : "Could not start screen sharing.");
+    }
+  }
+
+  function markCurrentGuestSessionLeft() {
+    if (!token || !guestSessionIDRef.current) return;
+    const sessionID = guestSessionIDRef.current;
+    guestSessionIDRef.current = null;
+    void leaveGuestMeetingSession(token, sessionID).catch(() => undefined);
   }
 
   async function startLocalMedia(next = { microphoneDeviceId, cameraDeviceId }, previousTracks: MediaStreamTrack[] = []) {
@@ -206,10 +258,15 @@ export default function GuestMeetingPage() {
   useEffect(() => {
     void refreshDevices();
     void startLocalMedia().catch((e) => setDeviceIssue(e instanceof Error ? e.message : "Could not access your devices."));
-    return () => { stopLocalMedia(); void roomRef.current?.disconnect(); };
+    return () => { markCurrentGuestSessionLeft(); void stopScreenShare(); stopLocalMedia(); void roomRef.current?.disconnect(); };
     // Device permission is intentionally requested once on page entry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    const leaveOnPageHide = () => { markCurrentGuestSessionLeft(); };
+    window.addEventListener("pagehide", leaveOnPageHide);
+    return () => window.removeEventListener("pagehide", leaveOnPageHide);
+  }, [token]);
   useEffect(() => { if (localRef.current && localStreamRef.current) localRef.current.srcObject = localStreamRef.current; }, [state]);
   useEffect(() => {
     if (!settingsOpen) return;
@@ -257,17 +314,24 @@ export default function GuestMeetingPage() {
         const remainingTracks = item.stream.getTracks().filter((mediaTrack) => mediaTrack.id !== track.mediaStreamTrack?.id);
         return remainingTracks.length ? [{ ...item, stream: new MediaStream(remainingTracks) }] : [];
       })));
+      room.on(RoomEvent.ParticipantDisconnected, (participant) => setRemoteStreams((previous) => previous.filter((item) => item.id !== participant.identity)));
       await room.connect(resolveLiveKitUrl(credentials.url), credentials.token);
       if (!localStreamRef.current) await startLocalMedia();
       for (const track of localStreamRef.current?.getTracks() ?? []) {
         if (track.enabled) await room.localParticipant.publishTrack(track, { source: track.kind === "audio" ? Track.Source.Microphone : Track.Source.Camera });
       }
       setState("joined");
-    } catch (e) { setError(guestJoinErrorMessage(e)); setState("error"); }
+    } catch (e) {
+      markCurrentGuestSessionLeft();
+      await roomRef.current?.disconnect().catch(() => undefined);
+      roomRef.current = null;
+      setError(guestJoinErrorMessage(e));
+      setState("error");
+    }
   }
-  async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); try { const session = await createGuestMeetingSession(token, name); if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { setError(e instanceof Error ? e.message : "Could not join meeting"); } }
+  async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); try { const session = await createGuestMeetingSession(token, name); guestSessionIDRef.current = session.id; if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { setError(e instanceof Error ? e.message : "Could not join meeting"); } }
   useEffect(() => { if (state !== "waiting" || !token) return; const timer = window.setInterval(() => void getGuestMeetingStatus(token).then((status) => { if (status.state === "admitted") void connect(); if (status.state === "blocked") { setError("The host removed you from this meeting."); setState("blocked"); } }).catch((e) => { setError(e.message); setState("error"); }), 2500); return () => window.clearInterval(timer); }, [state, token]);
-  function leave() { stopLocalMedia(); void roomRef.current?.disconnect(); roomRef.current = null; setRemoteStreams([]); setState("name"); void startLocalMedia(); }
+  async function leave() { await stopScreenShare(); stopLocalMedia(); await roomRef.current?.disconnect(); roomRef.current = null; markCurrentGuestSessionLeft(); setRemoteStreams([]); setState("name"); void startLocalMedia(); }
   const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
   const guestDisplayName = name.trim() || currentUser?.displayName || "You";
   const hasVoiceActivity = microphoneEnabled && meterLevel >= 8;
@@ -300,7 +364,7 @@ export default function GuestMeetingPage() {
   if (state === "joined") {
     const participantCount = remoteStreams.length + 1;
     const gridTierClass = participantCount === 1 ? "voice-grid--1" : participantCount === 2 ? "voice-grid--2" : participantCount <= 4 ? "voice-grid--4" : participantCount <= 6 ? "voice-grid--6" : "voice-grid--9";
-    const localHasVideo = Boolean(cameraEnabled && localStreamRef.current?.getVideoTracks().some((track) => track.enabled && track.readyState === "live"));
+    const localHasVideo = Boolean(localScreenStream?.getVideoTracks().some((track) => track.readyState === "live") || (cameraEnabled && localStreamRef.current?.getVideoTracks().some((track) => track.enabled && track.readyState === "live")));
 
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div>
@@ -310,8 +374,8 @@ export default function GuestMeetingPage() {
         </header>
         <div className="voice-room-stage">
           <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
-            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={localHasVideo} muted={!microphoneEnabled} avatar={<RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} />}>
-              <video ref={localRef} className="voice-participant-video-feed is-mirrored" autoPlay muted playsInline />
+            <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={localHasVideo} muted={!microphoneEnabled} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>
+              {localScreenStream ? <LocalStreamVideo stream={localScreenStream} className="voice-participant-video-feed" /> : <video ref={localRef} className="voice-participant-video-feed is-mirrored" autoPlay muted playsInline />}
             </GuestParticipantTile>
             {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={remote.stream.getVideoTracks().some((track) => track.readyState === "live")}>
               <RemoteVideo stream={remote.stream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />
@@ -323,11 +387,12 @@ export default function GuestMeetingPage() {
             <DeviceControl label="Microphone" active={microphoneEnabled} speaking={isSpeaking} settling={isSpeakingIndicatorVisible && !isSpeaking} onToggle={() => toggleDevice("audio")} icon={microphoneEnabled ? <Mic size={20} /> : <MicOff size={20} />}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
             <DeviceControl label="Speaker" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} icon={speakerEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
             <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={20} /> : <CameraOff size={20} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
+            <button className={`voice-dock-btn${isScreenSharing ? " is-active" : ""}`} type="button" onClick={() => void toggleScreenShare()} aria-label={isScreenSharing ? "Stop screen sharing" : "Share screen"} title={isScreenSharing ? "Stop screen sharing" : "Share screen"}>{isScreenSharing ? <ScreenShareOff size={20} /> : <ScreenShare size={20} />}</button>
             <div className="guest-settings guest-call-settings" ref={settingsRef}>
               <button ref={settingsButtonRef} className={`voice-dock-btn${settingsOpen ? " is-active" : ""}`} type="button" aria-label="Open device settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={20} /></button>
               {settingsOpen && <section className="guest-settings-popover" role="dialog" aria-label="Device settings"><div className="guest-settings-section"><label>Microphone volume <strong>{inputGain}%</strong><input aria-label="Microphone volume" type="range" min="0" max="200" value={inputGain} onChange={(event) => setMicVolume(Number(event.target.value))} /></label><div className="guest-mic-test"><span>Microphone test</span>{analyserRef.current && microphoneEnabled ? <div className="guest-mic-meter" aria-label={`Microphone level ${meterLevel}%`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={meterLevel}><i style={{ width: `${meterLevel}%` }} /></div> : <small>Microphone unavailable</small>}</div></div><div className="guest-settings-section"><label>Speaker volume <strong>{outputVolume}%</strong><input aria-label="Speaker volume" type="range" min="0" max="100" value={outputVolume} onChange={(event) => setOutputVolume(Number(event.target.value))} /></label><button type="button" className="guest-test-sound" disabled={!speakerEnabled} onClick={() => void testSound()}><Volume2 size={16} /> Test sound</button></div>{deviceIssue && <p className="guest-device-issue" role="status">{deviceIssue}</p>}</section>}
             </div>
-            <button className="voice-dock-btn voice-dock-btn--disconnect" type="button" onClick={leave} aria-label="Leave meeting" title="Leave meeting"><PhoneOff size={20} /></button>
+            <button className="voice-dock-btn voice-dock-btn--disconnect" type="button" onClick={() => void leave()} aria-label="Leave meeting" title="Leave meeting"><PhoneOff size={20} /></button>
           </div>
         </div>
       </section>
@@ -408,4 +473,5 @@ function GuestParticipantTile({ label, hasVideo, muted = false, avatar, children
     <div className="voice-participant-meta"><span className="voice-participant-name">{label}</span><span className="voice-participant-state">{muted ? "Muted" : "Connected"}</span></div>
   </div>;
 }
+function LocalStreamVideo({ stream, className }: { stream: MediaStream; className?: string }) { const ref = useRef<HTMLVideoElement>(null); useEffect(() => { if (ref.current) ref.current.srcObject = stream; }, [stream]); return <video ref={ref} className={className} autoPlay muted playsInline />; }
 function RemoteVideo({ stream, outputVolume, speakerEnabled, speakerDeviceId, className }: { stream: MediaStream; outputVolume: number; speakerEnabled: boolean; speakerDeviceId: string; className?: string }) { const ref = useRef<HTMLVideoElement>(null); useEffect(() => { if (ref.current) ref.current.srcObject = stream; }, [stream]); useEffect(() => { const video = ref.current as SinkableMediaElement | null; if (!video) return; video.volume = speakerEnabled ? outputVolume / 100 : 0; if (speakerDeviceId && video.setSinkId) void video.setSinkId(speakerDeviceId).catch(() => undefined); }, [outputVolume, speakerDeviceId, speakerEnabled]); return <video ref={ref} className={className} autoPlay playsInline />; }
