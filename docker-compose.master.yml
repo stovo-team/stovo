@@ -63,6 +63,10 @@ services:
       MASTER_DB_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-stovo_master_db}?sslmode=disable
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      # Optional external services for tenant backends. DATABASE_URL may use
+      # {slug}, for example .../stovo_db_{slug}?sslmode=require.
+      DATABASE_URL: ${DATABASE_URL:-}
+      REDIS_URL: ${REDIS_URL:-}
       MASTER_ADMIN_USER: ${MASTER_ADMIN_USER:-admin}
       MASTER_ADMIN_PASSWORD: ${MASTER_ADMIN_PASSWORD:-changeme_master_pass}
       MASTER_SYSTEM_SECRET: ${MASTER_SYSTEM_SECRET:-super_secret_master_key_123}

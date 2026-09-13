@@ -20,7 +20,7 @@ func TestBackendContainerEnvIncludesTurnConfiguration(t *testing.T) {
 			"TURN_USERNAME":        "turn-user",
 			"TURN_PASSWORD":        "turn-password",
 			"GROQ_API_KEY":         "gsk_test12345",
-			"GROQ_STT_MODEL":        "whisper-large-v3-turbo",
+			"GROQ_STT_MODEL":       "whisper-large-v3-turbo",
 		}
 		if value, ok := values[key]; ok {
 			return value
@@ -74,6 +74,27 @@ func TestBackendContainerEnvIncludesNavTabsConfiguration(t *testing.T) {
 	}
 }
 
+func TestBackendContainerEnvPrefersExternalDatabaseAndRedisURLs(t *testing.T) {
+	env := backendContainerEnv("acdcbca1", func(key, fallback string) string {
+		values := map[string]string{
+			"DATABASE_URL": "postgres://external.example.test:5432/stovo_db_{slug}?sslmode=require",
+			"REDIS_URL":    "rediss://cache.example.test:6380/0",
+		}
+		if value, ok := values[key]; ok {
+			return value
+		}
+		return fallback
+	})
+
+	joined := "\n" + strings.Join(env, "\n") + "\n"
+	if !strings.Contains(joined, "\nDATABASE_URL=postgres://external.example.test:5432/stovo_db_acdcbca1?sslmode=require\n") {
+		t.Fatalf("expected tenant backend to use the external database URL, got: %q", joined)
+	}
+	if !strings.Contains(joined, "\nREDIS_URL=rediss://cache.example.test:6380/0\n") {
+		t.Fatalf("expected tenant backend to use the external Redis URL, got: %q", joined)
+	}
+}
+
 func TestGetMasterSecretFallback(t *testing.T) {
 	t.Setenv("MASTER_SYSTEM_SECRET", "")
 	secret := getMasterSecret()
@@ -94,5 +115,3 @@ func TestDefaultNavTabs(t *testing.T) {
 		t.Fatalf("expected all tabs true by default, got: %+v", tabs)
 	}
 }
-
-

@@ -55,6 +55,17 @@ jobs:
             ensure_env MASTER_SYSTEM_SECRET super_secret_master_key_123
 
             get_env() { key="$1"; default="${2:-}"; val="$(sed -n "s/^${key}=//p" .env 2>/dev/null | tail -n 1 | tr -d '\r')"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"; if [ -n "$val" ]; then printf '%s' "$val"; else printf '%s' "$default"; fi; }
+            tenant_database_url_for() {
+              tenant_slug="$1"
+              configured_url="$(get_env DATABASE_URL "")"
+              if [ -n "$configured_url" ]; then
+                # DATABASE_URL can point to one external tenant database, or
+                # contain {slug} to keep multiple tenants in separate DBs.
+                printf '%s' "$configured_url" | sed "s/{slug}/${tenant_slug}/g"
+              else
+                printf 'postgres://%s:%s@postgres:5432/stovo_db_%s?sslmode=disable' "$pg_user" "$pg_pass" "$tenant_slug"
+              fi
+            }
 
             # Docker can leave build layers, dangling images, stopped containers,
             # and unused networks behind.  Recover only when Docker explicitly
@@ -87,6 +98,7 @@ jobs:
             pg_pass="$(get_env POSTGRES_PASSWORD family_password)"
             pg_db="$(get_env POSTGRES_DB family_messenger)"
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
+            tenant_redis_url="$(get_env REDIS_URL 'redis://redis:6379/0')"
 
             # Ensure master database, cache & minio services are running
             sudo docker compose -f docker-compose.master.yml up -d postgres redis minio
@@ -146,7 +158,7 @@ jobs:
                     server_slug="$(sudo docker inspect --format '{{index .Config.Labels "stovo-server"}}' "$container_id")"
                     if [ -n "$server_slug" ]; then
                         echo "Applying tracked Atlas migrations for server: $server_slug"
-                        tenant_database_url="postgres://${pg_user}:${pg_pass}@postgres:5432/stovo_db_${server_slug}?sslmode=disable"
+                        tenant_database_url="$(tenant_database_url_for "$server_slug")"
                         # Do not replay raw SQL or ignore migration errors here. Atlas
                         # records each revision in the tenant database, so a successful
                         # rollout means this exact schema is present before the new
@@ -219,8 +231,8 @@ jobs:
                           -e "SERVER_ID=${server_slug}" \
                           -e "APP_URL=${server_url}" \
                           -e "API_URL=${server_url}" \
-                          -e "DATABASE_URL=postgres://${pg_user}:${pg_pass}@postgres:5432/stovo_db_${server_slug}?sslmode=disable" \
-                          -e "REDIS_URL=redis://redis:6379/0" \
+                          -e "DATABASE_URL=${tenant_database_url}" \
+                          -e "REDIS_URL=${tenant_redis_url}" \
                           -e "STORAGE_PROVIDER=minio" \
                           -e "MINIO_ENDPOINT=minio:9000" \
                           -e "MINIO_ACCESS_KEY=${minio_user}" \
@@ -262,8 +274,8 @@ jobs:
                             -e "SERVER_ID=${server_slug}" \
                             -e "APP_URL=${server_url}" \
                             -e "API_URL=${server_url}" \
-                            -e "DATABASE_URL=postgres://${pg_user}:${pg_pass}@postgres:5432/stovo_db_${server_slug}?sslmode=disable" \
-                            -e "REDIS_URL=redis://redis:6379/0" \
+                            -e "DATABASE_URL=${tenant_database_url}" \
+                            -e "REDIS_URL=${tenant_redis_url}" \
                             -e "STORAGE_PROVIDER=minio" \
                             -e "MINIO_ENDPOINT=minio:9000" \
                             -e "MINIO_ACCESS_KEY=${minio_user}" \

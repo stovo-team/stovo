@@ -352,12 +352,26 @@ func nowString() string {
 }
 
 func parseTime(value string) time.Time {
-	parsed, err := time.Parse(time.RFC3339Nano, value)
-	if err == nil {
-		return parsed
+	value = strings.TrimSpace(value)
+	// Application writes use RFC 3339, while pre-existing tenant databases can
+	// return PostgreSQL's textual timestamp representation. Accept both so an
+	// otherwise valid persisted message never becomes Go's zero time (Jan 1,
+	// year 1) in the API response after a chat reload.
+	for _, layout := range []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05.999999999Z07:00",
+		"2006-01-02 15:04:05Z07:00",
+		"2006-01-02 15:04:05.999999999 -0700 MST",
+		"2006-01-02 15:04:05 -0700 MST",
+		"2006-01-02 15:04:05.999999999 -0700",
+		"2006-01-02 15:04:05 -0700",
+	} {
+		if parsed, err := time.Parse(layout, value); err == nil {
+			return parsed
+		}
 	}
-	parsed, _ = time.Parse(time.RFC3339, value)
-	return parsed
+	return time.Time{}
 }
 
 func (s *Server) getUserByID(userID string) (userPublic, error) {

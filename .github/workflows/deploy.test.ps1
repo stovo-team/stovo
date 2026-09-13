@@ -69,3 +69,11 @@ if ($workflow -notmatch 'docker_with_space_recovery\(\)' -or
 if ($workflow -notmatch 'migrations/master') {
     throw "Deployment must apply master database migrations."
 }
+
+if ($workflow -notmatch 'tenant_database_url_for\(\)' -or
+    $workflow -notmatch 'get_env DATABASE_URL' -or
+    $workflow -notmatch 'get_env REDIS_URL' -or
+    $workflow -notmatch 'DATABASE_URL=\$\{tenant_database_url\}' -or
+    $workflow -notmatch 'REDIS_URL=\$\{tenant_redis_url\}') {
+    throw "Deployment must pass configured external database and Redis URLs to tenant backends."
+}
