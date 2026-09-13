@@ -19,9 +19,9 @@ export interface LegalDocument {
 
 export const legalContact = {
   operator: "ИП Стахов Иван",
+  operatorEnglish: "Sole Proprietor Ivan Stakhov",
   address: "7 мкр. 16А",
   addressEnglish: "7th Microdistrict, 16A",
-  phone: "+996550507537",
   email: "support@stovo.ru"
 } as const;
 
@@ -35,7 +35,7 @@ const en: Record<LegalDocumentId, LegalDocument> = {
       {
         title: "1. Who is responsible for Stovo",
         paragraphs: [
-          `The service operator for Stovo is ${legalContact.operator} ("we", "us", or "Stovo"). You can contact us at ${legalContact.addressEnglish}, by phone at ${legalContact.phone}, or by email at ${legalContact.email}.`,
+          `The service operator for Stovo is ${legalContact.operatorEnglish} ("we", "us", or "Stovo"). You can contact us at ${legalContact.addressEnglish} or by email at ${legalContact.email}.`,
           "This policy applies to the Stovo application, its website, and any Stovo space that we operate. A family or organisation running its own Stovo server is responsible for its own server, users, and local privacy notices."
         ]
       },
@@ -95,7 +95,7 @@ const en: Record<LegalDocumentId, LegalDocument> = {
       {
         title: "1. Acceptance and service",
         paragraphs: [
-          `These Terms govern your use of Stovo, provided by ${legalContact.operator}. By creating an account, accepting an invite, or using Stovo, you agree to these Terms and the Privacy Policy. If you do not agree, do not use the service.`,
+          `These Terms govern your use of Stovo, provided by ${legalContact.operatorEnglish}. By creating an account, accepting an invite, or using Stovo, you agree to these Terms and the Privacy Policy. If you do not agree, do not use the service.`,
           "Stovo is a private communication and collaboration service. Features may vary by platform, plan, server configuration, and release."
         ]
       },
@@ -169,7 +169,7 @@ const en: Record<LegalDocumentId, LegalDocument> = {
       {
         title: "Data requests and support",
         paragraphs: [
-          `For support, privacy requests, or to report a security concern, email ${legalContact.email} or call ${legalContact.phone}. Include the Stovo space address, your account name, the device or browser involved, and a concise description. Do not send passwords or one-time codes.`,
+          `For support, privacy requests, or to report a security concern, email ${legalContact.email}. Include the Stovo space address, your account name, the device or browser involved, and a concise description. Do not send passwords or one-time codes.`,
           "We may ask for enough information to verify identity before acting on an account or personal-data request."
         ]
       }
@@ -210,7 +210,7 @@ const ru: Record<LegalDocumentId, LegalDocument> = {
     summary: "Как Stovo обрабатывает данные аккаунта, общения и технические данные.",
     updatedLabel: "Действует с 13 сентября 2026 года",
     sections: [
-      { title: "1. Кто отвечает за Stovo", paragraphs: [`Оператор сервиса Stovo — ${legalContact.operator} («мы», «нас» или «Stovo»). С нами можно связаться по адресу: ${legalContact.address}; телефон: ${legalContact.phone}; электронная почта: ${legalContact.email}.`, "Эта политика относится к приложению Stovo, его сайту и любому пространству Stovo, которым управляем мы. Семья или организация, самостоятельно запускающая сервер Stovo, отвечает за свой сервер, пользователей и локальные уведомления о конфиденциальности."] },
+      { title: "1. Кто отвечает за Stovo", paragraphs: [`Оператор сервиса Stovo — ${legalContact.operator} («мы», «нас» или «Stovo»). С нами можно связаться по адресу: ${legalContact.address}; электронная почта: ${legalContact.email}.`, "Эта политика относится к приложению Stovo, его сайту и любому пространству Stovo, которым управляем мы. Семья или организация, самостоятельно запускающая сервер Stovo, отвечает за свой сервер, пользователей и локальные уведомления о конфиденциальности."] },
       { title: "2. Какие данные мы обрабатываем", bullets: ["Данные аккаунта и профиля: отображаемое имя, логин, адрес электронной почты (если указан), фото профиля, описание, часовой пояс, роль и настройки приватности.", "Данные общения: сообщения, ответы, реакции, комментарии, звонки и связанная с ними активность, планы, чек-листы, холсты и файлы, которыми вы или другие участники делитесь.", "Данные безопасности и технические данные: сведения об аутентификации и сессии, данные устройства или браузера, IP-адрес, журналы подключений, диагностические журналы и события безопасности.", "Данные поддержки: информация, которую вы передаёте при обращении к нам, включая переписку и вложения."] },
       { title: "3. Для чего мы используем данные", bullets: ["Для создания и администрирования аккаунтов, работы чатов, звонков, хранения файлов и других запрошенных функций.", "Для защиты аккаунтов, предотвращения злоупотреблений, расследования инцидентов и поддержания надёжности сервиса.", "Для ответов на запросы поддержки, важных изменений, сервисных уведомлений и вопросов безопасности.", "Для выполнения применимых юридических обязанностей и урегулирования споров."] },
       { title: "4. Передача и хранение", paragraphs: ["Ваш контент виден участникам, администраторам и приглашённым пользователям соответствующего пространства Stovo в соответствии с его правами доступа. Мы не продаём персональные данные и не используем их для таргетированной рекламы.", "Мы привлекаем поставщиков услуг только там, где это необходимо для работы сервиса: хостинг, базы данных, хранение, коммуникации и безопасность. Они могут обрабатывать данные только по нашим инструкциям и для этих целей. Мы можем раскрыть информацию, если этого требует закон или если это необходимо для защиты людей, прав, имущества или безопасности сервиса."] },
@@ -242,7 +242,7 @@ const ru: Record<LegalDocumentId, LegalDocument> = {
     sections: [
       { title: "Защитите свой аккаунт", bullets: ["Используйте уникальный надёжный пароль и никому его не сообщайте.", "Блокируйте устройство и включайте блокировку приложения, когда она доступна.", "Если вы администрируете пространство, регулярно проверяйте роли участников и приглашения.", "Открывайте только доверенные ссылки и файлы; незамедлительно сообщайте о подозрительной активности."] },
       { title: "Настройки конфиденциальности", paragraphs: ["В разделе «Настройки → Конфиденциальность и безопасность» можно управлять видимостью профиля и времени последнего посещения, отчётами о прочтении, приглашениями и личными сообщениями, заблокированными участниками и блокировкой приложения на поддерживаемых устройствах. Эти настройки определяют, что видят другие участники пространства; они не удаляют информацию, которой вы уже поделились."] },
-      { title: "Запросы данных и поддержка", paragraphs: [`Для поддержки, запроса о персональных данных или сообщения об инциденте безопасности напишите на ${legalContact.email} или позвоните по номеру ${legalContact.phone}. Укажите адрес пространства Stovo, имя аккаунта, устройство или браузер и краткое описание. Никогда не отправляйте пароль или одноразовый код.`, "Прежде чем выполнить запрос, связанный с аккаунтом или персональными данными, мы можем попросить информацию для подтверждения личности."] }
+      { title: "Запросы данных и поддержка", paragraphs: [`Для поддержки, запроса о персональных данных или сообщения об инциденте безопасности напишите на ${legalContact.email}. Укажите адрес пространства Stovo, имя аккаунта, устройство или браузер и краткое описание. Никогда не отправляйте пароль или одноразовый код.`, "Прежде чем выполнить запрос, связанный с аккаунтом или персональными данными, мы можем попросить информацию для подтверждения личности."] }
     ]
   },
   "release-notes": {

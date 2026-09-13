@@ -1,5 +1,6 @@
 import { ArrowLeft, FileText, Info, Scale, ShieldCheck } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { getClusterPrefix } from "../api/client";
 import { useLanguage } from "../i18n/LanguageContext";
 import {
   getLegalDocument,
@@ -49,6 +50,7 @@ export default function LegalDocumentsPage() {
   const { document: requestedDocument } = useParams();
   const { resolvedLanguage } = useLanguage();
   const documents = getLegalDocuments(resolvedLanguage);
+  const clusterPrefix = getClusterPrefix();
   const currentDocument = isLegalDocumentId(requestedDocument) ? requestedDocument : null;
   const title = resolvedLanguage === "ru" ? "Правовая информация" : "Legal information";
   const backLabel = resolvedLanguage === "ru" ? "Вернуться" : "Go back";
@@ -57,7 +59,7 @@ export default function LegalDocumentsPage() {
   return (
     <main className="legal-page">
       <div className="legal-page__frame">
-        <button type="button" className="legal-back-button" onClick={() => navigate(-1)}>
+        <button type="button" className="legal-back-button" onClick={() => navigate(`${clusterPrefix}/app/settings?section=help-about`)}>
           <ArrowLeft size={18} aria-hidden="true" />
           {backLabel}
         </button>
@@ -69,7 +71,7 @@ export default function LegalDocumentsPage() {
               {(Object.keys(documents) as LegalDocumentId[]).map((id) => {
                 const Icon = documentIcons[id];
                 return (
-                  <Link className={currentDocument === id ? "is-active" : ""} key={id} to={`/legal/${id}`}>
+                  <Link className={currentDocument === id ? "is-active" : ""} key={id} to={`${clusterPrefix}/legal/${id}`}>
                     <Icon size={18} aria-hidden="true" />
                     <span>{documents[id].title}</span>
                   </Link>
@@ -78,9 +80,8 @@ export default function LegalDocumentsPage() {
             </nav>
             <address>
               <strong>{contactLabel}</strong>
-              <span>{legalContact.operator}</span>
+              <span>{resolvedLanguage === "ru" ? legalContact.operator : legalContact.operatorEnglish}</span>
               <span>{resolvedLanguage === "ru" ? legalContact.address : legalContact.addressEnglish}</span>
-              <a href={`tel:${legalContact.phone}`}>{legalContact.phone}</a>
               <a href={`mailto:${legalContact.email}`}>{legalContact.email}</a>
             </address>
           </aside>

@@ -10944,7 +10944,8 @@ span.message-spoiler.is-revealed {
   border-radius: 24px;
 }
 .help-about__hero { align-items: center; display: flex; gap: 18px; min-height: 132px; padding: 24px; }
-.help-about__mark { align-items: center; background: linear-gradient(145deg, var(--accent-primary), #6f5cff); border-radius: 22px; box-shadow: 0 12px 32px rgba(90, 120, 255, .25); color: white; display: flex; font-size: 2rem; font-weight: 800; height: 72px; justify-content: center; width: 72px; }
+.help-about__mark { align-items: center; background: linear-gradient(145deg, var(--accent-primary), #6f5cff); border-radius: 22px; box-shadow: 0 12px 32px rgba(90, 120, 255, .25); display: flex; height: 72px; justify-content: center; padding: 12px; width: 72px; }
+.help-about__mark svg { height: 100%; width: 100%; }
 .help-about__hero p { color: var(--text-secondary); font-size: .85rem; font-weight: 700; letter-spacing: .08em; margin: 0 0 3px; text-transform: uppercase; }
 .help-about__hero h3 { color: var(--text-primary); font-size: 1.35rem; margin: 0 0 6px; }
 .help-about__hero span { color: var(--text-secondary); font-size: .86rem; }
@@ -10973,7 +10974,7 @@ span.message-spoiler.is-revealed {
 .legal-page { background: #07090d; color: #e8eef7; min-height: 100dvh; padding: 24px; }
 .legal-page__frame { margin: 0 auto; max-width: 1180px; }
 .legal-back-button { align-items: center; background: transparent; border: 0; color: #b5c2d4; cursor: pointer; display: inline-flex; font: inherit; font-size: .9rem; gap: 7px; margin: 0 0 20px; padding: 8px 0; }
-.legal-back-button:hover, .legal-back-button:focus-visible { color: #fff; }
+.legal-back-button:focus-visible { color: #fff; }
 .legal-page__layout { display: grid; gap: 24px; grid-template-columns: 270px minmax(0, 1fr); }
 .legal-page__navigation { align-self: start; background: #11151c; border: 1px solid rgba(154, 181, 218, .16); border-radius: 22px; padding: 22px; position: sticky; top: 24px; }
 .legal-page__eyebrow { color: #8fa4c1; font-size: .78rem; font-weight: 700; letter-spacing: .1em; margin: 0 0 5px; text-transform: uppercase; }
