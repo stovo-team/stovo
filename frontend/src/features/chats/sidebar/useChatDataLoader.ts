@@ -92,7 +92,9 @@ export function mergeOutboxPendingMessages(
         isFavorite: false
       })),
       clientMessageId: item.clientMessageId,
-      deliveryState: item.status === "failed" ? "failed" : "sending",
+      deliveryState: item.status === "failed" ? "failed" : item.scheduledFor ? "scheduled" : "sending",
+      scheduledFor: item.scheduledFor ?? undefined,
+      isReminder: item.isReminder,
       deliveryError: item.deliveryError ?? undefined
     };
   });
