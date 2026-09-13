@@ -25,10 +25,17 @@ import {
   messageOriginChatId,
   messagePreviewText,
   messageReceiptState,
+  shouldShowDateSeparator,
   shouldShowMessageSender
 } from "./messagePresentation";
 
 describe("chat presentation helpers", () => {
+  it("shows a date separator for the first message and when the calendar day changes", () => {
+    expect(shouldShowDateSeparator("2026-09-12T23:59:00", undefined)).toBe(true);
+    expect(shouldShowDateSeparator("2026-09-13T00:01:00", "2026-09-12T23:59:00")).toBe(true);
+    expect(shouldShowDateSeparator("2026-09-13T00:01:00", "2026-09-13T00:00:00")).toBe(false);
+  });
+
   it("selects the minimized chat-list class only when the family setting is enabled", () => {
     expect(chatListLayoutClass(true)).toBe(" messenger-shell--minimized-chat-layout");
     expect(chatListLayoutClass(false)).toBe("");
