@@ -107,7 +107,6 @@ export function ChatList({
   const folders = folderState.folders;
   const archiveChat = filteredChats.find((chat) => chat.type === "archive");
   const draftChats = filteredChats.filter((chat) => Boolean(window.localStorage.getItem(`stovo:draft:${chat.id}`)));
-  const newestChat = [...filteredChats].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0];
   const previewFor = (chat?: Chat) => {
     if (!chat?.lastMessageContent) return "No messages yet";
     const sender = chat.lastMessageSenderDisplayName ? `${chat.lastMessageSenderDisplayName}: ` : "";
@@ -563,12 +562,12 @@ export function ChatList({
             <div className="quick-access-items">
               {quickAccess.archiveEnabled && archiveChat && (
                 <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isMessageArchiveActive ? "active" : ""}`} onClick={onOpenMessageArchive}>
-                  <span className="avatar chat-avatar archive quick-access-icon"><Archive size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Message Archive</strong></span><span className="chat-list-preview">{previewFor(archiveChat)}</span></span>
+                  <span className="avatar chat-avatar archive quick-access-icon"><Archive size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Message Archive</strong></span></span>
                 </button>
               )}
               {quickAccess.outboxEnabled && (
                 <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isDraftsAndScheduledActive ? "active" : ""}`} onClick={onOpenDraftsAndScheduled}>
-                  <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span><span className="chat-list-preview">{previewFor(draftChats[0] ?? newestChat)}</span></span>
+                  <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span>{draftChats[0] && <span className="chat-list-preview">{previewFor(draftChats[0])}</span>}</span>
                 </button>
               )}
             </div>
