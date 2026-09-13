@@ -202,4 +202,21 @@ describe("useChatDataLoader", () => {
     expect(merged[0].deliveryState).toBe("scheduled");
     expect(merged[0].scheduledFor).toBe(scheduledFor);
   });
+
+  it("uses the live outbox status instead of a stale optimistic scheduled snapshot", async () => {
+    const { mergeOutboxPendingMessages } = await import("./useChatDataLoader");
+    const createdAt = new Date().toISOString();
+    const merged = mergeOutboxPendingMessages([], [{
+      id: "due-client-1", clientMessageId: "due-client-1", chatId: "chat-1", userId: "user-1",
+      content: "Send now", replyToMessageId: null, threadRootMessageId: null, mentionedUserIds: [], attachments: [],
+      createdAt, status: "sending", scheduledFor: new Date(Date.now() - 60_000).toISOString(), attemptCount: 1,
+      optimisticMessage: {
+        ...makeMessage("pending:due-client-1", "2026-01-01T00:00:00.000Z"),
+        clientMessageId: "due-client-1", deliveryState: "scheduled"
+      }
+    }], { id: "user-1", displayName: "User", email: "user@test.com", username: "user", role: "member", createdAt: "" });
+
+    expect(merged[0].deliveryState).toBe("sending");
+    expect(merged[0].createdAt).toBe(createdAt);
+  });
 });

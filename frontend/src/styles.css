@@ -12326,6 +12326,7 @@ span.message-spoiler.is-revealed {
 .plan-attendee-button:hover .plan-attendee-avatar, .plan-attendee-button:focus-visible .plan-attendee-avatar { transform: translateY(-1px); }
 .plan-attendee-button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .plan-attendee-more { align-items: center; background: #64748b; border: 2px solid var(--surface-card); border-radius: 50%; color: #ffffff; display: inline-flex; font-size: 10px; font-weight: 800; height: 28px; justify-content: center; margin-left: -8px; min-width: 28px; padding: 0 3px; position: relative; }
+.plans-timeline-events .plan-attendee-avatar { border-width: 1px; flex-basis: 20px; font-size: .58rem; height: 20px; width: 20px; }
 .plan-attendee-list--expanded { flex-wrap: wrap; gap: 4px; }
 .plan-attendee-list--expanded .plan-attendee,
 .plan-attendee-list--expanded .plan-attendee-more { margin-left: 0; }
