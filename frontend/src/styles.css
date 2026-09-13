@@ -10974,6 +10974,7 @@ span.message-spoiler.is-revealed {
 .legal-page { background: #07090d; color: #e8eef7; min-height: 100dvh; padding: 24px; }
 .legal-page__frame { margin: 0 auto; max-width: 1180px; }
 .legal-back-button { align-items: center; background: transparent; border: 0; color: #b5c2d4; cursor: pointer; display: inline-flex; font: inherit; font-size: .9rem; gap: 7px; margin: 0 0 20px; padding: 8px 0; }
+.legal-back-button:hover:not(:disabled) { background: transparent; border-color: transparent; }
 .legal-back-button:focus-visible { color: #fff; }
 .legal-page__layout { display: grid; gap: 24px; grid-template-columns: 270px minmax(0, 1fr); }
 .legal-page__navigation { align-self: start; background: #11151c; border: 1px solid rgba(154, 181, 218, .16); border-radius: 22px; padding: 22px; position: sticky; top: 24px; }
@@ -12312,12 +12313,12 @@ span.message-spoiler.is-revealed {
 .plan-created-by { align-items: center; display: flex; gap: 5px; margin-top: 4px; }
 .plan-created-by small { font-size: 11px; margin: 0; }
 .plan-creator-avatar { background: #64748b; border: 2px solid var(--surface-card); box-shadow: none; height: 28px; width: 28px; }
-.plan-rsvp { display: grid; gap: 6px; grid-column: auto; grid-template-columns: minmax(0, 1fr); margin-top: 6px; min-width: 0; }
+.plan-rsvp { align-items: center; display: grid; gap: 6px; grid-column: auto; grid-template-columns: minmax(0, 1fr) auto; margin-top: 4px; min-height: 28px; min-width: 0; }
 .plan-rsvp-response { align-items: flex-start; display: grid; gap: 3px; min-width: 0; }
-.plan-rsvp-actions { align-items: center; display: inline-flex; gap: 4px; }
+.plan-rsvp-actions { align-items: center; display: inline-flex; gap: 4px; max-width: 100%; white-space: nowrap; }
 .plan-rsvp-actions > span { color: var(--text-secondary); font-size: 11px; font-weight: 700; margin-right: 2px; }
 .plan-rsvp-actions button { font-size: 11px; min-height: 26px; padding: 3px 8px; }
-.plan-attendee-list { align-items: center; background: transparent !important; border: 0 !important; box-shadow: none !important; display: flex; gap: 0; grid-column: 1; min-height: 28px; padding: 0; width: max-content; }
+.plan-attendee-list { align-items: center; background: transparent !important; border: 0 !important; box-shadow: none !important; display: flex; flex: 0 0 auto; gap: 0; grid-column: 2; grid-row: 1; min-height: 28px; padding: 0; width: max-content; }
 .plan-attendee { background: transparent !important; border: 0 !important; box-shadow: none !important; box-sizing: border-box; flex: 0 0 28px; height: 28px; margin-left: -8px; padding: 0; position: relative; }
 .plan-attendee:first-child { margin-left: 0; }
 .plan-attendee-button { background: transparent !important; border: 0 !important; border-radius: 50%; box-shadow: none !important; box-sizing: border-box; cursor: pointer; display: grid; flex: 0 0 28px; height: 28px; min-height: 28px; padding: 0; place-items: center; width: 28px; }

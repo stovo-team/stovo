@@ -106,12 +106,6 @@ export function ChatList({
 
   const folders = folderState.folders;
   const archiveChat = filteredChats.find((chat) => chat.type === "archive");
-  const draftChats = filteredChats.filter((chat) => Boolean(window.localStorage.getItem(`stovo:draft:${chat.id}`)));
-  const previewFor = (chat?: Chat) => {
-    if (!chat?.lastMessageContent) return "No messages yet";
-    const sender = chat.lastMessageSenderDisplayName ? `${chat.lastMessageSenderDisplayName}: ` : "";
-    return `${sender}${chat.lastMessageContent}`;
-  };
 
   function canDropToSection(sectionKey: ChatSectionKey, chat: Chat, chatName: string): boolean {
     if (folders.some((f) => f.rules.includedChatIds?.includes(chat.id) || getChatContainer(chat) === f.id)) {
@@ -567,7 +561,7 @@ export function ChatList({
               )}
               {quickAccess.outboxEnabled && (
                 <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isDraftsAndScheduledActive ? "active" : ""}`} onClick={onOpenDraftsAndScheduled}>
-                  <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span>{draftChats[0] && <span className="chat-list-preview">{previewFor(draftChats[0])}</span>}</span>
+                  <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span></span>
                 </button>
               )}
             </div>

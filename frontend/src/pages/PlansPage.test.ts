@@ -163,13 +163,13 @@ describe("PlansPage week range logic", () => {
     expect(styles).toContain("box-shadow: none;");
   });
 
-  it("keeps attendee avatars on their own row instead of squeezing them into RSVP controls", async () => {
+  it("keeps attendee avatars inside the RSVP row without allowing either control to overlap", async () => {
     const { readFileSync } = await import("node:fs");
     const { resolve } = await import("node:path");
     const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
-    expect(styles).toMatch(/\.plan-rsvp\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
-    expect(styles).toMatch(/\.plan-attendee-list\s*\{[^}]*grid-column:\s*1/);
+    expect(styles).toMatch(/\.plan-rsvp\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto/);
+    expect(styles).toMatch(/\.plan-attendee-list\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1/);
   });
 
   it("provides fixed top navigation and scrollable content in storage and plans pages", async () => {
