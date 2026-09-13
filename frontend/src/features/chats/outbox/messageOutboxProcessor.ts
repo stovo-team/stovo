@@ -25,9 +25,6 @@ import {
 import { computeNextReminderDate } from "./reminderSchedule";
 
 export function isNetworkError(err: unknown): boolean {
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
-    return true;
-  }
   if (err instanceof TypeError && /failed to fetch|network|load failed/i.test(err.message)) {
     return true;
   }
@@ -117,7 +114,6 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
   activeDrainPromise = (async () => {
     const { accessToken, currentUser, chats, applyMessagesForChat, onChatsUpdate, onError } = options;
     if (!accessToken || !currentUser?.id) return;
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
 
     const queuedMessages = await getOutboxMessages(currentUser.id);
     if (!queuedMessages.length) return;
@@ -132,10 +128,6 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
           continue;
         }
       }
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        break;
-      }
-
       await updateOutboxMessage(item.id, currentUser.id, {
         status: "sending",
         attemptCount: item.attemptCount + 1,
@@ -444,9 +436,12 @@ export function useMessageOutbox({
     // previously a scheduled message could remain pending indefinitely until
     // the user returned to the exact tab.
     const interval = window.setInterval(() => {
-      if (typeof navigator === "undefined" || navigator.onLine) {
-        void triggerDrain();
-      }
+      // `navigator.onLine` is only a browser connectivity hint. It can stay
+      // false after a network transition even while requests are working,
+      // which used to leave overdue scheduled messages in the outbox forever.
+      // Let the request decide; real connectivity failures are handled below
+      // as retryable network errors.
+      void triggerDrain();
     }, 5000);
 
     return () => {
