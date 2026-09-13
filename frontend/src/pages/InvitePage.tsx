@@ -7,7 +7,7 @@ import { acceptInvite, previewInvite, InvitePreview } from "../api/family";
 import { ApiError, getClusterPrefix, storeApiUrlFromInviteLink } from "../api/client";
 import { getInviteApiUrl } from "../appLinks";
 import { useAuth } from "../auth/AuthContext";
-import VeloLogo from "../components/VeloLogo";
+import StovoLogo from "../components/StovoLogo";
 
 export default function InvitePage() {
   const { token } = useParams();
@@ -85,7 +85,7 @@ export default function InvitePage() {
     <main className="app-shell">
       <section className="auth-panel">
         <p className="eyebrow">Invitation</p>
-        <VeloLogo className="app-brand-logo" title="Stovo" />
+        <StovoLogo className="app-brand-logo" title="Stovo" />
         <h1>{preview ? preview.familyName : "Stovo"}</h1>
         {preview && (
           <div className="summary-band compact">

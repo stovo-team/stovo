@@ -1,0 +1,46 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="stovo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e11d48" />
+      <stop offset="100%" stop-color="#fb923c" />
+    </linearGradient>
+    <linearGradient
+      id="stovo-first-stripe-gradient"
+      x1="2.9892759"
+      y1="47.521729"
+      x2="47.9892759"
+      y2="57.521729"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop offset="0%" stop-color="#e11d48" />
+      <stop offset="100%" stop-color="#fb923c" />
+    </linearGradient>
+  </defs>
+  <rect
+    x="2.9892759"
+    y="47.521729"
+    width="45"
+    height="10"
+    rx="5"
+    fill="url(#stovo-first-stripe-gradient)"
+    transform="rotate(-25)"
+  />
+  <rect
+    x="25"
+    y="52"
+    width="60"
+    height="10"
+    rx="5"
+    fill="url(#stovo-gradient)"
+    transform="rotate(-25 55 57)"
+  />
+  <rect
+    x="45"
+    y="72"
+    width="35"
+    height="10"
+    rx="5"
+    fill="url(#stovo-gradient)"
+    transform="rotate(-25 62.5 77)"
+  />
+</svg>

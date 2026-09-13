@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { setApiUrlOverride } from "../api/client";
-import VeloLogo from "../components/VeloLogo";
+import StovoLogo from "../components/StovoLogo";
 
 function normalizeUrl(value: string): string | null {
   const trimmed = value.trim();
@@ -69,7 +69,7 @@ export default function ServerSetupPage() {
     <main className="app-shell">
       <section className="auth-panel">
         <p className="eyebrow">Setup</p>
-        <VeloLogo className="app-brand-logo" title="Stovo" />
+        <StovoLogo className="app-brand-logo" title="Stovo" />
         <h1>Space address</h1>
         <p className="muted-copy">
           Enter the address of your Stovo space. Use <strong>https://</strong> for domain names.

@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/client";
 import { fetchSetupStatus } from "../api/auth";
 import { useAuth } from "../auth/AuthContext";
-import VeloLogo from "../components/VeloLogo";
+import StovoLogo from "../components/StovoLogo";
 
 export default function SetupPage() {
   const navigate = useNavigate();
@@ -54,7 +54,7 @@ export default function SetupPage() {
     <main className="app-shell">
       <section className="auth-panel">
         <p className="eyebrow">Initial setup</p>
-        <VeloLogo className="app-brand-logo" title="Stovo" />
+        <StovoLogo className="app-brand-logo" title="Stovo" />
         <h1>Stovo</h1>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
