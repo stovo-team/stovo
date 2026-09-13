@@ -9,10 +9,18 @@ on:
   push:
     branches:
       - master
-    paths-ignore:
-      - 'frontend/android/**'
-      - '.planning/**'
-      - '**/*.md'
+    # Android releases, CI-only changes, docs, and planning artifacts must not
+    # roll production tenants or replay their database migrations.
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'migrations/master/**'
+      - 'Caddyfile'
+      - 'Caddyfile.internal'
+      - 'docker-compose.master.yml'
+      - 'Dockerfile.orchestrator'
+      - 'deploy/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 concurrency:
