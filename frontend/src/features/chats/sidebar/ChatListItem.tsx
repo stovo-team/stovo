@@ -130,7 +130,7 @@ export function ChatListItem({
       <span className="chat-list-copy">
         <span className="chat-list-topline">
           <strong style={titleTransitionStyle}>{chatName}</strong>
-          <time>{formatChatTime(chat.updatedAt)}</time>
+          <time>{formatChatTime(chat.lastMessageCreatedAt || chat.updatedAt)}</time>
         </span>
         {(() => {
           const draftText = window.localStorage.getItem(`stovo:draft:${chat.id}`);

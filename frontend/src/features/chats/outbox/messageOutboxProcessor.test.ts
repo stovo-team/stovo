@@ -368,6 +368,77 @@ describe("messageOutboxProcessor", () => {
     expect(remaining).toHaveLength(0);
   });
 
+  it("attempts overdue scheduled messages even when the browser reports offline", async () => {
+    const originalOnline = navigator.onLine;
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+
+    try {
+      const scheduledMsg: QueuedOutboxMessage = {
+        id: "client-scheduled-offline-hint",
+        clientMessageId: "client-scheduled-offline-hint",
+        chatId: "chat-1",
+        userId: "user-1",
+        content: "Send despite stale connectivity hint",
+        replyToMessageId: null,
+        threadRootMessageId: null,
+        mentionedUserIds: [],
+        attachments: [],
+        createdAt: new Date().toISOString(),
+        status: "scheduled",
+        attemptCount: 0,
+        scheduledFor: new Date(Date.now() - 1000).toISOString()
+      };
+      await enqueueOutboxMessage(scheduledMsg);
+
+      vi.mocked(sendMessage).mockResolvedValueOnce({
+        id: "server-msg-offline-hint",
+        chatId: "chat-1",
+        senderId: "user-1",
+        type: "text",
+        content: scheduledMsg.content,
+        encryptionProtocol: "legacy_plaintext",
+        ciphertext: null,
+        nonce: null,
+        keyVersion: null,
+        encryptionMetadata: null,
+        replyToMessageId: null,
+        threadRootMessageId: null,
+        messageKind: "chat",
+        createdAt: scheduledMsg.createdAt,
+        updatedAt: scheduledMsg.createdAt,
+        deletedAt: null,
+        isEdited: false,
+        forwardedFrom: null,
+        statuses: [],
+        reactions: [],
+        attachments: []
+      });
+
+      await drainOutboxQueue({
+        accessToken: "mock-token",
+        currentUser: mockUser,
+        chats: [mockChat],
+        applyMessagesForChat: vi.fn()
+      });
+
+      expect(sendMessage).toHaveBeenCalledWith(
+        "mock-token",
+        "chat-1",
+        "Send despite stale connectivity hint",
+        [],
+        null,
+        null,
+        undefined,
+        [],
+        false,
+        "client-scheduled-offline-hint"
+      );
+      expect(await getOutboxMessages("user-1")).toHaveLength(0);
+    } finally {
+      Object.defineProperty(navigator, "onLine", { configurable: true, value: originalOnline });
+    }
+  });
+
   it("advances recurring reminder to next occurrence when sent", async () => {
     const pastDate = new Date(2026, 7, 18, 9, 0).toISOString();
     const reminderMsg: QueuedOutboxMessage = {
