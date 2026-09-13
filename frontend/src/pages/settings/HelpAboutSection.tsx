@@ -1,6 +1,6 @@
 import { ExternalLink, FileText, Info, Mail, Scale, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
-import VeloLogo from "../../components/VeloLogo";
+import StovoLogo from "../../components/StovoLogo";
 import { getClusterPrefix } from "../../api/client";
 import { appRelease } from "../../legal/appRelease";
 import { getLegalDocuments, legalContact, type LegalLanguage } from "../../legal/legalContent";
@@ -43,7 +43,7 @@ export function HelpAboutSection({ language }: { language: LegalLanguage }) {
   return (
     <div className="help-about">
       <section className="help-about__hero">
-        <div className="help-about__mark"><VeloLogo title="Stovo" /></div>
+        <div className="help-about__mark"><StovoLogo title="Stovo" /></div>
         <div>
           <p>Stovo</p>
           <h3>{copy.version} {appRelease.version}</h3>

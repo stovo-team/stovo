@@ -7,7 +7,7 @@ import { fetchSetupStatus, requestDeviceLoginCode, verifyDeviceLoginCode } from 
 import { ApiError, getApiUrl, getClusterPrefix, setApiUrlOverride } from "../api/client";
 import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry";
 import { useAuth } from "../auth/AuthContext";
-import VeloLogo from "../components/VeloLogo";
+import StovoLogo from "../components/StovoLogo";
 
 export function OwnerSetupPrompt({ setupRequired }: { setupRequired: boolean | null }) {
   if (setupRequired === false) {
@@ -116,7 +116,7 @@ export default function LoginPage() {
     <main className="app-shell">
       <section className="auth-panel">
         <div className="auth-brand-header">
-          <VeloLogo className="auth-brand-logo" title="Stovo" />
+          <StovoLogo className="auth-brand-logo" title="Stovo" />
           <div className="auth-brand-info">
             <h1 className="auth-brand-title">Stovo</h1>
             {serverName && <span className="auth-server-name">{serverName}</span>}
