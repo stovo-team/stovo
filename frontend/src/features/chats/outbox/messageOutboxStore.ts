@@ -160,6 +160,15 @@ function loadOutboxFromLocalStorage(userId: string): QueuedOutboxMessage[] {
   }
 }
 
+function hasLocalOutboxSnapshot(userId: string): boolean {
+  if (typeof localStorage === "undefined") return false;
+  try {
+    return localStorage.getItem(getLocalStorageKey(userId)) !== null;
+  } catch {
+    return false;
+  }
+}
+
 function saveOutboxToLocalStorage(userId: string, messages: QueuedOutboxMessage[]): void {
   memoryFallback.set(userId, messages);
   if (typeof localStorage === "undefined") return;
@@ -229,6 +238,13 @@ export async function getOutboxMessages(userId?: string): Promise<QueuedOutboxMe
   }
 
   const localFallback = loadOutboxFromLocalStorage(userId);
+  // Every web outbox mutation commits to localStorage before IndexedDB. Once a
+  // local snapshot exists, it is the current queue—even when IndexedDB retains
+  // a stale row after a browser storage failure. Reading the stale row made an
+  // already-due message reappear as permanently scheduled after a reload.
+  if (hasLocalOutboxSnapshot(userId)) {
+    return localFallback.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
   if (typeof indexedDB === "undefined") {
     return localFallback.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
