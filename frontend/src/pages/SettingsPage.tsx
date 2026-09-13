@@ -129,6 +129,7 @@ export default function SettingsPage() {
     const params = new URLSearchParams(location.search);
     if (params.has("family")) return "Family";
     if (params.get("section") === "shortcuts" || params.has("shortcuts")) return "Shortcuts";
+    if (params.get("section") === "help-about") return "Help and About";
     return null;
   });
 
@@ -138,6 +139,8 @@ export default function SettingsPage() {
       setActiveSettingsItem("Shortcuts");
     } else if (params.has("family")) {
       setActiveSettingsItem("Family");
+    } else if (params.get("section") === "help-about") {
+      setActiveSettingsItem("Help and About");
     }
   }, [location.search]);
 
