@@ -569,7 +569,6 @@ export function ChatList({
               {quickAccess.outboxEnabled && (
                 <button type="button" className={`chat-list-item quick-access-item ${minimizedChatLayout ? "quick-access-item--minimized" : ""} ${isDraftsAndScheduledActive ? "active" : ""}`} onClick={onOpenDraftsAndScheduled}>
                   <span className="avatar chat-avatar archive quick-access-icon"><FileText size={21} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>Drafts &amp; scheduled</strong></span><span className="chat-list-preview">{previewFor(draftChats[0] ?? newestChat)}</span></span>
-                  {draftChats.length > 0 && <span className="tiny-badge">{draftChats.length}</span>}
                 </button>
               )}
             </div>

@@ -85,6 +85,29 @@ export interface OutboxProcessOptions {
 }
 
 let activeDrainPromise: Promise<void> | null = null;
+const OUTBOX_DELIVERY_TIMEOUT_MS = 30_000;
+
+/**
+ * A browser fetch can remain pending indefinitely after a network change.
+ * Never let one such request block every later scheduled-message attempt.
+ * The message API's operation ID makes the resulting retry safe if the server
+ * completed the original request after the client timed out.
+ */
+export async function withOutboxRequestTimeout<T>(request: Promise<T>, timeoutMs = OUTBOX_DELIVERY_TIMEOUT_MS): Promise<T> {
+  let timeoutId: number | undefined;
+  try {
+    return await Promise.race([
+      request,
+      new Promise<never>((_, reject) => {
+        timeoutId = window.setTimeout(() => reject(new TypeError("Outbox delivery timed out")), timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
 
 export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<void> {
   if (activeDrainPromise) {
@@ -152,13 +175,13 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
             } catch {
               // Non-fatal
             }
-            const uploaded = await uploadFile(
+            const uploaded = await withOutboxRequestTimeout(uploadFile(
               accessToken,
               file,
               item.chatId,
               att.uploadOperationId ?? att.id,
               currentUser.id,
-            );
+            ));
             att.uploadedFileId = uploaded.id;
             att.uploadedFile = uploaded;
             uploadedAttachments.push(uploaded);
@@ -183,7 +206,7 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
 
         // 3. Send message to server
         const fileIds = uploadedAttachments.map((f) => f.id);
-        const serverMessage = await sendMessage(
+        const serverMessage = await withOutboxRequestTimeout(sendMessage(
           accessToken,
           item.chatId,
           encrypted.content,
@@ -194,7 +217,7 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
           item.mentionedUserIds,
           false,
           item.clientMessageId
-        );
+        ));
 
         // 4. Decrypt received message
         const displayMessage = await decryptMessage(item.chatId, serverMessage, currentUser.id);
@@ -303,6 +326,8 @@ export function useMessageOutbox({
   onError
 }: UseMessageOutboxOptions) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const dueTimerRef = useRef<number | null>(null);
+  const triggerDrainRef = useRef<(() => Promise<void>) | null>(null);
   const optionsRef = useRef({
     accessToken,
     currentUser,
@@ -323,6 +348,34 @@ export function useMessageOutbox({
     };
   }, [accessToken, currentUser, chatsRef, applyMessagesForChat, onChatsUpdate, onError]);
 
+  const scheduleNextDueDrain = useCallback(async () => {
+    if (dueTimerRef.current !== null) {
+      window.clearTimeout(dueTimerRef.current);
+      dueTimerRef.current = null;
+    }
+
+    const userId = optionsRef.current.currentUser?.id;
+    if (!userId) return;
+
+    const now = Date.now();
+    const nextDueAt = (await getOutboxMessages(userId)).reduce<number | null>((next, item) => {
+      if (!item.scheduledFor || item.status === "failed") return next;
+      const scheduledAt = new Date(item.scheduledFor).getTime();
+      if (!Number.isFinite(scheduledAt) || scheduledAt <= now) return next;
+      return next === null ? scheduledAt : Math.min(next, scheduledAt);
+    }, null);
+
+    if (nextDueAt === null) return;
+
+    // A dedicated timer avoids waiting for the watchdog interval at the exact
+    // send time. The watchdog and resume hooks remain the catch-up path when
+    // the browser throttles timers while the app is in the background.
+    dueTimerRef.current = window.setTimeout(() => {
+      dueTimerRef.current = null;
+      void triggerDrainRef.current?.();
+    }, Math.max(0, nextDueAt - Date.now()));
+  }, []);
+
   const triggerDrain = useCallback(async () => {
     const opts = optionsRef.current;
     if (!opts.accessToken || !opts.currentUser) return;
@@ -338,8 +391,13 @@ export function useMessageOutbox({
       });
     } finally {
       setIsProcessing(false);
+      void scheduleNextDueDrain();
     }
-  }, []);
+  }, [scheduleNextDueDrain]);
+
+  useEffect(() => {
+    triggerDrainRef.current = triggerDrain;
+  }, [triggerDrain]);
 
   useEffect(() => {
     if (!accessToken || !currentUser) return;
@@ -381,9 +439,12 @@ export function useMessageOutbox({
       currentSocket.on("connect", handleOnline);
     }
 
-    // Periodic watchdog timer for pending and scheduled messages
+    // Do not gate this on document.visibilityState. A background tab may be
+    // throttled, but it must still catch up as soon as the browser runs it;
+    // previously a scheduled message could remain pending indefinitely until
+    // the user returned to the exact tab.
     const interval = window.setInterval(() => {
-      if (typeof navigator !== "undefined" && navigator.onLine && document.visibilityState === "visible") {
+      if (typeof navigator === "undefined" || navigator.onLine) {
         void triggerDrain();
       }
     }, 5000);
@@ -399,6 +460,10 @@ export function useMessageOutbox({
         currentSocket.off("connect", handleOnline);
       }
       window.clearInterval(interval);
+      if (dueTimerRef.current !== null) {
+        window.clearTimeout(dueTimerRef.current);
+        dueTimerRef.current = null;
+      }
     };
   }, [accessToken, currentUser, socketRef, triggerDrain]);
 
