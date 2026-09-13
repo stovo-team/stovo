@@ -261,6 +261,13 @@ jobs:
             fi
           fi
 
+          # Telegram document captions are limited to 1,024 characters. Keep
+          # the payload short enough that release-bot never needs a follow-up
+          # text message for an overflowed caption.
+          if [ "${#SUMMARY}" -gt 700 ]; then
+            SUMMARY="${SUMMARY:0:697}..."
+          fi
+
           {
             echo 'summary<<EOF'
             printf '%s' "$SUMMARY"
@@ -268,41 +275,31 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - name: Post release notice to Telegram
-        run: |
-          TEXT=$(printf '📱 Stovo %s\n\n%s\n\n⬇️ APK attached below' \
-            "${{ steps.patch.outputs.version }}" \
-            "${{ steps.notes.outputs.summary }}")
-          curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            --data-urlencode "text=${TEXT}"
-
-      - name: Upload APK to Telegram channel
-        run: |
-          curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
-            -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -F "document=@${{ steps.apk.outputs.path }}" \
-            -F "caption=Stovo ${{ steps.patch.outputs.version }}"
-
-      - name: Notify release-bot webhook (optional)
-        continue-on-error: true
+      - name: Publish Android release to Telegram
         env:
           RELEASE_BOT_URL: ${{ secrets.RELEASE_BOT_URL }}
           RELEASE_BOT_SECRET: ${{ secrets.RELEASE_BOT_SECRET }}
         run: |
+          # release-bot sends the APK as a document with this text as its
+          # caption, so each release produces one Telegram post.
           if [ -z "$RELEASE_BOT_URL" ] || [ -z "$RELEASE_BOT_SECRET" ]; then
-            echo "Skipping release-bot (RELEASE_BOT_URL or RELEASE_BOT_SECRET not set)"
+            echo "release-bot is not configured; publishing one captioned APK directly"
+            TEXT=$(printf '📱 Stovo %s\n\n%s' \
+              "${{ steps.patch.outputs.version }}" \
+              "${{ steps.notes.outputs.summary }}")
+            curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
+              -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -F "document=@${{ steps.apk.outputs.path }}" \
+              -F "caption=${TEXT}"
             exit 0
           fi
-          BODY=$(jq -n \
-            --arg project "Stovo Android" \
-            --arg version "${{ steps.patch.outputs.version }}" \
-            --arg message "${{ steps.notes.outputs.summary }}" \
-            '{project: $project, version: $version, message: $message}')
+
           curl -fsSL -X POST "${RELEASE_BOT_URL}/webhook" \
             -H "Authorization: Bearer ${RELEASE_BOT_SECRET}" \
-            -H "Content-Type: application/json" \
-            --data-binary "$BODY"
+            -F "project=Stovo Android" \
+            -F "version=${{ steps.patch.outputs.version }}" \
+            -F "message=${{ steps.notes.outputs.summary }}" \
+            -F "attachment=@${{ steps.apk.outputs.path }};type=application/vnd.android.package-archive"
 
       - name: Create git tag
         run: |
