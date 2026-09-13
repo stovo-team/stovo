@@ -7,7 +7,7 @@ export const brand = {
   /** The app name used everywhere (title, headings, logo alt text). */
   name: "Stovo",
 
-  /** SVG <title> attribute on the VeloLogo component. */
+  /** Accessible label on the StovoLogo component. */
   logoTitle: "Stovo",
 
   /**

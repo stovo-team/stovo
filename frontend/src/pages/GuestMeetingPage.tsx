@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
 import { Camera, CameraOff, ChevronDown, Link2Off, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
-import VeloLogo from "../components/VeloLogo";
+import StovoLogo from "../components/StovoLogo";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
 import { createGuestMeetingSession, getGuestMeetingStatus, getGuestMeetingToken, GuestMeetingLinkError, leaveGuestMeetingSession, previewGuestMeeting, type GuestMeetingPreview } from "../api/guestMeetings";
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
@@ -438,7 +438,7 @@ export default function GuestMeetingPage() {
     ];
 
     return <main className="guest-meeting-page guest-meeting-page--in-call">
-      <div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div>
+      <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
       <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`}>
         <header className="guest-call-header">
           <div><strong>{preview?.title || "Guest meeting"}</strong><span><i aria-hidden="true" /> {participantCount} {participantCount === 1 ? "participant" : "participants"}</span></div>
@@ -475,7 +475,7 @@ export default function GuestMeetingPage() {
     </main>;
   }
 
-  return <main className="guest-meeting-page"><div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
+  return <main className="guest-meeting-page"><div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
     {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><h1 id="expired-link-title">This meeting link has expired</h1><p>Ask the host to send you a new link, then open it to join.</p></div></section>}
     {state === "name" && <div className="guest-prejoin">
       <section className="guest-prejoin-preview">

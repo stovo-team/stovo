@@ -1,5 +1,5 @@
 /**
- * Generates Android launcher PNG icons matching the VeloLogo (three diagonal stripes,
+ * Generates Android launcher PNG icons matching the Stovo logo (three diagonal stripes,
  * rose-to-orange gradient, white background).
  * Run from the frontend/ directory: node generate-icons.mjs
  */
@@ -56,7 +56,7 @@ const COS25 = Math.cos(25 * Math.PI / 180);
 const SIN25 = Math.sin(25 * Math.PI / 180);
 
 const STRIPES = [
-  { cx: 37.5, cy: 37,   hw: 22.5, hh: 5, rx: 5 },
+  { cx: 45.297771, cy: 36.828619, hw: 22.5, hh: 5, rx: 5 },
   { cx: 55,   cy: 57,   hw: 30,   hh: 5, rx: 5 },
   { cx: 62.5, cy: 77,   hw: 17.5, hh: 5, rx: 5 },
 ];

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Paperclip, Plus, Server, Trash2, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import VeloLogo from "../../../components/VeloLogo";
+import StovoLogo from "../../../components/StovoLogo";
 import type { ChatFilter } from "../shared/types";
 import { ChatList } from "./ChatList";
 import type { ChatSidebarProps } from "./types";
@@ -103,7 +103,7 @@ export function ChatSidebar({
       <div className={`chat-sidebar-header${isServerMenuOpen ? " is-server-menu-open" : ""}`}>
         <div className={`sidebar-title-row chat-list-title${isServerMenuOpen ? " is-server-menu-open" : ""}`}>
           <span className="chat-list-brand-mark" aria-label="Stovo">
-            <VeloLogo className="chat-list-brand-logo" title="Stovo" />
+            <StovoLogo className="chat-list-brand-logo" title="Stovo" />
           </span>
           <div className="chat-list-title-cluster">
             <div
