@@ -52,6 +52,11 @@ jobs:
         working-directory: backend
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Compare a newly added migration against the branch's existing
+          # migration history. A shallow checkout cannot reliably inspect the
+          # merge base on pull requests.
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: backend/go.mod
@@ -96,6 +101,34 @@ jobs:
         run: |
           curl -sSf https://atlasgo.sh | sh -s -- -y
           atlas migrate validate --dir "file://migrations"
+      - name: Reject out-of-order migrations
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          # A migration applied to any deployed tenant must never be followed
+          # by a newly introduced lower timestamp. Atlas only discovers this
+          # once it sees an existing production revision table; catch it in CI.
+          if [ -z "$BASE_SHA" ] || printf '%s' "$BASE_SHA" | grep -q '^0\{40\}$'; then
+            exit 0
+          fi
+
+          latest_existing="$(git ls-tree -r --name-only "$BASE_SHA" -- migrations \
+            | sed -n 's#^migrations/\([0-9]\{14\}\)_.*\.sql$#\1#p' \
+            | sort \
+            | tail -n 1)"
+          [ -n "$latest_existing" ] || exit 0
+
+          git diff --diff-filter=A --name-only "$BASE_SHA" HEAD -- migrations \
+            | while IFS= read -r migration; do
+                version="$(printf '%s' "$migration" | sed -n 's#^migrations/\([0-9]\{14\}\)_.*\.sql$#\1#p')"
+                [ -n "$version" ] || continue
+                if [ "$version" \< "$latest_existing" ] || [ "$version" = "$latest_existing" ]; then
+                  echo "New migration $migration is not later than existing migration version $latest_existing." >&2
+                  echo "Use a new timestamp after the current migration tail; do not insert migrations into deployed history." >&2
+                  exit 1
+                fi
+              done
       - name: Atlas replay empty install
         if: hashFiles('backend/migrations/*.sql') != ''
         run: |
