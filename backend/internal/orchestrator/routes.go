@@ -163,14 +163,6 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to create server database"})
 		return
 	}
-	if err := o.initChildDBSchema(req.Slug); err != nil {
-		log.Printf("[orchestrator] failed to apply Atlas migrations for %s: %v", dbName, err)
-		_, _ = o.masterDB.Exec(`DROP DATABASE ` + dbName)
-		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to initialize server database"})
-		return
-	}
-
 	// Create MinIO bucket
 	minioEndpoint := os.Getenv("MINIO_ENDPOINT")
 	minioAccessKey := os.Getenv("MINIO_ACCESS_KEY")
@@ -182,8 +174,16 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		_ = mc.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 	}
 
-	// Start backend container
-	_ = o.startBackendContainer(req.Slug)
+	// Apply the complete migration set before the tenant ever serves traffic.
+	// startBackendContainer also does this for existing tenants whenever the
+	// orchestrator reconciles them after a deploy or restart.
+	if err := o.startBackendContainer(req.Slug); err != nil {
+		log.Printf("[orchestrator] failed to initialize server %s: %v", dbName, err)
+		_, _ = o.masterDB.Exec(`DROP DATABASE ` + dbName)
+		_, _ = o.masterDB.Exec(`DELETE FROM servers WHERE id = $1`, id)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to initialize server database"})
+		return
+	}
 
 	// Auto-create owner account on child backend container with retries
 	go func(slug, name, adminUser, adminPass string) {
@@ -325,8 +325,13 @@ func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http
 		return
 	}
 
-	// Reconcile/restart backend container with new environment
-	_ = o.startBackendContainer(slug)
+	// Reconcile/restart backend container with new environment. This also
+	// applies any migrations bundled in the current backend image.
+	if err := o.startBackendContainer(slug); err != nil {
+		log.Printf("[orchestrator] failed to reconcile server %s: %v", slug, err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to update server runtime"})
+		return
+	}
 
 	writeJSON(w, http.StatusOK, rec)
 }
@@ -435,6 +440,13 @@ func (o *Orchestrator) getNavTabsForServer(slug string) string {
 
 // startBackendContainer starts a child Go backend container for a server cluster on the shared docker network.
 func (o *Orchestrator) startBackendContainer(slug string) error {
+	// Existing tenant databases must be upgraded too. Previously migrations ran
+	// only during tenant creation, leaving deployed code able to reference
+	// columns that older tenant databases did not have.
+	if err := o.initChildDBSchema(slug); err != nil {
+		return fmt.Errorf("apply tenant migrations: %w", err)
+	}
+
 	ctx := context.Background()
 	containerName := fmt.Sprintf("stovo-backend-%s", slug)
 
@@ -523,13 +535,26 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 
 	groqKey := get("GROQ_API_KEY", get("groq_api_key", get("GROQ_KEY", get("GROQ_API_TOKEN", ""))))
 	navTabs := get("NAV_TABS", `{"chats":true,"storage":true,"plans":true,"settings":true}`)
+	databaseURL := strings.TrimSpace(get("DATABASE_URL", ""))
+	if databaseURL == "" {
+		databaseURL = fmt.Sprintf("postgres://%s:%s@postgres:5432/stovo_db_%s?sslmode=disable", pgUser, pgPass, slug)
+	} else {
+		// A multi-tenant external Postgres deployment can use {slug} in its URL
+		// to retain one database per tenant. A URL without the placeholder is
+		// intentionally supported for a single existing tenant.
+		databaseURL = strings.ReplaceAll(databaseURL, "{slug}", slug)
+	}
+	redisURL := strings.TrimSpace(get("REDIS_URL", ""))
+	if redisURL == "" {
+		redisURL = "redis://redis:6379/0"
+	}
 
 	return []string{
 		fmt.Sprintf("SERVER_ID=%s", slug),
 		fmt.Sprintf("APP_URL=%s", serverURL),
 		fmt.Sprintf("API_URL=%s", serverURL),
-		fmt.Sprintf("DATABASE_URL=postgres://%s:%s@postgres:5432/stovo_db_%s?sslmode=disable", pgUser, pgPass, slug),
-		"REDIS_URL=redis://redis:6379/0",
+		fmt.Sprintf("DATABASE_URL=%s", databaseURL),
+		fmt.Sprintf("REDIS_URL=%s", redisURL),
 		fmt.Sprintf("STORAGE_PROVIDER=%s", get("STORAGE_PROVIDER", "minio")),
 		"MINIO_ENDPOINT=minio:9000",
 		fmt.Sprintf("MINIO_ACCESS_KEY=%s", minioUser),

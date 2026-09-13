@@ -62,7 +62,9 @@ func (o *Orchestrator) ReconcileContainers() {
 	for rows.Next() {
 		var slug string
 		if err := rows.Scan(&slug); err == nil && slug != "" {
-			_ = o.startBackendContainer(slug)
+			if err := o.startBackendContainer(slug); err != nil {
+				log.Printf("[orchestrator] failed to reconcile server %s: %v", slug, err)
+			}
 		}
 	}
 }
