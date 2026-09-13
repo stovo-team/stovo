@@ -1,4 +1,5 @@
 import {
+  Fragment,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   RefObject
@@ -9,7 +10,12 @@ import { useStrings } from "../../../i18n/LanguageContext";
 import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
-import { formatDateSeparator, firstImageAttachment, messageActionSummary } from "../shared/messagePresentation";
+import {
+  formatDateSeparator,
+  firstImageAttachment,
+  messageActionSummary,
+  shouldShowDateSeparator
+} from "../shared/messagePresentation";
 import type { Message, SwipeReplyState } from "../shared/types";
 import { ComposerContextThumb } from "./MessageAttachmentThumbs";
 import { MessageBubble } from "./MessageBubble";
@@ -145,6 +151,23 @@ export function MessageList({
     />
   );
 
+  const renderMessagesWithDateSeparators = (
+    messagesToRender: Message[],
+    messageBeforeList?: Message
+  ) =>
+    messagesToRender.map((message, messageIndex) => {
+      const previousMessage = messageIndex > 0 ? messagesToRender[messageIndex - 1] : messageBeforeList;
+
+      return (
+        <Fragment key={message.clientMessageId || message.id}>
+          {shouldShowDateSeparator(message.createdAt, previousMessage?.createdAt) && (
+            <div className="date-separator">{formatDateSeparator(message.createdAt)}</div>
+          )}
+          {renderMessage(message, previousMessage)}
+        </Fragment>
+      );
+    });
+
   return (
     <>
       <div
@@ -213,18 +236,11 @@ export function MessageList({
                     <p>{strings.comments.firstComment}</p>
                   </div>
                 ) : (
-                  threadComments.map((message, messageIndex) =>
-                    renderMessage(message, messageIndex > 0 ? threadComments[messageIndex - 1] : undefined)
-                  )
+                  renderMessagesWithDateSeparators(threadComments, threadRootMessage)
                 )}
               </>
             ) : (
-              <>
-                <div className="date-separator">{formatDateSeparator(visibleMessages[0]?.createdAt)}</div>
-                {visibleMessages.map((message, messageIndex) =>
-                  renderMessage(message, messageIndex > 0 ? visibleMessages[messageIndex - 1] : undefined)
-                )}
-              </>
+              renderMessagesWithDateSeparators(visibleMessages)
             )}
           </div>
         )}

@@ -270,6 +270,23 @@ export function formatDateSeparator(value: string | null | undefined) {
   return date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
 }
 
+export function shouldShowDateSeparator(
+  messageCreatedAt: string | null | undefined,
+  previousMessageCreatedAt: string | null | undefined
+) {
+  if (!previousMessageCreatedAt) {
+    return true;
+  }
+
+  const messageDate = new Date(messageCreatedAt ?? "");
+  const previousMessageDate = new Date(previousMessageCreatedAt);
+  if (Number.isNaN(messageDate.getTime()) || Number.isNaN(previousMessageDate.getTime())) {
+    return false;
+  }
+
+  return messageDate.toDateString() !== previousMessageDate.toDateString();
+}
+
 export function messageDeliveryLabel(message: Message, mine: boolean) {
   if (message.deliveryState === "failed") {
     return "Failed";
@@ -278,11 +295,14 @@ export function messageDeliveryLabel(message: Message, mine: boolean) {
     if (message.scheduledFor) {
       const scheduledDate = new Date(message.scheduledFor);
       if (!Number.isNaN(scheduledDate.getTime())) {
-        const isToday = new Date().toDateString() === scheduledDate.toDateString();
+        const dateStr = scheduledDate.toLocaleDateString([], {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        });
         const timeStr = scheduledDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        return isToday
-          ? `Scheduled for ${timeStr}`
-          : `Scheduled for ${scheduledDate.toLocaleDateString([], { month: "short", day: "numeric" })}, ${timeStr}`;
+        return `Scheduled for ${dateStr} at ${timeStr}`;
       }
     }
     return "Scheduled";

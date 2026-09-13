@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { drainOutboxQueue, isNetworkError } from "./messageOutboxProcessor";
+import { drainOutboxQueue, isNetworkError, withOutboxRequestTimeout } from "./messageOutboxProcessor";
 import {
   clearOutbox,
   enqueueOutboxMessage,
@@ -62,6 +62,16 @@ describe("messageOutboxProcessor", () => {
     expect(isNetworkError({ status: 0 })).toBe(true);
     expect(isNetworkError(new Error("Network connection lost"))).toBe(true);
     expect(isNetworkError(new Error("Validation failed: Content is required"))).toBe(false);
+  });
+
+  it("releases the outbox when a request never settles", async () => {
+    vi.useFakeTimers();
+    const pending = withOutboxRequestTimeout(new Promise<never>(() => {}), 1000);
+    const assertion = expect(pending).rejects.toThrow("Outbox delivery timed out");
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await assertion;
+    vi.useRealTimers();
   });
 
   it("drains queued messages and removes them on success", async () => {
