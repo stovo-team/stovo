@@ -1,16 +1,55 @@
 import { Archive, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getMessageArchiveGroups, type Chat, type MessageArchiveGroup } from "../../api/chats";
+import { getOutboxMessages, type QueuedOutboxMessage } from "./outbox/messageOutboxStore";
 import { chatAvatarFallbackKind, chatAvatarFile, chatAvatarTypeClass, displayChatName } from "./shared/chatPresentation";
 import { RealAvatar } from "./sidebar/RealAvatar";
 
-export function QuickAccessPanel() {
+export function QuickAccessPanel({ accessToken, chats, currentUserId, onOpenChat }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onOpenChat: (chat: Chat) => void }) {
   const [tab, setTab] = useState<"drafts" | "scheduled">("drafts");
+  const [scheduledMessages, setScheduledMessages] = useState<QueuedOutboxMessage[]>([]);
+  const draftRows = chats.flatMap((chat) => {
+    const draft = window.localStorage.getItem(`stovo:draft:${chat.id}`)?.trim();
+    return draft ? [{ chat, draft }] : [];
+  });
+  const scheduledRows = scheduledMessages.flatMap((message) => {
+    const chat = chats.find((candidate) => candidate.id === message.chatId);
+    return chat ? [{ chat, message }] : [];
+  });
+
+  useEffect(() => {
+    if (tab !== "scheduled" || !currentUserId) return;
+    let cancelled = false;
+    void getOutboxMessages(currentUserId)
+      .then((messages) => {
+        if (!cancelled) setScheduledMessages(messages.filter((message) => message.status === "scheduled" || Boolean(message.scheduledFor)));
+      })
+      .catch(() => {
+        if (!cancelled) setScheduledMessages([]);
+      });
+    return () => { cancelled = true; };
+  }, [currentUserId, tab]);
+
   return (
     <section className="quick-access-panel quick-access-panel--outbox" aria-label="Drafts and scheduled messages">
       <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header"><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-title-group"><span className="chat-title-row"><span>Drafts &amp; scheduled</span></span></span></header>
       <div className="quick-access-panel-tabs" role="tablist"><button type="button" className={tab === "drafts" ? "active" : ""} role="tab" aria-selected={tab === "drafts"} onClick={() => setTab("drafts")}>Drafts</button><button type="button" className={tab === "scheduled" ? "active" : ""} role="tab" aria-selected={tab === "scheduled"} onClick={() => setTab("scheduled")}>Scheduled</button></div>
-      <div className="quick-access-panel-empty"><FileText size={28} /><strong>{tab === "drafts" ? "No drafts" : "No scheduled messages"}</strong><p>{tab === "drafts" ? "Drafts from all chats will appear here." : "Scheduled messages from all chats will appear here."}</p></div>
+      {tab === "drafts" && draftRows.length > 0 ? (
+        <div className="archive-quick-list quick-access-draft-list">
+          {draftRows.map(({ chat, draft }) => {
+            const label = displayChatName(chat, currentUserId);
+            return <button type="button" className="chat-list-item" key={chat.id} onClick={() => onOpenChat(chat)}><RealAvatar accessToken={accessToken} className={`avatar chat-avatar ${chatAvatarTypeClass(chat)}`} fallbackKind={chatAvatarFallbackKind(chat)} file={chatAvatarFile(chat, currentUserId)} label={label} /><span className="chat-list-copy"><span className="chat-list-topline"><strong>{label}</strong></span><span className="chat-list-preview"><span className="chat-list-draft-label">Draft:</span> {draft}</span></span></button>;
+          })}
+        </div>
+      ) : tab === "scheduled" && scheduledRows.length > 0 ? (
+        <div className="archive-quick-list quick-access-scheduled-list">
+          {scheduledRows.map(({ chat, message }) => {
+            const label = displayChatName(chat, currentUserId);
+            const scheduledFor = message.scheduledFor ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(message.scheduledFor)) : "Scheduled";
+            return <button type="button" className="chat-list-item" key={message.id} onClick={() => onOpenChat(chat)}><RealAvatar accessToken={accessToken} className={`avatar chat-avatar ${chatAvatarTypeClass(chat)}`} fallbackKind={chatAvatarFallbackKind(chat)} file={chatAvatarFile(chat, currentUserId)} label={label} /><span className="chat-list-copy"><span className="chat-list-topline"><strong>{label}</strong></span><span className="chat-list-preview">{message.content || "Attachment"} · {scheduledFor}</span></span></button>;
+          })}
+        </div>
+      ) : <div className="quick-access-panel-empty"><FileText size={28} /><strong>{tab === "drafts" ? "No drafts" : "No scheduled messages"}</strong><p>{tab === "drafts" ? "Drafts from all chats will appear here." : "Scheduled messages from all chats will appear here."}</p></div>}
     </section>
   );
 }

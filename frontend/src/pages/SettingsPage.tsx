@@ -73,6 +73,7 @@ import { FamilySettings } from "./settings/FamilySettings";
 import { SettingsAvatar } from "./settings/SettingsAvatar";
 import { KeyboardShortcutsSettings } from "./settings/KeyboardShortcutsSettings";
 import { GeneralSettings } from "./settings/GeneralSettings";
+import { HelpAboutSection } from "./settings/HelpAboutSection";
 import { SettingsDashboard, type SettingsDashboardGroup } from "./settings/SettingsDashboard";
 import { resetAllShortcutBindings } from "../shortcuts/shortcutsStore";
 
@@ -161,7 +162,7 @@ export default function SettingsPage() {
   const profilePhotoInputRef = useRef<HTMLInputElement | null>(null);
   const appearanceBackRef = useRef<HTMLButtonElement | null>(null);
 
-  const { language, setLanguage, systemLanguage, strings } = useLanguage();
+  const { language, setLanguage, systemLanguage, resolvedLanguage, strings } = useLanguage();
   const canManageFamily = currentUser?.role === "owner" || currentUser?.role === "admin";
   const isAppearanceEditor = activeSettingsItem === "Appearance";
   const hasDetailSurface = Boolean(activeSettingsItem);
@@ -577,6 +578,8 @@ export default function SettingsPage() {
                   />
                 ) : activeSettingsItem === "Family" ? (
                   <FamilySettings strings={strings} members={members} canManageFamily={canManageFamily} />
+                ) : activeSettingsItem === "Help and About" ? (
+                  <HelpAboutSection language={resolvedLanguage} />
                 ) : (
                   <p className="muted-copy">
                     {strings.settings.sectionComingSoon}

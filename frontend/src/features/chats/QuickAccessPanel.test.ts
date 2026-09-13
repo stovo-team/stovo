@@ -6,6 +6,20 @@ const panel = readFileSync(resolve(process.cwd(), "src/features/chats/QuickAcces
 const page = readFileSync(resolve(process.cwd(), "src/pages/ChatsPage.tsx"), "utf8");
 
 describe("message archive grouped view", () => {
+  it("shows saved local drafts and opens their source chat", () => {
+    expect(panel).toContain('window.localStorage.getItem(`stovo:draft:${chat.id}`)');
+    expect(panel).toContain('className="archive-quick-list quick-access-draft-list"');
+    expect(panel).toContain('onClick={() => onOpenChat(chat)}');
+    expect(page).toContain('<QuickAccessPanel accessToken={accessToken} chats={chats}');
+  });
+
+  it("loads scheduled messages from the outbox instead of showing a placeholder", () => {
+    expect(panel).toContain('getOutboxMessages(currentUserId)');
+    expect(panel).toContain('message.status === "scheduled" || Boolean(message.scheduledFor)');
+    expect(panel).toContain('className="archive-quick-list quick-access-scheduled-list"');
+    expect(panel).toContain('key={message.id}');
+  });
+
   it("keeps archive view controls in the same visual position outside the grouped panel", () => {
     expect(panel).toContain("quick-access-panel-tabs--archive-controls");
   });

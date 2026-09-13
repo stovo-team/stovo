@@ -476,7 +476,7 @@ export default function GuestMeetingPage() {
   }
 
   return <main className="guest-meeting-page"><div className="guest-stovo-brand"><VeloLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
-    {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><p className="eyebrow">Guest meeting</p><h1 id="expired-link-title">This meeting link has expired</h1><p>Ask the host to send you a new link, then open it to join.</p></div></section>}
+    {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><h1 id="expired-link-title">This meeting link has expired</h1><p>Ask the host to send you a new link, then open it to join.</p></div></section>}
     {state === "name" && <div className="guest-prejoin">
       <section className="guest-prejoin-preview">
         <div className="guest-preview-label">{guestDisplayName}</div>
@@ -497,7 +497,8 @@ export default function GuestMeetingPage() {
     {state === "waiting" && <p className="muted-copy">Waiting for the host to admit you…</p>}
     {state === "joining" && <p className="muted-copy">Joining meeting…</p>}
     {error && <p className="error-text">{error}</p>}
-  </section><a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <span aria-hidden="true">↗</span></a></main>;
+    <a className="guest-stovo-marketing" href={stovoSite} target="_blank" rel="noreferrer">Want a private space for your own group? Run Stovo <span aria-hidden="true">↗</span></a>
+  </section></main>;
 }
 
 function DeviceControl({ label, active, onToggle, icon, children }: { label: string; active: boolean; onToggle: () => void; icon: React.ReactNode; children: React.ReactNode }) {

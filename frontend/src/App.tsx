@@ -47,6 +47,7 @@ import SetupPage from "./pages/SetupPage";
 import MultiAdminPage from "./pages/MultiAdminPage";
 import CanvasPage from "./pages/CanvasPage";
 import ChecklistPage from "./pages/ChecklistPage";
+import LegalDocumentsPage from "./pages/LegalDocumentsPage";
 import { applyServerNotificationDefaults, readDevicePreferences } from "./settings/devicePreferences";
 import { KeyboardShortcutsProvider, useKeyboardShortcuts } from "./shortcuts/KeyboardShortcutsContext";
 import { QuickSwitcherModal } from "./components/QuickSwitcherModal";
@@ -330,6 +331,10 @@ function ClusterRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
       <Route path="/meet/:token" element={<GuestMeetingPage />} />
+      <Route path="/legal/:document?" element={<LegalDocumentsPage />} />
+      <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
+      <Route path="/terms" element={<Navigate to="/legal/terms" replace />} />
+      <Route path="/release-notes" element={<Navigate to="/legal/release-notes" replace />} />
       <Route
         path="/app/chats/:chatId?"
         element={
