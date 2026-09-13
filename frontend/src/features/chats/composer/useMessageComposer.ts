@@ -602,6 +602,18 @@ export function useMessageComposer({
 
       if (triggerDrain) {
         void triggerDrain();
+      } else if (accessToken && currentUser) {
+        // Scheduling can be used while the page controller is still mounting.
+        // Normal sends already have this direct fallback; without it a due
+        // scheduled message was persisted but never handed to the outbox.
+        void drainOutboxQueue({
+          accessToken,
+          currentUser: currentUser as any,
+          chats: chatsRef?.current ?? [selectedChat],
+          applyMessagesForChat,
+          onChatsUpdate,
+          onError: (err) => onError(err)
+        });
       }
     } catch (err) {
       onError(err instanceof Error ? err.message : "Could not schedule message");

@@ -26,6 +26,14 @@ export function isCurrentChatMetadataRefresh(
   return (currentMutationVersions[chatId] ?? 0) === (mutationVersionsAtRequest[chatId] ?? 0);
 }
 
+function outboxDeliveryState(item: QueuedOutboxMessage): Message["deliveryState"] {
+  if (item.status === "failed") return "failed";
+  const scheduledAt = new Date(item.scheduledFor ?? "").getTime();
+  return item.status === "scheduled" && Number.isFinite(scheduledAt) && scheduledAt > Date.now()
+    ? "scheduled"
+    : "sending";
+}
+
 export function mergeOutboxPendingMessages(
   current: Message[],
   outboxItems: QueuedOutboxMessage[],
@@ -50,7 +58,21 @@ export function mergeOutboxPendingMessages(
   }
 
   const pendingMessages: Message[] = outboxItems.map((item) => {
-    if (item.optimisticMessage) return item.optimisticMessage;
+    const deliveryState = outboxDeliveryState(item);
+    if (item.optimisticMessage) {
+      // The stored optimistic message is a rendering snapshot, not queue
+      // state. Rehydrate its live status and timestamps from the queue so a
+      // due message cannot resurrect as `Scheduled` after a reload.
+      return {
+        ...item.optimisticMessage,
+        createdAt: item.createdAt,
+        updatedAt: item.createdAt,
+        clientMessageId: item.clientMessageId,
+        deliveryState,
+        scheduledFor: item.scheduledFor ?? undefined,
+        deliveryError: item.deliveryError ?? undefined
+      };
+    }
     return {
       id: `pending:${item.clientMessageId}`,
       chatId: item.chatId,
@@ -92,11 +114,7 @@ export function mergeOutboxPendingMessages(
         isFavorite: false
       })),
       clientMessageId: item.clientMessageId,
-      deliveryState: item.status === "failed"
-        ? "failed"
-        : item.status === "scheduled" && new Date(item.scheduledFor ?? "").getTime() > Date.now()
-          ? "scheduled"
-          : "sending",
+      deliveryState,
       scheduledFor: item.scheduledFor ?? undefined,
       isReminder: item.isReminder,
       deliveryError: item.deliveryError ?? undefined

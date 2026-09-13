@@ -170,6 +170,7 @@ describe("PlansPage week range logic", () => {
 
     expect(styles).toMatch(/\.plan-rsvp\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*max-content auto;[^}]*justify-content:\s*start/);
     expect(styles).toMatch(/\.plan-attendee-list\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1/);
+    expect(styles).toMatch(/\.plans-timeline-events \.plan-attendee-avatar\s*\{[^}]*height:\s*20px;[^}]*width:\s*20px/);
   });
 
   it("provides fixed top navigation and scrollable content in storage and plans pages", async () => {

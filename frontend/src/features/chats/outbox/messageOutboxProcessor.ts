@@ -133,6 +133,19 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
         attemptCount: item.attemptCount + 1,
         lastAttemptAt: Date.now()
       });
+      applyMessagesForChat(item.chatId, (current) => current.map((message) =>
+        message.clientMessageId === item.clientMessageId
+          ? {
+              ...message,
+              // Persisted queue metadata is authoritative; an old optimistic
+              // snapshot must not sort a due message into 1 January.
+              createdAt: item.createdAt,
+              updatedAt: item.createdAt,
+              deliveryState: "sending",
+              deliveryError: undefined
+            }
+          : message
+      ));
 
       try {
         // 1. Upload any pending attachments
