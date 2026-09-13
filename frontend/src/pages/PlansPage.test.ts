@@ -168,7 +168,7 @@ describe("PlansPage week range logic", () => {
     const { resolve } = await import("node:path");
     const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
-    expect(styles).toMatch(/\.plan-rsvp\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0, 1fr\) auto/);
+    expect(styles).toMatch(/\.plan-rsvp\s*\{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*max-content auto;[^}]*justify-content:\s*start/);
     expect(styles).toMatch(/\.plan-attendee-list\s*\{[^}]*grid-column:\s*2;[^}]*grid-row:\s*1/);
   });
 

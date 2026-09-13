@@ -92,7 +92,11 @@ export function mergeOutboxPendingMessages(
         isFavorite: false
       })),
       clientMessageId: item.clientMessageId,
-      deliveryState: item.status === "failed" ? "failed" : item.scheduledFor ? "scheduled" : "sending",
+      deliveryState: item.status === "failed"
+        ? "failed"
+        : item.status === "scheduled" && new Date(item.scheduledFor ?? "").getTime() > Date.now()
+          ? "scheduled"
+          : "sending",
       scheduledFor: item.scheduledFor ?? undefined,
       isReminder: item.isReminder,
       deliveryError: item.deliveryError ?? undefined

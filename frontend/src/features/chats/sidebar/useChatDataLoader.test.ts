@@ -192,7 +192,7 @@ describe("useChatDataLoader", () => {
 
   it("keeps restored scheduled outbox messages visually pending", async () => {
     const { mergeOutboxPendingMessages } = await import("./useChatDataLoader");
-    const scheduledFor = "2026-01-01T12:00:00.000Z";
+    const scheduledFor = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const merged = mergeOutboxPendingMessages([], [{
       id: "scheduled-client-1", clientMessageId: "scheduled-client-1", chatId: "chat-1", userId: "user-1",
       content: "Send later", replyToMessageId: null, threadRootMessageId: null, mentionedUserIds: [], attachments: [],

@@ -79,7 +79,7 @@ describe("ScheduleMessageModal", () => {
     });
 
     expect(document.body.textContent).toContain("Schedule Message");
-    expect(document.body.textContent).toContain("Hello future!");
+    expect(document.body.querySelector(".schedule-preview-box")).toBeNull();
 
     // Check presets
     const presetButtons = document.body.querySelectorAll(".schedule-preset-chip");

@@ -295,13 +295,16 @@ export function messageDeliveryLabel(message: Message, mine: boolean) {
     if (message.scheduledFor) {
       const scheduledDate = new Date(message.scheduledFor);
       if (!Number.isNaN(scheduledDate.getTime())) {
+        const timeStr = scheduledDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        if (scheduledDate.toDateString() === new Date().toDateString()) {
+          return `Scheduled for ${timeStr}`;
+        }
         const dateStr = scheduledDate.toLocaleDateString([], {
           weekday: "short",
           month: "short",
           day: "numeric",
           year: "numeric"
         });
-        const timeStr = scheduledDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         return `Scheduled for ${dateStr} at ${timeStr}`;
       }
     }
