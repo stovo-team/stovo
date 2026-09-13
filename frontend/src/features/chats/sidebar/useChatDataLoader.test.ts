@@ -189,4 +189,17 @@ describe("useChatDataLoader", () => {
     expect(merged[1].deliveryState).toBe("sending");
     expect(merged[1].content).toBe("Offline draft message");
   });
+
+  it("keeps restored scheduled outbox messages visually pending", async () => {
+    const { mergeOutboxPendingMessages } = await import("./useChatDataLoader");
+    const scheduledFor = "2026-01-01T12:00:00.000Z";
+    const merged = mergeOutboxPendingMessages([], [{
+      id: "scheduled-client-1", clientMessageId: "scheduled-client-1", chatId: "chat-1", userId: "user-1",
+      content: "Send later", replyToMessageId: null, threadRootMessageId: null, mentionedUserIds: [], attachments: [],
+      createdAt: "2026-01-01T10:00:00.000Z", status: "scheduled", scheduledFor, attemptCount: 0
+    }], { id: "user-1", displayName: "User", email: "user@test.com", username: "user", role: "member", createdAt: "" });
+
+    expect(merged[0].deliveryState).toBe("scheduled");
+    expect(merged[0].scheduledFor).toBe(scheduledFor);
+  });
 });
