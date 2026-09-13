@@ -1,5 +1,7 @@
-import { ExternalLink, FileText, Info, Mail, Phone, Scale, ShieldCheck } from "lucide-react";
+import { ExternalLink, FileText, Info, Mail, Scale, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
+import VeloLogo from "../../components/VeloLogo";
+import { getClusterPrefix } from "../../api/client";
 import { appRelease } from "../../legal/appRelease";
 import { getLegalDocuments, legalContact, type LegalLanguage } from "../../legal/legalContent";
 
@@ -12,6 +14,8 @@ const documentIcons = {
 
 export function HelpAboutSection({ language }: { language: LegalLanguage }) {
   const documents = getLegalDocuments(language);
+  const clusterPrefix = getClusterPrefix();
+  const operator = language === "ru" ? legalContact.operator : legalContact.operatorEnglish;
   const copy = language === "ru"
     ? {
         version: "Версия приложения",
@@ -39,7 +43,7 @@ export function HelpAboutSection({ language }: { language: LegalLanguage }) {
   return (
     <div className="help-about">
       <section className="help-about__hero">
-        <div className="help-about__mark" aria-hidden="true">S</div>
+        <div className="help-about__mark"><VeloLogo title="Stovo" /></div>
         <div>
           <p>Stovo</p>
           <h3>{copy.version} {appRelease.version}</h3>
@@ -54,7 +58,6 @@ export function HelpAboutSection({ language }: { language: LegalLanguage }) {
         </div>
         <div className="help-about__contact-actions">
           <a href={`mailto:${legalContact.email}`}><Mail size={17} aria-hidden="true" />{legalContact.email}</a>
-          <a href={`tel:${legalContact.phone}`}><Phone size={17} aria-hidden="true" />{legalContact.phone}</a>
         </div>
         <a className="help-about__data-request" href={`mailto:${legalContact.email}?subject=${encodeURIComponent(copy.dataRequest)}`}>
           {copy.dataRequest}<ExternalLink size={15} aria-hidden="true" />
@@ -64,14 +67,14 @@ export function HelpAboutSection({ language }: { language: LegalLanguage }) {
       <section className="help-about__card">
         <div className="help-about__card-heading">
           <Scale size={20} aria-hidden="true" />
-          <div><h3>{copy.legal}</h3><p>{legalContact.operator} · {language === "ru" ? legalContact.address : legalContact.addressEnglish}</p></div>
+          <div><h3>{copy.legal}</h3><p>{operator} · {language === "ru" ? legalContact.address : legalContact.addressEnglish}</p></div>
         </div>
         <div className="help-about__documents">
           {Object.entries(documents).map(([id, document]) => {
             const documentId = id as keyof typeof documentIcons;
             const Icon = documentIcons[documentId];
             return (
-              <Link key={id} to={`/legal/${id}`}>
+              <Link key={id} to={`${clusterPrefix}/legal/${id}`}>
                 <Icon size={19} aria-hidden="true" />
                 <span><strong>{document.title}</strong><small>{document.summary}</small></span>
                 <span className="help-about__open">{copy.open}<ExternalLink size={14} aria-hidden="true" /></span>
