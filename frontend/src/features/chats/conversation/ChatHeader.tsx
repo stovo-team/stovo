@@ -218,6 +218,8 @@ export function ChatHeader({
                   ? presence
                   : typingNames.length > 0
                     ? `${typingNames.join(", ")} typing...`
+                    : selectedChat.description?.trim()
+                    ? `${strings.chats.types.membersCount(selectedChat.members.length)} · ${selectedChat.description.trim()}`
                     : strings.chats.types.membersCount(selectedChat.members.length)}
               </small>
             )}

@@ -50,3 +50,52 @@ describe("PDF viewer zoom helpers", () => {
     expect(canvas.style.height).toBe("600px");
   });
 });
+
+describe("detectDocumentPreviewKind", () => {
+  const baseFile = {
+    id: "f1",
+    familyId: "fam1",
+    uploadedBy: "u1",
+    chatId: null,
+    chatTitle: null,
+    chatType: null,
+    originMessageId: null,
+    accessScope: "family" as const,
+    storageProvider: "local" as const,
+    originalName: "file.bin",
+    mimeType: "application/octet-stream",
+    sizeBytes: 1024,
+    checksum: null,
+    createdAt: "2026-09-08T00:00:00Z",
+    deletedAt: null,
+    isFavorite: false,
+  };
+
+  it("detects PDF from mimeType and extension", async () => {
+    const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "report.pdf", mimeType: "application/pdf" })).toBe("pdf");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "DOCUMENT.PDF", mimeType: "" })).toBe("pdf");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "report", mimeType: "application/pdf" })).toBe("pdf");
+  });
+
+  it("detects DOCX from mimeType and extension", async () => {
+    const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "resume.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })).toBe("docx");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "doc.docx", mimeType: "" })).toBe("docx");
+  });
+
+  it("detects tables (xlsx, xls, csv, tsv)", async () => {
+    const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "data.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })).toBe("table");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "old.xls", mimeType: "application/vnd.ms-excel" })).toBe("table");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "export.csv", mimeType: "text/csv" })).toBe("table");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "export.tsv", mimeType: "text/tab-separated-values" })).toBe("table");
+  });
+
+  it("returns unsupported for other formats and handles empty values safely", async () => {
+    const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "photo.jpg", mimeType: "image/jpeg" })).toBe("unsupported");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "", mimeType: "" })).toBe("unsupported");
+  });
+});
+

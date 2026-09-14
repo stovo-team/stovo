@@ -12,6 +12,7 @@ import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { PollBubble } from "./PollBubble";
 import { ChecklistCardBubble } from "./ChecklistCardBubble";
+import { CanvasCardBubble } from "./CanvasCardBubble";
 import type { Poll } from "../../../api/polls";
 import type { ChecklistCard } from "../../../api/checklist";
 import { getClusterPrefix } from "../../../api/client";
@@ -485,19 +486,13 @@ export function MessageBubble({
               })() : message.type === "canvas" && (message.canvas ?? embeddedCanvasReference(message.content)) ? (() => {
                 const canvas = message.canvas ?? embeddedCanvasReference(message.content)!;
                 return (
-                <button
-                  type="button"
-                  className="message-collection-card message-canvas-card"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (canvas.available) window.location.assign(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`);
-                  }}
-                  disabled={!canvas.available}
-                >
-                  <span className="message-collection-card-icon">{canvas.available ? <StickyNote size={22} /> : <LockKeyhole size={22} />}</span>
-                  <span><strong>{canvas.available ? canvas.title : "Canvas unavailable"}</strong></span>
-                  {canvas.available && <span className="message-collection-open">Open</span>}
-                </button>
+                  <CanvasCardBubble
+                    canvas={canvas}
+                    accessToken={accessToken}
+                    onOpenCanvas={() => {
+                      if (canvas.available) window.location.assign(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`);
+                    }}
+                  />
                 );
               })() : message.type === "collection" && message.collection ? (
                 <button

@@ -128,5 +128,19 @@ describe("chat details controls", () => {
     expect(wallpaperEditor).toContain("context.filter");
     expect(styles).toContain(".wallpaper-editor-preview {");
   });
-});
 
+  it("renders and edits chat description in chat details", () => {
+    expect(chatDetailsPanel).toContain("chat-info-section--description");
+    expect(chatDetailsPanel).toContain("chat-info-description-editor");
+    expect(chatDetailsPanel).toContain("chat-info-description-input");
+    expect(chatDetailsPanel).toContain("chat-info-add-description-btn");
+    expect(chatDetailsPanel).toContain("chat-info-title-edit--description");
+    expect(chatDetailsPanel).toContain("strings.chats.details.description");
+    expect(chatDetailsPanel).toContain("strings.chats.details.addDescription");
+    expect(chatDetailsPanel).toContain("strings.chats.details.editDescription");
+    expect(chatDetailsPanel).toContain("onDescriptionChange?:");
+    expect(styles).toContain(".chat-info-description-editor {");
+    expect(styles).toContain(".chat-info-description-input {");
+    expect(styles).toContain(".chat-info-add-description-btn {");
+  });
+});

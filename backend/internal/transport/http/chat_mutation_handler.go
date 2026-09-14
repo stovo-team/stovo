@@ -19,6 +19,7 @@ type ChatCreateRequest struct {
 
 type ChatUpdateRequest struct {
 	Title               *string `json:"title"`
+	Description         *string `json:"description"`
 	MediaVisibility     *string `json:"mediaVisibility"`
 	ChatPhotoFileID     *string `json:"chatPhotoFileId"`
 	CommentsEnabled     *bool   `json:"commentsEnabled"`

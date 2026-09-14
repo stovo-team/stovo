@@ -74,6 +74,24 @@ export function useChatDetailsActions({
     setChats((current) => current.map((c) => (c.id === updated.id ? updated : c)));
   }
 
+  async function handleDescriptionChange(description: string): Promise<boolean> {
+    if (!accessToken || !selectedChat || !canManageSelectedChat) {
+      return false;
+    }
+    onError(null);
+    try {
+      const trimmed = description.trim();
+      const chat = await updateChat(accessToken, selectedChat.id, {
+        description: trimmed || null
+      });
+      applyChatUpdate(chat);
+      return true;
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not update description");
+      return false;
+    }
+  }
+
   async function handleChatSettingsSubmit(event: FormEvent, chatTitleDraft: string) {
     event.preventDefault();
     if (!accessToken || !selectedChat || !canManageSelectedChat) {
@@ -297,6 +315,7 @@ export function useChatDetailsActions({
     wallpaperPreviewUrl,
     wallpaperStyle,
     handleChatSettingsSubmit,
+    handleDescriptionChange,
     handleChatPhotoSelect,
     handleSaveCroppedChatPhoto,
     handleMediaVisibilityChange,

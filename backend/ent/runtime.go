@@ -105,31 +105,31 @@ func init() {
 	// chat.TypeValidator is a validator for the "type" field. It is called by the builders before save.
 	chat.TypeValidator = chatDescType.Validators[0].(func(string) error)
 	// chatDescMediaVisibility is the schema descriptor for media_visibility field.
-	chatDescMediaVisibility := chatFields[6].Descriptor()
+	chatDescMediaVisibility := chatFields[7].Descriptor()
 	// chat.MediaVisibilityValidator is a validator for the "media_visibility" field. It is called by the builders before save.
 	chat.MediaVisibilityValidator = chatDescMediaVisibility.Validators[0].(func(string) error)
 	// chatDescCommentsEnabled is the schema descriptor for comments_enabled field.
-	chatDescCommentsEnabled := chatFields[7].Descriptor()
+	chatDescCommentsEnabled := chatFields[8].Descriptor()
 	// chat.DefaultCommentsEnabled holds the default value on creation for the comments_enabled field.
 	chat.DefaultCommentsEnabled = chatDescCommentsEnabled.Default.(bool)
 	// chatDescEncryptionProtocol is the schema descriptor for encryption_protocol field.
-	chatDescEncryptionProtocol := chatFields[8].Descriptor()
+	chatDescEncryptionProtocol := chatFields[9].Descriptor()
 	// chat.DefaultEncryptionProtocol holds the default value on creation for the encryption_protocol field.
 	chat.DefaultEncryptionProtocol = chatDescEncryptionProtocol.Default.(string)
 	// chatDescCreatedAt is the schema descriptor for created_at field.
-	chatDescCreatedAt := chatFields[9].Descriptor()
+	chatDescCreatedAt := chatFields[10].Descriptor()
 	// chat.CreatedAtValidator is a validator for the "created_at" field. It is called by the builders before save.
 	chat.CreatedAtValidator = chatDescCreatedAt.Validators[0].(func(string) error)
 	// chatDescUpdatedAt is the schema descriptor for updated_at field.
-	chatDescUpdatedAt := chatFields[10].Descriptor()
+	chatDescUpdatedAt := chatFields[11].Descriptor()
 	// chat.UpdatedAtValidator is a validator for the "updated_at" field. It is called by the builders before save.
 	chat.UpdatedAtValidator = chatDescUpdatedAt.Validators[0].(func(string) error)
 	// chatDescPinPermission is the schema descriptor for pin_permission field.
-	chatDescPinPermission := chatFields[11].Descriptor()
+	chatDescPinPermission := chatFields[12].Descriptor()
 	// chat.DefaultPinPermission holds the default value on creation for the pin_permission field.
 	chat.DefaultPinPermission = chatDescPinPermission.Default.(string)
 	// chatDescMessageDelaySeconds is the schema descriptor for message_delay_seconds field.
-	chatDescMessageDelaySeconds := chatFields[12].Descriptor()
+	chatDescMessageDelaySeconds := chatFields[13].Descriptor()
 	// chat.DefaultMessageDelaySeconds holds the default value on creation for the message_delay_seconds field.
 	chat.DefaultMessageDelaySeconds = chatDescMessageDelaySeconds.Default.(int)
 	// chatDescID is the schema descriptor for id field.

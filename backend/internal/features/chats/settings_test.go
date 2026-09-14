@@ -43,6 +43,7 @@ type settingsStoreStub struct {
 	visibility  string
 	approvedBy  string
 	preferences Preferences
+	description *string
 	err         error
 }
 
@@ -55,6 +56,11 @@ func (s *settingsStoreStub) UpdatePinPermission(context.Context, string, string,
 }
 
 func (s *settingsStoreStub) UpdateTitle(context.Context, string, string, string) error {
+	return s.err
+}
+
+func (s *settingsStoreStub) UpdateDescription(_ context.Context, chatID string, description *string, updatedAt string) error {
+	s.chatID, s.description, s.updated = chatID, description, updatedAt
 	return s.err
 }
 
@@ -137,5 +143,18 @@ func TestSettingsServiceDelegatesMemberPreferences(t *testing.T) {
 	}
 	if store.preferences.ChatID != "chat" || store.preferences.UserID != "user" || store.preferences.IsMuted == nil || !*store.preferences.IsMuted {
 		t.Fatalf("preferences=%+v", store.preferences)
+	}
+}
+
+func TestSettingsServiceDelegatesDescription(t *testing.T) {
+	store := &settingsStoreStub{}
+	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
+	service := NewSettingsService(store, func() time.Time { return now })
+	desc := "Atlas client rollout"
+	if err := service.SetDescription(context.Background(), "chat-1", &desc); err != nil {
+		t.Fatalf("SetDescription() error = %v", err)
+	}
+	if store.chatID != "chat-1" || store.description == nil || *store.description != desc || store.updated != now.Format(time.RFC3339Nano) {
+		t.Fatalf("store=%+v", store)
 	}
 }

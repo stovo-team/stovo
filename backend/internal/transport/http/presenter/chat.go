@@ -31,6 +31,7 @@ type Chat struct {
 	FamilyID                        string         `json:"familyId"`
 	Type                            string         `json:"type"`
 	Title                           *string        `json:"title"`
+	Description                     *string        `json:"description"`
 	CreatedBy                       *string        `json:"createdBy"`
 	MediaVisibility                 string         `json:"mediaVisibility"`
 	CommentsEnabled                 bool           `json:"commentsEnabled"`

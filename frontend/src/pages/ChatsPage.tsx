@@ -376,6 +376,7 @@ export default function ChatsPage() {
               pendingMessageDelay={detailsActions.pendingMessageDelay}
               messageDelayStatus={detailsActions.messageDelayStatus}
               onPreferenceChange={(payload) => void detailsActions.handleChatPreferenceChange(payload)}
+              onDescriptionChange={detailsActions.handleDescriptionChange}
               onTitleDraftChange={setChatTitleDraft}
             />
           )}

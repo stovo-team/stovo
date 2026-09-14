@@ -81,6 +81,26 @@ func (_u *ChatUpdate) ClearTitle() *ChatUpdate {
 	return _u
 }
 
+// SetDescription sets the "description" field.
+func (_u *ChatUpdate) SetDescription(v string) *ChatUpdate {
+	_u.mutation.SetDescription(v)
+	return _u
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *ChatUpdate) SetNillableDescription(v *string) *ChatUpdate {
+	if v != nil {
+		_u.SetDescription(*v)
+	}
+	return _u
+}
+
+// ClearDescription clears the value of the "description" field.
+func (_u *ChatUpdate) ClearDescription() *ChatUpdate {
+	_u.mutation.ClearDescription()
+	return _u
+}
+
 // SetCreatedBy sets the "created_by" field.
 func (_u *ChatUpdate) SetCreatedBy(v string) *ChatUpdate {
 	_u.mutation.SetCreatedBy(v)
@@ -492,6 +512,12 @@ func (_u *ChatUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.TitleCleared() {
 		_spec.ClearField(chat.FieldTitle, field.TypeString)
 	}
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(chat.FieldDescription, field.TypeString, value)
+	}
+	if _u.mutation.DescriptionCleared() {
+		_spec.ClearField(chat.FieldDescription, field.TypeString)
+	}
 	if value, ok := _u.mutation.ChatPhotoFileID(); ok {
 		_spec.SetField(chat.FieldChatPhotoFileID, field.TypeString, value)
 	}
@@ -825,6 +851,26 @@ func (_u *ChatUpdateOne) SetNillableTitle(v *string) *ChatUpdateOne {
 // ClearTitle clears the value of the "title" field.
 func (_u *ChatUpdateOne) ClearTitle() *ChatUpdateOne {
 	_u.mutation.ClearTitle()
+	return _u
+}
+
+// SetDescription sets the "description" field.
+func (_u *ChatUpdateOne) SetDescription(v string) *ChatUpdateOne {
+	_u.mutation.SetDescription(v)
+	return _u
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *ChatUpdateOne) SetNillableDescription(v *string) *ChatUpdateOne {
+	if v != nil {
+		_u.SetDescription(*v)
+	}
+	return _u
+}
+
+// ClearDescription clears the value of the "description" field.
+func (_u *ChatUpdateOne) ClearDescription() *ChatUpdateOne {
+	_u.mutation.ClearDescription()
 	return _u
 }
 
@@ -1268,6 +1314,12 @@ func (_u *ChatUpdateOne) sqlSave(ctx context.Context) (_node *Chat, err error) {
 	}
 	if _u.mutation.TitleCleared() {
 		_spec.ClearField(chat.FieldTitle, field.TypeString)
+	}
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(chat.FieldDescription, field.TypeString, value)
+	}
+	if _u.mutation.DescriptionCleared() {
+		_spec.ClearField(chat.FieldDescription, field.TypeString)
 	}
 	if value, ok := _u.mutation.ChatPhotoFileID(); ok {
 		_spec.SetField(chat.FieldChatPhotoFileID, field.TypeString, value)

@@ -231,4 +231,58 @@ describe("ChatHeader", () => {
     expect(container.querySelector(".chat-title-group--archive-group .chat-avatar.archive")).not.toBeNull();
     expect(container.querySelector(".chat-title-group--archive-group .lucide-file-text")).not.toBeNull();
   });
+
+  it("renders member count and description horizontally separated by dot", () => {
+    const groupChatWithDescription: Chat = {
+      id: "group-1",
+      familyId: "fam-1",
+      type: "group",
+      title: "Atlas Project",
+      description: "Atlas client rollout",
+      createdBy: "user-1",
+      mediaVisibility: "family",
+      commentsEnabled: true,
+      encryptionProtocol: "server_at_rest",
+      mediaVisibilityPendingApproval: false,
+      mediaVisibilityApprovalCount: 0,
+      mediaVisibilityApprovalRequired: 0,
+      myMediaVisibilityApproval: true,
+      chatPhoto: null,
+      members: [mockUser, { ...mockUser, id: "user-2", displayName: "User 2" }],
+      unreadCount: 0,
+      lastMessageId: null,
+      lastMessageSenderId: null,
+      lastMessageSenderDisplayName: null,
+      lastMessageContent: null,
+      lastMessageType: null,
+      lastMessageCreatedAt: null,
+      isMuted: false,
+      isPinned: false,
+      isFavorite: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    const container = renderComponent(
+      <ChatHeader
+        accessToken="test-token"
+        currentUser={mockUser}
+        selectedChat={groupChatWithDescription}
+        typingNames={[]}
+        callPhase="idle"
+        isChatMenuOpen={false}
+        chatMenuRef={createRef()}
+        onToggleChatMenu={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDetails={vi.fn()}
+        onStartAudioCall={vi.fn()}
+        onStartVideoCall={vi.fn()}
+        onOpenCallScreen={vi.fn()}
+        onSearchOpen={vi.fn()}
+        onMessageSearchOpen={vi.fn()}
+        presence="offline"
+      />
+    );
+    const presenceEl = container.querySelector(".chat-presence");
+    expect(presenceEl?.textContent).toBe("2 members · Atlas client rollout");
+  });
 });

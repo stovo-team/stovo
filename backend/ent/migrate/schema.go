@@ -74,6 +74,7 @@ var (
 		{Name: "id", Type: field.TypeString},
 		{Name: "type", Type: field.TypeString},
 		{Name: "title", Type: field.TypeString, Nullable: true},
+		{Name: "description", Type: field.TypeString, Nullable: true},
 		{Name: "chat_photo_file_id", Type: field.TypeString, Nullable: true},
 		{Name: "media_visibility", Type: field.TypeString},
 		{Name: "comments_enabled", Type: field.TypeBool, Default: true},
@@ -93,13 +94,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "chats_families_chats",
-				Columns:    []*schema.Column{ChatsColumns[11]},
+				Columns:    []*schema.Column{ChatsColumns[12]},
 				RefColumns: []*schema.Column{FamiliesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "chats_users_chats_created",
-				Columns:    []*schema.Column{ChatsColumns[12]},
+				Columns:    []*schema.Column{ChatsColumns[13]},
 				RefColumns: []*schema.Column{UsersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -108,7 +109,7 @@ var (
 			{
 				Name:    "uq_family_chat_per_family",
 				Unique:  true,
-				Columns: []*schema.Column{ChatsColumns[11]},
+				Columns: []*schema.Column{ChatsColumns[12]},
 				Annotation: &entsql.IndexAnnotation{
 					Where: "type = 'family'",
 				},
