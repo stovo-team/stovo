@@ -227,12 +227,16 @@ func TestMCPConnectorAuthAndPolicy(t *testing.T) {
 		if status != http.StatusOK {
 			t.Fatalf("tools/list status = %d payload=%s", status, payload)
 		}
-		if !strings.Contains(payload, "stovo_list_chats") || !strings.Contains(payload, "stovo_send_message") {
+		if !strings.Contains(payload, "stovo_connection_status") || !strings.Contains(payload, "stovo_list_chats") || !strings.Contains(payload, "stovo_send_message") {
 			t.Fatalf("tools/list missing expected tools: %s", payload)
 		}
 	})
 
 	t.Run("list and read allowed chat", func(t *testing.T) {
+		status := mcpCallTool(t, httpServer.URL, created.Token, "stovo_connection_status", map[string]any{})
+		if !strings.Contains(status, `"state":"ready"`) || !strings.Contains(status, `"allowedChatCount":2`) {
+			t.Fatalf("connection status is not actionable: %s", status)
+		}
 		result := mcpCallTool(t, httpServer.URL, created.Token, "stovo_list_chats", map[string]any{})
 		if !strings.Contains(result, chat.ID) {
 			t.Fatalf("list_chats missing allowed chat: %s", result)

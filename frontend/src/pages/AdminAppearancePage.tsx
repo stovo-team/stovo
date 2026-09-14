@@ -14,7 +14,7 @@ export default function AdminAppearancePage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const canViewAdmin = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_server") === true;
   const prefix = getClusterPrefix();
 
   const load = useCallback(async () => {
@@ -86,6 +86,28 @@ export default function AdminAppearancePage() {
                 onChange={(event) => void updateMinimizedChatLayout(event.target.checked)}
               />
             </label>
+            <div className="admin-appearance-options" aria-label={strings.admin.appearance.spaceOptions}>
+              <div className="public-access-header">
+                <h2>{strings.admin.appearance.spaceOptions}</h2>
+              </div>
+              <label className="appearance-setting-row appearance-setting-row--disabled">
+                <span>
+                  <strong>
+                    {strings.admin.appearance.customBranding}
+                    <span className="premium-feature-badge">{strings.admin.appearance.premium}</span>
+                  </strong>
+                  <small>{strings.admin.appearance.customBrandingDesc}</small>
+                </span>
+                <input type="checkbox" disabled aria-label={strings.admin.appearance.customBranding} />
+              </label>
+              <label className="appearance-setting-row appearance-setting-row--disabled">
+                <span>
+                  <strong>{strings.admin.appearance.customDomain}</strong>
+                  <small>{strings.admin.appearance.customDomainDesc}</small>
+                </span>
+                <input type="checkbox" disabled aria-label={strings.admin.appearance.customDomain} />
+              </label>
+            </div>
           </section>
         )}
       </section>
