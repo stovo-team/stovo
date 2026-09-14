@@ -17,7 +17,7 @@ export default function AdminPage() {
   const can = (permission: string) => isOwner || currentUser?.permissions?.includes(permission) === true;
   const prefix = getClusterPrefix();
 
-  const adminTabs: Array<{ to: string; icon: string; title: string; description: string; premium?: boolean }> = [
+  const adminTabs: Array<{ to: string; icon: string; title: string; description: string; premium?: boolean; disabled?: boolean }> = [
     ...(isOwner ? [{ to: "/app/admin/defaults", icon: "tune", title: strings.admin.hub.memberDefaults, description: strings.admin.hub.memberDefaultsDesc }] : []),
 	...(can("manage_roles") ? [{
 		to: "/app/admin/roles",
@@ -40,7 +40,8 @@ export default function AdminPage() {
       icon: "encrypted",
       title: strings.admin.hub.encryption,
       description: strings.admin.hub.encryptionDesc,
-      premium: true
+      premium: true,
+      disabled: true
     }] : []),
     ...(can("manage_integrations") ? [{
       to: "/app/admin/mcp",
@@ -80,29 +81,44 @@ export default function AdminPage() {
 
         {canViewAdmin && (
           <nav className="admin-hub-tabs" aria-label={strings.admin.title}>
-            {adminTabs.map((tab) => (
-              <Link key={tab.to} to={`${prefix}${tab.to}`} className="admin-hub-tab">
-                <span className="settings-row-icon">
-                  <span className="ms-icon ms-icon--22" aria-hidden="true">
-                    {tab.icon}
+            {adminTabs.map((tab) => {
+              const tabContent = (
+                <>
+                  <span className="settings-row-icon">
+                    <span className="ms-icon ms-icon--22" aria-hidden="true">
+                      {tab.icon}
+                    </span>
                   </span>
-                </span>
-                <span>
-                  <strong>
-                    {tab.title}
-                    {tab.premium && <span className="premium-feature-badge">{strings.admin.encryption.premium}</span>}
-                  </strong>
-                  <small>{tab.description}</small>
-                </span>
-                <span className="ms-icon ms-icon--20" aria-hidden="true">
-                  chevron_right
-                </span>
-              </Link>
-            ))}
+                  <span>
+                    <strong>
+                      {tab.title}
+                      {tab.premium && <span className="premium-feature-badge">{strings.admin.encryption.premium}</span>}
+                    </strong>
+                    <small>{tab.description}</small>
+                  </span>
+                  <span className="ms-icon ms-icon--20" aria-hidden="true">
+                    chevron_right
+                  </span>
+                </>
+              );
+
+              if (tab.disabled) {
+                return (
+                  <div key={tab.to} className="admin-hub-tab is-disabled" aria-disabled="true">
+                    {tabContent}
+                  </div>
+                );
+              }
+
+              return (
+                <Link key={tab.to} to={`${prefix}${tab.to}`} className="admin-hub-tab">
+                  {tabContent}
+                </Link>
+              );
+            })}
           </nav>
         )}
       </section>
     </main>
   );
 }
-

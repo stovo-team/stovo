@@ -111,6 +111,7 @@ export function ChatDetailsPanel({
   messageDelayStatus,
   onPreferenceChange,
   onTitleDraftChange,
+  onDescriptionChange,
   editingChatPhotoFile,
   onCloseEditChatPhoto,
   onSaveCroppedChatPhoto,
@@ -161,6 +162,7 @@ export function ChatDetailsPanel({
     notice: string
   ) => void;
   onTitleDraftChange: (value: string) => void;
+  onDescriptionChange?: (description: string) => Promise<boolean>;
 }) {
   const strings = useStrings();
   const { authRequest } = useAuth();
@@ -196,6 +198,26 @@ export function ChatDetailsPanel({
       setStatsError("Statistics could not be loaded. Please try again.");
     } finally { setIsStatsLoading(false); }
   };
+
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState(chat.description ?? "");
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
+
+  useEffect(() => {
+    setDescriptionDraft(chat.description ?? "");
+    setIsEditingDescription(false);
+  }, [chat.id, chat.description]);
+
+  async function handleSaveDescription(e?: FormEvent) {
+    e?.preventDefault();
+    if (!onDescriptionChange || isSavingDescription) return;
+    setIsSavingDescription(true);
+    const success = await onDescriptionChange(descriptionDraft);
+    setIsSavingDescription(false);
+    if (success) {
+      setIsEditingDescription(false);
+    }
+  }
 
   const chatName = displayChatName(chat, currentUserId, strings);
   const [activeControl, setActiveControl] = useState<ChatInfoControl>(null);
@@ -650,10 +672,87 @@ export function ChatDetailsPanel({
             <p className="chat-info-subtitle">
               {chat.type === "direct"
                 ? strings.chats.types.directMessage
+                : chat.description?.trim()
+                ? `${strings.chats.types.membersCount(chat.members.length)} · ${chat.description.trim()}`
                 : strings.chats.types.membersCount(chat.members.length)}
             </p>
           )}
         </section>
+
+
+        {chat.type !== "direct" && chat.type !== "archive" && (chat.description || canManageChat) && (
+          <div className="chat-info-section chat-info-section--description">
+            <div className="chat-info-island">
+              {isEditingDescription ? (
+                <form className="chat-info-description-editor" onSubmit={handleSaveDescription}>
+                  <div className="chat-info-description-header">
+                    <small>{strings.chats.details.description}</small>
+                  </div>
+                  <input
+                    id="chat-info-description-input"
+                    type="text"
+                    className="chat-info-description-input"
+                    value={descriptionDraft}
+                    onChange={(e) => setDescriptionDraft(e.target.value)}
+                    placeholder={strings.chats.details.descriptionPlaceholder}
+                    maxLength={120}
+                    autoFocus
+                  />
+                  <div className="chat-info-description-actions">
+                    <button
+                      type="submit"
+                      className="chat-info-title-save"
+                      disabled={isSavingDescription}
+                    >
+                      {strings.chats.details.save}
+                    </button>
+                    <button
+                      type="button"
+                      className="chat-info-title-cancel"
+                      disabled={isSavingDescription}
+                      onClick={() => {
+                        setDescriptionDraft(chat.description ?? "");
+                        setIsEditingDescription(false);
+                      }}
+                    >
+                      {strings.chats.details.cancel}
+                    </button>
+                  </div>
+                </form>
+              ) : chat.description ? (
+                <div className="chat-info-row chat-info-row--description">
+                  <div className="chat-info-row-copy">
+                    <small>{strings.chats.details.description}</small>
+                    <strong className="chat-info-description-text">{chat.description}</strong>
+                  </div>
+                  {canManageChat && (
+                    <button
+                      type="button"
+                      className="chat-info-title-edit chat-info-title-edit--description"
+                      aria-label={strings.chats.details.editDescription}
+                      title={strings.chats.details.editDescription}
+                      onClick={() => {
+                        setDescriptionDraft(chat.description ?? "");
+                        setIsEditingDescription(true);
+                      }}
+                    >
+                      <Pencil aria-hidden="true" size={18} />
+                    </button>
+                  )}
+                </div>
+              ) : canManageChat ? (
+                <button
+                  type="button"
+                  className="chat-info-add-description-btn"
+                  onClick={() => setIsEditingDescription(true)}
+                >
+                  <Pencil aria-hidden="true" size={16} />
+                  <span>{strings.chats.details.addDescription}</span>
+                </button>
+              ) : null}
+            </div>
+          </div>
+        )}
 
         <section className="chat-info-actions" aria-label="Chat actions">
           <button type="button" className="chat-info-action" onClick={onFocusComposer}>

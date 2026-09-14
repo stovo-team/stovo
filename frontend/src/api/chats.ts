@@ -25,6 +25,7 @@ export interface Chat {
   familyId: string;
   type: "family" | "direct" | "group" | "channel" | "voice" | "archive";
   title: string | null;
+  description?: string | null;
   createdBy: string | null;
   mediaVisibility: "family" | "members";
   commentsEnabled: boolean;
@@ -213,6 +214,7 @@ export function updateChat(
   chatId: string,
   payload: {
     title?: string;
+    description?: string | null;
     mediaVisibility?: "family" | "members";
     chatPhotoFileId?: string;
     commentsEnabled?: boolean;

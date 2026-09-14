@@ -176,6 +176,22 @@ func (s *Server) updateChat(ctx context.Context, user userPublic, chatID string,
 			return nil, 0, newStatusError(http.StatusInternalServerError, "Could not update chat")
 		}
 	}
+	if payload.Description != nil {
+		if !s.canManageChat(chat, user) {
+			return nil, 0, newStatusError(http.StatusForbidden, "Permission denied")
+		}
+		desc := strings.TrimSpace(*payload.Description)
+		var descPtr *string
+		if desc != "" {
+			if len(desc) > 255 {
+				return nil, 0, newStatusError(http.StatusUnprocessableEntity, "description cannot exceed 255 characters")
+			}
+			descPtr = &desc
+		}
+		if err := s.chatSettings.SetDescription(ctx, chatID, descPtr); err != nil {
+			return nil, 0, newStatusError(http.StatusInternalServerError, "Could not update chat")
+		}
+	}
 	if payload.MediaVisibility != nil {
 		if err := s.updateChatMediaVisibility(ctx, chatID, *payload.MediaVisibility, chat, user); err != nil {
 			return nil, 0, newStatusError(domainErrorStatus(err), err.Error())
@@ -442,6 +458,7 @@ func (s *Server) buildChatPublicFromRow(c featurechats.ChatDetails, user userPub
 	chat.FamilyID = c.FamilyID
 	chat.Type = c.Type
 	chat.Title = c.Title
+	chat.Description = c.Description
 	chat.CreatedBy = c.CreatedBy
 	chat.MediaVisibility = c.MediaVisibility
 	chat.EncryptionProtocol = c.EncryptionProtocol

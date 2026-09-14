@@ -26,6 +26,7 @@ func (Chat) Fields() []ent.Field {
 		field.String("family_id").NotEmpty(),
 		field.String("type").NotEmpty(),
 		field.String("title").Optional().Nillable(),
+		field.String("description").Optional().Nillable(),
 		field.String("created_by").Optional().Nillable(),
 		field.String("chat_photo_file_id").Optional().Nillable(),
 		field.String("media_visibility").NotEmpty(),

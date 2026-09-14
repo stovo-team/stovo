@@ -1,4 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Settings, X } from "lucide-react";
 
 import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
@@ -439,7 +440,7 @@ export default function MCPConnectorsPanel({
             <span className="mcp-mode-kicker">Available now</span>
             <h3>Connect Stovo to agent</h3>
             <p>
-              Create one secure MCP connection for any compatible AI agent. It can only access the chats and actions you allow.
+              Secure MCP connection for AI agents with scoped chat and action access.
             </p>
           </div>
           <small>Connection session · MCP</small>
@@ -449,7 +450,7 @@ export default function MCPConnectorsPanel({
             <span className="mcp-mode-kicker">Stovo Desktop</span>
             <h3>Local agent bridge</h3>
             <p id="local-bridge-note">
-              Direct device-level bridge for paired desktop environments. This requires the Stovo Desktop app.
+              Device-level bridge for paired desktop environments. Requires Stovo Desktop.
             </p>
           </div>
           <button type="button" className="secondary-button" disabled aria-disabled="true">
@@ -700,7 +701,15 @@ export default function MCPConnectorsPanel({
               )}
               {!connector.revoked && (
                 <div className="public-access-actions">
-                  <button type="button" className="secondary-button" onClick={() => beginEdit(connector)}>Configure</button>
+                  <button
+                    type="button"
+                    className="icon-button mcp-icon-button"
+                    onClick={() => beginEdit(connector)}
+                    title="Configure"
+                    aria-label="Configure connection"
+                  >
+                    <Settings size={16} />
+                  </button>
                   <button type="button" onClick={() => void handleToggleEnabled(connector)}>
                     {connector.enabled ? "Disable" : "Enable"}
                   </button>
@@ -718,14 +727,38 @@ export default function MCPConnectorsPanel({
       </div>
 
       {editing && (
-        <form className="mcp-connector-form mcp-section-box" onSubmit={saveEdit}>
-          <div className="mcp-form-heading"><div><h3>Configure {editing.name}</h3><p className="muted-text">Changes apply to the next MCP tool call; reconnecting Codex is not required.</p></div></div>
-          <label>Connection name<input value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} /></label>
-          <label>Max history messages<input type="number" min={1} max={500} value={editHistory} onChange={(event) => setEditHistory(Number(event.target.value) || 50)} disabled={isSaving} /></label>
-          <fieldset className="mcp-tag-fieldset"><legend>Chat scope in this Space</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat)}</strong></label>)}</div></fieldset>
-          <fieldset className="mcp-tag-fieldset"><legend>Permissions</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{PERMISSION_LABELS[key]}</strong></label>)}</div></fieldset>
-          <div className="public-access-actions"><button type="submit" disabled={isSaving || !editName.trim()}>{isSaving ? "Saving…" : "Save settings"}</button><button type="button" className="secondary-button" disabled={isSaving} onClick={() => setEditing(null)}>Cancel</button></div>
-        </form>
+        <div
+          className="modal-overlay"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSaving) setEditing(null);
+          }}
+        >
+          <div className="modal-card mcp-edit-modal" role="dialog" aria-modal="true" aria-labelledby="mcp-modal-title">
+            <header className="modal-header">
+              <div>
+                <h3 id="mcp-modal-title">Configure {editing.name}</h3>
+                <p className="muted-text">Changes apply to the next MCP tool call; reconnecting Codex is not required.</p>
+              </div>
+              <button
+                type="button"
+                className="icon-button modal-close-button"
+                onClick={() => setEditing(null)}
+                disabled={isSaving}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <form className="mcp-connector-form" onSubmit={saveEdit}>
+              <label>Connection name<input value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} /></label>
+              <label>Max history messages<input type="number" min={1} max={500} value={editHistory} onChange={(event) => setEditHistory(Number(event.target.value) || 50)} disabled={isSaving} /></label>
+              <fieldset className="mcp-tag-fieldset"><legend>Chat scope in this Space</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat)}</strong></label>)}</div></fieldset>
+              <fieldset className="mcp-tag-fieldset"><legend>Permissions</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{PERMISSION_LABELS[key]}</strong></label>)}</div></fieldset>
+              <div className="public-access-actions"><button type="submit" disabled={isSaving || !editName.trim()}>{isSaving ? "Saving…" : "Save settings"}</button><button type="button" className="secondary-button" disabled={isSaving} onClick={() => setEditing(null)}>Cancel</button></div>
+            </form>
+          </div>
+        </div>
       )}
     </section>
   );

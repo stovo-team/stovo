@@ -46,6 +46,10 @@ func (s *DelayStore) UpdateTitle(ctx context.Context, chatID, title, updatedAt s
 	return s.store.UpdateChatTitle(ctx, chatID, title, updatedAt)
 }
 
+func (s *DelayStore) UpdateDescription(ctx context.Context, chatID string, description *string, updatedAt string) error {
+	return s.store.UpdateChatDescription(ctx, chatID, description, updatedAt)
+}
+
 func (s *DelayStore) UpdatePhoto(ctx context.Context, chatID string, photoFileID *string, updatedAt string) error {
 	return s.store.UpdateChatPhoto(ctx, chatID, photoFileID, updatedAt)
 }

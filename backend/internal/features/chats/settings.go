@@ -68,6 +68,7 @@ type SettingsStore interface {
 	UpdateCommentsEnabled(context.Context, string, bool, string) error
 	UpdatePinPermission(context.Context, string, string, string) error
 	UpdateTitle(context.Context, string, string, string) error
+	UpdateDescription(context.Context, string, *string, string) error
 	UpdatePhoto(context.Context, string, *string, string) error
 	UpdateMediaVisibility(context.Context, string, string, string) error
 	ApproveDirectMediaVisibility(context.Context, string, string, string, string) error
@@ -146,6 +147,10 @@ func (s *SettingsService) ApproveDirectMediaVisibility(ctx context.Context, chat
 
 func (s *SettingsService) SetTitle(ctx context.Context, chatID, title string) error {
 	return s.store.UpdateTitle(ctx, chatID, title, s.now().UTC().Format(time.RFC3339Nano))
+}
+
+func (s *SettingsService) SetDescription(ctx context.Context, chatID string, description *string) error {
+	return s.store.UpdateDescription(ctx, chatID, description, s.now().UTC().Format(time.RFC3339Nano))
 }
 
 func (s *SettingsService) SetPhoto(ctx context.Context, chatID string, photoFileID *string) error {

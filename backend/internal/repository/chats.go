@@ -120,6 +120,18 @@ func (s *Store) UpdateChatTitle(ctx context.Context, chatID, title, updatedAt st
 	return err
 }
 
+// UpdateChatDescription sets or clears description and bumps updated_at.
+func (s *Store) UpdateChatDescription(ctx context.Context, chatID string, description *string, updatedAt string) error {
+	upd := s.Client.Chat.UpdateOneID(chatID).SetUpdatedAt(updatedAt)
+	if description == nil || *description == "" {
+		upd.ClearDescription()
+	} else {
+		upd.SetDescription(*description)
+	}
+	_, err := upd.Save(ctx)
+	return err
+}
+
 // UpdateChatPhoto sets or clears chat_photo_file_id and bumps updated_at.
 func (s *Store) UpdateChatPhoto(ctx context.Context, chatID string, photoFileID *string, updatedAt string) error {
 	upd := s.Client.Chat.UpdateOneID(chatID).SetUpdatedAt(updatedAt)

@@ -113,6 +113,7 @@ CREATE TABLE public.chats (
     family_id text NOT NULL,
     type text NOT NULL,
     title text,
+    description text,
     created_by text,
     chat_photo_file_id text,
     media_visibility text NOT NULL,

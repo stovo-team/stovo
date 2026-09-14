@@ -1,4 +1,4 @@
-h1:5qLdC6JFqWcC7bLFI6ZLw+ZWRFrwgt5HNZf2JP8pL7Y=
+h1:uFfqnfFWVtEOUhHsfbWe8OQv6Yc6E2bzf9SowKZefK8=
 20260804120000_baseline.sql h1:PX8LTmKn+3POUZ0MsN42S+c4aep3pUydkop5ubIABZA=
 20260804170000_add_mcp_connectors.sql h1:cr7khK3pFIRhsLPUVijg5CAwlj2CLW9t/rUDKzJaFp8=
 20260804180000_add_mcp_connector_provider.sql h1:45CtfU1qN07ywUQT0g28LLMuwUQ2+vhRjVQTcsX0Meo=
@@ -27,3 +27,4 @@ h1:5qLdC6JFqWcC7bLFI6ZLw+ZWRFrwgt5HNZf2JP8pL7Y=
 20260910140000_remove_mcp_connector_chat_memberships.sql h1:UT42YjfAZUhB7UUsR0C9Ll7qb8VK04VT5HtqqUOGyac=
 20260912160000_retire_guest_meeting_sessions.sql h1:5TY0QrWgY393LpaHbwPJe7BwXIG/dpp2SrgWTeIprL4=
 20260913160000_add_screen_share_bitrate_setting.sql h1:BJ2fuLKe4QpkEjIcHB7uBfzLZtswtmZPrJNuR/+xTbw=
+20260914150000_add_chat_description.sql h1:YSjPgn3Mey3OBHYKn/wNDj39xUcKbGXaHaz76T5DPxo=

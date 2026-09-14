@@ -54,6 +54,20 @@ func (_c *ChatCreate) SetNillableTitle(v *string) *ChatCreate {
 	return _c
 }
 
+// SetDescription sets the "description" field.
+func (_c *ChatCreate) SetDescription(v string) *ChatCreate {
+	_c.mutation.SetDescription(v)
+	return _c
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_c *ChatCreate) SetNillableDescription(v *string) *ChatCreate {
+	if v != nil {
+		_c.SetDescription(*v)
+	}
+	return _c
+}
+
 // SetCreatedBy sets the "created_by" field.
 func (_c *ChatCreate) SetCreatedBy(v string) *ChatCreate {
 	_c.mutation.SetCreatedBy(v)
@@ -405,6 +419,10 @@ func (_c *ChatCreate) createSpec() (*Chat, *sqlgraph.CreateSpec) {
 		_spec.SetField(chat.FieldTitle, field.TypeString, value)
 		_node.Title = &value
 	}
+	if value, ok := _c.mutation.Description(); ok {
+		_spec.SetField(chat.FieldDescription, field.TypeString, value)
+		_node.Description = &value
+	}
 	if value, ok := _c.mutation.ChatPhotoFileID(); ok {
 		_spec.SetField(chat.FieldChatPhotoFileID, field.TypeString, value)
 		_node.ChatPhotoFileID = &value
@@ -629,6 +647,24 @@ func (u *ChatUpsert) ClearTitle() *ChatUpsert {
 	return u
 }
 
+// SetDescription sets the "description" field.
+func (u *ChatUpsert) SetDescription(v string) *ChatUpsert {
+	u.Set(chat.FieldDescription, v)
+	return u
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *ChatUpsert) UpdateDescription() *ChatUpsert {
+	u.SetExcluded(chat.FieldDescription)
+	return u
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *ChatUpsert) ClearDescription() *ChatUpsert {
+	u.SetNull(chat.FieldDescription)
+	return u
+}
+
 // SetCreatedBy sets the "created_by" field.
 func (u *ChatUpsert) SetCreatedBy(v string) *ChatUpsert {
 	u.Set(chat.FieldCreatedBy, v)
@@ -849,6 +885,27 @@ func (u *ChatUpsertOne) UpdateTitle() *ChatUpsertOne {
 func (u *ChatUpsertOne) ClearTitle() *ChatUpsertOne {
 	return u.Update(func(s *ChatUpsert) {
 		s.ClearTitle()
+	})
+}
+
+// SetDescription sets the "description" field.
+func (u *ChatUpsertOne) SetDescription(v string) *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *ChatUpsertOne) UpdateDescription() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateDescription()
+	})
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *ChatUpsertOne) ClearDescription() *ChatUpsertOne {
+	return u.Update(func(s *ChatUpsert) {
+		s.ClearDescription()
 	})
 }
 
@@ -1260,6 +1317,27 @@ func (u *ChatUpsertBulk) UpdateTitle() *ChatUpsertBulk {
 func (u *ChatUpsertBulk) ClearTitle() *ChatUpsertBulk {
 	return u.Update(func(s *ChatUpsert) {
 		s.ClearTitle()
+	})
+}
+
+// SetDescription sets the "description" field.
+func (u *ChatUpsertBulk) SetDescription(v string) *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *ChatUpsertBulk) UpdateDescription() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.UpdateDescription()
+	})
+}
+
+// ClearDescription clears the value of the "description" field.
+func (u *ChatUpsertBulk) ClearDescription() *ChatUpsertBulk {
+	return u.Update(func(s *ChatUpsert) {
+		s.ClearDescription()
 	})
 }
 

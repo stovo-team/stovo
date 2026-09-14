@@ -102,7 +102,10 @@ export default function AdminAppearancePage() {
               </label>
               <label className="appearance-setting-row appearance-setting-row--disabled">
                 <span>
-                  <strong>{strings.admin.appearance.customDomain}</strong>
+                  <strong>
+                    {strings.admin.appearance.customDomain}
+                    <span className="premium-feature-badge">{strings.admin.appearance.premium}</span>
+                  </strong>
                   <small>{strings.admin.appearance.customDomainDesc}</small>
                 </span>
                 <input type="checkbox" disabled aria-label={strings.admin.appearance.customDomain} />

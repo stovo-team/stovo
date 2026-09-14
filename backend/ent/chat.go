@@ -24,6 +24,8 @@ type Chat struct {
 	Type string `json:"type,omitempty"`
 	// Title holds the value of the "title" field.
 	Title *string `json:"title,omitempty"`
+	// Description holds the value of the "description" field.
+	Description *string `json:"description,omitempty"`
 	// CreatedBy holds the value of the "created_by" field.
 	CreatedBy *string `json:"created_by,omitempty"`
 	// ChatPhotoFileID holds the value of the "chat_photo_file_id" field.
@@ -134,7 +136,7 @@ func (*Chat) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case chat.FieldMessageDelaySeconds:
 			values[i] = new(sql.NullInt64)
-		case chat.FieldID, chat.FieldFamilyID, chat.FieldType, chat.FieldTitle, chat.FieldCreatedBy, chat.FieldChatPhotoFileID, chat.FieldMediaVisibility, chat.FieldEncryptionProtocol, chat.FieldCreatedAt, chat.FieldUpdatedAt, chat.FieldPinPermission:
+		case chat.FieldID, chat.FieldFamilyID, chat.FieldType, chat.FieldTitle, chat.FieldDescription, chat.FieldCreatedBy, chat.FieldChatPhotoFileID, chat.FieldMediaVisibility, chat.FieldEncryptionProtocol, chat.FieldCreatedAt, chat.FieldUpdatedAt, chat.FieldPinPermission:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -175,6 +177,13 @@ func (_m *Chat) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Title = new(string)
 				*_m.Title = value.String
+			}
+		case chat.FieldDescription:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field description", values[i])
+			} else if value.Valid {
+				_m.Description = new(string)
+				*_m.Description = value.String
 			}
 		case chat.FieldCreatedBy:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -306,6 +315,11 @@ func (_m *Chat) String() string {
 	builder.WriteString(", ")
 	if v := _m.Title; v != nil {
 		builder.WriteString("title=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.Description; v != nil {
+		builder.WriteString("description=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")

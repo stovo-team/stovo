@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 import {
   downloadFileBlob,
@@ -38,8 +39,8 @@ function extensionOf(name: string): string {
 }
 
 export function detectDocumentPreviewKind(file: FamilyFile): DocumentPreviewKind {
-  const ext = extensionOf(file.originalName);
-  const mime = file.mimeType.toLowerCase();
+  const ext = extensionOf(file.originalName || "");
+  const mime = (file.mimeType || "").toLowerCase();
   if (mime === "application/pdf" || ext === "pdf") {
     return "pdf";
   }
@@ -261,15 +262,22 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
     void (async () => {
       try {
         const pdfjs = await import("pdfjs-dist");
-        // Vite resolves the worker as a static asset URL.
-        const worker = await import("pdfjs-dist/build/pdf.worker.min.mjs?url");
-        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+        // Vite resolves the worker as a static asset URL via import ... ?url.
+        const resolvedWorkerSrc =
+          pdfWorkerSrc ||
+          new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+        pdfjs.GlobalWorkerOptions.workerSrc = resolvedWorkerSrc;
         // PDF.js is most reliable across desktop and mobile browsers when it
         // receives an owned byte buffer rather than a Blob/ArrayBuffer view.
         // In particular this avoids detached-buffer failures after the worker
         // takes ownership of the source data.
         const data = new Uint8Array(await blob.arrayBuffer());
-        const doc = await pdfjs.getDocument({ data }).promise;
+        const loadingTask = pdfjs.getDocument({
+          data,
+          cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
+          cMapPacked: true,
+        });
+        const doc = await loadingTask.promise;
         if (cancelled) {
           await doc.destroy();
           return;
@@ -309,7 +317,8 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
           host.appendChild(note);
         }
         await doc.destroy();
-      } catch {
+      } catch (err) {
+        console.error("Failed to render PDF preview:", err);
         if (!cancelled) setError("PDF couldn’t be rendered on this device.");
       }
     })();

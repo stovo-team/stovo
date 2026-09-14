@@ -6,7 +6,7 @@ import "context"
 // transports when assembling a chat response for one member.
 type ChatDetails struct {
 	ID, FamilyID, Type, MediaVisibility, EncryptionProtocol string
-	Title, CreatedBy, ChatPhotoFileID                       *string
+	Title, Description, CreatedBy, ChatPhotoFileID          *string
 	CreatedAt, UpdatedAt, PinPermission                     string
 	CommentsEnabled                                         bool
 	MessageDelaySeconds                                     int
