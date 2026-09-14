@@ -14,6 +14,7 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
+      - '!frontend/android/**'
       - 'migrations/master/**'
       - 'Caddyfile'
       - 'Caddyfile.internal'
@@ -107,6 +108,24 @@ jobs:
             pg_db="$(get_env POSTGRES_DB family_messenger)"
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
             tenant_redis_url="$(get_env REDIS_URL 'redis://redis:6379/0')"
+
+            # A frontend-only change needs only a new frontend container. Do
+            # not rebuild the backend, replay tenant migrations, or interrupt
+            # tenant processes for a logo/CSS/UI release.
+            deploy_backend=true
+            previous_sha='${{ github.event.before }}'
+            if [ -n "$previous_sha" ] && ! printf '%s' "$previous_sha" | grep -q '^0\{40\}$' && git cat-file -e "$previous_sha^{commit}" 2>/dev/null; then
+              if ! git diff --name-only "$previous_sha" HEAD | grep -Eq '^(backend/|migrations/master/|Caddyfile$|Caddyfile\.internal$|docker-compose\.master\.yml$|Dockerfile\.orchestrator$|deploy/)'; then
+                deploy_backend=false
+              fi
+            fi
+
+            if [ "$deploy_backend" = false ]; then
+              echo "Frontend-only release: skipping backend build and tenant migrations."
+              docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d --build frontend
+              sudo docker compose -f docker-compose.master.yml up -d --force-recreate caddy
+              exit 0
+            fi
 
             # Ensure master database, cache & minio services are running
             sudo docker compose -f docker-compose.master.yml up -d postgres redis minio
