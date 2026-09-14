@@ -10,30 +10,30 @@ const permissionGroups = [
   {
     name: "Server administration",
     permissions: [
-      ["manage_server", "Manage server", "Server name, appearance, and encryption"],
+      ["manage_server", "Manage server", "Change server-wide appearance, encryption, public access, and plugin availability"],
       ["manage_roles", "Manage roles", "Create, edit, delete, and assign roles"],
     ],
   },
   {
-    name: "Members & spaces",
+    name: "Members, spaces & calls",
     permissions: [
-      ["manage_members", "Manage members", "Invite, remove, and add people to chats"],
-      ["manage_channels", "Manage channels", "Create and edit groups and channels"],
-      ["manage_calls", "Manage calls", "Manage calls and voice channels"],
+      ["manage_members", "Manage members", "Create and revoke server invitations, remove members, assign roles, and add people to any space"],
+      ["manage_channels", "Manage spaces", "Create and manage groups, channels, and voice channels. Chat-list folders remain personal"],
+      ["manage_calls", "Manage guest links", "Create guest links for group and voice calls, then host and manage guests on links you create"],
     ],
   },
   {
     name: "Content moderation",
     permissions: [
-      ["manage_messages", "Manage messages", "Moderate messages and pins"],
-      ["manage_files", "Manage files", "Delete any server file"],
+      ["manage_messages", "Manage messages", "Manage pins in spaces configured for administrators only"],
+      ["manage_files", "Manage files and storage folders", "Access, edit, share, or delete any server file, folder, or album"],
     ],
   },
   {
     name: "Billing & connections",
     permissions: [
-      ["manage_plans", "Manage plans", "Manage any server plan"],
-      ["manage_integrations", "Manage integrations", "Configure server integrations"],
+      ["manage_plans", "Manage all plans", "Edit or delete every server plan. Everyone can still manage plans they created"],
+      ["manage_integrations", "Manage integrations", "Configure MCP connectors and their access to server data"],
     ],
   },
 ] as const;

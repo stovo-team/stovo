@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { BarChart3, Check, CheckSquare, Clipboard, Layers3, Plus, Puzzle, X } from "lucide-react";
+import { BarChart3, CheckSquare, Layers3, Puzzle } from "lucide-react";
 import { ApiError, getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
@@ -14,19 +14,25 @@ const pluginDetails: Record<string, PluginDetail> = {
   "plugin-checklist": { description: "Interactive grocery and errand checklists in chat with live checkbox synchronization and Notion-style editing.", icon: CheckSquare, eyebrow: "Tasks", preview: "checklist" }
 };
 
-const pluginStarter = `// backend/internal/plugins/builtins/example.go
-type ExamplePlugin struct{}
-
-func (p *ExamplePlugin) ID() string { return "plugin-example" }
-func (p *ExamplePlugin) Name() string { return "Example plugin" }
-func (p *ExamplePlugin) Init(services plugins.Services) error { return nil }
-func (p *ExamplePlugin) RegisterRoutes(r chi.Router) {}
-func (p *ExamplePlugin) SubscribeEvents(bus plugins.EventBus) {}`;
-
 function PluginPreview({ kind }: { kind: PluginDetail["preview"] }) {
-  if (kind === "statistics") return <div className="plugin-preview plugin-preview--stats" aria-hidden="true"><div className="plugin-preview-top"><span /><span /><span /></div><div className="plugin-preview-stat"><strong>128</strong><small>messages</small></div><div className="plugin-preview-bars"><i /><i /><i /><i /><i /><i /><i /><i /></div><div className="plugin-preview-legend"><span /><span /><span /></div></div>;
-  if (kind === "canvas") return <div className="plugin-preview plugin-preview--canvas" aria-hidden="true"><span className="plugin-canvas-dot plugin-canvas-dot--one" /><span className="plugin-canvas-dot plugin-canvas-dot--two" /><div className="plugin-canvas-note plugin-canvas-note--one">Ideas</div><div className="plugin-canvas-note plugin-canvas-note--two">Plan</div><div className="plugin-canvas-line" /></div>;
-  if (kind === "checklist") return <div className="plugin-preview plugin-preview--checklist" aria-hidden="true"><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>Groceries</span></div><div className="plugin-checklist-line"><span className="plugin-check-box" /><span>Errands</span></div><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>Tasks</span></div></div>;
+  if (kind === "statistics") return <div className="plugin-preview plugin-preview--stats" aria-hidden="true">
+    <div className="plugin-preview-top"><span /><span /><span /><small>LIVE PULSE</small></div>
+    <div className="plugin-preview-stat"><small>Messages this week</small><strong>128</strong><b>↗ 24%</b></div>
+    <div className="plugin-preview-curve"><i /><i /><i /><i /><i /><i /></div>
+    <div className="plugin-preview-bars"><i /><i /><i /><i /><i /><i /><i /><i /></div>
+    <div className="plugin-preview-legend"><span>Mon</span><span>Wed</span><span>Sun</span></div>
+  </div>;
+  if (kind === "canvas") return <div className="plugin-preview plugin-preview--canvas" aria-hidden="true">
+    <div className="plugin-canvas-toolbar"><span /><span /><span /><b>Untitled board</b></div>
+    <div className="plugin-canvas-note plugin-canvas-note--one">Sketch</div><div className="plugin-canvas-note plugin-canvas-note--two">Launch</div><div className="plugin-canvas-note plugin-canvas-note--three">Share</div>
+    <span className="plugin-canvas-avatar plugin-canvas-avatar--one">M</span><span className="plugin-canvas-avatar plugin-canvas-avatar--two">R</span>
+    <div className="plugin-canvas-line plugin-canvas-line--one" /><div className="plugin-canvas-line plugin-canvas-line--two" />
+  </div>;
+  if (kind === "checklist") return <div className="plugin-preview plugin-preview--checklist" aria-hidden="true">
+    <div className="plugin-checklist-label">TODAY <b>3 / 5</b></div>
+    <div className="plugin-checklist-sheet"><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>Groceries</span></div><div className="plugin-checklist-line"><span className="plugin-check-box" /><span>Errands</span></div><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>Tasks</span></div></div>
+    <span className="plugin-checklist-sticker">✓</span>
+  </div>;
   return <div className="plugin-preview plugin-preview--generic" aria-hidden="true"><Puzzle size={42} /></div>;
 }
 
@@ -36,9 +42,7 @@ export default function AdminPluginsPage() {
   const [plugins, setPlugins] = useState<PluginStatus[]>([]);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [copiedStarter, setCopiedStarter] = useState(false);
-  const canManagePlugins = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const canManagePlugins = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_server") === true;
 
   const load = useCallback(async () => {
     if (!accessToken || !canManagePlugins) return;
@@ -56,11 +60,6 @@ export default function AdminPluginsPage() {
     finally { setSavingId(null); }
   }
 
-  async function copyStarter() {
-    try { await navigator.clipboard.writeText(pluginStarter); setCopiedStarter(true); window.setTimeout(() => setCopiedStarter(false), 1800); }
-    catch { setError("Could not copy the plugin starter."); }
-  }
-
   return <main className="app-shell app-frame admin-page admin-detail-page plugins-page"><AppNav /><section className="page-surface admin-surface plugins-surface">
     <header className="admin-detail-header plugins-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to admin" /><div><h1>Plugin store</h1></div></header>
     {!canManagePlugins && <p className="error-text">Admin access required.</p>}{error && <p className="error-text">{error}</p>}
@@ -68,9 +67,8 @@ export default function AdminPluginsPage() {
         const detail = pluginDetails[plugin.id] ?? { description: "An optional server extension.", icon: Layers3, eyebrow: "Extension", preview: "generic" as const };
         const Icon = detail.icon;
         return <article className="plugin-showcase-card" key={plugin.id}><PluginPreview kind={detail.preview} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Icon size={20} /></span><span><small>{detail.eyebrow}</small><h2>{plugin.name}</h2></span></div><p>{detail.description}</p></div><footer className="plugin-showcase-footer"><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? "Active" : "Paused"}</span><label className="plugin-switch"><input type="checkbox" checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">Enable {plugin.name}</em></label></footer></article>;
-      })}<button className="plugin-add-card" type="button" onClick={() => setIsRegistering(true)}><span><Plus size={26} /></span><strong>Add a server plugin</strong><p>Register a trusted extension built for your Stovo server.</p></button></section>
+      })}<article className="plugin-showcase-card is-development" aria-label="Canvas hand-drawn diagrams plugin is in development"><PluginPreview kind="canvas" /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Layers3 size={20} /></span><span><small>Canvas</small><h2>Hand-drawn diagrams</h2></span></div><p>Create freehand diagrams together on a shared canvas. This plugin is currently in development.</p></div><footer className="plugin-showcase-footer"><span className="plugin-status">In development</span></footer></article><article className="plugin-add-card is-development" aria-label="Server plugins are in development"><span><Puzzle size={26} /></span><strong>Server plugins</strong><p>Adding server plugins is currently in development.</p><small>In development</small></article></section>
       {!plugins.length && !error && <p className="stats-state">Loading available plugins…</p>}</>}
   </section>
-  {isRegistering && <div className="plugin-register-backdrop" role="presentation" onMouseDown={() => setIsRegistering(false)}><section className="plugin-register-modal" role="dialog" aria-modal="true" aria-labelledby="plugin-register-title" onMouseDown={(event) => event.stopPropagation()}><button className="plugin-modal-close" type="button" aria-label="Close" onClick={() => setIsRegistering(false)}><X size={18} /></button><span className="plugin-store-intro-icon"><Puzzle size={22} /></span><h2 id="plugin-register-title">Register a server plugin</h2><p>Plugins run as trusted server code. Add the package to the backend, register it during bootstrap, then restart the server. It will appear here automatically for admins to enable.</p><ol><li>Implement Stovo’s <code>plugins.Plugin</code> interface.</li><li>Register the plugin in <code>backend/internal/bootstrap</code>.</li><li>Deploy the backend, then manage it here.</li></ol><button className="plugin-copy-button" type="button" onClick={() => void copyStarter()}>{copiedStarter ? <Check size={16} /> : <Clipboard size={16} />}{copiedStarter ? "Starter copied" : "Copy plugin starter"}</button></section></div>}
   </main>;
 }

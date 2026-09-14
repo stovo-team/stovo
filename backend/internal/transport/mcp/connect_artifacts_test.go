@@ -19,7 +19,7 @@ func TestBuildConnectArtifactsPreservesClientSpecificContracts(t *testing.T) {
 	if !strings.Contains(artifacts.SetupPrompt, `"Stovo"`) {
 		t.Fatalf("expected prompt to contain connection name: %s", artifacts.SetupPrompt)
 	}
-	if !strings.Contains(artifacts.SetupPrompt, "Only after successfully connecting to Stovo") {
+	if !strings.Contains(artifacts.SetupPrompt, "This URL is bound to one Stovo Space") || !strings.Contains(artifacts.SetupPrompt, "stovo_connection_status") {
 		t.Fatalf("expected post-connection logic in prompt: %s", artifacts.SetupPrompt)
 	}
 	if strings.Contains(artifacts.SetupPrompt, "@") {

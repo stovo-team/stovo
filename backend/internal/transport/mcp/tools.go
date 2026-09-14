@@ -11,32 +11,34 @@ import (
 // transport owns names, schemas and descriptions; callers only provide the
 // behavior behind those stable protocol contracts.
 type ToolHandlers struct {
-	ListChats       ListChats
-	GetChatHistory  func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	SearchMessages  func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	SendMessage     func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	EditMessage     func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	DeleteMessage   func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	AddReaction     func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	RemoveReaction  func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	ForwardMessage  func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	PinMessage      func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	UnpinMessage    func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	ListChatFiles   func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
-	GetDownloadLink func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	ConnectionStatus func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	ListChats        ListChats
+	GetChatHistory   func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	SearchMessages   func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	SendMessage      func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	EditMessage      func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	DeleteMessage    func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	AddReaction      func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	RemoveReaction   func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	ForwardMessage   func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	PinMessage       func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	UnpinMessage     func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	ListChatFiles    func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
+	GetDownloadLink  func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)
 }
 
 // RegisterTools registers all stable Stovo MCP tool schemas. Keeping this
 // protocol mapping outside app prevents the compatibility host from owning
 // mcp-go request definitions and result registration.
 func RegisterTools(server *mcpserver.MCPServer, h ToolHandlers) {
-	if h.ListChats != nil {
-		RegisterListChats(server, h.ListChats)
-	}
 	add := func(tool protocol.Tool, handler func(context.Context, protocol.CallToolRequest) (*protocol.CallToolResult, error)) {
 		if handler != nil {
 			server.AddTool(tool, handler)
 		}
+	}
+	add(protocol.NewTool("stovo_connection_status", protocol.WithDescription("Show the active Stovo Space, this connector's access scope, and an actionable configuration state. Call this first when chat listing is unavailable.")), h.ConnectionStatus)
+	if h.ListChats != nil {
+		RegisterListChats(server, h.ListChats)
 	}
 	add(protocol.NewTool("stovo_get_chat_history", protocol.WithDescription("Read recent messages from an allowed Stovo chat. History is capped by the connector's configured maximum history window."), protocol.WithString("chat_id", protocol.Required(), protocol.Description("Allowed Stovo chat ID")), protocol.WithNumber("limit", protocol.Description("Max messages to return (capped by connector policy)")), protocol.WithString("before_message_id", protocol.Description("Optional cursor: return messages older than this message ID"))), h.GetChatHistory)
 	add(protocol.NewTool("stovo_search_messages", protocol.WithDescription("Search message text within allowed Stovo chats. Results are limited by connector history policy."), protocol.WithString("query", protocol.Required(), protocol.Description("Case-insensitive search text")), protocol.WithString("chat_id", protocol.Description("Optional allowed Stovo chat ID to restrict search")), protocol.WithNumber("limit", protocol.Description("Max matches to return"))), h.SearchMessages)

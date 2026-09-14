@@ -202,7 +202,7 @@ func (s *Server) mcpActor(connector mcpConnectorRecord) (userPublic, error) {
 
 func (s *Server) mcpAdminHandler(user userPublic) httptransport.MCPConnectorAdminHandler {
 	return httptransport.NewMCPConnectorAdminHandler(httptransport.MCPConnectorAdminOperations{
-		IsAdmin: func(actor httptransport.AdminActor) bool { return s.requireAdmin(user) == nil },
+		IsAdmin: func(actor httptransport.AdminActor) bool { return hasPermission(user, permissionManageIntegrations) },
 		Create: func(ctx context.Context, actor httptransport.AdminActor, payload httptransport.MCPConnectorCreatePayload, r *http.Request) (any, error) {
 			name := strings.TrimSpace(payload.Name)
 			if name == "" {
@@ -237,6 +237,9 @@ func (s *Server) mcpAdminHandler(user userPublic) httptransport.MCPConnectorAdmi
 			chatIDs, err := s.validateMCPAllowedChats(actor.FamilyID, payload.AllowedChatIDs)
 			if err != nil {
 				return nil, httptransport.AdminHTTPError{Status: http.StatusUnprocessableEntity, Detail: err.Error()}
+			}
+			if len(chatIDs) == 0 {
+				return nil, httptransport.AdminHTTPError{Status: http.StatusUnprocessableEntity, Detail: "select at least one chat for this connector's Space scope"}
 			}
 
 			rawToken, err := randomToken()
@@ -576,7 +579,7 @@ func mcpSetupPromptForProvider(provider, authMode, alias, name, mcpURL, rawToken
 }
 
 func (s *Server) registerMCPTools(mcpSrv *mcpserver.MCPServer) {
-	mcptransport.RegisterTools(mcpSrv, mcptransport.ToolHandlers{ListChats: s.mcpListChats, GetChatHistory: s.mcpGetChatHistory, SearchMessages: s.mcpSearchMessages, SendMessage: s.mcpSendMessage, EditMessage: s.mcpEditMessage, DeleteMessage: s.mcpDeleteMessage, AddReaction: s.mcpAddReaction, RemoveReaction: s.mcpRemoveReaction, ForwardMessage: s.mcpForwardMessage, PinMessage: s.mcpPinMessage, UnpinMessage: s.mcpUnpinMessage, ListChatFiles: s.mcpListChatFiles, GetDownloadLink: s.mcpGetFileDownloadLink})
+	mcptransport.RegisterTools(mcpSrv, mcptransport.ToolHandlers{ConnectionStatus: s.mcpConnectionStatus, ListChats: s.mcpListChats, GetChatHistory: s.mcpGetChatHistory, SearchMessages: s.mcpSearchMessages, SendMessage: s.mcpSendMessage, EditMessage: s.mcpEditMessage, DeleteMessage: s.mcpDeleteMessage, AddReaction: s.mcpAddReaction, RemoveReaction: s.mcpRemoveReaction, ForwardMessage: s.mcpForwardMessage, PinMessage: s.mcpPinMessage, UnpinMessage: s.mcpUnpinMessage, ListChatFiles: s.mcpListChatFiles, GetDownloadLink: s.mcpGetFileDownloadLink})
 }
 
 func (s *Server) mcpRequire(ctx context.Context, permission string, chatID *string) (mcpConnectorRecord, userPublic, *mcp.CallToolResult) {
@@ -610,24 +613,70 @@ func (s *Server) mcpRequire(ctx context.Context, permission string, chatID *stri
 }
 
 func (s *Server) mcpListChats(ctx context.Context) ([]mcptransport.ChatSummary, error) {
-	connector, actor, deny := s.mcpRequire(ctx, mcpPermChatsList, nil)
+	connector, _, deny := s.mcpRequire(ctx, "", nil)
 	if deny != nil {
 		return nil, mcpResultError(deny)
 	}
+	if !connector.Permissions.Has(mcpPermChatsList) {
+		msg := "Chat listing is disabled for this connector. In Stovo, open MCP connectors → Configure and enable ‘List chats’."
+		s.recordMCPAudit(ctx, connector, mcpPermChatsList, nil, nil, false, &msg, nil)
+		return nil, fmt.Errorf("%s", msg)
+	}
+	if len(connector.AllowedChatIDs) == 0 {
+		msg := "This connector has no chat scope in the active Stovo Space. In Stovo, open MCP connectors → Configure and select one or more chats."
+		s.recordMCPAudit(ctx, connector, mcpPermChatsList, nil, nil, false, &msg, nil)
+		return nil, fmt.Errorf("%s", msg)
+	}
 	chats := make([]mcptransport.ChatSummary, 0, len(connector.AllowedChatIDs))
 	for _, chatID := range connector.AllowedChatIDs {
-		chat, err := s.buildChatPublic(chatID, actor)
+		if err := s.requireMCPChatAllowed(connector, chatID); err != nil {
+			continue
+		}
+		chatType, err := s.chatQueries.Type(ctx, chatID)
 		if err != nil {
 			continue
 		}
-		title := ""
-		if chat.Title != nil {
-			title = *chat.Title
-		}
-		chats = append(chats, mcptransport.ChatSummary{ID: chat.ID, Type: chat.Type, Title: title})
+		// Connector identities are deliberately not chat members. The scope is
+		// the authorization boundary, so never use member-only chat reads here.
+		chats = append(chats, mcptransport.ChatSummary{ID: chatID, Type: chatType, Title: "Allowed chat"})
+	}
+	if len(chats) == 0 {
+		msg := "The configured chats are no longer available in this Stovo Space. Update the connector scope in Stovo."
+		s.recordMCPAudit(ctx, connector, mcpPermChatsList, nil, nil, false, &msg, nil)
+		return nil, fmt.Errorf("%s", msg)
 	}
 	s.recordMCPAudit(ctx, connector, mcpPermChatsList, nil, nil, true, nil, map[string]any{"count": len(chats)})
 	return chats, nil
+}
+
+func (s *Server) mcpConnectionStatus(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	connector, _, deny := s.mcpRequire(ctx, "", nil)
+	if deny != nil {
+		return deny, nil
+	}
+	state := "ready"
+	action := "The connector is ready. Use stovo_list_chats to select a chat before reading or changing messages."
+	if len(connector.AllowedChatIDs) == 0 {
+		state = "needs_chat_scope"
+		action = "No chats are assigned. In Stovo, open MCP connectors → Configure and choose chats in this Space."
+	} else if !connector.Permissions.Has(mcpPermChatsList) {
+		state = "chat_listing_disabled"
+		action = "Chat listing is disabled. In Stovo, open MCP connectors → Configure and enable ‘List chats’."
+	}
+	spaceName := "Stovo Space"
+	if family, err := s.getFamily(connector.FamilyID); err == nil && strings.TrimSpace(family.Name) != "" {
+		spaceName = family.Name
+	}
+	s.recordMCPAudit(ctx, connector, "connector.status", nil, nil, true, nil, map[string]any{"state": state})
+	return s.mcpToolJSON(map[string]any{
+		"state": state,
+		"space": map[string]any{"id": s.cfg.ServerID, "name": spaceName},
+		"connector": map[string]any{
+			"id": connector.ID, "name": connector.Name, "allowedChatCount": len(connector.AllowedChatIDs),
+			"chatListingEnabled": connector.Permissions.Has(mcpPermChatsList),
+		},
+		"nextAction": action,
+	})
 }
 
 func mcpResultError(result *mcp.CallToolResult) error {

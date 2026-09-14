@@ -67,7 +67,7 @@ func (s *Server) createChat(ctx context.Context, user userPublic, kind string, r
 		}
 		return chat, http.StatusCreated, nil
 	}
-	if (kind == "channel" || kind == "voice") && !hasPermission(user, permissionManageChannels) {
+	if (kind == "group" || kind == "channel" || kind == "voice") && !hasPermission(user, permissionManageChannels) {
 		return nil, 0, newStatusError(http.StatusForbidden, "Permission denied")
 	}
 	if request.Title == "" {

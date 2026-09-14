@@ -52,6 +52,7 @@ export function NewChatDialog({
       ? "new-channel-form"
       : "new-group-form";
   const canCreateCompose = groupTitle.trim().length > 0;
+  const canManageSpaces = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_channels") === true;
 
   if (screen === "group" || screen === "channel" || screen === "voice") {
     const handleFormSubmit = (event: FormEvent) => {
@@ -217,7 +218,7 @@ export function NewChatDialog({
         />
       </label>
       <div className="new-chat-actions">
-        <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("group")}>
+        {canManageSpaces && <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("group")}>
           <span className="new-chat-action-icon" aria-hidden={true}>
             <span className="ms-icon ms-icon--22 ms-icon--filled">group</span>
           </span>
@@ -228,8 +229,8 @@ export function NewChatDialog({
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
             chevron_right
           </span>
-        </button>
-        <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("channel")}>
+        </button>}
+        {canManageSpaces && <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("channel")}>
           <span className="new-chat-action-icon new-chat-action-icon--channel" aria-hidden={true}>
             <span className="ms-icon ms-icon--22 ms-icon--filled">campaign</span>
           </span>
@@ -240,8 +241,8 @@ export function NewChatDialog({
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
             chevron_right
           </span>
-        </button>
-        <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("voice")}>
+        </button>}
+        {canManageSpaces && <button type="button" className="new-chat-action-row" onClick={() => onScreenChange("voice")}>
           <span className="new-chat-action-icon new-chat-action-icon--voice" aria-hidden={true}>
             <span className="ms-icon ms-icon--22 ms-icon--filled">volume_up</span>
           </span>
@@ -252,7 +253,7 @@ export function NewChatDialog({
           <span className="ms-icon ms-icon--20 new-chat-action-chevron" aria-hidden={true}>
             chevron_right
           </span>
-        </button>
+        </button>}
         {onPlanGuestMeeting && <button type="button" className="new-chat-action-row" onClick={onPlanGuestMeeting}>
           <span className="new-chat-action-icon" aria-hidden={true}><span className="ms-icon ms-icon--22 ms-icon--filled">calendar_add_on</span></span>
           <span className="new-chat-action-copy"><strong>Plan guest meeting</strong><small>Create a shareable link for external guests</small></span>
