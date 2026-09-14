@@ -449,8 +449,8 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 		}),
 		RemoveMember: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.FamilyMemberHandler{Remove: func(ctx context.Context, targetID string) (int, string, error) {
-				if err := s.requireAdmin(user); err != nil {
-					return http.StatusForbidden, "Permission denied", err
+				if !hasPermission(user, permissionManageMembers) {
+					return http.StatusForbidden, "Permission denied", errForbidden
 				}
 				if targetID == user.ID {
 					return http.StatusForbidden, "You cannot remove yourself", fmt.Errorf("self removal")
@@ -550,7 +550,7 @@ func (s *Server) inviteRoutes() httptransport.InviteRoutes {
 	return httptransport.InviteRoutes{
 		CreateInvite: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.InviteCreateHandler{
-				IsAdmin:     func() bool { return s.requireAdmin(user) == nil },
+				IsAdmin:     func() bool { return hasPermission(user, permissionManageMembers) },
 				IsValidRole: isValidRole,
 				Create: func(ctx context.Context, payload httptransport.InviteCreateRequest) (any, int, string, error) {
 					expiresHours := 48
@@ -595,7 +595,7 @@ func (s *Server) inviteRoutes() httptransport.InviteRoutes {
 		AcceptInvite:  http.HandlerFunc(acceptHandler.AcceptInvite),
 		DeleteInvite: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.InviteDeleteHandler{
-				IsAdmin: func() bool { return s.requireAdmin(user) == nil },
+				IsAdmin: func() bool { return hasPermission(user, permissionManageMembers) },
 				Revoke: func(ctx context.Context, inviteID string) (int, string, error) {
 					invite, err := s.getInviteByID(ctx, inviteID)
 					if err != nil || invite.FamilyID != user.FamilyID {
@@ -1147,7 +1147,7 @@ func (s *Server) adminRoutes() httptransport.AdminRoutes {
 		}),
 		ListMCPConnectors: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.NewMCPConnectorReadHandler(httptransport.MCPConnectorReadOperations{
-				IsAdmin: func() bool { return s.requireAdmin(user) == nil },
+				IsAdmin: func() bool { return hasPermission(user, permissionManageIntegrations) },
 				List:    func(ctx context.Context) (any, error) { return s.listMCPConnectors(user.FamilyID) },
 			}).List(w, r)
 		}),
@@ -1156,7 +1156,7 @@ func (s *Server) adminRoutes() httptransport.AdminRoutes {
 		}),
 		GetMCPConnector: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.NewMCPConnectorReadHandler(httptransport.MCPConnectorReadOperations{
-				IsAdmin: func() bool { return s.requireAdmin(user) == nil },
+				IsAdmin: func() bool { return hasPermission(user, permissionManageIntegrations) },
 				Get: func(ctx context.Context, connectorID string) (any, error) {
 					connector, err := s.loadMCPConnectorByID(user.FamilyID, connectorID)
 					if err != nil {

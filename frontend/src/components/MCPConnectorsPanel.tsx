@@ -12,6 +12,7 @@ import {
   defaultMCPAlias,
   defaultMCPPermissions,
   listMCPConnectors,
+  mcpUiSetupSteps,
   regenerateMCPConnectorToken,
   revokeMCPConnector,
   updateMCPConnector
@@ -104,6 +105,12 @@ function chatLabel(chat: Chat) {
   return `${chat.type} chat`;
 }
 
+// A connection without this capability appears healthy in Codex but cannot
+// discover its configured scope. Keep other capabilities opt-in.
+function defaultWorkingMCPPermissions(): MCPPermissions {
+  return { ...defaultMCPPermissions(), "chats.list": true };
+}
+
 function ChatTypeIcon({ type }: { type: Chat["type"] }) {
   if (type === "direct") {
     return (
@@ -148,11 +155,13 @@ function ChatTypeIcon({ type }: { type: Chat["type"] }) {
 export default function MCPConnectorsPanel({
   accessToken,
   authRequest,
+  spaceName,
   onError,
   onNotice
 }: {
   accessToken: string;
   authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>;
+  spaceName: string;
   onError: (message: string | null) => void;
   onNotice: (message: string | null) => void;
 }) {
@@ -166,8 +175,13 @@ export default function MCPConnectorsPanel({
   const [provider] = useState<MCPProviderId>("codex");
   const [name, setName] = useState("");
   const [maxHistory, setMaxHistory] = useState(50);
-  const [permissions, setPermissions] = useState<MCPPermissions>(defaultMCPPermissions());
+  const [permissions, setPermissions] = useState<MCPPermissions>(defaultWorkingMCPPermissions());
   const [allowedChatIds, setAllowedChatIds] = useState<string[]>([]);
+  const [editing, setEditing] = useState<MCPConnector | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editHistory, setEditHistory] = useState(50);
+  const [editPermissions, setEditPermissions] = useState<MCPPermissions>(defaultWorkingMCPPermissions());
+  const [editChatIds, setEditChatIds] = useState<string[]>([]);
   const [secret, setSecret] = useState<SecretReveal | null>(null);
   const [copied, setCopied] = useState<"token" | "prompt" | "url" | "cli" | null>(null);
   const [showCli, setShowCli] = useState(false);
@@ -185,6 +199,10 @@ export default function MCPConnectorsPanel({
     try {
       const chatResult = await authRequest<Chat[]>("/api/chats");
       setChats(chatResult);
+      // The Space shown here is already the active server route. A new
+      // connector starts with its entire current Space selected; the owner can
+      // narrow it before saving.
+      setAllowedChatIds((current) => (current.length ? current : chatResult.map((chat) => chat.id)));
     } catch {
       setChats([]);
     } finally {
@@ -315,7 +333,7 @@ export default function MCPConnectorsPanel({
       setConnectors((current) => [result.connector, ...current.filter((item) => item.id !== result.connector.id)]);
       applySecret(result);
       setName("");
-      setPermissions(defaultMCPPermissions());
+      setPermissions(defaultWorkingMCPPermissions());
       setAllowedChatIds([]);
       setMaxHistory(50);
       onNotice("Connection created. Copy the setup details below to connect your agent.");
@@ -373,11 +391,45 @@ export default function MCPConnectorsPanel({
     }
   }
 
-  const setupSteps = [
-    "Open your AI agent's MCP or integrations settings.",
-    "Add a custom HTTP MCP server.",
-    "Paste the MCP URL and Bearer token below, then save the connection."
-  ];
+  function beginEdit(connector: MCPConnector) {
+    setEditing(connector);
+    setEditName(connector.name);
+    setEditHistory(connector.maxHistoryMessages);
+    setEditPermissions({ ...connector.permissions });
+    setEditChatIds([...connector.allowedChatIds]);
+  }
+
+  function toggleEditChat(chatId: string) {
+    setEditChatIds((current) => current.includes(chatId) ? current.filter((id) => id !== chatId) : [...current, chatId]);
+  }
+
+  function toggleEditPermission(key: MCPPermissionKey) {
+    setEditPermissions((current) => ({ ...current, [key]: !current[key] }));
+  }
+
+  async function saveEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!editing) return;
+    setIsSaving(true);
+    onError(null);
+    try {
+      const updated = await updateMCPConnector(accessToken, editing.id, {
+        name: editName.trim(),
+        maxHistoryMessages: editHistory,
+        permissions: editPermissions,
+        allowedChatIds: editChatIds
+      });
+      setConnectors((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setEditing(null);
+      onNotice("Connection settings updated. The next MCP call uses the new scope and permissions.");
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not update connection settings");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const setupSteps = mcpUiSetupSteps(secret?.provider);
 
   return (
     <section className="mcp-connectors-panel">
@@ -441,7 +493,7 @@ export default function MCPConnectorsPanel({
           <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>Bearer token</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("token", secret.token)} aria-label="Copy bearer token"><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "token" ? "Copied" : "Copy"}</button></div><code>{secret.token}</code></div>
 
           <div className="mcp-setup-block">
-            <strong>In-app setup</strong>
+            <strong>Native Codex / agent setup</strong>
             <ol className="mcp-setup-steps">
               {setupSteps.map((step) => (
                 <li key={step}>{step}</li>
@@ -472,8 +524,9 @@ export default function MCPConnectorsPanel({
           <div>
             <h3>Create agent connection</h3>
             <p className="muted-text">
-              Connect Stovo to your agent. This creates a secure connection session that authorizes the agent to interact
-              with allowed chats in Stovo.
+              This connection is bound to <strong>{spaceName}</strong>. All chats in this Space are selected initially;
+              narrow the scope below if the agent should work in fewer chats. Chat discovery is enabled so Codex can
+              show a clear scope rather than an empty list.
             </p>
           </div>
         </div>
@@ -501,7 +554,7 @@ export default function MCPConnectorsPanel({
         </label>
         <fieldset className="mcp-tag-fieldset">
           <legend>
-            <span>Allowed chats</span>
+            <span>Chat scope in this Space</span>
             <label className="mcp-select-all">
               <input
                 type="checkbox"
@@ -590,7 +643,7 @@ export default function MCPConnectorsPanel({
             })}
           </div>
         </fieldset>
-        <button type="submit" disabled={isSaving || !name.trim()}>
+        <button type="submit" disabled={isSaving || !name.trim() || !allowedChatIds.length}>
           {isSaving ? "Connecting…" : "Create connection"}
         </button>
       </form>
@@ -639,8 +692,15 @@ export default function MCPConnectorsPanel({
                 Permissions:{" "}
                 {MCP_PERMISSION_KEYS.filter((key) => connector.permissions[key]).join(", ") || "none"}
               </p>
+              {!connector.permissions["chats.list"] && !connector.revoked && (
+                <p className="error-text">Chat discovery is off — Codex will receive a configuration instruction instead of a chat list.</p>
+              )}
+              {!connector.allowedChatIds.length && !connector.revoked && (
+                <p className="error-text">No chats are in this connector’s Space scope.</p>
+              )}
               {!connector.revoked && (
                 <div className="public-access-actions">
+                  <button type="button" className="secondary-button" onClick={() => beginEdit(connector)}>Configure</button>
                   <button type="button" onClick={() => void handleToggleEnabled(connector)}>
                     {connector.enabled ? "Disable" : "Enable"}
                   </button>
@@ -656,6 +716,17 @@ export default function MCPConnectorsPanel({
           );
         })}
       </div>
+
+      {editing && (
+        <form className="mcp-connector-form mcp-section-box" onSubmit={saveEdit}>
+          <div className="mcp-form-heading"><div><h3>Configure {editing.name}</h3><p className="muted-text">Changes apply to the next MCP tool call; reconnecting Codex is not required.</p></div></div>
+          <label>Connection name<input value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} /></label>
+          <label>Max history messages<input type="number" min={1} max={500} value={editHistory} onChange={(event) => setEditHistory(Number(event.target.value) || 50)} disabled={isSaving} /></label>
+          <fieldset className="mcp-tag-fieldset"><legend>Chat scope in this Space</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat)}</strong></label>)}</div></fieldset>
+          <fieldset className="mcp-tag-fieldset"><legend>Permissions</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{PERMISSION_LABELS[key]}</strong></label>)}</div></fieldset>
+          <div className="public-access-actions"><button type="submit" disabled={isSaving || !editName.trim()}>{isSaving ? "Saving…" : "Save settings"}</button><button type="button" className="secondary-button" disabled={isSaving} onClick={() => setEditing(null)}>Cancel</button></div>
+        </form>
+      )}
     </section>
   );
 }

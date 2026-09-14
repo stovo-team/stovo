@@ -73,6 +73,10 @@ func (s *Server) createGuestMeeting(w http.ResponseWriter, r *http.Request, user
 		s.json(w, http.StatusServiceUnavailable, map[string]string{"message": "Guest meetings require LiveKit and are disabled or unavailable"})
 		return
 	}
+	if !hasPermission(user, permissionManageCalls) {
+		s.json(w, http.StatusForbidden, map[string]string{"message": "Guest link permission required"})
+		return
+	}
 	var body struct {
 		ChatID        string `json:"chatId"`
 		Title         string `json:"title"`

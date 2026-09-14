@@ -12,7 +12,7 @@ export default function AdminMcpPage() {
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const canViewAdmin = currentUser?.role === "owner" || currentUser?.role === "admin";
+  const canViewAdmin = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_integrations") === true;
   const prefix = getClusterPrefix();
 
   const load = useCallback(async () => {
@@ -49,6 +49,7 @@ export default function AdminMcpPage() {
             <MCPConnectorsPanel
               accessToken={accessToken}
               authRequest={authRequest}
+              spaceName={family?.name ?? "this Space"}
               onError={setError}
               onNotice={setNotice}
             />

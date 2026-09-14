@@ -53,10 +53,11 @@ func BuildConnectArtifacts(mcpURL, provider, authMode, alias, connectorName, raw
 		"Connect Stovo to your agent via MCP server named %q.\n"+
 			"MCP URL: %s\n"+
 			"Authorization: Bearer %s\n\n"+
-			"Only after successfully connecting to Stovo, execute the following logic:\n"+
-			"1. Verify the connection and retrieve accessible chats using stovo_list_chats.\n"+
-			"2. Confirm connection status and report the list of accessible chats.\n"+
-			"3. Stand by to assist in allowed chats—read history or send messages only when authorized or requested by the user.",
+		"This URL is bound to one Stovo Space; do not use it for another Space.\n\n"+
+		"After successfully connecting to Stovo:\n"+
+		"1. Call stovo_connection_status. If it reports a configuration issue, show its nextAction instead of claiming there are no chats.\n"+
+		"2. If ready, call stovo_list_chats and report the accessible chats.\n"+
+		"3. Work only in those chats—read history or send messages only when authorized or requested by the user.",
 		name, mcpURL, rawToken,
 	)
 	return ConnectArtifacts{URL: mcpURL, CLICommand: command, SetupPrompt: prompt}
