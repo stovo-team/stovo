@@ -1,6 +1,9 @@
 package chats
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // ChatDetails is the persistence-neutral chat projection required by inbound
 // transports when assembling a chat response for one member.
@@ -16,6 +19,13 @@ type ChatDetails struct {
 // ChatPreference is the per-member portion of a chat projection.
 type ChatPreference struct {
 	IsMuted, IsPinned, IsFavorite bool
+	MutedUntil                    *time.Time
+	QuietHoursEnabled             bool
+	QuietHoursStart               *string
+	QuietHoursEnd                 *string
+	NotificationMode              string
+	NotifySenderIDs               []string
+	AlwaysNotifyMentions          bool
 	WallpaperFileID               *string
 }
 

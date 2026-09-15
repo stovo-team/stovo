@@ -19,6 +19,20 @@ const (
 	FieldIsPinned = "is_pinned"
 	// FieldIsFavorite holds the string denoting the is_favorite field in the database.
 	FieldIsFavorite = "is_favorite"
+	// FieldMutedUntil holds the string denoting the muted_until field in the database.
+	FieldMutedUntil = "muted_until"
+	// FieldQuietHoursEnabled holds the string denoting the quiet_hours_enabled field in the database.
+	FieldQuietHoursEnabled = "quiet_hours_enabled"
+	// FieldQuietHoursStart holds the string denoting the quiet_hours_start field in the database.
+	FieldQuietHoursStart = "quiet_hours_start"
+	// FieldQuietHoursEnd holds the string denoting the quiet_hours_end field in the database.
+	FieldQuietHoursEnd = "quiet_hours_end"
+	// FieldNotificationMode holds the string denoting the notification_mode field in the database.
+	FieldNotificationMode = "notification_mode"
+	// FieldNotifySenderIds holds the string denoting the notify_sender_ids field in the database.
+	FieldNotifySenderIds = "notify_sender_ids"
+	// FieldAlwaysNotifyMentions holds the string denoting the always_notify_mentions field in the database.
+	FieldAlwaysNotifyMentions = "always_notify_mentions"
 	// FieldLastReadMessageID holds the string denoting the last_read_message_id field in the database.
 	FieldLastReadMessageID = "last_read_message_id"
 	// FieldLastReadAt holds the string denoting the last_read_at field in the database.
@@ -36,6 +50,13 @@ var Columns = []string{
 	FieldIsMuted,
 	FieldIsPinned,
 	FieldIsFavorite,
+	FieldMutedUntil,
+	FieldQuietHoursEnabled,
+	FieldQuietHoursStart,
+	FieldQuietHoursEnd,
+	FieldNotificationMode,
+	FieldNotifySenderIds,
+	FieldAlwaysNotifyMentions,
 	FieldLastReadMessageID,
 	FieldLastReadAt,
 	FieldWallpaperFileID,
@@ -60,6 +81,12 @@ var (
 	DefaultIsPinned bool
 	// DefaultIsFavorite holds the default value on creation for the "is_favorite" field.
 	DefaultIsFavorite bool
+	// DefaultQuietHoursEnabled holds the default value on creation for the "quiet_hours_enabled" field.
+	DefaultQuietHoursEnabled bool
+	// DefaultNotificationMode holds the default value on creation for the "notification_mode" field.
+	DefaultNotificationMode string
+	// DefaultAlwaysNotifyMentions holds the default value on creation for the "always_notify_mentions" field.
+	DefaultAlwaysNotifyMentions bool
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
 	IDValidator func(string) error
 )
@@ -90,6 +117,36 @@ func ByIsPinned(opts ...sql.OrderTermOption) OrderOption {
 // ByIsFavorite orders the results by the is_favorite field.
 func ByIsFavorite(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsFavorite, opts...).ToFunc()
+}
+
+// ByMutedUntil orders the results by the muted_until field.
+func ByMutedUntil(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMutedUntil, opts...).ToFunc()
+}
+
+// ByQuietHoursEnabled orders the results by the quiet_hours_enabled field.
+func ByQuietHoursEnabled(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldQuietHoursEnabled, opts...).ToFunc()
+}
+
+// ByQuietHoursStart orders the results by the quiet_hours_start field.
+func ByQuietHoursStart(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldQuietHoursStart, opts...).ToFunc()
+}
+
+// ByQuietHoursEnd orders the results by the quiet_hours_end field.
+func ByQuietHoursEnd(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldQuietHoursEnd, opts...).ToFunc()
+}
+
+// ByNotificationMode orders the results by the notification_mode field.
+func ByNotificationMode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldNotificationMode, opts...).ToFunc()
+}
+
+// ByAlwaysNotifyMentions orders the results by the always_notify_mentions field.
+func ByAlwaysNotifyMentions(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAlwaysNotifyMentions, opts...).ToFunc()
 }
 
 // ByLastReadMessageID orders the results by the last_read_message_id field.

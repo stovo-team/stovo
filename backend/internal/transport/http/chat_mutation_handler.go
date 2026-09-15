@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	stdhttp "net/http"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -28,10 +29,18 @@ type ChatUpdateRequest struct {
 }
 
 type ChatPreferencesRequest struct {
-	IsMuted         *bool   `json:"isMuted"`
-	IsPinned        *bool   `json:"isPinned"`
-	IsFavorite      *bool   `json:"isFavorite"`
-	WallpaperFileID *string `json:"wallpaperFileId"`
+	IsMuted              *bool      `json:"isMuted"`
+	MutedUntil           *time.Time `json:"mutedUntil"`
+	ClearMutedUntil      bool       `json:"clearMutedUntil"`
+	QuietHoursEnabled    *bool      `json:"quietHoursEnabled"`
+	QuietHoursStart      *string    `json:"quietHoursStart"`
+	QuietHoursEnd        *string    `json:"quietHoursEnd"`
+	NotificationMode     *string    `json:"notificationMode"`
+	NotifySenderIDs      *[]string  `json:"notifySenderIds"`
+	AlwaysNotifyMentions *bool      `json:"alwaysNotifyMentions"`
+	IsPinned             *bool      `json:"isPinned"`
+	IsFavorite           *bool      `json:"isFavorite"`
+	WallpaperFileID      *string    `json:"wallpaperFileId"`
 }
 
 // ChatMutationOperations is the transport-to-use-case seam. The transport

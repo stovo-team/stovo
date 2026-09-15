@@ -3,9 +3,11 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"stovo-messenger/backend/ent/chatpreference"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -24,6 +26,20 @@ type ChatPreference struct {
 	IsPinned bool `json:"is_pinned,omitempty"`
 	// IsFavorite holds the value of the "is_favorite" field.
 	IsFavorite bool `json:"is_favorite,omitempty"`
+	// MutedUntil holds the value of the "muted_until" field.
+	MutedUntil *time.Time `json:"muted_until,omitempty"`
+	// QuietHoursEnabled holds the value of the "quiet_hours_enabled" field.
+	QuietHoursEnabled bool `json:"quiet_hours_enabled,omitempty"`
+	// QuietHoursStart holds the value of the "quiet_hours_start" field.
+	QuietHoursStart *string `json:"quiet_hours_start,omitempty"`
+	// QuietHoursEnd holds the value of the "quiet_hours_end" field.
+	QuietHoursEnd *string `json:"quiet_hours_end,omitempty"`
+	// NotificationMode holds the value of the "notification_mode" field.
+	NotificationMode string `json:"notification_mode,omitempty"`
+	// NotifySenderIds holds the value of the "notify_sender_ids" field.
+	NotifySenderIds []string `json:"notify_sender_ids,omitempty"`
+	// AlwaysNotifyMentions holds the value of the "always_notify_mentions" field.
+	AlwaysNotifyMentions bool `json:"always_notify_mentions,omitempty"`
 	// LastReadMessageID holds the value of the "last_read_message_id" field.
 	LastReadMessageID *string `json:"last_read_message_id,omitempty"`
 	// LastReadAt holds the value of the "last_read_at" field.
@@ -38,10 +54,14 @@ func (*ChatPreference) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case chatpreference.FieldIsMuted, chatpreference.FieldIsPinned, chatpreference.FieldIsFavorite:
+		case chatpreference.FieldNotifySenderIds:
+			values[i] = new([]byte)
+		case chatpreference.FieldIsMuted, chatpreference.FieldIsPinned, chatpreference.FieldIsFavorite, chatpreference.FieldQuietHoursEnabled, chatpreference.FieldAlwaysNotifyMentions:
 			values[i] = new(sql.NullBool)
-		case chatpreference.FieldID, chatpreference.FieldUserID, chatpreference.FieldLastReadMessageID, chatpreference.FieldLastReadAt, chatpreference.FieldWallpaperFileID:
+		case chatpreference.FieldID, chatpreference.FieldUserID, chatpreference.FieldQuietHoursStart, chatpreference.FieldQuietHoursEnd, chatpreference.FieldNotificationMode, chatpreference.FieldLastReadMessageID, chatpreference.FieldLastReadAt, chatpreference.FieldWallpaperFileID:
 			values[i] = new(sql.NullString)
+		case chatpreference.FieldMutedUntil:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -86,6 +106,53 @@ func (_m *ChatPreference) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field is_favorite", values[i])
 			} else if value.Valid {
 				_m.IsFavorite = value.Bool
+			}
+		case chatpreference.FieldMutedUntil:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field muted_until", values[i])
+			} else if value.Valid {
+				_m.MutedUntil = new(time.Time)
+				*_m.MutedUntil = value.Time
+			}
+		case chatpreference.FieldQuietHoursEnabled:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field quiet_hours_enabled", values[i])
+			} else if value.Valid {
+				_m.QuietHoursEnabled = value.Bool
+			}
+		case chatpreference.FieldQuietHoursStart:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field quiet_hours_start", values[i])
+			} else if value.Valid {
+				_m.QuietHoursStart = new(string)
+				*_m.QuietHoursStart = value.String
+			}
+		case chatpreference.FieldQuietHoursEnd:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field quiet_hours_end", values[i])
+			} else if value.Valid {
+				_m.QuietHoursEnd = new(string)
+				*_m.QuietHoursEnd = value.String
+			}
+		case chatpreference.FieldNotificationMode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field notification_mode", values[i])
+			} else if value.Valid {
+				_m.NotificationMode = value.String
+			}
+		case chatpreference.FieldNotifySenderIds:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field notify_sender_ids", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.NotifySenderIds); err != nil {
+					return fmt.Errorf("unmarshal field notify_sender_ids: %w", err)
+				}
+			}
+		case chatpreference.FieldAlwaysNotifyMentions:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field always_notify_mentions", values[i])
+			} else if value.Valid {
+				_m.AlwaysNotifyMentions = value.Bool
 			}
 		case chatpreference.FieldLastReadMessageID:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -155,6 +222,33 @@ func (_m *ChatPreference) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("is_favorite=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsFavorite))
+	builder.WriteString(", ")
+	if v := _m.MutedUntil; v != nil {
+		builder.WriteString("muted_until=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("quiet_hours_enabled=")
+	builder.WriteString(fmt.Sprintf("%v", _m.QuietHoursEnabled))
+	builder.WriteString(", ")
+	if v := _m.QuietHoursStart; v != nil {
+		builder.WriteString("quiet_hours_start=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.QuietHoursEnd; v != nil {
+		builder.WriteString("quiet_hours_end=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	builder.WriteString("notification_mode=")
+	builder.WriteString(_m.NotificationMode)
+	builder.WriteString(", ")
+	builder.WriteString("notify_sender_ids=")
+	builder.WriteString(fmt.Sprintf("%v", _m.NotifySenderIds))
+	builder.WriteString(", ")
+	builder.WriteString("always_notify_mentions=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AlwaysNotifyMentions))
 	builder.WriteString(", ")
 	if v := _m.LastReadMessageID; v != nil {
 		builder.WriteString("last_read_message_id=")

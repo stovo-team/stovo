@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LockKeyhole } from "lucide-react";
+import { ExternalLink, LockKeyhole } from "lucide-react";
 import type { CanvasReference, CanvasUpdate } from "../../../api/canvas";
 import { getCanvasDocument } from "../../../api/canvas";
 import { RichCanvasPreview } from "../../../components/RichCanvasPreview";
@@ -62,11 +62,34 @@ export function CanvasCardBubble({
       }}
     >
       <div className="canvas-card-bubble-header">
-        <span className="canvas-card-bubble-title">{canvas.title}</span>
-        <span className="canvas-card-bubble-open">Open</span>
+        <div className="canvas-card-bubble-header-left">
+          <div className="canvas-card-bubble-icon-badge" aria-hidden="true">
+            <span className="canvas-card-bubble-icon-letter">T</span>
+          </div>
+          <div className="canvas-card-bubble-meta">
+            <span className="canvas-card-bubble-title" title={canvas.title}>
+              {canvas.title}
+            </span>
+            <span className="canvas-card-bubble-subtitle">
+              View Markdown in Canvas
+            </span>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="canvas-card-bubble-open-btn"
+          aria-label={`Open ${canvas.title}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenCanvas();
+          }}
+        >
+          <span className="canvas-card-bubble-open">Open</span>
+          <ExternalLink size={13} strokeWidth={2.4} />
+        </button>
       </div>
       <div className="canvas-card-bubble-preview">
-        <RichCanvasPreview canvas={canvas} updates={updates} />
+        <RichCanvasPreview canvas={canvas} updates={updates} hideHeader />
       </div>
     </div>
   );

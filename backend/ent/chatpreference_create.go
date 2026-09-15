@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"stovo-messenger/backend/ent/chatpreference"
+	"time"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
@@ -66,6 +67,96 @@ func (_c *ChatPreferenceCreate) SetIsFavorite(v bool) *ChatPreferenceCreate {
 func (_c *ChatPreferenceCreate) SetNillableIsFavorite(v *bool) *ChatPreferenceCreate {
 	if v != nil {
 		_c.SetIsFavorite(*v)
+	}
+	return _c
+}
+
+// SetMutedUntil sets the "muted_until" field.
+func (_c *ChatPreferenceCreate) SetMutedUntil(v time.Time) *ChatPreferenceCreate {
+	_c.mutation.SetMutedUntil(v)
+	return _c
+}
+
+// SetNillableMutedUntil sets the "muted_until" field if the given value is not nil.
+func (_c *ChatPreferenceCreate) SetNillableMutedUntil(v *time.Time) *ChatPreferenceCreate {
+	if v != nil {
+		_c.SetMutedUntil(*v)
+	}
+	return _c
+}
+
+// SetQuietHoursEnabled sets the "quiet_hours_enabled" field.
+func (_c *ChatPreferenceCreate) SetQuietHoursEnabled(v bool) *ChatPreferenceCreate {
+	_c.mutation.SetQuietHoursEnabled(v)
+	return _c
+}
+
+// SetNillableQuietHoursEnabled sets the "quiet_hours_enabled" field if the given value is not nil.
+func (_c *ChatPreferenceCreate) SetNillableQuietHoursEnabled(v *bool) *ChatPreferenceCreate {
+	if v != nil {
+		_c.SetQuietHoursEnabled(*v)
+	}
+	return _c
+}
+
+// SetQuietHoursStart sets the "quiet_hours_start" field.
+func (_c *ChatPreferenceCreate) SetQuietHoursStart(v string) *ChatPreferenceCreate {
+	_c.mutation.SetQuietHoursStart(v)
+	return _c
+}
+
+// SetNillableQuietHoursStart sets the "quiet_hours_start" field if the given value is not nil.
+func (_c *ChatPreferenceCreate) SetNillableQuietHoursStart(v *string) *ChatPreferenceCreate {
+	if v != nil {
+		_c.SetQuietHoursStart(*v)
+	}
+	return _c
+}
+
+// SetQuietHoursEnd sets the "quiet_hours_end" field.
+func (_c *ChatPreferenceCreate) SetQuietHoursEnd(v string) *ChatPreferenceCreate {
+	_c.mutation.SetQuietHoursEnd(v)
+	return _c
+}
+
+// SetNillableQuietHoursEnd sets the "quiet_hours_end" field if the given value is not nil.
+func (_c *ChatPreferenceCreate) SetNillableQuietHoursEnd(v *string) *ChatPreferenceCreate {
+	if v != nil {
+		_c.SetQuietHoursEnd(*v)
+	}
+	return _c
+}
+
+// SetNotificationMode sets the "notification_mode" field.
+func (_c *ChatPreferenceCreate) SetNotificationMode(v string) *ChatPreferenceCreate {
+	_c.mutation.SetNotificationMode(v)
+	return _c
+}
+
+// SetNillableNotificationMode sets the "notification_mode" field if the given value is not nil.
+func (_c *ChatPreferenceCreate) SetNillableNotificationMode(v *string) *ChatPreferenceCreate {
+	if v != nil {
+		_c.SetNotificationMode(*v)
+	}
+	return _c
+}
+
+// SetNotifySenderIds sets the "notify_sender_ids" field.
+func (_c *ChatPreferenceCreate) SetNotifySenderIds(v []string) *ChatPreferenceCreate {
+	_c.mutation.SetNotifySenderIds(v)
+	return _c
+}
+
+// SetAlwaysNotifyMentions sets the "always_notify_mentions" field.
+func (_c *ChatPreferenceCreate) SetAlwaysNotifyMentions(v bool) *ChatPreferenceCreate {
+	_c.mutation.SetAlwaysNotifyMentions(v)
+	return _c
+}
+
+// SetNillableAlwaysNotifyMentions sets the "always_notify_mentions" field if the given value is not nil.
+func (_c *ChatPreferenceCreate) SetNillableAlwaysNotifyMentions(v *bool) *ChatPreferenceCreate {
+	if v != nil {
+		_c.SetAlwaysNotifyMentions(*v)
 	}
 	return _c
 }
@@ -165,6 +256,18 @@ func (_c *ChatPreferenceCreate) defaults() {
 		v := chatpreference.DefaultIsFavorite
 		_c.mutation.SetIsFavorite(v)
 	}
+	if _, ok := _c.mutation.QuietHoursEnabled(); !ok {
+		v := chatpreference.DefaultQuietHoursEnabled
+		_c.mutation.SetQuietHoursEnabled(v)
+	}
+	if _, ok := _c.mutation.NotificationMode(); !ok {
+		v := chatpreference.DefaultNotificationMode
+		_c.mutation.SetNotificationMode(v)
+	}
+	if _, ok := _c.mutation.AlwaysNotifyMentions(); !ok {
+		v := chatpreference.DefaultAlwaysNotifyMentions
+		_c.mutation.SetAlwaysNotifyMentions(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -185,6 +288,15 @@ func (_c *ChatPreferenceCreate) check() error {
 	}
 	if _, ok := _c.mutation.IsFavorite(); !ok {
 		return &ValidationError{Name: "is_favorite", err: errors.New(`ent: missing required field "ChatPreference.is_favorite"`)}
+	}
+	if _, ok := _c.mutation.QuietHoursEnabled(); !ok {
+		return &ValidationError{Name: "quiet_hours_enabled", err: errors.New(`ent: missing required field "ChatPreference.quiet_hours_enabled"`)}
+	}
+	if _, ok := _c.mutation.NotificationMode(); !ok {
+		return &ValidationError{Name: "notification_mode", err: errors.New(`ent: missing required field "ChatPreference.notification_mode"`)}
+	}
+	if _, ok := _c.mutation.AlwaysNotifyMentions(); !ok {
+		return &ValidationError{Name: "always_notify_mentions", err: errors.New(`ent: missing required field "ChatPreference.always_notify_mentions"`)}
 	}
 	if v, ok := _c.mutation.ID(); ok {
 		if err := chatpreference.IDValidator(v); err != nil {
@@ -242,6 +354,34 @@ func (_c *ChatPreferenceCreate) createSpec() (*ChatPreference, *sqlgraph.CreateS
 	if value, ok := _c.mutation.IsFavorite(); ok {
 		_spec.SetField(chatpreference.FieldIsFavorite, field.TypeBool, value)
 		_node.IsFavorite = value
+	}
+	if value, ok := _c.mutation.MutedUntil(); ok {
+		_spec.SetField(chatpreference.FieldMutedUntil, field.TypeTime, value)
+		_node.MutedUntil = &value
+	}
+	if value, ok := _c.mutation.QuietHoursEnabled(); ok {
+		_spec.SetField(chatpreference.FieldQuietHoursEnabled, field.TypeBool, value)
+		_node.QuietHoursEnabled = value
+	}
+	if value, ok := _c.mutation.QuietHoursStart(); ok {
+		_spec.SetField(chatpreference.FieldQuietHoursStart, field.TypeString, value)
+		_node.QuietHoursStart = &value
+	}
+	if value, ok := _c.mutation.QuietHoursEnd(); ok {
+		_spec.SetField(chatpreference.FieldQuietHoursEnd, field.TypeString, value)
+		_node.QuietHoursEnd = &value
+	}
+	if value, ok := _c.mutation.NotificationMode(); ok {
+		_spec.SetField(chatpreference.FieldNotificationMode, field.TypeString, value)
+		_node.NotificationMode = value
+	}
+	if value, ok := _c.mutation.NotifySenderIds(); ok {
+		_spec.SetField(chatpreference.FieldNotifySenderIds, field.TypeJSON, value)
+		_node.NotifySenderIds = value
+	}
+	if value, ok := _c.mutation.AlwaysNotifyMentions(); ok {
+		_spec.SetField(chatpreference.FieldAlwaysNotifyMentions, field.TypeBool, value)
+		_node.AlwaysNotifyMentions = value
 	}
 	if value, ok := _c.mutation.LastReadMessageID(); ok {
 		_spec.SetField(chatpreference.FieldLastReadMessageID, field.TypeString, value)
@@ -352,6 +492,114 @@ func (u *ChatPreferenceUpsert) SetIsFavorite(v bool) *ChatPreferenceUpsert {
 // UpdateIsFavorite sets the "is_favorite" field to the value that was provided on create.
 func (u *ChatPreferenceUpsert) UpdateIsFavorite() *ChatPreferenceUpsert {
 	u.SetExcluded(chatpreference.FieldIsFavorite)
+	return u
+}
+
+// SetMutedUntil sets the "muted_until" field.
+func (u *ChatPreferenceUpsert) SetMutedUntil(v time.Time) *ChatPreferenceUpsert {
+	u.Set(chatpreference.FieldMutedUntil, v)
+	return u
+}
+
+// UpdateMutedUntil sets the "muted_until" field to the value that was provided on create.
+func (u *ChatPreferenceUpsert) UpdateMutedUntil() *ChatPreferenceUpsert {
+	u.SetExcluded(chatpreference.FieldMutedUntil)
+	return u
+}
+
+// ClearMutedUntil clears the value of the "muted_until" field.
+func (u *ChatPreferenceUpsert) ClearMutedUntil() *ChatPreferenceUpsert {
+	u.SetNull(chatpreference.FieldMutedUntil)
+	return u
+}
+
+// SetQuietHoursEnabled sets the "quiet_hours_enabled" field.
+func (u *ChatPreferenceUpsert) SetQuietHoursEnabled(v bool) *ChatPreferenceUpsert {
+	u.Set(chatpreference.FieldQuietHoursEnabled, v)
+	return u
+}
+
+// UpdateQuietHoursEnabled sets the "quiet_hours_enabled" field to the value that was provided on create.
+func (u *ChatPreferenceUpsert) UpdateQuietHoursEnabled() *ChatPreferenceUpsert {
+	u.SetExcluded(chatpreference.FieldQuietHoursEnabled)
+	return u
+}
+
+// SetQuietHoursStart sets the "quiet_hours_start" field.
+func (u *ChatPreferenceUpsert) SetQuietHoursStart(v string) *ChatPreferenceUpsert {
+	u.Set(chatpreference.FieldQuietHoursStart, v)
+	return u
+}
+
+// UpdateQuietHoursStart sets the "quiet_hours_start" field to the value that was provided on create.
+func (u *ChatPreferenceUpsert) UpdateQuietHoursStart() *ChatPreferenceUpsert {
+	u.SetExcluded(chatpreference.FieldQuietHoursStart)
+	return u
+}
+
+// ClearQuietHoursStart clears the value of the "quiet_hours_start" field.
+func (u *ChatPreferenceUpsert) ClearQuietHoursStart() *ChatPreferenceUpsert {
+	u.SetNull(chatpreference.FieldQuietHoursStart)
+	return u
+}
+
+// SetQuietHoursEnd sets the "quiet_hours_end" field.
+func (u *ChatPreferenceUpsert) SetQuietHoursEnd(v string) *ChatPreferenceUpsert {
+	u.Set(chatpreference.FieldQuietHoursEnd, v)
+	return u
+}
+
+// UpdateQuietHoursEnd sets the "quiet_hours_end" field to the value that was provided on create.
+func (u *ChatPreferenceUpsert) UpdateQuietHoursEnd() *ChatPreferenceUpsert {
+	u.SetExcluded(chatpreference.FieldQuietHoursEnd)
+	return u
+}
+
+// ClearQuietHoursEnd clears the value of the "quiet_hours_end" field.
+func (u *ChatPreferenceUpsert) ClearQuietHoursEnd() *ChatPreferenceUpsert {
+	u.SetNull(chatpreference.FieldQuietHoursEnd)
+	return u
+}
+
+// SetNotificationMode sets the "notification_mode" field.
+func (u *ChatPreferenceUpsert) SetNotificationMode(v string) *ChatPreferenceUpsert {
+	u.Set(chatpreference.FieldNotificationMode, v)
+	return u
+}
+
+// UpdateNotificationMode sets the "notification_mode" field to the value that was provided on create.
+func (u *ChatPreferenceUpsert) UpdateNotificationMode() *ChatPreferenceUpsert {
+	u.SetExcluded(chatpreference.FieldNotificationMode)
+	return u
+}
+
+// SetNotifySenderIds sets the "notify_sender_ids" field.
+func (u *ChatPreferenceUpsert) SetNotifySenderIds(v []string) *ChatPreferenceUpsert {
+	u.Set(chatpreference.FieldNotifySenderIds, v)
+	return u
+}
+
+// UpdateNotifySenderIds sets the "notify_sender_ids" field to the value that was provided on create.
+func (u *ChatPreferenceUpsert) UpdateNotifySenderIds() *ChatPreferenceUpsert {
+	u.SetExcluded(chatpreference.FieldNotifySenderIds)
+	return u
+}
+
+// ClearNotifySenderIds clears the value of the "notify_sender_ids" field.
+func (u *ChatPreferenceUpsert) ClearNotifySenderIds() *ChatPreferenceUpsert {
+	u.SetNull(chatpreference.FieldNotifySenderIds)
+	return u
+}
+
+// SetAlwaysNotifyMentions sets the "always_notify_mentions" field.
+func (u *ChatPreferenceUpsert) SetAlwaysNotifyMentions(v bool) *ChatPreferenceUpsert {
+	u.Set(chatpreference.FieldAlwaysNotifyMentions, v)
+	return u
+}
+
+// UpdateAlwaysNotifyMentions sets the "always_notify_mentions" field to the value that was provided on create.
+func (u *ChatPreferenceUpsert) UpdateAlwaysNotifyMentions() *ChatPreferenceUpsert {
+	u.SetExcluded(chatpreference.FieldAlwaysNotifyMentions)
 	return u
 }
 
@@ -510,6 +758,132 @@ func (u *ChatPreferenceUpsertOne) SetIsFavorite(v bool) *ChatPreferenceUpsertOne
 func (u *ChatPreferenceUpsertOne) UpdateIsFavorite() *ChatPreferenceUpsertOne {
 	return u.Update(func(s *ChatPreferenceUpsert) {
 		s.UpdateIsFavorite()
+	})
+}
+
+// SetMutedUntil sets the "muted_until" field.
+func (u *ChatPreferenceUpsertOne) SetMutedUntil(v time.Time) *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetMutedUntil(v)
+	})
+}
+
+// UpdateMutedUntil sets the "muted_until" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertOne) UpdateMutedUntil() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateMutedUntil()
+	})
+}
+
+// ClearMutedUntil clears the value of the "muted_until" field.
+func (u *ChatPreferenceUpsertOne) ClearMutedUntil() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.ClearMutedUntil()
+	})
+}
+
+// SetQuietHoursEnabled sets the "quiet_hours_enabled" field.
+func (u *ChatPreferenceUpsertOne) SetQuietHoursEnabled(v bool) *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetQuietHoursEnabled(v)
+	})
+}
+
+// UpdateQuietHoursEnabled sets the "quiet_hours_enabled" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertOne) UpdateQuietHoursEnabled() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateQuietHoursEnabled()
+	})
+}
+
+// SetQuietHoursStart sets the "quiet_hours_start" field.
+func (u *ChatPreferenceUpsertOne) SetQuietHoursStart(v string) *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetQuietHoursStart(v)
+	})
+}
+
+// UpdateQuietHoursStart sets the "quiet_hours_start" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertOne) UpdateQuietHoursStart() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateQuietHoursStart()
+	})
+}
+
+// ClearQuietHoursStart clears the value of the "quiet_hours_start" field.
+func (u *ChatPreferenceUpsertOne) ClearQuietHoursStart() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.ClearQuietHoursStart()
+	})
+}
+
+// SetQuietHoursEnd sets the "quiet_hours_end" field.
+func (u *ChatPreferenceUpsertOne) SetQuietHoursEnd(v string) *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetQuietHoursEnd(v)
+	})
+}
+
+// UpdateQuietHoursEnd sets the "quiet_hours_end" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertOne) UpdateQuietHoursEnd() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateQuietHoursEnd()
+	})
+}
+
+// ClearQuietHoursEnd clears the value of the "quiet_hours_end" field.
+func (u *ChatPreferenceUpsertOne) ClearQuietHoursEnd() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.ClearQuietHoursEnd()
+	})
+}
+
+// SetNotificationMode sets the "notification_mode" field.
+func (u *ChatPreferenceUpsertOne) SetNotificationMode(v string) *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetNotificationMode(v)
+	})
+}
+
+// UpdateNotificationMode sets the "notification_mode" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertOne) UpdateNotificationMode() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateNotificationMode()
+	})
+}
+
+// SetNotifySenderIds sets the "notify_sender_ids" field.
+func (u *ChatPreferenceUpsertOne) SetNotifySenderIds(v []string) *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetNotifySenderIds(v)
+	})
+}
+
+// UpdateNotifySenderIds sets the "notify_sender_ids" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertOne) UpdateNotifySenderIds() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateNotifySenderIds()
+	})
+}
+
+// ClearNotifySenderIds clears the value of the "notify_sender_ids" field.
+func (u *ChatPreferenceUpsertOne) ClearNotifySenderIds() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.ClearNotifySenderIds()
+	})
+}
+
+// SetAlwaysNotifyMentions sets the "always_notify_mentions" field.
+func (u *ChatPreferenceUpsertOne) SetAlwaysNotifyMentions(v bool) *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetAlwaysNotifyMentions(v)
+	})
+}
+
+// UpdateAlwaysNotifyMentions sets the "always_notify_mentions" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertOne) UpdateAlwaysNotifyMentions() *ChatPreferenceUpsertOne {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateAlwaysNotifyMentions()
 	})
 }
 
@@ -844,6 +1218,132 @@ func (u *ChatPreferenceUpsertBulk) SetIsFavorite(v bool) *ChatPreferenceUpsertBu
 func (u *ChatPreferenceUpsertBulk) UpdateIsFavorite() *ChatPreferenceUpsertBulk {
 	return u.Update(func(s *ChatPreferenceUpsert) {
 		s.UpdateIsFavorite()
+	})
+}
+
+// SetMutedUntil sets the "muted_until" field.
+func (u *ChatPreferenceUpsertBulk) SetMutedUntil(v time.Time) *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetMutedUntil(v)
+	})
+}
+
+// UpdateMutedUntil sets the "muted_until" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertBulk) UpdateMutedUntil() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateMutedUntil()
+	})
+}
+
+// ClearMutedUntil clears the value of the "muted_until" field.
+func (u *ChatPreferenceUpsertBulk) ClearMutedUntil() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.ClearMutedUntil()
+	})
+}
+
+// SetQuietHoursEnabled sets the "quiet_hours_enabled" field.
+func (u *ChatPreferenceUpsertBulk) SetQuietHoursEnabled(v bool) *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetQuietHoursEnabled(v)
+	})
+}
+
+// UpdateQuietHoursEnabled sets the "quiet_hours_enabled" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertBulk) UpdateQuietHoursEnabled() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateQuietHoursEnabled()
+	})
+}
+
+// SetQuietHoursStart sets the "quiet_hours_start" field.
+func (u *ChatPreferenceUpsertBulk) SetQuietHoursStart(v string) *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetQuietHoursStart(v)
+	})
+}
+
+// UpdateQuietHoursStart sets the "quiet_hours_start" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertBulk) UpdateQuietHoursStart() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateQuietHoursStart()
+	})
+}
+
+// ClearQuietHoursStart clears the value of the "quiet_hours_start" field.
+func (u *ChatPreferenceUpsertBulk) ClearQuietHoursStart() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.ClearQuietHoursStart()
+	})
+}
+
+// SetQuietHoursEnd sets the "quiet_hours_end" field.
+func (u *ChatPreferenceUpsertBulk) SetQuietHoursEnd(v string) *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetQuietHoursEnd(v)
+	})
+}
+
+// UpdateQuietHoursEnd sets the "quiet_hours_end" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertBulk) UpdateQuietHoursEnd() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateQuietHoursEnd()
+	})
+}
+
+// ClearQuietHoursEnd clears the value of the "quiet_hours_end" field.
+func (u *ChatPreferenceUpsertBulk) ClearQuietHoursEnd() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.ClearQuietHoursEnd()
+	})
+}
+
+// SetNotificationMode sets the "notification_mode" field.
+func (u *ChatPreferenceUpsertBulk) SetNotificationMode(v string) *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetNotificationMode(v)
+	})
+}
+
+// UpdateNotificationMode sets the "notification_mode" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertBulk) UpdateNotificationMode() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateNotificationMode()
+	})
+}
+
+// SetNotifySenderIds sets the "notify_sender_ids" field.
+func (u *ChatPreferenceUpsertBulk) SetNotifySenderIds(v []string) *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetNotifySenderIds(v)
+	})
+}
+
+// UpdateNotifySenderIds sets the "notify_sender_ids" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertBulk) UpdateNotifySenderIds() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateNotifySenderIds()
+	})
+}
+
+// ClearNotifySenderIds clears the value of the "notify_sender_ids" field.
+func (u *ChatPreferenceUpsertBulk) ClearNotifySenderIds() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.ClearNotifySenderIds()
+	})
+}
+
+// SetAlwaysNotifyMentions sets the "always_notify_mentions" field.
+func (u *ChatPreferenceUpsertBulk) SetAlwaysNotifyMentions(v bool) *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.SetAlwaysNotifyMentions(v)
+	})
+}
+
+// UpdateAlwaysNotifyMentions sets the "always_notify_mentions" field to the value that was provided on create.
+func (u *ChatPreferenceUpsertBulk) UpdateAlwaysNotifyMentions() *ChatPreferenceUpsertBulk {
+	return u.Update(func(s *ChatPreferenceUpsert) {
+		s.UpdateAlwaysNotifyMentions()
 	})
 }
 

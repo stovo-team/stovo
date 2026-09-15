@@ -22,6 +22,13 @@ import type { FormattingKind, TextSelection, ToolbarAnchor } from "../../../comp
 import { AttachmentPickerOption, type AttachmentPickerTab } from "../../../components/AttachmentPickerSheet";
 import type { NativeMediaItem } from "../../../native/mediaLibraryPlugin";
 import { parseScheduleCommand } from "../../../plans/scheduleCommand";
+import {
+  formatMacroCommand,
+  parseRemindCommand,
+  parseSplitCommand,
+  parseTodoCommand
+} from "./slashCommandRegistry";
+import { createGuestMeeting } from "../../../api/guestMeetings";
 import { applyMessagePreviewToChat } from "../shared/chatPresentation";
 import { markPendingMessageFailed } from "../shared/messageState";
 import type { MessageStateUpdate, PendingLocalAttachment } from "../shared/types";
@@ -432,11 +439,30 @@ export function useMessageComposer({
   async function handleSendMessage(event?: { preventDefault?: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) {
     event?.preventDefault?.();
     if (sendInFlightRef.current) return;
-    const content = (contentOverride ?? composer).trim();
+    let content = (contentOverride ?? composer).trim();
     const localAttachments = attachmentOverride ?? pendingAttachments;
     if (!accessToken || !currentUser || !selectedChat || (!content && localAttachments.length === 0)) {
       return;
     }
+
+    // Text Macros & Formatting Transforms
+    if (/^\/(?:shrug|tableflip|spoiler|silent|urgent|disappear)\b/i.test(content)) {
+      const macroMatch = content.match(/^\/([a-zA-Z]+)(?:\s+([\s\S]*))?$/);
+      if (macroMatch) {
+        const cmd = macroMatch[1].toLowerCase();
+        const args = macroMatch[2] || "";
+        content = formatMacroCommand(cmd, args);
+      }
+    }
+
+    // Expense / Split Command
+    if (/^\/(?:split|expense)\b/i.test(content)) {
+      const splitData = parseSplitCommand(content);
+      if (splitData) {
+        content = splitData.formattedMessage;
+      }
+    }
+
     if (content.toLowerCase() === "/poll") {
       setComposer("");
       resetComposerHeight();
@@ -464,6 +490,69 @@ export function useMessageComposer({
       setComposer("");
       resetComposerHeight();
       navigate("/app/plans");
+      return;
+    }
+
+    if (/^\/remind\s+/i.test(content)) {
+      const parsedRemind = parseRemindCommand(content);
+      if (parsedRemind) {
+        setComposer("");
+        resetComposerHeight();
+        void handleScheduleMessage(parsedRemind.scheduledDate, localAttachments, parsedRemind.text);
+        return;
+      }
+    }
+
+    if (/^\/(?:todo|task)\s+/i.test(content)) {
+      const taskText = parseTodoCommand(content);
+      if (taskText) {
+        setComposer("");
+        resetComposerHeight();
+        setAttachmentSheetInitialTab("checklist");
+        setIsAttachmentSheetOpen(true);
+        return;
+      }
+    }
+
+    if (content.toLowerCase() === "/location") {
+      setComposer("");
+      resetComposerHeight();
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude.toFixed(6);
+            const lon = pos.coords.longitude.toFixed(6);
+            const locMessage = `📍 Location: https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`;
+            void handleSendMessage(undefined, localAttachments, locMessage);
+          },
+          (err) => {
+            onError(err?.message || "Location permission denied or unavailable");
+          }
+        );
+      } else {
+        onError("Geolocation is not supported on this device");
+      }
+      return;
+    }
+
+    if (/^\/meet\b/i.test(content)) {
+      const topicMatch = content.match(/^\/meet(?:\s+(.*))?$/i);
+      const topic = topicMatch?.[1]?.trim() || "Guest Meeting";
+      setComposer("");
+      resetComposerHeight();
+      try {
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        const meeting = await createGuestMeeting(accessToken, {
+          chatId: selectedChat.id,
+          title: topic,
+          admissionMode: "immediate",
+          expiresAt
+        });
+        const meetingMsg = `📹 **Join Guest Meeting: ${topic}**\n${meeting.meetingUrl}`;
+        void handleSendMessage(undefined, localAttachments, meetingMsg);
+      } catch (err) {
+        onError(err instanceof Error ? err.message : "Could not create guest meeting");
+      }
       return;
     }
     if (channelCommentsDisabledForViewer) {

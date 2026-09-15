@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 
@@ -174,58 +175,75 @@ func (s *Store) UpdateChatMessageDelay(ctx context.Context, chatID string, delay
 
 // UpdateChatPreferencesParams holds optional preference field updates.
 type UpdateChatPreferencesParams struct {
-	ChatID          string
-	UserID          string
-	IsMuted         *bool
-	IsPinned        *bool
-	IsFavorite      *bool
-	WallpaperFileID *string // non-nil pointer means set; empty string clears
-	ClearWallpaper  bool
+	ChatID               string
+	UserID               string
+	IsMuted              *bool
+	MutedUntil           *time.Time
+	ClearMutedUntil      bool
+	QuietHoursEnabled    *bool
+	QuietHoursStart      *string
+	QuietHoursEnd        *string
+	NotificationMode     *string
+	NotifySenderIDs      *[]string
+	AlwaysNotifyMentions *bool
+	IsPinned             *bool
+	IsFavorite           *bool
+	WallpaperFileID      *string // non-nil pointer means set; empty string clears
+	ClearWallpaper       bool
 }
 
 // UpdateChatPreferences applies partial preference updates for a member.
 func (s *Store) UpdateChatPreferences(ctx context.Context, p UpdateChatPreferencesParams) error {
 	return s.WithTx(ctx, func(tx *ent.Tx) error {
+		// Ensure preference row exists
+		_ = tx.ChatPreference.Create().
+			SetID(p.ChatID).
+			SetUserID(p.UserID).
+			OnConflictColumns(chatpreference.FieldID, chatpreference.FieldUserID).
+			Ignore().
+			Exec(ctx)
+
+		u := tx.ChatPreference.Update().
+			Where(chatpreference.IDEQ(p.ChatID), chatpreference.UserIDEQ(p.UserID))
+
 		if p.IsMuted != nil {
-			if _, err := tx.ChatPreference.Update().
-				Where(chatpreference.IDEQ(p.ChatID), chatpreference.UserIDEQ(p.UserID)).
-				SetIsMuted(*p.IsMuted).
-				Save(ctx); err != nil {
-				return err
-			}
+			u.SetIsMuted(*p.IsMuted)
+		}
+		if p.ClearMutedUntil {
+			u.ClearMutedUntil()
+		} else if p.MutedUntil != nil {
+			u.SetMutedUntil(*p.MutedUntil)
+		}
+		if p.QuietHoursEnabled != nil {
+			u.SetQuietHoursEnabled(*p.QuietHoursEnabled)
+		}
+		if p.QuietHoursStart != nil {
+			u.SetQuietHoursStart(*p.QuietHoursStart)
+		}
+		if p.QuietHoursEnd != nil {
+			u.SetQuietHoursEnd(*p.QuietHoursEnd)
+		}
+		if p.NotificationMode != nil {
+			u.SetNotificationMode(*p.NotificationMode)
+		}
+		if p.NotifySenderIDs != nil {
+			u.SetNotifySenderIds(*p.NotifySenderIDs)
+		}
+		if p.AlwaysNotifyMentions != nil {
+			u.SetAlwaysNotifyMentions(*p.AlwaysNotifyMentions)
 		}
 		if p.IsPinned != nil {
-			if _, err := tx.ChatPreference.Update().
-				Where(chatpreference.IDEQ(p.ChatID), chatpreference.UserIDEQ(p.UserID)).
-				SetIsPinned(*p.IsPinned).
-				Save(ctx); err != nil {
-				return err
-			}
+			u.SetIsPinned(*p.IsPinned)
 		}
 		if p.IsFavorite != nil {
-			if _, err := tx.ChatPreference.Update().
-				Where(chatpreference.IDEQ(p.ChatID), chatpreference.UserIDEQ(p.UserID)).
-				SetIsFavorite(*p.IsFavorite).
-				Save(ctx); err != nil {
-				return err
-			}
+			u.SetIsFavorite(*p.IsFavorite)
 		}
 		if p.ClearWallpaper {
-			if _, err := tx.ChatPreference.Update().
-				Where(chatpreference.IDEQ(p.ChatID), chatpreference.UserIDEQ(p.UserID)).
-				ClearWallpaperFileID().
-				Save(ctx); err != nil {
-				return err
-			}
+			u.ClearWallpaperFileID()
 		} else if p.WallpaperFileID != nil {
-			if _, err := tx.ChatPreference.Update().
-				Where(chatpreference.IDEQ(p.ChatID), chatpreference.UserIDEQ(p.UserID)).
-				SetWallpaperFileID(*p.WallpaperFileID).
-				Save(ctx); err != nil {
-				return err
-			}
+			u.SetWallpaperFileID(*p.WallpaperFileID)
 		}
-		return nil
+		return u.Exec(ctx)
 	})
 }
 

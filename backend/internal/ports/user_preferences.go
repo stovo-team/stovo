@@ -1,6 +1,9 @@
 package ports
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // PrivacyBlocklist persists a member's direct-contact block list.
 type PrivacyBlocklist interface {
@@ -22,8 +25,21 @@ type AccountPreferences interface {
 	SetNtfyTopicToken(context.Context, string, string) error
 }
 
+// ChatNotificationPreference holds the notification evaluation policy for a member in a chat.
+type ChatNotificationPreference struct {
+	IsMuted              bool
+	MutedUntil           *time.Time
+	QuietHoursEnabled    bool
+	QuietHoursStart      string
+	QuietHoursEnd        string
+	NotificationMode     string
+	NotifySenderIDs      []string
+	AlwaysNotifyMentions bool
+}
+
 // NotificationRecipients supplies recipients and notification topics.
 type NotificationRecipients interface {
 	ListChatMemberUserIDs(context.Context, string) ([]string, error)
 	NtfyTopicToken(context.Context, string) (*string, error)
+	GetChatNotificationPreferences(context.Context, string, []string) (map[string]ChatNotificationPreference, error)
 }

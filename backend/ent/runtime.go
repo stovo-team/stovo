@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"stovo-messenger/backend/ent/schema"
 	"stovo-messenger/backend/ent/callparticipant"
 	"stovo-messenger/backend/ent/callsession"
 	"stovo-messenger/backend/ent/chat"
@@ -34,7 +35,6 @@ import (
 	"stovo-messenger/backend/ent/polloption"
 	"stovo-messenger/backend/ent/pollvote"
 	"stovo-messenger/backend/ent/refreshtoken"
-	"stovo-messenger/backend/ent/schema"
 	"stovo-messenger/backend/ent/syncevent"
 	"stovo-messenger/backend/ent/synceventrecipient"
 	"stovo-messenger/backend/ent/user"
@@ -182,6 +182,18 @@ func init() {
 	chatpreferenceDescIsFavorite := chatpreferenceFields[4].Descriptor()
 	// chatpreference.DefaultIsFavorite holds the default value on creation for the is_favorite field.
 	chatpreference.DefaultIsFavorite = chatpreferenceDescIsFavorite.Default.(bool)
+	// chatpreferenceDescQuietHoursEnabled is the schema descriptor for quiet_hours_enabled field.
+	chatpreferenceDescQuietHoursEnabled := chatpreferenceFields[6].Descriptor()
+	// chatpreference.DefaultQuietHoursEnabled holds the default value on creation for the quiet_hours_enabled field.
+	chatpreference.DefaultQuietHoursEnabled = chatpreferenceDescQuietHoursEnabled.Default.(bool)
+	// chatpreferenceDescNotificationMode is the schema descriptor for notification_mode field.
+	chatpreferenceDescNotificationMode := chatpreferenceFields[9].Descriptor()
+	// chatpreference.DefaultNotificationMode holds the default value on creation for the notification_mode field.
+	chatpreference.DefaultNotificationMode = chatpreferenceDescNotificationMode.Default.(string)
+	// chatpreferenceDescAlwaysNotifyMentions is the schema descriptor for always_notify_mentions field.
+	chatpreferenceDescAlwaysNotifyMentions := chatpreferenceFields[11].Descriptor()
+	// chatpreference.DefaultAlwaysNotifyMentions holds the default value on creation for the always_notify_mentions field.
+	chatpreference.DefaultAlwaysNotifyMentions = chatpreferenceDescAlwaysNotifyMentions.Default.(bool)
 	// chatpreferenceDescID is the schema descriptor for id field.
 	chatpreferenceDescID := chatpreferenceFields[0].Descriptor()
 	// chatpreference.IDValidator is a validator for the "id" field. It is called by the builders before save.

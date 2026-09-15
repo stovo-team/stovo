@@ -143,4 +143,38 @@ describe("chat details controls", () => {
     expect(styles).toContain(".chat-info-description-input {");
     expect(styles).toContain(".chat-info-add-description-btn {");
   });
+
+  it("renders individual chat notification preferences and controls in chat settings", () => {
+    expect(chatDetailsPanel).toContain("chat-info-section--notifications");
+    expect(chatDetailsPanel).toContain("strings.chats.details.notificationsSection");
+    expect(chatDetailsPanel).toContain("strings.chats.details.notificationsMuteLabel");
+    expect(chatDetailsPanel).toContain("strings.chats.details.notificationsQuietHours");
+    expect(chatDetailsPanel).toContain("strings.chats.details.notificationsScope");
+    expect(chatDetailsPanel).toContain("strings.chats.details.notificationsAlwaysMentions");
+
+    // Mute controls
+    expect(chatDetailsPanel).toContain("chat-info-mute-select");
+    expect(chatDetailsPanel).toContain("chat-info-unmute-btn");
+
+    // Quiet hours
+    expect(chatDetailsPanel).toContain("chat-info-quiet-hours-inputs");
+    expect(chatDetailsPanel).toContain("chat-info-time-input");
+
+    // Notification scope & sender picker
+    expect(chatDetailsPanel).toContain('name="chatNotificationScope"');
+    expect(chatDetailsPanel).toContain('value="all"');
+    expect(chatDetailsPanel).toContain('value="mentions_only"');
+    expect(chatDetailsPanel).toContain('value="specific_senders"');
+    expect(chatDetailsPanel).toContain("chat-info-senders-picker");
+    expect(chatDetailsPanel).toContain("chat-info-senders-search");
+    expect(chatDetailsPanel).toContain("chat-info-sender-item");
+
+    // CSS styling
+    expect(styles).toContain(".chat-info-section--notifications {");
+    expect(styles).toContain(".chat-info-mute-select {");
+    expect(styles).toContain(".chat-info-unmute-btn {");
+    expect(styles).toContain(".chat-info-quiet-hours-inputs {");
+    expect(styles).toContain(".chat-info-senders-picker {");
+    expect(styles).toContain(".chat-info-sender-item {");
+  });
 });

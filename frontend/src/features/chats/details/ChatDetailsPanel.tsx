@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, RefObject, useEffect, useState } from "react";
-import { BarChart2, Clock3, FileText, Image, Mail, MoreVertical, Music, Pencil, Settings, UserPlus, Video } from "lucide-react";
+import { BarChart2, Bell, BellOff, Check, Clock3, FileText, Image, Mail, MoreVertical, Music, Pencil, Search, Settings, UserPlus, Video } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ChatStats } from "../../../api/stats";
 import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
@@ -155,6 +155,14 @@ export function ChatDetailsPanel({
   onPreferenceChange: (
     payload: {
       isMuted?: boolean;
+      mutedUntil?: string | null;
+      clearMutedUntil?: boolean;
+      quietHoursEnabled?: boolean;
+      quietHoursStart?: string | null;
+      quietHoursEnd?: string | null;
+      notificationMode?: "all" | "mentions_only" | "specific_senders";
+      notifySenderIds?: string[];
+      alwaysNotifyMentions?: boolean;
       isPinned?: boolean;
       isFavorite?: boolean;
       wallpaperFileId?: string | null;
@@ -232,6 +240,8 @@ export function ChatDetailsPanel({
   const hasPinPermissionSetting = canManageChat && chat.type !== "direct";
   const hasMessageDelaySetting = canManageChat && chat.type !== "direct";
   const sharedContentTabs = ["media", "audio", "files", "links"] as const;
+
+  const [memberSearchDraft, setMemberSearchDraft] = useState("");
 
   const currentMessageDelay = chat.messageDelaySeconds ?? 0;
   const displayedMessageDelay = pendingMessageDelay ?? currentMessageDelay;
@@ -390,6 +400,332 @@ export function ChatDetailsPanel({
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div className="chat-info-section chat-info-section--notifications">
+            <p className="chat-info-section-label">{strings.chats.details.notificationsSection}</p>
+            <div className="chat-info-island">
+              <div className="chat-info-row chat-info-row--mute-select">
+                <div className="chat-info-row-copy">
+                  <div className="chat-info-mute-title-wrap">
+                    {chat.isMuted ? (
+                      <BellOff aria-hidden="true" size={18} className="chat-info-mute-icon" />
+                    ) : (
+                      <Bell aria-hidden="true" size={18} className="chat-info-mute-icon" />
+                    )}
+                    <strong>{strings.chats.details.notificationsMuteLabel}</strong>
+                  </div>
+                  {chat.isMuted ? (
+                    <small className="chat-info-mute-badge">
+                      {chat.mutedUntil
+                        ? strings.chats.details.notificationsMutedUntil(
+                            new Date(chat.mutedUntil).toLocaleTimeString([], {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })
+                          )
+                        : strings.chats.details.notificationsMutedPermanently}
+                    </small>
+                  ) : (
+                    <small>{strings.chats.details.notificationsHelp}</small>
+                  )}
+                </div>
+                <div className="chat-info-mute-actions">
+                  <select
+                    className="chat-info-select chat-info-mute-select"
+                    aria-label={strings.chats.details.notificationsMuteLabel}
+                    value={
+                      !chat.isMuted
+                        ? "off"
+                        : !chat.mutedUntil
+                          ? "forever"
+                          : "custom"
+                    }
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      if (val === "off") {
+                        void onPreferenceChange(
+                          { isMuted: false, clearMutedUntil: true },
+                          strings.chats.details.notificationsMuteOff
+                        );
+                      } else if (val === "1h") {
+                        const until = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+                        void onPreferenceChange(
+                          { isMuted: true, mutedUntil: until },
+                          strings.chats.details.notificationsMute1h
+                        );
+                      } else if (val === "8h") {
+                        const until = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
+                        void onPreferenceChange(
+                          { isMuted: true, mutedUntil: until },
+                          strings.chats.details.notificationsMute8h
+                        );
+                      } else if (val === "24h") {
+                        const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+                        void onPreferenceChange(
+                          { isMuted: true, mutedUntil: until },
+                          strings.chats.details.notificationsMute24h
+                        );
+                      } else if (val === "7d") {
+                        const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+                        void onPreferenceChange(
+                          { isMuted: true, mutedUntil: until },
+                          strings.chats.details.notificationsMute7d
+                        );
+                      } else if (val === "forever") {
+                        void onPreferenceChange(
+                          { isMuted: true, clearMutedUntil: true },
+                          strings.chats.details.notificationsMuteForever
+                        );
+                      }
+                    }}
+                  >
+                    <option value="off">{strings.chats.details.notificationsMuteOff}</option>
+                    <option value="1h">{strings.chats.details.notificationsMute1h}</option>
+                    <option value="8h">{strings.chats.details.notificationsMute8h}</option>
+                    <option value="24h">{strings.chats.details.notificationsMute24h}</option>
+                    <option value="7d">{strings.chats.details.notificationsMute7d}</option>
+                    <option value="forever">{strings.chats.details.notificationsMuteForever}</option>
+                    {chat.isMuted && chat.mutedUntil && (
+                      <option value="custom" disabled hidden>
+                        Active mute
+                      </option>
+                    )}
+                  </select>
+                  {chat.isMuted && (
+                    <button
+                      type="button"
+                      className="chat-info-unmute-btn"
+                      onClick={() =>
+                        void onPreferenceChange(
+                          { isMuted: false, clearMutedUntil: true },
+                          strings.chats.details.notificationsMuteOff
+                        )
+                      }
+                    >
+                      {strings.chats.details.unmute}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="chat-info-subdivider" />
+              <label className="chat-info-row chat-info-row--toggle">
+                <span className="chat-info-row-copy">
+                  <strong>{strings.chats.details.notificationsQuietHours}</strong>
+                  <small>{strings.chats.details.notificationsQuietHoursHelp}</small>
+                </span>
+                <span className="call-audio-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={chat.quietHoursEnabled === true}
+                    onChange={(event) =>
+                      void onPreferenceChange(
+                        { quietHoursEnabled: event.target.checked },
+                        strings.chats.details.notificationsQuietHours
+                      )
+                    }
+                  />
+                  <span className="call-audio-toggle-slider" aria-hidden={true} />
+                </span>
+              </label>
+              {chat.quietHoursEnabled && (
+                <div className="chat-info-quiet-hours-inputs">
+                  <label className="chat-info-quiet-time-field">
+                    <span>{strings.chats.details.notificationsQuietHoursFrom}</span>
+                    <input
+                      type="time"
+                      className="chat-info-time-input"
+                      value={chat.quietHoursStart ?? "22:00"}
+                      onChange={(event) =>
+                        void onPreferenceChange(
+                          { quietHoursStart: event.target.value },
+                          strings.chats.details.notificationsQuietHours
+                        )
+                      }
+                    />
+                  </label>
+                  <span className="chat-info-quiet-time-sep">—</span>
+                  <label className="chat-info-quiet-time-field">
+                    <span>{strings.chats.details.notificationsQuietHoursTo}</span>
+                    <input
+                      type="time"
+                      className="chat-info-time-input"
+                      value={chat.quietHoursEnd ?? "07:00"}
+                      onChange={(event) =>
+                        void onPreferenceChange(
+                          { quietHoursEnd: event.target.value },
+                          strings.chats.details.notificationsQuietHours
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+
+              <div className="chat-info-subdivider" />
+              <p className="chat-info-island-subtitle">{strings.chats.details.notificationsScope}</p>
+              <div className="chat-info-scope-radios" role="radiogroup" aria-label={strings.chats.details.notificationsScope}>
+                <label className="chat-info-permission-option chat-info-permission-option--inline">
+                  <input
+                    type="radio"
+                    name="chatNotificationScope"
+                    value="all"
+                    checked={(chat.notificationMode ?? "all") === "all"}
+                    onChange={() =>
+                      void onPreferenceChange(
+                        { notificationMode: "all" },
+                        strings.chats.details.notificationsScopeAll
+                      )
+                    }
+                  />
+                  <span>{strings.chats.details.notificationsScopeAll}</span>
+                </label>
+                <label className="chat-info-permission-option chat-info-permission-option--inline">
+                  <input
+                    type="radio"
+                    name="chatNotificationScope"
+                    value="mentions_only"
+                    checked={chat.notificationMode === "mentions_only"}
+                    onChange={() =>
+                      void onPreferenceChange(
+                        { notificationMode: "mentions_only" },
+                        strings.chats.details.notificationsScopeMentions
+                      )
+                    }
+                  />
+                  <span>{strings.chats.details.notificationsScopeMentions}</span>
+                </label>
+                {chat.members.length > 1 && (
+                  <label className="chat-info-permission-option chat-info-permission-option--inline">
+                    <input
+                      type="radio"
+                      name="chatNotificationScope"
+                      value="specific_senders"
+                      checked={chat.notificationMode === "specific_senders"}
+                      onChange={() =>
+                        void onPreferenceChange(
+                          { notificationMode: "specific_senders" },
+                          strings.chats.details.notificationsScopeSpecific
+                        )
+                      }
+                    />
+                    <span>{strings.chats.details.notificationsScopeSpecific}</span>
+                  </label>
+                )}
+              </div>
+
+              {chat.notificationMode === "specific_senders" && (
+                <div className="chat-info-senders-picker">
+                  <p className="chat-info-senders-help">{strings.chats.details.notificationsSpecificMembersHelp}</p>
+                  <div className="chat-info-senders-search-wrap">
+                    <Search aria-hidden="true" size={16} />
+                    <input
+                      type="search"
+                      className="chat-info-senders-search"
+                      placeholder={strings.chats.details.notificationsSearchMembers}
+                      value={memberSearchDraft}
+                      onChange={(e) => setMemberSearchDraft(e.target.value)}
+                    />
+                  </div>
+                  <div className="chat-info-senders-actions">
+                    <button
+                      type="button"
+                      className="chat-info-senders-btn"
+                      onClick={() => {
+                        const allOtherIds = chat.members
+                          .filter((m) => m.id !== currentUserId)
+                          .map((m) => m.id);
+                        void onPreferenceChange(
+                          { notifySenderIds: allOtherIds },
+                          strings.chats.details.notificationsSelectAll
+                        );
+                      }}
+                    >
+                      {strings.chats.details.notificationsSelectAll}
+                    </button>
+                    <button
+                      type="button"
+                      className="chat-info-senders-btn"
+                      onClick={() =>
+                        void onPreferenceChange(
+                          { notifySenderIds: [] },
+                          strings.chats.details.notificationsDeselectAll
+                        )
+                      }
+                    >
+                      {strings.chats.details.notificationsDeselectAll}
+                    </button>
+                  </div>
+                  <ul className="chat-info-senders-list">
+                    {chat.members
+                      .filter(
+                        (m) =>
+                          m.id !== currentUserId &&
+                          (!memberSearchDraft ||
+                            m.displayName.toLowerCase().includes(memberSearchDraft.toLowerCase()) ||
+                            m.username.toLowerCase().includes(memberSearchDraft.toLowerCase()))
+                      )
+                      .map((member) => {
+                        const isSelected = (chat.notifySenderIds ?? []).includes(member.id);
+                        return (
+                          <li key={member.id} className="chat-info-sender-item">
+                            <label className="chat-info-sender-label">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(event) => {
+                                  const currentIds = chat.notifySenderIds ?? [];
+                                  const nextIds = event.target.checked
+                                    ? [...currentIds, member.id]
+                                    : currentIds.filter((id) => id !== member.id);
+                                  void onPreferenceChange(
+                                    { notifySenderIds: nextIds },
+                                    member.displayName
+                                  );
+                                }}
+                              />
+                              <RealAvatar
+                                accessToken={accessToken}
+                                className="avatar avatar-sm chat-info-sender-avatar"
+                                file={member.profilePhoto}
+                                label={member.displayName}
+                              />
+                              <span className="chat-info-sender-name">
+                                <strong>{member.displayName}</strong>
+                                <small>@{member.username}</small>
+                              </span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                  </ul>
+                </div>
+              )}
+
+              <div className="chat-info-subdivider" />
+              <label className="chat-info-row chat-info-row--toggle">
+                <span className="chat-info-row-copy">
+                  <strong>{strings.chats.details.notificationsAlwaysMentions}</strong>
+                  <small>{strings.chats.details.notificationsAlwaysMentionsHelp}</small>
+                </span>
+                <span className="call-audio-toggle-switch">
+                  <input
+                    type="checkbox"
+                    checked={chat.alwaysNotifyMentions !== false}
+                    onChange={(event) =>
+                      void onPreferenceChange(
+                        { alwaysNotifyMentions: event.target.checked },
+                        strings.chats.details.notificationsAlwaysMentions
+                      )
+                    }
+                  />
+                  <span className="call-audio-toggle-slider" aria-hidden={true} />
+                </span>
+              </label>
             </div>
           </div>
 

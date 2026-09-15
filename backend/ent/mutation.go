@@ -3935,20 +3935,28 @@ func (m *ChatMemberMutation) ResetEdge(name string) error {
 // ChatPreferenceMutation represents an operation that mutates the ChatPreference nodes in the graph.
 type ChatPreferenceMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *string
-	user_id              *string
-	is_muted             *bool
-	is_pinned            *bool
-	is_favorite          *bool
-	last_read_message_id *string
-	last_read_at         *string
-	wallpaper_file_id    *string
-	clearedFields        map[string]struct{}
-	done                 bool
-	oldValue             func(context.Context) (*ChatPreference, error)
-	predicates           []predicate.ChatPreference
+	op                      Op
+	typ                     string
+	id                      *string
+	user_id                 *string
+	is_muted                *bool
+	is_pinned               *bool
+	is_favorite             *bool
+	muted_until             *time.Time
+	quiet_hours_enabled     *bool
+	quiet_hours_start       *string
+	quiet_hours_end         *string
+	notification_mode       *string
+	notify_sender_ids       *[]string
+	appendnotify_sender_ids []string
+	always_notify_mentions  *bool
+	last_read_message_id    *string
+	last_read_at            *string
+	wallpaper_file_id       *string
+	clearedFields           map[string]struct{}
+	done                    bool
+	oldValue                func(context.Context) (*ChatPreference, error)
+	predicates              []predicate.ChatPreference
 }
 
 var _ ent.Mutation = (*ChatPreferenceMutation)(nil)
@@ -4199,6 +4207,326 @@ func (m *ChatPreferenceMutation) ResetIsFavorite() {
 	m.is_favorite = nil
 }
 
+// SetMutedUntil sets the "muted_until" field.
+func (m *ChatPreferenceMutation) SetMutedUntil(t time.Time) {
+	m.muted_until = &t
+}
+
+// MutedUntil returns the value of the "muted_until" field in the mutation.
+func (m *ChatPreferenceMutation) MutedUntil() (r time.Time, exists bool) {
+	v := m.muted_until
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMutedUntil returns the old "muted_until" field's value of the ChatPreference entity.
+// If the ChatPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatPreferenceMutation) OldMutedUntil(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMutedUntil is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMutedUntil requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMutedUntil: %w", err)
+	}
+	return oldValue.MutedUntil, nil
+}
+
+// ClearMutedUntil clears the value of the "muted_until" field.
+func (m *ChatPreferenceMutation) ClearMutedUntil() {
+	m.muted_until = nil
+	m.clearedFields[chatpreference.FieldMutedUntil] = struct{}{}
+}
+
+// MutedUntilCleared returns if the "muted_until" field was cleared in this mutation.
+func (m *ChatPreferenceMutation) MutedUntilCleared() bool {
+	_, ok := m.clearedFields[chatpreference.FieldMutedUntil]
+	return ok
+}
+
+// ResetMutedUntil resets all changes to the "muted_until" field.
+func (m *ChatPreferenceMutation) ResetMutedUntil() {
+	m.muted_until = nil
+	delete(m.clearedFields, chatpreference.FieldMutedUntil)
+}
+
+// SetQuietHoursEnabled sets the "quiet_hours_enabled" field.
+func (m *ChatPreferenceMutation) SetQuietHoursEnabled(b bool) {
+	m.quiet_hours_enabled = &b
+}
+
+// QuietHoursEnabled returns the value of the "quiet_hours_enabled" field in the mutation.
+func (m *ChatPreferenceMutation) QuietHoursEnabled() (r bool, exists bool) {
+	v := m.quiet_hours_enabled
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuietHoursEnabled returns the old "quiet_hours_enabled" field's value of the ChatPreference entity.
+// If the ChatPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatPreferenceMutation) OldQuietHoursEnabled(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuietHoursEnabled is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuietHoursEnabled requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuietHoursEnabled: %w", err)
+	}
+	return oldValue.QuietHoursEnabled, nil
+}
+
+// ResetQuietHoursEnabled resets all changes to the "quiet_hours_enabled" field.
+func (m *ChatPreferenceMutation) ResetQuietHoursEnabled() {
+	m.quiet_hours_enabled = nil
+}
+
+// SetQuietHoursStart sets the "quiet_hours_start" field.
+func (m *ChatPreferenceMutation) SetQuietHoursStart(s string) {
+	m.quiet_hours_start = &s
+}
+
+// QuietHoursStart returns the value of the "quiet_hours_start" field in the mutation.
+func (m *ChatPreferenceMutation) QuietHoursStart() (r string, exists bool) {
+	v := m.quiet_hours_start
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuietHoursStart returns the old "quiet_hours_start" field's value of the ChatPreference entity.
+// If the ChatPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatPreferenceMutation) OldQuietHoursStart(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuietHoursStart is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuietHoursStart requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuietHoursStart: %w", err)
+	}
+	return oldValue.QuietHoursStart, nil
+}
+
+// ClearQuietHoursStart clears the value of the "quiet_hours_start" field.
+func (m *ChatPreferenceMutation) ClearQuietHoursStart() {
+	m.quiet_hours_start = nil
+	m.clearedFields[chatpreference.FieldQuietHoursStart] = struct{}{}
+}
+
+// QuietHoursStartCleared returns if the "quiet_hours_start" field was cleared in this mutation.
+func (m *ChatPreferenceMutation) QuietHoursStartCleared() bool {
+	_, ok := m.clearedFields[chatpreference.FieldQuietHoursStart]
+	return ok
+}
+
+// ResetQuietHoursStart resets all changes to the "quiet_hours_start" field.
+func (m *ChatPreferenceMutation) ResetQuietHoursStart() {
+	m.quiet_hours_start = nil
+	delete(m.clearedFields, chatpreference.FieldQuietHoursStart)
+}
+
+// SetQuietHoursEnd sets the "quiet_hours_end" field.
+func (m *ChatPreferenceMutation) SetQuietHoursEnd(s string) {
+	m.quiet_hours_end = &s
+}
+
+// QuietHoursEnd returns the value of the "quiet_hours_end" field in the mutation.
+func (m *ChatPreferenceMutation) QuietHoursEnd() (r string, exists bool) {
+	v := m.quiet_hours_end
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQuietHoursEnd returns the old "quiet_hours_end" field's value of the ChatPreference entity.
+// If the ChatPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatPreferenceMutation) OldQuietHoursEnd(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQuietHoursEnd is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQuietHoursEnd requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQuietHoursEnd: %w", err)
+	}
+	return oldValue.QuietHoursEnd, nil
+}
+
+// ClearQuietHoursEnd clears the value of the "quiet_hours_end" field.
+func (m *ChatPreferenceMutation) ClearQuietHoursEnd() {
+	m.quiet_hours_end = nil
+	m.clearedFields[chatpreference.FieldQuietHoursEnd] = struct{}{}
+}
+
+// QuietHoursEndCleared returns if the "quiet_hours_end" field was cleared in this mutation.
+func (m *ChatPreferenceMutation) QuietHoursEndCleared() bool {
+	_, ok := m.clearedFields[chatpreference.FieldQuietHoursEnd]
+	return ok
+}
+
+// ResetQuietHoursEnd resets all changes to the "quiet_hours_end" field.
+func (m *ChatPreferenceMutation) ResetQuietHoursEnd() {
+	m.quiet_hours_end = nil
+	delete(m.clearedFields, chatpreference.FieldQuietHoursEnd)
+}
+
+// SetNotificationMode sets the "notification_mode" field.
+func (m *ChatPreferenceMutation) SetNotificationMode(s string) {
+	m.notification_mode = &s
+}
+
+// NotificationMode returns the value of the "notification_mode" field in the mutation.
+func (m *ChatPreferenceMutation) NotificationMode() (r string, exists bool) {
+	v := m.notification_mode
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNotificationMode returns the old "notification_mode" field's value of the ChatPreference entity.
+// If the ChatPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatPreferenceMutation) OldNotificationMode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNotificationMode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNotificationMode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNotificationMode: %w", err)
+	}
+	return oldValue.NotificationMode, nil
+}
+
+// ResetNotificationMode resets all changes to the "notification_mode" field.
+func (m *ChatPreferenceMutation) ResetNotificationMode() {
+	m.notification_mode = nil
+}
+
+// SetNotifySenderIds sets the "notify_sender_ids" field.
+func (m *ChatPreferenceMutation) SetNotifySenderIds(s []string) {
+	m.notify_sender_ids = &s
+	m.appendnotify_sender_ids = nil
+}
+
+// NotifySenderIds returns the value of the "notify_sender_ids" field in the mutation.
+func (m *ChatPreferenceMutation) NotifySenderIds() (r []string, exists bool) {
+	v := m.notify_sender_ids
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNotifySenderIds returns the old "notify_sender_ids" field's value of the ChatPreference entity.
+// If the ChatPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatPreferenceMutation) OldNotifySenderIds(ctx context.Context) (v []string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNotifySenderIds is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNotifySenderIds requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNotifySenderIds: %w", err)
+	}
+	return oldValue.NotifySenderIds, nil
+}
+
+// AppendNotifySenderIds adds s to the "notify_sender_ids" field.
+func (m *ChatPreferenceMutation) AppendNotifySenderIds(s []string) {
+	m.appendnotify_sender_ids = append(m.appendnotify_sender_ids, s...)
+}
+
+// AppendedNotifySenderIds returns the list of values that were appended to the "notify_sender_ids" field in this mutation.
+func (m *ChatPreferenceMutation) AppendedNotifySenderIds() ([]string, bool) {
+	if len(m.appendnotify_sender_ids) == 0 {
+		return nil, false
+	}
+	return m.appendnotify_sender_ids, true
+}
+
+// ClearNotifySenderIds clears the value of the "notify_sender_ids" field.
+func (m *ChatPreferenceMutation) ClearNotifySenderIds() {
+	m.notify_sender_ids = nil
+	m.appendnotify_sender_ids = nil
+	m.clearedFields[chatpreference.FieldNotifySenderIds] = struct{}{}
+}
+
+// NotifySenderIdsCleared returns if the "notify_sender_ids" field was cleared in this mutation.
+func (m *ChatPreferenceMutation) NotifySenderIdsCleared() bool {
+	_, ok := m.clearedFields[chatpreference.FieldNotifySenderIds]
+	return ok
+}
+
+// ResetNotifySenderIds resets all changes to the "notify_sender_ids" field.
+func (m *ChatPreferenceMutation) ResetNotifySenderIds() {
+	m.notify_sender_ids = nil
+	m.appendnotify_sender_ids = nil
+	delete(m.clearedFields, chatpreference.FieldNotifySenderIds)
+}
+
+// SetAlwaysNotifyMentions sets the "always_notify_mentions" field.
+func (m *ChatPreferenceMutation) SetAlwaysNotifyMentions(b bool) {
+	m.always_notify_mentions = &b
+}
+
+// AlwaysNotifyMentions returns the value of the "always_notify_mentions" field in the mutation.
+func (m *ChatPreferenceMutation) AlwaysNotifyMentions() (r bool, exists bool) {
+	v := m.always_notify_mentions
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAlwaysNotifyMentions returns the old "always_notify_mentions" field's value of the ChatPreference entity.
+// If the ChatPreference object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChatPreferenceMutation) OldAlwaysNotifyMentions(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAlwaysNotifyMentions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAlwaysNotifyMentions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAlwaysNotifyMentions: %w", err)
+	}
+	return oldValue.AlwaysNotifyMentions, nil
+}
+
+// ResetAlwaysNotifyMentions resets all changes to the "always_notify_mentions" field.
+func (m *ChatPreferenceMutation) ResetAlwaysNotifyMentions() {
+	m.always_notify_mentions = nil
+}
+
 // SetLastReadMessageID sets the "last_read_message_id" field.
 func (m *ChatPreferenceMutation) SetLastReadMessageID(s string) {
 	m.last_read_message_id = &s
@@ -4380,7 +4708,7 @@ func (m *ChatPreferenceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChatPreferenceMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 14)
 	if m.user_id != nil {
 		fields = append(fields, chatpreference.FieldUserID)
 	}
@@ -4392,6 +4720,27 @@ func (m *ChatPreferenceMutation) Fields() []string {
 	}
 	if m.is_favorite != nil {
 		fields = append(fields, chatpreference.FieldIsFavorite)
+	}
+	if m.muted_until != nil {
+		fields = append(fields, chatpreference.FieldMutedUntil)
+	}
+	if m.quiet_hours_enabled != nil {
+		fields = append(fields, chatpreference.FieldQuietHoursEnabled)
+	}
+	if m.quiet_hours_start != nil {
+		fields = append(fields, chatpreference.FieldQuietHoursStart)
+	}
+	if m.quiet_hours_end != nil {
+		fields = append(fields, chatpreference.FieldQuietHoursEnd)
+	}
+	if m.notification_mode != nil {
+		fields = append(fields, chatpreference.FieldNotificationMode)
+	}
+	if m.notify_sender_ids != nil {
+		fields = append(fields, chatpreference.FieldNotifySenderIds)
+	}
+	if m.always_notify_mentions != nil {
+		fields = append(fields, chatpreference.FieldAlwaysNotifyMentions)
 	}
 	if m.last_read_message_id != nil {
 		fields = append(fields, chatpreference.FieldLastReadMessageID)
@@ -4418,6 +4767,20 @@ func (m *ChatPreferenceMutation) Field(name string) (ent.Value, bool) {
 		return m.IsPinned()
 	case chatpreference.FieldIsFavorite:
 		return m.IsFavorite()
+	case chatpreference.FieldMutedUntil:
+		return m.MutedUntil()
+	case chatpreference.FieldQuietHoursEnabled:
+		return m.QuietHoursEnabled()
+	case chatpreference.FieldQuietHoursStart:
+		return m.QuietHoursStart()
+	case chatpreference.FieldQuietHoursEnd:
+		return m.QuietHoursEnd()
+	case chatpreference.FieldNotificationMode:
+		return m.NotificationMode()
+	case chatpreference.FieldNotifySenderIds:
+		return m.NotifySenderIds()
+	case chatpreference.FieldAlwaysNotifyMentions:
+		return m.AlwaysNotifyMentions()
 	case chatpreference.FieldLastReadMessageID:
 		return m.LastReadMessageID()
 	case chatpreference.FieldLastReadAt:
@@ -4441,6 +4804,20 @@ func (m *ChatPreferenceMutation) OldField(ctx context.Context, name string) (ent
 		return m.OldIsPinned(ctx)
 	case chatpreference.FieldIsFavorite:
 		return m.OldIsFavorite(ctx)
+	case chatpreference.FieldMutedUntil:
+		return m.OldMutedUntil(ctx)
+	case chatpreference.FieldQuietHoursEnabled:
+		return m.OldQuietHoursEnabled(ctx)
+	case chatpreference.FieldQuietHoursStart:
+		return m.OldQuietHoursStart(ctx)
+	case chatpreference.FieldQuietHoursEnd:
+		return m.OldQuietHoursEnd(ctx)
+	case chatpreference.FieldNotificationMode:
+		return m.OldNotificationMode(ctx)
+	case chatpreference.FieldNotifySenderIds:
+		return m.OldNotifySenderIds(ctx)
+	case chatpreference.FieldAlwaysNotifyMentions:
+		return m.OldAlwaysNotifyMentions(ctx)
 	case chatpreference.FieldLastReadMessageID:
 		return m.OldLastReadMessageID(ctx)
 	case chatpreference.FieldLastReadAt:
@@ -4483,6 +4860,55 @@ func (m *ChatPreferenceMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetIsFavorite(v)
+		return nil
+	case chatpreference.FieldMutedUntil:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMutedUntil(v)
+		return nil
+	case chatpreference.FieldQuietHoursEnabled:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuietHoursEnabled(v)
+		return nil
+	case chatpreference.FieldQuietHoursStart:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuietHoursStart(v)
+		return nil
+	case chatpreference.FieldQuietHoursEnd:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQuietHoursEnd(v)
+		return nil
+	case chatpreference.FieldNotificationMode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNotificationMode(v)
+		return nil
+	case chatpreference.FieldNotifySenderIds:
+		v, ok := value.([]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNotifySenderIds(v)
+		return nil
+	case chatpreference.FieldAlwaysNotifyMentions:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAlwaysNotifyMentions(v)
 		return nil
 	case chatpreference.FieldLastReadMessageID:
 		v, ok := value.(string)
@@ -4535,6 +4961,18 @@ func (m *ChatPreferenceMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *ChatPreferenceMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(chatpreference.FieldMutedUntil) {
+		fields = append(fields, chatpreference.FieldMutedUntil)
+	}
+	if m.FieldCleared(chatpreference.FieldQuietHoursStart) {
+		fields = append(fields, chatpreference.FieldQuietHoursStart)
+	}
+	if m.FieldCleared(chatpreference.FieldQuietHoursEnd) {
+		fields = append(fields, chatpreference.FieldQuietHoursEnd)
+	}
+	if m.FieldCleared(chatpreference.FieldNotifySenderIds) {
+		fields = append(fields, chatpreference.FieldNotifySenderIds)
+	}
 	if m.FieldCleared(chatpreference.FieldLastReadMessageID) {
 		fields = append(fields, chatpreference.FieldLastReadMessageID)
 	}
@@ -4558,6 +4996,18 @@ func (m *ChatPreferenceMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *ChatPreferenceMutation) ClearField(name string) error {
 	switch name {
+	case chatpreference.FieldMutedUntil:
+		m.ClearMutedUntil()
+		return nil
+	case chatpreference.FieldQuietHoursStart:
+		m.ClearQuietHoursStart()
+		return nil
+	case chatpreference.FieldQuietHoursEnd:
+		m.ClearQuietHoursEnd()
+		return nil
+	case chatpreference.FieldNotifySenderIds:
+		m.ClearNotifySenderIds()
+		return nil
 	case chatpreference.FieldLastReadMessageID:
 		m.ClearLastReadMessageID()
 		return nil
@@ -4586,6 +5036,27 @@ func (m *ChatPreferenceMutation) ResetField(name string) error {
 		return nil
 	case chatpreference.FieldIsFavorite:
 		m.ResetIsFavorite()
+		return nil
+	case chatpreference.FieldMutedUntil:
+		m.ResetMutedUntil()
+		return nil
+	case chatpreference.FieldQuietHoursEnabled:
+		m.ResetQuietHoursEnabled()
+		return nil
+	case chatpreference.FieldQuietHoursStart:
+		m.ResetQuietHoursStart()
+		return nil
+	case chatpreference.FieldQuietHoursEnd:
+		m.ResetQuietHoursEnd()
+		return nil
+	case chatpreference.FieldNotificationMode:
+		m.ResetNotificationMode()
+		return nil
+	case chatpreference.FieldNotifySenderIds:
+		m.ResetNotifySenderIds()
+		return nil
+	case chatpreference.FieldAlwaysNotifyMentions:
+		m.ResetAlwaysNotifyMentions()
 		return nil
 	case chatpreference.FieldLastReadMessageID:
 		m.ResetLastReadMessageID()
