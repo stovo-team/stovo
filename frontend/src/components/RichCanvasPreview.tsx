@@ -555,16 +555,40 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
   );
 }
 
+function CompactMarkdownLine({ line, index }: { line: string; index: number }) {
+  const isHeading = /^#{1,6}\s+/.test(line);
+  const isBullet = /^[-*+]\s+/.test(line);
+  const text = line.replace(/^(?:#{1,6}|[-*+])\s+/, "");
+
+  return (
+    <p
+      key={index}
+      className={
+        isHeading
+          ? "canvas-notes-h"
+          : isBullet
+            ? "canvas-notes-b"
+            : "canvas-notes-p"
+      }
+    >
+      {text}
+    </p>
+  );
+}
+
 export function RichCanvasPreview({
   canvas,
   updates,
   className = "",
   hideHeader = false,
+  storageCompact = false,
 }: {
   canvas: Canvas | CanvasReference | { title: string };
   updates?: CanvasUpdate[];
   className?: string;
   hideHeader?: boolean;
+  /** Use the original compact, Markdown-first presentation for storage tiles. */
+  storageCompact?: boolean;
 }) {
   const blocks = useMemo(
     () => parseCanvasBlocks(updates, canvas.title),
@@ -575,6 +599,42 @@ export function RichCanvasPreview({
     () => buildCanvasPreviewBudget(blocks),
     [blocks]
   );
+  const compactMarkdownLines = useMemo(
+    () =>
+      blocks
+        .filter((block) => block.kind === "markdown")
+        .flatMap((block) => block.lines)
+        .slice(0, 3),
+    [blocks]
+  );
+
+  // Storage tiles have limited vertical space. Keep their historical
+  // Markdown-first preview and never embed a whiteboard beneath the notes.
+  if (storageCompact && compactMarkdownLines.length > 0) {
+    return (
+      <div
+        className={`storage-tile-preview storage-canvas-preview storage-canvas-preview--compact ${
+          hideHeader ? "no-header" : ""
+        } ${className}`}
+      >
+        {!hideHeader && (
+          <div className="canvas-preview-header">
+            <div className="canvas-preview-badge canvas-preview-notes-badge">
+              <FileText size={11} />
+              <b>CANVAS</b>
+            </div>
+          </div>
+        )}
+        <div className="canvas-preview-notes">
+          <div className="canvas-preview-notes-lines">
+            {compactMarkdownLines.map((line, index) => (
+              <CompactMarkdownLine key={index} line={line} index={index} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Empty canvas state
   if (items.length === 0) {

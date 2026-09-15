@@ -153,7 +153,8 @@ describe("chat details controls", () => {
     expect(chatDetailsPanel).toContain("strings.chats.details.notificationsAlwaysMentions");
 
     // Mute controls
-    expect(chatDetailsPanel).toContain("chat-info-mute-select");
+    expect(chatDetailsPanel).toContain("chat-info-mute-menu-trigger");
+    expect(chatDetailsPanel).toContain('aria-haspopup="menu"');
     expect(chatDetailsPanel).toContain("chat-info-unmute-btn");
 
     // Quiet hours
@@ -171,7 +172,8 @@ describe("chat details controls", () => {
 
     // CSS styling
     expect(styles).toContain(".chat-info-section--notifications {");
-    expect(styles).toContain(".chat-info-mute-select {");
+    expect(styles).toContain(".chat-info-mute-menu-trigger {");
+    expect(styles).toContain(".chat-info-mute-menu-options {");
     expect(styles).toContain(".chat-info-unmute-btn {");
     expect(styles).toContain(".chat-info-quiet-hours-inputs {");
     expect(styles).toContain(".chat-info-senders-picker {");

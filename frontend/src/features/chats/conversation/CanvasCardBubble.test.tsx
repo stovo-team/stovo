@@ -94,9 +94,7 @@ describe("CanvasCardBubble", () => {
     expect(container?.querySelector(".canvas-card-bubble-subtitle")?.textContent).toBe(
       "View Markdown in Canvas"
     );
-    expect(container?.querySelector(".canvas-card-bubble-icon-badge")?.textContent).toBe(
-      "T"
-    );
+    expect(container?.querySelector(".canvas-card-bubble-icon-badge svg")).not.toBeNull();
     expect(container?.querySelector(".canvas-card-bubble-open-btn")).not.toBeNull();
     expect(container?.querySelector(".canvas-card-bubble-open")?.textContent).toBe(
       "Open"

@@ -179,6 +179,21 @@ function KindIcon({ kind }: { kind: DocumentPreviewKind }) {
   return <FileText size={18} aria-hidden="true" />;
 }
 
+export function getPdfRenderLimits(
+  pageCount: number,
+  devicePixelRatio: number,
+  isConstrainedDevice: boolean,
+) {
+  return {
+    maxPages: Math.min(pageCount, isConstrainedDevice ? 12 : 40),
+    dpr: Math.min(devicePixelRatio || 1, isConstrainedDevice ? 1.5 : 2),
+  };
+}
+
+function pdfJsAssetUrl(path: string): string {
+  return new URL(`/pdfjs/${path}`, window.location.origin).toString();
+}
+
 function PdfCanvasViewer({ blob }: { blob: Blob }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<HTMLDivElement>(null);
@@ -274,8 +289,9 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
         const data = new Uint8Array(await blob.arrayBuffer());
         const loadingTask = pdfjs.getDocument({
           data,
-          cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
+          cMapUrl: pdfJsAssetUrl("cmaps/"),
           cMapPacked: true,
+          standardFontDataUrl: pdfJsAssetUrl("standard_fonts/"),
         });
         const doc = await loadingTask.promise;
         if (cancelled) {
@@ -283,8 +299,16 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
           return;
         }
         setPageCount(doc.numPages);
-        const maxPages = Math.min(doc.numPages, 40);
-        const dpr = Math.min(window.devicePixelRatio || 1, 3);
+        const deviceMemory = (navigator as Navigator & { deviceMemory?: number })
+          .deviceMemory;
+        const isConstrainedDevice =
+          /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+          (deviceMemory !== undefined && deviceMemory <= 4);
+        const { maxPages, dpr } = getPdfRenderLimits(
+          doc.numPages,
+          window.devicePixelRatio || 1,
+          isConstrainedDevice,
+        );
         const currentZoom = zoomRef.current;
         for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
           if (cancelled) break;

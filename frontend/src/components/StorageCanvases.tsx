@@ -138,7 +138,11 @@ export function StorageCanvases({
               key={canvas.id}
               onClick={() => navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`)}
             >
-              <RichCanvasPreview canvas={canvas} updates={documents[canvas.id]?.updates} />
+              <RichCanvasPreview
+                canvas={canvas}
+                updates={documents[canvas.id]?.updates}
+                storageCompact
+              />
               <div className="storage-tile-info">
                 <strong>{canvas.title}</strong>
                 <small>Canvas</small>

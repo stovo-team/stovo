@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, LockKeyhole } from "lucide-react";
+import { ExternalLink, Layers3, LockKeyhole } from "lucide-react";
 import type { CanvasReference, CanvasUpdate } from "../../../api/canvas";
 import { getCanvasDocument } from "../../../api/canvas";
 import { RichCanvasPreview } from "../../../components/RichCanvasPreview";
@@ -64,7 +64,7 @@ export function CanvasCardBubble({
       <div className="canvas-card-bubble-header">
         <div className="canvas-card-bubble-header-left">
           <div className="canvas-card-bubble-icon-badge" aria-hidden="true">
-            <span className="canvas-card-bubble-icon-letter">T</span>
+            <Layers3 size={20} strokeWidth={2} />
           </div>
           <div className="canvas-card-bubble-meta">
             <span className="canvas-card-bubble-title" title={canvas.title}>

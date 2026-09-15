@@ -1,11 +1,34 @@
 /// <reference types="vitest/config" />
+import { cpSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 const disableHmr = process.env.VITE_DISABLE_HMR === "true";
 
+function bundlePdfJsSupportAssets() {
+  return {
+    name: "bundle-pdfjs-support-assets",
+    writeBundle() {
+      const distPdfJs = fileURLToPath(new URL("./dist/pdfjs/", import.meta.url));
+      const packageRoot = new URL("./node_modules/pdfjs-dist/", import.meta.url);
+
+      // PDF.js loads character maps and fallback fonts at runtime. Keep them
+      // in the app bundle so the Android WebView never relies on a CDN.
+      cpSync(fileURLToPath(new URL("cmaps/", packageRoot)), `${distPdfJs}cmaps`, {
+        recursive: true,
+      });
+      cpSync(
+        fileURLToPath(new URL("standard_fonts/", packageRoot)),
+        `${distPdfJs}standard_fonts`,
+        { recursive: true },
+      );
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), bundlePdfJsSupportAssets()],
   test: {
     environment: "jsdom",
     globals: true,

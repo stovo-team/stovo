@@ -3030,7 +3030,7 @@ h2 {
 }
 
 .chat-layout.details-open {
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr) minmax(292px, 340px);
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr) minmax(340px, 420px);
 }
 
 .chat-sidebar,
@@ -4337,6 +4337,7 @@ h2 {
   font-size: 0.75rem;
   font-weight: 700;
   justify-self: center;
+  margin-block-end: 8px;
   padding: 4px 12px;
 }
 
@@ -16831,6 +16832,42 @@ button.attachment-nav-item:focus-visible {
   justify-content: flex-end;
 }
 
+.chat-info-description-save,
+.chat-info-description-cancel {
+  border-radius: 999px;
+  min-height: 32px;
+  padding: 7px 12px;
+}
+
+.chat-info-description-save {
+  background: var(--accent-primary);
+  color: var(--button-primary-text, #ffffff);
+}
+
+.chat-info-description-cancel {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+/* Keep the description editor actions visually stable on pointer hover. */
+.chat-info-description-save:hover:not(:disabled) {
+  background: var(--accent-primary);
+  border-color: transparent;
+  color: var(--button-primary-text, #ffffff);
+}
+
+.chat-info-description-cancel:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.chat-info-description-save:focus-visible,
+.chat-info-description-cancel:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
 .chat-info-add-description-btn {
   align-items: center;
   background: transparent;
@@ -17154,24 +17191,110 @@ button.attachment-nav-item:focus-visible {
   gap: 8px;
 }
 
-.chat-info-mute-select {
-  appearance: none;
-  background-color: var(--background-secondary, #1a1a22);
-  border: 1px solid var(--border-default, #2e2e38);
+.chat-info-mute-menu {
+  position: relative;
+}
+
+.chat-info-mute-menu-trigger {
+  align-items: center;
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent-primary, #6366f1) 20%, var(--background-secondary, #1a1a22)), var(--background-secondary, #1a1a22));
+  border: 1px solid color-mix(in oklab, var(--accent-primary, #6366f1) 60%, var(--border-default, #2e2e38));
   border-radius: 9999px;
   color: var(--text-primary, #ffffff);
   cursor: pointer;
+  display: inline-flex;
   font: inherit;
   font-size: 0.8125rem;
-  font-weight: 500;
-  padding: 6px 14px;
-  outline: none;
-  transition: border-color 0.15s ease;
+  font-weight: 600;
+  gap: 8px;
+  justify-content: space-between;
+  min-height: 36px;
+  min-width: 130px;
+  padding: 6px 10px 6px 14px;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.chat-info-mute-select:hover,
-.chat-info-mute-select:focus-visible {
+.chat-info-mute-menu-trigger:hover,
+.chat-info-mute-menu-trigger:focus-visible {
+  background: color-mix(in oklab, var(--accent-primary, #6366f1) 27%, var(--background-secondary, #1a1a22));
   border-color: var(--accent-primary, #6366f1);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent-primary, #6366f1) 16%, transparent);
+  outline: none;
+}
+
+.chat-info-mute-menu-trigger:active {
+  transform: translateY(1px);
+}
+
+.chat-info-mute-menu-trigger svg {
+  color: var(--accent-primary, #6366f1);
+  flex: 0 0 auto;
+  transition: transform 0.15s ease;
+}
+
+.chat-info-mute-menu-trigger svg.is-open {
+  transform: rotate(180deg);
+}
+
+.chat-info-mute-menu-options {
+  background: color-mix(in oklab, var(--island-surface, #20242a) 94%, #000000);
+  border: 1px solid color-mix(in oklab, var(--accent-primary, #6366f1) 34%, var(--border-default, #2e2e38));
+  border-radius: 14px;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.38);
+  display: grid;
+  gap: 2px;
+  min-width: 196px;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 8;
+}
+
+.chat-info-mute-menu-options button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 0.8125rem;
+  gap: 10px;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 7px 9px;
+  text-align: left;
+}
+
+.chat-info-mute-menu-options button:hover,
+.chat-info-mute-menu-options button:focus-visible,
+.chat-info-mute-menu-options button.is-selected {
+  background: color-mix(in oklab, var(--accent-primary, #6366f1) 18%, transparent);
+  color: #ffffff;
+  outline: none;
+}
+
+.chat-info-mute-menu-options button svg {
+  color: var(--accent-primary, #6366f1);
+}
+
+@media (max-width: 960px) {
+  .chat-info-row--mute-select {
+    align-items: start;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-info-row--mute-select .chat-info-mute-actions {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .chat-info-row--mute-select .chat-info-row-copy > small:not(.chat-info-mute-badge),
+  .chat-info-row--toggle .chat-info-row-copy small {
+    display: none;
+  }
 }
 
 .chat-info-unmute-btn {
@@ -24778,7 +24901,8 @@ button.attachment-nav-item:focus-visible {
 .canvas-page-header > .back-button { flex: 0 0 40px; height: 40px; width: 40px; }
 .canvas-title-edit { align-items: center; background: transparent; border: 0; color: var(--text-secondary); cursor: pointer; display: inline-flex; padding: 2px; }
 .canvas-title-edit:hover, .canvas-title-edit:focus-visible { color: var(--text-primary); outline: none; }
-.canvas-add-button { flex: 0 0 40px; gap: 2px; justify-content: center; min-width: 40px; padding: 0; width: 40px; }
+.canvas-insert-menu { position: relative; width: 56px; }
+.canvas-add-button { flex: 0 0 56px; gap: 4px; justify-content: center; min-width: 56px; padding: 0; width: 56px; }
 .canvas-icon-action:hover, .canvas-add-button:hover, .canvas-markdown-toolbar button:hover, .canvas-share-panel button:hover { border-color: var(--accent-primary); }
 .canvas-workspace { display: grid; gap: 18px; margin: 0 auto; max-width: 1180px; }
 .canvas-block { background: #121417; border: 1px solid #2b3038; border-radius: 14px; overflow: hidden; }
@@ -24794,7 +24918,6 @@ button.attachment-nav-item:focus-visible {
 .canvas-markdown-editor p { margin: .45em 0; }
 .canvas-excalidraw { height: min(62vh, 680px); min-height: 360px; }
 .canvas-excalidraw .excalidraw { --color-primary: var(--accent-primary); }
-.canvas-insert-menu { position: relative; }
 .canvas-insert-dropdown { background: var(--island-surface, #20242a); border: 1px solid #333943; border-radius: 22px; box-shadow: 0 12px 30px rgba(0,0,0,.32); min-width: 238px; padding: 6px; position: absolute; right: 0; top: calc(100% + 8px); z-index: 3; }
 .canvas-insert-dropdown button { align-items: center; background: transparent; border: 0; border-radius: 16px; color: var(--text-primary); cursor: pointer; display: flex; gap: 10px; padding: 10px; text-align: left; width: 100%; }
 .canvas-insert-dropdown button:hover, .canvas-insert-dropdown button:focus-visible { background: var(--surface-hover, rgba(255,255,255,.08)); outline: none; }
@@ -25054,6 +25177,26 @@ button.attachment-nav-item:focus-visible {
 .storage-canvas-preview.no-header {
   padding-top: 14px;
 }
+.storage-canvas-preview--compact {
+  padding: 10px 10px 44px;
+  gap: 4px;
+  background-color: #12141a;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 0.7px, transparent 0.7px);
+  background-size: 14px 14px;
+}
+.storage-canvas-preview--compact .canvas-preview-notes {
+  gap: 4px;
+}
+.storage-canvas-preview--compact .canvas-preview-notes-lines {
+  gap: 3px;
+}
+.storage-canvas-preview--compact .canvas-notes-h {
+  font-size: 0.74rem;
+}
+.storage-canvas-preview--compact .canvas-notes-b,
+.storage-canvas-preview--compact .canvas-notes-p {
+  font-size: 0.68rem;
+}
 .canvas-preview-header {
   display: flex;
   align-items: center;
@@ -25251,20 +25394,11 @@ button.attachment-nav-item:focus-visible {
 .canvas-card-bubble-icon-badge {
   width: 32px;
   height: 32px;
-  border-radius: 8px;
-  background: #0ea5e9;
-  color: #ffffff;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.35);
-}
-.canvas-card-bubble-icon-letter {
-  font-size: 1.05rem;
-  font-weight: 800;
-  font-family: serif, ui-serif, Georgia, Cambria, "Times New Roman", Times;
-  line-height: 1;
 }
 .canvas-card-bubble-meta {
   display: flex;
@@ -25294,7 +25428,7 @@ button.attachment-nav-item:focus-visible {
   gap: 5px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
+  border-radius: 999px;
   padding: 5px 11px;
   color: #ffffff;
   font-size: 0.76rem;
