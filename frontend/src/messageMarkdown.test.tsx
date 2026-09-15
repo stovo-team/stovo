@@ -232,6 +232,62 @@ describe("parseStovoMarkdown", () => {
     expect(nodes[0].type).toBe("text");
     expect(nodes[0].type === "text" ? nodes[0].value : "").toContain("[deep]");
   });
+
+  it("auto-links international phone numbers starting with + and strips formatting for tel: href", () => {
+    expect(parseStovoMarkdown("Call +1234567890 or +7 999 123-45-67, also +1 (555) 123-4567.")).toEqual([
+      text("Call "),
+      { type: "link", href: "tel:+1234567890", children: [text("+1234567890")] },
+      text(" or "),
+      { type: "link", href: "tel:+79991234567", children: [text("+7 999 123-45-67")] },
+      text(", also "),
+      { type: "link", href: "tel:+15551234567", children: [text("+1 (555) 123-4567")] },
+      text(".")
+    ]);
+  });
+
+  it("leaves numbers without + or with invalid digit counts literal", () => {
+    expect(parseStovoMarkdown("Call 88005553535 or 123456 or 1+2 or +1 or +1234567890123456")).toEqual([
+      text("Call 88005553535 or 123456 or 1+2 or +1 or +1234567890123456")
+    ]);
+  });
+
+  it("auto-links plain email addresses without mailto prefix and excludes sentence punctuation", () => {
+    expect(parseStovoMarkdown("Contact alice@example.com or bob.smith+work@sub.domain.co.uk.")).toEqual([
+      text("Contact "),
+      { type: "link", href: "mailto:alice@example.com", children: [text("alice@example.com")] },
+      text(" or "),
+      { type: "link", href: "mailto:bob.smith+work@sub.domain.co.uk", children: [text("bob.smith+work@sub.domain.co.uk")] },
+      text(".")
+    ]);
+  });
+
+  it("distinguishes between @username mentions and emails", () => {
+    expect(parseStovoMarkdown("Hey @alex, send details to alex@example.com!")).toEqual([
+      text("Hey "),
+      { type: "mention", username: "alex", children: [text("@alex")] },
+      text(", send details to "),
+      { type: "link", href: "mailto:alex@example.com", children: [text("alex@example.com")] },
+      text("!")
+    ]);
+  });
+
+  it("auto-links website-looking domains (something.domain) without protocol prefix", () => {
+    expect(parseStovoMarkdown("Visit stovo.ru, something.domain/path?q=1, and www.google.com.")).toEqual([
+      text("Visit "),
+      { type: "link", href: "https://stovo.ru", children: [text("stovo.ru")] },
+      text(", "),
+      { type: "link", href: "https://something.domain/path?q=1", children: [text("something.domain/path?q=1")] },
+      text(", and "),
+      { type: "link", href: "https://www.google.com", children: [text("www.google.com")] },
+      text(".")
+    ]);
+  });
+
+  it("does not treat missing sentence spaces like cats.They as a domain", () => {
+    expect(parseStovoMarkdown("I like cats.They are cute.")).toEqual([
+      text("I like cats.They are cute.")
+    ]);
+  });
 });
 
 describe("isSafeMessageUrl", () => {
@@ -239,7 +295,11 @@ describe("isSafeMessageUrl", () => {
     "http://example.com",
     "https://example.com/path?q=1",
     "mailto:family@example.com",
-    "HTTPS://EXAMPLE.COM"
+    "HTTPS://EXAMPLE.COM",
+    "tel:+1234567890",
+    "tel:+79991234567",
+    "tel:+1-555-123-4567",
+    "TEL:+1234567890"
   ])("accepts an approved URL: %s", (candidate) => {
     expect(isSafeMessageUrl(candidate)).toBe(true);
   });
@@ -251,7 +311,11 @@ describe("isSafeMessageUrl", () => {
     "//example.com/path",
     "https://",
     " https://example.com",
-    "https://example.com\u0000.evil.test"
+    "https://example.com\u0000.evil.test",
+    "tel:1234567890",
+    "tel:+123",
+    "tel:+1234567890123456",
+    "tel:javascript:alert(1)"
   ])("rejects an unsafe or malformed URL: %s", (candidate) => {
     expect(isSafeMessageUrl(candidate)).toBe(false);
   });
@@ -575,5 +639,55 @@ describe("MessageMarkdown", () => {
     expect(checkboxes).toHaveLength(2);
     expect(checkboxes[0].checked).toBe(false);
     expect(checkboxes[1].checked).toBe(true);
+  });
+
+  it("renders phone, email, and web domain anchors with appropriate target and attributes", () => {
+    const onClick = vi.fn();
+    const container = renderMessage(
+      "Call +1 (555) 123-4567, email test@example.com, visit stovo.ru",
+      { onClick }
+    );
+    const anchors = [...container.querySelectorAll("a")];
+    expect(anchors).toHaveLength(3);
+
+    // Phone link: tel:+15551234567, no target=_blank
+    expect(anchors[0].getAttribute("href")).toBe("tel:+15551234567");
+    expect(anchors[0].getAttribute("target")).toBeNull();
+    expect(anchors[0].getAttribute("rel")).toBe("noopener noreferrer");
+    expect(anchors[0].textContent).toBe("+1 (555) 123-4567");
+
+    // Email link: mailto:test@example.com, no target=_blank
+    expect(anchors[1].getAttribute("href")).toBe("mailto:test@example.com");
+    expect(anchors[1].getAttribute("target")).toBeNull();
+    expect(anchors[1].getAttribute("rel")).toBe("noopener noreferrer");
+    expect(anchors[1].textContent).toBe("test@example.com");
+
+    // Web domain link: https://stovo.ru, target=_blank
+    expect(anchors[2].getAttribute("href")).toBe("https://stovo.ru");
+    expect(anchors[2].getAttribute("target")).toBe("_blank");
+    expect(anchors[2].getAttribute("rel")).toBe("noopener noreferrer");
+    expect(anchors[2].textContent).toBe("stovo.ru");
+
+    // Clicking an anchor stops propagation to parent bubble handlers
+    act(() => {
+      anchors[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("supports phone and email links inside inline formatting and spoilers", () => {
+    const container = renderMessage(
+      "**+1234567890** and _user@example.com_ and ||stovo.ru||"
+    );
+    expect(container.querySelector("strong a")?.getAttribute("href")).toBe("tel:+1234567890");
+    expect(container.querySelector("em a")?.getAttribute("href")).toBe("mailto:user@example.com");
+
+    // Spoiler conceals web link initially
+    const spoiler = container.querySelector("button.message-spoiler");
+    expect(spoiler).not.toBeNull();
+    act(() => {
+      spoiler?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(container.querySelector("span.message-spoiler.is-revealed a")?.getAttribute("href")).toBe("https://stovo.ru");
   });
 });

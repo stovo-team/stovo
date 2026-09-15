@@ -35,6 +35,7 @@ import { ReminderModal } from "./ReminderModal";
 import { ComposerReplyBar } from "./ComposerReplyBar";
 import { ComposerEmojiPicker, ComposerEmojiPickerDock } from "./ComposerEmojiPicker";
 import { useStrings } from "../../../i18n/LanguageContext";
+import { ALL_SLASH_COMMANDS } from "./slashCommandRegistry";
 export { EMOJI_CATEGORY_ICONS } from "./emojiCategories";
 
 export function Composer({
@@ -46,6 +47,11 @@ export function Composer({
   canPostInSelectedChannel,
   replyTarget,
   isInThreadMode = false,
+  onStartAudioCall,
+  onStartVideoCall,
+  onTogglePinned,
+  onToggleMuted,
+  onPinMessage,
   onCancelReply,
   editTargetMessage,
   onCancelEdit,
@@ -164,6 +170,11 @@ export function Composer({
   onVoicePressEnd: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onVoicePressCancel: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onSubmit: (event: { preventDefault: () => void }, attachmentOverride?: PendingLocalAttachment[], contentOverride?: string) => void | Promise<void>;
+  onStartAudioCall?: () => void;
+  onStartVideoCall?: () => void;
+  onTogglePinned?: () => void;
+  onToggleMuted?: () => void;
+  onPinMessage?: (message: Message) => void;
   onScheduleMessage?: (scheduledDate: Date) => void | Promise<void>;
   onSetReminder?: (rule: ReminderRule) => void | Promise<void>;
   onCreatePoll?: (payload: CreatePollPayload) => void | Promise<void>;
@@ -300,36 +311,6 @@ export function Composer({
     return members.slice(0, 8);
   }, [mentionMatch, isMentionDismissed, selectedChat, allMembers, currentUser]);
 
-  const ALL_SLASH_COMMANDS = useMemo(
-    () => [
-      {
-        command: "poll",
-        syntax: "/poll",
-        description: "Create a poll",
-        icon: <BarChart2 size={16} />
-      },
-      {
-        command: "schedule",
-        syntax: "/schedule Title | Time | Duration",
-        description: "Schedule a plan or event",
-        icon: <CalendarClock size={16} />
-      },
-      {
-        command: "canvas",
-        syntax: "/canvas",
-        description: "Create a shared canvas",
-        icon: <StickyNote size={16} />
-      },
-      {
-        command: "checklist",
-        syntax: "/checklist",
-        description: "Create a shared checklist",
-        icon: <CheckSquare size={16} />
-      }
-    ],
-    []
-  );
-
   const slashMatch = /(?:^|\s)\/([a-zA-Z0-9_.-]*)$/u.exec(textBeforeCursor);
   const slashQuery = slashMatch ? slashMatch[1].toLowerCase() : "";
   const isSlashActive = Boolean(slashMatch && !isMentionDismissed && !mentionMatch);
@@ -339,7 +320,7 @@ export function Composer({
     return ALL_SLASH_COMMANDS.filter(
       (cmd) => cmd.command.toLowerCase().includes(slashQuery) || cmd.syntax.toLowerCase().includes(slashQuery)
     );
-  }, [isSlashActive, slashQuery, ALL_SLASH_COMMANDS]);
+  }, [isSlashActive, slashQuery]);
 
   function triggerSlashCommand(cmd: string) {
     if (cmd === "poll") {
@@ -350,6 +331,10 @@ export function Composer({
       onComposerChange("");
       setIsMentionDismissed(true);
       onAttachmentSheetPick("checklist");
+    } else if (cmd === "canvas") {
+      onComposerChange("");
+      setIsMentionDismissed(true);
+      onCreateCanvas?.();
     } else if (cmd === "schedule") {
       const template = "/schedule Meeting | Tomorrow 15:00 | 2h";
       onComposerChange(template);
@@ -363,10 +348,152 @@ export function Composer({
           textarea.setSelectionRange(start, end);
         }
       });
-    } else if (cmd === "canvas") {
+    } else if (cmd === "remind") {
+      const template = "/remind in 2h Check oven";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/remind in 2h ".length;
+          const end = start + "Check oven".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
+    } else if (cmd === "todo") {
+      const template = "/todo Buy almond milk";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/todo ".length;
+          const end = start + "Buy almond milk".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
+    } else if (cmd === "split") {
+      const template = "/split $50 Groceries";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/split ".length;
+          const end = start + "$50 Groceries".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
+    } else if (cmd === "location") {
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
+        onComposerChange("📍 Getting location...");
+        setIsMentionDismissed(true);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude.toFixed(6);
+            const lon = pos.coords.longitude.toFixed(6);
+            onComposerChange(`📍 Location: https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=16/${lat}/${lon}`);
+          },
+          () => {
+            onComposerChange("📍 Location permission denied or unavailable");
+          }
+        );
+      } else {
+        onComposerChange("📍 Geolocation not supported");
+        setIsMentionDismissed(true);
+      }
+    } else if (cmd === "call") {
       onComposerChange("");
       setIsMentionDismissed(true);
-      onCreateCanvas?.();
+      onStartAudioCall?.();
+    } else if (cmd === "meet") {
+      const template = "/meet Family Meeting";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/meet ".length;
+          const end = start + "Family Meeting".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
+    } else if (cmd === "silent") {
+      const template = "/silent Sleep well!";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/silent ".length;
+          const end = start + "Sleep well!".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
+    } else if (cmd === "urgent") {
+      const template = "/urgent Call me ASAP";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/urgent ".length;
+          const end = start + "Call me ASAP".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
+    } else if (cmd === "spoiler") {
+      const template = "/spoiler Secret here";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/spoiler ".length;
+          const end = start + "Secret here".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
+    } else if (cmd === "disappear") {
+      const template = "/disappear 24h";
+      onComposerChange(template);
+      setIsMentionDismissed(true);
+      requestAnimationFrame(() => {
+        const textarea = composerInputRef.current;
+        if (textarea) {
+          textarea.focus();
+          const start = "/disappear ".length;
+          const end = start + "24h".length;
+          textarea.setSelectionRange(start, end);
+        }
+      });
+    } else if (cmd === "pin") {
+      onComposerChange("");
+      setIsMentionDismissed(true);
+      if (replyTarget && onPinMessage) {
+        onPinMessage(replyTarget);
+      } else {
+        onTogglePinned?.();
+      }
+    } else if (cmd === "mute") {
+      onComposerChange("");
+      setIsMentionDismissed(true);
+      onToggleMuted?.();
+    } else if (cmd === "shrug") {
+      const prefix = composer.trim() ? `${composer.trim()} ` : "";
+      onComposerChange(`${prefix}¯\\_(ツ)_/¯`);
+      setIsMentionDismissed(true);
+    } else if (cmd === "tableflip") {
+      const prefix = composer.trim() ? `${composer.trim()} ` : "";
+      onComposerChange(`${prefix}(╯°□°)╯︵ ┻━┻`);
+      setIsMentionDismissed(true);
     }
   }
 
@@ -472,11 +599,47 @@ export function Composer({
     onComposerKeyDown(event);
   }
 
+  function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = composer.trim();
+    const lower = trimmed.toLowerCase();
+    if (lower === "/remind") {
+      onComposerChange("");
+      setIsReminderModalOpen(true);
+      return;
+    }
+    if (lower === "/call" || lower === "/call audio") {
+      onComposerChange("");
+      onStartAudioCall?.();
+      return;
+    }
+    if (lower === "/call video") {
+      onComposerChange("");
+      onStartVideoCall?.();
+      return;
+    }
+    if (lower === "/pin") {
+      onComposerChange("");
+      if (replyTarget && onPinMessage) {
+        onPinMessage(replyTarget);
+      } else {
+        onTogglePinned?.();
+      }
+      return;
+    }
+    if (lower === "/mute") {
+      onComposerChange("");
+      onToggleMuted?.();
+      return;
+    }
+    void onSubmit(event);
+  }
+
   return (
     <>
       <form
         className={`message-composer${isDockedEmojiPicker ? " message-composer--emoji-docked" : ""}${showDockedEmojiPicker ? " message-composer--emoji-open" : ""}`}
-        onSubmit={onSubmit}
+        onSubmit={handleFormSubmit}
       >
       <PendingAttachmentsStrip attachments={pendingAttachments} onRemove={onRemovePendingAttachment} onEdit={setEditingAttachment} />
       {editingAttachment && (

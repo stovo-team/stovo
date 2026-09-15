@@ -559,10 +559,12 @@ export function RichCanvasPreview({
   canvas,
   updates,
   className = "",
+  hideHeader = false,
 }: {
   canvas: Canvas | CanvasReference | { title: string };
   updates?: CanvasUpdate[];
   className?: string;
+  hideHeader?: boolean;
 }) {
   const blocks = useMemo(
     () => parseCanvasBlocks(updates, canvas.title),
@@ -577,13 +579,15 @@ export function RichCanvasPreview({
   // Empty canvas state
   if (items.length === 0) {
     return (
-      <div className={`storage-tile-preview storage-canvas-preview ${className}`}>
-        <div className="canvas-preview-header">
-          <div className="canvas-preview-badge">
-            <Pencil size={11} />
-            <b>CANVAS</b>
+      <div className={`storage-tile-preview storage-canvas-preview ${hideHeader ? "no-header" : ""} ${className}`}>
+        {!hideHeader && (
+          <div className="canvas-preview-header">
+            <div className="canvas-preview-badge">
+              <Pencil size={11} />
+              <b>CANVAS</b>
+            </div>
           </div>
-        </div>
+        )}
         <div className="canvas-preview-blank">
           <div className="canvas-empty-icon-wrap">
             <Pencil size={18} />
@@ -599,13 +603,15 @@ export function RichCanvasPreview({
     const whiteboardBlock = items.find((it) => it.kind === "whiteboard");
     const elements = whiteboardBlock?.kind === "whiteboard" ? whiteboardBlock.elements : [];
     return (
-      <div className={`storage-tile-preview storage-canvas-preview ${className}`}>
-        <div className="canvas-preview-header">
-          <div className="canvas-preview-badge">
-            <Pencil size={11} />
-            <b>CANVAS</b>
+      <div className={`storage-tile-preview storage-canvas-preview ${hideHeader ? "no-header" : ""} ${className}`}>
+        {!hideHeader && (
+          <div className="canvas-preview-header">
+            <div className="canvas-preview-badge">
+              <Pencil size={11} />
+              <b>CANVAS</b>
+            </div>
           </div>
-        </div>
+        )}
         <div className="canvas-preview-body">
           <WhiteboardSvgView elements={elements} />
         </div>
@@ -615,13 +621,15 @@ export function RichCanvasPreview({
 
   // Rich markdown document with optional embedded whiteboard
   return (
-    <div className={`storage-tile-preview storage-canvas-preview rich-canvas-preview ${className}`}>
-      <div className="canvas-preview-header">
-        <div className="canvas-preview-badge canvas-preview-notes-badge">
-          <FileText size={11} />
-          <b>CANVAS</b>
+    <div className={`storage-tile-preview storage-canvas-preview rich-canvas-preview ${hideHeader ? "no-header" : ""} ${className}`}>
+      {!hideHeader && (
+        <div className="canvas-preview-header">
+          <div className="canvas-preview-badge canvas-preview-notes-badge">
+            <FileText size={11} />
+            <b>CANVAS</b>
+          </div>
         </div>
-      </div>
+      )}
       <div className="canvas-preview-notes rich-canvas-notes">
         <div className="canvas-preview-notes-lines">
           {items.map((item, itemIdx) => {
@@ -652,7 +660,9 @@ export function RichCanvasPreview({
             );
           })}
         </div>
-        {isTruncated && <div className="canvas-preview-fade" aria-hidden="true" />}
+        {(isTruncated || items.length >= 3) && (
+          <div className="canvas-preview-fade" aria-hidden="true" />
+        )}
       </div>
     </div>
   );

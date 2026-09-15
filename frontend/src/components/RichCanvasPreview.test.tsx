@@ -254,4 +254,16 @@ describe("RichCanvasPreview Component Rendering", () => {
     // Truncation fade is visible
     expect(container?.querySelector(".canvas-preview-fade")).not.toBeNull();
   });
+
+  it("hides header badge when hideHeader is true", async () => {
+    const updates = createUpdates([{ kind: "markdown", text: "# Hello\nWorld" }]);
+    await act(async () => {
+      root?.render(
+        <RichCanvasPreview canvas={{ title: "Doc" }} updates={updates} hideHeader />
+      );
+    });
+
+    expect(container?.querySelector(".canvas-preview-header")).toBeNull();
+    expect(container?.textContent).toContain("World");
+  });
 });

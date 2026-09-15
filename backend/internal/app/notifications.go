@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
+	"stovo-messenger/backend/internal/ports"
 	workruntime "stovo-messenger/backend/internal/runtime"
 )
 
@@ -65,6 +68,114 @@ func formatMessageNotification(chatType string, chatTitle *string, senderName st
 	return workruntime.FormatMessageNotification(chatType, chatTitle, senderName, messagePreview)
 }
 
+// isWithinQuietHours checks if now falls between start ("HH:MM") and end ("HH:MM").
+// Handles intervals spanning midnight (e.g. 22:00 to 07:00).
+func isWithinQuietHours(start, end string, now time.Time) bool {
+	if len(start) != 5 || len(end) != 5 || start == end {
+		return false
+	}
+	startParts := strings.Split(start, ":")
+	endParts := strings.Split(end, ":")
+	if len(startParts) != 2 || len(endParts) != 2 {
+		return false
+	}
+	startH, err1 := strconv.Atoi(startParts[0])
+	startM, err2 := strconv.Atoi(startParts[1])
+	endH, err3 := strconv.Atoi(endParts[0])
+	endM, err4 := strconv.Atoi(endParts[1])
+	if err1 != nil || err2 != nil || err3 != nil || err4 != nil {
+		return false
+	}
+	from := startH*60 + startM
+	to := endH*60 + endM
+	current := now.Hour()*60 + now.Minute()
+
+	if from < to {
+		return current >= from && current < to
+	}
+	return current >= from || current < to
+}
+
+// NotificationDecision encapsulates the result of evaluating notification rules for a recipient.
+type NotificationDecision struct {
+	ShouldNotify bool
+	Priority     int
+	Reason       string
+}
+
+// ShouldNotifyRecipient determines whether a chat notification should be delivered to a recipient.
+func ShouldNotifyRecipient(
+	pref ports.ChatNotificationPreference,
+	senderID string,
+	isMentioned bool,
+	isForeground bool,
+	now time.Time,
+) NotificationDecision {
+	if isForeground {
+		return NotificationDecision{ShouldNotify: false, Reason: "viewing_in_foreground"}
+	}
+
+	// 1. Evaluate active mute
+	isMuted := pref.IsMuted
+	if pref.MutedUntil != nil {
+		if now.Before(*pref.MutedUntil) {
+			isMuted = true
+		} else {
+			isMuted = false
+		}
+	}
+	if isMuted {
+		if isMentioned && pref.AlwaysNotifyMentions {
+			return NotificationDecision{ShouldNotify: true, Priority: 5, Reason: "mention_breaks_mute"}
+		}
+		return NotificationDecision{ShouldNotify: false, Reason: "chat_muted"}
+	}
+
+	// 2. Evaluate quiet hours
+	if pref.QuietHoursEnabled && isWithinQuietHours(pref.QuietHoursStart, pref.QuietHoursEnd, now) {
+		if isMentioned && pref.AlwaysNotifyMentions {
+			return NotificationDecision{ShouldNotify: true, Priority: 5, Reason: "mention_breaks_quiet_hours"}
+		}
+		return NotificationDecision{ShouldNotify: false, Reason: "quiet_hours"}
+	}
+
+	// 3. Evaluate notification mode
+	switch pref.NotificationMode {
+	case "mentions_only":
+		if isMentioned {
+			return NotificationDecision{ShouldNotify: true, Priority: 5, Reason: "mentioned"}
+		}
+		return NotificationDecision{ShouldNotify: false, Reason: "mentions_only_mode"}
+
+	case "specific_senders":
+		isAllowedSender := false
+		for _, id := range pref.NotifySenderIDs {
+			if id == senderID {
+				isAllowedSender = true
+				break
+			}
+		}
+		if isAllowedSender {
+			priority := 3
+			if isMentioned {
+				priority = 5
+			}
+			return NotificationDecision{ShouldNotify: true, Priority: priority, Reason: "allowed_sender"}
+		}
+		if isMentioned && pref.AlwaysNotifyMentions {
+			return NotificationDecision{ShouldNotify: true, Priority: 5, Reason: "mention_breaks_sender_filter"}
+		}
+		return NotificationDecision{ShouldNotify: false, Reason: "sender_not_in_filter"}
+
+	default: // "all"
+		priority := 3
+		if isMentioned {
+			priority = 5
+		}
+		return NotificationDecision{ShouldNotify: true, Priority: priority, Reason: "all_messages"}
+	}
+}
+
 func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string, mentionedUserIDs []string) {
 	title, message, tags := formatMessageNotification(chatType, chatTitle, senderName, messagePreview)
 	mentioned := make(map[string]struct{}, len(mentionedUserIDs))
@@ -76,26 +187,54 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 		s.logger.Warnf("ntfy", "failed to query chat members for chat_id=%s: %v", chatID, err)
 		return
 	}
-	for _, recipientID := range memberIDs {
-		if recipientID == senderID {
+
+	recipients := make([]string, 0, len(memberIDs))
+	for _, id := range memberIDs {
+		if id != senderID {
+			recipients = append(recipients, id)
+		}
+	}
+	if len(recipients) == 0 {
+		return
+	}
+
+	prefsByUserID, err := s.notificationRecipients.GetChatNotificationPreferences(context.Background(), chatID, recipients)
+	if err != nil {
+		s.logger.Warnf("ntfy", "failed to query chat preferences for chat_id=%s: %v", chatID, err)
+		prefsByUserID = make(map[string]ports.ChatNotificationPreference)
+	}
+
+	now := time.Now()
+	for _, recipientID := range recipients {
+		pref, hasPref := prefsByUserID[recipientID]
+		if !hasPref {
+			pref = ports.ChatNotificationPreference{
+				IsMuted:              false,
+				QuietHoursEnabled:    false,
+				NotificationMode:     "all",
+				AlwaysNotifyMentions: true,
+			}
+		}
+
+		_, isMentioned := mentioned[recipientID]
+		isForeground := s.sessions.IsViewingChatInForeground(recipientID, chatID)
+
+		decision := ShouldNotifyRecipient(pref, senderID, isMentioned, isForeground, now)
+		if !decision.ShouldNotify {
 			continue
 		}
-		if s.sessions.IsViewingChatInForeground(recipientID, chatID) {
-			continue
-		}
+
 		topic, err := s.getUserNtfyTopic(context.Background(), recipientID)
 		if err != nil || topic == "" {
 			s.logger.Warnf("ntfy", "no topic for user_id=%s: %v", recipientID, err)
 			continue
 		}
-		_, isMentioned := mentioned[recipientID]
-		go func(recipientID, topic string, isMentioned bool) {
+
+		go func(recipientID, topic string, priority int, isMentioned bool) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			priority := 3
 			payloadTags := tags
 			if isMentioned {
-				priority = 5
 				payloadTags = append(append([]string{}, tags...), "exclamation")
 			}
 			p := ntfyPayload{
@@ -107,7 +246,7 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 				Click:    "stovo://chat/" + chatID,
 			}
 			s.publishToNtfyWithRetry(ctx, recipientID, p)
-		}(recipientID, topic, isMentioned)
+		}(recipientID, topic, decision.Priority, isMentioned)
 	}
 }
 

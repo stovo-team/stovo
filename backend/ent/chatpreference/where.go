@@ -4,6 +4,7 @@ package chatpreference
 
 import (
 	"stovo-messenger/backend/ent/predicate"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 )
@@ -81,6 +82,36 @@ func IsPinned(v bool) predicate.ChatPreference {
 // IsFavorite applies equality check predicate on the "is_favorite" field. It's identical to IsFavoriteEQ.
 func IsFavorite(v bool) predicate.ChatPreference {
 	return predicate.ChatPreference(sql.FieldEQ(FieldIsFavorite, v))
+}
+
+// MutedUntil applies equality check predicate on the "muted_until" field. It's identical to MutedUntilEQ.
+func MutedUntil(v time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldMutedUntil, v))
+}
+
+// QuietHoursEnabled applies equality check predicate on the "quiet_hours_enabled" field. It's identical to QuietHoursEnabledEQ.
+func QuietHoursEnabled(v bool) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldQuietHoursEnabled, v))
+}
+
+// QuietHoursStart applies equality check predicate on the "quiet_hours_start" field. It's identical to QuietHoursStartEQ.
+func QuietHoursStart(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldQuietHoursStart, v))
+}
+
+// QuietHoursEnd applies equality check predicate on the "quiet_hours_end" field. It's identical to QuietHoursEndEQ.
+func QuietHoursEnd(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldQuietHoursEnd, v))
+}
+
+// NotificationMode applies equality check predicate on the "notification_mode" field. It's identical to NotificationModeEQ.
+func NotificationMode(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldNotificationMode, v))
+}
+
+// AlwaysNotifyMentions applies equality check predicate on the "always_notify_mentions" field. It's identical to AlwaysNotifyMentionsEQ.
+func AlwaysNotifyMentions(v bool) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldAlwaysNotifyMentions, v))
 }
 
 // LastReadMessageID applies equality check predicate on the "last_read_message_id" field. It's identical to LastReadMessageIDEQ.
@@ -191,6 +222,301 @@ func IsFavoriteEQ(v bool) predicate.ChatPreference {
 // IsFavoriteNEQ applies the NEQ predicate on the "is_favorite" field.
 func IsFavoriteNEQ(v bool) predicate.ChatPreference {
 	return predicate.ChatPreference(sql.FieldNEQ(FieldIsFavorite, v))
+}
+
+// MutedUntilEQ applies the EQ predicate on the "muted_until" field.
+func MutedUntilEQ(v time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldMutedUntil, v))
+}
+
+// MutedUntilNEQ applies the NEQ predicate on the "muted_until" field.
+func MutedUntilNEQ(v time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNEQ(FieldMutedUntil, v))
+}
+
+// MutedUntilIn applies the In predicate on the "muted_until" field.
+func MutedUntilIn(vs ...time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldIn(FieldMutedUntil, vs...))
+}
+
+// MutedUntilNotIn applies the NotIn predicate on the "muted_until" field.
+func MutedUntilNotIn(vs ...time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNotIn(FieldMutedUntil, vs...))
+}
+
+// MutedUntilGT applies the GT predicate on the "muted_until" field.
+func MutedUntilGT(v time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldGT(FieldMutedUntil, v))
+}
+
+// MutedUntilGTE applies the GTE predicate on the "muted_until" field.
+func MutedUntilGTE(v time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldGTE(FieldMutedUntil, v))
+}
+
+// MutedUntilLT applies the LT predicate on the "muted_until" field.
+func MutedUntilLT(v time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldLT(FieldMutedUntil, v))
+}
+
+// MutedUntilLTE applies the LTE predicate on the "muted_until" field.
+func MutedUntilLTE(v time.Time) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldLTE(FieldMutedUntil, v))
+}
+
+// MutedUntilIsNil applies the IsNil predicate on the "muted_until" field.
+func MutedUntilIsNil() predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldIsNull(FieldMutedUntil))
+}
+
+// MutedUntilNotNil applies the NotNil predicate on the "muted_until" field.
+func MutedUntilNotNil() predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNotNull(FieldMutedUntil))
+}
+
+// QuietHoursEnabledEQ applies the EQ predicate on the "quiet_hours_enabled" field.
+func QuietHoursEnabledEQ(v bool) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldQuietHoursEnabled, v))
+}
+
+// QuietHoursEnabledNEQ applies the NEQ predicate on the "quiet_hours_enabled" field.
+func QuietHoursEnabledNEQ(v bool) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNEQ(FieldQuietHoursEnabled, v))
+}
+
+// QuietHoursStartEQ applies the EQ predicate on the "quiet_hours_start" field.
+func QuietHoursStartEQ(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartNEQ applies the NEQ predicate on the "quiet_hours_start" field.
+func QuietHoursStartNEQ(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNEQ(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartIn applies the In predicate on the "quiet_hours_start" field.
+func QuietHoursStartIn(vs ...string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldIn(FieldQuietHoursStart, vs...))
+}
+
+// QuietHoursStartNotIn applies the NotIn predicate on the "quiet_hours_start" field.
+func QuietHoursStartNotIn(vs ...string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNotIn(FieldQuietHoursStart, vs...))
+}
+
+// QuietHoursStartGT applies the GT predicate on the "quiet_hours_start" field.
+func QuietHoursStartGT(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldGT(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartGTE applies the GTE predicate on the "quiet_hours_start" field.
+func QuietHoursStartGTE(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldGTE(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartLT applies the LT predicate on the "quiet_hours_start" field.
+func QuietHoursStartLT(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldLT(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartLTE applies the LTE predicate on the "quiet_hours_start" field.
+func QuietHoursStartLTE(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldLTE(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartContains applies the Contains predicate on the "quiet_hours_start" field.
+func QuietHoursStartContains(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldContains(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartHasPrefix applies the HasPrefix predicate on the "quiet_hours_start" field.
+func QuietHoursStartHasPrefix(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldHasPrefix(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartHasSuffix applies the HasSuffix predicate on the "quiet_hours_start" field.
+func QuietHoursStartHasSuffix(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldHasSuffix(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartIsNil applies the IsNil predicate on the "quiet_hours_start" field.
+func QuietHoursStartIsNil() predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldIsNull(FieldQuietHoursStart))
+}
+
+// QuietHoursStartNotNil applies the NotNil predicate on the "quiet_hours_start" field.
+func QuietHoursStartNotNil() predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNotNull(FieldQuietHoursStart))
+}
+
+// QuietHoursStartEqualFold applies the EqualFold predicate on the "quiet_hours_start" field.
+func QuietHoursStartEqualFold(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEqualFold(FieldQuietHoursStart, v))
+}
+
+// QuietHoursStartContainsFold applies the ContainsFold predicate on the "quiet_hours_start" field.
+func QuietHoursStartContainsFold(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldContainsFold(FieldQuietHoursStart, v))
+}
+
+// QuietHoursEndEQ applies the EQ predicate on the "quiet_hours_end" field.
+func QuietHoursEndEQ(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndNEQ applies the NEQ predicate on the "quiet_hours_end" field.
+func QuietHoursEndNEQ(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNEQ(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndIn applies the In predicate on the "quiet_hours_end" field.
+func QuietHoursEndIn(vs ...string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldIn(FieldQuietHoursEnd, vs...))
+}
+
+// QuietHoursEndNotIn applies the NotIn predicate on the "quiet_hours_end" field.
+func QuietHoursEndNotIn(vs ...string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNotIn(FieldQuietHoursEnd, vs...))
+}
+
+// QuietHoursEndGT applies the GT predicate on the "quiet_hours_end" field.
+func QuietHoursEndGT(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldGT(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndGTE applies the GTE predicate on the "quiet_hours_end" field.
+func QuietHoursEndGTE(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldGTE(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndLT applies the LT predicate on the "quiet_hours_end" field.
+func QuietHoursEndLT(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldLT(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndLTE applies the LTE predicate on the "quiet_hours_end" field.
+func QuietHoursEndLTE(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldLTE(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndContains applies the Contains predicate on the "quiet_hours_end" field.
+func QuietHoursEndContains(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldContains(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndHasPrefix applies the HasPrefix predicate on the "quiet_hours_end" field.
+func QuietHoursEndHasPrefix(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldHasPrefix(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndHasSuffix applies the HasSuffix predicate on the "quiet_hours_end" field.
+func QuietHoursEndHasSuffix(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldHasSuffix(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndIsNil applies the IsNil predicate on the "quiet_hours_end" field.
+func QuietHoursEndIsNil() predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldIsNull(FieldQuietHoursEnd))
+}
+
+// QuietHoursEndNotNil applies the NotNil predicate on the "quiet_hours_end" field.
+func QuietHoursEndNotNil() predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNotNull(FieldQuietHoursEnd))
+}
+
+// QuietHoursEndEqualFold applies the EqualFold predicate on the "quiet_hours_end" field.
+func QuietHoursEndEqualFold(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEqualFold(FieldQuietHoursEnd, v))
+}
+
+// QuietHoursEndContainsFold applies the ContainsFold predicate on the "quiet_hours_end" field.
+func QuietHoursEndContainsFold(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldContainsFold(FieldQuietHoursEnd, v))
+}
+
+// NotificationModeEQ applies the EQ predicate on the "notification_mode" field.
+func NotificationModeEQ(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldNotificationMode, v))
+}
+
+// NotificationModeNEQ applies the NEQ predicate on the "notification_mode" field.
+func NotificationModeNEQ(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNEQ(FieldNotificationMode, v))
+}
+
+// NotificationModeIn applies the In predicate on the "notification_mode" field.
+func NotificationModeIn(vs ...string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldIn(FieldNotificationMode, vs...))
+}
+
+// NotificationModeNotIn applies the NotIn predicate on the "notification_mode" field.
+func NotificationModeNotIn(vs ...string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNotIn(FieldNotificationMode, vs...))
+}
+
+// NotificationModeGT applies the GT predicate on the "notification_mode" field.
+func NotificationModeGT(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldGT(FieldNotificationMode, v))
+}
+
+// NotificationModeGTE applies the GTE predicate on the "notification_mode" field.
+func NotificationModeGTE(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldGTE(FieldNotificationMode, v))
+}
+
+// NotificationModeLT applies the LT predicate on the "notification_mode" field.
+func NotificationModeLT(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldLT(FieldNotificationMode, v))
+}
+
+// NotificationModeLTE applies the LTE predicate on the "notification_mode" field.
+func NotificationModeLTE(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldLTE(FieldNotificationMode, v))
+}
+
+// NotificationModeContains applies the Contains predicate on the "notification_mode" field.
+func NotificationModeContains(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldContains(FieldNotificationMode, v))
+}
+
+// NotificationModeHasPrefix applies the HasPrefix predicate on the "notification_mode" field.
+func NotificationModeHasPrefix(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldHasPrefix(FieldNotificationMode, v))
+}
+
+// NotificationModeHasSuffix applies the HasSuffix predicate on the "notification_mode" field.
+func NotificationModeHasSuffix(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldHasSuffix(FieldNotificationMode, v))
+}
+
+// NotificationModeEqualFold applies the EqualFold predicate on the "notification_mode" field.
+func NotificationModeEqualFold(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEqualFold(FieldNotificationMode, v))
+}
+
+// NotificationModeContainsFold applies the ContainsFold predicate on the "notification_mode" field.
+func NotificationModeContainsFold(v string) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldContainsFold(FieldNotificationMode, v))
+}
+
+// NotifySenderIdsIsNil applies the IsNil predicate on the "notify_sender_ids" field.
+func NotifySenderIdsIsNil() predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldIsNull(FieldNotifySenderIds))
+}
+
+// NotifySenderIdsNotNil applies the NotNil predicate on the "notify_sender_ids" field.
+func NotifySenderIdsNotNil() predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNotNull(FieldNotifySenderIds))
+}
+
+// AlwaysNotifyMentionsEQ applies the EQ predicate on the "always_notify_mentions" field.
+func AlwaysNotifyMentionsEQ(v bool) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldEQ(FieldAlwaysNotifyMentions, v))
+}
+
+// AlwaysNotifyMentionsNEQ applies the NEQ predicate on the "always_notify_mentions" field.
+func AlwaysNotifyMentionsNEQ(v bool) predicate.ChatPreference {
+	return predicate.ChatPreference(sql.FieldNEQ(FieldAlwaysNotifyMentions, v))
 }
 
 // LastReadMessageIDEQ applies the EQ predicate on the "last_read_message_id" field.

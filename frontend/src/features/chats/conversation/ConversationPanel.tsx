@@ -717,6 +717,11 @@ export function ConversationPanel({
               onCreatePoll={handleCreatePoll}
               onCreateCanvas={onCreateCanvas}
               onCreateChecklist={onCreateChecklist}
+              onStartAudioCall={onStartAudioCall}
+              onStartVideoCall={onStartVideoCall}
+              onTogglePinned={onTogglePinned}
+              onToggleMuted={onToggleMuted}
+              onPinMessage={handlePinMessage}
             />
           )}
         </>

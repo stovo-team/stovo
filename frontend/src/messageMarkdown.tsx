@@ -99,6 +99,116 @@ function matchExplicitLink(source: string, start: number): ExplicitLinkMatch | n
   };
 }
 
+function isBoundary(char: string | undefined): boolean {
+  return !char || /[\s([{"'<>]/.test(char);
+}
+
+const phoneRegex = /^\+(?:\([0-9]+\)\s*|[0-9]+)(?:(?:\s*[-.]\s*|\s+|\s*\([0-9]+\)\s*)[0-9]+)*/;
+
+function matchPhoneLink(
+  source: string,
+  start: number
+): { end: number; href: string; text: string } | null {
+  if (source[start] !== "+") return null;
+  if (start > 0 && !isBoundary(source[start - 1])) return null;
+
+  const rest = source.slice(start);
+  const match = phoneRegex.exec(rest);
+  if (!match) return null;
+
+  const candidate = match[0];
+  const digits = candidate.replace(/[^0-9]/g, "");
+  if (digits.length < 5 || digits.length > 15) return null;
+
+  const nextChar = rest.slice(candidate.length, candidate.length + 1);
+  if (nextChar && /[a-zA-Z0-9]/.test(nextChar)) return null;
+
+  const href = `tel:+${digits}`;
+  if (!isSafeMessageUrl(href)) return null;
+
+  return {
+    end: start + candidate.length,
+    href,
+    text: candidate
+  };
+}
+
+const emailRegex = /^[a-zA-Z0-9][a-zA-Z0-9._%+-]*@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+/;
+
+function matchEmailLink(
+  source: string,
+  start: number
+): { end: number; href: string; text: string } | null {
+  if (start > 0 && !isBoundary(source[start - 1])) return null;
+
+  const rest = source.slice(start);
+  const match = emailRegex.exec(rest);
+  if (!match) return null;
+
+  let candidate = match[0];
+  let end = start + candidate.length;
+
+  while (candidate.length > 0 && trailingLinkPunctuation.has(candidate[candidate.length - 1])) {
+    candidate = candidate.slice(0, -1);
+    end -= 1;
+  }
+  if (!candidate) return null;
+
+  const atIndex = candidate.indexOf("@");
+  if (atIndex <= 0) return null;
+  const domain = candidate.slice(atIndex + 1);
+  const lastDot = domain.lastIndexOf(".");
+  if (lastDot < 0) return null;
+  const tld = domain.slice(lastDot + 1);
+  if (tld.length < 2 || !/^[a-zA-Z]+$/.test(tld)) return null;
+
+  const href = `mailto:${candidate}`;
+  if (!isSafeMessageUrl(href)) return null;
+
+  return { end, href, text: candidate };
+}
+
+const webDomainRegex = /^([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+)(?::[0-9]+)?(\/[^\s<>"']*)?/;
+
+function matchWebDomainLink(
+  source: string,
+  start: number
+): { end: number; href: string; text: string } | null {
+  if (start > 0 && !isBoundary(source[start - 1])) return null;
+
+  const rest = source.slice(start);
+  const match = webDomainRegex.exec(rest);
+  if (!match) return null;
+
+  let candidate = match[0];
+  let end = start + candidate.length;
+
+  while (candidate.length > 0 && trailingLinkPunctuation.has(candidate[candidate.length - 1])) {
+    candidate = candidate.slice(0, -1);
+    end -= 1;
+  }
+  if (!candidate) return null;
+
+  const hostname = match[1];
+  const lastDot = hostname.lastIndexOf(".");
+  if (lastDot < 0) return null;
+  const tld = hostname.slice(lastDot + 1);
+  if (!/^[a-zA-Z]{2,24}$/.test(tld)) return null;
+
+  const hasPath = Boolean(match[2]);
+  const isWww = hostname.toLowerCase().startsWith("www.");
+  if (!hasPath && !isWww) {
+    if (/^[A-Z][a-z]+$/.test(tld) && /^[a-z]+$/.test(hostname.slice(0, lastDot))) {
+      return null;
+    }
+  }
+
+  const href = `https://${candidate}`;
+  if (!isSafeMessageUrl(href)) return null;
+
+  return { end, href, text: candidate };
+}
+
 function matchPlainLink(source: string, start: number): { end: number; href: string } | null {
   const rest = source.slice(start).toLowerCase();
   if (!plainLinkPrefixes.some((prefix) => rest.startsWith(prefix))) return null;
@@ -123,7 +233,7 @@ function matchPlainLink(source: string, start: number): { end: number; href: str
 
 function matchMention(source: string, start: number): { end: number; username: string } | null {
   if (source[start] !== "@") return null;
-  if (start > 0 && !/[\s([{"'<>]/.test(source[start - 1])) return null;
+  if (start > 0 && !isBoundary(source[start - 1])) return null;
 
   const rest = source.slice(start);
   const match = /^@([\p{L}\p{N}_.-]+)/u.exec(rest);
@@ -179,6 +289,39 @@ function parseInline(source: string, depth: number): StovoMarkdownNode[] {
       continue;
     }
 
+    const emailLink = matchEmailLink(source, index);
+    if (emailLink) {
+      nodes.push({
+        type: "link",
+        href: emailLink.href,
+        children: [{ type: "text", value: emailLink.text }]
+      });
+      index = emailLink.end;
+      continue;
+    }
+
+    const webDomainLink = matchWebDomainLink(source, index);
+    if (webDomainLink) {
+      nodes.push({
+        type: "link",
+        href: webDomainLink.href,
+        children: [{ type: "text", value: webDomainLink.text }]
+      });
+      index = webDomainLink.end;
+      continue;
+    }
+
+    const phoneLink = matchPhoneLink(source, index);
+    if (phoneLink) {
+      nodes.push({
+        type: "link",
+        href: phoneLink.href,
+        children: [{ type: "text", value: phoneLink.text }]
+      });
+      index = phoneLink.end;
+      continue;
+    }
+
     const mention = matchMention(source, index);
     if (mention) {
       nodes.push({
@@ -222,7 +365,9 @@ function parseInline(source: string, depth: number): StovoMarkdownNode[] {
     while (
       textEnd < source.length &&
       source[textEnd] !== "[" &&
-      (source[textEnd] !== "@" || !/[\s([{"'<>]/.test(source[textEnd - 1])) &&
+      (source[textEnd] !== "@" || !isBoundary(source[textEnd - 1])) &&
+      (source[textEnd] !== "+" || !isBoundary(source[textEnd - 1])) &&
+      !isBoundary(source[textEnd - 1]) &&
       !formattingDelimiters.some(({ delimiter }) => source.startsWith(delimiter, textEnd)) &&
       !plainLinkPrefixes.some((prefix) => source.slice(textEnd).toLowerCase().startsWith(prefix))
     ) {
@@ -409,6 +554,10 @@ export function isSafeMessageUrl(candidate: string): boolean {
     if (protocol === "mailto:") {
       return /^mailto:[^?\s]+/i.test(candidate) && parsed.pathname.length > 0;
     }
+    if (protocol === "tel:") {
+      const cleaned = candidate.replace(/[-. ()]/g, "");
+      return /^tel:\+[0-9]{4,15}$/i.test(cleaned);
+    }
     return false;
   } catch {
     return false;
@@ -550,7 +699,13 @@ function renderNodes(
           return <span key={key} className="message-link-text">{children}</span>;
         }
         return (
-          <a key={key} href={node.href} rel="noopener noreferrer">
+          <a
+            key={key}
+            href={node.href}
+            rel="noopener noreferrer"
+            {...(/^https?:\/\//i.test(node.href) ? { target: "_blank" } : {})}
+            onClick={(event) => event.stopPropagation()}
+          >
             {children}
           </a>
         );

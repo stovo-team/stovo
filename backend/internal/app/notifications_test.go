@@ -2,6 +2,9 @@ package app
 
 import (
 	"testing"
+	"time"
+
+	"stovo-messenger/backend/internal/ports"
 
 	"github.com/doquangtan/socketio/v4"
 )
@@ -91,4 +94,155 @@ func containsTag(tags []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func TestIsWithinQuietHours(t *testing.T) {
+	// 22:00 to 07:00 (spans midnight)
+	t1 := time.Date(2026, 9, 15, 23, 30, 0, 0, time.UTC)
+	if !isWithinQuietHours("22:00", "07:00", t1) {
+		t.Errorf("expected 23:30 to be within quiet hours 22:00-07:00")
+	}
+
+	t2 := time.Date(2026, 9, 15, 6, 59, 0, 0, time.UTC)
+	if !isWithinQuietHours("22:00", "07:00", t2) {
+		t.Errorf("expected 06:59 to be within quiet hours 22:00-07:00")
+	}
+
+	t3 := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	if isWithinQuietHours("22:00", "07:00", t3) {
+		t.Errorf("expected 12:00 NOT to be within quiet hours 22:00-07:00")
+	}
+
+	// 09:00 to 17:00 (same day)
+	t4 := time.Date(2026, 9, 15, 14, 0, 0, 0, time.UTC)
+	if !isWithinQuietHours("09:00", "17:00", t4) {
+		t.Errorf("expected 14:00 to be within 09:00-17:00")
+	}
+
+	t5 := time.Date(2026, 9, 15, 8, 59, 0, 0, time.UTC)
+	if isWithinQuietHours("09:00", "17:00", t5) {
+		t.Errorf("expected 08:59 NOT to be within 09:00-17:00")
+	}
+}
+
+func TestShouldNotifyRecipientMute(t *testing.T) {
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+
+	// Permanently muted
+	p1 := ports.ChatNotificationPreference{
+		IsMuted:              true,
+		AlwaysNotifyMentions: false,
+	}
+	d1 := ShouldNotifyRecipient(p1, "sender-1", false, false, now)
+	if d1.ShouldNotify {
+		t.Errorf("expected muted chat to suppress notification")
+	}
+
+	// Muted but mentioned with AlwaysNotifyMentions=true
+	p2 := ports.ChatNotificationPreference{
+		IsMuted:              true,
+		AlwaysNotifyMentions: true,
+	}
+	d2 := ShouldNotifyRecipient(p2, "sender-1", true, false, now)
+	if !d2.ShouldNotify || d2.Priority != 5 {
+		t.Errorf("expected mention to break through mute with priority 5, got %+v", d2)
+	}
+
+	// Muted until future time
+	future := now.Add(2 * time.Hour)
+	p3 := ports.ChatNotificationPreference{
+		IsMuted:    true,
+		MutedUntil: &future,
+	}
+	d3 := ShouldNotifyRecipient(p3, "sender-1", false, false, now)
+	if d3.ShouldNotify {
+		t.Errorf("expected future muted_until to suppress notification")
+	}
+
+	// Muted until past time (expired)
+	past := now.Add(-10 * time.Minute)
+	p4 := ports.ChatNotificationPreference{
+		IsMuted:    true,
+		MutedUntil: &past,
+	}
+	d4 := ShouldNotifyRecipient(p4, "sender-1", false, false, now)
+	if !d4.ShouldNotify {
+		t.Errorf("expected expired muted_until to allow notification")
+	}
+}
+
+func TestShouldNotifyRecipientQuietHours(t *testing.T) {
+	nightTime := time.Date(2026, 9, 15, 23, 0, 0, 0, time.UTC)
+	dayTime := time.Date(2026, 9, 15, 14, 0, 0, 0, time.UTC)
+
+	p := ports.ChatNotificationPreference{
+		QuietHoursEnabled:    true,
+		QuietHoursStart:      "22:00",
+		QuietHoursEnd:        "07:00",
+		AlwaysNotifyMentions: true,
+	}
+
+	// Night time: suppressed
+	d1 := ShouldNotifyRecipient(p, "sender-1", false, false, nightTime)
+	if d1.ShouldNotify {
+		t.Errorf("expected quiet hours to suppress notification")
+	}
+
+	// Night time with mention: delivered
+	d2 := ShouldNotifyRecipient(p, "sender-1", true, false, nightTime)
+	if !d2.ShouldNotify || d2.Priority != 5 {
+		t.Errorf("expected mention during quiet hours to be delivered, got %+v", d2)
+	}
+
+	// Day time: delivered
+	d3 := ShouldNotifyRecipient(p, "sender-1", false, false, dayTime)
+	if !d3.ShouldNotify {
+		t.Errorf("expected day time to be delivered outside quiet hours")
+	}
+}
+
+func TestShouldNotifyRecipientModes(t *testing.T) {
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+
+	// Mentions only mode
+	pMentions := ports.ChatNotificationPreference{
+		NotificationMode: "mentions_only",
+	}
+	if ShouldNotifyRecipient(pMentions, "sender-1", false, false, now).ShouldNotify {
+		t.Errorf("expected unmentioned message in mentions_only mode to be suppressed")
+	}
+	if !ShouldNotifyRecipient(pMentions, "sender-1", true, false, now).ShouldNotify {
+		t.Errorf("expected mentioned message in mentions_only mode to be delivered")
+	}
+
+	// Specific senders mode
+	pSenders := ports.ChatNotificationPreference{
+		NotificationMode:     "specific_senders",
+		NotifySenderIDs:      []string{"boss-user", "mom-user"},
+		AlwaysNotifyMentions: true,
+	}
+	// From allowed sender
+	if !ShouldNotifyRecipient(pSenders, "boss-user", false, false, now).ShouldNotify {
+		t.Errorf("expected message from boss-user to be delivered in specific_senders mode")
+	}
+	// From non-allowed sender
+	if ShouldNotifyRecipient(pSenders, "random-user", false, false, now).ShouldNotify {
+		t.Errorf("expected message from random-user to be suppressed in specific_senders mode")
+	}
+	// From non-allowed sender with mention
+	dMention := ShouldNotifyRecipient(pSenders, "random-user", true, false, now)
+	if !dMention.ShouldNotify || dMention.Priority != 5 {
+		t.Errorf("expected mention from random-user to break through in specific_senders mode, got %+v", dMention)
+	}
+}
+
+func TestShouldNotifyRecipientForeground(t *testing.T) {
+	now := time.Date(2026, 9, 15, 12, 0, 0, 0, time.UTC)
+	p := ports.ChatNotificationPreference{
+		NotificationMode: "all",
+	}
+	d := ShouldNotifyRecipient(p, "sender-1", true, true, now)
+	if d.ShouldNotify {
+		t.Errorf("expected foreground viewing to always suppress notification")
+	}
 }

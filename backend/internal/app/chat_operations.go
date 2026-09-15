@@ -141,7 +141,41 @@ func (s *Server) updateChatPreferences(ctx context.Context, user userPublic, cha
 			}
 		}
 	}
-	prefs := featurechats.Preferences{ChatID: chatID, UserID: user.ID, IsMuted: payload.IsMuted, IsPinned: payload.IsPinned, IsFavorite: payload.IsFavorite}
+	if payload.NotificationMode != nil {
+		mode := strings.TrimSpace(*payload.NotificationMode)
+		if mode != "" && mode != "all" && mode != "mentions_only" && mode != "specific_senders" {
+			return nil, 0, newStatusError(http.StatusUnprocessableEntity, "Invalid notification mode")
+		}
+	}
+	if payload.QuietHoursStart != nil && *payload.QuietHoursStart != "" {
+		if _, err := time.Parse("15:04", *payload.QuietHoursStart); err != nil {
+			return nil, 0, newStatusError(http.StatusUnprocessableEntity, "Invalid quiet hours start time format (expected HH:MM)")
+		}
+	}
+	if payload.QuietHoursEnd != nil && *payload.QuietHoursEnd != "" {
+		if _, err := time.Parse("15:04", *payload.QuietHoursEnd); err != nil {
+			return nil, 0, newStatusError(http.StatusUnprocessableEntity, "Invalid quiet hours end time format (expected HH:MM)")
+		}
+	}
+
+	prefs := featurechats.Preferences{
+		ChatID:               chatID,
+		UserID:               user.ID,
+		IsMuted:              payload.IsMuted,
+		MutedUntil:           payload.MutedUntil,
+		ClearMutedUntil:      payload.ClearMutedUntil,
+		QuietHoursEnabled:    payload.QuietHoursEnabled,
+		QuietHoursStart:      payload.QuietHoursStart,
+		QuietHoursEnd:        payload.QuietHoursEnd,
+		NotificationMode:     payload.NotificationMode,
+		NotifySenderIDs:      payload.NotifySenderIDs,
+		AlwaysNotifyMentions: payload.AlwaysNotifyMentions,
+		IsPinned:             payload.IsPinned,
+		IsFavorite:           payload.IsFavorite,
+	}
+	if payload.IsMuted != nil && !*payload.IsMuted {
+		prefs.ClearMutedUntil = true
+	}
 	if payload.WallpaperFileID != nil {
 		wallpaper := strings.TrimSpace(*payload.WallpaperFileID)
 		if wallpaper == "" {
@@ -471,7 +505,26 @@ func (s *Server) buildChatPublicFromRow(c featurechats.ChatDetails, user userPub
 		}
 	}
 	if c.Preference != nil {
-		chat.IsMuted = c.Preference.IsMuted
+		isMuted := c.Preference.IsMuted
+		if c.Preference.MutedUntil != nil {
+			if time.Now().Before(*c.Preference.MutedUntil) {
+				isMuted = true
+			} else {
+				isMuted = false
+			}
+		}
+		chat.IsMuted = isMuted
+		chat.MutedUntil = c.Preference.MutedUntil
+		chat.QuietHoursEnabled = c.Preference.QuietHoursEnabled
+		chat.QuietHoursStart = c.Preference.QuietHoursStart
+		chat.QuietHoursEnd = c.Preference.QuietHoursEnd
+		if c.Preference.NotificationMode != "" {
+			chat.NotificationMode = c.Preference.NotificationMode
+		} else {
+			chat.NotificationMode = "all"
+		}
+		chat.NotifySenderIDs = c.Preference.NotifySenderIDs
+		chat.AlwaysNotifyMentions = c.Preference.AlwaysNotifyMentions
 		chat.IsPinned = c.Preference.IsPinned
 		chat.IsFavorite = c.Preference.IsFavorite
 		if c.Preference.WallpaperFileID != nil && *c.Preference.WallpaperFileID != "" {
@@ -479,6 +532,9 @@ func (s *Server) buildChatPublicFromRow(c featurechats.ChatDetails, user userPub
 				chat.Wallpaper = &file
 			}
 		}
+	} else {
+		chat.NotificationMode = "all"
+		chat.AlwaysNotifyMentions = true
 	}
 	if c.PinPermission != "" {
 		chat.PinPermission = c.PinPermission

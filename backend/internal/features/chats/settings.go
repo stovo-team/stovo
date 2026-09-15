@@ -83,12 +83,21 @@ type MessageDelay struct {
 // Preferences is the persistence-neutral partial update to a member's chat
 // preferences. A nil field leaves the current value unchanged.
 type Preferences struct {
-	ChatID, UserID  string
-	IsMuted         *bool
-	IsPinned        *bool
-	IsFavorite      *bool
-	WallpaperFileID *string
-	ClearWallpaper  bool
+	ChatID               string
+	UserID               string
+	IsMuted              *bool
+	MutedUntil           *time.Time
+	ClearMutedUntil      bool
+	QuietHoursEnabled    *bool
+	QuietHoursStart      *string
+	QuietHoursEnd        *string
+	NotificationMode     *string
+	NotifySenderIDs      *[]string
+	AlwaysNotifyMentions *bool
+	IsPinned             *bool
+	IsFavorite           *bool
+	WallpaperFileID      *string
+	ClearWallpaper       bool
 }
 
 type Clock func() time.Time

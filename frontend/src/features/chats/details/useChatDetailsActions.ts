@@ -221,12 +221,9 @@ export function useChatDetailsActions({
     }
   }
 
-  async function handleChatPreferenceChange(payload: {
-    isMuted?: boolean;
-    isPinned?: boolean;
-    isFavorite?: boolean;
-    wallpaperFileId?: string | null;
-  }) {
+  async function handleChatPreferenceChange(
+    payload: Parameters<typeof updateChatPreferences>[2]
+  ) {
     if (!accessToken || !selectedChat) {
       return;
     }

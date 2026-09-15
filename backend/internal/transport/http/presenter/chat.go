@@ -52,6 +52,13 @@ type Chat struct {
 	LastMessageType                 *string        `json:"lastMessageType"`
 	LastMessageCreatedAt            *time.Time     `json:"lastMessageCreatedAt"`
 	IsMuted                         bool           `json:"isMuted"`
+	MutedUntil                      *time.Time     `json:"mutedUntil,omitempty"`
+	QuietHoursEnabled               bool           `json:"quietHoursEnabled"`
+	QuietHoursStart                 *string        `json:"quietHoursStart,omitempty"`
+	QuietHoursEnd                   *string        `json:"quietHoursEnd,omitempty"`
+	NotificationMode                string         `json:"notificationMode"`
+	NotifySenderIDs                 []string       `json:"notifySenderIds,omitempty"`
+	AlwaysNotifyMentions            bool           `json:"alwaysNotifyMentions"`
 	IsPinned                        bool           `json:"isPinned"`
 	IsFavorite                      bool           `json:"isFavorite"`
 	Wallpaper                       any            `json:"wallpaper"`

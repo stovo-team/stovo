@@ -56,12 +56,20 @@ func (s *DelayStore) UpdatePhoto(ctx context.Context, chatID string, photoFileID
 
 func (s *DelayStore) UpdatePreferences(ctx context.Context, preferences chats.Preferences) error {
 	return s.store.UpdateChatPreferences(ctx, repository.UpdateChatPreferencesParams{
-		ChatID:          preferences.ChatID,
-		UserID:          preferences.UserID,
-		IsMuted:         preferences.IsMuted,
-		IsPinned:        preferences.IsPinned,
-		IsFavorite:      preferences.IsFavorite,
-		WallpaperFileID: preferences.WallpaperFileID,
-		ClearWallpaper:  preferences.ClearWallpaper,
+		ChatID:               preferences.ChatID,
+		UserID:               preferences.UserID,
+		IsMuted:              preferences.IsMuted,
+		MutedUntil:           preferences.MutedUntil,
+		ClearMutedUntil:      preferences.ClearMutedUntil,
+		QuietHoursEnabled:    preferences.QuietHoursEnabled,
+		QuietHoursStart:      preferences.QuietHoursStart,
+		QuietHoursEnd:        preferences.QuietHoursEnd,
+		NotificationMode:     preferences.NotificationMode,
+		NotifySenderIDs:      preferences.NotifySenderIDs,
+		AlwaysNotifyMentions: preferences.AlwaysNotifyMentions,
+		IsPinned:             preferences.IsPinned,
+		IsFavorite:           preferences.IsFavorite,
+		WallpaperFileID:      preferences.WallpaperFileID,
+		ClearWallpaper:       preferences.ClearWallpaper,
 	})
 }

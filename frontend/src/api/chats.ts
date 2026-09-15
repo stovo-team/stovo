@@ -46,6 +46,13 @@ export interface Chat {
   lastMessageType: Message["type"] | null;
   lastMessageCreatedAt: string | null;
   isMuted: boolean;
+  mutedUntil?: string | null;
+  quietHoursEnabled?: boolean;
+  quietHoursStart?: string | null;
+  quietHoursEnd?: string | null;
+  notificationMode?: "all" | "mentions_only" | "specific_senders";
+  notifySenderIds?: string[];
+  alwaysNotifyMentions?: boolean;
   isPinned: boolean;
   isFavorite: boolean;
   wallpaper?: FamilyFile | null;
@@ -240,6 +247,14 @@ export function updateChatPreferences(
   chatId: string,
   payload: {
     isMuted?: boolean;
+    mutedUntil?: string | null;
+    clearMutedUntil?: boolean;
+    quietHoursEnabled?: boolean;
+    quietHoursStart?: string | null;
+    quietHoursEnd?: string | null;
+    notificationMode?: "all" | "mentions_only" | "specific_senders";
+    notifySenderIds?: string[];
+    alwaysNotifyMentions?: boolean;
     isPinned?: boolean;
     isFavorite?: boolean;
     wallpaperFileId?: string | null;

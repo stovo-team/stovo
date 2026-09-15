@@ -146,6 +146,39 @@ func TestSettingsServiceDelegatesMemberPreferences(t *testing.T) {
 	}
 }
 
+func TestSettingsServiceDelegatesNotificationPreferences(t *testing.T) {
+	store := &settingsStoreStub{}
+	service := NewSettingsService(store, time.Now)
+	future := time.Now().Add(time.Hour)
+	qEnabled := true
+	qStart := "23:00"
+	qEnd := "08:00"
+	mode := "specific_senders"
+	senders := []string{"u1", "u2"}
+	mentions := true
+
+	pref := Preferences{
+		ChatID:               "chat",
+		UserID:               "user",
+		MutedUntil:           &future,
+		QuietHoursEnabled:    &qEnabled,
+		QuietHoursStart:      &qStart,
+		QuietHoursEnd:        &qEnd,
+		NotificationMode:     &mode,
+		NotifySenderIDs:      &senders,
+		AlwaysNotifyMentions: &mentions,
+	}
+	if err := service.UpdatePreferences(context.Background(), pref); err != nil {
+		t.Fatalf("UpdatePreferences() error = %v", err)
+	}
+	if store.preferences.NotificationMode == nil || *store.preferences.NotificationMode != "specific_senders" {
+		t.Fatalf("expected specific_senders, got %+v", store.preferences)
+	}
+	if store.preferences.NotifySenderIDs == nil || len(*store.preferences.NotifySenderIDs) != 2 {
+		t.Fatalf("expected 2 senders, got %+v", store.preferences)
+	}
+}
+
 func TestSettingsServiceDelegatesDescription(t *testing.T) {
 	store := &settingsStoreStub{}
 	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
