@@ -83,6 +83,11 @@ if ($workflow -notmatch "SELECT slug FROM servers ORDER BY slug" -or
     throw "Deployment must migrate every registered tenant, including stopped backends."
 }
 
+if ($workflow -notmatch 'scripts/deploy-environment\\.sh' -or
+    $workflow -notmatch '\\.github/workflows/deploy\\.yml') {
+    throw "Changes to migration deployment logic must never be classified as frontend-only."
+}
+
 $tenantMigration = $workflow.IndexOf('atlas migrate apply --dir file:///app/migrations')
 $tenantReplacement = $workflow.IndexOf('docker rm -f "$existing_container_id"')
 if ($tenantMigration -lt 0 -or $tenantReplacement -lt 0 -or $tenantMigration -gt $tenantReplacement) {
