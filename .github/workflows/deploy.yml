@@ -115,7 +115,7 @@ jobs:
             deploy_backend=true
             previous_sha='${{ github.event.before }}'
             if [ -n "$previous_sha" ] && ! printf '%s' "$previous_sha" | grep -q '^0\{40\}$' && git cat-file -e "$previous_sha^{commit}" 2>/dev/null; then
-              if ! git diff --name-only "$previous_sha" HEAD | grep -Eq '^(backend/|migrations/master/|Caddyfile$|Caddyfile\.internal$|docker-compose\.master\.yml$|Dockerfile\.orchestrator$|deploy/)'; then
+              if ! git diff --name-only "$previous_sha" HEAD | grep -Eq '^(backend/|migrations/master/|Caddyfile$|Caddyfile\.internal$|docker-compose\.master\.yml$|Dockerfile\.orchestrator$|deploy/|scripts/deploy-environment\.sh$|\.github/workflows/deploy\.yml$)'; then
                 deploy_backend=false
               fi
             fi
