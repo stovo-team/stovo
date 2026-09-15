@@ -263,9 +263,12 @@ describe("StorageCanvases", () => {
       root?.render(<StorageCanvases accessToken="token" filter="all" search="" />);
     });
 
-    // Notes must be rendered, NOT whiteboard SVG
+    // Storage tiles keep the compact notes preview and never embed the
+    // whiteboard beneath it, where it would overflow the tile.
+    expect(container?.querySelector(".storage-canvas-preview--compact")).not.toBeNull();
     expect(container?.querySelector(".canvas-preview-notes")).not.toBeNull();
     expect(container?.textContent).toContain("Key priority items");
     expect(container?.querySelector(".canvas-preview-svg")).toBeNull();
+    expect(container?.querySelector(".canvas-preview-inline-whiteboard")).toBeNull();
   });
 });

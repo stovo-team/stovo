@@ -9,6 +9,7 @@ import {
   PDF_MIN_ZOOM,
   touchDistance,
 } from "./pdfViewerZoom";
+import { getPdfRenderLimits } from "./DocumentAttachmentPreview";
 
 describe("PDF viewer zoom helpers", () => {
   it("clamps zoom between min and max", () => {
@@ -48,6 +49,17 @@ describe("PDF viewer zoom helpers", () => {
 
     expect(canvas.style.width).toBe("400px");
     expect(canvas.style.height).toBe("600px");
+  });
+});
+
+describe("PDF viewer render limits", () => {
+  it("keeps mobile PDF previews within a device-safe page and pixel budget", () => {
+    expect(getPdfRenderLimits(80, 3, true)).toEqual({ maxPages: 12, dpr: 1.5 });
+    expect(getPdfRenderLimits(8, 1, true)).toEqual({ maxPages: 8, dpr: 1 });
+  });
+
+  it("keeps the fuller preview budget on unconstrained devices", () => {
+    expect(getPdfRenderLimits(80, 3, false)).toEqual({ maxPages: 40, dpr: 2 });
   });
 });
 

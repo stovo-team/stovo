@@ -1,5 +1,5 @@
-import { ChangeEvent, FormEvent, RefObject, useEffect, useState } from "react";
-import { BarChart2, Bell, BellOff, Check, Clock3, FileText, Image, Mail, MoreVertical, Music, Pencil, Search, Settings, UserPlus, Video } from "lucide-react";
+import { ChangeEvent, FormEvent, RefObject, useEffect, useRef, useState } from "react";
+import { BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileText, Image, Mail, MoreVertical, Music, Pencil, Search, Settings, UserPlus, Video } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ChatStats } from "../../../api/stats";
 import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
@@ -179,6 +179,8 @@ export function ChatDetailsPanel({
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
+  const [isMuteMenuOpen, setIsMuteMenuOpen] = useState(false);
+  const muteMenuRef = useRef<HTMLDivElement>(null);
   const [statsPluginEnabled, setStatsPluginEnabled] = useState(false);
 
   useEffect(() => {
@@ -192,6 +194,15 @@ export function ChatDetailsPanel({
       });
     return () => { cancelled = true; };
   }, [authRequest]);
+
+  useEffect(() => {
+    if (!isMuteMenuOpen) return;
+    const closeOnOutsidePress = (event: MouseEvent) => {
+      if (!muteMenuRef.current?.contains(event.target as Node)) setIsMuteMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsidePress);
+    return () => document.removeEventListener("mousedown", closeOnOutsidePress);
+  }, [isMuteMenuOpen]);
 
   const handleOpenStats = async () => {
     if (!statsPluginEnabled) return;
@@ -326,6 +337,56 @@ export function ChatDetailsPanel({
     onDetailsTabChange(tab);
   }
 
+  const muteSelection = !chat.isMuted ? "off" : !chat.mutedUntil ? "forever" : "custom";
+  const muteOptions = [
+    { value: "off", label: strings.chats.details.notificationsMuteOff },
+    { value: "1h", label: strings.chats.details.notificationsMute1h },
+    { value: "8h", label: strings.chats.details.notificationsMute8h },
+    { value: "24h", label: strings.chats.details.notificationsMute24h },
+    { value: "7d", label: strings.chats.details.notificationsMute7d },
+    { value: "forever", label: strings.chats.details.notificationsMuteForever }
+  ];
+  const muteTriggerLabel = muteSelection === "custom"
+    ? strings.chats.details.notificationsMutedUntil(
+        new Date(chat.mutedUntil ?? Date.now()).toLocaleTimeString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+      )
+    : muteOptions.find((option) => option.value === muteSelection)?.label ?? strings.chats.details.notificationsMuteOff;
+
+  function setMuteDuration(value: string) {
+    setIsMuteMenuOpen(false);
+    if (value === "off") {
+      void onPreferenceChange(
+        { isMuted: false, clearMutedUntil: true },
+        strings.chats.details.notificationsMuteOff
+      );
+    } else if (value === "1h") {
+      void onPreferenceChange(
+        { isMuted: true, mutedUntil: new Date(Date.now() + 60 * 60 * 1000).toISOString() },
+        strings.chats.details.notificationsMute1h
+      );
+    } else if (value === "8h") {
+      void onPreferenceChange(
+        { isMuted: true, mutedUntil: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString() },
+        strings.chats.details.notificationsMute8h
+      );
+    } else if (value === "24h") {
+      void onPreferenceChange(
+        { isMuted: true, mutedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
+        strings.chats.details.notificationsMute24h
+      );
+    } else if (value === "7d") {
+      void onPreferenceChange(
+        { isMuted: true, mutedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() },
+        strings.chats.details.notificationsMute7d
+      );
+    } else if (value === "forever") {
+      void onPreferenceChange(
+        { isMuted: true, clearMutedUntil: true },
+        strings.chats.details.notificationsMuteForever
+      );
+    }
+  }
+
   if (settings) {
     return (
       <>
@@ -434,67 +495,45 @@ export function ChatDetailsPanel({
                   )}
                 </div>
                 <div className="chat-info-mute-actions">
-                  <select
-                    className="chat-info-select chat-info-mute-select"
-                    aria-label={strings.chats.details.notificationsMuteLabel}
-                    value={
-                      !chat.isMuted
-                        ? "off"
-                        : !chat.mutedUntil
-                          ? "forever"
-                          : "custom"
-                    }
-                    onChange={(event) => {
-                      const val = event.target.value;
-                      if (val === "off") {
-                        void onPreferenceChange(
-                          { isMuted: false, clearMutedUntil: true },
-                          strings.chats.details.notificationsMuteOff
-                        );
-                      } else if (val === "1h") {
-                        const until = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-                        void onPreferenceChange(
-                          { isMuted: true, mutedUntil: until },
-                          strings.chats.details.notificationsMute1h
-                        );
-                      } else if (val === "8h") {
-                        const until = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
-                        void onPreferenceChange(
-                          { isMuted: true, mutedUntil: until },
-                          strings.chats.details.notificationsMute8h
-                        );
-                      } else if (val === "24h") {
-                        const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-                        void onPreferenceChange(
-                          { isMuted: true, mutedUntil: until },
-                          strings.chats.details.notificationsMute24h
-                        );
-                      } else if (val === "7d") {
-                        const until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-                        void onPreferenceChange(
-                          { isMuted: true, mutedUntil: until },
-                          strings.chats.details.notificationsMute7d
-                        );
-                      } else if (val === "forever") {
-                        void onPreferenceChange(
-                          { isMuted: true, clearMutedUntil: true },
-                          strings.chats.details.notificationsMuteForever
-                        );
+                  <div
+                    ref={muteMenuRef}
+                    className="chat-info-mute-menu"
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setIsMuteMenuOpen(false);
                       }
                     }}
                   >
-                    <option value="off">{strings.chats.details.notificationsMuteOff}</option>
-                    <option value="1h">{strings.chats.details.notificationsMute1h}</option>
-                    <option value="8h">{strings.chats.details.notificationsMute8h}</option>
-                    <option value="24h">{strings.chats.details.notificationsMute24h}</option>
-                    <option value="7d">{strings.chats.details.notificationsMute7d}</option>
-                    <option value="forever">{strings.chats.details.notificationsMuteForever}</option>
-                    {chat.isMuted && chat.mutedUntil && (
-                      <option value="custom" disabled hidden>
-                        Active mute
-                      </option>
+                    <button
+                      type="button"
+                      className="chat-info-mute-menu-trigger"
+                      aria-expanded={isMuteMenuOpen}
+                      aria-haspopup="menu"
+                      aria-label={strings.chats.details.notificationsMuteLabel}
+                      onClick={() => setIsMuteMenuOpen((open) => !open)}
+                    >
+                      <span>{muteTriggerLabel}</span>
+                      <ChevronDown aria-hidden="true" size={15} className={isMuteMenuOpen ? "is-open" : undefined} />
+                    </button>
+                    {isMuteMenuOpen && (
+                      <div className="chat-info-mute-menu-options" role="menu">
+                        {muteOptions.map((option) => (
+                          <button
+                            type="button"
+                            key={option.value}
+                            role="menuitemradio"
+                            aria-checked={muteSelection === option.value}
+                            className={muteSelection === option.value ? "is-selected" : undefined}
+                            onClick={() => setMuteDuration(option.value)}
+                          >
+                            <span>{option.label}</span>
+                            {muteSelection === option.value && <Check aria-hidden="true" size={15} />}
+                          </button>
+                        ))}
+                      </div>
                     )}
-                  </select>
+                  </div>
                   {chat.isMuted && (
                     <button
                       type="button"
@@ -1037,14 +1076,14 @@ export function ChatDetailsPanel({
                   <div className="chat-info-description-actions">
                     <button
                       type="submit"
-                      className="chat-info-title-save"
+                      className="chat-info-title-save chat-info-description-save"
                       disabled={isSavingDescription}
                     >
                       {strings.chats.details.save}
                     </button>
                     <button
                       type="button"
-                      className="chat-info-title-cancel"
+                      className="chat-info-title-cancel chat-info-description-cancel"
                       disabled={isSavingDescription}
                       onClick={() => {
                         setDescriptionDraft(chat.description ?? "");
