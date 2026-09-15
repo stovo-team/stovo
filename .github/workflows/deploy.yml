@@ -177,14 +177,17 @@ jobs:
               exit 1
             fi
 
-            # Migrate every registered tenant, including one whose backend is
-            # currently stopped. Restricting this to running containers lets a
-            # stopped tenant silently miss schema revisions and fail on its
-            # next start.
-            tenant_slugs="$(sudo docker compose -f docker-compose.master.yml exec -T postgres \
+            # Migrate every registered tenant and every live tenant backend.
+            # The registry is authoritative for stopped tenants, while live
+            # containers cover older/orphaned records that have not yet been
+            # reconciled into the master database. Either source by itself can
+            # leave a running backend ahead of its schema.
+            registered_tenant_slugs="$(sudo docker compose -f docker-compose.master.yml exec -T postgres \
               psql -v ON_ERROR_STOP=1 -U "$pg_user" -d "$pg_db" -tAc 'SELECT slug FROM servers ORDER BY slug')"
+            running_tenant_slugs="$(sudo docker ps --format '{{.Names}}' | sed -n 's/^stovo-backend-\([[:alnum:]][[:alnum:]-]*\)$/\1/p')"
+            tenant_slugs="$(printf '%s\n%s\n' "$registered_tenant_slugs" "$running_tenant_slugs" | sed '/^[[:space:]]*$/d' | sort -u)"
             if [ -n "$tenant_slugs" ]; then
-                echo "Applying migrations to registered tenant databases..."
+                echo "Applying migrations to registered and live tenant databases..."
                 for server_slug in $tenant_slugs; do
                     if [ -n "$server_slug" ]; then
                         echo "Applying tracked Atlas migrations for server: $server_slug"

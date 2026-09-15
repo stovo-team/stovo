@@ -1,4 +1,4 @@
-﻿-- Keep the Atlas-owned PostgreSQL schema aligned with the Ent chat_preferences model.
+-- Keep the Atlas-owned PostgreSQL schema aligned with the Ent chat_preferences model.
 -- Add per-chat notification preference fields for mute duration, silence hours, and sender filtering.
 ALTER TABLE public.chat_preferences
     ADD COLUMN IF NOT EXISTS muted_until timestamp with time zone,
