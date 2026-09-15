@@ -96,6 +96,15 @@ jobs:
       - name: SOLID architecture boundaries
         working-directory: ..
         run: bash scripts/check-solid-boundaries.sh backend
+      - name: Reject UTF-8 BOMs in Atlas migrations
+        run: |
+          set -euo pipefail
+          # Atlas hashes migration bytes. A BOM can survive in one checkout
+          # but be stripped or normalised in another, invalidating atlas.sum.
+          if LC_ALL=C grep -rl $'^\xEF\xBB\xBF' migrations --include='*.sql'; then
+            echo "Atlas migration files must be UTF-8 without a byte-order mark." >&2
+            exit 1
+          fi
       - name: Atlas migrate validate
         if: hashFiles('backend/migrations/atlas.sum') != ''
         run: |

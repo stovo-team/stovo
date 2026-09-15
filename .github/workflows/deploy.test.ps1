@@ -79,8 +79,10 @@ if ($workflow -notmatch 'tenant_database_url_for\(\)' -or
 }
 
 if ($workflow -notmatch "SELECT slug FROM servers ORDER BY slug" -or
+    $workflow -notmatch "docker ps --format '\{\{\.Names\}\}'" -or
+    $workflow -notmatch 'stovo-backend-' -or
     $workflow -match '--filter label=stovo-server') {
-    throw "Deployment must migrate every registered tenant, including stopped backends."
+    throw "Deployment must migrate every registered and live tenant backend."
 }
 
 if ($workflow -notmatch 'scripts/deploy-environment\\.sh' -or
