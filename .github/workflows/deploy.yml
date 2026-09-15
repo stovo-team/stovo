@@ -177,12 +177,15 @@ jobs:
               exit 1
             fi
 
-            # Perform rolling container update for all running tenant server clusters
-            child_containers="$(sudo docker ps -q --filter label=stovo-server || true)"
-            if [ -n "$child_containers" ]; then
-                echo "Updating active tenant backend containers..."
-                for container_id in $child_containers; do
-                    server_slug="$(sudo docker inspect --format '{{index .Config.Labels "stovo-server"}}' "$container_id")"
+            # Migrate every registered tenant, including one whose backend is
+            # currently stopped. Restricting this to running containers lets a
+            # stopped tenant silently miss schema revisions and fail on its
+            # next start.
+            tenant_slugs="$(sudo docker compose -f docker-compose.master.yml exec -T postgres \
+              psql -v ON_ERROR_STOP=1 -U "$pg_user" -d "$pg_db" -tAc 'SELECT slug FROM servers ORDER BY slug')"
+            if [ -n "$tenant_slugs" ]; then
+                echo "Applying migrations to registered tenant databases..."
+                for server_slug in $tenant_slugs; do
                     if [ -n "$server_slug" ]; then
                         echo "Applying tracked Atlas migrations for server: $server_slug"
                         tenant_database_url="$(tenant_database_url_for "$server_slug")"

@@ -32,7 +32,7 @@ if (-not $workflow.Contains('docker-compose.master.yml up -d livekit') -or
     throw "Deployment must reconcile LiveKit with the same credentials used by tenant backends."
 }
 
-if ($workflow -notmatch '--filter label=stovo-server' -or
+if ($workflow -notmatch '--label "stovo-server=\$\{server_slug\}"' -or
     $workflow -notmatch '--network stovo_default') {
     throw "Deployment must update tenant containers on the shared Stovo network."
 }
@@ -76,4 +76,15 @@ if ($workflow -notmatch 'tenant_database_url_for\(\)' -or
     $workflow -notmatch 'DATABASE_URL=\$\{tenant_database_url\}' -or
     $workflow -notmatch 'REDIS_URL=\$\{tenant_redis_url\}') {
     throw "Deployment must pass configured external database and Redis URLs to tenant backends."
+}
+
+if ($workflow -notmatch "SELECT slug FROM servers ORDER BY slug" -or
+    $workflow -match '--filter label=stovo-server') {
+    throw "Deployment must migrate every registered tenant, including stopped backends."
+}
+
+$tenantMigration = $workflow.IndexOf('atlas migrate apply --dir file:///app/migrations')
+$tenantReplacement = $workflow.IndexOf('docker rm -f "$existing_container_id"')
+if ($tenantMigration -lt 0 -or $tenantReplacement -lt 0 -or $tenantMigration -gt $tenantReplacement) {
+    throw "Tenant migrations must complete before a backend replacement begins."
 }
