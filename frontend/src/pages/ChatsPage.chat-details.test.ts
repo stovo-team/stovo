@@ -21,12 +21,16 @@ const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 describe("chat details controls", () => {
   it("edits a chat name inline in its title row", () => {
     expect(chatDetailsPanel).toContain('className="chat-info-title-wrap"');
+    expect(chatDetailsPanel).toContain('className="chat-info-title-inline-actions"');
     expect(styles).toContain(".chat-info-title-row {");
     expect(styles).toContain("justify-content: center;");
     expect(styles).toContain(".chat-info-title-wrap {");
     expect(styles).toContain(".chat-info-title-edit {");
     expect(styles).toContain("position: absolute;");
     expect(styles).toContain("inset-inline-start: 100%;");
+    expect(styles).toContain(".chat-info-title-inline-actions {");
+    expect(styles).toContain(".chat-info-title-save:hover:not(:disabled),");
+    expect(styles).toContain("border-radius: 9999px;");
   });
 
   it("does not show archive or encryption labels in the chat details hero", () => {
@@ -48,6 +52,10 @@ describe("chat details controls", () => {
     expect(chatDetailsPanel).toContain("strings.chats.details.familyStorage");
     expect(chatDetailsPanel).not.toContain('className="chat-info-permissions-popup"');
     expect(styles).toContain(".chat-info-screen--settings .chat-info-topbar");
+    expect(styles).toContain(".chat-info-screen--settings .chat-info-topbar-title {");
+    expect(styles).toContain("text-align: left;");
+    expect(styles).toContain(".chat-info-screen--settings .chat-info-body {");
+    expect(styles).toContain("padding-top: 16px;");
   });
 
   it("keeps chat wallpaper on the chat settings page", () => {

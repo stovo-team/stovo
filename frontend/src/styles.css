@@ -3526,28 +3526,25 @@ h2 {
   -webkit-overflow-scrolling: touch;
 }
 
-@media (min-width: 961px) {
-  .chat-list,
-  .messages-panel {
-    scrollbar-color: var(--border-default) transparent;
-    scrollbar-width: thin;
-  }
+/* Shared app scrollbars match the understated chat treatment. Individual
+   components can still opt out with their more-specific hidden/custom rules. */
+:where(*) {
+  scrollbar-color: var(--border-default) transparent;
+  scrollbar-width: thin;
+}
 
-  .chat-list::-webkit-scrollbar,
-  .messages-panel::-webkit-scrollbar {
-    width: 6px;
-  }
+:where(*)::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
 
-  .chat-list::-webkit-scrollbar-track,
-  .messages-panel::-webkit-scrollbar-track {
-    background: transparent;
-  }
+:where(*)::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-  .chat-list::-webkit-scrollbar-thumb,
-  .messages-panel::-webkit-scrollbar-thumb {
-    background: var(--border-default);
-    border-radius: 999px;
-  }
+:where(*)::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 999px;
 }
 
 .chat-list-section {
@@ -4337,6 +4334,7 @@ h2 {
   font-size: 0.75rem;
   font-weight: 700;
   justify-self: center;
+  margin-block-start: 12px;
   margin-block-end: 8px;
   padding: 4px 12px;
 }
@@ -16646,10 +16644,10 @@ button.attachment-nav-item:focus-visible {
 }
 
 .chat-info-title-inline-editor {
-  align-items: center;
-  display: flex;
+  display: grid;
   gap: 8px;
   max-width: 100%;
+  width: min(100%, 360px);
 }
 
 .chat-info-title-inline-editor .chat-info-inline-input {
@@ -16658,6 +16656,7 @@ button.attachment-nav-item:focus-visible {
   border-radius: 10px;
   min-width: 0;
   padding: 7px 10px;
+  width: 100%;
 }
 
 .chat-info-title-inline-editor .chat-info-inline-input:focus-visible {
@@ -16669,15 +16668,28 @@ button.attachment-nav-item:focus-visible {
 .chat-info-title-cancel {
   background: transparent;
   border: none;
+  border-radius: 9999px;
   color: var(--accent-primary);
   cursor: pointer;
   font-size: 0.8125rem;
   font-weight: 600;
-  padding: 6px 0;
+  padding: 6px 12px;
+}
+
+.chat-info-title-inline-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .chat-info-title-cancel {
   color: var(--text-secondary);
+}
+
+/* Keep title-edit actions visually stable; the shared button hover fill is distracting here. */
+.chat-info-title-save:hover:not(:disabled),
+.chat-info-title-cancel:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
 }
 
 .chat-info-title-save:disabled {
@@ -16720,8 +16732,10 @@ button.attachment-nav-item:focus-visible {
   padding: 12px 6px;
 }
 
-.chat-info-action .ms-icon {
+.chat-info-action-icon {
   color: var(--text-primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .chat-info-action > span:last-child {
@@ -17027,14 +17041,15 @@ button.attachment-nav-item:focus-visible {
 }
 
 .chat-info-screen--settings .chat-info-topbar {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
-  align-items: center;
+  gap: 12px;
 }
 
-.chat-info-screen--settings .chat-info-topbar::after {
-  content: "";
-  width: 44px;
+.chat-info-screen--settings .chat-info-topbar-title {
+  text-align: left;
+}
+
+.chat-info-screen--settings .chat-info-body {
+  padding-top: 16px;
 }
 
 .chat-info-permission-option--inline {

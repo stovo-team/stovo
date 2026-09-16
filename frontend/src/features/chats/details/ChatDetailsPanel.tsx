@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, RefObject, useEffect, useRef, useState } from "react";
-import { BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileText, Image, Mail, MoreVertical, Music, Pencil, Search, Settings, UserPlus, Video } from "lucide-react";
+import { BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileText, Image, Mail, MessageSquare, MoreVertical, Music, Pencil, Search, Settings, Star, UserPlus, Video } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ChatStats } from "../../../api/stats";
 import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
@@ -1012,17 +1012,19 @@ export function ChatDetailsPanel({
                   value={chatTitleDraft}
                   onChange={(event) => onTitleDraftChange(event.target.value)}
                 />
-                <button type="submit" className="chat-info-title-save" disabled={!canRename}>
-                  {strings.chats.details.save}
-                </button>
-                <button
-                  type="button"
-                  className="chat-info-title-cancel"
-                  aria-label={strings.chats.details.cancel}
-                  onClick={() => setActiveControl(null)}
-                >
-                  {strings.chats.details.cancel}
-                </button>
+                <div className="chat-info-title-inline-actions">
+                  <button type="submit" className="chat-info-title-save" disabled={!canRename}>
+                    {strings.chats.details.save}
+                  </button>
+                  <button
+                    type="button"
+                    className="chat-info-title-cancel"
+                    aria-label={strings.chats.details.cancel}
+                    onClick={() => setActiveControl(null)}
+                  >
+                    {strings.chats.details.cancel}
+                  </button>
+                </div>
               </form>
             ) : (
               <div className="chat-info-title-wrap">
@@ -1131,9 +1133,7 @@ export function ChatDetailsPanel({
 
         <section className="chat-info-actions" aria-label="Chat actions">
           <button type="button" className="chat-info-action" onClick={onFocusComposer}>
-            <span className="ms-icon ms-icon--24" aria-hidden={true}>
-              chat
-            </span>
+            <MessageSquare className="chat-info-action-icon" aria-hidden="true" size={24} strokeWidth={1.7} />
             <span>{strings.chats.details.message}</span>
           </button>
           <button
@@ -1147,9 +1147,11 @@ export function ChatDetailsPanel({
               )
             }
           >
-            <span className="ms-icon ms-icon--24" aria-hidden={true}>
-              {chat.isMuted ? "notifications" : "notifications_off"}
-            </span>
+            {chat.isMuted ? (
+              <Bell className="chat-info-action-icon" aria-hidden="true" size={24} strokeWidth={1.7} />
+            ) : (
+              <BellOff className="chat-info-action-icon" aria-hidden="true" size={24} strokeWidth={1.7} />
+            )}
             <span>{chat.isMuted ? strings.chats.details.unmute : strings.chats.details.mute}</span>
           </button>
           <button
@@ -1163,12 +1165,13 @@ export function ChatDetailsPanel({
               )
             }
           >
-            <span
-              className={`ms-icon ms-icon--24${chat.isFavorite ? " ms-icon--filled" : ""}`}
-              aria-hidden={true}
-            >
-              star
-            </span>
+            <Star
+              className="chat-info-action-icon"
+              aria-hidden="true"
+              fill={chat.isFavorite ? "currentColor" : "none"}
+              size={24}
+              strokeWidth={1.7}
+            />
             <span>{chat.isFavorite ? strings.chats.details.saved : strings.chats.details.favorite}</span>
           </button>
         </section>
