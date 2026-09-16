@@ -24,4 +24,10 @@ describe("chat folder dialog styles", () => {
     expect(styles).toMatch(/@media \(max-width:\s*768px\)[\s\S]*?\.modal-backdrop\.chat-folder-backdrop\s*\{[\s\S]*?padding-top:\s*max\(calc\(env\(safe-area-inset-top,\s*0px\)\s*\+\s*40px\),\s*64px\);/);
     expect(styles).toMatch(/@media \(max-width:\s*768px\)[\s\S]*?\.modal-backdrop\.chat-folder-backdrop\s*\{[\s\S]*?align-items:\s*flex-start;/);
   });
+
+  it("contains scrollbar within chat-folder-body so it does not poke outside dialog rounded corners", () => {
+    expect(styles).toMatch(/\.chat-folder-dialog\s*\{[^}]*overflow:\s*hidden/);
+    expect(styles).toMatch(/\.chat-folder-body\s*\{[^}]*overflow-y:\s*auto/);
+    expect(styles).toMatch(/\.modal-backdrop\.chat-folder-backdrop\s*\{[^}]*scrollbar-width:\s*none/);
+  });
 });

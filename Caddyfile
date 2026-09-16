@@ -1,5 +1,5 @@
 (stovo) {
-	encode gzip
+	encode zstd gzip
 
 	handle /api/v1/master* {
 		reverse_proxy orchestrator:8001

@@ -8,7 +8,6 @@ import {
   Loader2,
   Pause,
   Play,
-  Sparkles,
 } from "lucide-react";
 import {
   useCallback,

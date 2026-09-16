@@ -31,4 +31,12 @@ describe("compact audio message styling", () => {
       /\.message-bubble:has\(\.message-audio-attachment\) \.message-attachments,[\s\S]*?\.message-bubble:has\(\.message-audio-attachment\) \.message-attachments > div \{[^}]*min-width: 0;[^}]*width: 100%;/
     );
   });
+
+  it("resets min-height on audio player buttons and keeps transcribe button fully circular", () => {
+    expect(styles).toMatch(/\.audio-player button \{[^}]*min-height: 0;/);
+    expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*border-radius: 50%;/);
+    expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*min-height: 22px;/);
+    expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*min-width: 22px;/);
+    expect(styles).toMatch(/\.audio-player-transcribe-btn \{[^}]*aspect-ratio: 1 \/ 1;/);
+  });
 });
