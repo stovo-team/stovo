@@ -372,8 +372,35 @@ export function extractMessageLinks(content: string | null): string[] {
   if (!content) {
     return [];
   }
-  const matches = content.match(/https?:\/\/[^\s<>"'`\]]+/gi) ?? [];
-  return Array.from(new Set(matches.map((url) => url.replace(/[.,!?;:]+$/, ""))));
+  const linkPattern = /https?:\/\/[^\s<>"'`\]]+|(?:^|[\s([{"'])((?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,24}(?::[0-9]+)?(?:\/[^\s<>"'`\]]*)?)/gi;
+  const links: string[] = [];
+
+  for (const match of content.matchAll(linkPattern)) {
+    const rawURL = (match[1] ?? match[0]).replace(/[.,!?;:]+$/, "");
+    if (!rawURL) continue;
+
+    if (!/^https?:\/\//i.test(rawURL)) {
+      const hostname = rawURL.split(/[/:]/, 1)[0];
+      const lastDot = hostname.lastIndexOf(".");
+      const hasPath = rawURL.includes("/");
+      // Avoid treating sentence-style prose such as "Hello.World" as a URL.
+      if (
+        lastDot > 0 &&
+        !hasPath &&
+        !hostname.toLowerCase().startsWith("www.") &&
+        /^[A-Z][a-z]+$/.test(hostname.slice(lastDot + 1)) &&
+        /^[a-z]+$/.test(hostname.slice(0, lastDot))
+      ) {
+        continue;
+      }
+      links.push(`https://${rawURL}`);
+      continue;
+    }
+
+    links.push(rawURL);
+  }
+
+  return Array.from(new Set(links));
 }
 
 export function messageActionSummary(message: Message) {

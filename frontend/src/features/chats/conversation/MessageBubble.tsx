@@ -77,6 +77,8 @@ function GuestMeetingInvitation({ meeting, sourceChatId }: { meeting: GuestMeeti
 }
 
 export function extractFirstUrl(content: string | null | undefined): string | null {
+  const previewURL = extractMessageLinks(content ?? null)[0];
+  if (previewURL) return previewURL;
   if (!content) return null;
   const match = /https?:\/\/[^\s<>"']+/i.exec(content);
   if (!match) return null;
@@ -115,6 +117,7 @@ import {
   isImageAttachment,
   messageActionSummary,
   messageDeliveryLabel,
+  extractMessageLinks,
   messageHasOnlyMediaAttachments,
   messageOriginChatId,
   messageReceiptState,

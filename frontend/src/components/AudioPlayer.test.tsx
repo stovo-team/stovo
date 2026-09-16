@@ -12,6 +12,7 @@ import {
 } from "../audioPlaybackSession";
 import { clearCachedAudioDuration, setCachedAudioDuration } from "../audioDurationCache";
 import { AudioPlayer, formatAudioTime } from "./AudioPlayer";
+import { russianStrings } from "../config/strings";
 
 const mockGetFileTranscript = vi.fn();
 const mockTranscribeFile = vi.fn();
@@ -590,6 +591,26 @@ describe("AudioPlayer", () => {
       expect.anything(),
       30
     );
+  });
+
+  it("renders SVG-only transcribe button without text, and localizes transcript labels in Russian", async () => {
+    mockGetFileTranscript.mockResolvedValueOnce({ fileId: "file-1", text: "Привет мир" });
+    const { container } = renderPlayer({ accessToken: "token-123", strings: russianStrings });
+    await settle();
+
+    const transcribeBtn = container.querySelector<HTMLButtonElement>(".audio-player-transcribe-btn");
+    expect(transcribeBtn).not.toBeNull();
+    // Transcribe button must have an SVG inside and no text node / label span
+    expect(transcribeBtn?.querySelector("svg")).not.toBeNull();
+    expect(transcribeBtn?.querySelector(".audio-player-transcribe-label")).toBeNull();
+    expect(transcribeBtn?.textContent?.trim()).toBe("");
+
+    // Russian aria-label
+    expect(transcribeBtn?.getAttribute("aria-label")).toBe("Скрыть расшифровку");
+
+    // Header label in Russian
+    expect(container.querySelector(".audio-player-transcript-label")?.textContent).toBe("Расшифровка");
+    expect(container.querySelector('[data-control="transcript-text"]')?.textContent).toBe("Привет мир");
   });
 });
 

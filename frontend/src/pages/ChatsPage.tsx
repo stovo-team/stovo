@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { WifiOff } from "lucide-react";
+import { App } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 
 import { useAuth } from "../auth/AuthContext";
 import { useAppearance } from "../appearance/AppearanceContext";
@@ -100,6 +102,30 @@ export default function ChatsPage() {
     }
   }, [selectedChat?.id, selectedChat?.type]);
 
+  useEffect(() => {
+    if (!isDraftsAndScheduledOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsDraftsAndScheduledOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDraftsAndScheduledOpen]);
+
+  useEffect(() => {
+    if (!isDraftsAndScheduledOpen || !Capacitor.isNativePlatform()) return;
+    let listener: { remove: () => Promise<void> } | null = null;
+    void (async () => {
+      listener = await App.addListener("backButton", () => {
+        setIsDraftsAndScheduledOpen(false);
+      });
+    })();
+    return () => {
+      void listener?.remove();
+    };
+  }, [isDraftsAndScheduledOpen]);
+
   function updateMessageArchiveView(view: MessageArchiveView) {
     setMessageArchiveView(view);
     if (currentUser?.id && typeof window !== "undefined") {
@@ -186,9 +212,11 @@ export default function ChatsPage() {
     return <Navigate to={`${prefix}/app/chats`} replace />;
   }
 
+  const hasActiveChat = Boolean(chatId || isDraftsAndScheduledOpen);
+
   return (
     <main
-      className={`app-shell app-frame messenger-shell ${chatId ? "has-active-chat" : "chat-list-view"}${chatListLayoutClass(family?.minimizedChatLayout ?? false)}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}${videoPipBridge.isVideoPictureInPictureActive ? " messenger-shell--video-pip" : ""}`}
+      className={`app-shell app-frame messenger-shell ${hasActiveChat ? "has-active-chat" : "chat-list-view"}${chatListLayoutClass(family?.minimizedChatLayout ?? false)}${isNewChatOpen ? " messenger-shell--new-chat" : ""}${isDetailsOpen && selectedChat ? " messenger-shell--chat-info" : ""}${videoPipBridge.isVideoPictureInPictureActive ? " messenger-shell--video-pip" : ""}`}
     >
       <AppNav unreadTotalOverride={unreadTotal} />
       <section className="messenger-workspace">
@@ -246,10 +274,10 @@ export default function ChatsPage() {
             style={detailsActions.wallpaperStyle}
             onPointerCancel={endChatExitSwipe}
             onPointerDown={beginChatExitSwipe}
-            onPointerMove={(event) => moveChatExitSwipe(event, requestCloseActiveChatSurface)}
+            onPointerMove={(event) => moveChatExitSwipe(event, isDraftsAndScheduledOpen ? () => setIsDraftsAndScheduledOpen(false) : requestCloseActiveChatSurface)}
             onPointerUp={endChatExitSwipe}
           >
-            {isDraftsAndScheduledOpen ? <QuickAccessPanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); openChat(chat); }} /> : isMessageArchiveOpen && messageArchiveView === "grouped" && !archiveGroup ? <MessageArchivePanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onViewChange={updateMessageArchiveView} onOpenGroup={(group) => { const archive = chats.find((chat) => chat.type === "archive"); if (!archive) return; setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); navigate(`${getClusterPrefix()}/app/chats/${archive.id}?archiveGroup=${encodeURIComponent(group)}`); }} /> : <ConversationPanel
+            {isDraftsAndScheduledOpen ? <QuickAccessPanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onOpenChat={(chat) => { setIsDraftsAndScheduledOpen(false); openChat(chat); }} onBack={() => setIsDraftsAndScheduledOpen(false)} /> : isMessageArchiveOpen && messageArchiveView === "grouped" && !archiveGroup ? <MessageArchivePanel accessToken={accessToken} chats={chats} currentUserId={currentUser?.id} onViewChange={updateMessageArchiveView} onOpenGroup={(group) => { const archive = chats.find((chat) => chat.type === "archive"); if (!archive) return; setIsMessageArchiveOpen(true); setMessageArchiveView("grouped"); setSelectedChat(archive); openChat(archive); navigate(`${getClusterPrefix()}/app/chats/${archive.id}?archiveGroup=${encodeURIComponent(group)}`); }} onBack={requestCloseActiveChatSurface} /> : <ConversationPanel
               thread={thread}
               composer={composerApi}
               accessToken={accessToken}

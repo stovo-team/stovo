@@ -13,4 +13,10 @@ describe("link unfurl message sizing", () => {
       /\.message-bubble:has\(\.link-unfurl-card\) \.link-unfurl-card \{[^}]*max-width: 100%;[^}]*width: 100%;/
     );
   });
+
+  it("keeps an outgoing preview title readable on hover", () => {
+    expect(styles).toContain(
+      ".message-bubble.mine:not(.scheduled) .link-unfurl-title:hover"
+    );
+  });
 });

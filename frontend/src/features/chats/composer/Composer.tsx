@@ -729,9 +729,9 @@ export function Composer({
                       : missingCommentThread
                         ? strings.comments.chooseThread
                         : canPostInSelectedChannel
-                          ? "Post an update"
-                          : "Message"
-                    : "Message"
+                          ? strings.chats.composer.postUpdatePlaceholder
+                          : strings.chats.composer.messagePlaceholder
+                    : strings.chats.composer.messagePlaceholder
               }
               value={composer}
               disabled={channelCommentsDisabledForViewer || missingCommentThread}
@@ -866,7 +866,7 @@ export function Composer({
             <span
               className="composer-delay-counter"
               role="timer"
-              aria-label={`You can send another message in ${messageDelayLabel}`}
+              aria-label={strings.chats.composer.sendDelayRemaining(messageDelayLabel)}
             >
               {messageDelayLabel}
             </span>
@@ -884,7 +884,7 @@ export function Composer({
               <button
                 type="submit"
                 className={`composer-send-button${isSendingMessage ? " is-sending" : ""}`}
-                aria-label={messageDelayRemaining > 0 ? `Message delay: ${messageDelayRemaining}s` : "Send message"}
+                aria-label={messageDelayRemaining > 0 ? strings.chats.composer.messageDelayAria(String(messageDelayRemaining)) : strings.chats.composer.sendMessageAria}
                 aria-busy={isUploading || isSendingMessage}
                 disabled={
                   isUploading ||
@@ -913,7 +913,7 @@ export function Composer({
                   send
                 </span>
                 {(isUploading || isSendingMessage) && (
-                  <span className="visually-hidden">{isUploading ? "Uploading" : "Sending"}</span>
+                  <span className="visually-hidden">{isUploading ? strings.chats.composer.uploading : strings.chats.composer.sending}</span>
                 )}
               </button>
               <SendSubmenu

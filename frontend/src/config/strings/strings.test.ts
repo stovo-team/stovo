@@ -97,6 +97,21 @@ describe("i18n strings and language resolution", () => {
     expect(ru.callHistory.videoCall).toBe("Видеозвонок");
     expect(en.callHistory.audioCall).toBe("Audio call");
     expect(ru.callHistory.audioCall).toBe("Аудиозвонок");
+
+    expect(en.settings.general).toBe("General");
+    expect(ru.settings.general).toBe("Общие");
+    expect(en.settings.statistics).toBe("Statistics");
+    expect(ru.settings.statistics).toBe("Статистика");
+
+    expect(en.audioPlayer.text).toBe("Text");
+    expect(ru.audioPlayer.text).toBe("Текст");
+    expect(en.audioPlayer.hide).toBe("Hide");
+    expect(ru.audioPlayer.hide).toBe("Скрыть");
+    expect(en.audioPlayer.transcript).toBe("Transcript");
+    expect(ru.audioPlayer.transcript).toBe("Расшифровка");
+
+    expect(en.chats.composer.messagePlaceholder).toBe("Message");
+    expect(ru.chats.composer.messagePlaceholder).toBe("Сообщение");
   });
 
   it("exports valid english and russian string dictionaries with matching keys", () => {
@@ -119,5 +134,7 @@ describe("i18n strings and language resolution", () => {
     expect(Object.keys(russianStrings.shortcuts.categories)).toEqual(Object.keys(englishStrings.shortcuts.categories));
     expect(Object.keys(russianStrings.shortcuts.actions)).toEqual(Object.keys(englishStrings.shortcuts.actions));
     expect(Object.keys(russianStrings.quickSwitcher)).toEqual(Object.keys(englishStrings.quickSwitcher));
+    expect(Object.keys(russianStrings.audioPlayer)).toEqual(Object.keys(englishStrings.audioPlayer));
+    expect(Object.keys(russianStrings.chats.composer)).toEqual(Object.keys(englishStrings.chats.composer));
   });
 });

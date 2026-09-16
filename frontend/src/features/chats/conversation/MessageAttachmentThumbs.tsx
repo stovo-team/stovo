@@ -12,6 +12,7 @@ import { shouldAutoDownloadMedia } from "../../../mediaDownloadPolicy";
 import { audioPlaybackSession, type AudioDescriptor } from "../../../audioPlaybackSession";
 import { buildAudioSourceFactory } from "../shared/audioSourceFactory";
 import { isImageAttachment } from "../shared/messagePresentation";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export function ComposerContextThumb({
   accessToken,
@@ -103,6 +104,7 @@ export function AttachmentCard({
   const isImage = isImageAttachment(file);
   const isVideo = Boolean(file?.mimeType?.startsWith("video/"));
   const isAudio = Boolean(file?.mimeType?.startsWith("audio/"));
+  const strings = useStrings();
   const documentKind = detectDocumentPreviewKind(file);
   const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
   const resolveAudioDurationUrl = useCallback(async () => {
@@ -123,7 +125,7 @@ export function AttachmentCard({
   if (isAudio) {
     const descriptor: AudioDescriptor = {
       identity: { chatId: chatId || "", messageId: messageId || "", fileId: file.id || "" },
-      title: file.originalName || "Audio message",
+      title: file.originalName || strings.audioPlayer.audioMessage,
       mimeType: file.mimeType || "audio/mpeg"
     };
     return (

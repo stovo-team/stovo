@@ -37,7 +37,11 @@ func (s *Store) LastMessagePreview(ctx context.Context, chatID string) (featurec
 	if err != nil {
 		return featurechats.MessagePreview{}, err
 	}
-	return featurechats.MessagePreview{ID: p.ID, SenderID: p.SenderID, SenderName: p.SenderName, Type: p.Type, Content: p.Content, CreatedAt: p.CreatedAt, AttachmentCount: p.AttachmentCount}, nil
+	return featurechats.MessagePreview{
+		ID: p.ID, SenderID: p.SenderID, SenderName: p.SenderName, Type: p.Type, Content: p.Content,
+		EncryptionProtocol: p.EncryptionProtocol, Ciphertext: p.Ciphertext, Nonce: p.Nonce,
+		CreatedAt: p.CreatedAt, AttachmentCount: p.AttachmentCount,
+	}, nil
 }
 
 var _ featurechats.ArchiveStore = (*Store)(nil)

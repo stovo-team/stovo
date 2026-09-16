@@ -108,6 +108,8 @@ export const strings = {
     languageRussian: "Русский",
     helpAndAbout: "Help and About",
     helpHelper: "Version and support",
+    statistics: "Statistics",
+    statisticsHelper: "View chat activity and server trends",
 
 
     tapToPersonalize: "Tap to personalize",
@@ -526,6 +528,20 @@ export const strings = {
       settings: "Settings",
       disconnect: "Disconnect from Voice Channel",
     },
+    composer: {
+      messagePlaceholder: "Message",
+      postUpdatePlaceholder: "Post an update",
+      sendMessageAria: "Send message",
+      messageDelayAria: (delay: string) => `Message delay: ${delay}s`,
+      sendDelayRemaining: (label: string) => `You can send another message in ${label}`,
+      uploading: "Uploading",
+      sending: "Sending",
+      clickToRecordVoice: "Click to record voice message",
+      clickToSendVoice: "Click to send voice message",
+      scheduleMessage: "Schedule message",
+      setReminder: "Set reminder",
+      sendOptionsAria: "Message send options",
+    },
   },
 
   // ── Files / Storage ──────────────────────────────────────────────────
@@ -847,6 +863,32 @@ export const strings = {
     hintSelect: "Open",
     hintClose: "Close",
     hintFilterPrefixes: "Tip: Type # for channels, @ for people, > for actions",
+  },
+
+  audioPlayer: {
+    text: "Text",
+    hide: "Hide",
+    transcribe: "Transcribe voice message",
+    hideTranscript: "Hide transcript",
+    showTranscript: "Show transcript",
+    transcribingWithAi: "Transcribing audio with AI...",
+    transcript: "Transcript",
+    collapseTranscript: "Collapse transcript",
+    expandTranscript: "Expand transcript",
+    playAudio: "Play audio",
+    pauseAudio: "Pause audio",
+    seekAudio: "Seek audio",
+    audioTime: "Audio time",
+    retry: "Retry",
+    retryAudio: "Retry audio",
+    audioMessage: "Audio message",
+    callActiveStatus: "Audio is paused while a call is active.",
+    suppressedStatus: "Playback paused by another app.",
+    couldNotPlay: "Audio couldn’t be played.",
+    couldNotPlayRetry: "Audio couldn’t be played. Try again.",
+    formatUnsupported: "This audio format isn’t supported on this device.",
+    noLongerAvailable: "This audio message is no longer available.",
+    networkError: "Audio couldn’t load. Check your connection and try again.",
   },
 };
 

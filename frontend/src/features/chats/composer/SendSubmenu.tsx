@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { CalendarClock, BellRing } from "lucide-react";
+import { useStrings } from "../../../i18n/LanguageContext";
 
 export interface SendSubmenuProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export function SendSubmenu({
   onSelectSchedule,
   onSelectReminder
 }: SendSubmenuProps) {
+  const strings = useStrings();
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function SendSubmenu({
       ref={menuRef}
       className="send-submenu-popup action-menu"
       role="menu"
-      aria-label="Message send options"
+      aria-label={strings.chats.composer.sendOptionsAria}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
@@ -69,7 +71,7 @@ export function SendSubmenu({
         }}
       >
         <CalendarClock size={16} aria-hidden="true" />
-        <span>Schedule message</span>
+        <span>{strings.chats.composer.scheduleMessage}</span>
       </button>
 
       <button
@@ -86,7 +88,7 @@ export function SendSubmenu({
         }}
       >
         <BellRing size={16} aria-hidden="true" />
-        <span>Set reminder</span>
+        <span>{strings.chats.composer.setReminder}</span>
       </button>
     </div>
   );

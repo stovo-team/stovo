@@ -263,10 +263,11 @@ export default function FilesPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [isMobileSourceBrowserOpen, setIsMobileSourceBrowserOpen] = useState(true);
+  const [isSourceMenuOpen, setIsSourceMenuOpen] = useState(false);
   const [collectionPicker, setCollectionPicker] = useState<StorageCollectionPickerRequest | null>(null);
   const [collectionPickedIds, setCollectionPickedIds] = useState<string[]>([]);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const sourceMenuRef = useRef<HTMLDivElement | null>(null);
   const storageDetailsCloseRef = useRef<HTMLButtonElement | null>(null);
 
   const storageFilters: Array<{ label: string; value: StorageFilter }> = [
@@ -429,6 +430,30 @@ export default function FilesPage() {
     };
   }, [closeMobileDetails, mobileDetailsOpen]);
 
+  useEffect(() => {
+    if (!isSourceMenuOpen) {
+      return;
+    }
+    function handleDocumentMouseDown(event: MouseEvent | TouchEvent) {
+      if (!sourceMenuRef.current?.contains(event.target as Node)) {
+        setIsSourceMenuOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsSourceMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    document.addEventListener("touchstart", handleDocumentMouseDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+      document.removeEventListener("touchstart", handleDocumentMouseDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSourceMenuOpen]);
+
   const filteredFiles = useMemo(() => {
     const query = search.trim().toLowerCase();
     return files.filter((file) => {
@@ -527,27 +552,25 @@ export default function FilesPage() {
   }
 
   return (
-    <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${mobileDetailsOpen ? " has-storage-selection" : ""}${collectionPicker ? " is-collection-picking" : ""}${isMobileSourceBrowserOpen ? " mobile-source-browser-open" : ""}`}>
+    <main className={`app-shell app-frame storage-page${family?.minimizedChatLayout ? " storage-page--minimized-layout" : ""}${mobileDetailsOpen ? " has-storage-selection" : ""}${collectionPicker ? " is-collection-picking" : ""}`}>
       <AppNav />
       <section className="page-surface storage-layout" aria-busy={isLoading || isUploading}>
         <aside className="storage-source-sidebar" aria-label={strings.files.storageSource}>
-          <div className={`storage-mobile-source-picker${isMobileSourceBrowserOpen ? " is-source-browser-open" : ""}`}>
-            {!isMobileSourceBrowserOpen && (
-              <button
-                type="button"
-                className="storage-mobile-source-trigger"
-                aria-expanded={false}
-                aria-haspopup="listbox"
-                onClick={() => setIsMobileSourceBrowserOpen(true)}
-              >
-                <span className="storage-mobile-source-copy">
-                  <strong>{selectedSource?.label ?? strings.files.allChats}</strong>
-                  <small>{selectedSource?.fileCount ?? files.length} files</small>
-                </span>
-                <ChevronDown aria-hidden="true" size={20} />
-              </button>
-            )}
-            {isMobileSourceBrowserOpen && (
+          <div className="storage-mobile-source-picker" ref={sourceMenuRef}>
+            <button
+              type="button"
+              className="storage-mobile-source-trigger"
+              aria-expanded={isSourceMenuOpen}
+              aria-haspopup="listbox"
+              onClick={() => setIsSourceMenuOpen((isOpen) => !isOpen)}
+            >
+              <span className="storage-mobile-source-copy">
+                <strong>{selectedSource?.label ?? strings.files.allChats}</strong>
+                <small>{selectedSource?.fileCount ?? files.length} files</small>
+              </span>
+              <ChevronDown aria-hidden="true" size={20} />
+            </button>
+            {isSourceMenuOpen && (
               <div className="storage-mobile-source-menu" role="listbox" aria-label={strings.files.storageSource}>
                 <button
                   type="button"
@@ -556,7 +579,7 @@ export default function FilesPage() {
                   className={!sourceChatId ? "active" : undefined}
                   onClick={() => {
                     setSourceChatId(null);
-                    setIsMobileSourceBrowserOpen(false);
+                    setIsSourceMenuOpen(false);
                   }}
                 >
                   <span className="storage-source-avatar" aria-hidden="true"><MessageCircle size={19} /></span>
@@ -574,7 +597,7 @@ export default function FilesPage() {
                         key={source.chatId}
                         onClick={() => {
                           setSourceChatId(source.chatId);
-                          setIsMobileSourceBrowserOpen(false);
+                          setIsSourceMenuOpen(false);
                         }}
                       >
                         <span className={`storage-source-avatar${source.avatarKind === "archive" ? " storage-source-avatar--archive" : ""}`}>

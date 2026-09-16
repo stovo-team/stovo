@@ -69,10 +69,11 @@ describe("chat details controls", () => {
     expect(styles).toContain(".chat-info-wallpaper-upload {");
   });
 
-  it("keeps the back, settings, and edit controls neutral until interaction", () => {
+  it("keeps the title edit control visually stable on hover", () => {
     expect(styles).toContain(".chat-info-back:hover,");
-    expect(styles).toContain(".chat-info-topbar-action:hover,");
+    expect(styles).toContain(".chat-info-topbar-action:hover {");
     expect(styles).toContain(".chat-info-title-edit:hover {");
+    expect(styles.replace(/\r\n/g, "\n")).toContain(".chat-info-title-edit:hover {\n  background: transparent;");
   });
 
   it("collects links and every attachment type with its source message", () => {

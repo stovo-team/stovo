@@ -178,6 +178,33 @@ export default function SettingsPage() {
       ? strings.settings.languageRussian
       : strings.settings.languageEnglish;
 
+  const getActiveSettingsItemTitle = (item: string) => {
+    switch (item) {
+      case "General":
+        return strings.settings.general;
+      case "Appearance":
+        return strings.settings.appearance;
+      case "Notifications":
+        return strings.settings.notifications;
+      case "Shortcuts":
+        return strings.settings.keyboardShortcuts;
+      case "Privacy and Security":
+        return strings.settings.privacyAndSecurity;
+      case "Language":
+        return strings.settings.language;
+      case "Help and About":
+        return strings.settings.helpAndAbout;
+      case "Profile":
+        return strings.settings.displayName;
+      case "Family":
+        return strings.settings.family;
+      case "Statistics":
+        return strings.settings.statistics;
+      default:
+        return item;
+    }
+  };
+
   const settingsGroups = [
     {
       title: strings.settings.yourSpace,
@@ -188,7 +215,7 @@ export default function SettingsPage() {
         { id: "Privacy and Security", label: strings.settings.privacyAndSecurity, helper: strings.settings.privacyHelper, icon: LockKeyhole },
         { id: "Shortcuts", label: strings.settings.keyboardShortcuts, helper: strings.settings.keyboardShortcutsHelper, icon: Keyboard },
         { id: "Language", label: strings.settings.language, helper: languageHelper, icon: Globe },
-        { id: "Statistics", label: "Statistics", helper: "View chat activity and server trends", icon: BarChart3 },
+        { id: "Statistics", label: strings.settings.statistics, helper: strings.settings.statisticsHelper, icon: BarChart3 },
         { id: "Help and About", label: strings.settings.helpAndAbout, helper: strings.settings.helpHelper, icon: HelpCircle }
       ]
     }
@@ -462,7 +489,7 @@ export default function SettingsPage() {
               <section
                 className="settings-detail-panel"
                 role="region"
-                aria-label={activeSettingsItem}
+                aria-label={getActiveSettingsItemTitle(activeSettingsItem)}
               >
                 <div className="section-title-row">
                   <BackButton
@@ -488,21 +515,7 @@ export default function SettingsPage() {
                     }}
                   />
                   <h2>
-                    {activeSettingsItem === "Notifications"
-                      ? strings.settings.notifications
-                      : activeSettingsItem === "Shortcuts"
-                      ? strings.settings.keyboardShortcuts
-                      : activeSettingsItem === "Privacy and Security"
-                      ? strings.settings.privacyAndSecurity
-                      : activeSettingsItem === "Language"
-                      ? strings.settings.language
-                      : activeSettingsItem === "Help and About"
-                      ? strings.settings.helpAndAbout
-                      : activeSettingsItem === "Profile"
-                      ? strings.settings.displayName
-                      : activeSettingsItem === "Family"
-                      ? strings.settings.family
-                      : activeSettingsItem}
+                    {getActiveSettingsItemTitle(activeSettingsItem)}
                   </h2>
                   {activeSettingsItem === "Shortcuts" && (
                     <button

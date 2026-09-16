@@ -22,6 +22,8 @@ type MessagePreview struct {
 	ID, SenderID, Type, CreatedAt string
 	SenderName                    *string
 	Content                       *string
+	EncryptionProtocol            string
+	Ciphertext, Nonce             *string
 	AttachmentCount               int
 }
 

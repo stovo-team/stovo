@@ -631,7 +631,7 @@ export function ChatList({
                         <CircleSlash size={14} aria-hidden="true" />
                       </span>
                     )}
-                    <small>{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
+                    <small className="chat-section-count">{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
                   </button>
                   {canManageFolders && (
                     <span className="chat-folder-controls">
@@ -722,7 +722,7 @@ export function ChatList({
                     <CircleSlash size={14} aria-hidden="true" />
                   </span>
                 )}
-                <small>{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
+                <small className="chat-section-count">{sectionChats.length} chat{sectionChats.length === 1 ? "" : "s"}</small>
               </button>
               {canManageFolders && (
                 <span className="chat-folder-controls">
@@ -822,8 +822,8 @@ export function ChatList({
         <div className="modal-backdrop" onMouseDown={() => setIsQuickAccessSettingsOpen(false)}>
           <section className="messenger-modal quick-access-settings" role="dialog" aria-modal="true" aria-labelledby="quick-access-settings-title" onMouseDown={(event) => event.stopPropagation()}>
             <div className="modal-card-header"><h2 id="quick-access-settings-title">Quick Access folder settings</h2><button type="button" className="quick-access-close" aria-label="Close" onClick={() => setIsQuickAccessSettingsOpen(false)}><X size={18} /></button></div>
-            <div className="quick-access-setting"><span><strong>Message Archive</strong><small>Keep the archive at the top of the chat list.</small></span><button type="button" role="switch" aria-checked={quickAccess.archiveEnabled} className={`quick-access-switch ${quickAccess.archiveEnabled ? "is-on" : ""}`} onClick={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })}><span /></button></div>
-            <div className="quick-access-setting"><span><strong>Drafts &amp; scheduled</strong><small>Show pending messages without changing chat order.</small></span><button type="button" role="switch" aria-checked={quickAccess.outboxEnabled} className={`quick-access-switch ${quickAccess.outboxEnabled ? "is-on" : ""}`} onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}><span /></button></div>
+            <div className="quick-access-setting" onClick={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })}><span><strong>Message Archive</strong><small>Keep the archive at the top of the chat list.</small></span><button type="button" role="switch" aria-checked={quickAccess.archiveEnabled} className={`quick-access-switch ${quickAccess.archiveEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled }); }}><span /></button></div>
+            <div className="quick-access-setting" onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}><span><strong>Drafts &amp; scheduled</strong><small>Show pending messages without changing chat order.</small></span><button type="button" role="switch" aria-checked={quickAccess.outboxEnabled} className={`quick-access-switch ${quickAccess.outboxEnabled ? "is-on" : ""}`} onClick={(event) => { event.stopPropagation(); updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled }); }}><span /></button></div>
           </section>
         </div>
       , document.body)}
