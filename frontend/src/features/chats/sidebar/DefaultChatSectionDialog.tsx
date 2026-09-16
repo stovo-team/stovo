@@ -25,7 +25,9 @@ export function DefaultChatSectionDialog({ initialName, onClose, onSave }: Defau
           <h2 id="default-chat-section-title">Folder settings</h2>
           <button type="button" className="chat-folder-close" aria-label="Close" onClick={onClose}><span className="ms-icon ms-icon--20" aria-hidden="true">close</span></button>
         </div>
-        <label className="chat-folder-field">Folder name<input autoFocus value={name} maxLength={60} onChange={(event) => setName(event.target.value)} /></label>
+        <div className="chat-folder-body">
+          <label className="chat-folder-field">Folder name<input autoFocus value={name} maxLength={60} onChange={(event) => setName(event.target.value)} /></label>
+        </div>
         <div className="chat-folder-actions"><span><button className="primary-button" disabled={!name.trim()}>Save folder</button><button type="button" className="secondary-button" onClick={onClose}>Cancel</button></span></div>
       </form>
     </div>,
