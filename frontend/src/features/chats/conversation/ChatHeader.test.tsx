@@ -285,4 +285,82 @@ describe("ChatHeader", () => {
     const presenceEl = container.querySelector(".chat-presence");
     expect(presenceEl?.textContent).toBe("2 members · Atlas client rollout");
   });
+
+  it("renders 'last seen recently' when peer has no last seen or visibility is nobody", () => {
+    const peerWithoutLastSeen: User = {
+      id: "user-2",
+      displayName: "Liza",
+      username: "liza",
+      isOnline: false,
+      lastSeenAt: null,
+      lastSeenVisibility: "family"
+    };
+    const directChat: Chat = {
+      ...mockDirectChat,
+      members: [mockUser, peerWithoutLastSeen]
+    };
+    const container = renderComponent(
+      <ChatHeader
+        accessToken="test-token"
+        currentUser={mockUser}
+        selectedChat={directChat}
+        typingNames={[]}
+        callPhase="idle"
+        isChatMenuOpen={false}
+        chatMenuRef={createRef()}
+        onToggleChatMenu={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDetails={vi.fn()}
+        onStartAudioCall={vi.fn()}
+        onStartVideoCall={vi.fn()}
+        isMessageSearchOpen={false}
+        onToggleMessageSearch={vi.fn()}
+        onOpenMessageSearch={vi.fn()}
+        onMarkRead={vi.fn()}
+        onTogglePinned={vi.fn()}
+        onToggleMuted={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />
+    );
+    const presenceEl = container.querySelector(".chat-presence");
+    expect(presenceEl?.textContent).toBe("last seen recently");
+  });
+
+  it("renders 'Online' when peer in direct chat is online", () => {
+    const onlinePeer: User = {
+      id: "user-2",
+      displayName: "Liza",
+      username: "liza",
+      isOnline: true
+    };
+    const directChat: Chat = {
+      ...mockDirectChat,
+      members: [mockUser, onlinePeer]
+    };
+    const container = renderComponent(
+      <ChatHeader
+        accessToken="test-token"
+        currentUser={mockUser}
+        selectedChat={directChat}
+        typingNames={[]}
+        callPhase="idle"
+        isChatMenuOpen={false}
+        chatMenuRef={createRef()}
+        onToggleChatMenu={vi.fn()}
+        onBack={vi.fn()}
+        onOpenDetails={vi.fn()}
+        onStartAudioCall={vi.fn()}
+        onStartVideoCall={vi.fn()}
+        isMessageSearchOpen={false}
+        onToggleMessageSearch={vi.fn()}
+        onOpenMessageSearch={vi.fn()}
+        onMarkRead={vi.fn()}
+        onTogglePinned={vi.fn()}
+        onToggleMuted={vi.fn()}
+        onToggleFavorite={vi.fn()}
+      />
+    );
+    const presenceEl = container.querySelector(".chat-presence");
+    expect(presenceEl?.textContent).toBe("Online");
+  });
 });

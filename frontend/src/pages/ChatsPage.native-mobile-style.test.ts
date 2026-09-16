@@ -40,4 +40,25 @@ describe("native mobile chat styling", () => {
       /\.messenger-shell\.chat-list-view \.chat-list-filters \.filter-chip \{[\s\S]*?box-shadow:\s*none;/
     );
   });
+
+  it("styles the mobile back button with neutral grey surface instead of accent color tint", () => {
+    expect(stylesSource).toMatch(
+      /\.messenger-shell\.has-active-chat \.mobile-back-button \{[^{}]*background:\s*var\(--background-tertiary\);/
+    );
+    expect(stylesSource).toMatch(
+      /\.mobile-back-button:hover:not\(:disabled\) \{[^{}]*background:\s*var\(--surface-hover\);/
+    );
+    expect(stylesSource).not.toMatch(
+      /\.mobile-back-button \{[^{}]*background:\s*color-mix\(in oklab, var\(--accent-soft\)/
+    );
+  });
+
+  it("increases padding-top for quick-access panels and view switcher controls on native mobile", () => {
+    expect(stylesSource).toMatch(
+      /:root\[data-platform="native"\] \.quick-access-panel[\s\S]*?padding-top:\s*calc\(max\(4px,\s*env\(safe-area-inset-top\)\)\s*\+\s*var\(--chat-floating-header-overlap/
+    );
+    expect(stylesSource).toMatch(
+      /:root\[data-platform="native"\] \.messenger-shell\.has-active-chat \.quick-access-panel-tabs--archive-controls[\s\S]*?margin-top:\s*calc\(max\(4px,\s*env\(safe-area-inset-top\)\)\s*\+\s*var\(--chat-floating-header-overlap/
+    );
+  });
 });

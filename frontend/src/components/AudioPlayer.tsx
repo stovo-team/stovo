@@ -1,6 +1,7 @@
 import {
   AlertCircle,
   Captions,
+  CaptionsOff,
   ChevronDown,
   ChevronUp,
   FileText,
@@ -31,6 +32,8 @@ import {
 } from "../audioPlaybackSession";
 import { useAudioDuration } from "./audio-player/useAudioDuration";
 import { useAudioTranscript } from "./audio-player/useAudioTranscript";
+import type { AppStrings } from "../config/strings";
+import { useStrings } from "../i18n/LanguageContext";
 
 export interface AudioPlayerProps {
   descriptor: AudioDescriptor;
@@ -44,6 +47,7 @@ export interface AudioPlayerProps {
   /** Recorder-generated filenames add no useful context to a voice message. */
   hideTitle?: boolean;
   accessToken?: string | null;
+  strings?: AppStrings;
 }
 
 function isFiniteTime(value: number): boolean {
@@ -85,13 +89,13 @@ function clamp(value: number, duration: number): number {
   return Math.min(Math.max(value, 0), duration > 0 ? duration : 0);
 }
 
-function errorCopy(error: AudioPlaybackErrorCode | null): string {
-  if (error === "unsupported") return "This audio format isn’t supported on this device.";
-  if (error === "authorization") return "This audio message is no longer available.";
+function errorCopy(error: AudioPlaybackErrorCode | null, strings: AppStrings): string {
+  if (error === "unsupported") return strings.audioPlayer.formatUnsupported;
+  if (error === "authorization") return strings.audioPlayer.noLongerAvailable;
   if (error === "network") {
-    return "Audio couldn’t load. Check your connection and try again.";
+    return strings.audioPlayer.networkError;
   }
-  return "Audio couldn’t be played. Try again.";
+  return strings.audioPlayer.couldNotPlayRetry;
 }
 
 function canRetry(error: AudioPlaybackErrorCode | null): boolean {
@@ -149,7 +153,10 @@ export function AudioPlayer({
   resolveDurationUrl,
   hideTitle = false,
   accessToken,
+  strings: propStrings,
 }: AudioPlayerProps) {
+  const contextStrings = useStrings();
+  const strings = propStrings ?? contextStrings;
   const getOwnSnapshot = useCallback(
     () => initialSnapshotFor(session, descriptor),
     [descriptor.identity.chatId, descriptor.identity.fileId, descriptor.identity.messageId, session],
@@ -245,17 +252,17 @@ export function AudioPlayer({
   // so a second tap can recover a stuck load instead of calling pause().
   const isPauseAction = isPlaying;
   const primaryLabel = sessionPlaying || playIntent
-    ? "Pause audio"
-    : "Play audio";
+    ? strings.audioPlayer.pauseAudio
+    : strings.audioPlayer.playAudio;
   // Keep the control clickable while loading so a stuck load cannot trap replay.
   // prepareCurrent still gates concurrent work; only calls disable the button.
   const playbackDisabled = isCallDisabled;
   const recoverableError = snapshot?.status === "error" && canRetry(snapshot.error);
   // Loading/buffering stay on the play button — avoid a permanent status strip.
   const statusCopy = isCallDisabled
-    ? "Audio is paused while a call is active."
+    ? strings.audioPlayer.callActiveStatus
     : snapshot?.status === "suppressed" && snapshot.suppressionReason === "focus"
-      ? "Playback paused by another app."
+      ? strings.audioPlayer.suppressedStatus
       : null;
 
   const beginPlayback = useCallback(async (startPosition?: number) => {
@@ -296,11 +303,11 @@ export function AudioPlayer({
     } catch (err) {
       // The canonical session maps backend failures to its closed error vocabulary.
       setPlayIntent(false);
-      setStartDiagnostic(err instanceof Error ? err.message : "Audio couldn’t be played.");
+      setStartDiagnostic(err instanceof Error ? err.message : strings.audioPlayer.couldNotPlay);
     } finally {
       playInFlight.current = false;
     }
-  }, [descriptor, onBeforePlay, playbackDisabled, session, sourceFactory]);
+  }, [descriptor, onBeforePlay, playbackDisabled, session, sourceFactory, strings.audioPlayer.couldNotPlay]);
 
   const togglePlayback = useCallback(() => {
     if (playbackDisabled) return;
@@ -329,11 +336,11 @@ export function AudioPlayer({
     } catch (err) {
       // Keep error presentation safe and generic.
       setPlayIntent(false);
-      setStartDiagnostic(err instanceof Error ? err.message : "Audio couldn’t be played.");
+      setStartDiagnostic(err instanceof Error ? err.message : strings.audioPlayer.couldNotPlay);
     } finally {
       playInFlight.current = false;
     }
-  }, [isCallDisabled, onBeforePlay, recoverableError, session, sourceFactory]);
+  }, [isCallDisabled, onBeforePlay, recoverableError, session, sourceFactory, strings.audioPlayer.couldNotPlay]);
 
   const commitSeek = useCallback((value: number) => {
     setPreviewPosition(null);
@@ -440,7 +447,7 @@ export function AudioPlayer({
               data-idle={!isActive ? "true" : "false"}
               role="slider"
               tabIndex={seekable && !isCallDisabled ? 0 : -1}
-              aria-label="Seek audio"
+              aria-label={strings.audioPlayer.seekAudio}
               aria-valuemin={0}
               aria-valuemax={Math.max(1, Math.floor(duration))}
               aria-valuenow={Math.floor(position)}
@@ -456,7 +463,7 @@ export function AudioPlayer({
             </div>
           </div>
           <div className="audio-player-meta-row">
-            <output data-control="time" className="audio-player-time" aria-label="Audio time">
+            <output data-control="time" className="audio-player-time" aria-label={strings.audioPlayer.audioTime}>
               {formatAudioTime(position)}
               {duration > 0 ? ` / ${formatAudioTime(duration)}` : ""}
             </output>
@@ -468,16 +475,16 @@ export function AudioPlayer({
             {accessToken && (
               <button
                 type="button"
-                className={`audio-player-transcribe-btn${isTranscribing ? " is-loading" : ""}${transcript ? " has-transcript" : ""}`}
+                className={`audio-player-transcribe-btn${isTranscribing ? " is-loading" : ""}${transcript ? " has-transcript" : ""}${isTranscriptExpanded ? " is-expanded" : ""}`}
                 aria-label={
                   transcript
-                    ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
-                    : "Transcribe voice message"
+                    ? (isTranscriptExpanded ? strings.audioPlayer.hideTranscript : strings.audioPlayer.showTranscript)
+                    : strings.audioPlayer.transcribe
                 }
                 title={
                   transcript
-                    ? (isTranscriptExpanded ? "Hide transcript" : "Show transcript")
-                    : "Transcribe voice message"
+                    ? (isTranscriptExpanded ? strings.audioPlayer.hideTranscript : strings.audioPlayer.showTranscript)
+                    : strings.audioPlayer.transcribe
                 }
                 disabled={isTranscribing}
                 onClick={(e) => {
@@ -490,13 +497,12 @@ export function AudioPlayer({
                 }}
               >
                 {isTranscribing ? (
-                  <Loader2 size={11} className="audio-player-spin" aria-hidden="true" />
+                  <Loader2 size={12} className="audio-player-spin" aria-hidden="true" />
+                ) : transcript && isTranscriptExpanded ? (
+                  <CaptionsOff size={13} aria-hidden="true" />
                 ) : (
-                  <Captions size={12} aria-hidden="true" />
+                  <Captions size={13} aria-hidden="true" />
                 )}
-                <span className="audio-player-transcribe-label">
-                  {transcript ? (isTranscriptExpanded ? "Hide" : "Text") : "Text"}
-                </span>
               </button>
             )}
           </div>
@@ -506,7 +512,7 @@ export function AudioPlayer({
       {isTranscribing && (
         <div className="audio-player-transcript-loading" role="status">
           <Loader2 size={13} className="audio-player-spin" aria-hidden="true" />
-          <span>Transcribing audio with AI...</span>
+          <span>{strings.audioPlayer.transcribingWithAi}</span>
         </div>
       )}
       {transcriptError && (
@@ -521,7 +527,7 @@ export function AudioPlayer({
               void handleTranscribe();
             }}
           >
-            Retry
+            {strings.audioPlayer.retry}
           </button>
         </div>
       )}
@@ -545,13 +551,13 @@ export function AudioPlayer({
           >
             <div className="audio-player-transcript-header-left">
               <FileText size={12} aria-hidden="true" />
-              <span className="audio-player-transcript-label">Transcript</span>
+              <span className="audio-player-transcript-label">{strings.audioPlayer.transcript}</span>
             </div>
             <button
               type="button"
               className="audio-player-transcript-toggle"
-              aria-label={isTranscriptExpanded ? "Collapse transcript" : "Expand transcript"}
-              title={isTranscriptExpanded ? "Collapse transcript" : "Expand transcript"}
+              aria-label={isTranscriptExpanded ? strings.audioPlayer.collapseTranscript : strings.audioPlayer.expandTranscript}
+              title={isTranscriptExpanded ? strings.audioPlayer.collapseTranscript : strings.audioPlayer.expandTranscript}
               onClick={(e) => {
                 stopInteraction(e);
                 setIsTranscriptExpanded((prev) => !prev);
@@ -570,17 +576,17 @@ export function AudioPlayer({
       {snapshot?.status === "error" && (
         <div className="audio-player-error" role="alert">
           <AlertCircle size={14} aria-hidden="true" />
-          {errorCopy(snapshot.error)}
+          {errorCopy(snapshot.error, strings)}
           {recoverableError && (
             <button
               type="button"
               className="audio-player-retry"
-              aria-label="Retry audio"
-              title="Retry audio"
+              aria-label={strings.audioPlayer.retryAudio}
+              title={strings.audioPlayer.retryAudio}
               disabled={isCallDisabled}
               onClick={() => void retry()}
             >
-              Retry
+              {strings.audioPlayer.retry}
             </button>
           )}
         </div>

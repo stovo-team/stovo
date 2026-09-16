@@ -20,6 +20,7 @@ import { messageContextMenuPosition } from "./messageGestures";
 import {
   countMessagesAfterAnchor,
   emojiSizeClass,
+  extractMessageLinks,
   isMessageListNearBottom,
   messageDeliveryLabel,
   messageOriginChatId,
@@ -222,6 +223,13 @@ describe("chat presentation helpers", () => {
     ] as any, "links");
 
     expect(items).toEqual([{ kind: "link", url: "https://example.com", messageId: "legacy-message" }]);
+  });
+
+  it("normalizes bare domains so they can receive link previews", () => {
+    expect(extractMessageLinks("Open stovo.ru/docs and https://example.com.")).toEqual([
+      "https://stovo.ru/docs",
+      "https://example.com"
+    ]);
   });
 });
 

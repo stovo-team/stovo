@@ -1,5 +1,6 @@
 import type { PointerEvent } from "react";
 import { Mic, Square } from "lucide-react";
+import { useStrings } from "../i18n/LanguageContext";
 
 export interface VoiceRecordButtonProps {
   isRecording: boolean;
@@ -16,13 +17,18 @@ export function VoiceRecordButton({
   onPressEnd,
   onPressCancel,
 }: VoiceRecordButtonProps) {
+  const strings = useStrings();
+  const label = isRecording
+    ? strings.chats.composer.clickToSendVoice
+    : strings.chats.composer.clickToRecordVoice;
+
   return (
     <button
       type="button"
       className={`composer-voice-button${isRecording ? " is-recording" : ""}`}
-      aria-label={isRecording ? "Click to send voice message" : "Click to record voice message"}
+      aria-label={label}
       aria-pressed={isRecording}
-      title={isRecording ? "Click to send voice message" : "Click to record voice message"}
+      title={label}
       disabled={disabled}
       onPointerDown={onPressStart}
       onPointerUp={(event) => {

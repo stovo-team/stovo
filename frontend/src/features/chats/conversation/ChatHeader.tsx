@@ -37,10 +37,10 @@ function directChatPresence(selectedChat: Chat, currentUser: User | null) {
   const peer = selectedChat.members.find((member) => member.id !== currentUser?.id);
   if (!peer) return null;
   if (peer.isOnline) return "Online";
-  if (peer.lastSeenVisibility === "nobody" || !peer.lastSeenAt) return null;
+  if (peer.lastSeenVisibility === "nobody" || !peer.lastSeenAt) return "last seen recently";
 
   const lastSeen = new Date(peer.lastSeenAt);
-  if (Number.isNaN(lastSeen.getTime())) return null;
+  if (Number.isNaN(lastSeen.getTime())) return "last seen recently";
   return `last seen at ${new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(lastSeen)}`;
 }
 

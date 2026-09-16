@@ -39,4 +39,10 @@ describe("message archive grouped view", () => {
   it("uses the archive fallback icon and standard chat title spacing in the grouped archive header", () => {
     expect(panel).toContain('<Archive aria-hidden className="avatar-fallback-svg" size={24} strokeWidth={1.75} />');
   });
+
+  it("renders mobile back buttons and enables detail view when drafts & scheduled is active", () => {
+    expect(panel).toContain('onBack && <BackButton className="mobile-back-button" ariaLabel="Back to chats" onClick={onBack} />');
+    expect(page).toContain("const hasActiveChat = Boolean(chatId || isDraftsAndScheduledOpen);");
+    expect(page).toContain('hasActiveChat ? "has-active-chat" : "chat-list-view"');
+  });
 });

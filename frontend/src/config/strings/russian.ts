@@ -124,6 +124,8 @@ export const strings = {
     languageRussian: "Русский",
     helpAndAbout: "Помощь и о приложении",
     helpHelper: "Версия и поддержка",
+    statistics: "Статистика",
+    statisticsHelper: "Активность чата и тренды спейса",
 
 
     tapToPersonalize: "Нажмите для персонализации",
@@ -549,6 +551,20 @@ export const strings = {
       settings: "Настройки",
       disconnect: "Выйти из голосового канала",
     },
+    composer: {
+      messagePlaceholder: "Сообщение",
+      postUpdatePlaceholder: "Опубликовать запись",
+      sendMessageAria: "Отправить сообщение",
+      messageDelayAria: (delay: string) => `Задержка сообщения: ${delay} с`,
+      sendDelayRemaining: (label: string) => `Вы сможете отправить следующее сообщение через ${label}`,
+      uploading: "Загрузка",
+      sending: "Отправка",
+      clickToRecordVoice: "Нажмите для записи голосового сообщения",
+      clickToSendVoice: "Нажмите для отправки голосового сообщения",
+      scheduleMessage: "Запланировать сообщение",
+      setReminder: "Установить напоминание",
+      sendOptionsAria: "Параметры отправки сообщения",
+    },
   },
 
   // ── Files / Storage ──────────────────────────────────────────────────
@@ -883,6 +899,32 @@ export const strings = {
     hintSelect: "Выбрать",
     hintClose: "Закрыть",
     hintFilterPrefixes: "Подсказка: # для каналов, @ для людей, > для команд",
+  },
+
+  audioPlayer: {
+    text: "Текст",
+    hide: "Скрыть",
+    transcribe: "Расшифровать голосовое сообщение",
+    hideTranscript: "Скрыть расшифровку",
+    showTranscript: "Показать расшифровку",
+    transcribingWithAi: "Расшифровка аудио с помощью ИИ...",
+    transcript: "Расшифровка",
+    collapseTranscript: "Свернуть расшифровку",
+    expandTranscript: "Развернуть расшифровку",
+    playAudio: "Воспроизвести аудио",
+    pauseAudio: "Приостановить аудио",
+    seekAudio: "Перемотка аудио",
+    audioTime: "Время аудио",
+    retry: "Повторить",
+    retryAudio: "Повторить воспроизведение",
+    audioMessage: "Аудиосообщение",
+    callActiveStatus: "Воспроизведение приостановлено во время звонка.",
+    suppressedStatus: "Воспроизведение приостановлено другим приложением.",
+    couldNotPlay: "Не удалось воспроизвести аудио.",
+    couldNotPlayRetry: "Не удалось воспроизвести аудио. Попробуйте снова.",
+    formatUnsupported: "Этот аудиоформат не поддерживается на этом устройстве.",
+    noLongerAvailable: "Это аудиосообщение больше недоступно.",
+    networkError: "Не удалось загрузить аудио. Проверьте соединение и попробуйте снова.",
   },
 };
 

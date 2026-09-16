@@ -4,8 +4,9 @@ import { getMessageArchiveGroups, type Chat, type MessageArchiveGroup } from "..
 import { getOutboxMessages, type QueuedOutboxMessage } from "./outbox/messageOutboxStore";
 import { chatAvatarFallbackKind, chatAvatarFile, chatAvatarTypeClass, displayChatName } from "./shared/chatPresentation";
 import { RealAvatar } from "./sidebar/RealAvatar";
+import { BackButton } from "../../components/BackButton";
 
-export function QuickAccessPanel({ accessToken, chats, currentUserId, onOpenChat }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onOpenChat: (chat: Chat) => void }) {
+export function QuickAccessPanel({ accessToken, chats, currentUserId, onOpenChat, onBack }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onOpenChat: (chat: Chat) => void; onBack?: () => void }) {
   const [tab, setTab] = useState<"drafts" | "scheduled">("drafts");
   const [scheduledMessages, setScheduledMessages] = useState<QueuedOutboxMessage[]>([]);
   const draftRows = chats.flatMap((chat) => {
@@ -32,7 +33,11 @@ export function QuickAccessPanel({ accessToken, chats, currentUserId, onOpenChat
 
   return (
     <section className="quick-access-panel quick-access-panel--outbox" aria-label="Drafts and scheduled messages">
-      <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header"><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-title-group"><span className="chat-title-row"><span>Drafts &amp; scheduled</span></span></span></header>
+      <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header">
+        {onBack && <BackButton className="mobile-back-button" ariaLabel="Back to chats" onClick={onBack} />}
+        <span className="avatar chat-avatar archive"><FileText size={20} /></span>
+        <span className="chat-title-group"><span className="chat-title-row"><span>Drafts &amp; scheduled</span></span></span>
+      </header>
       <div className="quick-access-panel-tabs" role="tablist"><button type="button" className={tab === "drafts" ? "active" : ""} role="tab" aria-selected={tab === "drafts"} onClick={() => setTab("drafts")}>Drafts</button><button type="button" className={tab === "scheduled" ? "active" : ""} role="tab" aria-selected={tab === "scheduled"} onClick={() => setTab("scheduled")}>Scheduled</button></div>
       {tab === "drafts" && draftRows.length > 0 ? (
         <div className="archive-quick-list quick-access-draft-list">
@@ -58,7 +63,7 @@ export function MessageArchiveViewControls({ view, onChange }: { view: "all" | "
   return <div className="quick-access-panel-tabs quick-access-panel-tabs--archive-controls" role="tablist" aria-label="Message archive view"><button type="button" className={view === "all" ? "active" : ""} role="tab" aria-selected={view === "all"} onClick={() => onChange("all")}>All messages</button><button type="button" className={view === "grouped" ? "active" : ""} role="tab" aria-selected={view === "grouped"} onClick={() => onChange("grouped")}>Grouped by chat</button></div>;
 }
 
-export function MessageArchivePanel({ accessToken, chats, currentUserId, onViewChange, onOpenGroup }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onViewChange: (view: "all" | "grouped") => void; onOpenGroup: (group: string) => void }) {
+export function MessageArchivePanel({ accessToken, chats, currentUserId, onViewChange, onOpenGroup, onBack }: { accessToken: string | null; chats: Chat[]; currentUserId?: string; onViewChange: (view: "all" | "grouped") => void; onOpenGroup: (group: string) => void; onBack?: () => void }) {
   const [groups, setGroups] = useState<MessageArchiveGroup[]>([]);
 
   useEffect(() => {
@@ -86,7 +91,11 @@ export function MessageArchivePanel({ accessToken, chats, currentUserId, onViewC
     };
   });
   return <section className="quick-access-panel quick-access-panel--archive" aria-label="Message Archive">
-    <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header"><span className="avatar chat-avatar archive"><Archive aria-hidden className="avatar-fallback-svg" size={24} strokeWidth={1.75} /></span><span className="chat-title-group"><span className="chat-title-row"><h1>Message Archive</h1></span></span></header>
+    <header className="chat-detail-header chat-detail-header--floating quick-access-standard-header">
+      {onBack && <BackButton className="mobile-back-button" ariaLabel="Back to chats" onClick={onBack} />}
+      <span className="avatar chat-avatar archive"><Archive aria-hidden className="avatar-fallback-svg" size={24} strokeWidth={1.75} /></span>
+      <span className="chat-title-group"><span className="chat-title-row"><h1>Message Archive</h1></span></span>
+    </header>
     <div className="quick-access-panel-tabs quick-access-panel-tabs--archive-grouped" role="tablist" aria-label="Message archive view"><button type="button" role="tab" aria-selected={false} onClick={() => onViewChange("all")}>All messages</button><button type="button" className="active" role="tab" aria-selected={true}>Grouped by chat</button></div>
     <div className="archive-quick-list">
       <button type="button" className="chat-list-item" onClick={() => onOpenGroup("notes")}><span className="avatar chat-avatar archive"><FileText size={20} /></span><span className="chat-list-copy"><span className="chat-list-topline"><strong>My Notes</strong></span><span className="chat-list-preview">Messages saved directly to Message Archive</span></span></button>

@@ -360,13 +360,16 @@ func (s *Store) ListChatsForUser(ctx context.Context, userID string) ([]*ChatFor
 
 // LastMessagePreview holds the latest non-deleted chat-kind message summary.
 type LastMessagePreview struct {
-	ID              string
-	SenderID        string
-	SenderName      *string
-	Type            string
-	Content         *string
-	CreatedAt       string
-	AttachmentCount int
+	ID                 string
+	SenderID           string
+	SenderName         *string
+	Type               string
+	Content            *string
+	EncryptionProtocol string
+	Ciphertext         *string
+	Nonce              *string
+	CreatedAt          string
+	AttachmentCount    int
 }
 
 // GetLastMessagePreview returns the newest chat-kind message for a chat, if any.
@@ -390,12 +393,15 @@ func (s *Store) GetLastMessagePreview(ctx context.Context, chatID string) (*Last
 		return nil, err
 	}
 	preview := &LastMessagePreview{
-		ID:              m.ID,
-		SenderID:        m.SenderID,
-		Type:            m.Type,
-		Content:         m.Content,
-		CreatedAt:       m.CreatedAt,
-		AttachmentCount: count,
+		ID:                 m.ID,
+		SenderID:           m.SenderID,
+		Type:               m.Type,
+		Content:            m.Content,
+		EncryptionProtocol: m.EncryptionProtocol,
+		Ciphertext:         m.Ciphertext,
+		Nonce:              m.Nonce,
+		CreatedAt:          m.CreatedAt,
+		AttachmentCount:    count,
 	}
 	if m.Edges.Sender != nil {
 		name := m.Edges.Sender.DisplayName

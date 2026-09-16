@@ -593,7 +593,17 @@ func (s *Server) populateLastMessagePreview(chat *chatPublic) error {
 	chat.LastMessageSenderID = &preview.SenderID
 	chat.LastMessageSenderDisplayName = preview.SenderName
 	chat.LastMessageType = &preview.Type
-	derived := deriveMessagePreview(preview.Content, preview.Type, preview.AttachmentCount)
+	content := preview.Content
+	// Server-at-rest messages deliberately retain no plaintext in the database.
+	// Decrypt the current chat's latest record before deriving its sidebar
+	// preview, otherwise every text message falls back to the generic
+	// "Message" label after the chat list is refreshed.
+	if preview.EncryptionProtocol == encryptionProtocolServerAtRest && preview.Ciphertext != nil && preview.Nonce != nil {
+		if decrypted, decryptErr := s.decryptServerAtRest(chat.FamilyID, *preview.Ciphertext, *preview.Nonce); decryptErr == nil {
+			content = decrypted
+		}
+	}
+	derived := deriveMessagePreview(content, preview.Type, preview.AttachmentCount)
 	chat.LastMessageContent = &derived
 	timestamp := parseTime(preview.CreatedAt)
 	chat.LastMessageCreatedAt = &timestamp

@@ -5,13 +5,13 @@ import { describe, expect, it } from "vitest";
 const page = readFileSync(resolve(process.cwd(), "src/pages/FilesPage.tsx"), "utf8");
 const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
-describe("Storage mobile source browser", () => {
-  it("opens on the chat list and renders grouped source choices", () => {
-    expect(page).toContain('storage-mobile-source-picker${isMobileSourceBrowserOpen');
+describe("Storage mobile source dropdown", () => {
+  it("renders a mobile-only source selector with grouped source choices and opens closed by default", () => {
+    expect(page).toContain('className="storage-mobile-source-picker"');
     expect(page).toContain('aria-haspopup="listbox"');
     expect(page).toContain('className="storage-mobile-source-menu"');
-    expect(page).toContain('useState(true)');
-    expect(page).toContain('setIsMobileSourceBrowserOpen(false)');
+    expect(page).toContain('useState(false)');
+    expect(page).toContain('setIsSourceMenuOpen(false)');
     expect(styles).toMatch(/@media \(max-width:\s*960px\)[\s\S]*\.storage-mobile-source-picker/);
   });
 
