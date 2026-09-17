@@ -3549,6 +3549,43 @@ h2 {
   border-radius: 999px;
 }
 
+/* Mobile application hides scrollbars across all scrollable containers while preserving scrolling functionality */
+:root[data-platform="native"],
+:root[data-platform="native"] body,
+:root[data-platform="native"] * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+:root[data-platform="native"]::-webkit-scrollbar,
+:root[data-platform="native"] body::-webkit-scrollbar,
+:root[data-platform="native"] *::-webkit-scrollbar,
+:root[data-platform="native"] *::-webkit-scrollbar-track,
+:root[data-platform="native"] *::-webkit-scrollbar-thumb {
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  html,
+  body,
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar,
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-thumb {
+    display: none;
+    height: 0;
+    width: 0;
+  }
+}
+
 .chat-list-section {
   display: grid;
   gap: 4px;
@@ -6147,8 +6184,16 @@ span.message-spoiler.is-revealed {
 
 .chat-section-collapse svg { transition: transform var(--motion-route-duration-fast) var(--motion-route-ease); }
 .chat-section-collapse svg.is-collapsed { transform: rotate(-90deg); }
-.chat-section-collapse small { font-size: 0.7rem; letter-spacing: 0; opacity: 0.72; }
-.chat-section-count { left: 50%; pointer-events: none; position: absolute; transform: translateX(-50%); }
+.chat-section-collapse small,
+.chat-section-count {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-left: 3px;
+  opacity: 0.72;
+  white-space: nowrap;
+}
 .chat-section-collapse:hover:not(:disabled), .chat-section-collapse:active:not(:disabled) { background: transparent; border-color: transparent; transform: none; }
 .chat-folder-controls { display: flex; gap: 2px; }
 .chat-folder-controls button { align-items: center; background: transparent; border: 0; border-radius: 8px; color: var(--text-muted); cursor: pointer; display: inline-flex; height: 24px; justify-content: center; min-height: 24px; padding: 0; width: 24px; }
@@ -28664,9 +28709,35 @@ button.checklist-add-item-btn:hover,
 .quick-access-panel-tabs--archive-controls { align-self: flex-start; left: var(--active-chat-message-inset-x, 10px); margin-left: 0; margin-top: calc(var(--chat-floating-header-overlap, 52px) + 12px); pointer-events: auto; position: absolute; top: 0; width: max-content; z-index: 11; }
 .messenger-shell.has-active-chat .chat-detail:has(.quick-access-panel-tabs--archive-controls) .messages-panel { margin-top: 0; padding-top: calc(var(--chat-floating-header-overlap, 52px) + 54px); }
 .quick-access-panel-tabs--archive-grouped { margin-left: 0; margin-top: 0; }
-.quick-access-panel-tabs button { background: transparent; border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-secondary); cursor: pointer; font: inherit; font-size: .78rem; font-weight: 700; padding: 7px 12px; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
-.quick-access-panel-tabs button:hover { background: color-mix(in oklab, var(--background-panel-accent) 40%, transparent); }
-.quick-access-panel-tabs button.active { background: color-mix(in oklab, var(--accent-soft) 22%, transparent); border-color: color-mix(in oklab, var(--accent-primary) 45%, var(--border-default)); color: var(--accent-primary); }
+.quick-access-panel-tabs button {
+  background: color-mix(in oklab, var(--island-surface) 94%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border-default) 60%, transparent);
+  border-radius: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition:
+    background var(--motion-route-duration-fast, 0.15s) ease,
+    border-color var(--motion-route-duration-fast, 0.15s) ease,
+    color var(--motion-route-duration-fast, 0.15s) ease,
+    box-shadow var(--motion-route-duration-fast, 0.15s) ease;
+}
+.quick-access-panel-tabs button:hover {
+  background: color-mix(in oklab, var(--island-surface-raised) 96%, transparent);
+  color: var(--text-primary);
+}
+.quick-access-panel-tabs button.active {
+  background: color-mix(in oklab, var(--accent-primary) 22%, var(--island-surface));
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary), 0 4px 14px rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+}
 .archive-group-back-button { display: inline-flex; }
 .chat-title-group--archive-group { align-items: center; display: flex; gap: 8px; min-width: 0; }
 .chat-title-group.chat-title-group--archive-group .chat-title-row { align-items: center; display: flex; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

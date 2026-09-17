@@ -56,9 +56,9 @@ const COS25 = Math.cos(25 * Math.PI / 180);
 const SIN25 = Math.sin(25 * Math.PI / 180);
 
 const STRIPES = [
-  { cx: 45.297771, cy: 36.828619, hw: 22.5, hh: 5, rx: 5 },
-  { cx: 55,   cy: 57,   hw: 30,   hh: 5, rx: 5 },
-  { cx: 62.5, cy: 77,   hw: 17.5, hh: 5, rx: 5 },
+  { cx: 41.750231, cy: 30.970855, hw: 22.5, hh: 5, rx: 5 },
+  { cx: 51.452460, cy: 51.142236, hw: 30,   hh: 5, rx: 5 },
+  { cx: 58.952460, cy: 71.142236, hw: 17.5, hh: 5, rx: 5 },
 ];
 
 function inStripes(sx, sy) {
@@ -83,21 +83,39 @@ function gradientColor(sx, sy) {
   ];
 }
 
+function samplePixel(xStart, yStart, stepX, stepY) {
+  let r = 0, g = 0, b = 0, a = 0;
+  const SAMPLES = 4;
+  for (let sy = 0; sy < SAMPLES; sy++) {
+    const py = yStart + (sy + 0.5) * (stepY / SAMPLES);
+    for (let sx = 0; sx < SAMPLES; sx++) {
+      const px = xStart + (sx + 0.5) * (stepX / SAMPLES);
+      if (inStripes(px, py)) {
+        const [cr, cg, cb] = gradientColor(px, py);
+        r += cr; g += cg; b += cb; a++;
+      }
+    }
+  }
+  if (a === 0) return [0, 0, 0, 0];
+  return [Math.round(r / a), Math.round(g / a), Math.round(b / a), a / 16];
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 
 function renderLauncher(size) {
   const scale = size / 100;
+  const step = 1 / scale;
   const px4 = new Uint8Array(size * size * 4);
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
-      const sx = px / scale, sy = py / scale;
+      const sx = px * step;
+      const sy = py * step;
+      const [r, g, b, alpha] = samplePixel(sx, sy, step, step);
       const off = (py * size + px) * 4;
-      if (inStripes(sx, sy)) {
-        const [r, g, b] = gradientColor(sx, sy);
-        px4[off] = r; px4[off + 1] = g; px4[off + 2] = b; px4[off + 3] = 255;
-      } else {
-        px4[off] = px4[off + 1] = px4[off + 2] = px4[off + 3] = 255; // white
-      }
+      px4[off]     = Math.round(r * alpha + 255 * (1 - alpha));
+      px4[off + 1] = Math.round(g * alpha + 255 * (1 - alpha));
+      px4[off + 2] = Math.round(b * alpha + 255 * (1 - alpha));
+      px4[off + 3] = 255;
     }
   }
   return px4;
@@ -107,16 +125,18 @@ function renderForeground(size) {
   // Safe zone: 72dp centred in 108dp canvas. Map pixel to SVG coords via that zone.
   const margin = 18 / 108;
   const visible = 72 / 108;
+  const step = 100 / (size * visible);
   const px4 = new Uint8Array(size * size * 4); // starts transparent
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
       const sx = ((px / size - margin) / visible) * 100;
       const sy = ((py / size - margin) / visible) * 100;
+      const [r, g, b, alpha] = samplePixel(sx, sy, step, step);
       const off = (py * size + px) * 4;
-      if (inStripes(sx, sy)) {
-        const [r, g, b] = gradientColor(sx, sy);
-        px4[off] = r; px4[off + 1] = g; px4[off + 2] = b; px4[off + 3] = 255;
-      }
+      px4[off]     = r;
+      px4[off + 1] = g;
+      px4[off + 2] = b;
+      px4[off + 3] = Math.round(alpha * 255);
     }
   }
   return px4;

@@ -24,4 +24,13 @@ describe("ChatList quick access selection", () => {
     expect(source).toContain('className="quick-access-setting" onClick={() => updateQuickAccess({ archiveEnabled: !quickAccess.archiveEnabled })}');
     expect(source).toContain('className="quick-access-setting" onClick={() => updateQuickAccess({ outboxEnabled: !quickAccess.outboxEnabled })}');
   });
+
+  it("aligns chat section count inline with folder title instead of centering or absolute positioning", () => {
+    const countRuleIndex = styles.indexOf(".chat-section-count {");
+    expect(countRuleIndex).toBeGreaterThan(-1);
+    const countRule = styles.slice(countRuleIndex, styles.indexOf("}", countRuleIndex));
+    expect(countRule).not.toContain("position: absolute");
+    expect(countRule).not.toContain("left: 50%");
+    expect(countRule).toContain("white-space: nowrap");
+  });
 });

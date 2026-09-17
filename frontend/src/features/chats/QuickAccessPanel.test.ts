@@ -45,4 +45,12 @@ describe("message archive grouped view", () => {
     expect(page).toContain("const hasActiveChat = Boolean(chatId || isDraftsAndScheduledOpen);");
     expect(page).toContain('hasActiveChat ? "has-active-chat" : "chat-list-view"');
   });
+
+  it("styles quick access buttons with a dark header-like surface and clear non-accent active text", () => {
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(styles).toContain("background: color-mix(in oklab, var(--island-surface) 94%, transparent);");
+    expect(styles).toContain(".quick-access-panel-tabs button.active");
+    expect(styles).toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*#ffffff;/);
+    expect(styles).not.toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*var\(--accent-primary\);/);
+  });
 });
