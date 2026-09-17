@@ -27,6 +27,8 @@ type AuthRoutes struct {
 	GetAudioSettings     stdhttp.Handler
 	PutAudioSettings     stdhttp.Handler
 	GetNotificationTopic stdhttp.Handler
+	RegisterDeviceToken  stdhttp.Handler
+	UnregisterDeviceToken stdhttp.Handler
 }
 
 // RegisterAuthRoutes installs the stable REST contract for authentication and
@@ -48,4 +50,10 @@ func RegisterAuthRoutes(router chi.Router, routes AuthRoutes) {
 	router.Get("/api/auth/audio-settings", routes.GetAudioSettings.ServeHTTP)
 	router.Put("/api/auth/audio-settings", routes.PutAudioSettings.ServeHTTP)
 	router.Get("/api/notifications/topic", routes.GetNotificationTopic.ServeHTTP)
+	if routes.RegisterDeviceToken != nil {
+		router.Post("/api/notifications/device-token", routes.RegisterDeviceToken.ServeHTTP)
+	}
+	if routes.UnregisterDeviceToken != nil {
+		router.Delete("/api/notifications/device-token", routes.UnregisterDeviceToken.ServeHTTP)
+	}
 }

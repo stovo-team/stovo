@@ -27,3 +27,11 @@ func (h *AccountPreferencesHandler) handleGetNotificationTopic(w http.ResponseWr
 func (h *AccountPreferencesHandler) handlePutAudioSettings(w http.ResponseWriter, r *http.Request, user userPublic) {
 	h.inner.HandlePutAudioSettings(w, r, user.ID)
 }
+
+func (h *AccountPreferencesHandler) handleRegisterDeviceToken(w http.ResponseWriter, r *http.Request, user userPublic) {
+	h.inner.HandleRegisterDeviceToken(w, r, user.ID)
+}
+
+func (h *AccountPreferencesHandler) handleUnregisterDeviceToken(w http.ResponseWriter, r *http.Request, user userPublic) {
+	h.inner.HandleUnregisterDeviceToken(w, r, user.ID)
+}

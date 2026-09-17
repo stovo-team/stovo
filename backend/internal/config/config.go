@@ -68,6 +68,8 @@ type Config struct {
 	TurnPassword               string
 	NtfyBaseURL                string
 	NtfyPublishToken           string
+	FirebaseCredentialsFile    string
+	FirebaseCredentialsJSON    string
 	LiveKitURL                 string
 	LiveKitAPIKey              string
 	LiveKitAPISecret           string
@@ -200,6 +202,8 @@ func Load() (Config, error) {
 		TurnPassword:               envString("TURN_PASSWORD", "change_me"),
 		NtfyBaseURL:                envString("NTFY_BASE_URL", "http://ntfy:80"),
 		NtfyPublishToken:           envString("NTFY_PUBLISH_TOKEN", ""),
+		FirebaseCredentialsFile:    envString("FIREBASE_CREDENTIALS_FILE", ""),
+		FirebaseCredentialsJSON:    envString("FIREBASE_CREDENTIALS_JSON", ""),
 		LiveKitURL:                 envString("LIVEKIT_URL", ""),
 		LiveKitAPIKey:              envString("LIVEKIT_API_KEY", ""),
 		LiveKitAPISecret:           envString("LIVEKIT_API_SECRET", ""),

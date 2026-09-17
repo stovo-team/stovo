@@ -19,19 +19,20 @@ x-backend: &backend
     API_URL: ${API_URL:-http://localhost:8000}
     FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:8080}
     PUBLIC_REACHABILITY_CHECKER_URL: ${PUBLIC_REACHABILITY_CHECKER_URL:-}
-    POSTGRES_HOST: postgres
-    POSTGRES_PORT: 5432
-    POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
-    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+    POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+    POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+    POSTGRES_USER: ${POSTGRES_USER:-}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    POSTGRES_DB: ${POSTGRES_DB:-}
     # When set, this takes precedence over the POSTGRES_* values above. It is
     # the connection URL for a managed/external PostgreSQL instance.
     DATABASE_URL: ${DATABASE_URL:-}
-    REDIS_HOST: redis
-    REDIS_PORT: 6379
-    REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    REDIS_HOST: ${REDIS_HOST:-redis}
+    REDIS_PORT: ${REDIS_PORT:-6379}
+    REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    REDIS_URL: ${REDIS_URL:-}
     # Streams are isolated from cache, presence, and socket Pub/Sub state.
-    REDIS_JOBS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis-jobs:6379/0
+    REDIS_JOBS_URL: ${REDIS_JOBS_URL:-redis://:${REDIS_PASSWORD:-}@redis-jobs:6379/0}
     JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
     JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
     JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
@@ -65,6 +66,8 @@ x-backend: &backend
     TURN_PASSWORD: ${TURN_PASSWORD:?Set TURN_PASSWORD in .env}
     NTFY_BASE_URL: ${NTFY_BASE_URL:-http://ntfy:80}
     NTFY_PUBLISH_TOKEN: ${NTFY_PUBLISH_TOKEN:-}
+    FIREBASE_CREDENTIALS_FILE: ${FIREBASE_CREDENTIALS_FILE:-}
+    FIREBASE_CREDENTIALS_JSON: ${FIREBASE_CREDENTIALS_JSON:-}
     LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
     LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-devkey}
     LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
@@ -81,12 +84,8 @@ x-backend: &backend
   security_opt:
     - no-new-privileges:true
   depends_on:
-    postgres:
-      condition: service_healthy
     backend-migrate:
       condition: service_completed_successfully
-    redis:
-      condition: service_healthy
     redis-jobs:
       condition: service_healthy
     ntfy:
@@ -100,15 +99,12 @@ services:
       context: ./backend
     restart: "no"
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_USER: ${POSTGRES_USER:-}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_DB: ${POSTGRES_DB:-}
       DATABASE_URL: ${DATABASE_URL:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - 'atlas migrate apply --dir file:///app/migrations --url "$(stovo-database-url)"'
@@ -119,11 +115,13 @@ services:
       - no-new-privileges:true
 
   postgres:
+    profiles:
+      - disabled
     image: postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:-family_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
+      POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -133,8 +131,10 @@ services:
       retries: 10
 
   redis:
+    profiles:
+      - disabled
     image: redis@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-}"]
     volumes:
       - redis-data:/data
     healthcheck:
@@ -149,7 +149,7 @@ services:
     image: redis@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
     # Streams carry durable worker work. Do not evict a pending job under
     # pressure; PostgreSQL remains the replayable source through outbox_events.
-    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}"]
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction", "--requirepass", "${REDIS_PASSWORD:-}"]
     volumes:
       - redis-jobs-data:/data
     healthcheck:

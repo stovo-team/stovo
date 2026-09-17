@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	featurepreferences "stovo-messenger/backend/internal/features/preferences"
 )
@@ -37,6 +38,40 @@ func (h *AccountPreferencesHandler) HandleGetNotificationTopic(w http.ResponseWr
 		"topic":       topic,
 		"ntfyBaseUrl": h.appURL + "/ntfy",
 	})
+}
+
+type DeviceTokenPayload struct {
+	Token string `json:"token"`
+}
+
+func (h *AccountPreferencesHandler) HandleRegisterDeviceToken(w http.ResponseWriter, r *http.Request, userID string) {
+	var payload DeviceTokenPayload
+	decode := h.decodeJSON
+	if decode == nil {
+		decode = decodeBody
+	}
+	if err := decode(r, &payload); err != nil {
+		accountPreferencesDetail(w, http.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+	token := strings.TrimSpace(payload.Token)
+	if token == "" {
+		accountPreferencesDetail(w, http.StatusUnprocessableEntity, "Token is required")
+		return
+	}
+	if err := h.preferences.RegisterPushDeviceToken(r.Context(), userID, token); err != nil {
+		accountPreferencesDetail(w, http.StatusInternalServerError, "Could not register device token")
+		return
+	}
+	accountPreferencesJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (h *AccountPreferencesHandler) HandleUnregisterDeviceToken(w http.ResponseWriter, r *http.Request, userID string) {
+	if err := h.preferences.UnregisterPushDeviceToken(r.Context(), userID); err != nil {
+		accountPreferencesDetail(w, http.StatusInternalServerError, "Could not unregister device token")
+		return
+	}
+	accountPreferencesJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (h *AccountPreferencesHandler) HandlePutAudioSettings(w http.ResponseWriter, r *http.Request, userID string) {

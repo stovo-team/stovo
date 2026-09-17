@@ -24,6 +24,7 @@ object NotificationChannels {
             // Remove superseded service channels so users don't see stale entries.
             nm.deleteNotificationChannel("stovo_service")
             nm.deleteNotificationChannel("stovo_service_v2")
+            nm.deleteNotificationChannel("stovo_service_v3")
 
             val messagesChannel = NotificationChannel(
                 MESSAGES_CHANNEL_ID,
@@ -57,20 +58,8 @@ object NotificationChannels {
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
 
-            // IMPORTANCE_LOW: silent, no peek — lowest level Android allows for
-            // foreground services without adding a second system warning notification.
-            val serviceChannel = NotificationChannel(
-                SERVICE_CHANNEL_ID,
-                "Background connection",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            serviceChannel.setShowBadge(false)
-            serviceChannel.enableLights(false)
-            serviceChannel.enableVibration(false)
-            serviceChannel.setSound(null, null)
-
             nm.createNotificationChannels(
-                listOf(messagesChannel, callsChannel, silentMessagesChannel, silentCallsChannel, serviceChannel)
+                listOf(messagesChannel, callsChannel, silentMessagesChannel, silentCallsChannel)
             )
         }
     }

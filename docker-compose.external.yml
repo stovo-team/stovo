@@ -7,6 +7,9 @@ services:
   postgres:
     profiles: [bundled-infra]
 
+  redis:
+    profiles: [bundled-infra]
+
   minio:
     profiles: [bundled-infra]
 
@@ -20,8 +23,6 @@ services:
     depends_on: !reset
       backend-migrate:
         condition: service_completed_successfully
-      redis:
-        condition: service_healthy
       redis-jobs:
         condition: service_healthy
       ntfy:
@@ -31,8 +32,6 @@ services:
     depends_on: !reset
       backend-migrate:
         condition: service_completed_successfully
-      redis:
-        condition: service_healthy
       redis-jobs:
         condition: service_healthy
       ntfy:

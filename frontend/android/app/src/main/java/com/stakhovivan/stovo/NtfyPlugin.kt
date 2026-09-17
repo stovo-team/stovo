@@ -6,7 +6,6 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import com.getcapacitor.JSObject
 import com.getcapacitor.PermissionState
 import com.getcapacitor.Plugin
@@ -15,6 +14,7 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
+import com.google.firebase.messaging.FirebaseMessaging
 
 @CapacitorPlugin(
     name = "NtfyPlugin",
@@ -27,44 +27,89 @@ import com.getcapacitor.annotation.PermissionCallback
 )
 class NtfyPlugin : Plugin() {
 
+    companion object {
+        @Volatile
+        private var activeInstance: NtfyPlugin? = null
+
+        fun broadcastTokenUpdate(token: String) {
+            activeInstance?.notifyListeners("tokenRefresh", JSObject().put("token", token))
+        }
+    }
+
+    override fun load() {
+        super.load()
+        activeInstance = this
+    }
+
+    override fun handleOnDestroy() {
+        if (activeInstance == this) {
+            activeInstance = null
+        }
+        super.handleOnDestroy()
+    }
+
+    /**
+     * Legacy startService retained for backward compatibility with JS callers.
+     * With FCM, no persistent foreground service is required.
+     */
     @PluginMethod
     fun startService(call: PluginCall) {
-        val topic = call.getString("topic") ?: run {
-            call.reject("topic required")
-            return
-        }
-        val ntfyBaseUrl = call.getString("ntfyBaseUrl") ?: run {
-            call.reject("ntfyBaseUrl required")
-            return
-        }
-        NtfyService.updateNotificationSchedule(
+        StovoFirebaseMessagingService.updateNotificationSchedule(
             context,
             call.getBoolean("quietHoursEnabled") ?: false,
             call.getString("quietHoursStart") ?: "22:00",
             call.getString("quietHoursEnd") ?: "07:00"
         )
-        val intent = Intent(context, NtfyService::class.java).apply {
-            action = NtfyService.ACTION_START
-            putExtra(NtfyService.EXTRA_TOPIC, topic)
-            putExtra(NtfyService.EXTRA_NTFY_BASE_URL, ntfyBaseUrl)
-        }
-        ContextCompat.startForegroundService(context, intent)
         call.resolve()
     }
 
+    /**
+     * Legacy stopService retained for backward compatibility with JS callers.
+     * No background foreground service is running.
+     */
     @PluginMethod
     fun stopService(call: PluginCall) {
-        val intent = Intent(context, NtfyService::class.java).apply {
-            action = NtfyService.ACTION_STOP
-        }
-        context.startService(intent)
         call.resolve()
+    }
+
+    /**
+     * Fetches the device FCM registration token.
+     */
+    @PluginMethod
+    fun getPushToken(call: PluginCall) {
+        val cached = StovoFirebaseMessagingService.getCachedToken(context)
+        if (!cached.isNullOrEmpty()) {
+            call.resolve(JSObject().put("token", cached))
+            return
+        }
+
+        try {
+            FirebaseMessaging.getInstance().token
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful && task.result != null) {
+                        val token = task.result
+                        context.getSharedPreferences(
+                            StovoFirebaseMessagingService.PREFS_NAME,
+                            Context.MODE_PRIVATE
+                        ).edit()
+                            .putString(StovoFirebaseMessagingService.PREF_FCM_TOKEN, token)
+                            .apply()
+                        call.resolve(JSObject().put("token", token))
+                    } else {
+                        android.util.Log.w("NtfyPlugin", "FCM get token failed", task.exception)
+                        call.resolve(JSObject().put("token", null))
+                    }
+                }
+        } catch (e: Exception) {
+            android.util.Log.w("NtfyPlugin", "Firebase messaging not available: ${e.message}")
+            call.resolve(JSObject().put("token", null))
+        }
     }
 
     /** Update delivery behavior immediately; the service reads this before every push. */
     @PluginMethod
     fun updateNotificationSchedule(call: PluginCall) {
-        NtfyService.updateNotificationSchedule(
+        StovoFirebaseMessagingService.updateNotificationSchedule(
             context,
             call.getBoolean("quietHoursEnabled") ?: false,
             call.getString("quietHoursStart") ?: "22:00",
@@ -123,10 +168,10 @@ class NtfyPlugin : Plugin() {
      */
     @PluginMethod
     fun dismissCallNotification(call: PluginCall) {
-        val id = NtfyService.activeCallNotificationId
+        val id = StovoFirebaseMessagingService.activeCallNotificationId
         if (id != null) {
             NotificationManagerCompat.from(context).cancel(id)
-            NtfyService.activeCallNotificationId = null
+            StovoFirebaseMessagingService.activeCallNotificationId = null
         }
         call.resolve()
     }

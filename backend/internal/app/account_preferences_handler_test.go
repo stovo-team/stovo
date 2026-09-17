@@ -76,3 +76,37 @@ func TestAccountPreferencesReturnsExistingNotificationTopic(t *testing.T) {
 		t.Fatalf("unexpected topic response: status=%d persisted=%q body=%s", recorder.Code, store.persisted, recorder.Body.String())
 	}
 }
+
+func TestAccountPreferencesRegisterDeviceToken(t *testing.T) {
+	store := &accountPreferencesStoreFake{}
+	decoder := func(r *http.Request, target any) error { return json.NewDecoder(r.Body).Decode(target) }
+	handler := NewAccountPreferencesHandler(featurepreferences.NewService(store, nil), "https://app.test", decoder)
+
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/notifications/device-token", strings.NewReader(`{"token":"fcm-test-token-123"}`))
+	handler.handleRegisterDeviceToken(recorder, req, userPublic{ID: "user-1"})
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if store.persisted != "fcm-test-token-123" {
+		t.Fatalf("persisted token = %q, want 'fcm-test-token-123'", store.persisted)
+	}
+}
+
+func TestAccountPreferencesUnregisterDeviceToken(t *testing.T) {
+	topic := "fcm-old-token"
+	store := &accountPreferencesStoreFake{topic: &topic}
+	handler := NewAccountPreferencesHandler(featurepreferences.NewService(store, nil), "https://app.test", nil)
+
+	recorder := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/api/notifications/device-token", nil)
+	handler.handleUnregisterDeviceToken(recorder, req, userPublic{ID: "user-1"})
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	if store.persisted != "" {
+		t.Fatalf("persisted token = %q, want empty string", store.persisted)
+	}
+}

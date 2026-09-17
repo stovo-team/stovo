@@ -125,6 +125,14 @@ func (s *Service) NotificationTopic(ctx context.Context, userID string) (string,
 	return generated, nil
 }
 
+func (s *Service) RegisterPushDeviceToken(ctx context.Context, userID, token string) error {
+	return s.store.SetNtfyTopicToken(ctx, userID, strings.TrimSpace(token))
+}
+
+func (s *Service) UnregisterPushDeviceToken(ctx context.Context, userID string) error {
+	return s.store.SetNtfyTopicToken(ctx, userID, "")
+}
+
 // SaveContactPrivacy updates only account-contact controls, preserving every
 // other persisted audio setting. It preserves the legacy fallback defaults
 // when a historic settings value is absent or malformed.
