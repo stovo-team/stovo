@@ -3,7 +3,6 @@
 package ent
 
 import (
-	"stovo-messenger/backend/ent/schema"
 	"stovo-messenger/backend/ent/callparticipant"
 	"stovo-messenger/backend/ent/callsession"
 	"stovo-messenger/backend/ent/chat"
@@ -35,6 +34,7 @@ import (
 	"stovo-messenger/backend/ent/polloption"
 	"stovo-messenger/backend/ent/pollvote"
 	"stovo-messenger/backend/ent/refreshtoken"
+	"stovo-messenger/backend/ent/schema"
 	"stovo-messenger/backend/ent/syncevent"
 	"stovo-messenger/backend/ent/synceventrecipient"
 	"stovo-messenger/backend/ent/user"
