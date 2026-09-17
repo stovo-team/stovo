@@ -6,6 +6,12 @@ fun messageNotificationId(chatId: String): Int = "stovo://chat/$chatId".hashCode
 
 fun missedCallNotificationId(chatId: String): Int = "stovo://call/missed/$chatId".hashCode()
 
+fun chatIdFromAppLink(link: String, prefix: String): String? {
+    if (!link.startsWith(prefix)) return null
+    return link.removePrefix(prefix)
+        .takeIf { it.isNotEmpty() && !it.contains('/') && !it.contains('?') && !it.contains('#') }
+}
+
 data class StackedChatMessage(
     val senderName: String,
     val text: String,

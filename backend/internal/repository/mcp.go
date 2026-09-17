@@ -325,3 +325,24 @@ func (s *Store) ListMCPAuditEvents(ctx context.Context, familyID, connectorID st
 		Limit(limit).
 		All(ctx)
 }
+
+// IsMCPConnectorActorAllowedForChat reports whether userID is an active connector actor allowed for chatID.
+func (s *Store) IsMCPConnectorActorAllowedForChat(ctx context.Context, actorUserID, chatID string) bool {
+	connector, err := s.Client.McpConnector.Query().
+		Where(
+			mcpconnector.ActorUserIDEQ(actorUserID),
+			mcpconnector.RevokedAtIsNil(),
+			mcpconnector.EnabledEQ(true),
+		).
+		Only(ctx)
+	if err != nil {
+		return false
+	}
+	allowed, err := s.Client.McpConnectorChat.Query().
+		Where(
+			mcpconnectorchat.IDEQ(connector.ID),
+			mcpconnectorchat.ChatIDEQ(chatID),
+		).
+		Exist(ctx)
+	return err == nil && allowed
+}
