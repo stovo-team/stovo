@@ -31,6 +31,21 @@ class MessageNotificationTest {
     }
 
     @Test
+    fun `extracts chat ID from app link with valid prefix`() {
+        assertEquals("family-chat", chatIdFromAppLink("stovo://chat/family-chat", "stovo://chat/"))
+        assertEquals("direct-123", chatIdFromAppLink("stovo://call/missed/direct-123", "stovo://call/missed/"))
+    }
+
+    @Test
+    fun `rejects invalid app links for chat ID extraction`() {
+        assertNull(chatIdFromAppLink("https://example.com/chat/123", "stovo://chat/"))
+        assertNull(chatIdFromAppLink("stovo://chat/", "stovo://chat/"))
+        assertNull(chatIdFromAppLink("stovo://chat/room/extra", "stovo://chat/"))
+        assertNull(chatIdFromAppLink("stovo://chat/room?param=1", "stovo://chat/"))
+        assertNull(chatIdFromAppLink("stovo://chat/room#anchor", "stovo://chat/"))
+    }
+
+    @Test
     fun `parses direct message notifications`() {
         val parsed = parseMessageNotification("Alice", "hello there", listOf("speech_balloon", "direct"))
         assertTrue(parsed.isDirect)

@@ -295,7 +295,7 @@ func (s *Store) GetChatForMember(ctx context.Context, chatID, userID string) (*C
 	if err != nil {
 		return nil, err
 	}
-	if n == 0 {
+	if n == 0 && !s.IsMCPConnectorActorAllowedForChat(ctx, userID, chatID) {
 		return nil, &ent.NotFoundError{}
 	}
 	c, err := s.Client.Chat.Get(ctx, chatID)

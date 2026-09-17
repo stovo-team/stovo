@@ -634,11 +634,11 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 	}
 	messageRead := httptransport.NewMessageReadHandler(httptransport.MessageReadOperations{
 		Mark: func(ctx context.Context, userID, messageID string) (any, string, error) {
-			message, chatID, err := s.markMessageRead(ctx, userPublic{ID: userID}, messageID)
-			return message, chatID, err
+			user, err := s.getUserByID(userID)
+			if err != nil { return nil, "", errNotFound }
+			return s.markMessageRead(ctx, user, messageID)
 		},
-		IsMissing: func(err error) bool { return errors.Is(err, errNotFound) },
-		Error:     func(err error) (int, string) { return domainErrorStatus(err), err.Error() },
+		IsMissing: func(err error) bool { return errors.Is(err, errNotFound) }, Error: func(err error) (int, string) { return domainErrorStatus(err), err.Error() },
 		Published: func(ctx context.Context, chatID, messageID, userID string) {
 			s.emitMessageRead(chatID, messageID, userID)
 			s.bumpChatHistoryRevision(ctx, chatID)

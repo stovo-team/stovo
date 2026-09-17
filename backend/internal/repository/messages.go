@@ -373,8 +373,8 @@ func (s *Store) CreateMessageBundle(ctx context.Context, p CreateMessageBundlePa
 			// Older clients upload before the destination chat is known. Once
 			// the attachment is part of this message, persist its real storage
 			// source so the Storage page can group it under this exact chat.
-			if err := tx.File.UpdateOneID(fileID).
-				Where(file.ChatIDIsNil()).
+			if err := tx.File.Update().
+				Where(file.IDEQ(fileID), file.ChatIDIsNil()).
 				SetChatID(p.ChatID).
 				SetAccessScope("chat").
 				Exec(ctx); err != nil {
