@@ -23,4 +23,11 @@ describe("shared application scrollbars", () => {
     expect(lastRule(".filter-chip-row")).toContain("scrollbar-width: none;");
     expect(lastRule(".filter-chip-row::-webkit-scrollbar")).toContain("display: none;");
   });
+
+  it("hides scrollbars across the board in the mobile application", () => {
+    expect(styles).toMatch(/:root\[data-platform="native"\][\s\S]*?scrollbar-width:\s*none\s*!important;/);
+    expect(styles).toMatch(/:root\[data-platform="native"\][\s\S]*?display:\s*none\s*!important;/);
+    expect(styles).toMatch(/@media \(hover: none\) and \(pointer: coarse\) \{[\s\S]*?scrollbar-width:\s*none;/);
+  });
 });
+
