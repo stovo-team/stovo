@@ -237,6 +237,12 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 			if isMentioned {
 				payloadTags = append(append([]string{}, tags...), "exclamation")
 			}
+			if s.fcmClient != nil && s.fcmClient.IsConfigured() {
+				if err := s.fcmClient.SendChatMessage(ctx, topic, chatID, chatType, title, message, priority, payloadTags); err != nil {
+					s.logger.Warnf("fcm", "failed to deliver chat message user_id=%s: %v", recipientID, err)
+				}
+				return
+			}
 			p := ntfyPayload{
 				Topic:    topic,
 				Title:    title,
@@ -259,9 +265,15 @@ func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatI
 		s.logger.Warnf("ntfy", "no topic for callee user_id=%s: %v", calleeUserID, err)
 		return
 	}
-	go func(topic string) {
+	go func(calleeUserID, topic string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		if s.fcmClient != nil && s.fcmClient.IsConfigured() {
+			if err := s.fcmClient.SendCallRinging(ctx, topic, chatID, callerName); err != nil {
+				s.logger.Warnf("fcm", "failed to deliver call ringing user_id=%s: %v", calleeUserID, err)
+			}
+			return
+		}
 		p := ntfyPayload{
 			Topic:    topic,
 			Title:    callerName,
@@ -271,7 +283,7 @@ func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatI
 			Click:    "stovo://call/" + chatID,
 		}
 		s.publishToNtfyWithRetry(ctx, calleeUserID, p)
-	}(topic)
+	}(calleeUserID, topic)
 }
 
 func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID string) {
@@ -283,9 +295,15 @@ func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID
 		s.logger.Warnf("ntfy", "no topic for callee user_id=%s: %v", calleeUserID, err)
 		return
 	}
-	go func(topic string) {
+	go func(calleeUserID, topic string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
+		if s.fcmClient != nil && s.fcmClient.IsConfigured() {
+			if err := s.fcmClient.SendCallMissed(ctx, topic, chatID, callerName); err != nil {
+				s.logger.Warnf("fcm", "failed to deliver call missed user_id=%s: %v", calleeUserID, err)
+			}
+			return
+		}
 		p := ntfyPayload{
 			Topic:    topic,
 			Title:    callerName,
@@ -295,7 +313,7 @@ func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID
 			Click:    "stovo://call/missed/" + chatID,
 		}
 		s.publishToNtfyWithRetry(ctx, calleeUserID, p)
-	}(topic)
+	}(calleeUserID, topic)
 }
 
 func truncatePreview(content *string) string {

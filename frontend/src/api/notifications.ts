@@ -14,6 +14,7 @@ interface NtfyPlugin {
     quietHoursEnd: string;
   }): Promise<void>;
   stopService(): Promise<void>;
+  getPushToken(): Promise<{ token?: string | null }>;
   updateNotificationSchedule(options: {
     quietHoursEnabled: boolean;
     quietHoursStart: string;
@@ -23,6 +24,10 @@ interface NtfyPlugin {
   requestNotificationPermission(): Promise<{ granted: boolean }>;
   dismissChatNotifications(options: { chatId: string }): Promise<void>;
   consumePendingNotificationAction(): Promise<{ action?: unknown }>;
+  addListener(
+    eventName: "tokenRefresh",
+    listenerFunc: (event: { token: string }) => void
+  ): Promise<{ remove: () => Promise<void> }>;
 }
 
 const NtfyPlugin = registerPlugin<NtfyPlugin>("NtfyPlugin");
@@ -31,7 +36,7 @@ export type PendingNotificationAction =
   | { type: "reply"; chatId: string; text: string }
   | { type: "callback"; chatId: string };
 
-// --- Topic API ---
+// --- Topic & Push Device Token API ---
 
 interface NotificationTopicResponse {
   topic: string;
@@ -44,6 +49,29 @@ export async function fetchNotificationTopic(
   return apiRequest<NotificationTopicResponse>("/api/notifications/topic", {
     accessToken
   });
+}
+
+export async function registerDevicePushToken(
+  authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>,
+  token: string
+): Promise<void> {
+  await authRequest("/api/notifications/device-token", {
+    method: "POST",
+    body: JSON.stringify({ token }),
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
+export async function unregisterDevicePushToken(
+  authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>
+): Promise<void> {
+  try {
+    await authRequest("/api/notifications/device-token", {
+      method: "DELETE"
+    });
+  } catch {
+    // Best effort on logout
+  }
 }
 
 // --- Permission helpers (Android-only, safe to call on web/iOS — they no-op) ---
@@ -144,10 +172,9 @@ export async function consumePendingNotificationAction(): Promise<PendingNotific
 /**
  * Full notification bootstrap: call after successful login on Android.
  * 1. Request POST_NOTIFICATIONS (Android 13+)
- * 2. If granted, fetch topic from backend
- * 3. Start NtfyService with topic + base URL
- *
- * Accepts authRequest from useAuth() to make authenticated API calls.
+ * 2. Update local quiet hours schedule
+ * 3. Retrieve FCM push device token and register it with the backend
+ * 4. Fall back to topic subscription if running in a legacy/self-hosted environment
  */
 export async function bootstrapNotifications(
   authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>,
@@ -158,11 +185,29 @@ export async function bootstrapNotifications(
   }
   const granted = await requestPostNotificationsPermission();
   if (!granted) {
-    // User declined — service not started; notifications will not work
     return;
   }
-  const { topic, ntfyBaseUrl } = await authRequest<NotificationTopicResponse>(
-    "/api/notifications/topic"
-  );
-  await NtfyPlugin.startService({ topic, ntfyBaseUrl, ...preferences });
+
+  await updateNativeNotificationSchedule(preferences);
+
+  // Attempt to fetch and register device FCM push token
+  try {
+    const res = await NtfyPlugin.getPushToken();
+    if (res?.token) {
+      await registerDevicePushToken(authRequest, res.token);
+      return;
+    }
+  } catch {
+    // Plugin getPushToken not available or error; continue to legacy topic fallback
+  }
+
+  // Topic registration fallback (e.g. for self-hosted/ntfy setups)
+  try {
+    const { topic, ntfyBaseUrl } = await authRequest<NotificationTopicResponse>(
+      "/api/notifications/topic"
+    );
+    await NtfyPlugin.startService({ topic, ntfyBaseUrl, ...preferences });
+  } catch {
+    // Best-effort
+  }
 }

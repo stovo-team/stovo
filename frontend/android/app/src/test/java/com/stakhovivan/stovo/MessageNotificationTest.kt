@@ -72,14 +72,14 @@ class MessageNotificationTest {
 
     @Test
     fun `quiet hours silence notifications across midnight`() {
-        assertTrue(NtfyService.isWithinQuietHours(true, "22:00", "07:00", 23 * 60 + 30))
-        assertTrue(NtfyService.isWithinQuietHours(true, "22:00", "07:00", 6 * 60 + 59))
-        assertFalse(NtfyService.isWithinQuietHours(true, "22:00", "07:00", 12 * 60))
+        assertTrue(StovoFirebaseMessagingService.isWithinQuietHours(true, "22:00", "07:00", 23 * 60 + 30))
+        assertTrue(StovoFirebaseMessagingService.isWithinQuietHours(true, "22:00", "07:00", 6 * 60 + 59))
+        assertFalse(StovoFirebaseMessagingService.isWithinQuietHours(true, "22:00", "07:00", 12 * 60))
     }
 
     @Test
     fun `disabled or invalid schedules do not silence notifications`() {
-        assertFalse(NtfyService.isWithinQuietHours(false, "22:00", "07:00", 23 * 60))
-        assertFalse(NtfyService.isWithinQuietHours(true, "25:00", "07:00", 23 * 60))
+        assertFalse(StovoFirebaseMessagingService.isWithinQuietHours(false, "22:00", "07:00", 23 * 60))
+        assertFalse(StovoFirebaseMessagingService.isWithinQuietHours(true, "25:00", "07:00", 23 * 60))
     }
 }

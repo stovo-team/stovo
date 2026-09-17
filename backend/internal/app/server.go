@@ -17,6 +17,7 @@ import (
 	featurecalls "stovo-messenger/backend/internal/features/calls"
 	featurechats "stovo-messenger/backend/internal/features/chats"
 	featurefamily "stovo-messenger/backend/internal/features/family"
+	"stovo-messenger/backend/internal/fcm"
 	featurefiles "stovo-messenger/backend/internal/features/files"
 	featureidentity "stovo-messenger/backend/internal/features/identity"
 	featuremcp "stovo-messenger/backend/internal/features/mcp"
@@ -122,6 +123,7 @@ type Server struct {
 	events      *EventDeduplicator
 	callTimeout time.Duration
 	ntfyClient  *http.Client
+	fcmClient   *fcm.Client
 	lifecycle   *workruntime.Lifecycle
 	ntfyRetryCh chan ntfyRetryItem
 	mcpHTTP     http.Handler
@@ -212,6 +214,14 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 	workruntime.RecoverInterruptedTranscriptionSessions(context.Background(), app.transcriptionSessions, app.logger)
 
 	app.ntfyClient = &http.Client{Timeout: 10 * time.Second}
+	if fcmCli, err := fcm.NewClient(context.Background(), app.cfg.FirebaseCredentialsFile, app.cfg.FirebaseCredentialsJSON); err != nil {
+		app.logger.Warnf("fcm", "failed to initialize FCM client: %v", err)
+	} else {
+		app.fcmClient = fcmCli
+		if fcmCli.IsConfigured() {
+			app.logger.Infof("fcm", "FCM push notification delivery is configured and active")
+		}
+	}
 
 	app.configureSockets()
 	app.tunnel.ConfigureLocalTunnelHealth(app.validatePublicBackendURL, 5*time.Second, 3)

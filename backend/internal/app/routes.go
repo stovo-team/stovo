@@ -296,6 +296,8 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 		GetAudioSettings:     s.authenticated(preferences.handleGetAudioSettings),
 		PutAudioSettings:     s.authenticated(preferences.handlePutAudioSettings),
 		GetNotificationTopic: s.authenticated(preferences.handleGetNotificationTopic),
+		RegisterDeviceToken:  s.authenticated(preferences.handleRegisterDeviceToken),
+		UnregisterDeviceToken: s.authenticated(preferences.handleUnregisterDeviceToken),
 	}
 }
 

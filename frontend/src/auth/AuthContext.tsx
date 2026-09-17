@@ -16,6 +16,7 @@ import { clearPersistentMediaBlobCache } from "../mediaBlobCache";
 import { clearApiResponseCache } from "../api/apiResponseCache";
 import { clearOutbox } from "../features/chats/outbox/messageOutboxStore";
 import { clearLocalReplicaProfile, prepareLocalReplicaProfile } from "../native/localReplicaPlugin";
+import { unregisterDevicePushToken } from "../api/notifications";
 import {
   AuthResponse,
   LoginPayload,
@@ -306,6 +307,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
+    }
+    if (accessTokenRef.current) {
+      await unregisterDevicePushToken((endpoint, opts) =>
+        apiRequest(endpoint, { ...opts, accessToken: accessTokenRef.current })
+      ).catch(() => undefined);
     }
     await logoutRequest().catch(() => undefined);
     await clearOfflineSessionState();
