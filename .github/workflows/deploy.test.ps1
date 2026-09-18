@@ -1,4 +1,4 @@
-$workflow = Get-Content -Raw (Join-Path $PSScriptRoot "deploy.yml")
+$workflow = Get-Content -Raw (Join-Path $PSScriptRoot "pipeline.yml")
 
 if ($workflow -notmatch 'APP_DOMAIN' -or
     $workflow -notmatch 'https://\$app_domain/' -or
@@ -17,7 +17,8 @@ if ($workflow -match '(?m)^\s*sudo docker compose(?:\s+-f\s+\S+)? down\s*$') {
 }
 
 if ($workflow -notmatch 'docker-compose\.master\.yml' -or
-    $workflow -notmatch 'up -d --build frontend orchestrator caddy coturn' -or
+    $workflow -notmatch 'up -d --build frontend' -or
+    $workflow -notmatch 'up -d --build orchestrator caddy coturn' -or
     $workflow -notmatch 'docker build -t stovo-backend ./backend') {
     throw "Deployment must start the master gateway and build the tenant backend image."
 }
@@ -85,8 +86,8 @@ if ($workflow -notmatch "SELECT slug FROM servers ORDER BY slug" -or
     throw "Deployment must migrate every registered and live tenant backend."
 }
 
-if ($workflow -notmatch 'scripts/deploy-environment\\.sh' -or
-    $workflow -notmatch '\\.github/workflows/deploy\\.yml') {
+if ($workflow -notmatch 'scripts/deploy-environment\.sh' -or
+    $workflow -notmatch '\.github/workflows/pipeline\.yml') {
     throw "Changes to migration deployment logic must never be classified as frontend-only."
 }
 
@@ -94,4 +95,17 @@ $tenantMigration = $workflow.IndexOf('atlas migrate apply --dir file:///app/migr
 $tenantReplacement = $workflow.IndexOf('docker rm -f "$existing_container_id"')
 if ($tenantMigration -lt 0 -or $tenantReplacement -lt 0 -or $tenantMigration -gt $tenantReplacement) {
     throw "Tenant migrations must complete before a backend replacement begins."
+}
+
+# Pipeline CI gating assertions
+if ($workflow -notmatch 'deploy-android:[\s\S]*?needs:\s*\[changes,\s*frontend-ci\]') {
+    throw "Android deploy must be gated on frontend CI."
+}
+
+if ($workflow -notmatch 'deploy-frontend-web:[\s\S]*?needs:\s*\[changes,\s*frontend-ci\]') {
+    throw "Frontend web deploy must be gated on frontend CI."
+}
+
+if ($workflow -notmatch 'deploy-backend-web:[\s\S]*?needs:\s*\[changes,\s*backend-ci\]') {
+    throw "Backend web deploy must be gated on backend CI."
 }
