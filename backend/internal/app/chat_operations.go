@@ -18,6 +18,7 @@ import (
 	featurefiles "stovo-messenger/backend/internal/features/files"
 	featuremessages "stovo-messenger/backend/internal/features/messages"
 	"stovo-messenger/backend/internal/plugins"
+	"stovo-messenger/backend/internal/ports"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	realtimetransport "stovo-messenger/backend/internal/transport/realtime"
 
@@ -1623,6 +1624,18 @@ func (s *Server) emitMessageRead(chatID, messageID, userID string) {
 	}
 	payload := realtimetransport.MessageReadPayload(chatID, messageID, userID)
 	realtimetransport.EmitToUsers(s.emitToUserRoom, realtimeMemberIDs(members), "message:read", payload)
+	if s.broker != nil {
+		eventID := fmt.Sprintf("read:%s:%s:%s", chatID, messageID, userID)
+		_ = s.eventDeduplicator().Seen(eventID)
+		go func() {
+			_ = s.broker.Publish(context.Background(), brokerChannelMessages, ports.Event{
+				"type":     "message.read",
+				"event_id": eventID,
+				"chat_id":  chatID,
+				"payload":  payload,
+			})
+		}()
+	}
 }
 
 func (s *Server) emitMessageUpdated(chatID string, message messagePublic) {
@@ -1631,6 +1644,18 @@ func (s *Server) emitMessageUpdated(chatID string, message messagePublic) {
 		return
 	}
 	realtimetransport.EmitToUsers(s.emitToUserRoom, realtimeMemberIDs(members), "message:updated", message)
+	if s.broker != nil {
+		eventID := fmt.Sprintf("msgupd:%s:%s:%d", chatID, message.ID, time.Now().UnixNano())
+		_ = s.eventDeduplicator().Seen(eventID)
+		go func() {
+			_ = s.broker.Publish(context.Background(), brokerChannelMessages, ports.Event{
+				"type":     "message.updated",
+				"event_id": eventID,
+				"chat_id":  chatID,
+				"payload":  message,
+			})
+		}()
+	}
 }
 
 func (s *Server) emitMessageDeleted(chatID string, messageID string) {
@@ -1640,6 +1665,18 @@ func (s *Server) emitMessageDeleted(chatID string, messageID string) {
 	}
 	payload := realtimetransport.MessageDeletedPayload(chatID, messageID)
 	realtimetransport.EmitToUsers(s.emitToUserRoom, realtimeMemberIDs(members), "message:deleted", payload)
+	if s.broker != nil {
+		eventID := fmt.Sprintf("msgdel:%s:%s:%d", chatID, messageID, time.Now().UnixNano())
+		_ = s.eventDeduplicator().Seen(eventID)
+		go func() {
+			_ = s.broker.Publish(context.Background(), brokerChannelMessages, ports.Event{
+				"type":     "message.deleted",
+				"event_id": eventID,
+				"chat_id":  chatID,
+				"payload":  payload,
+			})
+		}()
+	}
 }
 
 func (s *Server) emitMessagePinned(chatID string, pin pinnedMessagePublic) {
@@ -1682,6 +1719,19 @@ func (s *Server) emitTyping(chatID string, user userPublic, isTyping bool) error
 		}
 	}
 	realtimetransport.EmitToUsers(s.emitToUserRoom, recipients, "typing:update", payload)
+	if s.broker != nil {
+		eventID := fmt.Sprintf("typing:%s:%s:%d", chatID, user.ID, time.Now().UnixNano())
+		_ = s.eventDeduplicator().Seen(eventID)
+		go func() {
+			_ = s.broker.Publish(context.Background(), brokerChannelMessages, ports.Event{
+				"type":      "typing.update",
+				"event_id":  eventID,
+				"chat_id":   chatID,
+				"sender_id": user.ID,
+				"payload":   payload,
+			})
+		}()
+	}
 	return nil
 }
 

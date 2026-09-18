@@ -26,15 +26,27 @@
 	}
 
 	handle /api/* {
-		reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000
+		reverse_proxy {$BACKEND_UPSTREAMS:{$ACTIVE_BACKEND:backend-blue}:8000} {
+			lb_policy cookie lb_stovo
+			lb_retries 2
+			lb_try_duration 3s
+		}
 	}
 
 	handle /mcp* {
-		reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000
+		reverse_proxy {$BACKEND_UPSTREAMS:{$ACTIVE_BACKEND:backend-blue}:8000} {
+			lb_policy cookie lb_stovo
+			lb_retries 2
+			lb_try_duration 3s
+		}
 	}
 
 	handle /socket.io* {
-		reverse_proxy {$ACTIVE_BACKEND:backend-blue}:8000
+		reverse_proxy {$BACKEND_UPSTREAMS:{$ACTIVE_BACKEND:backend-blue}:8000} {
+			lb_policy cookie lb_stovo
+			lb_retries 2
+			lb_try_duration 3s
+		}
 	}
 
 	# LiveKit's signaling endpoint. Keeping it on the app origin lets external
