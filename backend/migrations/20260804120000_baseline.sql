@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict VzzdRewl6MEPbbc8M7WrOFjxeprhKue2AaTTp4q95HWGZVc3Uy9eTadK70s030t
+-- \restrict VzzdRewl6MEPbbc8M7WrOFjxeprhKue2AaTTp4q95HWGZVc3Uy9eTadK70s030t
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -12,7 +12,7 @@ SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
+SELECT pg_catalog.set_config('search_path', 'public', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
@@ -21,6 +21,8 @@ SET row_security = off;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+CREATE SCHEMA IF NOT EXISTS public;
 
 --
 -- Name: call_participants; Type: TABLE; Schema: public; Owner: -
@@ -911,6 +913,6 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict VzzdRewl6MEPbbc8M7WrOFjxeprhKue2AaTTp4q95HWGZVc3Uy9eTadK70s030t
+-- \unrestrict VzzdRewl6MEPbbc8M7WrOFjxeprhKue2AaTTp4q95HWGZVc3Uy9eTadK70s030t
 
 
