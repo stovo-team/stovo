@@ -1,0 +1,837 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'migrations/master/**'
+      - 'Caddyfile'
+      - 'Caddyfile.internal'
+      - 'docker-compose.master.yml'
+      - 'Dockerfile.orchestrator'
+      - 'deploy/**'
+      - '.architecture/**'
+      - 'scripts/**'
+      - '.github/workflows/pipeline.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'migrations/master/**'
+      - 'Caddyfile'
+      - 'Caddyfile.internal'
+      - 'docker-compose.master.yml'
+      - 'Dockerfile.orchestrator'
+      - 'deploy/**'
+      - '.architecture/**'
+      - 'scripts/**'
+      - '.github/workflows/pipeline.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+permissions:
+  contents: write
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: self-hosted
+    outputs:
+      frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
+      backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+              - '.architecture/**'
+              - 'scripts/check-solid-boundaries.sh'
+              - '.github/workflows/pipeline.yml'
+            backend:
+              - 'backend/**'
+              - 'migrations/master/**'
+              - 'Caddyfile'
+              - 'Caddyfile.internal'
+              - 'docker-compose.master.yml'
+              - 'Dockerfile.orchestrator'
+              - 'deploy/**'
+              - '.architecture/**'
+              - 'scripts/check-solid-boundaries.sh'
+              - 'scripts/deploy-environment.sh'
+              - '.github/workflows/pipeline.yml'
+
+  frontend-ci:
+    name: Frontend CI
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: SOLID architecture boundaries
+        run: bash scripts/check-solid-boundaries.sh frontend
+      - name: Test
+        working-directory: frontend
+        run: npm test
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  backend-ci:
+    name: Backend CI
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: self-hosted
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: family_user
+          POSTGRES_PASSWORD: family_password
+          POSTGRES_DB: family_messenger_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U family_user -d family_messenger_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://family_user:family_password@localhost:5432/family_messenger_test?sslmode=disable
+      TEST_REDIS_URL: redis://localhost:6379/0
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Download modules
+        run: go mod download
+      - name: Ent generation drift
+        run: |
+          go generate ./ent
+          if ! git diff --quiet -- ent; then
+            echo "ent/ is out of date; run go generate ./ent and commit"
+            git diff -- ent
+            exit 1
+          fi
+      - name: Unit and integration tests with coverage
+        run: |
+          rm -f coverage.out
+          go test -count=1 -covermode=atomic -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tee coverage-summary.txt
+          {
+            echo "## Backend coverage"
+            echo '```text'
+            tail -n 1 coverage-summary.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload backend coverage profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.out
+          if-no-files-found: error
+      - name: SOLID architecture boundaries
+        working-directory: .
+        run: bash scripts/check-solid-boundaries.sh backend
+      - name: Reject UTF-8 BOMs in Atlas migrations
+        run: |
+          set -euo pipefail
+          if LC_ALL=C grep -rl $'^\xEF\xBB\xBF' migrations --include='*.sql'; then
+            echo "Atlas migration files must be UTF-8 without a byte-order mark." >&2
+            exit 1
+          fi
+      - name: Atlas migrate validate
+        if: hashFiles('backend/migrations/atlas.sum') != ''
+        run: docker run --rm -v "$PWD/migrations:/migrations:ro" arigaio/atlas:1.3.2 migrate validate --dir "file:///migrations"
+      - name: Reject out-of-order migrations
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BASE_SHA" ] || printf '%s' "$BASE_SHA" | grep -q '^0\{40\}$'; then
+            exit 0
+          fi
+
+          latest_existing="$(git ls-tree -r --name-only "$BASE_SHA" -- migrations \
+            | sed -n 's#^migrations/\([0-9]\{14\}\)_.*\.sql$#\1#p' \
+            | sort \
+            | tail -n 1)"
+          [ -n "$latest_existing" ] || exit 0
+
+          git diff --diff-filter=A --name-only "$BASE_SHA" HEAD -- migrations \
+            | while IFS= read -r migration; do
+                version="$(printf '%s' "$migration" | sed -n 's#^migrations/\([0-9]\{14\}\)_.*\.sql$#\1#p')"
+                [ -n "$version" ] || continue
+                if [ "$version" \< "$latest_existing" ] || [ "$version" = "$latest_existing" ]; then
+                  echo "New migration $migration is not later than existing migration version $latest_existing." >&2
+                  echo "Use a new timestamp after the current migration tail; do not insert migrations into deployed history." >&2
+                  exit 1
+                fi
+              done
+      - name: Atlas replay empty install
+        if: hashFiles('backend/migrations/*.sql') != ''
+        run: |
+          docker run --rm --network host arigaio/atlas:1.3.2 \
+            schema clean -u "$TEST_DATABASE_URL" --auto-approve
+          docker run --rm --network host -v "$PWD/migrations:/migrations:ro" arigaio/atlas:1.3.2 \
+            migrate apply --dir "file:///migrations" --url "$TEST_DATABASE_URL"
+      - name: Forbid raw SQL in app packages
+        run: |
+          set -euo pipefail
+          if rg -n --glob '*.go' --glob '!*_test.go' --glob '!sql_tracer.go' \
+            '(\.Query\(|\.QueryRow\(|\.Exec\(|BeginTx\()' \
+            internal/app; then
+            echo "database/sql query helpers still used in internal/app"
+            exit 1
+          fi
+          if rg -n --glob '*.go' --glob '!*_test.go' \
+            '"(SELECT |INSERT |UPDATE |DELETE FROM |CREATE TABLE |ALTER TABLE |DROP TABLE )' \
+            internal/app; then
+            echo "raw SQL literals found in internal/app (only Atlas migrations + tests allowed)"
+            exit 1
+          fi
+          echo "app SQL gate passed"
+
+  deploy-frontend-web:
+    name: Deploy Frontend Web
+    needs: [changes, frontend-ci]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
+    runs-on: [self-hosted, tests]
+    environment: production
+
+    steps:
+      - name: Deploy Frontend via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          command_timeout: 30m
+          script_stop: true
+          script: |
+            set -eu
+            exec 200>/tmp/stovo-deploy.lock
+            flock -x 200
+
+            cd '${{ secrets.DEPLOY_PATH }}'
+
+            # Fetch latest git master
+            git fetch origin master
+            git checkout master
+            git reset --hard origin/master
+
+            get_env() { key="$1"; default="${2:-}"; val="$(sed -n "s/^${key}=//p" .env 2>/dev/null | tail -n 1 | tr -d '\r')"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"; if [ -n "$val" ]; then printf '%s' "$val"; else printf '%s' "$default"; fi; }
+
+            docker_with_space_recovery() {
+              deploy_log="$(mktemp)"
+              if "$@" >"$deploy_log" 2>&1; then
+                cat "$deploy_log"
+                rm -f "$deploy_log"
+                return 0
+              fi
+              deploy_status=$?
+              cat "$deploy_log" >&2
+              if ! grep -Eqi 'no space left on device|disk quota exceeded|write /var/lib/docker/.+no space' "$deploy_log"; then
+                rm -f "$deploy_log"
+                return "$deploy_status"
+              fi
+              echo "Docker ran out of disk space; pruning unused Docker cache and retrying once..." >&2
+              sudo docker builder prune -af
+              sudo docker image prune -af
+              sudo docker container prune -f
+              sudo docker network prune -f
+              rm -f "$deploy_log"
+              "$@"
+            }
+
+            app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
+
+            echo "Building and deploying frontend container..."
+            docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d --build frontend
+            sudo docker compose -f docker-compose.master.yml up -d --force-recreate caddy
+
+            # Verify public HTTPS listener
+            public_healthy=false
+            for _ in $(seq 1 30); do
+              if curl --fail --silent --show-error --resolve "$app_domain:443:127.0.0.1" "https://$app_domain/" > /dev/null; then
+                public_healthy=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$public_healthy" != true ]; then
+              sudo docker compose -f docker-compose.master.yml ps
+              sudo docker compose -f docker-compose.master.yml logs --tail=100 caddy frontend
+              exit 1
+            fi
+
+            echo "Frontend web deployment finished successfully!"
+
+  deploy-backend-web:
+    name: Deploy Backend Web
+    needs: [changes, backend-ci]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true'
+    runs-on: [self-hosted, tests]
+    environment: production
+
+    steps:
+      - name: Deploy Backend via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_SSH_PORT || 22 }}
+          command_timeout: 30m
+          script_stop: true
+          script: |
+            set -eu
+            exec 200>/tmp/stovo-deploy.lock
+            flock -x 200
+
+            cd '${{ secrets.DEPLOY_PATH }}'
+
+            # Fetch latest git master
+            git fetch origin master
+            git checkout master
+            git reset --hard origin/master
+
+            test -f .env || touch .env
+            umask 077
+            ensure_env() { key="$1"; value="$2"; if ! grep -q "^${key}=." .env; then printf '\n%s=%s\n' "$key" "$value" >> .env; fi; }
+            ensure_env MINIO_ROOT_USER stovo_minio_root
+            ensure_env MINIO_ROOT_PASSWORD "$(openssl rand -hex 32)"
+            ensure_env MINIO_ACCESS_KEY stovo_backend
+            ensure_env MINIO_SECRET_KEY "$(openssl rand -hex 32)"
+            ensure_env MASTER_ADMIN_USER admin
+            ensure_env MASTER_ADMIN_PASSWORD admin123
+            ensure_env MASTER_SYSTEM_SECRET super_secret_master_key_123
+
+            get_env() { key="$1"; default="${2:-}"; val="$(sed -n "s/^${key}=//p" .env 2>/dev/null | tail -n 1 | tr -d '\r')"; val="${val%\"}"; val="${val#\"}"; val="${val%\'}"; val="${val#\'}"; if [ -n "$val" ]; then printf '%s' "$val"; else printf '%s' "$default"; fi; }
+            tenant_database_url_for() {
+              tenant_slug="$1"
+              configured_url="$(get_env DATABASE_URL "")"
+              if [ -n "$configured_url" ]; then
+                printf '%s' "$configured_url" | sed "s/{slug}/${tenant_slug}/g"
+              else
+                printf 'postgres://%s:%s@postgres:5432/stovo_db_%s?sslmode=disable' "$pg_user" "$pg_pass" "$tenant_slug"
+              fi
+            }
+
+            docker_with_space_recovery() {
+              deploy_log="$(mktemp)"
+              if "$@" >"$deploy_log" 2>&1; then
+                cat "$deploy_log"
+                rm -f "$deploy_log"
+                return 0
+              fi
+              deploy_status=$?
+              cat "$deploy_log" >&2
+              if ! grep -Eqi 'no space left on device|disk quota exceeded|write /var/lib/docker/.+no space' "$deploy_log"; then
+                rm -f "$deploy_log"
+                return "$deploy_status"
+              fi
+              echo "Docker ran out of disk space; pruning unused Docker cache and retrying once..." >&2
+              sudo docker builder prune -af
+              sudo docker image prune -af
+              sudo docker container prune -f
+              sudo docker network prune -f
+              rm -f "$deploy_log"
+              "$@"
+            }
+
+            pg_user="$(get_env POSTGRES_USER family_user)"
+            pg_pass="$(get_env POSTGRES_PASSWORD family_password)"
+            pg_db="$(get_env POSTGRES_DB family_messenger)"
+            app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
+            tenant_redis_url="$(get_env REDIS_URL 'redis://redis:6379/0')"
+
+            # Ensure master database, cache & minio services are running
+            sudo docker compose -f docker-compose.master.yml up -d postgres redis minio
+
+            # Wait for postgres to be healthy
+            for _ in $(seq 1 30); do if sudo docker compose -f docker-compose.master.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
+
+            # Apply master database migrations
+            for migration in $(find migrations/master -maxdepth 1 -name '*.sql' | sort); do
+              echo "Applying master migration: $migration"
+              cat "$migration" | sudo docker compose -f docker-compose.master.yml exec -T postgres psql -U "$pg_user" -d "$pg_db"
+            done
+
+            # Build backend docker image for child servers
+            docker_with_space_recovery sudo docker run --rm -v "$PWD/backend/migrations:/migrations:ro" arigaio/atlas:1.3.2 \
+              migrate validate --dir file:///migrations
+            docker_with_space_recovery sudo docker build -t stovo-backend ./backend
+
+            # Reconcile the LiveKit SFU
+            docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d livekit
+
+            # Build and deploy orchestrator, caddy gateway, and coturn
+            docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d --build orchestrator caddy coturn
+            sudo docker compose -f docker-compose.master.yml up -d --force-recreate caddy
+
+            # Check public TLS listener
+            public_healthy=false
+            for _ in $(seq 1 30); do
+              if curl --fail --silent --show-error --resolve "$app_domain:443:127.0.0.1" "https://$app_domain/" > /dev/null; then
+                public_healthy=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$public_healthy" != true ]; then
+              sudo docker compose -f docker-compose.master.yml ps
+              sudo docker compose -f docker-compose.master.yml logs --tail=100 caddy orchestrator
+              exit 1
+            fi
+
+            # Migrate every registered tenant and every live tenant backend
+            registered_tenant_slugs="$(sudo docker compose -f docker-compose.master.yml exec -T postgres \
+              psql -v ON_ERROR_STOP=1 -U "$pg_user" -d "$pg_db" -tAc 'SELECT slug FROM servers ORDER BY slug')"
+            running_tenant_slugs="$(sudo docker ps --format '{{.Names}}' | sed -n 's/^stovo-backend-\([[:alnum:]][[:alnum:]-]*\)$/\1/p')"
+            tenant_slugs="$(printf '%s\n%s\n' "$registered_tenant_slugs" "$running_tenant_slugs" | sed '/^[[:space:]]*$/d' | sort -u)"
+            if [ -n "$tenant_slugs" ]; then
+                echo "Applying migrations to registered and live tenant databases..."
+                for server_slug in $tenant_slugs; do
+                    if [ -n "$server_slug" ]; then
+                        echo "Applying tracked Atlas migrations for server: $server_slug"
+                        tenant_database_url="$(tenant_database_url_for "$server_slug")"
+                        docker_with_space_recovery sudo docker run --rm \
+                          --network stovo_default \
+                          -e "DATABASE_URL=${tenant_database_url}" \
+                          stovo-backend \
+                          sh -ec 'atlas migrate apply --dir file:///app/migrations --url "$DATABASE_URL"'
+
+                        echo "Re-deploying container for server: $server_slug"
+                        if ! sudo docker exec stovo-master-minio sh -ec '
+                          mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
+                          mc stat "local/stovo-$1" >/dev/null
+                        ' sh "$server_slug"; then
+                          echo "Refusing to redeploy $server_slug: MinIO bucket stovo-$server_slug is missing." >&2
+                          exit 1
+                        fi
+                        active_file_count="$(sudo docker exec stovo-master-db sh -ec '
+                          psql -U "$POSTGRES_USER" -d "stovo_db_$1" -tAc "SELECT count(*) FROM files WHERE deleted_at IS NULL" 2>/dev/null || echo 0
+                        ' sh "$server_slug")"
+                        object_count="$(sudo docker exec stovo-master-minio sh -ec '
+                          mc alias set local http://127.0.0.1:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null
+                          mc find "local/stovo-$1" | wc -l
+                        ' sh "$server_slug")"
+                        if [ "$object_count" -lt "$active_file_count" ]; then
+                          echo "WARNING: MinIO has $object_count objects but the database has $active_file_count active files for $server_slug. Deploying backend; restore or reconcile missing media separately." >&2
+                        fi
+                        existing_container_id="$(sudo docker inspect --format '{{.Id}}' "stovo-backend-${server_slug}" 2>/dev/null || true)"
+                        if [ -n "$existing_container_id" ]; then
+                          sudo docker rm -f "$existing_container_id" || true
+                        fi
+                        master_secret="$(get_env MASTER_SYSTEM_SECRET super_secret_master_key_123)"
+                        minio_user="$(get_env MINIO_ROOT_USER stovo_minio_root)"
+                        minio_pass="$(get_env MINIO_ROOT_PASSWORD stovo_minio_pass)"
+                        turn_enabled="$(get_env TURN_ENABLED true)"
+                        turn_host="$(get_env TURN_HOST "$(get_env PUBLIC_HOST "$(get_env PUBLIC_IP stovo.local)")")"
+                        turn_port="$(get_env TURN_PORT 3478)"
+                        turn_realm="$(get_env TURN_REALM family-messenger)"
+                        turn_username="$(get_env TURN_USERNAME family)"
+                        turn_password="$(get_env TURN_PASSWORD change_me)"
+                        groq_api_key="$(get_env GROQ_API_KEY "$(get_env groq_api_key "$(get_env GROQ_KEY "$(get_env GROQ_API_TOKEN "")")")")"
+                        groq_base_url="$(get_env GROQ_BASE_URL "$(get_env GROQ_API_BASE "")")"
+                        groq_stt_model="$(get_env GROQ_STT_MODEL whisper-large-v3-turbo)"
+                        groq_chat_model="$(get_env GROQ_CHAT_MODEL "")"
+                        groq_stt_cost="$(get_env GROQ_STT_COST_PER_AUDIO_HOUR_USD 0.04)"
+                        ai_call_transcription="$(get_env AI_CALL_TRANSCRIPTION_ENABLED true)"
+                        livekit_url="$(get_env LIVEKIT_URL "")"
+                        livekit_api_key="$(get_env LIVEKIT_API_KEY "")"
+                        livekit_api_secret="$(get_env LIVEKIT_API_SECRET "")"
+                        app_url="$(get_env APP_URL "https://${app_domain}")"
+                        server_url="${app_url%/}/s/${server_slug}"
+                        if ! docker_with_space_recovery sudo docker run -d \
+                          --name "stovo-backend-${server_slug}" \
+                          --network stovo_default \
+                          --restart unless-stopped \
+                          -e "SERVER_ID=${server_slug}" \
+                          -e "APP_URL=${server_url}" \
+                          -e "API_URL=${server_url}" \
+                          -e "DATABASE_URL=${tenant_database_url}" \
+                          -e "REDIS_URL=${tenant_redis_url}" \
+                          -e "STORAGE_PROVIDER=minio" \
+                          -e "MINIO_ENDPOINT=minio:9000" \
+                          -e "MINIO_ACCESS_KEY=${minio_user}" \
+                          -e "MINIO_SECRET_KEY=${minio_pass}" \
+                          -e "MINIO_FILES_BUCKET=stovo-${server_slug}" \
+                          -e "JWT_SECRET=${master_secret}" \
+                          -e "MASTER_SYSTEM_SECRET=${master_secret}" \
+                          -e "TURN_ENABLED=${turn_enabled}" \
+                          -e "TURN_HOST=${turn_host}" \
+                          -e "TURN_PORT=${turn_port}" \
+                          -e "TURN_REALM=${turn_realm}" \
+                          -e "TURN_USERNAME=${turn_username}" \
+                          -e "TURN_PASSWORD=${turn_password}" \
+                          -e "GROQ_API_KEY=${groq_api_key}" \
+                          -e "GROQ_BASE_URL=${groq_base_url}" \
+                          -e "GROQ_STT_MODEL=${groq_stt_model}" \
+                          -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
+                          -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                          -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
+                          -e "LIVEKIT_URL=${livekit_url}" \
+                          -e "LIVEKIT_API_KEY=${livekit_api_key}" \
+                          -e "LIVEKIT_API_SECRET=${livekit_api_secret}" \
+                          --label "stovo-server=${server_slug}" \
+                          stovo-backend; then
+                          concurrent_container_id="$(sudo docker inspect --format '{{.Id}}' "stovo-backend-${server_slug}" 2>/dev/null || true)"
+                          if [ -z "$concurrent_container_id" ]; then
+                            echo "Failed to start tenant backend $server_slug." >&2
+                            exit 1
+                          fi
+                          echo "Tenant container changed during redeploy; replacing it once more."
+                          sudo docker rm -f "$concurrent_container_id" || true
+                          docker_with_space_recovery sudo docker run -d \
+                            --name "stovo-backend-${server_slug}" \
+                            --network stovo_default \
+                            --restart unless-stopped \
+                            -e "SERVER_ID=${server_slug}" \
+                            -e "APP_URL=${server_url}" \
+                            -e "API_URL=${server_url}" \
+                            -e "DATABASE_URL=${tenant_database_url}" \
+                            -e "REDIS_URL=${tenant_redis_url}" \
+                            -e "STORAGE_PROVIDER=minio" \
+                            -e "MINIO_ENDPOINT=minio:9000" \
+                            -e "MINIO_ACCESS_KEY=${minio_user}" \
+                            -e "MINIO_SECRET_KEY=${minio_pass}" \
+                            -e "MINIO_FILES_BUCKET=stovo-${server_slug}" \
+                            -e "JWT_SECRET=${master_secret}" \
+                            -e "MASTER_SYSTEM_SECRET=${master_secret}" \
+                            -e "TURN_ENABLED=${turn_enabled}" \
+                            -e "TURN_HOST=${turn_host}" \
+                            -e "TURN_PORT=${turn_port}" \
+                            -e "TURN_REALM=${turn_realm}" \
+                            -e "TURN_USERNAME=${turn_username}" \
+                            -e "TURN_PASSWORD=${turn_password}" \
+                            -e "GROQ_API_KEY=${groq_api_key}" \
+                            -e "GROQ_BASE_URL=${groq_base_url}" \
+                            -e "GROQ_STT_MODEL=${groq_stt_model}" \
+                            -e "GROQ_CHAT_MODEL=${groq_chat_model}" \
+                            -e "GROQ_STT_COST_PER_AUDIO_HOUR_USD=${groq_stt_cost}" \
+                            -e "AI_CALL_TRANSCRIPTION_ENABLED=${ai_call_transcription}" \
+                            -e "LIVEKIT_URL=${livekit_url}" \
+                            -e "LIVEKIT_API_KEY=${livekit_api_key}" \
+                            -e "LIVEKIT_API_SECRET=${livekit_api_secret}" \
+                            --label "stovo-server=${server_slug}" \
+                            stovo-backend
+                        fi
+                    fi
+                done
+            fi
+
+            echo "Backend web deployment finished successfully!"
+
+  deploy-android:
+    name: Android Release
+    needs: [changes, frontend-ci]
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
+    runs-on: self-hosted
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install system dependencies (unzip)
+        run: |
+          if ! command -v unzip >/dev/null 2>&1; then
+            if sudo -n true 2>/dev/null; then
+              sudo apt-get update && sudo apt-get install -y unzip
+            elif command -v apt-get >/dev/null 2>&1 && apt-get download unzip 2>/dev/null; then
+              mkdir -p "$RUNNER_TEMP/unzip-bin"
+              dpkg -x unzip*.deb "$RUNNER_TEMP/unzip-bin" 2>/dev/null || true
+              rm -f unzip*.deb
+              if [ -x "$RUNNER_TEMP/unzip-bin/usr/bin/unzip" ]; then
+                echo "$RUNNER_TEMP/unzip-bin/usr/bin" >> "$GITHUB_PATH"
+              fi
+            fi
+          fi
+          if ! command -v unzip >/dev/null 2>&1; then
+            if command -v python3 >/dev/null 2>&1; then
+              mkdir -p "$RUNNER_TEMP/bin"
+              cat << 'EOF' > "$RUNNER_TEMP/bin/unzip"
+          #!/usr/bin/env python3
+          import sys, zipfile, os
+
+          args = sys.argv[1:]
+          dest = "."
+          zip_file = None
+
+          i = 0
+          while i < len(args):
+              arg = args[i]
+              if arg in ("-q", "-o", "-u", "-v", "-l"):
+                  i += 1
+              elif arg == "-d" and i + 1 < len(args):
+                  dest = args[i + 1]
+                  i += 2
+              elif not arg.startswith("-") and zip_file is None:
+                  zip_file = arg
+                  i += 1
+              else:
+                  i += 1
+
+          if not zip_file:
+              sys.exit(1)
+
+          with zipfile.ZipFile(zip_file, "r") as z:
+              for info in z.infolist():
+                  extracted_path = z.extract(info, dest)
+                  mode = info.external_attr >> 16
+                  if mode:
+                      try:
+                          os.chmod(extracted_path, mode)
+                      except Exception:
+                          pass
+          EOF
+              chmod +x "$RUNNER_TEMP/bin/unzip"
+              echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+            fi
+          fi
+          if [ -d "$HOME/.android/sdk" ]; then
+            find "$HOME/.android/sdk" -path "*/bin/*" -type f -exec chmod +x {} + 2>/dev/null || true
+            find "$HOME/.android/sdk" -maxdepth 4 -type d -empty -delete 2>/dev/null || true
+          fi
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Sync Capacitor Android project
+        working-directory: frontend
+        run: npx @capacitor/cli@8 sync android
+
+      - name: Prepare signing keystore
+        working-directory: frontend/android
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > release.keystore
+            echo "ANDROID_KEYSTORE_PATH=${{ github.workspace }}/frontend/android/release.keystore" >> "$GITHUB_ENV"
+            echo "Release signing enabled"
+          else
+            echo "No keystore secret — building unsigned release APK"
+          fi
+
+      - name: Compute patch version
+        id: patch
+        run: |
+          git fetch --tags
+          LATEST=$(git tag --list 'v1.4.*' --sort=-v:refname | head -1)
+          if [ -z "$LATEST" ]; then
+            PATCH=0
+          else
+            PATCH=$(echo "$LATEST" | awk -F. '{print $3}')
+            PATCH=$((PATCH + 1))
+          fi
+          VERSION="1.4.${PATCH}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Next version: $VERSION"
+
+      - name: Build APK
+        working-directory: frontend/android
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          if [ -n "$ANDROID_KEYSTORE_PATH" ]; then
+            echo "Building signed release APK"
+          else
+            echo "WARNING: ANDROID_KEYSTORE_BASE64 secret not set — APK will be unsigned and uninstallable on real devices."
+            echo "Set ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD secrets."
+          fi
+          ./gradlew assembleRelease \
+            -PversionCode=${{ github.run_number }} \
+            -PversionName=${{ steps.patch.outputs.version }} \
+            --no-daemon \
+            --max-workers=1 \
+            -Dorg.gradle.jvmargs="-Xmx1024m -XX:MaxMetaspaceSize=384m -XX:+UseG1GC"
+
+      - name: Locate and rename APK
+        id: apk
+        run: |
+          SRC=$(find frontend/android/app/build/outputs/apk -name '*.apk' | grep -v unsigned | head -1)
+          if [ -z "$SRC" ]; then
+            SRC=$(find frontend/android/app/build/outputs/apk -name '*.apk' | head -1)
+          fi
+          if [ -z "$SRC" ]; then
+            echo "No APK found under app/build/outputs/apk" >&2
+            exit 1
+          fi
+          DEST="stovo-${{ steps.patch.outputs.version }}.apk"
+          cp "$SRC" "$DEST"
+          echo "path=$DEST" >> "$GITHUB_OUTPUT"
+          echo "Found: $SRC ($(du -h "$SRC" | cut -f1)) → $DEST"
+
+      - name: Generate release notes
+        id: notes
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPEN_AI_API_KEY: ${{ secrets.OPEN_AI_API_KEY }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+        run: |
+          set -eu
+          if [ -z "${OPENAI_API_KEY:-}" ]; then OPENAI_API_KEY="${OPEN_AI_API_KEY:-}"; fi
+          MODEL="${OPENAI_MODEL:-gpt-4.1-nano}"
+          BEFORE="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" = "push" ] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            RANGE="${BEFORE}..${{ github.sha }}"
+          else
+            RANGE="-20"
+          fi
+
+          COMMITS=$(git log --pretty=format:'- %s (%h)' "$RANGE" 2>/dev/null | head -40)
+          if [ -z "$COMMITS" ]; then
+            COMMITS=$(git log -15 --pretty=format:'- %s (%h)')
+          fi
+
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo "OPENAI_API_KEY not set — using commit list"
+            SUMMARY=$(printf 'Что нового:\n%s' "$COMMITS")
+          else
+            PROMPT=$(printf 'Write short release notes for the Stovo family messenger Android app.\nAudience: family members, not developers.\nFormat: plain text, 2-5 bullet points, friendly tone. Match the language of the commits.\nNo markdown headers, no hype.\n\nCommits:\n%s' "$COMMITS")
+            RESPONSE=$(curl -fsSL https://api.openai.com/v1/chat/completions \
+              -H "Authorization: Bearer ${OPENAI_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d "$(jq -n \
+                --arg model "${MODEL}" \
+                --arg prompt "$PROMPT" \
+                '{
+                  model: $model,
+                  max_tokens: 280,
+                  temperature: 0.4,
+                  messages: [
+                    {role: "system", content: "You write concise mobile app release notes."},
+                    {role: "user", content: $prompt}
+                  ]
+                }')")
+            SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty')
+            if [ -z "$SUMMARY" ]; then
+              echo "OpenAI call failed, falling back to commit list" >&2
+              echo "$RESPONSE" >&2
+              SUMMARY=$(printf 'Что нового:\n%s' "$COMMITS")
+            fi
+          fi
+
+          if [ "${#SUMMARY}" -gt 700 ]; then
+            SUMMARY="${SUMMARY:0:697}..."
+          fi
+
+          {
+            echo 'summary<<EOF'
+            printf '%s' "$SUMMARY"
+            echo
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish Android release to Telegram
+        env:
+          RELEASE_BOT_URL: ${{ secrets.RELEASE_BOT_URL }}
+          RELEASE_BOT_SECRET: ${{ secrets.RELEASE_BOT_SECRET }}
+        run: |
+          publish_directly() {
+            TEXT=$(printf '📱 Stovo %s\n\n%s' \
+              "${{ steps.patch.outputs.version }}" \
+              "${{ steps.notes.outputs.summary }}")
+            curl -fsSL "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendDocument" \
+              -F "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -F "document=@${{ steps.apk.outputs.path }}" \
+              -F "caption=${TEXT}"
+          }
+
+          if [ -z "$RELEASE_BOT_URL" ] || [ -z "$RELEASE_BOT_SECRET" ]; then
+            echo "release-bot is not configured; publishing one captioned APK directly"
+            publish_directly
+            exit 0
+          fi
+
+          if ! curl -fsSL -X POST "${RELEASE_BOT_URL}/webhook" \
+            -H "Authorization: Bearer ${RELEASE_BOT_SECRET}" \
+            -F "project=Stovo Android" \
+            -F "version=${{ steps.patch.outputs.version }}" \
+            -F "message=${{ steps.notes.outputs.summary }}" \
+            -F "attachment=@${{ steps.apk.outputs.path }};type=application/vnd.android.package-archive"; then
+            echo "::warning::release-bot did not accept the APK; publishing directly to Telegram"
+            publish_directly
+          fi
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag "${{ steps.patch.outputs.tag }}"
+          git push origin "${{ steps.patch.outputs.tag }}"
+
+      - name: Upload APK as GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stovo-android-${{ steps.patch.outputs.version }}
+          path: ${{ steps.apk.outputs.path }}
+          retention-days: 30
