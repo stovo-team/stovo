@@ -16,6 +16,7 @@ import (
 	featurecalls "stovo-messenger/backend/internal/features/calls"
 	"stovo-messenger/backend/internal/runtime"
 	workruntime "stovo-messenger/backend/internal/runtime"
+	"stovo-messenger/backend/internal/ports"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	realtimetransport "stovo-messenger/backend/internal/transport/realtime"
 
@@ -1385,18 +1386,30 @@ func (s *Server) emitSocketError(socket *socketio.Socket, clientMessageID *strin
 
 func (s *Server) emitCallToUser(userID, event string, payload any) {
 	targets := s.sessions.SocketsForUser(userID)
-	if len(targets) == 0 {
-		s.logger.Warnf("realtime.call", "emitCallToUser: no sockets for user_id=%s event=%s — queueing", userID, event)
-		if strings.HasPrefix(event, "call:") {
-			go s.enqueueEventForUser(context.Background(), userID, event, payload)
-		}
-		return
-	}
 	for _, sock := range targets {
 		if err := sock.Emit(event, payload); err != nil {
 			s.logger.Warnf("realtime.call", "emitCallToUser: emit failed user_id=%s event=%s socket_id=%s error=%v", userID, event, sock.Id, err)
 		} else {
 			s.logger.Infof("realtime.call", "emitCallToUser: emitted user_id=%s event=%s socket_id=%s", userID, event, sock.Id)
+		}
+	}
+	if s.broker != nil {
+		eventID := fmt.Sprintf("call:%s:%s:%d", userID, event, time.Now().UnixNano())
+		_ = s.eventDeduplicator().Seen(eventID)
+		go func() {
+			_ = s.broker.Publish(context.Background(), brokerChannelMessages, ports.Event{
+				"type":       "call.user",
+				"event_id":   eventID,
+				"user_id":    userID,
+				"event_name": event,
+				"payload":    payload,
+			})
+		}()
+	}
+	if len(targets) == 0 {
+		s.logger.Warnf("realtime.call", "emitCallToUser: no sockets for user_id=%s event=%s — queueing", userID, event)
+		if strings.HasPrefix(event, "call:") {
+			go s.enqueueEventForUser(context.Background(), userID, event, payload)
 		}
 	}
 }
