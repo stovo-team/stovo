@@ -385,19 +385,6 @@ const chats: Chat[] = [
       },
     ],
   },
-  {
-    id: "client-huddle",
-    section: "Client Delivery",
-    name: "Client Huddle",
-    preview: "Voice room · Restricted",
-    time: "Voice",
-    type: "voice",
-    voiceInfo: "Voice room",
-    disabled: true,
-    avatarBg: "#059669",
-    avatarIcon: "voice",
-    messages: [],
-  },
 ];
 
 const rotatableChatIds = ["launch", "allhands", "announcements", "atlas", "acme"];
@@ -527,82 +514,84 @@ export default function RealStovoDemo() {
 
         {/* Main interactive surface */}
         <section className="stovo-source-workspace">
-          <div className="stovo-source-layout">
+          <div className={`stovo-source-layout ${activeScreen !== "chats" ? "is-fullscreen" : ""}`}>
             {/* Chats sidebar */}
-            <aside className="stovo-source-sidebar" aria-label="Chats sidebar">
-              <div className="stovo-source-sidebar-header">
-                <div className="stovo-source-title-row">
-                  <span className="stovo-source-brand">
-                    <StovoLogo size={40} />
-                  </span>
-                  <button className="stovo-source-space" aria-label="Select space">
-                    Stovo Team <ChevronDown size={14} />
-                  </button>
-                  <button className="stovo-source-invite" aria-label="Invite members">
-                    <UserPlus size={17} />
-                  </button>
+            {activeScreen === "chats" && (
+              <aside className="stovo-source-sidebar" aria-label="Chats sidebar">
+                <div className="stovo-source-sidebar-header">
+                  <div className="stovo-source-title-row">
+                    <span className="stovo-source-brand">
+                      <StovoLogo size={40} />
+                    </span>
+                    <button className="stovo-source-space" aria-label="Select space">
+                      Stovo Team <ChevronDown size={14} />
+                    </button>
+                    <button className="stovo-source-invite" aria-label="Invite members">
+                      <UserPlus size={17} />
+                    </button>
+                  </div>
+                  <label className="stovo-source-search">
+                    <Search size={16} />
+                    <input placeholder="Search messages or members" readOnly />
+                  </label>
+                  <div className="stovo-source-filters">
+                    <button type="button" className="active">All</button>
+                    <button type="button">Unread</button>
+                    <button type="button">Groups</button>
+                    <button type="button">Direct</button>
+                  </div>
                 </div>
-                <label className="stovo-source-search">
-                  <Search size={16} />
-                  <input placeholder="Search messages or members" readOnly />
-                </label>
-                <div className="stovo-source-filters">
-                  <button type="button" className="active">All</button>
-                  <button type="button">Unread</button>
-                  <button type="button">Groups</button>
-                  <button type="button">Direct</button>
-                </div>
-              </div>
 
-              <div className="stovo-source-list" role="list">
-                {chats.map((chat, index) => {
-                  const isFirstInSection = index === 0 || chats[index - 1].section !== chat.section;
-                  const isSelected = activeScreen === "chats" && selectedId === chat.id;
+                <div className="stovo-source-list" role="list">
+                  {chats.map((chat, index) => {
+                    const isFirstInSection = index === 0 || chats[index - 1].section !== chat.section;
+                    const isSelected = activeScreen === "chats" && selectedId === chat.id;
 
-                  return (
-                    <div className="stovo-source-section" key={chat.id}>
-                      {isFirstInSection && (
-                        <h3>
-                          <Folder size={12} /> {chat.section}
-                          <small>
-                            {chats.filter((item) => item.section === chat.section).length}
-                          </small>
-                        </h3>
-                      )}
-                      <button
-                        type="button"
-                        className={`stovo-source-chat ${isSelected ? "active" : ""} ${
-                          chat.disabled ? "is-disabled" : ""
-                        }`}
-                        onClick={() => {
-                          if (!chat.disabled) {
-                            setSelectedId(chat.id);
-                            setActiveScreen("chats");
-                            handleUserActivity();
-                          }
-                        }}
-                        aria-selected={isSelected}
-                      >
-                        <ChatAvatar chat={chat} />
-                        <span className="stovo-source-chat-copy">
-                          <span>
-                            <strong>
-                              {chat.type === "channel" ? `# ${chat.name}` : chat.name}
-                            </strong>
-                            <time>{chat.time}</time>
-                          </span>
-                          {chat.preview && (
-                            <small className={chat.type === "voice" ? "voice-preview-meta" : ""}>
-                              {chat.preview}
+                    return (
+                      <div className="stovo-source-section" key={chat.id}>
+                        {isFirstInSection && (
+                          <h3>
+                            <Folder size={12} /> {chat.section}
+                            <small>
+                              {chats.filter((item) => item.section === chat.section).length}
                             </small>
-                          )}
-                        </span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </aside>
+                          </h3>
+                        )}
+                        <button
+                          type="button"
+                          className={`stovo-source-chat ${isSelected ? "active" : ""} ${
+                            chat.disabled ? "is-disabled" : ""
+                          }`}
+                          onClick={() => {
+                            if (!chat.disabled) {
+                              setSelectedId(chat.id);
+                              setActiveScreen("chats");
+                              handleUserActivity();
+                            }
+                          }}
+                          aria-selected={isSelected}
+                        >
+                          <ChatAvatar chat={chat} />
+                          <span className="stovo-source-chat-copy">
+                            <span>
+                              <strong>
+                                {chat.type === "channel" ? `# ${chat.name}` : chat.name}
+                              </strong>
+                              <time>{chat.time}</time>
+                            </span>
+                            {chat.preview && (
+                              <small className={chat.type === "voice" ? "voice-preview-meta" : ""}>
+                                {chat.preview}
+                              </small>
+                            )}
+                          </span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </aside>
+            )}
 
             {/* Main conversation or alternate screen */}
             {activeScreen === "chats" ? (
@@ -650,15 +639,6 @@ export default function RealStovoDemo() {
                     >
                       <Search size={16} />
                     </button>
-                    <button
-                      type="button"
-                      className="stovo-header-icon-btn"
-                      aria-label="Conversation details"
-                      title="Details"
-                      disabled
-                    >
-                      <UsersRound size={16} />
-                    </button>
                   </div>
                 </header>
 
@@ -692,8 +672,6 @@ export default function RealStovoDemo() {
                         <div className="stovo-source-message-content">
                           <header>
                             <strong>{message.sender}</strong>
-                            <time>{message.time}</time>
-                            {isOutgoing && <CheckCheck size={13} className="stovo-read-check" />}
                           </header>
                           <p>{message.text}</p>
 
@@ -714,6 +692,11 @@ export default function RealStovoDemo() {
                               )}
                             </div>
                           )}
+
+                          <footer className="stovo-source-message-meta">
+                            <time>{message.time}</time>
+                            {isOutgoing && <CheckCheck size={12} className="stovo-read-check" />}
+                          </footer>
                         </div>
                       </article>
                     );
