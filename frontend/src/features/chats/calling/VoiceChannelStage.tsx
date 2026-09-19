@@ -27,6 +27,11 @@ import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 import { useTranscription } from "./useTranscription";
+import { useCallRecording } from "./useCallRecording";
+import { useLiveCaptions } from "./useLiveCaptions";
+import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
+import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 
@@ -79,13 +84,18 @@ export function VoiceChannelStage({
   } = session;
 
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
   const fallbackSocketRef = useRef(null);
 
+  const effectiveRoomId = callRoomId ?? (chat.activeCall?.roomId ?? null);
+  const effectiveAccessToken = accessToken ?? session.accessToken ?? null;
+  const isCurrentChannelActive = activeCallChatId === chat.id && callPhase !== "idle";
+
   const transcription = useTranscription({
-    accessToken: accessToken ?? session.accessToken ?? null,
-    roomId: callRoomId ?? (chat.activeCall?.roomId ?? null),
+    accessToken: effectiveAccessToken,
+    roomId: effectiveRoomId,
     currentUserId: currentUser?.id ?? null,
     socketRef: socketRef ?? session.socketRef ?? fallbackSocketRef,
     localAudioStream: audioCallRef?.current?.getLocalStream?.() ?? localVideoStream ?? session.localVideoStream,
@@ -98,6 +108,23 @@ export function VoiceChannelStage({
     startTranscription,
     stopTranscription,
   } = transcription;
+
+  const recording = useCallRecording({
+    accessToken: effectiveAccessToken,
+    roomId: effectiveRoomId,
+    socketRef: socketRef ?? session.socketRef ?? fallbackSocketRef,
+    localStream: audioCallRef?.current?.getLocalStream?.() ?? localVideoStream ?? session.localVideoStream,
+    localScreenStream: localScreenStream ?? session.localScreenStream,
+    remoteStreams: callRemoteMedia?.map((m) => ({ cameraStream: m.stream, screenStream: null })) ?? [],
+    enabled: isCurrentChannelActive,
+  });
+
+  const liveCaptions = useLiveCaptions({
+    accessToken: effectiveAccessToken,
+    roomId: effectiveRoomId,
+    displayName: currentUser?.displayName ?? "You",
+    defaultLanguage: "en",
+  });
 
   // Close more menu when clicking outside
   useEffect(() => {
@@ -116,7 +143,6 @@ export function VoiceChannelStage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMoreMenuOpen]);
 
-  const isCurrentChannelActive = activeCallChatId === chat.id && callPhase !== "idle";
   const isConnecting = activeCallChatId === chat.id && callPhase === "connecting";
   const activeCall = activeGroupCalls[chat.id] || chat.activeCall;
   const rawParticipants = (activeCall?.participants as Array<{ userId: string; state: string; role: string }>) || [];
@@ -267,6 +293,13 @@ export function VoiceChannelStage({
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
+      <LiveCaptionsOverlay
+        isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+        recentCaptions={liveCaptions.recentCaptions}
+        currentInterimCaption={liveCaptions.currentInterimCaption}
+        targetLanguage={liveCaptions.targetLanguage}
+        speakerDisplayName={currentUser?.displayName ?? "You"}
+      />
       {/* Notice Banner */}
       {visibleNotice && (
         <div
@@ -499,6 +532,54 @@ export function VoiceChannelStage({
             >
               {callAudioSettings.screenSharing ? <ScreenShare size={20} /> : <ScreenShareOff size={20} />}
             </button>
+
+            {/* Stovo Intelligence Popover Button */}
+            <div className="voice-more-menu-anchor">
+              <button
+                type="button"
+                className={`voice-dock-btn voice-dock-btn--intel${
+                  isIntelligenceOpen || recording.isRecordingActive || transcriptState === "recording" ? " is-active" : ""
+                }`}
+                onClick={() => setIsIntelligenceOpen((open) => !open)}
+                title="Stovo Intelligence (Notes, Recording, Captions)"
+                aria-label="Stovo Intelligence"
+                aria-haspopup="true"
+                aria-expanded={isIntelligenceOpen}
+              >
+                <IconIntelligence size={20} />
+                {(recording.isRecordingActive || transcriptState === "recording") && (
+                  <span className="voice-dock-badge-dot" title="Intelligence Active" />
+                )}
+              </button>
+
+              <MeetingIntelligencePopover
+                isOpen={isIntelligenceOpen}
+                onClose={() => setIsIntelligenceOpen(false)}
+                notesState={transcriptState}
+                onToggleNotes={() => {
+                  if (transcriptState === "idle" || transcriptState === "failed") {
+                    void startTranscription();
+                  } else if (transcriptState === "recording") {
+                    void stopTranscription();
+                  }
+                }}
+                isNotesAllowed={true}
+                recordingState={recording.recordingState}
+                recordingTimer={recording.recordingTimer}
+                onToggleRecording={() => {
+                  if (recording.recordingState === "idle" || recording.recordingState === "completed" || recording.recordingState === "failed") {
+                    void recording.startRecording();
+                  } else if (recording.recordingState === "recording") {
+                    void recording.stopRecording();
+                  }
+                }}
+                isRecordingAllowed={true}
+                isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+                onToggleCaptions={liveCaptions.toggleCaptions}
+                targetLanguage={liveCaptions.targetLanguage}
+                onChangeTargetLanguage={liveCaptions.setTargetLanguage}
+              />
+            </div>
 
             {/* 3 Dots Menu Button for Settings & AI Notes */}
             <div className="voice-more-menu-anchor">

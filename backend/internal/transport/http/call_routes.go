@@ -22,6 +22,11 @@ type CallRoutes struct {
 	CompleteTranscriptionUpload stdhttp.Handler
 	UpdateTranscriptSegment     stdhttp.Handler
 	GetTranscriptArtifact       stdhttp.Handler
+	StartRecording              stdhttp.Handler
+	StopRecording               stdhttp.Handler
+	GetRecordingStatus          stdhttp.Handler
+	UploadRecording             stdhttp.Handler
+	TranslateCaptions           stdhttp.Handler
 }
 
 // RegisterCallRoutes installs the stable REST contract for calls and
@@ -39,4 +44,19 @@ func RegisterCallRoutes(router chi.Router, routes CallRoutes) {
 	router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/transcription/uploads/{chunkId}/complete", routes.CompleteTranscriptionUpload)
 	router.Method(stdhttp.MethodPatch, "/api/calls/{roomId}/transcript/segments/{segmentId}", routes.UpdateTranscriptSegment)
 	router.Method(stdhttp.MethodGet, "/api/calls/{roomId}/transcript/artifacts/{artifactType}", routes.GetTranscriptArtifact)
+	if routes.StartRecording != nil {
+		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/recording/start", routes.StartRecording)
+	}
+	if routes.StopRecording != nil {
+		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/recording/stop", routes.StopRecording)
+	}
+	if routes.GetRecordingStatus != nil {
+		router.Method(stdhttp.MethodGet, "/api/calls/{roomId}/recording/status", routes.GetRecordingStatus)
+	}
+	if routes.UploadRecording != nil {
+		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/recording/upload", routes.UploadRecording)
+	}
+	if routes.TranslateCaptions != nil {
+		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/captions/translate", routes.TranslateCaptions)
+	}
 }

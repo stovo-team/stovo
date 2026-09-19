@@ -194,6 +194,9 @@ export function CallFeature() {
                 onEnd={() => void endActiveCall()}
                 onShrink={() => session.setIsCallMinimized(true)}
                 notice={callNotice}
+                roomId={session.callRoomId}
+                currentUserId={currentUser?.id}
+                socketRef={session.socketRef}
               />
             )}
 

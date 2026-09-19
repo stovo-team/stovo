@@ -100,6 +100,11 @@ func (s *Server) callRoutes() httptransport.CallRoutes {
 		GetTranscriptArtifact: s.authenticated(func(w http.ResponseWriter, r *http.Request, _ userPublic) {
 			transcription.Artifact(w, r)
 		}),
+		StartRecording:     s.authenticated(s.handleStartRecording),
+		StopRecording:      s.authenticated(s.handleStopRecording),
+		GetRecordingStatus: s.authenticated(s.handleGetRecordingStatus),
+		UploadRecording:    s.authenticated(s.handleUploadRecording),
+		TranslateCaptions:  s.authenticated(s.handleTranslateCaptions),
 	}
 }
 
