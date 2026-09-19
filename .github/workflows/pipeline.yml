@@ -256,7 +256,25 @@ jobs:
             cd '${{ secrets.DEPLOY_PATH }}'
 
             # Fetch latest git master
-            git fetch origin master
+            fetch_git() {
+              for i in 1 2 3; do
+                if git -c core.sshCommand="ssh -o ConnectTimeout=15 -o ConnectionAttempts=2" fetch origin master; then
+                  return 0
+                fi
+                echo "git fetch attempt $i failed, retrying in 3s..."
+                sleep 3
+              done
+              echo "Retrying git fetch via ssh.github.com:443..."
+              if git -c core.sshCommand="ssh -p 443 -o Hostname=ssh.github.com -o ConnectTimeout=15" fetch origin master; then
+                return 0
+              fi
+              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "${{ github.sha }}" ]; then
+                echo "Repo is already at target commit ${{ github.sha }}."
+                return 0
+              fi
+              return 1
+            }
+            fetch_git
             git checkout master
             git reset --hard origin/master
 
@@ -332,7 +350,25 @@ jobs:
             cd '${{ secrets.DEPLOY_PATH }}'
 
             # Fetch latest git master
-            git fetch origin master
+            fetch_git() {
+              for i in 1 2 3; do
+                if git -c core.sshCommand="ssh -o ConnectTimeout=15 -o ConnectionAttempts=2" fetch origin master; then
+                  return 0
+                fi
+                echo "git fetch attempt $i failed, retrying in 3s..."
+                sleep 3
+              done
+              echo "Retrying git fetch via ssh.github.com:443..."
+              if git -c core.sshCommand="ssh -p 443 -o Hostname=ssh.github.com -o ConnectTimeout=15" fetch origin master; then
+                return 0
+              fi
+              if [ "$(git rev-parse HEAD 2>/dev/null || true)" = "${{ github.sha }}" ]; then
+                echo "Repo is already at target commit ${{ github.sha }}."
+                return 0
+              fi
+              return 1
+            }
+            fetch_git
             git checkout master
             git reset --hard origin/master
 
