@@ -266,6 +266,7 @@ services:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
       # ACTIVE_BACKEND selects which color Caddy proxies for /api and /socket.io.
       ACTIVE_BACKEND: ${ACTIVE_BACKEND:-backend-blue}
+      BACKEND_UPSTREAMS: ${BACKEND_UPSTREAMS:-${ACTIVE_BACKEND:-backend-blue}:8000}
     healthcheck:
       # Caddy's localhost-only admin endpoint proves its running process is
       # responsive; the scheduled HTTPS watchdog also verifies its public TLS
