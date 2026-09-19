@@ -44,6 +44,8 @@ func (s *Server) guestMeetingRoutes() http.Handler {
 	r.Post("/public/{token}/leave", s.leaveGuestMeetingSession)
 	r.Get("/public/{token}/status", s.guestMeetingStatus)
 	r.Post("/public/{token}/token", s.createGuestMeetingGuestToken)
+	r.Get("/public/{token}/intelligence", s.guestMeetingIntelligenceStatus)
+	r.Post("/public/{token}/captions/translate", s.guestMeetingTranslateCaptions)
 	return r
 }
 
@@ -209,6 +211,13 @@ func (s *Server) revokeGuestMeeting(w http.ResponseWriter, r *http.Request, user
 		s.json(w, 500, map[string]string{"message": "Could not revoke meeting"})
 		return
 	}
+	roomID := "guest-meeting:" + m.ID
+	go func() {
+		_, _, _ = s.stopGuestMeetingTranscription(context.Background(), roomID, m.ChatID, "", "meeting_ended")
+		if s.guestDB != nil {
+			_, _ = s.guestDB.ExecContext(context.Background(), `UPDATE call_recordings SET status='stopping', stopped_at=now(), updated_at=now() WHERE call_id=$1 AND status='recording'`, roomID)
+		}
+	}()
 	s.json(w, 204, nil)
 }
 
@@ -363,6 +372,33 @@ func (s *Server) createGuestMeetingGuestToken(w http.ResponseWriter, r *http.Req
 		return
 	}
 	s.json(w, 200, map[string]string{"url": s.cfg.LiveKitURL, "token": token, "roomName": "guest-meeting:" + m.ID})
+}
+
+func (s *Server) guestMeetingIntelligenceStatus(w http.ResponseWriter, r *http.Request) {
+	m, ok := s.validPublicMeeting(r.Context(), chi.URLParam(r, "token"))
+	if !ok {
+		s.writePublicMeetingUnavailable(w, r)
+		return
+	}
+	roomID := "guest-meeting:" + m.ID
+	var transcriptionActive bool
+	if s.transcriptionQueries != nil {
+		if session, err := s.transcriptionQueries.Latest(r.Context(), roomID); err == nil && session.Status == "recording" {
+			transcriptionActive = true
+		}
+	}
+	var recordingActive bool
+	if s.guestDB != nil {
+		var count int
+		_ = s.guestDB.QueryRowContext(r.Context(), `SELECT count(*) FROM call_recordings WHERE call_id=$1 AND status IN ('recording','stopping')`, roomID).Scan(&count)
+		if count > 0 {
+			recordingActive = true
+		}
+	}
+	s.json(w, http.StatusOK, map[string]any{
+		"transcriptionActive": transcriptionActive,
+		"recordingActive":     recordingActive,
+	})
 }
 
 var _ = sql.ErrNoRows

@@ -19,6 +19,12 @@ import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 import { GuestMeetingLinkControl } from "./GuestMeetingLinkControl";
+import IconIntelligence from "../../../components/icons/IconIntelligence";
+import { useCallRecording } from "./useCallRecording";
+import { useLiveCaptions } from "./useLiveCaptions";
+import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
+import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { useState } from "react";
 
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -96,6 +102,25 @@ export function DesktopCallControls() {
     enabled: true,
   });
 
+  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+
+  const recording = useCallRecording({
+    accessToken: accessToken ?? null,
+    roomId: callRoomId,
+    socketRef,
+    localStream: audioCallRef.current?.getLocalStream?.() ?? localVideoStream,
+    localScreenStream: session.localScreenStream,
+    remoteStreams: session.callRemoteMedia?.map((m) => ({ cameraStream: m.stream, screenStream: null })) ?? [],
+    enabled: true,
+  });
+
+  const liveCaptions = useLiveCaptions({
+    accessToken: accessToken ?? null,
+    roomId: callRoomId,
+    displayName: currentUser?.displayName ?? "You",
+    defaultLanguage: "en",
+  });
+
   const {
     transcriptState,
     transcriptData,
@@ -107,6 +132,13 @@ export function DesktopCallControls() {
 
   return (
     <>
+      <LiveCaptionsOverlay
+        isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+        recentCaptions={liveCaptions.recentCaptions}
+        currentInterimCaption={liveCaptions.currentInterimCaption}
+        targetLanguage={liveCaptions.targetLanguage}
+        speakerDisplayName={currentUser?.displayName ?? "You"}
+      />
       {/* ── Header row ── */}
       {!(isMobileViewport && !isCallMinimized && callPhase === "incoming") &&
         !(isCallMinimized && isMobileViewport) && (
@@ -462,47 +494,50 @@ export function DesktopCallControls() {
                   )}
                 </>
               )}
-              {/* ── AI Transcript button — always visible in primary controls during in-call ── */}
-              <div className="call-ctrl-wrap">
+              {/* ── Stovo Intelligence button (AI Notes, Video Recording, Live Captions) ── */}
+              <div className="call-ctrl-wrap" style={{ position: "relative" }}>
                 <button
-                  id="call-ctrl-ai-transcript"
+                  id="call-ctrl-intelligence"
                   type="button"
-                  className={`call-ctrl-btn call-ctrl-btn--transcript${
-                    transcriptState === "recording" ? " is-recording" :
-                    transcriptState === "stopping" || transcriptState === "processing" ? " is-processing" :
-                    isTranscriptPanelOpen ? " is-active" : ""
+                  className={`call-ctrl-btn call-ctrl-btn--intel${
+                    isIntelligenceOpen || recording.isRecordingActive || transcriptState === "recording" ? " is-active" : ""
                   }`}
-                  aria-label={
-                    transcriptState === "recording" ? "Stop transcription" :
-                    transcriptState === "stopping" || transcriptState === "processing" ? "Processing transcript" :
-                    transcriptState === "ready" ? "View AI Transcript" :
-                    "Start AI Transcript"
-                  }
-                  title={
-                    transcriptState === "recording" ? "Click to stop transcription" :
-                    transcriptState === "stopping" || transcriptState === "processing" ? "Transcript is being processed…" :
-                    transcriptState === "ready" ? "View AI Transcript" :
-                    "Start AI Transcript"
-                  }
-                  disabled={transcriptState === "stopping" || transcriptState === "processing" || transcriptState === "starting"}
-                  onClick={() => {
+                  aria-label="Stovo Intelligence"
+                  title="Stovo Intelligence (Notes, Recording, Captions)"
+                  onClick={() => setIsIntelligenceOpen((open) => !open)}
+                >
+                  <IconIntelligence size={20} />
+                </button>
+                <span>Intelligence</span>
+
+                <MeetingIntelligencePopover
+                  isOpen={isIntelligenceOpen}
+                  onClose={() => setIsIntelligenceOpen(false)}
+                  notesState={transcriptState}
+                  onToggleNotes={() => {
                     if (transcriptState === "idle" || transcriptState === "failed") {
                       void startTranscription();
                     } else if (transcriptState === "recording") {
                       void stopTranscription();
-                    } else if (transcriptState === "ready") {
-                      toggleTranscriptPanel();
                     }
                   }}
-                >
-                  <Captions aria-hidden="true" size={20} />
-                </button>
-                <span>
-                  {transcriptState === "recording" ? "Stop" :
-                   transcriptState === "stopping" || transcriptState === "processing" ? "Processing" :
-                   transcriptState === "ready" ? "Transcript" :
-                   isMobileViewport ? "AI" : "AI Transcript"}
-                </span>
+                  isNotesAllowed={true}
+                  onOpenTranscriptPanel={toggleTranscriptPanel}
+                  recordingState={recording.recordingState}
+                  recordingTimer={recording.recordingTimer}
+                  onToggleRecording={() => {
+                    if (recording.recordingState === "idle" || recording.recordingState === "completed" || recording.recordingState === "failed") {
+                      void recording.startRecording();
+                    } else if (recording.recordingState === "recording") {
+                      void recording.stopRecording();
+                    }
+                  }}
+                  isRecordingAllowed={true}
+                  isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+                  onToggleCaptions={liveCaptions.toggleCaptions}
+                  targetLanguage={liveCaptions.targetLanguage}
+                  onChangeTargetLanguage={liveCaptions.setTargetLanguage}
+                />
               </div>
               <div className="call-ctrl-wrap">
                 <button

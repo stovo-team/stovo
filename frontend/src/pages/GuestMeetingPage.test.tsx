@@ -26,6 +26,7 @@ vi.mock("../api/guestMeetings", () => ({
   createGuestMeetingSession: vi.fn(),
   getGuestMeetingStatus: vi.fn(),
   getGuestMeetingToken: vi.fn(),
+  getGuestMeetingIntelligence: vi.fn(async () => ({ notesState: "idle", recordingState: "idle" })),
   GuestMeetingLinkError,
 }));
 

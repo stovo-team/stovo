@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Socket } from "socket.io-client";
 import type { FamilyFile } from "../../../api/files";
 import type { RemoteMedia } from "../../../realtime/call/types";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
+import IconIntelligence from "../../../components/icons/IconIntelligence";
+import { useCallRecording } from "./useCallRecording";
+import { useLiveCaptions } from "./useLiveCaptions";
+import { useTranscription } from "./useTranscription";
+import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
+import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 
 export function MobileActiveScreen({
   peerName,
@@ -37,6 +44,9 @@ export function MobileActiveScreen({
   onEnd,
   onShrink,
   notice,
+  roomId,
+  currentUserId,
+  socketRef,
 }: {
   peerName: string;
   peerProfilePhoto?: FamilyFile | null;
@@ -69,7 +79,36 @@ export function MobileActiveScreen({
   onEnd: () => void;
   onShrink?: () => void;
   notice?: string | null;
+  roomId?: string | null;
+  currentUserId?: string | null;
+  socketRef?: React.RefObject<Socket | null>;
 }) {
+  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+
+  const transcription = useTranscription({
+    accessToken: accessToken ?? null,
+    roomId: roomId ?? null,
+    currentUserId: currentUserId ?? null,
+    socketRef,
+    localAudioStream: localVideoStream,
+    enabled: Boolean(roomId),
+  });
+
+  const recording = useCallRecording({
+    accessToken: accessToken ?? null,
+    roomId: roomId ?? null,
+    socketRef,
+    localStream: localVideoStream,
+    localScreenStream,
+    enabled: Boolean(roomId),
+  });
+
+  const liveCaptions = useLiveCaptions({
+    accessToken: accessToken ?? null,
+    roomId: roomId ?? null,
+    displayName: localUserLabel,
+    defaultLanguage: "en",
+  });
   // Video elements for mobile
   const mobileRemoteRef = useRef<HTMLVideoElement>(null);
   const mobileLocalRef = useRef<HTMLVideoElement>(null);
@@ -645,6 +684,50 @@ export function MobileActiveScreen({
           </span>
         </div>
 
+        {/* Stovo Intelligence */}
+        <div className="mobile-active-ctrl" style={{ position: "relative" }}>
+          <button
+            type="button"
+            className={`mobile-active-ctrl-btn${isIntelligenceOpen || recording?.isRecordingActive || transcription?.transcriptState === "recording" ? " active" : ""}`}
+            aria-label="Stovo Intelligence"
+            onClick={() => setIsIntelligenceOpen((open) => !open)}
+          >
+            <IconIntelligence size={18} />
+          </button>
+          <span className="mobile-active-ctrl-lbl">AI</span>
+
+          {transcription && recording && liveCaptions && (
+            <MeetingIntelligencePopover
+              isOpen={isIntelligenceOpen}
+              onClose={() => setIsIntelligenceOpen(false)}
+              notesState={transcription.transcriptState}
+              onToggleNotes={() => {
+                if (transcription.transcriptState === "idle" || transcription.transcriptState === "failed") {
+                  void transcription.startTranscription();
+                } else if (transcription.transcriptState === "recording") {
+                  void transcription.stopTranscription();
+                }
+              }}
+              isNotesAllowed={true}
+              recordingState={recording.recordingState}
+              recordingTimer={recording.recordingTimer}
+              onToggleRecording={() => {
+                if (recording.recordingState === "idle" || recording.recordingState === "completed" || recording.recordingState === "failed") {
+                  void recording.startRecording();
+                } else if (recording.recordingState === "recording") {
+                  void recording.stopRecording();
+                }
+              }}
+              isRecordingAllowed={true}
+              isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+              onToggleCaptions={liveCaptions.toggleCaptions}
+              targetLanguage={liveCaptions.targetLanguage}
+              onChangeTargetLanguage={liveCaptions.setTargetLanguage}
+              isMobile={true}
+            />
+          )}
+        </div>
+
         {/* End Call */}
         <div className="mobile-active-ctrl">
           <button type="button" className="mobile-active-ctrl-btn end" aria-label="End call" onClick={onEnd}>
@@ -655,6 +738,17 @@ export function MobileActiveScreen({
           <span className="mobile-active-ctrl-lbl">End</span>
         </div>
       </div>
+
+      {/* Floating Subtitle Overlay for Live Captions */}
+      {liveCaptions && (
+        <LiveCaptionsOverlay
+          isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+          recentCaptions={liveCaptions.recentCaptions}
+          currentInterimCaption={liveCaptions.currentInterimCaption}
+          targetLanguage={liveCaptions.targetLanguage}
+          speakerDisplayName={localUserLabel}
+        />
+      )}
     </div>
   );
 }

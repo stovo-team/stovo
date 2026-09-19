@@ -29,3 +29,4 @@ h1:ztLfaYFcNb846Etw8E027POnl+1Zq8uATpwGwynHrHo=
 20260913160000_add_screen_share_bitrate_setting.sql h1:+nkzIcYI6EfMPkQRKzXh+k65IdwDGxAG14dfB2fSwag=
 20260914150000_add_chat_description.sql h1:eOyKvbwYyd4y/likVZyH9ThMvD5zdWkIAnpL8xRrXlE=
 20260915120000_add_chat_notification_preferences.sql h1:jTjTquo5vZqm9AtNco31GC4fUV2EJc2aJSJt8mGad0c=
+20260920100000_add_call_recordings.sql h1:d79WBnuagilP5/XNT4AZFx5/SGUpK1rVYqS6vzv/BxE=

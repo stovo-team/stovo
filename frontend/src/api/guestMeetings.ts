@@ -25,7 +25,9 @@ export const previewGuestMeeting = (token: string) => publicRequest<GuestMeeting
 export const createGuestMeetingSession = (token: string, displayName: string) => publicRequest<GuestMeetingSession>(token, "/sessions", { method: "POST", body: JSON.stringify({ displayName }) });
 export const leaveGuestMeetingSession = (token: string, sessionId: string) => publicRequest<void>(token, "/leave", { method: "POST", body: JSON.stringify({ sessionId }), keepalive: true });
 export const getGuestMeetingStatus = (token: string) => publicRequest<GuestMeetingStatus>(token, "/status");
-export const getGuestMeetingToken = (token: string) => publicRequest<{ url: string; token: string }>(token, "/token", { method: "POST" });
+export const getGuestMeetingToken = (token: string) => publicRequest<{ url: string; token: string; roomName?: string }>(token, "/token", { method: "POST" });
+export type GuestMeetingIntelligenceStatus = { notesState: string; notesDuration?: number; recordingState: string; recordingDuration?: number };
+export const getGuestMeetingIntelligence = (token: string) => publicRequest<GuestMeetingIntelligenceStatus>(token, "/intelligence");
 
 export type GuestMeetingCreated = { id: string; title: string; scheduledAt?: string | null; admissionMode: "immediate" | "lobby"; expiresAt: string; meetingUrl: string; guestLimit: number };
 export async function createGuestMeeting(accessToken: string, input: { chatId: string; title: string; scheduledAt?: string; admissionMode: "immediate" | "lobby"; expiresAt: string }) {

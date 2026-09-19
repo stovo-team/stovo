@@ -42,6 +42,15 @@ type completeUploadRequest = transporthttp.CompleteAudioUploadRequest
 func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 	return transporthttp.NewTranscriptionHandler(transporthttp.TranscriptionOperations{
 		CallByRoom: func(roomID string) (transporthttp.TranscriptionCall, bool) {
+			if strings.HasPrefix(roomID, "guest-meeting:") {
+				meetingID := strings.TrimPrefix(roomID, "guest-meeting:")
+				var m guestMeeting
+				err := s.guestDB.QueryRowContext(context.Background(), `SELECT id,chat_id,creator_id,title,admission_mode,expires_at,scheduled_at,revoked_at,ended_at FROM guest_meetings WHERE id=$1`, meetingID).Scan(&m.ID, &m.ChatID, &m.CreatorID, &m.Title, &m.AdmissionMode, &m.ExpiresAt, &m.ScheduledAt, &m.RevokedAt, &m.EndedAt)
+				if err != nil || m.RevokedAt != nil || m.EndedAt != nil || time.Now().After(m.ExpiresAt) {
+					return transporthttp.TranscriptionCall{}, false
+				}
+				return transporthttp.TranscriptionCall{ID: roomID, ChatID: m.ChatID, CallerID: m.CreatorID}, true
+			}
 			call, ok := s.getCallSessionByRoom(roomID)
 			if !ok {
 				return transporthttp.TranscriptionCall{}, false
@@ -49,6 +58,20 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 			return transporthttp.TranscriptionCall{ID: call.ID, ChatID: call.ChatID, CallerID: call.CallerUserID}, true
 		},
 		IsParticipant: func(call transporthttp.TranscriptionCall, userID string) bool {
+			if strings.HasPrefix(call.ID, "guest-meeting:") {
+				if userID == "" {
+					return false
+				}
+				if call.CallerID == userID {
+					return true
+				}
+				if s.chatQueries != nil {
+					if _, err := s.chatQueries.GetForMember(context.Background(), call.ChatID, userID); err == nil {
+						return true
+					}
+				}
+				return false
+			}
 			session, ok := s.getCallSessionByRoom(call.ID)
 			return ok && isCallParticipant(session, userID)
 		},
@@ -86,22 +109,52 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 				return nil, http.StatusServiceUnavailable, "Transcription service is not configured (GROQ_API_KEY missing)"
 			}
 
-			session, ok := s.getCallSessionByRoom(roomID)
-			if !ok {
-				return nil, http.StatusNotFound, "Call not found"
-			}
-			if !isCallParticipant(session, actor.ID) {
-				return nil, http.StatusForbidden, "You are not a participant in this call"
-			}
-			if !isAdmin(actor.Role) && session.CallerUserID != actor.ID {
-				return nil, http.StatusForbidden, "Only the call host or an administrator can start transcription"
+			var callChatID, callID string
+			var session *callSession
+			isGuestMeeting := strings.HasPrefix(roomID, "guest-meeting:")
+
+			if isGuestMeeting {
+				meetingID := strings.TrimPrefix(roomID, "guest-meeting:")
+				var m guestMeeting
+				err := s.guestDB.QueryRowContext(ctx, `SELECT id,chat_id,creator_id,title,admission_mode,expires_at,scheduled_at,revoked_at,ended_at FROM guest_meetings WHERE id=$1`, meetingID).Scan(&m.ID, &m.ChatID, &m.CreatorID, &m.Title, &m.AdmissionMode, &m.ExpiresAt, &m.ScheduledAt, &m.RevokedAt, &m.EndedAt)
+				if err != nil || m.RevokedAt != nil || m.EndedAt != nil || time.Now().After(m.ExpiresAt) {
+					return nil, http.StatusNotFound, "Meeting not found or has ended"
+				}
+				if actor.ID == "" {
+					return nil, http.StatusUnauthorized, "Authentication required to start AI Notes"
+				}
+				hasAccess := isAdmin(actor.Role) || m.CreatorID == actor.ID
+				if !hasAccess && s.chatQueries != nil {
+					if _, chErr := s.chatQueries.GetForMember(ctx, m.ChatID, actor.ID); chErr == nil {
+						hasAccess = true
+					}
+				}
+				if !hasAccess {
+					return nil, http.StatusForbidden, "Only organization members or the meeting host can start AI Notes"
+				}
+				callChatID = m.ChatID
+				callID = roomID
+			} else {
+				var ok bool
+				session, ok = s.getCallSessionByRoom(roomID)
+				if !ok {
+					return nil, http.StatusNotFound, "Call not found"
+				}
+				if !isCallParticipant(session, actor.ID) {
+					return nil, http.StatusForbidden, "You are not a participant in this call"
+				}
+				if !isAdmin(actor.Role) && session.CallerUserID != actor.ID {
+					return nil, http.StatusForbidden, "Only the call host or an administrator can start transcription"
+				}
+				callChatID = session.ChatID
+				callID = session.ID
 			}
 
 			now := time.Now().UTC()
 			sessionID := uuid.NewString()
 
 			if err := s.transcriptionSessions.Start(ctx, featuretranscription.StartSession{
-				SessionID: sessionID, ChatID: session.ChatID, CallID: session.ID, InitiatedBy: actor.ID,
+				SessionID: sessionID, ChatID: callChatID, CallID: callID, InitiatedBy: actor.ID,
 				Provider: "groq", ProviderModel: provider.STTModel, StartedAt: now,
 			}); err != nil {
 				s.logger.Warnf("transcription", "insert session failed session_id=%s call_id=%s error=%v", sessionID, roomID, err)
@@ -117,19 +170,22 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 
 			broadcastPayload := map[string]any{
 				"roomId":          roomID,
-				"chatId":          session.ChatID,
+				"chatId":          callChatID,
 				"sessionId":       sessionID,
 				"status":          string(transcription.SessionStatusRecording),
 				"initiatedBy":     actor.ID,
 				"initiatedByName": actor.DisplayName,
 				"startedAt":       now.Format(time.RFC3339Nano),
 			}
-			s.emitCallToActiveParticipants(session, "call.transcription.recording", broadcastPayload)
+			if session != nil {
+				s.emitCallToActiveParticipants(session, "call.transcription.recording", broadcastPayload)
+			}
+			s.emitCallEventToChat(ctx, callChatID, "call.transcription.recording", broadcastPayload)
 
 			s.logger.Infof("transcription", "session started session_id=%s call_id=%s initiated_by=%s", sessionID, roomID, actor.ID)
 			return transcriptionSessionPublic{
 				ID:                sessionID,
-				CallID:            session.ID,
+				CallID:            callID,
 				InitiatedBy:       actor.ID,
 				Status:            transcription.SessionStatusRecording,
 				Provider:          "groq",
@@ -140,6 +196,37 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 			}, http.StatusCreated, ""
 		},
 		Stop: func(ctx context.Context, roomID, sessionID string, actor transporthttp.TranscriptionActor) (any, int, string) {
+			if strings.HasPrefix(roomID, "guest-meeting:") {
+				meetingID := strings.TrimPrefix(roomID, "guest-meeting:")
+				var m guestMeeting
+				err := s.guestDB.QueryRowContext(ctx, `SELECT id,chat_id,creator_id FROM guest_meetings WHERE id=$1`, meetingID).Scan(&m.ID, &m.ChatID, &m.CreatorID)
+				if err != nil {
+					return nil, http.StatusNotFound, "Meeting not found"
+				}
+				hasAccess := isAdmin(actor.Role) || m.CreatorID == actor.ID
+				if !hasAccess && s.chatQueries != nil {
+					if _, chErr := s.chatQueries.GetForMember(ctx, m.ChatID, actor.ID); chErr == nil {
+						hasAccess = true
+					}
+				}
+				if !hasAccess {
+					return nil, http.StatusForbidden, "Only organization members or the host can stop AI Notes"
+				}
+				stoppedSessionID, stopped, err := s.stopGuestMeetingTranscription(ctx, roomID, m.ChatID, sessionID, "manual")
+				if err != nil {
+					s.logger.Warnf("transcription", "stop guest meeting session failed session_id=%s error=%v", sessionID, err)
+					return nil, http.StatusInternalServerError, "Could not stop transcription"
+				}
+				if !stopped {
+					return nil, http.StatusConflict, "Transcription is not recording for this call"
+				}
+				s.logger.Infof("transcription", "guest meeting session stopping session_id=%s call_id=%s user_id=%s", stoppedSessionID, roomID, actor.ID)
+				return map[string]any{
+					"sessionId": stoppedSessionID,
+					"status":    string(transcription.SessionStatusStopping),
+				}, http.StatusOK, ""
+			}
+
 			session, ok := s.getCallSessionByRoom(roomID)
 			if !ok {
 				return nil, http.StatusNotFound, "Call not found"
@@ -168,19 +255,31 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 				return nil, http.StatusServiceUnavailable, "AI call transcription is not enabled"
 			}
 
-			session, ok := s.getCallSessionByRoom(roomID)
-			if !ok {
-				return nil, http.StatusNotFound, "Call not found"
-			}
-			if !isCallParticipant(session, actor.ID) {
-				return nil, http.StatusForbidden, "You are not a participant in this call"
+			var callChatID string
+			if strings.HasPrefix(roomID, "guest-meeting:") {
+				meetingID := strings.TrimPrefix(roomID, "guest-meeting:")
+				var m guestMeeting
+				err := s.guestDB.QueryRowContext(ctx, `SELECT id,chat_id,creator_id FROM guest_meetings WHERE id=$1`, meetingID).Scan(&m.ID, &m.ChatID, &m.CreatorID)
+				if err != nil {
+					return nil, http.StatusNotFound, "Meeting not found"
+				}
+				callChatID = m.ChatID
+			} else {
+				session, ok := s.getCallSessionByRoom(roomID)
+				if !ok {
+					return nil, http.StatusNotFound, "Call not found"
+				}
+				if !isCallParticipant(session, actor.ID) {
+					return nil, http.StatusForbidden, "You are not a participant in this call"
+				}
+				callChatID = session.ChatID
 			}
 
 			container := req.Container
 			if container != "ogg" && container != "webm" && container != "mp4" {
 				container = "webm"
 			}
-			objectKey := fmt.Sprintf("calls/%s/%s/audio/%s/%06d.%s", session.ChatID, req.SessionID, actor.ID, req.Sequence, container)
+			objectKey := fmt.Sprintf("calls/%s/%s/audio/%s/%06d.%s", callChatID, req.SessionID, actor.ID, req.Sequence, container)
 			codec := "opus"
 			if container == "mp4" {
 				codec = "aac"
@@ -294,6 +393,28 @@ func (s *Server) stopTranscriptionSession(ctx context.Context, call *callSession
 	return sessionID, true, nil
 }
 
+func (s *Server) stopGuestMeetingTranscription(ctx context.Context, roomID, chatID, requestedSessionID, reason string) (string, bool, error) {
+	if s.transcriptionSessions == nil {
+		return "", false, nil
+	}
+	sessionID, stopped, err := s.transcriptionSessions.Stop(ctx, featuretranscription.StopSession{CallID: roomID, RequestedSessionID: requestedSessionID, StoppedAt: time.Now().UTC()})
+	if !stopped && err == nil {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	s.emitCallEventToChat(ctx, chatID, "call.transcription.stopping", map[string]any{
+		"roomId":    roomID,
+		"chatId":    chatID,
+		"sessionId": sessionID,
+		"status":    string(transcription.SessionStatusStopping),
+		"reason":    reason,
+	})
+	s.scheduleTranscriptionProcessing(sessionID, roomID, chatID)
+	return sessionID, true, nil
+}
+
 func (s *Server) stopActiveTranscriptionForEndedCall(call *callSession) {
 	if _, stopped, err := s.stopTranscriptionSession(context.Background(), call, "", "call_ended"); err != nil {
 		s.logger.Warnf("transcription", "automatic stop failed call_id=%s error=%v", call.ID, err)
@@ -373,9 +494,14 @@ func (s *Server) publishAICallNotes(ctx context.Context, sessionID string) {
 		s.logger.Warnf("transcription", "AI notes initiator lookup failed session_id=%s error=%v", sessionID, err)
 		return
 	}
+	var replyTo *string
+	if strings.TrimSpace(claim.CallHistoryMessageID) != "" {
+		val := claim.CallHistoryMessageID
+		replyTo = &val
+	}
 	message, err := s.createGeneratedMessageWithPayloadContext(ctx, initiator, claim.ChatID, sendMessageRequest{
 		Content:          &content,
-		ReplyToMessageID: &claim.CallHistoryMessageID,
+		ReplyToMessageID: replyTo,
 	})
 	if err != nil {
 		_ = s.transcriptionSessions.ReleaseAICallNotesClaim(ctx, sessionID)
@@ -395,10 +521,6 @@ func (s *Server) markTranscriptionFailed(ctx context.Context, sessionID, chatID,
 }
 
 func (s *Server) broadcastTranscriptionStatus(chatID, callID, sessionID, status string, failureMessages ...string) {
-	session, ok := s.resolveCallSession(chatID, callID)
-	if !ok {
-		return
-	}
 	payload := map[string]any{
 		"roomId":    callID,
 		"chatId":    chatID,
@@ -408,5 +530,8 @@ func (s *Server) broadcastTranscriptionStatus(chatID, callID, sessionID, status 
 	if len(failureMessages) > 0 && strings.TrimSpace(failureMessages[0]) != "" {
 		payload["failureMessage"] = failureMessages[0]
 	}
-	s.emitCallToActiveParticipants(session, "call.transcription."+strings.ToLower(status), payload)
+	if session, ok := s.resolveCallSession(chatID, callID); ok {
+		s.emitCallToActiveParticipants(session, "call.transcription."+strings.ToLower(status), payload)
+	}
+	s.emitCallEventToChat(context.Background(), chatID, "call.transcription."+strings.ToLower(status), payload)
 }

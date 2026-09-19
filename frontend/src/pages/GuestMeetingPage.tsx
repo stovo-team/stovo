@@ -4,8 +4,24 @@ import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
 import { Camera, CameraOff, ChevronDown, Link2Off, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import StovoLogo from "../components/StovoLogo";
+import IconIntelligence from "../components/icons/IconIntelligence";
 import { RealAvatar } from "../features/chats/sidebar/RealAvatar";
-import { createGuestMeetingSession, getGuestMeetingStatus, getGuestMeetingToken, GuestMeetingLinkError, leaveGuestMeetingSession, previewGuestMeeting, type GuestMeetingPreview } from "../api/guestMeetings";
+import { useCallRecording } from "../features/chats/calling/useCallRecording";
+import { useTranscription, type TranscriptState } from "../features/chats/calling/useTranscription";
+import { useLiveCaptions } from "../features/chats/calling/useLiveCaptions";
+import { LiveCaptionsOverlay } from "../features/chats/calling/LiveCaptionsOverlay";
+import { MeetingIntelligencePopover } from "../features/chats/calling/MeetingIntelligencePopover";
+import {
+  createGuestMeetingSession,
+  getGuestMeetingIntelligence,
+  getGuestMeetingStatus,
+  getGuestMeetingToken,
+  GuestMeetingLinkError,
+  leaveGuestMeetingSession,
+  previewGuestMeeting,
+  type GuestMeetingIntelligenceStatus,
+  type GuestMeetingPreview,
+} from "../api/guestMeetings";
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "expired" | "error";
@@ -53,6 +69,7 @@ export default function GuestMeetingPage() {
 	const screenShareMaxBitrate = screenShareBitrateKbps * 1_000;
   const authenticatedName = currentUser?.displayName.trim() || currentUser?.username.trim() || "";
   const [name, setName] = useState(() => authenticatedName);
+  const guestDisplayName = name.trim() || currentUser?.displayName || "You";
   const [state, setState] = useState<MeetingState>("name");
   const [error, setError] = useState<string | null>(null);
   const [deviceIssue, setDeviceIssue] = useState<string | null>(null);
@@ -87,6 +104,70 @@ export default function GuestMeetingPage() {
   const hasEditedNameRef = useRef(false);
   const guestSessionIDRef = useRef<string | null>(null);
   const screenShareStreamRef = useRef<MediaStream | null>(null);
+
+  const isOrgMemberOrHost = Boolean(accessToken && currentUser);
+  const [meetingRoomId, setMeetingRoomId] = useState<string | null>(null);
+  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+  const [guestIntelStatus, setGuestIntelStatus] = useState<GuestMeetingIntelligenceStatus | null>(null);
+
+  const transcription = useTranscription({
+    accessToken: accessToken ?? null,
+    roomId: meetingRoomId,
+    currentUserId: currentUser?.id ?? null,
+    localAudioStream: localStreamRef.current,
+    enabled: state === "joined" && isOrgMemberOrHost,
+  });
+
+  const recording = useCallRecording({
+    accessToken: accessToken ?? null,
+    roomId: meetingRoomId,
+    localStream: localStreamRef.current,
+    localScreenStream,
+    remoteStreams,
+    enabled: state === "joined" && isOrgMemberOrHost,
+  });
+
+  const liveCaptions = useLiveCaptions({
+    accessToken: accessToken ?? null,
+    roomId: meetingRoomId,
+    guestToken: token,
+    displayName: guestDisplayName,
+    room: roomRef.current,
+    defaultLanguage: "en",
+  });
+
+  useEffect(() => {
+    if (state !== "joined" || !token || isOrgMemberOrHost) return;
+    let isCancelled = false;
+    const poll = async () => {
+      try {
+        const intel = await getGuestMeetingIntelligence(token);
+        if (!isCancelled) setGuestIntelStatus(intel);
+      } catch {
+        // ignore polling error
+      }
+    };
+    void poll();
+    const interval = window.setInterval(poll, 3500);
+    return () => {
+      isCancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [state, token, isOrgMemberOrHost]);
+
+  const effectiveNotesState: TranscriptState = isOrgMemberOrHost
+    ? transcription.transcriptState
+    : (guestIntelStatus?.notesState as TranscriptState) || "idle";
+
+  const effectiveRecordingState = isOrgMemberOrHost
+    ? recording.recordingState
+    : ((guestIntelStatus?.recordingState === "recording" ? "recording" : "idle") as import("../features/chats/calling/useCallRecording").RecordingState);
+
+  const effectiveRecordingTimer = isOrgMemberOrHost
+    ? recording.recordingTimer
+    : guestIntelStatus?.recordingDuration
+    ? `${Math.floor(guestIntelStatus.recordingDuration / 60)}:${String(guestIntelStatus.recordingDuration % 60).padStart(2, "0")}`
+    : "00:00";
 
   const stovoSite = regionalStovoSite();
 
@@ -352,6 +433,7 @@ export default function GuestMeetingPage() {
     setState("joining");
     try {
       const credentials = await getGuestMeetingToken(token);
+      if (credentials.roomName) setMeetingRoomId(credentials.roomName);
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
       room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
@@ -376,6 +458,7 @@ export default function GuestMeetingPage() {
       })));
       room.on(RoomEvent.ParticipantDisconnected, (participant) => setRemoteStreams((previous) => previous.filter((item) => item.id !== participant.identity)));
       await room.connect(resolveLiveKitUrl(credentials.url), credentials.token);
+      setMeetingRoomId(room.name || credentials.roomName || null);
       if (!localStreamRef.current) await startLocalMedia();
       for (const track of localStreamRef.current?.getTracks() ?? []) {
         if (track.enabled) await room.localParticipant.publishTrack(track, { source: track.kind === "audio" ? Track.Source.Microphone : Track.Source.Camera });
@@ -385,6 +468,7 @@ export default function GuestMeetingPage() {
       markCurrentGuestSessionLeft();
       await roomRef.current?.disconnect().catch(() => undefined);
       roomRef.current = null;
+      setMeetingRoomId(null);
 	  if (isExpiredGuestMeetingError(e)) { showExpiredLink(); return; }
       setError(guestJoinErrorMessage(e));
       setState("error");
@@ -392,9 +476,8 @@ export default function GuestMeetingPage() {
   }
   async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); try { const session = await createGuestMeetingSession(token, name); guestSessionIDRef.current = session.id; if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else setError(e instanceof Error ? e.message : "Could not join meeting"); } }
   useEffect(() => { if (state !== "waiting" || !token) return; const timer = window.setInterval(() => void getGuestMeetingStatus(token).then((status) => { if (status.state === "admitted") void connect(); if (status.state === "blocked") { setError("The host removed you from this meeting."); setState("blocked"); } }).catch((e) => { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else { setError(e.message); setState("error"); } }), 2500); return () => window.clearInterval(timer); }, [state, token]);
-  async function leave() { await stopScreenShare(); stopLocalMedia(); await roomRef.current?.disconnect(); roomRef.current = null; markCurrentGuestSessionLeft(); setRemoteStreams([]); setState("name"); void startLocalMedia(); }
+  async function leave() { await stopScreenShare(); stopLocalMedia(); await roomRef.current?.disconnect(); roomRef.current = null; setMeetingRoomId(null); markCurrentGuestSessionLeft(); setRemoteStreams([]); setState("name"); void startLocalMedia(); }
   const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
-  const guestDisplayName = name.trim() || currentUser?.displayName || "You";
   const hasVoiceActivity = microphoneEnabled && meterLevel >= 8;
   useEffect(() => {
     if (speakingReleaseTimerRef.current !== null) {
@@ -440,6 +523,13 @@ export default function GuestMeetingPage() {
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
       <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`}>
+        <LiveCaptionsOverlay
+          isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+          recentCaptions={liveCaptions.recentCaptions}
+          currentInterimCaption={liveCaptions.currentInterimCaption}
+          targetLanguage={liveCaptions.targetLanguage}
+          speakerDisplayName={guestDisplayName}
+        />
         <header className="guest-call-header">
           <div><strong>{preview?.title || "Guest meeting"}</strong><span><i aria-hidden="true" /> {participantCount} {participantCount === 1 ? "participant" : "participants"}</span></div>
         </header>
@@ -464,6 +554,63 @@ export default function GuestMeetingPage() {
             <DeviceControl label="Speaker" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} icon={speakerEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
             <DeviceControl label="Camera" active={cameraEnabled} onToggle={() => toggleDevice("video")} icon={cameraEnabled ? <Camera size={20} /> : <CameraOff size={20} />}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
             <button className={`voice-dock-btn${isScreenSharing ? " is-active" : ""}`} type="button" onClick={() => void toggleScreenShare()} aria-label={isScreenSharing ? "Stop screen sharing" : "Share screen"} title={isScreenSharing ? "Stop screen sharing" : "Share screen"}>{isScreenSharing ? <ScreenShareOff size={20} /> : <ScreenShare size={20} />}</button>
+
+            {/* Stovo Intelligence Button */}
+            <div className="voice-more-menu-anchor">
+              <button
+                className={`voice-dock-btn voice-dock-btn--intel${
+                  isIntelligenceOpen ||
+                  effectiveRecordingState === "recording" ||
+                  effectiveNotesState === "recording"
+                    ? " is-active"
+                    : ""
+                }`}
+                type="button"
+                aria-label="Stovo Intelligence"
+                title="Stovo Intelligence (Notes, Recording, Captions)"
+                aria-haspopup="true"
+                aria-expanded={isIntelligenceOpen}
+                onClick={() => setIsIntelligenceOpen((open) => !open)}
+              >
+                <IconIntelligence size={20} />
+                {(effectiveRecordingState === "recording" || effectiveNotesState === "recording") && (
+                  <span className="voice-dock-badge-dot" title="Intelligence Active" />
+                )}
+              </button>
+
+              <MeetingIntelligencePopover
+                isOpen={isIntelligenceOpen}
+                onClose={() => setIsIntelligenceOpen(false)}
+                notesState={effectiveNotesState}
+                onToggleNotes={() => {
+                  if (!isOrgMemberOrHost) return;
+                  if (effectiveNotesState === "idle" || effectiveNotesState === "failed") {
+                    void transcription.startTranscription();
+                  } else if (effectiveNotesState === "recording") {
+                    void transcription.stopTranscription();
+                  }
+                }}
+                isNotesAllowed={isOrgMemberOrHost}
+                notesDisabledReason={!isOrgMemberOrHost ? "Only authenticated hosts / members can manage AI Notes" : undefined}
+                recordingState={effectiveRecordingState}
+                recordingTimer={effectiveRecordingTimer}
+                onToggleRecording={() => {
+                  if (!isOrgMemberOrHost) return;
+                  if (effectiveRecordingState === "idle" || effectiveRecordingState === "completed" || effectiveRecordingState === "failed") {
+                    void recording.startRecording();
+                  } else if (effectiveRecordingState === "recording") {
+                    void recording.stopRecording();
+                  }
+                }}
+                isRecordingAllowed={isOrgMemberOrHost}
+                recordingDisabledReason={!isOrgMemberOrHost ? "Only authenticated hosts / members can record this meeting" : undefined}
+                isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
+                onToggleCaptions={liveCaptions.toggleCaptions}
+                targetLanguage={liveCaptions.targetLanguage}
+                onChangeTargetLanguage={liveCaptions.setTargetLanguage}
+              />
+            </div>
+
             <div className="guest-settings guest-call-settings" ref={settingsRef}>
               <button ref={settingsButtonRef} className={`voice-dock-btn${settingsOpen ? " is-active" : ""}`} type="button" aria-label="Open device settings" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}><Settings size={20} /></button>
               {settingsOpen && <section className="guest-settings-popover" role="dialog" aria-label="Device settings"><div className="guest-settings-section"><label>Microphone volume <strong>{inputGain}%</strong><input aria-label="Microphone volume" type="range" min="0" max="200" value={inputGain} onChange={(event) => setMicVolume(Number(event.target.value))} /></label><div className="guest-mic-test"><span>Microphone test</span>{analyserRef.current && microphoneEnabled ? <div className="guest-mic-meter" aria-label={`Microphone level ${meterLevel}%`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={meterLevel}><i style={{ width: `${meterLevel}%` }} /></div> : <small>Microphone unavailable</small>}</div></div><div className="guest-settings-section"><label>Speaker volume <strong>{outputVolume}%</strong><input aria-label="Speaker volume" type="range" min="0" max="100" value={outputVolume} onChange={(event) => setOutputVolume(Number(event.target.value))} /></label><button type="button" className="guest-test-sound" disabled={!speakerEnabled} onClick={() => void testSound()}><Volume2 size={16} /> Test sound</button></div>{deviceIssue && <p className="guest-device-issue" role="status">{deviceIssue}</p>}</section>}
