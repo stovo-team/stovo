@@ -58,5 +58,6 @@ features.db
 /scripts/*
 !/scripts/check-solid-boundaries.sh
 !/scripts/deploy-environment.sh
+!/scripts/deploy-stage.sh
 !/scripts/deploy-environment.test.ps1
 /docker-compose.test.ps1

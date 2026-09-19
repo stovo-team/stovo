@@ -24,7 +24,7 @@ test.describe('Authentication & Access Flows', () => {
     await page.locator('form').getByRole('button').click();
 
     // Verify error banner / toast appears
-    const errorNotice = page.locator('.error-banner, .form-error, [role="alert"]');
+    const errorNotice = page.locator('.error-banner, .form-error, .error-text, [role="alert"]');
     await expect(errorNotice).toBeVisible({ timeout: 10000 });
   });
 
