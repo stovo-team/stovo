@@ -223,6 +223,22 @@ export function useChatOverview({
     }
   }
 
+  async function createMeetingChat(title: string): Promise<Chat | null> {
+    if (!accessToken || !title.trim()) return null;
+
+    onError(null);
+    try {
+      // A meeting link needs a group or voice chat. Start a group containing
+      // the creator; people can be added later from the normal chat details.
+      const chat = await createGroupChat(accessToken, { title: title.trim(), memberIds: [] });
+      await refreshChats();
+      return chat;
+    } catch (err) {
+      onError(err instanceof ApiError ? String(err.message) : "Could not create meeting chat");
+      return null;
+    }
+  }
+
   return {
     chatSearch,
     setChatSearch,
@@ -245,6 +261,7 @@ export function useChatOverview({
     startDirectChatWith,
     handleCreateGroupChat,
     handleCreateChannelChat,
-    handleCreateVoiceChat
+    handleCreateVoiceChat,
+    createMeetingChat
   };
 }

@@ -21,18 +21,17 @@ type TranscriptionProcessingJob struct {
 	ChatID    string
 }
 
-// StartTranscriptionProcessing supervises the settling window between a
-// recorder stop and background transcription. Uploads may still be arriving
-// after clients receive the stopping event, so runtime waits for the feature
-// store to report no pending chunks before invoking process. A store error is
-// handled by PendingWork's bounded policy and never leaves an unbounded worker
-// behind.
+// StartTranscriptionProcessing supervises the brief settling window between a
+// recorder stop and background transcription. The client flushes its final
+// chunk before calling stop, so a small cushion is enough before the pending
+// upload guard takes over. A store error is handled by PendingWork's bounded
+// policy and never leaves an unbounded worker behind.
 func StartTranscriptionProcessing(ctx context.Context, chunks TranscriptionPendingChunks, job TranscriptionProcessingJob, process func(context.Context, TranscriptionProcessingJob)) {
 	if chunks == nil || process == nil || job.SessionID == "" {
 		return
 	}
 	StartPendingWork(ctx, PendingWork{
-		InitialDelay: 15 * time.Second,
+		InitialDelay: 3 * time.Second,
 		PollInterval: time.Second,
 		MaxPolls:     30,
 		Pending: func(ctx context.Context) (int, error) {

@@ -56,6 +56,28 @@ function getLocalStorageKey(userId: string): string {
   return `stovo_cached_chats_${userId}`;
 }
 
+function getLastActiveChatKey(userId: string): string {
+  return `stovo_last_active_chat_${userId}`;
+}
+
+export function loadLastActiveChatId(userId: string): string | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    return localStorage.getItem(getLastActiveChatKey(userId));
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastActiveChatId(userId: string, chatId: string): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(getLastActiveChatKey(userId), chatId);
+  } catch {
+    // Non-fatal.
+  }
+}
+
 export function loadCachedChatListFromLocalStorage<T>(userId: string): T[] | null {
   if (typeof localStorage === "undefined") return null;
   try {
@@ -301,7 +323,7 @@ export async function clearRecentChatHistory(): Promise<void> {
   if (typeof localStorage !== "undefined") {
     try {
       const keys = Object.keys(localStorage).filter(
-        (key) => key.startsWith("stovo_cached_chats_") || key.startsWith("stovo_cached_messages_"),
+        (key) => key.startsWith("stovo_cached_chats_") || key.startsWith("stovo_cached_messages_") || key.startsWith("stovo_last_active_chat_"),
       );
       for (const key of keys) localStorage.removeItem(key);
     } catch {

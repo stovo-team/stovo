@@ -76,6 +76,8 @@ export function ChatOverlays({
   const [isMeetingPlannerOpen, setIsMeetingPlannerOpen] = useState(false);
   const meetingChats = chats.filter((chat) => chat.type === "group" || chat.type === "voice");
   const [meetingChatId, setMeetingChatId] = useState("");
+  const [createdMeetingChat, setCreatedMeetingChat] = useState<Chat | null>(null);
+  const [isCreatingMeetingChat, setIsCreatingMeetingChat] = useState(false);
   const [meetingTitle, setMeetingTitle] = useState("");
   const [meetingCalendarRange, setMeetingCalendarRange] = useState<{ start?: string; end?: string }>({});
   useEffect(() => {
@@ -93,8 +95,23 @@ export function ChatOverlays({
   const {
     isNewChatOpen, newChatScreen, filteredNewChatMembers, newChatMemberSearch, groupTitle, groupMemberIds,
     setNewChatMemberSearch, setNewChatScreen, closeNewChatScreen, startDirectChatWith,
-    setGroupTitle, toggleGroupMember, handleCreateGroupChat, handleCreateChannelChat, handleCreateVoiceChat
+    setGroupTitle, toggleGroupMember, handleCreateGroupChat, handleCreateChannelChat, handleCreateVoiceChat, createMeetingChat
   } = chatOverview;
+
+  const selectableMeetingChats = createdMeetingChat && !meetingChats.some((chat) => chat.id === createdMeetingChat.id)
+    ? [...meetingChats, createdMeetingChat]
+    : meetingChats;
+  const canCreateMeetingChat = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_channels") === true;
+
+  async function handleCreateMeetingChat(title: string) {
+    setIsCreatingMeetingChat(true);
+    const chat = await createMeetingChat(title);
+    setIsCreatingMeetingChat(false);
+    if (!chat) return false;
+    setCreatedMeetingChat(chat);
+    setMeetingChatId(chat.id);
+    return true;
+  }
 
   return (
     <>
@@ -130,7 +147,7 @@ export function ChatOverlays({
         <div className="guest-meeting-planner-backdrop" role="presentation" onMouseDown={() => setIsMeetingPlannerOpen(false)}>
           <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label="Plan guest meeting" onMouseDown={(event) => event.stopPropagation()}>
             <div className="guest-meeting-planner-header"><h2>Create meeting link</h2><button type="button" className="icon-button subtle icon-button--plain" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}><X aria-hidden="true" size={20} /></button></div>
-            {meetingChats.length ? <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting chat</span><GuestMeetingSelect ariaLabel="Meeting chat" value={meetingChatId} onChange={setMeetingChatId} options={meetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? "Untitled chat" }))} /></label><GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} sourceChat={meetingChats.find((chat) => chat.id === meetingChatId) ?? null} currentUserId={currentUser?.id} enabled={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true} initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /></div> : <p className="muted-copy">Create a group or voice chat first, then create a meeting link.</p>}
+            <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting chat</span><GuestMeetingSelect ariaLabel="Meeting chat" value={meetingChatId} onChange={setMeetingChatId} options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? "Untitled chat" }))} onCreateNew={canCreateMeetingChat ? handleCreateMeetingChat : undefined} creating={isCreatingMeetingChat} /></label>{meetingChatId ? <GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} sourceChat={selectableMeetingChats.find((chat) => chat.id === meetingChatId) ?? null} currentUserId={currentUser?.id} enabled={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true} initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /> : <p className="muted-copy">{canCreateMeetingChat ? "Select a chat above, or create a new one." : "Select a chat above."}</p>}</div>
           </section>
         </div>, document.body)}
 

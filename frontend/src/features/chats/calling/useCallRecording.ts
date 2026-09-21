@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { getApiUrl } from "../../../api/client";
+import { createMeetingRecordingVideoTrack, type RecordingMediaSources } from "./meetingRecordingComposer";
 
 export type RecordingState =
   | "idle"
@@ -57,6 +58,11 @@ export function useCallRecording({
   const audioContextRef = useRef<AudioContext | null>(null);
   const timerIntervalRef = useRef<number | null>(null);
   const isInitiatorRef = useRef(false);
+  const visualRecordingCleanupRef = useRef<(() => void) | null>(null);
+  const mediaSourcesRef = useRef<RecordingMediaSources>({ localStream, localScreenStream, remoteStreams });
+  mediaSourcesRef.current = { localStream, localScreenStream, remoteStreams };
+
+  useEffect(() => () => visualRecordingCleanupRef.current?.(), []);
 
   // Format seconds to mm:ss or hh:mm:ss
   const formatTimer = (totalSeconds: number): string => {
@@ -148,28 +154,13 @@ export function useCallRecording({
       const startData = (await startRes.json()) as { id: string };
       setRecordingId(startData.id);
 
-      // 2. Mix media streams on client
+      // 2. Compose every visible participant into one video track. Recording a
+      // single camera track would omit the rest of the meeting (and used to
+      // fall back to an audio-only placeholder before a camera was available).
       const tracksToRecord: MediaStreamTrack[] = [];
-
-      // Prefer screen video if available, else camera video
-      const screenVideoTrack = localScreenStream?.getVideoTracks().find((t) => t.readyState === "live");
-      const localVideoTrack = localStream?.getVideoTracks().find((t) => t.readyState === "live");
-
-      if (screenVideoTrack) {
-        tracksToRecord.push(screenVideoTrack);
-      } else if (localVideoTrack) {
-        tracksToRecord.push(localVideoTrack);
-      } else {
-        // Find any remote video track
-        for (const rem of remoteStreams) {
-          const remTrack = rem.screenStream?.getVideoTracks().find((t) => t.readyState === "live") ??
-                           rem.cameraStream?.getVideoTracks().find((t) => t.readyState === "live");
-          if (remTrack) {
-            tracksToRecord.push(remTrack);
-            break;
-          }
-        }
-      }
+      const visualRecording = createMeetingRecordingVideoTrack(mediaSourcesRef);
+      visualRecordingCleanupRef.current = visualRecording.stop;
+      tracksToRecord.push(visualRecording.track);
 
       // Audio mixing with Web Audio API
       let mixedAudioTrack: MediaStreamTrack | null = null;
@@ -210,29 +201,6 @@ export function useCallRecording({
       } else {
         const fallbackLocalAudio = localStream?.getAudioTracks().find((t) => t.readyState === "live");
         if (fallbackLocalAudio) tracksToRecord.push(fallbackLocalAudio);
-      }
-
-      // If no video track found, create a black canvas stream as placeholder
-      if (!tracksToRecord.some((t) => t.kind === "video")) {
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = 1280;
-          canvas.height = 720;
-          const cCtx = canvas.getContext("2d");
-          if (cCtx) {
-            cCtx.fillStyle = "#090d16";
-            cCtx.fillRect(0, 0, 1280, 720);
-            cCtx.fillStyle = "#ffffff";
-            cCtx.font = "bold 32px sans-serif";
-            cCtx.textAlign = "center";
-            cCtx.fillText("Stovo Meeting Audio Recording", 640, 360);
-          }
-          const canvasStream = canvas.captureStream(1);
-          const cVideoTrack = canvasStream.getVideoTracks()[0];
-          if (cVideoTrack) tracksToRecord.push(cVideoTrack);
-        } catch {
-          // ignore canvas failure
-        }
       }
 
       const streamToRecord = new MediaStream(tracksToRecord);
@@ -280,6 +248,8 @@ export function useCallRecording({
           setRecordingState("failed");
           setRecordingError(uploadErr instanceof Error ? uploadErr.message : "Recording upload failed");
         } finally {
+          visualRecordingCleanupRef.current?.();
+          visualRecordingCleanupRef.current = null;
           if (audioContextRef.current) {
             audioContextRef.current.close().catch(() => {});
             audioContextRef.current = null;
@@ -291,6 +261,8 @@ export function useCallRecording({
       recorderRef.current = recorder;
       setRecordingState("recording");
     } catch (err) {
+      visualRecordingCleanupRef.current?.();
+      visualRecordingCleanupRef.current = null;
       console.error("[useCallRecording] start failed:", err);
       setRecordingState("failed");
       setRecordingError(err instanceof Error ? err.message : "Failed to start recording");
