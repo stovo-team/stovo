@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 import { getClusterPrefix } from "../api/client";
 import { getChecklist, getStorageChecklists, type Checklist } from "../api/checklist";
+import { loadCachedStorageItemsFromLocalStorage, saveCachedStorageItems } from "../fileLibraryCache";
 import type { StorageFilter } from "../pages/storageLibrary";
 
 function ChecklistTilePreview({ checklist }: { checklist: Checklist }) {
@@ -88,15 +89,21 @@ export function StorageChecklists({
   accessToken,
   filter,
   search,
-  sourceChatId
+  sourceChatId,
+  userId,
+  onChecklistsChange
 }: {
   accessToken: string | null;
   filter: StorageFilter;
   search: string;
   sourceChatId?: string | null;
+  userId?: string;
+  onChecklistsChange?: (checklists: Checklist[]) => void;
 }) {
   const navigate = useNavigate();
-  const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [checklists, setChecklists] = useState<Checklist[]>(() =>
+    userId ? loadCachedStorageItemsFromLocalStorage<Checklist>(userId, "checklists") ?? [] : []
+  );
 
   useEffect(() => {
     if (!accessToken) return;
@@ -106,6 +113,8 @@ export function StorageChecklists({
         if (cancelled) return;
         const list = Array.isArray(data) ? data : [];
         setChecklists(list);
+        onChecklistsChange?.(list);
+        if (userId) void saveCachedStorageItems(userId, "checklists", list);
 
         // If any checklist has items missing but totalItems > 0, fetch full details
         const missingItems = list.filter((c) => c.totalItems > 0 && (!c.items || c.items.length === 0));
@@ -114,22 +123,23 @@ export function StorageChecklists({
             missingItems.map((c) => getChecklist(accessToken, c.id).catch(() => null))
           );
           if (!cancelled) {
-            setChecklists((prev) =>
-              prev.map((c) => {
+            setChecklists((prev) => {
+              const next = prev.map((c) => {
                 const found = detailed.find((d) => d && d.id === c.id);
                 return found && found.items?.length ? { ...c, items: found.items } : c;
-              })
-            );
+              });
+              onChecklistsChange?.(next);
+              if (userId) void saveCachedStorageItems(userId, "checklists", next);
+              return next;
+            });
           }
         }
       })
-      .catch(() => {
-        if (!cancelled) setChecklists([]);
-      });
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [accessToken, filter]);
+  }, [accessToken, onChecklistsChange, userId]);
 
   if (filter !== "all" && filter !== "checklists") return null;
 

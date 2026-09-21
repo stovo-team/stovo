@@ -14,8 +14,10 @@ vi.mock("./native/localReplicaPlugin", () => ({
 import {
   loadCachedCanvasPreviews,
   loadCachedFileList,
+  loadCachedStorageItemsFromLocalStorage,
   saveCachedCanvasPreviews,
   saveCachedFileList,
+  saveCachedStorageItems,
 } from "./fileLibraryCache";
 
 describe("file-library WebView cache", () => {
@@ -54,5 +56,19 @@ describe("file-library WebView cache", () => {
     nativeReplica.load.mockClear();
     await expect(loadCachedCanvasPreviews<{ id: string }>("user-1")).resolves.toEqual(previews);
     expect(nativeReplica.load).not.toHaveBeenCalled();
+  });
+
+  it("restores every Storage section synchronously before its refresh request", async () => {
+    const canvases = [{ id: "canvas-1", title: "Plan" }];
+    const checklists = [{ id: "checklist-1", title: "Groceries" }];
+    const collections = [{ id: "collection-1", title: "Docs" }];
+
+    await saveCachedStorageItems("user-1", "canvases", canvases);
+    await saveCachedStorageItems("user-1", "checklists", checklists);
+    await saveCachedStorageItems("user-1", "collections", collections);
+
+    expect(loadCachedStorageItemsFromLocalStorage<typeof canvases[number]>("user-1", "canvases")).toEqual(canvases);
+    expect(loadCachedStorageItemsFromLocalStorage<typeof checklists[number]>("user-1", "checklists")).toEqual(checklists);
+    expect(loadCachedStorageItemsFromLocalStorage<typeof collections[number]>("user-1", "collections")).toEqual(collections);
   });
 });

@@ -9,8 +9,10 @@ const STORE_NAME = "file-lists";
 const CANVAS_PREVIEW_STORE_NAME = "canvas-previews";
 const LOCAL_STORAGE_PREFIX = "stovo_cached_files_";
 const CANVAS_PREVIEW_LOCAL_STORAGE_PREFIX = "stovo_cached_canvas_previews_";
+const STORAGE_ITEMS_LOCAL_STORAGE_PREFIX = "stovo_cached_storage_items_";
 const NATIVE_CACHE_KEY = "file-library";
 const NATIVE_CANVAS_PREVIEW_CACHE_KEY = "canvas-previews";
+const NATIVE_STORAGE_ITEMS_CACHE_KEY = "storage-items";
 
 type CachedFileList<T> = {
   userId: string;
@@ -24,6 +26,12 @@ function localKey(userId: string) {
 
 function canvasPreviewLocalKey(userId: string) {
   return `${CANVAS_PREVIEW_LOCAL_STORAGE_PREFIX}${userId}`;
+}
+
+type StorageItemKind = "canvases" | "checklists" | "collections";
+
+function storageItemsLocalKey(userId: string, kind: StorageItemKind) {
+  return `${STORAGE_ITEMS_LOCAL_STORAGE_PREFIX}${kind}_${userId}`;
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -120,6 +128,39 @@ export async function saveCachedFileList<T>(userId: string, files: T[]): Promise
   }
 }
 
+/** Reads the Storage sections synchronously for the page's first paint. */
+export function loadCachedStorageItemsFromLocalStorage<T>(
+  userId: string,
+  kind: StorageItemKind
+): T[] | null {
+  if (!userId || typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(storageItemsLocalKey(userId, kind));
+    const parsed = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed as T[] : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persists the lightweight Canvas/Checklist list used by Storage startup. */
+export async function saveCachedStorageItems<T>(
+  userId: string,
+  kind: StorageItemKind,
+  items: T[]
+): Promise<void> {
+  if (!userId) return;
+  const serialized = JSON.stringify(items);
+  if (typeof localStorage !== "undefined") {
+    try {
+      localStorage.setItem(storageItemsLocalKey(userId, kind), serialized);
+    } catch {
+      // Cache persistence is an optimisation, never a user-visible failure.
+    }
+  }
+  await saveNativeReplicaValue(userId, `${NATIVE_STORAGE_ITEMS_CACHE_KEY}:${kind}`, serialized);
+}
+
 export type CachedCanvasPreview<T> = {
   updatedAt: string;
   updates: T[];
@@ -190,7 +231,11 @@ export async function clearCachedFileLists(): Promise<void> {
   if (typeof localStorage !== "undefined") {
     try {
       for (const key of Object.keys(localStorage)) {
-        if (key.startsWith(LOCAL_STORAGE_PREFIX) || key.startsWith(CANVAS_PREVIEW_LOCAL_STORAGE_PREFIX)) localStorage.removeItem(key);
+        if (
+          key.startsWith(LOCAL_STORAGE_PREFIX) ||
+          key.startsWith(CANVAS_PREVIEW_LOCAL_STORAGE_PREFIX) ||
+          key.startsWith(STORAGE_ITEMS_LOCAL_STORAGE_PREFIX)
+        ) localStorage.removeItem(key);
       }
     } catch {
       // Non-fatal.

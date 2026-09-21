@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import type { Location, NavigateFunction } from "react-router-dom";
 import type { Socket } from "socket.io-client";
@@ -291,7 +291,7 @@ export function useChatsPageController({
 
   const didAutoOpenDesktopChatRef = useRef(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (chatId || isMobileViewport) {
       didAutoOpenDesktopChatRef.current = false;
       return;

@@ -39,8 +39,8 @@ import {
 } from "../api/files";
 import { Family } from "../api/family";
 import { getChats, type Chat } from "../api/chats";
-import { getStorageCanvases, type Canvas } from "../api/canvas";
-import { getStorageChecklists, type Checklist } from "../api/checklist";
+import type { Canvas } from "../api/canvas";
+import type { Checklist } from "../api/checklist";
 import { useAuth } from "../auth/AuthContext";
 import { AudioPlayer } from "../components/AudioPlayer";
 import {
@@ -56,7 +56,11 @@ import { StorageCollections, type StorageCollectionPickerRequest } from "../comp
 import { StorageCanvases } from "../components/StorageCanvases";
 import { StorageChecklists } from "../components/StorageChecklists";
 import { useStrings } from "../i18n/LanguageContext";
-import { loadCachedFileList, saveCachedFileList } from "../fileLibraryCache";
+import {
+  loadCachedFileList,
+  loadCachedStorageItemsFromLocalStorage,
+  saveCachedFileList
+} from "../fileLibraryCache";
 import { syncChatReplicaDeltas } from "../features/chats/sidebar/chatDeltaSync";
 import {
   initialStorageSelection,
@@ -245,8 +249,12 @@ export default function FilesPage() {
   const [family, setFamily] = useState<Family | null>(null);
   const [files, setFiles] = useState<FamilyFile[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
-  const [storageCanvases, setStorageCanvases] = useState<Canvas[]>([]);
-  const [storageChecklists, setStorageChecklists] = useState<Checklist[]>([]);
+  const [storageCanvases, setStorageCanvases] = useState<Canvas[]>(() =>
+    currentUser?.id ? loadCachedStorageItemsFromLocalStorage<Canvas>(currentUser.id, "canvases") ?? [] : []
+  );
+  const [storageChecklists, setStorageChecklists] = useState<Checklist[]>(() =>
+    currentUser?.id ? loadCachedStorageItemsFromLocalStorage<Checklist>(currentUser.id, "checklists") ?? [] : []
+  );
   const [selection, dispatchSelection] = useReducer(
     storageSelectionReducer,
     initialStorageSelection
@@ -394,23 +402,10 @@ export default function FilesPage() {
   }, [accessToken, currentUser?.id, load]);
 
   useEffect(() => {
-    if (!accessToken) {
-      setStorageCanvases([]);
-      setStorageChecklists([]);
-      return;
-    }
-    let cancelled = false;
-    void Promise.all([
-      getStorageCanvases(accessToken).catch(() => [] as Canvas[]),
-      getStorageChecklists(accessToken).catch(() => [] as Checklist[])
-    ]).then(([canvases, checklists]) => {
-      if (!cancelled) {
-        setStorageCanvases(canvases);
-        setStorageChecklists(checklists);
-      }
-    });
-    return () => { cancelled = true; };
-  }, [accessToken]);
+    const userId = currentUser?.id;
+    setStorageCanvases(userId ? loadCachedStorageItemsFromLocalStorage<Canvas>(userId, "canvases") ?? [] : []);
+    setStorageChecklists(userId ? loadCachedStorageItemsFromLocalStorage<Checklist>(userId, "checklists") ?? [] : []);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (!mobileDetailsOpen) {
@@ -721,8 +716,8 @@ export default function FilesPage() {
               </div>
             )}
             </>}
-            {!collectionPicker && <StorageCanvases accessToken={accessToken} userId={currentUser?.id} filter={filter} search={search} sourceChatId={sourceChatId} />}
-            {!collectionPicker && <StorageChecklists accessToken={accessToken} filter={filter} search={search} sourceChatId={sourceChatId} />}
+            {!collectionPicker && <StorageCanvases accessToken={accessToken} userId={currentUser?.id} filter={filter} search={search} sourceChatId={sourceChatId} onCanvasesChange={setStorageCanvases} />}
+            {!collectionPicker && <StorageChecklists accessToken={accessToken} userId={currentUser?.id} filter={filter} search={search} sourceChatId={sourceChatId} onChecklistsChange={setStorageChecklists} />}
           </div>
         </div>
 
