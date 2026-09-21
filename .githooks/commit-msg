@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -e
+
+# Enforce allowed commit prefixes:
+# [Minor] [Fix] [CritFix] [HotFix] [Feature] [Docs] [Test] [Deploy] [Design]
+
+commit_msg_file="$1"
+first_line="$(head -n 1 "$commit_msg_file")"
+
+# Allow merge commits
+if [[ "$first_line" =~ ^Merge ]] || [[ -z "$first_line" ]]; then
+  exit 0
+fi
+
+valid_pattern='^\[(Minor|Fix|CritFix|HotFix|Feature|Docs|Test|Deploy|Design)\]'
+
+if [[ ! "$first_line" =~ $valid_pattern ]]; then
+  echo "❌ Invalid commit message format: \"$first_line\""
+  echo "Allowed prefixes are strictly:"
+  echo "  [Minor] [Fix] [CritFix] [HotFix] [Feature] [Docs] [Test] [Deploy] [Design]"
+  exit 1
+fi
