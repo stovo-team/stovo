@@ -156,6 +156,63 @@ describe("useChatDataLoader", () => {
     container.remove();
   });
 
+  it("revalidates a cached history without collapsing it to the first page", async () => {
+    const cachedMessages = Array.from({ length: 20 }, (_, index) =>
+      makeMessage(`cached-${index + 1}`, `2026-01-01T10:${String(index).padStart(2, "0")}:00.000Z`)
+    );
+    const freshMessages = [
+      { ...cachedMessages[18], content: "Fresh 19" },
+      { ...cachedMessages[19], content: "Fresh 20" }
+    ];
+    const authRequest = vi.fn((url: string) => {
+      if (url.includes("/messages?limit=20")) {
+        return Promise.resolve({ messages: freshMessages, hasMore: false, nextBefore: "" });
+      }
+      if (url.includes("/pins")) return Promise.resolve([]);
+      if (url.includes("/api/chats/chat-1")) return Promise.resolve({ id: "chat-1", name: "Chat 1" });
+      return Promise.resolve(null);
+    });
+    const messageCacheRef = { current: { "chat-1": cachedMessages } as Record<string, Message[]> };
+    const appliedMessages: Message[][] = [];
+    const applyMessagesForChat = vi.fn((_chatId: string, updater: unknown) => {
+      const current = messageCacheRef.current["chat-1"];
+      const next = typeof updater === "function" ? updater(current) : updater as Message[];
+      messageCacheRef.current["chat-1"] = next;
+      appliedMessages.push(next);
+    });
+    const historyCursorRef = { current: {} as Record<string, string | null> };
+    const activeChatIdRef = { current: "chat-1" };
+    const accessTokenRef = { current: "test-token" };
+    const chatsRef = { current: [] };
+    const chatMutationVersionRef = { current: {} };
+    let loaderRef: ReturnType<typeof useChatDataLoader> | null = null;
+
+    function TestComponent() {
+      loaderRef = useChatDataLoader({
+        accessTokenRef, authRequest: authRequest as any, currentUser: { id: "user-1" } as any, chatId: "chat-1",
+        onError: vi.fn(), setFamily: vi.fn(), setMembers: vi.fn(), setChats: vi.fn(), setSelectedChat: vi.fn(),
+        setIsLoading: vi.fn(), setHasLoadedOverview: vi.fn(), setIsChatLoading: vi.fn(), activeChatIdRef, chatsRef,
+        chatMutationVersionRef, messageCacheRef, historyCursorRef, setMessages: vi.fn(), setPinnedMessages: vi.fn(),
+        setPinIndex: vi.fn(), applyMessagesForChat, markChatRead: vi.fn(() => Promise.resolve())
+      });
+      return null;
+    }
+
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => root.render(createElement(TestComponent)));
+    await act(async () => { await loaderRef?.loadSelectedChat("chat-1"); });
+
+    expect(authRequest).toHaveBeenCalledWith("/api/chats/chat-1/messages?limit=20");
+    expect(appliedMessages.at(-1)).toHaveLength(20);
+    expect(appliedMessages.at(-1)?.at(-1)?.content).toBe("Fresh 20");
+    expect(authRequest).not.toHaveBeenCalledWith(expect.stringContaining("before="));
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
   it("merges pending outbox messages without duplicating existing messages", async () => {
     const { mergeOutboxPendingMessages } = await import("./useChatDataLoader");
     const existing: Message[] = [

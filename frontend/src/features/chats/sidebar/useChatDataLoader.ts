@@ -5,7 +5,7 @@ import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../../../
 import { ApiError } from "../../../api/client";
 import { prefetchFiles } from "../../../api/files";
 import type { Family } from "../../../api/family";
-import { decryptMessages } from "../../../api/messageCrypto";
+import { decryptMessage, decryptMessages } from "../../../api/messageCrypto";
 import { loadCachedChatList, loadRecentChatHistory, loadRecentChatHistoryFromLocalStorage, saveCachedChatList, saveRecentChatHistory } from "../../../chatHistoryCache";
 import { applyMessagePreviewToChat, sortPinsByPosition } from "../shared/chatPresentation";
 import { mergeMessageLists } from "../shared/messageState";
@@ -14,7 +14,6 @@ import { getActiveServer, upsertServer } from "../../../api/serverRegistry";
 import { getOutboxMessagesForChat, type QueuedOutboxMessage } from "../outbox/messageOutboxStore";
 import { reconstructFileFromQueuedAttachment } from "../outbox/messageOutboxProcessor";
 import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
-import { decryptMessage } from "../../../api/messageCrypto";
 import { syncChatReplicaDeltas } from "./chatDeltaSync";
 
 /** A response started before a local chat mutation must not replace that mutation. */
@@ -384,8 +383,9 @@ export function useChatDataLoader({
         const pinsRequest = authRequestRef.current<PinnedMessage[]>(`/api/chats/${requestedChatId}/pins`)
           .catch(() => [] as PinnedMessage[]);
         const archiveGroupQuery = archiveGroup ? `&archiveGroup=${encodeURIComponent(archiveGroup)}` : "";
+        const initialMessageLimit = cachedMessages ? Math.min(Math.max(cachedMessages.length, 10), 100) : 10;
         const messageResult = await authRequestRef.current<MessageHistoryPage>(
-          `/api/chats/${requestedChatId}/messages?limit=10${archiveGroupQuery}`
+          `/api/chats/${requestedChatId}/messages?limit=${initialMessageLimit}${archiveGroupQuery}`
         );
         historyRequestResolved = true;
         if (!isCurrentRequest()) {
@@ -395,7 +395,7 @@ export function useChatDataLoader({
         if (!isCurrentRequest()) {
           return;
         }
-        applyMessagesForChatRef.current(requestedChatId, decryptedMessages);
+        applyMessagesForChatRef.current(requestedChatId, (current) => mergeMessageLists(current, decryptedMessages));
         historyCursorRef.current[requestedChatId] = messageResult.hasMore ? messageResult.nextBefore : null;
         if (accessTokenRef.current && decryptedMessages.length > 0) {
           const attachments = decryptedMessages.flatMap((message) => message.attachments ?? []);
@@ -404,11 +404,11 @@ export function useChatDataLoader({
           }
         }
         if (currentUserIdRef.current && !archiveGroup) {
-          void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, messageResult.messages);
+          void saveRecentChatHistory(currentUserIdRef.current, requestedChatId, mergeMessageLists(cachedMessages ?? [], messageResult.messages));
         }
         setIsChatLoading(false);
 
-        if (messageResult.hasMore && messageResult.nextBefore) {
+        if (!cachedMessages && messageResult.hasMore && messageResult.nextBefore) {
           const beforeCursor = messageResult.nextBefore;
           void authRequestRef.current<MessageHistoryPage>(
             `/api/chats/${requestedChatId}/messages?before=${encodeURIComponent(beforeCursor)}&limit=50${archiveGroupQuery}`

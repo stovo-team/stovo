@@ -29108,7 +29108,7 @@ button.checklist-add-item-btn:hover,
 .quick-access-standard-header h1 { color: var(--text-primary); font: inherit; font-size: 1rem; font-weight: 700; margin: 0; }
 .quick-access-panel--archive .quick-access-standard-header { border-radius: 999px; }
 .quick-access-panel--outbox .quick-access-standard-header { border-radius: 999px; }
-.quick-access-panel--outbox .quick-access-panel-tabs { margin-left: 0; margin-top: 52px; }
+.quick-access-panel--outbox .quick-access-panel-tabs { margin-left: 0; margin-top: 0; }
 
 :root[data-platform="web"] .messenger-shell.has-active-chat .quick-access-panel--archive .quick-access-standard-header {
   left: var(--active-chat-message-inset-x);
