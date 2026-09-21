@@ -59,12 +59,12 @@ export default function RootRedirect() {
     return <Navigate to={getUnconfiguredRootPath(Capacitor.isNativePlatform())} replace />;
   }
 
-  if (isLoading || setupRequired === null) {
-    return <main className="app-shell">Checking server state...</main>;
-  }
-
   if (currentUser) {
     return <Navigate to={getDefaultAppPath(prefix, navTabs)} replace />;
+  }
+
+  if (isLoading || setupRequired === null) {
+    return <main className="app-shell">Checking server state...</main>;
   }
 
   return <Navigate to={setupRequired ? `${prefix}/setup` : `${prefix}/login`} replace />;

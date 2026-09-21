@@ -11,6 +11,7 @@ vi.mock("../../../api/messageCrypto", () => ({
 
 vi.mock("../../../chatHistoryCache", () => ({
   loadCachedChatList: vi.fn(() => Promise.resolve(null)),
+  loadCachedChatListFromLocalStorage: vi.fn(() => null),
   loadRecentChatHistory: vi.fn(() => Promise.resolve(null)),
   loadRecentChatHistoryFromLocalStorage: vi.fn(() => null),
   saveCachedChatList: vi.fn(),

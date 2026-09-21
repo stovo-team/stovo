@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { loadCachedChatList, loadRecentChatHistoryFromLocalStorage, mergeLatestHistory, saveCachedChatList, saveRecentChatHistoryToLocalStorage, trimRecentChatHistory } from "./chatHistoryCache";
+import { loadCachedChatList, loadCachedChatListFromLocalStorage, loadRecentChatHistoryFromLocalStorage, mergeLatestHistory, saveCachedChatList, saveRecentChatHistoryToLocalStorage, trimRecentChatHistory } from "./chatHistoryCache";
 
 describe("chat history cache helpers", () => {
   beforeEach(() => {
@@ -53,6 +53,13 @@ describe("chat history cache helpers", () => {
     const restored = await loadCachedChatList("user-123");
 
     expect(restored).toEqual(sampleChats);
+  });
+
+  it("reads the web chat list synchronously for startup rendering", () => {
+    const sampleChats = [{ id: "chat-1", title: "General" }];
+    localStorage.setItem("stovo_cached_chats_user-123", JSON.stringify(sampleChats));
+
+    expect(loadCachedChatListFromLocalStorage("user-123")).toEqual(sampleChats);
   });
 
   it("saves and synchronously restores recent chat history from local storage", () => {

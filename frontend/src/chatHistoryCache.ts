@@ -56,7 +56,7 @@ function getLocalStorageKey(userId: string): string {
   return `stovo_cached_chats_${userId}`;
 }
 
-function loadCachedChatListFromLocalStorage<T>(userId: string): T[] | null {
+export function loadCachedChatListFromLocalStorage<T>(userId: string): T[] | null {
   if (typeof localStorage === "undefined") return null;
   try {
     const raw = localStorage.getItem(getLocalStorageKey(userId));
