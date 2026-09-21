@@ -25,9 +25,9 @@ x-backend: &backend
     PUBLIC_REACHABILITY_CHECKER_URL: ${PUBLIC_REACHABILITY_CHECKER_URL:-}
     POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
     POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-    POSTGRES_USER: ${POSTGRES_USER:-}
-    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
-    POSTGRES_DB: ${POSTGRES_DB:-}
+    POSTGRES_USER: ${POSTGRES_USER:-family_user}
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
+    POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
     # When set, this takes precedence over the POSTGRES_* values above. It is
     # the connection URL for a managed/external PostgreSQL instance.
     DATABASE_URL: ${DATABASE_URL:-}
@@ -109,9 +109,9 @@ services:
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_USER: ${POSTGRES_USER:-}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
-      POSTGRES_DB: ${POSTGRES_DB:-}
+      POSTGRES_USER: ${POSTGRES_USER:-family_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-family_password}
+      POSTGRES_DB: ${POSTGRES_DB:-family_messenger}
       DATABASE_URL: ${DATABASE_URL:-}
     entrypoint: ["/bin/sh", "-ec"]
     command:
@@ -123,8 +123,6 @@ services:
       - no-new-privileges:true
 
   postgres:
-    profiles:
-      - disabled
     image: postgres@sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-family_user}

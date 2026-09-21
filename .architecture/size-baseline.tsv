@@ -14,7 +14,7 @@ backend/internal/app/routes.go	1218
 backend/internal/app/server.go	555
 backend/internal/app/transcription_operations.go	537
 backend/internal/app/types.go	662
-backend/internal/orchestrator/routes.go	677
+backend/internal/orchestrator/routes.go	682
 backend/internal/repository/auth.go	418
 backend/internal/repository/chats.go	527
 backend/internal/repository/messages.go	619

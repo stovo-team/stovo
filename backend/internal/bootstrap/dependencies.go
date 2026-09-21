@@ -4,6 +4,9 @@ package bootstrap
 import (
 	"context"
 	"database/sql"
+	"log"
+	"net/url"
+	"strings"
 	"time"
 
 	"stovo-messenger/backend/ent"
@@ -217,18 +220,52 @@ func newLogBuffer(cfg config.Config) (*logging.Buffer, error) {
 }
 
 func openDatabase(cfg config.Config) (*sql.DB, error) {
-	db, err := sql.Open("pgx", cfg.EffectiveDatabaseURL())
+	primaryURL := cfg.EffectiveDatabaseURL()
+	fallbackURL := cfg.LocalDatabaseURL()
+
+	db, err := connectDB(primaryURL, cfg)
+	if err == nil {
+		return db, nil
+	}
+
+	if strings.TrimSpace(cfg.DatabaseURL) != "" && fallbackURL != "" && primaryURL != fallbackURL {
+		log.Printf("[database] WARNING: failed to connect to external database (%v), falling back to local database: %s", err, sanitizeDBURL(fallbackURL))
+		fallbackDB, fallbackErr := connectDB(fallbackURL, cfg)
+		if fallbackErr == nil {
+			log.Printf("[database] successfully connected to fallback local database")
+			return fallbackDB, nil
+		}
+		log.Printf("[database] WARNING: fallback to local database also failed: %v", fallbackErr)
+	}
+
+	return nil, err
+}
+
+func connectDB(dbURL string, cfg config.Config) (*sql.DB, error) {
+	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
 		return nil, err
 	}
 	db.SetMaxOpenConns(cfg.DatabaseMaxOpenConns)
 	db.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
 	db.SetConnMaxLifetime(30 * time.Minute)
-	if err := db.Ping(); err != nil {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
 	return db, nil
+}
+
+func sanitizeDBURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	return u.Redacted()
 }
 
 func openRedis(cfg config.Config) (*redis.Client, error) {

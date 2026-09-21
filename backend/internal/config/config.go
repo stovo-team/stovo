@@ -282,7 +282,10 @@ func (c Config) EffectiveDatabaseURL() string {
 	if strings.TrimSpace(c.DatabaseURL) != "" {
 		return strings.TrimSpace(c.DatabaseURL)
 	}
+	return c.LocalDatabaseURL()
+}
 
+func (c Config) LocalDatabaseURL() string {
 	user := url.QueryEscape(c.PostgresUser)
 	password := url.QueryEscape(c.PostgresPassword)
 	return fmt.Sprintf(
