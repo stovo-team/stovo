@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "node ../scripts/check-solid.cjs frontend",
+    "lint:all": "node ../scripts/check-solid.cjs all",
+    "baseline:update": "node ../scripts/check-solid.cjs --update"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

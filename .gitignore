@@ -60,4 +60,6 @@ features.db
 !/scripts/deploy-environment.sh
 !/scripts/deploy-stage.sh
 !/scripts/deploy-environment.test.ps1
+!/scripts/update-solid-baselines.sh
+!/scripts/check-solid.cjs
 /docker-compose.test.ps1

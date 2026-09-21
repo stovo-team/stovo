@@ -48,10 +48,10 @@ check_sizes() {
     if (( lines > limit )); then
       local allowed="${baseline_map[$file]:-}"
       if [[ -z "$allowed" ]]; then
-        fail "$file is ${lines} lines; new production files must be at most ${limit} lines"
+        fail "$file is ${lines} lines; new production files must be at most ${limit} lines. Run 'bash scripts/update-solid-baselines.sh' if intentional."
       fi
       if (( lines > allowed )); then
-        fail "$file grew from its ${allowed}-line migration baseline to ${lines} lines"
+        fail "$file grew from its ${allowed}-line migration baseline to ${lines} lines. Run 'bash scripts/update-solid-baselines.sh' if intentional."
       fi
     fi
   done <<< "$counts"
