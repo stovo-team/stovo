@@ -7,7 +7,9 @@ import { getCanvasDocument, getStorageCanvases, type Canvas, type CanvasUpdate }
 import type { StorageFilter } from "../pages/storageLibrary";
 import {
   loadCachedCanvasPreviews,
+  loadCachedStorageItemsFromLocalStorage,
   saveCachedCanvasPreviews,
+  saveCachedStorageItems,
   type CachedCanvasPreview,
 } from "../fileLibraryCache";
 import { RichCanvasPreview } from "./RichCanvasPreview";
@@ -17,16 +19,20 @@ export function StorageCanvases({
   filter,
   search,
   sourceChatId,
-  userId
+  userId,
+  onCanvasesChange
 }: {
   accessToken: string | null;
   filter: StorageFilter;
   search: string;
   sourceChatId?: string | null;
   userId?: string;
+  onCanvasesChange?: (canvases: Canvas[]) => void;
 }) {
   const navigate = useNavigate();
-  const [canvases, setCanvases] = useState<Canvas[]>([]);
+  const [canvases, setCanvases] = useState<Canvas[]>(() =>
+    userId ? loadCachedStorageItemsFromLocalStorage<Canvas>(userId, "canvases") ?? [] : []
+  );
   const [documents, setDocuments] = useState<Record<string, CachedCanvasPreview<CanvasUpdate>>>({});
   const [hasRestoredPreviewCache, setHasRestoredPreviewCache] = useState(!userId);
   const requestedDocuments = useRef(new Set<string>());
@@ -60,9 +66,14 @@ export function StorageCanvases({
   useEffect(() => {
     if (!accessToken) return;
     void getStorageCanvases(accessToken)
-      .then((data) => setCanvases(Array.isArray(data) ? data : []))
-      .catch(() => setCanvases([]));
-  }, [accessToken, filter]);
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setCanvases(list);
+        onCanvasesChange?.(list);
+        if (userId) void saveCachedStorageItems(userId, "canvases", list);
+      })
+      .catch(() => undefined);
+  }, [accessToken, onCanvasesChange, userId]);
 
   useEffect(() => {
     if (!accessToken || canvases.length === 0 || !hasRestoredPreviewCache) return;
