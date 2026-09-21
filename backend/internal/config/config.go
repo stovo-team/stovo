@@ -286,16 +286,70 @@ func (c Config) EffectiveDatabaseURL() string {
 }
 
 func (c Config) LocalDatabaseURL() string {
+	host := c.PostgresHost
+	if host == "localhost" || host == "127.0.0.1" || host == "" {
+		if isRunningInDocker() {
+			host = "postgres"
+		} else if host == "" {
+			host = "localhost"
+		}
+	}
+	dbName := c.PostgresDB
+	if dbName == "" {
+		if c.ServerID != "" {
+			dbName = fmt.Sprintf("stovo_db_%s", c.ServerID)
+		} else {
+			dbName = "family_messenger"
+		}
+	}
 	user := url.QueryEscape(c.PostgresUser)
 	password := url.QueryEscape(c.PostgresPassword)
 	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
 		user,
 		password,
-		c.PostgresHost,
+		host,
 		c.PostgresPort,
-		url.QueryEscape(c.PostgresDB),
+		url.QueryEscape(dbName),
 	)
+}
+
+func (c Config) LocalFallbackCandidates() []string {
+	seen := make(map[string]bool)
+	var candidates []string
+
+	add := func(raw string) {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed != "" && !seen[trimmed] {
+			seen[trimmed] = true
+			candidates = append(candidates, trimmed)
+		}
+	}
+
+	add(c.LocalDatabaseURL())
+
+	if c.ServerID != "" {
+		user := url.QueryEscape(c.PostgresUser)
+		pass := url.QueryEscape(c.PostgresPassword)
+		add(fmt.Sprintf("postgres://%s:%s@postgres:%d/stovo_db_%s?sslmode=disable", user, pass, c.PostgresPort, c.ServerID))
+		add(fmt.Sprintf("postgres://postgres:postgres@postgres:%d/stovo_db_%s?sslmode=disable", c.PostgresPort, c.ServerID))
+	}
+
+	user := url.QueryEscape(c.PostgresUser)
+	pass := url.QueryEscape(c.PostgresPassword)
+	dbName := url.QueryEscape(c.PostgresDB)
+	add(fmt.Sprintf("postgres://%s:%s@postgres:%d/%s?sslmode=disable", user, pass, c.PostgresPort, dbName))
+	add(fmt.Sprintf("postgres://family_user:family_password@postgres:%d/family_messenger?sslmode=disable", c.PostgresPort))
+	add(fmt.Sprintf("postgres://postgres:postgres@postgres:%d/stovo_master_db?sslmode=disable", c.PostgresPort))
+
+	return candidates
+}
+
+func isRunningInDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	return os.Getenv("SERVER_ID") != "" || os.Getenv("DOCKER_NETWORK_NAME") != ""
 }
 
 func (c Config) EffectiveRedisURL() string {
