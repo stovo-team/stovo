@@ -24,6 +24,11 @@ describe("message archive grouped view", () => {
     expect(panel).toContain("quick-access-panel-tabs--archive-controls");
   });
 
+  it("aligns Drafts & scheduled tabs with the archive controls", () => {
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(styles).toMatch(/\.quick-access-panel--outbox \.quick-access-panel-tabs\s*\{[^}]*margin-left:\s*0;/);
+  });
+
   it("lists archive-origin groups rather than unrelated recently active chats", () => {
     expect(panel).toContain("getMessageArchiveGroups(accessToken)");
     expect(panel).toContain("My Notes");

@@ -328,7 +328,8 @@ export default function FilesPage() {
     if (!accessToken) {
       return;
     }
-    setIsLoading(true);
+    // Only show the full-page spinner when there is no cached content to display.
+    if (files.length === 0) setIsLoading(true);
     setError(null);
     try {
       const [familyResult, filesResult, chatsResult] = await Promise.all([
@@ -350,7 +351,7 @@ export default function FilesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, authRequest, currentUser?.id]);
+  }, [accessToken, authRequest, currentUser?.id, files.length]);
 
   useEffect(() => {
     dispatchSelection({ type: "reset-gallery" });

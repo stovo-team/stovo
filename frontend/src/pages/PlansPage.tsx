@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Plus, Search, X } from "lucide-react";
 import { User } from "../api/auth";
 import { ApiError } from "../api/client";
+import { peekApiResponseCache } from "../api/apiResponseCache";
 import { getMembers } from "../api/family";
 import { createPlan, getPlans, Plan, PlanDraft, PlanRSVP, rsvpPlan } from "../api/plans";
 import { useAuth } from "../auth/AuthContext";
@@ -116,7 +117,9 @@ export default function PlansPage() {
 
   const [selectedDay, setSelectedDay] = useState(dayStart(new Date()));
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [members, setMembers] = useState<User[]>([]);
+  const [members, setMembers] = useState<User[]>(
+    () => peekApiResponseCache<User[]>(null, "/api/family/members") ?? []
+  );
   const [profilePreviewMemberId, setProfilePreviewMemberId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +144,14 @@ export default function PlansPage() {
     };
   });
   const canCreate = currentUser?.role !== "child";
+
+  // Hydrate members from cache once the user profile is available.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const cached = peekApiResponseCache<User[]>(currentUser.id, "/api/family/members");
+    if (cached && cached.length > 0) setMembers(cached);
+  }, [currentUser?.id]);
+
   const range = useMemo(() => {
     if (view === "today") return [selectedDay, addDays(selectedDay, 1)] as const;
     if (view === "threeDays") return [selectedDay, addDays(selectedDay, 3)] as const;
@@ -154,7 +165,8 @@ export default function PlansPage() {
 
   const load = useCallback(async () => {
     if (!accessToken) return;
-    setLoading(true);
+    // Only block the UI with a spinner when there is no data to show yet.
+    if (plans.length === 0) setLoading(true);
     setError(null);
     try {
       setPlans(normalizePlans(await getPlans(accessToken, range[0], range[1])));
@@ -163,7 +175,7 @@ export default function PlansPage() {
     } finally {
       setLoading(false);
     }
-  }, [accessToken, range]);
+  }, [accessToken, range, plans.length]);
 
   const loadSilent = useCallback(async () => {
     if (!accessToken) return;
