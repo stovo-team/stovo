@@ -239,14 +239,13 @@ describe("message media sizing", () => {
   });
 });
 
-describe("expanded video player", () => {
-  it("uses the full viewport for the expanded video stage", () => {
-    expect(rule(".video-player-lightbox")).toContain("padding: 0;");
-    expect(rule(".video-player-expanded")).toContain("height: 100dvh;");
-    expect(rule(".video-player-expanded")).toContain("width: 100vw;");
-    expect(rule(".video-player-expanded")).toContain("max-height: none;");
-    expect(rule(".video-player-expanded")).toContain("max-width: none;");
-    expect(rule(".video-player-expanded")).toContain("aspect-ratio: auto;");
+describe("native fullscreen video player", () => {
+  it("uses the full viewport on the existing video stage", () => {
+    expect(rule(".video-player:fullscreen")).toContain("height: 100vh;");
+    expect(rule(".video-player:fullscreen")).toContain("width: 100vw;");
+    expect(rule(".video-player:fullscreen")).toContain("max-height: none;");
+    expect(rule(".video-player:fullscreen")).toContain("max-width: none;");
+    expect(rule(".video-player:fullscreen")).toContain("aspect-ratio: auto;");
   });
 });
 
@@ -265,10 +264,8 @@ describe("desktop chat refinements", () => {
     expect(desktopRule(".messenger-shell.has-active-chat .messages-panel")).toContain("padding-bottom: 18px;");
   });
 
-  it("keeps landscape video messages large and isolates audio-player interactions", () => {
-    expect(lastRule(".video-player.is-session-active.is-compact.is-landscape")).toContain(
-      "min-height: 240px;"
-    );
+  it("keeps landscape video messages within their bubble and isolates audio-player interactions", () => {
+    expect(rule(".video-player.is-landscape")).toContain("width: 100%;");
     expect(audioPlayer).toContain("onContextMenu={stopInteraction}");
   });
 
