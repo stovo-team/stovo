@@ -9,6 +9,7 @@ import {
   removeMember
 } from "../api/family";
 import { ApiError } from "../api/client";
+import { peekApiResponseCache } from "../api/apiResponseCache";
 import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import { shareContent } from "../native/nativeSharePlugin";
@@ -60,13 +61,23 @@ function MemberAvatar({ accessToken, member }: { accessToken: string | null; mem
 
 export default function MembersPage() {
   const { accessToken, currentUser, authRequest } = useAuth();
-  const [family, setFamily] = useState<Family | null>(null);
-  const [members, setMembers] = useState<User[]>([]);
+  const profileId = currentUser?.id ?? null;
+  const [family, setFamily] = useState<Family | null>(
+    () => peekApiResponseCache<Family>(profileId, "/api/family")
+  );
+  const [members, setMembers] = useState<User[]>(
+    () => peekApiResponseCache<User[]>(profileId, "/api/family/members") ?? []
+  );
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    // If the cache already has data, start with isLoading=false so the UI
+    // is visible immediately while the background fetch revalidates.
+    const profileId = null; // will be evaluated per-render after currentUser loads
+    return true;
+  });
   const [isContactMenuOpen, setIsContactMenuOpen] = useState(false);
   const inviteFormRef = useRef<HTMLFormElement | null>(null);
   const contactMenuRef = useRef<HTMLDivElement | null>(null);
@@ -75,6 +86,19 @@ export default function MembersPage() {
     expiresInHours: 48,
     maxUses: 1
   });
+
+  // Once currentUser is available, peek the cache and pre-populate state so
+  // the list renders instantly before the network request resolves.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const cachedFamily = peekApiResponseCache<Family>(currentUser.id, "/api/family");
+    const cachedMembers = peekApiResponseCache<User[]>(currentUser.id, "/api/family/members");
+    if (cachedFamily) setFamily(cachedFamily);
+    if (cachedMembers && cachedMembers.length > 0) {
+      setMembers(cachedMembers);
+      setIsLoading(false);
+    }
+  }, [currentUser?.id]);
 
   const allowedInviteRoles = useMemo(
     () => (currentUser ? inviteRolesFor(currentUser.role) : []),
@@ -97,7 +121,8 @@ export default function MembersPage() {
     if (!accessToken) {
       return;
     }
-    setIsLoading(true);
+    // Only show the full-page spinner when there is nothing cached to display.
+    if (members.length === 0) setIsLoading(true);
     setError(null);
     try {
       const [familyResult, memberResult] = await Promise.all([
@@ -111,11 +136,12 @@ export default function MembersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessToken, authRequest]);
+  }, [accessToken, authRequest, members.length]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
 
   useEffect(() => {
     function handleDocumentMouseDown(event: MouseEvent) {

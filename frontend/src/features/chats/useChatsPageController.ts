@@ -6,6 +6,7 @@ import type { Socket } from "socket.io-client";
 import { useStrings } from "../../i18n/LanguageContext";
 import type { User } from "../../api/auth";
 import { Chat } from "../../api/chats";
+import type { Message } from "../../api/chats";
 import { FamilyFile } from "../../api/files";
 import type { AppearanceSettings } from "../../appearance/AppearanceContext";
 import { useChatDetailsActions } from "./details/useChatDetailsActions";
@@ -30,6 +31,7 @@ import { useCallSession } from "./calling/useCallSession";
 import { isMobileCallViewport } from "./shared/callLifecycle";
 import type { SharedContentTab } from "./shared/types";
 import { canPostToChannel, computeSharedContentItems, displayChatName, isSuppressedUserError } from "./shared/chatPresentation";
+import { loadRecentChatHistoryFromLocalStorage } from "../../chatHistoryCache";
 
 export type UseChatsPageControllerParams = {
   chatId: string | undefined;
@@ -344,16 +346,32 @@ export function useChatsPageController({
     bottomAnchorMessageIdRef.current = null;
     setSelectedChat(chat);
     setError(null);
+
+    // Try in-memory cache first (O(1), synchronous).
     const cachedMessages = messageCacheRef.current[chat.id];
     if (cachedMessages) {
       setMessages(cachedMessages);
+      setIsChatLoading(false);
     } else {
-      // Navigation updates the route asynchronously. Mark the target chat as
-      // loading now so its message panel never briefly renders "No messages"
-      // before the route-driven loader starts its first request.
-      setMessages([]);
-      setIsChatLoading(true);
+      // Fall back to the synchronous localStorage cache so the user sees
+      // previously-read messages instantly without any spinner, even on the
+      // first open after a page refresh where the in-memory cache is cold.
+      const localCached = currentUser?.id
+        ? loadRecentChatHistoryFromLocalStorage<Message>(currentUser.id, chat.id)
+        : null;
+      if (localCached && localCached.length > 0) {
+        // Populate the in-memory cache so subsequent switches are also instant.
+        messageCacheRef.current[chat.id] = localCached;
+        setMessages(localCached);
+        setIsChatLoading(false);
+      } else {
+        // No local cache available. Navigation updates the route asynchronously,
+        // so mark the target chat as loading now to avoid a "No messages" flash.
+        setMessages([]);
+        setIsChatLoading(true);
+      }
     }
+
     if (chat.id === chatId) return;
     navigateToChat(chat);
   }
