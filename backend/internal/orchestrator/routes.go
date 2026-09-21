@@ -473,6 +473,7 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 	hostCfg := &container.HostConfig{
 		NetworkMode:   container.NetworkMode(netName),
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
+		DNS:           []string{"77.88.8.8", "1.1.1.1", "8.8.8.8"},
 	}
 
 	// Check if container already exists
@@ -494,6 +495,9 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 					needsRecreate = true
 					break
 				}
+			}
+			if inspect.HostConfig == nil || len(inspect.HostConfig.DNS) == 0 {
+				needsRecreate = true
 			}
 		}
 
@@ -627,7 +631,10 @@ func (o *Orchestrator) initChildDBSchema(slug string) error {
 		Env:        env,
 		Entrypoint: []string{"/bin/sh", "-ec"},
 		Cmd:        []string{"atlas migrate apply --dir file:///app/migrations --url \"$DATABASE_URL\""},
-	}, &container.HostConfig{NetworkMode: container.NetworkMode(netName)}, nil, nil, name)
+	}, &container.HostConfig{
+		NetworkMode: container.NetworkMode(netName),
+		DNS:         []string{"77.88.8.8", "1.1.1.1", "8.8.8.8"},
+	}, nil, nil, name)
 	if err != nil {
 		return fmt.Errorf("create Atlas migration container: %w", err)
 	}

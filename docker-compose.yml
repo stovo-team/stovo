@@ -6,6 +6,10 @@
 x-backend: &backend
   build:
     context: ./backend
+  dns:
+    - 77.88.8.8
+    - 1.1.1.1
+    - 8.8.8.8
   environment:
     GROQ_API_KEY: ${GROQ_API_KEY:-}
     GROQ_BASE_URL: ${GROQ_BASE_URL:-}
@@ -98,6 +102,10 @@ services:
     build:
       context: ./backend
     restart: "no"
+    dns:
+      - 77.88.8.8
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
