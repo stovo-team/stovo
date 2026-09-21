@@ -61,6 +61,7 @@ import {
   loadCachedStorageItemsFromLocalStorage,
   saveCachedFileList
 } from "../fileLibraryCache";
+import { loadCachedChatListFromLocalStorage, saveCachedChatList } from "../chatHistoryCache";
 import { syncChatReplicaDeltas } from "../features/chats/sidebar/chatDeltaSync";
 import {
   initialStorageSelection,
@@ -248,7 +249,9 @@ export default function FilesPage() {
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [files, setFiles] = useState<FamilyFile[]>([]);
-  const [chats, setChats] = useState<Chat[]>([]);
+  const [chats, setChats] = useState<Chat[]>(() =>
+    currentUser?.id ? loadCachedChatListFromLocalStorage<Chat>(currentUser.id) ?? [] : []
+  );
   const [storageCanvases, setStorageCanvases] = useState<Canvas[]>(() =>
     currentUser?.id ? loadCachedStorageItemsFromLocalStorage<Canvas>(currentUser.id, "canvases") ?? [] : []
   );
@@ -277,7 +280,6 @@ export default function FilesPage() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const sourceMenuRef = useRef<HTMLDivElement | null>(null);
   const storageDetailsCloseRef = useRef<HTMLButtonElement | null>(null);
-
   const storageFilters: Array<{ label: string; value: StorageFilter }> = [
     { label: strings.files.filters.all, value: "all" },
     { label: strings.files.filters.photos, value: "photos" },
@@ -288,7 +290,6 @@ export default function FilesPage() {
     { label: strings.files.filters.checklists ?? "Checklists", value: "checklists" },
     { label: strings.files.filters.favorites, value: "favorites" }
   ];
-
   const storageSourceItems = useMemo(() => {
     const chatLinks = (id: string, originChatId: string, linkedChatIds: string[], mimeType: string) =>
       [...new Set([originChatId, ...linkedChatIds].filter(Boolean))].map((chatId) => ({
@@ -304,7 +305,6 @@ export default function FilesPage() {
       ...storageChecklists.flatMap((checklist) => chatLinks(checklist.id, checklist.originChatId, checklist.linkedChatIds, "application/x-stovo-checklist"))
     ];
   }, [files, storageCanvases, storageChecklists]);
-
   const sourceGroups = useMemo(() => {
     return buildStorageSources(storageSourceItems, chats, currentUser?.id, {
       archive: strings.files.categories.archive,
@@ -318,8 +318,6 @@ export default function FilesPage() {
   }, [storageSourceItems, chats, currentUser?.id, strings]);
   const selectedSource = sourceGroups.flatMap((group) => group.sources)
     .find((source) => source.chatId === sourceChatId);
-
-
   const closeMobileDetails = useCallback(() => {
     const fileIdToRestore = selectedFileId;
     setFullViewImage(null);
@@ -354,6 +352,7 @@ export default function FilesPage() {
         dispatchSelection({ type: "load-default", fileId: filesResult[0]?.id ?? null });
       }
       setChats(chatsResult);
+      if (currentUser?.id) void saveCachedChatList(currentUser.id, chatsResult);
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not load storage");
     } finally {
@@ -400,6 +399,11 @@ export default function FilesPage() {
       cancelled = true;
     };
   }, [accessToken, currentUser?.id, load]);
+
+  useEffect(() => {
+    const userId = currentUser?.id;
+    setChats(userId ? loadCachedChatListFromLocalStorage<Chat>(userId) ?? [] : []);
+  }, [currentUser?.id]);
 
   useEffect(() => {
     const userId = currentUser?.id;

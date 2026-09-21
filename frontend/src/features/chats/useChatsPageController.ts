@@ -31,7 +31,7 @@ import { useCallSession } from "./calling/useCallSession";
 import { isMobileCallViewport } from "./shared/callLifecycle";
 import type { SharedContentTab } from "./shared/types";
 import { canPostToChannel, computeSharedContentItems, displayChatName, isSuppressedUserError } from "./shared/chatPresentation";
-import { loadRecentChatHistoryFromLocalStorage } from "../../chatHistoryCache";
+import { loadCachedChatListFromLocalStorage, loadLastActiveChatId, loadRecentChatHistoryFromLocalStorage, saveLastActiveChatId } from "../../chatHistoryCache";
 
 export type UseChatsPageControllerParams = {
   chatId: string | undefined;
@@ -69,9 +69,8 @@ export function useChatsPageController({
   const workspace = useChatWorkspaceState({ accessToken });
   const {
     family, members, setMembers, chats, setChats, selectedChat, setSelectedChat,
-    isLoading, isChatLoading, setIsChatLoading, isOnline, chatsRef, accessTokenRef, chatMutationVersionRef
+    isChatLoading, setIsChatLoading, isOnline, chatsRef, accessTokenRef, chatMutationVersionRef
   } = workspace;
-
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -84,13 +83,10 @@ export function useChatsPageController({
   const [error, setError] = useState<string | null>(null);
   const [isFamilyInviteOpen, setIsFamilyInviteOpen] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(isMobileCallViewport);
-
   const socketRef = useRef<Socket | null>(null);
   const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
   const chatMenuRef = useRef<HTMLDivElement | null>(null);
-
   const unreadTotal = useMemo(() => chats.reduce((total, chat) => total + chat.unreadCount, 0), [chats]);
-
   const canPostInSelectedChannel = selectedChat ? canPostToChannel(selectedChat, currentUser) : false;
   const canCommentInSelectedChannel = Boolean(
     selectedChat && selectedChat.type === "channel" && !canPostInSelectedChannel && selectedChat.commentsEnabled
@@ -99,9 +95,7 @@ export function useChatsPageController({
     selectedChat && selectedChat.type === "channel" && !canPostInSelectedChannel && !selectedChat.commentsEnabled
   );
   const requiresThreadToSend = canCommentInSelectedChannel;
-
   const focusComposerInput = useCallback(() => composerInputRef.current?.focus(), []);
-
   const thread = useMessageThread({
     chatId, archiveGroup, accessToken, currentUser, selectedChat, isMobileViewport, socketRef, authRequest,
     channelCommentsDisabledForViewer, onChatsUpdate: setChats, onSelectedChatUpdate: setSelectedChat,
@@ -122,7 +116,6 @@ export function useChatsPageController({
     stickToBottomRef, forceScrollToBottomRef, bottomAnchorMessageIdRef,
     resetForChatChange: resetThreadForChatChange
   } = thread;
-
   const missingCommentThread = requiresThreadToSend && !threadRootMessageId;
 
   const dataLoader = useChatDataLoader({
@@ -296,11 +289,18 @@ export function useChatsPageController({
       didAutoOpenDesktopChatRef.current = false;
       return;
     }
-    if (isLoading || chats.length === 0 || didAutoOpenDesktopChatRef.current) return;
+    const cachedChats = currentUser?.id ? loadCachedChatListFromLocalStorage<Chat>(currentUser.id) ?? [] : [];
+    const availableChats = chats.length > 0 ? chats : cachedChats;
+    if (availableChats.length === 0 || didAutoOpenDesktopChatRef.current) return;
     didAutoOpenDesktopChatRef.current = true;
-    openChat(chats[0]);
+    const lastActiveChatId = currentUser?.id ? loadLastActiveChatId(currentUser.id) : null;
+    openChat(availableChats.find((chat) => chat.id === lastActiveChatId) ?? availableChats[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatId, chats, isLoading, isMobileViewport]);
+  }, [chatId, chats, currentUser?.id, isMobileViewport]);
+
+  useEffect(() => {
+    if (currentUser?.id && selectedChat?.id) saveLastActiveChatId(currentUser.id, selectedChat.id);
+  }, [currentUser?.id, selectedChat?.id]);
 
   useEffect(() => {
     setChatTitleDraft(selectedChat ? displayChatName(selectedChat, currentUser?.id, strings) : "");

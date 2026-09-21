@@ -7697,95 +7697,6 @@ span.message-spoiler.is-revealed {
   max-width: 100%;
 }
 
-.video-player.is-compact .video-player-controls {
-  display: none;
-}
-
-.video-player-compact-chrome {
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-  z-index: 3;
-}
-
-.video-player-play-overlay {
-  align-items: center;
-  background: rgba(20, 23, 29, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  border-radius: 50%;
-  color: #ffffff;
-  cursor: pointer;
-  display: inline-flex;
-  height: 56px;
-  justify-content: center;
-  left: 50%;
-  pointer-events: auto;
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 56px;
-}
-
-.video-player-compact-time {
-  background: rgba(0, 0, 0, 0.55);
-  border-radius: 999px;
-  bottom: 8px;
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  padding: 2px 8px;
-  pointer-events: none;
-  position: absolute;
-  right: 8px;
-}
-
-.video-player-lightbox {
-  align-items: center;
-  background: rgba(0, 0, 0, 0.86);
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  padding: 0;
-  position: fixed;
-  z-index: 120;
-}
-
-.video-player-expanded {
-  aspect-ratio: auto;
-  height: 100dvh;
-  max-height: none;
-  max-width: none;
-  width: 100vw;
-}
-
-.video-player-expanded.is-portrait {
-  max-height: min(92vh, 900px);
-  max-width: min(88vw, 480px);
-  width: auto;
-}
-
-.video-player-expanded.is-landscape {
-  width: min(96vw, 1100px);
-  max-height: min(92vh, 900px);
-}
-
-.video-player-lightbox-close {
-  align-items: center;
-  background: rgba(20, 23, 29, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  color: #ffffff;
-  cursor: pointer;
-  display: inline-flex;
-  height: 40px;
-  justify-content: center;
-  position: absolute;
-  right: 10px;
-  top: 10px;
-  width: 40px;
-  z-index: 4;
-}
-
-.video-player-media,
 .video-player > video {
   background: #000000;
   display: block;
@@ -7794,10 +7705,6 @@ span.message-spoiler.is-revealed {
   object-fit: cover;
   position: absolute;
   width: 100%;
-}
-
-.video-player-expanded > video {
-  object-fit: contain;
 }
 
 .video-player-overlay {
@@ -14607,16 +14514,16 @@ span.message-spoiler.is-revealed {
   bottom: calc(100% + 14px);
   left: 50%;
   transform: translateX(-50%);
-  width: 320px;
+  width: 336px;
   max-width: 90vw;
-  background: rgba(18, 24, 38, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  background: color-mix(in oklab, var(--surface-raised) 92%, #101827);
+  backdrop-filter: blur(24px) saturate(1.12);
+  -webkit-backdrop-filter: blur(24px) saturate(1.12);
+  border: 1px solid color-mix(in oklab, var(--border-default) 70%, transparent);
+  border-radius: 28px;
+  box-shadow: var(--float-shadow-strong), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
   z-index: 1000;
-  padding: 14px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -14644,12 +14551,50 @@ span.message-spoiler.is-revealed {
   max-width: 360px;
 }
 
+.meeting-intel-background-toast {
+  align-items: center;
+  background: color-mix(in oklab, var(--surface-raised) 94%, #101827);
+  border: 1px solid color-mix(in oklab, var(--accent-primary) 34%, var(--border-default));
+  border-radius: 18px;
+  bottom: 92px;
+  box-shadow: var(--float-shadow-strong), 0 1px 0 rgba(255, 255, 255, .08) inset;
+  color: var(--text-primary);
+  display: flex;
+  gap: 10px;
+  left: 50%;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 10px 14px 10px 10px;
+  position: fixed;
+  transform: translateX(-50%);
+  z-index: 1200;
+  animation: meeting-intel-toast-in .22s cubic-bezier(.16, 1, .3, 1);
+}
+
+.meeting-intel-background-toast-icon {
+  align-items: center;
+  background: color-mix(in oklab, var(--accent-primary) 18%, var(--surface-card));
+  border-radius: 50%;
+  color: var(--accent-primary);
+  display: inline-flex;
+  flex: 0 0 34px;
+  height: 34px;
+  justify-content: center;
+}
+
+.meeting-intel-background-toast > span:last-child { display: grid; gap: 2px; }
+.meeting-intel-background-toast strong { font-size: .78rem; }
+.meeting-intel-background-toast small { color: var(--text-tertiary); font-size: .7rem; }
+
+@keyframes meeting-intel-toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px) scale(.96); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+
 .meeting-intel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 8px 10px;
 }
 
 .meeting-intel-title-row {
@@ -14659,10 +14604,10 @@ span.message-spoiler.is-revealed {
 }
 
 .meeting-intel-logo-wrap {
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--accent-primary) 18%, var(--surface-card));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14670,9 +14615,7 @@ span.message-spoiler.is-revealed {
 }
 
 .meeting-intel-logo {
-  width: 18px;
-  height: 18px;
-  color: #ffffff;
+  color: var(--accent-primary);
 }
 
 .meeting-intel-title-copy {
@@ -14681,34 +14624,36 @@ span.message-spoiler.is-revealed {
 }
 
 .meeting-intel-name {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
   letter-spacing: -0.01em;
 }
 
 .meeting-intel-subtitle {
   font-size: 0.68rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-tertiary);
 }
 
 .meeting-intel-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 0;
 }
 
 .meeting-intel-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 10px 12px;
-  transition: all 0.15s ease;
+  border-radius: 20px;
+  padding: 11px 10px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.meeting-intel-card + .meeting-intel-card {
+  border-top: 1px solid color-mix(in oklab, var(--border-default) 62%, transparent);
 }
 
 .meeting-intel-card.is-active {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: color-mix(in oklab, var(--accent-soft) 46%, transparent);
+  box-shadow: 0 1px 0 color-mix(in oklab, var(--accent-primary) 14%, transparent) inset;
 }
 
 .meeting-intel-card-head {
@@ -14718,9 +14663,9 @@ span.message-spoiler.is-revealed {
 }
 
 .meeting-intel-card-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14752,13 +14697,13 @@ span.message-spoiler.is-revealed {
 
 .meeting-intel-card-title {
   font-size: 0.82rem;
-  font-weight: 600;
-  color: #ffffff;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .meeting-intel-card-desc {
   font-size: 0.70rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -14786,13 +14731,14 @@ span.message-spoiler.is-revealed {
 }
 
 .meeting-intel-toggle-btn {
-  padding: 5px 12px;
-  border-radius: 8px;
+  min-height: 34px;
+  padding: 5px 13px;
+  border-radius: 999px;
   font-size: 0.74rem;
   font-weight: 600;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: color-mix(in oklab, var(--surface-card) 78%, var(--text-primary) 10%);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -14801,7 +14747,15 @@ span.message-spoiler.is-revealed {
 }
 
 .meeting-intel-toggle-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.2);
+  background: color-mix(in oklab, var(--accent-soft) 48%, var(--surface-card));
+  border-color: color-mix(in oklab, var(--accent-primary) 48%, var(--border-default));
+}
+
+.meeting-intel-toggle-btn:focus-visible,
+.meeting-intel-switch input:focus-visible + .meeting-intel-switch-slider,
+.meeting-intel-lang-select:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .meeting-intel-toggle-btn.is-recording {
@@ -14817,16 +14771,16 @@ span.message-spoiler.is-revealed {
 
 .meeting-intel-restricted-badge {
   font-size: 0.68rem;
-  color: rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 3px 8px;
-  border-radius: 6px;
+  color: var(--text-tertiary);
+  background: var(--surface-card);
+  padding: 5px 9px;
+  border-radius: 999px;
 }
 
 .meeting-intel-card-subbar {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid color-mix(in oklab, var(--border-default) 62%, transparent);
 }
 
 .meeting-intel-view-notes-btn {
@@ -14836,10 +14790,10 @@ span.message-spoiler.is-revealed {
   justify-content: center;
   gap: 6px;
   padding: 6px 10px;
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  border-radius: 8px;
-  color: #93c5fd;
+  background: color-mix(in oklab, var(--accent-soft) 56%, var(--surface-card));
+  border: 1px solid color-mix(in oklab, var(--accent-primary) 30%, var(--border-default));
+  border-radius: 999px;
+  color: var(--accent-primary);
   font-size: 0.72rem;
   font-weight: 500;
   cursor: pointer;
@@ -14863,7 +14817,7 @@ span.message-spoiler.is-revealed {
   position: absolute;
   cursor: pointer;
   inset: 0;
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in oklab, var(--surface-card) 72%, var(--text-primary) 20%);
   border-radius: 22px;
   transition: 0.2s;
 }
@@ -14891,7 +14845,7 @@ span.message-spoiler.is-revealed {
 .meeting-intel-card-lang-selector {
   margin-top: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid color-mix(in oklab, var(--border-default) 62%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -14900,7 +14854,7 @@ span.message-spoiler.is-revealed {
 
 .meeting-intel-lang-label {
   font-size: 0.72rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-tertiary);
 }
 
 .meeting-intel-lang-select-wrap {
@@ -14910,21 +14864,95 @@ span.message-spoiler.is-revealed {
 }
 
 .meeting-intel-lang-select {
-  appearance: none;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  padding: 4px 24px 4px 8px;
-  color: #ffffff;
-  font-size: 0.72rem;
+  align-items: center;
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  color: var(--text-primary);
   cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.72rem;
+  gap: 7px;
+  justify-content: space-between;
+  min-height: 32px;
+  min-width: 146px;
+  padding: 6px 10px 6px 12px;
+  text-align: left;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+.meeting-intel-lang-select:hover,
+.meeting-intel-lang-select[aria-expanded="true"] {
+  background: color-mix(in oklab, var(--accent-soft) 42%, var(--surface-card));
+  border-color: color-mix(in oklab, var(--accent-primary) 48%, var(--border-default));
+}
+
+.meeting-intel-lang-select > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .meeting-intel-lang-arrow {
+  color: var(--text-tertiary);
+  flex: 0 0 auto;
+  transition: transform .15s ease;
+}
+
+.meeting-intel-lang-arrow.is-open {
+  transform: rotate(180deg);
+}
+
+.meeting-intel-lang-menu {
+  background: color-mix(in oklab, var(--surface-raised) 94%, #101827);
+  border: 1px solid color-mix(in oklab, var(--border-default) 78%, transparent);
+  border-radius: 18px;
+  bottom: calc(100% + 8px);
+  box-shadow: var(--float-shadow-strong), 0 1px 0 rgba(255, 255, 255, .08) inset;
+  display: grid;
+  gap: 2px;
+  max-height: 240px;
+  min-width: 224px;
+  overflow-y: auto;
+  padding: 6px;
   position: absolute;
-  right: 6px;
-  pointer-events: none;
-  color: rgba(255, 255, 255, 0.5);
+  right: 0;
+  scrollbar-color: color-mix(in oklab, var(--text-tertiary) 55%, transparent) transparent;
+  scrollbar-width: thin;
+  z-index: 2;
+}
+
+.meeting-intel-lang-menu-heading {
+  color: var(--text-tertiary);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 6px 8px 5px;
+  text-transform: uppercase;
+}
+
+.meeting-intel-lang-menu button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: .76rem;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 0 9px;
+  text-align: left;
+  width: 100%;
+}
+
+.meeting-intel-lang-menu button:hover,
+.meeting-intel-lang-menu button.selected {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
 }
 
 /* ── Live Captions Floating Subtitle Overlay ─────────────────────── */
@@ -19899,10 +19927,6 @@ button.chat-info-title-edit:active:not(:disabled) {
     border-radius: 0;
   }
 
-  .video-player.is-session-active.is-compact.is-landscape {
-    min-height: 240px;
-  }
-
   .app-frame > .app-nav.app-nav--active-variant-a a.active {
     border: 0;
     opacity: 1;
@@ -19969,10 +19993,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   :root[data-platform="web"] .message-bubble.has-photo-attachments:has(.message-video-attachment):not(:has(.message-media-album)):has(.video-player.is-portrait) {
     max-width: min(400px, 68%);
     width: min(400px, 68%);
-  }
-
-  :root[data-platform="web"] .video-player.is-session-active.is-compact.is-landscape {
-    min-height: 240px;
   }
 
   :root[data-platform="web"] .app-frame > .app-nav.app-nav--active-variant-a {
@@ -20054,14 +20074,31 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 :root[data-platform="web"] .message-bubble.has-photo-attachments:has(.message-video-attachment),
 :root[data-platform="web"] .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
-  max-width: min(720px, 90%);
-  width: min(720px, 90%);
+  max-width: min(560px, 86%);
+  width: min(560px, 86%);
 }
 
 :root[data-platform="web"] .message-bubble.has-photo-attachments:has(.message-video-attachment):not(:has(.message-media-album)):has(.video-player.is-portrait),
 :root[data-platform="web"] .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)):not(:has(.message-media-album)):has(.video-player.is-portrait) {
   max-width: min(480px, 62%);
   width: min(480px, 62%);
+}
+
+/* Keep the chat player at its media aspect ratio on the web. The older desktop
+   layout wrapped controls into two rows, which consumed most of short previews. */
+:root[data-platform="web"] .video-player-controls {
+  grid-template-columns: 44px minmax(72px, 1fr) auto 44px 44px;
+  grid-template-rows: 44px;
+  padding: 24px 8px max(8px, env(safe-area-inset-bottom));
+}
+
+:root[data-platform="web"] .video-player-controls input[type="range"],
+:root[data-platform="web"] .video-player-controls button,
+:root[data-platform="web"] .video-player-controls output {
+  align-self: auto;
+  grid-column: auto;
+  grid-row: auto;
+  justify-self: auto;
 }
 
 :root[data-platform="web"] .chat-list-filters {
@@ -29040,6 +29077,12 @@ button.checklist-add-item-btn:hover,
 .guest-link-select-menu { background: var(--surface-raised); border: 1px solid var(--border-default); border-radius: 22px; box-shadow: var(--float-shadow-strong); display: grid; gap: 2px; left: 0; padding: 6px; position: absolute; right: 0; top: calc(100% + 7px); z-index: 101; }
 .guest-link-select-menu button { align-items: center; background: transparent; border: 0; border-radius: 12px; color: var(--text-primary); cursor: pointer; display: flex; font: inherit; font-weight: 600; justify-content: flex-start; min-height: 38px; padding: 0 12px; text-align: left; width: 100%; }
 .guest-link-select-menu button:hover, .guest-link-select-menu button.selected { background: var(--accent-soft); color: var(--accent-primary); }
+.guest-link-select-create { border-top: 1px solid var(--border-default); display: grid; gap: .5rem; margin-top: 4px; padding: .65rem .35rem .25rem; }
+.guest-link-select-create input { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-primary); font: inherit; min-height: 38px; padding: 0 .7rem; width: 100%; }
+.guest-link-select-create input:focus { border-color: var(--accent-primary); outline: 0; }
+.guest-link-select-create button { align-items: center; background: transparent; border: 1px solid var(--accent-primary); color: var(--accent-primary); justify-content: center; }
+.guest-link-select-create button:hover { background: var(--accent-soft); }
+.guest-link-select-create button:disabled { cursor: wait; opacity: .55; }
 .guest-link-custom-date { max-width: 270px; }
 .guest-link-create-button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: .5rem; border: 0; border-radius: 999px !important; color: var(--button-primary-text, #fff); background: var(--accent-primary); font: inherit; font-weight: 700; cursor: pointer; }
 .guest-link-create-button:hover { background: var(--accent-primary-hover); }.guest-link-create-button:disabled { opacity: .65; cursor: wait; }

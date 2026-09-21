@@ -28,6 +28,7 @@ export type ChatOverviewController = {
   handleCreateGroupChat: (event: FormEvent) => Promise<void>;
   handleCreateChannelChat: (event: FormEvent) => Promise<void>;
   handleCreateVoiceChat: (event: FormEvent) => Promise<void>;
+  createMeetingChat: (title: string) => Promise<Chat | null>;
 };
 
 export type ChatSidebarProps = {

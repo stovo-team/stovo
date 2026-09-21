@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { loadCachedChatList, loadCachedChatListFromLocalStorage, loadRecentChatHistoryFromLocalStorage, mergeLatestHistory, saveCachedChatList, saveRecentChatHistoryToLocalStorage, trimRecentChatHistory } from "./chatHistoryCache";
+import { loadCachedChatList, loadCachedChatListFromLocalStorage, loadLastActiveChatId, loadRecentChatHistoryFromLocalStorage, mergeLatestHistory, saveCachedChatList, saveLastActiveChatId, saveRecentChatHistoryToLocalStorage, trimRecentChatHistory } from "./chatHistoryCache";
 
 describe("chat history cache helpers", () => {
   beforeEach(() => {
@@ -60,6 +60,13 @@ describe("chat history cache helpers", () => {
     localStorage.setItem("stovo_cached_chats_user-123", JSON.stringify(sampleChats));
 
     expect(loadCachedChatListFromLocalStorage("user-123")).toEqual(sampleChats);
+  });
+
+  it("remembers the last active chat per user", () => {
+    saveLastActiveChatId("user-123", "chat-2");
+
+    expect(loadLastActiveChatId("user-123")).toBe("chat-2");
+    expect(loadLastActiveChatId("another-user")).toBeNull();
   });
 
   it("saves and synchronously restores recent chat history from local storage", () => {

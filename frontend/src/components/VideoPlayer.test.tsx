@@ -169,6 +169,14 @@ describe("VideoPlayer", () => {
     expect(controls?.querySelector('button[aria-label="Enter fullscreen"]')).not.toBeNull();
   });
 
+  it("keeps controls in chat when muted autoplay is enabled", async () => {
+    const { container } = renderPlayer(playerProps({ autoplay: true }));
+    await settle();
+
+    expect(container.querySelector(".video-player")?.classList.contains("is-compact")).toBe(false);
+    expect(container.querySelector(".video-player-controls")).not.toBeNull();
+  });
+
   it("announces loading and converts source, download, decode, and play failures to UI", async () => {
     let resolveDownload!: (blob: Blob) => void;
     downloadFileBlobMock.mockImplementationOnce(
@@ -489,8 +497,8 @@ describe("VideoPlayer", () => {
     expect(container.querySelector<HTMLButtonElement>('button[aria-label="Play video"]')?.disabled).toBe(true);
   });
 
-  it("plays audio only in the expanded lightbox, not the inline tile", async () => {
-    const { container } = renderPlayer(playerProps({ autoplay: true }));
+  it("plays directly in the inline player without opening a duplicate lightbox", async () => {
+    const { container } = renderPlayer(playerProps({ autoplay: false }));
     await settle();
     const inline = media(container);
     setMediaTiming(inline, 12, 0);
@@ -500,28 +508,14 @@ describe("VideoPlayer", () => {
     await settle();
 
     const playMock = inline.play as ReturnType<typeof vi.fn>;
-    const pauseMock = inline.pause as ReturnType<typeof vi.fn>;
     playMock.mockClear();
-    pauseMock.mockClear();
 
-    act(() => container.querySelector<HTMLElement>(".video-player")?.click());
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Play video"]')?.click());
     await settle();
 
-    const videos = document.querySelectorAll("video");
-    expect(videos).toHaveLength(2);
-    const expanded = videos[1] as HTMLVideoElement;
-    const expandedPlayMock = vi.spyOn(expanded, "play").mockResolvedValue(undefined);
-    act(() => expanded.dispatchEvent(new Event("loadedmetadata")));
-    await settle();
-
-    expect(pauseMock).toHaveBeenCalled();
-    expect(inline.muted).toBe(true);
-    expect(expanded.muted).toBe(false);
-    expect(expandedPlayMock).toHaveBeenCalled();
-
-    act(() => document.querySelector<HTMLButtonElement>('button[aria-label="Close video"]')?.click());
-    await settle();
-    expect(expanded.pause).toHaveBeenCalled();
+    expect(playMock).toHaveBeenCalled();
+    expect(inline.muted).toBe(false);
+    expect(document.querySelectorAll("video")).toHaveLength(1);
     expect(document.querySelector(".video-player-lightbox")).toBeNull();
   });
 });

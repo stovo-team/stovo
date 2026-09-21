@@ -6,8 +6,8 @@
  *  2. Meeting Recording (record/stop, REC timer, uploading badge)
  *  3. Live Captions & Real-Time AI Translation (toggle, target language dropdown/pills)
  */
-import React, { useEffect, useRef } from "react";
-import { ChevronDown, FileText, Globe, Radio, Sparkles, StopCircle, Video, VideoOff } from "lucide-react";
+import React, { useEffect, useId, useRef, useState } from "react";
+import { Check, ChevronDown, FileText, Globe, Radio, Sparkles, StopCircle, Video, VideoOff } from "lucide-react";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { SUPPORTED_LANGUAGES } from "./useLiveCaptions";
 import type { RecordingState } from "./useCallRecording";
@@ -37,6 +37,17 @@ export type MeetingIntelligencePopoverProps = {
   isMobile?: boolean;
 };
 
+/** A transient, call-level confirmation for work that continues server-side. */
+export function MeetingBackgroundToast({ visible }: { visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <div className="meeting-intel-background-toast" role="status" aria-live="polite">
+      <span className="meeting-intel-background-toast-icon"><Sparkles size={17} aria-hidden="true" /></span>
+      <span><strong>AI Notes are being prepared</strong><small>They’ll appear in this chat once ready.</small></span>
+    </div>
+  );
+}
+
 export function MeetingIntelligencePopover({
   isOpen,
   onClose,
@@ -57,6 +68,12 @@ export function MeetingIntelligencePopover({
   isMobile = false,
 }: MeetingIntelligencePopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
+  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const languageMenuId = useId();
+
+  useEffect(() => {
+    if (!isOpen) setIsLanguageMenuOpen(false);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -67,6 +84,10 @@ export function MeetingIntelligencePopover({
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (isLanguageMenuOpen) {
+          setIsLanguageMenuOpen(false);
+          return;
+        }
         onClose();
       }
     };
@@ -76,7 +97,7 @@ export function MeetingIntelligencePopover({
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isLanguageMenuOpen, isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -86,6 +107,7 @@ export function MeetingIntelligencePopover({
 
   const isRecActive = recordingState === "recording" || recordingState === "starting";
   const isRecStopping = recordingState === "stopping" || recordingState === "uploading";
+  const selectedLanguage = SUPPORTED_LANGUAGES.find((language) => language.code === targetLanguage);
 
   return (
     <div
@@ -261,19 +283,39 @@ export function MeetingIntelligencePopover({
                 <span>Translate to:</span>
               </div>
               <div className="meeting-intel-lang-select-wrap">
-                <select
-                  value={targetLanguage}
-                  onChange={(e) => onChangeTargetLanguage(e.target.value)}
+                <button
+                  type="button"
                   className="meeting-intel-lang-select"
                   aria-label="Select target caption language"
+                  aria-controls={languageMenuId}
+                  aria-expanded={isLanguageMenuOpen}
+                  aria-haspopup="listbox"
+                  onClick={() => setIsLanguageMenuOpen((open) => !open)}
                 >
-                  {SUPPORTED_LANGUAGES.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="meeting-intel-lang-arrow" />
+                  <span>{selectedLanguage?.label ?? "Choose language"}</span>
+                  <ChevronDown size={14} className={`meeting-intel-lang-arrow${isLanguageMenuOpen ? " is-open" : ""}`} />
+                </button>
+                {isLanguageMenuOpen && (
+                  <div id={languageMenuId} className="meeting-intel-lang-menu" role="listbox" aria-label="Target caption language">
+                    <span className="meeting-intel-lang-menu-heading">Translate captions to</span>
+                    {SUPPORTED_LANGUAGES.map((language) => (
+                      <button
+                        type="button"
+                        key={language.code}
+                        role="option"
+                        aria-selected={language.code === targetLanguage}
+                        className={language.code === targetLanguage ? "selected" : ""}
+                        onClick={() => {
+                          onChangeTargetLanguage(language.code);
+                          setIsLanguageMenuOpen(false);
+                        }}
+                      >
+                        <span>{language.label}</span>
+                        {language.code === targetLanguage && <Check size={15} aria-hidden="true" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

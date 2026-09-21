@@ -30,7 +30,7 @@ import { useTranscription } from "./useTranscription";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
-import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { MeetingBackgroundToast, MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
@@ -85,6 +85,7 @@ export function VoiceChannelStage({
 
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+  const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
   const fallbackSocketRef = useRef(null);
@@ -108,6 +109,12 @@ export function VoiceChannelStage({
     startTranscription,
     stopTranscription,
   } = transcription;
+
+  useEffect(() => {
+    if (!isAiNotesQueuedToastVisible) return;
+    const timer = window.setTimeout(() => setIsAiNotesQueuedToastVisible(false), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [isAiNotesQueuedToastVisible]);
 
   const recording = useCallRecording({
     accessToken: effectiveAccessToken,
@@ -232,11 +239,7 @@ export function VoiceChannelStage({
       ? "Starting AI Notes…"
       : transcriptState === "recording"
         ? "AI Notes is on. It will stop automatically when the call ends."
-        : transcriptState === "stopping" || transcriptState === "processing"
-          ? "AI Notes is processing in the background and will be posted in this chat."
-          : transcriptState === "ready"
-            ? "AI Notes is ready and will be posted in this chat with the call history."
-            : null;
+        : null;
   const visibleNotice = transcriptError ? aiNotesStatus : callNotice ?? aiNotesStatus;
 
   const resolveMemberInfo = (userId: string) => {
@@ -293,6 +296,7 @@ export function VoiceChannelStage({
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
+      <MeetingBackgroundToast visible={isAiNotesQueuedToastVisible} />
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}
@@ -560,6 +564,8 @@ export function VoiceChannelStage({
                   if (transcriptState === "idle" || transcriptState === "failed") {
                     void startTranscription();
                   } else if (transcriptState === "recording") {
+                    setIsIntelligenceOpen(false);
+                    setIsAiNotesQueuedToastVisible(true);
                     void stopTranscription();
                   }
                 }}
