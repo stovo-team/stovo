@@ -4,6 +4,7 @@ package bootstrap
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/url"
 	"strings"
@@ -221,21 +222,32 @@ func newLogBuffer(cfg config.Config) (*logging.Buffer, error) {
 
 func openDatabase(cfg config.Config) (*sql.DB, error) {
 	primaryURL := cfg.EffectiveDatabaseURL()
-	fallbackURL := cfg.LocalDatabaseURL()
 
 	db, err := connectDB(primaryURL, cfg)
 	if err == nil {
 		return db, nil
 	}
 
-	if strings.TrimSpace(cfg.DatabaseURL) != "" && fallbackURL != "" && primaryURL != fallbackURL {
-		log.Printf("[database] WARNING: failed to connect to external database (%v), falling back to local database: %s", err, sanitizeDBURL(fallbackURL))
-		fallbackDB, fallbackErr := connectDB(fallbackURL, cfg)
-		if fallbackErr == nil {
-			log.Printf("[database] successfully connected to fallback local database")
-			return fallbackDB, nil
+	if strings.TrimSpace(cfg.DatabaseURL) != "" {
+		log.Printf("[database] WARNING: failed to connect to primary database (%v), attempting local fallback...", err)
+
+		candidates := cfg.LocalFallbackCandidates()
+		var lastFallbackErr error
+		for _, fallbackURL := range candidates {
+			if fallbackURL == primaryURL {
+				continue
+			}
+			log.Printf("[database] trying fallback database: %s", sanitizeDBURL(fallbackURL))
+			fallbackDB, fallbackErr := connectDB(fallbackURL, cfg)
+			if fallbackErr == nil {
+				log.Printf("[database] successfully connected to fallback database: %s", sanitizeDBURL(fallbackURL))
+				return fallbackDB, nil
+			}
+			lastFallbackErr = fallbackErr
+			log.Printf("[database] fallback candidate (%s) failed: %v", sanitizeDBURL(fallbackURL), fallbackErr)
 		}
-		log.Printf("[database] WARNING: fallback to local database also failed: %v", fallbackErr)
+
+		return nil, fmt.Errorf("primary database failed (%w) AND all local fallbacks failed (last error: %v)", err, lastFallbackErr)
 	}
 
 	return nil, err

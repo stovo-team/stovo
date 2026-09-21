@@ -474,9 +474,16 @@ jobs:
                         tenant_database_url="$(tenant_database_url_for "$server_slug")"
                         docker_with_space_recovery sudo docker run --rm \
                           --network stovo_default \
+                          --dns 77.88.8.8 --dns 1.1.1.1 --dns 8.8.8.8 \
+                          -e "SERVER_ID=${server_slug}" \
                           -e "DATABASE_URL=${tenant_database_url}" \
+                          -e "POSTGRES_HOST=postgres" \
+                          -e "POSTGRES_PORT=5432" \
+                          -e "POSTGRES_USER=${pg_user}" \
+                          -e "POSTGRES_PASSWORD=${pg_pass}" \
+                          -e "POSTGRES_DB=stovo_db_${server_slug}" \
                           stovo-backend \
-                          sh -ec 'atlas migrate apply --dir file:///app/migrations --url "$DATABASE_URL"'
+                          sh -ec 'database_url="$(stovo-database-url)"; atlas migrate apply --dir file:///app/migrations --url "$database_url"'
 
                         echo "Re-deploying container for server: $server_slug"
                         if ! sudo docker exec stovo-master-minio sh -ec '
@@ -524,10 +531,16 @@ jobs:
                           --name "stovo-backend-${server_slug}" \
                           --network stovo_default \
                           --restart unless-stopped \
+                          --dns 77.88.8.8 --dns 1.1.1.1 --dns 8.8.8.8 \
                           -e "SERVER_ID=${server_slug}" \
                           -e "APP_URL=${server_url}" \
                           -e "API_URL=${server_url}" \
                           -e "DATABASE_URL=${tenant_database_url}" \
+                          -e "POSTGRES_HOST=postgres" \
+                          -e "POSTGRES_PORT=5432" \
+                          -e "POSTGRES_USER=${pg_user}" \
+                          -e "POSTGRES_PASSWORD=${pg_pass}" \
+                          -e "POSTGRES_DB=stovo_db_${server_slug}" \
                           -e "REDIS_URL=${tenant_redis_url}" \
                           -e "STORAGE_PROVIDER=minio" \
                           -e "MINIO_ENDPOINT=minio:9000" \
