@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -e
+
+# Git pre-commit hook to prevent commits that break SOLID architecture boundaries.
+echo "🔍 Running SOLID architecture boundaries check..."
+
+if command -v node >/dev/null 2>&1 && [[ -f "scripts/check-solid.cjs" ]]; then
+  RUN_CMD="node scripts/check-solid.cjs all"
+elif [[ -f "scripts/check-solid-boundaries.sh" ]]; then
+  RUN_CMD="bash scripts/check-solid-boundaries.sh all"
+else
+  exit 0
+fi
+
+if ! $RUN_CMD; then
+  echo ""
+  echo "❌ Pre-commit check failed!"
+  echo "💡 If line growth or file addition was intentional, run:"
+  echo "   npm --prefix frontend run baseline:update"
+  echo "   # or: bash scripts/update-solid-baselines.sh"
+  echo "   git add .architecture/size-baseline.tsv"
+  echo ""
+  exit 1
+fi
+
+echo "✅ SOLID architecture checks passed."
