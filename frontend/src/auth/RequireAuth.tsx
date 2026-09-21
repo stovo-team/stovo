@@ -4,7 +4,7 @@ import { useAuth } from "./AuthContext";
 
 export function RequireAuth({ children }: { children: ReactElement }) {
   const { currentUser, isLoading } = useAuth();
-  if (isLoading) {
+  if (isLoading && !currentUser) {
     return <main className="app-shell">Loading session...</main>;
   }
   if (!currentUser) {

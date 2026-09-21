@@ -1,12 +1,11 @@
 import { Dispatch, MutableRefObject, RefObject, SetStateAction, useCallback, useEffect, useRef } from "react";
-
-import type { User } from "../../../api/auth";
 import type { Chat, Message, MessageHistoryPage, PinnedMessage } from "../../../api/chats";
+import type { User } from "../../../api/auth";
 import { ApiError } from "../../../api/client";
 import { prefetchFiles } from "../../../api/files";
 import type { Family } from "../../../api/family";
 import { decryptMessage, decryptMessages } from "../../../api/messageCrypto";
-import { loadCachedChatList, loadRecentChatHistory, loadRecentChatHistoryFromLocalStorage, saveCachedChatList, saveRecentChatHistory } from "../../../chatHistoryCache";
+import { loadCachedChatList, loadCachedChatListFromLocalStorage, loadRecentChatHistory, loadRecentChatHistoryFromLocalStorage, saveCachedChatList, saveRecentChatHistory } from "../../../chatHistoryCache";
 import { applyMessagePreviewToChat, sortPinsByPosition } from "../shared/chatPresentation";
 import { mergeMessageLists } from "../shared/messageState";
 import type { MessageStateUpdate } from "../shared/types";
@@ -15,8 +14,6 @@ import { getOutboxMessagesForChat, type QueuedOutboxMessage } from "../outbox/me
 import { reconstructFileFromQueuedAttachment } from "../outbox/messageOutboxProcessor";
 import { peekCachedObjectUrl, seedMediaBlobCache } from "../../../mediaBlobCache";
 import { syncChatReplicaDeltas } from "./chatDeltaSync";
-
-/** A response started before a local chat mutation must not replace that mutation. */
 export function isCurrentChatMetadataRefresh(
   chatId: string,
   mutationVersionsAtRequest: Readonly<Record<string, number>>,
@@ -24,7 +21,6 @@ export function isCurrentChatMetadataRefresh(
 ) {
   return (currentMutationVersions[chatId] ?? 0) === (mutationVersionsAtRequest[chatId] ?? 0);
 }
-
 function outboxDeliveryState(item: QueuedOutboxMessage): Message["deliveryState"] {
   if (item.status === "failed") return "failed";
   const scheduledAt = new Date(item.scheduledFor ?? "").getTime();
@@ -32,7 +28,6 @@ function outboxDeliveryState(item: QueuedOutboxMessage): Message["deliveryState"
     ? "scheduled"
     : "sending";
 }
-
 export function mergeOutboxPendingMessages(
   current: Message[],
   outboxItems: QueuedOutboxMessage[],
@@ -134,7 +129,6 @@ export function mergeOutboxPendingMessages(
   }
   return merged.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
-
 export type UseChatDataLoaderParams = {
   accessTokenRef: RefObject<string | null>;
   authRequest: <T>(path: string, init?: { method?: string; body?: unknown }) => Promise<T>;
@@ -553,6 +547,13 @@ export function useChatDataLoader({
     }
     const userId = currentUser?.id;
     if (userId && chatsRef.current.length === 0) {
+      const localCached = loadCachedChatListFromLocalStorage<Chat>(userId);
+      if (localCached?.length) {
+        setChats(localCached);
+        const cachedChat = chatId ? localCached.find((chat) => chat.id === chatId) : null;
+        if (cachedChat) setSelectedChat(cachedChat);
+        setIsLoading(false);
+      }
       void loadCachedChatList<Chat>(userId).then((cached) => {
         if (cached && cached.length > 0 && chatsRef.current.length === 0) {
           setChats(cached);
@@ -586,6 +587,5 @@ export function useChatDataLoader({
 
   return { loadOverview, loadSelectedChat, syncCurrentView, reloadOverview };
 }
-
 export type ChatDataLoader = ReturnType<typeof useChatDataLoader>;
 
