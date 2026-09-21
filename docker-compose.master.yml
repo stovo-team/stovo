@@ -59,6 +59,10 @@ services:
     image: stovo-orchestrator:latest
     container_name: stovo-orchestrator
     restart: always
+    dns:
+      - 77.88.8.8
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       MASTER_DB_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-stovo_master_db}?sslmode=disable
       POSTGRES_USER: ${POSTGRES_USER:-postgres}

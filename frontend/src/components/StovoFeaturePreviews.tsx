@@ -4,17 +4,25 @@ import { useState } from "react";
 import {
   Check,
   CheckSquare,
+  Cpu,
   FileText,
   Folder,
   Hash,
+  Headphones,
   Image as ImageIcon,
   LockKeyhole,
   Mic,
   MoreHorizontal,
+  MoreVertical,
   MessageCircle,
   MessageSquare,
+  Palette,
+  Pause,
+  Play,
   Search,
   Shield,
+  ShieldCheck,
+  Sparkles,
   StickyNote,
   Users,
   Video,
@@ -401,13 +409,285 @@ export function StoragePreview() {
 }
 
 export function TranscriptPreview() {
-  return <div className="stovo-transcript-preview" aria-label="Stovo AI Notes preview">
-    <header><img src="/avatars/chat-design.webp" alt="Design review" className="stovo-space-avatar" /><div><strong>Design review</strong><small>4 members · Call ended</small></div><MoreHorizontal size={18} /></header>
-    <main>
-      <div className="stovo-call-status"><span className="stovo-feature-dot" /> AI Notes ready <small>Generated from this call</small></div>
-      <section className="stovo-transcript-card"><div><strong>AI Transcript</strong><span>38 min</span></div><p>“We’ll keep the smaller navigation and move the final review to Thursday.”</p><p className="stovo-transcript-quote">“The shared Files view will keep every supporting document in context.”</p><button>View transcript</button></section>
-      <section className="stovo-notes-card"><h3>Call summary</h3><p>Navigation direction is approved. The team will review the mobile states before launch.</p><h4>Action items</h4><ul><li><Check size={14} /> Mira: share mobile screens</li><li><Check size={14} /> Noah: schedule final review</li><li><Check size={14} /> Ivan: publish the notes</li></ul></section>
-    </main>
-    <footer><span><Users size={15} /> Posted in Design review</span><span>Private to this chat</span></footer>
-  </div>;
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [activeSegment, setActiveSegment] = useState<number>(0);
+  const [tasks, setTasks] = useState([
+    {
+      id: 1,
+      text: "Share revised mobile drawer screens & specs",
+      assignee: "Mira Chen",
+      role: "Design Lead",
+      avatar: "/avatars/user-mira.webp",
+      done: true,
+      tag: "Linear #142",
+      due: "Wed 5 PM",
+    },
+    {
+      id: 2,
+      text: "Schedule final cross-platform review for Thursday",
+      assignee: "Noah Vance",
+      role: "Product Lead",
+      avatar: "/avatars/user-noah.webp",
+      done: false,
+      tag: "Cal Sync",
+      due: "Thu 11 AM",
+    },
+    {
+      id: 3,
+      text: "Publish signed meeting notes & push to shared vault",
+      assignee: "Ivan",
+      role: "Core Team",
+      avatar: "/avatars/user-alex.webp",
+      done: false,
+      tag: "MinIO Vault",
+      due: "Thu 2 PM",
+    },
+  ]);
+
+  const toggleTask = (id: number) => {
+    setTasks((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, done: !item.done } : item))
+    );
+  };
+
+  const completedCount = tasks.filter((t) => t.done).length;
+
+  const waveformHeights = [
+    24, 38, 55, 32, 70, 48, 85, 92, 60, 40, 68, 88, 52, 78, 96, 64,
+    42, 82, 90, 58, 36, 74, 94, 62, 45, 80, 50, 66, 38, 72, 86, 44
+  ];
+
+  return (
+    <div className="stovo-transcript-preview" aria-label="Stovo AI Notes preview">
+      {/* Header bar */}
+      <header className="stovo-transcript-header">
+        <div className="stovo-transcript-header-left">
+          <img src="/avatars/chat-design.webp" alt="Design review" className="stovo-transcript-avatar" />
+          <div className="stovo-transcript-header-meta">
+            <div className="stovo-transcript-header-title-row">
+              <strong>Design review</strong>
+              <span className="stovo-call-ended-pill">Call ended · 38m 14s</span>
+            </div>
+            <div className="stovo-transcript-header-sub">
+              <span className="stovo-attendee-count">4 participants</span>
+              <div className="stovo-participants-stack">
+                <img src="/avatars/user-mira.webp" alt="Mira" title="Mira Chen" />
+                <img src="/avatars/user-noah.webp" alt="Noah" title="Noah Vance" />
+                <img src="/avatars/user-alex.webp" alt="Alex" title="Alex Kim" />
+                <span className="stovo-participant-bubble" title="Ivan">IV</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="stovo-transcript-header-right">
+          <button className="stovo-transcript-action-btn" aria-label="Call options">
+            <MoreVertical size={16} />
+          </button>
+        </div>
+      </header>
+
+      {/* Main 2-column bento body */}
+      <main className="stovo-transcript-main">
+        {/* Left Column: Audio scrubber & Live Transcript */}
+        <section className="stovo-col-transcript">
+          <div className="stovo-col-header">
+            <div className="stovo-col-title">
+              <Headphones size={14} className="stovo-accent-icon" />
+              <span>Call Audio &amp; Transcript</span>
+            </div>
+            <span className="stovo-col-badge">Audio Synced</span>
+          </div>
+
+          {/* Interactive audio player card */}
+          <div className="stovo-player-card">
+            <div className="stovo-player-top">
+              <button
+                type="button"
+                className={`stovo-play-btn ${isPlaying ? "playing" : ""}`}
+                onClick={() => setIsPlaying(!isPlaying)}
+                aria-label={isPlaying ? "Pause call audio" : "Play call audio"}
+              >
+                {isPlaying ? <Pause size={14} fill="#ffffff" /> : <Play size={14} fill="#ffffff" style={{ marginLeft: "2px" }} />}
+              </button>
+              <div className="stovo-player-time">
+                <strong>{isPlaying ? "14:28" : "00:00"}</strong>
+                <span>/ 38:14</span>
+              </div>
+              <div className="stovo-speaker-current">
+                <span className="stovo-speaker-dot" />
+                <span>Mira Chen speaking</span>
+              </div>
+            </div>
+
+            {/* Audio waveform visualizer */}
+            <div className="stovo-waveform-container" aria-hidden="true">
+              {waveformHeights.map((h, i) => (
+                <span
+                  key={i}
+                  className={`stovo-waveform-bar ${i < 12 ? "played" : ""} ${i === 11 ? "cursor" : ""}`}
+                  style={{ height: `${h}%` }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Transcript quotes stream */}
+          <div className="stovo-quotes-stream">
+            {/* Quote 1: Mira */}
+            <article className={`stovo-quote-card ${activeSegment === 0 ? "highlighted" : ""}`}>
+              <div className="stovo-quote-author">
+                <img src="/avatars/user-mira.webp" alt="Mira Chen" className="stovo-author-avatar" />
+                <div className="stovo-author-info">
+                  <div className="stovo-author-row">
+                    <strong>Mira Chen</strong>
+                    <span className="stovo-author-role">Design Lead</span>
+                  </div>
+                  <span className="stovo-quote-time">14:28</span>
+                </div>
+                <span className="stovo-quote-topic-tag">Navigation</span>
+              </div>
+              <p className="stovo-quote-text">
+                “We’ll keep the smaller navigation and move the final review to Thursday.”
+              </p>
+            </article>
+
+            {/* Quote 2: Noah */}
+            <article className={`stovo-quote-card ${activeSegment === 1 ? "highlighted" : ""}`}>
+              <div className="stovo-quote-author">
+                <img src="/avatars/user-noah.webp" alt="Noah Vance" className="stovo-author-avatar" />
+                <div className="stovo-author-info">
+                  <div className="stovo-author-row">
+                    <strong>Noah Vance</strong>
+                    <span className="stovo-author-role">Product</span>
+                  </div>
+                  <span className="stovo-quote-time">22:15</span>
+                </div>
+                <span className="stovo-quote-topic-tag">Files Vault</span>
+              </div>
+              <p className="stovo-quote-text">
+                “The shared Files view will keep every supporting document in context.”
+              </p>
+            </article>
+          </div>
+
+          <div className="stovo-transcript-bottom-row">
+            <button type="button" className="stovo-view-all-turns-btn">
+              <span>View full transcript (142 turns)</span>
+              <span className="stovo-turns-indicator">→</span>
+            </button>
+          </div>
+        </section>
+
+        {/* Right Column: AI Summary + Action Items + Granular MCP */}
+        <section className="stovo-col-intelligence">
+          {/* Call Summary Card */}
+          <div className="stovo-card-summary">
+            <div className="stovo-card-header">
+              <div className="stovo-card-title">
+                <Sparkles size={14} className="stovo-sparkle-coral" />
+                <h3>Call summary</h3>
+              </div>
+              <span className="stovo-grounded-pill" aria-label="Grounded">
+                <Check size={11} strokeWidth={2.5} />
+              </span>
+            </div>
+            <p className="stovo-summary-body">
+              Navigation direction is approved. The team will review the mobile states before launch.
+            </p>
+            <div className="stovo-decision-chips">
+              <span className="stovo-decision-chip">
+                <Check size={11} className="stovo-chip-check" /> Compact rail approved
+              </span>
+              <span className="stovo-decision-chip">
+                <Check size={11} className="stovo-chip-check" /> Final review Thursday 11 AM
+              </span>
+            </div>
+          </div>
+
+          {/* Action Items Card */}
+          <div className="stovo-card-actions">
+            <div className="stovo-card-header">
+              <div className="stovo-card-title">
+                <CheckSquare size={14} className="stovo-action-icon" />
+                <h4>Action items</h4>
+              </div>
+              <span className="stovo-actions-count">
+                {completedCount} of {tasks.length} done
+              </span>
+            </div>
+
+            <ul className="stovo-task-list">
+              {tasks.map((task) => (
+                <li
+                  key={task.id}
+                  className={`stovo-task-item ${task.done ? "task-completed" : ""}`}
+                  onClick={() => toggleTask(task.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleTask(task.id);
+                    }
+                  }}
+                >
+                  <button
+                    type="button"
+                    className={`stovo-checkbox ${task.done ? "checked" : ""}`}
+                    aria-label={task.done ? "Mark task incomplete" : "Mark task complete"}
+                  >
+                    {task.done && <Check size={11} strokeWidth={3} />}
+                  </button>
+
+                  <div className="stovo-task-content">
+                    <span className="stovo-task-text">{task.text}</span>
+                    <div className="stovo-task-meta">
+                      <div className="stovo-assignee-pill">
+                        <img src={task.avatar} alt={task.assignee} className="stovo-assignee-avatar" />
+                        <span>{task.assignee}</span>
+                      </div>
+                      <span className="stovo-task-due">{task.due}</span>
+                      <span className="stovo-task-tag">{task.tag}</span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Granular MCP Agent Access Card */}
+          <div className="stovo-card-mcp">
+            <div className="stovo-mcp-header">
+              <div className="stovo-mcp-title">
+                <Cpu size={13} className="stovo-mcp-icon" />
+                <span>Granular MCP Agent Access</span>
+              </div>
+              <span className="stovo-mcp-badge">
+                <span className="stovo-mcp-dot" /> Active
+              </span>
+            </div>
+            <div className="stovo-mcp-integrations">
+              <div className="stovo-mcp-pill">
+                <span className="mcp-avatar linear">L</span>
+                <div className="mcp-pill-text">
+                  <strong>Linear MCP</strong>
+                  <small>Exported 3 action items</small>
+                </div>
+                <span className="mcp-scope-badge">write:issues</span>
+              </div>
+              <div className="stovo-mcp-pill">
+                <span className="mcp-avatar claude">C</span>
+                <div className="mcp-pill-text">
+                  <strong>Claude Workspace</strong>
+                  <small>Indexed transcript context</small>
+                </div>
+                <span className="mcp-scope-badge">read:notes</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
 }

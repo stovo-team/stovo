@@ -53,4 +53,11 @@ describe("message archive grouped view", () => {
     expect(styles).toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*#ffffff;/);
     expect(styles).not.toMatch(/\.quick-access-panel-tabs button\.active\s*\{[^}]*\scolor:\s*var\(--accent-primary\);/);
   });
+
+  it("elevates quick access panels and grouped tabs above chat-detail edge shadows", () => {
+    const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    expect(styles).toMatch(/\.messenger-shell\.has-active-chat \.chat-detail > \.quick-access-panel\s*\{[^}]*z-index:\s*2;/);
+    expect(styles).toMatch(/\.chat-detail:has\(\.quick-access-panel\)::after\s*\{[^}]*display:\s*none;/);
+    expect(styles).toMatch(/\.quick-access-panel-tabs button\s*\{[^}]*box-shadow:\s*0 2px 8px/);
+  });
 });

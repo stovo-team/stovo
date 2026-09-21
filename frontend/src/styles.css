@@ -139,6 +139,7 @@
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  font-size: 15px;
   font-synthesis: none;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
@@ -1439,13 +1440,15 @@ button {
   background: var(--surface-card);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-control);
+  box-sizing: border-box;
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
+  font-size: 0.875rem;
   font-weight: 700;
   gap: 8px;
   justify-content: center;
-  min-height: 40px;
+  min-height: 36px;
   padding: 0 14px;
   /* Capacitor's Android WebView otherwise paints its own rectangular tap flash. */
   -webkit-tap-highlight-color: transparent;
@@ -3897,9 +3900,14 @@ h2 {
   }
 
   .messenger-shell.has-active-chat .chat-detail > .messages-panel,
-  .messenger-shell.has-active-chat .chat-detail > .phase-empty-state {
+  .messenger-shell.has-active-chat .chat-detail > .phase-empty-state,
+  .messenger-shell.has-active-chat .chat-detail > .quick-access-panel {
     position: relative;
     z-index: 2;
+  }
+
+  .messenger-shell.has-active-chat .chat-detail:has(.quick-access-panel)::after {
+    display: none;
   }
 
   .messenger-shell.has-active-chat .chat-detail-header--floating,
@@ -21152,9 +21160,11 @@ button.chat-info-title-edit:active:not(:disabled) {
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   gap: 4px;
-  padding: 6px 12px;
+  min-height: auto;
+  padding: 5px 12px;
 }
 
 .document-preview-open {
@@ -26205,9 +26215,10 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-radius: 999px;
   padding: 5px 11px;
   color: #ffffff;
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
+  min-height: auto;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
@@ -27197,9 +27208,10 @@ kbd {
   border: 1px solid color-mix(in oklab, var(--accent-primary) 30%, transparent);
   border-radius: 999px;
   padding: 4px 10px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
+  min-height: auto;
   transition: background 0.15s ease, border-color 0.15s ease;
   flex-shrink: 0;
 }
@@ -29085,7 +29097,7 @@ button.checklist-add-item-btn:hover,
 .quick-access-switch.is-on { background: var(--accent-primary); }
 .quick-access-switch.is-on:hover:not(:disabled) { background: var(--accent-primary-hover, var(--accent-primary)); border-color: transparent; }
 .quick-access-switch.is-on > span { transform: translateX(16px); }
-.quick-access-panel { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 20px 18px; }
+.quick-access-panel { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 20px 18px; position: relative; z-index: 2; }
 .quick-access-panel--archive { padding-inline: var(--active-chat-message-inset-x, 10px); padding-top: calc(var(--chat-floating-header-overlap, 52px) + 12px); }
 .quick-access-panel--outbox { padding-inline: var(--active-chat-message-inset-x, 10px); padding-top: calc(var(--chat-floating-header-overlap, 52px) + 12px); }
 .quick-access-panel-header { align-items: center; display: flex; gap: 9px; }
@@ -29108,10 +29120,10 @@ button.checklist-add-item-btn:hover,
   right: var(--active-chat-message-inset-x, 10px);
   top: 0;
 }
-.quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 52px; }
+.quick-access-panel-tabs { display: flex; gap: 6px; margin-left: 28px; margin-top: 52px; position: relative; z-index: 2; }
 .quick-access-panel-tabs--archive-controls { align-self: flex-start; left: var(--active-chat-message-inset-x, 10px); margin-left: 0; margin-top: calc(var(--chat-floating-header-overlap, 52px) + 12px); pointer-events: auto; position: absolute; top: 0; width: max-content; z-index: 11; }
 .messenger-shell.has-active-chat .chat-detail:has(.quick-access-panel-tabs--archive-controls) .messages-panel { margin-top: 0; padding-top: calc(var(--chat-floating-header-overlap, 52px) + 54px); }
-.quick-access-panel-tabs--archive-grouped { margin-left: 0; margin-top: 0; }
+.quick-access-panel-tabs--archive-grouped { margin-left: 0; margin-top: 0; position: relative; z-index: 2; }
 .quick-access-panel-tabs button {
   background: color-mix(in oklab, var(--island-surface) 94%, transparent);
   border: 1px solid color-mix(in oklab, var(--border-default) 60%, transparent);
@@ -29124,7 +29136,7 @@ button.checklist-add-item-btn:hover,
   padding: 7px 12px;
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   transition:
     background var(--motion-route-duration-fast, 0.15s) ease,
     border-color var(--motion-route-duration-fast, 0.15s) ease,
@@ -29138,7 +29150,7 @@ button.checklist-add-item-btn:hover,
 .quick-access-panel-tabs button.active {
   background: color-mix(in oklab, var(--accent-primary) 22%, var(--island-surface));
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary), 0 4px 14px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 0 0 1px var(--accent-primary), 0 2px 8px rgba(0, 0, 0, 0.3);
   color: #ffffff;
 }
 .archive-group-back-button { display: inline-flex; }
