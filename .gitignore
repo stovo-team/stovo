@@ -1,4 +1,8 @@
 .env
+!AGENTS.md
+!.cursor/
+!.cursor/rules/
+!.cursor/rules/tdd-orchestration.mdc
 .venv/
 venv/
 __pycache__/

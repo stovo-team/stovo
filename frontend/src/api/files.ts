@@ -307,9 +307,7 @@ export function updateFilePreferences(
 
 async function fetchFileBlob(accessToken: string, fileId: string) {
   const response = await fetch(`${getApiUrl()}/api/files/${fileId}/download`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    },
+    headers: accessToken.trim() ? { Authorization: `Bearer ${accessToken}` } : {},
     credentials: "include"
   });
 

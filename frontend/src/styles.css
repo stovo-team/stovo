@@ -7415,10 +7415,19 @@ span.message-spoiler.is-revealed {
    shrink-to-fit bubbles otherwise collapse to 0×0 when the player is width:100%. */
 .message-bubble.has-photo-attachments:has(.message-video-attachment),
 .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)) {
+  box-sizing: border-box;
   gap: 0;
   max-width: min(560px, 86%);
   padding: 2px;
   width: min(560px, 86%);
+}
+
+/* Documents use their own compact card, so do not retain the generic
+   text-message width or its large right-side gutter. */
+.message-bubble:has(.document-preview-card) {
+  max-width: min(420px, calc(100vw - 48px));
+  padding-inline: 6px;
+  width: min(420px, calc(100vw - 48px));
 }
 
 /* Portrait-only videos: a bit narrower than landscape (albums keep landscape width). */
@@ -13134,6 +13143,10 @@ span.message-spoiler.is-revealed {
 :root[data-density="compact"] .message-bubble {
   gap: 3px;
   padding: 8px 10px 7px;
+}
+
+:root[data-density="compact"] .message-bubble:has(.document-preview-card) {
+  padding-inline: 6px;
 }
 
 :root[data-density="compact"] .messages-panel {
