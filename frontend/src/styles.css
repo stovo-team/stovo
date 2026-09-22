@@ -7702,7 +7702,7 @@ span.message-spoiler.is-revealed {
   display: block;
   height: 100%;
   inset: 0;
-  object-fit: cover;
+  object-fit: contain;
   position: absolute;
   width: 100%;
 }
@@ -7879,17 +7879,27 @@ span.message-spoiler.is-revealed {
   content: none;
 }
 
-.video-player:fullscreen {
-  aspect-ratio: auto;
-  border: 0;
-  border-radius: 0;
-  height: 100vh;
-  max-height: none;
-  max-width: none;
-  width: 100vw;
+.video-player-viewer-backdrop {
+  background: rgba(5, 8, 12, 0.82);
+  inset: 0;
+  position: fixed;
+  z-index: 2147483646;
 }
 
-.video-player:fullscreen .video-player-controls {
+.video-player.is-expanded {
+  border-radius: 16px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  left: 50%;
+  max-height: calc(100dvh - 48px);
+  max-width: calc(100vw - 48px);
+  min-height: 0;
+  position: fixed;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2147483647;
+}
+
+.video-player.is-expanded .video-player-controls {
   padding-bottom: max(12px, env(safe-area-inset-bottom));
   padding-left: max(12px, env(safe-area-inset-left));
   padding-right: max(12px, env(safe-area-inset-right));

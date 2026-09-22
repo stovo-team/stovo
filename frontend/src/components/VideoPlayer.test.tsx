@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FamilyFile } from "../api/files";
 import { clearMediaBlobCache, seedMediaBlobCache } from "../mediaBlobCache";
 import { videoPlaybackSession, type VideoIdentity } from "../videoPlaybackSession";
-import { formatVideoTime, orientationStyle, VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
+import { expandedVideoStyle, formatVideoTime, orientationStyle, VideoPlayer, type VideoPlayerProps } from "./VideoPlayer";
 
 const { downloadFileBlobMock, createStreamingMediaUrlMock } = vi.hoisted(() => ({
   downloadFileBlobMock: vi.fn(),
@@ -166,7 +166,7 @@ describe("VideoPlayer", () => {
       .toBe("true");
     expect(controls?.querySelector('input[aria-label="Seek video"]')).not.toBeNull();
     expect(controls?.querySelector('button[aria-label="Mute video"]')).not.toBeNull();
-    expect(controls?.querySelector('button[aria-label="Enter fullscreen"]')).not.toBeNull();
+    expect(controls?.querySelector('button[aria-label="Open video viewer"]')).not.toBeNull();
   });
 
   it("keeps controls in chat when muted autoplay is enabled", async () => {
@@ -302,38 +302,30 @@ describe("VideoPlayer", () => {
     expect(videoPlaybackSession.getSnapshot()).toBeNull();
   });
 
-  it("uses the existing root and video node for fullscreen entry and exit", async () => {
+  it("opens an inset viewer that keeps the existing video node and its aspect ratio", async () => {
     const { container } = renderPlayer();
     await settle();
     const root = container.querySelector<HTMLElement>(".video-player")!;
     const element = media(container);
     setMediaTiming(element, 120, 42);
-    Object.defineProperty(root, "requestFullscreen", {
-      configurable: true,
-      value: vi.fn(async () => {
-        fullscreenElement = root;
-        document.dispatchEvent(new Event("fullscreenchange"));
-      }),
-    });
+    Object.defineProperty(element, "videoWidth", { configurable: true, value: 1920 });
+    Object.defineProperty(element, "videoHeight", { configurable: true, value: 1080 });
+    act(() => element.dispatchEvent(new Event("loadedmetadata")));
+    element.currentTime = 42;
 
-    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Enter fullscreen"]')?.click());
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Open video viewer"]')?.click());
     await settle();
-    expect(root.requestFullscreen).toHaveBeenCalled();
+    expect(document.querySelector(".video-player-viewer-backdrop")).not.toBeNull();
+    expect(root.classList.contains("is-expanded")).toBe(true);
+    expect(root.style.aspectRatio).toBe("1920 / 1080");
     expect(container.querySelector("video")).toBe(element);
     expect(element.currentTime).toBe(42);
-    expect(container.querySelector('button[aria-label="Exit fullscreen"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Close video viewer"]')).not.toBeNull();
 
-    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Exit fullscreen"]')?.click());
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Close video viewer"]')?.click());
     await settle();
-    expect(document.exitFullscreen).toHaveBeenCalled();
-    expect(container.querySelector("video")).toBe(element);
-
-    vi.mocked(root.requestFullscreen).mockRejectedValueOnce(new Error("denied"));
-    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Enter fullscreen"]')?.click());
-    await settle();
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
-      "Fullscreen request was denied",
-    );
+    expect(document.querySelector(".video-player-viewer-backdrop")).toBeNull();
+    expect(root.classList.contains("is-expanded")).toBe(false);
     expect(container.querySelector("video")).toBe(element);
   });
 
@@ -430,6 +422,17 @@ describe("VideoPlayer", () => {
     expect(landscapeRoot.classList.contains("is-portrait")).toBe(false);
     expect(landscapeRoot.style.width).toBe("100%");
     expect(landscapeRoot.style.getPropertyValue("--video-aspect-ratio").trim()).toBe("1920 / 1080");
+
+    expect(expandedVideoStyle(1920, 1080, 1600, 900)).toMatchObject({
+      aspectRatio: "1920 / 1080",
+      height: "852px",
+      width: "1514.6666666666665px",
+    });
+    expect(expandedVideoStyle(720, 1280, 1600, 900)).toMatchObject({
+      aspectRatio: "720 / 1280",
+      height: "852px",
+      width: "479.25px",
+    });
   });
 
   it("autoplays muted when visible and pauses when scrolled away", async () => {

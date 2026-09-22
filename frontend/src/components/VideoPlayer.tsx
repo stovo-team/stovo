@@ -15,6 +15,7 @@ import {
   type CSSProperties,
   type SyntheticEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { type FamilyFile } from "../api/files";
 import { peekCachedObjectUrl } from "../mediaBlobCache";
@@ -102,8 +103,9 @@ export function VideoPlayer({
   const registrationRef = useRef<VideoPlaybackRegistration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [manualDownloadRequested, setManualDownloadRequested] = useState(false);
   const autoplayEnabled = autoplay;
   const canLoadAutomatically = shouldAutoDownloadMedia(file) || Boolean(peekCachedObjectUrl(file.id));
@@ -171,12 +173,21 @@ export function VideoPlayer({
   const sourceUrl = useVideoSource(file, accessToken, identity, startLoading, reportFailure, canLoad);
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(document.fullscreenElement === rootRef.current);
+    if (!isExpanded) return;
+    const updateViewport = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+    return () => window.removeEventListener("resize", updateViewport);
+  }, [isExpanded]);
+
+  useEffect(() => {
+    if (!isExpanded) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsExpanded(false);
     };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isExpanded]);
 
   useEffect(() => {
     if (!disabledReason) return;
@@ -291,23 +302,9 @@ export function VideoPlayer({
     return () => observer.disconnect();
   }, [autoplayEnabled, disabledReason, sourceUrl]);
 
-  const toggleFullscreen = useCallback(async () => {
-    const root = rootRef.current;
-    if (!root) return;
-    try {
-      if (document.fullscreenElement === root) {
-        await document.exitFullscreen();
-      } else if (typeof root.requestFullscreen === "function") {
-        await root.requestFullscreen();
-      } else {
-        reportFailure("Fullscreen is unavailable", false);
-      }
-    } catch {
-      reportFailure("Fullscreen request was denied", false);
-    }
-  }, [reportFailure]);
-
-  const frameStyle = orientationStyle(videoSize.width, videoSize.height);
+  const frameStyle = isExpanded
+    ? expandedVideoStyle(videoSize.width, videoSize.height, viewport.width, viewport.height)
+    : orientationStyle(videoSize.width, videoSize.height);
   const videoNode = (
     <video
       ref={videoRef}
@@ -337,9 +334,18 @@ export function VideoPlayer({
   );
 
   return (
+    <>
+      {isExpanded && createPortal(
+        <div
+          className="video-player-viewer-backdrop"
+          role="presentation"
+          onClick={() => setIsExpanded(false)}
+        />,
+        document.body,
+      )}
       <div
         ref={rootRef}
-        className={`video-player${isSessionActive ? " is-session-active" : ""}${videoSize.height > videoSize.width ? " is-portrait" : " is-landscape"}`}
+        className={`video-player${isExpanded ? " is-expanded" : ""}${isSessionActive ? " is-session-active" : ""}${videoSize.height > videoSize.width ? " is-portrait" : " is-landscape"}`}
         data-session-active={isSessionActive ? "true" : "false"}
         data-video-chat-id={identity.chatId}
         data-video-message-id={identity.messageId}
@@ -421,15 +427,40 @@ export function VideoPlayer({
             <button
               type="button"
               data-control="fullscreen"
-              aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-              onClick={() => void toggleFullscreen()}
+              aria-label={isExpanded ? "Close video viewer" : "Open video viewer"}
+              title={isExpanded ? "Close video viewer" : "Open video viewer"}
+              onClick={() => {
+                if (!isExpanded) {
+                  setViewport({ width: window.innerWidth, height: window.innerHeight });
+                }
+                setIsExpanded((expanded) => !expanded);
+              }}
             >
-              {isFullscreen
+              {isExpanded
                 ? <Minimize2 size={20} aria-hidden="true" />
                 : <Maximize2 size={20} aria-hidden="true" />}
             </button>
         </div>
       </div>
+    </>
   );
+}
+
+export function expandedVideoStyle(
+  videoWidth: number,
+  videoHeight: number,
+  viewportWidth: number,
+  viewportHeight: number,
+): CSSProperties {
+  const padding = 24;
+  const ratio = videoWidth > 0 && videoHeight > 0 ? videoWidth / videoHeight : 16 / 9;
+  const availableWidth = Math.max(0, viewportWidth - padding * 2);
+  const availableHeight = Math.max(0, viewportHeight - padding * 2);
+  const width = Math.min(availableWidth, availableHeight * ratio);
+
+  return {
+    aspectRatio: `${videoWidth || 16} / ${videoHeight || 9}`,
+    height: `${width / ratio}px`,
+    width: `${width}px`,
+  };
 }
