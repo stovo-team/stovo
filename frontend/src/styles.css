@@ -29295,6 +29295,34 @@ button.checklist-add-item-btn:hover,
   background: #000;
 }
 
+.guest-empty-room-timeout-backdrop {
+  align-items: center;
+  background: rgba(0, 0, 0, .58);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1rem;
+  position: fixed;
+  z-index: 30;
+}
+
+.guest-empty-room-timeout {
+  background: var(--surface-raised, #20242d);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 20px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .48);
+  color: var(--text-primary, #fff);
+  max-width: 420px;
+  padding: 1.4rem;
+  width: 100%;
+}
+
+.guest-empty-room-timeout h2 { font-size: 1.1rem; margin: 0; }
+.guest-empty-room-timeout p { color: var(--text-secondary, #c6cad2); line-height: 1.45; margin: .7rem 0 1.25rem; }
+.guest-empty-room-timeout > div { display: flex; flex-wrap: wrap; gap: .65rem; justify-content: flex-end; }
+.guest-empty-room-timeout button { border-radius: 999px !important; min-height: 40px; padding-inline: 1rem; }
+.guest-empty-room-ended { background: color-mix(in srgb, var(--accent-primary) 12%, var(--surface-card)); border: 1px solid color-mix(in srgb, var(--accent-primary) 32%, var(--border-default)); border-radius: 14px; color: var(--text-secondary); line-height: 1.45; margin: 0 0 1rem; padding: .8rem 1rem; text-align: center; }
+
 .guest-call-room .voice-room-stage {
   padding: 5.6rem 1rem 1rem;
 }

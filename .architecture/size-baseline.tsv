@@ -57,7 +57,7 @@ frontend/src/messageMarkdown.tsx	726
 frontend/src/pages/ChatsPage.tsx	461
 frontend/src/pages/ChecklistPage.tsx	780
 frontend/src/pages/FilesPage.tsx	901
-frontend/src/pages/GuestMeetingPage.tsx	704
+frontend/src/pages/GuestMeetingPage.tsx	740
 frontend/src/pages/MembersPage.tsx	450
 frontend/src/pages/MultiAdminPage.tsx	1121
 frontend/src/pages/PlansPage.tsx	798

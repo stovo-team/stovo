@@ -23,6 +23,7 @@ import {
   type GuestMeetingPreview,
 } from "../api/guestMeetings";
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
+import { EmptyGuestRoomTimeout } from "./guestMeetingEmptyRoomTimeout";
 
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "expired" | "error";
 type RemoteParticipantStream = { id: string; cameraStream: MediaStream | null; screenStream: MediaStream | null };
@@ -74,6 +75,9 @@ export default function GuestMeetingPage() {
   const [error, setError] = useState<string | null>(null);
   const [deviceIssue, setDeviceIssue] = useState<string | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteParticipantStream[]>([]);
+  const [remoteParticipantCount, setRemoteParticipantCount] = useState(0);
+  const [emptyRoomWarning, setEmptyRoomWarning] = useState(false);
+  const [wasDisconnectedForEmptyRoom, setWasDisconnectedForEmptyRoom] = useState(false);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [microphoneEnabled, setMicrophoneEnabled] = useState(true);
   const [speakerEnabled, setSpeakerEnabled] = useState(true);
@@ -104,11 +108,18 @@ export default function GuestMeetingPage() {
   const hasEditedNameRef = useRef(false);
   const guestSessionIDRef = useRef<string | null>(null);
   const screenShareStreamRef = useRef<MediaStream | null>(null);
+  const emptyRoomTimeoutRef = useRef<EmptyGuestRoomTimeout | null>(null);
+  const emptyRoomTimeoutCallbacksRef = useRef<{ onWarning: () => void; onTimeout: () => void }>({ onWarning: () => {}, onTimeout: () => {} });
 
   const isOrgMemberOrHost = Boolean(accessToken && currentUser);
   const [meetingRoomId, setMeetingRoomId] = useState<string | null>(null);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
   const [guestIntelStatus, setGuestIntelStatus] = useState<GuestMeetingIntelligenceStatus | null>(null);
+
+  emptyRoomTimeoutCallbacksRef.current = {
+    onWarning: () => setEmptyRoomWarning(true),
+    onTimeout: () => { void leaveForEmptyRoomTimeout(); },
+  };
 
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
@@ -154,6 +165,24 @@ export default function GuestMeetingPage() {
       window.clearInterval(interval);
     };
   }, [state, token, isOrgMemberOrHost]);
+
+  useEffect(() => {
+    const timeout = new EmptyGuestRoomTimeout({
+      onWarning: () => emptyRoomTimeoutCallbacksRef.current.onWarning(),
+      onTimeout: () => emptyRoomTimeoutCallbacksRef.current.onTimeout(),
+    });
+    emptyRoomTimeoutRef.current = timeout;
+    return () => {
+      timeout.dispose();
+      if (emptyRoomTimeoutRef.current === timeout) emptyRoomTimeoutRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const isAlone = state === "joined" && remoteParticipantCount === 0;
+    emptyRoomTimeoutRef.current?.setAlone(isAlone);
+    if (!isAlone) setEmptyRoomWarning(false);
+  }, [remoteParticipantCount, state]);
 
   const effectiveNotesState: TranscriptState = isOrgMemberOrHost
     ? transcription.transcriptState
@@ -456,9 +485,12 @@ export default function GuestMeetingPage() {
         const nextItem = { ...item, [streamKey]: remainingTracks.length ? new MediaStream(remainingTracks) : null };
         return nextItem.cameraStream || nextItem.screenStream ? [nextItem] : [];
       })));
+      room.on(RoomEvent.ParticipantConnected, () => setRemoteParticipantCount(room.remoteParticipants.size));
       room.on(RoomEvent.ParticipantDisconnected, (participant) => setRemoteStreams((previous) => previous.filter((item) => item.id !== participant.identity)));
+      room.on(RoomEvent.ParticipantDisconnected, () => setRemoteParticipantCount(room.remoteParticipants.size));
       await room.connect(resolveLiveKitUrl(credentials.url), credentials.token);
       setMeetingRoomId(room.name || credentials.roomName || null);
+      setRemoteParticipantCount(room.remoteParticipants.size);
       if (!localStreamRef.current) await startLocalMedia();
       for (const track of localStreamRef.current?.getTracks() ?? []) {
         if (track.enabled) await room.localParticipant.publishTrack(track, { source: track.kind === "audio" ? Track.Source.Microphone : Track.Source.Camera });
@@ -474,9 +506,11 @@ export default function GuestMeetingPage() {
       setState("error");
     }
   }
-  async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); try { const session = await createGuestMeetingSession(token, name); guestSessionIDRef.current = session.id; if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else setError(e instanceof Error ? e.message : "Could not join meeting"); } }
+  async function submit(event: FormEvent) { event.preventDefault(); if (!token) return; setError(null); setWasDisconnectedForEmptyRoom(false); try { const session = await createGuestMeetingSession(token, name); guestSessionIDRef.current = session.id; if (session.state === "admitted") void connect(); else setState("waiting"); } catch (e) { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else setError(e instanceof Error ? e.message : "Could not join meeting"); } }
   useEffect(() => { if (state !== "waiting" || !token) return; const timer = window.setInterval(() => void getGuestMeetingStatus(token).then((status) => { if (status.state === "admitted") void connect(); if (status.state === "blocked") { setError("The host removed you from this meeting."); setState("blocked"); } }).catch((e) => { if (isExpiredGuestMeetingError(e)) showExpiredLink(); else { setError(e.message); setState("error"); } }), 2500); return () => window.clearInterval(timer); }, [state, token]);
-  async function leave() { await stopScreenShare(); stopLocalMedia(); await roomRef.current?.disconnect(); roomRef.current = null; setMeetingRoomId(null); markCurrentGuestSessionLeft(); setRemoteStreams([]); setState("name"); void startLocalMedia(); }
+  async function leave({ dueToEmptyRoom = false }: { dueToEmptyRoom?: boolean } = {}) { emptyRoomTimeoutRef.current?.setAlone(false); setEmptyRoomWarning(false); if (!dueToEmptyRoom) setWasDisconnectedForEmptyRoom(false); await stopScreenShare(); stopLocalMedia(); await roomRef.current?.disconnect(); roomRef.current = null; setMeetingRoomId(null); markCurrentGuestSessionLeft(); setRemoteStreams([]); setRemoteParticipantCount(0); setState("name"); void startLocalMedia(); }
+  async function leaveForEmptyRoomTimeout() { setWasDisconnectedForEmptyRoom(true); await leave({ dueToEmptyRoom: true }); }
+  function stayInEmptyRoom() { setEmptyRoomWarning(false); emptyRoomTimeoutRef.current?.stay(); }
   const participantCopy = preview?.guestCount ? `${preview.guestCount} ${preview.guestCount === 1 ? "guest is" : "guests are"} already here` : "No guests are here yet";
   const hasVoiceActivity = microphoneEnabled && meterLevel >= 8;
   useEffect(() => {
@@ -523,6 +557,7 @@ export default function GuestMeetingPage() {
     return <main className="guest-meeting-page guest-meeting-page--in-call">
       <div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div>
       <section className="guest-call-room voice-channel-room" aria-label={`${preview?.title || "Guest"} meeting`}>
+        {emptyRoomWarning && <div className="guest-empty-room-timeout-backdrop" role="presentation"><section className="guest-empty-room-timeout" role="dialog" aria-modal="true" aria-labelledby="guest-empty-room-timeout-title"><h2 id="guest-empty-room-timeout-title">Still waiting for someone?</h2><p>You’re the only person in this meeting. You’ll be disconnected in one minute unless you choose to stay.</p><div><button type="button" className="secondary-button" onClick={() => void leave()} >Leave meeting</button><button type="button" className="primary-button" onClick={stayInEmptyRoom}>Stay in meeting</button></div></section></div>}
         <LiveCaptionsOverlay
           isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
           recentCaptions={liveCaptions.recentCaptions}
@@ -624,6 +659,7 @@ export default function GuestMeetingPage() {
 
   return <main className="guest-meeting-page"><div className="guest-stovo-brand"><StovoLogo size={38} title="Stovo" /><span>Stovo</span></div><section className="guest-meeting-card">
     {state === "expired" && <section className="guest-link-expired" aria-labelledby="expired-link-title"><span className="guest-link-expired-icon"><Link2Off size={28} aria-hidden="true" /></span><div><h1 id="expired-link-title">This meeting link has expired</h1><p>Ask the host to send you a new link, then open it to join.</p></div></section>}
+    {wasDisconnectedForEmptyRoom && <p className="guest-empty-room-ended" role="status">You left the meeting because nobody else joined. You can join again whenever you’re ready.</p>}
     {state === "name" && <div className="guest-prejoin">
       <section className="guest-prejoin-preview">
         <div className="guest-preview-label">{guestDisplayName}</div>
