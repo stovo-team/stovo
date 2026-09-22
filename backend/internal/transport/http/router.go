@@ -11,27 +11,30 @@ import (
 // frontend fallback in the HTTP transport while allowing callers to supply
 // already-authenticated handlers without importing Chi.
 type RouteComposition struct {
-	AppURL           string
-	Logger           RequestLogger
-	Socket           stdhttp.Handler
-	Calls            CallRoutes
-	GuestMeetings    stdhttp.Handler
-	Core             CoreRoutes
-	Auth             AuthRoutes
-	Family           FamilyRoutes
-	Invites          InviteRoutes
-	Chats            ChatRoutes
-	Files            FileRoutes
-	Admin            AdminRoutes
-	MCP              stdhttp.Handler
-	Plugins          stdhttp.Handler
-	FrontendFallback stdhttp.Handler
+	AppURL             string
+	CORSAllowedOrigins []string
+	RefreshCookieName  string
+	Logger             RequestLogger
+	Socket             stdhttp.Handler
+	Calls              CallRoutes
+	GuestMeetings      stdhttp.Handler
+	Core               CoreRoutes
+	Auth               AuthRoutes
+	Family             FamilyRoutes
+	Invites            InviteRoutes
+	Chats              ChatRoutes
+	Files              FileRoutes
+	Admin              AdminRoutes
+	MCP                stdhttp.Handler
+	Plugins            stdhttp.Handler
+	FrontendFallback   stdhttp.Handler
 }
 
 // NewRouter installs the stable HTTP surface in its historical order.
 func NewRouter(routes RouteComposition) stdhttp.Handler {
 	router := chi.NewRouter()
-	router.Use(CORS(routes.AppURL))
+	router.Use(CORS(routes.AppURL, routes.CORSAllowedOrigins...))
+	router.Use(CookieCSRF(routes.RefreshCookieName, routes.AppURL, routes.CORSAllowedOrigins...))
 	router.Use(RequestLogging(routes.Logger))
 	RegisterSocketRoutes(router, routes.Socket)
 	RegisterCallRoutes(router, routes.Calls)

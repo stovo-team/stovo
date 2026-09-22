@@ -341,6 +341,8 @@ func jsonRequest(t *testing.T, client *http.Client, method, target string, token
 		t.Fatalf("new request: %v", err)
 	}
 	req.Header.Set("Accept", "application/json")
+	// Browser cookie flows must originate from the configured frontend.
+	req.Header.Set("Origin", "http://localhost:5173")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

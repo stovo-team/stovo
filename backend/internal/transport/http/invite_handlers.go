@@ -92,7 +92,7 @@ func (h InviteCreateHandler) CreateInvite(w stdhttp.ResponseWriter, r *stdhttp.R
 type InviteAcceptHandler struct {
 	ClientIP     func(*stdhttp.Request) string
 	Accept       func(ctx context.Context, token string, payload InviteAcceptRequest, clientIP string) (any, int, string, error)
-	WriteSuccess func(stdhttp.ResponseWriter, int, any)
+	WriteSuccess func(stdhttp.ResponseWriter, *stdhttp.Request, int, any)
 }
 
 func (h InviteAcceptHandler) AcceptInvite(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -132,7 +132,7 @@ func (h InviteAcceptHandler) AcceptInvite(w stdhttp.ResponseWriter, r *stdhttp.R
 		return
 	}
 	if h.WriteSuccess != nil {
-		h.WriteSuccess(w, stdhttp.StatusCreated, res)
+		h.WriteSuccess(w, r, stdhttp.StatusCreated, res)
 		return
 	}
 	writeInviteJSON(w, stdhttp.StatusCreated, res)

@@ -14,7 +14,7 @@ type DeviceLoginHandler struct {
 	Request      func(context.Context, string, string) (any, int, string)
 	Verify       func(context.Context, string, string, string) (any, int, string)
 	ClientIP     func(*stdhttp.Request) string
-	WriteSuccess func(stdhttp.ResponseWriter, any)
+	WriteSuccess func(stdhttp.ResponseWriter, *stdhttp.Request, any)
 }
 
 func (h DeviceLoginHandler) RequestCode(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -69,7 +69,7 @@ func (h DeviceLoginHandler) VerifyCode(w stdhttp.ResponseWriter, r *stdhttp.Requ
 		return
 	}
 	if h.WriteSuccess != nil {
-		h.WriteSuccess(w, response)
+		h.WriteSuccess(w, r, response)
 		return
 	}
 	writeDeviceLoginJSON(w, stdhttp.StatusOK, response)

@@ -11,13 +11,20 @@ import (
 )
 
 type Config struct {
-	AppName                      string
-	AppVersion                   string
-	AppEnv                       string
-	Host                         string
-	Port                         int
-	ServerID                     string
-	AppURL                       string
+	AppName    string
+	AppVersion string
+	AppEnv     string
+	Host       string
+	Port       int
+	ServerID   string
+	AppURL     string
+	// CORSAllowedOrigins contains additional exact browser origins, for
+	// example the Capacitor WebView origin. AppURL is always allowed too.
+	CORSAllowedOrigins []string
+	// NativeClientOrigins controls the exceptional clients that receive a raw
+	// refresh token response. Browser origins always receive only an HttpOnly
+	// refresh cookie.
+	NativeClientOrigins          []string
 	APIURL                       string
 	FrontendOrigin               string
 	PublicTunnelOrigin           string
@@ -153,6 +160,8 @@ func Load() (Config, error) {
 		Port:                         port,
 		ServerID:                     strings.TrimSpace(os.Getenv("SERVER_ID")),
 		AppURL:                       trimTrailingSlash(getenv("APP_URL", "http://localhost:8000")),
+		CORSAllowedOrigins:           splitCSV(os.Getenv("CORS_ALLOWED_ORIGINS")),
+		NativeClientOrigins:          splitCSV(getenv("NATIVE_CLIENT_ORIGINS", "capacitor://localhost")),
 		APIURL:                       trimTrailingSlash(getenv("API_URL", "http://localhost:8000")),
 		FrontendOrigin:               trimTrailingSlash(getenv("FRONTEND_ORIGIN", "http://frontend:5173")),
 		PublicTunnelOrigin:           trimTrailingSlash(getenv("PUBLIC_TUNNEL_ORIGIN", "http://127.0.0.1:8000")),
@@ -222,6 +231,16 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func splitCSV(value string) []string {
+	var result []string
+	for _, item := range strings.Split(value, ",") {
+		if trimmed := strings.TrimSpace(item); trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 func envAny(keys ...string) string {

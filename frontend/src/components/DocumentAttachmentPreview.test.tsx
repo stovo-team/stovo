@@ -9,7 +9,7 @@ import {
   PDF_MIN_ZOOM,
   touchDistance,
 } from "./pdfViewerZoom";
-import { getPdfRenderLimits } from "./DocumentAttachmentPreview";
+import { getPdfRenderLimits, sanitizeDocxHtml } from "./DocumentAttachmentPreview";
 
 describe("PDF viewer zoom helpers", () => {
   it("clamps zoom between min and max", () => {
@@ -108,6 +108,24 @@ describe("detectDocumentPreviewKind", () => {
     const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "photo.jpg", mimeType: "image/jpeg" })).toBe("unsupported");
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "", mimeType: "" })).toBe("unsupported");
+  });
+});
+
+describe("sanitizeDocxHtml", () => {
+  it("removes executable markup and unsafe URL schemes while retaining document structure", () => {
+    const html = sanitizeDocxHtml(
+      '<p onclick="alert(1)">Hello <strong>world</strong><script>alert(1)</script></p><a href="javascript:alert(1)">bad</a><img src="data:image/svg+xml;base64,PHN2Zz4=" onerror="alert(1)"><img src="data:image/png;base64,AAAA">'
+    );
+    const host = document.createElement("div");
+    host.innerHTML = html;
+
+    expect(host.textContent).toContain("Hello worldalert(1)bad");
+    expect(host.querySelector("script")).toBeNull();
+    expect(host.querySelector("p")?.getAttribute("onclick")).toBeNull();
+    expect(host.querySelector("a")?.hasAttribute("href")).toBe(false);
+    expect(host.querySelectorAll("img")).toHaveLength(2);
+    expect(host.querySelectorAll("img")[0]?.hasAttribute("src")).toBe(false);
+    expect(host.querySelectorAll("img")[1]?.getAttribute("src")).toBe("data:image/png;base64,AAAA");
   });
 });
 

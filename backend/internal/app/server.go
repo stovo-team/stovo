@@ -13,11 +13,11 @@ import (
 	"time"
 
 	"stovo-messenger/backend/internal/config"
+	"stovo-messenger/backend/internal/fcm"
 	featureadministration "stovo-messenger/backend/internal/features/administration"
 	featurecalls "stovo-messenger/backend/internal/features/calls"
 	featurechats "stovo-messenger/backend/internal/features/chats"
 	featurefamily "stovo-messenger/backend/internal/features/family"
-	"stovo-messenger/backend/internal/fcm"
 	featurefiles "stovo-messenger/backend/internal/features/files"
 	featureidentity "stovo-messenger/backend/internal/features/identity"
 	featuremcp "stovo-messenger/backend/internal/features/mcp"
@@ -305,6 +305,31 @@ func (s *Server) clearRefreshCookie(w http.ResponseWriter) {
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),
 	})
+}
+
+// writeAuthSuccess keeps refresh credentials out of browser-readable JSON.
+// The sole exception is an explicitly configured native WebView origin, which
+// preserves the existing mobile contract until it is moved to OS secure
+// storage. Origin is browser-controlled and cannot be forged by page script.
+func (s *Server) writeAuthSuccess(w http.ResponseWriter, r *http.Request, status int, value httptransport.AuthSuccess[userPublic]) {
+	s.setRefreshCookie(w, value.RefreshToken)
+	if !s.isNativeClientOrigin(r.Header.Get("Origin")) {
+		value.RefreshToken = ""
+	}
+	httptransport.WriteAuthSuccess(w, status, value)
+}
+
+func (s *Server) isNativeClientOrigin(origin string) bool {
+	normalized := strings.TrimRight(strings.TrimSpace(origin), "/")
+	if normalized == "" {
+		return false
+	}
+	for _, allowed := range s.cfg.NativeClientOrigins {
+		if strings.EqualFold(normalized, strings.TrimRight(strings.TrimSpace(allowed), "/")) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Server) authenticated(next func(http.ResponseWriter, *http.Request, userPublic)) http.HandlerFunc {

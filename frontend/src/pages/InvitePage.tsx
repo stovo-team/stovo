@@ -30,11 +30,10 @@ export default function InvitePage() {
         // Browser-originated deep links need the same server handoff as a
         // direct Android App Link. Without it, the app may look up the token
         // against whichever server was previously active on the device.
-        if (!searchParams.get("apiUrl")) {
-          const inviteApiUrl = getInviteApiUrl(window.location.href);
-          if (inviteApiUrl) {
-            searchParams.set("apiUrl", inviteApiUrl);
-          }
+        searchParams.delete("apiUrl");
+        const inviteApiUrl = getInviteApiUrl(window.location.href);
+        if (inviteApiUrl) {
+          searchParams.set("apiUrl", inviteApiUrl);
         }
         const search = searchParams.toString();
         return `stovo://invite/${encodeURIComponent(token)}${search ? `?${search}` : ""}`;
@@ -42,6 +41,8 @@ export default function InvitePage() {
     : null;
 
   useEffect(() => {
+    // On the web this is deliberately a no-op: the API is the same origin as
+    // the invite page, not a destination supplied by its query string.
     storeApiUrlFromInviteLink(location.search);
     if (!token) {
       return;

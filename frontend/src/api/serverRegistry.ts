@@ -1,4 +1,5 @@
 import type { User } from "./auth";
+import { Capacitor } from "@capacitor/core";
 
 export interface ServerAccount {
   id: string;                 // Backend UUID or URL-based hash
@@ -102,13 +103,15 @@ export function loadServerState(): MultiServerState {
       const parsed = JSON.parse(raw) as MultiServerState;
       if (parsed && typeof parsed.servers === "object") {
         const cleanedServers: Record<string, ServerAccount> = {};
+        const discardWebRefreshTokens = !Capacitor.isNativePlatform();
         for (const [id, s] of Object.entries(parsed.servers)) {
           if (!s.url || isMasterOrchestratorUrl(s.url)) {
             continue;
           }
-          cleanedServers[id] = s;
+          cleanedServers[id] = discardWebRefreshTokens && s.refreshToken ? { ...s, refreshToken: null } : s;
         }
         const didRemoveRedirector = Object.keys(cleanedServers).length !== Object.keys(parsed.servers).length;
+        const didDiscardRefreshToken = discardWebRefreshTokens && Object.values(parsed.servers).some((s) => Boolean(s.refreshToken));
         parsed.servers = cleanedServers;
         if (parsed.activeServerId && !parsed.servers[parsed.activeServerId]) {
           const clusterKeys = Object.keys(parsed.servers);
@@ -116,7 +119,7 @@ export function loadServerState(): MultiServerState {
         }
         // Persist the migration so a redirector cannot reappear on the next
         // launch and be mistaken for a selectable server.
-        if (didRemoveRedirector) saveServerState(parsed);
+        if (didRemoveRedirector || didDiscardRefreshToken) saveServerState(parsed);
         return parsed;
       }
     }
@@ -125,7 +128,7 @@ export function loadServerState(): MultiServerState {
   }
 
   const legacyUrl = normalizeApiUrl(window.localStorage.getItem(LEGACY_API_URL_KEY));
-  const legacyRefreshToken = window.localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY);
+  const legacyRefreshToken = Capacitor.isNativePlatform() ? window.localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY) : null;
 
   if (legacyUrl && !isMasterOrchestratorUrl(legacyUrl)) {
     const serverId = hashServerUrl(legacyUrl);
@@ -171,6 +174,10 @@ export function saveServerState(state: MultiServerState): void {
       } else {
         window.localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
       }
+    } catch {}
+  } else {
+    try {
+      window.localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
     } catch {}
   }
 

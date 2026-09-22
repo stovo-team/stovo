@@ -8,7 +8,7 @@ vi.mock("@capacitor/core", () => ({
   registerPlugin: () => ({})
 }));
 
-import { getApiUrl, getClusterPrefix, isServerUrlConfigured, setApiUrlOverride } from "./client";
+import { getApiUrl, getClusterPrefix, isServerUrlConfigured, setApiUrlOverride, storeApiUrlFromInviteLink } from "./client";
 import { getActiveServer } from "./serverRegistry";
 
 describe("getApiUrl", () => {
@@ -64,6 +64,14 @@ describe("getApiUrl", () => {
 
     expect(getApiUrl()).toBe(`${window.location.origin}/s/5ae8bb18`);
     expect(getActiveServer()).toBeNull();
+  });
+
+  it("ignores an API destination supplied by an invite query in the browser", () => {
+    window.history.replaceState({}, "", "/invite/inv-123?apiUrl=https%3A%2F%2Fevil.example");
+
+    expect(storeApiUrlFromInviteLink(window.location.search)).toBeNull();
+    expect(getApiUrl()).toBe(window.location.origin);
+    expect(storage.get("familyMessenger.apiUrl")).toBeUndefined();
   });
 });
 

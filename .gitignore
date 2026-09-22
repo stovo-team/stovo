@@ -32,6 +32,7 @@ docker-compose.yml.bak-public-access
 *.db
 *.db-journal
 *.out
+.task-go-cache/
 coverage/
 tmp/
 temp/

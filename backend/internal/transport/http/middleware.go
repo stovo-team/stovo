@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net"
 	stdhttp "net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -14,26 +16,101 @@ type RequestLogger interface {
 	Infof(loggerName, format string, args ...any)
 }
 
-// CORS adds the historical browser compatibility headers. Origins continue to
-// be reflected exactly as before, falling back to appURL for non-browser calls.
-func CORS(appURL string) func(stdhttp.Handler) stdhttp.Handler {
+// CORS only grants browser access to explicitly configured origins. In
+// particular, it never reflects an Origin supplied by the caller: doing so
+// together with credentials allows an arbitrary website to read cookie-backed
+// responses.
+func CORS(appURL string, additionalOrigins ...string) func(stdhttp.Handler) stdhttp.Handler {
+	allowedOrigins := allowedOriginSet(appURL, additionalOrigins...)
 	return func(next stdhttp.Handler) stdhttp.Handler {
 		return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
-			origin := r.Header.Get("Origin")
+			origin := normalizeRequestOrigin(r.Header.Get("Origin"))
 			if origin == "" {
-				origin = appURL
+				// A request without Origin is not a CORS request. Do not emit CORS
+				// headers for it; this keeps non-browser clients working without
+				// accidentally widening browser access.
+				next.ServeHTTP(w, r)
+				return
 			}
+
+			w.Header().Add("Vary", "Origin")
+			if _, ok := allowedOrigins[origin]; !ok {
+				if r.Method == stdhttp.MethodOptions {
+					w.WriteHeader(stdhttp.StatusForbidden)
+					return
+				}
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, Idempotency-Key, X-Refresh-Token, X-Stovo-Media-Token, X-Stovo-Operation-Id, bypass-tunnel-reminder, abypass-tunnel-reminder")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS")
 			if r.Method == stdhttp.MethodOptions {
-				w.WriteHeader(stdhttp.StatusOK)
+				w.WriteHeader(stdhttp.StatusNoContent)
 				return
 			}
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// CookieCSRF rejects cross-origin writes to the only routes that authenticate
+// with the refresh cookie. The rest of the API uses Authorization: Bearer and
+// is therefore not susceptible to cookie CSRF.
+func CookieCSRF(cookieName, appURL string, additionalOrigins ...string) func(stdhttp.Handler) stdhttp.Handler {
+	allowedOrigins := allowedOriginSet(appURL, additionalOrigins...)
+	return func(next stdhttp.Handler) stdhttp.Handler {
+		return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+			if !isCookieAuthenticatedWrite(r, cookieName) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			origin := normalizeRequestOrigin(r.Header.Get("Origin"))
+			if _, ok := allowedOrigins[origin]; !ok {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(stdhttp.StatusForbidden)
+				_, _ = w.Write([]byte(`{"detail":"Cross-origin cookie request is not allowed"}`))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+func isCookieAuthenticatedWrite(r *stdhttp.Request, cookieName string) bool {
+	if r.Method != stdhttp.MethodPost || (r.URL.Path != "/api/auth/refresh" && r.URL.Path != "/api/auth/logout") {
+		return false
+	}
+	_, err := r.Cookie(cookieName)
+	return err == nil
+}
+
+func allowedOriginSet(appURL string, additionalOrigins ...string) map[string]struct{} {
+	allowed := make(map[string]struct{})
+	for _, value := range append([]string{appURL}, additionalOrigins...) {
+		if origin := normalizeConfiguredOrigin(value); origin != "" {
+			allowed[origin] = struct{}{}
+		}
+	}
+	return allowed
+}
+
+func normalizeConfiguredOrigin(value string) string {
+	u, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || u.Scheme == "" || u.Host == "" || u.User != nil {
+		return ""
+	}
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host)
+}
+
+func normalizeRequestOrigin(value string) string {
+	u, err := url.Parse(strings.TrimSpace(value))
+	if err != nil || u.Scheme == "" || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+		return ""
+	}
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host)
 }
 
 // RequestLogging records the completed request using a narrow logger port.

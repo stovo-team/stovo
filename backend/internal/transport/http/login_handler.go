@@ -13,7 +13,7 @@ import (
 type LoginHandler struct {
 	Authenticate func(context.Context, string, string, string) (any, int, string)
 	ClientIP     func(*stdhttp.Request) string
-	WriteSuccess func(stdhttp.ResponseWriter, any)
+	WriteSuccess func(stdhttp.ResponseWriter, *stdhttp.Request, any)
 }
 
 func (h LoginHandler) ServeHTTP(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -39,7 +39,7 @@ func (h LoginHandler) ServeHTTP(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		return
 	}
 	if h.WriteSuccess != nil {
-		h.WriteSuccess(w, response)
+		h.WriteSuccess(w, r, response)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

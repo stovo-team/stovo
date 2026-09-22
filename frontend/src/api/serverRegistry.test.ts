@@ -52,7 +52,7 @@ describe("serverRegistry", () => {
     });
   });
 
-  it("migrates legacy single-server keys on first load", () => {
+  it("migrates a legacy server without retaining its refresh token in a browser", () => {
     mockStorage.setItem("familyMessenger.apiUrl", "https://legacy.stovo.net");
     mockStorage.setItem("familyMessenger.refreshToken", "legacy-token-123");
 
@@ -61,7 +61,8 @@ describe("serverRegistry", () => {
 
     const activeServer = getActiveServer();
     expect(activeServer?.url).toBe("https://legacy.stovo.net");
-    expect(activeServer?.refreshToken).toBe("legacy-token-123");
+    expect(activeServer?.refreshToken).toBeNull();
+    expect(mockStorage.getItem("familyMessenger.refreshToken")).toBeNull();
   });
 
   it("removes the cluster redirector root from saved servers", () => {

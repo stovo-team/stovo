@@ -15,7 +15,7 @@ type RefreshOperations struct {
 	Rotate            func(context.Context, string, string) (any, int, string)
 	ClientIP          func(*stdhttp.Request) string
 	ClearCookie       func(stdhttp.ResponseWriter)
-	WriteSuccess      func(stdhttp.ResponseWriter, any)
+	WriteSuccess      func(stdhttp.ResponseWriter, *stdhttp.Request, any)
 }
 
 type RefreshHandler struct{ operations RefreshOperations }
@@ -53,7 +53,7 @@ func (h RefreshHandler) ServeHTTP(w stdhttp.ResponseWriter, r *stdhttp.Request) 
 		return
 	}
 	if h.operations.WriteSuccess != nil {
-		h.operations.WriteSuccess(w, response)
+		h.operations.WriteSuccess(w, r, response)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -26,7 +26,7 @@ type SetupRequest struct {
 type SetupHandler struct {
 	Process      func(context.Context, SetupRequest, string) (value any, status int, detail string)
 	ClientIP     func(*stdhttp.Request) string
-	WriteSuccess func(stdhttp.ResponseWriter, int, any)
+	WriteSuccess func(stdhttp.ResponseWriter, *stdhttp.Request, int, any)
 }
 
 func (h SetupHandler) ServeHTTP(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -57,7 +57,7 @@ func (h SetupHandler) ServeHTTP(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		return
 	}
 	if h.WriteSuccess != nil {
-		h.WriteSuccess(w, status, value)
+		h.WriteSuccess(w, r, status, value)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

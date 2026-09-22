@@ -45,34 +45,11 @@ describe("getNotificationAppLink", () => {
 });
 
 describe("getInviteAppLinkPath", () => {
-  it("parses stovo://invite/<token>", () => {
-    expect(getInviteAppLinkPath("stovo://invite/inv-12345")).toBe("/invite/inv-12345");
-  });
-
-  it("parses stovo://invite/<token>?apiUrl=...", () => {
-    expect(getInviteAppLinkPath("stovo://invite/inv-12345?apiUrl=https%3A%2F%2Fexample.com")).toBe(
-      "/invite/inv-12345?apiUrl=https%3A%2F%2Fexample.com"
-    );
-  });
-
-  it("parses stovo:///invite/<token>", () => {
-    expect(getInviteAppLinkPath("stovo:///invite/inv-12345")).toBe("/invite/inv-12345");
-  });
-
-  it("parses stovo://app/invite/<token>", () => {
-    expect(getInviteAppLinkPath("stovo://app/invite/inv-12345")).toBe("/invite/inv-12345");
-  });
-
-  it("parses stovo://stovo-cloud.stovo.ru/invite/<token>", () => {
-    expect(getInviteAppLinkPath("stovo://stovo-cloud.stovo.ru/invite/inv-12345")).toBe(
-      "/invite/inv-12345"
-    );
-  });
-
-  it("parses stovo://invite?token=<token>&apiUrl=...", () => {
-    expect(getInviteAppLinkPath("stovo://invite?token=inv-12345&apiUrl=https%3A%2F%2Fexample.com")).toBe(
-      "/invite/inv-12345?apiUrl=https%3A%2F%2Fexample.com"
-    );
+  it("rejects custom-scheme invites without a verifiable HTTP(S) server origin", () => {
+    expect(getInviteAppLinkPath("stovo://invite/inv-12345")).toBeNull();
+    expect(getInviteAppLinkPath("stovo://invite/inv-12345?apiUrl=https%3A%2F%2Fevil.example")).toBeNull();
+    expect(getInviteAppLinkPath("stovo:///invite/inv-12345")).toBeNull();
+    expect(getInviteAppLinkPath("stovo://app/invite/inv-12345")).toBeNull();
   });
 
   it("parses https web invite urls", () => {
@@ -80,7 +57,7 @@ describe("getInviteAppLinkPath", () => {
       "/invite/inv-12345?apiUrl=https%3A%2F%2Fstovo-cloud.stovo.ru"
     );
     expect(getInviteAppLinkPath("https://myfamily.stovo.ru/invite/inv-12345?apiUrl=http%3A%2F%2F192.168.1.50%3A8000")).toBe(
-      "/invite/inv-12345?apiUrl=http%3A%2F%2F192.168.1.50%3A8000"
+      "/invite/inv-12345?apiUrl=https%3A%2F%2Fmyfamily.stovo.ru"
     );
   });
 

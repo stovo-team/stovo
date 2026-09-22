@@ -8,6 +8,7 @@ import {
   useRef,
   useState
 } from "react";
+import { Capacitor } from "@capacitor/core";
 
 import { ApiError, ApiRequestOptions, apiRequest, getApiUrl, setApiUrlOverride, storeRefreshToken } from "../api/client";
 import { clearRecentChatHistory } from "../chatHistoryCache";
@@ -143,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         upsertServer({
           ...active,
           accessToken: response.accessToken,
-          refreshToken: response.refreshToken ?? active.refreshToken,
+          refreshToken: Capacitor.isNativePlatform() ? response.refreshToken ?? active.refreshToken : null,
           user: response.user,
           healthStatus: "online"
         });

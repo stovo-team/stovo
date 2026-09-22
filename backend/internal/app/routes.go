@@ -40,11 +40,13 @@ func newRouter(s *Server) http.Handler {
 		},
 	})
 	return httptransport.NewRouter(httptransport.RouteComposition{
-		AppURL:        s.cfg.AppURL,
-		Logger:        s.logger,
-		Socket:        s.sockets.HttpHandler(),
-		Calls:         s.callRoutes(),
-		GuestMeetings: s.guestMeetingRoutes(),
+		AppURL:             s.cfg.AppURL,
+		CORSAllowedOrigins: s.cfg.CORSAllowedOrigins,
+		RefreshCookieName:  s.cfg.RefreshCookieName,
+		Logger:             s.logger,
+		Socket:             s.sockets.HttpHandler(),
+		Calls:              s.callRoutes(),
+		GuestMeetings:      s.guestMeetingRoutes(),
 		Core: httptransport.CoreRoutes{
 			AssetLinks:  http.HandlerFunc(core.AssetLinks),
 			Health:      http.HandlerFunc(core.Health),
@@ -125,10 +127,8 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 		Setup: httptransport.SetupHandler{
 			Process:  s.processSetup,
 			ClientIP: s.getClientIP,
-			WriteSuccess: func(w http.ResponseWriter, status int, response any) {
-				value := response.(httptransport.AuthSuccess[userPublic])
-				s.setRefreshCookie(w, value.RefreshToken)
-				httptransport.WriteAuthSuccess(w, status, value)
+			WriteSuccess: func(w http.ResponseWriter, r *http.Request, status int, response any) {
+				s.writeAuthSuccess(w, r, status, response.(httptransport.AuthSuccess[userPublic]))
 			},
 		},
 		Login: httptransport.LoginHandler{
@@ -158,10 +158,8 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 				}
 				return httptransport.AuthSuccess[userPublic]{AccessToken: accessToken, TokenType: "Bearer", ExpiresInSeconds: expiresInSeconds, User: user, RefreshToken: token}, 0, ""
 			},
-			WriteSuccess: func(w http.ResponseWriter, response any) {
-				value := response.(httptransport.AuthSuccess[userPublic])
-				s.setRefreshCookie(w, value.RefreshToken)
-				httptransport.WriteAuthSuccess(w, http.StatusOK, value)
+			WriteSuccess: func(w http.ResponseWriter, r *http.Request, response any) {
+				s.writeAuthSuccess(w, r, http.StatusOK, response.(httptransport.AuthSuccess[userPublic]))
 			},
 		},
 		DeviceLoginRequest: http.HandlerFunc(httptransport.DeviceLoginHandler{
@@ -224,10 +222,8 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 				}
 				return httptransport.AuthSuccess[userPublic]{AccessToken: accessToken, TokenType: "Bearer", ExpiresInSeconds: expiresInSeconds, User: user, RefreshToken: token}, 0, ""
 			},
-			WriteSuccess: func(w http.ResponseWriter, response any) {
-				value := response.(httptransport.AuthSuccess[userPublic])
-				s.setRefreshCookie(w, value.RefreshToken)
-				httptransport.WriteAuthSuccess(w, http.StatusOK, value)
+			WriteSuccess: func(w http.ResponseWriter, r *http.Request, response any) {
+				s.writeAuthSuccess(w, r, http.StatusOK, response.(httptransport.AuthSuccess[userPublic]))
 			},
 		}.VerifyCode),
 		Refresh: httptransport.NewRefreshHandler(httptransport.RefreshOperations{
@@ -245,10 +241,8 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 				}
 				return httptransport.AuthSuccess[userPublic]{AccessToken: accessToken, TokenType: "Bearer", ExpiresInSeconds: expiresInSeconds, User: user, RefreshToken: nextToken}, 0, ""
 			},
-			WriteSuccess: func(w http.ResponseWriter, response any) {
-				value := response.(httptransport.AuthSuccess[userPublic])
-				s.setRefreshCookie(w, value.RefreshToken)
-				httptransport.WriteAuthSuccess(w, http.StatusOK, value)
+			WriteSuccess: func(w http.ResponseWriter, r *http.Request, response any) {
+				s.writeAuthSuccess(w, r, http.StatusOK, response.(httptransport.AuthSuccess[userPublic]))
 			},
 		}),
 		Logout: httptransport.NewLogoutHandler(httptransport.LogoutOperations{
@@ -298,10 +292,10 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 		UnblockUser: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			privacy.UnblockUser(user).ServeHTTP(w, r)
 		}),
-		GetAudioSettings:     s.authenticated(preferences.handleGetAudioSettings),
-		PutAudioSettings:     s.authenticated(preferences.handlePutAudioSettings),
-		GetNotificationTopic: s.authenticated(preferences.handleGetNotificationTopic),
-		RegisterDeviceToken:  s.authenticated(preferences.handleRegisterDeviceToken),
+		GetAudioSettings:      s.authenticated(preferences.handleGetAudioSettings),
+		PutAudioSettings:      s.authenticated(preferences.handlePutAudioSettings),
+		GetNotificationTopic:  s.authenticated(preferences.handleGetNotificationTopic),
+		RegisterDeviceToken:   s.authenticated(preferences.handleRegisterDeviceToken),
 		UnregisterDeviceToken: s.authenticated(preferences.handleUnregisterDeviceToken),
 	}
 }
@@ -547,10 +541,8 @@ func (s *Server) inviteRoutes() httptransport.InviteRoutes {
 				RefreshToken:     refreshToken,
 			}, 0, "", nil
 		},
-		WriteSuccess: func(w http.ResponseWriter, status int, response any) {
-			value := response.(httptransport.AuthSuccess[userPublic])
-			s.setRefreshCookie(w, value.RefreshToken)
-			httptransport.WriteAuthSuccess(w, status, value)
+		WriteSuccess: func(w http.ResponseWriter, r *http.Request, status int, response any) {
+			s.writeAuthSuccess(w, r, status, response.(httptransport.AuthSuccess[userPublic]))
 		},
 	}
 
@@ -640,7 +632,9 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 	messageRead := httptransport.NewMessageReadHandler(httptransport.MessageReadOperations{
 		Mark: func(ctx context.Context, userID, messageID string) (any, string, error) {
 			user, err := s.getUserByID(userID)
-			if err != nil { return nil, "", errNotFound }
+			if err != nil {
+				return nil, "", errNotFound
+			}
 			return s.markMessageRead(ctx, user, messageID)
 		},
 		IsMissing: func(err error) bool { return errors.Is(err, errNotFound) }, Error: func(err error) (int, string) { return domainErrorStatus(err), err.Error() },

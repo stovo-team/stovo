@@ -107,7 +107,7 @@ func TestInviteAcceptHandler(t *testing.T) {
 				}
 				return map[string]string{"user": "new-user"}, 0, "", nil
 			},
-			WriteSuccess: func(w stdhttp.ResponseWriter, status int, res any) {
+			WriteSuccess: func(w stdhttp.ResponseWriter, _ *stdhttp.Request, status int, res any) {
 				writtenResponse = res
 				w.WriteHeader(status)
 			},

@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-func TestCORSReflectsOriginAndShortCircuitsPreflight(t *testing.T) {
+func TestCORSAllowsConfiguredOriginAndShortCircuitsPreflight(t *testing.T) {
 	called := false
-	handler := CORS("https://app.example.test")(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	handler := CORS("https://app.example.test", "https://browser.example.test")(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		called = true
 		w.WriteHeader(stdhttp.StatusCreated)
 	}))
@@ -19,8 +19,8 @@ func TestCORSReflectsOriginAndShortCircuitsPreflight(t *testing.T) {
 	if called {
 		t.Fatal("next handler was called for preflight")
 	}
-	if response.Code != stdhttp.StatusOK {
-		t.Fatalf("status = %d, want %d", response.Code, stdhttp.StatusOK)
+	if response.Code != stdhttp.StatusNoContent {
+		t.Fatalf("status = %d, want %d", response.Code, stdhttp.StatusNoContent)
 	}
 	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "https://browser.example.test" {
 		t.Fatalf("allow origin = %q", got)
@@ -28,14 +28,63 @@ func TestCORSReflectsOriginAndShortCircuitsPreflight(t *testing.T) {
 	if got := response.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
 		t.Fatalf("allow credentials = %q", got)
 	}
+	if got := response.Header().Get("Vary"); got != "Origin" {
+		t.Fatalf("vary = %q", got)
+	}
 }
 
-func TestCORSUsesAppURLWithoutOrigin(t *testing.T) {
+func TestCORSDoesNotEmitHeadersWithoutOrigin(t *testing.T) {
 	handler := CORS("https://app.example.test")(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {}))
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest(stdhttp.MethodGet, "/", nil))
-	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "https://app.example.test" {
+	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "" {
 		t.Fatalf("allow origin = %q", got)
+	}
+}
+
+func TestCORSRejectsUntrustedPreflight(t *testing.T) {
+	handler := CORS("https://app.example.test")(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		t.Fatal("next handler was called")
+	}))
+	request := httptest.NewRequest(stdhttp.MethodOptions, "/api/chats", nil)
+	request.Header.Set("Origin", "https://evil.example.test")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != stdhttp.StatusForbidden {
+		t.Fatalf("status = %d, want %d", response.Code, stdhttp.StatusForbidden)
+	}
+	if got := response.Header().Get("Access-Control-Allow-Origin"); got != "" {
+		t.Fatalf("allow origin = %q", got)
+	}
+}
+
+func TestCookieCSRFRejectsCrossOriginCookieRefresh(t *testing.T) {
+	called := false
+	handler := CookieCSRF("refresh", "https://app.example.test")(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		called = true
+		w.WriteHeader(stdhttp.StatusNoContent)
+	}))
+	request := httptest.NewRequest(stdhttp.MethodPost, "/api/auth/refresh", nil)
+	request.AddCookie(&stdhttp.Cookie{Name: "refresh", Value: "secret"})
+	request.Header.Set("Origin", "https://evil.example.test")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if called || response.Code != stdhttp.StatusForbidden {
+		t.Fatalf("called=%v status=%d", called, response.Code)
+	}
+}
+
+func TestCookieCSRFAcceptsConfiguredOrigin(t *testing.T) {
+	handler := CookieCSRF("refresh", "https://app.example.test")(stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		w.WriteHeader(stdhttp.StatusNoContent)
+	}))
+	request := httptest.NewRequest(stdhttp.MethodPost, "/api/auth/logout", nil)
+	request.AddCookie(&stdhttp.Cookie{Name: "refresh", Value: "secret"})
+	request.Header.Set("Origin", "https://app.example.test")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != stdhttp.StatusNoContent {
+		t.Fatalf("status=%d, want %d", response.Code, stdhttp.StatusNoContent)
 	}
 }
 

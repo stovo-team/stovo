@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+
 import { ApiError, apiRequest, getStoredRefreshToken } from "./client";
 import { FamilyFile } from "./files";
 
@@ -124,9 +126,10 @@ export function refreshSession() {
     return refreshSessionInFlight;
   }
   const storedToken = getStoredRefreshToken();
-  // Login and refresh responses persist the token for both web and native
-  // clients. Without one, a refresh request is guaranteed to be rejected.
-  if (!storedToken) {
+  // Browsers authenticate this request with the HttpOnly refresh cookie.
+  // Native clients retain their own token until secure native storage replaces
+  // the legacy localStorage implementation.
+  if (Capacitor.isNativePlatform() && !storedToken) {
     return Promise.reject(new ApiError(401, "Refresh token is missing"));
   }
   refreshSessionInFlight = (async () => {

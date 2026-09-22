@@ -43,7 +43,11 @@ function readStoredApiUrl() {
 }
 
 export function storeApiUrlFromInviteLink(searchQuery?: string) {
-  if (typeof window === "undefined") {
+  // A browser invite is already bound to the origin that served it. Letting a
+  // query parameter replace that origin turns an otherwise valid invite into a
+  // credential-phishing link. Native App Links are handled separately because
+  // their WebView has no useful window.location origin.
+  if (typeof window === "undefined" || !Capacitor.isNativePlatform()) {
     return null;
   }
 
@@ -168,15 +172,21 @@ export function isServerUrlConfigured(): boolean {
   if (typeof window === "undefined") {
     return true;
   }
-  const params = new URLSearchParams(window.location.search);
-  if (registryNormalizeApiUrl(params.get("apiUrl"))) {
-    return true;
-  }
   return Boolean(getClusterPrefix()) || getActiveServer() !== null || readStoredApiUrl() !== null;
 }
 
 export function storeRefreshToken(token: string | null) {
   if (typeof window === "undefined") return;
+  // Web sessions use the HttpOnly refresh cookie. Retaining a bearer refresh
+  // token in localStorage would make any successful XSS persistent.
+  if (!Capacitor.isNativePlatform()) {
+    const activeServer = getActiveServer();
+    if (activeServer?.refreshToken) {
+      upsertServer({ ...activeServer, refreshToken: null });
+    }
+    window.localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+    return;
+  }
   const activeServer = getActiveServer();
   if (activeServer) {
     const saved = upsertServer({
@@ -193,7 +203,7 @@ export function storeRefreshToken(token: string | null) {
 }
 
 export function getStoredRefreshToken(): string | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !Capacitor.isNativePlatform()) return null;
   const activeServer = getActiveServer();
   if (activeServer?.refreshToken !== undefined) {
     return activeServer.refreshToken;

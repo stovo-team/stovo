@@ -15,7 +15,7 @@ describe("refreshSession", () => {
     vi.unstubAllGlobals();
   });
 
-  it("does not request a refresh before a browser session token exists", async () => {
+  it("uses the HttpOnly cookie rather than a browser-stored refresh token", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ detail: "Refresh token is missing" }), { status: 401 })
     );
@@ -33,6 +33,12 @@ describe("refreshSession", () => {
 
     await expect(refreshSession()).rejects.toMatchObject({ status: 401 });
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/api\/auth\/refresh$/),
+      expect.objectContaining({
+        credentials: "include",
+        method: "POST",
+      }),
+    );
   });
 });

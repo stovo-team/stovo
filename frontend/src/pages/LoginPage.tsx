@@ -43,7 +43,9 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     setLoginValue(params.get("username") ?? "");
-    setPassword(params.get("password") ?? "");
+    // Passwords must never be accepted from URLs: URLs are commonly retained
+    // in history, analytics, proxy logs, and copied links.
+    setPassword("");
   }, [location.search]);
 
   useEffect(() => {

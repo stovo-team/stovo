@@ -20,6 +20,8 @@ x-backend: &backend
     MINIO_CALLS_BUCKET: ${MINIO_CALLS_BUCKET:-stovo-calls}
     APP_ENV: ${APP_ENV:-production}
     APP_URL: ${APP_URL:-http://localhost:8000}
+    CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-capacitor://localhost}
+    NATIVE_CLIENT_ORIGINS: ${NATIVE_CLIENT_ORIGINS:-capacitor://localhost}
     API_URL: ${API_URL:-http://localhost:8000}
     FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://frontend:8080}
     PUBLIC_REACHABILITY_CHECKER_URL: ${PUBLIC_REACHABILITY_CHECKER_URL:-}

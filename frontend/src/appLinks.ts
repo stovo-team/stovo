@@ -127,16 +127,16 @@ export function getInviteAppLinkPath(rawUrl: string): string | null {
     if (queryToken) {
       searchParams.delete("token");
     }
-    // App links opened directly by Android do not load the web page first, so
-    // the native app cannot infer the server from window.location. Carry the
-    // invite link's own HTTP(S) origin when the backend did not already add
-    // apiUrl (the usual case when the app and API share one origin).
-    if (!searchParams.get("apiUrl")) {
-      const inviteApiUrl = getInviteApiUrl(rawUrl);
-      if (inviteApiUrl) {
-        searchParams.set("apiUrl", inviteApiUrl);
-      }
+    // Bind an App Link to the origin that actually served its HTTP(S) invite.
+    // Never preserve a caller-provided apiUrl: it could switch the login flow
+    // to an attacker-controlled server. A bare stovo:// invite has no trusted
+    // server identity and is rejected instead of guessing from saved state.
+    searchParams.delete("apiUrl");
+    const inviteApiUrl = getInviteApiUrl(rawUrl);
+    if (!inviteApiUrl) {
+      return null;
     }
+    searchParams.set("apiUrl", inviteApiUrl);
     const searchStr = searchParams.toString();
     const query = searchStr ? `?${searchStr}` : "";
 
