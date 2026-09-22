@@ -12,7 +12,7 @@ import (
 type LogoutOperations struct {
 	RefreshCookieName string
 	Revoke            func(context.Context, string) error
-	ClearCookie       func(stdhttp.ResponseWriter)
+	ClearCookie       func(stdhttp.ResponseWriter, *stdhttp.Request)
 }
 
 type LogoutHandler struct{ operations LogoutOperations }
@@ -33,7 +33,7 @@ func (h LogoutHandler) ServeHTTP(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		_ = h.operations.Revoke(r.Context(), rawToken)
 	}
 	if h.operations.ClearCookie != nil {
-		h.operations.ClearCookie(w)
+		h.operations.ClearCookie(w, r)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(stdhttp.StatusOK)

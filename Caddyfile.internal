@@ -10,7 +10,9 @@
 	@clusterApi path_regexp clusterApi ^/s/([a-zA-Z0-9_-]+)/api/(.*)$
 	handle @clusterApi {
 		rewrite * /api/{re.clusterApi.2}
-		reverse_proxy stovo-backend-{re.clusterApi.1}:8000
+		reverse_proxy stovo-backend-{re.clusterApi.1}:8000 {
+			header_up X-Forwarded-Prefix /s/{re.clusterApi.1}
+		}
 	}
 
 	@clusterSocket path_regexp clusterSocket ^/s/([a-zA-Z0-9_-]+)/socket.io/(.*)$

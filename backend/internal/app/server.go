@@ -282,37 +282,12 @@ func (s *Server) decodeJSON(r *http.Request, target any) error {
 	return decoder.Decode(target)
 }
 
-func (s *Server) setRefreshCookie(w http.ResponseWriter, rawToken string) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     s.cfg.RefreshCookieName,
-		Value:    rawToken,
-		Path:     "/api/auth",
-		HttpOnly: true,
-		Secure:   s.cfg.IsProduction(),
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   int(s.cfg.RefreshTokenTTL.Seconds()),
-	})
-}
-
-func (s *Server) clearRefreshCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     s.cfg.RefreshCookieName,
-		Value:    "",
-		Path:     "/api/auth",
-		HttpOnly: true,
-		Secure:   s.cfg.IsProduction(),
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
-		Expires:  time.Unix(0, 0),
-	})
-}
-
 // writeAuthSuccess keeps refresh credentials out of browser-readable JSON.
 // The sole exception is an explicitly configured native WebView origin, which
 // preserves the existing mobile contract until it is moved to OS secure
 // storage. Origin is browser-controlled and cannot be forged by page script.
 func (s *Server) writeAuthSuccess(w http.ResponseWriter, r *http.Request, status int, value httptransport.AuthSuccess[userPublic]) {
-	s.setRefreshCookie(w, value.RefreshToken)
+	s.setRefreshCookieForPath(w, value.RefreshToken, refreshCookiePath(r))
 	if !s.isNativeClientOrigin(r.Header.Get("Origin")) {
 		value.RefreshToken = ""
 	}

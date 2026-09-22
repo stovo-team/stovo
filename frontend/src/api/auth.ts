@@ -1,6 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 
-import { ApiError, apiRequest, getStoredRefreshToken } from "./client";
+import { ApiError, apiRequest, getApiUrl, getStoredRefreshToken } from "./client";
 import { FamilyFile } from "./files";
 
 export type UserRole = string;
@@ -105,7 +105,7 @@ export function changePassword(accessToken: string, payload: ChangePasswordPaylo
 	});
 }
 
-let refreshSessionInFlight: Promise<AuthResponse> | null = null;
+const refreshSessionInFlight = new Map<string, Promise<AuthResponse>>();
 const REFRESH_LOCK_KEY = "familyMessenger.refreshLock";
 
 async function acquireRefreshLock(): Promise<void> {
@@ -122,8 +122,10 @@ function releaseRefreshLock(): void {
 }
 
 export function refreshSession() {
-  if (refreshSessionInFlight) {
-    return refreshSessionInFlight;
+  const serverUrl = getApiUrl();
+  const inFlight = refreshSessionInFlight.get(serverUrl);
+  if (inFlight) {
+    return inFlight;
   }
   const storedToken = getStoredRefreshToken();
   // Browsers authenticate this request with the HttpOnly refresh cookie.
@@ -132,19 +134,23 @@ export function refreshSession() {
   if (Capacitor.isNativePlatform() && !storedToken) {
     return Promise.reject(new ApiError(401, "Refresh token is missing"));
   }
-  refreshSessionInFlight = (async () => {
-    await acquireRefreshLock();
+  let request!: Promise<AuthResponse>;
+  request = (async () => {
     try {
+      await acquireRefreshLock();
       return await apiRequest<AuthResponse>("/api/auth/refresh", {
         method: "POST",
         headers: storedToken ? { "X-Refresh-Token": storedToken } : undefined
       });
     } finally {
       releaseRefreshLock();
-      refreshSessionInFlight = null;
+      if (refreshSessionInFlight.get(serverUrl) === request) {
+        refreshSessionInFlight.delete(serverUrl);
+      }
     }
   })();
-  return refreshSessionInFlight;
+  refreshSessionInFlight.set(serverUrl, request);
+  return request;
 }
 
 export function logout() {
