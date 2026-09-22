@@ -1,4 +1,4 @@
-# Family Messenger
+# Stovo Messenger
 
 This project is a self-hosted family messenger that provides real-time private communication, invite-based access, role-based permissions, MinIO-backed private file sharing, and modular infrastructure abstractions. The system uses PostgreSQL for persistent data, Redis for message brokering and caching, and MinIO for file objects and durable structured log archives.
 
