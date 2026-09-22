@@ -32,18 +32,28 @@ SSH_TARGET="${DEPLOY_USER}@${DEPLOY_HOST}"
 command -v rsync >/dev/null || { echo "rsync is required on the CI runner" >&2; exit 1; }
 command -v ssh >/dev/null || { echo "ssh is required on the CI runner" >&2; exit 1; }
 
-ssh "$SSH_TARGET" "mkdir -p '$DEPLOY_PATH'"
+SSH_OPTS=(-o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
+
+if [ -n "${DEPLOY_SSH_KEY:-}" ]; then
+  SSH_KEY_FILE="$(mktemp)"
+  trap 'rm -f "$SSH_KEY_FILE"' EXIT
+  printf '%s\n' "$DEPLOY_SSH_KEY" > "$SSH_KEY_FILE"
+  chmod 600 "$SSH_KEY_FILE"
+  SSH_OPTS+=(-i "$SSH_KEY_FILE")
+fi
+
+ssh "${SSH_OPTS[@]}" "$SSH_TARGET" "mkdir -p '$DEPLOY_PATH'"
 
 # Keep a manually provisioned .env on the environment host.  It may contain
 # local-only secrets and must not be replaced by a CI checkout.
-rsync -az --delete \
+rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
   --exclude '.git/' \
   --exclude '.env' \
   --exclude 'node_modules/' \
   --exclude 'playwright-report/' \
   ./ "$SSH_TARGET:$DEPLOY_PATH/"
 
-ssh "$SSH_TARGET" \
+ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
   "cd '$DEPLOY_PATH' && \
     docker compose -p '$PROJECT_NAME' -f '$COMPOSE_FILE' up -d postgres && \
     for attempt in \$(seq 1 30); do \

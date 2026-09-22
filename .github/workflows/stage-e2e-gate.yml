@@ -28,6 +28,7 @@ jobs:
           DEPLOY_HOST: 10.29.106.221
           STAGE_PATH: /opt/stovo/stage
           STAGE_URL: ${{ inputs.stage_url || 'http://10.29.106.221:9081' }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: bash scripts/deploy-stage.sh
 
   stage-e2e:
