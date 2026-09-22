@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   applyPdfPageZoom,
@@ -9,7 +12,24 @@ import {
   PDF_MIN_ZOOM,
   touchDistance,
 } from "./pdfViewerZoom";
-import { getPdfRenderLimits, sanitizeDocxHtml } from "./DocumentAttachmentPreview";
+import {
+  DocumentAttachmentPreview,
+  getPdfRenderLimits,
+  sanitizeDocxHtml,
+} from "./DocumentAttachmentPreview";
+import { clearMediaBlobCache } from "../mediaBlobCache";
+import type { FamilyFile } from "../api/files";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const styles = readFileSync("src/styles.css", "utf8");
+
+function rule(selector: string): string {
+  const start = styles.indexOf(`${selector} {`);
+  if (start < 0) return "";
+  const end = styles.indexOf("\n}", start);
+  return styles.slice(start, end + 2);
+}
 
 describe("PDF viewer zoom helpers", () => {
   it("clamps zoom between min and max", () => {
@@ -127,5 +147,147 @@ describe("sanitizeDocxHtml", () => {
     expect(host.querySelectorAll("img")[0]?.hasAttribute("src")).toBe(false);
     expect(host.querySelectorAll("img")[1]?.getAttribute("src")).toBe("data:image/png;base64,AAAA");
   });
+});
+
+describe("document attachment cards in chat", () => {
+  it("keeps the outgoing bubble snug to its document card on narrow screens instead of leaving a wide right gutter", () => {
+    const documentBubble = rule(".message-bubble:has(.document-preview-card)");
+    const compactDocumentBubble = rule(":root[data-density=\"compact\"] .message-bubble:has(.document-preview-card)");
+
+    // The document card itself is capped at 420px. Match that cap on the
+    // surrounding message bubble, and leave only the small visual inset the
+    // attachment needs rather than the generic text-message padding.
+    expect(documentBubble).toContain("max-width: min(420px, calc(100vw - 48px));");
+    expect(documentBubble).toContain("width: min(420px, calc(100vw - 48px));");
+    expect(documentBubble).toContain("padding-inline: 6px;");
+
+    // Compact density has a later, more-specific generic bubble padding rule.
+    // Preserve the attachment inset instead of restoring the wide text bubble.
+    expect(compactDocumentBubble).toContain("padding-inline: 6px;");
+  });
+
+  it("opens a viewer and starts downloading a previewable document when Open is pressed", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    const previewRequest = new Promise<Response>(() => undefined);
+    const fetchSpy = vi.fn(() => previewRequest);
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const file: FamilyFile = {
+      id: "document-1",
+      familyId: "family-1",
+      uploadedBy: "member-1",
+      chatId: "chat-1",
+      chatTitle: "Chat",
+      chatType: "direct",
+      originMessageId: "message-1",
+      accessScope: "chat",
+      storageProvider: "local",
+      originalName: "insurance.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 97_000,
+      checksum: null,
+      createdAt: "2026-09-22T00:00:00Z",
+      deletedAt: null,
+      isFavorite: false,
+    };
+
+    document.body.appendChild(container);
+    try {
+      await act(async () => {
+        root.render(<DocumentAttachmentPreview accessToken="session-token" file={file} />);
+      });
+
+      const open = container.querySelector<HTMLButtonElement>(".document-preview-open");
+      expect(open).not.toBeNull();
+
+      await act(async () => {
+        open?.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+      expect(document.body.textContent).toContain("Loading document…");
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining("/api/files/document-1/download"),
+        expect.objectContaining({
+          credentials: "include",
+          headers: { Authorization: "Bearer session-token" },
+        }),
+      );
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("uses cookie-authenticated preview resolution when Open is pressed without an access token", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    const previewRequest = new Promise<Response>(() => undefined);
+    const fetchSpy = vi.fn(() => previewRequest);
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const file: FamilyFile = {
+      id: "document-cookie-auth",
+      familyId: "family-1",
+      uploadedBy: "member-1",
+      chatId: "chat-1",
+      chatTitle: "Chat",
+      chatType: "direct",
+      originMessageId: "message-1",
+      accessScope: "chat",
+      storageProvider: "local",
+      originalName: "insurance.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 97_000,
+      checksum: null,
+      createdAt: "2026-09-22T00:00:00Z",
+      deletedAt: null,
+      isFavorite: false,
+    };
+
+    document.body.appendChild(container);
+    try {
+      await act(async () => {
+        root.render(<DocumentAttachmentPreview accessToken={null} file={file} />);
+      });
+
+      const open = container.querySelector<HTMLButtonElement>(".document-preview-open");
+      expect(open).not.toBeNull();
+
+      await act(async () => {
+        open?.click();
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+      expect(document.body.textContent).toContain("Loading document…");
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining("/api/files/document-cookie-auth/download"),
+        expect.objectContaining({
+          credentials: "include",
+          headers: {},
+        }),
+      );
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+afterEach(() => {
+  document.body.innerHTML = "";
+  clearMediaBlobCache();
+  vi.unstubAllGlobals();
 });
 

@@ -14,7 +14,6 @@ import {
   saveFileToDisk,
   type FamilyFile,
 } from "../api/files";
-import { peekCachedObjectUrl } from "../mediaBlobCache";
 import {
   applyPdfPageZoom,
   nextPinchZoom,
@@ -472,7 +471,7 @@ export function DocumentAttachmentPreview({
           )}
         </header>
       </article>
-      {viewerOpen && (accessToken || peekCachedObjectUrl(file.id)) && (
+      {viewerOpen && (
         <DocumentViewerModal
           accessToken={accessToken ?? ""}
           file={file}
