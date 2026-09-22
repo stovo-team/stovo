@@ -49,6 +49,35 @@ func formatRecordingDuration(durationMs int64) string {
 	return fmt.Sprintf("%02d:%02d", minutes, secs)
 }
 
+// recordingMessageContent keeps the recording label recognizable in chat while
+// using the name people gave the meeting. It intentionally contains no emoji
+// prefix: attachment UI already conveys that this is a video.
+func recordingMessageContent(meetingName string, durationMs int64) string {
+	meetingName = strings.TrimSpace(meetingName)
+	if meetingName == "" {
+		meetingName = "Meeting"
+	}
+	return fmt.Sprintf("%s Recording (%s)", meetingName, formatRecordingDuration(durationMs))
+}
+
+func (s *Server) recordingMeetingName(ctx context.Context, roomID, chatID string, user userPublic) string {
+	if strings.HasPrefix(roomID, "guest-meeting:") && s.guestDB != nil {
+		meetingID := strings.TrimPrefix(roomID, "guest-meeting:")
+		var title string
+		if err := s.guestDB.QueryRowContext(ctx, `SELECT title FROM guest_meetings WHERE id = $1`, meetingID).Scan(&title); err == nil && strings.TrimSpace(title) != "" {
+			return title
+		}
+	}
+
+	if s.chatQueries != nil {
+		if chat, err := s.chatQueries.GetForMember(ctx, chatID, user.ID); err == nil && chat.Title != nil && strings.TrimSpace(*chat.Title) != "" {
+			return *chat.Title
+		}
+	}
+
+	return "Meeting"
+}
+
 func (s *Server) resolveCallChatAndAuth(ctx context.Context, roomID string, user userPublic) (chatID string, isHostOrAdmin bool, isParticipant bool, err error) {
 	if strings.HasPrefix(roomID, "guest-meeting:") {
 		meetingID := strings.TrimPrefix(roomID, "guest-meeting:")
@@ -383,9 +412,8 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 		s.logger.Warnf("recording", "recording completion update failed rec_id=%s error=%v", recID, err)
 	}
 
-	// Create playable video artifact message in chat
-	durationText := formatRecordingDuration(durationMs)
-	content := fmt.Sprintf("📹 **Meeting Recording** (%s)", durationText)
+	// Create a playable video artifact message in chat, named after the meeting.
+	content := recordingMessageContent(s.recordingMeetingName(r.Context(), roomID, chatID, user), durationMs)
 	var replyTo *string
 	if callHistoryMsgID.Valid && strings.TrimSpace(callHistoryMsgID.String) != "" {
 		val := callHistoryMsgID.String

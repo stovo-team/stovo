@@ -27,6 +27,27 @@ func TestFormatRecordingDuration(t *testing.T) {
 	}
 }
 
+func TestRecordingMessageContent(t *testing.T) {
+	tests := []struct {
+		name       string
+		meeting    string
+		durationMs int64
+		expected   string
+	}{
+		{"uses the meeting name", "Leadership review", 74000, "Leadership review Recording (01:14)"},
+		{"trims the meeting name", "  Weekly sync  ", 5000, "Weekly sync Recording (00:05)"},
+		{"falls back when unnamed", "", 5000, "Meeting Recording (00:05)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := recordingMessageContent(tt.meeting, tt.durationMs); got != tt.expected {
+				t.Errorf("recordingMessageContent(%q, %d) = %q, want %q", tt.meeting, tt.durationMs, got, tt.expected)
+			}
+		})
+	}
+}
+
 func TestTargetLangDisplayName(t *testing.T) {
 	tests := []struct {
 		code     string
