@@ -69,7 +69,7 @@ export function useChatsPageController({
   const workspace = useChatWorkspaceState({ accessToken });
   const {
     family, members, setMembers, chats, setChats, selectedChat, setSelectedChat,
-    isChatLoading, setIsChatLoading, isOnline, chatsRef, accessTokenRef, chatMutationVersionRef
+    isLoading, isChatLoading, setIsChatLoading, isOnline, chatsRef, accessTokenRef, chatMutationVersionRef
   } = workspace;
   const [typingNames, setTypingNames] = useState<string[]>([]);
   const [isChatMenuOpen, setIsChatMenuOpen] = useState(false);
