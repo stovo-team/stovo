@@ -18,6 +18,7 @@ jobs:
   deploy-stage:
     name: Deploy stage stack
     runs-on: [self-hosted, tests]
+    environment: production
 
     steps:
       - name: Checkout Code
