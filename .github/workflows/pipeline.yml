@@ -16,6 +16,7 @@ on:
       - '.architecture/**'
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
+      - '.github/workflows/pipeline.test.sh'
   pull_request:
     branches:
       - master
@@ -31,6 +32,7 @@ on:
       - '.architecture/**'
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
+      - '.github/workflows/pipeline.test.sh'
   workflow_dispatch:
 
 concurrency:
@@ -38,18 +40,23 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   changes:
     name: Detect Changes
     runs-on: self-hosted
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       frontend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.frontend == 'true' }}
       backend: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.backend == 'true' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - name: Verify pipeline workflow contract
+        run: bash .github/workflows/pipeline.test.sh
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -58,6 +65,7 @@ jobs:
               - '.architecture/**'
               - 'scripts/check-solid-boundaries.sh'
               - '.github/workflows/pipeline.yml'
+              - '.github/workflows/pipeline.test.sh'
             backend:
               - 'backend/**'
               - 'migrations/master/**'
@@ -70,6 +78,7 @@ jobs:
               - 'scripts/check-solid-boundaries.sh'
               - 'scripts/deploy-environment.sh'
               - '.github/workflows/pipeline.yml'
+              - '.github/workflows/pipeline.test.sh'
 
   frontend-ci:
     name: Frontend CI
@@ -618,8 +627,8 @@ jobs:
     needs: [changes, frontend-ci]
     if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request' && needs.changes.outputs.frontend == 'true'
     runs-on: self-hosted
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
