@@ -26,15 +26,6 @@ export { detectDocumentPreviewKind } from "./documentPreviewKind";
 
 export type { DocumentPreviewKind } from "./documentPreviewKind";
 
-type TablePreview = {
-  sheets: Array<{ name: string; rows: string[][] }>;
-  activeSheet: number;
-};
-
-type DocxPreview = {
-  html: string;
-};
-
 const DOCX_ALLOWED_TAGS = new Set([
   "a", "blockquote", "br", "caption", "code", "em", "h1", "h2", "h3", "h4",
   "h5", "h6", "img", "li", "ol", "p", "pre", "span", "strong", "table", "tbody",
@@ -42,6 +33,11 @@ const DOCX_ALLOWED_TAGS = new Set([
 ]);
 const DOCX_GLOBAL_ATTRIBUTES = new Set(["class", "title"]);
 const DOCX_TABLE_ATTRIBUTES = new Set(["colspan", "rowspan"]);
+
+type TablePreview = {
+  sheets: Array<{ name: string; rows: string[][] }>;
+  activeSheet: number;
+};
 
 function isSafeDocxURL(value: string, allowImageData: boolean): boolean {
   try {
@@ -53,32 +49,6 @@ function isSafeDocxURL(value: string, allowImageData: boolean): boolean {
   } catch {
     return false;
   }
-}
-
-// Mammoth generates HTML from untrusted office documents. Keep the allowed
-// output intentionally small and centralised; regexes cannot safely parse
-// adversarial HTML.
-export function sanitizeDocxHtml(html: string): string {
-  const template = document.createElement("template");
-  template.innerHTML = html;
-  for (const element of Array.from(template.content.querySelectorAll("*"))) {
-    const tag = element.tagName.toLowerCase();
-    if (!DOCX_ALLOWED_TAGS.has(tag)) {
-      element.replaceWith(...Array.from(element.childNodes));
-      continue;
-    }
-    for (const attribute of Array.from(element.attributes)) {
-      const name = attribute.name.toLowerCase();
-      const allowed = DOCX_GLOBAL_ATTRIBUTES.has(name)
-        || (tag === "a" && name === "href")
-        || (tag === "img" && name === "src")
-        || (["td", "th"].includes(tag) && DOCX_TABLE_ATTRIBUTES.has(name));
-      if (!allowed || ((name === "href" || name === "src") && !isSafeDocxURL(attribute.value, tag === "img"))) {
-        element.removeAttribute(attribute.name);
-      }
-    }
-  }
-  return template.innerHTML;
 }
 
 function extensionOf(name: string): string {
@@ -164,31 +134,73 @@ async function loadTablePreview(file: FamilyFile, blob: Blob): Promise<TablePrev
   return { sheets: sheets.length > 0 ? sheets : [{ name: "Sheet1", rows: [] }], activeSheet: 0 };
 }
 
-async function loadDocxPreview(blob: Blob): Promise<DocxPreview> {
-  const mammoth = await import("mammoth");
-  const buffer = await blob.arrayBuffer();
-  const result = await mammoth.convertToHtml(
-    { arrayBuffer: buffer },
-    {
-      styleMap: [
-        "p[style-name='Title'] => h1.docx-title:fresh",
-        "p[style-name='Heading 1'] => h1:fresh",
-        "p[style-name='Heading 2'] => h2:fresh",
-        "p[style-name='Heading 3'] => h3:fresh",
-        "p[style-name='Heading 4'] => h4:fresh",
-        "r[style-name='Strong'] => strong",
-        "p[style-name='Quote'] => blockquote:fresh",
-        "table => table.docx-table:fresh",
-      ],
-      includeDefaultStyleMap: true,
-      convertImage: mammoth.images.imgElement((image) =>
-        image.read("base64").then((imageBuffer) => ({
-          src: `data:${image.contentType};base64,${imageBuffer}`,
-        })),
-      ),
-    },
+function DocxDocumentPreview({ blob }: { blob: Blob }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const host = hostRef.current;
+    if (!host) return;
+    host.replaceChildren();
+    setError(null);
+
+    void (async () => {
+      const stagingHost = document.createElement("div");
+      try {
+        const docx = await import("docx-preview");
+        await docx.renderAsync(blob, stagingHost, stagingHost, {
+          className: "stovo-docx",
+          useBase64URL: true,
+          renderAltChunks: false,
+        });
+        if (cancelled) return;
+        for (const link of Array.from(stagingHost.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
+          if (!isSafeDocxURL(link.href, false)) link.removeAttribute("href");
+        }
+        host.replaceChildren(...Array.from(stagingHost.childNodes));
+      } catch (err) {
+        console.error("Failed to render DOCX preview:", err);
+        if (!cancelled) setError("Document couldn’t be rendered on this device.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      host.replaceChildren();
+    };
+  }, [blob]);
+
+  return (
+    <div className="document-viewer-docx" ref={hostRef}>
+      {error && <div className="document-preview-error" role="alert">{error}</div>}
+    </div>
   );
-  return { html: sanitizeDocxHtml(result.value || "<p>(Empty document)</p>") };
+}
+
+// Keep the narrow sanitizer available for HTML-based DOCX integrations; the
+// fidelity renderer below creates elements directly and does not use it.
+export function sanitizeDocxHtml(html: string): string {
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  for (const element of Array.from(template.content.querySelectorAll("*"))) {
+    const tag = element.tagName.toLowerCase();
+    if (!DOCX_ALLOWED_TAGS.has(tag)) {
+      element.replaceWith(...Array.from(element.childNodes));
+      continue;
+    }
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      const allowed = DOCX_GLOBAL_ATTRIBUTES.has(name)
+        || (tag === "a" && name === "href")
+        || (tag === "img" && name === "src")
+        || (["td", "th"].includes(tag) && DOCX_TABLE_ATTRIBUTES.has(name));
+      if (!allowed || ((name === "href" || name === "src") && !isSafeDocxURL(attribute.value, tag === "img"))) {
+        element.removeAttribute(attribute.name);
+      }
+    }
+  }
+  return template.innerHTML;
 }
 
 function kindLabel(kind: DocumentPreviewKind): string {
@@ -490,7 +502,7 @@ export function DocumentViewerModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-  const [docx, setDocx] = useState<DocxPreview | null>(null);
+  const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
 
   useEffect(() => {
@@ -498,7 +510,7 @@ export function DocumentViewerModal({
     setLoading(true);
     setError(null);
     setPdfBlob(null);
-    setDocx(null);
+    setDocxBlob(null);
     setTable(null);
 
     void downloadFileBlob(accessToken, file.id)
@@ -514,7 +526,7 @@ export function DocumentViewerModal({
           return;
         }
         if (kind === "docx") {
-          setDocx(await loadDocxPreview(blob));
+          setDocxBlob(blob);
           return;
         }
         setTable(await loadTablePreview(file, blob));
@@ -585,12 +597,7 @@ export function DocumentViewerModal({
 
           {!loading && !error && kind === "pdf" && pdfBlob && <PdfCanvasViewer blob={pdfBlob} />}
 
-          {!loading && !error && kind === "docx" && docx && (
-            <div
-              className="document-viewer-docx"
-              dangerouslySetInnerHTML={{ __html: docx.html }}
-            />
-          )}
+          {!loading && !error && kind === "docx" && docxBlob && <DocxDocumentPreview blob={docxBlob} />}
 
           {!loading && !error && kind === "table" && table && activeSheet && (
             <div className="document-preview-table-wrap document-viewer-table-wrap">

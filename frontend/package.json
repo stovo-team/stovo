@@ -19,6 +19,7 @@
     "@capacitor/core": "^8.4.0",
     "@excalidraw/excalidraw": "^0.18.1",
     "@vitejs/plugin-react": "^6.0.5",
+    "docx-preview": "^0.4.1",
     "emoji-picker-react": "^4.19.1",
     "livekit-client": "^2.21.0",
     "lucide-react": "^1.16.0",
@@ -40,6 +41,7 @@
     "@types/react-dom": "^19.0.2",
     "@vitest/coverage-v8": "^4.1.8",
     "jsdom": "^29.1.1",
+    "jszip": "^3.10.1",
     "vitest": "^4.1.8"
   }
 }
