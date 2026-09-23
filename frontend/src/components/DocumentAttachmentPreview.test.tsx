@@ -129,11 +129,11 @@ describe("detectDocumentPreviewKind", () => {
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "export.tsv", mimeType: "text/tab-separated-values" })).toBe("table");
   });
 
-  it("detects text and Markdown documents from extension or MIME type", async () => {
+  it("detects Markdown and plain text documents", async () => {
     const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
-    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "notes.txt", mimeType: "text/plain" })).toBe("text");
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "notes.md", mimeType: "text/markdown" })).toBe("text");
-    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "README", mimeType: "text/markdown" })).toBe("text");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "readme.markdown", mimeType: "" })).toBe("text");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "notes.txt", mimeType: "text/plain" })).toBe("text");
   });
 
   it("returns unsupported for other formats and handles empty values safely", async () => {
@@ -162,190 +162,75 @@ describe("sanitizeDocxHtml", () => {
 });
 
 describe("document attachment cards in chat", () => {
-  it("renders plain text and Markdown contents inline as text", async () => {
+  it("caps the full text viewer content for large documents", async () => {
     const container = document.createElement("div");
     const root: Root = createRoot(container);
-    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Agenda\nBring <notes> & questions"], { type: "text/markdown" }));
-    const file: FamilyFile = {
-      id: "inline-markdown-1",
-      familyId: "family-1",
-      uploadedBy: "member-1",
-      chatId: "chat-1",
-      chatTitle: "Chat",
-      chatType: "direct",
-      originMessageId: "message-1",
-      accessScope: "chat",
-      storageProvider: "local",
-      originalName: "agenda.md",
-      mimeType: "text/markdown",
-      sizeBytes: 34,
-      checksum: null,
-      createdAt: "2026-09-22T00:00:00Z",
-      deletedAt: null,
-      isFavorite: false,
-    };
-    document.body.appendChild(container);
-    try {
-      await act(async () => {
-        root.render(<DocumentAttachmentPreview accessToken="session-token" file={file} inlinePreview />);
-      });
-      expect(container.querySelector(".document-preview-text")?.textContent).toBe("# Agenda\nBring <notes> & questions");
-      expect(container.querySelector(".document-preview-text")?.querySelector("img, a, script")).toBeNull();
-      expect(container.querySelector(".document-preview-open")).not.toBeNull();
-    } finally {
-      await act(async () => root.unmount());
-      container.remove();
-      clearMediaBlobCache();
-      vi.restoreAllMocks();
-    }
-  });
-
-  it("shows an inline preview in chat while keeping the full viewer available", async () => {
-    const container = document.createElement("div");
-    const root: Root = createRoot(container);
-    vi.spyOn(filesApi, "downloadFileBlob").mockReturnValue(new Promise(() => undefined));
-    const file: FamilyFile = {
-      id: "inline-document-1",
-      familyId: "family-1",
-      uploadedBy: "member-1",
-      chatId: "chat-1",
-      chatTitle: "Chat",
-      chatType: "direct",
-      originMessageId: "message-1",
-      accessScope: "chat",
-      storageProvider: "local",
-      originalName: "agenda.pdf",
-      mimeType: "application/pdf",
-      sizeBytes: 120_000,
-      checksum: null,
-      createdAt: "2026-09-22T00:00:00Z",
-      deletedAt: null,
-      isFavorite: false,
-    };
-
-    document.body.appendChild(container);
-    try {
-      await act(async () => {
-        root.render(<DocumentAttachmentPreview accessToken="session-token" file={file} inlinePreview />);
-      });
-
-      expect(container.querySelector(".document-inline-preview")).not.toBeNull();
-      expect(container.textContent).toContain("Loading preview…");
-      expect(container.querySelector(".document-preview-open")).not.toBeNull();
-      expect(filesApi.downloadFileBlob).toHaveBeenCalledWith("session-token", "inline-document-1");
-      expect(document.querySelector('[role="dialog"]')).toBeNull();
-    } finally {
-      await act(async () => root.unmount());
-      container.remove();
-      clearMediaBlobCache();
-      vi.restoreAllMocks();
-    }
-  });
-
-  it("keeps the document open action available when an inline preview fails", async () => {
-    const container = document.createElement("div");
-    const root: Root = createRoot(container);
-    vi.spyOn(filesApi, "downloadFileBlob").mockRejectedValue(new Error("offline"));
-    const file: FamilyFile = {
-      id: "unavailable-inline-document",
-      familyId: "family-1",
-      uploadedBy: "member-1",
-      chatId: "chat-1",
-      chatTitle: "Chat",
-      chatType: "direct",
-      originMessageId: "message-1",
-      accessScope: "chat",
-      storageProvider: "local",
-      originalName: "report.pdf",
-      mimeType: "application/pdf",
-      sizeBytes: 120_000,
-      checksum: null,
-      createdAt: "2026-09-22T00:00:00Z",
-      deletedAt: null,
-      isFavorite: false,
-    };
-
-    document.body.appendChild(container);
-    try {
-      await act(async () => {
-        root.render(<DocumentAttachmentPreview accessToken="session-token" file={file} inlinePreview />);
-      });
-
-      expect(container.textContent).toContain("Preview couldn’t load.");
-      expect(container.querySelector(".document-preview-open")).not.toBeNull();
-      expect(document.querySelector('[role="dialog"]')).toBeNull();
-    } finally {
-      await act(async () => root.unmount());
-      container.remove();
-      clearMediaBlobCache();
-      vi.restoreAllMocks();
-    }
-  });
-
-  it("renders DOCX page formatting and inline emphasis from the source document", async () => {
-    const container = document.createElement("div");
-    const root: Root = createRoot(container);
-    const blob = new Blob(["docx bytes"], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(blob);
-    renderDocxMock.mockImplementation(async (_data: Blob, body: HTMLElement) => {
-      const page = document.createElement("section");
-      page.className = "docx-page";
-      page.innerHTML = '<h1 style="font-size: 28pt">PROFESSIONAL SUMMARY</h1><p><strong>Backend developer</strong> with experience.</p><ul><li>Production APIs</li></ul><a href="javascript:alert(1)">unsafe link</a><a href="https://example.com/resume">safe link</a>';
-      body.appendChild(page);
+    const source = "x".repeat(100_001);
+    vi.spyOn(Blob.prototype, "text").mockImplementation(function (this: Blob) {
+      expect(this.size).toBe(100_000);
+      return Promise.resolve("x".repeat(this.size));
     });
-
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob([source], { type: "text/plain" }));
+    const file: FamilyFile = {
+      id: "large-text-document", familyId: "family-1", uploadedBy: "member-1", chatId: "chat-1",
+      chatTitle: "Chat", chatType: "direct", originMessageId: "message-1", accessScope: "chat",
+      storageProvider: "local", originalName: "notes.txt", mimeType: "text/plain", sizeBytes: source.length,
+      checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
     document.body.appendChild(container);
     try {
-      await act(async () => {
-        root.render(
-          <DocumentAttachmentPreview
-            accessToken="session-token"
-            file={{
-              id: "formatted-docx",
-              familyId: "family-1",
-              uploadedBy: "member-1",
-              chatId: "chat-1",
-              chatTitle: "Chat",
-              chatType: "direct",
-              originMessageId: "message-1",
-              accessScope: "chat",
-              storageProvider: "local",
-              originalName: "resume.docx",
-              mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              sizeBytes: blob.size,
-              checksum: null,
-              createdAt: "2026-09-22T00:00:00Z",
-              deletedAt: null,
-              isFavorite: false,
-          }}
-          />,
-        );
-      });
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} />));
       await act(async () => {
         container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
         await new Promise((resolve) => window.setTimeout(resolve, 20));
       });
 
-      const docxPreview = document.querySelector<HTMLElement>(".document-viewer-docx");
-      expect(docxPreview?.querySelector("h1")?.style.fontSize).toBe("28pt");
-      expect(docxPreview?.querySelector("strong")?.textContent).toBe("Backend developer");
-      expect(docxPreview?.querySelector("ul li")?.textContent).toBe("Production APIs");
-      expect(docxPreview?.querySelector("a")?.hasAttribute("href")).toBe(false);
-      expect(docxPreview?.querySelectorAll("a")[1]?.getAttribute("href")).toBe("https://example.com/resume");
-      expect(renderDocxMock).toHaveBeenCalledOnce();
-      expect(renderDocxMock).toHaveBeenCalledWith(
-        blob,
-        expect.any(HTMLElement),
-        expect.any(HTMLElement),
-        expect.objectContaining({ renderAltChunks: false, useBase64URL: true }),
-      );
-      expect(renderDocxMock.mock.calls[0]?.[1]).not.toBe(docxPreview);
+      expect(document.querySelector(".document-viewer-text")?.textContent).toHaveLength(100_000);
     } finally {
       await act(async () => root.unmount());
       container.remove();
       clearMediaBlobCache();
       vi.restoreAllMocks();
-      vi.unstubAllGlobals();
+    }
+  });
+
+  it("preserves DOCX formatting and removes unsafe links in the full viewer", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    const blob = new Blob(["docx bytes"]);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(blob);
+    renderDocxMock.mockImplementation(async (_data: Blob, body: HTMLElement) => {
+      const page = document.createElement("section");
+      page.innerHTML = '<h1 style="font-size: 28pt">SUMMARY</h1><p><strong>Backend developer</strong></p><ul><li>Production APIs</li></ul><a href="javascript:alert(1)">unsafe</a><a href="https://example.com">safe</a>';
+      body.appendChild(page);
+    });
+    const file: FamilyFile = {
+      id: "docx", familyId: "family", uploadedBy: "member", chatId: "chat", chatTitle: "Chat",
+      chatType: "direct", originMessageId: "message", accessScope: "chat", storageProvider: "local",
+      originalName: "resume.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      sizeBytes: blob.size, checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+      const preview = document.querySelector<HTMLElement>(".document-viewer-docx");
+      expect(preview?.querySelector("h1")?.style.fontSize).toBe("28pt");
+      expect(preview?.querySelector("strong")?.textContent).toBe("Backend developer");
+      expect(preview?.querySelector("ul li")?.textContent).toBe("Production APIs");
+      expect(preview?.querySelector("a")?.hasAttribute("href")).toBe(false);
+      expect(preview?.querySelectorAll("a")[1]?.getAttribute("href")).toBe("https://example.com");
+      expect(renderDocxMock).toHaveBeenCalledWith(blob, expect.any(HTMLElement), expect.any(HTMLElement),
+        expect.objectContaining({ renderAltChunks: false, useBase64URL: true }));
+      expect(renderDocxMock.mock.calls[0]?.[1]).not.toBe(preview);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
       renderDocxMock.mockReset();
     }
   });

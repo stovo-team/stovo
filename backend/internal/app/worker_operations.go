@@ -190,10 +190,10 @@ func detectedMIMECompatible(expected, detected string) bool {
 	if expectedType == detectedType {
 		return true
 	}
-	if expectedType == "text/markdown" && detectedType == "text/plain" {
-		return true
+	if expectedType == "text/plain" || expectedType == "text/markdown" {
+		return detectedType == "text/plain"
 	}
-	if strings.HasPrefix(expectedType, "image/") || strings.HasPrefix(expectedType, "audio/") || strings.HasPrefix(expectedType, "video/") || expectedType == "application/pdf" || expectedType == "text/plain" || expectedType == "text/markdown" {
+	if strings.HasPrefix(expectedType, "image/") || strings.HasPrefix(expectedType, "audio/") || strings.HasPrefix(expectedType, "video/") || expectedType == "application/pdf" {
 		return false
 	}
 	// Office providers commonly expose OOXML bytes as ZIP or octet-stream;
@@ -330,7 +330,7 @@ func (s *Server) drainPendingEvents(ctx context.Context, userID string) []pendin
 
 func (s *Server) startNtfyRetryWorker(ctx context.Context) {
 	workruntime.RunNtfyRetryWorker(ctx, s.ntfyRetryCh, workruntime.NtfyRetryWorkerOptions{
-		Deliver: func(ctx context.Context, item workruntime.NtfyRetryItem) error { return s.publishToNtfy(ctx, item.Payload) },
+		Deliver:   func(ctx context.Context, item workruntime.NtfyRetryItem) error { return s.publishToNtfy(ctx, item.Payload) },
 		Succeeded: func(item workruntime.NtfyRetryItem, attempt int) {
 			s.logger.Infof("delivery", "ntfy retry succeeded user_id=%s attempt=%d", item.UserID, attempt)
 		},

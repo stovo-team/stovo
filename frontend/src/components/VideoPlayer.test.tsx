@@ -304,9 +304,17 @@ describe("VideoPlayer", () => {
   });
 
   it("opens an inset viewer that keeps the existing video node and its aspect ratio", async () => {
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true,
+      value: function (this: HTMLDialogElement) { this.open = true; },
+    });
+    Object.defineProperty(HTMLDialogElement.prototype, "close", {
+      configurable: true,
+      value: function (this: HTMLDialogElement) { this.open = false; },
+    });
     const { container } = renderPlayer();
     await settle();
-    const root = container.querySelector<HTMLElement>(".video-player")!;
+    const root = container.querySelector<HTMLDialogElement>(".video-player")!;
     const element = media(container);
     setMediaTiming(element, 120, 42);
     Object.defineProperty(element, "videoWidth", { configurable: true, value: 1920 });
@@ -325,11 +333,61 @@ describe("VideoPlayer", () => {
     expect(element.currentTime).toBe(42);
     expect(container.querySelector('button[aria-label="Close video viewer"]')).not.toBeNull();
 
-    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Close video viewer"]')?.click());
+    const focusable = root.querySelectorAll<HTMLElement>(
+      'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])',
+    );
+    focusable[focusable.length - 1].focus();
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    act(() => root.dispatchEvent(tab));
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(focusable[0]);
+
+    act(() => root.dispatchEvent(new Event("cancel", { cancelable: true })));
     await settle();
     expect(document.querySelector(".video-player-viewer-backdrop")).toBeNull();
     expect(root.classList.contains("is-expanded")).toBe(false);
     expect(container.querySelector("video")).toBe(element);
+  });
+
+  it("opens the same expanded player as a modal dialog and closes it again", async () => {
+    const showModal = vi.fn(function (this: HTMLDialogElement) { this.open = true; });
+    const close = vi.fn(function (this: HTMLDialogElement) { this.open = false; });
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: showModal });
+    Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: close });
+    const { container } = renderPlayer();
+    await settle();
+    const player = container.querySelector<HTMLDialogElement>(".video-player")!;
+    const video = media(container);
+    expect(player.getAttribute("role")).toBe("presentation");
+
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Open video viewer"]')?.click());
+    await settle();
+
+    expect(player.tagName).toBe("DIALOG");
+    expect(player.open).toBe(true);
+    expect(showModal).toHaveBeenCalledOnce();
+    expect(document.querySelector(".video-player-viewer-backdrop")).not.toBeNull();
+    expect(media(container)).toBe(video);
+
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Close video viewer"]')?.click());
+    await settle();
+    expect(player.open).toBe(false);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("reverts expansion and removes the backdrop when modal dialogs are unavailable", async () => {
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true,
+      value: () => { throw new Error("showModal is unavailable"); },
+    });
+    const { container } = renderPlayer();
+    await settle();
+
+    act(() => container.querySelector<HTMLButtonElement>('button[aria-label="Open video viewer"]')?.click());
+    await settle();
+
+    expect(container.querySelector(".video-player")?.classList.contains("is-expanded")).toBe(false);
+    expect(document.querySelector(".video-player-viewer-backdrop")).toBeNull();
   });
 
   it("keeps the expanded viewer smaller than the viewport for landscape and portrait video", () => {

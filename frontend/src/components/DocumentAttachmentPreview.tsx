@@ -1,15 +1,10 @@
-import {
-  FileSpreadsheet,
-  FileText,
-  LoaderCircle,
-  X,
-} from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 import { InlineDocumentPreview } from "./InlineDocumentPreview";
-import { DocxDocumentRenderer } from "./DocxDocumentRenderer";
+import { DocxDocumentPreview } from "./DocxDocumentPreview";
 import {
   downloadFileBlob,
   formatFileSize,
@@ -18,22 +13,22 @@ import {
 } from "../api/files";
 import {
   applyPdfPageZoom,
+  getPdfRenderLimits,
   nextPinchZoom,
   nextWheelZoom,
   touchDistance,
 } from "./pdfViewerZoom";
-import { detectDocumentPreviewKind, type DocumentPreviewKind } from "./documentPreviewKind";
+import { detectDocumentPreviewKind, DocumentKindIcon, documentKindLabel, type DocumentPreviewKind } from "./documentPreviewKind";
 
 export { detectDocumentPreviewKind } from "./documentPreviewKind";
 
 export type { DocumentPreviewKind } from "./documentPreviewKind";
+export { getPdfRenderLimits } from "./pdfViewerZoom";
 
 export type TablePreview = {
   sheets: Array<{ name: string; rows: string[][] }>;
   activeSheet: number;
 };
-
-export { sanitizeDocxHtml } from "./docxSanitizer";
 
 function extensionOf(name: string): string {
   const idx = name.lastIndexOf(".");
@@ -118,29 +113,7 @@ async function loadTablePreview(file: FamilyFile, blob: Blob): Promise<TablePrev
   return { sheets: sheets.length > 0 ? sheets : [{ name: "Sheet1", rows: [] }], activeSheet: 0 };
 }
 
-function kindLabel(kind: DocumentPreviewKind): string {
-  if (kind === "pdf") return "PDF";
-  if (kind === "docx") return "Document";
-  if (kind === "table") return "Spreadsheet";
-  if (kind === "text") return "Text document";
-  return "File";
-}
-
-function KindIcon({ kind }: { kind: DocumentPreviewKind }) {
-  if (kind === "table") return <FileSpreadsheet size={18} aria-hidden="true" />;
-  return <FileText size={18} aria-hidden="true" />;
-}
-
-export function getPdfRenderLimits(
-  pageCount: number,
-  devicePixelRatio: number,
-  isConstrainedDevice: boolean,
-) {
-  return {
-    maxPages: Math.min(pageCount, isConstrainedDevice ? 12 : 40),
-    dpr: Math.min(devicePixelRatio || 1, isConstrainedDevice ? 1.5 : 2),
-  };
-}
+export { sanitizeDocxHtml } from "./DocxDocumentPreview";
 
 function pdfJsAssetUrl(path: string): string {
   return new URL(`/pdfjs/${path}`, window.location.origin).toString();
@@ -333,7 +306,6 @@ export function DocumentAttachmentPreview({
   accessToken: string | null;
   file: FamilyFile;
   hideActions?: boolean;
-  /** Render a lightweight first-page preview below the attachment row (used in chat). */
   inlinePreview?: boolean;
 }) {
   const kind = useMemo(() => detectDocumentPreviewKind(file), [file]);
@@ -356,11 +328,11 @@ export function DocumentAttachmentPreview({
         onClick={() => setViewerOpen(true)}
       >
         <header className="document-preview-header">
-          <KindIcon kind={kind} />
+          <DocumentKindIcon kind={kind} />
           <div className="document-preview-copy">
             <strong title={file.originalName}>{file.originalName}</strong>
             <span>
-              {kindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
+              {documentKindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
             </span>
           </div>
           {!hideActions && (
@@ -398,7 +370,11 @@ export function DocumentAttachmentPreview({
             onResolvedSize={setResolvedSizeBytes}
             loadTablePreview={loadTablePreview}
             renderPdf={(blob) => <PdfCanvasViewer blob={blob} pageLimit={1} />}
-            renderDocx={(blob) => <div className="document-inline-preview-docx"><DocxDocumentRenderer blob={blob} /></div>}
+            renderDocx={(blob) => (
+              <div className="document-inline-preview-docx">
+                <DocxDocumentPreview blob={blob} />
+              </div>
+            )}
           />
         )}
       </article>
@@ -464,7 +440,7 @@ export function DocumentViewerModal({
           return;
         }
         if (kind === "text") {
-          setTextContent((await blob.text()).slice(0, 100_000));
+          setTextContent(await blob.slice(0, 100_000).text());
           return;
         }
         setTable(await loadTablePreview(file, blob));
@@ -502,11 +478,11 @@ export function DocumentViewerModal({
       >
         <header className="document-viewer-header">
           <div className="document-viewer-title">
-            <KindIcon kind={kind} />
+            <DocumentKindIcon kind={kind} />
             <div>
               <strong title={file.originalName}>{file.originalName}</strong>
               <span>
-                {kindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
+                {documentKindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
               </span>
             </div>
           </div>
@@ -535,10 +511,10 @@ export function DocumentViewerModal({
 
           {!loading && !error && kind === "pdf" && pdfBlob && <PdfCanvasViewer blob={pdfBlob} />}
 
-          {!loading && !error && kind === "docx" && docxBlob && <DocxDocumentRenderer blob={docxBlob} />}
+          {!loading && !error && kind === "docx" && docxBlob && <DocxDocumentPreview blob={docxBlob} />}
 
           {!loading && !error && kind === "text" && textContent !== null && (
-            <pre className="document-preview-text document-preview-text--viewer">{textContent}</pre>
+            <pre className="document-viewer-text">{textContent || "(Empty document)"}</pre>
           )}
 
           {!loading && !error && kind === "table" && table && activeSheet && (

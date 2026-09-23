@@ -10,6 +10,7 @@ func TestDetectedMIMECompatible(t *testing.T) {
 		want     bool
 	}{
 		{name: "markdown detected as plain text", expected: "text/markdown", detected: "text/plain; charset=utf-8", want: true},
+		{name: "markdown MIME parameters are normalized", expected: "text/markdown; charset=utf-8", detected: "text/plain; charset=utf-8", want: true},
 		{name: "plain text with charset", expected: "text/plain", detected: "text/plain; charset=utf-8", want: true},
 		{name: "markdown rejects PDF bytes", expected: "text/markdown", detected: "application/pdf", want: false},
 		{name: "plain text rejects image bytes", expected: "text/plain", detected: "image/png", want: false},

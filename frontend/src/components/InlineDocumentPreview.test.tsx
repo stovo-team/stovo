@@ -4,14 +4,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as filesApi from "../api/files";
 import type { FamilyFile } from "../api/files";
+import { LanguageProvider } from "../i18n/LanguageContext";
 import { InlineDocumentPreview } from "./InlineDocumentPreview";
+import { AttachmentCard } from "../features/chats/conversation/MessageAttachmentThumbs";
 import type { TablePreview } from "./DocumentAttachmentPreview";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const roots: Root[] = [];
 
-function makeFile(id: string): FamilyFile {
+function makeFile(id: string, name = `${id}.pdf`, mimeType = "application/pdf"): FamilyFile {
   return {
     id,
     familyId: "family-1",
@@ -22,9 +24,9 @@ function makeFile(id: string): FamilyFile {
     originMessageId: "message-1",
     accessScope: "chat",
     storageProvider: "local",
-    originalName: `${id}.csv`,
-    mimeType: "text/csv",
-    sizeBytes: 20,
+    originalName: name,
+    mimeType,
+    sizeBytes: 120,
     checksum: null,
     createdAt: "2026-09-22T00:00:00Z",
     deletedAt: null,
@@ -48,8 +50,104 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("InlineDocumentPreview", () => {
-  it("does not show a spreadsheet parse result after its file has changed", async () => {
+describe("inline document previews in chat", () => {
+  it("renders a preview row without opening a modal and retains Open and Save", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    roots.push(root);
+    document.body.appendChild(container);
+    const download = vi.spyOn(filesApi, "downloadFileBlob").mockReturnValue(new Promise(() => undefined));
+
+    await act(async () => root.render(
+      <LanguageProvider>
+        <AttachmentCard
+          accessToken="session-token"
+          chatId="chat-1"
+          file={makeFile("chat-pdf")}
+          messageId="message-1"
+        />
+      </LanguageProvider>,
+    ));
+
+    expect(container.querySelector(".document-inline-preview")).not.toBeNull();
+    expect(container.textContent).toContain("Loading preview…");
+    expect(container.querySelector(".document-preview-open")).not.toBeNull();
+    expect(container.querySelector(".document-preview-save")).not.toBeNull();
+    expect(download).toHaveBeenCalledWith("session-token", "chat-pdf");
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("renders Markdown as safe plain text in the chat attachment", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    roots.push(root);
+    document.body.appendChild(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Release notes\n<script>text only</script>"], { type: "text/plain" }));
+
+    await act(async () => root.render(
+      <LanguageProvider>
+        <AttachmentCard
+          accessToken="session-token"
+          chatId="chat-1"
+          file={makeFile("chat-markdown", "release-notes.md", "text/markdown")}
+          messageId="message-2"
+        />
+      </LanguageProvider>,
+    ));
+
+    expect(container.querySelector(".document-inline-preview-text")?.textContent).toContain("# Release notes");
+    expect(container.querySelector(".document-inline-preview-text script")).toBeNull();
+    expect(container.querySelector(".document-preview-open")).not.toBeNull();
+  });
+
+  it("passes the downloaded DOCX blob to the fidelity renderer", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    roots.push(root);
+    document.body.appendChild(container);
+    const docxBlob = new Blob(["docx bytes"], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(docxBlob);
+    const renderDocx = vi.fn(() => <div className="docx-rendered">DOCX page</div>);
+
+    await act(async () => root.render(
+      <InlineDocumentPreview
+        accessToken="session-token"
+        file={makeFile("docx", "report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
+        kind="docx"
+        onResolvedSize={vi.fn()}
+        loadTablePreview={async () => ({ sheets: [{ name: "Sheet1", rows: [] }], activeSheet: 0 })}
+        renderPdf={() => null}
+        renderDocx={(blob) => <>{renderDocx(blob)}</>}
+      />,
+    ));
+
+    expect(container.querySelector(".docx-rendered")?.textContent).toBe("DOCX page");
+    expect(renderDocx).toHaveBeenCalledWith(docxBlob);
+  });
+
+  it("keeps Open available when an inline preview download fails", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    roots.push(root);
+    document.body.appendChild(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockRejectedValue(new Error("offline"));
+
+    await act(async () => root.render(
+      <InlineDocumentPreview
+        accessToken="session-token"
+        file={makeFile("unavailable")}
+        kind="pdf"
+        onResolvedSize={vi.fn()}
+        loadTablePreview={async () => ({ sheets: [{ name: "Sheet1", rows: [] }], activeSheet: 0 })}
+        renderPdf={() => null}
+        renderDocx={() => null}
+      />,
+    ));
+
+    expect(container.textContent).toContain("Preview couldn’t load.");
+  });
+
+  it("does not show a spreadsheet parse result after its file changes", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
     roots.push(root);
@@ -57,7 +155,7 @@ describe("InlineDocumentPreview", () => {
     vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["rows"]));
     const oldParse = deferred<TablePreview>();
     const newParse = deferred<TablePreview>();
-    const loadTablePreview = vi.fn((file: FamilyFile) => file.id === "old-file" ? oldParse.promise : newParse.promise);
+    const loadTablePreview = vi.fn((file: FamilyFile) => file.id === "old" ? oldParse.promise : newParse.promise);
     const onResolvedSize = vi.fn();
     const props = (file: FamilyFile) => ({
       accessToken: "session-token",
@@ -69,8 +167,8 @@ describe("InlineDocumentPreview", () => {
       renderDocx: () => null,
     });
 
-    await act(async () => root.render(<InlineDocumentPreview {...props(makeFile("old-file"))} />));
-    await act(async () => root.render(<InlineDocumentPreview {...props(makeFile("new-file"))} />));
+    await act(async () => root.render(<InlineDocumentPreview {...props(makeFile("old", "old.csv", "text/csv"))} />));
+    await act(async () => root.render(<InlineDocumentPreview {...props(makeFile("new", "new.csv", "text/csv"))} />));
     await act(async () => {
       newParse.resolve({ sheets: [{ name: "Sheet1", rows: [["new file"]] }], activeSheet: 0 });
       await Promise.resolve();
@@ -85,7 +183,7 @@ describe("InlineDocumentPreview", () => {
     expect(container.textContent).not.toContain("stale file");
   });
 
-  it("waits until near the viewport before downloading a document preview", async () => {
+  it("waits until near the viewport before downloading a preview", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
     roots.push(root);
@@ -105,12 +203,11 @@ describe("InlineDocumentPreview", () => {
       thresholds = [0];
     }
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
-    const file = makeFile("visible-file");
 
     await act(async () => root.render(
       <InlineDocumentPreview
         accessToken="session-token"
-        file={file}
+        file={makeFile("near", "near.csv", "text/csv")}
         kind="table"
         onResolvedSize={vi.fn()}
         loadTablePreview={async () => ({ sheets: [{ name: "Sheet1", rows: [] }], activeSheet: 0 })}
@@ -125,7 +222,7 @@ describe("InlineDocumentPreview", () => {
       onIntersect?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
       await Promise.resolve();
     });
-    expect(download).toHaveBeenCalledWith("session-token", "visible-file");
+    expect(download).toHaveBeenCalledWith("session-token", "near");
     expect(disconnect).toHaveBeenCalledOnce();
   });
 });

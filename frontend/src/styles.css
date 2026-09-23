@@ -7657,10 +7657,13 @@ span.message-spoiler.is-revealed {
   border: 0;
   border-radius: 14px;
   color: #ffffff;
+  display: block;
   isolation: isolate;
   max-width: 100%;
+  margin: 0;
   min-height: 120px;
   overflow: hidden;
+  padding: 0;
   position: relative;
   width: 100%;
 }
@@ -21224,21 +21227,24 @@ button.chat-info-title-edit:active:not(:disabled) {
   padding: 14px 18px;
 }
 
-.document-preview-text {
-  color: var(--text-primary);
-  font: inherit;
-  line-height: 1.45;
+.document-inline-preview-text,
+.document-viewer-text {
+  background: #fff;
+  color: #202124;
+  font: 13px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace;
   margin: 0;
-  max-height: 360px;
-  overflow: auto;
-  padding: 12px 14px;
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  padding: 14px 18px;
+  white-space: pre-wrap;
 }
 
-.document-preview-text--viewer {
-  max-height: none;
-  padding: 20px;
+.document-inline-preview-text {
+  max-height: 360px;
+  overflow: hidden;
+}
+
+.document-viewer-text {
+  min-height: 100%;
 }
 
 .document-inline-preview .document-preview-table-wrap {

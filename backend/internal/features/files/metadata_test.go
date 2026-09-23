@@ -99,6 +99,12 @@ func TestUploadMetadataMIMEAndFilenamePolicy(t *testing.T) {
 	if got, ok := NormalizeUploadMIME("application/octet-stream", "shared-photo.jpg"); !ok || got != "image/jpeg" {
 		t.Fatalf("mime = %q ok=%v", got, ok)
 	}
+	if !AllowedMIME("text/markdown") {
+		t.Fatal("Markdown MIME rejected")
+	}
+	if got, ok := NormalizeUploadMIME("text/markdown; charset=utf-8", "notes.md"); !ok || got != "text/markdown" {
+		t.Fatalf("Markdown mime = %q ok=%v", got, ok)
+	}
 	if SanitizeFilename(` ../bad\\name.txt `) != "name.txt" {
 		t.Fatal("filename was not sanitized")
 	}

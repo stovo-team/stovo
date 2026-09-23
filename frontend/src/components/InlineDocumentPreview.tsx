@@ -2,7 +2,7 @@ import { LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { downloadFileBlob, type FamilyFile } from "../api/files";
-import type { DocumentPreviewKind } from "./documentPreviewKind";
+import { documentKindLabel, type DocumentPreviewKind } from "./documentPreviewKind";
 import type { TablePreview } from "./DocumentAttachmentPreview";
 
 type InlineDocumentPreviewProps = {
@@ -14,15 +14,6 @@ type InlineDocumentPreviewProps = {
   renderPdf: (blob: Blob) => ReactNode;
   renderDocx: (blob: Blob) => ReactNode;
 };
-
-function kindLabel(kind: DocumentPreviewKind): string {
-  if (kind === "pdf") return "PDF";
-  if (kind === "docx") return "Document";
-  if (kind === "table") return "Spreadsheet";
-  return "Text document";
-}
-
-const MAX_INLINE_TEXT_CHARS = 12_000;
 
 export function InlineDocumentPreview({
   accessToken,
@@ -39,8 +30,7 @@ export function InlineDocumentPreview({
   const [error, setError] = useState(false);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
-  const [textContent, setTextContent] = useState<string | null>(null);
-  const [textTruncated, setTextTruncated] = useState(false);
+  const [textPreview, setTextPreview] = useState<string | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
   const activeSheet = table?.sheets[table.activeSheet];
 
@@ -68,8 +58,7 @@ export function InlineDocumentPreview({
     setError(false);
     setPdfBlob(null);
     setDocxBlob(null);
-    setTextContent(null);
-    setTextTruncated(false);
+    setTextPreview(null);
     setTable(null);
 
     void downloadFileBlob(accessToken, file.id)
@@ -81,11 +70,8 @@ export function InlineDocumentPreview({
         } else if (kind === "docx") {
           setDocxBlob(blob);
         } else if (kind === "text") {
-          const text = await blob.text();
-          if (!cancelled) {
-            setTextContent(text.slice(0, MAX_INLINE_TEXT_CHARS));
-            setTextTruncated(text.length > MAX_INLINE_TEXT_CHARS);
-          }
+          const preview = await blob.text();
+          if (!cancelled) setTextPreview(preview.slice(0, 8_000));
         } else {
           const preview = await loadTablePreview(file, blob);
           if (!cancelled) setTable(preview);
@@ -104,7 +90,7 @@ export function InlineDocumentPreview({
   }, [accessToken, file.id, file.originalName, file.mimeType, kind, loadTablePreview, onResolvedSize, shouldLoadPreview]);
 
   return (
-    <div className="document-inline-preview" role="group" aria-label={`${kindLabel(kind)} preview`} ref={hostRef}>
+    <div className="document-inline-preview" role="group" aria-label={`${documentKindLabel(kind)} preview`} ref={hostRef}>
       {loading && shouldLoadPreview && (
         <div className="document-preview-status" role="status">
           <LoaderCircle size={18} className="document-preview-spinner" aria-hidden="true" />
@@ -115,8 +101,8 @@ export function InlineDocumentPreview({
       {error && <div className="document-preview-error" role="alert">Preview couldn’t load. Open the file to try again.</div>}
       {!loading && !error && kind === "pdf" && pdfBlob && renderPdf(pdfBlob)}
       {!loading && !error && kind === "docx" && docxBlob && renderDocx(docxBlob)}
-      {!loading && !error && kind === "text" && textContent !== null && (
-        <pre className="document-preview-text">{textContent}{textTruncated ? "\n…" : ""}</pre>
+      {!loading && !error && kind === "text" && textPreview !== null && (
+        <pre className="document-inline-preview-text">{textPreview || "(Empty document)"}</pre>
       )}
       {!loading && !error && kind === "table" && table && activeSheet && (
         <div className="document-preview-table-wrap">

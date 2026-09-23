@@ -43,7 +43,7 @@ async function formattedDocxFixture(): Promise<Uint8Array> {
 }
 
 describe("DOCX renderer fidelity", () => {
-  it("keeps heading styles, run formatting, and bulleted lists from a Word document", async () => {
+  it("keeps heading styles, run formatting, page layout, and bulleted lists", async () => {
     const host = document.createElement("div");
     const bytes = await formattedDocxFixture();
 
@@ -57,6 +57,7 @@ describe("DOCX renderer fidelity", () => {
     expect(host.textContent).toContain("Backend developer with experience.");
     expect(host.textContent).toContain("Production APIs");
     expect(host.querySelector(".stovo-test-wrapper")).not.toBeNull();
+    expect(host.querySelector("section.stovo-test")?.getAttribute("style")).toContain("width: 612pt");
     expect(Array.from(host.querySelectorAll("style"), (style) => style.textContent).join("\n")).toContain("font-size: 24.00pt");
     expect(host.querySelector(".stovo-test-num-1-0")?.textContent).toContain("Production APIs");
   });
