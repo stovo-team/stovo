@@ -104,6 +104,7 @@ type Server struct {
 	sync                   *featuresync.Service
 	publicAccess           *featureadministration.PublicAccessService
 	encryption             *featureadministration.EncryptionService
+	notificationProvider   *featureadministration.NotificationProviderService
 	mcpAudit               *featuremcp.AuditService
 	mcpConnectors          *featuremcp.ConnectorService
 	polls                  *featurepolls.Service
@@ -187,6 +188,7 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 		sync:                   deps.Sync,
 		publicAccess:           deps.PublicAccess,
 		encryption:             deps.Encryption,
+		notificationProvider:   deps.NotificationProvider,
 		mcpAudit:               deps.MCPAudit,
 		mcpConnectors:          deps.MCPConnectors,
 		polls:                  deps.Polls,

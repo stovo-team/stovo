@@ -47,6 +47,8 @@ type User struct {
 	AudioCallSettings *string `json:"audio_call_settings,omitempty"`
 	// NtfyTopicToken holds the value of the "ntfy_topic_token" field.
 	NtfyTopicToken *string `json:"ntfy_topic_token,omitempty"`
+	// FcmDeviceToken holds the value of the "fcm_device_token" field.
+	FcmDeviceToken *string `json:"-"`
 	// Email holds the value of the "email" field.
 	Email *string `json:"email,omitempty"`
 	// Bio holds the value of the "bio" field.
@@ -198,7 +200,7 @@ func (*User) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case user.FieldIsActive:
 			values[i] = new(sql.NullInt64)
-		case user.FieldID, user.FieldFamilyID, user.FieldUsername, user.FieldPasswordHash, user.FieldDisplayName, user.FieldRole, user.FieldPublicKey, user.FieldProfilePhotoFileID, user.FieldCreatedAt, user.FieldLastSeenAt, user.FieldProfileVisibility, user.FieldLastSeenVisibility, user.FieldAudioCallSettings, user.FieldNtfyTopicToken, user.FieldEmail, user.FieldBio, user.FieldTimezone:
+		case user.FieldID, user.FieldFamilyID, user.FieldUsername, user.FieldPasswordHash, user.FieldDisplayName, user.FieldRole, user.FieldPublicKey, user.FieldProfilePhotoFileID, user.FieldCreatedAt, user.FieldLastSeenAt, user.FieldProfileVisibility, user.FieldLastSeenVisibility, user.FieldAudioCallSettings, user.FieldNtfyTopicToken, user.FieldFcmDeviceToken, user.FieldEmail, user.FieldBio, user.FieldTimezone:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -315,6 +317,13 @@ func (_m *User) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.NtfyTopicToken = new(string)
 				*_m.NtfyTopicToken = value.String
+			}
+		case user.FieldFcmDeviceToken:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field fcm_device_token", values[i])
+			} else if value.Valid {
+				_m.FcmDeviceToken = new(string)
+				*_m.FcmDeviceToken = value.String
 			}
 		case user.FieldEmail:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -482,6 +491,8 @@ func (_m *User) String() string {
 		builder.WriteString("ntfy_topic_token=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	builder.WriteString("fcm_device_token=<sensitive>")
 	builder.WriteString(", ")
 	if v := _m.Email; v != nil {
 		builder.WriteString("email=")

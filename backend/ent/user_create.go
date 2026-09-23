@@ -193,6 +193,20 @@ func (_c *UserCreate) SetNillableNtfyTopicToken(v *string) *UserCreate {
 	return _c
 }
 
+// SetFcmDeviceToken sets the "fcm_device_token" field.
+func (_c *UserCreate) SetFcmDeviceToken(v string) *UserCreate {
+	_c.mutation.SetFcmDeviceToken(v)
+	return _c
+}
+
+// SetNillableFcmDeviceToken sets the "fcm_device_token" field if the given value is not nil.
+func (_c *UserCreate) SetNillableFcmDeviceToken(v *string) *UserCreate {
+	if v != nil {
+		_c.SetFcmDeviceToken(*v)
+	}
+	return _c
+}
+
 // SetEmail sets the "email" field.
 func (_c *UserCreate) SetEmail(v string) *UserCreate {
 	_c.mutation.SetEmail(v)
@@ -610,6 +624,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.NtfyTopicToken(); ok {
 		_spec.SetField(user.FieldNtfyTopicToken, field.TypeString, value)
 		_node.NtfyTopicToken = &value
+	}
+	if value, ok := _c.mutation.FcmDeviceToken(); ok {
+		_spec.SetField(user.FieldFcmDeviceToken, field.TypeString, value)
+		_node.FcmDeviceToken = &value
 	}
 	if value, ok := _c.mutation.Email(); ok {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)
@@ -1068,6 +1086,24 @@ func (u *UserUpsert) ClearNtfyTopicToken() *UserUpsert {
 	return u
 }
 
+// SetFcmDeviceToken sets the "fcm_device_token" field.
+func (u *UserUpsert) SetFcmDeviceToken(v string) *UserUpsert {
+	u.Set(user.FieldFcmDeviceToken, v)
+	return u
+}
+
+// UpdateFcmDeviceToken sets the "fcm_device_token" field to the value that was provided on create.
+func (u *UserUpsert) UpdateFcmDeviceToken() *UserUpsert {
+	u.SetExcluded(user.FieldFcmDeviceToken)
+	return u
+}
+
+// ClearFcmDeviceToken clears the value of the "fcm_device_token" field.
+func (u *UserUpsert) ClearFcmDeviceToken() *UserUpsert {
+	u.SetNull(user.FieldFcmDeviceToken)
+	return u
+}
+
 // SetEmail sets the "email" field.
 func (u *UserUpsert) SetEmail(v string) *UserUpsert {
 	u.Set(user.FieldEmail, v)
@@ -1419,6 +1455,27 @@ func (u *UserUpsertOne) UpdateNtfyTopicToken() *UserUpsertOne {
 func (u *UserUpsertOne) ClearNtfyTopicToken() *UserUpsertOne {
 	return u.Update(func(s *UserUpsert) {
 		s.ClearNtfyTopicToken()
+	})
+}
+
+// SetFcmDeviceToken sets the "fcm_device_token" field.
+func (u *UserUpsertOne) SetFcmDeviceToken(v string) *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.SetFcmDeviceToken(v)
+	})
+}
+
+// UpdateFcmDeviceToken sets the "fcm_device_token" field to the value that was provided on create.
+func (u *UserUpsertOne) UpdateFcmDeviceToken() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateFcmDeviceToken()
+	})
+}
+
+// ClearFcmDeviceToken clears the value of the "fcm_device_token" field.
+func (u *UserUpsertOne) ClearFcmDeviceToken() *UserUpsertOne {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearFcmDeviceToken()
 	})
 }
 
@@ -1949,6 +2006,27 @@ func (u *UserUpsertBulk) UpdateNtfyTopicToken() *UserUpsertBulk {
 func (u *UserUpsertBulk) ClearNtfyTopicToken() *UserUpsertBulk {
 	return u.Update(func(s *UserUpsert) {
 		s.ClearNtfyTopicToken()
+	})
+}
+
+// SetFcmDeviceToken sets the "fcm_device_token" field.
+func (u *UserUpsertBulk) SetFcmDeviceToken(v string) *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.SetFcmDeviceToken(v)
+	})
+}
+
+// UpdateFcmDeviceToken sets the "fcm_device_token" field to the value that was provided on create.
+func (u *UserUpsertBulk) UpdateFcmDeviceToken() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.UpdateFcmDeviceToken()
+	})
+}
+
+// ClearFcmDeviceToken clears the value of the "fcm_device_token" field.
+func (u *UserUpsertBulk) ClearFcmDeviceToken() *UserUpsertBulk {
+	return u.Update(func(s *UserUpsert) {
+		s.ClearFcmDeviceToken()
 	})
 }
 

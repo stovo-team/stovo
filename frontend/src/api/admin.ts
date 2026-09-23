@@ -156,6 +156,22 @@ export interface EncryptionSettings {
   compatibilityNotes: string[];
 }
 
+export type NotificationProvider = "firebase" | "ntfy";
+
+export interface NotificationProviderSettings {
+  notificationProvider: NotificationProvider;
+}
+
+export function getNotificationProviderSettings(accessToken: string) {
+  return apiRequest<NotificationProviderSettings>("/api/admin/notification-provider", { accessToken });
+}
+
+export function updateNotificationProviderSettings(accessToken: string, notificationProvider: NotificationProvider) {
+  return apiRequest<NotificationProviderSettings>("/api/admin/notification-provider", {
+    method: "PUT", accessToken, body: { notificationProvider }
+  });
+}
+
 export function getAdminLogs(accessToken: string, query: LogQuery = {}) {
   const params = new URLSearchParams();
   if (query.level) {

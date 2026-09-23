@@ -295,6 +295,24 @@ func (s *Server) adminPublicAccessHandler(user userPublic) httptransport.AdminPu
 	})
 }
 
+func (s *Server) adminNotificationProviderHandler(user userPublic) httptransport.AdminNotificationProviderHandler {
+	return httptransport.NewAdminNotificationProviderHandler(httptransport.NotificationProviderOperations{
+		IsAdmin: func(_ httptransport.AdminActor) bool { return s.requireAdmin(user) == nil },
+		Get: func(ctx context.Context) (string, error) {
+			if s.notificationProvider == nil {
+				return featureadministration.NotificationProviderFirebase, nil
+			}
+			return s.notificationProvider.Get(ctx)
+		},
+		Set: func(ctx context.Context, provider string) (string, error) {
+			if s.notificationProvider == nil {
+				return "", errors.New("notification provider settings unavailable")
+			}
+			return s.notificationProvider.Set(ctx, provider)
+		},
+	})
+}
+
 func (s *Server) backendTunnelOrigin() string {
 	origin := strings.TrimSpace(s.cfg.PublicTunnelOrigin)
 	parsed, err := url.Parse(origin)

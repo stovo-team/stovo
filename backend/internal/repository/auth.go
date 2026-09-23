@@ -416,3 +416,20 @@ func (s *Store) SetNtfyTopicToken(ctx context.Context, userID, token string) err
 		Save(ctx)
 	return err
 }
+
+// FCMDeviceToken returns the user's Firebase device registration token.
+func (s *Store) FCMDeviceToken(ctx context.Context, userID string) (*string, error) {
+	u, err := s.Client.User.Get(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return u.FcmDeviceToken, nil
+}
+
+// SetFCMDeviceToken persists the user's Firebase device registration token.
+func (s *Store) SetFCMDeviceToken(ctx context.Context, userID, token string) error {
+	_, err := s.Client.User.UpdateOneID(userID).
+		SetFcmDeviceToken(token).
+		Save(ctx)
+	return err
+}

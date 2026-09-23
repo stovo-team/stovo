@@ -283,6 +283,26 @@ func (_u *UserUpdate) ClearNtfyTopicToken() *UserUpdate {
 	return _u
 }
 
+// SetFcmDeviceToken sets the "fcm_device_token" field.
+func (_u *UserUpdate) SetFcmDeviceToken(v string) *UserUpdate {
+	_u.mutation.SetFcmDeviceToken(v)
+	return _u
+}
+
+// SetNillableFcmDeviceToken sets the "fcm_device_token" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableFcmDeviceToken(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetFcmDeviceToken(*v)
+	}
+	return _u
+}
+
+// ClearFcmDeviceToken clears the value of the "fcm_device_token" field.
+func (_u *UserUpdate) ClearFcmDeviceToken() *UserUpdate {
+	_u.mutation.ClearFcmDeviceToken()
+	return _u
+}
+
 // SetEmail sets the "email" field.
 func (_u *UserUpdate) SetEmail(v string) *UserUpdate {
 	_u.mutation.SetEmail(v)
@@ -855,6 +875,12 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.NtfyTopicTokenCleared() {
 		_spec.ClearField(user.FieldNtfyTopicToken, field.TypeString)
+	}
+	if value, ok := _u.mutation.FcmDeviceToken(); ok {
+		_spec.SetField(user.FieldFcmDeviceToken, field.TypeString, value)
+	}
+	if _u.mutation.FcmDeviceTokenCleared() {
+		_spec.ClearField(user.FieldFcmDeviceToken, field.TypeString)
 	}
 	if value, ok := _u.mutation.Email(); ok {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)
@@ -1620,6 +1646,26 @@ func (_u *UserUpdateOne) ClearNtfyTopicToken() *UserUpdateOne {
 	return _u
 }
 
+// SetFcmDeviceToken sets the "fcm_device_token" field.
+func (_u *UserUpdateOne) SetFcmDeviceToken(v string) *UserUpdateOne {
+	_u.mutation.SetFcmDeviceToken(v)
+	return _u
+}
+
+// SetNillableFcmDeviceToken sets the "fcm_device_token" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableFcmDeviceToken(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetFcmDeviceToken(*v)
+	}
+	return _u
+}
+
+// ClearFcmDeviceToken clears the value of the "fcm_device_token" field.
+func (_u *UserUpdateOne) ClearFcmDeviceToken() *UserUpdateOne {
+	_u.mutation.ClearFcmDeviceToken()
+	return _u
+}
+
 // SetEmail sets the "email" field.
 func (_u *UserUpdateOne) SetEmail(v string) *UserUpdateOne {
 	_u.mutation.SetEmail(v)
@@ -2222,6 +2268,12 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if _u.mutation.NtfyTopicTokenCleared() {
 		_spec.ClearField(user.FieldNtfyTopicToken, field.TypeString)
+	}
+	if value, ok := _u.mutation.FcmDeviceToken(); ok {
+		_spec.SetField(user.FieldFcmDeviceToken, field.TypeString, value)
+	}
+	if _u.mutation.FcmDeviceTokenCleared() {
+		_spec.ClearField(user.FieldFcmDeviceToken, field.TypeString)
 	}
 	if value, ok := _u.mutation.Email(); ok {
 		_spec.SetField(user.FieldEmail, field.TypeString, value)

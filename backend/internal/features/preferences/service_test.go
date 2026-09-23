@@ -8,10 +8,12 @@ import (
 )
 
 type storeFake struct {
-	audio     *string
-	audioErr  error
-	topic     *string
-	persisted string
+	audio        *string
+	audioErr     error
+	topic        *string
+	persisted    string
+	fcmToken     *string
+	persistedFCM string
 }
 
 func (f *storeFake) AudioCallSettings(context.Context, string) (*string, error) {
@@ -24,6 +26,21 @@ func (f *storeFake) SetAudioCallSettings(_ context.Context, _ string, value stri
 func (f *storeFake) NtfyTopicToken(context.Context, string) (*string, error) { return f.topic, nil }
 func (f *storeFake) SetNtfyTopicToken(_ context.Context, _ string, value string) error {
 	f.persisted = value
+	if value == "" {
+		f.topic = nil
+	} else {
+		f.topic = &value
+	}
+	return nil
+}
+func (f *storeFake) FCMDeviceToken(context.Context, string) (*string, error) { return f.fcmToken, nil }
+func (f *storeFake) SetFCMDeviceToken(_ context.Context, _ string, value string) error {
+	f.persistedFCM = value
+	if value == "" {
+		f.fcmToken = nil
+	} else {
+		f.fcmToken = &value
+	}
 	return nil
 }
 
@@ -76,6 +93,41 @@ func TestNotificationTopicRejectsMissingGenerator(t *testing.T) {
 	_, err := NewService(&storeFake{}, nil).NotificationTopic(context.Background(), "user")
 	if !errors.Is(err, ErrTopicGeneration) || strings.TrimSpace(err.Error()) == "" {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRegisterPushDeviceTokenPreservesIndependentNtfyTopic(t *testing.T) {
+	topic := "stovo-user-topic"
+	store := &storeFake{topic: &topic}
+	if err := NewService(store, nil).RegisterPushDeviceToken(context.Background(), "user", " fcm-device-token "); err != nil {
+		t.Fatalf("register FCM token: %v", err)
+	}
+	if store.persistedFCM != "fcm-device-token" || store.topic == nil || *store.topic != topic {
+		t.Fatalf("registration changed identities: fcm=%q ntfy=%v", store.persistedFCM, store.topic)
+	}
+}
+
+func TestUnregisterPushDeviceTokenPreservesIndependentNtfyTopic(t *testing.T) {
+	topic := "stovo-user-topic"
+	fcmToken := "fcm-device-token"
+	store := &storeFake{topic: &topic, fcmToken: &fcmToken}
+	if err := NewService(store, nil).UnregisterPushDeviceToken(context.Background(), "user"); err != nil {
+		t.Fatalf("unregister FCM token: %v", err)
+	}
+	if store.fcmToken != nil || store.topic == nil || *store.topic != topic {
+		t.Fatalf("unregister changed identities: fcm=%v ntfy=%v", store.fcmToken, store.topic)
+	}
+}
+
+func TestNotificationTopicCreationPreservesRegisteredFCMDeviceToken(t *testing.T) {
+	fcmToken := "fcm-device-token"
+	store := &storeFake{fcmToken: &fcmToken}
+	topic, err := NewService(store, func() string { return "stovo-user-topic" }).NotificationTopic(context.Background(), "user")
+	if err != nil || topic != "stovo-user-topic" {
+		t.Fatalf("NotificationTopic() = %q, %v", topic, err)
+	}
+	if store.fcmToken == nil || *store.fcmToken != fcmToken || store.persistedFCM != "" {
+		t.Fatalf("topic creation changed FCM identity: token=%v persisted=%q", store.fcmToken, store.persistedFCM)
 	}
 }
 

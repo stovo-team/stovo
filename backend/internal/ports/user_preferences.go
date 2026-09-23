@@ -23,6 +23,8 @@ type AccountPreferences interface {
 	SetAudioCallSettings(context.Context, string, string) error
 	NtfyTopicToken(context.Context, string) (*string, error)
 	SetNtfyTopicToken(context.Context, string, string) error
+	FCMDeviceToken(context.Context, string) (*string, error)
+	SetFCMDeviceToken(context.Context, string, string) error
 }
 
 // ChatNotificationPreference holds the notification evaluation policy for a member in a chat.
@@ -41,5 +43,6 @@ type ChatNotificationPreference struct {
 type NotificationRecipients interface {
 	ListChatMemberUserIDs(context.Context, string) ([]string, error)
 	NtfyTopicToken(context.Context, string) (*string, error)
+	FCMDeviceToken(context.Context, string) (*string, error)
 	GetChatNotificationPreferences(context.Context, string, []string) (map[string]ChatNotificationPreference, error)
 }
