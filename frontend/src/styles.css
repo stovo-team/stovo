@@ -1,4 +1,5 @@
 :root {
+  --chat-popup-surface: rgba(80, 84, 92, 0.8);
   --background-primary: #ffffff;
   --background-secondary: #f6f7f9;
   --background-tertiary: #eef1f5;
@@ -2323,14 +2324,12 @@ h2 {
 }
 
 .message-context-menu {
-  background: rgba(15, 23, 42, 0.9);
+  background: var(--chat-popup-surface);
   backdrop-filter: blur(24px) saturate(1.35);
   -webkit-backdrop-filter: blur(24px) saturate(1.35);
-  border-color: rgba(255, 255, 255, 0.2);
+  border: 0;
   border-radius: 24px;
-  box-shadow:
-    0 24px 56px rgba(2, 6, 23, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 56px rgba(2, 6, 23, 0.28);
   overflow: hidden;
   position: fixed;
   right: auto;
@@ -7246,8 +7245,8 @@ span.message-spoiler.is-revealed {
 }
 
 .emoji-picker {
-  --epr-bg-color: #000;
-  --epr-category-label-bg-color: #000;
+  --epr-bg-color: transparent;
+  --epr-category-label-bg-color: transparent;
   --epr-category-label-text-color: var(--text-secondary);
   --epr-category-icon-active-color: var(--accent-primary);
   --epr-hover-bg-color: color-mix(in oklab, var(--accent-soft) 88%, transparent);
@@ -7258,8 +7257,8 @@ span.message-spoiler.is-revealed {
   --epr-picker-border-color: transparent;
   --epr-shadow: none;
   --epr-horizontal-padding: 4px;
-  background: #000;
-  border: 1px solid color-mix(in oklab, var(--border-default) 88%, transparent);
+  background: var(--chat-popup-surface);
+  border: 0;
   border-radius: 24px;
   bottom: calc(100% + 10px);
   box-shadow: var(--shadow-soft);
@@ -7323,14 +7322,15 @@ span.message-spoiler.is-revealed {
 
 .emoji-picker .epr-category-nav {
   align-items: center;
-  background: #000;
-  border-bottom: 1px solid color-mix(in oklab, var(--border-default) 72%, transparent);
+  background: transparent;
+  border-bottom: 0;
+  box-sizing: border-box;
   display: flex;
   gap: 4px;
   justify-content: flex-start;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding: 6px 8px;
+  padding: 6px 4px;
   scrollbar-width: thin;
 }
 
@@ -7377,7 +7377,7 @@ span.message-spoiler.is-revealed {
 }
 
 .emoji-picker .epr-emoji-category-label {
-  background: #000;
+  background: transparent;
   color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 700;
@@ -15261,8 +15261,8 @@ span.message-spoiler.is-revealed {
 }
 
 :root[data-platform="web"] .attachment-picker-web-menu {
-  background: var(--island-surface, var(--surface-card));
-  border: 1px solid var(--border-default);
+  background: var(--chat-popup-surface);
+  border: 0;
   border-radius: 16px;
   box-shadow: var(--float-shadow-strong);
   display: grid;
@@ -16405,13 +16405,14 @@ button.attachment-nav-item:focus-visible {
 }
 
 :root[data-platform="web"] .emoji-picker {
-  border-color: var(--border-default);
+  background: var(--chat-popup-surface);
+  border: 0;
   box-shadow: var(--float-shadow);
 }
 
 :root[data-platform="web"] .emoji-picker::after {
   border: 8px solid transparent;
-  border-top-color: var(--island-surface);
+  border-top-color: rgba(80, 84, 92, 0.8);
   bottom: -16px;
   content: "";
   left: 50%;
