@@ -1,6 +1,13 @@
 export const PDF_MIN_ZOOM = 0.5;
 export const PDF_MAX_ZOOM = 4;
 
+export function getPdfRenderLimits(pageCount: number, devicePixelRatio: number, isConstrainedDevice: boolean) {
+  return {
+    maxPages: Math.min(pageCount, isConstrainedDevice ? 12 : 40),
+    dpr: Math.min(devicePixelRatio || 1, isConstrainedDevice ? 1.5 : 2),
+  };
+}
+
 export function clampPdfZoom(zoom: number): number {
   if (!Number.isFinite(zoom)) return 1;
   return Math.min(PDF_MAX_ZOOM, Math.max(PDF_MIN_ZOOM, zoom));

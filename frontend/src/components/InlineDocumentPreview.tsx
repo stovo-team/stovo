@@ -1,0 +1,130 @@
+import { LoaderCircle } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+
+import { downloadFileBlob, type FamilyFile } from "../api/files";
+import { documentKindLabel, type DocumentPreviewKind } from "./documentPreviewKind";
+import type { TablePreview } from "./DocumentAttachmentPreview";
+
+type InlineDocumentPreviewProps = {
+  accessToken: string;
+  file: FamilyFile;
+  kind: DocumentPreviewKind;
+  onResolvedSize: (sizeBytes: number) => void;
+  loadTablePreview: (file: FamilyFile, blob: Blob) => Promise<TablePreview>;
+  loadDocxPreview: (blob: Blob) => Promise<string>;
+  renderPdf: (blob: Blob) => ReactNode;
+  renderDocx: (html: string) => ReactNode;
+};
+
+export function InlineDocumentPreview({
+  accessToken,
+  file,
+  kind,
+  onResolvedSize,
+  loadTablePreview,
+  loadDocxPreview,
+  renderPdf,
+  renderDocx,
+}: InlineDocumentPreviewProps) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [shouldLoadPreview, setShouldLoadPreview] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [docxHtml, setDocxHtml] = useState<string | null>(null);
+  const [textPreview, setTextPreview] = useState<string | null>(null);
+  const [table, setTable] = useState<TablePreview | null>(null);
+  const activeSheet = table?.sheets[table.activeSheet];
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setShouldLoadPreview(true);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setShouldLoadPreview(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "300px" });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!shouldLoadPreview) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    setPdfBlob(null);
+    setDocxHtml(null);
+    setTextPreview(null);
+    setTable(null);
+
+    void downloadFileBlob(accessToken, file.id)
+      .then(async (blob) => {
+        if (cancelled) return;
+        onResolvedSize(blob.size);
+        if (kind === "pdf") {
+          setPdfBlob(blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" }));
+        } else if (kind === "docx") {
+          const preview = await loadDocxPreview(blob);
+          if (!cancelled) setDocxHtml(preview);
+        } else if (kind === "text") {
+          const preview = await blob.text();
+          if (!cancelled) setTextPreview(preview.slice(0, 8_000));
+        } else {
+          const preview = await loadTablePreview(file, blob);
+          if (!cancelled) setTable(preview);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, file.id, file.originalName, file.mimeType, kind, loadDocxPreview, loadTablePreview, onResolvedSize, shouldLoadPreview]);
+
+  return (
+    <div className="document-inline-preview" role="group" aria-label={`${documentKindLabel(kind)} preview`} ref={hostRef}>
+      {loading && shouldLoadPreview && (
+        <div className="document-preview-status" role="status">
+          <LoaderCircle size={18} className="document-preview-spinner" aria-hidden="true" />
+          Loading preview…
+        </div>
+      )}
+      {loading && !shouldLoadPreview && <div className="document-inline-preview-placeholder" aria-hidden="true" />}
+      {error && <div className="document-preview-error" role="alert">Preview couldn’t load. Open the file to try again.</div>}
+      {!loading && !error && kind === "pdf" && pdfBlob && renderPdf(pdfBlob)}
+      {!loading && !error && kind === "docx" && docxHtml && renderDocx(docxHtml)}
+      {!loading && !error && kind === "text" && textPreview !== null && (
+        <pre className="document-inline-preview-text">{textPreview || "(Empty document)"}</pre>
+      )}
+      {!loading && !error && kind === "table" && table && activeSheet && (
+        <div className="document-preview-table-wrap">
+          <div className="document-preview-table-scroll">
+            <table className="document-preview-table">
+              <tbody>
+                {activeSheet.rows.slice(0, 8).map((row, rowIndex) => (
+                  <tr key={`r-${rowIndex}`}>
+                    {row.slice(0, 6).map((cell, cellIndex) => {
+                      const Tag = rowIndex === 0 ? "th" : "td";
+                      return <Tag key={`c-${cellIndex}`}>{cell}</Tag>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
