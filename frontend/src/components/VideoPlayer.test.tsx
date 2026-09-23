@@ -348,10 +348,31 @@ describe("VideoPlayer", () => {
     expect(portraitWidth / portraitHeight).toBeCloseTo(720 / 1280);
   });
 
-  it("does not let the in-app PiP surface rules override the expanded viewer", () => {
+  it("keeps the expanded viewer centered with controls visible when the in-app PiP surface is active", () => {
     const styles = readFileSync("src/styles.css", "utf8");
-    expect(styles).toContain(".video-player.is-session-active:not(.is-expanded)");
-    expect(styles).toContain(".video-player.is-session-active:not(.is-expanded) .video-player-controls");
+    const relevantRules = [
+      styles.match(/\.video-player\.is-expanded\s*\{[^}]*\}/)?.[0],
+      styles.match(/\.messenger-shell--video-pip \.video-player\.is-session-active:not\(\.is-expanded\)\s*\{[^}]*\}/)?.[0],
+      styles.match(/\.messenger-shell--video-pip \.video-player\.is-session-active:not\(\.is-expanded\) \.video-player-controls,[\s\S]*?\{\s*display:\s*none;\s*\}/)?.[0],
+    ];
+    expect(relevantRules.every(Boolean)).toBe(true);
+
+    const style = document.createElement("style");
+    style.textContent = relevantRules.join("\n");
+    document.head.appendChild(style);
+    const shell = document.createElement("div");
+    shell.className = "messenger-shell--video-pip";
+    shell.innerHTML = '<div class="video-player is-session-active is-expanded"><div class="video-player-controls"></div></div>';
+    document.body.appendChild(shell);
+
+    const player = shell.querySelector<HTMLElement>(".video-player")!;
+    const controls = shell.querySelector<HTMLElement>(".video-player-controls")!;
+    expect(getComputedStyle(player).left).toBe("50%");
+    expect(getComputedStyle(player).top).toBe("50%");
+    expect(getComputedStyle(controls).display).not.toBe("none");
+
+    shell.remove();
+    style.remove();
   });
 
   it("isolates pointer and click gestures while retaining native controls", async () => {
