@@ -24,6 +24,9 @@ import type { FamilyFile } from "../api/files";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const styles = readFileSync("src/styles.css", "utf8");
+const { renderDocxMock } = vi.hoisted(() => ({ renderDocxMock: vi.fn() }));
+
+vi.mock("docx-preview", () => ({ renderAsync: renderDocxMock }), { virtual: true });
 
 function rule(selector: string): string {
   const start = styles.indexOf(`${selector} {`);
@@ -152,6 +155,47 @@ describe("sanitizeDocxHtml", () => {
 });
 
 describe("document attachment cards in chat", () => {
+  it("preserves DOCX formatting and removes unsafe links in the full viewer", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    const blob = new Blob(["docx bytes"]);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(blob);
+    renderDocxMock.mockImplementation(async (_data: Blob, body: HTMLElement) => {
+      const page = document.createElement("section");
+      page.innerHTML = '<h1 style="font-size: 28pt">SUMMARY</h1><p><strong>Backend developer</strong></p><ul><li>Production APIs</li></ul><a href="javascript:alert(1)">unsafe</a><a href="https://example.com">safe</a>';
+      body.appendChild(page);
+    });
+    const file: FamilyFile = {
+      id: "docx", familyId: "family", uploadedBy: "member", chatId: "chat", chatTitle: "Chat",
+      chatType: "direct", originMessageId: "message", accessScope: "chat", storageProvider: "local",
+      originalName: "resume.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      sizeBytes: blob.size, checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+      const preview = document.querySelector<HTMLElement>(".document-viewer-docx");
+      expect(preview?.querySelector("h1")?.style.fontSize).toBe("28pt");
+      expect(preview?.querySelector("strong")?.textContent).toBe("Backend developer");
+      expect(preview?.querySelector("ul li")?.textContent).toBe("Production APIs");
+      expect(preview?.querySelector("a")?.hasAttribute("href")).toBe(false);
+      expect(preview?.querySelectorAll("a")[1]?.getAttribute("href")).toBe("https://example.com");
+      expect(renderDocxMock).toHaveBeenCalledWith(blob, expect.any(HTMLElement), expect.any(HTMLElement),
+        expect.objectContaining({ renderAltChunks: false, useBase64URL: true }));
+      expect(renderDocxMock.mock.calls[0]?.[1]).not.toBe(preview);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+      renderDocxMock.mockReset();
+    }
+  });
+
   it("keeps the document viewer close control fully circular", () => {
     const closeButtonStart = styles.lastIndexOf(".document-viewer-close {");
     const closeButton = styles.slice(closeButtonStart, styles.indexOf("\n}", closeButtonStart) + 2);
