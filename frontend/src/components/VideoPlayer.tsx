@@ -57,6 +57,8 @@ function stopPropagation(event: SyntheticEvent): void {
   event.stopPropagation();
 }
 
+const focusableSelector = 'a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])';
+
 export function orientationStyle(width: number, height: number): CSSProperties {
   if (!(width > 0 && height > 0)) {
     return {
@@ -98,7 +100,7 @@ export function VideoPlayer({
   beforePlay,
   autoplay = true,
 }: VideoPlayerProps) {
-  const rootRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDialogElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const registrationRef = useRef<VideoPlaybackRegistration | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -178,6 +180,18 @@ export function VideoPlayer({
     updateViewport();
     window.addEventListener("resize", updateViewport);
     return () => window.removeEventListener("resize", updateViewport);
+  }, [isExpanded]);
+
+  useEffect(() => {
+    const dialog = rootRef.current;
+    if (!dialog) return;
+    if (isExpanded && !dialog.open) {
+      try {
+        dialog.showModal();
+      } catch {
+        setIsExpanded(false);
+      }
+    } else if (!isExpanded && dialog.open) dialog.close();
   }, [isExpanded]);
 
   useEffect(() => {
@@ -343,10 +357,10 @@ export function VideoPlayer({
         />,
         document.body,
       )}
-      <div
+      <dialog
         ref={rootRef}
         className={`video-player${isExpanded ? " is-expanded" : ""}${isSessionActive ? " is-session-active" : ""}${videoSize.height > videoSize.width ? " is-portrait" : " is-landscape"}`}
-        role={isExpanded ? "dialog" : undefined}
+        role={isExpanded ? "dialog" : "presentation"}
         aria-modal={isExpanded ? "true" : undefined}
         aria-label={isExpanded ? "Video viewer" : undefined}
         data-session-active={isSessionActive ? "true" : "false"}
@@ -356,6 +370,23 @@ export function VideoPlayer({
         style={frameStyle}
         onClick={stopPropagation}
         onPointerDown={stopPropagation}
+        onKeyDown={(event) => {
+          if (event.key !== "Tab") return;
+          const controls = rootRef.current?.querySelectorAll<HTMLElement>(focusableSelector);
+          const first = controls?.[0];
+          const last = controls?.[controls.length - 1];
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last?.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first?.focus();
+          }
+        }}
+        onCancel={(event) => {
+          event.preventDefault();
+          setIsExpanded(false);
+        }}
       >
         {videoNode}
 
@@ -444,7 +475,7 @@ export function VideoPlayer({
                 : <Maximize2 size={20} aria-hidden="true" />}
             </button>
         </div>
-      </div>
+      </dialog>
     </>
   );
 }
