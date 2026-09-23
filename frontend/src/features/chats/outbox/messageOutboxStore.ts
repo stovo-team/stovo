@@ -1,5 +1,7 @@
 import type { Message, MessageEncryptionProtocol } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
+import { hydrateAttachmentBlobs } from "./attachmentBlobRecovery";
+import { openOutboxDatabase, OUTBOX_DATABASE_NAME, OUTBOX_STORE_NAME } from "./outboxDatabase";
 import {
   isAndroidLocalReplicaPlatform,
   listNativeReplicaOperations,
@@ -55,8 +57,6 @@ export interface QueuedOutboxMessage {
   reminderRule?: ReminderRule | null;
 }
 
-const DATABASE_NAME = "stovo-outbox-v1";
-const STORE_NAME = "outbox_messages";
 const LOCAL_STORAGE_PREFIX = "stovo_outbox_queue_";
 const memoryFallback = new Map<string, QueuedOutboxMessage[]>();
 
@@ -128,26 +128,6 @@ async function nativeOutboxItems(userId: string): Promise<QueuedOutboxMessage[]>
   return result.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-function database(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    if (typeof indexedDB === "undefined") {
-      return reject(new Error("IndexedDB is not supported"));
-    }
-    const request = indexedDB.open(DATABASE_NAME, 1);
-    request.onerror = () => reject(request.error);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
-        store.createIndex("userId", "userId", { unique: false });
-        store.createIndex("chatId", "chatId", { unique: false });
-        store.createIndex("createdAt", "createdAt", { unique: false });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-  });
-}
-
 function loadOutboxFromLocalStorage(userId: string): QueuedOutboxMessage[] {
   if (typeof localStorage === "undefined") return memoryFallback.get(userId) ?? [];
   try {
@@ -202,9 +182,9 @@ export async function enqueueOutboxMessage(item: QueuedOutboxMessage): Promise<v
 
   if (typeof indexedDB === "undefined") return;
   try {
-    const db = await database();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).put(item);
+    const db = await openOutboxDatabase();
+    const tx = db.transaction(OUTBOX_STORE_NAME, "readwrite");
+    tx.objectStore(OUTBOX_STORE_NAME).put(item);
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
@@ -223,10 +203,10 @@ export async function getOutboxMessages(userId?: string): Promise<QueuedOutboxMe
   if (!userId) {
     if (typeof indexedDB === "undefined") return [];
     try {
-      const db = await database();
+      const db = await openOutboxDatabase();
       const items = await new Promise<QueuedOutboxMessage[]>((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, "readonly");
-        const request = tx.objectStore(STORE_NAME).getAll();
+        const tx = db.transaction(OUTBOX_STORE_NAME, "readonly");
+        const request = tx.objectStore(OUTBOX_STORE_NAME).getAll();
         request.onerror = () => reject(request.error);
         request.onsuccess = () => resolve(request.result || []);
       });
@@ -243,17 +223,18 @@ export async function getOutboxMessages(userId?: string): Promise<QueuedOutboxMe
   // a stale row after a browser storage failure. Reading the stale row made an
   // already-due message reappear as permanently scheduled after a reload.
   if (hasLocalOutboxSnapshot(userId)) {
-    return localFallback.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const hydrated = await hydrateAttachmentBlobs(userId, localFallback, memoryFallback.get(userId) ?? []);
+    return hydrated.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
   if (typeof indexedDB === "undefined") {
     return localFallback.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   try {
-    const db = await database();
+    const db = await openOutboxDatabase();
     const items = await new Promise<QueuedOutboxMessage[]>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, "readonly");
-      const index = tx.objectStore(STORE_NAME).index("userId");
+      const tx = db.transaction(OUTBOX_STORE_NAME, "readonly");
+      const index = tx.objectStore(OUTBOX_STORE_NAME).index("userId");
       const request = index.getAll(userId);
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result || []);
@@ -294,9 +275,9 @@ export async function updateOutboxMessage(
 
   if (typeof indexedDB === "undefined") return;
   try {
-    const db = await database();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    const store = tx.objectStore(STORE_NAME);
+    const db = await openOutboxDatabase();
+    const tx = db.transaction(OUTBOX_STORE_NAME, "readwrite");
+    const store = tx.objectStore(OUTBOX_STORE_NAME);
     const existing = await new Promise<QueuedOutboxMessage | undefined>((resolve, reject) => {
       const request = store.get(id);
       request.onerror = () => reject(request.error);
@@ -346,9 +327,9 @@ export async function removeOutboxMessage(id: string, userId?: string): Promise<
 
   if (typeof indexedDB === "undefined") return;
   try {
-    const db = await database();
-    const tx = db.transaction(STORE_NAME, "readwrite");
-    tx.objectStore(STORE_NAME).delete(id);
+    const db = await openOutboxDatabase();
+    const tx = db.transaction(OUTBOX_STORE_NAME, "readwrite");
+    tx.objectStore(OUTBOX_STORE_NAME).delete(id);
     await new Promise<void>((resolve, reject) => {
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
@@ -391,9 +372,9 @@ export async function clearOutbox(userId?: string): Promise<void> {
   try {
     if (userId) {
       const all = await getOutboxMessages(userId);
-      const db = await database();
-      const tx = db.transaction(STORE_NAME, "readwrite");
-      const store = tx.objectStore(STORE_NAME);
+      const db = await openOutboxDatabase();
+      const tx = db.transaction(OUTBOX_STORE_NAME, "readwrite");
+      const store = tx.objectStore(OUTBOX_STORE_NAME);
       for (const item of all) {
         store.delete(item.id);
       }
@@ -405,7 +386,7 @@ export async function clearOutbox(userId?: string): Promise<void> {
       db.close();
     } else {
       await new Promise<void>((resolve, reject) => {
-        const req = indexedDB.deleteDatabase(DATABASE_NAME);
+        const req = indexedDB.deleteDatabase(OUTBOX_DATABASE_NAME);
         req.onerror = () => reject(req.error);
         req.onsuccess = () => resolve();
       });

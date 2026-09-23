@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { drainOutboxQueue, isNetworkError, withOutboxRequestTimeout } from "./messageOutboxProcessor";
+import { drainOutboxQueue, isNetworkError, reconstructFileFromQueuedAttachment, withOutboxRequestTimeout } from "./messageOutboxProcessor";
 import {
   clearOutbox,
   enqueueOutboxMessage,
@@ -62,6 +62,18 @@ describe("messageOutboxProcessor", () => {
     expect(isNetworkError({ status: 0 })).toBe(true);
     expect(isNetworkError(new Error("Network connection lost"))).toBe(true);
     expect(isNetworkError(new Error("Validation failed: Content is required"))).toBe(false);
+  });
+
+  it("refuses to reconstruct an empty file when queued attachment bytes are missing", () => {
+    expect(() => reconstructFileFromQueuedAttachment({
+      id: "attachment-1", name: "document.pdf", mimeType: "application/pdf", size: 42,
+    })).toThrow("Attachment data is unavailable or incomplete");
+  });
+
+  it("refuses to upload zero-byte attachments", () => {
+    expect(() => reconstructFileFromQueuedAttachment({
+      id: "attachment-2", name: "empty.pdf", mimeType: "application/pdf", size: 0, blob: new Blob(),
+    })).toThrow("Attachment data is unavailable or incomplete");
   });
 
   it("releases the outbox when a request never settles", async () => {
@@ -193,7 +205,7 @@ describe("messageOutboxProcessor", () => {
           id: "local-att-1",
           name: "photo.jpg",
           mimeType: "image/jpeg",
-          size: 1024,
+          size: 10,
           blob: new Blob(["fake-image"], { type: "image/jpeg" })
         }
       ],
@@ -207,7 +219,7 @@ describe("messageOutboxProcessor", () => {
       id: "file-server-id-1",
       name: "photo.jpg",
       mimeType: "image/jpeg",
-      size: 1024,
+      sizeBytes: 10,
       url: "/api/files/file-server-id-1/download",
       chatId: "chat-1",
       uploaderUserId: "user-1",

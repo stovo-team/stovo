@@ -41,6 +41,24 @@ describe("messageOutboxStore", () => {
     expect(retrieved.map((m) => m.id)).toEqual(["msg-1", "msg-2"]);
   });
 
+  it("keeps queued attachment bytes available after writing the local-storage snapshot", async () => {
+    const message = createSampleMessage("msg-with-file");
+    const attachment = new Blob(["non-empty PDF bytes"], { type: "application/pdf" });
+    message.attachments = [{
+      id: "file-1",
+      name: "document.pdf",
+      mimeType: "application/pdf",
+      size: attachment.size,
+      blob: attachment,
+    }];
+
+    await enqueueOutboxMessage(message);
+
+    const [retrieved] = await getOutboxMessages("user-1");
+    expect(retrieved.attachments[0].blob).toBeInstanceOf(Blob);
+    expect(await retrieved.attachments[0].blob?.text()).toBe("non-empty PDF bytes");
+  });
+
   it("filters messages by chat", async () => {
     const msg1 = createSampleMessage("msg-1", "chat-1");
     const msg2 = createSampleMessage("msg-2", "chat-2");
