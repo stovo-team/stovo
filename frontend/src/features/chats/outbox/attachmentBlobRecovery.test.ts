@@ -55,4 +55,14 @@ describe("restoreAttachmentBlobs", () => {
     expect(await restored.attachments[0].blob?.text()).toBe("recoverable bytes");
     expect(reconstructFileFromQueuedAttachment(restored.attachments[0]).size).toBe(17);
   });
+
+  it("falls back to durable bytes when the snapshot base64 is malformed", async () => {
+    const snapshot = queuedMessage();
+    snapshot.attachments[0].dataBase64 = "not valid base64!";
+    const durable = queuedMessage(new Blob(["durable PDF bytes"]));
+    const [restored] = restoreAttachmentBlobs([snapshot], [durable]);
+
+    expect(await restored.attachments[0].blob?.text()).toBe("durable PDF bytes");
+    expect(reconstructFileFromQueuedAttachment(restored.attachments[0]).size).toBe(17);
+  });
 });
