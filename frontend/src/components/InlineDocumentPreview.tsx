@@ -18,8 +18,11 @@ type InlineDocumentPreviewProps = {
 function kindLabel(kind: DocumentPreviewKind): string {
   if (kind === "pdf") return "PDF";
   if (kind === "docx") return "Document";
-  return "Spreadsheet";
+  if (kind === "table") return "Spreadsheet";
+  return "Text document";
 }
+
+const MAX_INLINE_TEXT_CHARS = 12_000;
 
 export function InlineDocumentPreview({
   accessToken,
@@ -36,6 +39,8 @@ export function InlineDocumentPreview({
   const [error, setError] = useState(false);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
+  const [textContent, setTextContent] = useState<string | null>(null);
+  const [textTruncated, setTextTruncated] = useState(false);
   const [table, setTable] = useState<TablePreview | null>(null);
   const activeSheet = table?.sheets[table.activeSheet];
 
@@ -63,6 +68,8 @@ export function InlineDocumentPreview({
     setError(false);
     setPdfBlob(null);
     setDocxBlob(null);
+    setTextContent(null);
+    setTextTruncated(false);
     setTable(null);
 
     void downloadFileBlob(accessToken, file.id)
@@ -73,6 +80,12 @@ export function InlineDocumentPreview({
           setPdfBlob(blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" }));
         } else if (kind === "docx") {
           setDocxBlob(blob);
+        } else if (kind === "text") {
+          const text = await blob.text();
+          if (!cancelled) {
+            setTextContent(text.slice(0, MAX_INLINE_TEXT_CHARS));
+            setTextTruncated(text.length > MAX_INLINE_TEXT_CHARS);
+          }
         } else {
           const preview = await loadTablePreview(file, blob);
           if (!cancelled) setTable(preview);
@@ -102,6 +115,9 @@ export function InlineDocumentPreview({
       {error && <div className="document-preview-error" role="alert">Preview couldn’t load. Open the file to try again.</div>}
       {!loading && !error && kind === "pdf" && pdfBlob && renderPdf(pdfBlob)}
       {!loading && !error && kind === "docx" && docxBlob && renderDocx(docxBlob)}
+      {!loading && !error && kind === "text" && textContent !== null && (
+        <pre className="document-preview-text">{textContent}{textTruncated ? "\n…" : ""}</pre>
+      )}
       {!loading && !error && kind === "table" && table && activeSheet && (
         <div className="document-preview-table-wrap">
           <div className="document-preview-table-scroll">

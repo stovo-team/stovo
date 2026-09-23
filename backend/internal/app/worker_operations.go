@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 	"os"
 	"strings"
@@ -175,18 +176,29 @@ func (s *Server) processFileValidationJob(ctx context.Context, eventID, payload 
 }
 
 func detectedMIMECompatible(expected, detected string) bool {
-	if detected == "application/octet-stream" {
+	detectedType, _, detectedErr := mime.ParseMediaType(detected)
+	if detectedErr != nil {
+		detectedType = detected
+	}
+	expectedType, _, expectedErr := mime.ParseMediaType(expected)
+	if expectedErr != nil {
+		expectedType = expected
+	}
+	if detectedType == "application/octet-stream" {
 		return true
 	}
-	if expected == detected {
+	if expectedType == detectedType {
 		return true
 	}
-	if strings.HasPrefix(expected, "image/") || strings.HasPrefix(expected, "audio/") || strings.HasPrefix(expected, "video/") || expected == "application/pdf" || expected == "text/plain" {
+	if expectedType == "text/markdown" && detectedType == "text/plain" {
+		return true
+	}
+	if strings.HasPrefix(expectedType, "image/") || strings.HasPrefix(expectedType, "audio/") || strings.HasPrefix(expectedType, "video/") || expectedType == "application/pdf" || expectedType == "text/plain" || expectedType == "text/markdown" {
 		return false
 	}
 	// Office providers commonly expose OOXML bytes as ZIP or octet-stream;
 	// accepted extensions were already checked at reservation time.
-	return detected == "application/zip"
+	return detectedType == "application/zip"
 }
 
 func (s *Server) rejectDirectUpload(ctx context.Context, uploadID, fileID, failureCode, detectedMIME string) error {

@@ -122,6 +122,7 @@ function kindLabel(kind: DocumentPreviewKind): string {
   if (kind === "pdf") return "PDF";
   if (kind === "docx") return "Document";
   if (kind === "table") return "Spreadsheet";
+  if (kind === "text") return "Text document";
   return "File";
 }
 
@@ -434,6 +435,7 @@ export function DocumentViewerModal({
   const [error, setError] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
+  const [textContent, setTextContent] = useState<string | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
 
   useEffect(() => {
@@ -442,6 +444,7 @@ export function DocumentViewerModal({
     setError(null);
     setPdfBlob(null);
     setDocxBlob(null);
+    setTextContent(null);
     setTable(null);
 
     void downloadFileBlob(accessToken, file.id)
@@ -458,6 +461,10 @@ export function DocumentViewerModal({
         }
         if (kind === "docx") {
           setDocxBlob(blob);
+          return;
+        }
+        if (kind === "text") {
+          setTextContent((await blob.text()).slice(0, 100_000));
           return;
         }
         setTable(await loadTablePreview(file, blob));
@@ -529,6 +536,10 @@ export function DocumentViewerModal({
           {!loading && !error && kind === "pdf" && pdfBlob && <PdfCanvasViewer blob={pdfBlob} />}
 
           {!loading && !error && kind === "docx" && docxBlob && <DocxDocumentRenderer blob={docxBlob} />}
+
+          {!loading && !error && kind === "text" && textContent !== null && (
+            <pre className="document-preview-text document-preview-text--viewer">{textContent}</pre>
+          )}
 
           {!loading && !error && kind === "table" && table && activeSheet && (
             <div className="document-preview-table-wrap document-viewer-table-wrap">

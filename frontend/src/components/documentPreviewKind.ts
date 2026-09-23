@@ -1,6 +1,6 @@
 import type { FamilyFile } from "../api/files";
 
-export type DocumentPreviewKind = "pdf" | "docx" | "table" | "unsupported";
+export type DocumentPreviewKind = "pdf" | "docx" | "table" | "text" | "unsupported";
 
 function extensionOf(name: string): string {
   const idx = name.lastIndexOf(".");
@@ -16,8 +16,10 @@ export function detectDocumentPreviewKind(file: FamilyFile): DocumentPreviewKind
   if (ext === "pdf") return "pdf";
   if (ext === "docx") return "docx";
   if (["csv", "tsv", "xlsx", "xls"].includes(ext)) return "table";
+  if (["txt", "md", "markdown"].includes(ext)) return "text";
   if (mime === "application/pdf") return "pdf";
   if (mime.includes("wordprocessingml")) return "docx";
+  if (mime === "text/plain" || mime === "text/markdown") return "text";
   if (
     mime.includes("spreadsheetml") ||
     mime === "application/vnd.ms-excel" ||

@@ -93,6 +93,9 @@ func TestUploadMetadataMIMEAndFilenamePolicy(t *testing.T) {
 	if !AllowedMIME("audio/webm;codecs=opus") {
 		t.Fatal("parameterized MIME rejected")
 	}
+	if !AllowedMIME("text/markdown") {
+		t.Fatal("markdown MIME rejected")
+	}
 	if got, ok := NormalizeUploadMIME("application/octet-stream", "shared-photo.jpg"); !ok || got != "image/jpeg" {
 		t.Fatalf("mime = %q ok=%v", got, ok)
 	}

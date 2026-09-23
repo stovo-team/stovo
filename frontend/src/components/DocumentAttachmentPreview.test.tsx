@@ -129,6 +129,13 @@ describe("detectDocumentPreviewKind", () => {
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "export.tsv", mimeType: "text/tab-separated-values" })).toBe("table");
   });
 
+  it("detects text and Markdown documents from extension or MIME type", async () => {
+    const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "notes.txt", mimeType: "text/plain" })).toBe("text");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "notes.md", mimeType: "text/markdown" })).toBe("text");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "README", mimeType: "text/markdown" })).toBe("text");
+  });
+
   it("returns unsupported for other formats and handles empty values safely", async () => {
     const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "photo.jpg", mimeType: "image/jpeg" })).toBe("unsupported");
@@ -155,6 +162,44 @@ describe("sanitizeDocxHtml", () => {
 });
 
 describe("document attachment cards in chat", () => {
+  it("renders plain text and Markdown contents inline as text", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Agenda\nBring <notes> & questions"], { type: "text/markdown" }));
+    const file: FamilyFile = {
+      id: "inline-markdown-1",
+      familyId: "family-1",
+      uploadedBy: "member-1",
+      chatId: "chat-1",
+      chatTitle: "Chat",
+      chatType: "direct",
+      originMessageId: "message-1",
+      accessScope: "chat",
+      storageProvider: "local",
+      originalName: "agenda.md",
+      mimeType: "text/markdown",
+      sizeBytes: 34,
+      checksum: null,
+      createdAt: "2026-09-22T00:00:00Z",
+      deletedAt: null,
+      isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => {
+        root.render(<DocumentAttachmentPreview accessToken="session-token" file={file} inlinePreview />);
+      });
+      expect(container.querySelector(".document-preview-text")?.textContent).toBe("# Agenda\nBring <notes> & questions");
+      expect(container.querySelector(".document-preview-text")?.querySelector("img, a, script")).toBeNull();
+      expect(container.querySelector(".document-preview-open")).not.toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+    }
+  });
+
   it("shows an inline preview in chat while keeping the full viewer available", async () => {
     const container = document.createElement("div");
     const root: Root = createRoot(container);
