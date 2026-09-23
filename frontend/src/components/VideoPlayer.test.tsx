@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FamilyFile } from "../api/files";
@@ -318,6 +319,8 @@ describe("VideoPlayer", () => {
     expect(document.querySelector(".video-player-viewer-backdrop")).not.toBeNull();
     expect(root.classList.contains("is-expanded")).toBe(true);
     expect(root.style.aspectRatio).toBe("1920 / 1080");
+    expect(root.getAttribute("role")).toBe("dialog");
+    expect(root.getAttribute("aria-modal")).toBe("true");
     expect(container.querySelector("video")).toBe(element);
     expect(element.currentTime).toBe(42);
     expect(container.querySelector('button[aria-label="Close video viewer"]')).not.toBeNull();
@@ -327,6 +330,80 @@ describe("VideoPlayer", () => {
     expect(document.querySelector(".video-player-viewer-backdrop")).toBeNull();
     expect(root.classList.contains("is-expanded")).toBe(false);
     expect(container.querySelector("video")).toBe(element);
+  });
+
+  it("keeps the expanded viewer smaller than the viewport for landscape and portrait video", () => {
+    const landscape = expandedVideoStyle(1920, 1080, 1600, 900);
+    const landscapeWidth = Number.parseFloat(String(landscape.width));
+    const landscapeHeight = Number.parseFloat(String(landscape.height));
+    expect(landscapeWidth).toBeLessThan(1600);
+    expect(landscapeHeight).toBeLessThan(900);
+    expect(landscapeWidth / landscapeHeight).toBeCloseTo(1920 / 1080);
+
+    const portrait = expandedVideoStyle(720, 1280, 390, 844);
+    const portraitWidth = Number.parseFloat(String(portrait.width));
+    const portraitHeight = Number.parseFloat(String(portrait.height));
+    expect(portraitWidth).toBeLessThan(390);
+    expect(portraitHeight).toBeLessThan(844);
+    expect(portraitWidth / portraitHeight).toBeCloseTo(720 / 1280);
+  });
+
+  it("keeps the expanded viewer centered with controls visible when the in-app PiP surface is active", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    const relevantRules = [
+      styles.match(/\.video-player\.is-expanded\s*\{[^}]*\}/)?.[0],
+      styles.match(/\.messenger-shell--video-pip \.video-player\.is-session-active:not\(\.is-expanded\)\s*\{[^}]*\}/)?.[0],
+      styles.match(/\.messenger-shell--video-pip \.video-player\.is-session-active:not\(\.is-expanded\) \.video-player-controls,[\s\S]*?\{\s*display:\s*none;\s*\}/)?.[0],
+    ];
+    expect(relevantRules.every(Boolean)).toBe(true);
+
+    const style = document.createElement("style");
+    style.textContent = relevantRules.join("\n");
+    document.head.appendChild(style);
+    const shell = document.createElement("div");
+    shell.className = "messenger-shell--video-pip";
+    shell.innerHTML = '<div class="video-player is-session-active is-expanded"><div class="video-player-controls"></div></div>';
+    document.body.appendChild(shell);
+
+    const player = shell.querySelector<HTMLElement>(".video-player")!;
+    const controls = shell.querySelector<HTMLElement>(".video-player-controls")!;
+    expect(getComputedStyle(player).left).toBe("50%");
+    expect(getComputedStyle(player).top).toBe("50%");
+    expect(getComputedStyle(controls).display).not.toBe("none");
+
+    shell.remove();
+    style.remove();
+  });
+
+  it("applies compact controls inside a narrow message video", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    const compactMediaQuery = styles.slice(styles.lastIndexOf("@media (max-width: 420px) {"));
+    const innerRules = compactMediaQuery.slice(compactMediaQuery.indexOf("{") + 1, compactMediaQuery.lastIndexOf("}"));
+    expect(innerRules).toContain(".message-video-attachment");
+
+    const style = document.createElement("style");
+    style.textContent = innerRules;
+    document.head.appendChild(style);
+
+    const attachment = document.createElement("article");
+    attachment.className = "message-video-attachment";
+    attachment.style.width = "180px";
+    attachment.innerHTML = '<div class="video-player"><div class="video-player-controls"><input type="range"><button></button><output>0:00 / 0:00</output><button></button><button></button></div></div>';
+    document.body.appendChild(attachment);
+
+    const player = attachment.querySelector<HTMLElement>(".video-player")!;
+    const controls = attachment.querySelector<HTMLElement>(".video-player-controls")!;
+    const time = attachment.querySelector<HTMLOutputElement>("output")!;
+    const playButton = attachment.querySelector<HTMLButtonElement>("button")!;
+    expect(getComputedStyle(attachment).maxWidth).toBe("100%");
+    expect(getComputedStyle(player).minWidth).toBe("0px");
+    expect(getComputedStyle(controls).gridTemplateColumns).toContain("minmax(0");
+    expect(getComputedStyle(controls).maxWidth).toBe("100%");
+    expect(getComputedStyle(time).textOverflow).toBe("ellipsis");
+    expect(getComputedStyle(playButton).width).toBe("36px");
+
+    attachment.remove();
+    style.remove();
   });
 
   it("isolates pointer and click gestures while retaining native controls", async () => {
@@ -425,13 +502,13 @@ describe("VideoPlayer", () => {
 
     expect(expandedVideoStyle(1920, 1080, 1600, 900)).toMatchObject({
       aspectRatio: "1920 / 1080",
-      height: "852px",
-      width: "1514.6666666666665px",
+      height: "738px",
+      width: "1312px",
     });
     expect(expandedVideoStyle(720, 1280, 1600, 900)).toMatchObject({
       aspectRatio: "720 / 1280",
-      height: "852px",
-      width: "479.25px",
+      height: "738px",
+      width: "415.125px",
     });
   });
 

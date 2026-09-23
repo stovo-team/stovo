@@ -346,6 +346,9 @@ export function VideoPlayer({
       <div
         ref={rootRef}
         className={`video-player${isExpanded ? " is-expanded" : ""}${isSessionActive ? " is-session-active" : ""}${videoSize.height > videoSize.width ? " is-portrait" : " is-landscape"}`}
+        role={isExpanded ? "dialog" : undefined}
+        aria-modal={isExpanded ? "true" : undefined}
+        aria-label={isExpanded ? "Video viewer" : undefined}
         data-session-active={isSessionActive ? "true" : "false"}
         data-video-chat-id={identity.chatId}
         data-video-message-id={identity.messageId}
@@ -454,8 +457,14 @@ export function expandedVideoStyle(
 ): CSSProperties {
   const padding = 24;
   const ratio = videoWidth > 0 && videoHeight > 0 ? videoWidth / videoHeight : 16 / 9;
-  const availableWidth = Math.max(0, viewportWidth - padding * 2);
-  const availableHeight = Math.max(0, viewportHeight - padding * 2);
+  const availableWidth = Math.min(
+    Math.max(0, viewportWidth - padding * 2),
+    viewportWidth * 0.88,
+  );
+  const availableHeight = Math.min(
+    Math.max(0, viewportHeight - padding * 2),
+    viewportHeight * 0.82,
+  );
   const width = Math.min(availableWidth, availableHeight * ratio);
 
   return {
