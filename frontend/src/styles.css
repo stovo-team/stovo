@@ -21191,6 +21191,44 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-bottom: 0;
 }
 
+.document-inline-preview {
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border-default);
+  max-height: 360px;
+  overflow: hidden;
+}
+
+.document-inline-preview-placeholder {
+  background: linear-gradient(110deg, transparent 28%, color-mix(in oklab, var(--surface-card) 76%, transparent) 45%, transparent 62%);
+  height: 150px;
+}
+
+.document-inline-preview .document-viewer-pdf-host {
+  max-height: 360px;
+  overflow: hidden;
+}
+
+.document-inline-preview .document-viewer-pdf-pages {
+  padding: 10px 12px;
+}
+
+.document-inline-preview .document-viewer-pdf-page {
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.18);
+}
+
+.document-inline-preview-docx {
+  background: #fff;
+  color: #202124;
+  max-height: 360px;
+  overflow: hidden;
+  padding: 14px 18px;
+}
+
+.document-inline-preview .document-preview-table-wrap {
+  max-height: 360px;
+  overflow: hidden;
+}
+
 .document-preview-header {
   align-items: center;
   border-bottom: 1px solid var(--border-default);

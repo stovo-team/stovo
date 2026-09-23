@@ -24,6 +24,9 @@ import type { FamilyFile } from "../api/files";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const styles = readFileSync("src/styles.css", "utf8");
+const { renderDocxMock } = vi.hoisted(() => ({ renderDocxMock: vi.fn() }));
+
+vi.mock("docx-preview", () => ({ renderAsync: renderDocxMock }), { virtual: true });
 
 function rule(selector: string): string {
   const start = styles.indexOf(`${selector} {`);
@@ -152,6 +155,156 @@ describe("sanitizeDocxHtml", () => {
 });
 
 describe("document attachment cards in chat", () => {
+  it("shows an inline preview in chat while keeping the full viewer available", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockReturnValue(new Promise(() => undefined));
+    const file: FamilyFile = {
+      id: "inline-document-1",
+      familyId: "family-1",
+      uploadedBy: "member-1",
+      chatId: "chat-1",
+      chatTitle: "Chat",
+      chatType: "direct",
+      originMessageId: "message-1",
+      accessScope: "chat",
+      storageProvider: "local",
+      originalName: "agenda.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 120_000,
+      checksum: null,
+      createdAt: "2026-09-22T00:00:00Z",
+      deletedAt: null,
+      isFavorite: false,
+    };
+
+    document.body.appendChild(container);
+    try {
+      await act(async () => {
+        root.render(<DocumentAttachmentPreview accessToken="session-token" file={file} inlinePreview />);
+      });
+
+      expect(container.querySelector(".document-inline-preview")).not.toBeNull();
+      expect(container.textContent).toContain("Loading preview…");
+      expect(container.querySelector(".document-preview-open")).not.toBeNull();
+      expect(filesApi.downloadFileBlob).toHaveBeenCalledWith("session-token", "inline-document-1");
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("keeps the document open action available when an inline preview fails", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockRejectedValue(new Error("offline"));
+    const file: FamilyFile = {
+      id: "unavailable-inline-document",
+      familyId: "family-1",
+      uploadedBy: "member-1",
+      chatId: "chat-1",
+      chatTitle: "Chat",
+      chatType: "direct",
+      originMessageId: "message-1",
+      accessScope: "chat",
+      storageProvider: "local",
+      originalName: "report.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 120_000,
+      checksum: null,
+      createdAt: "2026-09-22T00:00:00Z",
+      deletedAt: null,
+      isFavorite: false,
+    };
+
+    document.body.appendChild(container);
+    try {
+      await act(async () => {
+        root.render(<DocumentAttachmentPreview accessToken="session-token" file={file} inlinePreview />);
+      });
+
+      expect(container.textContent).toContain("Preview couldn’t load.");
+      expect(container.querySelector(".document-preview-open")).not.toBeNull();
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("renders DOCX page formatting and inline emphasis from the source document", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    const blob = new Blob(["docx bytes"], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(blob);
+    renderDocxMock.mockImplementation(async (_data: Blob, body: HTMLElement) => {
+      const page = document.createElement("section");
+      page.className = "docx-page";
+      page.innerHTML = '<h1 style="font-size: 28pt">PROFESSIONAL SUMMARY</h1><p><strong>Backend developer</strong> with experience.</p><ul><li>Production APIs</li></ul><a href="javascript:alert(1)">unsafe link</a><a href="https://example.com/resume">safe link</a>';
+      body.appendChild(page);
+    });
+
+    document.body.appendChild(container);
+    try {
+      await act(async () => {
+        root.render(
+          <DocumentAttachmentPreview
+            accessToken="session-token"
+            file={{
+              id: "formatted-docx",
+              familyId: "family-1",
+              uploadedBy: "member-1",
+              chatId: "chat-1",
+              chatTitle: "Chat",
+              chatType: "direct",
+              originMessageId: "message-1",
+              accessScope: "chat",
+              storageProvider: "local",
+              originalName: "resume.docx",
+              mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              sizeBytes: blob.size,
+              checksum: null,
+              createdAt: "2026-09-22T00:00:00Z",
+              deletedAt: null,
+              isFavorite: false,
+          }}
+          />,
+        );
+      });
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+
+      const docxPreview = document.querySelector<HTMLElement>(".document-viewer-docx");
+      expect(docxPreview?.querySelector("h1")?.style.fontSize).toBe("28pt");
+      expect(docxPreview?.querySelector("strong")?.textContent).toBe("Backend developer");
+      expect(docxPreview?.querySelector("ul li")?.textContent).toBe("Production APIs");
+      expect(docxPreview?.querySelector("a")?.hasAttribute("href")).toBe(false);
+      expect(docxPreview?.querySelectorAll("a")[1]?.getAttribute("href")).toBe("https://example.com/resume");
+      expect(renderDocxMock).toHaveBeenCalledOnce();
+      expect(renderDocxMock).toHaveBeenCalledWith(
+        blob,
+        expect.any(HTMLElement),
+        expect.any(HTMLElement),
+        expect.objectContaining({ renderAltChunks: false, useBase64URL: true }),
+      );
+      expect(renderDocxMock.mock.calls[0]?.[1]).not.toBe(docxPreview);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+      vi.unstubAllGlobals();
+      renderDocxMock.mockReset();
+    }
+  });
+
   it("keeps the document viewer close control fully circular", () => {
     const closeButtonStart = styles.lastIndexOf(".document-viewer-close {");
     const closeButton = styles.slice(closeButtonStart, styles.indexOf("\n}", closeButtonStart) + 2);

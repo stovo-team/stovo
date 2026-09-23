@@ -8,6 +8,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
+import { InlineDocumentPreview } from "./InlineDocumentPreview";
+import { DocxDocumentRenderer } from "./DocxDocumentRenderer";
 import {
   downloadFileBlob,
   formatFileSize,
@@ -26,60 +28,12 @@ export { detectDocumentPreviewKind } from "./documentPreviewKind";
 
 export type { DocumentPreviewKind } from "./documentPreviewKind";
 
-type TablePreview = {
+export type TablePreview = {
   sheets: Array<{ name: string; rows: string[][] }>;
   activeSheet: number;
 };
 
-type DocxPreview = {
-  html: string;
-};
-
-const DOCX_ALLOWED_TAGS = new Set([
-  "a", "blockquote", "br", "caption", "code", "em", "h1", "h2", "h3", "h4",
-  "h5", "h6", "img", "li", "ol", "p", "pre", "span", "strong", "table", "tbody",
-  "td", "th", "thead", "tr", "ul",
-]);
-const DOCX_GLOBAL_ATTRIBUTES = new Set(["class", "title"]);
-const DOCX_TABLE_ATTRIBUTES = new Set(["colspan", "rowspan"]);
-
-function isSafeDocxURL(value: string, allowImageData: boolean): boolean {
-  try {
-    const url = new URL(value, window.location.origin);
-    if (url.protocol === "https:" || url.protocol === "http:" || url.protocol === "mailto:" || url.protocol === "tel:") {
-      return true;
-    }
-    return allowImageData && /^data:image\/(?:png|gif|jpe?g|webp);base64,/i.test(value);
-  } catch {
-    return false;
-  }
-}
-
-// Mammoth generates HTML from untrusted office documents. Keep the allowed
-// output intentionally small and centralised; regexes cannot safely parse
-// adversarial HTML.
-export function sanitizeDocxHtml(html: string): string {
-  const template = document.createElement("template");
-  template.innerHTML = html;
-  for (const element of Array.from(template.content.querySelectorAll("*"))) {
-    const tag = element.tagName.toLowerCase();
-    if (!DOCX_ALLOWED_TAGS.has(tag)) {
-      element.replaceWith(...Array.from(element.childNodes));
-      continue;
-    }
-    for (const attribute of Array.from(element.attributes)) {
-      const name = attribute.name.toLowerCase();
-      const allowed = DOCX_GLOBAL_ATTRIBUTES.has(name)
-        || (tag === "a" && name === "href")
-        || (tag === "img" && name === "src")
-        || (["td", "th"].includes(tag) && DOCX_TABLE_ATTRIBUTES.has(name));
-      if (!allowed || ((name === "href" || name === "src") && !isSafeDocxURL(attribute.value, tag === "img"))) {
-        element.removeAttribute(attribute.name);
-      }
-    }
-  }
-  return template.innerHTML;
-}
+export { sanitizeDocxHtml } from "./docxSanitizer";
 
 function extensionOf(name: string): string {
   const idx = name.lastIndexOf(".");
@@ -164,33 +118,6 @@ async function loadTablePreview(file: FamilyFile, blob: Blob): Promise<TablePrev
   return { sheets: sheets.length > 0 ? sheets : [{ name: "Sheet1", rows: [] }], activeSheet: 0 };
 }
 
-async function loadDocxPreview(blob: Blob): Promise<DocxPreview> {
-  const mammoth = await import("mammoth");
-  const buffer = await blob.arrayBuffer();
-  const result = await mammoth.convertToHtml(
-    { arrayBuffer: buffer },
-    {
-      styleMap: [
-        "p[style-name='Title'] => h1.docx-title:fresh",
-        "p[style-name='Heading 1'] => h1:fresh",
-        "p[style-name='Heading 2'] => h2:fresh",
-        "p[style-name='Heading 3'] => h3:fresh",
-        "p[style-name='Heading 4'] => h4:fresh",
-        "r[style-name='Strong'] => strong",
-        "p[style-name='Quote'] => blockquote:fresh",
-        "table => table.docx-table:fresh",
-      ],
-      includeDefaultStyleMap: true,
-      convertImage: mammoth.images.imgElement((image) =>
-        image.read("base64").then((imageBuffer) => ({
-          src: `data:${image.contentType};base64,${imageBuffer}`,
-        })),
-      ),
-    },
-  );
-  return { html: sanitizeDocxHtml(result.value || "<p>(Empty document)</p>") };
-}
-
 function kindLabel(kind: DocumentPreviewKind): string {
   if (kind === "pdf") return "PDF";
   if (kind === "docx") return "Document";
@@ -218,7 +145,7 @@ function pdfJsAssetUrl(path: string): string {
   return new URL(`/pdfjs/${path}`, window.location.origin).toString();
 }
 
-function PdfCanvasViewer({ blob }: { blob: Blob }) {
+function PdfCanvasViewer({ blob, pageLimit }: { blob: Blob; pageLimit?: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef(1);
@@ -328,11 +255,13 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
         const isConstrainedDevice =
           /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
           (deviceMemory !== undefined && deviceMemory <= 4);
-        const { maxPages, dpr } = getPdfRenderLimits(
+        const limits = getPdfRenderLimits(
           doc.numPages,
           window.devicePixelRatio || 1,
           isConstrainedDevice,
         );
+        const maxPages = pageLimit === undefined ? limits.maxPages : Math.min(limits.maxPages, pageLimit);
+        const { dpr } = limits;
         const currentZoom = zoomRef.current;
         for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
           if (cancelled) break;
@@ -398,10 +327,13 @@ export function DocumentAttachmentPreview({
   accessToken,
   file,
   hideActions = false,
+  inlinePreview = false,
 }: {
   accessToken: string | null;
   file: FamilyFile;
   hideActions?: boolean;
+  /** Render a lightweight first-page preview below the attachment row (used in chat). */
+  inlinePreview?: boolean;
 }) {
   const kind = useMemo(() => detectDocumentPreviewKind(file), [file]);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -457,6 +389,17 @@ export function DocumentAttachmentPreview({
             </div>
           )}
         </header>
+        {inlinePreview && (
+          <InlineDocumentPreview
+            accessToken={accessToken ?? ""}
+            file={file}
+            kind={kind}
+            onResolvedSize={setResolvedSizeBytes}
+            loadTablePreview={loadTablePreview}
+            renderPdf={(blob) => <PdfCanvasViewer blob={blob} pageLimit={1} />}
+            renderDocx={(blob) => <div className="document-inline-preview-docx"><DocxDocumentRenderer blob={blob} /></div>}
+          />
+        )}
       </article>
       {viewerOpen && (
         <DocumentViewerModal
@@ -490,7 +433,7 @@ export function DocumentViewerModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-  const [docx, setDocx] = useState<DocxPreview | null>(null);
+  const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
 
   useEffect(() => {
@@ -498,7 +441,7 @@ export function DocumentViewerModal({
     setLoading(true);
     setError(null);
     setPdfBlob(null);
-    setDocx(null);
+    setDocxBlob(null);
     setTable(null);
 
     void downloadFileBlob(accessToken, file.id)
@@ -514,7 +457,7 @@ export function DocumentViewerModal({
           return;
         }
         if (kind === "docx") {
-          setDocx(await loadDocxPreview(blob));
+          setDocxBlob(blob);
           return;
         }
         setTable(await loadTablePreview(file, blob));
@@ -585,12 +528,7 @@ export function DocumentViewerModal({
 
           {!loading && !error && kind === "pdf" && pdfBlob && <PdfCanvasViewer blob={pdfBlob} />}
 
-          {!loading && !error && kind === "docx" && docx && (
-            <div
-              className="document-viewer-docx"
-              dangerouslySetInnerHTML={{ __html: docx.html }}
-            />
-          )}
+          {!loading && !error && kind === "docx" && docxBlob && <DocxDocumentRenderer blob={docxBlob} />}
 
           {!loading && !error && kind === "table" && table && activeSheet && (
             <div className="document-preview-table-wrap document-viewer-table-wrap">
