@@ -440,7 +440,7 @@ export function DocumentViewerModal({
           return;
         }
         if (kind === "text") {
-          setTextContent(await blob.text());
+          setTextContent(await blob.slice(0, 100_000).text());
           return;
         }
         setTable(await loadTablePreview(file, blob));

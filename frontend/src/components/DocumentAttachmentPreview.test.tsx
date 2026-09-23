@@ -162,6 +162,38 @@ describe("sanitizeDocxHtml", () => {
 });
 
 describe("document attachment cards in chat", () => {
+  it("caps the full text viewer content for large documents", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    const source = "x".repeat(100_001);
+    vi.spyOn(Blob.prototype, "text").mockImplementation(function (this: Blob) {
+      expect(this.size).toBe(100_000);
+      return Promise.resolve("x".repeat(this.size));
+    });
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob([source], { type: "text/plain" }));
+    const file: FamilyFile = {
+      id: "large-text-document", familyId: "family-1", uploadedBy: "member-1", chatId: "chat-1",
+      chatTitle: "Chat", chatType: "direct", originMessageId: "message-1", accessScope: "chat",
+      storageProvider: "local", originalName: "notes.txt", mimeType: "text/plain", sizeBytes: source.length,
+      checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+
+      expect(document.querySelector(".document-viewer-text")?.textContent).toHaveLength(100_000);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+    }
+  });
+
   it("preserves DOCX formatting and removes unsafe links in the full viewer", async () => {
     const container = document.createElement("div");
     const root: Root = createRoot(container);
