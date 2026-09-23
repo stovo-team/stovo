@@ -29642,3 +29642,62 @@ button.checklist-add-item-btn:hover,
   border-color: var(--accent-border-soft);
   color: var(--accent-primary-hover);
 }
+
+@media (max-width: 420px) {
+  .message-video-attachment,
+  .video-player {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .video-player-controls {
+    box-sizing: border-box;
+    gap: 4px 6px;
+    grid-template-columns: 36px minmax(0, 1fr) 36px 36px;
+    grid-template-rows: 40px 40px;
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px 8px max(6px, env(safe-area-inset-bottom));
+  }
+
+  .video-player-controls button {
+    height: 36px;
+    min-height: 36px;
+    min-width: 36px;
+    width: 36px;
+  }
+
+  .video-player-controls input[type="range"] {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .video-player-controls button:first-of-type {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .video-player-controls output {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .video-player-controls button:nth-of-type(2) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .video-player-controls button:nth-of-type(3) {
+    grid-column: 4;
+    grid-row: 2;
+  }
+}

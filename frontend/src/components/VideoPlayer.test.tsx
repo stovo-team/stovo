@@ -375,6 +375,17 @@ describe("VideoPlayer", () => {
     style.remove();
   });
 
+  it("constrains inline video controls to narrow message bubbles", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    const compactRules = styles.slice(styles.lastIndexOf("@media (max-width: 420px)"));
+    const compactControls = compactRules.match(/\.video-player-controls\s*\{([^}]*)\}/)?.[1] ?? "";
+    const compactTime = compactRules.match(/\.video-player-controls output\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(compactControls).toContain("grid-template-columns: 36px minmax(0, 1fr) 36px 36px");
+    expect(compactControls).toContain("max-width: 100%");
+    expect(compactControls).toContain("min-width: 0");
+    expect(compactTime).toContain("text-overflow: ellipsis");
+  });
+
   it("isolates pointer and click gestures while retaining native controls", async () => {
     const onClick = vi.fn();
     const onPointerDown = vi.fn();
