@@ -11,9 +11,8 @@ type InlineDocumentPreviewProps = {
   kind: DocumentPreviewKind;
   onResolvedSize: (sizeBytes: number) => void;
   loadTablePreview: (file: FamilyFile, blob: Blob) => Promise<TablePreview>;
-  loadDocxPreview: (blob: Blob) => Promise<string>;
   renderPdf: (blob: Blob) => ReactNode;
-  renderDocx: (html: string) => ReactNode;
+  renderDocx: (blob: Blob) => ReactNode;
 };
 
 export function InlineDocumentPreview({
@@ -22,7 +21,6 @@ export function InlineDocumentPreview({
   kind,
   onResolvedSize,
   loadTablePreview,
-  loadDocxPreview,
   renderPdf,
   renderDocx,
 }: InlineDocumentPreviewProps) {
@@ -31,7 +29,7 @@ export function InlineDocumentPreview({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
-  const [docxHtml, setDocxHtml] = useState<string | null>(null);
+  const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
   const [textPreview, setTextPreview] = useState<string | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
   const activeSheet = table?.sheets[table.activeSheet];
@@ -59,7 +57,7 @@ export function InlineDocumentPreview({
     setLoading(true);
     setError(false);
     setPdfBlob(null);
-    setDocxHtml(null);
+    setDocxBlob(null);
     setTextPreview(null);
     setTable(null);
 
@@ -70,8 +68,7 @@ export function InlineDocumentPreview({
         if (kind === "pdf") {
           setPdfBlob(blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" }));
         } else if (kind === "docx") {
-          const preview = await loadDocxPreview(blob);
-          if (!cancelled) setDocxHtml(preview);
+          setDocxBlob(blob);
         } else if (kind === "text") {
           const preview = await blob.text();
           if (!cancelled) setTextPreview(preview.slice(0, 8_000));
@@ -90,7 +87,7 @@ export function InlineDocumentPreview({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, file.id, file.originalName, file.mimeType, kind, loadDocxPreview, loadTablePreview, onResolvedSize, shouldLoadPreview]);
+  }, [accessToken, file.id, file.originalName, file.mimeType, kind, loadTablePreview, onResolvedSize, shouldLoadPreview]);
 
   return (
     <div className="document-inline-preview" role="group" aria-label={`${documentKindLabel(kind)} preview`} ref={hostRef}>
@@ -103,7 +100,7 @@ export function InlineDocumentPreview({
       {loading && !shouldLoadPreview && <div className="document-inline-preview-placeholder" aria-hidden="true" />}
       {error && <div className="document-preview-error" role="alert">Preview couldn’t load. Open the file to try again.</div>}
       {!loading && !error && kind === "pdf" && pdfBlob && renderPdf(pdfBlob)}
-      {!loading && !error && kind === "docx" && docxHtml && renderDocx(docxHtml)}
+      {!loading && !error && kind === "docx" && docxBlob && renderDocx(docxBlob)}
       {!loading && !error && kind === "text" && textPreview !== null && (
         <pre className="document-inline-preview-text">{textPreview || "(Empty document)"}</pre>
       )}

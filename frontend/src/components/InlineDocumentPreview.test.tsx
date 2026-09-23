@@ -100,6 +100,31 @@ describe("inline document previews in chat", () => {
     expect(container.querySelector(".document-preview-open")).not.toBeNull();
   });
 
+  it("passes the downloaded DOCX blob to the fidelity renderer", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    roots.push(root);
+    document.body.appendChild(container);
+    const docxBlob = new Blob(["docx bytes"], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(docxBlob);
+    const renderDocx = vi.fn(() => <div className="docx-rendered">DOCX page</div>);
+
+    await act(async () => root.render(
+      <InlineDocumentPreview
+        accessToken="session-token"
+        file={makeFile("docx", "report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")}
+        kind="docx"
+        onResolvedSize={vi.fn()}
+        loadTablePreview={async () => ({ sheets: [{ name: "Sheet1", rows: [] }], activeSheet: 0 })}
+        renderPdf={() => null}
+        renderDocx={(blob) => <>{renderDocx(blob)}</>}
+      />,
+    ));
+
+    expect(container.querySelector(".docx-rendered")?.textContent).toBe("DOCX page");
+    expect(renderDocx).toHaveBeenCalledWith(docxBlob);
+  });
+
   it("keeps Open available when an inline preview download fails", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
@@ -114,7 +139,6 @@ describe("inline document previews in chat", () => {
         kind="pdf"
         onResolvedSize={vi.fn()}
         loadTablePreview={async () => ({ sheets: [{ name: "Sheet1", rows: [] }], activeSheet: 0 })}
-        loadDocxPreview={async () => ""}
         renderPdf={() => null}
         renderDocx={() => null}
       />,
@@ -139,7 +163,6 @@ describe("inline document previews in chat", () => {
       kind: "table" as const,
       onResolvedSize,
       loadTablePreview,
-      loadDocxPreview: async () => "",
       renderPdf: () => null,
       renderDocx: () => null,
     });
@@ -188,7 +211,6 @@ describe("inline document previews in chat", () => {
         kind="table"
         onResolvedSize={vi.fn()}
         loadTablePreview={async () => ({ sheets: [{ name: "Sheet1", rows: [] }], activeSheet: 0 })}
-        loadDocxPreview={async () => ""}
         renderPdf={() => null}
         renderDocx={() => null}
       />,
