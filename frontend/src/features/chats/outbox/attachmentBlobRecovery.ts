@@ -15,7 +15,8 @@ export function restoreAttachmentBlobs(
       ...message,
       attachments: message.attachments.map((attachment) => {
         if (attachment.blob || attachment.dataBase64) return attachment;
-        const stored = durableAttachments.get(attachment.id) ?? memoryAttachments.get(attachment.id);
+        const durable = durableAttachments.get(attachment.id);
+        const stored = durable?.blob || durable?.dataBase64 ? durable : memoryAttachments.get(attachment.id);
         return stored?.blob || stored?.dataBase64 ? { ...attachment, blob: stored.blob, dataBase64: stored.dataBase64 } : attachment;
       }),
     };

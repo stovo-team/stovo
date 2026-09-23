@@ -27,4 +27,10 @@ describe("restoreAttachmentBlobs", () => {
     expect(restored.attachments[0].blob).toBeUndefined();
     expect(restored.attachments[0].size).toBe(18);
   });
+
+  it("falls back to in-memory bytes when a stale durable record has metadata only", async () => {
+    const memoryBlob = new Blob(["recoverable bytes"], { type: "application/pdf" });
+    const [restored] = restoreAttachmentBlobs([queuedMessage()], [queuedMessage()], [queuedMessage(memoryBlob)]);
+    expect(await restored.attachments[0].blob?.text()).toBe("recoverable bytes");
+  });
 });
