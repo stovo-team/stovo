@@ -309,6 +309,13 @@ func (s *Server) messageHistoryPage(ctx context.Context, user userPublic, chatID
 	if archiveGroup == "" && before == "" && threadRootMessageID == "" && limit == 20 {
 		cacheRevision = s.chatHistoryRevisions(ctx, chatID, user.ID)
 		if cached, ok := s.loadCachedLatestHistory(ctx, chatID, user.ID, cacheRevision); ok {
+			cleaned := false
+			for index := range cached.Messages {
+				cleaned = s.cleanupBrokenMessageAttachments(ctx, &cached.Messages[index], user.ID) || cleaned
+			}
+			if cleaned {
+				s.cacheLatestHistory(ctx, chatID, user.ID, cacheRevision, cached)
+			}
 			return cached, nil
 		}
 	}
@@ -822,6 +829,7 @@ func (s *Server) listMessagesPage(chatID string, user userPublic, before string,
 		if err != nil {
 			return nil, false, err
 		}
+		s.cleanupBrokenMessageAttachments(context.Background(), &message, user.ID)
 		messages = append(messages, message)
 	}
 	rootMessageIDs := make([]string, 0, len(messages))
@@ -840,6 +848,23 @@ func (s *Server) listMessagesPage(chatID string, user userPublic, before string,
 		}
 	}
 	return messages, hasMore, nil
+}
+
+func (s *Server) cleanupBrokenMessageAttachments(ctx context.Context, message *messagePublic, viewerID string) bool {
+	if len(message.Attachments) == 0 {
+		return false
+	}
+	remaining := message.Attachments[:0]
+	cleaned := false
+	for _, attachment := range message.Attachments {
+		if s.cleanupBrokenMessageAttachment(ctx, attachment.ID, viewerID) {
+			cleaned = true
+			continue
+		}
+		remaining = append(remaining, attachment)
+	}
+	message.Attachments = remaining
+	return cleaned
 }
 
 type messageArchiveGroupPublic struct {
@@ -1778,3 +1803,4 @@ func extractMentionedUserIDsFromContent(members []chatMemberPublic, senderID str
 	}
 	return mentioned
 }
+

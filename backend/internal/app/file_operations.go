@@ -365,6 +365,49 @@ func (s *Server) deleteFile(ctx context.Context, fileID string, user userPublic)
 	return nil
 }
 
+func isBrokenFileAttachment(file filePublic, objectSize int) bool {
+	if file.DeletedAt != nil || file.SizeBytes > 0 || objectSize != 0 {
+		return false
+	}
+	mimeType := strings.ToLower(strings.TrimSpace(file.MimeType))
+	if strings.HasPrefix(mimeType, "image/") || strings.HasPrefix(mimeType, "audio/") || strings.HasPrefix(mimeType, "video/") {
+		return true
+	}
+	switch mimeType {
+	case "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		"application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		"application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+		"application/vnd.oasis.opendocument.text", "application/vnd.oasis.opendocument.spreadsheet",
+		"application/vnd.oasis.opendocument.presentation":
+		return true
+	default:
+		return false
+	}
+}
+
+// cleanupBrokenMessageAttachment removes a ready zero-byte file when chat
+// history is loaded. The lifecycle check avoids treating a still-uploading
+// reservation as a broken attachment.
+func (s *Server) cleanupBrokenMessageAttachment(ctx context.Context, fileID, viewerID string) bool {
+	file, objectKey, err := s.loadFileRecord(ctx, fileID, viewerID)
+	if err != nil || file.DeletedAt != nil {
+		return file.DeletedAt != nil
+	}
+	if file.SizeBytes > 0 || !s.fileReadyForPublic(ctx, file.ID) {
+		return false
+	}
+	data, err := s.storage.Read(objectKey)
+	if err != nil || !isBrokenFileAttachment(file, len(data)) {
+		return false
+	}
+	if err := s.fileDeletions.Delete(ctx, featurefiles.Deletion{FileID: file.ID, FamilyID: file.FamilyID, ChatID: file.ChatID}); err != nil {
+		return false
+	}
+	s.removeDeletedFileFromCollections(ctx, file.ID)
+	deleteFileObjects(s.storage, objectKey, file.ThumbnailObjectKey)
+	return true
+}
+
 func deleteFileObjects(store ports.ObjectStore, objectKey string, thumbnailObjectKey *string) {
 	_ = store.Delete(objectKey)
 	if thumbnailObjectKey != nil {
@@ -542,3 +585,4 @@ func (s *Server) getFileTranscript(ctx context.Context, user userPublic, fileID 
 
 	return cachedResp, http.StatusOK, ""
 }
+
