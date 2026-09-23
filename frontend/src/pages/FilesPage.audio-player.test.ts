@@ -18,7 +18,7 @@ describe("Storage audio preview", () => {
 
   it("uses the document attachment preview for storage documents", () => {
     expect(page).toContain("detectDocumentPreviewKind");
-    expect(page).toContain("<DocumentAttachmentPreview");
+    expect(page).toMatch(/<DocumentAttachmentPreview\s+accessToken=\{accessToken\}\s+file=\{selectedFile\}\s+inlinePreview\s*\/>/);
     expect(page).toContain('selectedDocumentKind !== "unsupported"');
   });
 });

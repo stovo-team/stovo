@@ -830,7 +830,7 @@ export default function FilesPage() {
                       autoplay={false}
                     />
                   ) : selectedDocumentKind !== "unsupported" && accessToken ? (
-                    <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} />
+                    <DocumentAttachmentPreview accessToken={accessToken} file={selectedFile} inlinePreview />
                   ) : selectedFilePreviewUrl ? (
                     <img src={selectedFilePreviewUrl} alt={selectedFile.originalName} />
                   ) : (

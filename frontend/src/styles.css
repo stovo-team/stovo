@@ -12385,6 +12385,7 @@ span.message-spoiler.is-revealed {
 .storage-page .storage-preview:has(.document-preview-card) {
   align-items: stretch;
   aspect-ratio: auto;
+  grid-template-columns: minmax(0, 1fr);
   min-height: 140px;
 }
 .storage-page .storage-preview-media:has(.document-preview-card) {
