@@ -7930,7 +7930,7 @@ span.message-spoiler.is-revealed {
   padding-right: max(12px, env(safe-area-inset-right));
 }
 
-.messenger-shell--video-pip .video-player.is-session-active {
+.messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) {
   aspect-ratio: auto;
   background: #000000;
   border: 0;
@@ -7946,9 +7946,9 @@ span.message-spoiler.is-revealed {
   z-index: 2147483647;
 }
 
-.messenger-shell--video-pip .video-player.is-session-active .video-player-controls,
-.messenger-shell--video-pip .video-player.is-session-active .video-player-status,
-.messenger-shell--video-pip .video-player.is-session-active .video-player-error {
+.messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) .video-player-controls,
+.messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) .video-player-status,
+.messenger-shell--video-pip .video-player.is-session-active:not(.is-expanded) .video-player-error {
   display: none;
 }
 
@@ -29642,5 +29642,3 @@ button.checklist-add-item-btn:hover,
   border-color: var(--accent-border-soft);
   color: var(--accent-primary-hover);
 }
-
-

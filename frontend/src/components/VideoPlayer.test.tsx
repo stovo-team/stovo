@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { FamilyFile } from "../api/files";
@@ -318,6 +319,8 @@ describe("VideoPlayer", () => {
     expect(document.querySelector(".video-player-viewer-backdrop")).not.toBeNull();
     expect(root.classList.contains("is-expanded")).toBe(true);
     expect(root.style.aspectRatio).toBe("1920 / 1080");
+    expect(root.getAttribute("role")).toBe("dialog");
+    expect(root.getAttribute("aria-modal")).toBe("true");
     expect(container.querySelector("video")).toBe(element);
     expect(element.currentTime).toBe(42);
     expect(container.querySelector('button[aria-label="Close video viewer"]')).not.toBeNull();
@@ -327,6 +330,28 @@ describe("VideoPlayer", () => {
     expect(document.querySelector(".video-player-viewer-backdrop")).toBeNull();
     expect(root.classList.contains("is-expanded")).toBe(false);
     expect(container.querySelector("video")).toBe(element);
+  });
+
+  it("keeps the expanded viewer smaller than the viewport for landscape and portrait video", () => {
+    const landscape = expandedVideoStyle(1920, 1080, 1600, 900);
+    const landscapeWidth = Number.parseFloat(String(landscape.width));
+    const landscapeHeight = Number.parseFloat(String(landscape.height));
+    expect(landscapeWidth).toBeLessThan(1600);
+    expect(landscapeHeight).toBeLessThan(900);
+    expect(landscapeWidth / landscapeHeight).toBeCloseTo(1920 / 1080);
+
+    const portrait = expandedVideoStyle(720, 1280, 390, 844);
+    const portraitWidth = Number.parseFloat(String(portrait.width));
+    const portraitHeight = Number.parseFloat(String(portrait.height));
+    expect(portraitWidth).toBeLessThan(390);
+    expect(portraitHeight).toBeLessThan(844);
+    expect(portraitWidth / portraitHeight).toBeCloseTo(720 / 1280);
+  });
+
+  it("does not let the in-app PiP surface rules override the expanded viewer", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    expect(styles).toContain(".video-player.is-session-active:not(.is-expanded)");
+    expect(styles).toContain(".video-player.is-session-active:not(.is-expanded) .video-player-controls");
   });
 
   it("isolates pointer and click gestures while retaining native controls", async () => {
@@ -425,13 +450,13 @@ describe("VideoPlayer", () => {
 
     expect(expandedVideoStyle(1920, 1080, 1600, 900)).toMatchObject({
       aspectRatio: "1920 / 1080",
-      height: "852px",
-      width: "1514.6666666666665px",
+      height: "738px",
+      width: "1312px",
     });
     expect(expandedVideoStyle(720, 1280, 1600, 900)).toMatchObject({
       aspectRatio: "720 / 1280",
-      height: "852px",
-      width: "479.25px",
+      height: "738px",
+      width: "415.125px",
     });
   });
 
