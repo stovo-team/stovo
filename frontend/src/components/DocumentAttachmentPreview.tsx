@@ -1,4 +1,4 @@
-import { LoaderCircle, X } from "lucide-react";
+import { ArrowRight, LoaderCircle, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -18,7 +18,9 @@ import {
   nextWheelZoom,
   touchDistance,
 } from "./pdfViewerZoom";
-import { detectDocumentPreviewKind, DocumentKindIcon, documentKindLabel, type DocumentPreviewKind } from "./documentPreviewKind";
+import { detectDocumentPreviewKind, DocumentKindIcon, documentKindLabel, isMarkdownDocument, type DocumentPreviewKind } from "./documentPreviewKind";
+import { MessageMarkdown } from "../messageMarkdown";
+import { useMarkdownCanvasConversion } from "./useMarkdownCanvasConversion";
 
 export { detectDocumentPreviewKind } from "./documentPreviewKind";
 
@@ -413,6 +415,11 @@ export function DocumentViewerModal({
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
   const [textContent, setTextContent] = useState<string | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
+  const isMarkdown = isMarkdownDocument(file);
+  const {
+    isConverting, isLoadingChatChoices, conversionError, createdCanvasId,
+    chatChoices, chosenChatId, setChosenChatId, convertToCanvas, openCreatedCanvas,
+  } = useMarkdownCanvasConversion({ accessToken, file, markdown: isMarkdown ? textContent : null });
 
   useEffect(() => {
     let cancelled = false;
@@ -440,7 +447,7 @@ export function DocumentViewerModal({
           return;
         }
         if (kind === "text") {
-          setTextContent(await blob.slice(0, 100_000).text());
+          setTextContent(await (isMarkdownDocument(file) ? blob : blob.slice(0, 100_000)).text());
           return;
         }
         setTable(await loadTablePreview(file, blob));
@@ -487,6 +494,17 @@ export function DocumentViewerModal({
             </div>
           </div>
           <div className="document-viewer-header-actions">
+            {isMarkdown && (
+              <button
+                type="button"
+                className="document-viewer-convert-canvas"
+                disabled={!accessToken || loading || textContent === null || isConverting || isLoadingChatChoices || Boolean(createdCanvasId) || (!file.chatId && Boolean(chatChoices?.length) && !chosenChatId)}
+                onClick={() => void convertToCanvas()}
+              >
+                {isConverting ? "Converting…" : isLoadingChatChoices ? "Loading chats…" : !file.chatId && !chosenChatId ? "Choose chat" : "Convert to Canvas"}
+                {!isConverting && !isLoadingChatChoices && <ArrowRight size={15} aria-hidden="true" />}
+              </button>
+            )}
             <button type="button" onClick={() => void saveFileToDisk(accessToken, file)}>
               Save
             </button>
@@ -497,6 +515,15 @@ export function DocumentViewerModal({
         </header>
 
         <div className="document-viewer-body">
+          {!loading && !error && isMarkdown && chatChoices && !file.chatId && (
+            <label className="document-viewer-canvas-chat-picker">
+              <span>Save Canvas in chat</span>
+              <select className="document-viewer-canvas-chat" value={chosenChatId} onChange={(event) => setChosenChatId(event.target.value)}>
+                <option value="">Select a chat</option>
+                {chatChoices.map((chat) => <option key={chat.id} value={chat.id}>{chat.title || "Untitled chat"}</option>)}
+              </select>
+            </label>
+          )}
           {loading && (
             <div className="document-preview-status" role="status">
               <LoaderCircle size={18} className="document-preview-spinner" aria-hidden="true" />
@@ -513,7 +540,18 @@ export function DocumentViewerModal({
 
           {!loading && !error && kind === "docx" && docxBlob && <DocxDocumentPreview blob={docxBlob} />}
 
-          {!loading && !error && kind === "text" && textContent !== null && (
+          {!loading && !error && conversionError && (
+            <div className="document-preview-error" role="alert">
+              {conversionError}
+              {createdCanvasId && <button type="button" onClick={openCreatedCanvas}>Open Canvas</button>}
+            </div>
+          )}
+
+          {!loading && !error && kind === "text" && textContent !== null && isMarkdown && (
+            <article className="document-viewer-markdown"><MessageMarkdown source={textContent || "(Empty document)"} /></article>
+          )}
+
+          {!loading && !error && kind === "text" && textContent !== null && !isMarkdown && (
             <pre className="document-viewer-text">{textContent || "(Empty document)"}</pre>
           )}
 

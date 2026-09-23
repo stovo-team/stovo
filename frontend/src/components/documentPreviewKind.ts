@@ -12,6 +12,11 @@ export function documentKindLabel(kind: DocumentPreviewKind): string {
   return "File";
 }
 
+export function isMarkdownDocument(file: FamilyFile): boolean {
+  const ext = extensionOf(file.originalName || "");
+  return ["md", "markdown"].includes(ext) || (file.mimeType || "").toLowerCase() === "text/markdown";
+}
+
 export function DocumentKindIcon({ kind }: { kind: DocumentPreviewKind }) {
   if (kind === "table") return createElement(FileSpreadsheet, { size: 18, "aria-hidden": true });
   return createElement(FileText, { size: 18, "aria-hidden": true });

@@ -77,7 +77,7 @@ describe("inline document previews in chat", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
-  it("renders Markdown as safe plain text in the chat attachment", async () => {
+  it("renders Markdown formatting safely in the chat attachment", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
     roots.push(root);
@@ -95,8 +95,9 @@ describe("inline document previews in chat", () => {
       </LanguageProvider>,
     ));
 
-    expect(container.querySelector(".document-inline-preview-text")?.textContent).toContain("# Release notes");
-    expect(container.querySelector(".document-inline-preview-text script")).toBeNull();
+    expect(container.querySelector(".document-inline-preview-markdown h1")?.textContent).toBe("Release notes");
+    expect(container.querySelector(".document-inline-preview-markdown script")).toBeNull();
+    expect(container.textContent).toContain("<script>text only</script>");
     expect(container.querySelector(".document-preview-open")).not.toBeNull();
   });
 
