@@ -38,6 +38,41 @@ func TestWriteAuthSuccessKeepsRefreshTokenOutOfBrowserJSON(t *testing.T) {
 	}
 }
 
+func TestWriteAuthSuccessScopesCookieToClusterAuthPath(t *testing.T) {
+	server := &Server{cfg: config.Config{RefreshCookieName: "refresh", RefreshTokenTTL: 24 * time.Hour}}
+	request := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+	request.Header.Set("X-Forwarded-Prefix", "/s/family-1")
+	recorder := httptest.NewRecorder()
+
+	server.writeAuthSuccess(recorder, request, http.StatusOK, httptransport.AuthSuccess[userPublic]{RefreshToken: "secret"})
+
+	cookies := recorder.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Path != "/s/family-1/api/auth" {
+		t.Fatalf("refresh cookie path = %#v, want /s/family-1/api/auth", cookies)
+	}
+
+	clearRecorder := httptest.NewRecorder()
+	server.clearRefreshCookie(clearRecorder, request)
+	clearedCookies := clearRecorder.Result().Cookies()
+	if len(clearedCookies) != 1 || clearedCookies[0].Path != cookies[0].Path || clearedCookies[0].MaxAge != -1 {
+		t.Fatalf("cleared refresh cookie = %#v, want deletion at %q", clearedCookies, cookies[0].Path)
+	}
+}
+
+func TestRefreshCookiePathRejectsUntrustedPrefix(t *testing.T) {
+	server := &Server{cfg: config.Config{RefreshCookieName: "refresh"}}
+	for _, prefix := range []string{"https://evil.example", "/api", "/s/family-1/extra", "/s/family-1%2f.."} {
+		request := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
+		request.Header.Set("X-Forwarded-Prefix", prefix)
+		recorder := httptest.NewRecorder()
+		server.clearRefreshCookie(recorder, request)
+		cookies := recorder.Result().Cookies()
+		if len(cookies) != 1 || cookies[0].Path != "/api/auth" {
+			t.Errorf("prefix %q yielded cookie path %#v, want /api/auth", prefix, cookies)
+		}
+	}
+}
+
 func TestWriteAuthSuccessAllowsConfiguredNativeOrigin(t *testing.T) {
 	server := &Server{cfg: config.Config{
 		RefreshCookieName:   "refresh",

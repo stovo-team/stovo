@@ -11,12 +11,7 @@ import {
 import { Capacitor } from "@capacitor/core";
 
 import { ApiError, ApiRequestOptions, apiRequest, getApiUrl, setApiUrlOverride, storeRefreshToken } from "../api/client";
-import { clearRecentChatHistory } from "../chatHistoryCache";
-import { clearCachedFileLists } from "../fileLibraryCache";
-import { clearPersistentMediaBlobCache } from "../mediaBlobCache";
-import { clearApiResponseCache } from "../api/apiResponseCache";
-import { clearOutbox } from "../features/chats/outbox/messageOutboxStore";
-import { clearLocalReplicaProfile, prepareLocalReplicaProfile } from "../native/localReplicaPlugin";
+import { prepareLocalReplicaProfile } from "../native/localReplicaPlugin";
 import { unregisterDevicePushToken } from "../api/notifications";
 import {
   AuthResponse,
@@ -37,33 +32,8 @@ import {
   setActiveServerId,
   upsertServer
 } from "../api/serverRegistry";
-
-function isNetworkFailure(error: unknown): boolean {
-  if (typeof navigator !== "undefined" && !navigator.onLine) return true;
-  if (error instanceof TypeError) return true;
-  if (error && typeof error === "object" && "status" in error) {
-    const status = Number((error as { status?: unknown }).status);
-    return status === 0 || status === 408 || status === 502 || status === 503 || status === 504;
-  }
-  return false;
-}
-
-interface AuthState {
-  accessToken: string | null;
-  currentUser: User | null;
-  isLoading: boolean;
-  activeServer: ServerAccount | null;
-  savedServers: ServerAccount[];
-  isOffline: boolean;
-  hotSwapServer: (serverId: string) => Promise<void>;
-  removeServer: (serverId: string) => void;
-  login: (payload: LoginPayload) => Promise<void>;
-  setup: (payload: SetupPayload) => Promise<void>;
-  acceptAuthResponse: (response: AuthResponse) => void;
-  updateCurrentUser: (user: User) => void;
-  logout: () => Promise<void>;
-  authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>;
-}
+import { clearAuthSession, isExpiredAuthError, isNetworkFailure, selectActiveServer, selectSavedServers } from "./authContextHelpers";
+import { AuthState } from "./authContextTypes";
 
 // Refresh this many seconds before the token actually expires
 const REFRESH_BUFFER_SECONDS = 60;
@@ -78,19 +48,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [serverState, setServerState] = useState(() => loadServerState());
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accessTokenRef = useRef<string | null>(null);
+  const refreshRejectedRef = useRef(false);
+  const serverGenerationRef = useRef(0);
+  const refreshRef = useRef<() => Promise<AuthResponse>>(async () => { throw new ApiError(503, "Session refresh unavailable"); });
+  const currentUserIdRef = useRef<string | null>(null);
+  currentUserIdRef.current = currentUser?.id ?? null;
 
   const activeServer = useMemo(() => {
-    if (!serverState.activeServerId) return null;
-    return serverState.servers[serverState.activeServerId] ?? null;
+    return selectActiveServer(serverState);
   }, [serverState]);
 
   const savedServers = useMemo(() => {
-    return Object.values(serverState.servers).filter((s) => {
-      if (!s.url) return false;
-      const hasCreds = Boolean(s.accessToken || s.refreshToken || s.user);
-      const isActive = s.id === serverState.activeServerId;
-      return isActive || hasCreds;
-    });
+    return selectSavedServers(serverState);
   }, [serverState]);
 
   useEffect(() => {
@@ -127,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const applyAuthResponse = useCallback(
     (response: AuthResponse) => {
+      refreshRejectedRef.current = false;
       accessTokenRef.current = response.accessToken;
       setAccessToken(response.accessToken);
       setCurrentUser(response.user);
@@ -157,10 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     doProactiveRefreshRef.current = async () => {
       try {
-        const response = await refreshSession();
-        applyAuthResponse(response);
+        await refreshRef.current();
       } catch (err) {
-        setIsOffline(true);
+        if (!isExpiredAuthError(err) && !(err instanceof ApiError && err.status === 409)) {
+          setIsOffline(true);
+        }
         throw err;
       }
     };
@@ -170,42 +141,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser(user);
   }, []);
 
-  const clearOfflineSessionState = useCallback(async () => {
-    const profileId = currentUser?.id;
-    await Promise.allSettled([
-      clearRecentChatHistory(),
-      clearCachedFileLists(),
-      clearPersistentMediaBlobCache(),
-      clearApiResponseCache(profileId),
-      clearOutbox(),
-      ...(profileId ? [clearLocalReplicaProfile(profileId)] : []),
-    ]);
-  }, [currentUser?.id]);
-
   const clearExpiredSession = useCallback(async () => {
+    accessTokenRef.current = null;
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    await clearOfflineSessionState();
+    await clearAuthSession(currentUserIdRef.current);
     storeRefreshToken(null);
     setAccessToken(null);
     setCurrentUser(null);
-  }, [clearOfflineSessionState]);
+  }, []);
 
+  const rejectExpiredRefresh = useCallback(async () => {
+    if (refreshRejectedRef.current) return;
+    refreshRejectedRef.current = true;
+    await clearExpiredSession();
+  }, [clearExpiredSession]);
   const refresh = useCallback(async () => {
+    if (refreshRejectedRef.current) {
+      throw new ApiError(401, "Session expired");
+    }
+    const requestGeneration = serverGenerationRef.current;
+    const requestServerId = getActiveServer()?.id ?? null;
+    const isCurrentServer = () => requestGeneration === serverGenerationRef.current && requestServerId === (getActiveServer()?.id ?? null);
     try {
       const response = await refreshSession();
+      if (!isCurrentServer()) throw new ApiError(409, "Server changed during session refresh");
       applyAuthResponse(response);
       return response;
     } catch (err) {
-      setIsOffline(true);
+      if (!isCurrentServer()) throw new ApiError(409, "Server changed during session refresh");
+      if (isExpiredAuthError(err)) {
+        await rejectExpiredRefresh();
+      } else {
+        setIsOffline(true);
+      }
       throw err;
     }
-  }, [applyAuthResponse]);
+  }, [applyAuthResponse, rejectExpiredRefresh]);
+  refreshRef.current = refresh;
 
   const hotSwapServer = useCallback(
     async (serverId: string) => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      const previousServerId = getActiveServer()?.id ?? null;
       const target = setActiveServerId(serverId);
       if (!target) return;
+      if (target.id !== previousServerId) {
+        serverGenerationRef.current += 1;
+        refreshRejectedRef.current = false;
+      }
       setServerState(loadServerState());
       setIsLoading(true);
       setIsOffline(false);
@@ -213,20 +196,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCurrentUser(target.user ?? null);
 
       try {
-        const response = await refreshSession();
-        applyAuthResponse(response);
+        await refresh();
       } catch (err) {
-        // Target server is offline or refresh token expired — stay on target context with reconnecting state
-        setIsOffline(true);
+        // An invalid credential signs out; transient failures keep the cached session for reconnect.
+        if (!isExpiredAuthError(err) && !(err instanceof ApiError && err.status === 409)) setIsOffline(true);
       } finally {
         setIsLoading(false);
       }
     },
-    [applyAuthResponse]
+    [applyAuthResponse, refresh]
   );
 
   const removeServer = useCallback((serverId: string) => {
+    const previousActiveServerId = getActiveServer()?.id ?? null;
     const nextState = removeServerById(serverId);
+    if (previousActiveServerId === serverId && nextState.activeServerId !== serverId) {
+      serverGenerationRef.current += 1;
+      refreshRejectedRef.current = false;
+    }
     setServerState(nextState);
     if (nextState.activeServerId) {
       const nextActive = nextState.servers[nextState.activeServerId];
@@ -252,21 +239,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsOffline(typeof navigator !== "undefined" && !navigator.onLine);
     }
 
-    refreshSession()
-      .then((response) => {
-        if (!cancelled) {
-          applyAuthResponse(response);
-        }
+    refresh()
+      .then(() => {
+        // `refresh` applies the returned credentials and schedules the next rotation.
       })
       .catch((error) => {
         if (!cancelled) {
           // A temporary network failure must not erase the offline replica or
           // queued messages. Authentication failures still clear the session.
-          if (cachedAccount?.user && cachedAccount.accessToken &&
-            (isNetworkFailure(error) || !(error instanceof ApiError) || (error.status !== 401 && error.status !== 403))) {
+          if (isExpiredAuthError(error)) {
+            void rejectExpiredRefresh();
+          } else if (cachedAccount?.user && cachedAccount.accessToken &&
+            (isNetworkFailure(error) || !isExpiredAuthError(error))) {
             setIsOffline(true);
-          } else {
-            void clearExpiredSession();
           }
         }
       })
@@ -282,30 +267,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, [applyAuthResponse, clearExpiredSession]);
+  }, [refresh, rejectExpiredRefresh]);
 
   const login = useCallback(
     async (payload: LoginPayload) => {
-      applyAuthResponse(await loginRequest(payload));
+      serverGenerationRef.current += 1;
+      const response = await loginRequest(payload);
+      refreshRejectedRef.current = false;
+      applyAuthResponse(response);
     },
     [applyAuthResponse]
   );
 
   const setup = useCallback(
     async (payload: SetupPayload) => {
-      applyAuthResponse(await setupOwner(payload));
+      serverGenerationRef.current += 1;
+      const response = await setupOwner(payload);
+      refreshRejectedRef.current = false;
+      applyAuthResponse(response);
     },
     [applyAuthResponse]
   );
 
   const acceptAuthResponse = useCallback(
     (response: AuthResponse) => {
+      serverGenerationRef.current += 1;
+      refreshRejectedRef.current = false;
       applyAuthResponse(response);
     },
     [applyAuthResponse]
   );
 
   const logout = useCallback(async () => {
+    serverGenerationRef.current += 1;
+    refreshRejectedRef.current = true;
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
     }
@@ -315,15 +310,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ).catch(() => undefined);
     }
     await logoutRequest().catch(() => undefined);
-    await clearOfflineSessionState();
+    await clearAuthSession(currentUserIdRef.current);
     storeRefreshToken(null);
     setAccessToken(null);
     setCurrentUser(null);
-  }, [clearOfflineSessionState]);
+  }, []);
 
   const authRequest = useCallback(
     async <T,>(endpoint: string, options: ApiRequestOptions = {}) => {
       try {
+        if (refreshRejectedRef.current) throw new ApiError(401, "Session expired");
         const res = await apiRequest<T>(endpoint, {
           ...options,
           accessToken: accessTokenRef.current
@@ -339,7 +335,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               accessToken: refreshed.accessToken
             });
           } catch (refreshError) {
-            await clearExpiredSession();
             throw refreshError;
           }
         }
@@ -350,7 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-    [clearExpiredSession, refresh]
+    [refresh]
   );
 
   const value = useMemo(

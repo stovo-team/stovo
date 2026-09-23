@@ -14,7 +14,7 @@ type RefreshOperations struct {
 	RefreshCookieName string
 	Rotate            func(context.Context, string, string) (any, int, string)
 	ClientIP          func(*stdhttp.Request) string
-	ClearCookie       func(stdhttp.ResponseWriter)
+	ClearCookie       func(stdhttp.ResponseWriter, *stdhttp.Request)
 	WriteSuccess      func(stdhttp.ResponseWriter, *stdhttp.Request, any)
 }
 
@@ -47,7 +47,7 @@ func (h RefreshHandler) ServeHTTP(w stdhttp.ResponseWriter, r *stdhttp.Request) 
 	response, status, detail := h.operations.Rotate(r.Context(), rawToken, clientIP)
 	if status != 0 {
 		if status == stdhttp.StatusUnauthorized && h.operations.ClearCookie != nil {
-			h.operations.ClearCookie(w)
+			h.operations.ClearCookie(w, r)
 		}
 		writeRefreshDetail(w, status, detail)
 		return
