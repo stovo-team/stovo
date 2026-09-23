@@ -12,7 +12,14 @@ job_block() {
 }
 
 job_if() {
-  job_block "$1" | sed -nE 's/^    if:[[:space:]]*(.*)$/\1/p' | head -n 1
+  job_block "$1" | awk '
+    /^    if:/ {
+      sub(/^    if:[[:space:]]*/, "")
+      print
+      found = 1
+    }
+    END { if (!found) exit 1 }
+  '
 }
 
 job_permissions() {
