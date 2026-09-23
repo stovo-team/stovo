@@ -45,6 +45,108 @@ func TestOnionDependencyDirection(t *testing.T) {
 	}
 }
 
+func TestPackageLayerDependencyPolicy(t *testing.T) {
+	tests := []struct {
+		name    string
+		from    string
+		to      string
+		allowed bool
+	}{
+		{name: "domain can use domain", from: "domain", to: "domain", allowed: true},
+		{name: "domain cannot use feature", from: "domain", to: "features", allowed: false},
+		{name: "feature can use domain", from: "features", to: "domain", allowed: true},
+		{name: "feature can use another feature", from: "features", to: "features", allowed: true},
+		{name: "feature cannot use adapter", from: "features", to: "adapters", allowed: false},
+		{name: "feature cannot use support package", from: "features", to: "support", allowed: false},
+		{name: "transport cannot use app", from: "transport", to: "outer", allowed: false},
+		{name: "transport can use support package", from: "transport", to: "support", allowed: true},
+		{name: "transport cannot use adapter", from: "transport", to: "adapters", allowed: false},
+		{name: "transport cannot use repository", from: "transport", to: "outer", allowed: false},
+		{name: "bootstrap can compose adapters", from: "bootstrap", to: "adapters", allowed: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := allowedLayerDependency(tt.from, tt.to)
+			if got != tt.allowed {
+				t.Errorf("allowedLayerDependency(%q, %q) = %v, want %v", tt.from, tt.to, got, tt.allowed)
+			}
+		})
+	}
+}
+
+func TestPackageLayerClassifiesImportPaths(t *testing.T) {
+	tests := []struct {
+		importPath string
+		want       string
+	}{
+		{importPath: modulePath + "/internal/domain/message", want: "domain"},
+		{importPath: modulePath + "/internal/features/messages", want: "features"},
+		{importPath: modulePath + "/internal/transport/http", want: "transport"},
+		{importPath: modulePath + "/internal/ports", want: "support"},
+		{importPath: modulePath + "/internal/repository", want: "outer"},
+		{importPath: modulePath + "/ent/user", want: "outer"},
+		{importPath: modulePath + "/internal/domainish", want: "outer"},
+		{importPath: "github.com/example/library", want: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.importPath, func(t *testing.T) {
+			if got := packageLayer(tt.importPath); got != tt.want {
+				t.Errorf("packageLayer(%q) = %q, want %q", tt.importPath, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLayerDependencyViolationsInspectPackageImports(t *testing.T) {
+	tests := []struct {
+		name              string
+		pkg               listedPackage
+		wantViolations    int
+		wantViolationText string
+	}{
+		{
+			name:              "domain cannot import feature",
+			pkg:               listedPackage{ImportPath: modulePath + "/internal/domain/message", Imports: []string{modulePath + "/internal/features/messages"}},
+			wantViolations:    1,
+			wantViolationText: "internal/features/messages",
+		},
+		{
+			name:              "domain cannot import generated ent",
+			pkg:               listedPackage{ImportPath: modulePath + "/internal/domain/message", Imports: []string{modulePath + "/ent/user"}},
+			wantViolations:    1,
+			wantViolationText: "/ent/user",
+		},
+		{
+			name:              "feature cannot import adapter",
+			pkg:               listedPackage{ImportPath: modulePath + "/internal/features/messages", Imports: []string{modulePath + "/internal/adapters/messagehistory"}},
+			wantViolations:    1,
+			wantViolationText: "internal/adapters/messagehistory",
+		},
+		{
+			name:              "transport cannot import repository",
+			pkg:               listedPackage{ImportPath: modulePath + "/internal/transport/http", Imports: []string{modulePath + "/internal/repository"}},
+			wantViolations:    1,
+			wantViolationText: "internal/repository",
+		},
+		{
+			name:           "allowed feature domain import",
+			pkg:            listedPackage{ImportPath: modulePath + "/internal/features/messages", Imports: []string{modulePath + "/internal/domain/message"}},
+			wantViolations: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := layerDependencyViolations(tt.pkg)
+			if len(got) != tt.wantViolations {
+				t.Fatalf("layerDependencyViolations() returned %d violations, want %d: %v", len(got), tt.wantViolations, got)
+			}
+			if tt.wantViolationText != "" && !strings.Contains(got[0], tt.wantViolationText) {
+				t.Errorf("violation %q does not identify dependency %q", got[0], tt.wantViolationText)
+			}
+		})
+	}
+}
+
 // TestLegacyApplicationDoesNotExposeRepositoryStore prevents the compatibility
 // application shell from becoming a second persistence composition root. The
 // shell may hold feature services, but concrete repository types must stop at
@@ -122,6 +224,9 @@ func moduleRoot(t *testing.T) string {
 
 func assertPackageDependencies(t *testing.T, pkg listedPackage) {
 	t.Helper()
+	for _, violation := range layerDependencyViolations(pkg) {
+		t.Error(violation)
+	}
 	switch {
 	case strings.HasPrefix(pkg.ImportPath, modulePath+"/internal/domain"):
 		for _, imported := range pkg.Imports {
@@ -150,6 +255,63 @@ func assertPackageDependencies(t *testing.T, pkg listedPackage) {
 				t.Errorf("application facade package %s imports persistence implementation %s", pkg.ImportPath, imported)
 			}
 		}
+	}
+}
+
+func layerDependencyViolations(pkg listedPackage) []string {
+	fromLayer := packageLayer(pkg.ImportPath)
+	if fromLayer != "domain" && fromLayer != "features" && fromLayer != "transport" {
+		return nil
+	}
+	var violations []string
+	for _, imported := range pkg.Imports {
+		toLayer := packageLayer(imported)
+		if toLayer == "" {
+			continue
+		}
+		if !allowedLayerDependency(fromLayer, toLayer) {
+			violations = append(violations, fmt.Sprintf("package %s in layer %s imports %s in disallowed layer %s", pkg.ImportPath, fromLayer, imported, toLayer))
+		}
+	}
+	return violations
+}
+
+// packageLayer groups import paths whose dependency direction is part of the
+// backend architecture contract. Everything else is an outer implementation
+// package when imported by one of the governed layers.
+func packageLayer(importPath string) string {
+	if !strings.HasPrefix(importPath, modulePath+"/") {
+		return ""
+	}
+	name := strings.TrimPrefix(importPath, modulePath+"/")
+	if !strings.HasPrefix(name, "internal/") {
+		return "outer"
+	}
+	name = strings.TrimPrefix(name, "internal/")
+	root := strings.SplitN(name, "/", 2)[0]
+	switch root {
+	case "domain", "features", "transport":
+		return root
+	case "config", "plugins", "ports", "transcription":
+		return "support"
+	default:
+		return "outer"
+	}
+}
+
+// allowedLayerDependency is the maintained package-layer dependency matrix.
+// Composition and legacy layers remain unconstrained here while they are
+// migrated; domain, feature, and transport boundaries fail closed.
+func allowedLayerDependency(from, to string) bool {
+	switch from {
+	case "domain":
+		return to == "domain"
+	case "features":
+		return to == "domain" || to == "features"
+	case "transport":
+		return to == "domain" || to == "features" || to == "support" || to == "transport"
+	default:
+		return true
 	}
 }
 
