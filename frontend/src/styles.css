@@ -7425,9 +7425,13 @@ span.message-spoiler.is-revealed {
 /* Documents use their own compact card, so do not retain the generic
    text-message width or its large right-side gutter. */
 .message-bubble:has(.document-preview-card) {
-  max-width: min(420px, calc(100vw - 48px));
+  max-width: min(560px, calc(100vw - 48px));
   padding-inline: 6px;
-  width: min(420px, calc(100vw - 48px));
+  width: min(560px, calc(100vw - 48px));
+}
+
+.message-bubble:has(.document-preview-card) .document-preview-card {
+  max-width: 100%;
 }
 
 /* Portrait-only videos: a bit narrower than landscape (albums keep landscape width). */
@@ -7678,22 +7682,22 @@ span.message-spoiler.is-revealed {
 
 .message-bubble.mine.has-photo-attachments .video-player,
 .message-bubble.mine:has(.message-video-attachment) .video-player {
-  border-radius: 16px 16px 2px 16px;
+  border-radius: 16px;
 }
 
 .message-bubble.mine.grouped.has-photo-attachments .video-player,
 .message-bubble.mine.grouped:has(.message-video-attachment) .video-player {
-  border-radius: 16px 2px 2px 16px;
+  border-radius: 16px;
 }
 
 .message-bubble:not(.mine).has-photo-attachments .video-player,
 .message-bubble:not(.mine):has(.message-video-attachment) .video-player {
-  border-radius: 16px 16px 16px 2px;
+  border-radius: 16px;
 }
 
 .message-bubble:not(.mine).grouped.has-photo-attachments .video-player,
 .message-bubble:not(.mine).grouped:has(.message-video-attachment) .video-player {
-  border-radius: 16px 16px 2px 2px;
+  border-radius: 16px;
 }
 
 /* Portrait fills its (narrower) bubble; height comes from aspect-ratio only. */
@@ -7894,7 +7898,7 @@ span.message-spoiler.is-revealed {
 .video-player:fullscreen {
   aspect-ratio: auto;
   border: 0;
-  border-radius: 0;
+  border-radius: 16px;
   height: 100vh;
   max-height: none;
   max-width: none;
