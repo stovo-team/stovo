@@ -157,7 +157,7 @@ export function AttachmentCard({
   }
 
   if (documentKind !== "unsupported") {
-    return <DocumentAttachmentPreview accessToken={accessToken} file={file} />;
+    return <DocumentAttachmentPreview accessToken={accessToken} file={file} inlinePreview />;
   }
 
   if (compact && isImage) {

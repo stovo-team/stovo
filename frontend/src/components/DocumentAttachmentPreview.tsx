@@ -1,13 +1,10 @@
-import {
-  FileSpreadsheet,
-  FileText,
-  LoaderCircle,
-  X,
-} from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
+import { InlineDocumentPreview } from "./InlineDocumentPreview";
+import { DocxDocumentPreview } from "./DocxDocumentPreview";
 import {
   downloadFileBlob,
   formatFileSize,
@@ -16,40 +13,22 @@ import {
 } from "../api/files";
 import {
   applyPdfPageZoom,
+  getPdfRenderLimits,
   nextPinchZoom,
   nextWheelZoom,
   touchDistance,
 } from "./pdfViewerZoom";
-import { detectDocumentPreviewKind, type DocumentPreviewKind } from "./documentPreviewKind";
+import { detectDocumentPreviewKind, DocumentKindIcon, documentKindLabel, type DocumentPreviewKind } from "./documentPreviewKind";
 
 export { detectDocumentPreviewKind } from "./documentPreviewKind";
 
 export type { DocumentPreviewKind } from "./documentPreviewKind";
+export { getPdfRenderLimits } from "./pdfViewerZoom";
 
-const DOCX_ALLOWED_TAGS = new Set([
-  "a", "blockquote", "br", "caption", "code", "em", "h1", "h2", "h3", "h4",
-  "h5", "h6", "img", "li", "ol", "p", "pre", "span", "strong", "table", "tbody",
-  "td", "th", "thead", "tr", "ul",
-]);
-const DOCX_GLOBAL_ATTRIBUTES = new Set(["class", "title"]);
-const DOCX_TABLE_ATTRIBUTES = new Set(["colspan", "rowspan"]);
-
-type TablePreview = {
+export type TablePreview = {
   sheets: Array<{ name: string; rows: string[][] }>;
   activeSheet: number;
 };
-
-function isSafeDocxURL(value: string, allowImageData: boolean): boolean {
-  try {
-    const url = new URL(value, window.location.origin);
-    if (url.protocol === "https:" || url.protocol === "http:" || url.protocol === "mailto:" || url.protocol === "tel:") {
-      return true;
-    }
-    return allowImageData && /^data:image\/(?:png|gif|jpe?g|webp);base64,/i.test(value);
-  } catch {
-    return false;
-  }
-}
 
 function extensionOf(name: string): string {
   const idx = name.lastIndexOf(".");
@@ -134,103 +113,13 @@ async function loadTablePreview(file: FamilyFile, blob: Blob): Promise<TablePrev
   return { sheets: sheets.length > 0 ? sheets : [{ name: "Sheet1", rows: [] }], activeSheet: 0 };
 }
 
-function DocxDocumentPreview({ blob }: { blob: Blob }) {
-  const hostRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    const host = hostRef.current;
-    if (!host) return;
-    host.replaceChildren();
-    setError(null);
-
-    void (async () => {
-      const stagingHost = document.createElement("div");
-      try {
-        const docx = await import("docx-preview");
-        await docx.renderAsync(blob, stagingHost, stagingHost, {
-          className: "stovo-docx",
-          useBase64URL: true,
-          renderAltChunks: false,
-        });
-        if (cancelled) return;
-        for (const link of Array.from(stagingHost.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
-          if (!isSafeDocxURL(link.href, false)) link.removeAttribute("href");
-        }
-        host.replaceChildren(...Array.from(stagingHost.childNodes));
-      } catch (err) {
-        console.error("Failed to render DOCX preview:", err);
-        if (!cancelled) setError("Document couldn’t be rendered on this device.");
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      host.replaceChildren();
-    };
-  }, [blob]);
-
-  return (
-    <div className="document-viewer-docx" ref={hostRef}>
-      {error && <div className="document-preview-error" role="alert">{error}</div>}
-    </div>
-  );
-}
-
-// Keep the narrow sanitizer available for HTML-based DOCX integrations; the
-// fidelity renderer below creates elements directly and does not use it.
-export function sanitizeDocxHtml(html: string): string {
-  const template = document.createElement("template");
-  template.innerHTML = html;
-  for (const element of Array.from(template.content.querySelectorAll("*"))) {
-    const tag = element.tagName.toLowerCase();
-    if (!DOCX_ALLOWED_TAGS.has(tag)) {
-      element.replaceWith(...Array.from(element.childNodes));
-      continue;
-    }
-    for (const attribute of Array.from(element.attributes)) {
-      const name = attribute.name.toLowerCase();
-      const allowed = DOCX_GLOBAL_ATTRIBUTES.has(name)
-        || (tag === "a" && name === "href")
-        || (tag === "img" && name === "src")
-        || (["td", "th"].includes(tag) && DOCX_TABLE_ATTRIBUTES.has(name));
-      if (!allowed || ((name === "href" || name === "src") && !isSafeDocxURL(attribute.value, tag === "img"))) {
-        element.removeAttribute(attribute.name);
-      }
-    }
-  }
-  return template.innerHTML;
-}
-
-function kindLabel(kind: DocumentPreviewKind): string {
-  if (kind === "pdf") return "PDF";
-  if (kind === "docx") return "Document";
-  if (kind === "table") return "Spreadsheet";
-  return "File";
-}
-
-function KindIcon({ kind }: { kind: DocumentPreviewKind }) {
-  if (kind === "table") return <FileSpreadsheet size={18} aria-hidden="true" />;
-  return <FileText size={18} aria-hidden="true" />;
-}
-
-export function getPdfRenderLimits(
-  pageCount: number,
-  devicePixelRatio: number,
-  isConstrainedDevice: boolean,
-) {
-  return {
-    maxPages: Math.min(pageCount, isConstrainedDevice ? 12 : 40),
-    dpr: Math.min(devicePixelRatio || 1, isConstrainedDevice ? 1.5 : 2),
-  };
-}
+export { sanitizeDocxHtml } from "./DocxDocumentPreview";
 
 function pdfJsAssetUrl(path: string): string {
   return new URL(`/pdfjs/${path}`, window.location.origin).toString();
 }
 
-function PdfCanvasViewer({ blob }: { blob: Blob }) {
+function PdfCanvasViewer({ blob, pageLimit }: { blob: Blob; pageLimit?: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const gestureRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef(1);
@@ -340,11 +229,13 @@ function PdfCanvasViewer({ blob }: { blob: Blob }) {
         const isConstrainedDevice =
           /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
           (deviceMemory !== undefined && deviceMemory <= 4);
-        const { maxPages, dpr } = getPdfRenderLimits(
+        const limits = getPdfRenderLimits(
           doc.numPages,
           window.devicePixelRatio || 1,
           isConstrainedDevice,
         );
+        const maxPages = pageLimit === undefined ? limits.maxPages : Math.min(limits.maxPages, pageLimit);
+        const { dpr } = limits;
         const currentZoom = zoomRef.current;
         for (let pageNumber = 1; pageNumber <= maxPages; pageNumber += 1) {
           if (cancelled) break;
@@ -410,10 +301,12 @@ export function DocumentAttachmentPreview({
   accessToken,
   file,
   hideActions = false,
+  inlinePreview = false,
 }: {
   accessToken: string | null;
   file: FamilyFile;
   hideActions?: boolean;
+  inlinePreview?: boolean;
 }) {
   const kind = useMemo(() => detectDocumentPreviewKind(file), [file]);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -435,11 +328,11 @@ export function DocumentAttachmentPreview({
         onClick={() => setViewerOpen(true)}
       >
         <header className="document-preview-header">
-          <KindIcon kind={kind} />
+          <DocumentKindIcon kind={kind} />
           <div className="document-preview-copy">
             <strong title={file.originalName}>{file.originalName}</strong>
             <span>
-              {kindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
+              {documentKindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
             </span>
           </div>
           {!hideActions && (
@@ -469,6 +362,21 @@ export function DocumentAttachmentPreview({
             </div>
           )}
         </header>
+        {inlinePreview && (
+          <InlineDocumentPreview
+            accessToken={accessToken ?? ""}
+            file={file}
+            kind={kind}
+            onResolvedSize={setResolvedSizeBytes}
+            loadTablePreview={loadTablePreview}
+            renderPdf={(blob) => <PdfCanvasViewer blob={blob} pageLimit={1} />}
+            renderDocx={(blob) => (
+              <div className="document-inline-preview-docx">
+                <DocxDocumentPreview blob={blob} />
+              </div>
+            )}
+          />
+        )}
       </article>
       {viewerOpen && (
         <DocumentViewerModal
@@ -503,6 +411,7 @@ export function DocumentViewerModal({
   const [error, setError] = useState<string | null>(null);
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [docxBlob, setDocxBlob] = useState<Blob | null>(null);
+  const [textContent, setTextContent] = useState<string | null>(null);
   const [table, setTable] = useState<TablePreview | null>(null);
 
   useEffect(() => {
@@ -511,6 +420,7 @@ export function DocumentViewerModal({
     setError(null);
     setPdfBlob(null);
     setDocxBlob(null);
+    setTextContent(null);
     setTable(null);
 
     void downloadFileBlob(accessToken, file.id)
@@ -527,6 +437,10 @@ export function DocumentViewerModal({
         }
         if (kind === "docx") {
           setDocxBlob(blob);
+          return;
+        }
+        if (kind === "text") {
+          setTextContent(await blob.text());
           return;
         }
         setTable(await loadTablePreview(file, blob));
@@ -564,11 +478,11 @@ export function DocumentViewerModal({
       >
         <header className="document-viewer-header">
           <div className="document-viewer-title">
-            <KindIcon kind={kind} />
+            <DocumentKindIcon kind={kind} />
             <div>
               <strong title={file.originalName}>{file.originalName}</strong>
               <span>
-                {kindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
+                {documentKindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
               </span>
             </div>
           </div>
@@ -598,6 +512,10 @@ export function DocumentViewerModal({
           {!loading && !error && kind === "pdf" && pdfBlob && <PdfCanvasViewer blob={pdfBlob} />}
 
           {!loading && !error && kind === "docx" && docxBlob && <DocxDocumentPreview blob={docxBlob} />}
+
+          {!loading && !error && kind === "text" && textContent !== null && (
+            <pre className="document-viewer-text">{textContent || "(Empty document)"}</pre>
+          )}
 
           {!loading && !error && kind === "table" && table && activeSheet && (
             <div className="document-preview-table-wrap document-viewer-table-wrap">

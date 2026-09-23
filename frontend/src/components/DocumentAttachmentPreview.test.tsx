@@ -129,6 +129,13 @@ describe("detectDocumentPreviewKind", () => {
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "export.tsv", mimeType: "text/tab-separated-values" })).toBe("table");
   });
 
+  it("detects Markdown and plain text documents", async () => {
+    const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "notes.md", mimeType: "text/markdown" })).toBe("text");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "readme.markdown", mimeType: "" })).toBe("text");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "notes.txt", mimeType: "text/plain" })).toBe("text");
+  });
+
   it("returns unsupported for other formats and handles empty values safely", async () => {
     const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "photo.jpg", mimeType: "image/jpeg" })).toBe("unsupported");
