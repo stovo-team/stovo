@@ -43,32 +43,31 @@ func SanitizeFilename(name string) string {
 }
 
 func AllowedMIME(contentType string) bool {
-	mimeType, _, err := mime.ParseMediaType(contentType)
-	if err != nil {
-		return false
-	}
-	switch mimeType {
-	case "image/jpeg", "image/png", "image/gif", "image/webp", "video/mp4", "video/webm", "video/quicktime", "audio/mpeg", "audio/mp4", "audio/aac", "audio/wav", "audio/x-wav", "audio/ogg", "audio/webm", "application/pdf", "text/plain", "text/markdown", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-		return true
-	default:
-		return false
-	}
+	_, _, err := mime.ParseMediaType(contentType)
+	return err == nil
 }
 
 func NormalizeUploadMIME(contentType, filename string) (string, bool) {
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err == nil && AllowedMIME(mediaType) {
+		if mediaType == "application/octet-stream" || mediaType == "binary/octet-stream" {
+			inferred := mime.TypeByExtension(strings.ToLower(filepath.Ext(filename)))
+			inferredType, _, inferredErr := mime.ParseMediaType(inferred)
+			if inferredErr == nil && AllowedMIME(inferredType) {
+				return inferredType, true
+			}
+		}
 		return mediaType, true
 	}
-	if mediaType != "" && mediaType != "application/octet-stream" && mediaType != "binary/octet-stream" {
+	if strings.TrimSpace(contentType) != "" {
 		return "", false
 	}
 	inferred := mime.TypeByExtension(strings.ToLower(filepath.Ext(filename)))
 	inferredType, _, err := mime.ParseMediaType(inferred)
-	if err != nil || !AllowedMIME(inferredType) {
-		return "", false
+	if err == nil && AllowedMIME(inferredType) {
+		return inferredType, true
 	}
-	return inferredType, true
+	return "application/octet-stream", true
 }
 
 // UploadCompletionState determines whether a completion request is idempotent,

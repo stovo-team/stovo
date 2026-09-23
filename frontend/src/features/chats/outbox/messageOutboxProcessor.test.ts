@@ -6,7 +6,8 @@ import {
   getOutboxMessages,
   type QueuedOutboxMessage
 } from "./messageOutboxStore";
-import type { Chat } from "../../../api/chats";
+import type { Chat, Message } from "../../../api/chats";
+import type { MessageStateUpdate } from "../shared/types";
 import type { User } from "../../../api/auth";
 
 vi.mock("../../../api/chats", () => ({
@@ -188,6 +189,43 @@ describe("messageOutboxProcessor", () => {
     expect(remaining).toHaveLength(1);
     expect(remaining[0].status).toBe("queued");
     expect(remaining[0].attemptCount).toBe(1);
+  });
+
+  it("removes unrecoverable failed messages from the persistent outbox", async () => {
+    const queued: QueuedOutboxMessage = {
+      id: "client-msg-failed",
+      clientMessageId: "client-msg-failed",
+      chatId: "chat-1",
+      userId: "user-1",
+      content: "Invalid message",
+      replyToMessageId: null,
+      threadRootMessageId: null,
+      mentionedUserIds: [],
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      status: "queued",
+      attemptCount: 0
+    };
+    await enqueueOutboxMessage(queued);
+    vi.mocked(sendMessage).mockRejectedValueOnce(new Error("Message rejected"));
+
+    let messages = [{ clientMessageId: queued.clientMessageId, deliveryState: "sending" }] as unknown as Message[];
+    const applyMessagesForChat = vi.fn((_chatId: string, update: MessageStateUpdate) => {
+      messages = typeof update === "function" ? update(messages) : update;
+    });
+    const onError = vi.fn();
+    await drainOutboxQueue({
+      accessToken: "mock-token",
+      currentUser: mockUser,
+      chats: [mockChat],
+      applyMessagesForChat,
+      onError
+    });
+
+    expect(await getOutboxMessages("user-1")).toHaveLength(0);
+    expect(applyMessagesForChat).toHaveBeenCalledTimes(2);
+    expect(messages[0].deliveryState).toBe("failed");
+    expect(onError).toHaveBeenCalledWith("Message failed");
   });
 
   it("uploads pending attachments before sending message", async () => {
