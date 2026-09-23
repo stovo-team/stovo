@@ -55,6 +55,7 @@ const mockDirectChat: Chat = {
 
 describe("ChatHeader", () => {
   it("renders search button and call buttons for direct chat", () => {
+    const onToggleMessageSearch = vi.fn();
     const container = renderComponent(
       <ChatHeader
         accessToken="test-token"
@@ -70,7 +71,7 @@ describe("ChatHeader", () => {
         onStartAudioCall={vi.fn()}
         onStartVideoCall={vi.fn()}
         isMessageSearchOpen={false}
-        onToggleMessageSearch={vi.fn()}
+        onToggleMessageSearch={onToggleMessageSearch}
         onOpenMessageSearch={vi.fn()}
         onMarkRead={vi.fn()}
         onTogglePinned={vi.fn()}
@@ -79,8 +80,13 @@ describe("ChatHeader", () => {
       />
     );
 
-    const searchBtn = container.querySelector(".chat-header-search-button");
+    const searchBtn = container.querySelector<HTMLButtonElement>(".chat-header-search-button");
     expect(searchBtn).not.toBeNull();
+    expect(searchBtn?.getAttribute("aria-label")).toBe("Search messages");
+    expect(searchBtn?.querySelector("svg.lucide-search")?.getAttribute("aria-hidden")).toBe("true");
+    expect(searchBtn?.querySelector(".ms-icon")).toBeNull();
+    act(() => searchBtn?.click());
+    expect(onToggleMessageSearch).toHaveBeenCalledTimes(1);
     const audioBtn = container.querySelector(".chat-header-call-button--audio");
     expect(audioBtn).not.toBeNull();
   });

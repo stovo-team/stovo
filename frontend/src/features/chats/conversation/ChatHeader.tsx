@@ -13,6 +13,7 @@ import {
   Pencil,
   Phone,
   Pin,
+  Search,
   Star,
   Trash2,
   Video
@@ -319,9 +320,7 @@ export function ChatHeader({
                 title="Search messages"
                 onClick={onToggleMessageSearch}
               >
-                <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                  search
-                </span>
+                <Search aria-hidden="true" size={20} />
               </button>
             )}
             {false && (
