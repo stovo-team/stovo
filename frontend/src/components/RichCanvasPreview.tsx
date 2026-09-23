@@ -416,29 +416,85 @@ export function WhiteboardSvgView({
 }
 
 /** Renders inline markdown tokens (bold, code, italic) */
+function decodeMarkdownEntities(text: string): string {
+  const namedEntities: Record<string, string> = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    lt: "<",
+    nbsp: "\u00a0",
+    quot: '"',
+  };
+  return text.replace(/&(#x[\da-f]+|#\d+|[a-z][a-z\d]+);/gi, (entity, name: string) => {
+    const normalized = name.toLowerCase();
+    if (normalized.startsWith("#")) {
+      const value = Number.parseInt(normalized.slice(normalized[1] === "x" ? 2 : 1), normalized[1] === "x" ? 16 : 10);
+      if (Number.isInteger(value) && value > 0 && value <= 0x10ffff) {
+        return String.fromCodePoint(value);
+      }
+      return entity;
+    }
+    return namedEntities[normalized] ?? entity;
+  });
+}
+
+function safeMarkdownImageSource(source: string): string | null {
+  try {
+    const url = new URL(source, window.location.origin);
+    if (url.origin === window.location.origin && (url.protocol === "http:" || url.protocol === "https:")) {
+      return url.toString();
+    }
+    if (/^data:image\/(?:png|gif|jpe?g|webp);base64,/i.test(source)) {
+      return source;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function renderInlineMarkdown(text: string) {
   const parts: ReactNode[] = [];
-  const regex = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|~~([^~]+)~~)/g;
+  const regex = /!\[[^\]]*\](?:\([^)]+\)|\[[^\]]*\])?|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|~~[^~]+~~/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
+      parts.push(decodeMarkdownEntities(text.slice(lastIndex, match.index)));
     }
-    const [full, , bold, italic, code, strike] = match;
+    const full = match[0];
+    const imageMatch = /^!\[([^\]]*)\](?:\(([^)\s]+)(?:\s+["'][^)]*["'])?\)|\[([^\]]*)\])?$/.exec(full);
+    if (imageMatch) {
+      const [, alt, source, reference] = imageMatch;
+      const imageLabel = alt || reference || "image";
+      const safeSource = source ? safeMarkdownImageSource(source) : null;
+      parts.push(safeSource ? (
+        <img key={match.index} className="canvas-md-image" src={safeSource} alt={imageLabel} loading="lazy" />
+      ) : (
+        <span key={match.index} className="canvas-md-image" role="img" aria-label={`Image: ${imageLabel}`}>
+          Image: {decodeMarkdownEntities(imageLabel)}
+        </span>
+      ));
+      lastIndex = match.index + full.length;
+      continue;
+    }
+    const bold = /^\*\*([^*]+)\*\*$/.exec(full)?.[1];
+    const italic = /^\*([^*]+)\*$/.exec(full)?.[1];
+    const code = /^`([^`]+)`$/.exec(full)?.[1];
+    const strike = /^~~([^~]+)~~$/.exec(full)?.[1];
     if (bold !== undefined) {
-      parts.push(<strong key={match.index}>{bold}</strong>);
+      parts.push(<strong key={match.index}>{decodeMarkdownEntities(bold)}</strong>);
     } else if (italic !== undefined) {
-      parts.push(<em key={match.index}>{italic}</em>);
+      parts.push(<em key={match.index}>{decodeMarkdownEntities(italic)}</em>);
     } else if (code !== undefined) {
       parts.push(
         <code key={match.index} className="canvas-md-inline-code">
-          {code}
+          {decodeMarkdownEntities(code)}
         </code>
       );
     } else if (strike !== undefined) {
-      parts.push(<del key={match.index}>{strike}</del>);
+      parts.push(<del key={match.index}>{decodeMarkdownEntities(strike)}</del>);
     } else {
       parts.push(full);
     }
@@ -446,7 +502,7 @@ function renderInlineMarkdown(text: string) {
   }
 
   if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+    parts.push(decodeMarkdownEntities(text.slice(lastIndex)));
   }
 
   return parts.length > 0 ? parts : text;
@@ -534,7 +590,7 @@ function RichMarkdownLine({ line, index }: { line: string; index: number }) {
 
   // Code block fence / indented code
   if (line.startsWith("```") || line.startsWith("    ")) {
-    const codeContent = line.replace(/^```[a-z0-9]*\s*/i, "").replace(/```$/, "");
+    const codeContent = line.replace(/^```[a-z0-9]*\s*/i, "").replace(/```$/, "").replace(/^ {4}/, "");
     return (
       <div key={index} className="canvas-md-line canvas-md-code-wrap">
         <code className="canvas-md-code-line">{codeContent || " "}</code>
@@ -579,20 +635,27 @@ function CompactMarkdownLine({ line, index }: { line: string; index: number }) {
 export function RichCanvasPreview({
   canvas,
   updates,
+  markdownContent,
   className = "",
   hideHeader = false,
   storageCompact = false,
 }: {
   canvas: Canvas | CanvasReference | { title: string };
   updates?: CanvasUpdate[];
+  /** Render standalone Markdown files with the same styling as canvas notes. */
+  markdownContent?: string;
   className?: string;
   hideHeader?: boolean;
   /** Use the original compact, Markdown-first presentation for storage tiles. */
   storageCompact?: boolean;
 }) {
   const blocks = useMemo(
-    () => parseCanvasBlocks(updates, canvas.title),
-    [updates, canvas.title]
+    () => markdownContent === undefined
+      ? parseCanvasBlocks(updates, canvas.title)
+      : markdownContent.split(/\r?\n/)
+        .filter((line) => decodeMarkdownEntities(line).trim().length > 0)
+        .map((line, index) => ({ id: `markdown-file-${index}`, kind: "markdown" as const, lines: [line] })),
+    [updates, canvas.title, markdownContent]
   );
 
   const { items, totalMarkdownLines, hasWhiteboard, isTruncated } = useMemo(

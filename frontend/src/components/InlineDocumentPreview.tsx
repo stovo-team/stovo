@@ -3,8 +3,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { downloadFileBlob, type FamilyFile } from "../api/files";
 import { documentKindLabel, isMarkdownDocument, type DocumentPreviewKind } from "./documentPreviewKind";
-import { MessageMarkdown } from "../messageMarkdown";
 import type { TablePreview } from "./DocumentAttachmentPreview";
+import { RichCanvasPreview } from "./RichCanvasPreview";
 
 type InlineDocumentPreviewProps = {
   accessToken: string;
@@ -104,7 +104,12 @@ export function InlineDocumentPreview({
       {!loading && !error && kind === "docx" && docxBlob && renderDocx(docxBlob)}
       {!loading && !error && kind === "text" && textPreview !== null && (
         isMarkdownDocument(file)
-          ? <div className="document-inline-preview-markdown"><MessageMarkdown source={textPreview || "(Empty document)"} /></div>
+          ? <RichCanvasPreview
+              canvas={{ title: file.originalName }}
+              markdownContent={textPreview || "(Empty document)"}
+              hideHeader
+              className="document-inline-preview-canvas"
+            />
           : <pre className="document-inline-preview-text">{textPreview || "(Empty document)"}</pre>
       )}
       {!loading && !error && kind === "table" && table && activeSheet && (

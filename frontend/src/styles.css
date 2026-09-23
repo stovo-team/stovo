@@ -4167,7 +4167,8 @@ h2 {
   background-size: var(--wallpaper-background-size);
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 18px var(--message-gutter-x);
   -webkit-overflow-scrolling: touch;
 }
@@ -7418,7 +7419,7 @@ span.message-spoiler.is-revealed {
   box-sizing: border-box;
   gap: 0;
   max-width: min(560px, 86%);
-  padding: 2px;
+  padding: 8px;
   width: min(560px, 86%);
 }
 
@@ -8009,12 +8010,12 @@ span.message-spoiler.is-revealed {
 }
 
 .composer-attachments-strip .pending-attachments {
-  display: flex;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(132px, 100%), 1fr));
   gap: 8px;
-  overflow-x: auto;
-  padding: 2px 2px 4px;
-  scrollbar-width: thin;
+  max-height: 224px;
+  overflow-y: auto;
+  padding: 4px 4px 8px;
 }
 
 .pending-attachments {
@@ -8053,12 +8054,11 @@ span.message-spoiler.is-revealed {
 .pending-attachment-card--thumb {
   display: block;
   position: relative;
-  width: 64px;
-  height: 64px;
-  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
   border-radius: 14px;
   padding: 0;
-  max-width: 64px;
+  max-width: none;
   grid-template-columns: none;
   box-shadow: none;
   background: transparent;
@@ -8083,16 +8083,28 @@ span.message-spoiler.is-revealed {
 
 .pending-attachment-card--thumb .pending-attachment-thumb {
   border-radius: 14px;
-  height: 100%;
+  aspect-ratio: 1;
+  height: auto;
   width: 100%;
+}
+
+.pending-attachment-card--thumb.is-video .pending-attachment-thumb {
+  aspect-ratio: 16 / 10;
 }
 
 .pending-attachment-thumb img,
 .pending-attachment-thumb video {
   display: block;
   height: 100%;
-  object-fit: cover;
   width: 100%;
+}
+
+.pending-attachment-thumb img {
+  object-fit: cover;
+}
+
+.pending-attachment-card--thumb .pending-attachment-thumb video {
+  object-fit: contain;
 }
 
 .pending-attachment-thumb-placeholder {
@@ -21184,8 +21196,10 @@ button.chat-info-title-edit:active:not(:disabled) {
 .document-preview-card {
   background: var(--surface-card);
   border: 1px solid var(--border-default);
+  box-sizing: border-box;
   border-radius: 14px;
   max-width: min(420px, 100%);
+  min-width: 0;
   overflow: hidden;
   width: 100%;
 }
@@ -21196,22 +21210,35 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .document-inline-preview {
   background: var(--surface-raised);
+  aspect-ratio: 16 / 9;
+  box-sizing: border-box;
   border-top: 1px solid var(--border-default);
-  max-height: 360px;
+  min-width: 0;
   overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.document-inline-preview > * {
+  inset: 0;
+  position: absolute;
 }
 
 .document-inline-preview-placeholder {
   background: linear-gradient(110deg, transparent 28%, color-mix(in oklab, var(--surface-card) 76%, transparent) 45%, transparent 62%);
-  height: 150px;
+  height: 100%;
 }
 
 .document-inline-preview .document-viewer-pdf-host {
-  max-height: 360px;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
+  padding: 0;
 }
 
 .document-inline-preview .document-viewer-pdf-pages {
+  justify-items: start;
   padding: 10px 12px;
 }
 
@@ -21221,8 +21248,9 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .document-inline-preview-docx {
   background: #fff;
+  box-sizing: border-box;
   color: #202124;
-  max-height: 360px;
+  height: 100%;
   overflow: hidden;
   padding: 14px 18px;
 }
@@ -21238,9 +21266,15 @@ button.chat-info-title-edit:active:not(:disabled) {
   white-space: pre-wrap;
 }
 
-.document-inline-preview-text {
-  max-height: 360px;
-  overflow: hidden;
+.document-inline-preview .document-inline-preview-canvas {
+  background: #181b22;
+  border-radius: 0;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  padding: 14px 18px 18px;
+  position: relative;
+  width: 100%;
 }
 
 .document-viewer-text {
@@ -21248,7 +21282,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .document-inline-preview .document-preview-table-wrap {
-  max-height: 360px;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -26281,6 +26315,8 @@ button.chat-info-title-edit:active:not(:disabled) {
 .canvas-md-code-wrap { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px; margin: 4px 0; }
 .canvas-md-code-line { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.82rem; color: #e2e8f0; line-height: 1.45; }
 .canvas-md-inline-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.88em; background: rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 1px 5px; color: #f1f5f9; }
+.canvas-md-image { max-height: 120px; max-width: 100%; object-fit: contain; vertical-align: middle; }
+span.canvas-md-image { background: rgba(255, 255, 255, 0.08); border-radius: 5px; color: rgba(255, 255, 255, 0.7); display: inline-block; font-size: 0.78rem; padding: 2px 6px; }
 .canvas-md-hr { border: none; border-top: 1px solid rgba(255, 255, 255, 0.12); margin: 6px 0; }
 .canvas-preview-inline-whiteboard { width: 100%; height: 90px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden; margin: 4px 0; }
 .canvas-inline-wb-svg { width: 100%; height: 100%; display: block; }
@@ -29795,22 +29831,6 @@ button.checklist-add-item-btn:hover,
 .document-viewer-markdown ul,
 .document-viewer-markdown ol { padding-left: 1.6em; }
 .document-viewer-markdown a { color: #1558a6; }
-.document-inline-preview-markdown {
-  background: #fff;
-  color: #202124;
-  font: 13px/1.5 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  max-height: 360px;
-  overflow: hidden;
-  padding: 12px 14px;
-}
-.document-inline-preview-markdown h1,
-.document-inline-preview-markdown h2,
-.document-inline-preview-markdown h3 { line-height: 1.25; margin: 0.4em 0; }
-.document-inline-preview-markdown h1 { font-size: 1.25em; }
-.document-inline-preview-markdown h2 { font-size: 1.12em; }
-.document-inline-preview-markdown p { margin: 0.4em 0; }
-.document-inline-preview-markdown ul,
-.document-inline-preview-markdown ol { padding-left: 1.4em; }
 .document-viewer-header-actions .document-viewer-convert-canvas {
   background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
   border-color: color-mix(in srgb, var(--accent-primary) 42%, var(--border-default));

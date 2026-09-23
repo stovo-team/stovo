@@ -110,6 +110,29 @@ func TestUploadMetadataMIMEAndFilenamePolicy(t *testing.T) {
 	}
 }
 
+func TestNormalizeUploadMIMEAllowsSyntacticallyValidTypesByDefault(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		mimeType string
+		filename string
+		want     string
+	}{
+		{name: "svg", mimeType: "image/svg+xml", filename: "diagram.svg", want: "image/svg+xml"},
+		{name: "custom type", mimeType: "application/vnd.example+binary", filename: "data.custom", want: "application/vnd.example+binary"},
+		{name: "unknown extension", mimeType: "application/octet-stream", filename: "archive.unknown", want: "application/octet-stream"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, ok := NormalizeUploadMIME(tc.mimeType, tc.filename)
+			if !ok || got != tc.want {
+				t.Fatalf("NormalizeUploadMIME(%q, %q) = %q, %v; want %q, true", tc.mimeType, tc.filename, got, ok, tc.want)
+			}
+		})
+	}
+	if _, ok := NormalizeUploadMIME("not a mime type", "file.svg"); ok {
+		t.Fatal("malformed MIME type should remain invalid")
+	}
+}
+
 func TestUploadCompletionState(t *testing.T) {
 	now := time.Now().UTC()
 	if next, ok := UploadCompletionState("reserved", now.Add(time.Minute), now); !ok || next != "validating" {

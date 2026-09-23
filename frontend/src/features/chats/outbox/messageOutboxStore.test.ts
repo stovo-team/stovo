@@ -82,6 +82,15 @@ describe("messageOutboxStore", () => {
     expect(messages[0].attemptCount).toBe(1);
   });
 
+  it("purges previously failed messages when restoring the outbox", async () => {
+    const msg = createSampleMessage("msg-failed");
+    await enqueueOutboxMessage(msg);
+    await updateOutboxMessage(msg.id, msg.userId, { status: "failed", deliveryError: "Rejected" });
+
+    expect(await getOutboxMessages(msg.userId)).toEqual([]);
+    expect(localStorage.getItem("stovo_outbox_queue_user-1")).toBe("[]");
+  });
+
   it("removes a message from the outbox", async () => {
     const msg1 = createSampleMessage("msg-1");
     const msg2 = createSampleMessage("msg-2");

@@ -2,13 +2,6 @@ import { useRef } from "react";
 import { Paperclip } from "lucide-react";
 
 import AttachmentPickerSheet from "../../../components/AttachmentPickerSheet";
-import {
-  AUDIO_ATTACHMENT_ACCEPT,
-  CAMERA_ATTACHMENT_ACCEPT,
-  DESKTOP_ATTACHMENT_ACCEPT,
-  DOCUMENT_ATTACHMENT_ACCEPT,
-  GALLERY_ATTACHMENT_ACCEPT
-} from "../../../attachmentAccept";
 import { useComposerAttachmentContext } from "./ComposerAttachmentContext";
 
 export function AttachmentControls() {
@@ -44,6 +37,7 @@ export function AttachmentControls() {
     <>
       <button
         ref={attachmentButtonRef}
+        type="button"
         className="file-picker"
         aria-label="Attach files"
         title="Attach files"
@@ -54,7 +48,6 @@ export function AttachmentControls() {
       </button>
       <input
         ref={attachmentInputRef}
-        accept={DESKTOP_ATTACHMENT_ACCEPT}
         className="visually-hidden"
         disabled={disabled}
         multiple
@@ -63,7 +56,6 @@ export function AttachmentControls() {
       />
       <input
         ref={galleryAttachmentInputRef}
-        accept={GALLERY_ATTACHMENT_ACCEPT}
         className="visually-hidden"
         disabled={disabled}
         multiple
@@ -72,7 +64,6 @@ export function AttachmentControls() {
       />
       <input
         ref={cameraAttachmentInputRef}
-        accept={CAMERA_ATTACHMENT_ACCEPT}
         capture="environment"
         className="visually-hidden"
         disabled={disabled}
@@ -81,7 +72,6 @@ export function AttachmentControls() {
       />
       <input
         ref={audioAttachmentInputRef}
-        accept={AUDIO_ATTACHMENT_ACCEPT}
         className="visually-hidden"
         disabled={disabled}
         multiple
@@ -90,7 +80,6 @@ export function AttachmentControls() {
       />
       <input
         ref={documentAttachmentInputRef}
-        accept={DOCUMENT_ATTACHMENT_ACCEPT}
         className="visually-hidden"
         disabled={disabled}
         multiple

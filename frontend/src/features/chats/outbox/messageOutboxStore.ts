@@ -128,6 +128,12 @@ async function nativeOutboxItems(userId: string): Promise<QueuedOutboxMessage[]>
   return result.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+async function discardFailedOutboxItems(items: QueuedOutboxMessage[]): Promise<QueuedOutboxMessage[]> {
+  const failedItems = items.filter((item) => item.status === "failed");
+  await Promise.all(failedItems.map((item) => removeOutboxMessage(item.id, item.userId)));
+  return items.filter((item) => item.status !== "failed");
+}
+
 function loadOutboxFromLocalStorage(userId: string): QueuedOutboxMessage[] {
   if (typeof localStorage === "undefined") return memoryFallback.get(userId) ?? [];
   try {
@@ -198,7 +204,7 @@ export async function enqueueOutboxMessage(item: QueuedOutboxMessage): Promise<v
 
 export async function getOutboxMessages(userId?: string): Promise<QueuedOutboxMessage[]> {
   if (isAndroidLocalReplicaPlatform()) {
-    return userId ? nativeOutboxItems(userId) : [];
+    return userId ? discardFailedOutboxItems(await nativeOutboxItems(userId)) : [];
   }
   if (!userId) {
     if (typeof indexedDB === "undefined") return [];
@@ -211,7 +217,7 @@ export async function getOutboxMessages(userId?: string): Promise<QueuedOutboxMe
         request.onsuccess = () => resolve(request.result || []);
       });
       db.close();
-      return items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return (await discardFailedOutboxItems(items)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     } catch {
       return [];
     }
@@ -224,10 +230,10 @@ export async function getOutboxMessages(userId?: string): Promise<QueuedOutboxMe
   // already-due message reappear as permanently scheduled after a reload.
   if (hasLocalOutboxSnapshot(userId)) {
     const hydrated = await hydrateAttachmentBlobs(userId, localFallback, memoryFallback.get(userId) ?? []);
-    return hydrated.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return (await discardFailedOutboxItems(hydrated)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
   if (typeof indexedDB === "undefined") {
-    return localFallback.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return (await discardFailedOutboxItems(localFallback)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   try {
@@ -241,11 +247,11 @@ export async function getOutboxMessages(userId?: string): Promise<QueuedOutboxMe
     });
     db.close();
     if (items && items.length > 0) {
-      return items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return (await discardFailedOutboxItems(items)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     }
-    return localFallback.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return (await discardFailedOutboxItems(localFallback)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   } catch {
-    return localFallback.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return (await discardFailedOutboxItems(localFallback)).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 }
 

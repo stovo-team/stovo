@@ -691,7 +691,7 @@ export function Composer({
               const isVideo = file.type.startsWith("video/");
               return { localId, file, previewUrl: isImage || isVideo ? peekCachedObjectUrl(localId) ?? URL.createObjectURL(file) : null };
             });
-            return onSubmit({ preventDefault: () => undefined }, attachments, message);
+            return onSubmit({ preventDefault: () => undefined }, [...pendingAttachments, ...attachments], message);
           },
           composer,
           onComposerChange,

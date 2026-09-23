@@ -291,10 +291,10 @@ export async function drainOutboxQueue(options: OutboxProcessOptions): Promise<v
         } else {
           // Unrecoverable server/validation error
           const errorMsg = err instanceof ApiError ? String(err.message) : "Message failed";
-          await updateOutboxMessage(item.id, currentUser.id, {
-            status: "failed",
-            deliveryError: errorMsg
-          });
+          // Keep the failure visible in the current chat state, but don't
+          // persist it in the durable outbox where it would be restored on a
+          // later app launch as a failed pending message.
+          await removeOutboxMessage(item.id, currentUser.id);
           applyMessagesForChat(item.chatId, (current) =>
             markPendingMessageFailed(current, item.clientMessageId, errorMsg)
           );
