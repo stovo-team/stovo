@@ -1,6 +1,22 @@
 import type { QueuedOutboxMessage } from "./messageOutboxStore";
 import { openOutboxDatabase, OUTBOX_STORE_NAME } from "./outboxDatabase";
 
+function validatedAttachmentBytes(attachment: QueuedOutboxMessage["attachments"][number]): Pick<QueuedOutboxMessage["attachments"][number], "blob" | "dataBase64"> | null {
+  if (!Number.isSafeInteger(attachment.size) || attachment.size <= 0) return null;
+  if (attachment.blob?.size === attachment.size) return { blob: attachment.blob, dataBase64: attachment.dataBase64 };
+  if (!attachment.dataBase64) return null;
+
+  try {
+    const decoded = atob(attachment.dataBase64);
+    if (decoded.length !== attachment.size) return null;
+    const bytes = new Uint8Array(decoded.length);
+    for (let index = 0; index < decoded.length; index++) bytes[index] = decoded.charCodeAt(index);
+    return { blob: new Blob([bytes], { type: attachment.mimeType }), dataBase64: attachment.dataBase64 };
+  } catch {
+    return null;
+  }
+}
+
 export function restoreAttachmentBlobs(
   snapshot: QueuedOutboxMessage[],
   durable: QueuedOutboxMessage[],
@@ -14,10 +30,15 @@ export function restoreAttachmentBlobs(
     return {
       ...message,
       attachments: message.attachments.map((attachment) => {
-        if (attachment.blob || attachment.dataBase64) return attachment;
         const durable = durableAttachments.get(attachment.id);
-        const stored = durable?.blob || durable?.dataBase64 ? durable : memoryAttachments.get(attachment.id);
-        return stored?.blob || stored?.dataBase64 ? { ...attachment, blob: stored.blob, dataBase64: stored.dataBase64 } : attachment;
+        const memory = memoryAttachments.get(attachment.id);
+        for (const candidate of [attachment, durable, memory]) {
+          if (!candidate) continue;
+          const bytes = validatedAttachmentBytes(candidate);
+          if (bytes) return { ...attachment, ...bytes };
+        }
+        const { blob: _invalidBlob, dataBase64: _invalidData, ...metadata } = attachment;
+        return metadata;
       }),
     };
   });
