@@ -34,8 +34,8 @@ frontend/src/components/RealStovoDemo.tsx	1278
 frontend/src/components/RichCanvasPreview.tsx	729
 frontend/src/components/StovoFeaturePreviews.tsx	693
 frontend/src/components/VideoPlayer.tsx	506
-frontend/src/config/strings/english.ts	905
-frontend/src/config/strings/russian.ts	934
+frontend/src/config/strings/english.ts	907
+frontend/src/config/strings/russian.ts	936
 frontend/src/features/chats/calling/DesktopCallControls.tsx	670
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	754
 frontend/src/features/chats/calling/useCallSession.ts	1025
@@ -46,7 +46,7 @@ frontend/src/features/chats/composer/useMessageComposer.ts	874
 frontend/src/features/chats/conversation/ConversationPanel.tsx	766
 frontend/src/features/chats/conversation/MessageBubble.tsx	598
 frontend/src/features/chats/conversation/useMessageThread.ts	910
-frontend/src/features/chats/details/ChatDetailsPanel.tsx	1328
+frontend/src/features/chats/details/ChatDetailsPanel.tsx	1411
 frontend/src/features/chats/outbox/messageOutboxProcessor.ts	482
 frontend/src/features/chats/outbox/messageOutboxStore.ts	416
 frontend/src/features/chats/shared/messagePresentation.ts	473

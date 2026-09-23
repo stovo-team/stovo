@@ -12,8 +12,9 @@ export interface UnfurlData {
 
 export async function fetchUnfurlData(
   targetUrl: string,
-  accessToken: string | null
+  accessToken: string | null,
+  signal?: AbortSignal
 ): Promise<UnfurlData> {
   const endpoint = `/api/unfurl?url=${encodeURIComponent(targetUrl)}`;
-  return apiRequest<UnfurlData>(endpoint, { accessToken });
+  return apiRequest<UnfurlData>(endpoint, { accessToken, signal });
 }

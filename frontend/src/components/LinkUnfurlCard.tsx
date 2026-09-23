@@ -1,7 +1,44 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { fetchUnfurlData, type UnfurlData } from "../api/unfurl";
 
 const unfurlCache = new Map<string, Promise<UnfurlData | null>>();
+const MAX_CONCURRENT_UNFURL_REQUESTS = 3;
+const UNFURL_REQUEST_TIMEOUT_MS = 15_000;
+let activeUnfurlRequests = 0;
+const unfurlRequestQueue: Array<() => void> = [];
+
+function startNextUnfurlRequest() {
+  if (activeUnfurlRequests >= MAX_CONCURRENT_UNFURL_REQUESTS) return;
+  const start = unfurlRequestQueue.shift();
+  start?.();
+}
+
+function enqueueUnfurlRequest(url: string, accessToken: string | null): Promise<UnfurlData | null> {
+  return new Promise((resolve) => {
+    unfurlRequestQueue.push(() => {
+      activeUnfurlRequests += 1;
+      const controller = new AbortController();
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<null>((resolveTimeout) => {
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          resolveTimeout(null);
+        }, UNFURL_REQUEST_TIMEOUT_MS);
+      });
+      const requestPromise = Promise.resolve().then(() => fetchUnfurlData(url, accessToken, controller.signal));
+
+      void Promise.race([requestPromise, timeoutPromise])
+        .catch(() => null)
+        .then(resolve)
+        .finally(() => {
+          if (timeoutId !== undefined) clearTimeout(timeoutId);
+          activeUnfurlRequests -= 1;
+          startNextUnfurlRequest();
+        });
+    });
+    startNextUnfurlRequest();
+  });
+}
 
 export function getDomainName(rawUrl: string): string {
   try {
@@ -14,10 +51,12 @@ export function getDomainName(rawUrl: string): string {
 
 export function LinkUnfurlCard({
   url,
-  accessToken
+  accessToken,
+  fallback
 }: {
   url: string;
   accessToken: string | null;
+  fallback?: ReactNode;
 }) {
   const [data, setData] = useState<UnfurlData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -35,7 +74,7 @@ export function LinkUnfurlCard({
 
     let promise = unfurlCache.get(url);
     if (!promise) {
-      promise = fetchUnfurlData(url, accessToken).catch(() => null);
+      promise = enqueueUnfurlRequest(url, accessToken);
       unfurlCache.set(url, promise);
     }
 
@@ -66,7 +105,7 @@ export function LinkUnfurlCard({
   }
 
   if (error || !data) {
-    return null;
+    return fallback ?? null;
   }
 
   const domain = getDomainName(data.url || url);
