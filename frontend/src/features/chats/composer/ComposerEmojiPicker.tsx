@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import EmojiPicker, { type EmojiClickData, Theme } from "emoji-picker-react";
+import CspSafeEmojiPicker, { type EmojiClickData, Theme } from "../../../components/CspSafeEmojiPicker";
 import { Smile } from "lucide-react";
 
 import { EMOJI_CATEGORY_ICONS } from "./emojiCategories";
@@ -16,7 +16,7 @@ type ComposerEmojiPickerProps = {
 };
 
 function Picker({ theme, onEmojiPick, docked = false }: Pick<ComposerEmojiPickerProps, "theme" | "onEmojiPick"> & { docked?: boolean }) {
-  return <EmojiPicker onEmojiClick={onEmojiPick} autoFocusSearch={false} lazyLoadEmojis previewConfig={{ showPreview: false }} searchDisabled skinTonesDisabled categoryIcons={EMOJI_CATEGORY_ICONS} theme={theme === "light" ? Theme.LIGHT : Theme.DARK} width={docked ? "100%" : 360} height={380} />;
+  return <CspSafeEmojiPicker onEmojiClick={onEmojiPick} autoFocusSearch={false} lazyLoadEmojis previewConfig={{ showPreview: false }} searchDisabled skinTonesDisabled categoryIcons={EMOJI_CATEGORY_ICONS} theme={theme === "light" ? Theme.LIGHT : Theme.DARK} width={docked ? "100%" : 360} height={380} />;
 }
 
 export function ComposerEmojiPicker({ open, showDocked, theme, disabled, pickerRef, onToggle, onEmojiPick }: ComposerEmojiPickerProps) {

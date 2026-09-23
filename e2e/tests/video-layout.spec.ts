@@ -41,12 +41,15 @@ test('inline video controls stay within a narrow message bubble', async ({ page 
     return {
       bubble: { left: bubble.left, right: bubble.right, width: bubble.width },
       player: { left: player.left, right: player.right, width: player.width },
+      playerInsets: { left: player.left - bubble.left, right: bubble.right - player.right },
       controls: { left: controls.left, right: controls.right, width: controls.width },
       controlsChildren: controlsChildren.map(({ left, right }) => ({ left, right })),
     };
   });
 
   expect(bounds.bubble.width).toBeGreaterThan(0);
+  expect(bounds.playerInsets.left).toBeGreaterThanOrEqual(7.5);
+  expect(bounds.playerInsets.right).toBeGreaterThanOrEqual(7.5);
   expect(bounds.player.left).toBeGreaterThanOrEqual(bounds.bubble.left);
   expect(bounds.player.right).toBeLessThanOrEqual(bounds.bubble.right + 0.5);
   expect(bounds.controls.left).toBeGreaterThanOrEqual(bounds.player.left);
@@ -54,6 +57,7 @@ test('inline video controls stay within a narrow message bubble', async ({ page 
   for (const child of bounds.controlsChildren) {
     expect(child.left).toBeGreaterThanOrEqual(bounds.controls.left);
     expect(child.right).toBeLessThanOrEqual(bounds.controls.right + 0.5);
+    expect(child.right).toBeLessThanOrEqual(bounds.player.right + 0.5);
   }
 });
 

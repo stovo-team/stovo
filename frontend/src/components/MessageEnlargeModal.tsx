@@ -1,6 +1,6 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import CspSafeEmojiPicker, { EmojiClickData, Theme } from "./CspSafeEmojiPicker";
 import {
   Bold,
   Check,
@@ -530,7 +530,7 @@ function parseDraftSegments(text: string): DraftSegment[] {
               {/* Emoji Picker Popover */}
               {isEmojiPickerOpen && (
                 <div className="compose-modal-emoji-picker" role="menu">
-                  <EmojiPicker
+                  <CspSafeEmojiPicker
                     onEmojiClick={handleEmojiClick}
                     autoFocusSearch={false}
                     lazyLoadEmojis

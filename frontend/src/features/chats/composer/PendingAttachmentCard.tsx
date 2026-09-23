@@ -24,7 +24,7 @@ export function PendingAttachmentCard({
   if (showThumb) {
     return (
       <article
-        className={`pending-attachment-card pending-attachment-card--thumb${
+        className={`pending-attachment-card pending-attachment-card--thumb${isVideo ? " is-video" : ""}${
           isImage && onEdit ? " is-editable" : ""
         }`}
         onClick={isImage && onEdit ? onEdit : undefined}
@@ -80,5 +80,4 @@ export function PendingAttachmentCard({
     </article>
   );
 }
-
 

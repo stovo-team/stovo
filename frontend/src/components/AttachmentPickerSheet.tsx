@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import CspSafeEmojiPicker, { EmojiClickData, Theme } from "./CspSafeEmojiPicker";
 import { AudioLines, BarChart2, CheckSquare, FileText, Image as ImageIcon, Music, Paperclip, Smile, StickyNote } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
@@ -660,7 +660,7 @@ export default function AttachmentPickerSheet({
                 </button>
                 {isEmojiOpen && (
                   <div className="emoji-picker attachment-picker-emoji-popover" role="menu" aria-label="Choose emoji">
-                    <EmojiPicker
+                    <CspSafeEmojiPicker
                       onEmojiClick={handleEmojiPick}
                       autoFocusSearch={false}
                       lazyLoadEmojis
