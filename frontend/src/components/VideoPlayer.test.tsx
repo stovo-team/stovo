@@ -375,15 +375,35 @@ describe("VideoPlayer", () => {
     style.remove();
   });
 
-  it("constrains inline video controls to narrow message bubbles", () => {
+  it("applies compact controls inside a narrow message video", () => {
     const styles = readFileSync("src/styles.css", "utf8");
-    const compactRules = styles.slice(styles.lastIndexOf("@media (max-width: 420px)"));
-    const compactControls = compactRules.match(/\.video-player-controls\s*\{([^}]*)\}/)?.[1] ?? "";
-    const compactTime = compactRules.match(/\.video-player-controls output\s*\{([^}]*)\}/)?.[1] ?? "";
-    expect(compactControls).toContain("grid-template-columns: 36px minmax(0, 1fr) 36px 36px");
-    expect(compactControls).toContain("max-width: 100%");
-    expect(compactControls).toContain("min-width: 0");
-    expect(compactTime).toContain("text-overflow: ellipsis");
+    const compactMediaQuery = styles.slice(styles.lastIndexOf("@media (max-width: 420px) {"));
+    const innerRules = compactMediaQuery.slice(compactMediaQuery.indexOf("{") + 1, compactMediaQuery.lastIndexOf("}"));
+    expect(innerRules).toContain(".message-video-attachment");
+
+    const style = document.createElement("style");
+    style.textContent = innerRules;
+    document.head.appendChild(style);
+
+    const attachment = document.createElement("article");
+    attachment.className = "message-video-attachment";
+    attachment.style.width = "180px";
+    attachment.innerHTML = '<div class="video-player"><div class="video-player-controls"><input type="range"><button></button><output>0:00 / 0:00</output><button></button><button></button></div></div>';
+    document.body.appendChild(attachment);
+
+    const player = attachment.querySelector<HTMLElement>(".video-player")!;
+    const controls = attachment.querySelector<HTMLElement>(".video-player-controls")!;
+    const time = attachment.querySelector<HTMLOutputElement>("output")!;
+    const playButton = attachment.querySelector<HTMLButtonElement>("button")!;
+    expect(getComputedStyle(attachment).maxWidth).toBe("100%");
+    expect(getComputedStyle(player).minWidth).toBe("0px");
+    expect(getComputedStyle(controls).gridTemplateColumns).toContain("minmax(0");
+    expect(getComputedStyle(controls).maxWidth).toBe("100%");
+    expect(getComputedStyle(time).textOverflow).toBe("ellipsis");
+    expect(getComputedStyle(playButton).width).toBe("36px");
+
+    attachment.remove();
+    style.remove();
   });
 
   it("isolates pointer and click gestures while retaining native controls", async () => {
