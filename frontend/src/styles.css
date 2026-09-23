@@ -21184,8 +21184,10 @@ button.chat-info-title-edit:active:not(:disabled) {
 .document-preview-card {
   background: var(--surface-card);
   border: 1px solid var(--border-default);
+  box-sizing: border-box;
   border-radius: 14px;
   max-width: min(420px, 100%);
+  min-width: 0;
   overflow: hidden;
   width: 100%;
 }
@@ -21196,22 +21198,35 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .document-inline-preview {
   background: var(--surface-raised);
+  aspect-ratio: 16 / 9;
+  box-sizing: border-box;
   border-top: 1px solid var(--border-default);
-  max-height: 360px;
+  min-width: 0;
   overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.document-inline-preview > * {
+  inset: 0;
+  position: absolute;
 }
 
 .document-inline-preview-placeholder {
   background: linear-gradient(110deg, transparent 28%, color-mix(in oklab, var(--surface-card) 76%, transparent) 45%, transparent 62%);
-  height: 150px;
+  height: 100%;
 }
 
 .document-inline-preview .document-viewer-pdf-host {
-  max-height: 360px;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
+  padding: 0;
 }
 
 .document-inline-preview .document-viewer-pdf-pages {
+  justify-items: start;
   padding: 10px 12px;
 }
 
@@ -21221,8 +21236,9 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .document-inline-preview-docx {
   background: #fff;
+  box-sizing: border-box;
   color: #202124;
-  max-height: 360px;
+  height: 100%;
   overflow: hidden;
   padding: 14px 18px;
 }
@@ -21238,9 +21254,15 @@ button.chat-info-title-edit:active:not(:disabled) {
   white-space: pre-wrap;
 }
 
-.document-inline-preview-text {
-  max-height: 360px;
-  overflow: hidden;
+.document-inline-preview .document-inline-preview-canvas {
+  background: #181b22;
+  border-radius: 0;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  padding: 14px 18px 18px;
+  position: relative;
+  width: 100%;
 }
 
 .document-viewer-text {
@@ -21248,7 +21270,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .document-inline-preview .document-preview-table-wrap {
-  max-height: 360px;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -26281,6 +26303,8 @@ button.chat-info-title-edit:active:not(:disabled) {
 .canvas-md-code-wrap { background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 6px 10px; margin: 4px 0; }
 .canvas-md-code-line { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.82rem; color: #e2e8f0; line-height: 1.45; }
 .canvas-md-inline-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.88em; background: rgba(255, 255, 255, 0.1); border-radius: 4px; padding: 1px 5px; color: #f1f5f9; }
+.canvas-md-image { max-height: 120px; max-width: 100%; object-fit: contain; vertical-align: middle; }
+span.canvas-md-image { background: rgba(255, 255, 255, 0.08); border-radius: 5px; color: rgba(255, 255, 255, 0.7); display: inline-block; font-size: 0.78rem; padding: 2px 6px; }
 .canvas-md-hr { border: none; border-top: 1px solid rgba(255, 255, 255, 0.12); margin: 6px 0; }
 .canvas-preview-inline-whiteboard { width: 100%; height: 90px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden; margin: 4px 0; }
 .canvas-inline-wb-svg { width: 100%; height: 100%; display: block; }
