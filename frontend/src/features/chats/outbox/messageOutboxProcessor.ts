@@ -45,7 +45,6 @@ export function isNetworkError(err: unknown): boolean {
   }
   return false;
 }
-
 export function reconstructFileFromQueuedAttachment(attachment: QueuedOutboxAttachment): File {
   let file: File;
   if (attachment.blob) {
@@ -66,6 +65,7 @@ export function reconstructFileFromQueuedAttachment(attachment: QueuedOutboxAtta
   } else {
     file = new File([], attachment.name, { type: attachment.mimeType });
   }
+  if (attachment.size <= 0 || file.size !== attachment.size) throw new Error("Attachment data is unavailable or incomplete");
   if (attachment.nativeSourceUri) {
     Object.defineProperty(file, "stovoNativeSourceUri", { value: attachment.nativeSourceUri, enumerable: false });
   }
