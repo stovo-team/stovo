@@ -16412,7 +16412,7 @@ button.attachment-nav-item:focus-visible {
 
 :root[data-platform="web"] .emoji-picker::after {
   border: 8px solid transparent;
-  border-top-color: rgba(80, 84, 92, 0.8);
+  border-top-color: var(--chat-popup-surface);
   bottom: -16px;
   content: "";
   left: 50%;
