@@ -7098,7 +7098,7 @@ span.message-spoiler.is-revealed {
   transform: scale(0.92);
 }
 
-.message-composer .composer-send-button.is-sending .ms-icon {
+.message-composer .composer-send-button.is-sending .composer-send-icon {
   animation: composerSendIconPulse 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
@@ -21345,6 +21345,18 @@ button.chat-info-title-edit:active:not(:disabled) {
   padding: 6px 10px;
 }
 
+.document-viewer-close {
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  flex: 0 0 38px;
+  height: 38px;
+  justify-content: center;
+  min-height: 38px;
+  min-width: 38px;
+  padding: 0;
+  width: 38px;
+}
+
 .document-viewer-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -29630,7 +29642,5 @@ button.checklist-add-item-btn:hover,
   border-color: var(--accent-border-soft);
   color: var(--accent-primary-hover);
 }
-
-
 
 

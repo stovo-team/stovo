@@ -30,6 +30,7 @@ import { AttachmentControls } from "./AttachmentControls";
 import { ComposerAttachmentProvider } from "./ComposerAttachmentContext";
 import { PendingAttachmentsStrip } from "./PendingAttachmentsStrip";
 import { SendSubmenu } from "./SendSubmenu";
+import { SendMessageIcon } from "./SendMessageIcon";
 import { ScheduleMessageModal } from "./ScheduleMessageModal";
 import { ReminderModal } from "./ReminderModal";
 import { ComposerReplyBar } from "./ComposerReplyBar";
@@ -909,9 +910,7 @@ export function Composer({
                 onPointerCancel={handleSendPointerCancel}
                 onContextMenu={handleSendContextMenu}
               >
-                <span className="ms-icon ms-icon--20" aria-hidden={true}>
-                  send
-                </span>
+                <SendMessageIcon />
                 {(isUploading || isSendingMessage) && (
                   <span className="visually-hidden">{isUploading ? strings.chats.composer.uploading : strings.chats.composer.sending}</span>
                 )}

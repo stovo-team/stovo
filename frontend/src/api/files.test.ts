@@ -193,4 +193,40 @@ describe("direct media file API", () => {
     expect(new Headers(fetchMock.mock.calls[2][1]?.headers).get("Idempotency-Key")).toBe("operation-1");
     expect(fetchMock.mock.calls[3][0]).toBe(`${getApiUrl()}/api/files/file-1`);
   });
+
+  it("falls back to multipart upload when the direct-upload capability is unavailable", async () => {
+    const uploaded = {
+      id: "file-legacy", familyId: "family-1", uploadedBy: "user-1", chatId: "chat-1", chatTitle: null,
+      chatType: "group", originMessageId: null, accessScope: "chat", storageProvider: "local",
+      originalName: "notes.txt", mimeType: "text/plain", sizeBytes: 3, checksum: null,
+      createdAt: "2026-08-26T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    fetchMock
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Direct uploads are not available" }), {
+        status: 503, headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(uploaded), {
+        status: 201, headers: { "Content-Type": "application/json" },
+      }));
+
+    await expect(uploadFile("access-token", new File(["abc"], "notes.txt", { type: "text/plain" }), "chat-1", "operation-2"))
+      .resolves.toMatchObject({ id: "file-legacy" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe(`${getApiUrl()}/api/files/uploads`);
+    expect(fetchMock.mock.calls[1][0]).toBe(`${getApiUrl()}/api/files/upload`);
+    expect(fetchMock.mock.calls[1][1]?.method).toBe("POST");
+  });
+
+  it("does not fall back to multipart upload for unrelated direct-upload 503 errors", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ detail: "Storage is temporarily unavailable" }), {
+      status: 503, headers: { "Content-Type": "application/json" },
+    }));
+
+    await expect(uploadFile("access-token", new File(["abc"], "notes.txt", { type: "text/plain" }), "chat-1", "operation-3"))
+      .rejects.toMatchObject({ status: 503, message: "Storage is temporarily unavailable" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe(`${getApiUrl()}/api/files/uploads`);
+  });
 });

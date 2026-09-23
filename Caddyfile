@@ -61,6 +61,11 @@
 		reverse_proxy livekit:7880
 	}
 
+	# Preserve the JavaScript MIME type required by PDF.js module workers even
+	# when a downstream frontend image has an incomplete MIME table.
+	@pdfModuleWorker path_regexp pdfModuleWorker \.mjs$
+	header @pdfModuleWorker Content-Type application/javascript
+
 	handle_path /ntfy/* {
 		@ntfy_write method POST PUT PATCH DELETE
 		respond @ntfy_write "Method not allowed" 405
@@ -78,7 +83,7 @@
 		# These apply at the public gateway. The frontend nginx container is
 		# intentionally not the security boundary and must not be relied on for
 		# browser protections.
-		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' wss:; media-src 'self' blob:; worker-src 'self' blob:; upgrade-insecure-requests; block-all-mixed-content"
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' blob: data:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' wss:; media-src 'self' blob:; worker-src 'self' blob:; upgrade-insecure-requests; block-all-mixed-content"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Frame-Options "DENY"
 		X-Content-Type-Options "nosniff"

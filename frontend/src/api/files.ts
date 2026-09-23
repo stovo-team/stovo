@@ -202,10 +202,16 @@ export async function uploadFile(
     }
     return await uploadDirectFile(accessToken, file, chatId, idempotencyKey);
   } catch (error) {
-    // Rolling deployments may not have MINIO_PUBLIC_ENDPOINT configured yet.
-    // Only that explicit capability response may use the legacy path; any
-    // other error remains visible to the durable outbox for a safe retry.
-    if (error instanceof ApiError && error.status === 503 && error.message === "Direct uploads are not configured") {
+    // The presigned path can be unavailable during rolling deployments or
+    // when only the public endpoint/presigner is unhealthy while backend
+    // storage remains available. Retry through the legacy backend upload for
+    // those explicit capability errors; transfer/validation failures remain
+    // visible to the durable outbox for a safe retry.
+    if (
+      error instanceof ApiError &&
+      error.status === 503 &&
+      ["Direct uploads are not configured", "Direct uploads are not available"].includes(error.message)
+    ) {
       return uploadLegacyFile(accessToken, file, chatId);
     }
     throw error;

@@ -20,8 +20,11 @@ import {
   nextWheelZoom,
   touchDistance,
 } from "./pdfViewerZoom";
+import { detectDocumentPreviewKind, type DocumentPreviewKind } from "./documentPreviewKind";
 
-export type DocumentPreviewKind = "pdf" | "docx" | "table" | "unsupported";
+export { detectDocumentPreviewKind } from "./documentPreviewKind";
+
+export type { DocumentPreviewKind } from "./documentPreviewKind";
 
 type TablePreview = {
   sheets: Array<{ name: string; rows: string[][] }>;
@@ -81,27 +84,6 @@ export function sanitizeDocxHtml(html: string): string {
 function extensionOf(name: string): string {
   const idx = name.lastIndexOf(".");
   return idx >= 0 ? name.slice(idx + 1).toLowerCase() : "";
-}
-
-export function detectDocumentPreviewKind(file: FamilyFile): DocumentPreviewKind {
-  const ext = extensionOf(file.originalName || "");
-  const mime = (file.mimeType || "").toLowerCase();
-  if (mime === "application/pdf" || ext === "pdf") {
-    return "pdf";
-  }
-  if (mime.includes("wordprocessingml") || ext === "docx") {
-    return "docx";
-  }
-  if (
-    mime.includes("spreadsheetml") ||
-    mime === "application/vnd.ms-excel" ||
-    mime === "text/csv" ||
-    mime === "text/tab-separated-values" ||
-    ["csv", "tsv", "xlsx", "xls"].includes(ext)
-  ) {
-    return "table";
-  }
-  return "unsupported";
 }
 
 function parseDelimitedText(text: string, delimiter: string): string[][] {
@@ -423,6 +405,11 @@ export function DocumentAttachmentPreview({
 }) {
   const kind = useMemo(() => detectDocumentPreviewKind(file), [file]);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [resolvedSizeBytes, setResolvedSizeBytes] = useState<number | null>(null);
+
+  useEffect(() => {
+    setResolvedSizeBytes(null);
+  }, [file.id]);
 
   if (kind === "unsupported") {
     return null;
@@ -440,7 +427,7 @@ export function DocumentAttachmentPreview({
           <div className="document-preview-copy">
             <strong title={file.originalName}>{file.originalName}</strong>
             <span>
-              {kindLabel(kind)} · {formatFileSize(file.sizeBytes)}
+              {kindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
             </span>
           </div>
           {!hideActions && (
@@ -476,6 +463,8 @@ export function DocumentAttachmentPreview({
           accessToken={accessToken ?? ""}
           file={file}
           kind={kind}
+          resolvedSizeBytes={resolvedSizeBytes}
+          onResolvedSize={setResolvedSizeBytes}
           onClose={() => setViewerOpen(false)}
         />
       )}
@@ -487,11 +476,15 @@ export function DocumentViewerModal({
   accessToken,
   file,
   kind,
+  resolvedSizeBytes,
+  onResolvedSize,
   onClose,
 }: {
   accessToken: string;
   file: FamilyFile;
   kind: DocumentPreviewKind;
+  resolvedSizeBytes: number | null;
+  onResolvedSize: (sizeBytes: number) => void;
   onClose: () => void;
 }) {
   const [loading, setLoading] = useState(true);
@@ -511,6 +504,7 @@ export function DocumentViewerModal({
     void downloadFileBlob(accessToken, file.id)
       .then(async (blob) => {
         if (cancelled) return;
+        onResolvedSize(blob.size);
         if (kind === "pdf") {
           setPdfBlob(
             blob.type === "application/pdf"
@@ -535,7 +529,7 @@ export function DocumentViewerModal({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, file, kind]);
+  }, [accessToken, file, kind, onResolvedSize]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -562,7 +556,7 @@ export function DocumentViewerModal({
             <div>
               <strong title={file.originalName}>{file.originalName}</strong>
               <span>
-                {kindLabel(kind)} · {formatFileSize(file.sizeBytes)}
+                {kindLabel(kind)} · {formatFileSize(resolvedSizeBytes ?? file.sizeBytes)}
               </span>
             </div>
           </div>

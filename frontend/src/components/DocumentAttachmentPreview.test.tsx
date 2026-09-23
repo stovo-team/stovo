@@ -18,6 +18,7 @@ import {
   sanitizeDocxHtml,
 } from "./DocumentAttachmentPreview";
 import { clearMediaBlobCache } from "../mediaBlobCache";
+import * as filesApi from "../api/files";
 import type { FamilyFile } from "../api/files";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -114,6 +115,7 @@ describe("detectDocumentPreviewKind", () => {
     const { detectDocumentPreviewKind } = await import("./DocumentAttachmentPreview");
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "resume.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })).toBe("docx");
     expect(detectDocumentPreviewKind({ ...baseFile, originalName: "doc.docx", mimeType: "" })).toBe("docx");
+    expect(detectDocumentPreviewKind({ ...baseFile, originalName: "signed.docx", mimeType: "application/pdf" })).toBe("docx");
   });
 
   it("detects tables (xlsx, xls, csv, tsv)", async () => {
@@ -150,6 +152,15 @@ describe("sanitizeDocxHtml", () => {
 });
 
 describe("document attachment cards in chat", () => {
+  it("keeps the document viewer close control fully circular", () => {
+    const closeButtonStart = styles.lastIndexOf(".document-viewer-close {");
+    const closeButton = styles.slice(closeButtonStart, styles.indexOf("\n}", closeButtonStart) + 2);
+
+    expect(closeButton).toContain("aspect-ratio: 1 / 1;");
+    expect(closeButton).toContain("flex: 0 0 38px;");
+    expect(closeButton).toContain("padding: 0;");
+  });
+
   it("keeps the outgoing bubble snug to its document card on narrow screens instead of leaving a wide right gutter", () => {
     const documentBubble = rule(".message-bubble:has(.document-preview-card)");
     const compactDocumentBubble = rule(":root[data-density=\"compact\"] .message-bubble:has(.document-preview-card)");
@@ -221,6 +232,49 @@ describe("document attachment cards in chat", () => {
       await act(async () => root.unmount());
       container.remove();
       clearMediaBlobCache();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("uses the downloaded document size when stored metadata is zero", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["x".repeat(2048)]));
+
+    const file: FamilyFile = {
+      id: "document-with-stale-metadata",
+      familyId: "family-1",
+      uploadedBy: "member-1",
+      chatId: "chat-1",
+      chatTitle: "Chat",
+      chatType: "direct",
+      originMessageId: "message-1",
+      accessScope: "chat",
+      storageProvider: "local",
+      originalName: "signed.csv",
+      mimeType: "application/pdf",
+      sizeBytes: 0,
+      checksum: null,
+      createdAt: "2026-09-22T00:00:00Z",
+      deletedAt: null,
+      isFavorite: false,
+    };
+
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="session-token" file={file} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+      });
+
+      expect(container.textContent).toContain("Spreadsheet · 2.0 KB");
+      expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Spreadsheet · 2.0 KB");
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
       vi.unstubAllGlobals();
     }
   });
