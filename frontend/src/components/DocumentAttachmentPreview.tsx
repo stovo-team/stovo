@@ -22,6 +22,32 @@ import { detectDocumentPreviewKind, DocumentKindIcon, documentKindLabel, isMarkd
 import { MessageMarkdown } from "../messageMarkdown";
 import { useMarkdownCanvasConversion } from "./useMarkdownCanvasConversion";
 
+const markdownHtmlEntities: Record<string, string> = {
+  amp: "&",
+  apos: "'",
+  gt: ">",
+  lt: "<",
+  nbsp: " ",
+  quot: '"',
+};
+
+function normalizeDocumentMarkdown(source: string): string {
+  return source
+    .replace(/(?:&nbsp;\s*){2,}/giu, "\n")
+    .replace(/&(#x[\da-f]+|#\d+|[a-z]+);/giu, (entity, value: string) => {
+      if (value[0] === "#") {
+        const hex = value[1]?.toLowerCase() === "x";
+        const codePoint = Number.parseInt(value.slice(hex ? 2 : 1), hex ? 16 : 10);
+        if (Number.isInteger(codePoint) && codePoint > 0 && codePoint <= 0x10ffff) {
+          return String.fromCodePoint(codePoint);
+        }
+        return entity;
+      }
+      return markdownHtmlEntities[value.toLowerCase()] ?? entity;
+    })
+    .replace(/\r\n?/gu, "\n");
+}
+
 export { detectDocumentPreviewKind } from "./documentPreviewKind";
 
 export type { DocumentPreviewKind } from "./documentPreviewKind";
@@ -548,7 +574,7 @@ export function DocumentViewerModal({
           )}
 
           {!loading && !error && kind === "text" && textContent !== null && isMarkdown && (
-            <article className="document-viewer-markdown"><MessageMarkdown source={textContent || "(Empty document)"} /></article>
+            <article className="document-viewer-markdown"><MessageMarkdown source={normalizeDocumentMarkdown(textContent) || "(Empty document)"} /></article>
           )}
 
           {!loading && !error && kind === "text" && textContent !== null && !isMarkdown && (

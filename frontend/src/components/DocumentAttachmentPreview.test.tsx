@@ -185,7 +185,9 @@ describe("document attachment cards in chat", () => {
   it("renders Markdown as formatted document content instead of raw source", async () => {
     const container = document.createElement("div");
     const root: Root = createRoot(container);
-    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Project plan\n\n**Ready**"], { type: "text/markdown" }));
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob([
+      "# Project plan&nbsp;&nbsp;## Key features\n\n**Ready** &amp; readable",
+    ], { type: "text/markdown" }));
     const file: FamilyFile = {
       id: "markdown-preview", familyId: "family-1", uploadedBy: "member-1", chatId: "chat-1",
       chatTitle: "Chat", chatType: "direct", originMessageId: "message-1", accessScope: "chat",
@@ -201,7 +203,10 @@ describe("document attachment cards in chat", () => {
       });
 
       expect(document.querySelector(".document-viewer-markdown h1")?.textContent).toBe("Project plan");
+      expect(document.querySelector(".document-viewer-markdown h2")?.textContent).toBe("Key features");
       expect(document.querySelector(".document-viewer-markdown strong")?.textContent).toBe("Ready");
+      expect(document.querySelector(".document-viewer-markdown")?.textContent).toContain("Ready & readable");
+      expect(document.querySelector(".document-viewer-markdown")?.textContent).not.toContain("&nbsp;");
       expect(document.querySelector(".document-viewer-text")).toBeNull();
     } finally {
       await act(async () => root.unmount());
