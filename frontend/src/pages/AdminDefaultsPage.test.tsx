@@ -1,6 +1,10 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 const mocks = vi.hoisted(() => ({
   authRequest: vi.fn(),
@@ -76,6 +80,9 @@ describe("AdminDefaultsPage notification provider", () => {
   it("shows Firebase as the default provider", async () => {
     const select = await renderPage();
     expect(select.value).toBe("firebase");
+    expect(select.classList.contains("admin-defaults-control")).toBe(true);
+    expect(document.querySelector<HTMLSelectElement>('select:not([aria-label="Notification delivery provider"])')?.classList.contains("admin-defaults-control")).toBe(true);
+    expect(document.querySelector<HTMLInputElement>('input[type="number"]')?.classList.contains("admin-defaults-control")).toBe(true);
     expect(mocks.getNotificationProviderSettings).toHaveBeenCalledWith("owner-token");
   });
 
@@ -119,5 +126,18 @@ describe("AdminDefaultsPage notification provider", () => {
 
     expect(select.value).toBe("firebase");
     expect(document.body.textContent).toContain("Could not save member defaults");
+  });
+});
+
+describe("AdminDefaultsPage dropdown layout", () => {
+  it("keeps member defaults controls compact while allowing them to shrink", () => {
+    const desktopSizing = styles.match(/\.admin-page \.admin-panel \.admin-defaults-control\s*\{([^}]*)\}/)?.[1] ?? "";
+    const mobileSizing = styles.match(/@media \(max-width: 600px\)[\s\S]*?\.admin-page \.admin-panel \.admin-defaults-control\s*\{([^}]*)\}/)?.[1] ?? "";
+
+    expect(desktopSizing).toMatch(/width: 240px;/);
+    expect(desktopSizing).toMatch(/max-width: 42%;/);
+    expect(desktopSizing).toMatch(/flex: 0 1 240px;/);
+    expect(mobileSizing).toMatch(/width: 180px;/);
+    expect(mobileSizing).toMatch(/max-width: 55%;/);
   });
 });

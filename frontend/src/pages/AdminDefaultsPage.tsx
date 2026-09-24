@@ -92,7 +92,7 @@ export default function AdminDefaultsPage() {
           <label className="appearance-setting-row">
             <span className="settings-row-icon"><Bell size={18} aria-hidden="true" /></span>
             <span><strong>{strings.admin.defaults.notificationProvider}</strong></span>
-            <select aria-label={strings.admin.defaults.notificationProvider} value={notificationProvider} disabled={!accessToken || isSaving || isProviderLoading} onChange={(event) => void saveNotificationProvider(event.target.value as NotificationProvider)}>
+            <select className="admin-defaults-control" aria-label={strings.admin.defaults.notificationProvider} value={notificationProvider} disabled={!accessToken || isSaving || isProviderLoading} onChange={(event) => void saveNotificationProvider(event.target.value as NotificationProvider)}>
               <option value="firebase">{strings.admin.defaults.firebaseProvider}</option>
               <option value="ntfy">{strings.admin.defaults.ntfyProvider}</option>
             </select>
@@ -104,7 +104,7 @@ export default function AdminDefaultsPage() {
           <label className="appearance-setting-row">
             <span className="settings-row-icon"><UserRound size={18} aria-hidden="true" /></span>
             <span><strong>{strings.privacy.profileVisibility}</strong></span>
-            <select value={family?.defaultProfileVisibility ?? "everyone"} disabled={!family || isSaving} onChange={(event) => void save({ defaultProfileVisibility: event.target.value as "everyone" | "nobody" })}>
+            <select className="admin-defaults-control" value={family?.defaultProfileVisibility ?? "everyone"} disabled={!family || isSaving} onChange={(event) => void save({ defaultProfileVisibility: event.target.value as "everyone" | "nobody" })}>
               <option value="everyone">{strings.privacy.everyone}</option>
               <option value="nobody">{strings.privacy.nobody}</option>
             </select>
@@ -147,7 +147,7 @@ export default function AdminDefaultsPage() {
 		  <label className="appearance-setting-row">
             <span className="settings-row-icon"><Sliders size={18} aria-hidden="true" /></span>
             <span><strong>Screen-share bitrate (kbps)</strong></span>
-            <input type="number" min="1000" max="20000" step="500" inputMode="numeric" value={screenShareBitrateKbps} disabled={!family || isSaving} onChange={(event) => setScreenShareBitrateKbps(event.target.value)} onBlur={() => { const value = Number(screenShareBitrateKbps); if (Number.isInteger(value) && value >= 1000 && value <= 20000 && value !== family?.screenShareBitrateKbps) void save({ screenShareBitrateKbps: value }); else if (family) setScreenShareBitrateKbps(String(family.screenShareBitrateKbps ?? 5000)); }} />
+            <input className="admin-defaults-control" type="number" min="1000" max="20000" step="500" inputMode="numeric" value={screenShareBitrateKbps} disabled={!family || isSaving} onChange={(event) => setScreenShareBitrateKbps(event.target.value)} onBlur={() => { const value = Number(screenShareBitrateKbps); if (Number.isInteger(value) && value >= 1000 && value <= 20000 && value !== family?.screenShareBitrateKbps) void save({ screenShareBitrateKbps: value }); else if (family) setScreenShareBitrateKbps(String(family.screenShareBitrateKbps ?? 5000)); }} />
           </label>
 		</section>
       </div>}

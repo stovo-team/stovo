@@ -25655,6 +25655,21 @@ button.chat-info-title-edit:active:not(:disabled) {
   padding-right: 42px;
 }
 
+.admin-page .admin-panel .admin-defaults-control {
+  box-sizing: border-box;
+  flex: 0 1 240px;
+  max-width: 42%;
+  width: 240px;
+}
+
+@media (max-width: 600px) {
+  .admin-page .admin-panel .admin-defaults-control {
+    flex-basis: 180px;
+    max-width: 55%;
+    width: 180px;
+  }
+}
+
 /* Storage collections sit above the existing, chat-sourced recent grid. */
 .storage-collections { box-sizing: border-box; display: grid; gap: 10px; margin: 0 0 22px; max-width: 100%; min-width: 0; width: 100%; }
 .storage-collections-heading { align-items: center; box-sizing: border-box; display: flex; justify-content: space-between; gap: 12px; max-width: 100%; min-width: 0; width: 100%; }
