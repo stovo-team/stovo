@@ -18,6 +18,7 @@ import AdminMcpPage from "./pages/AdminMcpPage";
 import AdminMembersPage from "./pages/AdminMembersPage";
 import AdminRolesPage from "./pages/AdminRolesPage";
 import AdminDefaultsPage from "./pages/AdminDefaultsPage";
+import AdminServerSettingsPage from "./pages/AdminServerSettingsPage";
 import AdminStatsPage from "./pages/AdminStatsPage";
 import AdminPluginsPage from "./pages/AdminPluginsPage";
 import ChatsPage from "./pages/ChatsPage";
@@ -180,6 +181,7 @@ function ClusterRoutes() {
       />
       <Route path="/app/admin/roles" element={<RequireAuth><AdminRolesPage /></RequireAuth>} />
       <Route path="/app/admin/defaults" element={<RequireAuth><AdminDefaultsPage /></RequireAuth>} />
+      <Route path="/app/admin/server-settings" element={<RequireAuth><AdminServerSettingsPage /></RequireAuth>} />
       <Route path="/app/admin/plugins" element={<RequireAuth><AdminPluginsPage /></RequireAuth>} />
       <Route path="/app/admin/stats" element={<Navigate to={`${prefix}/app/settings/statistics`} replace />} />
       <Route

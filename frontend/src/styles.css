@@ -22986,6 +22986,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .admin-page .appearance-setting-row .premium-feature-badge {
+  flex: 0 0 auto;
   margin-left: 0;
   display: inline-flex;
   width: fit-content;
@@ -25663,6 +25664,21 @@ button.chat-info-title-edit:active:not(:disabled) {
   cursor: pointer;
   min-width: 128px;
   padding-right: 42px;
+}
+
+.admin-page .admin-panel .admin-defaults-control {
+  box-sizing: border-box;
+  flex: 0 1 240px;
+  max-width: 42%;
+  width: 240px;
+}
+
+@media (max-width: 600px) {
+  .admin-page .admin-panel .admin-defaults-control {
+    flex-basis: 180px;
+    max-width: 55%;
+    width: 180px;
+  }
 }
 
 /* Storage collections sit above the existing, chat-sourced recent grid. */
