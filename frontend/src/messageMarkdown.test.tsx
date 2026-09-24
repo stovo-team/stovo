@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 // @ts-ignore Vitest supplies Node built-ins while the browser app omits Node typings.
 import { readFileSync } from "node:fs";
@@ -89,6 +90,7 @@ function renderNodeTree(nodes: StovoMarkdownNode[]): HTMLDivElement {
 }
 
 afterEach(() => {
+  if (typeof document === "undefined") return;
   while (mountedRoots.length > 0) {
     const root = mountedRoots.pop();
     act(() => root?.unmount());
@@ -594,6 +596,17 @@ describe("MessageMarkdown", () => {
     const container = renderMessage("# Hello\n- item");
     expect(container.querySelector("h1")?.textContent).toBe("Hello");
     expect(container.querySelector("ul li")?.textContent).toBe("item");
+  });
+
+  it("renders the tail of a full-length Markdown document", () => {
+    const source = Array.from(
+      { length: 10_000 },
+      (_, index) => `Section ${index}: ordinary document text with no special syntax.`,
+    ).join("\n");
+    const rendered = renderToStaticMarkup(<MessageMarkdown source={source} />);
+
+    expect(rendered.match(/Section \d+:/g)).toHaveLength(10_000);
+    expect(rendered).toContain("Section 9999: ordinary document text with no special syntax.");
   });
 
   it("parses and renders @user mentions correctly", () => {
