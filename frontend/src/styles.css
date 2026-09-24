@@ -7435,6 +7435,16 @@ span.message-spoiler.is-revealed {
   max-width: 100%;
 }
 
+.message-bubble:has(.document-preview-card) .message-attachments {
+  min-width: 0;
+  width: 100%;
+}
+
+.message-bubble:has(.document-preview-card) .message-attachments > div {
+  min-width: 0;
+  width: 100%;
+}
+
 /* Portrait-only videos: a bit narrower than landscape (albums keep landscape width). */
 .message-bubble.has-photo-attachments:has(.message-video-attachment):not(:has(.message-media-album)):has(.video-player.is-portrait),
 .message-bubble:has(.message-video-attachment):not(:has(.message-photo-attachment)):not(:has(.message-media-album)):has(.video-player.is-portrait) {
