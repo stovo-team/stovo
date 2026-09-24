@@ -337,7 +337,9 @@ describe("document attachment cards in chat", () => {
         await new Promise((resolve) => window.setTimeout(resolve, 20));
       });
 
-      expect(document.querySelector('[role="alert"]')?.textContent).toBe("Canvas save failed");
+      const alert = document.querySelector('[role="alert"]');
+      expect(alert?.textContent).toContain("The Canvas was created, but its Markdown import could not be confirmed.");
+      expect(alert?.querySelector("button")?.textContent).toBe("Open Canvas");
       expect(navigateMock).not.toHaveBeenCalled();
       expect(document.querySelector<HTMLButtonElement>('[role="alert"] button')?.textContent).toBe("Open Canvas");
       expect(document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas")?.disabled).toBe(true);
