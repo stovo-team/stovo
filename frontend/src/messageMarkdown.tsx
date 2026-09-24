@@ -1,4 +1,5 @@
 import React, { Fragment, useState } from "react";
+import { hasPlainLinkPrefixAt, inlineTokenEnd } from "./messageMarkdownInlineUtils";
 
 export type StovoMarkdownNode =
   | { type: "text"; value: string }
@@ -35,7 +36,6 @@ const formattingDelimiters = [
   { delimiter: "_", type: "italic" }
 ] as const;
 
-const plainLinkPrefixes = ["https://", "http://", "mailto:"];
 const trailingLinkPunctuation = new Set([".", ",", "!", "?", ";", ":", ")", "]", "}"]);
 
 function appendText(nodes: StovoMarkdownNode[], value: string): void {
@@ -102,7 +102,6 @@ function matchExplicitLink(source: string, start: number): ExplicitLinkMatch | n
 function isBoundary(char: string | undefined): boolean {
   return !char || /[\s([{"'<>]/.test(char);
 }
-
 const phoneRegex = /^\+(?:\([0-9]+\)\s*|[0-9]+)(?:(?:\s*[-.]\s*|\s+|\s*\([0-9]+\)\s*)[0-9]+)*/;
 
 function matchPhoneLink(
@@ -141,8 +140,8 @@ function matchEmailLink(
 ): { end: number; href: string; text: string } | null {
   if (start > 0 && !isBoundary(source[start - 1])) return null;
 
-  const rest = source.slice(start);
-  const match = emailRegex.exec(rest);
+  const token = source.slice(start, inlineTokenEnd(source, start));
+  const match = emailRegex.exec(token);
   if (!match) return null;
 
   let candidate = match[0];
@@ -176,8 +175,8 @@ function matchWebDomainLink(
 ): { end: number; href: string; text: string } | null {
   if (start > 0 && !isBoundary(source[start - 1])) return null;
 
-  const rest = source.slice(start);
-  const match = webDomainRegex.exec(rest);
+  const token = source.slice(start, inlineTokenEnd(source, start));
+  const match = webDomainRegex.exec(token);
   if (!match) return null;
 
   let candidate = match[0];
@@ -210,8 +209,7 @@ function matchWebDomainLink(
 }
 
 function matchPlainLink(source: string, start: number): { end: number; href: string } | null {
-  const rest = source.slice(start).toLowerCase();
-  if (!plainLinkPrefixes.some((prefix) => rest.startsWith(prefix))) return null;
+  if (!hasPlainLinkPrefixAt(source, start)) return null;
 
   let candidateEnd = start;
   while (candidateEnd < source.length && !/[\s<>"']/.test(source[candidateEnd])) {
@@ -235,8 +233,8 @@ function matchMention(source: string, start: number): { end: number; username: s
   if (source[start] !== "@") return null;
   if (start > 0 && !isBoundary(source[start - 1])) return null;
 
-  const rest = source.slice(start);
-  const match = /^@([\p{L}\p{N}_.-]+)/u.exec(rest);
+  const token = source.slice(start, inlineTokenEnd(source, start));
+  const match = /^@([\p{L}\p{N}_.-]+)/u.exec(token);
   if (!match) return null;
 
   let username = match[1];
@@ -369,7 +367,7 @@ function parseInline(source: string, depth: number): StovoMarkdownNode[] {
       (source[textEnd] !== "+" || !isBoundary(source[textEnd - 1])) &&
       !isBoundary(source[textEnd - 1]) &&
       !formattingDelimiters.some(({ delimiter }) => source.startsWith(delimiter, textEnd)) &&
-      !plainLinkPrefixes.some((prefix) => source.slice(textEnd).toLowerCase().startsWith(prefix))
+      !hasPlainLinkPrefixAt(source, textEnd)
     ) {
       textEnd += 1;
     }
