@@ -21401,16 +21401,24 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .document-inline-preview-docx .docx-wrapper {
-  align-items: flex-start !important;
   background: transparent !important;
+  align-items: stretch !important;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
   height: 100%;
   overflow: hidden;
   padding: 0 !important;
-  zoom: 0.5;
+  width: 100%;
 }
 
 .document-inline-preview-docx .docx-wrapper > section.docx {
+  box-sizing: border-box;
+  max-width: 100% !important;
   margin: 0 !important;
+  min-width: 0;
+  width: 100% !important;
 }
 
 .document-inline-preview-text,
@@ -30005,17 +30013,44 @@ button.checklist-add-item-btn:hover,
 }
 .document-viewer-markdown h1 { font-size: 1.8em; }
 .document-viewer-markdown h2 { font-size: 1.5em; }
-.document-viewer-markdown p,
-.document-viewer-markdown .message-paragraph { white-space: pre-wrap; }
-.document-viewer-markdown .message-inline-code {
+.document-viewer-markdown > :first-child { margin-top: 0; }
+.document-viewer-markdown p { margin: 0 0 1em; white-space: pre-wrap; }
+.document-viewer-markdown blockquote {
+  border-left: 3px solid var(--border-default);
+  color: var(--text-secondary);
+  margin: 1em 0;
+  padding-left: 1em;
+}
+.document-viewer-markdown pre {
+  background: #f2f3f5;
+  border-radius: 6px;
+  overflow-x: auto;
+  padding: 12px 14px;
+}
+.document-viewer-markdown code {
   background: #f2f3f5;
   border-radius: 5px;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   padding: 2px 5px;
 }
+.document-viewer-markdown pre code { background: transparent; padding: 0; }
 .document-viewer-markdown ul,
 .document-viewer-markdown ol { padding-left: 1.6em; }
 .document-viewer-markdown a { color: #1558a6; }
+.document-viewer-markdown table {
+  border-collapse: collapse;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.document-viewer-markdown th,
+.document-viewer-markdown td {
+  border: 1px solid #d9dde3;
+  padding: 7px 10px;
+  text-align: left;
+}
+.document-viewer-markdown th { background: #f2f3f5; font-weight: 650; }
+.document-viewer-markdown img { height: auto; max-width: 100%; }
 .document-viewer-header-actions .document-viewer-convert-canvas {
   background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
   border-color: color-mix(in srgb, var(--accent-primary) 42%, var(--border-default));
