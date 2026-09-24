@@ -464,6 +464,24 @@ describe("VideoPlayer", () => {
     style.remove();
   });
 
+  it("gives document previews video-width and rounds every message video corner", () => {
+    const styles = readFileSync("src/styles.css", "utf8");
+    const documentBubble = styles.match(/\.message-bubble:has\(\.document-preview-card\)\s*\{[^}]*\}/)?.[0];
+    const messageDocumentCard = styles.match(/\.message-bubble:has\(\.document-preview-card\) \.document-preview-card\s*\{[^}]*\}/)?.[0];
+    const videoCornerStart = styles.indexOf(".message-bubble.mine.has-photo-attachments .video-player,");
+    const videoCornerEnd = styles.indexOf("/* Portrait fills", videoCornerStart);
+    const messageVideoCorners = styles.slice(videoCornerStart, videoCornerEnd);
+    const expandedVideo = styles.match(/\.video-player\.is-expanded\s*\{[^}]*\}/)?.[0];
+    const fullscreenVideo = styles.match(/\.video-player:fullscreen\s*\{[^}]*\}/)?.[0];
+
+    expect(documentBubble).toContain("max-width: min(560px, calc(100vw - 48px))");
+    expect(documentBubble).toContain("width: min(560px, calc(100vw - 48px))");
+    expect(messageDocumentCard).toContain("max-width: 100%");
+    expect((messageVideoCorners.match(/border-radius:\s*16px\s*;/g) ?? []).length).toBe(4);
+    expect(expandedVideo).toContain("border-radius: 16px");
+    expect(fullscreenVideo).toContain("border-radius: 16px");
+  });
+
   it("isolates pointer and click gestures while retaining native controls", async () => {
     const onClick = vi.fn();
     const onPointerDown = vi.fn();

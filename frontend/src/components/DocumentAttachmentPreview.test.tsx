@@ -246,13 +246,14 @@ describe("document attachment cards in chat", () => {
 
   it("keeps the outgoing bubble snug to its document card on narrow screens instead of leaving a wide right gutter", () => {
     const documentBubble = rule(".message-bubble:has(.document-preview-card)");
+    const messageDocumentCard = rule(".message-bubble:has(.document-preview-card) .document-preview-card");
     const compactDocumentBubble = rule(":root[data-density=\"compact\"] .message-bubble:has(.document-preview-card)");
 
-    // The document card itself is capped at 420px. Match that cap on the
-    // surrounding message bubble, and leave only the small visual inset the
-    // attachment needs rather than the generic text-message padding.
-    expect(documentBubble).toContain("max-width: min(420px, calc(100vw - 48px));");
-    expect(documentBubble).toContain("width: min(420px, calc(100vw - 48px));");
+    // Match the landscape video preview width while keeping the card within
+    // its message bubble and leaving only the small visual inset.
+    expect(documentBubble).toContain("max-width: min(560px, calc(100vw - 48px));");
+    expect(documentBubble).toContain("width: min(560px, calc(100vw - 48px));");
+    expect(messageDocumentCard).toContain("max-width: 100%;");
     expect(documentBubble).toContain("padding-inline: 6px;");
 
     // Compact density has a later, more-specific generic bubble padding rule.
