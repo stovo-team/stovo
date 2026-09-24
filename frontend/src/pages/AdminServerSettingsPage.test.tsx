@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   currentUser: { role: "owner" } as { role: string; permissions?: string[] }
 }));
 const styles = readFileSync(resolve(process.cwd(), "src/pages/AdminServerSettingsPage.css"), "utf8");
+const globalStyles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ accessToken: "owner-token", authRequest: mocks.authRequest, currentUser: mocks.currentUser })
@@ -143,7 +144,7 @@ describe("AdminServerSettingsPage", () => {
   });
 
   it("keeps the premium badge compact within its settings row", () => {
-    const badgeRule = styles.match(/\.admin-page \.appearance-setting-row \.premium-feature-badge\s*\{([^}]*)\}/)?.[1] ?? "";
+    const badgeRule = globalStyles.match(/\.admin-page \.appearance-setting-row \.premium-feature-badge\s*\{([^}]*)\}/)?.[1] ?? "";
     expect(badgeRule).toMatch(/flex: 0 0 auto;/);
   });
 
