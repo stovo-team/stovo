@@ -42,6 +42,8 @@ const (
 	FieldAudioCallSettings = "audio_call_settings"
 	// FieldNtfyTopicToken holds the string denoting the ntfy_topic_token field in the database.
 	FieldNtfyTopicToken = "ntfy_topic_token"
+	// FieldFcmDeviceToken holds the string denoting the fcm_device_token field in the database.
+	FieldFcmDeviceToken = "fcm_device_token"
 	// FieldEmail holds the string denoting the email field in the database.
 	FieldEmail = "email"
 	// FieldBio holds the string denoting the bio field in the database.
@@ -169,6 +171,7 @@ var Columns = []string{
 	FieldReadReceiptsEnabled,
 	FieldAudioCallSettings,
 	FieldNtfyTopicToken,
+	FieldFcmDeviceToken,
 	FieldEmail,
 	FieldBio,
 	FieldTimezone,
@@ -290,6 +293,11 @@ func ByAudioCallSettings(opts ...sql.OrderTermOption) OrderOption {
 // ByNtfyTopicToken orders the results by the ntfy_topic_token field.
 func ByNtfyTopicToken(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNtfyTopicToken, opts...).ToFunc()
+}
+
+// ByFcmDeviceToken orders the results by the fcm_device_token field.
+func ByFcmDeviceToken(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldFcmDeviceToken, opts...).ToFunc()
 }
 
 // ByEmail orders the results by the email field.

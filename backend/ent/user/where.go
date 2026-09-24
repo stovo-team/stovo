@@ -139,6 +139,11 @@ func NtfyTopicToken(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldNtfyTopicToken, v))
 }
 
+// FcmDeviceToken applies equality check predicate on the "fcm_device_token" field. It's identical to FcmDeviceTokenEQ.
+func FcmDeviceToken(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldFcmDeviceToken, v))
+}
+
 // Email applies equality check predicate on the "email" field. It's identical to EmailEQ.
 func Email(v string) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldEmail, v))
@@ -1097,6 +1102,81 @@ func NtfyTopicTokenEqualFold(v string) predicate.User {
 // NtfyTopicTokenContainsFold applies the ContainsFold predicate on the "ntfy_topic_token" field.
 func NtfyTopicTokenContainsFold(v string) predicate.User {
 	return predicate.User(sql.FieldContainsFold(FieldNtfyTopicToken, v))
+}
+
+// FcmDeviceTokenEQ applies the EQ predicate on the "fcm_device_token" field.
+func FcmDeviceTokenEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenNEQ applies the NEQ predicate on the "fcm_device_token" field.
+func FcmDeviceTokenNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenIn applies the In predicate on the "fcm_device_token" field.
+func FcmDeviceTokenIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldFcmDeviceToken, vs...))
+}
+
+// FcmDeviceTokenNotIn applies the NotIn predicate on the "fcm_device_token" field.
+func FcmDeviceTokenNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldFcmDeviceToken, vs...))
+}
+
+// FcmDeviceTokenGT applies the GT predicate on the "fcm_device_token" field.
+func FcmDeviceTokenGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenGTE applies the GTE predicate on the "fcm_device_token" field.
+func FcmDeviceTokenGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenLT applies the LT predicate on the "fcm_device_token" field.
+func FcmDeviceTokenLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenLTE applies the LTE predicate on the "fcm_device_token" field.
+func FcmDeviceTokenLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenContains applies the Contains predicate on the "fcm_device_token" field.
+func FcmDeviceTokenContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenHasPrefix applies the HasPrefix predicate on the "fcm_device_token" field.
+func FcmDeviceTokenHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenHasSuffix applies the HasSuffix predicate on the "fcm_device_token" field.
+func FcmDeviceTokenHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenIsNil applies the IsNil predicate on the "fcm_device_token" field.
+func FcmDeviceTokenIsNil() predicate.User {
+	return predicate.User(sql.FieldIsNull(FieldFcmDeviceToken))
+}
+
+// FcmDeviceTokenNotNil applies the NotNil predicate on the "fcm_device_token" field.
+func FcmDeviceTokenNotNil() predicate.User {
+	return predicate.User(sql.FieldNotNull(FieldFcmDeviceToken))
+}
+
+// FcmDeviceTokenEqualFold applies the EqualFold predicate on the "fcm_device_token" field.
+func FcmDeviceTokenEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldFcmDeviceToken, v))
+}
+
+// FcmDeviceTokenContainsFold applies the ContainsFold predicate on the "fcm_device_token" field.
+func FcmDeviceTokenContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldFcmDeviceToken, v))
 }
 
 // EmailEQ applies the EQ predicate on the "email" field.

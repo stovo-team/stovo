@@ -173,8 +173,8 @@ export async function consumePendingNotificationAction(): Promise<PendingNotific
  * Full notification bootstrap: call after successful login on Android.
  * 1. Request POST_NOTIFICATIONS (Android 13+)
  * 2. Update local quiet hours schedule
- * 3. Retrieve FCM push device token and register it with the backend
- * 4. Fall back to topic subscription if running in a legacy/self-hosted environment
+ * 3. Retrieve and register the FCM device token when available
+ * 4. Also register the ntfy topic so either server-selected provider can reach this account
  */
 export async function bootstrapNotifications(
   authRequest: <T>(endpoint: string, options?: ApiRequestOptions) => Promise<T>,
@@ -195,13 +195,13 @@ export async function bootstrapNotifications(
     const res = await NtfyPlugin.getPushToken();
     if (res?.token) {
       await registerDevicePushToken(authRequest, res.token);
-      return;
     }
   } catch {
     // Plugin getPushToken not available or error; continue to legacy topic fallback
   }
 
-  // Topic registration fallback (e.g. for self-hosted/ntfy setups)
+  // Keep the independent ntfy identity registered even when Firebase is available.
+  // The server provider can change after this device has already bootstrapped.
   try {
     const { topic, ntfyBaseUrl } = await authRequest<NotificationTopicResponse>(
       "/api/notifications/topic"

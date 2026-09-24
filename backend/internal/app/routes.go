@@ -1146,6 +1146,12 @@ func (s *Server) adminRoutes() httptransport.AdminRoutes {
 		UpdateEncryptionSettings: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			s.adminPublicAccessHandler(user).UpdateEncryption(w, r, httptransport.AdminActor{ID: user.ID, FamilyID: user.FamilyID, Role: user.Role})
 		}),
+		GetNotificationProvider: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.adminNotificationProviderHandler(user).Get(w, r, httptransport.AdminActor{ID: user.ID, FamilyID: user.FamilyID, Role: user.Role})
+		}),
+		UpdateNotificationProvider: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.adminNotificationProviderHandler(user).Update(w, r, httptransport.AdminActor{ID: user.ID, FamilyID: user.FamilyID, Role: user.Role})
+		}),
 		ListMCPConnectors: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.NewMCPConnectorReadHandler(httptransport.MCPConnectorReadOperations{
 				IsAdmin: func() bool { return hasPermission(user, permissionManageIntegrations) },

@@ -43,6 +43,7 @@ import (
 	"stovo-messenger/backend/internal/adapters/messageforwards"
 	"stovo-messenger/backend/internal/adapters/messagehistory"
 	"stovo-messenger/backend/internal/adapters/messagemutations"
+	"stovo-messenger/backend/internal/adapters/notificationprovider"
 	"stovo-messenger/backend/internal/adapters/messagepersistence"
 	"stovo-messenger/backend/internal/adapters/messagereactions"
 	"stovo-messenger/backend/internal/adapters/messagereads"
@@ -189,6 +190,7 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 		Sync:                  featuresync.NewService(syncstore.NewPostgresStore(db), cfg.JWTSecret),
 		PublicAccess:          featureadministration.NewPublicAccessService(publicaccess.NewPostgresStore(db)),
 		Encryption:            featureadministration.NewEncryptionService(adminencryption.NewStore(store), time.Now),
+		NotificationProvider:  featureadministration.NewNotificationProviderService(notificationprovider.NewPostgresStore(db)),
 		MCPAudit:              featuremcp.NewAuditService(mcpaudit.NewStore(store)),
 		MCPConnectors:         featuremcp.NewConnectorService(mcpconnectors.NewStore(store)),
 		Polls:                 featurepolls.NewService(adapterpolls.NewStore(store)),

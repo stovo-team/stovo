@@ -17,6 +17,8 @@ type accountPreferencesStoreFake struct {
 	audioErr      error
 	topic         *string
 	persisted     string
+	fcmToken      *string
+	persistedFCM  string
 }
 
 func (f *accountPreferencesStoreFake) AudioCallSettings(context.Context, string) (*string, error) {
@@ -34,6 +36,23 @@ func (f *accountPreferencesStoreFake) NtfyTopicToken(context.Context, string) (*
 
 func (f *accountPreferencesStoreFake) SetNtfyTopicToken(_ context.Context, _ string, topic string) error {
 	f.persisted = topic
+	if topic == "" {
+		f.topic = nil
+	} else {
+		f.topic = &topic
+	}
+	return nil
+}
+func (f *accountPreferencesStoreFake) FCMDeviceToken(context.Context, string) (*string, error) {
+	return f.fcmToken, nil
+}
+func (f *accountPreferencesStoreFake) SetFCMDeviceToken(_ context.Context, _ string, token string) error {
+	f.persistedFCM = token
+	if token == "" {
+		f.fcmToken = nil
+	} else {
+		f.fcmToken = &token
+	}
 	return nil
 }
 
@@ -89,14 +108,15 @@ func TestAccountPreferencesRegisterDeviceToken(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 	}
-	if store.persisted != "fcm-test-token-123" {
-		t.Fatalf("persisted token = %q, want 'fcm-test-token-123'", store.persisted)
+	if store.persistedFCM != "fcm-test-token-123" || store.persisted != "" {
+		t.Fatalf("persisted identities: fcm=%q ntfy=%q", store.persistedFCM, store.persisted)
 	}
 }
 
 func TestAccountPreferencesUnregisterDeviceToken(t *testing.T) {
-	topic := "fcm-old-token"
-	store := &accountPreferencesStoreFake{topic: &topic}
+	topic := "stovo-user-topic"
+	token := "fcm-old-token"
+	store := &accountPreferencesStoreFake{topic: &topic, fcmToken: &token}
 	handler := NewAccountPreferencesHandler(featurepreferences.NewService(store, nil), "https://app.test", nil)
 
 	recorder := httptest.NewRecorder()
@@ -106,7 +126,7 @@ func TestAccountPreferencesUnregisterDeviceToken(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 	}
-	if store.persisted != "" {
-		t.Fatalf("persisted token = %q, want empty string", store.persisted)
+	if store.fcmToken != nil || store.topic == nil || *store.topic != topic {
+		t.Fatalf("unregister changed provider identities: fcm=%v ntfy=%v", store.fcmToken, store.topic)
 	}
 }

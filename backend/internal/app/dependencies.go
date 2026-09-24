@@ -14,6 +14,7 @@ import (
 	featuremcp "stovo-messenger/backend/internal/features/mcp"
 	featuremessages "stovo-messenger/backend/internal/features/messages"
 	featureplans "stovo-messenger/backend/internal/features/plans"
+	featurepolls "stovo-messenger/backend/internal/features/polls"
 	featurepreferences "stovo-messenger/backend/internal/features/preferences"
 	featureprivacy "stovo-messenger/backend/internal/features/privacy"
 	featureroles "stovo-messenger/backend/internal/features/roles"
@@ -22,7 +23,6 @@ import (
 	"stovo-messenger/backend/internal/logging"
 	"stovo-messenger/backend/internal/plugins"
 	"stovo-messenger/backend/internal/ports"
-	featurepolls "stovo-messenger/backend/internal/features/polls"
 	workruntime "stovo-messenger/backend/internal/runtime"
 	"stovo-messenger/backend/internal/tunnel"
 
@@ -96,6 +96,7 @@ type Dependencies struct {
 	Sync                   *featuresync.Service
 	PublicAccess           *featureadministration.PublicAccessService
 	Encryption             *featureadministration.EncryptionService
+	NotificationProvider   *featureadministration.NotificationProviderService
 	MCPAudit               *featuremcp.AuditService
 	MCPConnectors          *featuremcp.ConnectorService
 	Polls                  *featurepolls.Service

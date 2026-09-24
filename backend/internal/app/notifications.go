@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	featureadministration "stovo-messenger/backend/internal/features/administration"
 	"stovo-messenger/backend/internal/ports"
 	workruntime "stovo-messenger/backend/internal/runtime"
 )
@@ -23,6 +24,49 @@ func (s *Server) getUserNtfyTopic(ctx context.Context, userID string) (string, e
 		return "", nil
 	}
 	return *token, nil
+}
+
+func (s *Server) getUserFCMDeviceToken(ctx context.Context, userID string) (string, error) {
+	token, err := s.notificationRecipients.FCMDeviceToken(ctx, userID)
+	if err != nil || token == nil {
+		return "", err
+	}
+	return *token, nil
+}
+
+func (s *Server) getUserNotificationDestination(ctx context.Context, userID, provider string) (string, error) {
+	switch provider {
+	case featureadministration.NotificationProviderFirebase:
+		return s.getUserFCMDeviceToken(ctx, userID)
+	case featureadministration.NotificationProviderNtfy:
+		return s.getUserNtfyTopic(ctx, userID)
+	default:
+		return "", nil
+	}
+}
+
+func (s *Server) selectedNotificationProvider() string {
+	if s.notificationProvider == nil {
+		return featureadministration.NotificationProviderFirebase
+	}
+	provider, err := s.notificationProvider.Get(context.Background())
+	if err != nil {
+		s.logger.Warnf("notifications", "could not load configured provider; skipping push delivery: %v", err)
+		return ""
+	}
+	return provider
+}
+
+func notificationDeliveryRoute(provider string, firebaseConfigured bool) string {
+	switch provider {
+	case featureadministration.NotificationProviderFirebase:
+		if firebaseConfigured {
+			return featureadministration.NotificationProviderFirebase
+		}
+	case featureadministration.NotificationProviderNtfy:
+		return featureadministration.NotificationProviderNtfy
+	}
+	return ""
 }
 
 func (s *Server) publishToNtfy(ctx context.Context, payload ntfyPayload) error {
@@ -177,6 +221,7 @@ func ShouldNotifyRecipient(
 }
 
 func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string, mentionedUserIDs []string) {
+	provider := s.selectedNotificationProvider()
 	title, message, tags := formatMessageNotification(chatType, chatTitle, senderName, messagePreview)
 	mentioned := make(map[string]struct{}, len(mentionedUserIDs))
 	for _, userID := range mentionedUserIDs {
@@ -224,9 +269,9 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 			continue
 		}
 
-		topic, err := s.getUserNtfyTopic(context.Background(), recipientID)
-		if err != nil || topic == "" {
-			s.logger.Warnf("ntfy", "no topic for user_id=%s: %v", recipientID, err)
+		destination, err := s.getUserNotificationDestination(context.Background(), recipientID, provider)
+		if err != nil || destination == "" {
+			s.logger.Warnf("notifications", "no destination for user_id=%s provider=%s: %v", recipientID, provider, err)
 			continue
 		}
 
@@ -237,10 +282,14 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 			if isMentioned {
 				payloadTags = append(append([]string{}, tags...), "exclamation")
 			}
-			if s.fcmClient != nil && s.fcmClient.IsConfigured() {
+			route := notificationDeliveryRoute(provider, s.fcmClient != nil && s.fcmClient.IsConfigured())
+			if route == featureadministration.NotificationProviderFirebase {
 				if err := s.fcmClient.SendChatMessage(ctx, topic, chatID, chatType, title, message, priority, payloadTags); err != nil {
 					s.logger.Warnf("fcm", "failed to deliver chat message user_id=%s: %v", recipientID, err)
 				}
+				return
+			} else if route == "" {
+				s.logger.Warnf("fcm", "selected provider is unavailable; skipping chat notification user_id=%s", recipientID)
 				return
 			}
 			p := ntfyPayload{
@@ -252,26 +301,31 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 				Click:    "stovo://chat/" + chatID,
 			}
 			s.publishToNtfyWithRetry(ctx, recipientID, p)
-		}(recipientID, topic, decision.Priority, isMentioned)
+		}(recipientID, destination, decision.Priority, isMentioned)
 	}
 }
 
 func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatID string) {
+	provider := s.selectedNotificationProvider()
 	if s.sessions.IsViewingChatInForeground(calleeUserID, chatID) {
 		return
 	}
-	topic, err := s.getUserNtfyTopic(context.Background(), calleeUserID)
-	if err != nil || topic == "" {
-		s.logger.Warnf("ntfy", "no topic for callee user_id=%s: %v", calleeUserID, err)
+	destination, err := s.getUserNotificationDestination(context.Background(), calleeUserID, provider)
+	if err != nil || destination == "" {
+		s.logger.Warnf("notifications", "no destination for callee user_id=%s provider=%s: %v", calleeUserID, provider, err)
 		return
 	}
 	go func(calleeUserID, topic string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if s.fcmClient != nil && s.fcmClient.IsConfigured() {
+		route := notificationDeliveryRoute(provider, s.fcmClient != nil && s.fcmClient.IsConfigured())
+		if route == featureadministration.NotificationProviderFirebase {
 			if err := s.fcmClient.SendCallRinging(ctx, topic, chatID, callerName); err != nil {
 				s.logger.Warnf("fcm", "failed to deliver call ringing user_id=%s: %v", calleeUserID, err)
 			}
+			return
+		} else if route == "" {
+			s.logger.Warnf("fcm", "selected provider is unavailable; skipping call ringing notification user_id=%s", calleeUserID)
 			return
 		}
 		p := ntfyPayload{
@@ -283,25 +337,30 @@ func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatI
 			Click:    "stovo://call/" + chatID,
 		}
 		s.publishToNtfyWithRetry(ctx, calleeUserID, p)
-	}(calleeUserID, topic)
+	}(calleeUserID, destination)
 }
 
 func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID string) {
+	provider := s.selectedNotificationProvider()
 	if s.sessions.IsViewingChatInForeground(calleeUserID, chatID) {
 		return
 	}
-	topic, err := s.getUserNtfyTopic(context.Background(), calleeUserID)
-	if err != nil || topic == "" {
-		s.logger.Warnf("ntfy", "no topic for callee user_id=%s: %v", calleeUserID, err)
+	destination, err := s.getUserNotificationDestination(context.Background(), calleeUserID, provider)
+	if err != nil || destination == "" {
+		s.logger.Warnf("notifications", "no destination for callee user_id=%s provider=%s: %v", calleeUserID, provider, err)
 		return
 	}
 	go func(calleeUserID, topic string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if s.fcmClient != nil && s.fcmClient.IsConfigured() {
+		route := notificationDeliveryRoute(provider, s.fcmClient != nil && s.fcmClient.IsConfigured())
+		if route == featureadministration.NotificationProviderFirebase {
 			if err := s.fcmClient.SendCallMissed(ctx, topic, chatID, callerName); err != nil {
 				s.logger.Warnf("fcm", "failed to deliver call missed user_id=%s: %v", calleeUserID, err)
 			}
+			return
+		} else if route == "" {
+			s.logger.Warnf("fcm", "selected provider is unavailable; skipping missed call notification user_id=%s", calleeUserID)
 			return
 		}
 		p := ntfyPayload{
@@ -313,7 +372,7 @@ func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID
 			Click:    "stovo://call/missed/" + chatID,
 		}
 		s.publishToNtfyWithRetry(ctx, calleeUserID, p)
-	}(calleeUserID, topic)
+	}(calleeUserID, destination)
 }
 
 func truncatePreview(content *string) string {

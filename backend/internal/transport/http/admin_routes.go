@@ -23,6 +23,8 @@ type AdminRoutes struct {
 	DomainLink                  stdhttp.Handler
 	GetEncryptionSettings       stdhttp.Handler
 	UpdateEncryptionSettings    stdhttp.Handler
+	GetNotificationProvider     stdhttp.Handler
+	UpdateNotificationProvider  stdhttp.Handler
 	ListMCPConnectors           stdhttp.Handler
 	CreateMCPConnector          stdhttp.Handler
 	GetMCPConnector             stdhttp.Handler
@@ -51,6 +53,8 @@ func RegisterAdminRoutes(router chi.Router, routes AdminRoutes) {
 	router.Method(stdhttp.MethodPost, "/api/admin/public-access/domain-link", routes.DomainLink)
 	router.Method(stdhttp.MethodGet, "/api/admin/encryption-settings", routes.GetEncryptionSettings)
 	router.Method(stdhttp.MethodPut, "/api/admin/encryption-settings", routes.UpdateEncryptionSettings)
+	router.Method(stdhttp.MethodGet, "/api/admin/notification-provider", routes.GetNotificationProvider)
+	router.Method(stdhttp.MethodPut, "/api/admin/notification-provider", routes.UpdateNotificationProvider)
 	router.Method(stdhttp.MethodGet, "/api/admin/mcp-connectors", routes.ListMCPConnectors)
 	router.Method(stdhttp.MethodPost, "/api/admin/mcp-connectors", routes.CreateMCPConnector)
 	router.Method(stdhttp.MethodGet, "/api/admin/mcp-connectors/{connectorId}", routes.GetMCPConnector)

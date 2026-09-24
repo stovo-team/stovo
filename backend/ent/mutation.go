@@ -26725,6 +26725,7 @@ type UserMutation struct {
 	read_receipts_enabled         *bool
 	audio_call_settings           *string
 	ntfy_topic_token              *string
+	fcm_device_token              *string
 	email                         *string
 	bio                           *string
 	timezone                      *string
@@ -27495,6 +27496,55 @@ func (m *UserMutation) ResetNtfyTopicToken() {
 	delete(m.clearedFields, user.FieldNtfyTopicToken)
 }
 
+// SetFcmDeviceToken sets the "fcm_device_token" field.
+func (m *UserMutation) SetFcmDeviceToken(s string) {
+	m.fcm_device_token = &s
+}
+
+// FcmDeviceToken returns the value of the "fcm_device_token" field in the mutation.
+func (m *UserMutation) FcmDeviceToken() (r string, exists bool) {
+	v := m.fcm_device_token
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldFcmDeviceToken returns the old "fcm_device_token" field's value of the User entity.
+// If the User object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UserMutation) OldFcmDeviceToken(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldFcmDeviceToken is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldFcmDeviceToken requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldFcmDeviceToken: %w", err)
+	}
+	return oldValue.FcmDeviceToken, nil
+}
+
+// ClearFcmDeviceToken clears the value of the "fcm_device_token" field.
+func (m *UserMutation) ClearFcmDeviceToken() {
+	m.fcm_device_token = nil
+	m.clearedFields[user.FieldFcmDeviceToken] = struct{}{}
+}
+
+// FcmDeviceTokenCleared returns if the "fcm_device_token" field was cleared in this mutation.
+func (m *UserMutation) FcmDeviceTokenCleared() bool {
+	_, ok := m.clearedFields[user.FieldFcmDeviceToken]
+	return ok
+}
+
+// ResetFcmDeviceToken resets all changes to the "fcm_device_token" field.
+func (m *UserMutation) ResetFcmDeviceToken() {
+	m.fcm_device_token = nil
+	delete(m.clearedFields, user.FieldFcmDeviceToken)
+}
+
 // SetEmail sets the "email" field.
 func (m *UserMutation) SetEmail(s string) {
 	m.email = &s
@@ -28243,7 +28293,7 @@ func (m *UserMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UserMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 19)
 	if m.family != nil {
 		fields = append(fields, user.FieldFamilyID)
 	}
@@ -28288,6 +28338,9 @@ func (m *UserMutation) Fields() []string {
 	}
 	if m.ntfy_topic_token != nil {
 		fields = append(fields, user.FieldNtfyTopicToken)
+	}
+	if m.fcm_device_token != nil {
+		fields = append(fields, user.FieldFcmDeviceToken)
 	}
 	if m.email != nil {
 		fields = append(fields, user.FieldEmail)
@@ -28336,6 +28389,8 @@ func (m *UserMutation) Field(name string) (ent.Value, bool) {
 		return m.AudioCallSettings()
 	case user.FieldNtfyTopicToken:
 		return m.NtfyTopicToken()
+	case user.FieldFcmDeviceToken:
+		return m.FcmDeviceToken()
 	case user.FieldEmail:
 		return m.Email()
 	case user.FieldBio:
@@ -28381,6 +28436,8 @@ func (m *UserMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldAudioCallSettings(ctx)
 	case user.FieldNtfyTopicToken:
 		return m.OldNtfyTopicToken(ctx)
+	case user.FieldFcmDeviceToken:
+		return m.OldFcmDeviceToken(ctx)
 	case user.FieldEmail:
 		return m.OldEmail(ctx)
 	case user.FieldBio:
@@ -28501,6 +28558,13 @@ func (m *UserMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetNtfyTopicToken(v)
 		return nil
+	case user.FieldFcmDeviceToken:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetFcmDeviceToken(v)
+		return nil
 	case user.FieldEmail:
 		v, ok := value.(string)
 		if !ok {
@@ -28582,6 +28646,9 @@ func (m *UserMutation) ClearedFields() []string {
 	if m.FieldCleared(user.FieldNtfyTopicToken) {
 		fields = append(fields, user.FieldNtfyTopicToken)
 	}
+	if m.FieldCleared(user.FieldFcmDeviceToken) {
+		fields = append(fields, user.FieldFcmDeviceToken)
+	}
 	if m.FieldCleared(user.FieldEmail) {
 		fields = append(fields, user.FieldEmail)
 	}
@@ -28619,6 +28686,9 @@ func (m *UserMutation) ClearField(name string) error {
 		return nil
 	case user.FieldNtfyTopicToken:
 		m.ClearNtfyTopicToken()
+		return nil
+	case user.FieldFcmDeviceToken:
+		m.ClearFcmDeviceToken()
 		return nil
 	case user.FieldEmail:
 		m.ClearEmail()
@@ -28681,6 +28751,9 @@ func (m *UserMutation) ResetField(name string) error {
 		return nil
 	case user.FieldNtfyTopicToken:
 		m.ResetNtfyTopicToken()
+		return nil
+	case user.FieldFcmDeviceToken:
+		m.ResetFcmDeviceToken()
 		return nil
 	case user.FieldEmail:
 		m.ResetEmail()

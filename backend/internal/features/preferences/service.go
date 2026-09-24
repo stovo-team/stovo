@@ -22,6 +22,8 @@ type Store interface {
 	SetAudioCallSettings(context.Context, string, string) error
 	NtfyTopicToken(context.Context, string) (*string, error)
 	SetNtfyTopicToken(context.Context, string, string) error
+	FCMDeviceToken(context.Context, string) (*string, error)
+	SetFCMDeviceToken(context.Context, string, string) error
 }
 
 // AudioSettings is the persisted, user-controlled call preference set.
@@ -126,11 +128,11 @@ func (s *Service) NotificationTopic(ctx context.Context, userID string) (string,
 }
 
 func (s *Service) RegisterPushDeviceToken(ctx context.Context, userID, token string) error {
-	return s.store.SetNtfyTopicToken(ctx, userID, strings.TrimSpace(token))
+	return s.store.SetFCMDeviceToken(ctx, userID, strings.TrimSpace(token))
 }
 
 func (s *Service) UnregisterPushDeviceToken(ctx context.Context, userID string) error {
-	return s.store.SetNtfyTopicToken(ctx, userID, "")
+	return s.store.SetFCMDeviceToken(ctx, userID, "")
 }
 
 // SaveContactPrivacy updates only account-contact controls, preserving every

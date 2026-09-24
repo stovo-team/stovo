@@ -1,5 +1,5 @@
 backend/internal/adapters/statsstore/postgres_store.go	893
-backend/internal/app/admin_operations.go	517
+backend/internal/app/admin_operations.go	535
 backend/internal/app/call_operations.go	1472
 backend/internal/app/canvas_operations.go	576
 backend/internal/app/chat_operations.go	1780
@@ -10,13 +10,13 @@ backend/internal/app/guest_meetings.go	404
 backend/internal/app/helpers.go	469
 backend/internal/app/mcp_operations.go	1153
 backend/internal/app/recording_operations.go	456
-backend/internal/app/routes.go	1212
+backend/internal/app/routes.go	1218
 backend/internal/app/server.go	580
 backend/internal/app/transcription_operations.go	537
 backend/internal/app/types.go	662
 backend/internal/config/config.go	431
 backend/internal/orchestrator/routes.go	682
-backend/internal/repository/auth.go	418
+backend/internal/repository/auth.go	435
 backend/internal/repository/chats.go	527
 backend/internal/repository/messages.go	619
 backend/internal/transcription/groq.go	485
@@ -34,8 +34,8 @@ frontend/src/components/RealStovoDemo.tsx	1278
 frontend/src/components/RichCanvasPreview.tsx	792
 frontend/src/components/StovoFeaturePreviews.tsx	693
 frontend/src/components/VideoPlayer.tsx	506
-frontend/src/config/strings/english.ts	907
-frontend/src/config/strings/russian.ts	936
+frontend/src/config/strings/english.ts	908
+frontend/src/config/strings/russian.ts	937
 frontend/src/features/chats/calling/DesktopCallControls.tsx	670
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	754
 frontend/src/features/chats/calling/useCallSession.ts	1025
