@@ -7,9 +7,10 @@ describe("notification provider admin API", () => {
   it("loads the server-wide provider setting", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ notificationProvider: "firebase" }) } as Response);
     await expect(getNotificationProviderSettings("owner-token")).resolves.toEqual({ notificationProvider: "firebase" });
-    expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining("/api/admin/notification-provider"), expect.objectContaining({
-      headers: expect.objectContaining({ Authorization: "Bearer owner-token" })
-    }));
+    const fetchMock = vi.mocked(globalThis.fetch);
+    const [url, options] = fetchMock.mock.calls[0] ?? [];
+    expect(String(url)).toContain("/api/admin/notification-provider");
+    expect(new Headers(options?.headers).get("Authorization")).toBe("Bearer owner-token");
   });
 
   it("saves the selected provider", async () => {
