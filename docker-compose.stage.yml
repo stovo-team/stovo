@@ -4,6 +4,12 @@
 networks:
   stovo-stage-net:
     driver: bridge
+  stage_proxy:
+    name: stovo-stage-members-proxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.32.0.0/24
 
 services:
   postgres:
@@ -113,9 +119,13 @@ services:
     container_name: stovo-stage-backend
     restart: unless-stopped
     networks:
-      - stovo-stage-net
+      stovo-stage-net: {}
+      stage_proxy:
+        aliases:
+          - backend-proxy
     environment:
       APP_ENV: staging
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.32.0.2/32}
       APP_URL: ${APP_URL:-http://10.29.106.221:9081}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-capacitor://localhost}
       NATIVE_CLIENT_ORIGINS: ${NATIVE_CLIENT_ORIGINS:-capacitor://localhost}
@@ -169,7 +179,9 @@ services:
     container_name: stovo-stage-caddy
     restart: unless-stopped
     networks:
-      - stovo-stage-net
+      stovo-stage-net: {}
+      stage_proxy:
+        ipv4_address: 172.32.0.2
     depends_on:
       - frontend
       - backend
@@ -178,7 +190,7 @@ services:
       - "127.0.0.1:8081:8000"
     environment:
       APP_DOMAIN: 10.29.106.221
-      ACTIVE_BACKEND: backend
+      ACTIVE_BACKEND: ${ACTIVE_BACKEND:-backend-proxy}
     volumes:
       - ./Caddyfile.internal:/etc/caddy/Caddyfile:ro
 

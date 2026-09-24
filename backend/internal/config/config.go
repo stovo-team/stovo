@@ -21,6 +21,8 @@ type Config struct {
 	// CORSAllowedOrigins contains additional exact browser origins, for
 	// example the Capacitor WebView origin. AppURL is always allowed too.
 	CORSAllowedOrigins []string
+	// TrustedProxyCIDRs limits which TCP peers may supply X-Forwarded-For.
+	TrustedProxyCIDRs []string
 	// NativeClientOrigins controls the exceptional clients that receive a raw
 	// refresh token response. Browser origins always receive only an HttpOnly
 	// refresh cookie.
@@ -161,6 +163,7 @@ func Load() (Config, error) {
 		ServerID:                     strings.TrimSpace(os.Getenv("SERVER_ID")),
 		AppURL:                       trimTrailingSlash(getenv("APP_URL", "http://localhost:8000")),
 		CORSAllowedOrigins:           splitCSV(os.Getenv("CORS_ALLOWED_ORIGINS")),
+		TrustedProxyCIDRs:            splitCSV(getenv("TRUSTED_PROXY_CIDRS", "172.30.0.2/32")),
 		NativeClientOrigins:          splitCSV(getenv("NATIVE_CLIENT_ORIGINS", "capacitor://localhost")),
 		APIURL:                       trimTrailingSlash(getenv("API_URL", "http://localhost:8000")),
 		FrontendOrigin:               trimTrailingSlash(getenv("FRONTEND_ORIGIN", "http://frontend:5173")),

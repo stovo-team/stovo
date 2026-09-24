@@ -23202,6 +23202,105 @@ button.chat-info-title-edit:active:not(:disabled) {
   display: block;
 }
 
+.admin-member-context {
+  position: relative;
+}
+
+.admin-page .admin-member-context-trigger {
+  width: 36px;
+  min-width: 36px;
+  padding: 0 0 5px;
+  border: 1px solid #343a44;
+  background: #171a20;
+  color: #e9edf3;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.admin-member-context-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 190px;
+  padding: 5px;
+  border: 1px solid #343a44;
+  border-radius: 12px;
+  background: #1a1d23;
+  box-shadow: 0 12px 32px #0009;
+}
+
+.admin-page .admin-member-context-menu button {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #f2f4f7;
+  text-align: left;
+}
+
+.admin-page .admin-member-context-menu button:hover,
+.admin-page .admin-member-context-menu button:focus-visible {
+  background: #ffffff12;
+}
+
+.admin-member-dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #000a;
+}
+
+.admin-member-dialog {
+  width: min(100%, 460px);
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid #343a44;
+  border-radius: 18px;
+  background: #171a20;
+  color: #f2f4f7;
+  box-shadow: 0 24px 80px #000a;
+}
+
+.admin-member-dialog h2,
+.admin-member-dialog p {
+  margin: 0;
+}
+
+.admin-member-details {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.admin-member-details > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-member-details dt {
+  color: #a8b0bb;
+}
+
+.admin-member-details dd {
+  margin: 0;
+  text-align: right;
+}
+
+.admin-member-confirm-ip {
+  padding: 12px;
+  border-radius: 10px;
+  background: #0c0e12;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
 .admin-member-avatar {
   width: 36px;
   height: 36px;

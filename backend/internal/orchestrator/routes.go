@@ -16,6 +16,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
+	networktypes "github.com/docker/docker/api/types/network"
 	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -502,6 +503,9 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 		}
 
 		if !needsRecreate {
+			if err := o.attachProxyNetwork(ctx, existing.ID, slug); err != nil {
+				return fmt.Errorf("attach trusted proxy network: %w", err)
+			}
 			if existing.State != "running" {
 				return o.dockerClient.ContainerStart(ctx, existing.ID, container.StartOptions{})
 			}
@@ -517,11 +521,44 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 	if err != nil {
 		return err
 	}
+	if err := o.attachProxyNetwork(ctx, resp.ID, slug); err != nil {
+		_ = o.dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+		return fmt.Errorf("attach trusted proxy network: %w", err)
+	}
 	if err := o.dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return err
 	}
 	log.Printf("[orchestrator] Started container %s on network %s for server %s", resp.ID, netName, slug)
 	return nil
+}
+
+func proxyEndpointSettings(slug string) *networktypes.EndpointSettings {
+	return &networktypes.EndpointSettings{Aliases: []string{fmt.Sprintf("stovo-backend-%s-proxy", slug)}}
+}
+
+func (o *Orchestrator) attachProxyNetwork(ctx context.Context, containerID, slug string) error {
+	networkName := strings.TrimSpace(os.Getenv("TRUSTED_PROXY_NETWORK_NAME"))
+	if networkName == "" {
+		return nil
+	}
+	inspect, err := o.dockerClient.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return err
+	}
+	alias := fmt.Sprintf("stovo-backend-%s-proxy", slug)
+	if inspect.NetworkSettings != nil {
+		if endpoint, ok := inspect.NetworkSettings.Networks[networkName]; ok && endpoint != nil {
+			for _, existingAlias := range endpoint.Aliases {
+				if existingAlias == alias {
+					return nil
+				}
+			}
+			if err := o.dockerClient.NetworkDisconnect(ctx, networkName, containerID, true); err != nil {
+				return err
+			}
+		}
+	}
+	return o.dockerClient.NetworkConnect(ctx, networkName, containerID, proxyEndpointSettings(slug))
 }
 
 // backendContainerEnv builds the environment required by a tenant backend.
@@ -587,6 +624,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("LIVEKIT_API_KEY=%s", get("LIVEKIT_API_KEY", "")),
 		fmt.Sprintf("LIVEKIT_API_SECRET=%s", get("LIVEKIT_API_SECRET", "")),
 		fmt.Sprintf("NAV_TABS=%s", navTabs),
+		fmt.Sprintf("TRUSTED_PROXY_CIDRS=%s", get("TRUSTED_PROXY_CIDRS", "172.33.0.2/32")),
 	}
 }
 

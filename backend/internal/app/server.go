@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -46,6 +47,8 @@ type Server struct {
 	canvasDB               *sql.DB
 	guestDB                *sql.DB
 	sqlDB                  *sql.DB
+	memberIPs              memberIPStore
+	memberIPMu             sync.RWMutex
 	databaseHealth         ports.HealthChecker
 	persistence            io.Closer
 	redis                  io.Closer
@@ -211,6 +214,7 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 		app.canvasDB = db
 		app.guestDB = db
 		app.sqlDB = db
+		app.memberIPs = sqlMemberIPStore{db: db}
 	}
 	// Audio capture and post-processing workers live in this process. After a
 	// deploy they cannot safely resume an old recording, but its active row
@@ -230,6 +234,8 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 	app.configureSockets()
 	app.tunnel.ConfigureLocalTunnelHealth(app.validatePublicBackendURL, 5*time.Second, 3)
 	app.startBrokerConsumers()
+	app.startMemberIPBanConsumer()
+	app.startMemberIPBanSweep()
 	app.startOutboxDispatcher()
 	app.startFileValidationWorker()
 	app.restoreCallSessions(context.Background())
@@ -357,6 +363,12 @@ func (s *Server) currentUser(r *http.Request) (userPublic, error) {
 	user, err := s.getUserByID(claims.UserID)
 	if err != nil || !user.IsActive {
 		return userPublic{}, errUnauthorized
+	}
+	if !isMemberIPRecoveryRequest(r) {
+		banned, err := s.isFamilyIPBanned(r.Context(), user.FamilyID, s.getClientIP(r))
+		if err != nil || banned {
+			return userPublic{}, errUnauthorized
+		}
 	}
 	return user, nil
 }
@@ -542,14 +554,51 @@ func (s *Server) getChatType(chatID string) (*string, error) {
 	return &chatType, nil
 }
 
+const socketClientIPHeader = "X-Stovo-Client-IP"
+
 func (s *Server) getClientIP(r *http.Request) string {
-	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
-		return strings.Split(forwarded, ",")[0]
+	remoteHost := r.RemoteAddr
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		remoteHost = host
 	}
-	if host, _, found := strings.Cut(r.RemoteAddr, ":"); found {
-		return host
+	remoteIP := net.ParseIP(strings.Trim(remoteHost, "[]"))
+	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" && s.isTrustedProxy(remoteIP) {
+		candidate := strings.TrimSpace(strings.Split(forwarded, ",")[0])
+		if parsed := net.ParseIP(candidate); parsed != nil {
+			return parsed.String()
+		}
+		return "invalid"
 	}
-	return r.RemoteAddr
+	if remoteIP != nil {
+		return remoteIP.String()
+	}
+	return strings.Trim(remoteHost, "[]")
+}
+
+func (s *Server) isTrustedProxy(remoteIP net.IP) bool {
+	if remoteIP == nil {
+		return false
+	}
+	for _, rawCIDR := range s.cfg.TrustedProxyCIDRs {
+		_, network, err := net.ParseCIDR(strings.TrimSpace(rawCIDR))
+		if err == nil && network.Contains(remoteIP) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Server) socketHTTPHandler() http.Handler {
+	return socketClientIPMiddleware(s.sockets.HttpHandler(), s.getClientIP)
+}
+
+func socketClientIPMiddleware(next http.Handler, getClientIP func(*http.Request) string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		request := r.Clone(r.Context())
+		request.Header = r.Header.Clone()
+		request.Header.Set(socketClientIPHeader, getClientIP(r))
+		next.ServeHTTP(w, request)
+	})
 }
 
 func isMissing(err error) bool {

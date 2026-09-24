@@ -11,6 +11,7 @@ x-backend: &backend
     - 1.1.1.1
     - 8.8.8.8
   environment:
+    TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.30.0.2/32}
     GROQ_API_KEY: ${GROQ_API_KEY:-}
     GROQ_BASE_URL: ${GROQ_BASE_URL:-}
     AI_CALL_TRANSCRIPTION_ENABLED: ${AI_CALL_TRANSCRIPTION_ENABLED:-true}
@@ -79,6 +80,9 @@ x-backend: &backend
     LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-secret}
   expose:
     - "8000"
+  networks:
+    default: {}
+    member_proxy: {}
   volumes:
     # Local storage remains supported for existing installations that have
     # not yet migrated their uploads to MinIO.
@@ -230,6 +234,11 @@ services:
   backend-blue:
     <<: *backend
     restart: unless-stopped
+    networks:
+      default: {}
+      member_proxy:
+        aliases:
+          - backend-blue-proxy
 
   # Inactive color for zero-downtime deploy cutovers. Opt-in via profile so a
   # plain `docker compose up` only runs backend-blue. Deploy starts it explicitly
@@ -237,6 +246,11 @@ services:
   backend-green:
     <<: *backend
     restart: unless-stopped
+    networks:
+      default: {}
+      member_proxy:
+        aliases:
+          - backend-green-proxy
     profiles:
       - bluegreen
 
@@ -267,6 +281,10 @@ services:
     depends_on:
       - frontend
       - backend-blue
+    networks:
+      default: {}
+      member_proxy:
+        ipv4_address: 172.30.0.2
     ports:
       - "80:80"
       - "443:443"
@@ -274,7 +292,7 @@ services:
       APP_DOMAIN: ${APP_DOMAIN:-localhost}
       # ACTIVE_BACKEND selects which color Caddy proxies for /api and /socket.io.
       ACTIVE_BACKEND: ${ACTIVE_BACKEND:-backend-blue}
-      BACKEND_UPSTREAMS: ${BACKEND_UPSTREAMS:-${ACTIVE_BACKEND:-backend-blue}:8000}
+      BACKEND_UPSTREAMS: ${BACKEND_UPSTREAMS:-${ACTIVE_BACKEND:-backend-blue}-proxy:8000}
     healthcheck:
       # Caddy's localhost-only admin endpoint proves its running process is
       # responsive; the scheduled HTTPS watchdog also verifies its public TLS
@@ -353,3 +371,11 @@ volumes:
   ntfy-cache:
   ntfy-auth:
   minio-data:
+
+networks:
+  member_proxy:
+    name: stovo-members-proxy
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
