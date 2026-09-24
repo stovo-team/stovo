@@ -437,14 +437,20 @@ describe("document attachment cards in chat", () => {
 
   it("keeps the outgoing bubble snug to its document card on narrow screens instead of leaving a wide right gutter", () => {
     const documentBubble = rule(".message-bubble:has(.document-preview-card)");
+    const documentCard = rule(".document-preview-card");
     const messageDocumentCard = rule(".message-bubble:has(.document-preview-card) .document-preview-card");
+    const messageDocumentAttachments = rule(".message-bubble:has(.document-preview-card) .message-attachments");
+    const messageDocumentAttachment = rule(".message-bubble:has(.document-preview-card) .message-attachments > div");
     const compactDocumentBubble = rule(":root[data-density=\"compact\"] .message-bubble:has(.document-preview-card)");
 
     // Match the landscape video preview width while keeping the card within
     // its message bubble and leaving only the small visual inset.
     expect(documentBubble).toContain("max-width: min(560px, calc(100vw - 48px));");
     expect(documentBubble).toContain("width: min(560px, calc(100vw - 48px));");
+    expect(documentCard).toContain("width: 100%;");
     expect(messageDocumentCard).toContain("max-width: 100%;");
+    expect(messageDocumentAttachments).toContain("width: 100%;");
+    expect(messageDocumentAttachment).toContain("width: 100%;");
     expect(documentBubble).toContain("padding-inline: 6px;");
 
     // Compact density has a later, more-specific generic bubble padding rule.
