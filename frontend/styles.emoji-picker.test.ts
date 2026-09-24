@@ -155,7 +155,7 @@ describe("message context menu glass treatment", () => {
   });
 
   it("shares the surface across the emoji picker and attachment file menu", () => {
-    expect(styles).toContain("--chat-popup-surface: rgba(80, 84, 92, 0.8);");
+    expect(styles).toContain("--chat-popup-surface: rgba(80, 84, 92, 0.2);");
     expect(rule(".emoji-picker")).toContain("background: var(--chat-popup-surface);");
     expect(rule(".emoji-picker")).toContain("border: 0;");
     const webEmojiPicker = lastRule(':root[data-platform="web"] .emoji-picker');
