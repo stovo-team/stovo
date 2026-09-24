@@ -44,7 +44,7 @@ func newRouter(s *Server) http.Handler {
 		CORSAllowedOrigins: s.cfg.CORSAllowedOrigins,
 		RefreshCookieName:  s.cfg.RefreshCookieName,
 		Logger:             s.logger,
-		Socket:             s.sockets.HttpHandler(),
+		Socket:             s.socketHTTPHandler(),
 		Calls:              s.callRoutes(),
 		GuestMeetings:      s.guestMeetingRoutes(),
 		Core: httptransport.CoreRoutes{
@@ -145,6 +145,13 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 				if err != nil || !verifyPassword(password, passwordHash) || !user.IsActive {
 					return nil, http.StatusUnauthorized, "Invalid credentials"
 				}
+				banned, err := s.isFamilyIPBanned(ctx, user.FamilyID, clientIP)
+				if err != nil {
+					return nil, http.StatusInternalServerError, "Could not verify sign-in"
+				}
+				if banned {
+					return nil, http.StatusUnauthorized, "Invalid credentials"
+				}
 				token, tokenHash, expiresAt, err := s.issueRefreshToken(user.ID)
 				if err != nil {
 					return nil, http.StatusInternalServerError, "Could not create session"
@@ -195,6 +202,13 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 			Verify: func(ctx context.Context, username, code, clientIP string) (any, int, string) {
 				user, _, err := s.getUserForLogin(ctx, username)
 				if err != nil || !user.IsActive {
+					return nil, http.StatusUnauthorized, "Invalid verification code"
+				}
+				banned, err := s.isFamilyIPBanned(ctx, user.FamilyID, clientIP)
+				if err != nil {
+					return nil, http.StatusInternalServerError, "Could not verify sign-in"
+				}
+				if banned {
 					return nil, http.StatusUnauthorized, "Invalid verification code"
 				}
 				stored, err := s.cache.Get(ctx, deviceLoginCacheKey(user.ID))
@@ -460,11 +474,87 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 				if err != nil || target.FamilyID != user.FamilyID || !target.IsActive {
 					return http.StatusNotFound, "Member not found", fmt.Errorf("member not found")
 				}
+				if target.Role == ownerRole {
+					return http.StatusForbidden, "The server owner cannot be removed", errForbidden
+				}
 				if err := s.familyMembership.Remove(ctx, target.ID, nowString()); err != nil {
 					return http.StatusInternalServerError, "Could not remove member", err
 				}
 				return 0, "", nil
 			}}.RemoveMember(w, r)
+		}),
+		GetMemberAdminDetails: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			httptransport.FamilyMemberHandler{AdminDetails: func(ctx context.Context, targetID string) (any, int, string, error) {
+				target, err := s.getUserByID(targetID)
+				if err != nil {
+					return nil, http.StatusNotFound, "Member not found", errNotFound
+				}
+				if err = authorizeMemberSafety(user, target, true); err != nil {
+					if errors.Is(err, errNotFound) {
+						return nil, http.StatusNotFound, "Member not found", err
+					}
+					return nil, http.StatusForbidden, "Permission denied", err
+				}
+				details, err := s.loadMemberAdminDetails(ctx, target)
+				if err != nil {
+					return nil, http.StatusInternalServerError, "Could not load member details", err
+				}
+				// Inspection is allowed, but never reveal IP information for a
+				// self or owner row: those targets cannot be banned here.
+				details = redactMemberIPDetails(user, target, details)
+				return details, 0, "", nil
+			}}.GetAdminDetails(w, r)
+		}),
+		BanMemberIP: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			httptransport.FamilyMemberHandler{BanIP: func(ctx context.Context, targetID, rawIP string) (int, string, error) {
+				target, err := s.getUserByID(targetID)
+				if err != nil {
+					return http.StatusNotFound, "Member not found", errNotFound
+				}
+				if err = authorizeMemberSafety(user, target, false); err != nil {
+					if errors.Is(err, errNotFound) {
+						return http.StatusNotFound, "Member not found", err
+					}
+					return http.StatusForbidden, "You cannot block your own IP or manage the server owner", err
+				}
+				ip, err := s.ensureMemberIPCandidate(ctx, target.ID, rawIP)
+				if err != nil {
+					return http.StatusUnprocessableEntity, "Invalid or unavailable member IP", err
+				}
+				err = s.banMemberIPAndDisconnect(ctx, user.FamilyID, target.ID, ip, user.ID)
+				if err != nil {
+					if errors.Is(err, errMemberIPAlreadyBanned) {
+						return http.StatusConflict, "This exact IP is already blocked for this family", err
+					}
+					if errors.Is(err, errMemberIPBanPublish) {
+						return http.StatusServiceUnavailable, "IP ban was saved, but remote sessions may remain connected. Retry to revoke them.", err
+					}
+					return http.StatusInternalServerError, "Could not block IP address", err
+				}
+				return 0, "", nil
+			}}.BanMemberIP(w, r)
+		}),
+		UnbanMemberIP: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			httptransport.FamilyMemberHandler{UnbanIP: func(ctx context.Context, targetID string) (int, string, error) {
+				target, err := s.getUserByID(targetID)
+				if err != nil {
+					return http.StatusNotFound, "Member not found", errNotFound
+				}
+				if err = authorizeMemberSafety(user, target, false); err != nil {
+					if errors.Is(err, errNotFound) {
+						return http.StatusNotFound, "Member not found", err
+					}
+					return http.StatusForbidden, "Permission denied", err
+				}
+				removed, err := s.memberIPs.Unban(ctx, user.FamilyID, target.ID)
+				if err != nil {
+					return http.StatusInternalServerError, "Could not lift IP block", err
+				}
+				if !removed {
+					return http.StatusNotFound, "No member IP block is available", errNotFound
+				}
+				return 0, "", nil
+			}}.UnbanMemberIP(w, r)
 		}),
 		GetPlans: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			plans.HandleGetPlans(w, r, httptransport.PlanActor{ID: user.ID, FamilyID: user.FamilyID, Role: user.Role})
@@ -493,6 +583,9 @@ func (s *Server) inviteRoutes() httptransport.InviteRoutes {
 			invite, family, err := s.findInviteByToken(ctx, token)
 			if err != nil {
 				return nil, http.StatusNotFound, "Invite not found", err
+			}
+			if err := s.rejectBannedInviteIP(ctx, family.ID, clientIP); err != nil {
+				return nil, http.StatusUnauthorized, "Invite not found", err
 			}
 			defaults, err := s.familyDefaults.Get(ctx, family.ID)
 			if err != nil {

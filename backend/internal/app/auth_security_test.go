@@ -11,6 +11,38 @@ import (
 	httptransport "stovo-messenger/backend/internal/transport/http"
 )
 
+func TestGetClientIPTrustsForwardingOnlyFromPrivateProxyPeers(t *testing.T) {
+	server := &Server{cfg: config.Config{TrustedProxyCIDRs: []string{"172.30.0.2/32", "127.0.0.1/32", "::1/128"}}}
+	for _, test := range []struct{ name, remote, forwarded, want string }{
+		{name: "public peer cannot spoof forwarded IP", remote: "203.0.113.8:8000", forwarded: "198.51.100.9", want: "203.0.113.8"},
+		{name: "explicit reverse proxy forwards client IP", remote: "172.30.0.2:8000", forwarded: "198.51.100.9, 172.30.0.1", want: "198.51.100.9"},
+		{name: "untrusted sibling container cannot spoof forwarded IP", remote: "172.19.0.4:8000", forwarded: "198.51.100.9", want: "172.19.0.4"},
+		{name: "IPv6 remote address", remote: "[2001:db8::4]:8000", want: "2001:db8::4"},
+		{name: "IPv6 client forwarded by local proxy", remote: "[::1]:8000", forwarded: "2001:db8::9", want: "2001:db8::9"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			r := httptest.NewRequest(http.MethodGet, "/", nil)
+			r.RemoteAddr = test.remote
+			r.Header.Set("X-Forwarded-For", test.forwarded)
+			if got := server.getClientIP(r); got != test.want {
+				t.Fatalf("getClientIP() = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestSocketClientIPMiddlewareOverwritesClientSuppliedIPHeader(t *testing.T) {
+	var got string
+	next := http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) { got = r.Header.Get(socketClientIPHeader) })
+	handler := socketClientIPMiddleware(next, func(*http.Request) string { return "198.51.100.9" })
+	request := httptest.NewRequest(http.MethodGet, "/socket.io/", nil)
+	request.Header.Set(socketClientIPHeader, "192.0.2.99")
+	handler.ServeHTTP(httptest.NewRecorder(), request)
+	if got != "198.51.100.9" {
+		t.Fatalf("stamped socket client IP = %q, want trusted resolver result", got)
+	}
+}
+
 func TestWriteAuthSuccessKeepsRefreshTokenOutOfBrowserJSON(t *testing.T) {
 	server := &Server{cfg: config.Config{
 		RefreshCookieName:   "refresh",

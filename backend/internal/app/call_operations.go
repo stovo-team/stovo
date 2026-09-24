@@ -14,9 +14,9 @@ import (
 	"stovo-messenger/backend/internal/cache"
 	"stovo-messenger/backend/internal/domain"
 	featurecalls "stovo-messenger/backend/internal/features/calls"
+	"stovo-messenger/backend/internal/ports"
 	"stovo-messenger/backend/internal/runtime"
 	workruntime "stovo-messenger/backend/internal/runtime"
-	"stovo-messenger/backend/internal/ports"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	realtimetransport "stovo-messenger/backend/internal/transport/realtime"
 
@@ -26,6 +26,7 @@ import (
 
 const maxMeshParticipants = 4
 const brokerChannelMessages = "events:messages"
+const brokerChannelMemberIPBans = "events:member-ip-bans"
 
 type callState = runtime.CallState
 
@@ -128,52 +129,55 @@ func (s *Server) configureSockets() {
 				_ = socket.Disconnect()
 				return
 			}
-
-			s.sessions.Register(user, socket)
-			if err := cache.NewPresenceService(s.cache).MarkOnline(context.Background(), user.ID, 60); err != nil {
-				s.logger.Warnf("realtime", "presence online update failed user_id=%s error=%v", user.ID, err)
-			}
-			socket.Join("user:" + user.ID)
-
-			chats, err := s.listChats(user)
-			if err == nil {
-				for _, chat := range chats {
-					socket.Join("chat:" + chat.ID)
+			clientIP := socket.Handshake.Headers.Get(socketClientIPHeader)
+			if err := s.withSocketAdmission(context.Background(), user, socket, clientIP, func() {
+				if err := cache.NewPresenceService(s.cache).MarkOnline(context.Background(), user.ID, 60); err != nil {
+					s.logger.Warnf("realtime", "presence online update failed user_id=%s error=%v", user.ID, err)
 				}
-			}
+				socket.Join("user:" + user.ID)
 
-			if ringing := s.getRingingSessionForUser(user.ID); ringing != nil {
-				payloadMap := ringing.PublicPayload()
-				s.logger.Infof("realtime.call", "call:ringing re-emitted on reconnect user_id=%s chat_id=%s socket_id=%s", user.ID, ringing.ChatID, socket.Id)
-				_ = socket.Emit("call:ringing", payloadMap)
-			} else if active := s.getActiveCallSessionForUser(user.ID); active != nil {
-				payloadMap := active.PublicPayload()
-				s.logger.Infof("realtime.call", "call:sync re-emitted on reconnect user_id=%s chat_id=%s state=%s", user.ID, active.ChatID, active.State)
-				_ = socket.Emit("call:sync", payloadMap)
-			}
-
-			go func() {
-				events := s.drainPendingEvents(context.Background(), user.ID)
-				for _, ev := range events {
-					if err := socket.Emit(ev.Event, ev.Payload); err != nil {
-						s.logger.Warnf("realtime", "replay event failed user_id=%s event=%s: %v", user.ID, ev.Event, err)
+				chats, err := s.listChats(user)
+				if err == nil {
+					for _, chat := range chats {
+						socket.Join("chat:" + chat.ID)
 					}
 				}
-				_ = socket.Emit("sync:needed", map[string]any{"ts": time.Now().UTC().Format(time.RFC3339)})
-			}()
 
-			realtimetransport.RegisterCoreEvents(socket, realtimetransport.CoreEventHandlers{
-				Disconnect:  func(_ *socketio.EventPayload) { s.onSocketDisconnect(socket, user) },
-				HealthPing:  func(ev *socketio.EventPayload) { s.onSocketHealthPing(socket, ev) },
-				AppState:    func(ev *socketio.EventPayload) { s.onSocketAppState(socket, user, ev) },
-				MessageSend: func(ev *socketio.EventPayload) { s.onSocketMessageSend(socket, user, ev) },
-				MessageRead: func(ev *socketio.EventPayload) { s.onSocketMessageRead(socket, user, ev) },
-				TypingStart: func(ev *socketio.EventPayload) { s.onSocketTyping(socket, user, ev, true) },
-				TypingStop:  func(ev *socketio.EventPayload) { s.onSocketTyping(socket, user, ev, false) },
-			})
-			s.registerCallSocketHandlers(socket, user)
-			s.registerCanvasSocketHandlers(socket, user)
-			s.registerChecklistSocketHandlers(socket, user)
+				if ringing := s.getRingingSessionForUser(user.ID); ringing != nil {
+					payloadMap := ringing.PublicPayload()
+					s.logger.Infof("realtime.call", "call:ringing re-emitted on reconnect user_id=%s chat_id=%s socket_id=%s", user.ID, ringing.ChatID, socket.Id)
+					_ = socket.Emit("call:ringing", payloadMap)
+				} else if active := s.getActiveCallSessionForUser(user.ID); active != nil {
+					payloadMap := active.PublicPayload()
+					s.logger.Infof("realtime.call", "call:sync re-emitted on reconnect user_id=%s chat_id=%s state=%s", user.ID, active.ChatID, active.State)
+					_ = socket.Emit("call:sync", payloadMap)
+				}
+
+				go func() {
+					events := s.drainPendingEvents(context.Background(), user.ID)
+					for _, ev := range events {
+						if err := socket.Emit(ev.Event, ev.Payload); err != nil {
+							s.logger.Warnf("realtime", "replay event failed user_id=%s event=%s: %v", user.ID, ev.Event, err)
+						}
+					}
+					_ = socket.Emit("sync:needed", map[string]any{"ts": time.Now().UTC().Format(time.RFC3339)})
+				}()
+
+				realtimetransport.RegisterCoreEvents(socket, realtimetransport.CoreEventHandlers{
+					Disconnect:  func(_ *socketio.EventPayload) { s.onSocketDisconnect(socket, user) },
+					HealthPing:  func(ev *socketio.EventPayload) { s.onSocketHealthPing(socket, ev) },
+					AppState:    func(ev *socketio.EventPayload) { s.onSocketAppState(socket, user, ev) },
+					MessageSend: func(ev *socketio.EventPayload) { s.onSocketMessageSend(socket, user, ev) },
+					MessageRead: func(ev *socketio.EventPayload) { s.onSocketMessageRead(socket, user, ev) },
+					TypingStart: func(ev *socketio.EventPayload) { s.onSocketTyping(socket, user, ev, true) },
+					TypingStop:  func(ev *socketio.EventPayload) { s.onSocketTyping(socket, user, ev, false) },
+				})
+				s.registerCallSocketHandlers(socket, user)
+				s.registerCanvasSocketHandlers(socket, user)
+				s.registerChecklistSocketHandlers(socket, user)
+			}); err != nil {
+				return
+			}
 		},
 	})
 }
@@ -323,6 +327,45 @@ func (s *Server) startBrokerConsumers() {
 			s.logger.Warnf("realtime", "broker subscribe failed channel=%s error=%v", brokerChannelMessages, err)
 		})
 	})
+}
+
+func (s *Server) startMemberIPBanConsumer() {
+	s.lifecycle.Go(func(ctx context.Context) {
+		workruntime.RunBrokerSubscription(ctx, s.broker, brokerChannelMemberIPBans, s.handleMemberIPBanEvent, 800*time.Millisecond, func(err error) {
+			s.logger.Warnf("member-ip", "broker subscribe failed channel=%s error=%v", brokerChannelMemberIPBans, err)
+		})
+	})
+}
+
+func (s *Server) handleMemberIPBanEvent(event ports.Event) error {
+	if event["type"] != "family_ip_banned" {
+		return nil
+	}
+	familyID, _ := event["family_id"].(string)
+	rawIP, _ := event["ip"].(string)
+	ip, ok := normalizeMemberBanIP(rawIP)
+	if strings.TrimSpace(familyID) == "" || !ok {
+		return nil
+	}
+	s.memberIPMu.Lock()
+	banned, err := s.isFamilyIPBanned(context.Background(), familyID, ip)
+	if err != nil {
+		// This trusted event is published only after the ban commit. Evict even
+		// when the database recheck is unavailable: Redis Pub/Sub is not durable,
+		// and returning an error would consume the event without replay. A racing
+		// unban during an outage may require clients to reconnect, which is safer
+		// than keeping a banned socket active.
+		if s.sessions != nil {
+			s.sessions.DisconnectFamilyIP(familyID, ip)
+		}
+		s.memberIPMu.Unlock()
+		return nil
+	}
+	if banned && s.sessions != nil {
+		s.sessions.DisconnectFamilyIP(familyID, ip)
+	}
+	s.memberIPMu.Unlock()
+	return nil
 }
 
 func (s *Server) registerCallSocketHandlers(socket *socketio.Socket, user userPublic) {

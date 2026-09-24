@@ -12,9 +12,44 @@ import (
 // callbacks are deliberately narrow: composition supplies use cases and this
 // inbound adapter owns decoding, status codes, and response serialization.
 type FamilyMemberHandler struct {
-	List   func(context.Context) (any, error)
-	Change func(context.Context, string, string) (any, int, string, error)
-	Remove func(context.Context, string) (int, string, error)
+	List         func(context.Context) (any, error)
+	Change       func(context.Context, string, string) (any, int, string, error)
+	Remove       func(context.Context, string) (int, string, error)
+	AdminDetails func(context.Context, string) (any, int, string, error)
+	BanIP        func(context.Context, string, string) (int, string, error)
+	UnbanIP      func(context.Context, string) (int, string, error)
+}
+
+func (h FamilyMemberHandler) GetAdminDetails(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	value, status, detail, err := h.AdminDetails(r.Context(), chi.URLParam(r, "userId"))
+	if err != nil {
+		writeFamilyMemberDetail(w, status, detail)
+		return
+	}
+	writeFamilyMemberJSON(w, stdhttp.StatusOK, value)
+}
+
+func (h FamilyMemberHandler) BanMemberIP(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	var payload struct {
+		IP string `json:"ip"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeFamilyMemberDetail(w, stdhttp.StatusUnprocessableEntity, "Invalid request body")
+		return
+	}
+	if status, detail, err := h.BanIP(r.Context(), chi.URLParam(r, "userId"), payload.IP); err != nil {
+		writeFamilyMemberDetail(w, status, detail)
+		return
+	}
+	w.WriteHeader(stdhttp.StatusNoContent)
+}
+
+func (h FamilyMemberHandler) UnbanMemberIP(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+	if status, detail, err := h.UnbanIP(r.Context(), chi.URLParam(r, "userId")); err != nil {
+		writeFamilyMemberDetail(w, status, detail)
+		return
+	}
+	w.WriteHeader(stdhttp.StatusNoContent)
 }
 
 func (h FamilyMemberHandler) ListMembers(w stdhttp.ResponseWriter, r *stdhttp.Request) {

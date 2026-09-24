@@ -74,6 +74,28 @@ func TestBackendContainerEnvIncludesNavTabsConfiguration(t *testing.T) {
 	}
 }
 
+func TestBackendContainerEnvUsesExplicitTrustedProxyCIDR(t *testing.T) {
+	env := backendContainerEnv("family", func(key, fallback string) string {
+		if key == "TRUSTED_PROXY_CIDRS" {
+			return "172.33.0.2/32"
+		}
+		return fallback
+	})
+	for _, value := range env {
+		if value == "TRUSTED_PROXY_CIDRS=172.33.0.2/32" {
+			return
+		}
+	}
+	t.Fatal("tenant backend did not receive the explicit Caddy proxy CIDR")
+}
+
+func TestProxyEndpointSettingsUsesUniqueCaddyAlias(t *testing.T) {
+	settings := proxyEndpointSettings("family-1")
+	if len(settings.Aliases) != 1 || settings.Aliases[0] != "stovo-backend-family-1-proxy" {
+		t.Fatalf("proxy endpoint aliases = %#v", settings.Aliases)
+	}
+}
+
 func TestBackendContainerEnvPrefersExternalDatabaseAndRedisURLs(t *testing.T) {
 	env := backendContainerEnv("acdcbca1", func(key, fallback string) string {
 		values := map[string]string{

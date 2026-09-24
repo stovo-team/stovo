@@ -8,7 +8,7 @@
 	@clusterApi path_regexp clusterApi ^/s/([a-zA-Z0-9_-]+)/api/(.*)$
 	handle @clusterApi {
 		rewrite * /api/{re.clusterApi.2}
-		reverse_proxy stovo-backend-{re.clusterApi.1}:8000 {
+		reverse_proxy stovo-backend-{re.clusterApi.1}-proxy:8000 {
 			header_up X-Forwarded-Prefix /s/{re.clusterApi.1}
 		}
 	}
@@ -16,7 +16,7 @@
 	@clusterSocket path_regexp clusterSocket ^/s/([a-zA-Z0-9_-]+)/socket.io/(.*)$
 	handle @clusterSocket {
 		rewrite * /socket.io/{re.clusterSocket.2}
-		reverse_proxy stovo-backend-{re.clusterSocket.1}:8000
+		reverse_proxy stovo-backend-{re.clusterSocket.1}-proxy:8000
 	}
 
 	# MCP connection URLs are cluster-scoped just like the API and Socket.IO.
@@ -24,11 +24,11 @@
 	@clusterMCP path_regexp clusterMCP ^/s/([a-zA-Z0-9_-]+)/mcp(.*)$
 	handle @clusterMCP {
 		rewrite * /mcp{re.clusterMCP.2}
-		reverse_proxy stovo-backend-{re.clusterMCP.1}:8000
+		reverse_proxy stovo-backend-{re.clusterMCP.1}-proxy:8000
 	}
 
 	handle /api/* {
-		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue:8000} {
+		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue-proxy:8000} {
 			lb_policy cookie lb_stovo
 			lb_retries 2
 			lb_try_duration 3s
@@ -36,7 +36,7 @@
 	}
 
 	handle /mcp* {
-		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue:8000} {
+		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue-proxy:8000} {
 			lb_policy cookie lb_stovo
 			lb_retries 2
 			lb_try_duration 3s
@@ -44,7 +44,7 @@
 	}
 
 	handle /socket.io* {
-		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue:8000} {
+		reverse_proxy {$BACKEND_UPSTREAMS:backend-blue-proxy:8000} {
 			lb_policy cookie lb_stovo
 			lb_retries 2
 			lb_try_duration 3s

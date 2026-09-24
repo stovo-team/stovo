@@ -1,4 +1,4 @@
-h1:5aItbAg9+2b9GWeYdToDPr7qCiXd5IGU65HQ0RdgA9I=
+h1:SM4iRnBQBwzLZ7+PpH4vZeka2v2wk9h066QwZ0KBGqI=
 20260804120000_baseline.sql h1:5amBpgQilfynYGKRhWWLRWS+esk62IjJoRFDaZh8M+g=
 20260804170000_add_mcp_connectors.sql h1:qjTSn8BaDRvV8bYJTZIWvZsxmz01O8EHyE2px4XR01o=
 20260804180000_add_mcp_connector_provider.sql h1:21cb0JxA/W0llo2Q4R5vuu2MIh5W7eGEKR1ZzgSL87Y=
@@ -32,3 +32,4 @@ h1:5aItbAg9+2b9GWeYdToDPr7qCiXd5IGU65HQ0RdgA9I=
 20260920100000_add_call_recordings.sql h1:HB1Sn2GdrCX8GX0MJYVag6EuvsGprCDDTsWy7iao5g4=
 20260924120000_add_server_settings.sql h1:xyCc4FqZr4lSZti+b8ef5YnHjp4VHsJoLPCc53W2SH8=
 20260924140000_split_push_device_tokens.sql h1:bK5Zxe8U/p82soxHd/ORacrODvbxLZvCXKWzWsLvb6k=
+20260924160000_add_family_ip_bans.sql h1:r8dV+WlLdHnm2ja1J4vLw0b2sO56W3ro7JnAopEzanQ=

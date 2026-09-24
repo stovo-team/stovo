@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { User, UserRole } from "../api/auth";
 import { ApiError, getClusterPrefix } from "../api/client";
-import { changeMemberRole, getServerRoles, removeMember, ServerRole } from "../api/family";
+import { banMemberIP, changeMemberRole, getMemberAdminDetails, getServerRoles, MemberAdminDetails, removeMember, ServerRole, unbanMemberIP } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
 import useFilePreviewUrl from "../hooks/useFilePreviewUrl";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
+import { formatMemberJoined, formatMemberLastSeen } from "./memberStats";
+import { trapDialogTab } from "./adminMemberDialog";
 
 const MEMBERS_PAGE_SIZE = 20;
 
@@ -15,17 +17,6 @@ function canManage(actor: User, target: User) {
   if (actor.role === "owner") return target.role !== "owner";
   if (actor.role === "admin") return target.role !== "owner";
   return false;
-}
-
-function formatLastSeen(value: string | null | undefined) {
-  if (!value) return "Unknown";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  const diffMs = Date.now() - date.getTime();
-  if (diffMs < 60_000) return "Active now";
-  if (diffMs < 3_600_000) return `${Math.floor(diffMs / 60_000)}m ago`;
-  if (diffMs < 86_400_000) return `${Math.floor(diffMs / 3_600_000)}h ago`;
-  return date.toLocaleDateString();
 }
 
 function initials(name: string) {
@@ -56,6 +47,16 @@ export default function AdminMembersPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [selectedMember, setSelectedMember] = useState<User | null>(null);
+  const [memberDetails, setMemberDetails] = useState<MemberAdminDetails | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [pendingIPAction, setPendingIPAction] = useState<"ban" | "unban" | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const detailsDialogRef = useRef<HTMLElement | null>(null);
+  const confirmDialogRef = useRef<HTMLElement | null>(null);
+  const detailsReturnFocusRef = useRef<HTMLElement | null>(null);
+  const confirmReturnFocusRef = useRef<HTMLElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const canViewAdmin = currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_members") === true;
   const prefix = getClusterPrefix();
@@ -118,6 +119,40 @@ export default function AdminMembersPage() {
     return () => observer.disconnect();
   }, [filteredMembers.length, hasMoreMembers, visibleMembers.length]);
 
+  useEffect(() => {
+    if (!openMenuId) return;
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenuId(null);
+    };
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) setOpenMenuId(null);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("pointerdown", closeOutside);
+    return () => {
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("pointerdown", closeOutside);
+    };
+  }, [openMenuId]);
+
+  useEffect(() => {
+    if (selectedMember && !isLoadingDetails) {
+      detailsDialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+    } else if (!selectedMember) {
+      detailsReturnFocusRef.current?.focus();
+      detailsReturnFocusRef.current = null;
+    }
+  }, [selectedMember, isLoadingDetails]);
+
+  useEffect(() => {
+    if (pendingIPAction) {
+      confirmDialogRef.current?.querySelector<HTMLElement>(".admin-member-confirm-primary")?.focus();
+    } else {
+      confirmReturnFocusRef.current?.focus();
+      confirmReturnFocusRef.current = null;
+    }
+  }, [pendingIPAction]);
+
   async function handleRoleChange(member: User, role: UserRole) {
     if (!accessToken) return;
     setError(null);
@@ -146,6 +181,61 @@ export default function AdminMembersPage() {
       await load();
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : "Could not remove member");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function openMemberDetails(member: User) {
+    detailsReturnFocusRef.current = Array.from(document.querySelectorAll<HTMLElement>("[aria-haspopup='menu']"))
+      .find((button) => button.getAttribute("aria-label") === `More actions for ${member.displayName}`) ?? null;
+    setOpenMenuId(null);
+    setSelectedMember(member);
+    setMemberDetails(null);
+    setIsLoadingDetails(true);
+    setError(null);
+    try {
+      if (!accessToken) throw new Error("Sign in again to manage members");
+      setMemberDetails(await getMemberAdminDetails(accessToken, member.id));
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not load member details");
+      setSelectedMember(null);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  }
+
+  function requestIPAction(action: "ban" | "unban") {
+    confirmReturnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPendingIPAction(action);
+  }
+
+  function handleDialogKeyDown(event: KeyboardEvent<HTMLElement>, confirmation = false) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (confirmation) setPendingIPAction(null);
+      else setSelectedMember(null);
+      return;
+    }
+    trapDialogTab(event);
+  }
+
+  async function confirmMemberIPAction() {
+    if (!accessToken || !selectedMember || !memberDetails || !pendingIPAction) return;
+    const candidateIP = memberDetails.candidateIp;
+    const bannedIP = memberDetails.bannedIp;
+    if (pendingIPAction === "ban" && !candidateIP) return;
+    if (pendingIPAction === "unban" && !bannedIP) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      if (pendingIPAction === "ban") await banMemberIP(accessToken, selectedMember.id, candidateIP!);
+      else await unbanMemberIP(accessToken, selectedMember.id);
+      setPendingIPAction(null);
+      setNotice(pendingIPAction === "ban" ? `An IP block is active for ${selectedMember.displayName}` : `Lifted the IP block for ${selectedMember.displayName}`);
+      await openMemberDetails(selectedMember);
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not update IP block");
     } finally {
       setIsSaving(false);
     }
@@ -198,7 +288,7 @@ export default function AdminMembersPage() {
                     <span className="admin-member-copy">
                       <strong>{member.displayName}</strong>
                       <small>
-                        @{member.username} · {formatLastSeen(member.lastSeenAt)}
+                        @{member.username} · {member.lastSeenVisibility === "nobody" ? "Last seen hidden" : `Last seen ${formatMemberLastSeen(member.lastSeenAt)}`}
                       </small>
                     </span>
                     <div className="admin-member-actions">
@@ -229,6 +319,26 @@ export default function AdminMembersPage() {
                           />
                         </svg>
                       </button>
+                      {canViewAdmin && (
+                        <div className="admin-member-context" ref={openMenuId === member.id ? menuRef : undefined}>
+                          <button
+                            type="button"
+                            className="admin-member-context-trigger"
+                            aria-haspopup="menu"
+                            aria-expanded={openMenuId === member.id}
+                            aria-label={`More actions for ${member.displayName}`}
+                            disabled={isSaving}
+                            onClick={() => setOpenMenuId((current) => current === member.id ? null : member.id)}
+                          >
+                            ⋯
+                          </button>
+                          {openMenuId === member.id && (
+                            <div className="admin-member-context-menu" role="menu" aria-label={`Actions for ${member.displayName}`}>
+                              <button type="button" role="menuitem" onClick={() => void openMemberDetails(member)}>Activity and safety</button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </article>
                 );
@@ -236,6 +346,39 @@ export default function AdminMembersPage() {
               {hasMoreMembers && <div ref={loadMoreRef} className="admin-member-list-sentinel" aria-hidden="true" />}
             </div>
           </section>
+        )}
+        {selectedMember && (
+          <div className="admin-member-dialog-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) { setSelectedMember(null); setPendingIPAction(null); } }}>
+            <section ref={detailsDialogRef} className="admin-member-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-member-dialog-title" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event)}>
+              <h2 id="admin-member-dialog-title">{selectedMember.displayName}: activity and safety</h2>
+              {isLoadingDetails && <p className="muted-text">Loading…</p>}
+              {memberDetails && (
+                <dl className="admin-member-details">
+                  <div><dt>Account</dt><dd>{memberDetails.isActive ? "Enabled" : "Disabled"}</dd></div>
+                  <div><dt>Presence</dt><dd>{memberDetails.isOnline ? "Online now" : "Offline"}</dd></div>
+                  <div><dt>Joined</dt><dd>{formatMemberJoined(memberDetails.joinedAt)}</dd></div>
+                  <div><dt>Last seen</dt><dd>{formatMemberLastSeen(memberDetails.lastSeenAt)}</dd></div>
+                  <div><dt>IP block</dt><dd>{memberDetails.candidateIpBanned ? "Blocked" : "Not blocked"}</dd></div>
+                </dl>
+              )}
+              {memberDetails && !isLoadingDetails && memberDetails.bannedIp && <button type="button" className="secondary-button" disabled={isSaving} onClick={() => requestIPAction("unban")}>Lift IP block</button>}
+              {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIp && !memberDetails.candidateIpBanned && <button type="button" className="danger-button" disabled={isSaving} onClick={() => requestIPAction("ban")}>Block this IP</button>}
+              {memberDetails && !isLoadingDetails && !memberDetails.bannedIp && memberDetails.candidateIpBanned && <p className="muted-text">This IP is already blocked for this family.</p>}
+              {memberDetails && !isLoadingDetails && !memberDetails.candidateIp && !memberDetails.bannedIp && <p className="muted-text">No valid sign-in IP is available for this member.</p>}
+              <button type="button" className="secondary-button" onClick={() => { setSelectedMember(null); setPendingIPAction(null); }}>Close</button>
+            </section>
+          </div>
+        )}
+        {pendingIPAction && selectedMember && memberDetails && (pendingIPAction === "ban" ? memberDetails.candidateIp : memberDetails.bannedIp) && (
+          <div className="admin-member-dialog-backdrop">
+            <section ref={confirmDialogRef} className="admin-member-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-ip-confirm-title" aria-describedby="admin-ip-confirm-description" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event, true)}>
+              <h2 id="admin-ip-confirm-title">{pendingIPAction === "ban" ? "Block this IP address?" : "Lift this IP block?"}</h2>
+              <p id="admin-ip-confirm-description">{pendingIPAction === "ban" ? "Sign-ins from this exact IP address will be blocked for all accounts in this family until you lift the block." : "Accounts in this family will be able to sign in from this IP address again."}</p>
+              <p className="admin-member-confirm-ip"><strong>{pendingIPAction === "ban" ? memberDetails.candidateIp : memberDetails.bannedIp}</strong></p>
+              <button type="button" className={`admin-member-confirm-primary ${pendingIPAction === "ban" ? "danger-button" : "primary-button"}`} disabled={isSaving} onClick={() => void confirmMemberIPAction()}>{isSaving ? "Saving…" : pendingIPAction === "ban" ? "Confirm block" : "Confirm lift"}</button>
+              <button type="button" className="secondary-button" disabled={isSaving} onClick={() => setPendingIPAction(null)}>Cancel</button>
+            </section>
+          </div>
         )}
       </section>
     </main>

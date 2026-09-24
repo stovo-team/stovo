@@ -215,6 +215,8 @@ The compose setup includes `backend-blue` and `backend-green`. By default, only 
 2. Caddy flips its upstream pointer (`ACTIVE_BACKEND`).
 3. The old container is gracefully stopped without dropping active client connections.
 
+If you override `BACKEND_UPSTREAMS` in `.env` or deployment configuration, use the proxy-only aliases (`backend-blue-proxy:8000` and/or `backend-green-proxy:8000`). The plain `backend-blue:8000` and `backend-green:8000` names resolve over the default network and bypass the trusted Caddy interface.
+
 ### Migrating Existing Local Uploads to S3/MinIO
 If upgrading from an earlier version that used local filesystem storage (`uploads/`), run the verified migration tool while uploads are idle:
 

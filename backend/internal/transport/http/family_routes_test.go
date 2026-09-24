@@ -20,6 +20,7 @@ func TestRegisterFamilyRoutesPreservesPathsMethodsAndParameters(t *testing.T) {
 		GetFamily: handler("get-family"), UpdateFamily: handler("update-family"), GetMembers: handler("get-members"),
 		ListRoles: handler("list-roles"), CreateRole: handler("create-role"), UpdateRole: handler("update-role"),
 		DeleteRole: handler("delete-role"), ChangeRole: handler("change-role"), RemoveMember: handler("remove-member"),
+		GetMemberAdminDetails: handler("member-admin-details"), BanMemberIP: handler("ban-member-ip"), UnbanMemberIP: handler("unban-member-ip"),
 		GetPlans: handler("get-plans"), CreatePlan: handler("create-plan"), RSVPToPlan: handler("rsvp"),
 	})
 
@@ -35,6 +36,9 @@ func TestRegisterFamilyRoutesPreservesPathsMethodsAndParameters(t *testing.T) {
 		{stdhttp.MethodDelete, "/api/family/roles/role-1", "delete-role"},
 		{stdhttp.MethodPatch, "/api/family/members/user-1/role", "change-role"},
 		{stdhttp.MethodDelete, "/api/family/members/user-1", "remove-member"},
+		{stdhttp.MethodGet, "/api/family/members/user-1/admin-details", "member-admin-details"},
+		{stdhttp.MethodPut, "/api/family/members/user-1/ip-ban", "ban-member-ip"},
+		{stdhttp.MethodDelete, "/api/family/members/user-1/ip-ban", "unban-member-ip"},
 		{stdhttp.MethodGet, "/api/plans", "get-plans"},
 		{stdhttp.MethodPost, "/api/plans", "create-plan"},
 		{stdhttp.MethodPost, "/api/plans/plan-1/rsvp", "rsvp"},

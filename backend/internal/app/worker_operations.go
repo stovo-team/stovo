@@ -20,12 +20,13 @@ import (
 )
 
 const (
-	jobsStreamName       = "stovo:jobs"
-	outboxDispatchBatch  = 32
-	outboxLeaseDuration  = 30 * time.Second
-	outboxDispatchPeriod = time.Second
-	fileValidationGroup  = "file-validation"
-	fileValidationBlock  = 5 * time.Second
+	jobsStreamName           = "stovo:jobs"
+	outboxDispatchBatch      = 32
+	outboxLeaseDuration      = 30 * time.Second
+	outboxDispatchPeriod     = time.Second
+	fileValidationGroup      = "file-validation"
+	fileValidationBlock      = 5 * time.Second
+	memberIPBanSweepInterval = 5 * time.Second
 
 	pendingEventTTL    = 5 * 60 // 300 seconds
 	pendingEventMaxLen = 50
@@ -77,6 +78,25 @@ func (s *Server) startFileValidationWorker() {
 				s.logger.Warnf("file-validation", "file validation worker error=%v", err)
 			},
 		})
+	})
+}
+
+// startMemberIPBanSweep recovers active sessions when this backend missed the
+// non-durable Redis Pub/Sub revocation event while it was disconnected.
+func (s *Server) startMemberIPBanSweep() {
+	s.lifecycle.Go(func(ctx context.Context) {
+		ticker := time.NewTicker(memberIPBanSweepInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := s.sweepBannedMemberIPSockets(ctx); err != nil {
+					s.logger.Warnf("member-ip", "active socket ban sweep failed error=%v", err)
+				}
+			}
+		}
 	})
 }
 
@@ -330,7 +350,9 @@ func (s *Server) drainPendingEvents(ctx context.Context, userID string) []pendin
 
 func (s *Server) startNtfyRetryWorker(ctx context.Context) {
 	workruntime.RunNtfyRetryWorker(ctx, s.ntfyRetryCh, workruntime.NtfyRetryWorkerOptions{
-		Deliver:   func(ctx context.Context, item workruntime.NtfyRetryItem) error { return s.publishToNtfy(ctx, item.Payload) },
+		Deliver: func(ctx context.Context, item workruntime.NtfyRetryItem) error {
+			return s.publishToNtfy(ctx, item.Payload)
+		},
 		Succeeded: func(item workruntime.NtfyRetryItem, attempt int) {
 			s.logger.Infof("delivery", "ntfy retry succeeded user_id=%s attempt=%d", item.UserID, attempt)
 		},

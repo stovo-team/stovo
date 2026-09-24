@@ -10,18 +10,21 @@ import (
 // plan endpoints. Authentication and request policy are composed by the
 // caller, so this transport package remains independent of application code.
 type FamilyRoutes struct {
-	GetFamily    stdhttp.Handler
-	UpdateFamily stdhttp.Handler
-	GetMembers   stdhttp.Handler
-	ListRoles    stdhttp.Handler
-	CreateRole   stdhttp.Handler
-	UpdateRole   stdhttp.Handler
-	DeleteRole   stdhttp.Handler
-	ChangeRole   stdhttp.Handler
-	RemoveMember stdhttp.Handler
-	GetPlans     stdhttp.Handler
-	CreatePlan   stdhttp.Handler
-	RSVPToPlan   stdhttp.Handler
+	GetFamily             stdhttp.Handler
+	UpdateFamily          stdhttp.Handler
+	GetMembers            stdhttp.Handler
+	ListRoles             stdhttp.Handler
+	CreateRole            stdhttp.Handler
+	UpdateRole            stdhttp.Handler
+	DeleteRole            stdhttp.Handler
+	ChangeRole            stdhttp.Handler
+	RemoveMember          stdhttp.Handler
+	GetMemberAdminDetails stdhttp.Handler
+	BanMemberIP           stdhttp.Handler
+	UnbanMemberIP         stdhttp.Handler
+	GetPlans              stdhttp.Handler
+	CreatePlan            stdhttp.Handler
+	RSVPToPlan            stdhttp.Handler
 }
 
 // RegisterFamilyRoutes installs the stable REST paths for family management
@@ -37,6 +40,9 @@ func RegisterFamilyRoutes(router chi.Router, routes FamilyRoutes) {
 	router.Method(stdhttp.MethodDelete, "/api/family/roles/{roleId}", routes.DeleteRole)
 	router.Method(stdhttp.MethodPatch, "/api/family/members/{userId}/role", routes.ChangeRole)
 	router.Method(stdhttp.MethodDelete, "/api/family/members/{userId}", routes.RemoveMember)
+	router.Method(stdhttp.MethodGet, "/api/family/members/{userId}/admin-details", routes.GetMemberAdminDetails)
+	router.Method(stdhttp.MethodPut, "/api/family/members/{userId}/ip-ban", routes.BanMemberIP)
+	router.Method(stdhttp.MethodDelete, "/api/family/members/{userId}/ip-ban", routes.UnbanMemberIP)
 	router.Method(stdhttp.MethodGet, "/api/plans", routes.GetPlans)
 	router.Method(stdhttp.MethodPost, "/api/plans", routes.CreatePlan)
 	router.Method(stdhttp.MethodPost, "/api/plans/{planId}/rsvp", routes.RSVPToPlan)

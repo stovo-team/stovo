@@ -232,6 +232,14 @@ func (s *Server) rotateRefreshToken(ctx context.Context, rawToken string, ip str
 	if err := identity.ValidateRefreshSession(token, time.Now()); errors.Is(err, identity.ErrInvalidSession) {
 		return userPublic{}, "", errUnauthorized
 	}
+	user, err := s.getUserByID(token.UserID)
+	if err != nil || !user.IsActive {
+		return userPublic{}, "", errUnauthorized
+	}
+	banned, err := s.isFamilyIPBanned(ctx, user.FamilyID, ip)
+	if err != nil || banned {
+		return userPublic{}, "", errUnauthorized
+	}
 
 	nextRaw, nextHash, nextExpires, err := s.issueRefreshToken(token.UserID)
 	if err != nil {
@@ -241,11 +249,6 @@ func (s *Server) rotateRefreshToken(ctx context.Context, rawToken string, ip str
 	createdAt := nowString()
 	if err := s.sessionWriter.RotateSession(ctx, identity.RotatedSession{OldTokenHash: hashed, New: identity.PersistedSession{ID: uuid.NewString(), UserID: token.UserID, TokenHash: nextHash, ExpiresAt: nextExpires, CreatedAt: createdAt, IPAddress: ip}, RevokedAt: createdAt}); err != nil {
 		return userPublic{}, "", err
-	}
-
-	user, err := s.getUserByID(token.UserID)
-	if err != nil || !user.IsActive {
-		return userPublic{}, "", errUnauthorized
 	}
 
 	return user, nextRaw, nil

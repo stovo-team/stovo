@@ -50,6 +50,17 @@ export interface ServerRole {
   memberCount: number;
 }
 
+export interface MemberAdminDetails {
+  id: string;
+  isActive: boolean;
+  isOnline: boolean;
+  joinedAt: string | null;
+  lastSeenAt: string | null;
+  candidateIp: string | null;
+  candidateIpBanned: boolean;
+  bannedIp: string | null;
+}
+
 export interface InviteResponse {
   inviteUrl: string;
   invite: {
@@ -115,6 +126,18 @@ export function removeMember(accessToken: string, userId: string) {
     method: "DELETE",
     accessToken
   });
+}
+
+export function getMemberAdminDetails(accessToken: string, userId: string) {
+  return apiRequest<MemberAdminDetails>(`/api/family/members/${encodeURIComponent(userId)}/admin-details`, { accessToken });
+}
+
+export function banMemberIP(accessToken: string, userId: string, ip: string) {
+  return apiRequest<void>(`/api/family/members/${encodeURIComponent(userId)}/ip-ban`, { method: "PUT", accessToken, body: { ip } });
+}
+
+export function unbanMemberIP(accessToken: string, userId: string) {
+  return apiRequest<void>(`/api/family/members/${encodeURIComponent(userId)}/ip-ban`, { method: "DELETE", accessToken });
 }
 
 export function createInvite(
