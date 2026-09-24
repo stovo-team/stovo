@@ -96,7 +96,7 @@ export default function AdminServerSettingsPage() {
           <label className="appearance-setting-row appearance-setting-row--disabled">
             <span className="settings-row-icon"><FileArchive size={18} aria-hidden="true" /></span>
             <span><strong>{strings.admin.serverSettings.fileCompression}</strong><small>{strings.admin.serverSettings.fileCompressionHelp}</small></span>
-            <select aria-label={strings.admin.serverSettings.fileCompression} value="optimize-size" disabled>
+            <select className="admin-defaults-control" aria-label={strings.admin.serverSettings.fileCompression} value="optimize-size" disabled>
               <option value="optimize-size">{strings.admin.serverSettings.optimizeSize}</option>
             </select>
             <span className="premium-feature-badge">{premium}</span>
@@ -104,7 +104,7 @@ export default function AdminServerSettingsPage() {
           <label className="appearance-setting-row appearance-setting-row--disabled">
             <span className="settings-row-icon"><MessageSquare size={18} aria-hidden="true" /></span>
             <span><strong>{strings.admin.serverSettings.messageRetention}</strong><small>{strings.admin.serverSettings.messageRetentionHelp}</small></span>
-            <select aria-label={strings.admin.serverSettings.messageRetention} value="never" disabled>
+            <select className="admin-defaults-control" aria-label={strings.admin.serverSettings.messageRetention} value="never" disabled>
               <option value="never">{strings.admin.serverSettings.never}</option>
             </select>
             <span className="premium-feature-badge">{premium}</span>
@@ -112,7 +112,7 @@ export default function AdminServerSettingsPage() {
           <label className="appearance-setting-row appearance-setting-row--disabled">
             <span className="settings-row-icon"><UserRoundX size={18} aria-hidden="true" /></span>
             <span><strong>{strings.admin.serverSettings.inactiveUserDeletion}</strong><small>{strings.admin.serverSettings.inactiveUserDeletionHelp}</small></span>
-            <select aria-label={strings.admin.serverSettings.inactiveUserDeletion} value="never" disabled>
+            <select className="admin-defaults-control" aria-label={strings.admin.serverSettings.inactiveUserDeletion} value="never" disabled>
               <option value="never">{strings.admin.serverSettings.never}</option>
             </select>
             <span className="premium-feature-badge">{premium}</span>

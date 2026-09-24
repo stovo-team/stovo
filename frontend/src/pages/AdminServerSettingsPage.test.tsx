@@ -109,6 +109,9 @@ describe("AdminServerSettingsPage", () => {
     expect(compression.value).toBe("optimize-size");
     expect(messageTtl.value).toBe("never");
     expect(inactiveUsers.value).toBe("never");
+    expect(compression.classList.contains("admin-defaults-control")).toBe(true);
+    expect(messageTtl.classList.contains("admin-defaults-control")).toBe(true);
+    expect(inactiveUsers.classList.contains("admin-defaults-control")).toBe(true);
     expect(compression.disabled && messageTtl.disabled && inactiveUsers.disabled).toBe(true);
     expect(document.querySelectorAll(".premium-feature-badge")).toHaveLength(3);
     expect(mocks.authRequest).toHaveBeenCalledTimes(1);
