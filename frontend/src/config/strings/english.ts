@@ -476,6 +476,8 @@ export const strings = {
         files: "No files yet",
         links: "No links yet",
       },
+      openMessage: "View message",
+      openLink: "Open link",
       email: "Email",
       timezone: "Timezone",
       saveToArchive: "Save to Message Archive",

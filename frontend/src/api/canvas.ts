@@ -1,4 +1,5 @@
 import { apiRequest } from "./client";
+import * as Y from "yjs";
 
 export type CanvasBlockType = "markdown" | "whiteboard";
 
@@ -31,6 +32,21 @@ const root = "/api/v1/plugins/canvas";
 
 export function createCanvas(accessToken: string, chatId: string, title = "Untitled canvas") {
   return apiRequest<Canvas>(`${root}/canvases`, { method: "POST", accessToken, body: { chatId, title } });
+}
+
+/** Encode the initial Markdown block in the same Yjs document shape used by CanvasPage. */
+export function encodeMarkdownCanvasDocumentUpdate(markdown: string): string {
+  const doc = new Y.Doc();
+  const block = new Y.Map<unknown>();
+  block.set("id", crypto.randomUUID());
+  block.set("kind", "markdown");
+  block.set("content", new Y.Text(markdown));
+  doc.getArray<Y.Map<unknown>>("blocks").push([block]);
+  const update = Y.encodeStateAsUpdate(doc);
+  let binary = "";
+  update.forEach((byte) => { binary += String.fromCharCode(byte); });
+  doc.destroy();
+  return btoa(binary);
 }
 export function getStorageCanvases(accessToken: string) {
   return apiRequest<Canvas[]>(`${root}/canvases`, { accessToken });

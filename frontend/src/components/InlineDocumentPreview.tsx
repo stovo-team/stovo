@@ -2,8 +2,9 @@ import { LoaderCircle } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { downloadFileBlob, type FamilyFile } from "../api/files";
-import { documentKindLabel, type DocumentPreviewKind } from "./documentPreviewKind";
+import { documentKindLabel, isMarkdownDocument, type DocumentPreviewKind } from "./documentPreviewKind";
 import type { TablePreview } from "./DocumentAttachmentPreview";
+import { RichCanvasPreview } from "./RichCanvasPreview";
 
 type InlineDocumentPreviewProps = {
   accessToken: string;
@@ -102,7 +103,14 @@ export function InlineDocumentPreview({
       {!loading && !error && kind === "pdf" && pdfBlob && renderPdf(pdfBlob)}
       {!loading && !error && kind === "docx" && docxBlob && renderDocx(docxBlob)}
       {!loading && !error && kind === "text" && textPreview !== null && (
-        <pre className="document-inline-preview-text">{textPreview || "(Empty document)"}</pre>
+        isMarkdownDocument(file)
+          ? <RichCanvasPreview
+              canvas={{ title: file.originalName }}
+              markdownContent={textPreview || "(Empty document)"}
+              hideHeader
+              className="document-inline-preview-canvas"
+            />
+          : <pre className="document-inline-preview-text">{textPreview || "(Empty document)"}</pre>
       )}
       {!loading && !error && kind === "table" && table && activeSheet && (
         <div className="document-preview-table-wrap">

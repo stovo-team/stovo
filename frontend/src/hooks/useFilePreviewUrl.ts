@@ -7,10 +7,16 @@ import { shouldAutoDownloadMedia } from "../mediaDownloadPolicy";
 export default function useFilePreviewUrl(
   accessToken: string | null,
   file: FamilyFile | null,
-  enabled = true
+  enabled = true,
+  allowVideoPreview = false
 ) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(() =>
-    enabled && file?.id ? peekCachedObjectUrl(file.id) : null
+    enabled && file?.id && (
+      !file.mimeType ||
+      file.mimeType.startsWith("image/") ||
+      file.mimeType.includes("image") ||
+      (allowVideoPreview && file.mimeType.startsWith("video/"))
+    ) ? peekCachedObjectUrl(file.id) : null
   );
 
   useEffect(() => {
@@ -21,7 +27,9 @@ export default function useFilePreviewUrl(
       return undefined;
     }
 
-    if (file.mimeType && !file.mimeType.startsWith("image/") && !file.mimeType.includes("image")) {
+    const isPreviewableImage = file.mimeType?.startsWith("image/") || file.mimeType?.includes("image");
+    const isPreviewableVideo = allowVideoPreview && file.mimeType?.startsWith("video/");
+    if (file.mimeType && !isPreviewableImage && !isPreviewableVideo) {
       setPreviewUrl(null);
       return undefined;
     }
@@ -67,7 +75,7 @@ export default function useFilePreviewUrl(
       cancelled = true;
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [accessToken, enabled, file?.id, file?.mimeType]);
+  }, [accessToken, allowVideoPreview, enabled, file?.id, file?.mimeType]);
 
   return previewUrl;
 }

@@ -18,6 +18,29 @@ describe("web composer pickers", () => {
     expect(composerSource).not.toContain("{Capacitor.isNativePlatform() && (");
   });
 
+  it("keeps reopening the attachment picker from submitting the message form", () => {
+    const controlsSource = readFileSync("src/features/chats/composer/AttachmentControls.tsx", "utf8");
+    const pickerButton = controlsSource.match(/<button[\s\S]*?className="file-picker"[\s\S]*?>/)?.[0] ?? "";
+
+    expect(pickerButton).toMatch(/type="button"/);
+  });
+
+  it("does not filter chooser file types before the server policy can decide", () => {
+    const controlsSource = readFileSync("src/features/chats/composer/AttachmentControls.tsx", "utf8");
+
+    expect(controlsSource).not.toContain("accept={DESKTOP_ATTACHMENT_ACCEPT}");
+    expect(controlsSource).not.toContain("accept={GALLERY_ATTACHMENT_ACCEPT}");
+    expect(controlsSource).not.toContain("accept={AUDIO_ATTACHMENT_ACCEPT}");
+    expect(controlsSource).not.toContain("accept={DOCUMENT_ATTACHMENT_ACCEPT}");
+    expect(controlsSource).toContain("multiple");
+  });
+
+  it("lays out pending previews as a responsive grid with video-sized cards", () => {
+    expect(styles).toMatch(/\.composer-attachments-strip \.pending-attachments \{[\s\S]*?display: grid;[\s\S]*?grid-template-columns:/);
+    expect(styles).not.toMatch(/\.composer-attachments-strip \.pending-attachments \{[^}]*flex-wrap: nowrap/s);
+    expect(styles).toMatch(/\.pending-attachment-card--thumb \.pending-attachment-thumb video \{[\s\S]*?object-fit: contain;/);
+  });
+
   it("offers compact web choices and preserves the user gesture for file selection", () => {
     const attachmentSheetSource = readFileSync("src/components/AttachmentPickerSheet.tsx", "utf8");
     expect(attachmentSheetSource).toContain('handleWebMenuPick("gallery")');
@@ -61,7 +84,9 @@ describe("web composer pickers", () => {
     expect(styles).toContain(":root[data-platform=\"web\"] .attachment-picker-sheet {");
     expect(styles).toContain("max-width: 420px;");
     expect(styles).toContain(":root[data-platform=\"web\"] .emoji-picker::after {");
-    expect(styles).toContain("border-top-color: var(--island-surface);");
+    expect(styles).toMatch(
+      /:root\[data-platform="web"\] \.emoji-picker::after \{[^}]*border-top-color: var\(--chat-popup-surface\);/
+    );
   });
 
   it("keeps the emoji picker as a compact popover on the web", () => {

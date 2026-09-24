@@ -1,5 +1,5 @@
 import { ChangeEvent, FormEvent, RefObject, useEffect, useRef, useState } from "react";
-import { BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileText, Image, Mail, MessageSquare, MoreVertical, Music, Pencil, Search, Settings, Star, UserPlus, Video } from "lucide-react";
+import { Archive, BarChart2, Bell, BellOff, Check, ChevronDown, Clock3, FileCode, FileImage, FileSpreadsheet, FileText, Image, Mail, MessageSquare, MoreVertical, Music, Pencil, Search, Settings, Star, UserPlus, Video } from "lucide-react";
 import { useAuth } from "../../../auth/AuthContext";
 import { ChatStats } from "../../../api/stats";
 import ChatStatsDrawer from "../../../components/ChatStatsDrawer";
@@ -32,6 +32,7 @@ import { RealAvatar } from "../sidebar/RealAvatar";
 import { useStrings } from "../../../i18n/LanguageContext";
 import { AvatarEditorModal } from "../../../components/AvatarEditorModal";
 import { ChatWallpaperEditorModal } from "../../../components/ChatWallpaperEditorModal";
+import { LinkUnfurlCard } from "../../../components/LinkUnfurlCard";
 
 export function SharedContentThumb({
   accessToken,
@@ -47,18 +48,30 @@ export function SharedContentThumb({
   const isImage = file.mimeType.startsWith("image/");
   const isVideo = file.mimeType.startsWith("video/");
   const isAudio = file.mimeType.startsWith("audio/");
-  const previewUrl = useFilePreviewUrl(accessToken, file, isImage);
+  const previewUrl = useFilePreviewUrl(accessToken, file, isImage || isVideo, isVideo);
+  const [videoPreviewFailed, setVideoPreviewFailed] = useState(false);
+
+  useEffect(() => setVideoPreviewFailed(false), [previewUrl]);
 
   if (!isImage) {
     return (
       <button
         type="button"
-        className="media-thumb"
+        className={`media-thumb${isVideo && previewUrl && !videoPreviewFailed ? " is-video" : ""}`}
         title={`Open the message containing ${file.originalName}`}
         aria-label={`Open the message containing ${file.originalName}`}
         onClick={onFocusMessage}
       >
-        {isVideo ? <Video aria-hidden="true" size={20} /> : isAudio ? <Music aria-hidden="true" size={20} /> : <FileText aria-hidden="true" size={20} />}
+        {isVideo && previewUrl && !videoPreviewFailed ? (
+          <video
+            src={previewUrl}
+            aria-hidden="true"
+            muted
+            playsInline
+            preload="metadata"
+            onError={() => setVideoPreviewFailed(true)}
+          />
+        ) : isVideo ? <Video aria-hidden="true" size={20} /> : isAudio ? <Music aria-hidden="true" size={20} /> : <FileText aria-hidden="true" size={20} />}
       </button>
     );
   }
@@ -79,6 +92,31 @@ export function SharedContentThumb({
       {previewUrl ? <img src={previewUrl} alt={file.originalName} /> : <Image aria-hidden="true" size={20} />}
     </button>
   );
+}
+
+function SharedFileTypeIcon({ mimeType, fileName }: { mimeType: string; fileName: string }) {
+  const normalizedMimeType = mimeType.toLowerCase();
+  const extension = fileName.split(".").pop()?.toLowerCase() ?? "";
+  if (normalizedMimeType.includes("zip") || normalizedMimeType.includes("compressed") || ["zip", "rar", "7z", "tar", "gz"].includes(extension)) {
+    return <Archive aria-hidden="true" size={20} />;
+  }
+  if (normalizedMimeType.includes("spreadsheet") || normalizedMimeType.includes("excel") || ["xls", "xlsx", "csv", "ods"].includes(extension)) {
+    return <FileSpreadsheet aria-hidden="true" size={20} />;
+  }
+  if (normalizedMimeType.includes("image/") || ["png", "jpg", "jpeg", "gif", "webp", "svg"].includes(extension)) {
+    return <FileImage aria-hidden="true" size={20} />;
+  }
+  if (normalizedMimeType.includes("json") || normalizedMimeType.includes("xml") || normalizedMimeType.includes("javascript") || normalizedMimeType.includes("typescript") || ["js", "ts", "tsx", "jsx", "html", "css", "py", "go", "rs"].includes(extension)) {
+    return <FileCode aria-hidden="true" size={20} />;
+  }
+  return <FileText aria-hidden="true" size={20} />;
+}
+
+function sharedFileTypeLabel(mimeType: string, fileName: string) {
+  const extension = fileName.split(".").pop()?.trim();
+  if (extension && extension !== fileName && extension.length <= 8) return extension.toUpperCase();
+  const subtype = mimeType.split("/").pop()?.split(";")[0]?.replace(/^vnd\./i, "");
+  return subtype?.split(/[.+-]/).pop()?.toUpperCase() || "FILE";
 }
 
 export function ChatDetailsPanel({
@@ -1222,27 +1260,72 @@ export function ChatDetailsPanel({
           </div>
           <div key={detailsTab} className={`chat-info-tab-panel chat-info-tab-panel--${tabDirection}`}>
             {sharedContentItems.length > 0 ? (
-              <div className={detailsTab === "links" ? "chat-info-link-list" : "details-media-grid chat-info-media-grid"}>
+              <div className={detailsTab === "links" ? "chat-info-link-list" : detailsTab === "files" ? "chat-info-file-list" : "details-media-grid chat-info-media-grid"}>
               {sharedContentItems.map((item) =>
                 item.kind === "link" ? (
-                  <a
-                    className="chat-info-link"
-                    href={item.url}
+                  <article
+                    className="chat-info-link-card"
                     key={`${item.messageId}-${item.url}`}
-                    rel="noreferrer"
-                    target="_blank"
-                    title={item.url}
                   >
-                    {item.url}
-                  </a>
+                    <LinkUnfurlCard
+                      url={item.url}
+                      accessToken={accessToken}
+                      fallback={(
+                        <a
+                          className="chat-info-link-fallback-url"
+                          href={item.url}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                          title={item.url}
+                        >
+                          {item.url}
+                        </a>
+                      )}
+                    />
+                    <div className="chat-info-link-actions">
+                      <button
+                        type="button"
+                        className="chat-info-link-message"
+                        onClick={() => onFocusMessage(item.messageId)}
+                      >
+                        {strings.chats.details.openMessage}
+                      </button>
+                      <a
+                        className="chat-info-link-fallback"
+                        href={item.url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        title={item.url}
+                      >
+                        {strings.chats.details.openLink}
+                      </a>
+                    </div>
+                  </article>
                 ) : (
-                  <SharedContentThumb
-                    accessToken={accessToken}
-                    file={item.file}
-                    key={`${item.messageId}-${item.file.id}`}
-                    onFocusMessage={() => onFocusMessage(item.messageId)}
-                    onOpenImage={(file, previewUrl) => onOpenImage(file, previewUrl, item.messageId)}
-                  />
+                  detailsTab === "files" ? (
+                    <button
+                      type="button"
+                      className="chat-info-file-row"
+                      data-file-type={item.file.mimeType}
+                      key={`${item.messageId}-${item.file.id}`}
+                      onClick={() => onFocusMessage(item.messageId)}
+                      title={strings.chats.details.openMessage}
+                    >
+                      <span className="chat-info-file-icon" aria-hidden="true">
+                        <SharedFileTypeIcon mimeType={item.file.mimeType} fileName={item.file.originalName} />
+                      </span>
+                      <span className="chat-info-file-name">{item.file.originalName}</span>
+                      <span className="chat-info-file-type">{sharedFileTypeLabel(item.file.mimeType, item.file.originalName)}</span>
+                    </button>
+                  ) : (
+                    <SharedContentThumb
+                      accessToken={accessToken}
+                      file={item.file}
+                      key={`${item.messageId}-${item.file.id}`}
+                      onFocusMessage={() => onFocusMessage(item.messageId)}
+                      onOpenImage={(file, previewUrl) => onOpenImage(file, previewUrl, item.messageId)}
+                    />
+                  )
                 )
               )}
               </div>

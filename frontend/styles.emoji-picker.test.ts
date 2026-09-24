@@ -79,10 +79,11 @@ describe("docked emoji picker styles", () => {
       "background-position-y: calc(var(--epr-category-navigation-button-size) * 3) !important;"
     );
     expect(rule(".emoji-picker .epr-category-nav")).toContain("overflow-x: auto;");
+    expect(rule(".emoji-picker .epr-category-nav")).toContain("box-sizing: border-box;");
+    expect(rule(".emoji-picker .epr-category-nav")).toContain("padding: 6px 4px;");
     expect(rule(".emoji-picker")).not.toContain("--epr-horizontal-padding: 0px;");
     expect(rule(".emoji-picker")).not.toContain("--epr-category-padding: 0px;");
     expect(rule(".emoji-picker")).not.toContain("--epr-emoji-padding: 0px;");
-    expect(rule(".emoji-picker .epr-category-nav")).toContain("padding: 6px 8px;");
     expect(rule(".emoji-picker .epr-cat-btn:focus::before")).toContain("display: none;");
   });
 
@@ -143,12 +144,27 @@ describe("active chat message spacing", () => {
 });
 
 describe("message context menu glass treatment", () => {
-  it("uses a rounded, 90 percent opaque liquid-glass surface", () => {
-    expect(rule(".message-context-menu")).toContain("background: rgba(15, 23, 42, 0.9);");
+  it("uses the shared translucent gray surface without an outer border", () => {
+    expect(rule(".message-context-menu")).toContain("background: var(--chat-popup-surface);");
     expect(rule(".message-context-menu")).toContain("backdrop-filter: blur(24px) saturate(1.35);");
     expect(rule(".message-context-menu")).toContain("border-radius: 24px;");
+    expect(rule(".message-context-menu")).toContain("border: 0;");
+    expect(rule(".message-context-menu")).not.toContain("inset 0 1px");
     expect(rule(".message-context-menu button")).toContain("border-radius: 14px;");
     expect(rule(".message-context-reactions button")).toContain("border-radius: 50%;");
+  });
+
+  it("shares the surface across the emoji picker and attachment file menu", () => {
+    expect(styles).toContain("--chat-popup-surface: rgba(80, 84, 92, 0.8);");
+    expect(rule(".emoji-picker")).toContain("background: var(--chat-popup-surface);");
+    expect(rule(".emoji-picker")).toContain("border: 0;");
+    const webEmojiPicker = lastRule(':root[data-platform="web"] .emoji-picker');
+    expect(webEmojiPicker).toContain("background: var(--chat-popup-surface);");
+    expect(webEmojiPicker).toContain("border: 0;");
+
+    const attachmentMenu = rule(':root[data-platform="web"] .attachment-picker-web-menu');
+    expect(attachmentMenu).toContain("background: var(--chat-popup-surface);");
+    expect(attachmentMenu).toContain("border: 0;");
   });
 });
 
@@ -320,9 +336,9 @@ describe("emoji-only message sizes", () => {
 });
 
 describe("emoji picker backgrounds", () => {
-  it("uses a solid black surface throughout the picker", () => {
-    expect(rule(".emoji-picker")).toContain("background: #000;");
-    expect(rule(".emoji-picker .epr-category-nav")).toContain("background: #000;");
-    expect(rule(".emoji-picker .epr-emoji-category-label")).toContain("background: #000;");
+  it("keeps picker content on one translucent popup surface", () => {
+    expect(rule(".emoji-picker")).toContain("background: var(--chat-popup-surface);");
+    expect(rule(".emoji-picker .epr-category-nav")).toContain("background: transparent;");
+    expect(rule(".emoji-picker .epr-emoji-category-label")).toContain("background: transparent;");
   });
 });

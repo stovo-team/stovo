@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as filesApi from "../api/files";
@@ -12,6 +13,7 @@ import type { TablePreview } from "./DocumentAttachmentPreview";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const roots: Root[] = [];
+const styles = readFileSync("src/styles.css", "utf8");
 
 function makeFile(id: string, name = `${id}.pdf`, mimeType = "application/pdf"): FamilyFile {
   return {
@@ -77,12 +79,12 @@ describe("inline document previews in chat", () => {
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
 
-  it("renders Markdown as safe plain text in the chat attachment", async () => {
+  it("renders Markdown as a canvas-style preview and treats document markup as text", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
     roots.push(root);
     document.body.appendChild(container);
-    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Release notes\n<script>text only</script>"], { type: "text/plain" }));
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Release notes\nA **formatted** intro.\nKeep&nbsp;spacing.\n![][image1]\n![cover](data:image/png;base64,AAAA)\n![unsafe](javascript:alert(1))\n&nbsp;\n<script>text only</script>"], { type: "text/plain" }));
 
     await act(async () => root.render(
       <LanguageProvider>
@@ -95,9 +97,76 @@ describe("inline document previews in chat", () => {
       </LanguageProvider>,
     ));
 
-    expect(container.querySelector(".document-inline-preview-text")?.textContent).toContain("# Release notes");
-    expect(container.querySelector(".document-inline-preview-text script")).toBeNull();
+    expect(container.querySelector(".document-inline-preview-canvas .canvas-md-h1")?.textContent).toBe("Release notes");
+    expect(container.querySelector(".document-inline-preview-canvas strong")?.textContent).toBe("formatted");
+    expect(container.querySelector(".document-inline-preview-canvas .canvas-md-image")?.textContent).toBe("Image: image1");
+    expect(container.textContent).toContain("Keep\u00a0spacing.");
+    expect(container.querySelector<HTMLImageElement>("img.canvas-md-image")?.getAttribute("src")).toBe("data:image/png;base64,AAAA");
+    expect(container.textContent).toContain("Image: unsafe");
+    expect(container.querySelector('img[src^="javascript:"]')).toBeNull();
+    expect(container.textContent).toContain("\u00a0");
+    expect(container.textContent).not.toContain("&nbsp;");
+    expect(container.querySelector(".document-inline-preview-canvas script")).toBeNull();
+    expect(container.querySelector(".document-inline-preview-canvas")?.textContent).toContain("<script>text only</script>");
     expect(container.querySelector(".document-preview-open")).not.toBeNull();
+  });
+
+  it("preserves leading indentation so Markdown code blocks keep their formatting", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    roots.push(root);
+    document.body.appendChild(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["    const answer = 42;"], { type: "text/markdown" }));
+
+    await act(async () => root.render(
+      <LanguageProvider>
+        <AttachmentCard
+          accessToken="session-token"
+          chatId="chat-1"
+          file={makeFile("indented-markdown", "code.md", "text/markdown")}
+          messageId="message-code"
+        />
+      </LanguageProvider>,
+    ));
+
+    expect(container.querySelector(".canvas-md-code-line")?.textContent).toBe("const answer = 42;");
+  });
+
+  it("shows the opening Markdown lines at canvas size and leaves later content out of the preview", async () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    roots.push(root);
+    document.body.appendChild(container);
+    const markdown = ["# Intro", ...Array.from({ length: 40 }, (_, index) => `Opening detail ${index + 1}`)].join("\n");
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob([markdown], { type: "text/markdown" }));
+
+    await act(async () => root.render(
+      <LanguageProvider>
+        <AttachmentCard
+          accessToken="session-token"
+          chatId="chat-1"
+          file={makeFile("long-markdown", "guide.md", "text/markdown")}
+          messageId="message-3"
+        />
+      </LanguageProvider>,
+    ));
+
+    const renderedLines = Array.from(container.querySelectorAll(".document-inline-preview-canvas .canvas-md-p"));
+    expect(container.querySelector(".canvas-md-h1")?.textContent).toBe("Intro");
+    expect(renderedLines[0]?.textContent).toBe("Opening detail 1");
+    expect(renderedLines.length).toBeLessThan(40);
+    expect(container.textContent).not.toContain("Opening detail 40");
+  });
+
+  it("uses a clipped 16:9 preview viewport so document pages show their top instead of shrinking to fit", () => {
+    const start = styles.indexOf(".document-inline-preview {");
+    const end = styles.indexOf("\n}", start);
+    const viewportRule = styles.slice(start, end + 2);
+
+    expect(viewportRule).toContain("aspect-ratio: 16 / 9;");
+    expect(viewportRule).toContain("overflow: hidden;");
+    expect(viewportRule).toContain("min-width: 0;");
+    expect(styles).toContain(".document-inline-preview-canvas");
   });
 
   it("passes the downloaded DOCX blob to the fidelity renderer", async () => {
