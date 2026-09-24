@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 
 import {
   applyPdfPageZoom,
@@ -24,9 +25,28 @@ import type { FamilyFile } from "../api/files";
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const styles = readFileSync("src/styles.css", "utf8");
-const { renderDocxMock } = vi.hoisted(() => ({ renderDocxMock: vi.fn() }));
+const { renderDocxMock, navigateMock, createCanvasMock, appendCanvasDocumentUpdateMock, getChatsMock } = vi.hoisted(() => ({
+  renderDocxMock: vi.fn(),
+  navigateMock: vi.fn(),
+  createCanvasMock: vi.fn(),
+  appendCanvasDocumentUpdateMock: vi.fn(),
+  getChatsMock: vi.fn(),
+}));
 
 vi.mock("docx-preview", () => ({ renderAsync: renderDocxMock }), { virtual: true });
+vi.mock("../api/canvas", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../api/canvas")>(),
+  createCanvas: createCanvasMock,
+  appendCanvasDocumentUpdate: appendCanvasDocumentUpdateMock,
+}));
+vi.mock("../api/chats", async (importOriginal) => ({
+  ...await importOriginal<typeof import("../api/chats")>(),
+  getChats: getChatsMock,
+}));
+vi.mock("react-router-dom", async (importOriginal) => ({
+  ...await importOriginal<typeof import("react-router-dom")>(),
+  useNavigate: () => navigateMock,
+}));
 
 function rule(selector: string): string {
   const start = styles.indexOf(`${selector} {`);
@@ -162,6 +182,177 @@ describe("sanitizeDocxHtml", () => {
 });
 
 describe("document attachment cards in chat", () => {
+  it("renders Markdown as formatted document content instead of raw source", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Project plan\n\n**Ready**"], { type: "text/markdown" }));
+    const file: FamilyFile = {
+      id: "markdown-preview", familyId: "family-1", uploadedBy: "member-1", chatId: "chat-1",
+      chatTitle: "Chat", chatType: "direct", originMessageId: "message-1", accessScope: "chat",
+      storageProvider: "local", originalName: "plan.md", mimeType: "text/markdown", sizeBytes: 27,
+      checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+
+      expect(document.querySelector(".document-viewer-markdown h1")?.textContent).toBe("Project plan");
+      expect(document.querySelector(".document-viewer-markdown strong")?.textContent).toBe("Ready");
+      expect(document.querySelector(".document-viewer-text")).toBeNull();
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("converts Markdown into an editable Canvas and opens that Canvas after saving", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    const markdown = "# Project plan\n\n- First step";
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob([markdown], { type: "text/markdown" }));
+    createCanvasMock.mockResolvedValue({ id: "canvas-1" });
+    appendCanvasDocumentUpdateMock.mockResolvedValue({});
+    const file: FamilyFile = {
+      id: "markdown-convert", familyId: "family-1", uploadedBy: "member-1", chatId: "chat-1",
+      chatTitle: "Chat", chatType: "direct", originMessageId: "message-1", accessScope: "chat",
+      storageProvider: "local", originalName: "plan.md", mimeType: "text/markdown", sizeBytes: markdown.length,
+      checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+      const convert = document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas");
+      expect(convert).not.toBeNull();
+
+      await act(async () => {
+        convert?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+
+      expect(createCanvasMock).toHaveBeenCalledWith("token", "chat-1", "plan");
+      expect(appendCanvasDocumentUpdateMock).toHaveBeenCalledWith("token", "canvas-1", expect.any(String));
+      expect(navigateMock).toHaveBeenCalledWith("/app/canvas/canvas-1");
+      const encodedUpdate = appendCanvasDocumentUpdateMock.mock.calls[0]?.[2] as string;
+      const update = Uint8Array.from(atob(encodedUpdate), (character) => character.charCodeAt(0));
+      const canvasDoc = new Y.Doc();
+      Y.applyUpdate(canvasDoc, update);
+      const block = canvasDoc.getArray<Y.Map<unknown>>("blocks").get(0);
+      expect(block?.get("kind")).toBe("markdown");
+      expect((block?.get("content") as Y.Text).toString()).toBe(markdown);
+      canvasDoc.destroy();
+      expect(convert?.disabled).toBe(true);
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+      createCanvasMock.mockReset();
+      appendCanvasDocumentUpdateMock.mockReset();
+      navigateMock.mockReset();
+    }
+  });
+
+  it("lets a standalone Markdown file choose a chat before creating its Canvas", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Standalone"]));
+    getChatsMock.mockResolvedValue([{ id: "chat-destination", title: "Project chat" }]);
+    createCanvasMock.mockResolvedValue({ id: "canvas-standalone" });
+    appendCanvasDocumentUpdateMock.mockResolvedValue({});
+    const file: FamilyFile = {
+      id: "markdown-without-chat", familyId: "family-1", uploadedBy: "member-1", chatId: null,
+      chatTitle: null, chatType: null, originMessageId: null, accessScope: "family",
+      storageProvider: "local", originalName: "standalone.md", mimeType: "text/markdown", sizeBytes: 11,
+      checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+
+      const convertButton = document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas");
+      expect(convertButton?.disabled).toBe(false);
+      await act(async () => {
+        convertButton?.click();
+        await Promise.resolve();
+      });
+      expect(getChatsMock).toHaveBeenCalledWith("token");
+      const chatSelect = document.querySelector<HTMLSelectElement>(".document-viewer-canvas-chat");
+      expect(chatSelect?.options[1]?.textContent).toBe("Project chat");
+      await act(async () => {
+        if (chatSelect) {
+          chatSelect.value = "chat-destination";
+          chatSelect.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+      await act(async () => {
+        document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+      expect(createCanvasMock).toHaveBeenCalledWith("token", "chat-destination", "standalone");
+      expect(navigateMock).toHaveBeenCalledWith("/app/canvas/canvas-standalone");
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+      createCanvasMock.mockReset();
+    }
+  });
+
+  it("keeps the preview open and does not navigate when Canvas document seeding fails", async () => {
+    const container = document.createElement("div");
+    const root: Root = createRoot(container);
+    vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Recovery"]));
+    createCanvasMock.mockResolvedValue({ id: "canvas-seed-failure" });
+    appendCanvasDocumentUpdateMock.mockRejectedValue(new Error("Canvas save failed"));
+    const file: FamilyFile = {
+      id: "markdown-seed-failure", familyId: "family-1", uploadedBy: "member-1", chatId: "chat-1",
+      chatTitle: "Chat", chatType: "direct", originMessageId: "message-1", accessScope: "chat",
+      storageProvider: "local", originalName: "recovery.md", mimeType: "text/markdown", sizeBytes: 10,
+      checksum: null, createdAt: "2026-09-22T00:00:00Z", deletedAt: null, isFavorite: false,
+    };
+    document.body.appendChild(container);
+    try {
+      await act(async () => root.render(<DocumentAttachmentPreview accessToken="token" file={file} />));
+      await act(async () => {
+        container.querySelector<HTMLButtonElement>(".document-preview-open")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+      await act(async () => {
+        document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas")?.click();
+        await new Promise((resolve) => window.setTimeout(resolve, 20));
+      });
+
+      const alert = document.querySelector('[role="alert"]');
+      expect(alert?.textContent).toContain("The Canvas was created, but its Markdown import could not be confirmed.");
+      expect(alert?.querySelector("button")?.textContent).toBe("Open Canvas");
+      expect(navigateMock).not.toHaveBeenCalled();
+      expect(document.querySelector<HTMLButtonElement>('[role="alert"] button')?.textContent).toBe("Open Canvas");
+      expect(document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas")?.disabled).toBe(true);
+      await act(async () => document.querySelector<HTMLButtonElement>('[role="alert"] button')?.click());
+      expect(navigateMock).toHaveBeenCalledWith("/app/canvas/canvas-seed-failure");
+    } finally {
+      await act(async () => root.unmount());
+      container.remove();
+      clearMediaBlobCache();
+      vi.restoreAllMocks();
+    }
+  });
+
   it("caps the full text viewer content for large documents", async () => {
     const container = document.createElement("div");
     const root: Root = createRoot(container);
@@ -427,5 +618,9 @@ afterEach(() => {
   document.body.innerHTML = "";
   clearMediaBlobCache();
   vi.unstubAllGlobals();
+  createCanvasMock.mockReset();
+  appendCanvasDocumentUpdateMock.mockReset();
+  getChatsMock.mockReset();
+  navigateMock.mockReset();
 });
 
