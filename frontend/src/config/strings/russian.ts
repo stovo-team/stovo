@@ -499,6 +499,8 @@ export const strings = {
         files: "Пока нет файлов",
         links: "Пока нет ссылок",
       },
+      openMessage: "К сообщению",
+      openLink: "Открыть ссылку",
       email: "Почта",
       timezone: "Часовой пояс",
       saveToArchive: "Сохранить в Архив сообщений",

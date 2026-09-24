@@ -18430,6 +18430,8 @@ button.chat-info-title-edit:active:not(:disabled) {
 .chat-info-media-grid.details-media-grid {
   gap: 2px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .chat-info-media-grid .media-thumb {
@@ -18437,23 +18439,140 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-radius: 0;
 }
 
-.chat-info-link-list {
-  display: grid;
-  gap: 8px;
+.chat-info-media-grid .media-thumb.is-video {
+  cursor: pointer;
 }
 
-.chat-info-link {
-  color: var(--accent-primary);
-  font-size: 0.875rem;
+.chat-info-media-grid .media-thumb video {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  width: 100%;
+}
+
+.chat-info-file-list {
+  border-radius: 14px;
+  display: grid;
   overflow: hidden;
-  padding: 8px 4px;
-  text-decoration: none;
+}
+
+.chat-info-file-row {
+  align-items: center;
+  background: var(--background-secondary);
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 12px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  min-height: 58px;
+  padding: 8px 12px;
+  text-align: start;
+  width: 100%;
+}
+
+.chat-info-file-row:last-child {
+  border-bottom: 0;
+}
+
+.chat-info-file-row:hover,
+.chat-info-file-row:focus-visible {
+  background: color-mix(in oklab, var(--accent-primary) 9%, var(--background-secondary));
+}
+
+.chat-info-file-icon {
+  align-items: center;
+  background: color-mix(in oklab, var(--accent-primary) 12%, transparent);
+  border-radius: 10px;
+  color: var(--accent-primary);
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  width: 36px;
+}
+
+.chat-info-file-name {
+  font-size: 0.875rem;
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.chat-info-link:hover,
-.chat-info-link:focus-visible {
+.chat-info-file-type {
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.chat-info-link-list {
+  display: grid;
+  gap: 10px;
+}
+
+.chat-info-link-card {
+  background: var(--background-secondary);
+  border: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  border-radius: 14px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 10px 12px;
+}
+
+.chat-info-link-card .link-unfurl-card {
+  margin-top: 0;
+}
+
+.chat-info-link-fallback-url {
+  color: var(--accent-primary);
+  display: block;
+  font-size: 0.8125rem;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.chat-info-link-fallback-url:hover,
+.chat-info-link-fallback-url:focus-visible {
+  text-decoration: underline;
+}
+
+.chat-info-link-actions {
+  align-items: center;
+  border-top: 1px solid color-mix(in oklab, var(--text-primary) 8%, transparent);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.chat-info-link-message,
+.chat-info-link-fallback {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--accent-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  min-height: 34px;
+  padding: 6px 10px;
+  text-decoration: none;
+}
+
+.chat-info-link-message:hover,
+.chat-info-link-message:focus-visible,
+.chat-info-link-fallback:hover,
+.chat-info-link-fallback:focus-visible {
+  background: color-mix(in oklab, var(--accent-primary) 10%, transparent);
   text-decoration: underline;
 }
 

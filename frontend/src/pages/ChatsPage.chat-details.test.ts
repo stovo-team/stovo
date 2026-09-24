@@ -89,6 +89,13 @@ describe("chat details controls", () => {
     expect(chatDetailsPanel).toContain("onFocusMessage={() => onFocusMessage(item.messageId)}");
   });
 
+  it("rounds the shared media grid without rounding the individual tiles", () => {
+    const outerGridRule = styles.match(/\.chat-info-media-grid\.details-media-grid\s*\{([^}]*)\}/)?.[1] ?? "";
+    const innerTileRule = styles.match(/\.chat-info-media-grid\s+\.media-thumb\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(outerGridRule).toMatch(/border-radius:\s*(?!0(?:px)?\s*;)[^;]+;/);
+    expect(innerTileRule).toMatch(/border-radius:\s*0\s*;/);
+  });
+
   it("adds existing server members from eligible chat details", () => {
     expect(chatDetailsPanel).toContain('chat.type === "group" || chat.type === "channel" || chat.type === "voice"');
     expect(chatDetailsPanel).toContain('className="chat-info-member-invite"');
