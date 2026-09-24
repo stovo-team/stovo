@@ -87,11 +87,15 @@ describe("AdminServerSettingsPage", () => {
     await renderPage();
     const input = document.querySelector<HTMLInputElement>('input[aria-label="Screen-share bitrate (kbps)"]')!;
     expect(input.value).toBe("5000");
-    input.value = "6000";
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     await act(async () => {
+      setNativeValue?.call(input, "6000");
       input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-      input.dispatchEvent(new Event("blur", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(input.value).toBe("6000");
+    await act(async () => {
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
       await Promise.resolve();
     });
     expect(mocks.authRequest).toHaveBeenCalledWith("/api/family", { method: "PATCH", body: { screenShareBitrateKbps: 6000 } });
