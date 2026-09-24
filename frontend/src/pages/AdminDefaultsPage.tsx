@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bell, BellOff, CheckCheck, Clock3, Eye, Music, Phone, Sliders, UserRound, Volume2 } from "lucide-react";
+import { Bell, BellOff, CheckCheck, Clock3, Eye, Music, Phone, UserRound, Volume2 } from "lucide-react";
 
 import { ApiError, getClusterPrefix } from "../api/client";
 import type { Family } from "../api/family";
 import { useAuth } from "../auth/AuthContext";
-import { getNotificationProviderSettings, updateNotificationProviderSettings, type NotificationProvider } from "../api/admin";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
 import { useStrings } from "../i18n/LanguageContext";
@@ -23,14 +22,10 @@ export default function AdminDefaultsPage() {
   const { accessToken, authRequest, currentUser } = useAuth();
   const prefix = getClusterPrefix();
   const isOwner = currentUser?.role === "owner";
-  const canManageServer = isOwner || currentUser?.permissions?.includes("manage_server") === true;
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isProviderLoading, setIsProviderLoading] = useState(true);
-  const [screenShareBitrateKbps, setScreenShareBitrateKbps] = useState("5000");
-  const [notificationProvider, setNotificationProvider] = useState<NotificationProvider>("firebase");
 
   const load = useCallback(async () => {
     if (!accessToken || !isOwner) return;
@@ -42,25 +37,6 @@ export default function AdminDefaultsPage() {
   }, [accessToken, authRequest, isOwner, strings.admin.defaults.loadError]);
 
   useEffect(() => void load(), [load]);
-  useEffect(() => {
-    if (!accessToken || !canManageServer) return;
-    void getNotificationProviderSettings(accessToken).then((settings) => setNotificationProvider(settings.notificationProvider)).catch((err) => {
-      setError(err instanceof ApiError ? String(err.message) : strings.admin.defaults.loadError);
-    }).finally(() => setIsProviderLoading(false));
-  }, [accessToken, canManageServer, strings.admin.defaults.loadError]);
-  useEffect(() => { if (family) setScreenShareBitrateKbps(String(family.screenShareBitrateKbps ?? 5000)); }, [family]);
-
-  async function saveNotificationProvider(provider: NotificationProvider) {
-    if (!accessToken) return;
-    setIsSaving(true); setError(null); setNotice(null);
-    try {
-      const updated = await updateNotificationProviderSettings(accessToken, provider);
-      setNotificationProvider(updated.notificationProvider); setNotice(strings.admin.defaults.saved);
-    } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : strings.admin.defaults.saveError);
-    } finally { setIsSaving(false); }
-  }
-
   async function save(patch: Partial<Family>) {
     setIsSaving(true); setError(null); setNotice(null);
     try {
@@ -85,20 +61,8 @@ export default function AdminDefaultsPage() {
     <AppNav />
     <section className="page-surface admin-surface">
       <div className="admin-detail-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={strings.admin.backToAdmin} /><h1>{strings.admin.defaults.title}</h1></div>
-      {!isOwner && !canManageServer && <p className="error-text">{strings.admin.defaults.ownerRequired}</p>}
+      {!isOwner && <p className="error-text">{strings.admin.defaults.ownerRequired}</p>}
       {error && <p className="error-text">{error}</p>}{notice && <p className="success-text">{notice}</p>}
-      {canManageServer && <div className="settings-toggle-groups admin-panel">
-        <section><h2>{strings.admin.defaults.notifications}</h2>
-          <label className="appearance-setting-row">
-            <span className="settings-row-icon"><Bell size={18} aria-hidden="true" /></span>
-            <span><strong>{strings.admin.defaults.notificationProvider}</strong></span>
-            <select className="admin-defaults-control" aria-label={strings.admin.defaults.notificationProvider} value={notificationProvider} disabled={!accessToken || isSaving || isProviderLoading} onChange={(event) => void saveNotificationProvider(event.target.value as NotificationProvider)}>
-              <option value="firebase">{strings.admin.defaults.firebaseProvider}</option>
-              <option value="ntfy">{strings.admin.defaults.ntfyProvider}</option>
-            </select>
-          </label>
-        </section>
-      </div>}
       {isOwner && <div className="settings-toggle-groups admin-panel">
         <section><h2>{strings.admin.defaults.privacy}</h2>
           <label className="appearance-setting-row">
@@ -143,13 +107,6 @@ export default function AdminDefaultsPage() {
             <label>{strings.notifications.end}<input type="time" value={notifications.quietHoursEnd} disabled={!family || isSaving || !notifications.quietHoursEnabled} onChange={(event) => setNotifications({ quietHoursEnd: event.target.value })} /></label>
           </div>
         </section>
-		<section className="admin-defaults-call-quality-settings"><h2>Guest meeting quality</h2>
-		  <label className="appearance-setting-row">
-            <span className="settings-row-icon"><Sliders size={18} aria-hidden="true" /></span>
-            <span><strong>Screen-share bitrate (kbps)</strong></span>
-            <input className="admin-defaults-control" type="number" min="1000" max="20000" step="500" inputMode="numeric" value={screenShareBitrateKbps} disabled={!family || isSaving} onChange={(event) => setScreenShareBitrateKbps(event.target.value)} onBlur={() => { const value = Number(screenShareBitrateKbps); if (Number.isInteger(value) && value >= 1000 && value <= 20000 && value !== family?.screenShareBitrateKbps) void save({ screenShareBitrateKbps: value }); else if (family) setScreenShareBitrateKbps(String(family.screenShareBitrateKbps ?? 5000)); }} />
-          </label>
-		</section>
       </div>}
     </section>
   </main>;

@@ -22,6 +22,8 @@ vi.mock("../i18n/LanguageContext", () => ({
       hub: {
         memberDefaults: "Member defaults",
         memberDefaultsDesc: "Default member settings",
+        serverSettings: "Server settings",
+        serverSettingsDesc: "Server-level settings",
         appearance: "Appearance",
         appearanceDesc: "Server appearance",
         encryption: "Encryption",
@@ -65,14 +67,23 @@ describe("AdminPage defaults navigation", () => {
     });
   }
 
-  it("shows member defaults to a member with manage_server", async () => {
+  it("shows server settings, but not owner-only member defaults, to a member with manage_server", async () => {
     await renderPage();
-    expect(container?.querySelector('a[href$="/app/admin/defaults"]')).toBeTruthy();
+    expect(container?.querySelector('a[href$="/app/admin/defaults"]')).toBeNull();
+    expect(container?.querySelector('a[href$="/app/admin/server-settings"]')).toBeTruthy();
   });
 
   it("hides member defaults from a member without manage_server", async () => {
     mocks.currentUser = { role: "member", permissions: [] };
     await renderPage();
     expect(container?.querySelector('a[href$="/app/admin/defaults"]')).toBeNull();
+    expect(container?.querySelector('a[href$="/app/admin/server-settings"]')).toBeNull();
+  });
+
+  it("shows both defaults and server settings to the owner", async () => {
+    mocks.currentUser = { role: "owner", permissions: [] };
+    await renderPage();
+    expect(container?.querySelector('a[href$="/app/admin/defaults"]')).toBeTruthy();
+    expect(container?.querySelector('a[href$="/app/admin/server-settings"]')).toBeTruthy();
   });
 });

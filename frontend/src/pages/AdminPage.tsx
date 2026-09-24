@@ -18,7 +18,8 @@ export default function AdminPage() {
   const prefix = getClusterPrefix();
 
   const adminTabs: Array<{ to: string; icon: string; title: string; description: string; premium?: boolean; disabled?: boolean }> = [
-    ...(isOwner || can("manage_server") ? [{ to: "/app/admin/defaults", icon: "tune", title: strings.admin.hub.memberDefaults, description: strings.admin.hub.memberDefaultsDesc }] : []),
+	...(isOwner ? [{ to: "/app/admin/defaults", icon: "tune", title: strings.admin.hub.memberDefaults, description: strings.admin.hub.memberDefaultsDesc }] : []),
+	...(isOwner || can("manage_server") ? [{ to: "/app/admin/server-settings", icon: "settings", title: strings.admin.hub.serverSettings, description: strings.admin.hub.serverSettingsDesc }] : []),
 	...(can("manage_roles") ? [{
 		to: "/app/admin/roles",
 		icon: "admin_panel_settings",
