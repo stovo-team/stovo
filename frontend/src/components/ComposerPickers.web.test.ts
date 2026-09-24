@@ -84,7 +84,9 @@ describe("web composer pickers", () => {
     expect(styles).toContain(":root[data-platform=\"web\"] .attachment-picker-sheet {");
     expect(styles).toContain("max-width: 420px;");
     expect(styles).toContain(":root[data-platform=\"web\"] .emoji-picker::after {");
-    expect(styles).toContain("border-top-color: var(--island-surface);");
+    expect(styles).toMatch(
+      /:root\[data-platform="web"\] \.emoji-picker::after \{[^}]*border-top-color: var\(--chat-popup-surface\);/
+    );
   });
 
   it("keeps the emoji picker as a compact popover on the web", () => {
