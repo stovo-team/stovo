@@ -440,6 +440,19 @@ describe("document attachment cards in chat", () => {
     expect(closeButton).toContain("padding: 0;");
   });
 
+  it("fits the generated DOCX page inside its inline preview without the library wrapper chrome", () => {
+    const inlineDocx = rule(".document-inline-preview-docx");
+    const inlineDocxViewer = rule(".document-inline-preview-docx .document-viewer-docx");
+    const inlineDocxPages = rule(".document-inline-preview-docx .docx-wrapper");
+
+    expect(inlineDocx).toContain("height: 100%;");
+    expect(inlineDocx).toContain("overflow: hidden;");
+    expect(inlineDocxViewer).toContain("height: 100%;");
+    expect(inlineDocxViewer).toContain("overflow: hidden;");
+    expect(inlineDocxPages).toContain("background: transparent !important;");
+    expect(inlineDocxPages).toContain("zoom: 0.5;");
+  });
+
   it("keeps the outgoing bubble snug to its document card on narrow screens instead of leaving a wide right gutter", () => {
     const documentBubble = rule(".message-bubble:has(.document-preview-card)");
     const documentCard = rule(".document-preview-card");
