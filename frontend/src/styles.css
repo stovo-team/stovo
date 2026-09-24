@@ -25760,6 +25760,17 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .storage-page .storage-preview-frame { box-sizing: border-box; width: 100%; }
 
+/* The nested grid shrink-wraps VideoPlayer's 120px minimum-height fallback before
+   metadata arrives. Use a block media area so the player can fill its preview. */
+.storage-page .storage-preview-media:has(> .video-player) {
+  display: block;
+  min-height: 0;
+}
+.storage-page .storage-preview-media > .video-player {
+  margin-inline: 0;
+  width: 100%;
+}
+
 /* Storage tiles are neutral until selected; single flush ring without browser focus outline or double gap. */
 .storage-page .storage-tile { outline: 0 !important; }
 .storage-page .storage-tile:focus, .storage-page .storage-tile:focus-visible { outline: 0 !important; }
