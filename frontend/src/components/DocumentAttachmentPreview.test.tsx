@@ -186,7 +186,7 @@ describe("document attachment cards in chat", () => {
     const container = document.createElement("div");
     const root: Root = createRoot(container);
     vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob([
-      "# Project plan&nbsp;&nbsp;## Key features\n\n**Ready** &amp; readable",
+      "![Image1] # Project plan&nbsp;&nbsp;## Key features\n\n**Ready** &amp; readable **2\\. Key Features**\n\n| Feature | Status |\n| --- | --- |\n| Preview | Ready |\n\n```ts\nconst answer = 42;\n```\n\n2\\. Literal heading\n\n<script>alert(1)</script><style>body{background-image:url(https://tracker.example/x)}</style><p style=\"background-image:url(https://tracker.example/x)\">Styled</p><img src=\"\" alt=\"empty image\">\n\n[unsafe](javascript:alert(1))",
     ], { type: "text/markdown" }));
     const file: FamilyFile = {
       id: "markdown-preview", familyId: "family-1", uploadedBy: "member-1", chatId: "chat-1",
@@ -206,7 +206,22 @@ describe("document attachment cards in chat", () => {
       expect(document.querySelector(".document-viewer-markdown h2")?.textContent).toBe("Key features");
       expect(document.querySelector(".document-viewer-markdown strong")?.textContent).toBe("Ready");
       expect(document.querySelector(".document-viewer-markdown")?.textContent).toContain("Ready & readable");
+      expect(document.querySelector(".document-viewer-markdown")?.textContent).toContain("2. Key Features");
+      expect(document.querySelector(".document-viewer-markdown")?.textContent).toContain("Image1");
+      expect(document.querySelector(".document-viewer-markdown")?.textContent).not.toContain("![");
+      expect(document.querySelector(".document-viewer-markdown")?.textContent).not.toContain("2\\.");
       expect(document.querySelector(".document-viewer-markdown")?.textContent).not.toContain("&nbsp;");
+      expect(document.querySelector(".document-viewer-markdown table")?.textContent).toContain("Feature");
+      expect(document.querySelector(".document-viewer-markdown pre code")?.textContent).toBe("const answer = 42;\n");
+      expect(Array.from(document.querySelectorAll(".document-viewer-markdown p"))
+        .some((paragraph) => paragraph.textContent?.includes("2. Literal heading"))).toBe(true);
+      expect(document.querySelector(".document-viewer-markdown ol")).toBeNull();
+      expect(document.querySelector(".document-viewer-markdown script")).toBeNull();
+      expect(document.querySelector(".document-viewer-markdown style")).toBeNull();
+      expect(document.querySelector(".document-viewer-markdown [style]")).toBeNull();
+      expect(document.querySelector(".document-viewer-markdown")?.textContent).toContain("empty image");
+      expect(document.querySelector('.document-viewer-markdown img[src=""]')).toBeNull();
+      expect(document.querySelector('.document-viewer-markdown a[href^="javascript:"]')).toBeNull();
       expect(document.querySelector(".document-viewer-text")).toBeNull();
     } finally {
       await act(async () => root.unmount());
@@ -438,6 +453,22 @@ describe("document attachment cards in chat", () => {
     expect(closeButton).toContain("aspect-ratio: 1 / 1;");
     expect(closeButton).toContain("flex: 0 0 38px;");
     expect(closeButton).toContain("padding: 0;");
+  });
+
+  it("fits generated DOCX pages to the inline preview width without clipping their left edge", () => {
+    const inlineDocx = rule(".document-inline-preview-docx");
+    const inlineDocxViewer = rule(".document-inline-preview-docx .document-viewer-docx");
+    const inlineDocxWrapper = rule(".document-inline-preview-docx .docx-wrapper");
+    const inlineDocxPage = rule(".document-inline-preview-docx .docx-wrapper > section.docx");
+
+    expect(inlineDocx).toContain("height: 100%;");
+    expect(inlineDocx).toContain("overflow: hidden;");
+    expect(inlineDocxViewer).toContain("height: 100%;");
+    expect(inlineDocxViewer).toContain("overflow: hidden;");
+    expect(inlineDocxWrapper).toContain("background: transparent !important;");
+    expect(inlineDocxPage).toContain("width: 100% !important;");
+    expect(inlineDocxPage).toContain("min-width: 0;");
+    expect(inlineDocxWrapper).not.toContain("zoom:");
   });
 
   it("keeps the outgoing bubble snug to its document card on narrow screens instead of leaving a wide right gutter", () => {

@@ -1,4 +1,6 @@
 import { ArrowRight, LoaderCircle, X } from "lucide-react";
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import pdfWorkerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -19,33 +21,42 @@ import {
   touchDistance,
 } from "./pdfViewerZoom";
 import { detectDocumentPreviewKind, DocumentKindIcon, documentKindLabel, isMarkdownDocument, type DocumentPreviewKind } from "./documentPreviewKind";
-import { MessageMarkdown } from "../messageMarkdown";
 import { useMarkdownCanvasConversion } from "./useMarkdownCanvasConversion";
-
-const markdownHtmlEntities: Record<string, string> = {
-  amp: "&",
-  apos: "'",
-  gt: ">",
-  lt: "<",
-  nbsp: " ",
-  quot: '"',
-};
 
 function normalizeDocumentMarkdown(source: string): string {
   return source
     .replace(/(?:&nbsp;\s*){2,}/giu, "\n")
-    .replace(/&(#x[\da-f]+|#\d+|[a-z]+);/giu, (entity, value: string) => {
-      if (value[0] === "#") {
-        const hex = value[1]?.toLowerCase() === "x";
-        const codePoint = Number.parseInt(value.slice(hex ? 2 : 1), hex ? 16 : 10);
-        if (Number.isInteger(codePoint) && codePoint > 0 && codePoint <= 0x10ffff) {
-          return String.fromCodePoint(codePoint);
-        }
-        return entity;
-      }
-      return markdownHtmlEntities[value.toLowerCase()] ?? entity;
-    })
+    .replace(/\u00a0{2,}/gu, "\n")
+    .replace(/!\[([^\]]*)\](?!\s*(?:\(|\[))\s*/gu, "$1\n")
     .replace(/\r\n?/gu, "\n");
+}
+
+function isSafeDocumentImageSource(source: string): boolean {
+  if (!source.trim()) return false;
+  try {
+    const url = new URL(source, window.location.origin);
+    if (url.origin === window.location.origin && ["http:", "https:"].includes(url.protocol)) return true;
+    return /^data:image\/(?:png|gif|jpe?g|webp);base64,/i.test(source);
+  } catch {
+    return false;
+  }
+}
+
+function renderDocumentMarkdown(source: string): string {
+  const markdownHtml = marked.parse(normalizeDocumentMarkdown(source), { async: false });
+  const sanitizedHtml = DOMPurify.sanitize(markdownHtml, {
+    FORBID_ATTR: ["srcset", "style"],
+    FORBID_TAGS: ["audio", "embed", "iframe", "object", "source", "style", "video"],
+    USE_PROFILES: { html: true },
+  });
+  const template = document.createElement("template");
+  template.innerHTML = sanitizedHtml;
+  for (const image of Array.from(template.content.querySelectorAll<HTMLImageElement>("img"))) {
+    if (!isSafeDocumentImageSource(image.getAttribute("src") || "")) {
+      image.replaceWith(document.createTextNode(image.alt || ""));
+    }
+  }
+  return template.innerHTML;
 }
 
 export { detectDocumentPreviewKind } from "./documentPreviewKind";
@@ -574,7 +585,7 @@ export function DocumentViewerModal({
           )}
 
           {!loading && !error && kind === "text" && textContent !== null && isMarkdown && (
-            <article className="document-viewer-markdown"><MessageMarkdown source={normalizeDocumentMarkdown(textContent) || "(Empty document)"} /></article>
+            <article className="document-viewer-markdown" dangerouslySetInnerHTML={{ __html: renderDocumentMarkdown(textContent || "(Empty document)") }} />
           )}
 
           {!loading && !error && kind === "text" && textContent !== null && !isMarkdown && (
