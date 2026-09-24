@@ -7,6 +7,8 @@ import { getNotificationProviderSettings, updateNotificationProviderSettings, ty
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
+import "./AdminServerSettingsPage.css";
+import { GuestMeetingSelect } from "../features/chats/calling/GuestMeetingSelect";
 import { useStrings } from "../i18n/LanguageContext";
 
 export default function AdminServerSettingsPage() {
@@ -79,10 +81,17 @@ export default function AdminServerSettingsPage() {
           <label className="appearance-setting-row">
             <span className="settings-row-icon"><Bell size={18} aria-hidden="true" /></span>
             <span><strong>{strings.admin.defaults.notificationProvider}</strong></span>
-            <select className="admin-defaults-control" aria-label={strings.admin.defaults.notificationProvider} value={notificationProvider} disabled={!accessToken || isSaving || isProviderLoading || !isProviderAvailable} onChange={(event) => void saveNotificationProvider(event.target.value as NotificationProvider)}>
-              <option value="firebase">{strings.admin.defaults.firebaseProvider}</option>
-              <option value="ntfy">{strings.admin.defaults.ntfyProvider}</option>
-            </select>
+            <GuestMeetingSelect
+              ariaLabel={strings.admin.defaults.notificationProvider}
+              className="server-settings-select"
+              disabled={!accessToken || isSaving || isProviderLoading || !isProviderAvailable}
+              value={notificationProvider}
+              options={[
+                { value: "firebase", label: strings.admin.defaults.firebaseProvider },
+                { value: "ntfy", label: strings.admin.defaults.ntfyProvider }
+              ]}
+              onChange={(provider) => void saveNotificationProvider(provider as NotificationProvider)}
+            />
           </label>
         </section>
         {isOwner && <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.guestMeetingQuality}</h2>
@@ -96,25 +105,19 @@ export default function AdminServerSettingsPage() {
           <label className="appearance-setting-row appearance-setting-row--disabled">
             <span className="settings-row-icon"><FileArchive size={18} aria-hidden="true" /></span>
             <span><strong>{strings.admin.serverSettings.fileCompression}</strong><small>{strings.admin.serverSettings.fileCompressionHelp}</small></span>
-            <select className="admin-defaults-control" aria-label={strings.admin.serverSettings.fileCompression} value="optimize-size" disabled>
-              <option value="optimize-size">{strings.admin.serverSettings.optimizeSize}</option>
-            </select>
+            <GuestMeetingSelect ariaLabel={strings.admin.serverSettings.fileCompression} className="server-settings-select" value="optimize-size" options={[{ value: "optimize-size", label: strings.admin.serverSettings.optimizeSize }]} disabled onChange={() => undefined} />
             <span className="premium-feature-badge">{premium}</span>
           </label>
           <label className="appearance-setting-row appearance-setting-row--disabled">
             <span className="settings-row-icon"><MessageSquare size={18} aria-hidden="true" /></span>
             <span><strong>{strings.admin.serverSettings.messageRetention}</strong><small>{strings.admin.serverSettings.messageRetentionHelp}</small></span>
-            <select className="admin-defaults-control" aria-label={strings.admin.serverSettings.messageRetention} value="never" disabled>
-              <option value="never">{strings.admin.serverSettings.never}</option>
-            </select>
+            <GuestMeetingSelect ariaLabel={strings.admin.serverSettings.messageRetention} className="server-settings-select" value="never" options={[{ value: "never", label: strings.admin.serverSettings.never }]} disabled onChange={() => undefined} />
             <span className="premium-feature-badge">{premium}</span>
           </label>
           <label className="appearance-setting-row appearance-setting-row--disabled">
             <span className="settings-row-icon"><UserRoundX size={18} aria-hidden="true" /></span>
             <span><strong>{strings.admin.serverSettings.inactiveUserDeletion}</strong><small>{strings.admin.serverSettings.inactiveUserDeletionHelp}</small></span>
-            <select className="admin-defaults-control" aria-label={strings.admin.serverSettings.inactiveUserDeletion} value="never" disabled>
-              <option value="never">{strings.admin.serverSettings.never}</option>
-            </select>
+            <GuestMeetingSelect ariaLabel={strings.admin.serverSettings.inactiveUserDeletion} className="server-settings-select" value="never" options={[{ value: "never", label: strings.admin.serverSettings.never }]} disabled onChange={() => undefined} />
             <span className="premium-feature-badge">{premium}</span>
           </label>
         </section>

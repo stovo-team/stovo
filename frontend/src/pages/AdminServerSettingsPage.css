@@ -1,0 +1,39 @@
+.admin-page .appearance-setting-row > .server-settings-select {
+  box-sizing: border-box;
+  display: block;
+  flex: 0 1 240px;
+  margin-left: auto;
+  max-width: 42%;
+  min-width: 0;
+  width: 240px;
+}
+
+.admin-page .server-settings-select .guest-link-select-trigger {
+  border-radius: 14px;
+  font-size: 0.86rem;
+  font-weight: 500;
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.admin-page .server-settings-select .guest-link-select-menu {
+  border-radius: 14px;
+  top: calc(100% + 4px);
+}
+
+.admin-page .server-settings-select .guest-link-select-menu button.selected {
+  justify-content: space-between;
+}
+
+.admin-page .server-settings-select .guest-link-select-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+@media (max-width: 600px) {
+  .admin-page .appearance-setting-row > .server-settings-select {
+    flex-basis: 180px;
+    max-width: 55%;
+    width: 180px;
+  }
+}

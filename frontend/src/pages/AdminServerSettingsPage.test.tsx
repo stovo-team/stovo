@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   updateNotificationProviderSettings: vi.fn(),
   currentUser: { role: "owner" } as { role: string; permissions?: string[] }
 }));
-const styles = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const styles = readFileSync(resolve(process.cwd(), "src/pages/AdminServerSettingsPage.css"), "utf8");
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ accessToken: "owner-token", authRequest: mocks.authRequest, currentUser: mocks.currentUser })
@@ -68,19 +68,43 @@ describe("AdminServerSettingsPage", () => {
     await act(async () => { root?.render(<AdminServerSettingsPage />); });
   }
 
+  async function chooseOption(ariaLabel: string, value: string) {
+    const trigger = document.querySelector<HTMLButtonElement>(`button[aria-label^="${ariaLabel}"]`)!;
+    if (trigger.getAttribute("aria-expanded") !== "true") await act(async () => { trigger.click(); });
+    const option = [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find((candidate) => candidate.textContent?.trim() === value)!;
+    await act(async () => { option.click(); await Promise.resolve(); });
+  }
+
   it("shows and saves the server notification provider", async () => {
     await renderPage();
-    const select = document.querySelector<HTMLSelectElement>('select[aria-label="Notification delivery provider"]')!;
-    expect(select.value).toBe("firebase");
+    const trigger = document.querySelector<HTMLButtonElement>('button[aria-label^="Notification delivery provider"]')!;
+    expect(trigger.textContent).toContain("Firebase");
+    expect(trigger.getAttribute("aria-label")).toContain("Firebase");
+    await act(async () => { trigger.click(); });
+    expect(document.querySelector('[role="listbox"][aria-label="Notification delivery provider"]')).toBeTruthy();
+    expect(document.querySelectorAll('[role="option"]')).toHaveLength(2);
     expect(mocks.getNotificationProviderSettings).toHaveBeenCalledWith("owner-token");
-
-    select.value = "ntfy";
-    await act(async () => {
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-      await Promise.resolve();
-    });
+    await chooseOption("Notification delivery provider", "ntfy");
     expect(mocks.updateNotificationProviderSettings).toHaveBeenCalledWith("owner-token", "ntfy");
-    expect(select.value).toBe("ntfy");
+    expect(trigger.textContent).toContain("ntfy");
+  });
+
+  it("supports keyboard navigation and restores focus when the provider menu closes", async () => {
+    await renderPage();
+    const trigger = document.querySelector<HTMLButtonElement>('button[aria-label^="Notification delivery provider"]')!;
+    await act(async () => { trigger.click(); });
+    const firebaseOption = document.querySelector<HTMLButtonElement>('[role="option"][aria-selected="true"]')!;
+    expect(document.activeElement).toBe(firebaseOption);
+    await act(async () => { firebaseOption.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); });
+    const ntfyOption = [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find((option) => option.textContent?.includes("ntfy"))!;
+    expect(document.activeElement).toBe(ntfyOption);
+    await act(async () => { ntfyOption.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
+    expect(mocks.updateNotificationProviderSettings).toHaveBeenCalledWith("owner-token", "ntfy");
+
+    await act(async () => { trigger.click(); });
+    await act(async () => { document.querySelector('[role="listbox"]')!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+    expect(document.activeElement).toBe(trigger);
+    expect(document.querySelector('[role="listbox"]')).toBeNull();
   });
 
   it("keeps guest meeting quality editable and saves a valid bitrate", async () => {
@@ -103,15 +127,15 @@ describe("AdminServerSettingsPage", () => {
 
   it("shows premium retention and compression defaults as locked controls", async () => {
     await renderPage();
-    const compression = document.querySelector<HTMLSelectElement>('select[aria-label="File compression"]')!;
-    const messageTtl = document.querySelector<HTMLSelectElement>('select[aria-label="Message retention"]')!;
-    const inactiveUsers = document.querySelector<HTMLSelectElement>('select[aria-label="Inactive user deletion"]')!;
-    expect(compression.value).toBe("optimize-size");
-    expect(messageTtl.value).toBe("never");
-    expect(inactiveUsers.value).toBe("never");
-    expect(compression.classList.contains("admin-defaults-control")).toBe(true);
-    expect(messageTtl.classList.contains("admin-defaults-control")).toBe(true);
-    expect(inactiveUsers.classList.contains("admin-defaults-control")).toBe(true);
+    const compression = document.querySelector<HTMLButtonElement>('button[aria-label^="File compression"]')!;
+    const messageTtl = document.querySelector<HTMLButtonElement>('button[aria-label^="Message retention"]')!;
+    const inactiveUsers = document.querySelector<HTMLButtonElement>('button[aria-label^="Inactive user deletion"]')!;
+    expect(compression.textContent).toContain("Optimize size");
+    expect(messageTtl.textContent).toContain("Never");
+    expect(inactiveUsers.textContent).toContain("Never");
+    expect(compression.closest(".server-settings-select")).toBeTruthy();
+    expect(messageTtl.closest(".server-settings-select")).toBeTruthy();
+    expect(inactiveUsers.closest(".server-settings-select")).toBeTruthy();
     expect(compression.disabled && messageTtl.disabled && inactiveUsers.disabled).toBe(true);
     expect(document.querySelectorAll(".premium-feature-badge")).toHaveLength(3);
     expect(mocks.authRequest).toHaveBeenCalledTimes(1);
@@ -123,18 +147,23 @@ describe("AdminServerSettingsPage", () => {
     expect(badgeRule).toMatch(/flex: 0 0 auto;/);
   });
 
+  it("uses compact server dropdown widths on desktop and mobile", () => {
+    const desktopRule = styles.match(/\.admin-page \.appearance-setting-row > \.server-settings-select\s*\{([^}]*)\}/)?.[1] ?? "";
+    const mobileRule = styles.match(/@media \(max-width: 600px\)[\s\S]*?\.admin-page \.appearance-setting-row > \.server-settings-select\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(desktopRule).toMatch(/width: 240px;/);
+    expect(desktopRule).toMatch(/max-width: 42%;/);
+    expect(mobileRule).toMatch(/width: 180px;/);
+    expect(mobileRule).toMatch(/max-width: 55%;/);
+  });
+
   it("allows manage_server members to update the notification provider", async () => {
     mocks.currentUser = { role: "member", permissions: ["manage_server"] };
     await renderPage();
-    const select = document.querySelector<HTMLSelectElement>('select[aria-label="Notification delivery provider"]')!;
-    expect(select.value).toBe("firebase");
+    const trigger = document.querySelector<HTMLButtonElement>('button[aria-label^="Notification delivery provider"]')!;
+    expect(trigger.textContent).toContain("Firebase");
     expect(document.body.textContent).not.toContain("Guest meeting quality");
     expect(mocks.authRequest).not.toHaveBeenCalled();
-    select.value = "ntfy";
-    await act(async () => {
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-      await Promise.resolve();
-    });
+    await chooseOption("Notification delivery provider", "ntfy");
     expect(mocks.updateNotificationProviderSettings).toHaveBeenCalledWith("owner-token", "ntfy");
   });
 
@@ -152,6 +181,6 @@ describe("AdminServerSettingsPage", () => {
     mocks.getNotificationProviderSettings.mockRejectedValue(new Error("offline"));
     await renderPage();
     expect(document.body.textContent).toContain("Could not load server settings");
-    expect(document.querySelector<HTMLSelectElement>('select[aria-label="Notification delivery provider"]')?.disabled).toBe(true);
+    expect(document.querySelector<HTMLButtonElement>('button[aria-label^="Notification delivery provider"]')?.disabled).toBe(true);
   });
 });
