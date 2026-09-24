@@ -19,12 +19,14 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"stovo-messenger/backend/ent"
 	"stovo-messenger/backend/ent/chatmember"
 	"stovo-messenger/backend/internal/config"
+	featurefiles "stovo-messenger/backend/internal/features/files"
 	"stovo-messenger/backend/internal/repository"
 	"stovo-messenger/backend/internal/storage"
 
@@ -1393,6 +1395,126 @@ func TestMessageValidationHistoryAndReadParity(t *testing.T) {
 	_ = attachDeletedResp.Body.Close()
 }
 
+func TestMessageHistoryAutomaticallyDeletesEmptyAttachments(t *testing.T) {
+	server, serverURL, client := newTestServer(t)
+	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
+		"familyName": "Broken Attachments Family", "username": "owner", "password": "secure-password", "displayName": "Owner",
+	})
+	owner := decodeJSON[authResponse](t, setupResp)
+	member := createInvitedUser(t, client, serverURL.URL, owner, "member")
+	chatResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats/direct", owner.AccessToken, map[string]any{"userId": member.User.ID})
+	chat := decodeJSON[chatPublic](t, chatResp)
+	uploadResp := uploadFileRequest(t, client, serverURL.URL+"/api/files/upload", owner.AccessToken, chat.ID, "broken.pdf", []byte("%PDF-1.4\ninvalid document"))
+	if uploadResp.StatusCode != http.StatusCreated {
+		t.Fatalf("empty PDF upload status = %d", uploadResp.StatusCode)
+	}
+	file := decodeJSON[filePublic](t, uploadResp)
+	if file.SizeBytes == 0 {
+		t.Fatal("test setup PDF should have a nonzero uploaded size")
+	}
+	if _, err := testPersistenceClient(t, server).File.UpdateOneID(file.ID).SetSizeBytes(0).Save(context.Background()); err != nil {
+		t.Fatalf("mark attachment as zero bytes: %v", err)
+	}
+	_, objectKey, err := server.loadFileRecord(context.Background(), file.ID, owner.User.ID)
+	if err != nil {
+		t.Fatalf("load broken attachment object key: %v", err)
+	}
+	if err := server.storage.Save(objectKey, []byte{}); err != nil {
+		t.Fatalf("make broken attachment object empty: %v", err)
+	}
+	emptyTextResp := uploadFileRequest(t, client, serverURL.URL+"/api/files/upload", owner.AccessToken, chat.ID, "empty.txt", []byte("temporary content"))
+	if emptyTextResp.StatusCode != http.StatusCreated {
+		t.Fatalf("empty text attachment upload status = %d", emptyTextResp.StatusCode)
+	}
+	emptyText := decodeJSON[filePublic](t, emptyTextResp)
+	if _, err := testPersistenceClient(t, server).File.UpdateOneID(emptyText.ID).SetSizeBytes(0).Save(context.Background()); err != nil {
+		t.Fatalf("mark empty text size: %v", err)
+	}
+	_, emptyTextObjectKey, err := server.loadFileRecord(context.Background(), emptyText.ID, owner.User.ID)
+	if err != nil {
+		t.Fatalf("load empty text object key: %v", err)
+	}
+	if err := server.storage.Save(emptyTextObjectKey, []byte{}); err != nil {
+		t.Fatalf("make empty text object empty: %v", err)
+	}
+	goodUploadResp := uploadFileRequest(t, client, serverURL.URL+"/api/files/upload", owner.AccessToken, chat.ID, "keep.txt", []byte("keep this file"))
+	if goodUploadResp.StatusCode != http.StatusCreated {
+		t.Fatalf("valid attachment upload status = %d", goodUploadResp.StatusCode)
+	}
+	goodFile := decodeJSON[filePublic](t, goodUploadResp)
+	messageResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats/"+chat.ID+"/messages", owner.AccessToken, map[string]any{
+		"type": "file", "fileIds": []string{file.ID, emptyText.ID, goodFile.ID},
+	})
+	if messageResp.StatusCode != http.StatusCreated {
+		t.Fatalf("message with empty attachment status = %d", messageResp.StatusCode)
+	}
+	created := decodeJSON[messagePublic](t, messageResp)
+	if len(created.Attachments) != 3 {
+		t.Fatalf("new message attachments = %d, want 3", len(created.Attachments))
+	}
+	staleCachedContent := "stale cached message content"
+	cachedMessage := created
+	cachedMessage.Content = &staleCachedContent
+	memberRevision := server.chatHistoryRevisions(context.Background(), chat.ID, member.User.ID)
+	server.cacheLatestHistory(context.Background(), chat.ID, member.User.ID, memberRevision, newMessageHistoryPage([]messagePublic{cachedMessage}, false))
+
+	historyResp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/chats/"+chat.ID+"/messages", member.AccessToken, nil)
+	if historyResp.StatusCode != http.StatusOK {
+		t.Fatalf("message history status = %d", historyResp.StatusCode)
+	}
+	history := decodeJSON[messageHistoryPage](t, historyResp)
+	if len(history.Messages) != 1 || len(history.Messages[0].Attachments) != 2 || history.Messages[0].Attachments[0].ID != emptyText.ID || history.Messages[0].Attachments[1].ID != goodFile.ID {
+		t.Fatalf("history did not remove only the zero-byte attachment: %#v", history.Messages)
+	}
+	if history.Messages[0].Content == nil || *history.Messages[0].Content != staleCachedContent {
+		t.Fatalf("history did not return the distinguishable cached message: %#v", history.Messages[0].Content)
+	}
+	fileResp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/files/"+file.ID, owner.AccessToken, nil)
+	if fileResp.StatusCode != http.StatusNotFound {
+		t.Fatalf("cleaned zero-byte file status = %d, want 404", fileResp.StatusCode)
+	}
+	_ = fileResp.Body.Close()
+	goodFileResp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/files/"+goodFile.ID, owner.AccessToken, nil)
+	if goodFileResp.StatusCode != http.StatusOK {
+		t.Fatalf("valid attachment status = %d, want 200", goodFileResp.StatusCode)
+	}
+	_ = goodFileResp.Body.Close()
+	emptyTextFileResp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/files/"+emptyText.ID, owner.AccessToken, nil)
+	if emptyTextFileResp.StatusCode != http.StatusOK {
+		t.Fatalf("empty text attachment status = %d, want 200", emptyTextFileResp.StatusCode)
+	}
+	_ = emptyTextFileResp.Body.Close()
+	cleanedFile, objectKey, err := server.loadFileRecord(context.Background(), file.ID, owner.User.ID)
+	if err != nil || cleanedFile.DeletedAt == nil {
+		t.Fatalf("zero-byte attachment file was not soft-deleted: file=%#v err=%v", cleanedFile, err)
+	}
+	if _, err := server.storage.Read(objectKey); err == nil {
+		t.Fatal("expected empty attachment object to be deleted")
+	}
+	var eventCount int
+	if err := server.sqlDB.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM sync_events WHERE event_type='file.deleted' AND aggregate_id=$1`, file.ID).Scan(&eventCount); err != nil {
+		t.Fatalf("count file deletion events: %v", err)
+	}
+	var workers sync.WaitGroup
+	for range 8 {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			if err := server.fileDeletions.Delete(context.Background(), featurefiles.Deletion{FileID: file.ID, FamilyID: owner.User.FamilyID, ChatID: file.ChatID}); err != nil {
+				t.Errorf("repeat file deletion: %v", err)
+			}
+		}()
+	}
+	workers.Wait()
+	var repeatedEventCount int
+	if err := server.sqlDB.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM sync_events WHERE event_type='file.deleted' AND aggregate_id=$1`, file.ID).Scan(&repeatedEventCount); err != nil {
+		t.Fatalf("count repeated file deletion events: %v", err)
+	}
+	if repeatedEventCount != eventCount || repeatedEventCount != 1 {
+		t.Fatalf("file deletion events after concurrent retries = %d, initial=%d, want one durable event", repeatedEventCount, eventCount)
+	}
+}
+
 func TestGroupMediaAdminValidationAndInviteUrlParity(t *testing.T) {
 	server, serverURL, client := newTestServer(t)
 
@@ -1849,3 +1971,4 @@ func TestMessageReactionsAreInlineAndIdempotent(t *testing.T) {
 		t.Fatalf("unexpected removed reaction payload: %#v", removed.Reactions)
 	}
 }
+
