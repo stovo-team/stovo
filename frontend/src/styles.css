@@ -21382,12 +21382,35 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .document-inline-preview-docx {
+  align-items: flex-start;
   background: #fff;
   box-sizing: border-box;
   color: #202124;
   height: 100%;
   overflow: hidden;
-  padding: 14px 18px;
+  padding: 0;
+  width: 100%;
+}
+
+.document-inline-preview-docx .document-viewer-docx {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: hidden;
+  padding: 0;
+  width: 100%;
+}
+
+.document-inline-preview-docx .docx-wrapper {
+  align-items: flex-start !important;
+  background: transparent !important;
+  height: 100%;
+  overflow: hidden;
+  padding: 0 !important;
+  zoom: 0.5;
+}
+
+.document-inline-preview-docx .docx-wrapper > section.docx {
+  margin: 0 !important;
 }
 
 .document-inline-preview-text,
