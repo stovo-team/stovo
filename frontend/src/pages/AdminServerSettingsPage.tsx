@@ -153,6 +153,7 @@ export default function AdminServerSettingsPage() {
               <span className="settings-row-icon"><span className="ms-icon ms-icon--20" aria-hidden="true">{icon}</span></span>
               <span><strong>{label}</strong></span>
               <button className="server-settings-placeholder" type="button" disabled aria-label={label}>{strings.admin.serverSettings.notConfigured}</button>
+              <span className="premium-feature-badge">{premium}</span>
             </div>
           )}
         </section>}

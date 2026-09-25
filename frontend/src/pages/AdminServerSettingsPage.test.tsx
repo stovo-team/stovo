@@ -230,6 +230,9 @@ describe("AdminServerSettingsPage", () => {
     const section = heading?.closest("section");
     for (const label of ["Disallowed file types", "Content safety checks", "Antispam"]) {
       expect(section?.textContent).toContain(label);
+      const row = [...(section?.querySelectorAll<HTMLElement>(".appearance-setting-row") ?? [])]
+        .find((candidate) => candidate.textContent?.includes(label));
+      expect(row?.querySelector(".premium-feature-badge")?.textContent).toBe("Premium");
     }
     const interactiveItems = [...(section?.querySelectorAll<HTMLButtonElement | HTMLInputElement>("button, input, select") ?? [])];
     for (const control of interactiveItems) {
@@ -252,7 +255,7 @@ describe("AdminServerSettingsPage", () => {
     expect(messageTtl.closest(".server-settings-select")).toBeTruthy();
     expect(inactiveUsers.closest(".server-settings-select")).toBeTruthy();
     expect(compression.disabled && messageTtl.disabled && inactiveUsers.disabled).toBe(true);
-    expect(document.querySelectorAll(".premium-feature-badge")).toHaveLength(3);
+    expect(document.querySelectorAll(".premium-feature-badge")).toHaveLength(6);
     expect(mocks.authRequest).toHaveBeenCalledTimes(1);
     expect(mocks.updateNotificationProviderSettings).not.toHaveBeenCalled();
   });
