@@ -18,6 +18,7 @@ import {
   getPdfRenderLimits,
   sanitizeDocxHtml,
 } from "./DocumentAttachmentPreview";
+import { applyDocxPageFit } from "./DocxDocumentPreview";
 import { clearMediaBlobCache } from "../mediaBlobCache";
 import * as filesApi from "../api/files";
 import type { FamilyFile } from "../api/files";
@@ -104,6 +105,34 @@ describe("PDF viewer render limits", () => {
 
   it("keeps the fuller preview budget on unconstrained devices", () => {
     expect(getPdfRenderLimits(80, 3, false)).toEqual({ maxPages: 40, dpr: 2 });
+  });
+});
+
+describe("DOCX inline page fitting", () => {
+  it("scales a fixed-width page uniformly to the available preview width", () => {
+    const host = document.createElement("div");
+    const wrapper = document.createElement("div");
+    const page = document.createElement("section");
+    Object.defineProperties(host, { clientWidth: { configurable: true, value: 520 } });
+    Object.defineProperties(page, { offsetWidth: { value: 816 }, offsetHeight: { value: 1056 } });
+
+    expect(applyDocxPageFit(host, wrapper, page)).toBeCloseTo(520 / 816);
+    expect(page.style.transform).toBe(`scale(${520 / 816})`);
+    expect(page.style.transformOrigin).toBe("top left");
+    expect(Number.parseFloat(wrapper.style.height)).toBeCloseTo(1056 * (520 / 816));
+  });
+
+  it("does not enlarge pages or change them when the host has no measurable width", () => {
+    const host = document.createElement("div");
+    const wrapper = document.createElement("div");
+    const page = document.createElement("section");
+    Object.defineProperties(host, { clientWidth: { configurable: true, value: 900 } });
+    Object.defineProperties(page, { offsetWidth: { value: 816 }, offsetHeight: { value: 1056 } });
+    expect(applyDocxPageFit(host, wrapper, page)).toBe(1);
+
+    Object.defineProperties(host, { clientWidth: { value: 0, configurable: true } });
+    expect(applyDocxPageFit(host, wrapper, page)).toBeNull();
+    expect(page.style.transform).toBe("scale(1)");
   });
 });
 
@@ -455,7 +484,7 @@ describe("document attachment cards in chat", () => {
     expect(closeButton).toContain("padding: 0;");
   });
 
-  it("fits generated DOCX pages to the inline preview width without clipping their left edge", () => {
+  it("scales generated DOCX pages proportionally to the inline preview width", () => {
     const inlineDocx = rule(".document-inline-preview-docx");
     const inlineDocxViewer = rule(".document-inline-preview-docx .document-viewer-docx");
     const inlineDocxWrapper = rule(".document-inline-preview-docx .docx-wrapper");
@@ -466,8 +495,10 @@ describe("document attachment cards in chat", () => {
     expect(inlineDocxViewer).toContain("height: 100%;");
     expect(inlineDocxViewer).toContain("overflow: hidden;");
     expect(inlineDocxWrapper).toContain("background: transparent !important;");
-    expect(inlineDocxPage).toContain("width: 100% !important;");
-    expect(inlineDocxPage).toContain("min-width: 0;");
+    expect(inlineDocxPage).toContain("transform-origin: top left;");
+    expect(inlineDocxPage).not.toContain("width: 100% !important;");
+    expect(inlineDocxPage).not.toContain("min-width: 0 !important;");
+    expect(inlineDocxPage).toContain("margin: 0 !important;");
     expect(inlineDocxWrapper).not.toContain("zoom:");
   });
 

@@ -21402,7 +21402,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .document-inline-preview-docx .docx-wrapper {
   background: transparent !important;
-  align-items: stretch !important;
+  align-items: flex-start !important;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -21415,10 +21415,8 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .document-inline-preview-docx .docx-wrapper > section.docx {
   box-sizing: border-box;
-  max-width: 100% !important;
   margin: 0 !important;
-  min-width: 0;
-  width: 100% !important;
+  transform-origin: top left;
 }
 
 .document-inline-preview-text,

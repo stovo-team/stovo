@@ -42,12 +42,24 @@ export function sanitizeDocxHtml(html: string): string {
   return template.innerHTML;
 }
 
-export function DocxDocumentPreview({ blob }: { blob: Blob }) {
+export function applyDocxPageFit(host: HTMLElement, wrapper: HTMLElement, page: HTMLElement): number | null {
+  const pageWidth = page.offsetWidth;
+  const availableWidth = host.clientWidth;
+  if (!pageWidth || !availableWidth) return null;
+  const scale = Math.min(1, availableWidth / pageWidth);
+  page.style.transformOrigin = "top left";
+  page.style.transform = `scale(${scale})`;
+  wrapper.style.height = `${page.offsetHeight * scale}px`;
+  return scale;
+}
+
+export function DocxDocumentPreview({ blob, fitToWidth = false }: { blob: Blob; fitToWidth?: boolean }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
     const host = hostRef.current;
     if (!host) return;
     host.replaceChildren();
@@ -67,6 +79,19 @@ export function DocxDocumentPreview({ blob }: { blob: Blob }) {
           if (!isSafeDocxURL(link.href, false)) link.removeAttribute("href");
         }
         host.replaceChildren(...Array.from(stagingHost.childNodes));
+        if (fitToWidth) {
+          const wrapper = host.querySelector<HTMLElement>(".docx-wrapper");
+          const page = wrapper?.querySelector<HTMLElement>(":scope > section.docx");
+          if (wrapper && page) {
+            const fitPage = () => applyDocxPageFit(host, wrapper, page);
+            fitPage();
+            if (typeof ResizeObserver !== "undefined") {
+              resizeObserver = new ResizeObserver(fitPage);
+              resizeObserver.observe(host);
+              resizeObserver.observe(page);
+            }
+          }
+        }
       } catch (err) {
         console.error("Failed to render DOCX preview:", err);
         if (!cancelled) setError("Document couldn’t be rendered on this device.");
@@ -75,9 +100,10 @@ export function DocxDocumentPreview({ blob }: { blob: Blob }) {
 
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
       host.replaceChildren();
     };
-  }, [blob]);
+  }, [blob, fitToWidth]);
 
   return (
     <div className="document-viewer-docx" ref={hostRef}>

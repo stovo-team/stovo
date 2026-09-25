@@ -411,7 +411,7 @@ export function DocumentAttachmentPreview({
             renderPdf={(blob) => <PdfCanvasViewer blob={blob} pageLimit={1} />}
             renderDocx={(blob) => (
               <div className="document-inline-preview-docx">
-                <DocxDocumentPreview blob={blob} />
+                <DocxDocumentPreview blob={blob} fitToWidth />
               </div>
             )}
           />

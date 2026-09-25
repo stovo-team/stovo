@@ -22,11 +22,15 @@ Give every agent its owned files or responsibility, known dependencies, and test
 
 For a genuinely small, indivisible change, one agent may perform the TDD loop, but an independent review of the diff and tests is still required before declaring it done.
 
-## 3. Isolate delegated feature work and deliver PRs
+## 3. Isolate feature work in a worktree and deliver PRs
 
-Every subagent implementing a discrete feature, fix, or reviewable concern must work in its own managed Git worktree and branch. The orchestrator must create the worktree from a known clean base and assign it only that concern; never ask multiple subagents to edit the shared checkout concurrently.
+Every discrete feature, fix, or reviewable concern must be implemented in its own Git worktree, whether the work is done by the orchestrator or a subagent. Creating or switching to a new branch in the shared checkout is not sufficient isolation. Before implementation, create a new managed worktree with its own feature branch from a known clean base, then do all edits, tests, commits, and PR work for that concern inside that worktree. Do not make feature changes in the shared checkout, and never assign multiple agents to edit the same worktree concurrently.
 
-- Name branches with the `left-try/` prefix unless the user specifies another convention.
+The worktree must start from a clean base so it does not inherit unrelated working-tree changes or commits from another feature branch. Check the base checkout's status and the intended base revision before creating the worktree; if the base is dirty, do not carry those changes into the feature worktree. Preserve the dirty changes in their existing checkout and create the feature worktree from the clean base revision. If the current branch contains unrelated feature commits, use the appropriate clean base branch or commit rather than branching from it.
+
+Use the repository's managed worktree workflow (for example, `git worktree add` with a new branch, or the Codex managed worktree tool) so each feature has a distinct directory and branch. Confirm the worktree path and branch before editing, and run all feature commands from that path.
+
+- Name feature branches with the `left-try/` prefix unless the user specifies another convention.
 - Treat worktrees as temporary. Reuse neither a finished feature worktree nor one with unknown changes.
 - Retain a worktree while its PR is active so review feedback can be addressed. After the PR is merged or formally abandoned, remove the managed worktree safely and report that cleanup. Do not perform broad/manual filesystem deletion.
 
