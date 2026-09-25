@@ -126,7 +126,7 @@ func SplitAudioIntoSegments(ctx context.Context, audioData []byte, filename, con
 	if err != nil {
 		return nil, fmt.Errorf("create temp dir: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	ext := filepath.Ext(filename)
 	if ext == "" {

@@ -51,7 +51,7 @@ func (h MediaHandler) Stream(w stdhttp.ResponseWriter, r *stdhttp.Request) {
 		h.error(w, err)
 		return
 	}
-	defer stream.Reader.Close()
+	defer func() { _ = stream.Reader.Close() }()
 	w.Header().Set("Content-Type", stream.ContentType)
 	if stream.Attachment {
 		w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.QueryEscape(stream.OriginalName))

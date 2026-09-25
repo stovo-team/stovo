@@ -188,7 +188,7 @@ func (s *PostgresStore) UploadedChunks(ctx context.Context, sessionID string) ([
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	chunks := make([]featuretranscription.AudioChunk, 0)
 	for rows.Next() {
 		chunk, err := scanChunk(rows)
@@ -226,7 +226,7 @@ func (s *PostgresStore) Transcript(ctx context.Context, callID string) (featuret
 	if err != nil {
 		return featuretranscription.Transcript{}, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	segments := make([]featuretranscription.Segment, 0)
 	for rows.Next() {
 		var segment featuretranscription.Segment

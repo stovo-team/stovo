@@ -294,7 +294,7 @@ func runSelfTest(ctx context.Context, duration time.Duration) {
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		// Send Engine.IO open packet
 		_ = conn.WriteMessage(websocket.TextMessage, []byte(`0{"sid":"test-sid","upgrades":[],"pingInterval":25000,"pingTimeout":20000}`))

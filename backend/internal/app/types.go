@@ -129,61 +129,6 @@ type setupStatusResponse struct {
 	NavTabs       *NavTabsConfig `json:"navTabs,omitempty"`
 }
 
-type setupRequest struct {
-	FamilyName  string `json:"familyName"`
-	Nickname    string `json:"nickname"`
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	DisplayName string `json:"displayName"`
-	InviteToken string `json:"inviteToken"`
-}
-
-type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type deviceLoginRequest struct {
-	Username string `json:"username"`
-}
-
-type deviceLoginVerifyRequest struct {
-	Username string `json:"username"`
-	Code     string `json:"code"`
-}
-
-type changePasswordRequest struct {
-	CurrentPassword string `json:"currentPassword"`
-	NewPassword     string `json:"newPassword"`
-}
-
-type updateMeRequest struct {
-	DisplayName             *string   `json:"displayName"`
-	PublicKey               *string   `json:"publicKey"`
-	ProfilePhotoFileID      *string   `json:"profilePhotoFileId"`
-	ProfileVisibility       *string   `json:"profileVisibility"`
-	LastSeenVisibility      *string   `json:"lastSeenVisibility"`
-	ReadReceiptsEnabled     *bool     `json:"readReceiptsEnabled"`
-	DirectMessagePermission *string   `json:"directMessagePermission"`
-	GroupInvitePermission   *string   `json:"groupInvitePermission"`
-	ChannelInvitePermission *string   `json:"channelInvitePermission"`
-	VoiceInvitePermission   *string   `json:"voiceInvitePermission"`
-	InvitePermissionUserIDs *[]string `json:"invitePermissionUserIds"`
-	Email                   *string   `json:"email"`
-	Bio                     *string   `json:"bio"`
-	Timezone                *string   `json:"timezone"`
-}
-
-type updateFamilyRequest struct {
-	Name                        *string `json:"name"`
-	StorageLimitMB              *int64  `json:"storageLimitMb"`
-	MinimizedChatLayout         *bool   `json:"minimizedChatLayout"`
-	DefaultProfileVisibility    *string `json:"defaultProfileVisibility"`
-	DefaultLastSeenVisibility   *string `json:"defaultLastSeenVisibility"`
-	DefaultReadReceiptsEnabled  *bool   `json:"defaultReadReceiptsEnabled"`
-	DefaultNotificationSettings *string `json:"defaultNotificationSettings"`
-}
-
 type serverRolePublic struct {
 	ID          string   `json:"id"`
 	Name        string   `json:"name"`
@@ -191,18 +136,6 @@ type serverRolePublic struct {
 	Permissions []string `json:"permissions"`
 	IsDefault   bool     `json:"isDefault"`
 	MemberCount int      `json:"memberCount"`
-}
-
-type createServerRoleRequest struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Permissions []string `json:"permissions"`
-}
-
-type updateServerRoleRequest struct {
-	Name        *string   `json:"name"`
-	Description *string   `json:"description"`
-	Permissions *[]string `json:"permissions"`
 }
 
 type planPublic struct {
@@ -230,44 +163,6 @@ type planAttendeePublic struct {
 	Status string `json:"status"`
 }
 
-type createPlanRequest struct {
-	Title        string    `json:"title"`
-	Notes        *string   `json:"notes"`
-	Location     *string   `json:"location"`
-	StartsAt     time.Time `json:"startsAt"`
-	EndsAt       time.Time `json:"endsAt"`
-	AllDay       bool      `json:"allDay"`
-	TimeZone     string    `json:"timeZone"`
-	Recurrence   *string   `json:"recurrence"`
-	AttendeeIDs  []string  `json:"attendeeIds"`
-	SourceChatID *string   `json:"sourceChatId"`
-}
-
-type updatePlanRequest struct {
-	Title       *string    `json:"title"`
-	Notes       *string    `json:"notes"`
-	Location    *string    `json:"location"`
-	StartsAt    *time.Time `json:"startsAt"`
-	EndsAt      *time.Time `json:"endsAt"`
-	AllDay      *bool      `json:"allDay"`
-	TimeZone    *string    `json:"timeZone"`
-	Recurrence  *string    `json:"recurrence"`
-	AttendeeIDs *[]string  `json:"attendeeIds"`
-	Revision    int        `json:"revision"`
-}
-
-type planRSVPRequest struct {
-	Status string `json:"status"`
-}
-
-type changeRoleRequest struct {
-	Role string `json:"role"`
-}
-
-type createInviteRequest = httptransport.InviteCreateRequest
-
-type acceptInviteRequest = httptransport.InviteAcceptRequest
-
 // Chat transport DTOs live at the HTTP edge. Aliases retain the existing
 // compatibility names while app finishes delegating the surrounding handlers.
 type chatMemberPublic = chatpresenter.Member
@@ -279,13 +174,6 @@ type pinnedMessagePublic struct {
 	PinnedBy  string        `json:"pinnedBy"`
 	PinnedAt  time.Time     `json:"pinnedAt"`
 	Message   messagePublic `json:"message"`
-}
-
-type updateChatPreferencesRequest struct {
-	IsMuted         *bool   `json:"isMuted"`
-	IsPinned        *bool   `json:"isPinned"`
-	IsFavorite      *bool   `json:"isFavorite"`
-	WallpaperFileID *string `json:"wallpaperFileId"`
 }
 
 type filePublic struct {
@@ -306,10 +194,6 @@ type filePublic struct {
 	CreatedAt          time.Time  `json:"createdAt"`
 	DeletedAt          *time.Time `json:"deletedAt"`
 	IsFavorite         bool       `json:"isFavorite"`
-}
-
-type updateFilePreferencesRequest struct {
-	IsFavorite *bool `json:"isFavorite"`
 }
 
 type messageStatusPublic struct {
@@ -492,22 +376,6 @@ type sendMessageRequest struct {
 	CollectionID        *string  `json:"collectionId"`
 }
 
-type attachMessageFilesRequest struct {
-	FileIDs []string `json:"fileIds"`
-}
-
-type forwardMessageRequest struct {
-	ChatID string `json:"chatId"`
-}
-
-type messageReactionRequest struct {
-	Emoji string `json:"emoji"`
-}
-
-type editMessageRequest struct {
-	Content string `json:"content"`
-}
-
 type logsResponse struct {
 	Records    []logRecord `json:"records"`
 	Total      int         `json:"total"`
@@ -548,11 +416,6 @@ type publicAccessCheckResponse struct {
 	Targets []publicAccessCheckTarget `json:"targets"`
 }
 
-type publicAccessUpdateRequest struct {
-	AppURL *string `json:"appUrl"`
-	APIURL *string `json:"apiUrl"`
-}
-
 type publicTunnelStatus struct {
 	State                  string                `json:"state"`
 	Provider               *string               `json:"provider"`
@@ -569,11 +432,6 @@ type publicTunnelStatus struct {
 	HealthFailureStreak    int                   `json:"healthFailureStreak"`
 	HealthFailureThreshold int                   `json:"healthFailureThreshold"`
 	PublicAccess           *publicAccessSettings `json:"publicAccess"`
-}
-
-type domainLinkRequest struct {
-	Domain    string  `json:"domain"`
-	APIDomain *string `json:"apiDomain"`
 }
 
 type domainDNSRecord struct {
@@ -603,10 +461,6 @@ type encryptionSettingsResponse struct {
 	CompatibilityNotes               []string                   `json:"compatibilityNotes"`
 }
 
-type encryptionSettingsUpdateRequest struct {
-	DefaultMessageEncryptionProtocol string `json:"defaultMessageEncryptionProtocol"`
-}
-
 type socketSendMessageRequest = realtimetransport.MessageSendRequest
 type socketReadRequest = realtimetransport.MessageReadRequest
 type socketTypingRequest = realtimetransport.TypingRequest
@@ -631,16 +485,6 @@ type logRecord struct {
 	Exception    *string   `json:"exception"`
 }
 
-type iceServerResponse struct {
-	ICEServers []iceServer `json:"iceServers"`
-}
-
-type iceServer struct {
-	URLs       []string `json:"urls"`
-	Username   string   `json:"username,omitempty"`
-	Credential string   `json:"credential,omitempty"`
-}
-
 type audioCallSettings struct {
 	SpeakerMode               string                  `json:"speakerMode"`
 	InputDeviceID             string                  `json:"inputDeviceId"`
@@ -663,5 +507,3 @@ type contactPrivacySettings struct {
 	VoiceInvitePermission   string   `json:"voiceInvitePermission"`
 	InvitePermissionUserIDs []string `json:"invitePermissionUserIds"`
 }
-
-type updateAudioSettingsRequest = audioCallSettings

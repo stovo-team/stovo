@@ -101,9 +101,10 @@ func (p TranscriptionProcessor) transcribeParticipant(ctx context.Context, callI
 			continue
 		}
 		contentType, filename := "audio/webm", "audio.webm"
-		if chunk.Container == "ogg" {
+		switch chunk.Container {
+		case "ogg":
 			contentType, filename = "audio/ogg", "audio.ogg"
-		} else if chunk.Container == "mp4" {
+		case "mp4":
 			contentType, filename = "audio/mp4", "audio.m4a"
 		}
 		response, err := client.Transcribe(ctx, transcription.TranscribeRequest{AudioData: audio, Filename: filename, ContentType: contentType})

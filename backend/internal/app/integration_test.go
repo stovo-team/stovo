@@ -196,7 +196,7 @@ func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 	if err != nil {
 		t.Fatalf("open test database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	if _, err := db.Exec(`DROP SCHEMA IF EXISTS public CASCADE`); err != nil {
 		t.Fatalf("drop public schema: %v", err)
 	}
@@ -210,7 +210,7 @@ func resetTestRuntime(t *testing.T, databaseURL, redisURL string) {
 		t.Fatalf("parse redis url: %v", err)
 	}
 	client := redis.NewClient(redisOptions)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 	if err := client.FlushDB(context.Background()).Err(); err != nil {
 		t.Fatalf("flush redis: %v", err)
 	}
@@ -360,7 +360,7 @@ func jsonRequest(t *testing.T, client *http.Client, method, target string, token
 
 func decodeJSON[T any](t *testing.T, resp *http.Response) T {
 	t.Helper()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var payload T
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		t.Fatalf("decode response: %v", err)
@@ -533,7 +533,7 @@ func mediaPlaybackRequest(t *testing.T, client *http.Client, method, target, tok
 func TestAddExistingServerMemberToChat(t *testing.T) {
 	server, httpServer, client := newTestServer(t)
 	defer httpServer.Close()
-	defer server.Close()
+	defer func() { _ = server.Close() }()
 
 	owner := setupOwner(t, client, httpServer.URL, "chat-owner", "Chat Family")
 	member := createInvitedUser(t, client, httpServer.URL, owner, "chat-member")
@@ -594,7 +594,7 @@ func createInvitedUser(t *testing.T, ownerClient *http.Client, serverURL string,
 	resp := jsonRequest(t, memberClient, http.MethodPost, serverURL+"/api/invites/"+token+"/accept", "", map[string]any{
 		"username":    username,
 		"password":    "secure-password",
-		"displayName": strings.Title(username),
+		"displayName": username,
 	})
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("accept invite status = %d", resp.StatusCode)
@@ -668,7 +668,7 @@ func TestMediaPlaybackFullRangeHeadAndConditionalResponses(t *testing.T) {
 	mediaURL := fixture.httpServer.URL + "/api/media/" + fixture.file.ID
 	fullResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, capability.Token, "", "")
 	fullBody, err := io.ReadAll(fullResp.Body)
-	fullResp.Body.Close()
+	_ = fullResp.Body.Close()
 	if err != nil {
 		t.Fatalf("read full media body: %v", err)
 	}
@@ -694,7 +694,7 @@ func TestMediaPlaybackFullRangeHeadAndConditionalResponses(t *testing.T) {
 
 	rangeResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, capability.Token, "bytes=2-5", "")
 	rangeBody, err := io.ReadAll(rangeResp.Body)
-	rangeResp.Body.Close()
+	_ = rangeResp.Body.Close()
 	if err != nil {
 		t.Fatalf("read range body: %v", err)
 	}
@@ -710,7 +710,7 @@ func TestMediaPlaybackFullRangeHeadAndConditionalResponses(t *testing.T) {
 
 	headResp := mediaPlaybackRequest(t, fixture.client, http.MethodHead, mediaURL, capability.Token, "", "")
 	headBody, err := io.ReadAll(headResp.Body)
-	headResp.Body.Close()
+	_ = headResp.Body.Close()
 	if err != nil {
 		t.Fatalf("read HEAD body: %v", err)
 	}
@@ -723,7 +723,7 @@ func TestMediaPlaybackFullRangeHeadAndConditionalResponses(t *testing.T) {
 
 	conditionalResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, capability.Token, "", lastModified)
 	conditionalBody, err := io.ReadAll(conditionalResp.Body)
-	conditionalResp.Body.Close()
+	_ = conditionalResp.Body.Close()
 	if err != nil {
 		t.Fatalf("read conditional body: %v", err)
 	}
@@ -734,7 +734,7 @@ func TestMediaPlaybackFullRangeHeadAndConditionalResponses(t *testing.T) {
 	for _, byteRange := range []string{"bytes=99-100", "bytes=not-a-range"} {
 		resp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, capability.Token, byteRange, "")
 		_, _ = io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode != http.StatusRequestedRangeNotSatisfiable {
 			t.Fatalf("range %q status = %d, want 416", byteRange, resp.StatusCode)
 		}
@@ -755,7 +755,7 @@ func TestMediaPlaybackAuthorizationFailuresAreUniform(t *testing.T) {
 
 	missingResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, "", "", "")
 	wantBody, err := io.ReadAll(missingResp.Body)
-	missingResp.Body.Close()
+	_ = missingResp.Body.Close()
 	if err != nil {
 		t.Fatalf("read missing-token body: %v", err)
 	}
@@ -788,7 +788,7 @@ func TestMediaPlaybackAuthorizationFailuresAreUniform(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			resp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, raw, "", "")
 			body, readErr := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if readErr != nil {
 				t.Fatalf("read denial body: %v", readErr)
 			}
@@ -815,7 +815,7 @@ func TestMediaPlaybackAuthorizationFailuresAreUniform(t *testing.T) {
 			}
 			resp := jsonRequest(t, fixture.client, http.MethodPost, target, token, nil)
 			body, readErr := io.ReadAll(resp.Body)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			if readErr != nil {
 				t.Fatalf("read mint denial body: %v", readErr)
 			}
@@ -830,7 +830,7 @@ func TestMediaPlaybackAuthorizationFailuresAreUniform(t *testing.T) {
 	}
 	deletedResp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, mediaURL, valid, "", "")
 	deletedBody, err := io.ReadAll(deletedResp.Body)
-	deletedResp.Body.Close()
+	_ = deletedResp.Body.Close()
 	if err != nil {
 		t.Fatalf("read deleted denial body: %v", err)
 	}
@@ -856,7 +856,7 @@ func TestMediaPlaybackVisibilityRevocationAfterMint(t *testing.T) {
 	}
 	resp := mediaPlaybackRequest(t, fixture.client, http.MethodGet, fixture.httpServer.URL+"/api/media/"+fixture.file.ID, capability.Token, "", "")
 	body, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if err != nil {
 		t.Fatalf("read revoked visibility body: %v", err)
 	}

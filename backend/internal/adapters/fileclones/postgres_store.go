@@ -16,7 +16,7 @@ func (s *PostgresStore) CreateClones(ctx context.Context, clones []featurefiles.
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	for _, clone := range clones {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO files (id,family_id,uploaded_by,chat_id,access_scope,storage_provider,object_key,thumbnail_object_key,original_name,mime_type,size_bytes,checksum,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`, clone.ID, clone.FamilyID, clone.UploadedBy, clone.ChatID, clone.AccessScope, clone.StorageProvider, clone.ObjectKey, clone.ThumbnailObjectKey, clone.OriginalName, clone.MimeType, clone.SizeBytes, clone.Checksum, clone.CreatedAt); err != nil {
 			return err

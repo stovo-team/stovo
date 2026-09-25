@@ -25,7 +25,7 @@ func (b *RedisBroker) Publish(ctx context.Context, channel string, event BrokerE
 
 func (b *RedisBroker) Subscribe(ctx context.Context, channel string, handler EventHandler) error {
 	pubsub := b.client.Subscribe(ctx, channel)
-	defer pubsub.Close()
+	defer func() { _ = pubsub.Close() }()
 
 	ch := pubsub.Channel()
 	for {

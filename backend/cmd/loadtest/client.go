@@ -65,7 +65,7 @@ func (c *LoadClient) Login(ctx context.Context, password string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
@@ -112,28 +112,28 @@ func (c *LoadClient) ConnectSocket(ctx context.Context) error {
 	// Step 1: Read Engine.IO Open packet "0{...}"
 	_, message, err := conn.ReadMessage()
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("engine.io handshake read: %w", err)
 	}
 	if len(message) == 0 || message[0] != '0' {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("invalid engine.io open packet: %s", string(message))
 	}
 
 	// Step 2: Send Socket.IO CONNECT packet "40"
 	if err := conn.WriteMessage(websocket.TextMessage, []byte("40")); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("socket.io connect write: %w", err)
 	}
 
 	// Step 3: Wait for Socket.IO CONNECT ACK "40{...}"
 	_, message, err = conn.ReadMessage()
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("socket.io connect ack read: %w", err)
 	}
 	if len(message) < 2 || !strings.HasPrefix(string(message), "40") {
-		conn.Close()
+		_ = conn.Close()
 		return fmt.Errorf("unexpected socket.io ack: %s", string(message))
 	}
 
@@ -163,7 +163,8 @@ func (c *LoadClient) readPump() {
 
 		switch msg[0] {
 		case '2': // Engine.IO Ping -> send Pong "3"
-			c.writeRaw("3")
+			// Best effort: the following read will observe a closed connection.
+			_ = c.writeRaw("3")
 		case '3': // Engine.IO Pong
 		case '4': // Socket.IO packet
 			if len(msg) < 2 {

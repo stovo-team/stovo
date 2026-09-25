@@ -31,7 +31,7 @@ func (s *PostgresStore) List(ctx context.Context, familyID string) ([]featurerol
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var result []featureroles.Role
 	for rows.Next() {
 		role, err := scanRole(rows)
@@ -63,7 +63,7 @@ func (s *PostgresStore) DeleteReplacingMembers(ctx context.Context, familyID, ro
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if _, err = tx.ExecContext(ctx, `UPDATE users SET role_id=$1, role='member' WHERE family_id=$2 AND role_id=$3`, replacementRoleID, familyID, roleID); err != nil {
 		return err
 	}

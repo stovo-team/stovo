@@ -382,7 +382,7 @@ func mcpCallTool(t *testing.T, baseURL, token, name string, arguments map[string
 
 func readBody(t *testing.T, resp *http.Response) string {
 	t.Helper()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	buf := new(bytes.Buffer)
 	_, _ = buf.ReadFrom(resp.Body)
 	return buf.String()

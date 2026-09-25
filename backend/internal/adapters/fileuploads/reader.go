@@ -43,7 +43,7 @@ func (r *Reader) Complete(ctx context.Context, input featurefiles.CompleteUpload
 	if err != nil {
 		return featurefiles.DirectUpload{}, false, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	upload, err := scan(tx.QueryRowContext(ctx, `SELECT id, file_id, object_key, expected_mime_type, expected_size_bytes, expected_checksum, state, expires_at FROM file_uploads WHERE id = $1 AND uploaded_by = $2 FOR UPDATE`, input.UploadID, input.UserID))
 	if err == sql.ErrNoRows {
 		return featurefiles.DirectUpload{}, false, nil
@@ -83,7 +83,7 @@ func (r *Reader) Reserve(ctx context.Context, input featurefiles.ReserveUploadIn
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	created := input.CreatedAt.UTC().Format(time.RFC3339Nano)
 	_, err = tx.ExecContext(ctx, `INSERT INTO files (id, family_id, uploaded_by, chat_id, access_scope, storage_provider, object_key, lifecycle_state, object_revision, original_name, mime_type, size_bytes, checksum, created_at, preview_status) VALUES ($1,$2,$3,$4,$5,$6,$7,'reserved',$8,$9,$10,$11,$12,$13,'none')`, input.Upload.FileID, input.FamilyID, input.UserID, input.ChatID, input.AccessScope, input.StorageProvider, input.Upload.ObjectKey, input.Upload.FileID, input.OriginalName, input.Upload.ExpectedMIME, input.Upload.ExpectedBytes, input.Checksum, created)
 	if err != nil {
@@ -103,7 +103,7 @@ func (r *Reader) RecordLegacyUpload(ctx context.Context, upload featurefiles.Leg
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	created := upload.CreatedAt.UTC().Format(time.RFC3339Nano)
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO files (id, family_id, uploaded_by, chat_id, access_scope, storage_provider, object_key,
@@ -157,7 +157,7 @@ func fileRecipients(ctx context.Context, tx *sql.Tx, familyID string, chatID *st
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var recipients []string
 	for rows.Next() {
 		var userID string

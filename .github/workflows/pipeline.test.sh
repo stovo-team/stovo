@@ -107,3 +107,54 @@ awk '
     if (failed) exit 1
   }
 ' .github/workflows/pipeline.yml
+
+lint_config="backend/.golangci.yml"
+if [[ ! -f "$lint_config" ]]; then
+  echo "Missing pinned golangci-lint configuration at $lint_config" >&2
+  exit 1
+fi
+
+grep -Eq '^version:[[:space:]]+"2"$' "$lint_config" || {
+  echo "golangci-lint configuration must use the v2 schema." >&2
+  exit 1
+}
+grep -Eq 'generated:[[:space:]]+strict' "$lint_config" || {
+  echo "Generated Ent code must be excluded using generated-file detection." >&2
+  exit 1
+}
+if grep -Eq '^[[:space:]]*-[[:space:]]+ent/' "$lint_config"; then
+  echo "The full ent/ tree must stay linted so handwritten Ent schemas remain covered." >&2
+  exit 1
+fi
+if [[ ! -d backend/ent/schema ]]; then
+  echo "Expected handwritten Ent schemas to remain part of the backend source tree." >&2
+  exit 1
+fi
+grep -Eq '^// Code generated .* DO NOT EDIT\.$' backend/ent/user.go || {
+  echo "Generated Ent output must retain the marker recognized by strict generated-file detection." >&2
+  exit 1
+}
+grep -Eq 'golangci-lint-action@v9' .github/workflows/pipeline.yml || {
+  echo "Backend CI must use golangci-lint action v9." >&2
+  exit 1
+}
+grep -Fq 'version: v2.14.0' .github/workflows/pipeline.yml || {
+  echo "Backend CI must pin golangci-lint to v2.14.0." >&2
+  exit 1
+}
+grep -Fq 'GOLANGCI_LINT_VERSION := v2.14.0' backend/Makefile || {
+  echo "The local installation instructions must use the CI golangci-lint version." >&2
+  exit 1
+}
+grep -Fq 'verify: true' .github/workflows/pipeline.yml || {
+  echo "Backend CI must verify the golangci-lint configuration." >&2
+  exit 1
+}
+grep -Fq 'golangci-lint run --config .golangci.yml ./...' backend/Makefile || {
+  echo "The backend Makefile must provide the documented local lint command." >&2
+  exit 1
+}
+grep -Fq 'golangci-lint config verify --config .golangci.yml' backend/Makefile || {
+  echo "The backend Makefile must provide config validation locally." >&2
+  exit 1
+}

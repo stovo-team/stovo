@@ -13,14 +13,14 @@ func GenerateVTT(segments []VTTSegment) string {
 
 	for i, seg := range segments {
 		// Cue identifier
-		sb.WriteString(fmt.Sprintf("%d\n", i+1))
+		fmt.Fprintf(&sb, "%d\n", i+1)
 		// Timestamps
-		sb.WriteString(fmt.Sprintf("%s --> %s\n", formatVTTTime(seg.StartMs), formatVTTTime(seg.EndMs)))
+		fmt.Fprintf(&sb, "%s --> %s\n", formatVTTTime(seg.StartMs), formatVTTTime(seg.EndMs))
 		// Speaker + text
 		speaker := escapeVTTText(seg.SpeakerName)
 		text := escapeVTTText(seg.Text)
 		if speaker != "" {
-			sb.WriteString(fmt.Sprintf("<%s> %s\n", speaker, text))
+			fmt.Fprintf(&sb, "<%s> %s\n", speaker, text)
 		} else {
 			sb.WriteString(text + "\n")
 		}

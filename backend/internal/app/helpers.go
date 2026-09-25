@@ -11,8 +11,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net"
 	"net/http"
 	"net/url"
@@ -205,19 +203,6 @@ func sha256Hex(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func readUpload(file multipart.File, limit int64) ([]byte, error) {
-	defer file.Close()
-	reader := io.LimitReader(file, limit+1)
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(data)) > limit {
-		return nil, errors.New("file exceeds size limit")
-	}
-	return data, nil
-}
-
 func chooseMessageType(content *string, files []filePublic) string {
 	if len(files) == 0 {
 		return "text"
@@ -256,7 +241,7 @@ func checkURL(target string, timeout time.Duration) (bool, *int, string) {
 	if err != nil {
 		return false, nil, err.Error()
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	status := resp.StatusCode
 	ok := status >= 200 && status < 500
 	if ok {
@@ -279,22 +264,6 @@ func domainErrorStatus(err error) int {
 		return http.StatusNotFound
 	default:
 		return http.StatusBadRequest
-	}
-}
-
-func defaultAudioSettings() audioCallSettings {
-	return audioCallSettings{
-		SpeakerMode:               "small",
-		InputDeviceID:             "",
-		OutputDeviceID:            "",
-		EchoCancellation:          true,
-		NoiseSuppression:          true,
-		AutoGainControl:           true,
-		VoiceEnhancement:          true,
-		InputGain:                 100,
-		OutputVolume:              80,
-		VoiceEnhancementThreshold: -24,
-		VoiceEnhancementHighpass:  120,
 	}
 }
 
@@ -466,4 +435,3 @@ func candidateAddresses() []string {
 	sort.Strings(candidates)
 	return candidates
 }
-

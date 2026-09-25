@@ -156,6 +156,13 @@ jobs:
             git diff -- ent
             exit 1
           fi
+      - name: Go lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+          working-directory: backend
+          verify: true
+          args: --timeout=5m
       - name: Unit and integration tests with coverage
         run: |
           rm -f coverage.out

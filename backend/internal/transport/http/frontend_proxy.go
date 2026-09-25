@@ -49,7 +49,7 @@ func NewFrontendProxy(origin string, logger ProxyLogger) stdhttp.Handler {
 			stdhttp.Error(w, "Frontend is not available", stdhttp.StatusBadGateway)
 			return
 		}
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		copyProxyHeaders(w.Header(), response.Header)
 		w.WriteHeader(response.StatusCode)
 		if r.Method == stdhttp.MethodHead {

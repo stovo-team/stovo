@@ -24,7 +24,7 @@ func (s *PostgresStore) Delete(ctx context.Context, deletion featurefiles.Deleti
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	result, err := tx.ExecContext(ctx, `UPDATE files SET deleted_at=$2 WHERE id=$1 AND deleted_at IS NULL`, deletion.FileID, time.Now().UTC().Format(time.RFC3339Nano))
 	if err != nil {
@@ -82,7 +82,7 @@ func recipientIDs(ctx context.Context, tx *sql.Tx, familyID string, chatID *stri
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var recipients []string
 	for rows.Next() {
 		var userID string
@@ -93,4 +93,3 @@ func recipientIDs(ctx context.Context, tx *sql.Tx, familyID string, chatID *stri
 	}
 	return recipients, rows.Err()
 }
-

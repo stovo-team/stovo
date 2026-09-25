@@ -26,9 +26,10 @@ func NormalizeChecksum(checksum *string) (*string, error) {
 		return nil, ErrInvalidChecksum
 	}
 	for _, ch := range value {
-		if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f')) {
-			return nil, ErrInvalidChecksum
+		if (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') {
+			continue
 		}
+		return nil, ErrInvalidChecksum
 	}
 	return &value, nil
 }

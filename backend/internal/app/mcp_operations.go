@@ -460,11 +460,6 @@ func (s *Server) validateMCPAllowedChats(familyID string, chatIDs []string) ([]s
 	return out, nil
 }
 
-func (s *Server) mcpConnectCommand(familyID, rawToken string) (string, string) {
-	mcpURL, command, _ := s.mcpConnectArtifacts(familyID, mcpProviderClaudeCode, mcpAuthModeSubscription, "claude", "stovo", rawToken)
-	return mcpURL, command
-}
-
 func (s *Server) mcpBaseURL(familyID string) string {
 	family, err := s.getFamily(familyID)
 	base := strings.TrimRight(s.cfg.AppURL, "/")
@@ -493,89 +488,9 @@ func mcpURLForServer(baseURL, serverID string) string {
 	return mcptransport.URLForServer(baseURL, serverID)
 }
 
-func (s *Server) mcpConnectArtifacts(familyID, provider, authMode, alias, connectorName, rawToken string) (mcpURL, cliCommand, setupPrompt string) {
-	return s.mcpConnectArtifactsForURL(s.mcpBaseURL(familyID), provider, authMode, alias, connectorName, rawToken)
-}
-
 func (s *Server) mcpConnectArtifactsForURL(mcpURL, provider, authMode, alias, connectorName, rawToken string) (string, string, string) {
 	artifacts := mcptransport.BuildConnectArtifacts(mcpURL, provider, authMode, alias, connectorName, rawToken)
 	return artifacts.URL, artifacts.CLICommand, artifacts.SetupPrompt
-}
-
-func mcpCLICommandForProvider(provider, name, mcpURL, rawToken string) string {
-	safeName := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(name)), " ", "-")
-	if safeName == "" {
-		safeName = "stovo"
-	}
-	switch normalizeMCPProvider(provider) {
-	case mcpProviderCodex:
-		return fmt.Sprintf(
-			`codex mcp add %s --url %s --header "Authorization: Bearer %s"`,
-			safeName,
-			mcpURL,
-			rawToken,
-		)
-	case mcpProviderOpenClaw, mcpProviderHermes:
-		return fmt.Sprintf(
-			"# Add HTTP MCP server %q\n# URL: %s\n# Header: Authorization: Bearer %s",
-			name,
-			mcpURL,
-			rawToken,
-		)
-	default:
-		return fmt.Sprintf(
-			`claude mcp add --transport http --scope user %s %s --header "Authorization: Bearer %s"`,
-			safeName,
-			mcpURL,
-			rawToken,
-		)
-	}
-}
-
-func mcpSetupPromptForProvider(provider, authMode, alias, name, mcpURL, rawToken string) string {
-	authHint := "Use your existing app subscription for this agent (no Stovo-stored API key)."
-	if normalizeMCPAuthMode(authMode) == mcpAuthModeAPI {
-		authHint = "Configure this agent in API mode with your provider API key in the client app (Stovo still only stores the MCP bearer token)."
-	}
-	mention := "@" + alias
-	switch normalizeMCPProvider(provider) {
-	case mcpProviderCodex:
-		return fmt.Sprintf(
-			"Add an HTTP MCP server in ChatGPT / Codex settings named \"%s\" (mention alias %s). Use URL %s and set the Authorization header to Bearer %s. %s Save and enable it for this workspace.",
-			name,
-			mention,
-			mcpURL,
-			rawToken,
-			authHint,
-		)
-	case mcpProviderOpenClaw:
-		return fmt.Sprintf(
-			"In OpenClaw, add a custom HTTP MCP connector named \"%s\" (mention alias %s). MCP URL: %s. Authorization: Bearer %s. %s Enable the connector after saving.",
-			name,
-			mention,
-			mcpURL,
-			rawToken,
-			authHint,
-		)
-	case mcpProviderHermes:
-		return fmt.Sprintf(
-			"In Hermes, open Connectors / MCP and add a custom HTTP server named \"%s\" (mention alias %s). URL: %s. Header Authorization: Bearer %s. %s Save and turn it on.",
-			name,
-			mention,
-			mcpURL,
-			rawToken,
-			authHint,
-		)
-	default:
-		return fmt.Sprintf(
-			"In Claude Code, open Settings → MCP and add a custom HTTP connector named \"%s\" (mention alias %s). Paste URL %s and set Authorization to Bearer %s. %s Save and enable it for this project.",
-			name,
-			mention,
-			mcpURL,
-			rawToken,
-			authHint,
-		)
-	}
 }
 
 func (s *Server) registerMCPTools(mcpSrv *mcpserver.MCPServer) {

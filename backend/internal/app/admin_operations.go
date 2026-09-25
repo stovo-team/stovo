@@ -345,7 +345,7 @@ func (s *Server) validatePublicBackendURL(publicURL string) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return fmt.Errorf("health returned status %d", res.StatusCode)
@@ -367,7 +367,7 @@ func (s *Server) checkLocalBackendHealth() bool {
 	if err != nil {
 		return false
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	return res.StatusCode >= 200 && res.StatusCode < 300
 }
@@ -385,7 +385,7 @@ func (s *Server) checkPublicURLFromOutside(targetURL string) (bool, string) {
 	if err != nil {
 		return false, err.Error()
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	var payload struct {
 		OK         bool   `json:"ok"`
@@ -489,7 +489,7 @@ func normalizeDomain(raw string) (string, error) {
 		value = strings.TrimSpace(parsed.Hostname())
 	}
 	if value == "" || strings.Contains(value, "/") || !domainPattern.MatchString(value) || !strings.Contains(value, ".") {
-		return "", errors.New("Invalid domain")
+		return "", errors.New("invalid domain")
 	}
 	return value, nil
 }
@@ -507,7 +507,7 @@ func detectPublicIPv4() (string, error) {
 			continue
 		}
 		rawIP, decodeErr := func() (string, error) {
-			defer response.Body.Close()
+			defer func() { _ = response.Body.Close() }()
 			if strings.Contains(source, "ipify") {
 				var payload struct {
 					IP string `json:"ip"`

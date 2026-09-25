@@ -26,7 +26,6 @@ const (
 )
 
 type mediaPlaybackTokenResponse = transporthttp.MediaPlaybackTokenResponse
-type reserveDirectFileUploadRequest = transporthttp.ReserveDirectFileUploadRequest
 type directFileUploadResponse = transporthttp.DirectFileUploadResponse
 type directFileAccessResponse = transporthttp.DirectFileAccessResponse
 type directUploadRecord = featurefiles.DirectUpload
@@ -585,4 +584,3 @@ func (s *Server) getFileTranscript(ctx context.Context, user userPublic, fileID 
 
 	return cachedResp, http.StatusOK, ""
 }
-

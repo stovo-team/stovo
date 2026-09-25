@@ -20,7 +20,7 @@ func (s *PostgresStore) SetFavorite(ctx context.Context, change featurefiles.Fav
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO file_preferences (file_id, user_id, is_favorite) VALUES ($1, $2, $3)
 		ON CONFLICT (file_id, user_id) DO UPDATE SET is_favorite=EXCLUDED.is_favorite`, change.FileID, change.UserID, change.IsFavorite); err != nil {

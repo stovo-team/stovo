@@ -17,8 +17,6 @@ import (
 	"time"
 )
 
-
-
 const (
 	groqAPIBase     = "https://api.groq.com"
 	defaultSTTModel = "whisper-large-v3-turbo"
@@ -47,10 +45,10 @@ type GroqSegment struct {
 
 // GroqTranscriptionResponse is the verbose_json response from Groq transcription.
 type GroqTranscriptionResponse struct {
-	Text     string        `json:"text"`
-	Language string        `json:"language"`
-	Duration float64       `json:"duration"`
-	Segments []GroqSegment `json:"segments"`
+	Text     string              `json:"text"`
+	Language string              `json:"language"`
+	Duration float64             `json:"duration"`
+	Segments []GroqSegment       `json:"segments"`
 	Words    []GroqWordTimestamp `json:"words"`
 }
 
@@ -152,11 +150,6 @@ func (c *GroqSTTClient) transcribeOnce(ctx context.Context, req TranscribeReques
 	if filename == "" {
 		filename = "audio.webm"
 	}
-	contentType := req.ContentType
-	if contentType == "" {
-		contentType = "audio/webm"
-	}
-
 	fw, err := mw.CreateFormFile("file", filename)
 	if err != nil {
 		return nil, fmt.Errorf("groq: create form file: %w", err)
@@ -184,7 +177,7 @@ func (c *GroqSTTClient) transcribeOnce(ctx context.Context, req TranscribeReques
 	if err != nil {
 		return nil, &TransientError{Err: fmt.Errorf("groq: http request: %w", err)}
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	body, err := io.ReadAll(httpResp.Body)
 	if err != nil {
@@ -272,8 +265,6 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 		}
 		if resp, err := c.sendChatAudioRequest(ctx, chatURL, payload1); err == nil {
 			return resp, nil
-		} else {
-			lastErr = err
 		}
 
 		// Schema 2: DashScope audio_url with data URI
@@ -296,8 +287,6 @@ func (c *GroqSTTClient) transcribeViaChatAudio(ctx context.Context, req Transcri
 		}
 		if resp, err := c.sendChatAudioRequest(ctx, chatURL, payload2); err == nil {
 			return resp, nil
-		} else {
-			lastErr = err
 		}
 
 		// Schema 3: OpenAI input_audio with raw base64 + format
@@ -337,7 +326,7 @@ func convertAudioToMP3OrWAV(ctx context.Context, rawAudio []byte, inExt string) 
 	if err != nil {
 		return rawAudio, "audio/webm", "webm"
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	inPath := filepath.Join(tmpDir, "in"+inExt)
 	outPath := filepath.Join(tmpDir, "out.mp3")
@@ -381,7 +370,7 @@ func (c *GroqSTTClient) sendChatAudioRequest(ctx context.Context, chatURL string
 	if err != nil {
 		return nil, &TransientError{Err: fmt.Errorf("chat audio http request: %w", err)}
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 
 	respBody, err := io.ReadAll(httpResp.Body)
 	if err != nil {

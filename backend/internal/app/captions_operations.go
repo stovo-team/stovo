@@ -171,7 +171,7 @@ func (s *Server) translateCaption(ctx context.Context, text, sourceLang, targetL
 		s.logger.Warnf("captions", "translate http request failed text=%q error=%v", cleanText, err)
 		return cleanText, nil
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil || resp.StatusCode != http.StatusOK {

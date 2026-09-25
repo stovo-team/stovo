@@ -469,13 +469,6 @@ func (s *Server) requireAdmin(user userPublic) error {
 	return nil
 }
 
-func (s *Server) requireFamilyMember(familyID string, user userPublic) error {
-	if user.FamilyID != familyID || !user.IsActive {
-		return errUnauthorized
-	}
-	return nil
-}
-
 func (s *Server) getFamily(familyID string) (familyPublic, error) {
 	f, err := s.familyQueries.Get(context.Background(), familyID)
 	if err != nil {
@@ -549,14 +542,6 @@ func familyPublicFromDetails(f featurefamily.Details) familyPublic {
 		family.StorageLimitMB = f.StorageLimitMB
 	}
 	return family
-}
-
-func (s *Server) getChatType(chatID string) (*string, error) {
-	chatType, err := s.chatQueries.Type(context.Background(), chatID)
-	if err != nil {
-		return nil, err
-	}
-	return &chatType, nil
 }
 
 const socketClientIPHeader = "X-Stovo-Client-IP"

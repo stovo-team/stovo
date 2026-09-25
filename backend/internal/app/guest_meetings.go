@@ -157,7 +157,7 @@ func (s *Server) getGuestMeetingHostState(w http.ResponseWriter, r *http.Request
 		s.json(w, 500, map[string]string{"message": "Could not load guests"})
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	guests := []guestMeetingSession{}
 	for rows.Next() {
 		var g guestMeetingSession

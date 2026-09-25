@@ -25,7 +25,7 @@ func (s *PostgresStore) List(ctx context.Context, actor featuresync.Actor, after
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	events := make([]featuresync.Event, 0, limit)
 	for rows.Next() {
 		var event featuresync.Event

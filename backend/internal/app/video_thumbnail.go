@@ -13,7 +13,7 @@ func generateVideoThumbnail(ctx context.Context, video []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("create thumbnail workspace: %w", err)
 	}
-	defer os.RemoveAll(workspace)
+	defer func() { _ = os.RemoveAll(workspace) }()
 
 	inputPath := filepath.Join(workspace, "source.video")
 	outputPath := filepath.Join(workspace, "thumbnail.jpg")

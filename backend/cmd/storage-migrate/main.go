@@ -45,12 +45,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 	rows, err := db.Query(`SELECT id, object_key, checksum FROM files ORDER BY id`)
 	if err != nil {
 		panic(err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	results := []result{}
 	for rows.Next() {
 		var id, key string

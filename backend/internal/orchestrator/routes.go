@@ -251,7 +251,7 @@ func (o *Orchestrator) handleListServers(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var list []ServerRecord
 	for rows.Next() {
 		var rec ServerRecord
@@ -707,14 +707,15 @@ func (o *Orchestrator) initChildDBSchema(slug string) error {
 			}
 			logs, logErr := o.dockerClient.ContainerLogs(ctx, containerID, container.LogsOptions{ShowStdout: true, ShowStderr: true})
 			if logErr != nil {
-				return fmt.Errorf("Atlas migration container exited with status %d", status.StatusCode)
+				// Atlas is a proper name and must retain its capitalization.
+				return fmt.Errorf("Atlas migration container exited with status %d", status.StatusCode) //nolint:staticcheck
 			}
-			defer logs.Close()
+			defer func() { _ = logs.Close() }()
 			output, _ := io.ReadAll(io.LimitReader(logs, 8<<10))
-			return fmt.Errorf("Atlas migration container exited with status %d: %s", status.StatusCode, strings.TrimSpace(string(output)))
+			return fmt.Errorf("Atlas migration container exited with status %d: %s", status.StatusCode, strings.TrimSpace(string(output))) //nolint:staticcheck
 		case <-ctx.Done():
 			return fmt.Errorf("wait for Atlas migration container: %w", ctx.Err())
 		}
 	}
-	return errors.New("Atlas migration container exited without a status")
+	return errors.New("Atlas migration container exited without a status") //nolint:staticcheck
 }

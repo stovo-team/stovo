@@ -41,7 +41,7 @@ func (s *PostgresStore) Lease(ctx context.Context, batch int, lease time.Duratio
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	events := make([]workruntime.OutboxEvent, 0, batch)
 	for rows.Next() {

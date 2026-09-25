@@ -43,17 +43,17 @@ func TestMediaPlaybackTokenMintAndParse(t *testing.T) {
 	if claims.IssuedAt == nil || claims.NotBefore == nil || claims.ExpiresAt == nil {
 		t.Fatal("registered time claims must all be present")
 	}
-	if claims.IssuedAt.Time.Before(before.Add(-time.Second)) || claims.IssuedAt.Time.After(after.Add(time.Second)) {
-		t.Fatalf("issued-at is outside mint window: %s", claims.IssuedAt.Time)
+	if claims.IssuedAt.Before(before.Add(-time.Second)) || claims.IssuedAt.After(after.Add(time.Second)) {
+		t.Fatalf("issued-at is outside mint window: %s", claims.IssuedAt)
 	}
-	if claims.NotBefore.Time.Before(before.Add(-time.Second)) || claims.NotBefore.Time.After(after.Add(time.Second)) {
-		t.Fatalf("not-before is outside mint window: %s", claims.NotBefore.Time)
+	if claims.NotBefore.Before(before.Add(-time.Second)) || claims.NotBefore.After(after.Add(time.Second)) {
+		t.Fatalf("not-before is outside mint window: %s", claims.NotBefore)
 	}
 	if expiresAt.Before(before.Add(12*time.Hour-time.Second)) || expiresAt.After(after.Add(12*time.Hour+time.Second)) {
 		t.Fatalf("expiry is outside configured TTL window: %s", expiresAt)
 	}
-	if !claims.ExpiresAt.Time.Equal(expiresAt.Truncate(time.Second)) {
-		t.Fatalf("claim expiry = %s, returned expiry = %s", claims.ExpiresAt.Time, expiresAt)
+	if !claims.ExpiresAt.Equal(expiresAt.Truncate(time.Second)) {
+		t.Fatalf("claim expiry = %s, returned expiry = %s", claims.ExpiresAt, expiresAt)
 	}
 }
 

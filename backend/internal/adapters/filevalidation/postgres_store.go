@@ -61,7 +61,7 @@ func (s *PostgresStore) MarkValidationReady(ctx context.Context, ready featurefi
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	upload := ready.Upload
 	if _, err = tx.ExecContext(ctx, `UPDATE file_uploads SET state = 'ready', updated_at = $2, failure_code = NULL WHERE id = $1`, upload.UploadID, ready.ValidatedAt); err != nil {
 		return err
@@ -130,7 +130,7 @@ func recipientsForChat(ctx context.Context, tx *sql.Tx, familyID string, chatID 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var ids []string
 	for rows.Next() {
 		var id string
