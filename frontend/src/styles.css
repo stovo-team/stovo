@@ -21493,15 +21493,19 @@ button.chat-info-title-edit:active:not(:disabled) {
   align-items: center;
   background: transparent;
   border: 1px solid var(--border-default);
-  border-radius: 999px;
+  border-radius: 50%;
+  box-sizing: border-box;
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
+  height: 36px;
+  justify-content: center;
   font-size: 0.75rem;
   font-weight: 600;
-  gap: 4px;
-  min-height: auto;
-  padding: 5px 12px;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  width: 36px;
 }
 
 .document-preview-open {

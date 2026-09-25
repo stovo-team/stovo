@@ -53,6 +53,10 @@ afterEach(() => {
 });
 
 describe("inline document previews in chat", () => {
+  it("uses equal-sized icon-only Open and Save actions with fully rounded styling", () => {
+    expect(styles).toMatch(/\.document-preview-open,\s*\.document-preview-save\s*\{[^}]*border-radius:\s*50%[^}]*height:\s*36px[^}]*width:\s*36px/);
+  });
+
   it("renders a preview row without opening a modal and retains Open and Save", async () => {
     const container = document.createElement("div");
     const root = createRoot(container);
