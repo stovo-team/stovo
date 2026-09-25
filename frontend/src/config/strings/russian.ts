@@ -139,7 +139,6 @@ export const strings = {
 
     // profile form
     avatarDisplayName: "Отображаемое имя аватара",
-    familySpaceName: "Название семейного спейса",
     saveProfile: "Сохранить профиль",
     saving: "Сохранение",
     profileSaved: "Профиль сохранён",
@@ -705,6 +704,7 @@ export const strings = {
     },
     serverSettings: {
       title: "Настройки сервера",
+      spaceName: "Название пространства",
       ownerRequired: "Требуется доступ к управлению сервером.",
       guestMeetingQuality: "Качество гостевых встреч",
       screenShareBitrate: "Битрейт демонстрации экрана (кбит/с)",

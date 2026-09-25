@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bell, FileArchive, MessageSquare, Sliders, UserRoundX } from "lucide-react";
+import { Bell, FileArchive, House, MessageSquare, Sliders, UserRoundX } from "lucide-react";
 
 import { ApiError, getClusterPrefix } from "../api/client";
 import type { Family } from "../api/family";
@@ -16,8 +16,10 @@ export default function AdminServerSettingsPage() {
   const { accessToken, authRequest, currentUser } = useAuth();
   const prefix = getClusterPrefix();
   const isOwner = currentUser?.role === "owner";
+  const canManageSpaceName = isOwner || currentUser?.role === "admin";
   const canManageServer = isOwner || currentUser?.permissions?.includes("manage_server") === true;
   const [family, setFamily] = useState<Family | null>(null);
+  const [spaceNameDraft, setSpaceNameDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -38,13 +40,13 @@ export default function AdminServerSettingsPage() {
   const [notificationProvider, setNotificationProvider] = useState<NotificationProvider>("firebase");
 
   const loadFamily = useCallback(async () => {
-    if (!accessToken || !isOwner) return;
+    if (!accessToken || !canManageSpaceName) return;
     try {
       setFamily(await authRequest<Family>("/api/family"));
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : strings.admin.serverSettings.loadError);
     }
-  }, [accessToken, authRequest, isOwner, strings.admin.serverSettings.loadError]);
+  }, [accessToken, authRequest, canManageSpaceName, strings.admin.serverSettings.loadError]);
 
   useEffect(() => void loadFamily(), [loadFamily]);
   useEffect(() => {
@@ -58,6 +60,7 @@ export default function AdminServerSettingsPage() {
   }, [accessToken, canManageServer, strings.admin.serverSettings.loadError]);
   useEffect(() => {
     if (!family) return;
+    setSpaceNameDraft(family.name);
     setQualityDrafts(Object.fromEntries(
       Object.entries(qualityDefaults).map(([key, fallback]) => [key, String(family[key as QualityField] ?? fallback)]),
     ) as Record<QualityField, string>);
@@ -99,6 +102,16 @@ export default function AdminServerSettingsPage() {
     }
   }
 
+  function saveSpaceName() {
+    if (!family) return;
+    const name = spaceNameDraft.trim();
+    if (name && name !== family.name) {
+      void save({ name });
+    } else {
+      setSpaceNameDraft(family.name);
+    }
+  }
+
   function qualityControl(field: QualityField, label: string) {
     return <label className="appearance-setting-row" key={field}>
       <span className="settings-row-icon"><Sliders size={18} aria-hidden="true" /></span>
@@ -116,6 +129,13 @@ export default function AdminServerSettingsPage() {
       {!canManageServer && <p className="error-text">{strings.admin.serverSettings.ownerRequired}</p>}
       {error && <p className="error-text">{error}</p>}{notice && <p className="success-text">{notice}</p>}
       {canManageServer && <div className="settings-toggle-groups admin-panel">
+        {canManageSpaceName && <section>
+          <label className="appearance-setting-row">
+            <span className="settings-row-icon"><House size={18} aria-hidden="true" /></span>
+            <span><strong>{strings.admin.serverSettings.spaceName}</strong></span>
+            <input className="admin-defaults-control" type="text" aria-label={strings.admin.serverSettings.spaceName} maxLength={255} value={spaceNameDraft} disabled={!family || isSaving} onChange={(event) => setSpaceNameDraft(event.target.value)} onBlur={saveSpaceName} />
+          </label>
+        </section>}
         <section><h2>{strings.admin.defaults.notifications}</h2>
           <label className="appearance-setting-row">
             <span className="settings-row-icon"><Bell size={18} aria-hidden="true" /></span>

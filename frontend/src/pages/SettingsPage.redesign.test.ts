@@ -3,10 +3,16 @@ import { describe, expect, it } from "vitest";
 
 const source = readFileSync("src/pages/SettingsPage.tsx", "utf8");
 const dashboard = readFileSync("src/pages/settings/SettingsDashboard.tsx", "utf8");
+const profileSettingsTab = readFileSync("src/pages/settings/ProfileSettingsTab.tsx", "utf8");
 const appearanceControls = readFileSync("src/pages/settings/AppearanceControls.tsx", "utf8");
 const styles = readFileSync("src/styles.css", "utf8");
 
 describe("SettingsPage redesign", () => {
+  it("does not expose the space name in Profile settings", () => {
+    expect(profileSettingsTab).not.toContain("profileForm.familyName");
+    expect(profileSettingsTab).not.toContain("strings.settings.family}");
+  });
+
   it("uses the tiled overview and explicit internal setting surfaces", () => {
     expect(source).toContain("<SettingsDashboard");
     expect(dashboard).toContain('className="settings-dashboard"');

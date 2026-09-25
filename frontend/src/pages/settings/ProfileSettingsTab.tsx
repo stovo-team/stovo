@@ -1,11 +1,10 @@
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
-import { BellOff, Clock3, LockKeyhole, Mail, Server, UserRound, Users } from "lucide-react";
+import { BellOff, Clock3, LockKeyhole, Mail, Server, UserRound } from "lucide-react";
 import type { AppStrings } from "../../config/strings";
 import type { DevicePreferences } from "../../settings/devicePreferences";
 
 export type ProfileForm = {
   displayName: string;
-  familyName: string;
   email: string;
   bio: string;
   timezone: string;
@@ -23,7 +22,6 @@ type Props = {
   setProfileForm: Dispatch<SetStateAction<ProfileForm>>;
   passwordForm: PasswordForm;
   setPasswordForm: Dispatch<SetStateAction<PasswordForm>>;
-  canManageFamily: boolean;
   isSaving: boolean;
   accessToken: string | null;
   role?: string;
@@ -39,7 +37,7 @@ type Props = {
 };
 
 export function ProfileSettingsTab(props: Props) {
-  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, canManageFamily, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
+  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
   return (
     <div className="profile-detail-screen">
       <section className="profile-detail-hero">
@@ -51,7 +49,6 @@ export function ProfileSettingsTab(props: Props) {
         <label><span><Mail aria-hidden="true" size={21} />{strings.settings.emailOptional}</span><input type="email" placeholder={strings.settings.emailPlaceholder} maxLength={255} value={profileForm.email} onChange={(event) => setProfileForm((current) => ({ ...current, email: event.target.value }))} /></label>
         <label style={{ alignItems: "flex-start" }}><span style={{ paddingTop: "10px" }}><UserRound aria-hidden="true" size={21} />{strings.settings.bioOptional}</span><textarea placeholder={strings.settings.bioPlaceholder} maxLength={500} rows={3} value={profileForm.bio} onChange={(event) => setProfileForm((current) => ({ ...current, bio: event.target.value }))} /></label>
         <label><span><Clock3 aria-hidden="true" size={21} />{strings.settings.timezone}</span><select value={profileForm.timezone} onChange={(event) => setProfileForm((current) => ({ ...current, timezone: event.target.value }))}>{Intl.supportedValuesOf("timeZone").map((tz) => <option key={tz} value={tz}>{tz}</option>)}</select></label>
-        <label><span><Users aria-hidden="true" size={21} />{strings.settings.family}</span><input disabled={!canManageFamily} maxLength={255} value={profileForm.familyName} onChange={(event) => setProfileForm((current) => ({ ...current, familyName: event.target.value }))} /></label>
         <button type="submit" className="save-button primary-button" disabled={isSaving || !profileForm.displayName.trim()}>{isSaving ? strings.settings.savingEllipsis : strings.settings.saveProfile}</button>
       </form>
       <form className="profile-detail-form" onSubmit={onPasswordSubmit}>

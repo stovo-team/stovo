@@ -123,7 +123,6 @@ export const strings = {
 
     // profile form
     avatarDisplayName: "Avatar display name",
-    familySpaceName: "Family space name",
     saveProfile: "Save profile",
     saving: "Saving",
     profileSaved: "Profile saved",
@@ -676,6 +675,7 @@ export const strings = {
     },
     serverSettings: {
       title: "Server settings",
+      spaceName: "Space Name",
       ownerRequired: "Server management access is required.",
       guestMeetingQuality: "Guest meeting quality",
       screenShareBitrate: "Screen-share bitrate (kbps)",

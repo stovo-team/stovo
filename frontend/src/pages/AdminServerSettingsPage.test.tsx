@@ -28,6 +28,7 @@ vi.mock("../i18n/LanguageContext", () => ({
       notifications: "Notifications", notificationProvider: "Notification delivery provider", firebaseProvider: "Firebase", ntfyProvider: "ntfy"
     }, serverSettings: {
       title: "Server settings", ownerRequired: "Owner required", guestMeetingQuality: "Guest meeting quality",
+      spaceName: "Space Name",
       screenShareBitrate: "Screen-share bitrate (kbps)", cameraBitrate: "Camera bitrate (kbps)",
       groupCallsQuality: "Group calls & voice chats", dmCallsQuality: "DM calls",
       safetyAndModeration: "Safety & moderation", disallowedFileTypes: "Disallowed file types",
@@ -51,7 +52,7 @@ describe("AdminServerSettingsPage", () => {
 
   beforeEach(() => {
     mocks.currentUser = { role: "owner" };
-    mocks.authRequest.mockResolvedValue({ screenShareBitrateKbps: 5000 });
+    mocks.authRequest.mockResolvedValue({ name: "Stakhov Family", screenShareBitrateKbps: 5000 });
     mocks.getNotificationProviderSettings.mockResolvedValue({ notificationProvider: "firebase" });
     mocks.updateNotificationProviderSettings.mockResolvedValue({ notificationProvider: "ntfy" });
     container = document.createElement("div");
@@ -123,6 +124,15 @@ describe("AdminServerSettingsPage", () => {
     expect(trigger.textContent).toContain("ntfy");
   });
 
+  it("allows an admin to edit the space name", async () => {
+    mocks.currentUser = { role: "admin", permissions: ["manage_server"] };
+    await renderPage();
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Space Name"]');
+    expect(input?.value).toBe("Stakhov Family");
+    expect(input?.disabled).toBe(false);
+    expect(mocks.authRequest).toHaveBeenCalledWith("/api/family");
+  });
+
   it("supports keyboard navigation and restores focus when the provider menu closes", async () => {
     await renderPage();
     const trigger = document.querySelector<HTMLButtonElement>('button[aria-label^="Notification delivery provider"]')!;
@@ -157,6 +167,43 @@ describe("AdminServerSettingsPage", () => {
       await Promise.resolve();
     });
     expect(mocks.authRequest).toHaveBeenCalledWith("/api/family", { method: "PATCH", body: { screenShareBitrateKbps: 6000 } });
+  });
+
+  it("edits and saves the space name from server settings", async () => {
+    mocks.authRequest
+      .mockResolvedValueOnce({ name: "Stakhov Family", screenShareBitrateKbps: 5000 })
+      .mockResolvedValueOnce({ name: "New Space", screenShareBitrateKbps: 5000 });
+    await renderPage();
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Space Name"]')!;
+    expect(input.value).toBe("Stakhov Family");
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setNativeValue?.call(input, "  New Space  ");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(mocks.authRequest).toHaveBeenCalledWith("/api/family", { method: "PATCH", body: { name: "New Space" } });
+  });
+
+  it("does not save a blank or unchanged space name", async () => {
+    mocks.authRequest.mockResolvedValue({ name: "Stakhov Family", screenShareBitrateKbps: 5000 });
+    await renderPage();
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Space Name"]')!;
+    await act(async () => {
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(mocks.authRequest).toHaveBeenCalledTimes(1);
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setNativeValue?.call(input, "   ");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(mocks.authRequest).toHaveBeenCalledTimes(1);
+    expect(input.value).toBe("Stakhov Family");
   });
 
   it("shows camera bitrate alongside screen-share bitrate for guest meetings", async () => {
@@ -281,6 +328,7 @@ describe("AdminServerSettingsPage", () => {
     await renderPage();
     const trigger = document.querySelector<HTMLButtonElement>('button[aria-label^="Notification delivery provider"]')!;
     expect(trigger.textContent).toContain("Firebase");
+    expect(document.querySelector('input[aria-label="Space Name"]')).toBeNull();
     expect(document.body.textContent).not.toContain("Guest meeting quality");
     expect(document.body.textContent).toContain("Safety & moderation");
     expect(mocks.authRequest).not.toHaveBeenCalled();

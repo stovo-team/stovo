@@ -113,7 +113,6 @@ export default function SettingsPage() {
   const [family, setFamily] = useState<Family | null>(null);
   const [profileForm, setProfileForm] = useState(() => ({
     displayName: currentUser?.displayName ?? "",
-    familyName: "",
     email: currentUser?.email ?? "",
     bio: currentUser?.bio ?? "",
     timezone: currentUser?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "")
@@ -235,7 +234,6 @@ export default function SettingsPage() {
       const autoTz = currentUser?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "");
       setProfileForm({
         displayName: currentUser?.displayName ?? "",
-        familyName: familyResult.name,
         email: currentUser?.email ?? "",
         bio: currentUser?.bio ?? "",
         timezone: autoTz
@@ -347,18 +345,6 @@ export default function SettingsPage() {
           }
         });
         updateCurrentUser(updatedUser);
-      }
-      if (
-        canManageFamily &&
-        family &&
-        profileForm.familyName.trim() &&
-        profileForm.familyName.trim() !== family.name
-      ) {
-        const updatedFamily = await authRequest<Family>("/api/family", {
-          method: "PATCH",
-          body: { name: profileForm.familyName.trim() }
-        });
-        setFamily(updatedFamily);
       }
       setNotice(strings.settings.profileSaved);
       return true;
@@ -502,7 +488,6 @@ export default function SettingsPage() {
                       if (activeSettingsItem === "Profile") {
                         setProfileForm({
                           displayName: currentUser?.displayName ?? "",
-                          familyName: family?.name ?? "",
                           email: currentUser?.email ?? "",
                           bio: currentUser?.bio ?? "",
                           timezone: currentUser?.timezone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "")
@@ -540,7 +525,6 @@ export default function SettingsPage() {
                     setProfileForm={setProfileForm}
                     passwordForm={passwordForm}
                     setPasswordForm={setPasswordForm}
-                    canManageFamily={canManageFamily}
                     isSaving={isSaving}
                     accessToken={accessToken}
                     role={currentUser?.role}
