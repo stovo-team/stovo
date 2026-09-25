@@ -485,11 +485,16 @@ func (s *Server) getFamily(familyID string) (familyPublic, error) {
 		return familyPublic{}, err
 	}
 	family := familyPublicFromDetails(f)
-	bitrate, err := s.screenShareBitrateForFamily(context.Background(), familyID)
+	quality, err := s.callMediaQualityForFamily(context.Background(), familyID)
 	if err != nil {
 		return familyPublic{}, err
 	}
-	family.ScreenShareBitrateKbps = bitrate
+	family.ScreenShareBitrateKbps = quality.ScreenShareBitrateKbps
+	family.CameraBitrateKbps = quality.CameraBitrateKbps
+	family.GroupCallScreenShareBitrateKbps = quality.GroupCallScreenShareBitrateKbps
+	family.GroupCallCameraBitrateKbps = quality.GroupCallCameraBitrateKbps
+	family.DMCallScreenShareBitrateKbps = quality.DMCallScreenShareBitrateKbps
+	family.DMCallCameraBitrateKbps = quality.DMCallCameraBitrateKbps
 	return family, nil
 }
 

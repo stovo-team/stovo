@@ -1,6 +1,7 @@
 import type { Socket } from "socket.io-client";
 import MeshMediaEngine from "./MeshMediaEngine";
 import LiveKitMediaEngine from "./LiveKitMediaEngine";
+import type { CallQualityBitrates } from "./callQuality";
 
 export type CallSignalPayload = {
   chatId: string;
@@ -21,6 +22,7 @@ export interface MeshMediaEnginePort {
   setRoomId(roomId: string | null): void;
   setLocalUserId(userId: string | null): void;
   setLocalStream(stream: MediaStream | null): void;
+  setVideoBitrates?(settings: CallQualityBitrates): void;
   setScreenTrack(track: MediaStreamTrack, stream: MediaStream): Promise<void>;
   clearScreenTrack(): Promise<void>;
   connectPeer(userId: string, asOfferer: boolean): Promise<void>;
@@ -41,6 +43,7 @@ export interface SFUMediaEnginePort {
   onConnected?: () => void;
   onDisconnected?: () => void;
   connect(options: { url: string; token: string }): Promise<void>;
+  setVideoBitrates?(settings: CallQualityBitrates): void;
   publishLocalStream(stream: MediaStream): Promise<void>;
   publishScreenShare(track: MediaStreamTrack): Promise<void>;
   unpublishScreenShare(): Promise<void>;

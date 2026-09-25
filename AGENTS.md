@@ -2,6 +2,16 @@
 
 These instructions apply to every change in this repository unless the user explicitly waives a gate. Treat them as delivery requirements, not suggestions.
 
+## 0. User-approved plan and test gates
+
+For feature work and defect fixes, use this approval sequence before changing production code:
+
+1. Present concise, observable acceptance criteria and a brief plan naming the likely components, isolated worktree and branch, test layers, ownership, and verification commands. Wait for the user's manual approval before proceeding.
+2. After the plan is approved, present the proposed automated test scenarios, including relevant edge cases and which behavior each scenario proves. Wait for manual approval before writing or changing tests.
+3. Once the test scenarios are approved, write the tests first, run them to record the expected initial failure when practicable, and then follow the TDD loop below. Do not ask for these approvals again during the same task unless a material scope change requires revised acceptance criteria or tests.
+
+If the user changes scope after approving a plan or test scenarios, explain the impact and obtain approval for any materially revised test scope before writing those additional tests.
+
 ## 1. Define the work before changing production code
 
 1. Restate the requested behavior as small, observable acceptance criteria.

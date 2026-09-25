@@ -256,13 +256,13 @@ func (s *Server) previewGuestMeeting(w http.ResponseWriter, r *http.Request) {
 	// closed browser or a failed LiveKit connection, so never present it as a
 	// live attendee count on a public link.
 	guestCount := 0
-	screenShareBitrateKbps := defaultScreenShareBitrateKbps
+	quality := defaultFamilyCallMediaQuality()
 	if host, err := s.getUserByID(m.CreatorID); err == nil {
-		if configured, err := s.screenShareBitrateForFamily(r.Context(), host.FamilyID); err == nil {
-			screenShareBitrateKbps = configured
+		if configured, err := s.callMediaQualityForFamily(r.Context(), host.FamilyID); err == nil {
+			quality = configured
 		}
 	}
-	s.json(w, 200, map[string]any{"title": m.Title, "scheduledAt": m.ScheduledAt, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestCount": guestCount, "guestLimit": guestMeetingLimit, "screenShareBitrateKbps": screenShareBitrateKbps})
+	s.json(w, 200, map[string]any{"title": m.Title, "scheduledAt": m.ScheduledAt, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestCount": guestCount, "guestLimit": guestMeetingLimit, "screenShareBitrateKbps": quality.ScreenShareBitrateKbps, "cameraBitrateKbps": quality.CameraBitrateKbps})
 }
 func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.validPublicMeeting(r.Context(), chi.URLParam(r, "token"))

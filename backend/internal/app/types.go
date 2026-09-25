@@ -53,6 +53,11 @@ type familyPublic struct {
 	DefaultReadReceiptsEnabled       bool          `json:"defaultReadReceiptsEnabled"`
 	DefaultNotificationSettings      string        `json:"defaultNotificationSettings"`
 	ScreenShareBitrateKbps           int           `json:"screenShareBitrateKbps"`
+	CameraBitrateKbps                int           `json:"cameraBitrateKbps"`
+	GroupCallScreenShareBitrateKbps  int           `json:"groupCallScreenShareBitrateKbps"`
+	GroupCallCameraBitrateKbps       int           `json:"groupCallCameraBitrateKbps"`
+	DMCallScreenShareBitrateKbps     int           `json:"dmCallScreenShareBitrateKbps"`
+	DMCallCameraBitrateKbps          int           `json:"dmCallCameraBitrateKbps"`
 	NavTabs                          NavTabsConfig `json:"navTabs"`
 	PublicAppURL                     *string       `json:"-"`
 	PublicAPIURL                     *string       `json:"-"`

@@ -1,5 +1,6 @@
 import { Socket } from "socket.io-client";
 import { getApiUrl } from "../../api/client";
+import { applySenderMaxBitrate, DEFAULT_CALL_QUALITY_BITRATES, type CallQualityBitrates } from "./callQuality";
 
 type SignalData = Record<string, unknown>;
 
@@ -30,6 +31,7 @@ export default class MeshMediaEngine {
   private localUserId: string | null = null;
   private localStream: MediaStream | null = null;
   private localScreenStream: MediaStream | null = null;
+  private videoBitrates: CallQualityBitrates = { ...DEFAULT_CALL_QUALITY_BITRATES };
   private localScreenTrack: MediaStreamTrack | null = null;
   private peers = new Map<string, PeerState>();
   private iceServersCache: RTCIceServer[] | null = null;
@@ -76,6 +78,10 @@ export default class MeshMediaEngine {
 
     // Keep previous stream ownership with the caller; mesh only publishes tracks.
     void previous;
+  }
+
+  setVideoBitrates(settings: CallQualityBitrates) {
+    this.videoBitrates = settings;
   }
 
   async setScreenTrack(track: MediaStreamTrack, stream: MediaStream): Promise<void> {
@@ -248,7 +254,8 @@ export default class MeshMediaEngine {
     const pc = new RTCPeerConnection({ iceServers });
 
     for (const track of this.localStream?.getTracks() ?? []) {
-      pc.addTrack(track, this.localStream!);
+      const sender = pc.addTrack(track, this.localStream!);
+      if (track.kind === "video") void applySenderMaxBitrate(sender, this.videoBitrates.cameraBitrateKbps);
     }
 
     pc.onicecandidate = (e) => {
@@ -439,6 +446,7 @@ export default class MeshMediaEngine {
 
     if (state.screenSender) {
       await state.screenSender.replaceTrack(track);
+      await applySenderMaxBitrate(state.screenSender, this.videoBitrates.screenShareBitrateKbps);
       return;
     }
 
@@ -447,10 +455,12 @@ export default class MeshMediaEngine {
       .find((s) => s.track?.id === track.id);
     if (existing) {
       state.screenSender = existing;
+      await applySenderMaxBitrate(existing, this.videoBitrates.screenShareBitrateKbps);
       return;
     }
 
     state.screenSender = state.pc.addTrack(track, stream);
+    await applySenderMaxBitrate(state.screenSender, this.videoBitrates.screenShareBitrateKbps);
     void userId;
   }
 
@@ -495,8 +505,13 @@ export default class MeshMediaEngine {
       );
 
     if (videoTrack) {
-      if (cameraSender) await cameraSender.replaceTrack(videoTrack);
-      else pc.addTrack(videoTrack, stream);
+      if (cameraSender) {
+        await cameraSender.replaceTrack(videoTrack);
+        await applySenderMaxBitrate(cameraSender, this.videoBitrates.cameraBitrateKbps);
+      } else {
+        const sender = pc.addTrack(videoTrack, stream);
+        await applySenderMaxBitrate(sender, this.videoBitrates.cameraBitrateKbps);
+      }
     } else if (cameraSender) {
       // Do not stop the track here — ownership stays with CallSessionController.
       pc.removeTrack(cameraSender);

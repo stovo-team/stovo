@@ -4,6 +4,7 @@
  */
 
 import { resolveLiveKitUrl } from "./livekitUrl";
+import { DEFAULT_CALL_QUALITY_BITRATES, videoTrackPublishOptions, type CallQualityBitrates } from "./callQuality";
 
 type RemoteStreamMap = Map<string, MediaStream>;
 
@@ -14,6 +15,7 @@ export default class LiveKitMediaEngine {
   private remoteStreams: RemoteStreamMap = new Map();
   private remoteScreenStreams: RemoteStreamMap = new Map();
   private livekit: LiveKitModule | null = null;
+  private videoBitrates: CallQualityBitrates = { ...DEFAULT_CALL_QUALITY_BITRATES };
   private publishedStream: MediaStream | null = null;
   private screenPublication: import("livekit-client").LocalTrackPublication | null = null;
 
@@ -113,6 +115,10 @@ export default class LiveKitMediaEngine {
     this.onConnected?.();
   }
 
+  setVideoBitrates(settings: CallQualityBitrates) {
+    this.videoBitrates = settings;
+  }
+
   async publishLocalStream(stream: MediaStream): Promise<void> {
     if (!this.room) throw new Error("LiveKit room not connected");
     const lk = await this.loadLiveKit();
@@ -144,6 +150,7 @@ export default class LiveKitMediaEngine {
         if (!hasVideo) {
           await local.publishTrack(video, {
             source: lk.Track.Source.Camera,
+            ...videoTrackPublishOptions(this.videoBitrates.cameraBitrateKbps, "camera"),
           });
         }
       } catch (err) {
@@ -158,6 +165,7 @@ export default class LiveKitMediaEngine {
     await this.unpublishScreenShare();
     this.screenPublication = await this.room.localParticipant.publishTrack(track, {
       source: lk.Track.Source.ScreenShare,
+      ...videoTrackPublishOptions(this.videoBitrates.screenShareBitrateKbps, "screenShare"),
     });
   }
 
