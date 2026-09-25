@@ -51,6 +51,10 @@ func TestCanvasCreateSeedsMarkdownBeforeReturning(t *testing.T) {
 	if delayResp.StatusCode != http.StatusOK {
 		t.Fatalf("set message delay status = %d, want %d", delayResp.StatusCode, http.StatusOK)
 	}
+	updatedChat := decodeJSON[chatPublic](t, delayResp)
+	if updatedChat.MessageDelaySeconds != 60 {
+		t.Fatalf("set message delay response = %d, want 60", updatedChat.MessageDelaySeconds)
+	}
 	priorMessageResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/chats/"+chat.ID+"/messages", member.AccessToken, map[string]any{"type": "text", "content": "Recent message"})
 	if priorMessageResp.StatusCode != http.StatusCreated {
 		t.Fatalf("create prior member message status = %d, want %d", priorMessageResp.StatusCode, http.StatusCreated)

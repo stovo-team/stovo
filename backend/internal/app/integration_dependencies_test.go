@@ -50,6 +50,7 @@ import (
 	adapterpolls "stovo-messenger/backend/internal/adapters/polls"
 	"stovo-messenger/backend/internal/adapters/realtimecache"
 	"stovo-messenger/backend/internal/adapters/roles"
+	"stovo-messenger/backend/internal/adapters/statsstore"
 	"stovo-messenger/backend/internal/adapters/syncstore"
 	"stovo-messenger/backend/internal/adapters/transcriptionsessions"
 	"stovo-messenger/backend/internal/broker"
@@ -71,6 +72,8 @@ import (
 	featuresync "stovo-messenger/backend/internal/features/sync"
 	featuretranscription "stovo-messenger/backend/internal/features/transcription"
 	"stovo-messenger/backend/internal/logging"
+	"stovo-messenger/backend/internal/plugins"
+	"stovo-messenger/backend/internal/plugins/builtins"
 	"stovo-messenger/backend/internal/repository"
 	"stovo-messenger/backend/internal/storage"
 	"stovo-messenger/backend/internal/tunnel"
@@ -125,9 +128,25 @@ func newIntegrationTestDependencies(t *testing.T, cfg config.Config) Dependencie
 	entClient := ent.NewClient(ent.Driver(entsql.OpenDB(dialect.Postgres, db)))
 	store := repository.New(entClient)
 	uploadStore := fileuploads.NewReader(db)
+	statsStore := statsstore.NewPostgresStore(db)
+	eventBus := plugins.NewMemoryEventBus()
+	pluginRegistry := plugins.NewPluginRegistry()
+	statsPlugin := builtins.NewStatsPlugin(statsStore)
+	_ = statsPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus, StatsStore: statsStore})
+	statsPlugin.SubscribeEvents(eventBus)
+	pluginRegistry.Register(statsPlugin)
+	canvasPlugin := builtins.NewCanvasPlugin()
+	_ = canvasPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus, StatsStore: statsStore})
+	canvasPlugin.SubscribeEvents(eventBus)
+	pluginRegistry.Register(canvasPlugin)
+	checklistPlugin := builtins.NewChecklistPlugin()
+	_ = checklistPlugin.Init(plugins.Services{Config: &cfg, EventBus: eventBus, StatsStore: statsStore})
+	checklistPlugin.SubscribeEvents(eventBus)
+	pluginRegistry.Register(checklistPlugin)
 	return Dependencies{
 		Config: cfg, Database: db, DatabaseHealth: databasehealth.New(db), Persistence: entClient, Redis: client,
 		Logger: logging.NewLogger(logBuffer), LogBuffer: logBuffer, Storage: objectStore,
+		Plugins: pluginRegistry, EventBus: eventBus,
 		Tunnel: tunnel.NewManager(), Sockets: socketio.New(), Cache: cache.NewRedisCache(client), RedisHealth: cache.NewRedisCache(client),
 		Broker:  broker.NewRedisBroker(client),
 		Privacy: featureprivacy.NewService(store, time.Now), Contacts: store, Preferences: featurepreferences.NewService(store, func() string { return "stovo-user-" + uuid.NewString() }), NotificationRecipients: store,

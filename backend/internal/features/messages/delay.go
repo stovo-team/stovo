@@ -72,10 +72,15 @@ func (s *DelayService) Check(ctx context.Context, input SlowModeInput) error {
 }
 
 func parseCreatedAt(value string) (time.Time, bool) {
-	parsed, err := time.Parse(time.RFC3339Nano, value)
-	if err == nil {
-		return parsed, true
+	for _, layout := range []string{
+		time.RFC3339Nano,
+		"2006-01-02 15:04:05.999999999 -0700 MST",
+		"2006-01-02 15:04:05.999999999Z07:00",
+	} {
+		parsed, err := time.Parse(layout, value)
+		if err == nil {
+			return parsed, true
+		}
 	}
-	parsed, err = time.Parse(time.RFC3339, value)
-	return parsed, err == nil
+	return time.Time{}, false
 }

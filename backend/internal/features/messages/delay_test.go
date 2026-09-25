@@ -29,6 +29,20 @@ func TestDelayServiceBlocksUntilWholeSecondBoundary(t *testing.T) {
 	}
 }
 
+func TestDelayServiceParsesPostgresTimestampString(t *testing.T) {
+	lastCreatedAt := "2026-09-25 10:24:04.0869638 +0000 UTC"
+	now := time.Date(2026, 9, 25, 10, 24, 5, 0, time.UTC)
+	service := NewDelayService(delayStoreStub{value: lastCreatedAt}, func() time.Time { return now })
+	err := service.Check(context.Background(), SlowModeInput{ChatID: "chat", SenderID: "user", DelaySeconds: 60})
+	var slowMode *SlowModeError
+	if !errors.As(err, &slowMode) {
+		t.Fatalf("Check() error = %v, want SlowModeError for PostgreSQL timestamp", err)
+	}
+	if slowMode.RemainingSeconds != 60 {
+		t.Fatalf("RemainingSeconds = %d, want 60", slowMode.RemainingSeconds)
+	}
+}
+
 func TestDelayServiceBypassesManagersAndStoreFailures(t *testing.T) {
 	service := NewDelayService(delayStoreStub{err: errors.New("database unavailable")}, time.Now)
 	if err := service.Check(context.Background(), SlowModeInput{DelaySeconds: 10, CanManage: true}); err != nil {
