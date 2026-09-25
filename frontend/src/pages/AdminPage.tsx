@@ -18,31 +18,25 @@ export default function AdminPage() {
   const prefix = getClusterPrefix();
 
   const adminTabs: Array<{ to: string; icon: string; title: string; description: string; premium?: boolean; disabled?: boolean }> = [
-	...(isOwner ? [{ to: "/app/admin/defaults", icon: "tune", title: strings.admin.hub.memberDefaults, description: strings.admin.hub.memberDefaultsDesc }] : []),
-	...(isOwner || can("manage_server") ? [{ to: "/app/admin/server-settings", icon: "settings", title: strings.admin.hub.serverSettings, description: strings.admin.hub.serverSettingsDesc }] : []),
-	...(can("manage_roles") ? [{
-		to: "/app/admin/roles",
-		icon: "admin_panel_settings",
-		title: "Roles",
-		description: "Permissions and member roles"
-	}] : []),
+    ...(isOwner || can("manage_server") ? [{ to: "/app/admin/server-settings", icon: "settings", title: strings.admin.hub.serverSettings, description: strings.admin.hub.serverSettingsDesc }] : []),
+    ...(can("manage_members") ? [{
+      to: "/app/admin/members",
+      icon: "group",
+      title: strings.admin.hub.members,
+      description: strings.admin.hub.membersDesc
+    }] : []),
+    ...(isOwner ? [{ to: "/app/admin/defaults", icon: "tune", title: strings.admin.hub.memberDefaults, description: strings.admin.hub.memberDefaultsDesc }] : []),
+    ...(can("manage_roles") ? [{
+      to: "/app/admin/roles",
+      icon: "admin_panel_settings",
+      title: "Roles",
+      description: "Permissions and member roles"
+    }] : []),
     ...(can("manage_server") ? [{
-      to: "/app/admin/plugins",
-      icon: "extension",
-      title: "Plugin store",
-      description: "Enable optional server features and experiences"
-    }, {
       to: "/app/admin/appearance",
       icon: "palette",
       title: strings.admin.hub.appearance,
       description: strings.admin.hub.appearanceDesc
-    }, {
-      to: "/app/admin/encryption",
-      icon: "encrypted",
-      title: strings.admin.hub.encryption,
-      description: strings.admin.hub.encryptionDesc,
-      premium: true,
-      disabled: true
     }] : []),
     ...(can("manage_integrations") ? [{
       to: "/app/admin/mcp",
@@ -50,12 +44,20 @@ export default function AdminPage() {
       title: strings.admin.hub.mcp,
       description: strings.admin.hub.mcpDesc
     }] : []),
-    ...(can("manage_members") ? [{
-      to: "/app/admin/members",
-      icon: "group",
-      title: strings.admin.hub.members,
-      description: strings.admin.hub.membersDesc
-    }] : [])
+    ...(can("manage_server") ? [{
+      to: "/app/admin/encryption",
+      icon: "encrypted",
+      title: strings.admin.hub.encryption,
+      description: strings.admin.hub.encryptionDesc,
+      premium: true,
+      disabled: true
+    }] : []),
+    ...(can("manage_server") ? [{
+      to: "/app/admin/plugins",
+      icon: "extension",
+      title: "Plugin store",
+      description: "Enable optional server features and experiences"
+    }] : []),
   ];
 
   const load = useCallback(async () => {

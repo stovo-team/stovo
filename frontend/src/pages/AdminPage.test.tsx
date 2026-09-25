@@ -22,13 +22,13 @@ vi.mock("../i18n/LanguageContext", () => ({
       hub: {
         memberDefaults: "Member defaults",
         memberDefaultsDesc: "Default member settings",
-        serverSettings: "Server settings",
+        serverSettings: "Space Settings",
         serverSettingsDesc: "Server-level settings",
         appearance: "Appearance",
         appearanceDesc: "Server appearance",
         encryption: "Encryption",
         premium: "Premium",
-        mcp: "Integrations",
+        mcp: "MCP connectors",
         members: "Members"
       },
       encryption: { premium: "Premium" }
@@ -85,5 +85,33 @@ describe("AdminPage defaults navigation", () => {
     await renderPage();
     expect(container?.querySelector('a[href$="/app/admin/defaults"]')).toBeTruthy();
     expect(container?.querySelector('a[href$="/app/admin/server-settings"]')).toBeTruthy();
+  });
+
+  it("shows the owner admin tabs in the requested order with Space Settings first", async () => {
+    mocks.currentUser = { role: "owner", permissions: [] };
+    await renderPage();
+    const tabs = [...(container?.querySelectorAll<HTMLElement>(".admin-hub-tab") ?? [])];
+    expect(tabs.map((tab) => tab.getAttribute("href") ?? tab.getAttribute("aria-disabled"))).toEqual([
+      "/app/admin/server-settings",
+      "/app/admin/members",
+      "/app/admin/defaults",
+      "/app/admin/roles",
+      "/app/admin/appearance",
+      "/app/admin/mcp",
+      "true",
+      "/app/admin/plugins"
+    ]);
+    expect(tabs[0]?.querySelector("strong")?.textContent).toBe("Space Settings");
+  });
+
+  it("preserves the requested relative order for permission-filtered members", async () => {
+    mocks.currentUser = { role: "member", permissions: ["manage_members", "manage_roles", "manage_integrations"] };
+    await renderPage();
+    const tabs = [...(container?.querySelectorAll<HTMLAnchorElement>(".admin-hub-tab[href]") ?? [])];
+    expect(tabs.map((tab) => tab.getAttribute("href"))).toEqual([
+      "/app/admin/members",
+      "/app/admin/roles",
+      "/app/admin/mcp"
+    ]);
   });
 });

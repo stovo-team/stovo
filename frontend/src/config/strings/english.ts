@@ -643,7 +643,7 @@ export const strings = {
       membersDesc: "Family members, roles, and account actions",
       memberDefaults: "Member defaults",
       memberDefaultsDesc: "Privacy and notification choices for new members and devices",
-      serverSettings: "Server settings",
+      serverSettings: "Space Settings",
       serverSettingsDesc: "Notification delivery, meeting quality, and retention defaults",
     },
     appearance: {

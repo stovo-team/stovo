@@ -672,7 +672,7 @@ export const strings = {
       membersDesc: "Члены семьи, роли и управление аккаунтами",
       memberDefaults: "Настройки по умолчанию",
       memberDefaultsDesc: "Конфиденциальность и уведомления для новых участников и устройств",
-      serverSettings: "Настройки сервера",
+      serverSettings: "Настройки пространства",
       serverSettingsDesc: "Доставка уведомлений, качество встреч и сроки хранения",
     },
     appearance: {
