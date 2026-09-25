@@ -21419,11 +21419,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   transform-origin: top left;
 }
 
-.document-inline-preview-docx .document-viewer-docx {
-  zoom: 0.5;
-  width: 200%;
-}
-
 .document-inline-preview-text,
 .document-viewer-text {
   background: #fff;

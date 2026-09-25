@@ -56,6 +56,10 @@ function rule(selector: string): string {
   return styles.slice(start, end + 2);
 }
 
+function rules(selector: string): string[] {
+  return styles.split(`${selector} {`).slice(1).map((rest) => rest.slice(0, rest.indexOf("\n}")));
+}
+
 describe("PDF viewer zoom helpers", () => {
   it("clamps zoom between min and max", () => {
     expect(clampPdfZoom(0.1)).toBe(PDF_MIN_ZOOM);
@@ -288,10 +292,10 @@ describe("document attachment cards in chat", () => {
         await new Promise((resolve) => window.setTimeout(resolve, 20));
       });
 
-      expect(createCanvasMock).toHaveBeenCalledWith("token", "chat-1", "plan");
-      expect(appendCanvasDocumentUpdateMock).toHaveBeenCalledWith("token", "canvas-1", expect.any(String));
+      expect(createCanvasMock).toHaveBeenCalledWith("token", "chat-1", "plan", expect.any(String));
+      expect(appendCanvasDocumentUpdateMock).not.toHaveBeenCalled();
       expect(navigateMock).toHaveBeenCalledWith("/app/canvas/canvas-1");
-      const encodedUpdate = appendCanvasDocumentUpdateMock.mock.calls[0]?.[2] as string;
+      const encodedUpdate = createCanvasMock.mock.calls[0]?.[3] as string;
       const update = Uint8Array.from(atob(encodedUpdate), (character) => character.charCodeAt(0));
       const canvasDoc = new Y.Doc();
       Y.applyUpdate(canvasDoc, update);
@@ -351,7 +355,7 @@ describe("document attachment cards in chat", () => {
         document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas")?.click();
         await new Promise((resolve) => window.setTimeout(resolve, 20));
       });
-      expect(createCanvasMock).toHaveBeenCalledWith("token", "chat-destination", "standalone");
+      expect(createCanvasMock).toHaveBeenCalledWith("token", "chat-destination", "standalone", expect.any(String));
       expect(navigateMock).toHaveBeenCalledWith("/app/canvas/canvas-standalone");
     } finally {
       await act(async () => root.unmount());
@@ -362,12 +366,11 @@ describe("document attachment cards in chat", () => {
     }
   });
 
-  it("keeps the preview open and does not navigate when Canvas document seeding fails", async () => {
+  it("keeps the preview open and shows a failure when Canvas creation with the initial document fails", async () => {
     const container = document.createElement("div");
     const root: Root = createRoot(container);
     vi.spyOn(filesApi, "downloadFileBlob").mockResolvedValue(new Blob(["# Recovery"]));
-    createCanvasMock.mockResolvedValue({ id: "canvas-seed-failure" });
-    appendCanvasDocumentUpdateMock.mockRejectedValue(new Error("Canvas save failed"));
+    createCanvasMock.mockRejectedValue(new Error("Initial Canvas document was rejected"));
     const file: FamilyFile = {
       id: "markdown-seed-failure", familyId: "family-1", uploadedBy: "member-1", chatId: "chat-1",
       chatTitle: "Chat", chatType: "direct", originMessageId: "message-1", accessScope: "chat",
@@ -387,13 +390,9 @@ describe("document attachment cards in chat", () => {
       });
 
       const alert = document.querySelector('[role="alert"]');
-      expect(alert?.textContent).toContain("The Canvas was created, but its Markdown import could not be confirmed.");
-      expect(alert?.querySelector("button")?.textContent).toBe("Open Canvas");
+      expect(alert?.textContent).toContain("Initial Canvas document was rejected");
       expect(navigateMock).not.toHaveBeenCalled();
-      expect(document.querySelector<HTMLButtonElement>('[role="alert"] button')?.textContent).toBe("Open Canvas");
-      expect(document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas")?.disabled).toBe(true);
-      await act(async () => document.querySelector<HTMLButtonElement>('[role="alert"] button')?.click());
-      expect(navigateMock).toHaveBeenCalledWith("/app/canvas/canvas-seed-failure");
+      expect(document.querySelector<HTMLButtonElement>(".document-viewer-convert-canvas")?.disabled).toBe(false);
     } finally {
       await act(async () => root.unmount());
       container.remove();
@@ -500,6 +499,10 @@ describe("document attachment cards in chat", () => {
     expect(inlineDocxPage).not.toContain("min-width: 0 !important;");
     expect(inlineDocxPage).toContain("margin: 0 !important;");
     expect(inlineDocxWrapper).not.toContain("zoom:");
+    const inlineDocxViewerRules = rules(".document-inline-preview-docx .document-viewer-docx");
+    expect(inlineDocxViewerRules).toHaveLength(1);
+    expect(inlineDocxViewerRules[0]).not.toContain("zoom:");
+    expect(inlineDocxViewerRules[0]).not.toContain("width: 200%");
   });
 
   it("keeps the outgoing bubble snug to its document card on narrow screens instead of leaving a wide right gutter", () => {

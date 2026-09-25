@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { appendCanvasDocumentUpdate, createCanvas, encodeMarkdownCanvasDocumentUpdate } from "../api/canvas";
+import { createCanvas, encodeMarkdownCanvasDocumentUpdate } from "../api/canvas";
 import { getClusterPrefix } from "../api/client";
 import { getChats } from "../api/chats";
 import type { FamilyFile } from "../api/files";
@@ -54,11 +54,10 @@ export function useMarkdownCanvasConversion({
     setConversionError(null);
     let requestCanvasId: string | null = null;
     try {
-      const canvas = await createCanvas(accessToken, destinationChatId, markdownCanvasTitle(file.originalName));
+      const update = encodeMarkdownCanvasDocumentUpdate(markdown);
+      const canvas = await createCanvas(accessToken, destinationChatId, markdownCanvasTitle(file.originalName), update);
       requestCanvasId = canvas.id;
       setCreatedCanvasId(canvas.id);
-      const update = encodeMarkdownCanvasDocumentUpdate(markdown);
-      await appendCanvasDocumentUpdate(accessToken, canvas.id, update);
       navigate(`${getClusterPrefix()}/app/canvas/${encodeURIComponent(canvas.id)}`);
     } catch (cause) {
       setConversionError(requestCanvasId

@@ -40,8 +40,9 @@ type canvasUpdatePublic struct {
 }
 
 type createCanvasRequest struct {
-	ChatID string `json:"chatId"`
-	Title  string `json:"title"`
+	ChatID        string `json:"chatId"`
+	Title         string `json:"title"`
+	InitialUpdate string `json:"initialUpdate"`
 }
 
 type renameCanvasRequest struct {
@@ -246,12 +247,25 @@ func (s *Server) createCanvas(ctx context.Context, user userPublic, request crea
 	if len(title) > 160 {
 		return canvasPublic{}, errBadRequest
 	}
+	var initialDecoded []byte
+	if request.InitialUpdate != "" {
+		initialDecoded, err = decodeCanvasUpdate(request.InitialUpdate)
+		if err != nil {
+			return canvasPublic{}, err
+		}
+	}
 	id := uuid.NewString()
 	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvases (id,family_id,origin_chat_id,created_by,title) VALUES ($1,$2,$3,$4,$5)`, id, user.FamilyID, chat.ID, user.ID, title); err != nil {
 		return canvasPublic{}, err
 	}
 	if _, err := s.canvasDB.ExecContext(ctx, `INSERT INTO canvas_chat_links (canvas_id,chat_id,created_by) VALUES ($1,$2,$3)`, id, chat.ID, user.ID); err != nil {
 		return canvasPublic{}, err
+	}
+	if request.InitialUpdate != "" {
+		if _, err := s.saveCanvasUpdate(ctx, id, user, request.InitialUpdate, initialDecoded); err != nil {
+			_, _ = s.canvasDB.ExecContext(ctx, `DELETE FROM canvases WHERE id=$1`, id)
+			return canvasPublic{}, err
+		}
 	}
 	if err := s.createCanvasCard(ctx, id, title, chat, user); err != nil {
 		return canvasPublic{}, err
@@ -261,7 +275,7 @@ func (s *Server) createCanvas(ctx context.Context, user userPublic, request crea
 
 func (s *Server) createCanvasCard(ctx context.Context, canvasID, title string, chat chatPublic, user userPublic) error {
 	content := "canvas:" + canvasID + "\n" + title
-	message, replayed, err := s.createRESTMessageWithSync(ctx, user, chat.ID, sendMessageRequest{Type: "canvas", Content: &content}, "")
+	message, replayed, err := s.createRESTMessageWithSyncImmediately(ctx, user, chat.ID, sendMessageRequest{Type: "canvas", Content: &content})
 	if err != nil {
 		return err
 	}
@@ -483,11 +497,15 @@ func (s *Server) appendCanvasUpdate(ctx context.Context, canvasID string, user u
 	if _, err := s.getCanvasForUser(ctx, canvasID, user); err != nil {
 		return canvasUpdatePublic{}, err
 	}
-	decoded, err := base64.StdEncoding.DecodeString(update)
-	// Excalidraw serializes a complete element while it is being drawn. A
-	// detailed stroke can therefore exceed the small limit intended for text
-	// updates, even though it is a valid document update.
-	if err != nil || len(decoded) == 0 || len(decoded) > maxCanvasUpdateBytes {
+	decoded, err := decodeCanvasUpdate(update)
+	if err != nil {
+		return canvasUpdatePublic{}, err
+	}
+	return s.saveCanvasUpdate(ctx, canvasID, user, update, decoded)
+}
+
+func (s *Server) saveCanvasUpdate(ctx context.Context, canvasID string, user userPublic, update string, decoded []byte) (canvasUpdatePublic, error) {
+	if len(decoded) == 0 || len(decoded) > maxCanvasUpdateBytes {
 		return canvasUpdatePublic{}, errBadRequest
 	}
 	ciphertext, nonce, err := s.encryptServerAtRest(user.FamilyID, update)
@@ -500,6 +518,20 @@ func (s *Server) appendCanvasUpdate(ctx context.Context, canvasID string, user u
 		_, _ = s.canvasDB.ExecContext(ctx, `UPDATE canvases SET updated_at=now() WHERE id=$1`, canvasID)
 	}
 	return item, err
+}
+
+func decodeCanvasUpdate(update string) ([]byte, error) {
+	if len(update) > base64.StdEncoding.EncodedLen(maxCanvasUpdateBytes) {
+		return nil, errBadRequest
+	}
+	decoded, err := base64.StdEncoding.DecodeString(update)
+	// Excalidraw serializes a complete element while it is being drawn. A
+	// detailed stroke can therefore exceed the small limit intended for text
+	// updates, even though it is a valid document update.
+	if err != nil || len(decoded) == 0 || len(decoded) > maxCanvasUpdateBytes {
+		return nil, errBadRequest
+	}
+	return decoded, nil
 }
 
 // emitCanvasToAuthorizedUsers resolves the recipients for every Canvas event.

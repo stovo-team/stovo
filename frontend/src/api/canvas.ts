@@ -45,8 +45,12 @@ function createCanvasBlockId(): string {
   return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
 }
 
-export function createCanvas(accessToken: string, chatId: string, title = "Untitled canvas") {
-  return apiRequest<Canvas>(`${root}/canvases`, { method: "POST", accessToken, body: { chatId, title } });
+export function createCanvas(accessToken: string, chatId: string, title = "Untitled canvas", initialUpdate?: string) {
+  return apiRequest<Canvas>(`${root}/canvases`, {
+    method: "POST",
+    accessToken,
+    body: { chatId, title, ...(initialUpdate ? { initialUpdate } : {}) },
+  });
 }
 
 /** Encode the initial Markdown block in the same Yjs document shape used by CanvasPage. */

@@ -66,6 +66,16 @@ func (s *Server) handleSync(w http.ResponseWriter, r *http.Request, user userPub
 // optional idempotency result in one PostgreSQL transaction. Socket.IO sends
 // still use the existing path until their own operation contract is migrated.
 func (s *Server) createRESTMessageWithSync(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, operationID string) (messagePublic, bool, error) {
+	return s.createRESTMessageWithSyncDelayPolicy(ctx, user, chatID, payload, operationID, false)
+}
+
+// createRESTMessageWithSyncImmediately is reserved for an explicit user action
+// whose generated chat card should not be held by message slow mode.
+func (s *Server) createRESTMessageWithSyncImmediately(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest) (messagePublic, bool, error) {
+	return s.createRESTMessageWithSyncDelayPolicy(ctx, user, chatID, payload, "", true)
+}
+
+func (s *Server) createRESTMessageWithSyncDelayPolicy(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, operationID string, bypassMessageDelay bool) (messagePublic, bool, error) {
 	chat, err := s.buildChatPublic(chatID, user)
 	if err != nil {
 		return messagePublic{}, false, errNotFound
@@ -73,8 +83,10 @@ func (s *Server) createRESTMessageWithSync(ctx context.Context, user userPublic,
 	if err := s.validateMessageSendPermissions(ctx, chat, user, &payload); err != nil {
 		return messagePublic{}, false, err
 	}
-	if err := s.checkMessageDelay(ctx, chat, user, chatID); err != nil {
-		return messagePublic{}, false, err
+	if !bypassMessageDelay {
+		if err := s.checkMessageDelay(ctx, chat, user, chatID); err != nil {
+			return messagePublic{}, false, err
+		}
 	}
 	content, encryptionProtocol, ciphertext, nonce, keyVersion, metadata, attachments, messageType, err := s.resolveMessageContent(chat, user, chatID, payload)
 	if err != nil {
