@@ -23,7 +23,18 @@ export default function AdminServerSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isProviderLoading, setIsProviderLoading] = useState(true);
   const [isProviderAvailable, setIsProviderAvailable] = useState(false);
-  const [screenShareBitrateKbps, setScreenShareBitrateKbps] = useState("5000");
+  type QualityField = "screenShareBitrateKbps" | "cameraBitrateKbps" | "groupCallScreenShareBitrateKbps" | "groupCallCameraBitrateKbps" | "dmCallScreenShareBitrateKbps" | "dmCallCameraBitrateKbps";
+  const qualityDefaults: Record<QualityField, number> = {
+    screenShareBitrateKbps: 5000,
+    cameraBitrateKbps: 1500,
+    groupCallScreenShareBitrateKbps: 5000,
+    groupCallCameraBitrateKbps: 1500,
+    dmCallScreenShareBitrateKbps: 5000,
+    dmCallCameraBitrateKbps: 1500,
+  };
+  const [qualityDrafts, setQualityDrafts] = useState<Record<QualityField, string>>(
+    Object.fromEntries(Object.entries(qualityDefaults).map(([key, value]) => [key, String(value)])) as Record<QualityField, string>,
+  );
   const [notificationProvider, setNotificationProvider] = useState<NotificationProvider>("firebase");
 
   const loadFamily = useCallback(async () => {
@@ -45,7 +56,12 @@ export default function AdminServerSettingsPage() {
       setError(err instanceof ApiError ? String(err.message) : strings.admin.serverSettings.loadError);
     }).finally(() => setIsProviderLoading(false));
   }, [accessToken, canManageServer, strings.admin.serverSettings.loadError]);
-  useEffect(() => { if (family) setScreenShareBitrateKbps(String(family.screenShareBitrateKbps ?? 5000)); }, [family]);
+  useEffect(() => {
+    if (!family) return;
+    setQualityDrafts(Object.fromEntries(
+      Object.entries(qualityDefaults).map(([key, fallback]) => [key, String(family[key as QualityField] ?? fallback)]),
+    ) as Record<QualityField, string>);
+  }, [family]);
 
   async function saveNotificationProvider(provider: NotificationProvider) {
     if (!accessToken) return;
@@ -66,6 +82,29 @@ export default function AdminServerSettingsPage() {
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : strings.admin.serverSettings.saveError);
     } finally { setIsSaving(false); }
+  }
+
+  function updateBitrateDraft(field: QualityField, value: string) {
+    setQualityDrafts((current) => ({ ...current, [field]: value }));
+  }
+
+  function saveBitrate(field: QualityField) {
+    if (!family) return;
+    const value = Number(qualityDrafts[field]);
+    const currentValue = family[field] ?? qualityDefaults[field];
+    if (Number.isInteger(value) && value >= 1000 && value <= 20000 && value !== currentValue) {
+      void save({ [field]: value });
+    } else {
+      updateBitrateDraft(field, String(currentValue));
+    }
+  }
+
+  function qualityControl(field: QualityField, label: string) {
+    return <label className="appearance-setting-row" key={field}>
+      <span className="settings-row-icon"><Sliders size={18} aria-hidden="true" /></span>
+      <span><strong>{label}</strong></span>
+      <input className="admin-defaults-control" type="number" aria-label={label} min="1000" max="20000" step="500" inputMode="numeric" value={qualityDrafts[field]} disabled={!family || isSaving} onChange={(event) => updateBitrateDraft(field, event.target.value)} onBlur={() => saveBitrate(field)} />
+    </label>;
   }
 
   const premium = strings.admin.encryption.premium;
@@ -94,12 +133,28 @@ export default function AdminServerSettingsPage() {
             />
           </label>
         </section>
-        {isOwner && <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.guestMeetingQuality}</h2>
-          <label className="appearance-setting-row">
-            <span className="settings-row-icon"><Sliders size={18} aria-hidden="true" /></span>
-            <span><strong>{strings.admin.serverSettings.screenShareBitrate}</strong></span>
-            <input className="admin-defaults-control" type="number" aria-label={strings.admin.serverSettings.screenShareBitrate} min="1000" max="20000" step="500" inputMode="numeric" value={screenShareBitrateKbps} disabled={!family || isSaving} onChange={(event) => setScreenShareBitrateKbps(event.target.value)} onBlur={() => { const value = Number(screenShareBitrateKbps); if (Number.isInteger(value) && value >= 1000 && value <= 20000 && value !== family?.screenShareBitrateKbps) void save({ screenShareBitrateKbps: value }); else if (family) setScreenShareBitrateKbps(String(family.screenShareBitrateKbps ?? 5000)); }} />
-          </label>
+        {isOwner && <>
+          <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.guestMeetingQuality}</h2>
+            {qualityControl("screenShareBitrateKbps", strings.admin.serverSettings.screenShareBitrate)}
+            {qualityControl("cameraBitrateKbps", strings.admin.serverSettings.cameraBitrate)}
+          </section>
+          <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.groupCallsQuality}</h2>
+            {qualityControl("groupCallScreenShareBitrateKbps", strings.admin.serverSettings.screenShareBitrate)}
+            {qualityControl("groupCallCameraBitrateKbps", strings.admin.serverSettings.cameraBitrate)}
+          </section>
+          <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.dmCallsQuality}</h2>
+            {qualityControl("dmCallScreenShareBitrateKbps", strings.admin.serverSettings.screenShareBitrate)}
+            {qualityControl("dmCallCameraBitrateKbps", strings.admin.serverSettings.cameraBitrate)}
+          </section>
+        </>}
+        {canManageServer && <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.safetyAndModeration}</h2>
+          {[["shield", strings.admin.serverSettings.disallowedFileTypes], ["verified_user", strings.admin.serverSettings.contentSafetyChecks], ["filter_alt", strings.admin.serverSettings.antispam]].map(([icon, label]) =>
+            <div className="appearance-setting-row appearance-setting-row--disabled" key={label}>
+              <span className="settings-row-icon"><span className="ms-icon ms-icon--20" aria-hidden="true">{icon}</span></span>
+              <span><strong>{label}</strong></span>
+              <button className="server-settings-placeholder" type="button" disabled aria-label={label}>{strings.admin.serverSettings.notConfigured}</button>
+            </div>
+          )}
         </section>}
         <section><h2>{strings.admin.serverSettings.storageAndRetention}</h2>
           <label className="appearance-setting-row appearance-setting-row--disabled">

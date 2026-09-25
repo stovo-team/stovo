@@ -1,9 +1,9 @@
 .admin-page .appearance-setting-row > .server-settings-select {
   box-sizing: border-box;
   display: block;
-  flex: 0 1 240px;
+  flex: 0 0 240px;
   margin-left: auto;
-  max-width: 42%;
+  max-width: 100%;
   min-width: 0;
   width: 240px;
 }
@@ -33,7 +33,33 @@
 @media (max-width: 600px) {
   .admin-page .appearance-setting-row > .server-settings-select {
     flex-basis: 180px;
-    max-width: 55%;
+    max-width: 100%;
+    width: 180px;
+  }
+}
+
+.admin-page .server-settings-placeholder {
+  align-items: center;
+  background: #11151a;
+  border: 1px solid #2d3743;
+  border-radius: 14px;
+  box-sizing: border-box;
+  color: var(--text-secondary);
+  display: flex;
+  flex: 0 0 240px;
+  font: inherit;
+  height: 42px;
+  justify-content: flex-start;
+  margin-left: auto;
+  max-width: 100%;
+  opacity: 0.68;
+  padding: 0 12px;
+  width: 240px;
+}
+
+@media (max-width: 600px) {
+  .admin-page .server-settings-placeholder {
+    flex-basis: 180px;
     width: 180px;
   }
 }

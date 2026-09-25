@@ -23,6 +23,7 @@ import {
   type GuestMeetingPreview,
 } from "../api/guestMeetings";
 import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
+import { resolveGuestMeetingQualityBitrates, videoTrackPublishOptions } from "../realtime/call/callQuality";
 import { EmptyGuestRoomTimeout } from "./guestMeetingEmptyRoomTimeout";
 
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "expired" | "error";
@@ -66,7 +67,8 @@ export default function GuestMeetingPage() {
   const { token } = useParams();
   const { accessToken, currentUser } = useAuth();
   const [preview, setPreview] = useState<GuestMeetingPreview | null>(null);
-	const screenShareBitrateKbps = Math.min(20_000, Math.max(1_000, preview?.screenShareBitrateKbps ?? 5_000));
+	const guestCallQuality = resolveGuestMeetingQualityBitrates(preview);
+	const screenShareBitrateKbps = guestCallQuality.screenShareBitrateKbps;
 	const screenShareMaxBitrate = screenShareBitrateKbps * 1_000;
   const authenticatedName = currentUser?.displayName.trim() || currentUser?.username.trim() || "";
   const [name, setName] = useState(() => authenticatedName);
@@ -280,7 +282,7 @@ export default function GuestMeetingPage() {
       await room.localParticipant.publishTrack(track, {
         source: Track.Source.ScreenShare,
         degradationPreference: "maintain-resolution",
-        screenShareEncoding: { maxBitrate: screenShareMaxBitrate, maxFramerate: 30 },
+        ...videoTrackPublishOptions(screenShareBitrateKbps, "screenShare"),
         screenShareSimulcastLayers: [
           new VideoPreset(640, 360, Math.min(400_000, screenShareMaxBitrate), 15),
           new VideoPreset(1280, 720, Math.min(2_000_000, screenShareMaxBitrate), 30),
@@ -361,7 +363,7 @@ export default function GuestMeetingPage() {
     if (roomRef.current) {
       await Promise.all(previousTracks.map((track) => roomRef.current?.localParticipant.unpublishTrack(track).catch(() => undefined)));
       for (const track of local.getTracks()) {
-        if (track.enabled) await roomRef.current.localParticipant.publishTrack(track, { source: track.kind === "audio" ? Track.Source.Microphone : Track.Source.Camera });
+        if (track.enabled) await roomRef.current.localParticipant.publishTrack(track, track.kind === "audio" ? { source: Track.Source.Microphone } : { source: Track.Source.Camera, ...videoTrackPublishOptions(guestCallQuality.cameraBitrateKbps, "camera") });
       }
     }
   }
@@ -493,7 +495,7 @@ export default function GuestMeetingPage() {
       setRemoteParticipantCount(room.remoteParticipants.size);
       if (!localStreamRef.current) await startLocalMedia();
       for (const track of localStreamRef.current?.getTracks() ?? []) {
-        if (track.enabled) await room.localParticipant.publishTrack(track, { source: track.kind === "audio" ? Track.Source.Microphone : Track.Source.Camera });
+        if (track.enabled) await room.localParticipant.publishTrack(track, track.kind === "audio" ? { source: Track.Source.Microphone } : { source: Track.Source.Camera, ...videoTrackPublishOptions(guestCallQuality.cameraBitrateKbps, "camera") });
       }
       setState("joined");
     } catch (e) {

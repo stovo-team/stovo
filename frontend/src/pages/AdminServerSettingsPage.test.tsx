@@ -28,7 +28,10 @@ vi.mock("../i18n/LanguageContext", () => ({
       notifications: "Notifications", notificationProvider: "Notification delivery provider", firebaseProvider: "Firebase", ntfyProvider: "ntfy"
     }, serverSettings: {
       title: "Server settings", ownerRequired: "Owner required", guestMeetingQuality: "Guest meeting quality",
-      screenShareBitrate: "Screen-share bitrate (kbps)", storageAndRetention: "Storage and retention",
+      screenShareBitrate: "Screen-share bitrate (kbps)", cameraBitrate: "Camera bitrate (kbps)",
+      groupCallsQuality: "Group calls & voice chats", dmCallsQuality: "DM calls",
+      safetyAndModeration: "Safety & moderation", disallowedFileTypes: "Disallowed file types",
+      contentSafetyChecks: "Content safety checks", antispam: "Antispam", storageAndRetention: "Storage and retention",
       fileCompression: "File compression", fileCompressionHelp: "Optimize media and documents", optimizeSize: "Optimize size",
       messageRetention: "Message retention", messageRetentionHelp: "Keep messages", inactiveUserDeletion: "Inactive user deletion",
       inactiveUserDeletionHelp: "Remove inactive users", never: "Never", saved: "Saved",
@@ -74,6 +77,36 @@ describe("AdminServerSettingsPage", () => {
     if (trigger.getAttribute("aria-expanded") !== "true") await act(async () => { trigger.click(); });
     const option = [...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find((candidate) => candidate.textContent?.trim() === value)!;
     await act(async () => { option.click(); await Promise.resolve(); });
+  }
+
+  async function changeBitrate(input: HTMLInputElement, value: string) {
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setNativeValue?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      await Promise.resolve();
+    });
+    await act(async () => {
+      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await Promise.resolve();
+    });
+    return input;
+  }
+
+  const bitrateSettings = [
+    { section: "Guest meeting quality", label: "Screen-share bitrate (kbps)", field: "screenShareBitrateKbps", initial: 5000, changed: 5500 },
+    { section: "Guest meeting quality", label: "Camera bitrate (kbps)", field: "cameraBitrateKbps", initial: 4500, changed: 6000 },
+    { section: "Group calls & voice chats", label: "Screen-share bitrate (kbps)", field: "groupCallScreenShareBitrateKbps", initial: 7000, changed: 7500 },
+    { section: "Group calls & voice chats", label: "Camera bitrate (kbps)", field: "groupCallCameraBitrateKbps", initial: 6000, changed: 6500 },
+    { section: "DM calls", label: "Screen-share bitrate (kbps)", field: "dmCallScreenShareBitrateKbps", initial: 8000, changed: 8500 },
+    { section: "DM calls", label: "Camera bitrate (kbps)", field: "dmCallCameraBitrateKbps", initial: 7500, changed: 9000 }
+  ] as const;
+
+  const initialBitrateSettings = Object.fromEntries(bitrateSettings.map(({ field, initial }) => [field, initial]));
+
+  function sectionInput(sectionName: string, label: string) {
+    const heading = [...document.querySelectorAll("h2")].find((candidate) => candidate.textContent?.trim() === sectionName);
+    return heading?.closest("section")?.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`) ?? null;
   }
 
   it("shows and saves the server notification provider", async () => {
@@ -126,6 +159,87 @@ describe("AdminServerSettingsPage", () => {
     expect(mocks.authRequest).toHaveBeenCalledWith("/api/family", { method: "PATCH", body: { screenShareBitrateKbps: 6000 } });
   });
 
+  it("shows camera bitrate alongside screen-share bitrate for guest meetings", async () => {
+    await renderPage();
+    expect(document.querySelector<HTMLInputElement>('input[aria-label="Screen-share bitrate (kbps)"]')).toBeTruthy();
+    expect(document.querySelector<HTMLInputElement>('input[aria-label="Camera bitrate (kbps)"]')).toBeTruthy();
+  });
+
+  it("initializes all six independent bitrate controls from the family settings response", async () => {
+    mocks.authRequest.mockResolvedValue(initialBitrateSettings);
+    await renderPage();
+    for (const setting of bitrateSettings) {
+      expect(sectionInput(setting.section, setting.label)?.value).toBe(String(setting.initial));
+    }
+  });
+
+  it.each(bitrateSettings)("saves only $field when its bitrate control changes", async (setting) => {
+    mocks.authRequest.mockResolvedValue(initialBitrateSettings);
+    await renderPage();
+    const input = sectionInput(setting.section, setting.label);
+    expect(input).toBeTruthy();
+    const target = input!;
+    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setNativeValue?.call(target, String(setting.changed));
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      await Promise.resolve();
+    });
+    for (const otherSetting of bitrateSettings.filter((candidate) => candidate.field !== setting.field)) {
+      expect(sectionInput(otherSetting.section, otherSetting.label)?.value).toBe(String(otherSetting.initial));
+    }
+    await act(async () => {
+      target.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(mocks.authRequest).toHaveBeenLastCalledWith("/api/family", {
+      method: "PATCH",
+      body: { [setting.field]: setting.changed }
+    });
+  });
+
+  it.each(bitrateSettings)("does not save invalid $field values and restores its current value", async (setting) => {
+    mocks.authRequest.mockResolvedValue(initialBitrateSettings);
+    await renderPage();
+    const input = sectionInput(setting.section, setting.label)!;
+    const startingCallCount = mocks.authRequest.mock.calls.length;
+    await changeBitrate(input, "500");
+    expect(input.value).toBe(String(setting.initial));
+    expect(mocks.authRequest).toHaveBeenCalledTimes(startingCallCount);
+
+    await changeBitrate(input, "20500");
+    expect(input.value).toBe(String(setting.initial));
+    expect(mocks.authRequest).toHaveBeenCalledTimes(startingCallCount);
+  });
+
+  it("shows matching quality controls for group calls, voice chats, and DM calls", async () => {
+    await renderPage();
+    for (const sectionName of ["Group calls & voice chats", "DM calls"]) {
+      const heading = [...document.querySelectorAll("h2")].find((candidate) => candidate.textContent?.trim() === sectionName);
+      expect(heading, `missing ${sectionName} section`).toBeTruthy();
+      const section = heading?.closest("section");
+      expect(section?.querySelector('input[aria-label="Screen-share bitrate (kbps)"]')).toBeTruthy();
+      expect(section?.querySelector('input[aria-label="Camera bitrate (kbps)"]')).toBeTruthy();
+    }
+  });
+
+  it("shows safety placeholders as disabled and does not save when they are activated", async () => {
+    await renderPage();
+    const heading = [...document.querySelectorAll("h2")].find((candidate) => candidate.textContent?.trim() === "Safety & moderation");
+    expect(heading).toBeTruthy();
+    const section = heading?.closest("section");
+    for (const label of ["Disallowed file types", "Content safety checks", "Antispam"]) {
+      expect(section?.textContent).toContain(label);
+    }
+    const interactiveItems = [...(section?.querySelectorAll<HTMLButtonElement | HTMLInputElement>("button, input, select") ?? [])];
+    for (const control of interactiveItems) {
+      expect(control.disabled).toBe(true);
+      await act(async () => { control.click(); });
+    }
+    expect(mocks.authRequest).toHaveBeenCalledTimes(1);
+    expect(mocks.updateNotificationProviderSettings).not.toHaveBeenCalled();
+  });
+
   it("shows premium retention and compression defaults as locked controls", async () => {
     await renderPage();
     const compression = document.querySelector<HTMLButtonElement>('button[aria-label^="File compression"]')!;
@@ -148,13 +262,15 @@ describe("AdminServerSettingsPage", () => {
     expect(badgeRule).toMatch(/flex: 0 0 auto;/);
   });
 
-  it("uses compact server dropdown widths on desktop and mobile", () => {
+  it("gives every server dropdown a consistent compact width on desktop and mobile", () => {
     const desktopRule = styles.match(/\.admin-page \.appearance-setting-row > \.server-settings-select\s*\{([^}]*)\}/)?.[1] ?? "";
     const mobileRule = styles.match(/@media \(max-width: 600px\)[\s\S]*?\.admin-page \.appearance-setting-row > \.server-settings-select\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(desktopRule).toMatch(/flex: 0 0 240px;/);
     expect(desktopRule).toMatch(/width: 240px;/);
-    expect(desktopRule).toMatch(/max-width: 42%;/);
+    expect(desktopRule).toMatch(/max-width: 100%;/);
+    expect(mobileRule).toMatch(/flex-basis: 180px;/);
     expect(mobileRule).toMatch(/width: 180px;/);
-    expect(mobileRule).toMatch(/max-width: 55%;/);
+    expect(mobileRule).toMatch(/max-width: 100%;/);
   });
 
   it("allows manage_server members to update the notification provider", async () => {
@@ -163,6 +279,7 @@ describe("AdminServerSettingsPage", () => {
     const trigger = document.querySelector<HTMLButtonElement>('button[aria-label^="Notification delivery provider"]')!;
     expect(trigger.textContent).toContain("Firebase");
     expect(document.body.textContent).not.toContain("Guest meeting quality");
+    expect(document.body.textContent).toContain("Safety & moderation");
     expect(mocks.authRequest).not.toHaveBeenCalled();
     await chooseOption("Notification delivery provider", "ntfy");
     expect(mocks.updateNotificationProviderSettings).toHaveBeenCalledWith("owner-token", "ntfy");

@@ -401,6 +401,75 @@ func TestFamilyMinimizedChatLayout(t *testing.T) {
 	}
 }
 
+func TestFamilyCallMediaQualityDefaultsAndPartialUpdatesPersist(t *testing.T) {
+	_, serverURL, client := newTestServer(t)
+	setupResp := jsonRequest(t, client, http.MethodPost, serverURL.URL+"/api/auth/setup", "", map[string]any{
+		"familyName":  "Media quality family",
+		"username":    "media-quality-owner",
+		"password":    "secure-password",
+		"displayName": "Media Quality Owner",
+	})
+	if setupResp.StatusCode != http.StatusCreated {
+		t.Fatalf("setup status = %d, want %d", setupResp.StatusCode, http.StatusCreated)
+	}
+	owner := decodeJSON[authResponse](t, setupResp)
+
+	fields := map[string]float64{
+		"screenShareBitrateKbps":          5000,
+		"cameraBitrateKbps":               1500,
+		"groupCallScreenShareBitrateKbps": 5000,
+		"groupCallCameraBitrateKbps":      1500,
+		"dmCallScreenShareBitrateKbps":    5000,
+		"dmCallCameraBitrateKbps":         1500,
+	}
+	get := func() map[string]any {
+		t.Helper()
+		resp := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/family", owner.AccessToken, nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("get family status = %d, want %d", resp.StatusCode, http.StatusOK)
+		}
+		return decodeJSON[map[string]any](t, resp)
+	}
+	assertFields := func(want map[string]float64) {
+		t.Helper()
+		got := get()
+		for key, value := range want {
+			if actual, ok := got[key].(float64); !ok || actual != value {
+				t.Errorf("GET /api/family %s = %v, want %v", key, got[key], value)
+			}
+		}
+	}
+	assertFields(fields)
+
+	set := map[string]int{
+		"screenShareBitrateKbps":          1000,
+		"cameraBitrateKbps":               20000,
+		"groupCallScreenShareBitrateKbps": 20000,
+		"groupCallCameraBitrateKbps":      1000,
+		"dmCallScreenShareBitrateKbps":    1000,
+		"dmCallCameraBitrateKbps":         20000,
+	}
+	updateResp := jsonRequest(t, client, http.MethodPatch, serverURL.URL+"/api/family", owner.AccessToken, set)
+	if updateResp.StatusCode != http.StatusOK {
+		t.Fatalf("update family status = %d, want %d", updateResp.StatusCode, http.StatusOK)
+	}
+	_ = updateResp.Body.Close()
+	setWant := make(map[string]float64, len(set))
+	for key, value := range set {
+		setWant[key] = float64(value)
+	}
+	assertFields(setWant)
+
+	partial := map[string]int{"groupCallCameraBitrateKbps": 7777}
+	partialResp := jsonRequest(t, client, http.MethodPatch, serverURL.URL+"/api/family", owner.AccessToken, partial)
+	if partialResp.StatusCode != http.StatusOK {
+		t.Fatalf("partial update status = %d, want %d", partialResp.StatusCode, http.StatusOK)
+	}
+	_ = partialResp.Body.Close()
+	setWant["groupCallCameraBitrateKbps"] = 7777
+	assertFields(setWant)
+}
+
 func uploadFileRequest(t *testing.T, client *http.Client, target, token, chatID, filename string, data []byte) *http.Response {
 	t.Helper()
 	body := &bytes.Buffer{}
@@ -1971,4 +2040,3 @@ func TestMessageReactionsAreInlineAndIdempotent(t *testing.T) {
 		t.Fatalf("unexpected removed reaction payload: %#v", removed.Reactions)
 	}
 }
-

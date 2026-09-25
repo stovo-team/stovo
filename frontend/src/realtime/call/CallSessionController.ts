@@ -6,6 +6,7 @@ import {
   type MeshMediaEnginePort,
   type SFUMediaEnginePort,
 } from "./mediaEngineFactory";
+import type { CallQualityBitrates } from "./callQuality";
 import {
   CallCapabilities,
   CallDevice,
@@ -121,6 +122,11 @@ export default class CallSessionController {
   setRoomId(id: string) {
     this.roomId = id;
     this.mesh.setRoomId(id);
+  }
+
+  setCallQualityBitrates(settings: CallQualityBitrates) {
+    this.mesh.setVideoBitrates?.(settings);
+    this.sfu.setVideoBitrates?.(settings);
   }
 
   setChatId(id: string) {

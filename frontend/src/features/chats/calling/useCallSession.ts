@@ -13,12 +13,14 @@ import type { NavigateFunction } from "react-router-dom";
 
 import type { User } from "../../../api/auth";
 import type { Chat, Message } from "../../../api/chats";
+import { getFamily } from "../../../api/family";
 import CallController, {
   CallCapabilities,
   CallDevice,
   CallSettings,
   type CallTopology
 } from "../../../realtime/CallController";
+import { callQualityProfileForChatType, DEFAULT_CALL_QUALITY_BITRATES, resolveCallQualityBitrates, type CallQualityProfile } from "../../../realtime/call/callQuality";
 import { waitForSocketConnection } from "../../../realtime/socketConnection";
 import { createCallSoundPlayer } from "../../../realtime/callSounds";
 import { getAudioSettings, mergeWithDefaults } from "../../../api/audioSettings";
@@ -578,6 +580,7 @@ export function useCallSession({
     audioCallRef.current?.setLocalUserId(currentUser.id);
     console.log("[CALL] startDirectCall: calling prepareForCall type=", type);
     try {
+      await loadCallQuality(callQualityProfileForChatType(selectedChat.type));
       await audioCallRef.current?.prepareForCall(type);
       console.log("[CALL] startDirectCall: prepareForCall resolved OK");
     } catch (err) {
@@ -610,6 +613,19 @@ export function useCallSession({
     setIsCallInviteOpen
   });
 
+  async function loadCallQuality(profile: CallQualityProfile) {
+    if (!accessToken) {
+      audioCallRef.current?.setCallQualityBitrates({ ...DEFAULT_CALL_QUALITY_BITRATES });
+      return;
+    }
+    try {
+      const family = await getFamily(accessToken);
+      audioCallRef.current?.setCallQualityBitrates(resolveCallQualityBitrates(family, profile));
+    } catch {
+      audioCallRef.current?.setCallQualityBitrates({ ...DEFAULT_CALL_QUALITY_BITRATES });
+    }
+  }
+
   async function acceptIncomingCall() {
     const socket = socketRef.current;
     if (!socket || !activeCallChatId || !callPeerUserId) {
@@ -634,6 +650,8 @@ export function useCallSession({
       if (currentUser?.id) {
         audioCallRef.current?.setLocalUserId(currentUser.id);
       }
+      const activeChat = chats.find((chat) => chat.id === activeCallChatId);
+      await loadCallQuality(callQualityProfileForChatType(activeChat?.type));
       if (callTopology === "sfu") {
         await audioCallRef.current?.prepareForCall(callType);
       } else {
@@ -706,6 +724,7 @@ export function useCallSession({
       if (currentUser?.id) {
         audioCallRef.current?.setLocalUserId(currentUser.id);
       }
+      await loadCallQuality(callQualityProfileForChatType(targetChat.type));
 
       if (targetTopology === "sfu") {
         await audioCallRef.current?.prepareForCall(targetCallType);
@@ -777,6 +796,7 @@ export function useCallSession({
         audioCallRef.current?.setLocalUserId(currentUser.id);
       }
       audioCallRef.current?.setChatId(targetChat.id);
+      await loadCallQuality(callQualityProfileForChatType(targetChat.type));
 
       await audioCallRef.current?.prepareForCall("audio");
 

@@ -348,7 +348,7 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 			if err != nil {
 				return httptransport.Family{}, err
 			}
-			screenShareBitrateKbps, err := s.screenShareBitrateForFamily(ctx, familyID)
+			quality, err := s.callMediaQualityForFamily(ctx, familyID)
 			if err != nil {
 				return httptransport.Family{}, err
 			}
@@ -357,8 +357,13 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 				DefaultMessageEncryptionProtocol: family.DefaultMessageEncryptionProtocol,
 				DefaultProfileVisibility:         defaults.ProfileVisibility, DefaultLastSeenVisibility: defaults.LastSeenVisibility,
 				DefaultReadReceiptsEnabled: defaults.ReadReceiptsEnabled, DefaultNotificationSettings: defaults.NotificationSettings,
-				ScreenShareBitrateKbps: screenShareBitrateKbps,
-				NavTabs:                httptransport.NavTabs{Chats: family.NavTabs.Chats, Storage: family.NavTabs.Storage, Plans: family.NavTabs.Plans, Settings: family.NavTabs.Settings},
+				ScreenShareBitrateKbps:          quality.ScreenShareBitrateKbps,
+				CameraBitrateKbps:               quality.CameraBitrateKbps,
+				GroupCallScreenShareBitrateKbps: quality.GroupCallScreenShareBitrateKbps,
+				GroupCallCameraBitrateKbps:      quality.GroupCallCameraBitrateKbps,
+				DMCallScreenShareBitrateKbps:    quality.DMCallScreenShareBitrateKbps,
+				DMCallCameraBitrateKbps:         quality.DMCallCameraBitrateKbps,
+				NavTabs:                         httptransport.NavTabs{Chats: family.NavTabs.Chats, Storage: family.NavTabs.Storage, Plans: family.NavTabs.Plans, Settings: family.NavTabs.Settings},
 			}, nil
 		},
 		IsNotFound: func(err error) bool { return errors.Is(err, errNotFound) },
@@ -382,8 +387,16 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 					return nil, err
 				}
 			}
-			if payload.ScreenShareBitrateKbps != nil {
-				if err := s.updateScreenShareBitrateForFamily(ctx, familyID, *payload.ScreenShareBitrateKbps); err != nil {
+			if payload.ScreenShareBitrateKbps != nil || payload.CameraBitrateKbps != nil || payload.GroupCallScreenShareBitrateKbps != nil || payload.GroupCallCameraBitrateKbps != nil || payload.DMCallScreenShareBitrateKbps != nil || payload.DMCallCameraBitrateKbps != nil {
+				qualityPatch := map[string]*int{
+					"screenShareBitrateKbps":          payload.ScreenShareBitrateKbps,
+					"cameraBitrateKbps":               payload.CameraBitrateKbps,
+					"groupCallScreenShareBitrateKbps": payload.GroupCallScreenShareBitrateKbps,
+					"groupCallCameraBitrateKbps":      payload.GroupCallCameraBitrateKbps,
+					"dmCallScreenShareBitrateKbps":    payload.DMCallScreenShareBitrateKbps,
+					"dmCallCameraBitrateKbps":         payload.DMCallCameraBitrateKbps,
+				}
+				if err := s.updateCallMediaQualityForFamily(ctx, familyID, qualityPatch); err != nil {
 					return nil, err
 				}
 			}

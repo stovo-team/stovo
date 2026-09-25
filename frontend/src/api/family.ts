@@ -26,6 +26,11 @@ export interface Family {
   defaultReadReceiptsEnabled: boolean;
   defaultNotificationSettings: string;
   screenShareBitrateKbps: number;
+  cameraBitrateKbps?: number;
+  groupCallScreenShareBitrateKbps?: number;
+  groupCallCameraBitrateKbps?: number;
+  dmCallScreenShareBitrateKbps?: number;
+  dmCallCameraBitrateKbps?: number;
   navTabs?: {
     chats?: boolean;
     storage?: boolean;
@@ -85,7 +90,7 @@ export function getFamily(accessToken: string) {
   return apiRequest<Family>("/api/family", { accessToken });
 }
 
-export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean; defaultProfileVisibility?: "everyone" | "nobody"; defaultLastSeenVisibility?: "everyone" | "nobody"; defaultReadReceiptsEnabled?: boolean; defaultNotificationSettings?: string; screenShareBitrateKbps?: number }) {
+export function updateFamily(accessToken: string, payload: { name?: string; storageLimitMb?: number; minimizedChatLayout?: boolean; defaultProfileVisibility?: "everyone" | "nobody"; defaultLastSeenVisibility?: "everyone" | "nobody"; defaultReadReceiptsEnabled?: boolean; defaultNotificationSettings?: string; screenShareBitrateKbps?: number; cameraBitrateKbps?: number; groupCallScreenShareBitrateKbps?: number; groupCallCameraBitrateKbps?: number; dmCallScreenShareBitrateKbps?: number; dmCallCameraBitrateKbps?: number }) {
   return apiRequest<Family>("/api/family", {
     method: "PATCH",
     accessToken,
