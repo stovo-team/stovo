@@ -21419,6 +21419,11 @@ button.chat-info-title-edit:active:not(:disabled) {
   transform-origin: top left;
 }
 
+.document-inline-preview-docx .document-viewer-docx {
+  zoom: 0.5;
+  width: 200%;
+}
+
 .document-inline-preview-text,
 .document-viewer-text {
   background: #fff;
@@ -21491,15 +21496,19 @@ button.chat-info-title-edit:active:not(:disabled) {
   align-items: center;
   background: transparent;
   border: 1px solid var(--border-default);
-  border-radius: 999px;
+  border-radius: 50%;
+  box-sizing: border-box;
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
+  height: 36px;
+  justify-content: center;
   font-size: 0.75rem;
   font-weight: 600;
-  gap: 4px;
-  min-height: auto;
-  padding: 5px 12px;
+  min-height: 36px;
+  min-width: 36px;
+  padding: 0;
+  width: 36px;
 }
 
 .document-preview-open {
@@ -30091,8 +30100,8 @@ button.checklist-add-item-btn:hover,
 
 /* Markdown attachment reading and Canvas conversion actions. */
 .document-viewer-markdown {
-  background: #fff;
-  color: #202124;
+  background: #181b22;
+  color: #e6e8ed;
   font: 15px/1.65 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   min-height: 100%;
   overflow-wrap: anywhere;
@@ -30104,7 +30113,7 @@ button.checklist-add-item-btn:hover,
 .document-viewer-markdown h4,
 .document-viewer-markdown h5,
 .document-viewer-markdown h6 {
-  color: #111;
+  color: #f4f5f7;
   line-height: 1.25;
   margin: 1em 0 0.45em;
 }
@@ -30125,15 +30134,18 @@ button.checklist-add-item-btn:hover,
   padding: 12px 14px;
 }
 .document-viewer-markdown code {
-  background: #f2f3f5;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 5px;
+  color: #f1f5f9;
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   padding: 2px 5px;
 }
 .document-viewer-markdown pre code { background: transparent; padding: 0; }
 .document-viewer-markdown ul,
-.document-viewer-markdown ol { padding-left: 1.6em; }
-.document-viewer-markdown a { color: #1558a6; }
+.document-viewer-markdown ol { padding-left: 1.8em; }
+.document-viewer-markdown .message-list { margin: 0.35em 0; }
+.document-viewer-markdown .message-list .message-list { margin: 0.2em 0; padding-left: 1.8em; }
+.document-viewer-markdown a { color: #8ab4f8; }
 .document-viewer-markdown table {
   border-collapse: collapse;
   display: block;

@@ -50,6 +50,7 @@ export default function AdminMembersPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [memberDetails, setMemberDetails] = useState<MemberAdminDetails | null>(null);
+  const [memberDetailsError, setMemberDetailsError] = useState<string | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [pendingIPAction, setPendingIPAction] = useState<"ban" | "unban" | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -192,14 +193,14 @@ export default function AdminMembersPage() {
     setOpenMenuId(null);
     setSelectedMember(member);
     setMemberDetails(null);
+    setMemberDetailsError(null);
     setIsLoadingDetails(true);
     setError(null);
     try {
       if (!accessToken) throw new Error("Sign in again to manage members");
       setMemberDetails(await getMemberAdminDetails(accessToken, member.id));
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Could not load member details");
-      setSelectedMember(null);
+      setMemberDetailsError(err instanceof ApiError ? String(err.message) : "Could not load member details");
     } finally {
       setIsLoadingDetails(false);
     }
@@ -352,6 +353,7 @@ export default function AdminMembersPage() {
             <section ref={detailsDialogRef} className="admin-member-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-member-dialog-title" tabIndex={-1} onKeyDown={(event) => handleDialogKeyDown(event)}>
               <h2 id="admin-member-dialog-title">{selectedMember.displayName}: activity and safety</h2>
               {isLoadingDetails && <p className="muted-text">Loading…</p>}
+              {memberDetailsError && <p className="error-text" role="alert">{memberDetailsError}</p>}
               {memberDetails && (
                 <dl className="admin-member-details">
                   <div><dt>Account</dt><dd>{memberDetails.isActive ? "Enabled" : "Disabled"}</dd></div>

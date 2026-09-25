@@ -30,6 +30,21 @@ export interface CanvasUpdate {
 
 const root = "/api/v1/plugins/canvas";
 
+function createCanvasBlockId(): string {
+  const cryptoApi = globalThis.crypto;
+  if (typeof cryptoApi?.randomUUID === "function") return cryptoApi.randomUUID();
+
+  // randomUUID is restricted to secure contexts, but getRandomValues also
+  // works on the plain HTTP LAN origins used by some self-hosted deployments.
+  const bytes = new Uint8Array(16);
+  if (typeof cryptoApi?.getRandomValues === "function") cryptoApi.getRandomValues(bytes);
+  else bytes.forEach((_, index) => { bytes[index] = Math.floor(Math.random() * 256); });
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+}
+
 export function createCanvas(accessToken: string, chatId: string, title = "Untitled canvas") {
   return apiRequest<Canvas>(`${root}/canvases`, { method: "POST", accessToken, body: { chatId, title } });
 }
@@ -38,7 +53,7 @@ export function createCanvas(accessToken: string, chatId: string, title = "Untit
 export function encodeMarkdownCanvasDocumentUpdate(markdown: string): string {
   const doc = new Y.Doc();
   const block = new Y.Map<unknown>();
-  block.set("id", crypto.randomUUID());
+  block.set("id", createCanvasBlockId());
   block.set("kind", "markdown");
   block.set("content", new Y.Text(markdown));
   doc.getArray<Y.Map<unknown>>("blocks").push([block]);

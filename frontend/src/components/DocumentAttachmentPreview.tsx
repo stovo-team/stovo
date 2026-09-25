@@ -1,4 +1,4 @@
-import { ArrowRight, LoaderCircle, X } from "lucide-react";
+import { ArrowRight, Download, ExternalLink, LoaderCircle, X } from "lucide-react";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -379,23 +379,27 @@ export function DocumentAttachmentPreview({
               <button
                 type="button"
                 className="document-preview-open"
+                aria-label={`Open ${file.originalName}`}
+                title="Open"
                 onClick={(e) => {
                   e.stopPropagation();
                   setViewerOpen(true);
                 }}
               >
-                Open
+                <ExternalLink size={16} aria-hidden="true" />
               </button>
               {accessToken && (
                 <button
                   type="button"
                   className="document-preview-save"
+                  aria-label={`Save ${file.originalName}`}
+                  title="Save"
                   onClick={(e) => {
                     e.stopPropagation();
                     void saveFileToDisk(accessToken, file);
                   }}
                 >
-                  Save
+                  <Download size={16} aria-hidden="true" />
                 </button>
               )}
             </div>
