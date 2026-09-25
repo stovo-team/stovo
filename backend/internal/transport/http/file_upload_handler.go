@@ -118,7 +118,7 @@ func (h FileUploadHandler) Upload(w stdhttp.ResponseWriter, r *stdhttp.Request) 
 		writeFileUploadError(w, stdhttp.StatusBadRequest, "file is required")
 		return
 	}
-	defer fileHeader.Close()
+	defer func() { _ = fileHeader.Close() }()
 
 	data, err := readUploadData(fileHeader, maxSize)
 	if err != nil {
@@ -155,10 +155,10 @@ func readUploadData(r io.Reader, maxBytes int64) ([]byte, error) {
 	lr := io.LimitReader(r, maxBytes+1)
 	data, err := io.ReadAll(lr)
 	if err != nil {
-		return nil, errors.New("Could not read upload")
+		return nil, errors.New("could not read upload")
 	}
 	if int64(len(data)) > maxBytes {
-		return nil, errors.New("File exceeds maximum upload size")
+		return nil, errors.New("file exceeds maximum upload size")
 	}
 	return data, nil
 }

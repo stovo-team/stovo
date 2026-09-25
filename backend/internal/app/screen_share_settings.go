@@ -30,13 +30,6 @@ func defaultFamilyCallMediaQuality() familyCallMediaQuality {
 	}
 }
 
-// screenShareBitrateForFamily is deliberately kept beside guest-meeting code:
-// the setting affects the public media publisher, not normal member profiles.
-func (s *Server) screenShareBitrateForFamily(ctx context.Context, familyID string) (int, error) {
-	settings, err := s.callMediaQualityForFamily(ctx, familyID)
-	return settings.ScreenShareBitrateKbps, err
-}
-
 func (s *Server) callMediaQualityForFamily(ctx context.Context, familyID string) (familyCallMediaQuality, error) {
 	if s.guestDB == nil {
 		return defaultFamilyCallMediaQuality(), nil
@@ -81,8 +74,4 @@ func (s *Server) updateCallMediaQualityForFamily(ctx context.Context, familyID s
 		patch["dmCallScreenShareBitrateKbps"], patch["dmCallCameraBitrateKbps"], familyID,
 	)
 	return err
-}
-
-func (s *Server) updateScreenShareBitrateForFamily(ctx context.Context, familyID string, bitrate int) error {
-	return s.updateCallMediaQualityForFamily(ctx, familyID, map[string]*int{"screenShareBitrateKbps": &bitrate})
 }

@@ -20,10 +20,6 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	clientOperationHeader = "X-Stovo-Operation-Id"
-)
-
 func (s *Server) syncHandler(user userPublic) httptransport.SyncHandler {
 	return httptransport.NewSyncHandler(httptransport.SyncOperations{
 		Page: func(ctx context.Context, cursor, limit string) (any, error) {

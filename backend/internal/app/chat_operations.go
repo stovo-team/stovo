@@ -788,11 +788,6 @@ func (s *Server) updateChatMediaVisibility(ctx context.Context, chatID string, d
 	}
 }
 
-func (s *Server) listMessages(chatID string, user userPublic, before string, limit int, threadRootMessageID string) ([]messagePublic, error) {
-	messages, _, err := s.listMessagesPage(chatID, user, before, limit, threadRootMessageID, "")
-	return messages, err
-}
-
 func (s *Server) listMessagesPage(chatID string, user userPublic, before string, limit int, threadRootMessageID, archiveGroup string) ([]messagePublic, bool, error) {
 	if threadRootMessageID != "" {
 		if err := s.validateReplyTarget(chatID, threadRootMessageID); err != nil {
@@ -1803,4 +1798,3 @@ func extractMentionedUserIDsFromContent(members []chatMemberPublic, senderID str
 	}
 	return mentioned
 }
-

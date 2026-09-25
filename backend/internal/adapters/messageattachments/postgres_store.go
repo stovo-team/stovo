@@ -22,7 +22,7 @@ func (s *PostgresStore) Attach(ctx context.Context, command featuremessages.Atta
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	for _, fileID := range command.FileIDs {
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO message_attachments (message_id, file_id) VALUES ($1, $2)
@@ -44,7 +44,7 @@ func writeChangedEvent(ctx context.Context, tx *sql.Tx, command featuremessages.
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	recipients := make([]string, 0)
 	for rows.Next() {
 		var userID string

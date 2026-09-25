@@ -54,7 +54,7 @@ func (store sqlMemberIPStore) CandidateIP(ctx context.Context, userID string) (s
 	if err != nil {
 		return "", err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var raw string
 		if err := rows.Scan(&raw); err != nil {
@@ -263,8 +263,6 @@ func (s *Server) rejectBannedInviteIP(ctx context.Context, familyID, ip string) 
 	}
 	return nil
 }
-
-func validIP(value string) bool { _, ok := normalizeMemberBanIP(value); return ok }
 
 func authorizeMemberSafety(actor, target userPublic, inspectOnly bool) error {
 	if !hasPermission(actor, permissionManageMembers) {

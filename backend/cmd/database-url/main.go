@@ -30,7 +30,7 @@ func main() {
 
 		db, err := sql.Open("pgx", primaryURL)
 		if err == nil {
-			defer db.Close()
+			defer func() { _ = db.Close() }()
 			pingErr := db.PingContext(ctx)
 			if pingErr == nil {
 				fmt.Print(primaryURL)

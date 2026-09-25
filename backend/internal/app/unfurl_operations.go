@@ -29,7 +29,7 @@ type UnfurlResponse struct {
 
 var (
 	metaPropertyRegex = regexp.MustCompile(`(?i)<meta\s+[^>]*?(?:property|name)=["']([^"']+)["'][^>]*?content=["']([^"']+)["'][^>]*?>|<meta\s+[^>]*?content=["']([^"']+)["'][^>]*?(?:property|name)=["']([^"']+)["'][^>]*?>`)
-	titleTagRegex    = regexp.MustCompile(`(?i)<title[^>]*>([^<]+)</title>`)
+	titleTagRegex     = regexp.MustCompile(`(?i)<title[^>]*>([^<]+)</title>`)
 	linkIconRegex     = regexp.MustCompile(`(?i)<link\s+[^>]*?rel=["'](?:shortcut\s+)?icon["'][^>]*?href=["']([^"']+)["'][^>]*?>|<link\s+[^>]*?href=["']([^"']+)["'][^>]*?rel=["'](?:shortcut\s+)?icon["'][^>]*?>`)
 )
 
@@ -298,7 +298,7 @@ func (s *Server) handleUnfurl(w http.ResponseWriter, r *http.Request, _ userPubl
 		http.Error(w, fmt.Sprintf("Failed to fetch URL: %v", err), http.StatusBadGateway)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
 		http.Error(w, fmt.Sprintf("Upstream returned status %d", resp.StatusCode), http.StatusBadGateway)

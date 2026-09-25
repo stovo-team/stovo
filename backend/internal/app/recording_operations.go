@@ -113,7 +113,7 @@ func (s *Server) emitCallEventToChat(ctx context.Context, chatID, event string, 
 	if err != nil {
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var uid string
 		if err := rows.Scan(&uid); err == nil && uid != "" {
@@ -301,7 +301,7 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 			s.json(w, http.StatusBadRequest, map[string]string{"message": "Missing file field"})
 			return
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		videoData, err = io.ReadAll(file)
 		if err != nil {
 			s.json(w, http.StatusBadRequest, map[string]string{"message": "Could not read uploaded video"})

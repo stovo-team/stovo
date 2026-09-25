@@ -58,7 +58,7 @@ func (o *Orchestrator) ReconcileContainers() {
 		log.Printf("[orchestrator] Reconcile query error: %v", err)
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var slug string
 		if err := rows.Scan(&slug); err == nil && slug != "" {

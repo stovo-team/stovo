@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	socketio "github.com/doquangtan/socketio/v4"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	socketio "github.com/doquangtan/socketio/v4"
 )
 
 const (
@@ -321,11 +321,12 @@ func (s *Server) createChecklist(ctx context.Context, user userPublic, request c
 		return checklistPublic{}, errBadRequest
 	}
 	category := strings.ToLower(strings.TrimSpace(request.Category))
-	if category == "grocery" || category == "groceries" {
+	switch category {
+	case "grocery", "groceries":
 		category = "groceries"
-	} else if category == "errand" || category == "errands" {
+	case "errand", "errands":
 		category = "errands"
-	} else {
+	default:
 		category = "general"
 	}
 
@@ -406,7 +407,7 @@ func (s *Server) getChecklistForUser(ctx context.Context, checklistID string, us
 	if err != nil {
 		return checklistPublic{}, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var chatID string
 		if err := rows.Scan(&chatID); err != nil {
@@ -440,7 +441,7 @@ func (s *Server) loadChecklistItems(ctx context.Context, checklistID string) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := []checklistItemPublic{}
 	for rows.Next() {
 		var item checklistItemPublic
@@ -473,7 +474,7 @@ func (s *Server) listChecklistsForChat(ctx context.Context, chatID string, user 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	result := []checklistPublic{}
 	for rows.Next() {
 		var id string
@@ -510,7 +511,7 @@ func (s *Server) listChecklistsForUser(ctx context.Context, user userPublic) ([]
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	result := []checklistPublic{}
 	for rows.Next() {
 		var id string
@@ -551,11 +552,12 @@ func (s *Server) updateChecklist(ctx context.Context, checklistID string, user u
 	category := checklist.Category
 	if req.Category != nil {
 		c := strings.ToLower(strings.TrimSpace(*req.Category))
-		if c == "grocery" || c == "groceries" {
+		switch c {
+		case "grocery", "groceries":
 			category = "groceries"
-		} else if c == "errand" || c == "errands" {
+		case "errand", "errands":
 			category = "errands"
-		} else if c == "general" {
+		case "general":
 			category = "general"
 		}
 	}
@@ -787,7 +789,7 @@ func (s *Server) batchSyncChecklistItems(ctx context.Context, checklistID string
 	if err != nil {
 		return checklistPublic{}, err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Load existing items map for preserved IDs and metadata
 	existingMap := make(map[string]checklistItemPublic)
@@ -972,7 +974,7 @@ func (s *Server) emitChecklistToAuthorizedUsers(ctx context.Context, checklistID
 		s.logger.Warnf("realtime.checklist", "resolve Checklist event audience failed checklist_id=%s error=%v", checklistID, err)
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var userID string
 		if err := rows.Scan(&userID); err != nil {

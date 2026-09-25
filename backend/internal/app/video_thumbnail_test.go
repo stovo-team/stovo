@@ -52,7 +52,7 @@ func TestVideoUploadSucceedsWithoutThumbnailWhenExtractionFails(t *testing.T) {
 
 	response := uploadFileRequest(t, client, serverURL.URL+"/api/files/upload", owner.AccessToken, "", "broken.mp4", []byte("not a video"))
 	if response.StatusCode != 201 {
-		defer response.Body.Close()
+		defer func() { _ = response.Body.Close() }()
 		t.Fatalf("upload status = %d, want 201", response.StatusCode)
 	}
 	file := decodeJSON[filePublic](t, response)
@@ -89,7 +89,7 @@ func TestThumbnailEndpointServesStoredJPEGToAuthorizedViewer(t *testing.T) {
 	}
 
 	response := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/files/"+file.ID+"/thumbnail", owner.AccessToken, nil)
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("thumbnail status = %d, want %d", response.StatusCode, http.StatusOK)
 	}
@@ -141,7 +141,7 @@ func TestThumbnailEndpointHidesInvisibleDeletedAndUnthumbnailedFiles(t *testing.
 	target := serverURL.URL + "/api/files/" + file.ID + "/thumbnail"
 
 	invisible := jsonRequest(t, client, http.MethodGet, target, observer.AccessToken, nil)
-	invisible.Body.Close()
+	_ = invisible.Body.Close()
 	if invisible.StatusCode != http.StatusNotFound {
 		t.Fatalf("invisible thumbnail status = %d, want %d", invisible.StatusCode, http.StatusNotFound)
 	}
@@ -150,7 +150,7 @@ func TestThumbnailEndpointHidesInvisibleDeletedAndUnthumbnailedFiles(t *testing.
 		t.Fatalf("mark file deleted: %v", err)
 	}
 	deleted := jsonRequest(t, client, http.MethodGet, target, owner.AccessToken, nil)
-	deleted.Body.Close()
+	_ = deleted.Body.Close()
 	if deleted.StatusCode != http.StatusNotFound {
 		t.Fatalf("deleted thumbnail status = %d, want %d", deleted.StatusCode, http.StatusNotFound)
 	}
@@ -161,7 +161,7 @@ func TestThumbnailEndpointHidesInvisibleDeletedAndUnthumbnailedFiles(t *testing.
 	}
 	unthumbnailed := decodeJSON[filePublic](t, uploadWithoutThumbnail)
 	missing := jsonRequest(t, client, http.MethodGet, serverURL.URL+"/api/files/"+unthumbnailed.ID+"/thumbnail", owner.AccessToken, nil)
-	missing.Body.Close()
+	_ = missing.Body.Close()
 	if missing.StatusCode != http.StatusNotFound {
 		t.Fatalf("unthumbnailed file status = %d, want %d", missing.StatusCode, http.StatusNotFound)
 	}

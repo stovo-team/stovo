@@ -74,7 +74,7 @@ func (c *LLMClient) callChat(ctx context.Context, req chatCompletionRequest) (st
 	if err != nil {
 		return "", fmt.Errorf("llm: http request: %w", err)
 	}
-	defer httpResp.Body.Close()
+	defer func() { _ = httpResp.Body.Close() }()
 	respBody, err := io.ReadAll(httpResp.Body)
 	if err != nil {
 		return "", fmt.Errorf("llm: read body: %w", err)
@@ -118,7 +118,7 @@ func (c *LLMClient) PostProcess(ctx context.Context, segments []TranscriptSegmen
 	var sb strings.Builder
 	for _, seg := range segments {
 		startSec := seg.StartMs / 1000
-		sb.WriteString(fmt.Sprintf("[%02d:%02d] %s: %s\n", startSec/60, startSec%60, seg.ParticipantName, seg.Text))
+		fmt.Fprintf(&sb, "[%02d:%02d] %s: %s\n", startSec/60, startSec%60, seg.ParticipantName, seg.Text)
 	}
 
 	systemPrompt := `You are an expert meeting analyst. Return ONLY valid JSON with this structure:

@@ -61,9 +61,10 @@ func normalizeCustomFileTypes(value string) (string, bool) {
 			return "", false
 		}
 		for _, char := range pattern[2:] {
-			if !(char >= 'a' && char <= 'z') && !(char >= '0' && char <= '9') && char != '+' && char != '-' && char != '_' {
-				return "", false
+			if (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '+' || char == '-' || char == '_' {
+				continue
 			}
+			return "", false
 		}
 		normalized = append(normalized, pattern)
 	}
@@ -238,7 +239,7 @@ func (s *Server) listCollections(w http.ResponseWriter, r *http.Request, user us
 		collectionError(w, 500, "Could not load collections")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	items := make([]collectionPublic, 0)
 	for rows.Next() {
 		var id string
@@ -416,7 +417,7 @@ func (s *Server) listCollectionItems(w http.ResponseWriter, r *http.Request, use
 		collectionError(w, 500, "Could not load collection files")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	files := make([]filePublic, 0)
 	for rows.Next() {
 		var id string
@@ -494,7 +495,7 @@ func (s *Server) listCollectionGrants(w http.ResponseWriter, r *http.Request, us
 		collectionError(w, 500, "Could not load collection access")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	grants := make([]collectionGrantPublic, 0)
 	for rows.Next() {
 		var g collectionGrantPublic
@@ -511,7 +512,7 @@ func (s *Server) upsertCollectionGrant(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 	var p collectionGrantPublic
-	if json.NewDecoder(r.Body).Decode(&p) != nil || !(p.PrincipalType == "user" || p.PrincipalType == "role") || !validCollectionLevel(p.AccessLevel) || strings.TrimSpace(p.PrincipalID) == "" {
+	if json.NewDecoder(r.Body).Decode(&p) != nil || (p.PrincipalType != "user" && p.PrincipalType != "role") || !validCollectionLevel(p.AccessLevel) || strings.TrimSpace(p.PrincipalID) == "" {
 		collectionError(w, 422, "Invalid access grant")
 		return
 	}
@@ -542,7 +543,7 @@ func (s *Server) deleteCollectionGrant(w http.ResponseWriter, r *http.Request, u
 	}
 	kind := strings.TrimSpace(chi.URLParam(r, "principalType"))
 	id := strings.TrimSpace(chi.URLParam(r, "principalId"))
-	if !(kind == "user" || kind == "role") || id == "" {
+	if (kind != "user" && kind != "role") || id == "" {
 		collectionError(w, 422, "Invalid access grant")
 		return
 	}

@@ -100,29 +100,6 @@ func (s *Server) startMemberIPBanSweep() {
 	})
 }
 
-func (s *Server) consumeFileValidationBatch(ctx context.Context, consumer, cursor string) error {
-	streams, err := s.jobConsumer.ReadGroup(ctx, jobsStreamName, fileValidationGroup, consumer, cursor, 8, fileValidationBlock)
-	if err != nil {
-		return err
-	}
-	for _, message := range streams {
-		topic := message.Topic
-		if topic != "file.validate" {
-			if err := s.jobConsumer.Ack(ctx, jobsStreamName, fileValidationGroup, message.ID); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := s.processFileValidationJob(ctx, message.EventID, message.Payload); err != nil {
-			return err
-		}
-		if err := s.jobConsumer.Ack(ctx, jobsStreamName, fileValidationGroup, message.ID); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (s *Server) processFileValidationJob(ctx context.Context, eventID, payload string) error {
 	var job struct {
 		UploadID string `json:"uploadId"`
@@ -158,7 +135,7 @@ func (s *Server) processFileValidationJob(ctx context.Context, eventID, payload 
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 	hasher := sha256.New()
 	header := make([]byte, 0, 512)
 	buffer := make([]byte, 32*1024)

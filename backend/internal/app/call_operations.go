@@ -16,7 +16,6 @@ import (
 	featurecalls "stovo-messenger/backend/internal/features/calls"
 	"stovo-messenger/backend/internal/ports"
 	"stovo-messenger/backend/internal/runtime"
-	workruntime "stovo-messenger/backend/internal/runtime"
 	httptransport "stovo-messenger/backend/internal/transport/http"
 	realtimetransport "stovo-messenger/backend/internal/transport/realtime"
 
@@ -60,8 +59,8 @@ type callSession = runtime.CallSession
 // NewCallManager supplies the runtime coordinator with app-owned session
 // readers. Runtime owns locking and index transitions; app owns its session
 // representation and protocol/persistence callbacks.
-func NewCallManager() *workruntime.CallCoordinator[*callSession] {
-	return workruntime.NewCallCoordinator(
+func NewCallManager() *runtime.CallCoordinator[*callSession] {
+	return runtime.NewCallCoordinator(
 		func(session *callSession) (string, string) { return session.ID, session.ChatID },
 		func(session *callSession) []string { return session.ActiveParticipantIDs() },
 	)
@@ -323,7 +322,7 @@ func (s *Server) startBrokerConsumers() {
 		Seen:   s.eventDeduplicator().Seen,
 	})
 	s.lifecycle.Go(func(ctx context.Context) {
-		workruntime.RunBrokerSubscription(ctx, s.broker, brokerChannelMessages, handler, 800*time.Millisecond, func(err error) {
+		runtime.RunBrokerSubscription(ctx, s.broker, brokerChannelMessages, handler, 800*time.Millisecond, func(err error) {
 			s.logger.Warnf("realtime", "broker subscribe failed channel=%s error=%v", brokerChannelMessages, err)
 		})
 	})
@@ -331,7 +330,7 @@ func (s *Server) startBrokerConsumers() {
 
 func (s *Server) startMemberIPBanConsumer() {
 	s.lifecycle.Go(func(ctx context.Context) {
-		workruntime.RunBrokerSubscription(ctx, s.broker, brokerChannelMemberIPBans, s.handleMemberIPBanEvent, 800*time.Millisecond, func(err error) {
+		runtime.RunBrokerSubscription(ctx, s.broker, brokerChannelMemberIPBans, s.handleMemberIPBanEvent, 800*time.Millisecond, func(err error) {
 			s.logger.Warnf("member-ip", "broker subscribe failed channel=%s error=%v", brokerChannelMemberIPBans, err)
 		})
 	})
@@ -768,14 +767,6 @@ func (s *Server) emitCallToActiveParticipants(session *callSession, event string
 	}
 }
 
-func memberIDs(chat chatPublic) []string {
-	ids := make([]string, 0, len(chat.Members))
-	for _, m := range chat.Members {
-		ids = append(ids, m.ID)
-	}
-	return ids
-}
-
 func chatMemberSet(chat chatPublic) map[string]bool {
 	set := make(map[string]bool, len(chat.Members))
 	for _, m := range chat.Members {
@@ -938,8 +929,7 @@ func (s *Server) joinCallSession(chat chatPublic, userID string, callType string
 	return sess, true, nil
 }
 
-func (s *Server) indexCallSession(session *callSession)   { s.calls.IndexLocked(session) }
-func (s *Server) unindexCallSession(session *callSession) { s.calls.UnindexLocked(session) }
+func (s *Server) indexCallSession(session *callSession) { s.calls.IndexLocked(session) }
 
 func (s *Server) getCallSession(chatID string) (*callSession, bool) {
 	s.calls.Lock()
@@ -1455,10 +1445,6 @@ func (s *Server) emitCallToUser(userID, event string, payload any) {
 			go s.enqueueEventForUser(context.Background(), userID, event, payload)
 		}
 	}
-}
-
-func (s *Server) socketQueryValue(socket *socketio.Socket, key string) string {
-	return realtimetransport.QueryValue(socket, key)
 }
 
 func (s *Server) socketAccessToken(socket *socketio.Socket) string {

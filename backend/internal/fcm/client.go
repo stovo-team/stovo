@@ -28,9 +28,9 @@ func NewClient(ctx context.Context, credentialsFile, credentialsJSON string) (*C
 
 	var opts []option.ClientOption
 	if credentialsFile != "" {
-		opts = append(opts, option.WithCredentialsFile(credentialsFile))
+		opts = append(opts, option.WithAuthCredentialsFile(option.ServiceAccount, credentialsFile))
 	} else if credentialsJSON != "" {
-		opts = append(opts, option.WithCredentialsJSON([]byte(credentialsJSON)))
+		opts = append(opts, option.WithAuthCredentialsJSON(option.ServiceAccount, []byte(credentialsJSON)))
 	}
 
 	app, err := firebase.NewApp(ctx, nil, opts...)
@@ -77,22 +77,16 @@ func (c *Client) SendChatMessage(
 	clickURL := "stovo://chat/" + chatID
 	tagList := strings.Join(tags, ",")
 
-	msg := &messaging.Message{
-		Token: token,
-		Data: map[string]string{
-			"event":     "message",
-			"chat_id":   chatID,
-			"chat_type": chatType,
-			"title":     title,
-			"message":   message,
-			"click":     clickURL,
-			"tags":      tagList,
-			"priority":  strconv.Itoa(priority),
-		},
-		Android: &messaging.AndroidConfig{
-			Priority: fcmPriority,
-		},
-	}
+	msg := registrationTokenMessage(token, map[string]string{
+		"event":     "message",
+		"chat_id":   chatID,
+		"chat_type": chatType,
+		"title":     title,
+		"message":   message,
+		"click":     clickURL,
+		"tags":      tagList,
+		"priority":  strconv.Itoa(priority),
+	}, fcmPriority)
 
 	_, err := c.messaging.Send(ctx, msg)
 	if err != nil {
@@ -117,21 +111,15 @@ func (c *Client) SendCallRinging(
 
 	clickURL := "stovo://call/" + chatID
 
-	msg := &messaging.Message{
-		Token: token,
-		Data: map[string]string{
-			"event":    "message",
-			"chat_id":  chatID,
-			"title":    callerName,
-			"message":  "Incoming call",
-			"click":    clickURL,
-			"tags":     "phone",
-			"priority": "5",
-		},
-		Android: &messaging.AndroidConfig{
-			Priority: "high",
-		},
-	}
+	msg := registrationTokenMessage(token, map[string]string{
+		"event":    "message",
+		"chat_id":  chatID,
+		"title":    callerName,
+		"message":  "Incoming call",
+		"click":    clickURL,
+		"tags":     "phone",
+		"priority": "5",
+	}, "high")
 
 	_, err := c.messaging.Send(ctx, msg)
 	if err != nil {
@@ -156,25 +144,30 @@ func (c *Client) SendCallMissed(
 
 	clickURL := "stovo://call/missed/" + chatID
 
-	msg := &messaging.Message{
-		Token: token,
-		Data: map[string]string{
-			"event":    "message",
-			"chat_id":  chatID,
-			"title":    callerName,
-			"message":  "Missed call",
-			"click":    clickURL,
-			"tags":     "telephone_receiver",
-			"priority": "3",
-		},
-		Android: &messaging.AndroidConfig{
-			Priority: "high",
-		},
-	}
+	msg := registrationTokenMessage(token, map[string]string{
+		"event":    "message",
+		"chat_id":  chatID,
+		"title":    callerName,
+		"message":  "Missed call",
+		"click":    clickURL,
+		"tags":     "telephone_receiver",
+		"priority": "3",
+	}, "high")
 
 	_, err := c.messaging.Send(ctx, msg)
 	if err != nil {
 		return fmt.Errorf("fcm send call missed: %w", err)
 	}
 	return nil
+}
+
+func registrationTokenMessage(token string, data map[string]string, priority string) *messaging.Message {
+	return &messaging.Message{
+		//nolint:staticcheck // FCM registration tokens are distinct from Firebase installation IDs (Fid).
+		Token: token,
+		Data:  data,
+		Android: &messaging.AndroidConfig{
+			Priority: priority,
+		},
+	}
 }

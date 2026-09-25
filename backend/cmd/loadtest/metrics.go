@@ -107,19 +107,19 @@ func (r *MetricRecorder) Snapshot(elapsed time.Duration) StatsSummary {
 func FormatStatsTable(summaries []StatsSummary, duration time.Duration) string {
 	var sb strings.Builder
 	sb.WriteString("\n" + strings.Repeat("=", 86) + "\n")
-	sb.WriteString(fmt.Sprintf(" LOAD TEST RESULTS (Duration: %v)\n", duration.Round(time.Millisecond)))
+	fmt.Fprintf(&sb, " LOAD TEST RESULTS (Duration: %v)\n", duration.Round(time.Millisecond))
 	sb.WriteString(strings.Repeat("-", 86) + "\n")
-	sb.WriteString(fmt.Sprintf("%-22s %7s %7s %8s %8s %8s %8s %8s\n",
-		"METRIC", "SUCCESS", "FAIL", "P50", "P90", "P95", "P99", "MAX"))
+	fmt.Fprintf(&sb, "%-22s %7s %7s %8s %8s %8s %8s %8s\n",
+		"METRIC", "SUCCESS", "FAIL", "P50", "P90", "P95", "P99", "MAX")
 	sb.WriteString(strings.Repeat("-", 86) + "\n")
 
 	for _, s := range summaries {
 		if s.TotalOps == 0 {
-			sb.WriteString(fmt.Sprintf("%-22s %7d %7d %8s %8s %8s %8s %8s\n",
-				s.Name, s.SuccessOps, s.FailedOps, "-", "-", "-", "-", "-"))
+			fmt.Fprintf(&sb, "%-22s %7d %7d %8s %8s %8s %8s %8s\n",
+				s.Name, s.SuccessOps, s.FailedOps, "-", "-", "-", "-", "-")
 			continue
 		}
-		sb.WriteString(fmt.Sprintf("%-22s %7d %7d %8s %8s %8s %8s %8s\n",
+		fmt.Fprintf(&sb, "%-22s %7d %7d %8s %8s %8s %8s %8s\n",
 			s.Name,
 			s.SuccessOps,
 			s.FailedOps,
@@ -128,7 +128,7 @@ func FormatStatsTable(summaries []StatsSummary, duration time.Duration) string {
 			formatDuration(s.P95),
 			formatDuration(s.P99),
 			formatDuration(s.Max),
-		))
+		)
 	}
 	sb.WriteString(strings.Repeat("=", 86) + "\n\n")
 	return sb.String()

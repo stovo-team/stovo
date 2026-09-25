@@ -21,8 +21,6 @@ import (
 )
 
 type transcriptionSessionPublic = transporthttp.TranscriptionSessionResponse
-type transcriptSegmentPublic = transporthttp.TranscriptSegmentResponse
-type summaryPublic = transporthttp.TranscriptSummaryResponse
 type transcriptPublic = transporthttp.TranscriptResponse
 
 func transcriptionSessionPublicFromFeature(session featuretranscription.SessionView) transcriptionSessionPublic {
@@ -306,9 +304,10 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 				return nil, http.StatusForbidden, "This upload does not belong to you"
 			}
 			contentType := "audio/webm"
-			if chunk.Container == "ogg" {
+			switch chunk.Container {
+			case "ogg":
 				contentType = "audio/ogg"
-			} else if chunk.Container == "mp4" {
+			case "mp4":
 				contentType = "audio/mp4"
 			}
 			store, err := s.bucketObjectStore()
@@ -511,13 +510,6 @@ func (s *Server) publishAICallNotes(ctx context.Context, sessionID string) {
 	if err := s.transcriptionSessions.CompleteAICallNotes(ctx, sessionID, message.ID); err != nil {
 		s.logger.Warnf("transcription", "AI notes message link failed session_id=%s error=%v", sessionID, err)
 	}
-}
-
-func (s *Server) markTranscriptionFailed(ctx context.Context, sessionID, chatID, callID, code, message string) {
-	if err := s.transcriptionSessions.Fail(ctx, featuretranscription.Failure{SessionID: sessionID, Code: code, Message: message}); err != nil {
-		s.logger.Warnf("transcription", "failure status update failed session_id=%s error=%v", sessionID, err)
-	}
-	s.broadcastTranscriptionStatus(chatID, callID, sessionID, string(transcription.SessionStatusFailed), message)
 }
 
 func (s *Server) broadcastTranscriptionStatus(chatID, callID, sessionID, status string, failureMessages ...string) {

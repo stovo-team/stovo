@@ -90,7 +90,7 @@ func (s *Server) publishToNtfy(ctx context.Context, payload ntfyPayload) error {
 	if err != nil {
 		return fmt.Errorf("ntfy do: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("ntfy publish failed status=%d", resp.StatusCode)
 	}
@@ -283,12 +283,13 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 				payloadTags = append(append([]string{}, tags...), "exclamation")
 			}
 			route := notificationDeliveryRoute(provider, s.fcmClient != nil && s.fcmClient.IsConfigured())
-			if route == featureadministration.NotificationProviderFirebase {
+			switch route {
+			case featureadministration.NotificationProviderFirebase:
 				if err := s.fcmClient.SendChatMessage(ctx, topic, chatID, chatType, title, message, priority, payloadTags); err != nil {
 					s.logger.Warnf("fcm", "failed to deliver chat message user_id=%s: %v", recipientID, err)
 				}
 				return
-			} else if route == "" {
+			case "":
 				s.logger.Warnf("fcm", "selected provider is unavailable; skipping chat notification user_id=%s", recipientID)
 				return
 			}
@@ -319,12 +320,13 @@ func (s *Server) notifyCallRinging(calleeUserID string, callerName string, chatI
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		route := notificationDeliveryRoute(provider, s.fcmClient != nil && s.fcmClient.IsConfigured())
-		if route == featureadministration.NotificationProviderFirebase {
+		switch route {
+		case featureadministration.NotificationProviderFirebase:
 			if err := s.fcmClient.SendCallRinging(ctx, topic, chatID, callerName); err != nil {
 				s.logger.Warnf("fcm", "failed to deliver call ringing user_id=%s: %v", calleeUserID, err)
 			}
 			return
-		} else if route == "" {
+		case "":
 			s.logger.Warnf("fcm", "selected provider is unavailable; skipping call ringing notification user_id=%s", calleeUserID)
 			return
 		}
@@ -354,12 +356,13 @@ func (s *Server) notifyCallMissed(calleeUserID string, callerName string, chatID
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		route := notificationDeliveryRoute(provider, s.fcmClient != nil && s.fcmClient.IsConfigured())
-		if route == featureadministration.NotificationProviderFirebase {
+		switch route {
+		case featureadministration.NotificationProviderFirebase:
 			if err := s.fcmClient.SendCallMissed(ctx, topic, chatID, callerName); err != nil {
 				s.logger.Warnf("fcm", "failed to deliver call missed user_id=%s: %v", calleeUserID, err)
 			}
 			return
-		} else if route == "" {
+		case "":
 			s.logger.Warnf("fcm", "selected provider is unavailable; skipping missed call notification user_id=%s", calleeUserID)
 			return
 		}

@@ -346,7 +346,7 @@ func (s *PostgresStore) GetServerOverview(ctx context.Context, rangeFilter strin
 		GROUP BY hr
 	`, dateCondition))
 	if err == nil {
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			var hr, cnt int
 			if scanErr := rows.Scan(&hr, &cnt); scanErr == nil && hr >= 0 && hr < 24 {
@@ -362,7 +362,7 @@ func (s *PostgresStore) GetServerOverview(ctx context.Context, rangeFilter strin
 		GROUP BY dow
 	`, dateCondition))
 	if err == nil {
-		defer dayRows.Close()
+		defer func() { _ = dayRows.Close() }()
 		for dayRows.Next() {
 			var dow, cnt int
 			if scanErr := dayRows.Scan(&dow, &cnt); scanErr == nil && dow >= 0 && dow < 7 {
@@ -440,7 +440,7 @@ func (s *PostgresStore) GetServerOverview(ctx context.Context, rangeFilter strin
 
 	sRows, err := s.db.QueryContext(ctx, starterQuery)
 	if err == nil {
-		defer sRows.Close()
+		defer func() { _ = sRows.Close() }()
 		totalStarts := 0
 		var starters []ConversationStarter
 		for sRows.Next() {
@@ -468,7 +468,7 @@ func (s *PostgresStore) GetServerOverview(ctx context.Context, rangeFilter strin
 		LIMIT 5
 	`, dateCondition))
 	if err == nil {
-		defer chatRows.Close()
+		defer func() { _ = chatRows.Close() }()
 		for chatRows.Next() {
 			var ac ActiveChat
 			if scanErr := chatRows.Scan(&ac.ChatID, &ac.Title, &ac.Type, &ac.MessageCount); scanErr == nil {
@@ -494,7 +494,7 @@ func (s *PostgresStore) GetChatStats(ctx context.Context, chatID string) (ChatSt
 		GROUP BY hr
 	`, chatID)
 	if err == nil {
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			var hr, cnt int
 			if scanErr := rows.Scan(&hr, &cnt); scanErr == nil && hr >= 0 && hr < 24 {
@@ -513,7 +513,7 @@ func (s *PostgresStore) GetChatStats(ctx context.Context, chatID string) (ChatSt
 		LIMIT 10
 	`, chatID)
 	if err == nil {
-		defer mRows.Close()
+		defer func() { _ = mRows.Close() }()
 		for mRows.Next() {
 			var cm ChatMemberStats
 			if scanErr := mRows.Scan(&cm.UserID, &cm.DisplayName, &cm.MessageCount); scanErr == nil {
@@ -746,7 +746,7 @@ func (s *PostgresStore) GetFunAwards(ctx context.Context) (FunAwards, error) {
 		LIMIT 5
 	`)
 	if err == nil {
-		defer eRows.Close()
+		defer func() { _ = eRows.Close() }()
 		for eRows.Next() {
 			var et EmojiTally
 			if scanErr := eRows.Scan(&et.Emoji, &et.Count); scanErr == nil {

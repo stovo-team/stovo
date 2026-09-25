@@ -312,7 +312,7 @@ func (s *Server) getCanvasForUser(ctx context.Context, canvasID string, user use
 	if err != nil {
 		return canvasPublic{}, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var chatID string
 		if err := rows.Scan(&chatID); err != nil {
@@ -329,7 +329,7 @@ func (s *Server) listCanvasesForChat(ctx context.Context, chatID string, user us
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	result := []canvasPublic{}
 	for rows.Next() {
 		var id string
@@ -364,7 +364,7 @@ func (s *Server) listCanvasesForUser(ctx context.Context, user userPublic) ([]ca
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	result := []canvasPublic{}
 	for rows.Next() {
 		var id string
@@ -475,7 +475,7 @@ func (s *Server) canvasUpdates(ctx context.Context, canvasID string) ([]canvasUp
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	updates := []canvasUpdatePublic{}
 	for rows.Next() {
 		var item canvasUpdatePublic
@@ -550,7 +550,7 @@ func (s *Server) emitCanvasToAuthorizedUsers(ctx context.Context, canvasID, even
 		s.logger.Warnf("realtime.canvas", "resolve Canvas event audience failed canvas_id=%s error=%v", canvasID, err)
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var userID string
 		if err := rows.Scan(&userID); err != nil {

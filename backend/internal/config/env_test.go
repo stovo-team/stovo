@@ -80,8 +80,8 @@ func TestLoadEnvFile(t *testing.T) {
 	}
 
 	// Clean up environment after test
-	defer os.Unsetenv("TEST_GROQ_KEY_ENV_TEST")
-	defer os.Unsetenv("TEST_ANOTHER_VAR")
+	defer func() { _ = os.Unsetenv("TEST_GROQ_KEY_ENV_TEST") }()
+	defer func() { _ = os.Unsetenv("TEST_ANOTHER_VAR") }()
 
 	if err := LoadEnvFile(envPath, false); err != nil {
 		t.Fatalf("LoadEnvFile failed: %v", err)

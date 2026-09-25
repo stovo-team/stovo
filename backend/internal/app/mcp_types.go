@@ -183,26 +183,6 @@ type mcpConnectorPublic struct {
 	AllowedChatIDs     []string       `json:"allowedChatIds"`
 }
 
-type mcpConnectorCreateRequest struct {
-	Name               string          `json:"name"`
-	Provider           string          `json:"provider"`
-	Alias              string          `json:"alias"`
-	AuthMode           string          `json:"authMode"`
-	AllowedChatIDs     []string        `json:"allowedChatIds"`
-	Permissions        map[string]bool `json:"permissions"`
-	MaxHistoryMessages *int            `json:"maxHistoryMessages"`
-}
-
-type mcpConnectorUpdateRequest struct {
-	Name               *string         `json:"name"`
-	Alias              *string         `json:"alias"`
-	AuthMode           *string         `json:"authMode"`
-	AllowedChatIDs     *[]string       `json:"allowedChatIds"`
-	Permissions        map[string]bool `json:"permissions"`
-	MaxHistoryMessages *int            `json:"maxHistoryMessages"`
-	Enabled            *bool           `json:"enabled"`
-}
-
 type mcpConnectorCreateResponse struct {
 	Connector     mcpConnectorPublic `json:"connector"`
 	Token         string             `json:"token"`

@@ -86,6 +86,17 @@ func (s *segmentStoreFake) InsertSegment(_ context.Context, segment SegmentWrite
 	return s.err
 }
 
+func TestSegmentServiceDelegatesPersistence(t *testing.T) {
+	store := &segmentStoreFake{}
+	segment := SegmentWrite{ID: "segment", SessionID: "session", ExactText: "hello"}
+	if err := NewSegmentService(store).Insert(context.Background(), segment); err != nil {
+		t.Fatal(err)
+	}
+	if store.segment != segment {
+		t.Fatalf("stored segment = %+v, want %+v", store.segment, segment)
+	}
+}
+
 func (s *chunkStoreFake) Chunk(context.Context, string) (AudioChunk, error) { return s.chunk, s.err }
 func (s *chunkStoreFake) ReserveChunk(_ context.Context, chunk AudioChunk) (AudioChunk, error) {
 	s.chunk = chunk

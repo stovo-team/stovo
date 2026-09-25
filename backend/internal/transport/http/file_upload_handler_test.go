@@ -114,3 +114,25 @@ func TestFileUploadHandlerUpload(t *testing.T) {
 		}
 	})
 }
+
+func TestReadUploadDataErrorMessages(t *testing.T) {
+	t.Run("read failure", func(t *testing.T) {
+		_, err := readUploadData(failingUploadReader{}, 8)
+		if err == nil || err.Error() != "could not read upload" {
+			t.Fatalf("readUploadData error = %v, want %q", err, "could not read upload")
+		}
+	})
+
+	t.Run("size limit", func(t *testing.T) {
+		_, err := readUploadData(strings.NewReader("12345"), 4)
+		if err == nil || err.Error() != "file exceeds maximum upload size" {
+			t.Fatalf("readUploadData error = %v, want %q", err, "file exceeds maximum upload size")
+		}
+	})
+}
+
+type failingUploadReader struct{}
+
+func (failingUploadReader) Read([]byte) (int, error) {
+	return 0, errors.New("read failed")
+}
