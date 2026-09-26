@@ -4461,6 +4461,13 @@ h2 {
   cursor: text;
 }
 
+.recording-processing-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
 .message-meta,
 .reaction-pill,
 .message-selection-indicator,

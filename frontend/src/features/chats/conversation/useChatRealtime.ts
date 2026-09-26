@@ -111,6 +111,41 @@ export function useChatRealtime({
         })();
       };
 
+      const removeProcessingRecording = (payload: { chatId?: string; recordingId?: string }) => {
+        if (!payload.chatId || !payload.recordingId) return;
+        const pendingId = `recording-processing-${payload.recordingId}`;
+        applyMessagesForChat(payload.chatId, (current) => current.filter((message) => message.id !== pendingId));
+      };
+
+      const onRecordingStopping = (payload: { chatId: string; recordingId: string; initiatedBy?: string; initiatedByName?: string; stoppedAt?: string }) => {
+        if (!payload.chatId || !payload.recordingId) return;
+        const createdAt = payload.stoppedAt ?? new Date().toISOString();
+        const pendingMessage: Message = {
+          id: `recording-processing-${payload.recordingId}`,
+          chatId: payload.chatId,
+          senderId: payload.initiatedBy ?? "",
+          senderDisplayName: payload.initiatedByName ?? null,
+          type: "text",
+          content: "__call_recording_processing__",
+          encryptionProtocol: "legacy_plaintext",
+          ciphertext: null,
+          nonce: null,
+          keyVersion: null,
+          encryptionMetadata: null,
+          replyToMessageId: null,
+          threadRootMessageId: null,
+          messageKind: "chat",
+          createdAt,
+          updatedAt: createdAt,
+          deletedAt: null,
+          isEdited: false,
+          statuses: [],
+          reactions: [],
+          attachments: [],
+        };
+        applyMessagesForChat(payload.chatId, (current) => mergeIncomingMessage(current, pendingMessage));
+      };
+
       const onMessageDeleted = (payload: { messageId: string; chatId: string }) => {
         applyMessagesForChat(payload.chatId, (current) => current.filter((m) => m.id !== payload.messageId));
         onChatsUpdate((current) =>
@@ -228,6 +263,9 @@ export function useChatRealtime({
 
       socket.on("message:new", onMessageNew);
       socket.on("message:updated", onMessageUpdated);
+      socket.on("call.recording.stopping", onRecordingStopping);
+      socket.on("call.recording.ready", removeProcessingRecording);
+      socket.on("call.recording.failed", removeProcessingRecording);
       socket.on("message:deleted", onMessageDeleted);
       socket.on("message:pinned", onMessagePinned);
       socket.on("message:unpinned", onMessageUnpinned);
@@ -241,6 +279,9 @@ export function useChatRealtime({
       return () => {
         socket.off("message:new", onMessageNew);
         socket.off("message:updated", onMessageUpdated);
+        socket.off("call.recording.stopping", onRecordingStopping);
+        socket.off("call.recording.ready", removeProcessingRecording);
+        socket.off("call.recording.failed", removeProcessingRecording);
         socket.off("message:deleted", onMessageDeleted);
         socket.off("message:pinned", onMessagePinned);
         socket.off("message:unpinned", onMessageUnpinned);

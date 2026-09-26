@@ -1,5 +1,5 @@
 import { CSSProperties, PointerEvent as ReactPointerEvent, MouseEvent as ReactMouseEvent, useState, useEffect } from "react";
-import { ArrowUpRight, CalendarClock, CalendarPlus, Check, Clock3, DoorOpen, Folder, LockKeyhole, Phone, StickyNote, Video } from "lucide-react";
+import { ArrowUpRight, CalendarClock, CalendarPlus, Check, Clock3, DoorOpen, Folder, Loader2, LockKeyhole, Phone, StickyNote, Video } from "lucide-react";
 
 import { useStrings } from "../../../i18n/LanguageContext";
 import { callHistoryLabel, callHistoryTimestamp } from "../../../callHistory";
@@ -522,7 +522,7 @@ export function MessageBubble({
                 />
               ) : meetingInvitation ? (
                 <GuestMeetingInvitation meeting={meetingInvitation} sourceChatId={selectedChat.id} />
-              ) : hasCaption ? (
+              ) : message.content === "__call_recording_processing__" ? <div className="message-body recording-processing-message"><Loader2 size={15} className="audio-player-spin" aria-hidden="true" /><span>Video processing…</span></div> : hasCaption ? (
                 <>
                   <div className="message-body">
                     {renderMarkdown ? <MessageMarkdown source={message.content} /> : message.content}

@@ -429,13 +429,13 @@ export function useCallSession({
 
   // Watchdog timer for "connecting" phase: prevents eternal connecting state
   useEffect(() => {
-    if (callPhase !== "connecting" || !activeCallChatId) {
+    if (callPhase !== "connecting" || !activeCallChatId || !callPeerUserId) {
       return;
     }
     const timerId = setTimeout(() => {
       if (callPhaseRef.current === "connecting") {
         console.warn("[CALL] Connecting watchdog triggered — attempting signaling retry");
-        if (audioCallRef.current && activeCallChatIdRef.current && callPeerUserId) {
+        if (audioCallRef.current && activeCallChatIdRef.current && callPeerUserId !== currentUser?.id) {
           void audioCallRef.current.resumeSignaling(
             activeCallChatIdRef.current,
             callPeerUserId,
@@ -457,7 +457,7 @@ export function useCallSession({
       clearTimeout(timerId);
       clearTimeout(timeoutId);
     };
-  }, [callPhase, activeCallChatId, callPeerUserId]);
+  }, [callPhase, activeCallChatId, callPeerUserId, currentUser?.id]);
 
   /** Dismiss the native Android incoming-call notification (no-op on web/iOS). */
   function dismissNativeCallNotification() {
@@ -797,20 +797,7 @@ export function useCallSession({
         audioCallRef.current?.setLocalUserId(currentUser.id);
       }
       audioCallRef.current?.setChatId(targetChat.id);
-      await loadCallQuality(callQualityProfileForChatType(targetChat.type));
-
-      try {
-        await audioCallRef.current?.prepareForCall("audio");
-      } catch (mediaErr) {
-        // A microphone permission/device failure must not prevent joining a
-        // voice channel to listen. The SFU can connect receive-only when no
-        // local stream is available; keep the call joined and surface the
-        // microphone issue in the existing audio warning UI.
-        const reason = mediaErr instanceof Error ? mediaErr.message : "Microphone is unavailable";
-        console.warn("[CALL] voice channel microphone setup failed; joining listen-only:", mediaErr);
-        setCallAudioWarning(`${reason}. You joined without a microphone.`);
-        await applyCallAudioPatch({ micMuted: true });
-      }
+      void loadCallQuality(callQualityProfileForChatType(targetChat.type));
 
       const connected = await waitForVoiceChannelConnection(socket, (attempt, totalAttempts) => {
           setCallNotice(

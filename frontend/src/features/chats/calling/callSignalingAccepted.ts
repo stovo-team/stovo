@@ -75,7 +75,8 @@ export function registerCallAcceptedHandler(socket: Socket, audioController: Cal
           audioController.setTopology(payload.topology);
         }
         audioController.setLocalUserId(currentUser.id);
-        setCallPeerUserId(peerId);
+        const isVoiceChannel = chatsRef.current.some((chat) => chat.id === payload.chatId && chat.type === "voice");
+        setCallPeerUserId(peerId || (isVoiceChannel ? currentUser.id : ""));
         setCallType(acceptedCallType);
         callTypeRef.current = acceptedCallType;
         setCallParticipantIds((payload.participants ?? []).map((p) => p.userId));
@@ -101,9 +102,15 @@ export function registerCallAcceptedHandler(socket: Socket, audioController: Cal
           if (payload.topology === "sfu") {
             try {
               await audioController.switchToSfu();
+              if (isVoiceChannel) {
+                void audioController.prepareForCall("audio").catch((mediaErr) => {
+                  console.warn("[call:accepted] voice channel microphone unavailable; remaining listen-only:", mediaErr);
+                });
+              }
               return;
             } catch (sfuErr) {
               console.warn("[call:accepted] SFU join failed, attempting mesh fallback:", sfuErr);
+              if (isVoiceChannel) throw sfuErr;
               setCallTopology("mesh");
               audioController.setTopology("mesh");
               if (mediaPeers.length > 0) {

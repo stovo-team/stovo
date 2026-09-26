@@ -221,11 +221,13 @@ func (s *Server) handleStopRecording(w http.ResponseWriter, r *http.Request, use
 	}
 
 	broadcastPayload := map[string]any{
-		"roomId":      roomID,
-		"chatId":      chatID,
-		"recordingId": recID,
-		"status":      "stopping",
-		"stoppedAt":   now.Format(time.RFC3339Nano),
+		"roomId":          roomID,
+		"chatId":          chatID,
+		"recordingId":     recID,
+		"status":          "stopping",
+		"initiatedBy":     user.ID,
+		"initiatedByName": user.DisplayName,
+		"stoppedAt":       now.Format(time.RFC3339Nano),
 	}
 
 	if session, ok := s.getCallSessionByRoom(roomID); ok {
