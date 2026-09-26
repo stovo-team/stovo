@@ -7,7 +7,7 @@ import { createGuestMeeting } from "../../../api/guestMeetings";
 import { encryptMessageContent } from "../../../api/messageCrypto";
 import { GuestMeetingSelect } from "./GuestMeetingSelect";
 
-export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, currentUserId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; sourceChat?: Chat | null; currentUserId?: string; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
+export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCreateChat, newChatTitle = "", currentUserId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; sourceChat?: Chat | null; onCreateChat?: (title: string) => Promise<Chat | null>; newChatTitle?: string; currentUserId?: string; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
   const [title, setTitle] = useState(initialTitle);
   const [mode, setMode] = useState<"immediate" | "lobby">("immediate");
   const [duration, setDuration] = useState("24");
@@ -33,9 +33,13 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, curre
       if (!title.trim()) throw new Error("Enter a meeting name");
       const planned = calendarStart ? new Date(calendarStart) : null;
       const scheduledAt = planned && Number.isFinite(planned.getTime()) ? planned.toISOString() : undefined;
-      const meeting = await createGuestMeeting(memberToken, { chatId: sourceChatId, title: title.trim(), scheduledAt, admissionMode: mode, expiresAt });
+      const targetChat = sourceChatId === "new"
+        ? await onCreateChat?.(newChatTitle.trim())
+        : sourceChat;
+      if (!targetChat) throw new Error("Could not create meeting chat");
+      const meeting = await createGuestMeeting(memberToken, { chatId: targetChat.id, title: title.trim(), scheduledAt, admissionMode: mode, expiresAt });
       setUrl(meeting.meetingUrl);
-      if (sourceChat) {
+      if (targetChat) {
         const timing = meeting.scheduledAt
           ? `Planned for ${new Date(meeting.scheduledAt).toLocaleString()}.`
           : "Starts when the host opens the meeting.";
@@ -54,8 +58,8 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, curre
         // The meeting exists at this point. A temporary chat-sync failure must
         // not make a working meeting link appear to have failed.
         try {
-          const encrypted = await encryptMessageContent(sourceChat, announcement, currentUserId);
-          await sendMessage(memberToken, sourceChat.id, encrypted.content, [], null, null, encrypted.encryption);
+          const encrypted = await encryptMessageContent(targetChat, announcement, currentUserId);
+          await sendMessage(memberToken, targetChat.id, encrypted.content, [], null, null, encrypted.encryption);
         } catch {
           setError("Meeting link created, but it could not be posted to the chat. You can copy the link below.");
         }

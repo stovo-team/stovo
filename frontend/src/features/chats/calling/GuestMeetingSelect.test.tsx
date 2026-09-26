@@ -21,14 +21,14 @@ describe("GuestMeetingSelect keyboard behavior", () => {
 
   it("keeps Home and End navigation in the new chat name field", async () => {
     await act(async () => {
-      root?.render(<GuestMeetingSelect ariaLabel="Meeting chat" value="one" onChange={() => undefined} options={[{ value: "one", label: "One" }]} onCreateNew={() => true} />);
+      root?.render(<GuestMeetingSelect ariaLabel="Meeting chat" value="one" onChange={() => undefined} options={[{ value: "one", label: "One" }]} newChatTitle="" onNewChatTitleChange={() => undefined} />);
     });
     const trigger = container.querySelector<HTMLButtonElement>(".guest-link-select-trigger")!;
     await act(async () => { trigger.click(); });
     const input = container.querySelector<HTMLInputElement>('input[aria-label="New meeting chat name"]')!;
     input.focus();
     await act(async () => {
-      root?.render(<GuestMeetingSelect ariaLabel="Meeting chat" value="one" onChange={() => undefined} options={[{ value: "one", label: "One" }]} onCreateNew={() => true} creating />);
+      root?.render(<GuestMeetingSelect ariaLabel="Meeting chat" value="one" onChange={() => undefined} options={[{ value: "one", label: "One" }]} newChatTitle="" onNewChatTitleChange={() => undefined} />);
     });
     expect(document.activeElement).toBe(input);
     await act(async () => {
@@ -65,5 +65,31 @@ describe("GuestMeetingSelect keyboard behavior", () => {
     expect(space.defaultPrevented).toBe(true);
     expect(onChange).toHaveBeenCalledTimes(2);
     expect(onChange).toHaveBeenLastCalledWith("one");
+  });
+
+  it("offers a typed new chat as an automatically selected option without a separate create button", async () => {
+    const onChange = vi.fn();
+    const onNewChatTitleChange = vi.fn();
+    await act(async () => {
+      root?.render(<GuestMeetingSelect ariaLabel="Meeting chat" value="family" onChange={onChange} options={[{ value: "family", label: "General family" }]} newChatTitle="" onNewChatTitleChange={onNewChatTitleChange} />);
+    });
+    await act(async () => { container.querySelector<HTMLButtonElement>(".guest-link-select-trigger")!.click(); });
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="New meeting chat name"]')!;
+    await act(async () => {
+      input.value = "Design review";
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(onNewChatTitleChange).toHaveBeenCalledWith("Design review");
+    expect(onChange).toHaveBeenCalledWith("new");
+    await act(async () => {
+      root?.render(<GuestMeetingSelect ariaLabel="Meeting chat" value="new" onChange={onChange} options={[{ value: "family", label: "General family" }]} newChatTitle="Design review" onNewChatTitleChange={onNewChatTitleChange} />);
+    });
+
+    expect([...container.querySelectorAll('[role="option"]')].some((option) => option.textContent?.includes("New chat: Design review"))).toBe(true);
+    expect(container.querySelector(".guest-link-select-create button")).toBeNull();
+    const newChatOption = [...container.querySelectorAll<HTMLButtonElement>('[role="option"]')].find((option) => option.textContent?.includes("New chat: Design review"));
+    await act(async () => { newChatOption?.click(); });
+    expect(onChange).toHaveBeenCalledWith("new");
   });
 });

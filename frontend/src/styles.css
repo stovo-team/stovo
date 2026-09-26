@@ -29516,7 +29516,7 @@ button.checklist-add-item-btn:hover,
 .guest-meeting-media video, .guest-meeting-remotes video { width: 100%; max-height: 58vh; object-fit: cover; border-radius: 12px; background: #050609; }
 .guest-meeting-remotes { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .guest-meeting-planner-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 1.25rem; background: color-mix(in srgb, var(--surface-base) 75%, transparent); backdrop-filter: blur(4px); }
-.guest-meeting-planner { width: min(580px, 100%); overflow: visible; border: 1px solid var(--border-default); border-radius: 30px; color: var(--text-primary); background: var(--surface-raised); box-shadow: var(--float-shadow-strong); }
+.guest-meeting-planner { width: min(580px, 100%); overflow: visible; border: 1px solid var(--border-default); border-radius: 30px; color: var(--text-primary); background: color-mix(in srgb, var(--surface-raised) 88%, var(--background-tertiary)); box-shadow: var(--float-shadow-strong); }
 .guest-meeting-planner-header { border-bottom: 0 !important; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.5rem 1.5rem .75rem; }
 .guest-meeting-planner h2 { margin: 0; color: var(--text-primary); font-size: 1.15rem; font-weight: 700; letter-spacing: -.02em; }
 .guest-meeting-planner-header .icon-button { align-items: center; background: var(--background-tertiary) !important; border: 0 !important; border-radius: 50%; color: var(--text-secondary); display: inline-flex; flex: 0 0 40px; height: 40px; justify-content: center; padding: 0; width: 40px; }
@@ -29526,7 +29526,7 @@ button.checklist-add-item-btn:hover,
 .guest-link-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
 .guest-link-field { display: grid; gap: .5rem; color: var(--text-primary); font-size: .875rem; font-weight: 700; }
 .guest-link-field > span { display: inline-flex; align-items: center; gap: .38rem; }
-.guest-link-field input { width: 100%; min-height: 48px; padding: 0 1.1rem; border: 1px solid var(--border-default); border-radius: 22px; color: var(--text-primary); background: var(--surface-card); font: inherit; font-weight: 600; }
+.guest-link-field input { width: 100%; min-height: 48px; padding: 0 1.1rem; border: 1px solid var(--border-default); border-radius: 26px; color: var(--text-primary); background: var(--surface-card); font: inherit; font-weight: 600; }
 .guest-link-field input:focus { border-color: var(--accent-primary); box-shadow: none; outline: 0; }
 .guest-link-select { display: block; position: relative; }
 .guest-link-select-trigger { align-items: center; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 22px; color: var(--text-primary); cursor: pointer; display: flex; font: inherit; font-weight: 600; justify-content: space-between; min-height: 48px; padding: 0 1.05rem 0 1.1rem; text-align: left; width: 100%; }
@@ -29537,11 +29537,9 @@ button.checklist-add-item-btn:hover,
 .guest-link-select-menu button { align-items: center; background: transparent; border: 0; border-radius: 12px; color: var(--text-primary); cursor: pointer; display: flex; font: inherit; font-weight: 600; justify-content: flex-start; min-height: 38px; padding: 0 12px; text-align: left; width: 100%; }
 .guest-link-select-menu button:hover, .guest-link-select-menu button.selected { background: var(--accent-soft); color: var(--accent-primary); }
 .guest-link-select-create { border-top: 1px solid var(--border-default); display: grid; gap: .5rem; margin-top: 4px; padding: .65rem .35rem .25rem; }
-.guest-link-select-create input { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 12px; color: var(--text-primary); font: inherit; min-height: 38px; padding: 0 .7rem; width: 100%; }
+.guest-link-select-create-label { color: var(--text-secondary); font-size: .78rem; font-weight: 650; }
+.guest-link-select-create input { background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 22px; color: var(--text-primary); font: inherit; min-height: 44px; padding: 0 .9rem; width: 100%; }
 .guest-link-select-create input:focus { border-color: var(--accent-primary); outline: 0; }
-.guest-link-select-create button { align-items: center; background: transparent; border: 1px solid var(--accent-primary); color: var(--accent-primary); justify-content: center; }
-.guest-link-select-create button:hover { background: var(--accent-soft); }
-.guest-link-select-create button:disabled { cursor: wait; opacity: .55; }
 .guest-link-custom-date { max-width: 270px; }
 .guest-link-create-button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: .5rem; border: 0; border-radius: 999px !important; color: var(--button-primary-text, #fff); background: var(--accent-primary); font: inherit; font-weight: 700; cursor: pointer; }
 .guest-link-create-button:hover { background: var(--accent-primary-hover); }.guest-link-create-button:disabled { opacity: .65; cursor: wait; }

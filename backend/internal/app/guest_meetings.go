@@ -96,8 +96,8 @@ func (s *Server) createGuestMeeting(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 	chat, err := s.buildChatPublic(body.ChatID, user)
-	if err != nil || (chat.Type != "group" && chat.Type != "voice") {
-		s.json(w, 403, map[string]string{"message": "Guest meetings are available only in group and voice chats"})
+	if err != nil || !guestMeetingChatTypeAllowed(chat.Type) {
+		s.json(w, 403, map[string]string{"message": "Guest meetings are available only in family, group, and voice chats"})
 		return
 	}
 	mode := body.AdmissionMode

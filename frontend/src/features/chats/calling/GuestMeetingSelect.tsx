@@ -1,30 +1,31 @@
-import { Check, ChevronDown, Plus } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { Check, ChevronDown } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 export type GuestMeetingSelectOption = { value: string; label: string };
 
 /** A compact, platform-styled menu — deliberately not a browser select. */
-export function GuestMeetingSelect({ ariaLabel, options, value, onChange, onCreateNew, creating, className = "", disabled = false }: {
+export function GuestMeetingSelect({ ariaLabel, options, value, onChange, newChatTitle = "", onNewChatTitleChange, className = "", disabled = false }: {
   ariaLabel: string;
   options: GuestMeetingSelectOption[];
   value: string;
   onChange: (value: string) => void;
   className?: string;
   disabled?: boolean;
-  /** When supplied, the menu also lets the user create a chat without leaving the meeting flow. */
-  onCreateNew?: (title: string) => Promise<boolean> | boolean;
-  creating?: boolean;
+  newChatTitle?: string;
+  onNewChatTitleChange?: (title: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [newChatTitle, setNewChatTitle] = useState("");
   const listId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const selectedValueOnOpenRef = useRef(value);
-  const selected = options.find((option) => option.value === value) ?? options[0];
+  const trimmedNewChatTitle = newChatTitle.trim();
+  const newChatOption = trimmedNewChatTitle ? { value: "new", label: `New chat: ${trimmedNewChatTitle}` } : null;
+  const visibleOptions = useMemo(() => newChatOption ? [...options, newChatOption] : options, [options, newChatOption?.label]);
+  const selected = visibleOptions.find((option) => option.value === value) ?? visibleOptions[0];
 
   useEffect(() => {
     if (!open) return;
-    const selectedIndex = Math.max(options.findIndex((option) => option.value === selectedValueOnOpenRef.current), 0);
+    const selectedIndex = Math.max(visibleOptions.findIndex((option) => option.value === selectedValueOnOpenRef.current), 0);
     document.getElementById(listId)?.querySelectorAll<HTMLButtonElement>('[role="option"]')[selectedIndex]?.focus();
   }, [listId, open]);
 
@@ -48,21 +49,12 @@ export function GuestMeetingSelect({ ariaLabel, options, value, onChange, onCrea
     if (!optionButtons.length) return;
     event.preventDefault();
     const currentIndex = optionButtons.indexOf(document.activeElement as HTMLButtonElement);
-    const selectedIndex = options.findIndex((option) => option.value === value);
+    const selectedIndex = visibleOptions.findIndex((option) => option.value === value);
     const index = event.key === "Home" ? 0
       : event.key === "End" ? optionButtons.length - 1
         : event.key === "ArrowDown" ? (currentIndex < 0 ? Math.max(selectedIndex, 0) : (currentIndex + 1) % optionButtons.length)
           : (currentIndex < 0 ? Math.max(selectedIndex, 0) : (currentIndex - 1 + optionButtons.length) % optionButtons.length);
     optionButtons[index].focus();
-  }
-
-  async function createNewChat() {
-    const title = newChatTitle.trim();
-    if (!title || !onCreateNew) return;
-    const created = await onCreateNew(title);
-    if (!created) return;
-    setNewChatTitle("");
-    setOpen(false);
   }
 
   return (
@@ -77,29 +69,21 @@ export function GuestMeetingSelect({ ariaLabel, options, value, onChange, onCrea
         <span>{selected?.label ?? "Select or create a chat"}</span><ChevronDown size={18} aria-hidden="true" />
       </button>
       {open && <span className="guest-link-select-menu" id={listId} role="listbox" aria-label={ariaLabel}>
-        {options.map((option) => <button type="button" role="option" tabIndex={-1} aria-selected={option.value === value} className={option.value === value ? "selected" : ""} key={option.value} onClick={() => selectOption(option)} onKeyDown={(event) => {
+        {visibleOptions.map((option) => <button type="button" role="option" tabIndex={-1} aria-selected={option.value === value} className={option.value === value ? "selected" : ""} key={option.value} onClick={() => selectOption(option)} onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             selectOption(option);
           }
         }}><span>{option.label}</span>{option.value === value && <Check size={15} aria-hidden="true" />}</button>)}
-        {onCreateNew && <span className="guest-link-select-create">
+        {onNewChatTitleChange && <span className="guest-link-select-create">
+          <span className="guest-link-select-create-label">Or in a new chat</span>
           <input
             aria-label="New meeting chat name"
             maxLength={255}
             placeholder="e.g. Design review"
             value={newChatTitle}
-            onChange={(event) => setNewChatTitle(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void createNewChat();
-              }
-            }}
+            onChange={(event) => { onNewChatTitleChange(event.target.value); onChange(event.target.value.trim() ? "new" : options[0]?.value ?? ""); }}
           />
-          <button type="button" onClick={() => void createNewChat()} disabled={!newChatTitle.trim() || creating}>
-            <Plus size={16} aria-hidden="true" />{creating ? "Creating…" : "Create new chat"}
-          </button>
         </span>}
       </span>}
     </span>

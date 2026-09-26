@@ -7,6 +7,28 @@ import (
 	"testing"
 )
 
+func TestGuestMeetingChatTypeAllowed(t *testing.T) {
+	tests := []struct {
+		chatType string
+		want     bool
+	}{
+		{chatType: "family", want: true},
+		{chatType: "group", want: true},
+		{chatType: "voice", want: true},
+		{chatType: "direct", want: false},
+		{chatType: "channel", want: false},
+		{chatType: "archive", want: false},
+		{chatType: "", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.chatType, func(t *testing.T) {
+			if got := guestMeetingChatTypeAllowed(tt.chatType); got != tt.want {
+				t.Fatalf("guestMeetingChatTypeAllowed(%q) = %v, want %v", tt.chatType, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGuestMeetingAdmissionState(t *testing.T) {
 	tests := []struct {
 		name, mode, creatorID, userID, want string

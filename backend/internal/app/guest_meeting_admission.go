@@ -21,3 +21,7 @@ func guestMeetingRequestAdmissionState(r *http.Request, mode, creatorID string, 
 	}
 	return guestMeetingAdmissionState(mode, creatorID, authenticatedUserID)
 }
+
+func guestMeetingChatTypeAllowed(chatType string) bool {
+	return chatType == "family" || chatType == "group" || chatType == "voice"
+}
