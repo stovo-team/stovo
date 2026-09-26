@@ -83,7 +83,7 @@ describe("GuestMeetingLinkControl meeting chat creation", () => {
 
     expect(createGuestMeeting).not.toHaveBeenCalled();
     expect(sendMessage).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Could not create guest link");
+    expect(container.textContent).toContain("Could not create meeting chat");
   });
 
   it("does not post an invite when meeting creation fails after the chat was created", async () => {
