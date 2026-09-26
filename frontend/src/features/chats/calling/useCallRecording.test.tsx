@@ -11,6 +11,7 @@ const roots: Root[] = [];
 let decodedWidth = 0;
 let decodedHeight = 0;
 let pendingAnimationFrame: FrameRequestCallback | null = null;
+let originalCaptureStreamDescriptor: PropertyDescriptor | undefined;
 const recorderInstances: FakeMediaRecorder[] = [];
 
 class FakeMediaStream {
@@ -76,6 +77,7 @@ async function stop(container: HTMLElement) {
 }
 
 beforeEach(() => {
+  originalCaptureStreamDescriptor = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "captureStream");
   decodedWidth = 0;
   decodedHeight = 0;
   pendingAnimationFrame = null;
@@ -94,9 +96,12 @@ beforeEach(() => {
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
     fillStyle: "", font: "", textAlign: "center", fillRect: vi.fn(), fillText: vi.fn(), drawImage: vi.fn(),
   } as unknown as CanvasRenderingContext2D);
-  vi.spyOn(HTMLCanvasElement.prototype, "captureStream").mockReturnValue(new FakeMediaStream([
-    { kind: "video", readyState: "live", stop: vi.fn() } as unknown as MediaStreamTrack,
-  ]) as unknown as MediaStream);
+  Object.defineProperty(HTMLCanvasElement.prototype, "captureStream", {
+    configurable: true,
+    value: vi.fn(() => new FakeMediaStream([
+      { kind: "video", readyState: "live", stop: vi.fn() } as unknown as MediaStreamTrack,
+    ]) as unknown as MediaStream),
+  });
 });
 
 afterEach(() => {
@@ -104,6 +109,11 @@ afterEach(() => {
   document.body.innerHTML = "";
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  if (originalCaptureStreamDescriptor) {
+    Object.defineProperty(HTMLCanvasElement.prototype, "captureStream", originalCaptureStreamDescriptor);
+  } else {
+    Reflect.deleteProperty(HTMLCanvasElement.prototype, "captureStream");
+  }
 });
 
 describe("useCallRecording video validation", () => {
