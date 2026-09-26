@@ -61,6 +61,24 @@ func TestFormatMessageNotificationMissingTitle(t *testing.T) {
 	}
 }
 
+func TestCallCompletionNotificationIsDeliveredWhileChatIsForeground(t *testing.T) {
+	now := time.Date(2026, time.September, 26, 12, 0, 0, 0, time.UTC)
+	pref := ports.ChatNotificationPreference{NotificationMode: "all"}
+	decision := ShouldNotifyRecipientWithForegroundOverride(pref, "system", false, true, now, true)
+	if !decision.ShouldNotify {
+		t.Fatalf("expected call completion notification while the chat is foreground, got %q", decision.Reason)
+	}
+}
+
+func TestCallCompletionForegroundNotificationStillHonorsChatPreferences(t *testing.T) {
+	now := time.Date(2026, time.September, 26, 12, 0, 0, 0, time.UTC)
+	pref := ports.ChatNotificationPreference{NotificationMode: "mentions_only"}
+	decision := ShouldNotifyRecipientWithForegroundOverride(pref, "system", false, true, now, true)
+	if decision.ShouldNotify {
+		t.Fatal("expected mentions-only preference to suppress an unmentioned call completion notification")
+	}
+}
+
 func TestExtractMentionedUserIDsFromContent(t *testing.T) {
 	members := []chatMemberPublic{
 		{ID: "user-1", Username: "alice", DisplayName: "Alice Smith"},

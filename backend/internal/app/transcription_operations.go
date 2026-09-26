@@ -498,7 +498,7 @@ func (s *Server) publishAICallNotes(ctx context.Context, sessionID string) {
 		val := claim.CallHistoryMessageID
 		replyTo = &val
 	}
-	message, err := s.createGeneratedMessageWithPayloadContext(ctx, initiator, claim.ChatID, sendMessageRequest{
+	message, err := s.createCallCompletionMessageWithPayloadContext(ctx, initiator, claim.ChatID, sendMessageRequest{
 		Content:          &content,
 		ReplyToMessageID: replyTo,
 	})

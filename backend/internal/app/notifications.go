@@ -155,7 +155,18 @@ func ShouldNotifyRecipient(
 	isForeground bool,
 	now time.Time,
 ) NotificationDecision {
-	if isForeground {
+	return ShouldNotifyRecipientWithForegroundOverride(pref, senderID, isMentioned, isForeground, now, false)
+}
+
+func ShouldNotifyRecipientWithForegroundOverride(
+	pref ports.ChatNotificationPreference,
+	senderID string,
+	isMentioned bool,
+	isForeground bool,
+	now time.Time,
+	notifyInForeground bool,
+) NotificationDecision {
+	if isForeground && !notifyInForeground {
 		return NotificationDecision{ShouldNotify: false, Reason: "viewing_in_foreground"}
 	}
 
@@ -220,7 +231,7 @@ func ShouldNotifyRecipient(
 	}
 }
 
-func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string, mentionedUserIDs []string) {
+func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTitle *string, senderID string, senderName string, messagePreview string, mentionedUserIDs []string, notifyInForeground bool) {
 	provider := s.selectedNotificationProvider()
 	title, message, tags := formatMessageNotification(chatType, chatTitle, senderName, messagePreview)
 	mentioned := make(map[string]struct{}, len(mentionedUserIDs))
@@ -264,7 +275,7 @@ func (s *Server) notifyMessageRecipients(chatID string, chatType string, chatTit
 		_, isMentioned := mentioned[recipientID]
 		isForeground := s.sessions.IsViewingChatInForeground(recipientID, chatID)
 
-		decision := ShouldNotifyRecipient(pref, senderID, isMentioned, isForeground, now)
+		decision := ShouldNotifyRecipientWithForegroundOverride(pref, senderID, isMentioned, isForeground, now, notifyInForeground)
 		if !decision.ShouldNotify {
 			continue
 		}

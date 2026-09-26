@@ -420,7 +420,7 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 		replyTo = &val
 	}
 
-	msg, msgErr := s.createGeneratedMessageWithPayloadContext(r.Context(), user, chatID, sendMessageRequest{
+	msg, msgErr := s.createCallCompletionMessageWithPayloadContext(r.Context(), user, chatID, sendMessageRequest{
 		Content:          &content,
 		FileIDs:          []string{fileID},
 		ReplyToMessageID: replyTo,

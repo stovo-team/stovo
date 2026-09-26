@@ -1345,17 +1345,23 @@ func (s *Server) createMessageWithPayload(user userPublic, chatID string, payloa
 }
 
 func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, clientMessageID *string, forwarded *messageForwardSource) (messagePublic, error) {
-	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, clientMessageID, forwarded, false)
+	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, clientMessageID, forwarded, false, false)
 }
 
 // createGeneratedMessageWithPayloadContext creates a durable server-generated
 // chat message. It keeps ordinary chat permissions and encryption rules but
 // bypasses slow mode so a completed call's notes are never silently dropped.
 func (s *Server) createGeneratedMessageWithPayloadContext(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest) (messagePublic, error) {
-	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, nil, nil, true)
+	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, nil, nil, true, false)
 }
 
-func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, clientMessageID *string, forwarded *messageForwardSource, skipMessageDelay bool) (messagePublic, error) {
+// createCallCompletionMessageWithPayloadContext publishes a completed call artifact
+// and asks notification delivery to reach recipients even while they view the chat.
+func (s *Server) createCallCompletionMessageWithPayloadContext(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest) (messagePublic, error) {
+	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, nil, nil, true, true)
+}
+
+func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest, clientMessageID *string, forwarded *messageForwardSource, skipMessageDelay bool, notifyInForeground bool) (messagePublic, error) {
 	chat, err := s.buildChatPublic(chatID, user)
 	if err != nil {
 		return messagePublic{}, errNotFound
@@ -1429,6 +1435,7 @@ func (s *Server) createMessageWithPayloadContextOptions(ctx context.Context, use
 	notification := domain.MessageNotification{
 		ChatID: chatID, ChatType: chat.Type, ChatTitle: chat.Title, SenderID: user.ID,
 		SenderName: user.DisplayName, Preview: truncatePreview(message.Content), MentionedUserIDs: mentionedUserIDs,
+		NotifyInForeground: notifyInForeground,
 	}
 	go func() {
 		if err := delivery.PublishCreated(context.Background(), createdEvent); err != nil {

@@ -36,5 +36,6 @@ func (a messageDeliveryAdapter) NotifyMessageRecipients(_ context.Context, notif
 		notification.SenderName,
 		notification.Preview,
 		notification.MentionedUserIDs,
+		notification.NotifyInForeground,
 	)
 }

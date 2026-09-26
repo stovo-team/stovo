@@ -38,11 +38,12 @@ type MessageCreated struct {
 
 // MessageNotification contains the recipient-facing details of a created message.
 type MessageNotification struct {
-	ChatID           string
-	ChatType         string
-	ChatTitle        *string
-	SenderID         string
-	SenderName       string
-	Preview          string
-	MentionedUserIDs []string
+	ChatID             string
+	ChatType           string
+	ChatTitle          *string
+	SenderID           string
+	SenderName         string
+	Preview            string
+	MentionedUserIDs   []string
+	NotifyInForeground bool
 }
