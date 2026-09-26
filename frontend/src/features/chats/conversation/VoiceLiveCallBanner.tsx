@@ -49,7 +49,7 @@ export function VoiceLiveCallBanner({
           );
         })}
       </span>
-      <strong>{strings.voiceRoom.callInProgress}</strong>
+      <strong>{strings.chats.voiceRoom.callInProgress}</strong>
       {ids.length > 5 && <small>+{ids.length - 5}</small>}
     </div>
   );
