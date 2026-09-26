@@ -1348,13 +1348,6 @@ func (s *Server) createMessageWithPayloadContext(ctx context.Context, user userP
 	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, clientMessageID, forwarded, false, false)
 }
 
-// createGeneratedMessageWithPayloadContext creates a durable server-generated
-// chat message. It keeps ordinary chat permissions and encryption rules but
-// bypasses slow mode so a completed call's notes are never silently dropped.
-func (s *Server) createGeneratedMessageWithPayloadContext(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest) (messagePublic, error) {
-	return s.createMessageWithPayloadContextOptions(ctx, user, chatID, payload, nil, nil, true, false)
-}
-
 // createCallCompletionMessageWithPayloadContext publishes a completed call artifact
 // and asks notification delivery to reach recipients even while they view the chat.
 func (s *Server) createCallCompletionMessageWithPayloadContext(ctx context.Context, user userPublic, chatID string, payload sendMessageRequest) (messagePublic, error) {

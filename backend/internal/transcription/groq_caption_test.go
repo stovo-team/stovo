@@ -30,7 +30,7 @@ func TestCaptionASRUsesConfiguredModelAndAutomaticallyDetectsRussian(t *testing.
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 		content, _ := io.ReadAll(file)
 		receivedAudio = string(content)
 		w.Header().Set("Content-Type", "application/json")

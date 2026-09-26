@@ -125,7 +125,7 @@ func TestRecordingFailureEndpointPersistsFailureAndProtectsRecordingIdentity(t *
 
 func readRecordingFailureResponseBody(t *testing.T, resp *http.Response) string {
 	t.Helper()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("read response body: %v", err)

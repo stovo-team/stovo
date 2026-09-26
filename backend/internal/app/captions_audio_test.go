@@ -37,7 +37,7 @@ func TestHandleTranscribeCaptionsUsesDetectedRussianAndSelectedTarget(t *testing
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 			content, _ := io.ReadAll(file)
 			uploadedAudio = string(content)
 			_, _ = io.WriteString(w, `{"text":"Привет, как дела?","language":"ru"}`)
@@ -219,7 +219,7 @@ func TestGuestTranscribeCaptionsValidatesMeetingLifecycle(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			app := &Server{guestDB: captionGuestTestDB(test.expiresAt, test.revokedAt)}
-			defer app.guestDB.Close()
+			defer func() { _ = app.guestDB.Close() }()
 			request := httptest.NewRequest(http.MethodPost, "/api/guest-meetings/public/token/captions/transcribe", nil)
 			routeContext := chi.NewRouteContext()
 			routeContext.URLParams.Add("token", "token")
