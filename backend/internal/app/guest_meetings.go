@@ -264,6 +264,7 @@ func (s *Server) previewGuestMeeting(w http.ResponseWriter, r *http.Request) {
 	}
 	s.json(w, 200, map[string]any{"title": m.Title, "scheduledAt": m.ScheduledAt, "admissionMode": m.AdmissionMode, "expiresAt": m.ExpiresAt, "guestCount": guestCount, "guestLimit": guestMeetingLimit, "screenShareBitrateKbps": quality.ScreenShareBitrateKbps, "cameraBitrateKbps": quality.CameraBitrateKbps})
 }
+
 func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.validPublicMeeting(r.Context(), chi.URLParam(r, "token"))
 	if !ok {
@@ -297,10 +298,9 @@ func (s *Server) createGuestMeetingSession(w http.ResponseWriter, r *http.Reques
 		s.json(w, 500, map[string]string{"message": "Could not join meeting"})
 		return
 	}
-	state := "waiting"
-	if m.AdmissionMode == "immediate" {
-		state = "admitted"
-	}
+	// Public meeting links remain usable anonymously. A valid Stovo access token
+	// only changes admission when its account is the meeting creator.
+	state := guestMeetingRequestAdmissionState(r, m.AdmissionMode, m.CreatorID, s.currentUser)
 	id := uuid.NewString()
 	_, e = s.guestDB.ExecContext(r.Context(), `INSERT INTO guest_meeting_sessions (id,meeting_id,session_token_hash,display_name,state,admitted_at) VALUES ($1,$2,$3,$4,$5,CASE WHEN $5='admitted' THEN now() END)`, id, m.ID, guestMeetingTokenHash(secret), displayName, state)
 	if e != nil {

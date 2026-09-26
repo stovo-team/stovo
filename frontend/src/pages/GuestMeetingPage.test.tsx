@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
+  createGuestMeetingSession: vi.fn(async () => ({ id: "session-1", state: "waiting" as const })),
   previewGuestMeeting: vi.fn(async () => ({
     title: "Daily standup",
     scheduledAt: "2026-09-12T09:00:00.000Z",
@@ -23,7 +24,7 @@ const auth = vi.hoisted(() => ({
 
 vi.mock("../api/guestMeetings", () => ({
   previewGuestMeeting: api.previewGuestMeeting,
-  createGuestMeetingSession: vi.fn(),
+  createGuestMeetingSession: api.createGuestMeetingSession,
   getGuestMeetingStatus: vi.fn(),
   getGuestMeetingToken: vi.fn(),
   getGuestMeetingIntelligence: vi.fn(async () => ({ notesState: "idle", recordingState: "idle" })),
@@ -93,6 +94,25 @@ afterEach(async () => {
 });
 
 describe("GuestMeetingPage pre-join controls", () => {
+  it("passes the signed-in account token when creating a meeting session", async () => {
+    auth.accessToken = "host-access-token";
+    auth.currentUser = { displayName: "Meeting Host", username: "host", profilePhoto: null };
+    await renderPage();
+
+    const nameInput = host?.querySelector<HTMLInputElement>('input[placeholder="Enter your name"]');
+    await act(async () => {
+      if (nameInput) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        setter?.call(nameInput, "Meeting Host");
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      host?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+      await Promise.resolve();
+    });
+
+    expect(api.createGuestMeetingSession).toHaveBeenCalledWith("token", "Meeting Host", "host-access-token");
+  });
+
   it("prefills the name field from the signed-in user without making it read-only", async () => {
     auth.currentUser = { displayName: "Ivan Petrov", username: "ivan", profilePhoto: null };
     await renderPage();

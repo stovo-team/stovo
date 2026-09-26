@@ -10,9 +10,9 @@ export class GuestMeetingLinkError extends Error {
 
 async function publicRequest<T>(token: string, path = "", init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${getApiUrl()}/api/guest-meetings/public/${encodeURIComponent(token)}${path}`, {
+    ...init,
     credentials: "include",
     headers: { Accept: "application/json", ...(init.body ? { "Content-Type": "application/json" } : {}), ...init.headers },
-    ...init
   });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
@@ -22,7 +22,7 @@ async function publicRequest<T>(token: string, path = "", init: RequestInit = {}
 }
 
 export const previewGuestMeeting = (token: string) => publicRequest<GuestMeetingPreview>(token);
-export const createGuestMeetingSession = (token: string, displayName: string) => publicRequest<GuestMeetingSession>(token, "/sessions", { method: "POST", body: JSON.stringify({ displayName }) });
+export const createGuestMeetingSession = (token: string, displayName: string, accessToken?: string | null) => publicRequest<GuestMeetingSession>(token, "/sessions", { method: "POST", ...(accessToken ? { headers: { Authorization: `Bearer ${accessToken}` } } : {}), body: JSON.stringify({ displayName }) });
 export const leaveGuestMeetingSession = (token: string, sessionId: string) => publicRequest<void>(token, "/leave", { method: "POST", body: JSON.stringify({ sessionId }), keepalive: true });
 export const getGuestMeetingStatus = (token: string) => publicRequest<GuestMeetingStatus>(token, "/status");
 export const getGuestMeetingToken = (token: string) => publicRequest<{ url: string; token: string; roomName?: string }>(token, "/token", { method: "POST" });
