@@ -22,6 +22,7 @@ import CallController, {
 } from "../../../realtime/CallController";
 import { callQualityProfileForChatType, DEFAULT_CALL_QUALITY_BITRATES, resolveCallQualityBitrates, type CallQualityProfile } from "../../../realtime/call/callQuality";
 import { waitForSocketConnection } from "../../../realtime/socketConnection";
+import { waitForVoiceChannelConnection } from "./voiceChannelConnection";
 import { createCallSoundPlayer } from "../../../realtime/callSounds";
 import { getAudioSettings, mergeWithDefaults } from "../../../api/audioSettings";
 import {
@@ -811,14 +812,12 @@ export function useCallSession({
         await applyCallAudioPatch({ micMuted: true });
       }
 
-      const connected = await waitForSocketConnection(socket, {
-        onAttempt: (attempt, totalAttempts) => {
+      const connected = await waitForVoiceChannelConnection(socket, (attempt, totalAttempts) => {
           setCallNotice(
             attempt === 1
               ? "Connecting to voice channel…"
               : `Reconnecting to voice channel… (${attempt}/${totalAttempts})`
           );
-        }
       });
       if (!connected) {
         throw new Error("Realtime connection is still unavailable. Please try joining again.");
