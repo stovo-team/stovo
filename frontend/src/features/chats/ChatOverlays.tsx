@@ -20,6 +20,7 @@ export type FullViewImageState = { file: FamilyFile; previewUrl: string; message
 
 export type ChatOverlaysProps = {
   accessToken: string | null;
+  onQueueChatMessage?: (chat: Chat, content: string) => Promise<void>;
   chats: Chat[];
   family: Family | null;
   chatOverview: ChatOverviewController;
@@ -51,6 +52,7 @@ export type ChatOverlaysProps = {
  */
 export function ChatOverlays({
   accessToken,
+  onQueueChatMessage,
   chats,
   family,
   chatOverview,
@@ -74,7 +76,7 @@ export function ChatOverlays({
   onSendMessage
 }: ChatOverlaysProps) {
   const [isMeetingPlannerOpen, setIsMeetingPlannerOpen] = useState(false);
-  const meetingChats = chats.filter((chat) => chat.type === "family" || chat.type === "group" || chat.type === "voice");
+  const meetingChats = chats.filter((chat) => chat.type === "family" || chat.type === "group" || chat.type === "direct");
   const [meetingChatId, setMeetingChatId] = useState("");
   const [createdMeetingChat, setCreatedMeetingChat] = useState<Chat | null>(null);
   const [newMeetingChatTitle, setNewMeetingChatTitle] = useState("");
@@ -145,7 +147,7 @@ export function ChatOverlays({
         <div className="guest-meeting-planner-backdrop" role="presentation" onMouseDown={() => setIsMeetingPlannerOpen(false)}>
           <section className="guest-meeting-planner" role="dialog" aria-modal="true" aria-label="Plan guest meeting" onMouseDown={(event) => event.stopPropagation()}>
             <div className="guest-meeting-planner-header"><h2>Create meeting link</h2><button type="button" className="icon-button subtle icon-button--plain" aria-label="Close" onClick={() => setIsMeetingPlannerOpen(false)}><X aria-hidden="true" size={20} /></button></div>
-            <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting chat</span><GuestMeetingSelect ariaLabel="Meeting chat" value={meetingChatId} onChange={setMeetingChatId} options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? "Untitled chat" }))} newChatTitle={canCreateMeetingChat ? newMeetingChatTitle : ""} onNewChatTitleChange={canCreateMeetingChat ? setNewMeetingChatTitle : undefined} /></label>{meetingChatId ? <GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} sourceChat={selectableMeetingChats.find((chat) => chat.id === meetingChatId) ?? null} onCreateChat={canCreateMeetingChat ? handleCreateMeetingChat : undefined} newChatTitle={newMeetingChatTitle} currentUserId={currentUser?.id} enabled={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true} initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /> : <p className="muted-copy">Select a chat above.</p>}</div>
+            <div className="guest-meeting-planner-body"><label className="guest-link-field"><span>Meeting chat</span><GuestMeetingSelect ariaLabel="Meeting chat" value={meetingChatId} onChange={setMeetingChatId} options={selectableMeetingChats.map((chat) => ({ value: chat.id, label: chat.title ?? "Untitled chat" }))} newChatTitle={canCreateMeetingChat ? newMeetingChatTitle : ""} onNewChatTitleChange={canCreateMeetingChat ? setNewMeetingChatTitle : undefined} /></label>{meetingChatId ? <GuestMeetingLinkControl accessToken={accessToken} chatId={meetingChatId} sourceChat={selectableMeetingChats.find((chat) => chat.id === meetingChatId) ?? null} onCreateChat={canCreateMeetingChat ? handleCreateMeetingChat : undefined} onQueueAnnouncement={onQueueChatMessage} newChatTitle={newMeetingChatTitle} currentUserId={currentUser?.id} enabled={currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true} initialTitle={meetingTitle} calendarStart={meetingCalendarRange.start} calendarEnd={meetingCalendarRange.end} /> : <p className="muted-copy">Select a chat above.</p>}</div>
           </section>
         </div>, document.body)}
 

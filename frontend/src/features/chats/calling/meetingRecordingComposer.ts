@@ -97,6 +97,10 @@ export function createMeetingRecordingVideoTrack(sourcesRef: MutableRefObject<Re
       context.fillText("Waiting for meeting video", canvas.width / 2, canvas.height / 2);
     }
 
+    // The canvas is itself the recording surface. Even before a camera or
+    // screen-share track becomes available it paints a valid waiting slate,
+    // which should be uploaded along with any mixed meeting audio.
+    hasVideoFrames = true;
     if (!stopped) animationFrame = window.requestAnimationFrame(paint);
   };
 

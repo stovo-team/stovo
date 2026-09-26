@@ -35,11 +35,13 @@ describe("guest meeting planner chat targets", () => {
 
   it("includes the General family chat in the meeting chat selector", async () => {
     const generalFamily = { id: "family-chat", type: "family", title: "General family" } as Chat;
+    const voiceChat = { id: "voice-chat", type: "voice", title: "Voice room" } as Chat;
+    const directChat = { id: "direct-chat", type: "direct", title: "Alex" } as Chat;
     const noop = () => undefined;
     await act(async () => {
       root?.render(<MemoryRouter><ChatOverlays
         accessToken="token"
-        chats={[generalFamily]}
+        chats={[generalFamily, voiceChat, directChat]}
         family={null}
         chatOverview={{
           isNewChatOpen: false,
@@ -77,6 +79,11 @@ describe("guest meeting planner chat targets", () => {
 
     expect(document.body.querySelector('[role="dialog"][aria-label="Plan guest meeting"]')).toBeTruthy();
     expect(document.body.querySelector(".guest-link-select-trigger")?.textContent).toContain("General family");
+    await act(async () => {
+      (document.body.querySelector(".guest-link-select-trigger") as HTMLButtonElement).click();
+    });
+    expect(document.body.querySelector('[role="option"]')?.textContent).toContain("General family");
+    expect([...document.body.querySelectorAll('[role="option"]')].some((option) => option.textContent?.includes("Voice room"))).toBe(false);
     expect(document.body.querySelector('input[aria-label="New meeting chat name"]')).toBeNull();
   });
 });

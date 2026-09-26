@@ -798,7 +798,18 @@ export function useCallSession({
       audioCallRef.current?.setChatId(targetChat.id);
       await loadCallQuality(callQualityProfileForChatType(targetChat.type));
 
-      await audioCallRef.current?.prepareForCall("audio");
+      try {
+        await audioCallRef.current?.prepareForCall("audio");
+      } catch (mediaErr) {
+        // A microphone permission/device failure must not prevent joining a
+        // voice channel to listen. The SFU can connect receive-only when no
+        // local stream is available; keep the call joined and surface the
+        // microphone issue in the existing audio warning UI.
+        const reason = mediaErr instanceof Error ? mediaErr.message : "Microphone is unavailable";
+        console.warn("[CALL] voice channel microphone setup failed; joining listen-only:", mediaErr);
+        setCallAudioWarning(`${reason}. You joined without a microphone.`);
+        await applyCallAudioPatch({ micMuted: true });
+      }
 
       const connected = await waitForSocketConnection(socket, {
         onAttempt: (attempt, totalAttempts) => {

@@ -804,6 +804,29 @@ export function useMessageComposer({
     setComposer(draft);
   }
 
+  const queueMessageToChat = useCallback(async (chat: Chat, content: string) => {
+    if (!currentUser) return;
+    const { optimisticMessage, outboxItem } = createQueuedComposerMessage({
+      chat,
+      user: currentUser,
+      content,
+      attachments: [],
+      replyTarget: null,
+      threadRootMessageId: null,
+      mentionedUserIds: []
+    });
+    applyMessagesForChat(chat.id, (current) => [...current, optimisticMessage]);
+    onChatsUpdate((current) => current.map((item) => item.id === chat.id
+      ? applyMessagePreviewToChat(item, optimisticMessage)
+      : item));
+    try {
+      await enqueueOutboxMessage(outboxItem);
+      if (triggerDrain) void triggerDrain();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Could not queue message");
+    }
+  }, [currentUser, applyMessagesForChat, onChatsUpdate, triggerDrain, onError]);
+
   return {
     composer,
     setComposer,
@@ -858,6 +881,7 @@ export function useMessageComposer({
     cancelEditMode,
     resetComposerHeight,
     handleSendMessage,
+    queueMessageToChat,
     handleScheduleMessage,
     handleSetReminder,
     sendQueuedNotificationReply,

@@ -490,6 +490,39 @@ export function useTranscription({
     }
   }, [transcriptState, roomId, accessToken, fetchTranscript]);
 
+  // Socket events normally deliver completion, but can be missed when the
+  // client backgrounds or reconnects. Poll while processing so the control
+  // cannot remain on its spinner indefinitely.
+  useEffect(() => {
+    if (transcriptState !== "processing" || !roomId || !accessToken) return;
+    let active = true;
+    const pollStatus = async () => {
+      try {
+        const response = await fetch(`${getApiUrl()}/api/calls/${roomId}/transcription/status`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!response.ok) return;
+        const payload = await response.json() as { status?: string; session?: { status?: string; failureMessage?: string }; failureMessage?: string; failure_message?: string };
+        if (!active) return;
+        const status = payload.status ?? payload.session?.status;
+        if (status === "ready" || status === "completed") setTranscriptState("ready");
+        else if (status === "failed" || status === "none") {
+          setTranscriptState("failed");
+          setTranscriptError(payload.failureMessage ?? payload.failure_message ?? payload.session?.failureMessage ?? "Transcription failed. Please try again.");
+        }
+      } catch {
+        // A temporary network failure should not interrupt server-side work;
+        // the next poll or socket event can still complete the state change.
+      }
+    };
+    void pollStatus();
+    const timer = window.setInterval(() => void pollStatus(), 5000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [transcriptState, roomId, accessToken]);
+
   const toggleTranscriptPanel = useCallback(() => {
     setIsTranscriptPanelOpen((v) => !v);
     if (!isTranscriptPanelOpen && transcriptState === "ready" && !transcriptData) {

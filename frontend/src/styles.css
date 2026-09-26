@@ -14604,7 +14604,7 @@ span.message-spoiler.is-revealed {
   padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
   animation: intelPopoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   color: #fff;
 }
@@ -14673,7 +14673,7 @@ span.message-spoiler.is-revealed {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px 0px;
+  padding: 4px 8px 6px;
 }
 
 .meeting-intel-title-row {
@@ -14702,7 +14702,7 @@ span.message-spoiler.is-revealed {
 .meeting-intel-content {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 8px;
 }
 
 .meeting-intel-card {
@@ -16623,7 +16623,7 @@ button.attachment-nav-item:focus-visible {
 }
 
 .new-chat-screen {
-  background: var(--canvas-amoled, #000000);
+  background: var(--surface-raised);
   border: 1px solid var(--border-default);
   border-radius: 20px;
   box-shadow: var(--float-shadow-soft);
@@ -16835,7 +16835,7 @@ button.attachment-nav-item:focus-visible {
   }
 
   .new-chat-action-row {
-    padding-inline: 8px;
+    padding-inline: 0;
   }
 }
 
@@ -16850,7 +16850,7 @@ button.attachment-nav-item:focus-visible {
   gap: 12px;
   grid-template-columns: auto minmax(0, 1fr) auto;
   min-height: 58px;
-  padding: 8px 12px;
+  padding: 0;
   text-align: left;
   transition:
     background-color var(--motion-route-duration-fast) var(--motion-route-ease),

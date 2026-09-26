@@ -423,6 +423,7 @@ export default function ChatsPage() {
         </CallFeatureProvider>
       <ChatOverlays
         accessToken={accessToken}
+        onQueueChatMessage={composerApi.queueMessageToChat}
         chats={chats}
           currentUser={currentUser}
           family={family}

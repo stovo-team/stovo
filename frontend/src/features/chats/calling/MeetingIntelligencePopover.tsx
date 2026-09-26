@@ -8,7 +8,6 @@
  */
 import React, { useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronDown, Circle, FileText, Globe, LoaderCircle, Sparkles, Square, Video } from "lucide-react";
-import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { SUPPORTED_LANGUAGES } from "./useLiveCaptions";
 import type { RecordingState } from "./useCallRecording";
 import type { TranscriptState } from "./useTranscription";
@@ -119,7 +118,7 @@ export function MeetingIntelligencePopover({
       {/* Header */}
       <div className="meeting-intel-header">
         <div className="meeting-intel-title-row">
-          <IconIntelligence size={20} className="meeting-intel-logo" />
+          <img src="/stovo-brain-color.svg" width={20} height={20} className="meeting-intel-logo" alt="" />
           <div className="meeting-intel-title-copy">
             <span className="meeting-intel-name">Stovo Intelligence</span>
           </div>

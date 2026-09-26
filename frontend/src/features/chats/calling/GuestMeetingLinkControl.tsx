@@ -7,7 +7,7 @@ import { createGuestMeeting } from "../../../api/guestMeetings";
 import { encryptMessageContent } from "../../../api/messageCrypto";
 import { GuestMeetingSelect } from "./GuestMeetingSelect";
 
-export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCreateChat, newChatTitle = "", currentUserId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; sourceChat?: Chat | null; onCreateChat?: (title: string) => Promise<Chat | null>; newChatTitle?: string; currentUserId?: string; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
+export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCreateChat, onQueueAnnouncement, newChatTitle = "", currentUserId, enabled, initialTitle = "", calendarStart, calendarEnd }: { accessToken: string | null; chatId: string | null; sourceChat?: Chat | null; onCreateChat?: (title: string) => Promise<Chat | null>; onQueueAnnouncement?: (chat: Chat, content: string) => Promise<void>; newChatTitle?: string; currentUserId?: string; enabled: boolean; initialTitle?: string; calendarStart?: string; calendarEnd?: string }) {
   const [title, setTitle] = useState(initialTitle);
   const [mode, setMode] = useState<"immediate" | "lobby">("immediate");
   const [duration, setDuration] = useState("24");
@@ -22,7 +22,7 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCre
     const timeout = window.setTimeout(() => setCopied(false), 1_600);
     return () => window.clearTimeout(timeout);
   }, [copied]);
-  if (!enabled || !accessToken || !chatId) return null;
+  if (!enabled || !accessToken || !chatId || (sourceChat && !["direct", "group", "family"].includes(sourceChat.type))) return null;
   const memberToken = accessToken;
   const sourceChatId = chatId;
   async function create() {
@@ -58,8 +58,12 @@ export function GuestMeetingLinkControl({ accessToken, chatId, sourceChat, onCre
         // The meeting exists at this point. A temporary chat-sync failure must
         // not make a working meeting link appear to have failed.
         try {
-          const encrypted = await encryptMessageContent(targetChat, announcement, currentUserId);
-          await sendMessage(memberToken, targetChat.id, encrypted.content, [], null, null, encrypted.encryption);
+          if (onQueueAnnouncement) {
+            void onQueueAnnouncement(targetChat, announcement);
+          } else {
+            const encrypted = await encryptMessageContent(targetChat, announcement, currentUserId);
+            await sendMessage(memberToken, targetChat.id, encrypted.content, [], null, null, encrypted.encryption);
+          }
         } catch {
           setError("Meeting link created, but it could not be posted to the chat. You can copy the link below.");
         }

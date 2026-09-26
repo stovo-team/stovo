@@ -290,7 +290,7 @@ export function DesktopCallControls() {
                 </label>
               ))}
           </div>
-          <GuestMeetingLinkControl accessToken={accessToken ?? null} chatId={activeChat?.id ?? null} sourceChat={activeChat} currentUserId={currentUser?.id} enabled={(activeChat?.type === "group" || activeChat?.type === "voice") && (currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true)} />
+          <GuestMeetingLinkControl accessToken={accessToken ?? null} chatId={activeChat?.id ?? null} sourceChat={activeChat} currentUserId={currentUser?.id} enabled={(activeChat?.type === "group" || activeChat?.type === "direct" || activeChat?.type === "family") && (currentUser?.role === "owner" || currentUser?.permissions?.includes("manage_calls") === true)} />
           <div className="call-invite-modal-actions">
             <button
               type="button"
