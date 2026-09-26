@@ -199,21 +199,29 @@ export function chatPreview(chat: Chat, strings?: AppStrings) {
   if (chat.type === "archive") {
     return "";
   }
+  if (chat.type === "voice") {
+    const participants = (chat.activeCall?.participants as Array<{ userId?: string; state?: string }> | undefined) ?? [];
+    const activeParticipants = participants.filter(
+      (participant) => participant.userId && ["connected", "connecting", "in-call"].includes(participant.state ?? "")
+    );
+    if (activeParticipants.length === 0) {
+      return strings?.chats.voiceRoom.noUsers ?? "No users";
+    }
+
+    const activeUserIds = new Set(activeParticipants.map((participant) => participant.userId));
+    const names = chat.members
+      .filter((member) => activeUserIds.has(member.id))
+      .map((member) => member.displayName)
+      .filter(Boolean);
+    if (names.length === 0) {
+      return strings?.chats.types.inVoice(activeParticipants.length) ?? `${activeParticipants.length} in voice`;
+    }
+    const visibleNames = names.slice(0, 2).join(", ");
+    return names.length > 2 ? `${visibleNames} +${names.length - 2}` : visibleNames;
+  }
   if (chat.lastMessageSenderDisplayName && (chat.lastMessageContent || chat.lastMessageType === "collection")) {
     const content = formatPreviewContent(chat.lastMessageContent ?? "", chat.lastMessageType);
     return `${chat.lastMessageSenderDisplayName}: ${content}`;
-  }
-  if (chat.type === "voice") {
-    const participants = (chat.activeCall?.participants as Array<Record<string, any>>) || [];
-    const activeCount = participants.filter(
-      (p) => p.state === "connected" || p.state === "in-call"
-    ).length;
-    if (activeCount > 0) {
-      return strings
-        ? strings.chats.types.inVoice(activeCount)
-        : `${activeCount} in voice / Voice Channel`;
-    }
-    return `${chat.members.length} members / Voice Channel`;
   }
   if (chat.type === "family") {
     return strings
