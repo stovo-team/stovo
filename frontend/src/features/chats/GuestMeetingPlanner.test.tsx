@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Chat } from "../../api/chats";
@@ -36,7 +37,7 @@ describe("guest meeting planner chat targets", () => {
     const generalFamily = { id: "family-chat", type: "family", title: "General family" } as Chat;
     const noop = () => undefined;
     await act(async () => {
-      root?.render(<ChatOverlays
+      root?.render(<MemoryRouter><ChatOverlays
         accessToken="token"
         chats={[generalFamily]}
         family={null}
@@ -71,7 +72,7 @@ describe("guest meeting planner chat targets", () => {
         renderMarkdown={false}
         onCloseComposerEnlarge={noop}
         onComposerEnlargeChange={noop}
-      />);
+      /></MemoryRouter>);
     });
 
     expect(document.body.querySelector('[role="dialog"][aria-label="Plan guest meeting"]')).toBeTruthy();

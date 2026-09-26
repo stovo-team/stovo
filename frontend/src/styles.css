@@ -24756,6 +24756,7 @@ button.chat-info-title-edit:active:not(:disabled) {
 }
 
 .voice-room-empty-content {
+  display: flex;
   align-items: center;
   justify-content: center;
   margin: auto;

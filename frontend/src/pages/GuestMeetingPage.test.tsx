@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
   createGuestMeetingSession: vi.fn(async () => ({ id: "session-1", state: "waiting" as const })),
+  leaveGuestMeetingSession: vi.fn(async () => undefined),
   previewGuestMeeting: vi.fn(async () => ({
     title: "Daily standup",
     scheduledAt: "2026-09-12T09:00:00.000Z",
@@ -25,6 +26,7 @@ const auth = vi.hoisted(() => ({
 vi.mock("../api/guestMeetings", () => ({
   previewGuestMeeting: api.previewGuestMeeting,
   createGuestMeetingSession: api.createGuestMeetingSession,
+  leaveGuestMeetingSession: api.leaveGuestMeetingSession,
   getGuestMeetingStatus: vi.fn(),
   getGuestMeetingToken: vi.fn(),
   getGuestMeetingIntelligence: vi.fn(async () => ({ notesState: "idle", recordingState: "idle" })),

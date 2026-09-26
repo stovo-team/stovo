@@ -76,9 +76,9 @@ describe("GuestMeetingSelect keyboard behavior", () => {
     await act(async () => { container.querySelector<HTMLButtonElement>(".guest-link-select-trigger")!.click(); });
     const input = container.querySelector<HTMLInputElement>('input[aria-label="New meeting chat name"]')!;
     await act(async () => {
-      input.value = "Design review";
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(input, "Design review");
       input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.dispatchEvent(new Event("change", { bubbles: true }));
     });
     expect(onNewChatTitleChange).toHaveBeenCalledWith("Design review");
     expect(onChange).toHaveBeenCalledWith("new");

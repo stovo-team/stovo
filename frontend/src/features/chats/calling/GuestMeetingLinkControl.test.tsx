@@ -48,9 +48,9 @@ describe("GuestMeetingLinkControl meeting chat creation", () => {
     });
     const name = container.querySelector<HTMLInputElement>('.guest-link-control > .guest-link-field input')!;
     await act(async () => {
-      name.value = "Planning";
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(name, "Planning");
       name.dispatchEvent(new Event("input", { bubbles: true }));
-      name.dispatchEvent(new Event("change", { bubbles: true }));
     });
     return container.querySelector<HTMLButtonElement>(".guest-link-create-button")!;
   }
