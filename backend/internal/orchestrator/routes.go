@@ -616,7 +616,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("TURN_PASSWORD=%s", get("TURN_PASSWORD", "change_me")),
 		fmt.Sprintf("GROQ_API_KEY=%s", groqKey),
 		fmt.Sprintf("GROQ_BASE_URL=%s", get("GROQ_BASE_URL", get("GROQ_API_BASE", ""))),
-		fmt.Sprintf("GROQ_STT_MODEL=%s", get("GROQ_STT_MODEL", "whisper-large-v3-turbo")),
+		fmt.Sprintf("GROQ_STT_MODEL=%s", get("GROQ_STT_MODEL", "qwen3-asr-flash-2025-09-08")),
 		fmt.Sprintf("GROQ_CHAT_MODEL=%s", get("GROQ_CHAT_MODEL", "")),
 		fmt.Sprintf("GROQ_STT_COST_PER_AUDIO_HOUR_USD=%s", get("GROQ_STT_COST_PER_AUDIO_HOUR_USD", "0.04")),
 		fmt.Sprintf("AI_CALL_TRANSCRIPTION_ENABLED=%s", get("AI_CALL_TRANSCRIPTION_ENABLED", "true")),
