@@ -63,19 +63,19 @@ func TestRecordingFailureEndpointPersistsFailureAndProtectsRecordingIdentity(t *
 	firstID := startRecording()
 	unauthorized := failRecording("", firstID, "No video frames were captured")
 	if unauthorized.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("unauthenticated failure status = %d, want %d; body=%s", unauthorized.StatusCode, http.StatusUnauthorized, readBody(t, unauthorized))
+		t.Fatalf("unauthenticated failure status = %d, want %d; body=%s", unauthorized.StatusCode, http.StatusUnauthorized, readRecordingFailureResponseBody(t, unauthorized))
 	}
 	_ = unauthorized.Body.Close()
 	nonParticipant := failRecording(member.AccessToken, firstID, "No video frames were captured")
 	if nonParticipant.StatusCode != http.StatusForbidden {
-		t.Fatalf("nonparticipant failure status = %d, want %d; body=%s", nonParticipant.StatusCode, http.StatusForbidden, readBody(t, nonParticipant))
+		t.Fatalf("nonparticipant failure status = %d, want %d; body=%s", nonParticipant.StatusCode, http.StatusForbidden, readRecordingFailureResponseBody(t, nonParticipant))
 	}
 	_ = nonParticipant.Body.Close()
 
 	failureMessage := "No video frames were captured"
 	failed := failRecording(owner.AccessToken, firstID, failureMessage)
 	if failed.StatusCode != http.StatusOK {
-		t.Fatalf("failure endpoint status = %d, want %d; body=%s", failed.StatusCode, http.StatusOK, readBody(t, failed))
+		t.Fatalf("failure endpoint status = %d, want %d; body=%s", failed.StatusCode, http.StatusOK, readRecordingFailureResponseBody(t, failed))
 	}
 	_ = failed.Body.Close()
 	status := getRecordingStatus()
@@ -85,7 +85,7 @@ func TestRecordingFailureEndpointPersistsFailureAndProtectsRecordingIdentity(t *
 
 	repeated := failRecording(owner.AccessToken, firstID, failureMessage)
 	if repeated.StatusCode < 200 || repeated.StatusCode >= 300 {
-		t.Fatalf("repeated failure status = %d, want a successful idempotent response; body=%s", repeated.StatusCode, readBody(t, repeated))
+		t.Fatalf("repeated failure status = %d, want a successful idempotent response; body=%s", repeated.StatusCode, readRecordingFailureResponseBody(t, repeated))
 	}
 	_ = repeated.Body.Close()
 	if got := getRecordingStatus(); got.Status != "failed" || got.FailureMessage == nil || *got.FailureMessage != failureMessage {
@@ -95,12 +95,12 @@ func TestRecordingFailureEndpointPersistsFailureAndProtectsRecordingIdentity(t *
 	secondID := startRecording()
 	unknown := failRecording(owner.AccessToken, "unknown-recording-id", "stale failure")
 	if unknown.StatusCode < 400 || unknown.StatusCode >= 500 {
-		t.Fatalf("unknown recording failure status = %d, want a client error; body=%s", unknown.StatusCode, readBody(t, unknown))
+		t.Fatalf("unknown recording failure status = %d, want a client error; body=%s", unknown.StatusCode, readRecordingFailureResponseBody(t, unknown))
 	}
 	_ = unknown.Body.Close()
 	stale := failRecording(owner.AccessToken, firstID, "stale failure")
 	if stale.StatusCode < 400 || stale.StatusCode >= 500 {
-		t.Fatalf("mismatched recording failure status = %d, want a client error; body=%s", stale.StatusCode, readBody(t, stale))
+		t.Fatalf("mismatched recording failure status = %d, want a client error; body=%s", stale.StatusCode, readRecordingFailureResponseBody(t, stale))
 	}
 	_ = stale.Body.Close()
 	malformedUpload, err := http.NewRequest(http.MethodPost, serverURL.URL+"/api/calls/"+roomID+"/recording/upload", strings.NewReader("--broken-boundary\r\nContent-Disposition: form-data; name=\"file\"\r\n"))
@@ -114,7 +114,7 @@ func TestRecordingFailureEndpointPersistsFailureAndProtectsRecordingIdentity(t *
 		t.Fatalf("send malformed upload: %v", err)
 	}
 	if malformedResponse.StatusCode < 400 || malformedResponse.StatusCode >= 500 {
-		t.Fatalf("malformed upload status = %d, want a client error; body=%s", malformedResponse.StatusCode, readBody(t, malformedResponse))
+		t.Fatalf("malformed upload status = %d, want a client error; body=%s", malformedResponse.StatusCode, readRecordingFailureResponseBody(t, malformedResponse))
 	}
 	_ = malformedResponse.Body.Close()
 	current := getRecordingStatus()
@@ -123,7 +123,7 @@ func TestRecordingFailureEndpointPersistsFailureAndProtectsRecordingIdentity(t *
 	}
 }
 
-func readBody(t *testing.T, resp *http.Response) string {
+func readRecordingFailureResponseBody(t *testing.T, resp *http.Response) string {
 	t.Helper()
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
