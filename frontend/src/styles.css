@@ -14604,7 +14604,7 @@ span.message-spoiler.is-revealed {
   padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
   animation: intelPopoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   color: #fff;
 }
