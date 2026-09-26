@@ -9,8 +9,8 @@ backend/internal/app/file_operations.go	586
 backend/internal/app/guest_meetings.go	404
 backend/internal/app/helpers.go	437
 backend/internal/app/mcp_operations.go	1068
-backend/internal/app/recording_operations.go	456
-backend/internal/app/routes.go	1324
+backend/internal/app/recording_operations.go	567
+backend/internal/app/routes.go	1325
 backend/internal/app/server.go	596
 backend/internal/app/transcription_operations.go	529
 backend/internal/app/types.go	509

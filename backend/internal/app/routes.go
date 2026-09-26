@@ -106,6 +106,7 @@ func (s *Server) callRoutes() httptransport.CallRoutes {
 		StopRecording:      s.authenticated(s.handleStopRecording),
 		GetRecordingStatus: s.authenticated(s.handleGetRecordingStatus),
 		UploadRecording:    s.authenticated(s.handleUploadRecording),
+		FailRecording:      s.authenticated(s.handleFailRecording),
 		TranslateCaptions:  s.authenticated(s.handleTranslateCaptions),
 	}
 }
