@@ -16,7 +16,9 @@ node_modules/
 dist/
 .vite/
 *.tsbuildinfo
-
+.gocache-pgbouncer/
+.gocache/
+.tmp-go-cache/
 postgres-data/
 redis-data/
 uploads/*
