@@ -1,9 +1,9 @@
 type BrowserTabCapture = { stream: MediaStream; track: MediaStreamTrack };
 
 /** Capture the selected browser tab so the recording includes the complete app UI. */
-export async function captureBrowserTab(): Promise<BrowserTabCapture> {
+export async function captureBrowserTab(): Promise<BrowserTabCapture | null> {
   if (!navigator.mediaDevices?.getDisplayMedia) {
-    throw new Error("Tab recording is unavailable in this browser. Use the latest Chrome or Edge.");
+    return null;
   }
 
   const mediaDevices = navigator.mediaDevices as MediaDevices & {
