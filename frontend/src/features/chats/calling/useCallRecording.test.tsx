@@ -218,6 +218,12 @@ describe("useCallRecording video validation", () => {
     await start(container);
     decodedWidth = 640;
     decodedHeight = 360;
+    await act(async () => {
+      const nextFrame = pendingAnimationFrame;
+      pendingAnimationFrame = null;
+      nextFrame?.(16);
+      await Promise.resolve();
+    });
     await stop(container);
 
     const uploadCall = fetchMock.mock.calls.find(([url]) => url.endsWith("/recording/upload"));
