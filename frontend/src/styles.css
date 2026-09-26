@@ -7357,6 +7357,39 @@ span.message-spoiler.is-revealed {
   color: var(--accent-primary);
 }
 
+.voice-live-call-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  background: var(--background-secondary);
+}
+
+.voice-live-call-avatars {
+  display: flex;
+  align-items: center;
+  padding-left: 3px;
+}
+
+.voice-live-call-avatar {
+  width: 28px;
+  height: 28px;
+  margin-left: -3px;
+  border: 2px solid var(--background-secondary);
+  font-size: 10px;
+}
+
+.voice-live-call-banner strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.voice-live-call-banner small {
+  color: var(--text-secondary);
+}
+
 .emoji-picker .epr-cat-btn:hover {
   background-color: color-mix(in oklab, var(--accent-soft) 72%, transparent);
   color: var(--text-primary);

@@ -6,6 +6,7 @@ import type { Chat } from "../../../api/chats";
 import type { FamilyFile } from "../../../api/files";
 import type { CallSessionApi } from "../calling/useCallSession";
 import { VoiceChannelStage } from "../calling/VoiceChannelStage";
+import { VoiceLiveCallBanner } from "./VoiceLiveCallBanner";
 import { Composer } from "../composer/Composer";
 import type { CallPhase } from "../shared/types";
 import type { Message } from "../shared/types";
@@ -121,20 +122,13 @@ export function ConversationPanel({
 }: ConversationPanelProps) {
   const strings = useStrings();
   const [isVoiceTextChatOpen, setIsVoiceTextChatOpen] = useState(false);
-  const isActiveVoiceChannel =
-    selectedChat?.type === "voice" &&
-    callSession?.activeCallChatId === selectedChat.id &&
-    callPhase !== "idle";
+  const isActiveVoiceChannel = selectedChat?.type === "voice" && callSession?.activeCallChatId === selectedChat.id && callPhase !== "idle";
 
   useEffect(() => {
     setIsVoiceTextChatOpen(false);
   }, [selectedChat?.id]);
 
-  const isShowingVoiceTextChat =
-    selectedChat?.type === "voice" &&
-    (isActiveVoiceChannel
-      ? Boolean(callSession?.isCallMinimized)
-      : isVoiceTextChatOpen);
+  const isShowingVoiceTextChat = selectedChat?.type === "voice" && (isActiveVoiceChannel ? Boolean(callSession?.isCallMinimized) : isVoiceTextChatOpen);
 
   const {
     messages,
@@ -504,6 +498,9 @@ export function ConversationPanel({
                 </span>
               </button>
             </div>
+          )}
+          {selectedChat.type === "voice" && isShowingVoiceTextChat && (
+            <VoiceLiveCallBanner chat={selectedChat} session={callSession} isActive={isActiveVoiceChannel} members={(members ?? selectedChat.members) as User[]} currentUser={currentUser} accessToken={accessToken} />
           )}
           <MessageList
             accessToken={accessToken}

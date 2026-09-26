@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { getApiUrl } from "../../../api/client";
 import { createMeetingRecordingVideoTrack, type RecordingMediaSources } from "./meetingRecordingComposer";
+import { captureCallSurface } from "./callSurfaceCapture";
 
 export type RecordingState =
   | "idle"
@@ -164,8 +165,13 @@ export function useCallRecording({
     recordingIdRef.current = null;
     recordedChunksRef.current = [];
     isInitiatorRef.current = true;
+    let surfaceCapture: Awaited<ReturnType<typeof captureCallSurface>> = null;
+    // Start the browser picker synchronously from the user gesture before the
+    // first network await, as browsers require transient activation.
+    const surfaceCapturePromise = captureCallSurface();
 
     try {
+      surfaceCapture = await surfaceCapturePromise;
       // 1. Tell backend to start recording
       const startRes = await fetch(`${getApiUrl()}/api/calls/${roomId}/recording/start`, {
         method: "POST",
@@ -185,9 +191,12 @@ export function useCallRecording({
       // single camera track would omit the rest of the meeting (and used to
       // fall back to an audio-only placeholder before a camera was available).
       const tracksToRecord: MediaStreamTrack[] = [];
-      const visualRecording = createMeetingRecordingVideoTrack(mediaSourcesRef);
-      visualRecordingCleanupRef.current = visualRecording.stop;
-      tracksToRecord.push(visualRecording.track);
+      const visualRecording = surfaceCapture ? null : createMeetingRecordingVideoTrack(mediaSourcesRef);
+      visualRecordingCleanupRef.current = () => {
+        visualRecording?.stop();
+        surfaceCapture?.stream.getTracks().forEach((track) => track.stop());
+      };
+      tracksToRecord.push(surfaceCapture?.track ?? visualRecording!.track);
 
       // Audio mixing with Web Audio API
       let mixedAudioTrack: MediaStreamTrack | null = null;
@@ -258,7 +267,7 @@ export function useCallRecording({
           setRecordingError(message);
           await reportRecordingFailure(startData.id, message);
         };
-        if (!visualRecording.hasVideoFrames) {
+        if (visualRecording && !visualRecording.hasVideoFrames) {
           await failRecording("No video frames were captured");
           visualRecordingCleanupRef.current?.();
           visualRecordingCleanupRef.current = null;
@@ -305,6 +314,7 @@ export function useCallRecording({
     } catch (err) {
       visualRecordingCleanupRef.current?.();
       visualRecordingCleanupRef.current = null;
+      surfaceCapture?.stream.getTracks().forEach((track) => track.stop());
       console.error("[useCallRecording] start failed:", err);
       setRecordingState("failed");
       const message = err instanceof Error ? err.message : "Failed to start recording";

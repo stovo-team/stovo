@@ -127,6 +127,7 @@ export function CallFeature() {
               isMobileViewport ? "call-popup-fullscreen" : "",
               effectiveIsCallMinimized && isMobileViewport ? "call-popup-slim-host" : "",
             ].filter(Boolean).join(" ")}
+            data-call-recording-surface={!effectiveIsCallMinimized ? "" : undefined}
             role="dialog"
             aria-modal="false"
             aria-label={
