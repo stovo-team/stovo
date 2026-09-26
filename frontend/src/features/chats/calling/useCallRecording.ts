@@ -59,8 +59,22 @@ export function useCallRecording({
   const timerIntervalRef = useRef<number | null>(null);
   const isInitiatorRef = useRef(false);
   const visualRecordingCleanupRef = useRef<(() => void) | null>(null);
+  const recordingIdRef = useRef<string | null>(null);
   const mediaSourcesRef = useRef<RecordingMediaSources>({ localStream, localScreenStream, remoteStreams });
   mediaSourcesRef.current = { localStream, localScreenStream, remoteStreams };
+
+  const reportRecordingFailure = useCallback(async (id: string, message: string) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/api/calls/${roomId}/recording/fail`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ recordingId: id, message }),
+      });
+      if (!response.ok) console.error("[useCallRecording] recording failure report rejected:", response.status);
+    } catch (failureReportErr) {
+      console.error("[useCallRecording] could not report recording failure:", failureReportErr);
+    }
+  }, [accessToken, roomId]);
 
   useEffect(() => () => visualRecordingCleanupRef.current?.(), []);
 
@@ -104,29 +118,40 @@ export function useCallRecording({
 
     const onStarted = (payload: { roomId: string; recordingId: string }) => {
       if (payload.roomId !== roomId) return;
+      recordingIdRef.current = payload.recordingId;
       setRecordingId(payload.recordingId);
       setRecordingState("recording");
       setRecordingError(null);
     };
 
-    const onStopping = (payload: { roomId: string }) => {
-      if (payload.roomId !== roomId) return;
+    const onStopping = (payload: { roomId: string; recordingId: string }) => {
+      if (payload.roomId !== roomId || payload.recordingId !== recordingIdRef.current) return;
       setRecordingState("stopping");
     };
 
-    const onReady = (payload: { roomId: string }) => {
-      if (payload.roomId !== roomId) return;
+    const onReady = (payload: { roomId: string; recordingId: string }) => {
+      if (payload.roomId !== roomId || payload.recordingId !== recordingIdRef.current) return;
       setRecordingState("completed");
+    };
+
+    const onFailed = (payload: { roomId: string; recordingId: string; message?: string }) => {
+      if (payload.roomId !== roomId) return;
+      if (!recordingIdRef.current || recordingIdRef.current !== payload.recordingId) return;
+      setRecordingId(payload.recordingId);
+      setRecordingState("failed");
+      setRecordingError(payload.message || "Recording failed");
     };
 
     socket.on("call.recording.started", onStarted);
     socket.on("call.recording.stopping", onStopping);
     socket.on("call.recording.ready", onReady);
+    socket.on("call.recording.failed", onFailed);
 
     return () => {
       socket.off("call.recording.started", onStarted);
       socket.off("call.recording.stopping", onStopping);
       socket.off("call.recording.ready", onReady);
+      socket.off("call.recording.failed", onFailed);
     };
   }, [socketRef, roomId]);
 
@@ -136,6 +161,7 @@ export function useCallRecording({
     }
     setRecordingState("starting");
     setRecordingError(null);
+    recordingIdRef.current = null;
     recordedChunksRef.current = [];
     isInitiatorRef.current = true;
 
@@ -153,6 +179,7 @@ export function useCallRecording({
 
       const startData = (await startRes.json()) as { id: string };
       setRecordingId(startData.id);
+      recordingIdRef.current = startData.id;
 
       // 2. Compose every visible participant into one video track. Recording a
       // single camera track would omit the rest of the meeting (and used to
@@ -226,11 +253,27 @@ export function useCallRecording({
 
       recorder.onstop = async () => {
         if (!isInitiatorRef.current) return;
+        const failRecording = async (message: string) => {
+          setRecordingState("failed");
+          setRecordingError(message);
+          await reportRecordingFailure(startData.id, message);
+        };
+        if (!visualRecording.hasVideoFrames) {
+          await failRecording("No video frames were captured");
+          visualRecordingCleanupRef.current?.();
+          visualRecordingCleanupRef.current = null;
+          if (audioContextRef.current) {
+            audioContextRef.current.close().catch(() => {});
+            audioContextRef.current = null;
+          }
+          return;
+        }
         setRecordingState("uploading");
         try {
           const blob = new Blob(recordedChunksRef.current, { type: mimeType });
           const formData = new FormData();
           formData.append("file", blob, `meeting-recording.webm`);
+          formData.append("recordingId", startData.id);
 
           const uploadRes = await fetch(`${getApiUrl()}/api/calls/${roomId}/recording/upload`, {
             method: "POST",
@@ -245,8 +288,7 @@ export function useCallRecording({
           setRecordingState("completed");
         } catch (uploadErr) {
           console.error("[useCallRecording] upload failed:", uploadErr);
-          setRecordingState("failed");
-          setRecordingError(uploadErr instanceof Error ? uploadErr.message : "Recording upload failed");
+          await failRecording(uploadErr instanceof Error ? uploadErr.message : "Recording upload failed");
         } finally {
           visualRecordingCleanupRef.current?.();
           visualRecordingCleanupRef.current = null;
@@ -265,9 +307,11 @@ export function useCallRecording({
       visualRecordingCleanupRef.current = null;
       console.error("[useCallRecording] start failed:", err);
       setRecordingState("failed");
-      setRecordingError(err instanceof Error ? err.message : "Failed to start recording");
+      const message = err instanceof Error ? err.message : "Failed to start recording";
+      setRecordingError(message);
+      if (recordingIdRef.current) await reportRecordingFailure(recordingIdRef.current, message);
     }
-  }, [accessToken, roomId, enabled, recordingState, localStream, localScreenStream, remoteStreams]);
+  }, [accessToken, roomId, enabled, recordingState, localStream, localScreenStream, remoteStreams, reportRecordingFailure]);
 
   const stopRecording = useCallback(async () => {
     if (!accessToken || !roomId || recordingState !== "recording") {

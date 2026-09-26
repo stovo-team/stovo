@@ -13,12 +13,14 @@ function liveVideoTrack(stream?: MediaStream | null) {
 }
 
 function drawVideo(ctx: CanvasRenderingContext2D, video: HTMLVideoElement, x: number, y: number, width: number, height: number) {
-  const sourceWidth = video.videoWidth || 16;
-  const sourceHeight = video.videoHeight || 9;
+  const sourceWidth = video.videoWidth;
+  const sourceHeight = video.videoHeight;
+  if (sourceWidth <= 0 || sourceHeight <= 0) return false;
   const scale = Math.max(width / sourceWidth, height / sourceHeight);
   const drawnWidth = sourceWidth * scale;
   const drawnHeight = sourceHeight * scale;
   ctx.drawImage(video, x + (width - drawnWidth) / 2, y + (height - drawnHeight) / 2, drawnWidth, drawnHeight);
+  return true;
 }
 
 /**
@@ -38,6 +40,7 @@ export function createMeetingRecordingVideoTrack(sourcesRef: MutableRefObject<Re
   const videos = new Map<string, MeetingVideo>();
   let animationFrame: number | null = null;
   let stopped = false;
+  let hasVideoFrames = false;
 
   const getVideo = (stream?: MediaStream | null) => {
     const sourceTrack = liveVideoTrack(stream);
@@ -71,17 +74,22 @@ export function createMeetingRecordingVideoTrack(sourcesRef: MutableRefObject<Re
 
     context.fillStyle = "#080c13";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    if (screen) {
-      drawVideo(context, screen.video, 0, 0, canvas.width, canvas.height);
+    if (screen && screen.video.videoWidth > 0 && screen.video.videoHeight > 0) {
+      hasVideoFrames = drawVideo(context, screen.video, 0, 0, canvas.width, canvas.height) || hasVideoFrames;
       const tileHeight = Math.min(190, canvas.height * 0.26);
       const tileWidth = cameras.length ? canvas.width / Math.min(cameras.length, 4) : 0;
-      cameras.slice(0, 4).forEach((source, index) => drawVideo(context, source.video, index * tileWidth, canvas.height - tileHeight, tileWidth, tileHeight));
-    } else if (cameras.length) {
-      const columns = Math.ceil(Math.sqrt(cameras.length));
-      const rows = Math.ceil(cameras.length / columns);
+      cameras.filter((source) => source.video.videoWidth > 0 && source.video.videoHeight > 0).slice(0, 4).forEach((source, index) => {
+        hasVideoFrames = drawVideo(context, source.video, index * tileWidth, canvas.height - tileHeight, tileWidth, tileHeight) || hasVideoFrames;
+      });
+    } else if (cameras.some((source) => source.video.videoWidth > 0 && source.video.videoHeight > 0)) {
+      const readyCameras = cameras.filter((source) => source.video.videoWidth > 0 && source.video.videoHeight > 0);
+      const columns = Math.ceil(Math.sqrt(readyCameras.length));
+      const rows = Math.ceil(readyCameras.length / columns);
       const tileWidth = canvas.width / columns;
       const tileHeight = canvas.height / rows;
-      cameras.forEach((source, index) => drawVideo(context, source.video, (index % columns) * tileWidth, Math.floor(index / columns) * tileHeight, tileWidth, tileHeight));
+      readyCameras.forEach((source, index) => {
+        hasVideoFrames = drawVideo(context, source.video, (index % columns) * tileWidth, Math.floor(index / columns) * tileHeight, tileWidth, tileHeight) || hasVideoFrames;
+      });
     } else {
       context.fillStyle = "#e7edf8";
       context.font = "600 28px sans-serif";
@@ -95,6 +103,7 @@ export function createMeetingRecordingVideoTrack(sourcesRef: MutableRefObject<Re
   paint();
   return {
     track,
+    get hasVideoFrames() { return hasVideoFrames; },
     stop: () => {
       stopped = true;
       if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);

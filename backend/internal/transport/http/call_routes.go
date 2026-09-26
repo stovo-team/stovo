@@ -26,6 +26,7 @@ type CallRoutes struct {
 	StopRecording               stdhttp.Handler
 	GetRecordingStatus          stdhttp.Handler
 	UploadRecording             stdhttp.Handler
+	FailRecording               stdhttp.Handler
 	TranslateCaptions           stdhttp.Handler
 }
 
@@ -55,6 +56,9 @@ func RegisterCallRoutes(router chi.Router, routes CallRoutes) {
 	}
 	if routes.UploadRecording != nil {
 		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/recording/upload", routes.UploadRecording)
+	}
+	if routes.FailRecording != nil {
+		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/recording/fail", routes.FailRecording)
 	}
 	if routes.TranslateCaptions != nil {
 		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/captions/translate", routes.TranslateCaptions)

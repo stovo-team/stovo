@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -268,6 +269,67 @@ func (s *Server) handleGetRecordingStatus(w http.ResponseWriter, r *http.Request
 	s.json(w, http.StatusOK, rec)
 }
 
+func (s *Server) handleFailRecording(w http.ResponseWriter, r *http.Request, user userPublic) {
+	roomID := chi.URLParam(r, "roomId")
+	if roomID == "" {
+		s.json(w, http.StatusBadRequest, map[string]string{"message": "roomId is required"})
+		return
+	}
+	chatID, _, isPart, err := s.resolveCallChatAndAuth(r.Context(), roomID, user)
+	if err != nil {
+		s.json(w, http.StatusNotFound, map[string]string{"message": err.Error()})
+		return
+	}
+	if !isPart {
+		s.json(w, http.StatusForbidden, map[string]string{"message": "You are not a participant in this call"})
+		return
+	}
+	var input struct {
+		RecordingID string `json:"recordingId"`
+		Message     string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil || strings.TrimSpace(input.RecordingID) == "" {
+		s.json(w, http.StatusBadRequest, map[string]string{"message": "recordingId and message are required"})
+		return
+	}
+	message := strings.TrimSpace(input.Message)
+	if message == "" {
+		message = "Recording failed"
+	}
+	result, err := s.guestDB.ExecContext(r.Context(), `
+		UPDATE call_recordings AS current_recording
+		SET status = 'failed', failure_message = CASE WHEN current_recording.status = 'failed' THEN current_recording.failure_message ELSE $1 END,
+		stopped_at = COALESCE(current_recording.stopped_at, NOW()), updated_at = CASE WHEN current_recording.status = 'failed' THEN current_recording.updated_at ELSE NOW() END
+		WHERE current_recording.id = $2 AND current_recording.call_id = $3
+		AND current_recording.status IN ('recording', 'stopping', 'processing', 'failed')
+		AND (current_recording.status <> 'failed' OR NOT EXISTS (
+			SELECT 1 FROM call_recordings AS newer_recording
+			WHERE newer_recording.call_id = current_recording.call_id
+			AND (newer_recording.started_at > current_recording.started_at
+				OR (newer_recording.started_at = current_recording.started_at AND newer_recording.id > current_recording.id))
+		))
+	`, message, input.RecordingID, roomID)
+	if err != nil {
+		s.logger.Warnf("recording", "recording failure update failed room=%s recording=%s error=%v", roomID, input.RecordingID, err)
+		s.json(w, http.StatusInternalServerError, map[string]string{"message": "Could not mark recording as failed"})
+		return
+	}
+	count, err := result.RowsAffected()
+	if err != nil || count == 0 {
+		s.json(w, http.StatusNotFound, map[string]string{"message": "Recording not found or already completed"})
+		return
+	}
+	payload := map[string]any{
+		"roomId": roomID, "chatId": chatID, "recordingId": input.RecordingID,
+		"status": "failed", "message": message,
+	}
+	if session, ok := s.getCallSessionByRoom(roomID); ok {
+		s.emitCallToActiveParticipants(session, "call.recording.failed", payload)
+	}
+	s.emitCallEventToChat(r.Context(), chatID, "call.recording.failed", payload)
+	s.json(w, http.StatusOK, map[string]string{"id": input.RecordingID, "status": "failed", "message": message})
+}
+
 func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, user userPublic) {
 	roomID := chi.URLParam(r, "roomId")
 	if roomID == "" {
@@ -284,6 +346,30 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 		s.json(w, http.StatusForbidden, map[string]string{"message": "You are not a participant in this call"})
 		return
 	}
+	markRecordingFailed := func(recordingID, message string) {
+		if strings.TrimSpace(recordingID) == "" {
+			recordingID = r.URL.Query().Get("recordingId")
+		}
+		if strings.TrimSpace(recordingID) == "" {
+			return
+		}
+		result, updateErr := s.guestDB.ExecContext(r.Context(), `
+			UPDATE call_recordings SET status = 'failed', failure_message = $1,
+			stopped_at = COALESCE(stopped_at, NOW()), updated_at = NOW()
+			WHERE call_id = $2 AND id = $3 AND status IN ('recording', 'stopping', 'processing')
+		`, message, roomID, recordingID)
+		if updateErr != nil {
+			s.logger.Warnf("recording", "could not persist upload failure room=%s error=%v", roomID, updateErr)
+			return
+		}
+		if affected, rowsErr := result.RowsAffected(); rowsErr == nil && affected > 0 {
+			payload := map[string]any{"roomId": roomID, "chatId": chatID, "recordingId": recordingID, "status": "failed", "message": message}
+			if session, ok := s.getCallSessionByRoom(roomID); ok {
+				s.emitCallToActiveParticipants(session, "call.recording.failed", payload)
+			}
+			s.emitCallEventToChat(r.Context(), chatID, "call.recording.failed", payload)
+		}
+	}
 
 	// Max 600MB
 	r.Body = http.MaxBytesReader(w, r.Body, 600*1024*1024)
@@ -293,17 +379,20 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 
 	if strings.HasPrefix(contentType, "multipart/form-data") {
 		if err := r.ParseMultipartForm(64 * 1024 * 1024); err != nil {
+			markRecordingFailed("", "Invalid recording upload")
 			s.json(w, http.StatusBadRequest, map[string]string{"message": "Invalid multipart form: " + err.Error()})
 			return
 		}
 		file, _, err := r.FormFile("file")
 		if err != nil {
+			markRecordingFailed(r.FormValue("recordingId"), "Recording upload is missing its video file")
 			s.json(w, http.StatusBadRequest, map[string]string{"message": "Missing file field"})
 			return
 		}
 		defer func() { _ = file.Close() }()
 		videoData, err = io.ReadAll(file)
 		if err != nil {
+			markRecordingFailed(r.FormValue("recordingId"), "Could not read uploaded video")
 			s.json(w, http.StatusBadRequest, map[string]string{"message": "Could not read uploaded video"})
 			return
 		}
@@ -311,12 +400,14 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 		var readErr error
 		videoData, readErr = io.ReadAll(r.Body)
 		if readErr != nil {
+			markRecordingFailed(r.FormValue("recordingId"), "Could not read uploaded video")
 			s.json(w, http.StatusBadRequest, map[string]string{"message": "Could not read uploaded video: " + readErr.Error()})
 			return
 		}
 	}
 
 	if len(videoData) == 0 {
+		markRecordingFailed(r.FormValue("recordingId"), "Uploaded video file is empty")
 		s.json(w, http.StatusBadRequest, map[string]string{"message": "Uploaded video file is empty"})
 		return
 	}
@@ -327,15 +418,21 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 	var stoppedAt sql.NullTime
 	var callHistoryMsgID sql.NullString
 
+	recordingID := r.FormValue("recordingId")
 	err = s.guestDB.QueryRowContext(r.Context(), `
 		SELECT id, started_at, stopped_at, call_history_message_id
 		FROM call_recordings
 		WHERE call_id = $1 AND status IN ('recording', 'stopping', 'processing')
+		AND ($2 = '' OR id = $2)
 		ORDER BY started_at DESC
 		LIMIT 1
-	`, roomID).Scan(&recID, &startedAt, &stoppedAt, &callHistoryMsgID)
+	`, roomID, recordingID).Scan(&recID, &startedAt, &stoppedAt, &callHistoryMsgID)
 
 	if err != nil {
+		if recordingID != "" {
+			s.json(w, http.StatusNotFound, map[string]string{"message": "Recording not found"})
+			return
+		}
 		if errors.Is(err, sql.ErrNoRows) {
 			// Create a fallback recording row if none active
 			recID = uuid.NewString()
@@ -367,6 +464,7 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 	objectKey := path.Join("family", user.FamilyID, "chats", chatID, time.Now().UTC().Format("2006"), time.Now().UTC().Format("01"), fileID+"-meeting-recording.webm")
 
 	if err := s.storage.Save(objectKey, videoData); err != nil {
+		markRecordingFailed(recID, "Could not save video recording to storage")
 		s.logger.Warnf("recording", "storage save failed key=%s error=%v", objectKey, err)
 		s.json(w, http.StatusBadGateway, map[string]string{"message": "Could not save video recording to storage"})
 		return
@@ -397,19 +495,32 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 		Checksum:           checksum,
 		CreatedAt:          now,
 	}); err != nil {
+		_ = s.storage.Delete(objectKey)
+		if thumbnailObjectKey != nil {
+			_ = s.storage.Delete(*thumbnailObjectKey)
+		}
+		markRecordingFailed(recID, "Could not register video file")
 		s.logger.Warnf("recording", "legacy upload record failed file=%s error=%v", fileID, err)
 		s.json(w, http.StatusInternalServerError, map[string]string{"message": "Could not register video file"})
 		return
 	}
 
 	// Update recording row
-	_, err = s.guestDB.ExecContext(r.Context(), `
+	completion, err := s.guestDB.ExecContext(r.Context(), `
 		UPDATE call_recordings
 		SET status = 'completed', completed_at = $1, duration_ms = $2, size_bytes = $3, object_key = $4, file_id = $5, updated_at = $1
-		WHERE id = $6
+		WHERE id = $6 AND status IN ('recording', 'stopping', 'processing')
 	`, now, durationMs, int64(len(videoData)), objectKey, fileID, recID)
-	if err != nil {
+	completedRows := int64(0)
+	if err == nil {
+		completedRows, err = completion.RowsAffected()
+	}
+	if err != nil || completedRows == 0 {
 		s.logger.Warnf("recording", "recording completion update failed rec_id=%s error=%v", recID, err)
+		_ = s.fileDeletions.Delete(r.Context(), featurefiles.Deletion{FileID: fileID, FamilyID: user.FamilyID, ChatID: &chatID})
+		markRecordingFailed(recID, "Could not finalize video recording")
+		s.json(w, http.StatusConflict, map[string]string{"message": "Recording is no longer available for completion"})
+		return
 	}
 
 	// Create a playable video artifact message in chat, named after the meeting.
