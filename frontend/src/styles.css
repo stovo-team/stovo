@@ -24740,6 +24740,26 @@ button.chat-info-title-edit:active:not(:disabled) {
   box-sizing: border-box;
   background: #000000;
   position: relative;
+  border: 0;
+}
+
+.voice-room-empty-content,
+.voice-room-participant-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
+}
+
+.voice-room-empty-content {
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+}
+
+.voice-room-empty-content .voice-room-empty-state {
+  margin: 0 auto;
 }
 
 .voice-room-notice-banner {
@@ -25276,7 +25296,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.35);
+  box-shadow: none;
   transition: all 0.2s ease;
 }
 

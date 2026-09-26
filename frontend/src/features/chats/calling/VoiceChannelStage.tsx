@@ -315,10 +315,10 @@ export function VoiceChannelStage({
           <span>{visibleNotice}</span>
         </div>
       )}
-
       {/* Main Stage / Participant Grid or List */}
       <div className="voice-room-stage">
-        {hasActiveScreenShare ? (
+        <div className={participantCount === 0 ? "voice-room-empty-content" : "voice-room-participant-content"}>
+          {hasActiveScreenShare ? (
           <CallParticipantGrid
             localStream={localVideoStream}
             localScreenStream={localScreenStream}
@@ -486,7 +486,7 @@ export function VoiceChannelStage({
             <span>{strings.chats.details.addPeople}</span>
           </button>
         )}
-
+        </div>
       </div>
 
       {/* Bottom Floating/Docked Control Bar */}

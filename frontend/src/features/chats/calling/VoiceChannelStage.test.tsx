@@ -204,11 +204,20 @@ describe("VoiceChannelStage", () => {
         members={emptyVoiceChat.members as unknown as User[]}
         currentUser={mockCurrentUser}
         accessToken="test-token"
+        canAddPeople
+        onOpenAddPeople={vi.fn()}
       />
     );
 
     expect(container.textContent).toContain("No users");
     expect(container.textContent).toContain("No users in this voice channel right now.");
+
+    const emptyState = container.querySelector(".voice-room-empty-state");
+    const inviteButton = container.querySelector(".voice-room-member-invite");
+    expect(emptyState).not.toBeNull();
+    expect(inviteButton).not.toBeNull();
+    expect(emptyState?.parentElement).toBe(inviteButton?.parentElement);
+    expect(emptyState?.parentElement?.classList.contains("voice-room-empty-content")).toBe(true);
 
     // Ensure there is only 1 join button on the whole screen (no duplicate button)
     const joinButtons = container.querySelectorAll("button");
