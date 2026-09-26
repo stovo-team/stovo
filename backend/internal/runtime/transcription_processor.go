@@ -32,14 +32,15 @@ type TranscriptionProcessorLogger interface {
 // only app-specific side effects (Socket fanout and generated notes message)
 // are callbacks at this outer runtime boundary.
 type TranscriptionProcessor struct {
-	Sessions  *featuretranscription.SessionService
-	Chunks    *featuretranscription.ChunkService
-	Segments  *featuretranscription.SegmentService
-	Storage   ports.ObjectStore
-	Provider  TranscriptionProviderOptions
-	Logger    TranscriptionProcessorLogger
-	Broadcast func(chatID, callID, sessionID, status string, failureMessage string)
-	Publish   func(context.Context, string)
+	Sessions    *featuretranscription.SessionService
+	Chunks      *featuretranscription.ChunkService
+	Segments    *featuretranscription.SegmentService
+	Storage     ports.ObjectStore
+	CallsBucket string
+	Provider    TranscriptionProviderOptions
+	Logger      TranscriptionProcessorLogger
+	Broadcast   func(chatID, callID, sessionID, status string, failureMessage string)
+	Publish     func(context.Context, string)
 }
 
 func (p TranscriptionProcessor) Process(ctx context.Context, job TranscriptionProcessingJob) {
@@ -95,7 +96,12 @@ func (p TranscriptionProcessor) transcribeParticipant(ctx context.Context, callI
 	segments := make([]transcription.TranscriptSegmentForLLM, 0)
 	languages := make(map[string]bool)
 	for _, chunk := range chunks {
-		audio, err := p.Storage.Read(chunk.ObjectKey)
+		bucketStore, ok := p.Storage.(ports.BucketObjectReader)
+		if !ok {
+			p.warn("read chunk failed chunk_id=%s error=storage does not support bucket reads", chunk.ID)
+			continue
+		}
+		audio, err := readTranscriptionChunk(ctx, bucketStore, p.CallsBucket, chunk.ObjectKey)
 		if err != nil {
 			p.warn("read chunk failed chunk_id=%s error=%v", chunk.ID, err)
 			continue
@@ -140,6 +146,10 @@ func (p TranscriptionProcessor) transcribeParticipant(ctx context.Context, callI
 		}
 	}
 	return segments, languages
+}
+
+func readTranscriptionChunk(ctx context.Context, store ports.BucketObjectReader, bucket, objectKey string) ([]byte, error) {
+	return store.ReadFromBucket(ctx, bucket, objectKey)
 }
 
 func (p TranscriptionProcessor) updateMetadata(ctx context.Context, sessionID string, audioMs int64, languages map[string]bool, client *transcription.GroqSTTClient) {

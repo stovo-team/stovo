@@ -171,6 +171,21 @@ func (s *MinIOStorage) SaveToBucket(ctx context.Context, bucket, objectKey strin
 	return err
 }
 
+func (s *MinIOStorage) ReadFromBucket(ctx context.Context, bucket, objectKey string) ([]byte, error) {
+	if bucket == "" {
+		bucket = s.bucket
+	}
+	object, err := s.client.GetObject(ctx, bucket, objectKey, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = object.Close() }()
+	if _, err := object.Stat(); err != nil {
+		return nil, err
+	}
+	return io.ReadAll(object)
+}
+
 func (s *MinIOStorage) StatObject(ctx context.Context, bucket, objectKey string) (ObjectInfo, error) {
 	if bucket == "" {
 		bucket = s.bucket

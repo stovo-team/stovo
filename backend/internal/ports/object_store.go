@@ -31,9 +31,15 @@ type ObjectStore interface {
 	Provider() string
 }
 
+// BucketObjectReader reads objects from an explicitly named bucket.
+type BucketObjectReader interface {
+	ReadFromBucket(context.Context, string, string) ([]byte, error)
+}
+
 // BucketObjectStore supports operations against an explicitly named bucket.
 // It is used by direct uploads and call-transcription artifacts.
 type BucketObjectStore interface {
+	BucketObjectReader
 	SaveToBucket(context.Context, string, string, []byte, string) error
 	StatObject(context.Context, string, string) (ObjectInfo, error)
 }
