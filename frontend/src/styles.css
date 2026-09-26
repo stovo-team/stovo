@@ -1,5 +1,5 @@
 :root {
-  --chat-popup-surface: rgba(80, 84, 92, 0.2);
+  --chat-popup-surface: rgba(48, 50, 56, 0.94);
   --background-primary: #ffffff;
   --background-secondary: #f6f7f9;
   --background-tertiary: #eef1f5;
@@ -7331,27 +7331,29 @@ span.message-spoiler.is-revealed {
   justify-content: flex-start;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  padding: 6px 4px;
+  padding: 6px 1px 6px 4px;
   scrollbar-width: thin;
 }
 
 .emoji-picker .epr-cat-btn {
+  align-items: center;
   background-color: transparent;
-  background-position-y: calc(var(--epr-category-navigation-button-size) * 2) !important;
+  background-image: none !important;
   border-radius: 999px;
   color: var(--text-secondary);
+  display: flex;
   flex: 0 0 var(--epr-category-navigation-button-size);
   height: var(--epr-category-navigation-button-size);
   min-height: var(--epr-category-navigation-button-size);
   min-width: var(--epr-category-navigation-button-size);
   opacity: 1 !important;
+  justify-content: center;
   padding: 0;
   width: var(--epr-category-navigation-button-size);
 }
 
 .emoji-picker .epr-cat-btn.epr-active {
   background-color: color-mix(in oklab, var(--accent-soft) 92%, transparent);
-  background-position-y: calc(var(--epr-category-navigation-button-size) * 3) !important;
   color: var(--accent-primary);
 }
 
@@ -7373,8 +7375,15 @@ span.message-spoiler.is-revealed {
 .emoji-picker .epr-cat-btn svg,
 .emoji-picker .epr-cat-btn path {
   color: currentColor !important;
-  fill: currentColor !important;
+  fill: none !important;
   opacity: 1 !important;
+}
+
+.emoji-picker .epr-cat-btn svg {
+  display: block;
+  flex: 0 0 auto;
+  stroke: currentColor !important;
+  stroke-width: 1.8;
 }
 
 .emoji-picker .epr-emoji-category-label {
