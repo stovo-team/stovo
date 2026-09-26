@@ -16598,6 +16598,22 @@ button.attachment-nav-item:focus-visible {
   flex-shrink: 0;
   animation: call-bar-dot-pulse 2s ease-in-out infinite;
 }
+
+/* The active chat header floats over the message surface at every viewport
+   width, so its minimized call strip must also be anchored below that header. */
+:root[data-platform="web"] .messenger-shell.has-active-chat .mobile-call-strip--chat-header,
+:root[data-platform="native"] .messenger-shell.has-active-chat .mobile-call-strip--chat-header {
+  left: var(--active-chat-message-inset-x);
+  margin: 0;
+  position: absolute;
+  right: var(--active-chat-message-inset-x);
+  top: calc(
+    max(4px, env(safe-area-inset-top)) + var(--chat-floating-header-overlap) + 8px
+  );
+  width: auto;
+  z-index: 4;
+}
+
 @keyframes call-bar-dot-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.45; }
@@ -20438,20 +20454,6 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 /* Capacitor renders the same narrow chat layout as the mobile browser. */
 @media (max-width: 960px) {
-  /* The compact voice call strip stays below the floating chat header. */
-  :root[data-platform="web"] .messenger-shell.has-active-chat .mobile-call-strip--chat-header,
-  :root[data-platform="native"] .messenger-shell.has-active-chat .mobile-call-strip--chat-header {
-    left: var(--active-chat-message-inset-x);
-    margin: 0;
-    position: absolute;
-    right: var(--active-chat-message-inset-x);
-    top: calc(
-      max(4px, env(safe-area-inset-top)) + var(--chat-floating-header-overlap) + 8px
-    );
-    width: auto;
-    z-index: 4;
-  }
-
   :root[data-platform="native"] .messenger-shell.chat-list-view .chat-sidebar {
     --web-chat-sidebar-header-height: 190px;
     position: relative;
