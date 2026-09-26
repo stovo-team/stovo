@@ -84,6 +84,10 @@ func (s *LocalStorage) SaveToBucket(_ context.Context, _ string, objectKey strin
 	return s.Save(objectKey, data)
 }
 
+func (s *LocalStorage) ReadFromBucket(_ context.Context, _ string, objectKey string) ([]byte, error) {
+	return s.Read(objectKey)
+}
+
 func (s *LocalStorage) StatObject(_ context.Context, _ string, objectKey string) (ObjectInfo, error) {
 	path, err := s.resolve(objectKey)
 	if err != nil {

@@ -446,7 +446,7 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 	provider := groq.Resolve(&s.cfg, s.logger)
 	processor := runtime.TranscriptionProcessor{
 		Sessions: s.transcriptionSessions, Chunks: s.transcriptionChunks, Segments: s.transcriptionSegments,
-		Storage: s.storage, Logger: s.logger,
+		Storage: s.storage, CallsBucket: s.cfg.MinIOCallsBucket, Logger: s.logger,
 		Provider: runtime.TranscriptionProviderOptions{APIKey: provider.APIKey, BaseURL: provider.BaseURL, STTModel: provider.STTModel, ChatModel: provider.ChatModel, CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD},
 		Broadcast: func(chatID, callID, sessionID, status, failure string) {
 			s.broadcastTranscriptionStatus(chatID, callID, sessionID, status, failure)
