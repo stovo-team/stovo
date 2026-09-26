@@ -63,5 +63,5 @@ frontend/src/pages/MultiAdminPage.tsx	1121
 frontend/src/pages/PlansPage.tsx	798
 frontend/src/pages/settings/KeyboardShortcutsSettings.tsx	423
 frontend/src/pages/SettingsPage.tsx	613
-frontend/src/realtime/call/CallSessionController.ts	1226
+frontend/src/realtime/call/CallSessionController.ts	1238
 frontend/src/realtime/call/MeshMediaEngine.ts	582

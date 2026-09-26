@@ -40,6 +40,7 @@ export default class CallSessionController {
 
   private mesh: MeshMediaEnginePort;
   private sfu: SFUMediaEnginePort;
+  private sfuConnectPromise: Promise<void> | null = null;
 
   private localStream: MediaStream | null = null;
   private sourceStream: MediaStream | null = null;
@@ -314,6 +315,17 @@ export default class CallSessionController {
   }
 
   async switchToSfu(): Promise<void> {
+    if (this.sfuConnectPromise) return this.sfuConnectPromise;
+    const connection = this.connectToSfu();
+    this.sfuConnectPromise = connection;
+    try {
+      await connection;
+    } finally {
+      if (this.sfuConnectPromise === connection) this.sfuConnectPromise = null;
+    }
+  }
+
+  private async connectToSfu(): Promise<void> {
     if (!this.roomId) throw new Error("roomId required for SFU");
     const res = await fetch(`${getApiUrl()}/api/calls/${this.roomId}/sfu-token`, {
       method: "POST",

@@ -429,7 +429,7 @@ export function useCallSession({
 
   // Watchdog timer for "connecting" phase: prevents eternal connecting state
   useEffect(() => {
-    if (callPhase !== "connecting" || !activeCallChatId || !callPeerUserId) {
+    if (callPhase !== "connecting" || !activeCallChatId) {
       return;
     }
     const timerId = setTimeout(() => {
