@@ -40,7 +40,7 @@ export function AddPeopleDialog({ accessToken, members, onAdd, onClose }: AddPeo
   return createPortal(
     <div className="new-chat-modal-backdrop" onMouseDown={onClose}>
       <div onMouseDown={(event) => event.stopPropagation()}>
-        <section className="new-chat-screen" aria-modal="true" aria-labelledby="add-people-title" role="dialog">
+        <section className="new-chat-screen add-people-dialog" aria-modal="true" aria-labelledby="add-people-title" role="dialog">
           <header className="new-chat-screen-header">
             <span className="new-chat-screen-spacer" />
             <h2 id="add-people-title">{strings.chats.details.addPeople}</h2>
