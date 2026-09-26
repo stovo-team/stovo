@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import { getApiUrl } from "../../../api/client";
 import { createMeetingRecordingVideoTrack, type RecordingMediaSources } from "./meetingRecordingComposer";
-import { captureCallSurface } from "./callSurfaceCapture";
+import { captureBrowserTab } from "./callSurfaceCapture";
 
 export type RecordingState =
   | "idle"
@@ -165,10 +165,10 @@ export function useCallRecording({
     recordingIdRef.current = null;
     recordedChunksRef.current = [];
     isInitiatorRef.current = true;
-    let surfaceCapture: Awaited<ReturnType<typeof captureCallSurface>> = null;
+    let surfaceCapture: Awaited<ReturnType<typeof captureBrowserTab>> | null = null;
     // Start the browser picker synchronously from the user gesture before the
     // first network await, as browsers require transient activation.
-    const surfaceCapturePromise = captureCallSurface();
+    const surfaceCapturePromise = captureBrowserTab();
 
     try {
       surfaceCapture = await surfaceCapturePromise;

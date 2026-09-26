@@ -316,7 +316,7 @@ export function VoiceChannelStage({
         </div>
       )}
       {/* Main Stage / Participant Grid or List */}
-      <div className="voice-room-stage" data-call-recording-surface="">
+      <div className="voice-room-stage">
         <div className={participantCount === 0 ? "voice-room-empty-content" : "voice-room-participant-content"}>
           {hasActiveScreenShare ? (
           <CallParticipantGrid

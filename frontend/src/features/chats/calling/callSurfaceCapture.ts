@@ -1,16 +1,9 @@
-type CallSurfaceCapture = { stream: MediaStream; track: MediaStreamTrack };
+type BrowserTabCapture = { stream: MediaStream; track: MediaStreamTrack };
 
-/** Capture the rendered call element, not just its camera/screen-share tracks. */
-export async function captureCallSurface(): Promise<CallSurfaceCapture | null> {
-  const surface = document.querySelector<HTMLElement>("[data-call-recording-surface]");
-  if (!surface || !navigator.mediaDevices?.getDisplayMedia) return null;
-
-  const captureApis = globalThis as typeof globalThis & {
-    RestrictionTarget?: { fromElement: (element: Element) => Promise<unknown> };
-    CropTarget?: { fromElement: (element: Element) => Promise<unknown> };
-  };
-  if (!captureApis.RestrictionTarget && !captureApis.CropTarget) {
-    throw new Error("This browser cannot capture the call area. Use the latest Chrome or Edge to record calls.");
+/** Capture the selected browser tab so the recording includes the complete app UI. */
+export async function captureBrowserTab(): Promise<BrowserTabCapture> {
+  if (!navigator.mediaDevices?.getDisplayMedia) {
+    throw new Error("Tab recording is unavailable in this browser. Use the latest Chrome or Edge.");
   }
 
   const mediaDevices = navigator.mediaDevices as MediaDevices & {
@@ -28,22 +21,11 @@ export async function captureCallSurface(): Promise<CallSurfaceCapture | null> {
     stream.getTracks().forEach((item) => item.stop());
     throw new Error("The selected browser tab did not provide a video track.");
   }
-
-  const elementTrack = track as MediaStreamTrack & {
-    restrictTo?: (target: unknown) => Promise<void>;
-    cropTo?: (target: unknown) => Promise<void>;
-  };
-  try {
-    if (captureApis.RestrictionTarget && elementTrack.restrictTo) {
-      await elementTrack.restrictTo(await captureApis.RestrictionTarget.fromElement(surface));
-    } else if (captureApis.CropTarget && elementTrack.cropTo) {
-      await elementTrack.cropTo(await captureApis.CropTarget.fromElement(surface));
-    } else {
-      throw new Error("This browser cannot capture the call area. Use the latest Chrome or Edge to record calls.");
-    }
-  } catch (error) {
+  const displaySurface = (track.getSettings() as MediaTrackSettings & { displaySurface?: string }).displaySurface;
+  if (displaySurface && displaySurface !== "browser") {
     stream.getTracks().forEach((item) => item.stop());
-    throw error;
+    throw new Error("Select the browser tab to record the full app interface.");
   }
+
   return { stream, track };
 }
