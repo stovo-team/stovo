@@ -7,7 +7,7 @@
  *  3. Live Captions & Real-Time AI Translation (toggle, target language dropdown/pills)
  */
 import React, { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown, FileText, Globe, Radio, Sparkles, StopCircle, Video, VideoOff } from "lucide-react";
+import { Check, ChevronDown, Circle, FileText, Globe, LoaderCircle, Sparkles, Square, Video } from "lucide-react";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { SUPPORTED_LANGUAGES } from "./useLiveCaptions";
 import type { RecordingState } from "./useCallRecording";
@@ -119,12 +119,9 @@ export function MeetingIntelligencePopover({
       {/* Header */}
       <div className="meeting-intel-header">
         <div className="meeting-intel-title-row">
-          <span className="meeting-intel-logo-wrap">
-            <IconIntelligence size={20} className="meeting-intel-logo" />
-          </span>
+          <IconIntelligence size={20} className="meeting-intel-logo" />
           <div className="meeting-intel-title-copy">
             <span className="meeting-intel-name">Stovo Intelligence</span>
-            <span className="meeting-intel-subtitle">Meeting AI & Recording</span>
           </div>
         </div>
       </div>
@@ -138,15 +135,6 @@ export function MeetingIntelligencePopover({
             </div>
             <div className="meeting-intel-card-info">
               <div className="meeting-intel-card-title">AI Notes</div>
-              <div className="meeting-intel-card-desc">
-                {isNotesActive
-                  ? "Transcribing & summarizing call"
-                  : isNotesProcessing
-                  ? "Generating summary & tasks…"
-                  : isNotesReady
-                  ? "Summary ready to review"
-                  : "Auto-generate notes & decisions"}
-              </div>
             </div>
             <div className="meeting-intel-card-action">
               {isNotesAllowed ? (
@@ -157,18 +145,9 @@ export function MeetingIntelligencePopover({
                   }`}
                   onClick={onToggleNotes}
                   disabled={isNotesProcessing}
-                  aria-label={isNotesActive ? "Stop AI Notes" : "Start AI Notes"}
+                  aria-label={isNotesActive ? "Stop AI Notes" : isNotesProcessing ? "AI Notes processing" : "Start AI Notes"}
                 >
-                  {isNotesActive ? (
-                    <>
-                      <span className="meeting-intel-rec-dot" />
-                      Stop
-                    </>
-                  ) : isNotesProcessing ? (
-                    "Processing…"
-                  ) : (
-                    "Start"
-                  )}
+                  {isNotesActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <LoaderCircle size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
@@ -205,18 +184,7 @@ export function MeetingIntelligencePopover({
             </div>
             <div className="meeting-intel-card-info">
               <div className="meeting-intel-card-title">Video Recording</div>
-              <div className="meeting-intel-card-desc">
-                {isRecActive ? (
-                  <span className="meeting-intel-rec-timer">
-                    <span className="meeting-intel-rec-dot" />
-                    REC {recordingTimer}
-                  </span>
-                ) : isRecStopping ? (
-                  "Saving video to chat…"
-                ) : (
-                  "Record video & save to chat"
-                )}
-              </div>
+              {isRecActive && <span className="meeting-intel-rec-timer">REC {recordingTimer}</span>}
             </div>
             <div className="meeting-intel-card-action">
               {isRecordingAllowed ? (
@@ -227,18 +195,9 @@ export function MeetingIntelligencePopover({
                   }`}
                   onClick={onToggleRecording}
                   disabled={isRecStopping}
-                  aria-label={isRecActive ? "Stop Recording" : "Start Recording"}
+                  aria-label={isRecActive ? "Stop Recording" : isRecStopping ? "Saving recording" : "Start Recording"}
                 >
-                  {isRecActive ? (
-                    <>
-                      <StopCircle size={14} />
-                      Stop
-                    </>
-                  ) : isRecStopping ? (
-                    "Saving…"
-                  ) : (
-                    "Record"
-                  )}
+                  {isRecActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <LoaderCircle size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
@@ -260,9 +219,6 @@ export function MeetingIntelligencePopover({
             </div>
             <div className="meeting-intel-card-info">
               <div className="meeting-intel-card-title">Live Captions & AI Translation</div>
-              <div className="meeting-intel-card-desc">
-                {isCaptionsEnabled ? "Subtitles translated in real time" : "Real-time translated subtitles"}
-              </div>
             </div>
             <div className="meeting-intel-card-action">
               <label className="meeting-intel-switch">
