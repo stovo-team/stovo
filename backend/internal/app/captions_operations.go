@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -109,23 +110,26 @@ func (s *Server) translateCaption(ctx context.Context, text, sourceLang, targetL
 		return cleanText, nil
 	}
 
-	cacheKey := strings.ToLower(targetLang) + ":" + cleanText
-	if cached, ok := getCachedCaption(cacheKey); ok {
-		return cached, nil
-	}
-
 	provider := groq.Resolve(&s.cfg, s.logger)
 	if provider.APIKey == "" {
-		return cleanText, nil
+		return "", errors.New("caption translation provider is not configured")
 	}
 
 	model := provider.ChatModel
 	if model == "" {
-		model = "llama-3.1-8b-instant"
+		model = defaultCaptionChatModel(provider.BaseURL)
+	}
+	cacheKey := strings.ToLower(strings.TrimSpace(provider.BaseURL)) + ":" + model + ":" + strings.ToLower(strings.TrimSpace(sourceLang)) + ":" + strings.ToLower(strings.TrimSpace(targetLang)) + ":" + cleanText
+	if cached, ok := getCachedCaption(cacheKey); ok {
+		return cached, nil
 	}
 
 	langName := targetLangDisplayName(targetLang)
-	systemPrompt := fmt.Sprintf("You are an ultra-fast live speech subtitle translator. Translate the following speech transcript segment into %s. Respond ONLY with the translation text without quotes, explanation, or markdown formatting.", langName)
+	sourceInstruction := "Identify the language of the transcript, then translate it"
+	if sourceLang != "" {
+		sourceInstruction = fmt.Sprintf("The transcript is in %s. Translate it", targetLangDisplayName(sourceLang))
+	}
+	systemPrompt := fmt.Sprintf("You are an accurate live speech subtitle translator. %s into %s. Preserve the speaker's meaning, tone, and names. Respond ONLY with the translation text without quotes, explanation, or markdown formatting.", sourceInstruction, langName)
 
 	payload := map[string]any{
 		"model": model,
@@ -168,15 +172,22 @@ func (s *Server) translateCaption(ctx context.Context, text, sourceLang, targetL
 
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
-		s.logger.Warnf("captions", "translate http request failed text=%q error=%v", cleanText, err)
-		return cleanText, nil
+		if s.logger != nil {
+			s.logger.Warnf("captions", "translate http request failed text=%q error=%v", cleanText, err)
+		}
+		return "", fmt.Errorf("caption translation request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		s.logger.Warnf("captions", "translate response error status=%d body=%s", resp.StatusCode, string(bodyBytes))
-		return cleanText, nil
+	if err != nil {
+		return "", fmt.Errorf("read caption translation response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		if s.logger != nil {
+			s.logger.Warnf("captions", "translate response error status=%d body=%s", resp.StatusCode, string(bodyBytes))
+		}
+		return "", fmt.Errorf("caption translation provider returned status %d", resp.StatusCode)
 	}
 
 	var chatResp struct {
@@ -186,19 +197,30 @@ func (s *Server) translateCaption(ctx context.Context, text, sourceLang, targetL
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.Unmarshal(bodyBytes, &chatResp); err != nil || len(chatResp.Choices) == 0 {
-		return cleanText, nil
+	if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
+		return "", fmt.Errorf("decode caption translation response: %w", err)
+	}
+	if len(chatResp.Choices) == 0 {
+		return "", errors.New("caption translation provider returned no choices")
 	}
 
 	translated := strings.TrimSpace(chatResp.Choices[0].Message.Content)
 	if translated == "" {
-		translated = cleanText
+		return "", errors.New("caption translation provider returned empty text")
 	}
 	// Strip wrapping quotes if LLM added any
 	translated = strings.Trim(translated, `"'“”`)
 
 	setCachedCaption(cacheKey, translated)
 	return translated, nil
+}
+
+func defaultCaptionChatModel(baseURL string) string {
+	base := strings.ToLower(baseURL)
+	if strings.Contains(base, "dashscope") || strings.Contains(base, "aliyuncs.com") || strings.Contains(base, "maas") {
+		return "qwen-plus"
+	}
+	return "qwen/qwen3.8-27b"
 }
 
 func (s *Server) handleTranslateCaptions(w http.ResponseWriter, r *http.Request, user userPublic) {
@@ -216,7 +238,11 @@ func (s *Server) handleTranslateCaptions(w http.ResponseWriter, r *http.Request,
 
 	translated, err := s.translateCaption(r.Context(), req.Text, req.SourceLang, req.TargetLang)
 	if err != nil {
-		s.logger.Warnf("captions", "translation failed text=%q target=%s error=%v", req.Text, req.TargetLang, err)
+		if s.logger != nil {
+			s.logger.Warnf("captions", "translation failed text=%q target=%s error=%v", req.Text, req.TargetLang, err)
+		}
+		s.json(w, http.StatusBadGateway, map[string]string{"message": "caption translation failed"})
+		return
 	}
 
 	s.json(w, http.StatusOK, translateCaptionResponse{
@@ -241,7 +267,11 @@ func (s *Server) guestMeetingTranslateCaptions(w http.ResponseWriter, r *http.Re
 
 	translated, err := s.translateCaption(r.Context(), req.Text, req.SourceLang, req.TargetLang)
 	if err != nil {
-		s.logger.Warnf("captions", "guest translation failed text=%q target=%s error=%v", req.Text, req.TargetLang, err)
+		if s.logger != nil {
+			s.logger.Warnf("captions", "guest translation failed text=%q target=%s error=%v", req.Text, req.TargetLang, err)
+		}
+		s.json(w, http.StatusBadGateway, map[string]string{"message": "caption translation failed"})
+		return
 	}
 
 	s.json(w, http.StatusOK, translateCaptionResponse{

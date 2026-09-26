@@ -223,7 +223,7 @@ func Load() (Config, error) {
 		GuestMeetingURL:            trimTrailingSlash(envString("GUEST_MEETING_URL", getenv("APP_URL", "http://localhost:8000"))),
 		GroqAPIKey:                 envAny("GROQ_API_KEY", "groq_api_key", "GROQ_KEY", "groq_key", "GROQ_API_TOKEN", "groq_api_token", "GROQ_TOKEN"),
 		GroqBaseURL:                envString("GROQ_BASE_URL", envString("GROQ_API_BASE", "")),
-		GroqSTTModel:               getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo"),
+		GroqSTTModel:               getenv("GROQ_STT_MODEL", "qwen3-asr-flash-2025-09-08"),
 		GroqChatModel:              getenv("GROQ_CHAT_MODEL", ""),
 		GroqSTTCostPerHourUSD:      envFloat64("GROQ_STT_COST_PER_AUDIO_HOUR_USD", 0.04),
 		AICallTranscriptionEnabled: envBool("AI_CALL_TRANSCRIPTION_ENABLED", true),

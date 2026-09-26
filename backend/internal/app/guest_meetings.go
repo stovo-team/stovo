@@ -46,9 +46,9 @@ func (s *Server) guestMeetingRoutes() http.Handler {
 	r.Post("/public/{token}/token", s.createGuestMeetingGuestToken)
 	r.Get("/public/{token}/intelligence", s.guestMeetingIntelligenceStatus)
 	r.Post("/public/{token}/captions/translate", s.guestMeetingTranslateCaptions)
+	r.Post("/public/{token}/captions/transcribe", s.guestMeetingTranscribeCaptions)
 	return r
 }
-
 func (s *Server) guestMeetingsAvailable() bool {
 	return s.guestDB != nil && s.cfg.GuestMeetingsEnabled && s.isSFUConfigured()
 }
@@ -220,8 +220,10 @@ func (s *Server) revokeGuestMeeting(w http.ResponseWriter, r *http.Request, user
 	}()
 	s.json(w, 204, nil)
 }
-
 func (s *Server) publicMeeting(ctx context.Context, token string) (guestMeeting, error) {
+	if s.guestDB == nil {
+		return guestMeeting{}, sql.ErrConnDone
+	}
 	var m guestMeeting
 	err := s.guestDB.QueryRowContext(ctx, `SELECT id,chat_id,creator_id,title,admission_mode,expires_at,scheduled_at,revoked_at,ended_at FROM guest_meetings WHERE token_hash=$1`, guestMeetingTokenHash(token)).Scan(&m.ID, &m.ChatID, &m.CreatorID, &m.Title, &m.AdmissionMode, &m.ExpiresAt, &m.ScheduledAt, &m.RevokedAt, &m.EndedAt)
 	return m, err
@@ -237,7 +239,6 @@ func (s *Server) publicMeetingUnavailable(ctx context.Context, token string) (ex
 	m, err := s.publicMeeting(ctx, token)
 	return err == nil && m.RevokedAt == nil && m.EndedAt == nil && !time.Now().Before(m.ExpiresAt)
 }
-
 func (s *Server) writePublicMeetingUnavailable(w http.ResponseWriter, r *http.Request) {
 	if s.publicMeetingUnavailable(r.Context(), chi.URLParam(r, "token")) {
 		s.json(w, http.StatusGone, map[string]string{"code": "meeting_expired", "message": "This meeting link has expired. Ask the host for a new link."})
@@ -245,7 +246,6 @@ func (s *Server) writePublicMeetingUnavailable(w http.ResponseWriter, r *http.Re
 	}
 	s.json(w, http.StatusNotFound, map[string]string{"code": "meeting_unavailable", "message": "Meeting link is unavailable"})
 }
-
 func (s *Server) previewGuestMeeting(w http.ResponseWriter, r *http.Request) {
 	m, ok := s.validPublicMeeting(r.Context(), chi.URLParam(r, "token"))
 	if !ok {

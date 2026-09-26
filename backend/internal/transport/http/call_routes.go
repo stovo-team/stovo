@@ -28,6 +28,7 @@ type CallRoutes struct {
 	UploadRecording             stdhttp.Handler
 	FailRecording               stdhttp.Handler
 	TranslateCaptions           stdhttp.Handler
+	TranscribeCaptions          stdhttp.Handler
 }
 
 // RegisterCallRoutes installs the stable REST contract for calls and
@@ -62,5 +63,8 @@ func RegisterCallRoutes(router chi.Router, routes CallRoutes) {
 	}
 	if routes.TranslateCaptions != nil {
 		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/captions/translate", routes.TranslateCaptions)
+	}
+	if routes.TranscribeCaptions != nil {
+		router.Method(stdhttp.MethodPost, "/api/calls/{roomId}/captions/transcribe", routes.TranscribeCaptions)
 	}
 }

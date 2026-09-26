@@ -20,6 +20,7 @@ func TestRegisterCallRoutesPreservesMethodsAndPaths(t *testing.T) {
 		GetICEServers: handler("ice"), CreateSFUToken: handler("token"),
 		StartTranscription: handler("start"), StopTranscription: handler("stop"),
 		GetTranscriptionStatus: handler("status"), GetTranscript: handler("transcript"),
+		TranscribeCaptions:         handler("captions-transcribe"),
 		RequestTranscriptionUpload: handler("request-upload"), UploadAudioChunkData: handler("upload-data"),
 		CompleteTranscriptionUpload: handler("complete-upload"), UpdateTranscriptSegment: handler("segment"),
 		GetTranscriptArtifact: handler("artifact"),
@@ -32,6 +33,7 @@ func TestRegisterCallRoutesPreservesMethodsAndPaths(t *testing.T) {
 		{stdhttp.MethodPost, "/api/calls/room-1/transcription/stop", "stop"},
 		{stdhttp.MethodGet, "/api/calls/room-1/transcription/status", "status"},
 		{stdhttp.MethodGet, "/api/calls/room-1/transcript", "transcript"},
+		{stdhttp.MethodPost, "/api/calls/room-1/captions/transcribe", "captions-transcribe"},
 		{stdhttp.MethodPost, "/api/calls/room-1/transcription/uploads", "request-upload"},
 		{stdhttp.MethodPut, "/api/calls/room-1/transcription/uploads/chunk-1/data", "upload-data"},
 		{stdhttp.MethodPost, "/api/calls/room-1/transcription/uploads/chunk-1/complete", "complete-upload"},
@@ -54,6 +56,7 @@ func TestRegisterCallRoutesRejectsWrongMethod(t *testing.T) {
 	RegisterCallRoutes(router, CallRoutes{
 		GetICEServers: handler, CreateSFUToken: handler, StartTranscription: handler, StopTranscription: handler,
 		GetTranscriptionStatus: handler, GetTranscript: handler, RequestTranscriptionUpload: handler,
+		TranscribeCaptions:   handler,
 		UploadAudioChunkData: handler, CompleteTranscriptionUpload: handler, UpdateTranscriptSegment: handler,
 		GetTranscriptArtifact: handler,
 	})

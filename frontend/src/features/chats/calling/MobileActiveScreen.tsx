@@ -102,10 +102,10 @@ export function MobileActiveScreen({
     localScreenStream,
     enabled: Boolean(roomId),
   });
-
   const liveCaptions = useLiveCaptions({
     accessToken: accessToken ?? null,
     roomId: roomId ?? null,
+    localAudioStream: localVideoStream,
     displayName: localUserLabel,
     defaultLanguage: "en",
   });

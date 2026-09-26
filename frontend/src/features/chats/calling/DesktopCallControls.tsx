@@ -124,10 +124,10 @@ export function DesktopCallControls() {
   const liveCaptions = useLiveCaptions({
     accessToken: accessToken ?? null,
     roomId: callRoomId,
+    localAudioStream: audioCallRef.current?.getLocalStream?.() ?? localVideoStream,
     displayName: currentUser?.displayName ?? "You",
     defaultLanguage: "en",
   });
-
   const {
     transcriptState,
     transcriptData,

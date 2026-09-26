@@ -19,7 +19,7 @@ import (
 
 const (
 	groqAPIBase     = "https://api.groq.com"
-	defaultSTTModel = "whisper-large-v3-turbo"
+	defaultSTTModel = "qwen3-asr-flash-2025-09-08"
 )
 
 // GroqWordTimestamp is a word-level timestamp from Groq.

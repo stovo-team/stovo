@@ -45,6 +45,14 @@ func TestBackendContainerEnvIncludesTurnConfiguration(t *testing.T) {
 	}
 }
 
+func TestBackendContainerEnvDefaultsToQwenASR(t *testing.T) {
+	env := backendContainerEnv("family", func(_ string, fallback string) string { return fallback })
+	joined := "\n" + strings.Join(env, "\n") + "\n"
+	if !strings.Contains(joined, "\nGROQ_STT_MODEL=qwen3-asr-flash-2025-09-08\n") {
+		t.Fatalf("tenant backend should default to Qwen ASR, got: %q", joined)
+	}
+}
+
 func TestBackendContainerEnvUsesPublicIPWhenTurnHostIsUnset(t *testing.T) {
 	env := backendContainerEnv("family", func(key, fallback string) string {
 		if key == "PUBLIC_IP" {

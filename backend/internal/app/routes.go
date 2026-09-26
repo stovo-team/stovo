@@ -108,9 +108,9 @@ func (s *Server) callRoutes() httptransport.CallRoutes {
 		UploadRecording:    s.authenticated(s.handleUploadRecording),
 		FailRecording:      s.authenticated(s.handleFailRecording),
 		TranslateCaptions:  s.authenticated(s.handleTranslateCaptions),
+		TranscribeCaptions: s.authenticated(s.handleTranscribeCaptions),
 	}
 }
-
 func (s *Server) authRoutes() httptransport.AuthRoutes {
 	privacy := httptransport.NewPrivacyHandler(httptransport.PrivacyOperations[userPublic]{
 		Privacy: s.privacy,

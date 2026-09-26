@@ -129,10 +129,10 @@ export function VoiceChannelStage({
   const liveCaptions = useLiveCaptions({
     accessToken: effectiveAccessToken,
     roomId: effectiveRoomId,
+    localAudioStream: audioCallRef?.current?.getLocalStream?.() ?? localVideoStream ?? session.localVideoStream,
     displayName: currentUser?.displayName ?? "You",
     defaultLanguage: "en",
   });
-
   // Close more menu when clicking outside
   useEffect(() => {
     if (!isMoreMenuOpen) return;

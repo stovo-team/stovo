@@ -1,8 +1,8 @@
 /**
  * useLiveCaptions — Real-time AI Speech Recognition and Live Translation Hook.
  *
- * Captures user speech via browser SpeechRecognition API at zero latency,
- * translates to the participant's chosen language via Groq LLM backend, and
+ * Captures the active call microphone stream, transcribes it with automatic
+ * language detection, translates to the participant's chosen language, and
  * distributes subtitles to call participants.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -19,37 +19,13 @@ export type LiveCaptionItem = {
   timestamp: number;
 };
 
-// Web Speech API interface definitions
-interface SpeechRecognitionEvent extends Event {
-  resultIndex: number;
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionInstance extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-  onresult: ((event: SpeechRecognitionEvent) => void) | null;
-  onerror: ((event: Event) => void) | null;
-  onend: (() => void) | null;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition?: new () => SpeechRecognitionInstance;
-    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
-  }
-}
-
 export type UseLiveCaptionsParams = {
   accessToken?: string | null;
   roomId?: string | null;
   guestToken?: string | null;
   displayName?: string;
   room?: Room | null;
+  localAudioStream?: MediaStream | null;
   defaultLanguage?: string;
 };
 
@@ -87,6 +63,7 @@ export function useLiveCaptions({
   guestToken,
   displayName = "You",
   room,
+  localAudioStream,
   defaultLanguage = "en",
 }: UseLiveCaptionsParams): UseLiveCaptionsReturn {
   const [isCaptionsEnabled, setIsCaptionsEnabled] = useState(false);
@@ -96,14 +73,11 @@ export function useLiveCaptions({
   const [currentInterimCaption, setCurrentInterimCaption] = useState<string | null>(null);
   const [recentCaptions, setRecentCaptions] = useState<LiveCaptionItem[]>([]);
 
-  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-  const isEnabledRef = useRef(isCaptionsEnabled);
-  isEnabledRef.current = isCaptionsEnabled;
+  const recorderRef = useRef<MediaRecorder | null>(null);
   const targetLangRef = useRef(targetLanguage);
   targetLangRef.current = targetLanguage;
 
-  const isSpeechRecognitionSupported = typeof window !== "undefined" &&
-    Boolean(window.SpeechRecognition || window.webkitSpeechRecognition);
+  const isSpeechRecognitionSupported = typeof window !== "undefined" && typeof MediaRecorder !== "undefined";
 
   const setTargetLanguage = useCallback((lang: string) => {
     setTargetLanguageState(lang);
@@ -115,7 +89,7 @@ export function useLiveCaptions({
   }, []);
 
   // Translation dispatch helper
-  const translateText = useCallback(async (text: string, lang: string): Promise<string> => {
+  const translateText = useCallback(async (text: string, lang: string, sourceLang = ""): Promise<string> => {
     if (!text.trim()) return "";
     try {
       const endpoint = guestToken
@@ -134,7 +108,7 @@ export function useLiveCaptions({
       const res = await fetch(endpoint, {
         method: "POST",
         headers,
-        body: JSON.stringify({ text, targetLang: lang }),
+        body: JSON.stringify({ text, sourceLang, targetLang: lang }),
       });
 
       if (!res.ok) return text;
@@ -157,6 +131,7 @@ export function useLiveCaptions({
           speaker?: string;
           text?: string;
           targetLang?: string;
+          sourceLang?: string;
           translated?: string;
         };
 
@@ -164,7 +139,7 @@ export function useLiveCaptions({
           let displayedTranslation = data.translated || data.text;
           // If speaker's targetLang differs from our targetLang, translate to our lang
           if (data.targetLang !== targetLangRef.current && data.text) {
-            displayedTranslation = await translateText(data.text, targetLangRef.current);
+            displayedTranslation = await translateText(data.text, targetLangRef.current, data.sourceLang || "");
           }
 
           const item: LiveCaptionItem = {
@@ -189,113 +164,133 @@ export function useLiveCaptions({
     };
   }, [room, isCaptionsEnabled, translateText]);
 
-  // Speech recognition runner
+  // Audio capture and server-side speech recognition. The server leaves the
+  // source language unspecified so Qwen ASR detects it from the voice.
   useEffect(() => {
     if (!isCaptionsEnabled || !isSpeechRecognitionSupported) {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
-        recognitionRef.current = null;
+      if (recorderRef.current && recorderRef.current.state !== "inactive") {
+        try { recorderRef.current.stop(); } catch {}
       }
+      recorderRef.current = null;
       setCurrentInterimCaption(null);
       return;
     }
 
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) return;
+    const audioTracks = localAudioStream?.getAudioTracks().filter((track) => track.readyState === "live") ?? [];
+    if (audioTracks.length === 0) {
+      setCurrentInterimCaption(null);
+      return;
+    }
 
-    let rec: SpeechRecognitionInstance | null = null;
-    let isRunning = true;
+    let isActive = true;
+    let uploadQueue = Promise.resolve();
+    let recorder: MediaRecorder | null = null;
+    const abortController = new AbortController();
 
-    const startRecognition = () => {
-      if (!isRunning) return;
+    const sendAudioChunk = async (chunk: Blob, filename: string) => {
+      if (chunk.size === 0) return;
+      const endpoint = guestToken
+        ? `${getApiUrl()}/api/guest-meetings/public/${guestToken}/captions/transcribe`
+        : roomId
+        ? `${getApiUrl()}/api/calls/${roomId}/captions/transcribe`
+        : null;
+      if (!endpoint) return;
+
+      const body = new FormData();
+      body.append("audio", chunk, filename);
+      body.append("targetLang", targetLangRef.current);
+      const headers: Record<string, string> = {};
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+
       try {
-        rec = new SpeechRec();
-        rec.continuous = true;
-        rec.interimResults = true;
-        rec.lang = navigator.language || "en-US";
-
-        rec.onresult = async (event: SpeechRecognitionEvent) => {
-          let interimText = "";
-          let finalText = "";
-
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const result = event.results[i];
-            const transcript = result[0]?.transcript ?? "";
-            if (result.isFinal) {
-              finalText += transcript;
-            } else {
-              interimText += transcript;
-            }
-          }
-
-          if (interimText) {
-            setCurrentInterimCaption(interimText);
-          }
-
-          if (finalText.trim()) {
-            setCurrentInterimCaption(null);
-            const currentLang = targetLangRef.current;
-            const translated = await translateText(finalText, currentLang);
-
-            const captionItem: LiveCaptionItem = {
-              id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-              speakerName: displayName,
-              originalText: finalText,
-              translatedText: translated,
-              targetLang: currentLang,
-              timestamp: Date.now(),
-            };
-
-            setRecentCaptions((prev) => [...prev.slice(-4), captionItem]);
-
-            // Broadcast over LiveKit room if available
-            if (room && room.localParticipant) {
-              try {
-                const data = new TextEncoder().encode(
-                  JSON.stringify({
-                    type: "caption",
-                    speaker: displayName,
-                    text: finalText,
-                    translated,
-                    targetLang: currentLang,
-                  })
-                );
-                void room.localParticipant.publishData(data, { reliable: true });
-              } catch (pubErr) {
-                console.warn("[useLiveCaptions] failed to broadcast caption:", pubErr);
-              }
-            }
-          }
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers,
+          body,
+          signal: abortController.signal,
+        });
+        if (!response.ok) return;
+        const result = await response.json() as {
+          text?: string;
+          sourceLang?: string;
+          translatedText?: string;
+          targetLang?: string;
         };
-
-        rec.onerror = (errEvent) => {
-          console.warn("[useLiveCaptions] speech recognition error:", errEvent);
+        if (!isActive || !result.text?.trim()) return;
+        const originalText = result.text.trim();
+        const sourceLang = result.sourceLang || "";
+        const currentLang = result.targetLang || targetLangRef.current;
+        const translated = result.translatedText || originalText;
+        const timestamp = Date.now();
+        const captionItem: LiveCaptionItem = {
+          id: `${timestamp}-${Math.random().toString(36).slice(2, 7)}`,
+          speakerName: displayName,
+          originalText,
+          translatedText: translated,
+          targetLang: currentLang,
+          timestamp,
         };
+        setRecentCaptions((prev) => [...prev.slice(-4), captionItem]);
 
-        rec.onend = () => {
-          // Restart if still enabled
-          if (isRunning && isEnabledRef.current) {
-            setTimeout(startRecognition, 300);
-          }
-        };
-
-        rec.start();
-        recognitionRef.current = rec;
-      } catch (err) {
-        console.warn("[useLiveCaptions] speech recognition start error:", err);
+        if (room?.localParticipant) {
+          const data = new TextEncoder().encode(JSON.stringify({
+            type: "caption",
+            speaker: displayName,
+            text: originalText,
+            sourceLang,
+            translated,
+            targetLang: currentLang,
+          }));
+          void room.localParticipant.publishData(data, { reliable: true });
+        }
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.warn("[useLiveCaptions] caption audio request failed:", error);
+        }
       }
     };
 
-    startRecognition();
+    let recordingInterval: number | undefined;
+    try {
+      const audioStream = new MediaStream(audioTracks);
+      const mimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus", "audio/ogg"];
+      const mimeType = mimeTypes.find((type) => MediaRecorder.isTypeSupported(type));
+      recorder = new MediaRecorder(audioStream, mimeType ? { mimeType } : undefined);
+      const actualMimeType = recorder.mimeType || mimeType || "audio/webm";
+      const extension = actualMimeType.includes("mp4") ? "mp4" : actualMimeType.includes("ogg") ? "ogg" : "webm";
+      recorder.ondataavailable = (event) => {
+        if (!event.data || event.data.size === 0) return;
+        uploadQueue = uploadQueue
+          .then(() => sendAudioChunk(event.data, `caption.${extension}`))
+          .catch((error: unknown) => console.warn("[useLiveCaptions] failed to process audio chunk:", error));
+      };
+      recorder.onstop = () => {
+        // Separate stop/start cycles produce independent media files; a
+        // timeslice fragment is not guaranteed to contain a WebM/MP4 header.
+        if (isActive && recorder?.state === "inactive") recorder.start();
+      };
+      recorder.onerror = (event) => console.warn("[useLiveCaptions] audio capture error:", event);
+      recorder.start();
+      recordingInterval = window.setInterval(() => {
+        if (isActive && recorder?.state === "recording") recorder.stop();
+      }, 5000);
+      recorderRef.current = recorder;
+    } catch (error) {
+      console.warn("[useLiveCaptions] audio capture could not start:", error);
+    }
 
     return () => {
-      isRunning = false;
-      if (rec) {
-        try { rec.stop(); } catch {}
+      isActive = false;
+      if (recordingInterval !== undefined) window.clearInterval(recordingInterval);
+      if (recorder && recorder.state !== "inactive") {
+        try { recorder.stop(); } catch {}
       }
-      recognitionRef.current = null;
+      // Let the final dataavailable event flush after stop; cancel requests
+      // once queued chunks finish (or fail).
+      void uploadQueue.finally(() => abortController.abort());
+      recorderRef.current = null;
     };
-  }, [isCaptionsEnabled, isSpeechRecognitionSupported, displayName, room, translateText]);
+  }, [isCaptionsEnabled, isSpeechRecognitionSupported, displayName, room, localAudioStream, accessToken, roomId, guestToken]);
 
   // Clean old captions after 8 seconds
   useEffect(() => {

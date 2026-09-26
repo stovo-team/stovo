@@ -144,11 +144,11 @@ export default function GuestMeetingPage() {
     accessToken: accessToken ?? null,
     roomId: meetingRoomId,
     guestToken: token,
+    localAudioStream: localStreamRef.current,
     displayName: guestDisplayName,
     room: roomRef.current,
     defaultLanguage: "en",
   });
-
   useEffect(() => {
     if (state !== "joined" || !token || isOrgMemberOrHost) return;
     let isCancelled = false;
