@@ -355,8 +355,11 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 		}
 		result, updateErr := s.guestDB.ExecContext(r.Context(), `
 			UPDATE call_recordings SET status = 'failed', failure_message = $1,
+			file_id = CASE WHEN message_id IS NULL THEN NULL ELSE file_id END,
+			object_key = CASE WHEN message_id IS NULL THEN NULL ELSE object_key END,
+			size_bytes = CASE WHEN message_id IS NULL THEN 0 ELSE size_bytes END,
 			stopped_at = COALESCE(stopped_at, NOW()), updated_at = NOW()
-			WHERE call_id = $2 AND id = $3 AND status IN ('recording', 'stopping', 'processing')
+			WHERE call_id = $2 AND id = $3 AND (status IN ('recording', 'stopping', 'processing') OR (status = 'completed' AND message_id IS NULL))
 		`, message, roomID, recordingID)
 		if updateErr != nil {
 			s.logger.Warnf("recording", "could not persist upload failure room=%s error=%v", roomID, updateErr)
@@ -479,7 +482,7 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 	}
 
 	chatIDPtr := &chatID
-	origName := fmt.Sprintf("meeting-recording-%s.webm", now.Format("2006-01-02-150405"))
+	origName := recordingMessageContent(s.recordingMeetingName(r.Context(), roomID, chatID, user), durationMs) + ".webm"
 	if err := s.legacyUploads.Record(r.Context(), featurefiles.LegacyUpload{
 		FileID:             fileID,
 		FamilyID:           user.FamilyID,
@@ -523,23 +526,17 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 		return
 	}
 
-	// Create a playable video artifact message in chat, named after the meeting.
-	content := recordingMessageContent(s.recordingMeetingName(r.Context(), roomID, chatID, user), durationMs)
-	var replyTo *string
-	if callHistoryMsgID.Valid && strings.TrimSpace(callHistoryMsgID.String) != "" {
-		val := callHistoryMsgID.String
-		replyTo = &val
-	}
-
-	msg, msgErr := s.createCallCompletionMessageWithPayloadContext(r.Context(), user, chatID, sendMessageRequest{
-		Content:          &content,
-		FileIDs:          []string{fileID},
-		ReplyToMessageID: replyTo,
-	})
-	if msgErr == nil {
-		_, _ = s.guestDB.ExecContext(r.Context(), `UPDATE call_recordings SET message_id = $1 WHERE id = $2`, msg.ID, recID)
-	} else {
+	// Attachment-only messages work in end-to-end encrypted chats too.
+	msg, msgErr := s.createRecordingChatMessage(r.Context(), user, chatID, fileID, callHistoryMsgID)
+	if msgErr != nil {
+		_ = s.fileDeletions.Delete(r.Context(), featurefiles.Deletion{FileID: fileID, FamilyID: user.FamilyID, ChatID: &chatID})
+		markRecordingFailed(recID, "Could not post recording to chat")
 		s.logger.Warnf("recording", "post recording message to chat failed chat=%s error=%v", chatID, msgErr)
+		s.json(w, http.StatusInternalServerError, map[string]string{"message": "Video uploaded but could not be posted to chat"})
+		return
+	}
+	if _, err := s.guestDB.ExecContext(r.Context(), `UPDATE call_recordings SET message_id = $1 WHERE id = $2`, msg.ID, recID); err != nil {
+		s.logger.Warnf("recording", "recording message link update failed rec_id=%s message_id=%s error=%v", recID, msg.ID, err)
 	}
 
 	broadcastPayload := map[string]any{

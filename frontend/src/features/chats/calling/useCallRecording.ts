@@ -291,7 +291,8 @@ export function useCallRecording({
           });
 
           if (!uploadRes.ok) {
-            throw new Error(`Upload failed with status ${uploadRes.status}`);
+            const uploadError = await uploadRes.json().catch(() => ({})) as { message?: string };
+            throw new Error(uploadError.message ?? `Upload failed with status ${uploadRes.status}`);
           }
 
           setRecordingState("completed");
