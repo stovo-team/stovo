@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "existingSecret": { "type": "string", "minLength": 1 },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "required": ["repository", "tag"],
+          "properties": {
+            "repository": { "type": "string", "minLength": 1 },
+            "tag": { "type": "string", "minLength": 1 },
+            "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+          }
+        },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "env": {
+          "type": "object",
+          "properties": {
+            "APP_ENV": { "type": "string" },
+            "LOG_LEVEL": { "type": "string" },
+            "STORAGE_PROVIDER": { "type": "string", "enum": ["local", "s3", "minio"] },
+            "MINIO_ENDPOINT": { "type": "string" },
+            "MINIO_SECURE": { "type": "string" },
+            "MINIO_PUBLIC_ENDPOINT": { "type": "string" },
+            "MINIO_PUBLIC_SECURE": { "type": "string" },
+            "MINIO_FILES_BUCKET": { "type": "string" },
+            "MINIO_LOGS_BUCKET": { "type": "string" },
+            "MINIO_CALLS_BUCKET": { "type": "string" },
+            "MAX_UPLOAD_SIZE_MB": { "type": "string" },
+            "GROQ_BASE_URL": { "type": "string" },
+            "GROQ_STT_MODEL": { "type": "string" },
+            "GROQ_CHAT_MODEL": { "type": "string" },
+            "GROQ_STT_COST_PER_AUDIO_HOUR_USD": { "type": "string" },
+            "AI_CALL_TRANSCRIPTION_ENABLED": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "resources": { "type": "object" }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "required": ["repository", "tag"],
+          "properties": {
+            "repository": { "type": "string", "minLength": 1 },
+            "tag": { "type": "string", "minLength": 1 },
+            "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] }
+          }
+        },
+        "replicas": { "type": "integer", "minimum": 1 },
+        "resources": { "type": "object" }
+      }
+    },
+    "app": {
+      "type": "object",
+      "properties": {
+        "domain": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "minLength": 1 },
+        "corsAllowedOrigins": { "type": "string" },
+        "frontendOrigin": { "type": "string", "minLength": 1 },
+        "livekitUrl": { "type": "string" },
+        "turnHost": { "type": "string" },
+        "turnEnabled": { "type": "boolean" },
+        "turnPort": { "type": "string" },
+        "ntfyBaseUrl": { "type": "string" }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "additionalKeys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+        }
+      }
+    }
+  }
+}

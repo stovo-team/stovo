@@ -1,0 +1,174 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "stovo.fullname" . }}-backend
+  labels:
+    {{- include "stovo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: backend
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: backend
+          image: "{{ required \"backend.image.repository must name a built and published image\" .Values.backend.image.repository }}:{{ required \"backend.image.tag must use an immutable release tag\" .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              : "${DATABASE_URL:?DATABASE_URL is required}";
+              : "${REDIS_URL:?REDIS_URL is required}";
+              : "${REDIS_JOBS_URL:?REDIS_JOBS_URL is required}";
+              : "${JWT_SECRET:?JWT_SECRET is required}";
+              : "${REFRESH_TOKEN_SECRET:?REFRESH_TOKEN_SECRET is required}";
+              : "${INVITE_TOKEN_SECRET:?INVITE_TOKEN_SECRET is required}";
+              : "${MESSAGE_ENCRYPTION_KEY:?MESSAGE_ENCRYPTION_KEY is required}";
+              {{- if has .Values.backend.env.STORAGE_PROVIDER (list "s3" "minio") }}
+              : "${MINIO_ACCESS_KEY:?MINIO_ACCESS_KEY is required for S3 storage}";
+              : "${MINIO_SECRET_KEY:?MINIO_SECRET_KEY is required for S3 storage}";
+              {{- end }}
+              {{- if .Values.app.turnEnabled }}
+              : "${TURN_USERNAME:?TURN_USERNAME is required when TURN is enabled}";
+              : "${TURN_PASSWORD:?TURN_PASSWORD is required when TURN is enabled}";
+              {{- end }}
+              {{- if .Values.app.livekitUrl }}
+              : "${LIVEKIT_API_KEY:?LIVEKIT_API_KEY is required when LiveKit is configured}";
+              : "${LIVEKIT_API_SECRET:?LIVEKIT_API_SECRET is required when LiveKit is configured}";
+              {{- end }}
+              exec /usr/local/bin/family-messenger
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "stovo.fullname" . }}-config
+          env:
+            {{- range list "DATABASE_URL" "REDIS_URL" "REDIS_JOBS_URL" "JWT_SECRET" "REFRESH_TOKEN_SECRET" "INVITE_TOKEN_SECRET" "MESSAGE_ENCRYPTION_KEY" }}
+            - name: {{ . }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "existingSecret must name a Kubernetes Secret with backend credentials" $.Values.existingSecret }}
+                  key: {{ . }}
+                  optional: false
+            {{- end }}
+            {{- if has .Values.backend.env.STORAGE_PROVIDER (list "s3" "minio") }}
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.existingSecret }}
+                  key: MINIO_ACCESS_KEY
+                  optional: false
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.existingSecret }}
+                  key: MINIO_SECRET_KEY
+                  optional: false
+            {{- end }}
+            {{- if .Values.app.turnEnabled }}
+            - name: TURN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.existingSecret }}
+                  key: TURN_USERNAME
+                  optional: false
+            - name: TURN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.existingSecret }}
+                  key: TURN_PASSWORD
+                  optional: false
+            {{- end }}
+            {{- if .Values.app.livekitUrl }}
+            - name: LIVEKIT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.existingSecret }}
+                  key: LIVEKIT_API_KEY
+                  optional: false
+            - name: LIVEKIT_API_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.existingSecret }}
+                  key: LIVEKIT_API_SECRET
+                  optional: false
+            {{- end }}
+            {{- range .Values.secrets.additionalKeys }}
+            - name: {{ . }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $.Values.existingSecret }}
+                  key: {{ . }}
+                  optional: false
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/health/db
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: uploads
+              mountPath: /app/uploads
+            - name: logs
+              mountPath: /app/logs
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: uploads
+          {{- if .Values.uploads.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "stovo.fullname" . }}-uploads
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "stovo.fullname" . }}-backend
+  labels:
+    {{- include "stovo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  type: {{ .Values.service.backend.type }}
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: backend
+  ports:
+    - name: http
+      port: {{ .Values.service.backend.port }}
+      targetPort: http
+      protocol: TCP
