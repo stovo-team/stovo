@@ -136,6 +136,9 @@ export function useChatSocketConnection({
       auth: { token },
       query: { token },
       transports,
+      // Bind lifecycle and call handlers before opening the namespace so a fast
+      // Engine.IO handshake cannot race the Socket.IO CONNECT packet/listeners.
+      autoConnect: false,
       // The backend Socket.IO implementation cannot reliably resume an authenticated
       // polling session over WebSocket: its WebSocket handshake omits the URL used by
       // the server's token extraction. Keep the authenticated polling transport for
@@ -156,6 +159,33 @@ export function useChatSocketConnection({
       });
     };
     socket.on("connect_error", logSocketConnectError);
+
+    const observeEnginePacket = (direction: "sent" | "received", packet: { type: string; data?: unknown }) => {
+      if (packet.type !== "message" || typeof packet.data !== "string") return;
+      const data = packet.data;
+      const kind = data.startsWith("0")
+        ? "namespace-connect"
+        : data.startsWith("4")
+          ? "namespace-connect-error"
+          : null;
+      if (kind) {
+        console.info("[realtime] Socket.IO namespace packet", {
+          direction,
+          kind,
+          transport: socket.io.engine?.transport?.name ?? "unknown",
+        });
+      }
+    };
+    let observedEngine: typeof socket.io.engine;
+    const attachEnginePacketObservers = () => {
+      const engine = socket.io.engine;
+      if (!engine || engine === observedEngine) return;
+      observedEngine = engine;
+      engine?.on("packetCreate", (packet) => observeEnginePacket("sent", packet));
+      engine?.on("packet", (packet) => observeEnginePacket("received", packet));
+    };
+    socket.io.on("open", attachEnginePacketObservers);
+    attachEnginePacketObservers();
 
     // Track foreground/background state on Android so the backend can decide
     // whether to suppress ntfy push notifications (only suppress when in foreground).
@@ -241,6 +271,7 @@ export function useChatSocketConnection({
     socket.on("connect", syncAfterSocketResume);
     socket.io.on("reconnect", syncAfterSocketResume);
     socket.on("sync:needed", syncAfterSocketResume);
+    socket.connect();
 
     return () => {
       appStateCancelled = true;
@@ -248,6 +279,7 @@ export function useChatSocketConnection({
       removePictureInPictureActionListener?.();
       socket.off("connect", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
+      socket.io.off("open", attachEnginePacketObservers);
       socket.off("sync:needed", syncAfterSocketResume);
       socket.off("connect_error", logSocketConnectError);
       detachMessageListeners();
