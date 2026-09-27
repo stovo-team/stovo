@@ -240,7 +240,7 @@ export function VoiceChannelStage({
       : transcriptState === "recording"
         ? "AI Notes is on. It will stop automatically when the call ends."
         : null;
-  const visibleNotice = transcriptError ? aiNotesStatus : callNotice && /^(?:re)?connecting to (?:voice channel|(?:the )?call)/i.test(callNotice) ? aiNotesStatus : callNotice ?? aiNotesStatus;
+  const visibleNotice = transcriptError ? aiNotesStatus : callNotice && /failed|failure|error|denied|unsupported|timed out|offline|could not|unable|not available/i.test(callNotice) ? callNotice : null;
 
   const resolveMemberInfo = (userId: string) => {
     if (currentUser && userId === currentUser.id) {
