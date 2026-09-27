@@ -136,11 +136,11 @@ export function useChatSocketConnection({
       auth: { token },
       query: { token },
       transports,
-      // On native Android/iOS, prevent the polling→WebSocket upgrade. The upgrade
-      // causes a brief disconnect window on every app launch — any call:start emitted
-      // during that window lands on an unstable server session, causing the first call
-      // to fail while subsequent calls (on the stable WebSocket) succeed.
-      upgrade: !isNative,
+      // The backend Socket.IO implementation cannot reliably resume an authenticated
+      // polling session over WebSocket: its WebSocket handshake omits the URL used by
+      // the server's token extraction. Keep the authenticated polling transport for
+      // browsers as well as native clients so calls are not lost during upgrade.
+      upgrade: false,
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity
