@@ -579,7 +579,7 @@ func (s *Server) isTrustedProxy(remoteIP net.IP) bool {
 }
 
 func (s *Server) socketHTTPHandler() http.Handler {
-	return socketClientIPMiddleware(s.sockets.HttpHandler(), s.getClientIP)
+	return socketClientIPMiddleware(httptransport.NormalizeWebSocketUpgrade(s.sockets.HttpHandler()), s.getClientIP)
 }
 
 func socketClientIPMiddleware(next http.Handler, getClientIP func(*http.Request) string) http.Handler {
