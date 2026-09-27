@@ -43,6 +43,7 @@ jobs:
       - name: Validate rendered Helm manifests against Kubernetes 1.30 schemas
         shell: bash
         run: |
+          set -o pipefail
           helm template stovo charts/stovo \
             --set backend.image.repository=registry.example.test/stovo/backend \
             --set backend.image.tag=v1.2.3 \

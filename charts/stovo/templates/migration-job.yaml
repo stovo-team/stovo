@@ -27,7 +27,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: migrate
-          image: "{{ required \"backend.image.repository must name a built and published image\" .Values.backend.image.repository }}:{{ required \"backend.image.tag must use an immutable release tag\" .Values.backend.image.tag }}"
+          image: {{ printf "%s:%s" (required "backend.image.repository must name a built and published image" .Values.backend.image.repository) (required "backend.image.tag must use an immutable release tag" .Values.backend.image.tag) | quote }}
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           command: ["/bin/sh", "-ec"]
           args:

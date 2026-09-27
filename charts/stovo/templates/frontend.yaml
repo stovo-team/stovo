@@ -25,7 +25,7 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: frontend
-          image: "{{ required \"frontend.image.repository must name a built and published image\" .Values.frontend.image.repository }}:{{ required \"frontend.image.tag must use an immutable release tag\" .Values.frontend.image.tag }}"
+          image: {{ printf "%s:%s" (required "frontend.image.repository must name a built and published image" .Values.frontend.image.repository) (required "frontend.image.tag must use an immutable release tag" .Values.frontend.image.tag) | quote }}
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - name: http
