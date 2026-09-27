@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" data-theme-mode="dark" data-platform="web">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Call UI · real component preview</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <style>
+      /* Only preview framing is local; the call stage, tiles, statuses, buttons,
+         icons, and audio settings come from production React components/CSS. */
+      body { margin: 0; }
+      #root { min-height: 100vh; }
+      .call-preview-page { min-height: 100vh; padding: 20px; background: var(--background-primary, #101014); color: var(--text-primary, #f7f7fb); }
+      .call-preview-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; max-width:1040px; margin:0 auto 12px; }
+      .call-preview-toolbar button { border:1px solid var(--border-default, #333); border-radius:8px; background:var(--surface-raised, #222); color:inherit; padding:8px 12px; cursor:pointer; }
+      .call-preview-switches { display:flex; gap:8px; flex-wrap:wrap; }
+      .call-preview-switches button.active { background:var(--accent-primary, #7258e8); }
+      .call-preview-note { max-width:1040px; margin:0 auto 10px; color:var(--text-secondary, #aaa); font-size:12px; }
+      .call-preview-panel { display:flex; flex-direction:column; gap:14px; max-width:1040px; min-height:min(700px, calc(100vh - 110px)); margin:0 auto; padding:18px; border:1px solid var(--border-default, #333); border-radius:14px; background:var(--surface-card, #17171d); }
+      .call-preview-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .call-preview-header strong { font-size:14px; }
+      .call-preview-header span { color:var(--text-secondary, #aaa); font-size:12px; }
+      .call-preview-panel .call-popup-video-area { flex:1; min-height:390px; display:flex; align-items:center; justify-content:center; padding:16px; background:transparent; }
+      .call-preview-panel .call-grid { max-width:100%; }
+      .call-preview-panel .call-ctrl-row { align-items:flex-start; }
+      .call-preview-settings-anchor { position:relative; }
+      .call-preview-mobile .call-preview-panel { max-width:430px; min-height:calc(100vh - 110px); border-radius:24px; }
+      .call-preview-mobile .call-preview-panel .call-popup-video-area { min-height:460px; }
+      .call-preview-mobile .call-preview-panel .call-grid { grid-template-columns:1fr !important; }
+      .call-preview-mobile .call-preview-panel .call-grid__tile { min-height:160px; }
+      .call-preview-mobile .call-preview-panel .call-ctrl-row { gap:10px; }
+      .call-preview-mobile .call-preview-panel .guest-device-select { display:none; }
+      .call-preview-mobile .call-preview-panel .call-audio-popup-backdrop { position:fixed; z-index:3000; }
+      @media (max-width:600px) { .call-preview-page { padding:10px; } .call-preview-toolbar { align-items:flex-start; flex-direction:column; } .call-preview-panel { padding:12px; } .call-preview-panel .call-popup-video-area { min-height:360px; } }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/call-ui-preview.tsx"></script>
+  </body>
+</html>

@@ -1,7 +1,7 @@
-import { FormEvent, useEffect, useId, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Room, RoomEvent, Track, VideoPreset } from "livekit-client";
-import { Camera, CameraOff, ChevronDown, Link2Off, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
+import { Camera, CameraOff, Link2Off, Mic, MicOff, PhoneOff, ScreenShare, ScreenShareOff, Settings, Users, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import StovoLogo from "../components/StovoLogo";
 import IconIntelligence from "../components/icons/IconIntelligence";
@@ -12,6 +12,7 @@ import { useLiveCaptions } from "../features/chats/calling/useLiveCaptions";
 import { LiveCaptionsOverlay } from "../features/chats/calling/LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "../features/chats/calling/MeetingIntelligencePopover";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
+import { CallDeviceControl } from "../features/chats/calling/CallDeviceControl";
 import { CallParticipantStage } from "../features/chats/calling/CallParticipantStage";
 import { createCallSpeakingIndicator, CALL_SPEAKING_THRESHOLD, type CallSpeakingState } from "../features/chats/calling/callSpeakingIndicator";
 import {
@@ -35,10 +36,6 @@ type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "exp
 type RemoteParticipantStream = { id: string; cameraStream: MediaStream | null; screenStream: MediaStream | null };
 type SinkableMediaElement = HTMLMediaElement & { setSinkId?: (deviceId: string) => Promise<void> };
 type SinkableAudioContext = AudioContext & { setSinkId?: (deviceId: string) => Promise<void> };
-
-function deviceLabel(device: MediaDeviceInfo, fallback: string, index: number) {
-  return device.label || `${fallback} ${index + 1}`;
-}
 
 function streamAspectRatio(stream: MediaStream | null | undefined) {
   const settings = stream?.getVideoTracks()[0]?.getSettings();
@@ -706,9 +703,9 @@ export default function GuestMeetingPage() {
         {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}
         <div className="voice-room-bottom-bar">
           <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Meeting controls">
-            <DeviceControl label="Microphone" action="microphone" active={microphoneEnabled} onToggle={() => toggleDevice("audio")}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
-            <DeviceControl label="Speaker" action="audio-output" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
-            <DeviceControl label="Camera" action="camera" active={cameraEnabled} onToggle={() => toggleDevice("video")}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
+            <CallDeviceControl label="Microphone" action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
+            <CallDeviceControl label="Speaker" action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
+            <CallDeviceControl label="Camera" action="camera" active={cameraEnabled} deviceKind="videoinput" selectedDeviceId={cameraDeviceId} devices={devices} onToggle={() => toggleDevice("video")} onDeviceChange={(value) => void selectInputDevice("video", value)} />
             <CallControlButton action="audio-output" state="idle" className="voice-dock-btn guest-mobile-output-control" aria-label="Audio output" label="Audio output" onClick={cycleAudioOutput} />
             <CallControlButton action="flip-camera" state="idle" className="voice-dock-btn guest-mobile-flip-control" aria-label="Flip camera" label="Flip camera" onClick={() => void flipCamera()} />
             <CallControlButton action="screen-share" state={isScreenSharing ? "active" : "idle"} className="voice-dock-btn" label={isScreenSharing ? "Stop screen sharing" : "Share screen"} title={isScreenSharing ? "Stop screen sharing" : "Share screen"} onClick={() => void toggleScreenShare()} />
@@ -793,9 +790,9 @@ export default function GuestMeetingPage() {
         <video ref={localRef} className={cameraEnabled ? "visible" : ""} autoPlay muted playsInline />
         {!cameraEnabled && <div className="guest-preview-empty"><span className={`guest-preview-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar guest-preview-avatar" file={currentUser?.profilePhoto} label={guestDisplayName} /></span><span>{guestDisplayName}</span></div>}
         <div className="guest-preview-controls shared-call-controls">
-          <DeviceControl label="Microphone" action="microphone" active={microphoneEnabled} onToggle={() => toggleDevice("audio")}><DeviceSelect value={microphoneDeviceId} onChange={(value) => void selectInputDevice("audio", value)} devices={inputDevices} fallback="Microphone" /></DeviceControl>
-          <DeviceControl label="Speaker" action="audio-output" active={speakerEnabled} onToggle={() => setSpeakerEnabled((enabled) => !enabled)}><DeviceSelect value={speakerDeviceId} onChange={setSpeakerDeviceId} devices={outputDevices} fallback="Speaker" /></DeviceControl>
-          <DeviceControl label="Camera" action="camera" active={cameraEnabled} onToggle={() => toggleDevice("video")}><DeviceSelect value={cameraDeviceId} onChange={(value) => void selectInputDevice("video", value)} devices={videoDevices} fallback="Camera" /></DeviceControl>
+          <CallDeviceControl label="Microphone" action="microphone" active={microphoneEnabled} deviceKind="audioinput" selectedDeviceId={microphoneDeviceId} devices={devices} onToggle={() => toggleDevice("audio")} onDeviceChange={(value) => void selectInputDevice("audio", value)} />
+          <CallDeviceControl label="Speaker" action="audio-output" active={speakerEnabled} deviceKind="audiooutput" selectedDeviceId={speakerDeviceId} devices={devices} onToggle={() => setSpeakerEnabled((enabled) => !enabled)} onDeviceChange={setSpeakerDeviceId} />
+          <CallDeviceControl label="Camera" action="camera" active={cameraEnabled} deviceKind="videoinput" selectedDeviceId={cameraDeviceId} devices={devices} onToggle={() => toggleDevice("video")} onDeviceChange={(value) => void selectInputDevice("video", value)} />
           <CallControlButton action="audio-output" state="idle" className="guest-preview-action guest-mobile-output-control" aria-label="Audio output" label="Audio output" onClick={cycleAudioOutput} />
           <CallControlButton action="flip-camera" state="idle" className="guest-preview-action guest-mobile-flip-control" aria-label="Flip camera" label="Flip camera" onClick={() => void flipCamera()} />
         </div>
@@ -810,52 +807,6 @@ export default function GuestMeetingPage() {
   </section></main>;
 }
 
-function DeviceControl({ label, action, active, onToggle, children }: { label: string; action: "microphone" | "camera" | "audio-output"; active: boolean; onToggle: () => void; children: React.ReactNode }) {
-  return <div className="guest-device-control"><CallControlButton action={action} toggle state={active ? "active" : "muted"} label={`Toggle ${label}`} aria-label={`Toggle ${label}`} className={active ? "active" : ""} onClick={onToggle} />{children}</div>;
-}
-function DeviceSelect({ value, onChange, devices, fallback }: { value: string; onChange: (value: string) => void; devices: MediaDeviceInfo[]; fallback: string }) {
-  const [open, setOpen] = useState(false);
-  const controlRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuId = useId();
-  const selectedLabel = value ? devices.find((device) => device.deviceId === value)?.label || fallback : "System default";
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOnOutsidePress = (event: MouseEvent) => {
-      if (controlRef.current && !controlRef.current.contains(event.target as Node)) setOpen(false);
-    };
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
-    };
-    document.addEventListener("mousedown", closeOnOutsidePress);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutsidePress);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [open]);
-
-  function chooseDevice(deviceId: string) {
-    onChange(deviceId);
-    setOpen(false);
-    triggerRef.current?.focus();
-  }
-
-  return <div className="guest-device-select" ref={controlRef}>
-    <button ref={triggerRef} type="button" className="guest-device-menu-trigger" aria-label={`Select ${fallback}`} aria-haspopup="listbox" aria-controls={menuId} aria-expanded={open} title={`Select ${fallback}: ${selectedLabel}`} onClick={() => setOpen((isOpen) => !isOpen)}><ChevronDown size={16} aria-hidden="true" /></button>
-    {open && <div id={menuId} className="guest-device-menu" role="listbox" aria-label={`${fallback} device`}>
-      <div className="guest-device-menu-heading"><span>{fallback}</span></div>
-      <div className="guest-device-menu-options">
-        <button type="button" role="option" aria-selected={!value} className="guest-device-menu-option" onClick={() => chooseDevice("")}><span>System default</span>{!value && <span aria-hidden="true">✓</span>}</button>
-        {devices.map((device, index) => <button type="button" role="option" aria-selected={device.deviceId === value} className="guest-device-menu-option" key={device.deviceId} onClick={() => chooseDevice(device.deviceId)}><span>{deviceLabel(device, fallback, index)}</span>{device.deviceId === value && <span aria-hidden="true">✓</span>}</button>)}
-      </div>
-    </div>}
-  </div>;
-}
 function GuestParticipantTile({ label, hasVideo, muted = false, speaking = false, avatar, children, className = "", style }: { label: string; hasVideo: boolean; muted?: boolean; speaking?: boolean; avatar?: React.ReactNode; children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return <div className={`voice-participant-card${hasVideo ? " has-video" : ""}${className ? ` ${className}` : ""}`} style={style}>
     {hasVideo ? <div className="voice-participant-video-container">{children}{speaking && <span className="voice-video-speaking-border guest-video-speaking-border" aria-label="Speaking" />}{muted && <span className="voice-card-muted-badge voice-card-muted-badge--video" aria-label="Microphone muted"><MicOff size={14} /></span>}</div> : <><div className="voice-participant-avatar-wrapper voice-avatar-wrapper--xl">{avatar ?? <span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span>}{muted && <span className="voice-card-muted-badge" aria-label="Microphone muted"><MicOff size={14} /></span>}</div>{children}</>}

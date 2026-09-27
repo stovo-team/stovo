@@ -28,6 +28,7 @@ import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { useCallFeatureContext } from "./CallFeatureContext";
 import { CallControlButton } from "./CallControlButton";
+import { CallDeviceControls } from "./CallDeviceControls";
 import { CallParticipantStage } from "./CallParticipantStage";
 
 /**
@@ -56,6 +57,7 @@ export function DesktopCallControls() {
     audioCallRef,
     callAudioSettings,
     callAudioCapabilities,
+    callAudioDevices,
     isCallInviteOpen,
     setIsCallInviteOpen,
     callParticipantIds,
@@ -345,7 +347,7 @@ export function DesktopCallControls() {
 
       {/* ── Controls row ── */}
       {!isCallMinimized && !isMobileViewport && (
-        <div className="call-ctrl-row call-popup-ctrl-row shared-call-controls">
+        <div className="call-ctrl-row call-popup-ctrl-row shared-call-controls guest-call-controls">
           {callPhase === "incoming" && (
             <>
               <div className="call-ctrl-wrap">
@@ -367,10 +369,23 @@ export function DesktopCallControls() {
           )}
           {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
             <>
-              <div className="call-ctrl-wrap">
-                <CallControlButton action="microphone" state={callAudioSettings.micMuted ? "muted" : "active"} className="call-ctrl-btn" label={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"} onClick={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })} />
-                <span>{callAudioSettings.micMuted ? "Unmute" : "Mute"}</span>
-              </div>
+              <CallDeviceControls
+                settings={callAudioSettings}
+                devices={callAudioDevices}
+                capabilities={callAudioCapabilities}
+                controlClassName="call-ctrl-btn"
+                cameraActive={callType === "video" && callAudioSettings.cameraEnabled}
+                showCamera={callPhase === "in-call"}
+                onPatch={(patch) => void applyCallAudioPatch(patch)}
+                onToggleCamera={() => {
+                  if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
+                    setCallType("video");
+                    void audioCallRef.current?.toggleVideo(true);
+                  } else {
+                    void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
+                  }
+                }}
+              />
               {isMobileViewport && (
                 <div className="call-ctrl-wrap">
                   <CallControlButton
@@ -421,25 +436,6 @@ export function DesktopCallControls() {
               )}
               {callPhase === "in-call" && (
                 <>
-                  <div className="call-ctrl-wrap">
-                    <CallControlButton
-                      action="camera"
-                      state={callType === "video" && callAudioSettings.cameraEnabled ? "active" : "muted"}
-                      className="call-ctrl-btn"
-                      label={callType === "video" && callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
-                      onClick={() => {
-                        if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
-                          setCallType("video");
-                          void audioCallRef.current?.toggleVideo(true);
-                        } else {
-                          void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
-                        }
-                      }}
-                    />
-                    <span>
-                      {callType === "video" && callAudioSettings.cameraEnabled ? "Camera" : "Camera off"}
-                    </span>
-                  </div>
                   <div className="call-ctrl-wrap">
                     <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="call-ctrl-btn" label={callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"} onClick={() => void toggleScreenShare()} />
                     <span>

@@ -27,6 +27,7 @@ import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 import { CallControlButton } from "./CallControlButton";
+import { CallDeviceControls } from "./CallDeviceControls";
 import { CallParticipantStage } from "./CallParticipantStage";
 import { useTranscription } from "./useTranscription";
 import { useCallRecording } from "./useCallRecording";
@@ -65,7 +66,7 @@ export function VoiceChannelStage({
     activeCallChatId,
     callNotice,
     callAudioSettings,
-    callAudioCapabilities,
+    callAudioCapabilities, callAudioDevices,
     callRemoteMedia,
     applyCallAudioPatch,
     toggleScreenShare,
@@ -508,10 +509,8 @@ export function VoiceChannelStage({
             </button>
           </div>
         ) : (
-          <div className="voice-room-in-call-controls shared-call-controls" role="toolbar" aria-label="Voice Channel Controls">
-            <CallControlButton action="microphone" state={callAudioSettings.micMuted ? "muted" : "active"} className="voice-dock-btn" onClick={handleToggleMic} label={callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone")} />
-
-            <CallControlButton action="camera" state={callAudioSettings.cameraEnabled ? "active" : "muted"} className="voice-dock-btn" onClick={handleToggleVideo} label={callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera")} />
+          <div className="voice-room-in-call-controls guest-call-controls shared-call-controls" role="toolbar" aria-label="Voice Channel Controls">
+            <CallDeviceControls settings={callAudioSettings} devices={callAudioDevices} capabilities={callAudioCapabilities} controlClassName="voice-dock-btn" labels={{ microphone: voiceStrings?.microphone, speaker: voiceStrings?.speaker, camera: voiceStrings?.camera }} toggleLabels={{ microphone: callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone"), camera: callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera") }} deviceStrings={voiceStrings} onPatch={(patch) => void applyCallAudioPatch(patch)} onToggleCamera={handleToggleVideo} />
 
             {/* Screen Demonstration / Share button */}
             <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="voice-dock-btn" onClick={handleToggleScreenShare} label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")} />
