@@ -38,7 +38,7 @@ frontend/src/config/strings/english.ts	938
 frontend/src/config/strings/russian.ts	967
 frontend/src/features/chats/calling/DesktopCallControls.tsx	570
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	674
-frontend/src/features/chats/calling/useCallSession.ts	1042
+frontend/src/features/chats/calling/useCallSession.ts	1047
 frontend/src/features/chats/calling/useTranscription.ts	554
 frontend/src/features/chats/calling/VoiceChannelStage.tsx	641
 frontend/src/features/chats/composer/Composer.tsx	963
