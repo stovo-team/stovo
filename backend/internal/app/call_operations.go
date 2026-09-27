@@ -1235,18 +1235,16 @@ func (s *Server) leaveCallSession(chatID, userID string) (*callSession, bool, bo
 }
 
 func (s *Server) endCallForUser(userID string) (*callSession, bool) {
-	s.calls.Lock()
-	defer s.calls.Unlock()
-	roomID, ok := s.calls.ActiveRoomLocked(userID)
-	if !ok {
+	session := s.getActiveCallSessionForUser(userID)
+	if session == nil {
 		return nil, false
 	}
-	_, exists := s.calls.ByRoomLocked(roomID)
-	if !exists {
-		s.calls.ClearActiveLocked(userID)
+	participant := session.Participants[userID]
+	if participant == nil || participant.State == participantRinging || participant.State == participantInvited {
 		return nil, false
 	}
-	return nil, false
+	left, ok, ended := s.leaveCallSession(session.ChatID, userID)
+	return left, ok && ended
 }
 
 func (s *Server) userHasActiveCall(userID string) bool {
