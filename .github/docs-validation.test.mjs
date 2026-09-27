@@ -182,8 +182,10 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
   assert.match(backend.text, /readinessProbe:/);
   assert.match(backend.text, /readinessProbe:[\s\S]*?path:\s*\/api\/health\/db/, 'readiness must gate on PostgreSQL health');
   assert.match(backend.text, /livenessProbe:/);
-  assert.match(backend.text, /resources:[\s\S]*?requests:[\s\S]*?limits:/);
-  assert.match(frontend.text, /resources:[\s\S]*?requests:[\s\S]*?limits:/);
+  assert.match(backend.text, /resources:[\s\S]*?requests:/);
+  assert.match(backend.text, /resources:[\s\S]*?limits:/);
+  assert.match(frontend.text, /resources:[\s\S]*?requests:/);
+  assert.match(frontend.text, /resources:[\s\S]*?limits:/);
   for (const key of ['DATABASE_URL', 'REDIS_URL', 'REDIS_JOBS_URL', 'JWT_SECRET', 'REFRESH_TOKEN_SECRET', 'INVITE_TOKEN_SECRET', 'MESSAGE_ENCRYPTION_KEY']) {
     requireSecretKey(backend.text, 'stovo-secrets', key);
   }
