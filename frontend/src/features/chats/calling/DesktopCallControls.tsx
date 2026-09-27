@@ -185,7 +185,7 @@ export function DesktopCallControls() {
                 : "Audio call"}
             </strong>
             )}
-            {callNotice && (!isVoiceChannel || /failed|failure|error|denied|unsupported|timed out|offline|could not|unable|not available/i.test(callNotice)) && <span className="call-popup-notice">{callNotice}</span>}
+            {callNotice && (!isVoiceChannel || /failed|failure|error|denied|unsupported|not supported|timed out|offline|could not|unable|not available/i.test(callNotice)) && <span className="call-popup-notice">{callNotice}</span>}
           </>
         <div className="call-popup-header-actions">
           {callPhase !== "incoming" && !isCallMinimized && (session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
