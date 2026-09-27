@@ -62,6 +62,8 @@ describe("LiveKitMediaEngine video quality", () => {
     handlers["participant-connected"]?.(participant);
     handlers["track-muted"]?.({ source: "microphone" }, participant);
     handlers["track-unmuted"]?.({ source: "microphone" }, participant);
+    handlers["track-muted"]?.({ source: "camera" }, participant);
+    handlers["track-unmuted"]?.({ source: "screen-share" }, participant);
 
     expect(onRemoteMicrophoneMuteChange.mock.calls).toEqual([
       ["peer-1", true],

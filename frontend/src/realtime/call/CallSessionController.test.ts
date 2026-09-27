@@ -103,4 +103,34 @@ describe("CallSessionController call quality", () => {
       data: { type: "microphone-state", muted: true },
     }));
   });
+
+  it("ignores malformed microphone-state signals and signals from another chat", async () => {
+    const socket = { emit: vi.fn() };
+    const peerIds = new Set<string>();
+    const mesh = {
+      setChatId: vi.fn(), setRoomId: vi.fn(), setLocalUserId: vi.fn(), setLocalStream: vi.fn(),
+      getPeerIds: () => [...peerIds],
+      disconnectPeer: vi.fn((id: string) => peerIds.delete(id)),
+      connectPeer: vi.fn(async (id: string) => { peerIds.add(id); }),
+      handleSignal: vi.fn(async () => undefined),
+      onRemoteStream: undefined as ((id: string, stream: MediaStream) => void) | undefined,
+    };
+    const factory = { createMesh: () => mesh, createSFU: () => ({}) } as unknown as MediaEngineFactory;
+    const controller = new CallSessionController(socket as never, "token", factory);
+    const onRemoteMediaChange = vi.fn();
+    controller.onRemoteMediaChange = onRemoteMediaChange;
+    controller.setLocalUserId("local");
+    controller.setChatId("chat-1");
+    const stream = { getTracks: () => [], getAudioTracks: () => [], getVideoTracks: () => [] } as unknown as MediaStream;
+    Object.assign(controller, { sourceStream: stream, localStream: stream });
+
+    await controller.handleSignal({ chatId: "chat-1", fromUserId: "peer", data: { type: "microphone-state", muted: "true" } });
+    await controller.handleSignal({ chatId: "chat-1", data: { type: "microphone-state", muted: true } });
+    await controller.handleSignal({ chatId: "other-chat", fromUserId: "peer", data: { type: "microphone-state", muted: true } });
+    await controller.syncMeshPeers(["local", "peer"]);
+    mesh.onRemoteStream?.("peer", stream);
+
+    expect(mesh.handleSignal).not.toHaveBeenCalled();
+    expect(onRemoteMediaChange).toHaveBeenLastCalledWith([expect.objectContaining({ userId: "peer", isMuted: false })]);
+  });
 });
