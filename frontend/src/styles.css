@@ -16606,6 +16606,20 @@ button.attachment-nav-item:focus-visible {
   color: #ffffff;
 }
 
+.mobile-call-strip-main:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+}
+
+.mobile-call-strip-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: transparent;
+  transform: none;
+}
+
+.mobile-call-strip-btn.is-muted:hover:not(:disabled) { background: color-mix(in oklab, var(--stovo-primary) 18%, var(--island-surface-raised)); }
+.mobile-call-strip-btn--end:hover:not(:disabled) { background: #ff3b30; }
+
 .mobile-call-strip-main {
   align-items: center;
   background: transparent;
