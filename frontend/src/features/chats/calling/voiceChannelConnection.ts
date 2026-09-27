@@ -7,7 +7,7 @@ export function waitForVoiceChannelConnection(
 ) {
   return waitForSocketConnection(socket, {
     // Cover Socket.IO's exponential backoff after a temporary disconnect.
-    attempts: 8,
+    attempts: 24,
     attemptTimeoutMs: 5_000,
     retryDelayMs: 500,
     onAttempt,
