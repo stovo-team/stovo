@@ -2,6 +2,7 @@ type SocketConnection = {
   connected: boolean;
   active?: boolean;
   connect: () => unknown;
+  disconnect?: () => unknown;
   on: (event: "connect", listener: () => void) => unknown;
   off: (event: "connect", listener: () => void) => unknown;
 };
@@ -15,7 +16,11 @@ type WaitForSocketConnectionOptions = {
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-function waitForSingleConnection(socket: SocketConnection, timeoutMs: number): Promise<boolean> {
+function waitForSingleConnection(
+  socket: SocketConnection,
+  timeoutMs: number,
+  restartNamespace = false,
+): Promise<boolean> {
   if (socket.connected) return Promise.resolve(true);
 
   return new Promise((resolve) => {
@@ -32,7 +37,12 @@ function waitForSingleConnection(socket: SocketConnection, timeoutMs: number): P
     // pending; calling it on each retry queues duplicate CONNECT packets. The
     // active socket already has its own reconnection loop, so only start sockets
     // that are not active.
-    if (!socket.active) socket.connect();
+    if (restartNamespace && socket.disconnect) {
+      socket.disconnect();
+      socket.connect();
+    } else if (!socket.active) {
+      socket.connect();
+    }
   });
 }
 
@@ -50,7 +60,12 @@ export async function waitForSocketConnection(
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     onAttempt?.(attempt, attempts);
-    if (await waitForSingleConnection(socket, attemptTimeoutMs)) return true;
+    // A Socket.IO manager can keep its Engine.IO polling transport alive while
+    // the namespace handshake is wedged. In that state `active` is true, so
+    // connect() is normally a no-op and the call event is never emitted. Give
+    // the normal reconnect one window, then reset the namespace once.
+    const restartNamespace = attempt === 2 && socket.active === true;
+    if (await waitForSingleConnection(socket, attemptTimeoutMs, restartNamespace)) return true;
     if (attempt < attempts) await delay(retryDelayMs);
   }
 
