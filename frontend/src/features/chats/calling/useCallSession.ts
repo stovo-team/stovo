@@ -516,7 +516,7 @@ export function useCallSession({
     setCallTrackStatus(null);
     setCallAudioWarning(null);
     setIsPeerSpeaking(false);
-    setCallNotice(notice ?? null);
+    setCallNotice(notice === "Call ended" ? null : notice ?? null);
   }
 
   async function startDirectCall(type: "audio" | "video", inviteUserIds?: string[]) {
@@ -841,7 +841,6 @@ export function useCallSession({
     if (!socketRef.current || !activeCallChatId) {
       return;
     }
-    const endingChatId = activeCallChatId;
     const terminationEvent = callTerminationEvent(callPhaseRef.current);
     setCallNotice("Ending call...");
     stopCallRingtone();
@@ -877,12 +876,7 @@ export function useCallSession({
     setCallTrackStatus(null);
     setCallAudioWarning(null);
     setIsPeerSpeaking(false);
-    setCallNotice("Call ended");
-    if (selectedChat?.id === endingChatId && selectedChat.type === "direct") {
-      window.setTimeout(() => {
-        setCallNotice((current) => (current === "Call ended" ? null : current));
-      }, 2200);
-    }
+    setCallNotice(null);
   }
 
   /**
