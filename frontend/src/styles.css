@@ -25318,6 +25318,116 @@ button.chat-info-title-edit:active:not(:disabled) {
    Bottom Bar & Controls
    ───────────────────────────────────────────────────────────── */
 
+/* Shared structure and control affordances for direct/group calls, voice
+   channels, and guest meetings. Surface wrappers retain their own placement. */
+.shared-call-stage {
+  color: var(--text-primary, #fff);
+  min-width: 0;
+}
+
+.call-grid__flip-camera {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.56);
+}
+
+.shared-call-stage .voice-room-grid,
+.shared-call-stage .call-grid {
+  margin-inline: auto;
+  max-width: 1120px;
+  width: 100%;
+}
+
+.shared-call-stage .voice-participant-card,
+.shared-call-stage .call-grid__tile {
+  background: #080808;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 18px;
+  box-sizing: border-box;
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.shared-call-stage .voice-participant-card.is-speaking,
+.shared-call-stage .call-grid__tile.is-speaking {
+  border-color: #22c55e;
+  box-shadow: 0 0 22px rgba(34, 197, 94, .28);
+}
+
+.shared-call-controls {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.shared-call-controls .call-ctrl-btn,
+.shared-call-controls .voice-dock-btn,
+.shared-call-controls .mobile-active-ctrl-btn,
+.shared-call-controls .guest-device-control > button {
+  align-items: center;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, .12));
+  border-radius: 50%;
+  display: inline-flex;
+  flex: 0 0 48px;
+  height: 48px;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0;
+  width: 48px;
+}
+
+.shared-call-controls .call-ctrl-btn.is-active,
+.shared-call-controls .voice-dock-btn.is-active,
+.shared-call-controls .mobile-active-ctrl-btn.active,
+.shared-call-controls .guest-device-control > button.active {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.shared-call-controls .call-ctrl-btn.is-muted,
+.shared-call-controls .voice-dock-btn.is-muted,
+.shared-call-controls .mobile-active-ctrl-btn.muted,
+.shared-call-controls .guest-device-control > button:not(.active) {
+  background: rgba(220, 38, 38, .18);
+  border-color: rgba(220, 38, 38, .4);
+  color: #f87171;
+}
+
+.shared-call-controls .call-ctrl-btn.end-btn,
+.shared-call-controls .mobile-active-ctrl-btn.end,
+.shared-call-controls .voice-dock-btn--disconnect {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.shared-call-controls .voice-dock-btn.is-active {
+  width: 48px;
+}
+
+.shared-call-controls .guest-device-control {
+  gap: 0;
+}
+
+.guest-preview-controls .shared-call-control-button {
+  flex: 0 0 48px;
+  height: 48px;
+  min-height: 48px;
+  width: 48px;
+}
+
+.voice-mobile-only-control {
+  display: none !important;
+}
+
 .voice-room-bottom-bar {
   display: flex;
   align-items: center;
@@ -25586,6 +25696,29 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .call-grid__tile.is-speaking {
   box-shadow: 0 0 0 2px #22c55e, 0 0 16px rgba(34, 197, 94, 0.35);
+}
+
+.call-grid__participant-status {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 4;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .58);
+  color: #fff;
+  font-size: 11px;
+}
+
+.call-grid__tile.is-speaking .call-grid__participant-status,
+.mobile-active-speaking-status.is-speaking {
+  color: #22c55e;
+}
+
+.mobile-active-speaking-status {
+  color: var(--text-secondary);
+  font-size: .85rem;
+  font-weight: 650;
 }
 
 .call-grid__avatar-wrap {
@@ -29763,9 +29896,22 @@ button.checklist-add-item-btn:hover,
 .guest-test-sound { align-items: center; background: var(--surface-card); border: 1px solid var(--border-default); border-radius: 10px; color: var(--text-primary); cursor: pointer; display: inline-flex; font: inherit; font-size: .82rem; gap: .4rem; justify-content: center; min-height: 34px; }
 .guest-test-sound:disabled { cursor: not-allowed; opacity: .48; }
 .guest-device-issue { color: var(--text-secondary); font-size: .78rem; line-height: 1.35; margin: 0; }
+.guest-call-room .voice-room-stage > .guest-device-issue--visible {
+  background: rgba(24, 24, 27, .94);
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 10px;
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  max-width: min(92vw, 32rem);
+  padding: .55rem .8rem;
+  position: absolute;
+  transform: translateX(-50%);
+  width: max-content;
+  z-index: 11;
+}
 .guest-preview-controls { align-items: end; flex-wrap: wrap; gap: .7rem; }
 .guest-device-control { align-items: center; background: var(--surface-raised); border: 0; border-radius: 999px; display: flex; gap: 0; height: 48px; position: relative; }
-.guest-preview-controls .guest-device-control > button { background: transparent; border: 0; border-radius: 50%; color: var(--text-secondary); cursor: pointer; flex: 0 0 46px; height: 46px; padding: 0; width: 46px; }
+.guest-preview-controls .guest-device-control > button { background: transparent; border: 0; border-radius: 50%; color: var(--text-secondary); cursor: pointer; flex: 0 0 48px; height: 48px; padding: 0; width: 48px; }
 .guest-preview-controls .guest-device-control > button.active { color: var(--accent-primary); }
 .guest-device-select { align-items: center; align-self: stretch; border-left: 1px solid var(--border-default); display: inline-flex; position: relative; }
 .guest-preview-controls .guest-device-menu-trigger { align-items: center; background: transparent; border: 0; border-radius: 0 999px 999px 0; color: var(--text-secondary); cursor: pointer; display: inline-flex; height: 46px; justify-content: center; padding: 0; transition: background .16s ease, color .16s ease; width: 27px; }
@@ -29799,9 +29945,11 @@ button.checklist-add-item-btn:hover,
 .guest-prejoin-title-row { align-items: flex-start; }
 .guest-preview-avatar-halo { display: grid; height: 82px; isolation: isolate; place-items: center; position: relative; width: 82px; z-index: 0; }
 .guest-call-avatar-halo { height: 140px; width: 140px; }
+.guest-mobile-output-control, .guest-mobile-flip-control { display: none; }
 .guest-preview-avatar { font-size: 1.35rem; height: 82px; width: 82px; }
-.guest-preview-avatar-halo.is-speaking::before, .guest-preview-avatar-halo.is-settling::before { background: transparent; border: 2px solid color-mix(in srgb, var(--accent-primary) 86%, #ffffff); border-radius: 50%; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-primary) 16%, transparent), 0 0 24px color-mix(in srgb, var(--accent-primary) 64%, transparent); content: ""; inset: -7px; position: absolute; z-index: -1; }
-@media (max-width: 720px) { .guest-stovo-brand { left: 1rem; right: auto; top: .9rem; } .guest-meeting-page { padding-top: 4rem; } .guest-preview-controls { justify-content: center; } .guest-device-select select { max-width: 96px; } .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; } }
+.guest-preview-avatar-halo.is-speaking::before, .guest-preview-avatar-halo.is-settling::before { background: transparent; border: 2px solid #22c55e; border-radius: 50%; box-shadow: 0 0 0 5px rgba(34, 197, 94, .16), 0 0 24px rgba(34, 197, 94, .64); content: ""; inset: -7px; position: absolute; z-index: -1; }
+.guest-preview-avatar-halo.is-speaking::before { border-color: #22c55e; box-shadow: 0 0 0 5px rgba(34, 197, 94, .16), 0 0 24px rgba(34, 197, 94, .64); }
+@media (max-width: 720px) { .guest-stovo-brand { left: 1rem; right: auto; top: .9rem; } .guest-meeting-page { padding-top: 4rem; } .guest-preview-controls { justify-content: center; } .guest-preview-controls .guest-device-select { display: none; } .guest-preview-controls .guest-mobile-output-control, .guest-preview-controls .guest-mobile-flip-control { display: inline-flex; } .guest-call-controls .guest-mobile-output-control, .guest-call-controls .guest-mobile-flip-control { display: inline-flex; } .guest-device-select select { max-width: 96px; } .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; } }
 
 /* Guest meetings use the same stage, participant tiles, and control dock as group calls. */
 .guest-meeting-page--in-call {
@@ -30011,10 +30159,10 @@ button.checklist-add-item-btn:hover,
   color: #fff;
   cursor: pointer;
   display: inline-flex;
-  height: 46px;
+  height: 48px;
   justify-content: center;
   padding: 0;
-  width: 46px;
+  width: 48px;
 }
 
 .guest-call-controls .guest-device-control > button.active { color: #fff; }
@@ -30037,6 +30185,7 @@ button.checklist-add-item-btn:hover,
 .guest-device-menu-option > span:only-child { color: #fff; }
 
 @media (max-width: 720px) {
+  .voice-mobile-only-control { display: inline-flex !important; }
   .guest-meeting-page--in-call { padding-top: 0; }
   .guest-call-room .voice-room-stage { padding: 5rem .65rem .65rem; }
   .guest-call-header { top: .8rem; }

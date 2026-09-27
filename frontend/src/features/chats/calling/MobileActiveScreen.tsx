@@ -11,6 +11,8 @@ import { useLiveCaptions } from "./useLiveCaptions";
 import { useTranscription } from "./useTranscription";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { CallControlButton } from "./CallControlButton";
+import { CallParticipantStage } from "./CallParticipantStage";
 
 export function MobileActiveScreen({
   peerName,
@@ -290,6 +292,12 @@ export function MobileActiveScreen({
     (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
   );
   const showPresentationGrid = Boolean(localScreenStream) || hasRemoteScreenShare;
+  const useSharedVideoGrid = showPresentationGrid || (callType === "video" && showRemoteVideo && Boolean(remoteVideoStream));
+  const gridRemoteMedia = remoteMedia.length > 0
+    ? remoteMedia
+    : remoteVideoStream
+      ? [{ userId: peerName, stream: remoteVideoStream, screenStream: null, hasVideo: true, hasAudio: true, hasScreenShare: false }]
+      : [];
   const showLocalCamera = Boolean(isCameraEnabled && localVideoStream);
   const showAnyVideo = showRemoteVideo || isSharingLocalScreen || showPresentationGrid || (callType === "video" && isCameraEnabled);
   const showAvatar = !showAnyVideo;
@@ -356,18 +364,21 @@ export function MobileActiveScreen({
 
       {/* Video stage */}
       {showAnyVideo && (
-        <div className="mobile-active-video-stage" onPointerDown={toggleControls}>
-          {showPresentationGrid ? (
+        <CallParticipantStage className="shared-call-stage mobile-active-video-stage" onPointerDown={toggleControls}>
+          {useSharedVideoGrid ? (
             <CallParticipantGrid
               localStream={localVideoStream}
               localScreenStream={localScreenStream}
-              remoteMedia={remoteMedia}
+              remoteMedia={gridRemoteMedia}
               localUserLabel={localUserLabel}
               mirrorLocal={mirrorLocalVideo && previewFacingMode === "user"}
               callType={callType}
               isLocalSpeaking={isLocalSpeaking}
+              isLocalMuted={isMicMuted}
               isPeerSpeaking={isPeerSpeaking}
               speakingUserIds={speakingUserIds}
+              onFlipLocalCamera={() => void handleFlipCamera()}
+              isFlippingCamera={isCameraFlipping}
             />
           ) : (
             <>
@@ -436,23 +447,19 @@ export function MobileActiveScreen({
                       style={localVideoSwitchStyle}
                     />
                     {isLocalSpeaking && <SpeakingWaveBadge className="speaking-wave-badge--pip" />}
-                    <button
-                      type="button"
+                    <CallControlButton
+                      action="flip-camera"
+                      state="idle"
+                      iconSize={18}
                       className="mobile-active-pip-flip"
-                      aria-label="Flip camera"
+                      label="Flip camera"
                       disabled={isCameraFlipping}
                       onPointerDown={(event) => event.stopPropagation()}
                       onClick={(event) => {
                         event.stopPropagation();
                         void handleFlipCamera();
                       }}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M1 4v6h6" />
-                        <path d="M23 20v-6h-6" />
-                        <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" />
-                      </svg>
-                    </button>
+                    />
                   </div>
                 )
               )}
@@ -482,23 +489,19 @@ export function MobileActiveScreen({
                     style={localVideoSwitchStyle}
                   />
                   {isLocalSpeaking && <SpeakingWaveBadge className="speaking-wave-badge--pip" />}
-                  <button
-                    type="button"
+                  <CallControlButton
+                    action="flip-camera"
+                    state="idle"
+                    iconSize={18}
                     className="mobile-active-pip-flip"
-                    aria-label="Flip camera"
+                    label="Flip camera"
                     disabled={isCameraFlipping}
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation();
                       void handleFlipCamera();
                     }}
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M1 4v6h6" />
-                      <path d="M23 20v-6h-6" />
-                      <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" />
-                    </svg>
-                  </button>
+                  />
                 </div>
               )}
             </>
@@ -520,29 +523,25 @@ export function MobileActiveScreen({
                 }}
               />
               {isLocalSpeaking && <SpeakingWaveBadge />}
-              <button
-                type="button"
+              <CallControlButton
+                action="flip-camera"
+                state="idle"
+                iconSize={18}
                 className="mobile-active-pip-flip"
                 style={{ top: "max(calc(env(safe-area-inset-top, 0px) + 64px), 72px)", right: "16px", width: "40px", height: "40px" }}
-                aria-label="Flip camera"
+                label="Flip camera"
                 disabled={isCameraFlipping}
                 onPointerDown={(event) => event.stopPropagation()}
                 onClick={(event) => {
                   event.stopPropagation();
                   void handleFlipCamera();
                 }}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M1 4v6h6" />
-                  <path d="M23 20v-6h-6" />
-                  <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" />
-                </svg>
-              </button>
+              />
             </div>
           )}
             </>
           )}
-        </div>
+        </CallParticipantStage>
       )}
 
       {/* Avatar view for audio-only calls without video/screen */}
@@ -566,6 +565,7 @@ export function MobileActiveScreen({
                 <div className="mobile-active-time">
                   {callPhase === "in-call" ? timer : callPhase === "outgoing" ? "Calling…" : "Connecting…"}
                 </div>
+                {callPhase === "in-call" && <div className={`mobile-active-speaking-status${isPeerSpeaking ? " is-speaking" : ""}`} role="status">{isPeerSpeaking ? "Speaking" : "Connected"}</div>}
                 <div className="mobile-active-waveform">
                   {[0, 1, 2, 3, 4, 5, 6].map((i) => (
                     <div key={i} className={`mobile-active-wave-bar${isAnimating ? "" : " silent"}`} />
@@ -579,106 +579,30 @@ export function MobileActiveScreen({
 
       {/* Bottom control bar */}
       <div
-        className={`mobile-active-controls${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
+        className={`mobile-active-controls shared-call-controls${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
         onPointerDown={(event) => event.stopPropagation()}
       >
         {/* Mic */}
         <div className="mobile-active-ctrl">
-          <button
-            type="button"
-            className={`mobile-active-ctrl-btn${isMicMuted ? " muted" : ""}`}
-            aria-label={isMicMuted ? "Unmute" : "Mute"}
-            onClick={onToggleMic}
-          >
-            <svg viewBox="0 0 24 24">
-              {isMicMuted ? (
-                <>
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                  <path d="M9 9v3a3 3 0 005.12 2.12M15 9.34V4a3 3 0 00-5.94-.6" />
-                  <path d="M17 16.95A7 7 0 015 12v-2m14 0v2a7 7 0 01-.11 1.23M12 19v4M8 23h8" />
-                </>
-              ) : (
-                <>
-                  <path d="M12 1a3 3 0 013 3v8a3 3 0 01-6 0V4a3 3 0 013-3z" />
-                  <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
-                </>
-              )}
-            </svg>
-          </button>
+          <CallControlButton action="microphone" state={isMicMuted ? "muted" : "active"} className={`mobile-active-ctrl-btn${isMicMuted ? " muted" : " active"}`} label={isMicMuted ? "Unmute" : "Mute"} onClick={onToggleMic} />
           <span className="mobile-active-ctrl-lbl">{isMicMuted ? "Unmute" : "Mute"}</span>
         </div>
 
         {/* Speaker */}
         <div className="mobile-active-ctrl">
-          <button
-            type="button"
-            className={`mobile-active-ctrl-btn${speakerMode === "large" ? " active" : ""}`}
-            aria-label="Audio output"
-            onClick={onOpenSpeakerSheet}
-          >
-            <svg viewBox="0 0 24 24">
-              {speakerMode === "large" ? (
-                <>
-                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                  <path d="M15.54 8.46a5 5 0 010 7.07M19.07 4.93a10 10 0 010 14.14" />
-                </>
-              ) : (
-                <>
-                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
-                  <line x1="12" y1="18" x2="12.01" y2="18" />
-                </>
-              )}
-            </svg>
-          </button>
+          <CallControlButton action="audio-output" toggle state={speakerMode === "large" ? "active" : "idle"} className={`mobile-active-ctrl-btn${speakerMode === "large" ? " active" : ""}`} label="Audio output" onClick={onOpenSpeakerSheet} />
           <span className="mobile-active-ctrl-lbl">{speakerMode === "large" ? "Speaker" : "Earpiece"}</span>
         </div>
 
         {/* Camera */}
         <div className="mobile-active-ctrl">
-          <button
-            type="button"
-            className={`mobile-active-ctrl-btn${!isCameraEnabled ? " muted" : ""}`}
-            aria-label={isCameraEnabled ? "Turn off camera" : "Turn on camera"}
-            onClick={onToggleCamera}
-          >
-            <svg viewBox="0 0 24 24">
-              {isCameraEnabled ? (
-                <>
-                  <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </>
-              ) : (
-                <>
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                  <path d="M21 21H3a2 2 0 01-2-2V8a2 2 0 012-2h3m3-3h6l2 3h2a2 2 0 012 2v9.34m-7.72-2.06A4 4 0 1111.17 9" />
-                </>
-              )}
-            </svg>
-          </button>
+          <CallControlButton action="camera" state={isCameraEnabled ? "active" : "muted"} className={`mobile-active-ctrl-btn${isCameraEnabled ? " active" : " muted"}`} label={isCameraEnabled ? "Turn off camera" : "Turn on camera"} onClick={onToggleCamera} />
           <span className="mobile-active-ctrl-lbl">{isCameraEnabled ? "Camera" : "Camera off"}</span>
         </div>
 
         {/* Screen Demonstration / Share button */}
         <div className="mobile-active-ctrl">
-          <button
-            type="button"
-            className={`mobile-active-ctrl-btn${isSharingLocalScreen ? " active" : ""}`}
-            aria-label={isSharingLocalScreen ? "Stop sharing screen" : "Share screen"}
-            onClick={onToggleScreenShare}
-          >
-            <svg viewBox="0 0 24 24">
-              {isSharingLocalScreen ? (
-                <>
-                  <path d="M21 3H3a2 2 0 00-2 2v10a2 2 0 002 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H3V5h18v10z" />
-                </>
-              ) : (
-                <>
-                  <path d="M21 3H3a2 2 0 00-2 2v10a2 2 0 002 2h7v2H8v2h8v-2h-2v-2h7a2 2 0 002-2V5a2 2 0 00-2-2zm0 12H3V5h18v10z" />
-                  <line x1="3" y1="3" x2="21" y2="21" />
-                </>
-              )}
-            </svg>
-          </button>
+          <CallControlButton action="screen-share" state={isSharingLocalScreen ? "active" : "idle"} className={`mobile-active-ctrl-btn${isSharingLocalScreen ? " active" : ""}`} label={isSharingLocalScreen ? "Stop sharing screen" : "Share screen"} onClick={onToggleScreenShare} />
           <span className="mobile-active-ctrl-lbl">
             {isSharingLocalScreen ? "Stop share" : "Share"}
           </span>
@@ -730,11 +654,7 @@ export function MobileActiveScreen({
 
         {/* End Call */}
         <div className="mobile-active-ctrl">
-          <button type="button" className="mobile-active-ctrl-btn end" aria-label="End call" onClick={onEnd}>
-            <svg viewBox="0 0 24 24" style={{ transform: "rotate(135deg)" }}>
-              <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
-            </svg>
-          </button>
+          <CallControlButton action="end-call" state="idle" className="mobile-active-ctrl-btn end" label="End call" onClick={onEnd} />
           <span className="mobile-active-ctrl-lbl">End</span>
         </div>
       </div>

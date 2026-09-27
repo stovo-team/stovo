@@ -40,6 +40,7 @@ vi.mock("../auth/AuthContext", () => ({
 class FakeTrack {
   enabled = true;
   stop = vi.fn();
+  applyConstraints = vi.fn(async () => undefined);
   constructor(readonly kind: "audio" | "video") {}
 }
 
@@ -77,6 +78,7 @@ beforeEach(() => {
       enumerateDevices: vi.fn(async () => [
         { kind: "audioinput", deviceId: "mic-1", label: "Studio mic" },
         { kind: "audiooutput", deviceId: "speaker-1", label: "Desk speakers" },
+        { kind: "audiooutput", deviceId: "speaker-2", label: "USB speakers" },
         { kind: "videoinput", deviceId: "camera-1", label: "Desk camera" },
       ]),
       getUserMedia: vi.fn(async (constraints: MediaStreamConstraints) => new FakeMediaStream([
@@ -152,6 +154,67 @@ describe("GuestMeetingPage pre-join controls", () => {
     const option = Array.from(host?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []).find((button) => button.textContent?.includes("Studio mic"));
     await act(async () => { option?.click(); });
     expect(host?.querySelector('[role="listbox"][aria-label="Microphone device"]')).toBeNull();
+  });
+
+  it("renders mobile audio-output and camera-flip actions while retaining desktop device menus", async () => {
+    await renderPage();
+
+    const outputAction = host?.querySelector<HTMLButtonElement>('[aria-label="Audio output"]');
+    const flipAction = host?.querySelector<HTMLButtonElement>('[aria-label="Flip camera"]');
+    expect(outputAction).not.toBeNull();
+    expect(flipAction).not.toBeNull();
+
+    await act(async () => { outputAction?.click(); });
+    expect(host?.querySelector<HTMLButtonElement>('[aria-label="Select Speaker"]')?.title).toContain("Desk speakers");
+
+    const mediaResults = (navigator.mediaDevices.getUserMedia as ReturnType<typeof vi.fn>).mock.results;
+    const mediaStreams = await Promise.all(mediaResults.map((result) => result.value as Promise<FakeMediaStream>));
+    const cameraTrack = mediaStreams.flatMap((stream) => stream.getVideoTracks());
+    await act(async () => { flipAction?.click(); await Promise.resolve(); });
+    expect(cameraTrack[0]?.applyConstraints).toHaveBeenCalledWith({ facingMode: { exact: "environment" } });
+
+    await act(async () => { host?.querySelector<HTMLButtonElement>('[aria-label="Select Microphone"]')?.click(); });
+    expect(host?.querySelector('[role="listbox"][aria-label="Microphone device"]')).not.toBeNull();
+  });
+
+  it("falls back to reopening the camera with the requested facing mode when track constraints fail", async () => {
+    await renderPage();
+    const getUserMedia = navigator.mediaDevices.getUserMedia as ReturnType<typeof vi.fn>;
+    const existingStreams = await Promise.all(getUserMedia.mock.results.map((result) => result.value as Promise<FakeMediaStream>));
+    const cameraTrack = existingStreams.flatMap((stream) => stream.getVideoTracks())[0];
+    cameraTrack.applyConstraints.mockRejectedValueOnce(new Error("facingMode constraint unsupported"));
+    const callsBeforeFlip = getUserMedia.mock.calls.length;
+
+    await act(async () => {
+      host?.querySelector<HTMLButtonElement>('[aria-label="Flip camera"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(getUserMedia.mock.calls.length).toBeGreaterThan(callsBeforeFlip);
+    expect(getUserMedia.mock.calls.at(-1)?.[0]).toMatchObject({ video: { facingMode: { exact: "environment" } } });
+    expect(cameraTrack.stop).toHaveBeenCalled();
+    const replacementStream = await getUserMedia.mock.results.at(-1)?.value as Promise<FakeMediaStream>;
+    const replacementTrack = replacementStream.getVideoTracks()[0];
+    const previewStream = host?.querySelector<HTMLVideoElement>("video")?.srcObject as FakeMediaStream | null;
+    expect(previewStream?.getVideoTracks()).toContain(replacementTrack);
+  });
+
+  it("shows camera-switch failures beside the controls while settings are closed", async () => {
+    await renderPage();
+    const getUserMedia = navigator.mediaDevices.getUserMedia as ReturnType<typeof vi.fn>;
+    const streams = await Promise.all(getUserMedia.mock.results.map((result) => result.value as Promise<FakeMediaStream>));
+    streams.flatMap((stream) => stream.getVideoTracks())[0].applyConstraints.mockRejectedValueOnce(new Error("constraint failed"));
+    getUserMedia.mockRejectedValueOnce(new Error("camera publication failed"));
+
+    await act(async () => {
+      host?.querySelector<HTMLButtonElement>('[aria-label="Flip camera"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(host?.querySelector('[role="status"]')?.textContent).toContain("Could not switch cameras");
+    expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).toBeNull();
   });
 
   it("uses the halo wrapper for the camera-off speaking avatar", async () => {

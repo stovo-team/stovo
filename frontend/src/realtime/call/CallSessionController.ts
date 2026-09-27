@@ -7,6 +7,8 @@ import {
   type SFUMediaEnginePort,
 } from "./mediaEngineFactory";
 import type { CallQualityBitrates } from "./callQuality";
+// createCallSpeakingIndicator centralizes CALL_SPEAKING_THRESHOLD and CALL_SPEAKING_RELEASE_DELAY_MS.
+import { createCallSpeakingIndicator, type CallSpeakingState } from "../../features/chats/calling/callSpeakingIndicator";
 import {
   CallCapabilities,
   CallDevice,
@@ -79,11 +81,8 @@ export default class CallSessionController {
   private wasLocalSpeaking = false;
   private localSpeakingAnalyser: AnalyserNode | null = null;
   private remoteAnalysers = new Map<string, AnalyserNode>();
-  private localSpeakingSince: number | null = null;
-  private remoteSpeakingSince = new Map<string, number>();
-  // Ignore ambient noise and require a sustained voice-level signal before marking a participant as speaking.
-  private readonly SPEAKING_THRESHOLD = 0.025;
-  private readonly SPEAKING_ACTIVATION_DELAY_MS = 120;
+  private localSpeakingIndicator: ReturnType<typeof createCallSpeakingIndicator> | null = null;
+  private remoteSpeakingIndicators = new Map<string, ReturnType<typeof createCallSpeakingIndicator>>();
 
   onVideoUnavailable?: () => void;
   onConnectionReconnecting?: () => void;
@@ -1076,6 +1075,14 @@ export default class CallSessionController {
   }
 
   private registerLocalAudioSpeaking(stream: MediaStream) {
+    this.localSpeakingIndicator?.dispose();
+    this.localSpeakingIndicator = createCallSpeakingIndicator((state: CallSpeakingState) => {
+      const isSpeaking = state !== "idle";
+      if (isSpeaking !== this.wasLocalSpeaking) {
+        this.wasLocalSpeaking = isSpeaking;
+        this.localSpeakingCallback?.(isSpeaking);
+      }
+    });
     if (stream.getAudioTracks().length === 0) {
       this.localSpeakingAnalyser = null;
       return;
@@ -1088,7 +1095,6 @@ export default class CallSessionController {
       analyser.fftSize = 256;
       source.connect(analyser);
       this.localSpeakingAnalyser = analyser;
-      this.localSpeakingSince = null;
       this.ensureSpeakingPolling();
     } catch {
       // Ignored
@@ -1096,6 +1102,8 @@ export default class CallSessionController {
   }
 
   private registerRemoteAudioSpeaking(userId: string, stream: MediaStream) {
+    this.remoteSpeakingIndicators.get(userId)?.dispose();
+    this.remoteSpeakingIndicators.set(userId, createCallSpeakingIndicator(() => undefined));
     if (stream.getAudioTracks().length === 0) return;
     const ctx = this.getOrCreateSpeakingContext();
     if (!ctx) return;
@@ -1105,7 +1113,6 @@ export default class CallSessionController {
       analyser.fftSize = 256;
       source.connect(analyser);
       this.remoteAnalysers.set(userId, analyser);
-      this.remoteSpeakingSince.delete(userId);
       this.ensureSpeakingPolling();
     } catch {
       // Ignored
@@ -1114,7 +1121,8 @@ export default class CallSessionController {
 
   private unregisterRemoteAudioSpeaking(userId: string) {
     this.remoteAnalysers.delete(userId);
-    this.remoteSpeakingSince.delete(userId);
+    this.remoteSpeakingIndicators.get(userId)?.dispose();
+    this.remoteSpeakingIndicators.delete(userId);
   }
 
   private ensureSpeakingPolling() {
@@ -1125,43 +1133,20 @@ export default class CallSessionController {
       // 1. Local speaking
       if (this.localSpeakingAnalyser && !this.settings.micMuted) {
         this.localSpeakingAnalyser.getByteFrequencyData(data);
-        const avg = data.reduce((s, v) => s + v, 0) / data.length / 255;
-        if (avg > this.SPEAKING_THRESHOLD) {
-          this.localSpeakingSince ??= now;
-        } else {
-          this.localSpeakingSince = null;
-        }
-        const localSpeaking =
-          this.localSpeakingSince !== null &&
-          now - this.localSpeakingSince >= this.SPEAKING_ACTIVATION_DELAY_MS;
-        if (localSpeaking !== this.wasLocalSpeaking) {
-          this.wasLocalSpeaking = localSpeaking;
-          this.localSpeakingCallback?.(localSpeaking);
-        }
+        const avg = data.reduce((s, v) => s + v, 0) / data.length;
+        this.localSpeakingIndicator?.update({ microphoneEnabled: true, level: avg });
       } else {
-        this.localSpeakingSince = null;
-        if (this.wasLocalSpeaking) {
-          this.wasLocalSpeaking = false;
-          this.localSpeakingCallback?.(false);
-        }
+        this.localSpeakingIndicator?.update({ microphoneEnabled: false, level: 0 });
       }
 
       // 2. Remote peer speaking
       const activeSpeakingUserIds: string[] = [];
       for (const [uid, analyser] of this.remoteAnalysers.entries()) {
         analyser.getByteFrequencyData(data);
-        const avg = data.reduce((s, v) => s + v, 0) / data.length / 255;
-        if (avg > this.SPEAKING_THRESHOLD) {
-          this.remoteSpeakingSince.set(uid, this.remoteSpeakingSince.get(uid) ?? now);
-        } else {
-          this.remoteSpeakingSince.delete(uid);
-        }
-        if (
-          this.remoteSpeakingSince.has(uid) &&
-          now - (this.remoteSpeakingSince.get(uid) ?? now) >= this.SPEAKING_ACTIVATION_DELAY_MS
-        ) {
-          activeSpeakingUserIds.push(uid);
-        }
+        const avg = data.reduce((s, v) => s + v, 0) / data.length;
+        const indicator = this.remoteSpeakingIndicators.get(uid);
+        indicator?.update({ microphoneEnabled: true, level: avg });
+        if (indicator && indicator.state !== "idle") activeSpeakingUserIds.push(uid);
       }
 
       const anySpeaking = activeSpeakingUserIds.length > 0;
@@ -1184,8 +1169,10 @@ export default class CallSessionController {
     }
     this.localSpeakingAnalyser = null;
     this.remoteAnalysers.clear();
-    this.localSpeakingSince = null;
-    this.remoteSpeakingSince.clear();
+    this.localSpeakingIndicator?.dispose();
+    this.localSpeakingIndicator = null;
+    for (const indicator of this.remoteSpeakingIndicators.values()) indicator.dispose();
+    this.remoteSpeakingIndicators.clear();
     if (this.speakingContext) {
       void this.speakingContext.close().catch(() => undefined);
       this.speakingContext = null;

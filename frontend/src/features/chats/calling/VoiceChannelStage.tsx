@@ -26,6 +26,8 @@ import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
+import { CallControlButton } from "./CallControlButton";
+import { CallParticipantStage } from "./CallParticipantStage";
 import { useTranscription } from "./useTranscription";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
@@ -316,7 +318,7 @@ export function VoiceChannelStage({
         </div>
       )}
       {/* Main Stage / Participant Grid or List */}
-      <div className="voice-room-stage">
+      <CallParticipantStage className="shared-call-stage voice-room-stage">
         <div className={participantCount === 0 ? "voice-room-empty-content" : "voice-room-participant-content"}>
           {hasActiveScreenShare ? (
           <CallParticipantGrid
@@ -327,6 +329,7 @@ export function VoiceChannelStage({
             mirrorLocal={Boolean(callAudioSettings.mirrorLocalVideo)}
             callType={callType}
             isLocalSpeaking={isLocalSpeaking}
+            isLocalMuted={callAudioSettings.micMuted}
             isPeerSpeaking={isPeerSpeaking}
             speakingUserIds={speakingUserIds}
           />
@@ -487,7 +490,7 @@ export function VoiceChannelStage({
           </button>
         )}
         </div>
-      </div>
+      </CallParticipantStage>
 
       {/* Bottom Floating/Docked Control Bar */}
       <div className="voice-room-bottom-bar">
@@ -505,37 +508,16 @@ export function VoiceChannelStage({
             </button>
           </div>
         ) : (
-          <div className="voice-room-in-call-controls" role="toolbar" aria-label="Voice Channel Controls">
-            <button
-              type="button"
-              className={`voice-dock-btn${callAudioSettings.micMuted ? " is-muted" : " is-active"}`}
-              onClick={handleToggleMic}
-              title={callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone")}
-              aria-label={callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone")}
-            >
-              {callAudioSettings.micMuted ? <MicOff size={20} /> : <Mic size={20} />}
-            </button>
+          <div className="voice-room-in-call-controls shared-call-controls" role="toolbar" aria-label="Voice Channel Controls">
+            <CallControlButton action="microphone" state={callAudioSettings.micMuted ? "muted" : "active"} className="voice-dock-btn" onClick={handleToggleMic} label={callAudioSettings.micMuted ? (voiceStrings?.unmuteMic ?? "Unmute Microphone") : (voiceStrings?.muteMic ?? "Mute Microphone")} />
 
-            <button
-              type="button"
-              className={`voice-dock-btn${callAudioSettings.cameraEnabled ? " is-active" : ""}`}
-              onClick={handleToggleVideo}
-              title={callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera")}
-              aria-label={callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera")}
-            >
-              {callAudioSettings.cameraEnabled ? <Video size={20} /> : <VideoOff size={20} />}
-            </button>
+            <CallControlButton action="camera" state={callAudioSettings.cameraEnabled ? "active" : "muted"} className="voice-dock-btn" onClick={handleToggleVideo} label={callAudioSettings.cameraEnabled ? (voiceStrings?.turnOffCamera ?? "Turn Off Camera") : (voiceStrings?.turnOnCamera ?? "Turn On Camera")} />
 
             {/* Screen Demonstration / Share button */}
-            <button
-              type="button"
-              className={`voice-dock-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-              onClick={handleToggleScreenShare}
-              title={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
-              aria-label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")}
-            >
-              {callAudioSettings.screenSharing ? <ScreenShare size={20} /> : <ScreenShareOff size={20} />}
-            </button>
+            <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="voice-dock-btn" onClick={handleToggleScreenShare} label={callAudioSettings.screenSharing ? (voiceStrings?.stopSharingScreen ?? "Stop Sharing Screen") : (voiceStrings?.shareScreen ?? "Share Screen")} />
+
+            <CallControlButton action="audio-output" toggle state={callAudioSettings.speakerMode === "large" ? "active" : "idle"} className="voice-dock-btn voice-mobile-only-control" onClick={() => void applyCallAudioPatch({ speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small" })} label="Audio output" />
+            <CallControlButton action="flip-camera" state="idle" className="voice-dock-btn voice-mobile-only-control" onClick={() => void applyCallAudioPatch({ cameraFacingMode: callAudioSettings.cameraFacingMode === "user" ? "environment" : "user" })} label="Flip camera" />
 
             {/* Stovo Intelligence Popover Button */}
             <div className="voice-more-menu-anchor">
@@ -650,15 +632,7 @@ export function VoiceChannelStage({
               )}
             </div>
 
-            <button
-              type="button"
-              className="voice-dock-btn voice-dock-btn--disconnect"
-              onClick={handleLeave}
-              title={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"}
-              aria-label={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"}
-            >
-              <PhoneOff size={20} />
-            </button>
+            <CallControlButton action="end-call" state="idle" className="voice-dock-btn voice-dock-btn--disconnect" onClick={handleLeave} title={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} label={voiceStrings?.disconnect ?? "Disconnect from Voice Channel"} />
           </div>
         )}
       </div>

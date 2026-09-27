@@ -8,11 +8,9 @@ import {
   RotateCcw,
   ScreenShare,
   ScreenShareOff,
-  Smartphone,
   SlidersHorizontal,
   Video,
   VideoOff,
-  Volume2
 } from "lucide-react";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { TranscriptPanel } from "./TranscriptPanel";
@@ -29,6 +27,8 @@ import { useEffect, useState } from "react";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import { useCallFeatureContext } from "./CallFeatureContext";
+import { CallControlButton } from "./CallControlButton";
+import { CallParticipantStage } from "./CallParticipantStage";
 
 /**
  * Call popup chrome shared by the header, video stage, invite panel, and
@@ -92,6 +92,11 @@ export function DesktopCallControls() {
 
   const callTitle = (callPeerDisplayName ?? activeCallPeerName) ?? activeChat?.title ?? (isVoiceChannel ? "Voice Channel" : "Call");
   const callTimer = session.callTimer;
+  const participantGridMedia = callRemoteMedia.length > 0
+    ? callRemoteMedia
+    : remoteVideoStream
+      ? [{ userId: session.callPeerUserId ?? callPeerDisplayName ?? "Participant", stream: remoteVideoStream, screenStream: null, hasVideo: callType === "video" || hasRemoteVideo, hasAudio: true, hasScreenShare: false }]
+      : [];
 
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
@@ -207,12 +212,12 @@ export function DesktopCallControls() {
       )}
 
       {/* ── Video area — always rendered so refs stay stable (hidden via CSS when unused) ── */}
-      <div className={`call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
-        {(callRemoteMedia.length > 1 || localScreenStream || callRemoteMedia.some((media) => media.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized ? (
+      <CallParticipantStage className={`shared-call-stage call-popup-video-area${(isCallMinimized || (callType === "audio" && !hasRemoteVideo && !callAudioSettings.screenSharing && !callRemoteMedia.some((m) => m.hasScreenShare) && callRemoteMedia.length <= 1)) ? " call-popup-video-area-hidden" : ""}`}>
+        {(callType === "video" || participantGridMedia.length > 1 || localScreenStream || participantGridMedia.some((media) => media.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized ? (
           <CallParticipantGrid
             localStream={localVideoStream}
             localScreenStream={localScreenStream}
-            remoteMedia={callRemoteMedia}
+            remoteMedia={participantGridMedia}
             localUserLabel={currentUser?.displayName ?? "You"}
             mirrorLocal={
               callAudioSettings.mirrorLocalVideo &&
@@ -220,6 +225,7 @@ export function DesktopCallControls() {
             }
             callType={callType}
             isLocalSpeaking={isLocalSpeaking}
+            isLocalMuted={callAudioSettings.micMuted}
             isPeerSpeaking={isPeerSpeaking}
             speakingUserIds={speakingUserIds}
           />
@@ -254,7 +260,7 @@ export function DesktopCallControls() {
             </div>
           </>
         )}
-      </div>
+      </CallParticipantStage>
 
       {/* ── Call Invite Modal Overlay ── */}
       {isCallInviteOpen && callPhase === "in-call" && !isCallMinimized && (
@@ -339,7 +345,7 @@ export function DesktopCallControls() {
 
       {/* ── Controls row ── */}
       {!isCallMinimized && !isMobileViewport && (
-        <div className="call-ctrl-row call-popup-ctrl-row">
+        <div className="call-ctrl-row call-popup-ctrl-row shared-call-controls">
           {callPhase === "incoming" && (
             <>
               <div className="call-ctrl-wrap">
@@ -354,16 +360,7 @@ export function DesktopCallControls() {
                 <span>Accept</span>
               </div>
               <div className="call-ctrl-wrap">
-                <button
-                  type="button"
-                  className="call-ctrl-btn end-btn"
-                  aria-label="Decline call"
-                  onClick={declineIncomingCall}
-                >
-                  <svg aria-hidden="true" width={22} height={22} viewBox="0 0 24 24" style={{ transform: "rotate(135deg)" }} fill="currentColor">
-                    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
-                  </svg>
-                </button>
+                <CallControlButton action="end-call" state="idle" className="call-ctrl-btn end-btn" label="Decline call" iconSize={22} onClick={declineIncomingCall} />
                 <span>Decline</span>
               </div>
             </>
@@ -371,42 +368,19 @@ export function DesktopCallControls() {
           {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
             <>
               <div className="call-ctrl-wrap">
-                <button
-                  type="button"
-                  className={`call-ctrl-btn${callAudioSettings.micMuted ? " is-muted" : ""}`}
-                  aria-label={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"}
-                  onClick={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-                >
-                  {callAudioSettings.micMuted ? (
-                    <MicOff aria-hidden="true" size={20} />
-                  ) : (
-                    <Mic aria-hidden="true" size={20} />
-                  )}
-                </button>
+                <CallControlButton action="microphone" state={callAudioSettings.micMuted ? "muted" : "active"} className="call-ctrl-btn" label={callAudioSettings.micMuted ? "Unmute microphone" : "Mute microphone"} onClick={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })} />
                 <span>{callAudioSettings.micMuted ? "Unmute" : "Mute"}</span>
               </div>
               {isMobileViewport && (
                 <div className="call-ctrl-wrap">
-                  <button
-                    type="button"
-                    className={`call-ctrl-btn${callAudioSettings.speakerMode === "large" ? " is-active" : ""}`}
-                    aria-label={
-                      callAudioSettings.speakerMode === "small"
-                        ? "Switch to loudspeaker"
-                        : "Switch to earpiece"
-                    }
-                    onClick={() =>
-                      void applyCallAudioPatch({
-                        speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small",
-                      })
-                    }
-                  >
-                    {callAudioSettings.speakerMode === "small" ? (
-                      <Smartphone aria-hidden="true" size={20} />
-                    ) : (
-                      <Volume2 aria-hidden="true" size={20} />
-                    )}
-                  </button>
+                  <CallControlButton
+                    action="audio-output"
+                    toggle
+                    state={callAudioSettings.speakerMode === "large" ? "active" : "idle"}
+                    className="call-ctrl-btn"
+                    label={callAudioSettings.speakerMode === "small" ? "Switch to loudspeaker" : "Switch to earpiece"}
+                    onClick={() => void applyCallAudioPatch({ speakerMode: callAudioSettings.speakerMode === "small" ? "large" : "small" })}
+                  />
                   <span>{callAudioSettings.speakerMode === "small" ? "Speaker" : "Earpiece"}</span>
                 </div>
               )}
@@ -448,14 +422,11 @@ export function DesktopCallControls() {
               {callPhase === "in-call" && (
                 <>
                   <div className="call-ctrl-wrap">
-                    <button
-                      type="button"
-                      className={`call-ctrl-btn${callType === "video" && callAudioSettings.cameraEnabled ? "" : " is-muted"}`}
-                      aria-label={
-                        callType === "video" && callAudioSettings.cameraEnabled
-                          ? "Turn off camera"
-                          : "Turn on camera"
-                      }
+                    <CallControlButton
+                      action="camera"
+                      state={callType === "video" && callAudioSettings.cameraEnabled ? "active" : "muted"}
+                      className="call-ctrl-btn"
+                      label={callType === "video" && callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
                       onClick={() => {
                         if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
                           setCallType("video");
@@ -464,51 +435,31 @@ export function DesktopCallControls() {
                           void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
                         }
                       }}
-                    >
-                      {callType === "video" && callAudioSettings.cameraEnabled ? (
-                        <Video aria-hidden="true" size={20} />
-                      ) : (
-                        <VideoOff aria-hidden="true" size={20} />
-                      )}
-                    </button>
+                    />
                     <span>
                       {callType === "video" && callAudioSettings.cameraEnabled ? "Camera" : "Camera off"}
                     </span>
                   </div>
                   <div className="call-ctrl-wrap">
-                    <button
-                      type="button"
-                      className={`call-ctrl-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-                      aria-label={
-                        callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"
-                      }
-                      onClick={() => void toggleScreenShare()}
-                    >
-                      {callAudioSettings.screenSharing ? (
-                        <ScreenShare aria-hidden="true" size={20} />
-                      ) : (
-                        <ScreenShareOff aria-hidden="true" size={20} />
-                      )}
-                    </button>
+                    <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="call-ctrl-btn" label={callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"} onClick={() => void toggleScreenShare()} />
                     <span>
                       {callAudioSettings.screenSharing ? "Stop sharing" : "Share screen"}
                     </span>
                   </div>
                   {isMobileViewport && callType === "video" && (
                     <div className="call-ctrl-wrap">
-                      <button
-                        type="button"
+                      <CallControlButton
+                        action="flip-camera"
+                        state="idle"
                         className="call-ctrl-btn"
-                        aria-label="Flip camera"
+                        label="Flip camera"
                         onClick={() =>
                           void applyCallAudioPatch({
                             cameraFacingMode:
                               callAudioSettings.cameraFacingMode === "user" ? "environment" : "user",
                           })
                         }
-                      >
-                        <RotateCcw aria-hidden="true" size={20} />
-                      </button>
+                      />
                       <span>Flip</span>
                     </div>
                   )}
@@ -554,16 +505,7 @@ export function DesktopCallControls() {
                 />
               </div>
               <div className="call-ctrl-wrap">
-                <button
-                  type="button"
-                  className="call-ctrl-btn end-btn"
-                  aria-label="End call"
-                  onClick={() => void endActiveCall()}
-                >
-                  <svg aria-hidden="true" width={20} height={20} viewBox="0 0 24 24" style={{ transform: "rotate(135deg)" }} fill="currentColor">
-                    <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
-                  </svg>
-                </button>
+                <CallControlButton action="end-call" state="idle" className="call-ctrl-btn end-btn" label="End call" onClick={() => void endActiveCall()} />
                 <span>End</span>
               </div>
               {/* Transcript side panel */}
@@ -583,28 +525,15 @@ export function DesktopCallControls() {
       {isCallMinimized && !isMobileViewport && callPhase !== "idle" && (
         <div className="call-status-chip-controls">
           {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
-            <button
-              type="button"
-              className={`call-ctrl-btn call-chip-btn${callAudioSettings.micMuted ? " is-muted" : ""}`}
-              aria-label={callAudioSettings.micMuted ? "Unmute" : "Mute"}
-              onClick={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })}
-            >
-              {callAudioSettings.micMuted ? (
-                <MicOff aria-hidden="true" size={16} />
-              ) : (
-                <Mic aria-hidden="true" size={16} />
-              )}
-            </button>
+            <CallControlButton action="microphone" state={callAudioSettings.micMuted ? "muted" : "active"} className="call-ctrl-btn call-chip-btn" label={callAudioSettings.micMuted ? "Unmute" : "Mute"} iconSize={16} onClick={() => void applyCallAudioPatch({ micMuted: !callAudioSettings.micMuted })} />
           )}
           {(callPhase === "outgoing" || callPhase === "connecting" || callPhase === "in-call") && (
-            <button
-              type="button"
-              className={`call-ctrl-btn call-chip-btn call-chip-video${callType === "video" && callAudioSettings.cameraEnabled ? "" : " is-muted"}`}
-              aria-label={
-                callType === "video" && callAudioSettings.cameraEnabled
-                  ? "Turn off camera"
-                  : "Turn on camera"
-              }
+            <CallControlButton
+              action="camera"
+              state={callType === "video" && callAudioSettings.cameraEnabled ? "active" : "muted"}
+              className="call-ctrl-btn call-chip-btn call-chip-video"
+              label={callType === "video" && callAudioSettings.cameraEnabled ? "Turn off camera" : "Turn on camera"}
+              iconSize={16}
               onClick={() => {
                 if (callType === "audio" || !hasLiveLocalVideo(localVideoStream)) {
                   setCallType("video");
@@ -613,41 +542,12 @@ export function DesktopCallControls() {
                   void applyCallAudioPatch({ cameraEnabled: !callAudioSettings.cameraEnabled });
                 }
               }}
-            >
-              {callType === "video" && callAudioSettings.cameraEnabled ? (
-                <Video aria-hidden="true" size={16} />
-              ) : (
-                <VideoOff aria-hidden="true" size={16} />
-              )}
-            </button>
+            />
           )}
           {callPhase === "in-call" && (
-            <button
-              type="button"
-              className={`call-ctrl-btn call-chip-btn${callAudioSettings.screenSharing ? " is-active" : ""}`}
-              aria-label={
-                callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"
-              }
-              onClick={() => void toggleScreenShare()}
-            >
-              {callAudioSettings.screenSharing ? (
-                <ScreenShare aria-hidden="true" size={16} />
-              ) : (
-                <ScreenShareOff aria-hidden="true" size={16} />
-              )}
-            </button>
+            <CallControlButton action="screen-share" state={callAudioSettings.screenSharing ? "active" : "idle"} className="call-ctrl-btn call-chip-btn" label={callAudioSettings.screenSharing ? "Stop sharing screen" : "Share screen"} iconSize={16} onClick={() => void toggleScreenShare()} />
           )}
-          <button
-            type="button"
-            className="call-ctrl-btn call-chip-btn end-btn"
-            aria-label={isVoiceChannel ? "Disconnect from voice channel" : "End call"}
-            title={isVoiceChannel ? "Disconnect from voice channel" : "End call"}
-            onClick={() => void endActiveCall()}
-          >
-            <svg aria-hidden="true" width={16} height={16} viewBox="0 0 24 24" style={{ transform: "rotate(135deg)" }} fill="currentColor">
-              <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
-            </svg>
-          </button>
+          <CallControlButton action="end-call" state="idle" className="call-ctrl-btn call-chip-btn end-btn" label={isVoiceChannel ? "Disconnect from voice channel" : "End call"} title={isVoiceChannel ? "Disconnect from voice channel" : "End call"} iconSize={16} onClick={() => void endActiveCall()} />
           <button
             type="button"
             className="icon-button subtle call-chip-restore"
