@@ -149,6 +149,14 @@ export function useChatSocketConnection({
     const detachMessageListeners = bindMessageListenersRef.current(socket);
     const detachCallSession = attachToSocketRef.current(socket, token);
 
+    const logSocketConnectError = (error: Error) => {
+      console.warn("[realtime] Socket.IO connection rejected", {
+        message: error.message,
+        transport: socket.io.engine?.transport?.name ?? "unknown",
+      });
+    };
+    socket.on("connect_error", logSocketConnectError);
+
     // Track foreground/background state on Android so the backend can decide
     // whether to suppress ntfy push notifications (only suppress when in foreground).
     let appStateListener: { remove: () => Promise<void> } | null = null;
@@ -241,6 +249,7 @@ export function useChatSocketConnection({
       socket.off("connect", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
       socket.off("sync:needed", syncAfterSocketResume);
+      socket.off("connect_error", logSocketConnectError);
       detachMessageListeners();
       detachCallSession();
       socket.disconnect();

@@ -812,6 +812,11 @@ export function useCallSession({
 
       socket.emit("call:join", { chatId: targetChat.id, callType: "audio" });
     } catch (err) {
+      console.error("[CALL] Voice channel join failed before signaling", {
+        message: err instanceof Error ? err.message : String(err),
+        socketConnected: socket.connected,
+        transport: socket.io.engine?.transport?.name ?? "unknown",
+      });
       await audioCallRef.current?.cleanup(true).catch(() => undefined);
       void resetCallState("Could not join voice channel", true, false);
       setError(err instanceof Error ? err.message : "Could not join voice channel");
