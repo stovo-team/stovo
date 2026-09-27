@@ -210,7 +210,7 @@ test('Helm CLI lints and renders a default release when installed', (t) => {
     '--set', 'backend.env.STORAGE_PROVIDER=minio',
     '--set', 'existingSecret=stovo-test-secret']);
   assert.equal(custom.status, 0, custom.stderr);
-  assert.match(custom.stdout, /host:\s*chat\.example\.test/);
+  assert.match(custom.stdout, /host:\s*"?chat\.example\.test"?/);
   assert.match(custom.stdout, /registry\.example\.test\/stovo\/backend:release-42/);
   assert.match(custom.stdout, /registry\.example\.test\/stovo\/frontend:release-42/);
   assert.match(custom.stdout, /memory:\s*768Mi/);
