@@ -29928,6 +29928,155 @@ button.checklist-add-item-btn:hover,
   width: max-content;
   z-index: 11;
 }
+
+/* One-to-one mobile video keeps the remote feed full-stage and a tappable
+   self preview in the lower-right corner. */
+.mobile-active-video-stage .call-grid--mobile-single {
+  position: absolute !important;
+  inset: 0;
+  display: block !important;
+  width: 100%;
+  height: 100%;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap,
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap {
+  box-sizing: border-box;
+  border-radius: 0;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap--primary,
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap--primary {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap--pip,
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap--pip > .call-grid__tile {
+  position: absolute;
+  width: 104px;
+  height: 140px;
+  min-height: 0;
+  aspect-ratio: auto;
+  right: 12px;
+  bottom: max(calc(env(safe-area-inset-bottom, 0px) + 104px), 116px);
+  z-index: 20;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap > .call-grid__tile--local {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  border-radius: inherit;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap--primary > .call-grid__tile--remote {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap--pip > .call-grid__mobile-flip-camera,
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-local-wrap--primary > .call-grid__mobile-flip-camera {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 25;
+  width: 36px;
+  height: 36px;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__remote-wrap--pip {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-primary > .call-grid__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mobile-active-video-stage .call-grid--mobile-single .call-grid__mobile-pip > .call-grid__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Mobile calls keep the three frequent actions in the first row and put
+   secondary actions behind More in the second row. */
+.mobile-active-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(56px, auto));
+  justify-content: center;
+  justify-items: center;
+  align-items: center;
+  row-gap: 12px;
+  column-gap: 18px;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 24px);
+}
+
+.mobile-active-controls > .mobile-active-secondary-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 26px;
+}
+
+.mobile-active-more-anchor {
+  position: relative;
+}
+
+.mobile-active-more-menu {
+  position: absolute;
+  right: -10px;
+  bottom: calc(100% + 12px);
+  z-index: 40;
+  display: grid;
+  gap: 3px;
+  width: max-content;
+  min-width: 212px;
+  padding: 7px;
+  border: 1px solid color-mix(in srgb, var(--border-default) 75%, transparent);
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--surface-raised) 92%, #101827);
+  box-shadow: 0 12px 32px #0008;
+  backdrop-filter: blur(20px);
+}
+
+.mobile-active-more-menu button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary, #fff);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-active-more-menu button:hover,
+.mobile-active-more-menu button:focus-visible {
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+  outline: none;
+}
 .guest-preview-controls { align-items: end; flex-wrap: wrap; gap: .7rem; }
 .guest-device-control { align-items: center; background: var(--surface-raised); border: 0; border-radius: 999px; display: flex; gap: 0; height: 48px; position: relative; }
 .guest-preview-controls .guest-device-control > button { background: transparent; border: 0; border-radius: 50%; color: var(--text-secondary); cursor: pointer; flex: 0 0 48px; height: 48px; padding: 0; width: 48px; }

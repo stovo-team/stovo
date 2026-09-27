@@ -5,7 +5,6 @@ import type { RemoteMedia } from "../../../realtime/call/types";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
-import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useTranscription } from "./useTranscription";
@@ -13,6 +12,7 @@ import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import { CallControlButton } from "./CallControlButton";
 import { CallParticipantStage } from "./CallParticipantStage";
+import { MobileCallMoreMenu } from "./MobileCallMoreMenu";
 
 export function MobileActiveScreen({
   peerName,
@@ -43,6 +43,7 @@ export function MobileActiveScreen({
   onToggleScreenShare,
   onToggleFlip,
   onOpenSpeakerSheet,
+  onOpenSettings,
   onEnd,
   onShrink,
   notice,
@@ -78,6 +79,7 @@ export function MobileActiveScreen({
   onToggleScreenShare: () => void;
   onToggleFlip: () => void | Promise<void>;
   onOpenSpeakerSheet: () => void;
+  onOpenSettings?: () => void;
   onEnd: () => void;
   onShrink?: () => void;
   notice?: string | null;
@@ -165,15 +167,14 @@ export function MobileActiveScreen({
     if (isCameraFlipping) return;
     const nextFacing = cameraFacingMode === "user" ? "environment" : "user";
     setIsCameraFlipping(true);
-    // Let the blackout paint before facingMode/mirror state updates.
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-    });
+    // Let the blackout paint before facingMode/mirror state updates. Starting
+    // the device switch immediately also supports WebViews without RAF.
     try {
       await onToggleFlip();
     } finally {
       setPreviewFacingMode(nextFacing);
-      requestAnimationFrame(() => setIsCameraFlipping(false));
+      const schedule = typeof requestAnimationFrame === "function" ? requestAnimationFrame : setTimeout;
+      schedule(() => setIsCameraFlipping(false));
     }
   }, [cameraFacingMode, isCameraFlipping, onToggleFlip]);
 
@@ -379,6 +380,10 @@ export function MobileActiveScreen({
               speakingUserIds={speakingUserIds}
               onFlipLocalCamera={() => void handleFlipCamera()}
               isFlippingCamera={isCameraFlipping}
+              mobileSingleRemote={callType === "video" && showRemoteVideo && !showPresentationGrid && gridRemoteMedia.length === 1}
+              isLocalPrimary={isSelfViewFullscreen}
+              onToggleMobileStage={() => setIsSelfViewFullscreen((isFullscreen) => !isFullscreen)}
+              isCallConnected={callPhase === "in-call"}
             />
           ) : (
             <>
@@ -580,6 +585,8 @@ export function MobileActiveScreen({
       {/* Bottom control bar */}
       <div
         className={`mobile-active-controls shared-call-controls${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
+        aria-hidden={!areControlsVisible}
+        inert={!areControlsVisible}
         onPointerDown={(event) => event.stopPropagation()}
       >
         {/* Mic */}
@@ -600,27 +607,15 @@ export function MobileActiveScreen({
           <span className="mobile-active-ctrl-lbl">{isCameraEnabled ? "Camera" : "Camera off"}</span>
         </div>
 
-        {/* Screen Demonstration / Share button */}
-        <div className="mobile-active-ctrl">
-          <CallControlButton action="screen-share" state={isSharingLocalScreen ? "active" : "idle"} className={`mobile-active-ctrl-btn${isSharingLocalScreen ? " active" : ""}`} label={isSharingLocalScreen ? "Stop sharing screen" : "Share screen"} onClick={onToggleScreenShare} />
-          <span className="mobile-active-ctrl-lbl">
-            {isSharingLocalScreen ? "Stop share" : "Share"}
-          </span>
-        </div>
-
-        {/* Stovo Intelligence */}
-        <div className="mobile-active-ctrl" style={{ position: "relative" }}>
-          <button
-            type="button"
-            className={`mobile-active-ctrl-btn${isIntelligenceOpen || recording?.isRecordingActive || transcription?.transcriptState === "recording" ? " active" : ""}`}
-            aria-label="Stovo Intelligence"
-            onClick={() => setIsIntelligenceOpen((open) => !open)}
+        <div className="mobile-active-secondary-controls">
+          <MobileCallMoreMenu
+            isSharing={isSharingLocalScreen}
+            isIntelligenceActive={recording?.isRecordingActive || transcription?.transcriptState === "recording"}
+            onOpenSettings={onOpenSettings}
+            onToggleScreenShare={onToggleScreenShare}
+            onToggleIntelligence={() => setIsIntelligenceOpen((open) => !open)}
           >
-            <IconIntelligence size={18} />
-          </button>
-          <span className="mobile-active-ctrl-lbl">AI</span>
-
-          {transcription && recording && liveCaptions && (
+            {transcription && recording && liveCaptions && (
             <MeetingIntelligencePopover
               isOpen={isIntelligenceOpen}
               onClose={() => setIsIntelligenceOpen(false)}
@@ -649,13 +644,14 @@ export function MobileActiveScreen({
               onChangeTargetLanguage={liveCaptions.setTargetLanguage}
               isMobile={true}
             />
-          )}
-        </div>
+            )}
+          </MobileCallMoreMenu>
 
-        {/* End Call */}
-        <div className="mobile-active-ctrl">
-          <CallControlButton action="end-call" state="idle" className="mobile-active-ctrl-btn end" label="End call" onClick={onEnd} />
-          <span className="mobile-active-ctrl-lbl">End</span>
+          {/* End call remains directly reachable beside More. */}
+          <div className="mobile-active-ctrl">
+            <CallControlButton action="end-call" state="idle" className="mobile-active-ctrl-btn end" label="End call" onClick={onEnd} />
+            <span className="mobile-active-ctrl-lbl">End</span>
+          </div>
         </div>
       </div>
 

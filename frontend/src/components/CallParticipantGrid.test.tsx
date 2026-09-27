@@ -94,4 +94,35 @@ describe("shared call participant presentation", () => {
     expect(tile?.classList.contains("is-speaking")).toBe(false);
     expect(tile?.querySelector('[role="status"]')?.textContent).toBe("Muted");
   });
+
+  it.each([
+    { description: "null stream", stream: null, hasVideo: false },
+    {
+      description: "ended video stream",
+      stream: { getVideoTracks: () => [{ readyState: "ended", kind: "video" }] } as unknown as MediaStream,
+      hasVideo: true,
+    },
+  ])("falls back to an avatar for a remote participant with a $description", ({ stream, hasVideo }) => {
+    const container = renderGrid({
+      localStream: null,
+      localScreenStream: {
+        getVideoTracks: () => [{ readyState: "live", kind: "video", getSettings: () => ({ width: 1920, height: 1080 }) }],
+      } as unknown as MediaStream,
+      remoteMedia: [{
+        userId: "offline-camera",
+        stream: stream as MediaStream,
+        screenStream: null,
+        hasVideo,
+        hasAudio: true,
+        hasScreenShare: false,
+      }],
+      localUserLabel: "You",
+      callType: "video",
+    });
+
+    const participant = container.querySelector(".call-grid__tile--remote");
+    expect(container.querySelector(".call-grid--presenting")).not.toBeNull();
+    expect(participant?.querySelector(".call-grid__avatar")).not.toBeNull();
+    expect(participant?.querySelector("video")).toBeNull();
+  });
 });

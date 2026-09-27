@@ -53,18 +53,21 @@ describe("MobileActiveScreen", () => {
     onEnd: vi.fn(),
   };
 
-  it("renders screen share button unconditionally on mobile active screen", () => {
+  it("routes screen sharing through the More menu instead of a direct mobile control", () => {
     const container = renderComponent(
       <MobileActiveScreen {...defaultProps} />
     );
 
-    const shareBtn = container.querySelector("button[aria-label='Share screen']") as HTMLButtonElement;
-    expect(shareBtn).toBeDefined();
-    expect(shareBtn).not.toBeNull();
+    expect(container.querySelector(".mobile-active-controls button[aria-label='Share screen']")).toBeNull();
+    const moreBtn = container.querySelector("button[aria-label='More options']") as HTMLButtonElement;
+    expect(moreBtn).not.toBeNull();
 
     act(() => {
-      shareBtn.click();
+      moreBtn.click();
     });
+    const shareBtn = container.querySelector("[role='group'] button[aria-label='Share screen']") as HTMLButtonElement;
+    expect(shareBtn).not.toBeNull();
+    act(() => shareBtn.click());
     expect(defaultProps.onToggleScreenShare).toHaveBeenCalled();
   });
 
@@ -73,10 +76,11 @@ describe("MobileActiveScreen", () => {
       <MobileActiveScreen {...defaultProps} isScreenSharing={true} />
     );
 
-    const shareBtn = container.querySelector("button[aria-label='Stop sharing screen']");
-    expect(shareBtn).toBeDefined();
+    const moreBtn = container.querySelector("button[aria-label='More options']") as HTMLButtonElement;
+    act(() => moreBtn.click());
+    const shareBtn = container.querySelector("[role='group'] button[aria-label='Share screen']") as HTMLButtonElement;
     expect(shareBtn).not.toBeNull();
-    expect(shareBtn?.classList.contains("active")).toBe(true);
+    expect(shareBtn.textContent).toContain("Stop screen share");
 
     const bannerStopBtn = container.querySelector("button[aria-label='Stop screen share']") as HTMLButtonElement;
     expect(bannerStopBtn).toBeDefined();
