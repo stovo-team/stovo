@@ -40,6 +40,8 @@ export interface SFUMediaEnginePort {
   onRemoteStream?: (userId: string, stream: MediaStream) => void;
   onRemoteScreenStream?: (userId: string, stream: MediaStream | null) => void;
   onRemoteStreamRemoved?: (userId: string) => void;
+  onRemoteMicrophoneMuteChange?: (userId: string, muted: boolean) => void;
+  onRemoteParticipantDisconnected?: (userId: string) => void;
   onConnected?: () => void;
   onDisconnected?: () => void;
   connect(options: { url: string; token: string }): Promise<void>;

@@ -224,7 +224,7 @@ export default function CallParticipantGrid({
   const isPresenterSpeaking = presenter
     ? presenter.userId === localUserLabel
       ? isLocalSpeaking && !isLocalMuted
-      : (speakingUserIds.includes(presenter.userId) || (isPeerSpeaking && remoteMedia.length === 1))
+      : !("isMuted" in presenter && presenter.isMuted) && (speakingUserIds.includes(presenter.userId) || (isPeerSpeaking && remoteMedia.length === 1))
     : false;
 
   return (
@@ -246,7 +246,7 @@ export default function CallParticipantGrid({
           showVideo
           isScreen
           isSpeaking={isPresenterSpeaking}
-          isMuted={presenter.userId === localUserLabel && isLocalMuted}
+          isMuted={presenter.userId === localUserLabel ? isLocalMuted : "isMuted" in presenter && Boolean(presenter.isMuted)}
           onVideoDimensions={(width, height) => {
             if (width > 0 && height > 0) {
               setIsPresenterPortrait(height > width);
@@ -280,9 +280,9 @@ export default function CallParticipantGrid({
           remote.stream.getVideoTracks().some((t) => t.readyState !== "ended");
         const showVideo = preferScreen || cameraVideo;
         const stream = preferScreen ? remote.screenStream : remote.stream;
-        const isRemoteSpeaking =
+        const isRemoteSpeaking = !remote.isMuted && (
           speakingUserIds.includes(remote.userId) ||
-          (isPeerSpeaking && remoteMedia.length === 1);
+          (isPeerSpeaking && remoteMedia.length === 1));
 
         return (
           <div key={remote.userId} style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -294,6 +294,7 @@ export default function CallParticipantGrid({
               showVideo={showVideo}
               isScreen={preferScreen}
               isSpeaking={isRemoteSpeaking}
+              isMuted={Boolean(remote.isMuted)}
             />
             {!showVideo && remote.hasAudio ? (
               <audio

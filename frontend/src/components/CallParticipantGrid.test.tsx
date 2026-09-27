@@ -30,7 +30,7 @@ describe("shared call participant presentation", () => {
       remoteMedia: [
         { userId: "speaker", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false },
         { userId: "speaker-two", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false },
-        { userId: "listener", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false },
+        { userId: "listener", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false, isMuted: true },
       ],
       localUserLabel: "You",
       callType: "audio",
@@ -41,7 +41,9 @@ describe("shared call participant presentation", () => {
     const speakingTiles = Array.from(container.querySelectorAll(".call-grid__tile.is-speaking"));
     expect(speakingTiles).toHaveLength(3);
     expect(speakingTiles.map((tile) => tile.querySelector("[role=\"status\"]")?.textContent)).toEqual(["Speaking", "Speaking", "Speaking"]);
-    expect(container.querySelector(".call-grid__tile:not(.is-speaking) [role=\"status\"]")?.textContent).toBe("Connected");
+    const mutedTile = Array.from(container.querySelectorAll(".call-grid__tile--remote")).find((tile) => tile.querySelector(".call-grid__label")?.textContent === "listener");
+    expect(mutedTile?.classList.contains("is-speaking")).toBe(false);
+    expect(mutedTile?.querySelector('[role="status"]')?.textContent).toBe("Muted");
   });
 
   it("shows speaking on a video tile and keeps its label accessible", () => {
@@ -76,5 +78,20 @@ describe("shared call participant presentation", () => {
     const localTile = container.querySelector(".call-grid__tile--local");
     expect(localTile?.classList.contains("is-speaking")).toBe(false);
     expect(localTile?.querySelector('[role="status"]')?.textContent).toBe("Muted");
+  });
+
+  it("does not show the only remote participant as speaking through the peer fallback when muted", () => {
+    const container = renderGrid({
+      localStream: null,
+      remoteMedia: [
+        { userId: "muted-peer", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false, isMuted: true },
+      ],
+      callType: "audio",
+      isPeerSpeaking: true,
+    });
+
+    const tile = container.querySelector(".call-grid__tile--remote");
+    expect(tile?.classList.contains("is-speaking")).toBe(false);
+    expect(tile?.querySelector('[role="status"]')?.textContent).toBe("Muted");
   });
 });

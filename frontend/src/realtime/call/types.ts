@@ -22,6 +22,7 @@ export type RemoteMedia = {
   hasVideo: boolean;
   hasAudio: boolean;
   hasScreenShare: boolean;
+  isMuted?: boolean;
 };
 
 export type CallSettings = {

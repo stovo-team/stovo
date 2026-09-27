@@ -29,6 +29,7 @@ import { resolveLiveKitUrl } from "../realtime/call/livekitUrl";
 import { resolveGuestMeetingQualityBitrates, videoTrackPublishOptions } from "../realtime/call/callQuality";
 import { EmptyGuestRoomTimeout } from "./guestMeetingEmptyRoomTimeout";
 import { CameraTrackReplacementFailedError, CameraTrackReplacementRollbackError, replacePublishedCameraTrackSafely } from "./guestMeetingCameraTrackReplacement";
+import { updateMutedParticipantIds } from "./guestParticipantMuteState";
 
 type MeetingState = "name" | "waiting" | "joining" | "joined" | "blocked" | "expired" | "error";
 type RemoteParticipantStream = { id: string; cameraStream: MediaStream | null; screenStream: MediaStream | null };
@@ -81,6 +82,7 @@ export default function GuestMeetingPage() {
   const [deviceIssue, setDeviceIssue] = useState<string | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteParticipantStream[]>([]);
   const [remoteSpeakingUserIds, setRemoteSpeakingUserIds] = useState<string[]>([]);
+  const [remoteMutedUserIds, setRemoteMutedUserIds] = useState<string[]>([]);
   const [remoteParticipantCount, setRemoteParticipantCount] = useState(0);
   const [emptyRoomWarning, setEmptyRoomWarning] = useState(false);
   const [wasDisconnectedForEmptyRoom, setWasDisconnectedForEmptyRoom] = useState(false);
@@ -137,14 +139,17 @@ export default function GuestMeetingPage() {
       remoteSpeakingIndicatorsRef.current.get(id)?.dispose();
       remoteSpeakingIndicatorsRef.current.delete(id);
       setRemoteSpeakingUserIds((previous) => previous.filter((userId) => userId !== id));
+      setRemoteMutedUserIds((previous) => updateMutedParticipantIds(previous, id, false));
       return;
     }
     for (const indicator of remoteSpeakingIndicatorsRef.current.values()) indicator.dispose();
     remoteSpeakingIndicatorsRef.current.clear();
     setRemoteSpeakingUserIds([]);
+    setRemoteMutedUserIds([]);
   }
-  function setRemoteSpeakingMicrophoneEnabled(id: string, enabled: boolean) {
-    remoteSpeakingIndicatorsRef.current.get(id)?.update({ microphoneEnabled: enabled, level: 0 });
+  function setRemoteMicrophoneMuted(id: string, muted: boolean) {
+    setRemoteMutedUserIds((previous) => updateMutedParticipantIds(previous, id, muted));
+    remoteSpeakingIndicatorsRef.current.get(id)?.update({ microphoneEnabled: !muted, level: 0 });
   }
   useEffect(() => () => {
     for (const indicator of remoteSpeakingIndicatorsRef.current.values()) indicator.dispose();
@@ -590,13 +595,18 @@ export default function GuestMeetingPage() {
         updateRemoteSpeakingParticipants(participants.filter((participant) => !participant.isLocal).map((participant) => participant.identity));
       });
       room.on(RoomEvent.TrackMuted, (publication, participant) => {
-        if (publication.source === Track.Source.Microphone) setRemoteSpeakingMicrophoneEnabled(participant.identity, false);
+        if (publication.source === Track.Source.Microphone) {
+          setRemoteMicrophoneMuted(participant.identity, true);
+        }
       });
       room.on(RoomEvent.TrackUnmuted, (publication, participant) => {
-        if (publication.source === Track.Source.Microphone) setRemoteSpeakingMicrophoneEnabled(participant.identity, true);
+        if (publication.source === Track.Source.Microphone) {
+          setRemoteMicrophoneMuted(participant.identity, false);
+        }
       });
       room.on(RoomEvent.Disconnected, () => clearRemoteSpeakingParticipant());
       room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        setRemoteMicrophoneMuted(participant.identity, !participant.isMicrophoneEnabled);
         if (!track.mediaStreamTrack) return;
         setRemoteStreams((previous) => {
           const existing = previous.find((item) => item.id === participant.identity);
@@ -661,7 +671,7 @@ export default function GuestMeetingPage() {
     const screenAspectRatio = streamAspectRatio(sharedScreenStream);
     const cameraTiles = [
       { id: "local", label: `${guestDisplayName} (You)`, stream: hasLocalCamera ? localCameraStream : null, muted: !microphoneEnabled, speaking: isSpeaking, local: true },
-      ...remoteStreams.map((remote, index) => ({ id: remote.id, label: `Guest ${index + 1}`, stream: remote.cameraStream, muted: false, speaking: remoteSpeakingUserIds.includes(remote.id), local: false }))
+      ...remoteStreams.map((remote, index) => ({ id: remote.id, label: `Guest ${index + 1}`, stream: remote.cameraStream, muted: remoteMutedUserIds.includes(remote.id), speaking: !remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id), local: false }))
     ];
 
     return <main className="guest-meeting-page guest-meeting-page--in-call">
@@ -690,7 +700,7 @@ export default function GuestMeetingPage() {
             </aside>
           </div> : <div className={`voice-room-grid ${gridTierClass}`} aria-label="Meeting participants">
             <GuestParticipantTile label={`${guestDisplayName} (You)`} hasVideo={hasLocalCamera} muted={!microphoneEnabled} speaking={isSpeaking} avatar={<span className={`guest-preview-avatar-halo guest-call-avatar-halo${isSpeaking ? " is-speaking" : ""}${speakingIndicatorState === "settling" ? " is-settling" : ""}`}><RealAvatar accessToken={accessToken} className="avatar voice-participant-avatar voice-avatar--xl" file={currentUser?.profilePhoto} label={guestDisplayName} /></span>}>{hasLocalCamera && localCameraStream && <LocalStreamVideo stream={localCameraStream} className={`voice-participant-video-feed${cameraFacingMode === "user" ? " is-mirrored" : ""}`} />}</GuestParticipantTile>
-            {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={Boolean(remote.cameraStream?.getVideoTracks().some((track) => track.readyState === "live"))} speaking={remoteSpeakingUserIds.includes(remote.id)} avatar={remoteSpeakingUserIds.includes(remote.id) ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>{remote.cameraStream && <RemoteVideo stream={remote.cameraStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />}</GuestParticipantTile>)}
+            {remoteStreams.map((remote, index) => <GuestParticipantTile key={remote.id} label={`Guest ${index + 1}`} hasVideo={Boolean(remote.cameraStream?.getVideoTracks().some((track) => track.readyState === "live"))} muted={remoteMutedUserIds.includes(remote.id)} speaking={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id)} avatar={!remoteMutedUserIds.includes(remote.id) && remoteSpeakingUserIds.includes(remote.id) ? <span className="guest-preview-avatar-halo guest-call-avatar-halo is-speaking"><span className="guest-call-avatar-placeholder" aria-hidden="true"><Users size={40} /></span></span> : undefined}>{remote.cameraStream && <RemoteVideo stream={remote.cameraStream} outputVolume={outputVolume} speakerEnabled={speakerEnabled} speakerDeviceId={speakerDeviceId} className="voice-participant-video-feed" />}</GuestParticipantTile>)}
           </div>}
         </CallParticipantStage>
         {deviceIssue && <p className="guest-device-issue guest-device-issue--visible" role="status">{deviceIssue}</p>}

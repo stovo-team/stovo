@@ -20,7 +20,17 @@ describe("guest meeting responsive device-control source contract", () => {
   it("tracks speaking state for remote guest participants", () => {
     expect(guestMeeting).toContain("ActiveSpeakersChanged");
     expect(guestMeeting).toContain("indicator.update({ microphoneEnabled: true, level: active.has(id) ? CALL_SPEAKING_THRESHOLD : 0 })");
-    expect(guestMeeting).toMatch(/remoteStreams\.map\([\s\S]*?speaking:\s*remoteSpeakingUserIds\.includes\(remote\.id\)/);
+    expect(guestMeeting).toMatch(/remoteStreams\.map\([\s\S]*?speaking:\s*!remoteMutedUserIds\.includes\(remote\.id\)\s*&&\s*remoteSpeakingUserIds\.includes\(remote\.id\)/);
+  });
+
+  it("propagates remote microphone mute state into guest participant tiles", () => {
+    expect(guestMeeting).toContain("setRemoteMicrophoneMuted(participant.identity, true)");
+    expect(guestMeeting).toContain("setRemoteMicrophoneMuted(participant.identity, false)");
+    expect(guestMeeting).toContain('muted={remoteMutedUserIds.includes(remote.id)}');
+  });
+
+  it("initializes a guest tile from the participant mute state when a track subscribes", () => {
+    expect(guestMeeting).toContain("setRemoteMicrophoneMuted(participant.identity, !participant.isMicrophoneEnabled)");
   });
 
   it("keeps a disabled camera track published through fallback so re-enabling can resume video", () => {
