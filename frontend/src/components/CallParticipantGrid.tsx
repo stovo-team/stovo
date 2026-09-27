@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { RemoteMedia } from "../realtime/call/types";
 import { SpeakingWaveBadge } from "../features/chats/calling/SpeakingWaveBadge";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
@@ -16,6 +16,7 @@ type CallParticipantGridProps = {
   speakingUserIds?: string[];
   onFlipLocalCamera?: () => void;
   isFlippingCamera?: boolean;
+  localVideoPlaceholder?: ReactNode;
 };
 
 const gridStyle: CSSProperties = {
@@ -112,6 +113,7 @@ function ParticipantTile({
   style,
   onFlipCamera,
   isFlippingCamera,
+  localVideoPlaceholder,
 }: {
   label: string;
   stream: MediaStream | null;
@@ -125,6 +127,7 @@ function ParticipantTile({
   style: CSSProperties;
   onFlipCamera?: () => void;
   isFlippingCamera?: boolean;
+  localVideoPlaceholder?: ReactNode;
 }) {
   return (
     <div className={`${className}${isSpeaking ? " is-speaking" : ""}`} style={style}>
@@ -147,6 +150,8 @@ function ParticipantTile({
           {isSpeaking && <SpeakingWaveBadge />}
           {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
         </>
+      ) : localVideoPlaceholder ? (
+        localVideoPlaceholder
       ) : (
         <div className="call-grid__avatar-wrap">
           <div className="call-grid__avatar-circle">
@@ -190,6 +195,7 @@ export default function CallParticipantGrid({
   speakingUserIds = [],
   onFlipLocalCamera,
   isFlippingCamera,
+  localVideoPlaceholder,
 }: CallParticipantGridProps) {
   const [isPresenterPortrait, setIsPresenterPortrait] = useState(false);
   // Voice channels may keep their audio call type while a local camera track
@@ -260,12 +266,13 @@ export default function CallParticipantGrid({
         style={tileStyle}
         label={localUserLabel}
         stream={localStream}
-        showVideo={localHasVideo}
+        showVideo={localHasVideo || Boolean(localVideoPlaceholder)}
         mirror={mirrorLocal}
         isSpeaking={isLocalSpeaking && !isLocalMuted}
         isMuted={isLocalMuted}
         onFlipCamera={onFlipLocalCamera}
         isFlippingCamera={isFlippingCamera}
+        localVideoPlaceholder={localVideoPlaceholder}
       />
 
       {remoteMedia.map((remote) => {

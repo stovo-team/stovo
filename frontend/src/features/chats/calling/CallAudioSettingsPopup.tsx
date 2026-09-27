@@ -6,6 +6,7 @@ import {
   CallSettings,
 } from "../../../realtime/CallController";
 import type { CallTrackStatus } from "../shared/types";
+import { CallDeviceSelect } from "./CallDeviceSelect";
 
 function AudioToggleRow({
   name,
@@ -72,9 +73,6 @@ export function CallAudioSettingsPopup({
   onPatch: (patch: Partial<CallSettings>) => void;
   onClose: () => void;
 }) {
-  const inputDevices = devices.filter((d) => d.kind === "audioinput");
-  const outputDevices = devices.filter((d) => d.kind === "audiooutput");
-
   return (
     <div
       className="call-audio-popup-backdrop"
@@ -100,32 +98,32 @@ export function CallAudioSettingsPopup({
 
         <section className="call-audio-popup-section">
           <div className="call-audio-section-label">Devices</div>
-          <label className="call-audio-device-row">
+          <div className="call-audio-device-row">
             <span>Microphone</span>
-            <select
-              value={settings.inputDeviceId}
-              disabled={!capabilities.canSelectInputDevice}
-              onChange={(e) => onPatch({ inputDeviceId: e.target.value })}
-            >
-              <option value="">System default</option>
-              {inputDevices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="call-audio-device-row">
+            <CallDeviceSelect
+              variant="settings"
+              portalContainerRef={popupRef}
+              label="Microphone"
+              deviceKind="audioinput"
+              selectedDeviceId={settings.inputDeviceId}
+              devices={devices}
+              canSelectDevice={capabilities.canSelectInputDevice}
+              onDeviceChange={(inputDeviceId) => onPatch({ inputDeviceId })}
+            />
+          </div>
+          <div className="call-audio-device-row">
             <span>Speaker</span>
-            <select
-              value={settings.outputDeviceId}
-              disabled={!capabilities.canSelectOutputDevice}
-              onChange={(e) => onPatch({ outputDeviceId: e.target.value })}
-            >
-              <option value="">System default</option>
-              {outputDevices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>{d.label}</option>
-              ))}
-            </select>
-          </label>
+            <CallDeviceSelect
+              variant="settings"
+              portalContainerRef={popupRef}
+              label="Speaker"
+              deviceKind="audiooutput"
+              selectedDeviceId={settings.outputDeviceId}
+              devices={devices}
+              canSelectDevice={capabilities.canSelectOutputDevice}
+              onDeviceChange={(outputDeviceId) => onPatch({ outputDeviceId })}
+            />
+          </div>
           {!capabilities.canSelectOutputDevice && (
             <p className="call-audio-popup-note">This browser uses the system default output only.</p>
           )}

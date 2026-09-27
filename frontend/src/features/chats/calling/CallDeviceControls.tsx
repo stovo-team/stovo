@@ -1,5 +1,6 @@
 import type { CallCapabilities, CallDevice, CallSettings } from "../../../realtime/call/types";
-import { CallDeviceControl, type CallDeviceStrings } from "./CallDeviceControl";
+import { CallDeviceControl } from "./CallDeviceControl";
+import type { CallDeviceStrings } from "./CallDeviceSelect";
 
 export function CallDeviceControls({
   settings,
