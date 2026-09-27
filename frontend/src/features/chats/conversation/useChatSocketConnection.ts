@@ -160,7 +160,7 @@ export function useChatSocketConnection({
     };
     socket.on("connect_error", logSocketConnectError);
 
-    const observeEnginePacket = (direction: "sent" | "received", packet: { type: string; data?: unknown }) => {
+    const observeEnginePacket = (state: "queued" | "received", packet: { type: string; data?: unknown }) => {
       if (packet.type !== "message" || typeof packet.data !== "string") return;
       const data = packet.data;
       const kind = data.startsWith("0")
@@ -170,7 +170,7 @@ export function useChatSocketConnection({
           : null;
       if (kind) {
         console.info("[realtime] Socket.IO namespace packet", {
-          direction,
+          state,
           kind,
           transport: socket.io.engine?.transport?.name ?? "unknown",
         });
@@ -181,8 +181,8 @@ export function useChatSocketConnection({
       const engine = socket.io.engine;
       if (!engine || engine === observedEngine) return;
       observedEngine = engine;
-      engine?.on("packetCreate", (packet) => observeEnginePacket("sent", packet));
-      engine?.on("packet", (packet) => observeEnginePacket("received", packet));
+      engine.on("packetCreate", (packet) => observeEnginePacket("queued", packet));
+      engine.on("packet", (packet) => observeEnginePacket("received", packet));
     };
     socket.io.on("open", attachEnginePacketObservers);
     attachEnginePacketObservers();

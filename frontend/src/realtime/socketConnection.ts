@@ -1,5 +1,6 @@
 type SocketConnection = {
   connected: boolean;
+  active?: boolean;
   connect: () => unknown;
   on: (event: "connect", listener: () => void) => unknown;
   off: (event: "connect", listener: () => void) => unknown;
@@ -27,7 +28,11 @@ function waitForSingleConnection(socket: SocketConnection, timeoutMs: number): P
     };
 
     socket.on("connect", onConnect);
-    socket.connect();
+    // Socket.IO's connect() is not idempotent while the namespace handshake is
+    // pending; calling it on each retry queues duplicate CONNECT packets. The
+    // active socket already has its own reconnection loop, so only start sockets
+    // that are not active.
+    if (!socket.active) socket.connect();
   });
 }
 
