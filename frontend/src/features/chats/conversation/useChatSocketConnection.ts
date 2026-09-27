@@ -136,14 +136,10 @@ export function useChatSocketConnection({
       auth: { token },
       query: { token },
       transports,
-      // Bind lifecycle and call handlers before opening the namespace so a fast
-      // Engine.IO handshake cannot race the Socket.IO CONNECT packet/listeners.
-      autoConnect: false,
-      // The backend Socket.IO implementation cannot reliably resume an authenticated
-      // polling session over WebSocket: its WebSocket handshake omits the URL used by
-      // the server's token extraction. Keep the authenticated polling transport for
-      // browsers as well as native clients so calls are not lost during upgrade.
-      upgrade: false,
+      // Native clients keep polling because the backend's WebSocket upgrade does not
+      // preserve the authenticated handshake URL. Browsers can use the normal
+      // polling-to-WebSocket upgrade path.
+      upgrade: !isNative,
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity
@@ -271,8 +267,6 @@ export function useChatSocketConnection({
     socket.on("connect", syncAfterSocketResume);
     socket.io.on("reconnect", syncAfterSocketResume);
     socket.on("sync:needed", syncAfterSocketResume);
-    socket.connect();
-
     return () => {
       appStateCancelled = true;
       void appStateListener?.remove();
