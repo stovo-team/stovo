@@ -14553,12 +14553,17 @@ span.message-spoiler.is-revealed {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20px 24px max(env(safe-area-inset-bottom, 0px), 28px);
+  padding: 20px 16px max(env(safe-area-inset-bottom, 0px), 28px);
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, auto);
+  justify-items: center;
   justify-content: center;
-  gap: 14px;
-  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 18px;
+  max-width: 420px;
+  margin-inline: auto;
   z-index: 10;
   opacity: 1;
   transition: opacity 180ms ease;
@@ -14573,12 +14578,12 @@ span.message-spoiler.is-revealed {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
 }
 
 .mobile-active-ctrl-btn {
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -14588,6 +14593,11 @@ span.message-spoiler.is-revealed {
   cursor: pointer;
   color: #fff;
   transition: all 0.15s ease;
+}
+
+.mobile-active-ctrl-btn svg {
+  width: 25px;
+  height: 25px;
 }
 
 .mobile-active-ctrl-btn.muted {
@@ -14607,8 +14617,8 @@ span.message-spoiler.is-revealed {
 }
 
 .mobile-active-ctrl-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   stroke: currentColor;
   fill: none;
   stroke-width: 1.8;

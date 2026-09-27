@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" data-theme-mode="dark" data-platform="web">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Call UI mockup</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <style>
+      body { margin:0; background:#10131b; color:#f7f8fb; font-family:Inter,system-ui,sans-serif; }
+      #root { min-height:100vh; }
+      .call-preview-page { min-height:100vh; padding:18px 20px 26px; box-sizing:border-box; background:#10131b; color:#f7f8fb; }
+      .call-preview-toolbar { max-width:1120px; margin:0 auto 10px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+      .call-preview-switches,.call-preview-toolbar-options { display:flex; align-items:center; gap:8px; }
+      .call-preview-toolbar button,.call-preview-toolbar select { border:1px solid #343945; border-radius:9px; padding:8px 11px; color:#e8ebf2; background:#20232a; cursor:pointer; }
+      .call-preview-toolbar .is-selected { border-color:#4b8df1; background:#263c61; }
+      .call-preview-toolbar label { color:#aeb5c1; font-size:12px; display:flex; align-items:center; gap:8px; }
+      .call-preview-note { max-width:1120px; margin:0 auto 10px; color:#8c94a1; font-size:12px; }
+      .call-preview-panel { position:relative; max-width:1120px; min-height:min(760px,calc(100vh - 100px)); margin:0 auto; padding:22px 24px 24px; box-sizing:border-box; display:flex; flex-direction:column; gap:14px; border:1px solid #38404e; border-radius:22px; background:#1c1d20; overflow:hidden; }
+      .call-preview-header { min-height:46px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+      .call-preview-header > div { display:flex; flex-direction:column; gap:5px; }
+      .call-preview-header strong { font-size:15px; }
+      .call-preview-header span { color:#bdc2cc; font-size:12px; }
+      .call-preview-minimize,.call-preview-settings header button,.call-preview-fullscreen > button { display:grid; place-items:center; width:40px; height:40px; border:1px solid #46505f; border-radius:50%; background:#242831; color:#eef1f7; cursor:pointer; }
+      .call-preview-minimize svg,.call-preview-settings header button svg,.call-preview-fullscreen > button svg { width:19px; height:19px; }
+      .call-preview-stage { position:relative; flex:1; min-height:460px; overflow:hidden; border-radius:20px; background:#070809; cursor:pointer; }
+      .call-preview-stage.is-self-focused { background:#050607; }
+      .call-preview-main-person { position:absolute; inset:0; width:100%; height:100%; padding:0; overflow:hidden; display:grid; place-items:center; border:0; background:#050607; color:white; cursor:pointer; }
+      .call-preview-main-person.is-pip { inset:auto 20px 20px auto; width:min(28%,250px); height:auto; aspect-ratio:16/10; border:1px solid #71809a; border-radius:14px; box-shadow:0 10px 32px #0009; }
+      .call-preview-avatar { display:grid; place-items:center; width:min(150px,30vw); aspect-ratio:1; overflow:hidden; border-radius:50%; border:5px solid #125930; box-shadow:0 0 0 6px #081b11; }
+      .call-preview-avatar svg { width:78%; height:78%; filter:drop-shadow(0 2px 4px #0005); }
+      .call-preview-local-video { position:absolute; z-index:3; inset:auto 20px 20px auto; width:min(28%,250px); aspect-ratio:16/10; padding:0; overflow:hidden; border:1px solid #71809a; border-radius:14px; box-shadow:0 10px 32px #0009; cursor:pointer; }
+      .call-preview-local-video.is-primary { inset:0; width:100%; height:100%; aspect-ratio:auto; border:0; border-radius:0; box-shadow:none; }
+      .video-placeholder { position:absolute; inset:0; display:grid; place-items:center; overflow:hidden; }
+      .video-silhouette { width:35%; height:56%; margin-top:17%; border-radius:50% 50% 28% 28%; background:linear-gradient(#d5d9df 0 35%,#56647a 36%); opacity:.82; filter:drop-shadow(0 3px 10px #0005); }
+      .call-preview-person-label,.call-preview-person-status { position:absolute; z-index:2; left:10px; bottom:9px; padding:5px 8px; border-radius:6px; color:white; background:#000a; font-size:12px; }
+      .call-preview-person-status { left:auto; right:10px; color:#4ade80; }
+      .call-preview-main-person:not(.is-pip):has(~ .call-preview-local-video) .call-preview-person-status { top:10px; bottom:auto; }
+      .call-preview-main-person.is-pip .call-preview-avatar { width:65px; border-width:3px; }
+      .call-preview-flip { position:absolute; z-index:4; top:10px; right:10px; display:grid; place-items:center; width:42px; height:42px; border:1px solid #667084; border-radius:50%; background:#1d222cdd; color:#fff; cursor:pointer; }
+      .call-preview-flip svg { width:20px; height:20px; }
+      .call-preview-participant-grid { position:absolute; inset:14px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; align-content:center; }
+      .call-preview-share-stage { flex:1; min-height:460px; display:grid; grid-template-columns:minmax(0,1fr) 190px; gap:14px; }
+      .call-preview-share-content { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; gap:14px; padding:clamp(20px,5vw,64px); border:1px solid #51627a; border-radius:18px; color:#eef4ff; text-align:left; cursor:pointer; background:radial-gradient(ellipse at 82% 20%,#34465f,#171e2b 55%,#0b1018); }
+      .call-preview-share-content > span { color:#60a5fa; font-size:11px; letter-spacing:.16em; }
+      .call-preview-share-content strong { font-size:clamp(28px,4vw,50px); }
+      .call-preview-share-content small { color:#aab9ce; font-size:15px; }
+      .call-preview-share-columns { display:flex; gap:9px; width:100%; margin-top:18px; }
+      .call-preview-share-columns i { height:52px; flex:1; border-radius:8px; background:linear-gradient(135deg,#35445a,#202a38); border:1px solid #3b4a60; }
+      .call-preview-share-participants { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:10px; overflow:auto; }
+      .call-preview-share-participant { position:relative; display:block; width:100%; padding:0; overflow:hidden; border:1px solid #414958; border-radius:12px; background:#090b10; color:white; cursor:pointer; }
+      .call-preview-share-participant .call-preview-avatar { position:absolute; inset:0; width:100%; height:100%; max-width:none; border:0; border-radius:0; box-shadow:none; }
+      .call-preview-share-participant .video-placeholder { position:absolute; inset:0; }
+      .call-preview-share-participant .call-preview-person-label { bottom:6px; left:6px; font-size:10px; }
+      .call-preview-share-participant .call-preview-person-status { right:5px; bottom:6px; font-size:9px; }
+      .call-preview-controls { position:relative; z-index:10; align-self:center; display:flex; flex-direction:column; align-items:center; gap:12px; padding-top:10px; opacity:1; transition:opacity 180ms ease; }
+      .call-preview-controls.is-hidden { opacity:0; pointer-events:none; }
+      .call-preview-control-row { display:flex; justify-content:center; gap:16px; }
+      .call-preview-control { display:grid; place-items:center; width:60px; height:60px; padding:0; border:1px solid #46505f; border-radius:50%; background:#252932; color:#65aeff; cursor:pointer; transition:transform 120ms ease,background 120ms ease; }
+      .call-preview-control:hover { transform:scale(1.05); }
+      .call-preview-control.is-active { background:#3b8ee9; border-color:#3b8ee9; color:#fff; }
+      .call-preview-control.is-danger { background:#e52632; border-color:#e52632; color:#fff; }
+      .call-preview-control svg { width:24px; height:24px; }
+      .call-preview-restore { margin:28px auto; display:flex; gap:10px; align-items:center; border:1px solid #454e5d; border-radius:999px; padding:14px 20px; color:white; background:#242831; cursor:pointer; }
+      .call-preview-settings-backdrop,.call-preview-fullscreen-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:20px; background:#0009; }
+      .call-preview-settings { width:min(390px,100%); max-height:85vh; overflow:auto; padding:18px; border:1px solid #3b4658; border-radius:16px; background:#1b1e24; box-shadow:0 16px 55px #0009; }
+      .call-preview-settings header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; font-weight:650; }
+      .call-preview-settings header button { width:30px; height:30px; }
+      .call-preview-settings > label { display:flex; flex-direction:column; gap:7px; margin:12px 0; color:#c0c6d0; font-size:12px; }
+      .call-preview-settings select { padding:11px; border:1px solid #3b4658; border-radius:8px; background:#101827; color:white; }
+      .call-preview-settings .setting-toggle { flex-direction:row; justify-content:space-between; align-items:center; }
+      .call-preview-fullscreen { position:relative; width:min(1000px,100%); height:min(80vh,640px); display:grid; place-items:center; border:1px solid #566176; border-radius:14px; background:#10151d; color:white; font-size:clamp(24px,4vw,48px); }
+      .call-preview-fullscreen > button { position:absolute; top:14px; right:14px; }
+      .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+      .is-mobile .call-preview-panel { width:min(430px,100%); min-height:min(860px,calc(100vh - 105px)); margin:0 auto; padding:18px 18px 20px; border-radius:22px; }
+      .is-mobile .call-preview-stage { min-height:500px; }
+      .is-mobile .call-preview-share-stage { grid-template-columns:1fr; grid-template-rows:minmax(260px,1fr) auto; min-height:500px; }
+      .is-mobile .call-preview-share-participants { display:flex; overflow-x:auto; padding-bottom:5px; }
+      .is-mobile .call-preview-share-participant { flex:0 0 88px; width:88px; }
+      .is-mobile .call-preview-control-row { gap:18px; }
+      .is-mobile .call-preview-control { width:64px; height:64px; }
+      .is-mobile .call-preview-controls { gap:10px; }
+      @media(max-width:700px) { .call-preview-toolbar { align-items:flex-start; } .call-preview-toolbar-options { width:100%; justify-content:space-between; } .call-preview-page:not(.is-mobile) .call-preview-share-stage { grid-template-columns:minmax(0,1fr) 156px; } }
+      @media(max-width:480px) { .call-preview-page { padding:10px; } .call-preview-switches { gap:4px; } .call-preview-toolbar button { padding:7px 8px; font-size:11px; } .call-preview-panel { padding:15px 12px 18px; } .call-preview-control-row { gap:9px; } .call-preview-control { width:56px; height:56px; } }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/call-ui-preview-entry.tsx"></script>
+  </body>
+</html>

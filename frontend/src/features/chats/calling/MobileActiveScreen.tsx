@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Socket } from "socket.io-client";
 import type { FamilyFile } from "../../../api/files";
 import type { RemoteMedia } from "../../../realtime/call/types";
@@ -11,6 +11,12 @@ import { useLiveCaptions } from "./useLiveCaptions";
 import { useTranscription } from "./useTranscription";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+
+function CameraFlipButton({ disabled, onFlip }: { disabled: boolean; onFlip: () => void }) {
+  return <button type="button" className="mobile-active-pip-flip" aria-label="Flip camera" disabled={disabled} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onFlip(); }}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 4v6h6" /><path d="M23 20v-6h-6" /><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" /></svg>
+  </button>;
+}
 
 export function MobileActiveScreen({
   peerName,
@@ -126,6 +132,8 @@ export function MobileActiveScreen({
 
   const showControls = useCallback(() => setAreControlsVisible(true), []);
   const toggleControls = useCallback(() => setAreControlsVisible((visible) => !visible), []);
+  const toggleSelfView = useCallback(() => { setIsSelfViewFullscreen((isFullscreen) => !isFullscreen); showControls(); }, [showControls]);
+  const handleSelfViewKeyDown = useCallback((event: ReactKeyboardEvent<HTMLElement>) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); toggleSelfView(); } }, [toggleSelfView]);
   const selfViewVerticalPosition = areControlsVisible ? "top" : "bottom";
   const compactPipClassName = `mobile-active-pip mobile-active-pip--${selfViewVerticalPosition} mobile-active-pip--${selfViewSide}`;
 
@@ -302,7 +310,7 @@ export function MobileActiveScreen({
       onPointerDown={toggleControls}
     >
       {/* Top right shrink button */}
-      <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}>
+      <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`} onPointerDown={(event) => event.stopPropagation()}>
         <button
           type="button"
           className="mobile-active-shrink-btn"
@@ -356,7 +364,7 @@ export function MobileActiveScreen({
 
       {/* Video stage */}
       {showAnyVideo && (
-        <div className="mobile-active-video-stage" onPointerDown={toggleControls}>
+        <div className="mobile-active-video-stage">
           {showPresentationGrid ? (
             <CallParticipantGrid
               localStream={localVideoStream}
@@ -374,17 +382,16 @@ export function MobileActiveScreen({
           {/* Case 1: Remote video is available */}
           {showRemoteVideo && remoteVideoStream && (
             <>
-              <div className="mobile-active-remote-video-wrap">
+              <div className={isSelfViewFullscreen ? compactPipClassName : "mobile-active-remote-video-wrap"} onClick={isSelfViewFullscreen ? toggleSelfView : undefined} role={isSelfViewFullscreen ? "group" : undefined} tabIndex={isSelfViewFullscreen ? 0 : undefined} aria-label={isSelfViewFullscreen ? "Remote video PiP, press Enter or Space to switch view" : undefined} onKeyDown={isSelfViewFullscreen ? handleSelfViewKeyDown : undefined}>
                 <video
                   ref={mobileRemoteRef}
-                  className={isSelfViewFullscreen ? compactPipClassName : "mobile-active-fullscreen-video"}
+                  className={isSelfViewFullscreen ? "mobile-active-pip-video" : "mobile-active-fullscreen-video"}
                   autoPlay
                   playsInline
                   muted
-                  onClick={isSelfViewFullscreen ? cycleSelfViewSide : undefined}
                 />
                 {!isSelfViewFullscreen && isPeerSpeaking && <SpeakingWaveBadge />}
-                {isSelfViewFullscreen && isLocalSpeaking && <SpeakingWaveBadge />}
+                {isSelfViewFullscreen && isPeerSpeaking && <SpeakingWaveBadge />}
               </div>
               {/* Local Screen Share in PiP or Fullscreen */}
               {isSharingLocalScreen && localScreenStream && (
@@ -400,7 +407,7 @@ export function MobileActiveScreen({
                     {isPeerSpeaking && <SpeakingWaveBadge />}
                   </div>
                 ) : (
-                  <div className={compactPipClassName} onClick={cycleSelfViewSide}>
+                  <div className={compactPipClassName} onClick={toggleSelfView} role="group" tabIndex={0} aria-label="Your video PiP, press Enter or Space to switch view" onKeyDown={handleSelfViewKeyDown}>
                     <video
                       ref={mobileScreenRef}
                       className="mobile-active-pip-video--contain"
@@ -424,10 +431,11 @@ export function MobileActiveScreen({
                       muted
                       style={localVideoSwitchStyle}
                     />
-                    {isPeerSpeaking && <SpeakingWaveBadge />}
+                    {isLocalSpeaking && <SpeakingWaveBadge />}
+                    <CameraFlipButton disabled={isCameraFlipping} onFlip={() => { void handleFlipCamera(); }} />
                   </div>
                 ) : (
-                  <div className={compactPipClassName} onClick={cycleSelfViewSide}>
+                  <div className={compactPipClassName} onClick={toggleSelfView} role="group" tabIndex={0} aria-label="Your video PiP, press Enter or Space to switch view" onKeyDown={handleSelfViewKeyDown}>
                     <video
                       ref={mobileLocalRef}
                       autoPlay
@@ -436,23 +444,7 @@ export function MobileActiveScreen({
                       style={localVideoSwitchStyle}
                     />
                     {isLocalSpeaking && <SpeakingWaveBadge className="speaking-wave-badge--pip" />}
-                    <button
-                      type="button"
-                      className="mobile-active-pip-flip"
-                      aria-label="Flip camera"
-                      disabled={isCameraFlipping}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void handleFlipCamera();
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M1 4v6h6" />
-                        <path d="M23 20v-6h-6" />
-                        <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" />
-                      </svg>
-                    </button>
+                    <CameraFlipButton disabled={isCameraFlipping} onFlip={() => { void handleFlipCamera(); }} />
                   </div>
                 )
               )}
@@ -473,7 +465,7 @@ export function MobileActiveScreen({
               </div>
               {/* If local camera is also enabled, show camera in PiP */}
               {isCameraEnabled && localVideoStream && (
-                <div className={compactPipClassName} onClick={cycleSelfViewSide}>
+                <div className={compactPipClassName} onClick={cycleSelfViewSide} role="group" tabIndex={0} aria-label="Your video PiP, press Enter or Space to move it" onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); cycleSelfViewSide(); } }}>
                   <video
                     ref={mobileLocalRef}
                     autoPlay
@@ -482,23 +474,7 @@ export function MobileActiveScreen({
                     style={localVideoSwitchStyle}
                   />
                   {isLocalSpeaking && <SpeakingWaveBadge className="speaking-wave-badge--pip" />}
-                  <button
-                    type="button"
-                    className="mobile-active-pip-flip"
-                    aria-label="Flip camera"
-                    disabled={isCameraFlipping}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void handleFlipCamera();
-                    }}
-                  >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M1 4v6h6" />
-                      <path d="M23 20v-6h-6" />
-                      <path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15" />
-                    </svg>
-                  </button>
+                  <CameraFlipButton disabled={isCameraFlipping} onFlip={() => { void handleFlipCamera(); }} />
                 </div>
               )}
             </>

@@ -32,6 +32,12 @@ const tileStyle: CSSProperties = {
   aspectRatio: "4 / 3",
 };
 
+const participantSquareTileStyle: CSSProperties = {
+  ...tileStyle,
+  aspectRatio: "1 / 1",
+  minHeight: 0,
+};
+
 const landscapePresenterTileStyle: CSSProperties = {
   ...tileStyle,
   aspectRatio: "16 / 9",
@@ -231,7 +237,7 @@ export default function CallParticipantGrid({
 
       <ParticipantTile
         className="call-grid__tile call-grid__tile--local"
-        style={tileStyle}
+        style={isPresenting ? participantSquareTileStyle : tileStyle}
         label={localUserLabel}
         stream={localStream}
         showVideo={localHasVideo}
@@ -259,7 +265,7 @@ export default function CallParticipantGrid({
           <div key={remote.userId} style={{ position: "relative", width: "100%", height: "100%" }}>
             <ParticipantTile
               className="call-grid__tile call-grid__tile--remote"
-              style={tileStyle}
+              style={isPresenting ? participantSquareTileStyle : tileStyle}
               label={remote.userId}
               stream={stream}
               showVideo={showVideo}

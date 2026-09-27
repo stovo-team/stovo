@@ -429,7 +429,6 @@ export function DesktopCallControls() {
                 >
                   <SlidersHorizontal aria-hidden="true" size={20} />
                 </button>
-                <span>Settings</span>
               </div>
               {callPhase === "in-call" && (
                 <div className="call-ctrl-wrap">
