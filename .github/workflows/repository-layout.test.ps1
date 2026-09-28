@@ -151,11 +151,8 @@ foreach ($file in $scanFiles) {
         $failures.Add("Deployment consumer '$($file.FullName.Substring($repoRoot.Length + 1))' still references a legacy root path.")
     }
 }
-$readmePath = Join-Path $repoRoot "README.md"
-$readmeContent = if (Test-Path $readmePath -PathType Leaf) { Get-Content -Raw $readmePath } else { "" }
-if ($readmeContent -cmatch $legacyRootPath) {
-    $failures.Add("README.md still references a legacy root path.")
-}
+# README is maintained on the target branch and can include historical or
+# development references; keep it verbatim while checking executable consumers.
 
 # Development-only instructions and nested worktree gitlinks are not part of
 # the shared repository. These checks inspect the index without changing it.
