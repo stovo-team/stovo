@@ -16,7 +16,7 @@ if ($workflow -match '(?m)^\s*sudo docker compose(?:\s+-f\s+\S+)? down\s*$') {
     throw "Deployment must not tear down the full production stack."
 }
 
-if ($workflow -notmatch 'docker-compose\.master\.yml' -or
+if ($workflow -notmatch 'deploy/compose/production-multiserver\.yml' -or
     $workflow -notmatch 'up -d --build frontend' -or
     $workflow -notmatch 'up -d --build orchestrator caddy coturn' -or
     $workflow -notmatch 'docker build -t stovo-backend ./backend') {
@@ -27,7 +27,7 @@ if ($workflow -notmatch 'up -d --force-recreate caddy') {
     throw "Deployment must recreate Caddy so bind-mounted route changes take effect."
 }
 
-if (-not $workflow.Contains('docker-compose.master.yml up -d livekit') -or
+if (-not $workflow.Contains('deploy/compose/production-multiserver.yml up -d livekit') -or
     -not $workflow.Contains('LIVEKIT_API_KEY=${livekit_api_key}') -or
     -not $workflow.Contains('LIVEKIT_API_SECRET=${livekit_api_secret}')) {
     throw "Deployment must reconcile LiveKit with the same credentials used by tenant backends."

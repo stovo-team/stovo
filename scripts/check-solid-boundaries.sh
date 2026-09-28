@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly limit=400
-readonly baseline_file=".architecture/size-baseline.tsv"
+readonly baseline_file="docs/engineering/size-baseline.tsv"
 readonly scope="${1:-all}"
 
 fail() {

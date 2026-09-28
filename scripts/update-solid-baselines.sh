@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly limit=400
-readonly baseline_file=".architecture/size-baseline.tsv"
+readonly baseline_file="docs/engineering/size-baseline.tsv"
 
 get_backend_files() {
   find backend/internal -type f -name '*.go' ! -name '*_test.go' \
@@ -31,7 +31,7 @@ if (( ${#all_files[@]} > 0 )); then
   done < <(wc -l "${all_files[@]}")
 fi
 
-out_file=".architecture/size-baseline.tsv.tmp"
+out_file="docs/engineering/size-baseline.tsv.tmp"
 : > "$out_file"
 
 for f in $(printf '%s\n' "${!line_counts[@]}" | sort); do

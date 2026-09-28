@@ -72,8 +72,8 @@ Use an isolated test deployment and test accounts. E2E tests may create or chang
 When changing Compose files, validate the relevant configuration before opening a pull request:
 
 ```sh
-docker compose --env-file .env.example -f docker-compose.yml config --quiet
-docker compose --env-file .env.example -f docker-compose.yml -f docker-compose.external.yml config --quiet
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --env-file .env.example config --quiet
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml -f deploy/compose/external-overlay.yml --env-file .env.example config --quiet
 ```
 
 These commands validate configuration without starting services. Do not commit local `.env` files or real credentials.

@@ -18,7 +18,7 @@ if ! $RUN_CMD; then
   echo "💡 If line growth or file addition was intentional, run:"
   echo "   npm --prefix frontend run baseline:update"
   echo "   # or: bash scripts/update-solid-baselines.sh"
-  echo "   git add .architecture/size-baseline.tsv"
+  echo "   git add docs/engineering/size-baseline.tsv"
   echo ""
   exit 1
 fi

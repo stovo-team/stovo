@@ -8,12 +8,12 @@ on:
       - 'backend/**'
       - 'frontend/**'
       - 'migrations/master/**'
-      - 'Caddyfile'
-      - 'Caddyfile.internal'
-      - 'docker-compose.master.yml'
-      - 'Dockerfile.orchestrator'
+      - 'deploy/caddy/Caddyfile'
+      - 'deploy/caddy/Caddyfile.internal'
+      - 'deploy/compose/production-multiserver.yml'
+      - 'backend/Dockerfile.orchestrator'
       - 'deploy/**'
-      - '.architecture/**'
+      - 'docs/engineering/size-baseline.tsv'
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
@@ -24,12 +24,12 @@ on:
       - 'backend/**'
       - 'frontend/**'
       - 'migrations/master/**'
-      - 'Caddyfile'
-      - 'Caddyfile.internal'
-      - 'docker-compose.master.yml'
-      - 'Dockerfile.orchestrator'
+      - 'deploy/caddy/Caddyfile'
+      - 'deploy/caddy/Caddyfile.internal'
+      - 'deploy/compose/production-multiserver.yml'
+      - 'backend/Dockerfile.orchestrator'
       - 'deploy/**'
-      - '.architecture/**'
+      - 'docs/engineering/size-baseline.tsv'
       - 'scripts/**'
       - '.github/workflows/pipeline.yml'
       - '.github/workflows/pipeline.test.sh'
@@ -56,25 +56,63 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify pipeline workflow contract
         run: bash .github/workflows/pipeline.test.sh
+      - name: Verify rsync is available for the deployment layout fixture
+        run: command -v rsync
+      - name: Install PowerShell from official release archive when missing
+        run: |
+          if command -v pwsh >/dev/null 2>&1; then
+            exit 0
+          fi
+
+          case "$(uname -m)" in
+            x86_64|amd64) asset_arch=x64 ;;
+            aarch64|arm64) asset_arch=arm64 ;;
+            *) echo "Unsupported runner architecture: $(uname -m)" >&2; exit 1 ;;
+          esac
+
+          version=7.6.6
+          archive="powershell-${version}-linux-${asset_arch}.tar.gz"
+          release_url="https://github.com/PowerShell/PowerShell/releases/download/v${version}"
+          install_dir="$RUNNER_TEMP/pwsh-${version}-${asset_arch}"
+          archive_path="$RUNNER_TEMP/$archive"
+          hashes_path="$RUNNER_TEMP/powershell-${version}-hashes.sha256"
+
+          mkdir -p "$install_dir"
+          curl -fsSL "$release_url/$archive" -o "$archive_path"
+          curl -fsSL "$release_url/hashes.sha256" -o "$hashes_path"
+
+          expected_hash="$(awk -v asset="$archive" '$2 == asset || $2 == "*" asset { print tolower($1) }' "$hashes_path")"
+          actual_hash="$(sha256sum "$archive_path" | awk '{ print $1 }')"
+          if [ -z "$expected_hash" ] || [ "$actual_hash" != "$expected_hash" ]; then
+            echo "PowerShell archive SHA256 verification failed for $archive." >&2
+            exit 1
+          fi
+
+          tar -xzf "$archive_path" -C "$install_dir"
+          chmod +x "$install_dir/pwsh"
+          echo "$install_dir" >> "$GITHUB_PATH"
+      - name: Verify repository layout
+        run: |
+          pwsh -NoProfile -File .github/workflows/repository-layout.test.ps1
       - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
             frontend:
               - 'frontend/**'
-              - '.architecture/**'
+              - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
               - '.github/workflows/pipeline.yml'
               - '.github/workflows/pipeline.test.sh'
             backend:
               - 'backend/**'
               - 'migrations/master/**'
-              - 'Caddyfile'
-              - 'Caddyfile.internal'
-              - 'docker-compose.master.yml'
-              - 'Dockerfile.orchestrator'
+              - 'deploy/caddy/Caddyfile'
+              - 'deploy/caddy/Caddyfile.internal'
+              - 'deploy/compose/production-multiserver.yml'
+              - 'backend/Dockerfile.orchestrator'
               - 'deploy/**'
-              - '.architecture/**'
+              - 'docs/engineering/size-baseline.tsv'
               - 'scripts/check-solid-boundaries.sh'
               - 'scripts/deploy-environment.sh'
               - '.github/workflows/pipeline.yml'
@@ -321,8 +359,8 @@ jobs:
             app_domain="$(get_env APP_DOMAIN stovo-cloud.stovo.ru)"
 
             echo "Building and deploying frontend container..."
-            docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d --build frontend
-            sudo docker compose -f docker-compose.master.yml up -d --force-recreate caddy
+            docker_with_space_recovery sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --build frontend
+            sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --force-recreate caddy
 
             # Verify public HTTPS listener
             public_healthy=false
@@ -334,8 +372,8 @@ jobs:
               sleep 2
             done
             if [ "$public_healthy" != true ]; then
-              sudo docker compose -f docker-compose.master.yml ps
-              sudo docker compose -f docker-compose.master.yml logs --tail=100 caddy frontend
+              sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml ps
+              sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml logs --tail=100 caddy frontend
               exit 1
             fi
 
@@ -439,15 +477,15 @@ jobs:
             tenant_redis_url="$(get_env REDIS_URL 'redis://redis:6379/0')"
 
             # Ensure master database, cache & minio services are running
-            sudo docker compose -f docker-compose.master.yml up -d postgres redis minio
+            sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d postgres redis minio
 
             # Wait for postgres to be healthy
-            for _ in $(seq 1 30); do if sudo docker compose -f docker-compose.master.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
+            for _ in $(seq 1 30); do if sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres pg_isready -U "$pg_user" >/dev/null 2>&1; then break; fi; sleep 2; done
 
             # Apply master database migrations
             for migration in $(find migrations/master -maxdepth 1 -name '*.sql' | sort); do
               echo "Applying master migration: $migration"
-              cat "$migration" | sudo docker compose -f docker-compose.master.yml exec -T postgres psql -U "$pg_user" -d "$pg_db"
+              cat "$migration" | sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres psql -U "$pg_user" -d "$pg_db"
             done
 
             # Build backend docker image for child servers
@@ -456,11 +494,11 @@ jobs:
             docker_with_space_recovery sudo docker build -t stovo-backend ./backend
 
             # Reconcile the LiveKit SFU
-            docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d livekit
+            docker_with_space_recovery sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d livekit
 
             # Build and deploy orchestrator, caddy gateway, and coturn
-            docker_with_space_recovery sudo docker compose -f docker-compose.master.yml up -d --build orchestrator caddy coturn
-            sudo docker compose -f docker-compose.master.yml up -d --force-recreate caddy
+            docker_with_space_recovery sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --build orchestrator caddy coturn
+            sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml up -d --force-recreate caddy
 
             # Check public TLS listener
             public_healthy=false
@@ -472,13 +510,13 @@ jobs:
               sleep 2
             done
             if [ "$public_healthy" != true ]; then
-              sudo docker compose -f docker-compose.master.yml ps
-              sudo docker compose -f docker-compose.master.yml logs --tail=100 caddy orchestrator
+              sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml ps
+              sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml logs --tail=100 caddy orchestrator
               exit 1
             fi
 
             # Migrate every registered tenant and every live tenant backend
-            registered_tenant_slugs="$(sudo docker compose -f docker-compose.master.yml exec -T postgres \
+            registered_tenant_slugs="$(sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml exec -T postgres \
               psql -v ON_ERROR_STOP=1 -U "$pg_user" -d "$pg_db" -tAc 'SELECT slug FROM servers ORDER BY slug')"
             running_tenant_slugs="$(sudo docker ps --format '{{.Names}}' | sed -n 's/^stovo-backend-\([[:alnum:]][[:alnum:]-]*\)$/\1/p')"
             tenant_slugs="$(printf '%s\n%s\n' "$registered_tenant_slugs" "$running_tenant_slugs" | sed '/^[[:space:]]*$/d' | sort -u)"
