@@ -1,6 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallUiPreview } from "./call-ui-preview";
 
 const roots: Root[] = [];
@@ -8,6 +8,7 @@ const roots: Root[] = [];
 afterEach(() => {
   while (roots.length) act(() => roots.pop()?.unmount());
   document.body.innerHTML = "";
+  vi.useRealTimers();
 });
 
 function mountPreview() {
@@ -46,14 +47,23 @@ describe("call UI preview interactions", () => {
     expect(flip.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("organizes mobile controls into two rows while desktop controls remain in one row", () => {
+  it("keeps all mobile controls in one narrow row ordered Mic, Speaker, Camera, More, End", () => {
     const container = mountPreview();
     click(container, "Mobile");
-    expect(container.querySelectorAll(".call-preview-control-row")).toHaveLength(2);
-    expect(container.querySelector(".call-preview-control-rows")?.getAttribute("data-layout")).toBe("mobile-two-row");
+    const panel = container.querySelector<HTMLElement>(".call-preview-panel");
+    panel!.style.width = "320px";
+    expect(container.querySelectorAll(".call-preview-control-row")).toHaveLength(1);
+    expect(container.querySelector(".call-preview-control-rows")?.getAttribute("data-layout")).toBe("mobile-one-row");
+    const row = container.querySelector(".call-preview-control-row");
+    const expectedControls = ["Toggle Microphone", "Toggle Speaker", "Toggle Camera", "More options", "End call"];
+    const actualControls = Array.from(row?.querySelectorAll<HTMLButtonElement>("button[aria-label]") ?? [])
+      .map((button) => button.getAttribute("aria-label"));
+    expect(actualControls).toEqual(expectedControls);
+    expect(row?.getAttribute("data-no-wrap")).toBe("true");
 
     click(container, "Desktop");
     expect(container.querySelectorAll(".call-preview-control-row")).toHaveLength(1);
+    expect(container.querySelector(".call-preview-control-rows")?.getAttribute("data-layout")).toBe("desktop-one-row");
   });
 
   it("opens the vertical more menu and minimizes the call from it", () => {
@@ -76,14 +86,59 @@ describe("call UI preview interactions", () => {
     expect(container.querySelectorAll(".call-grid__tile")).toHaveLength(6);
   });
 
-  it("opens any participant tile in full view and closes it with Escape", () => {
+  it.each(["Mobile", "Desktop"])("opens an inline participant focus stage on %s without a modal", (viewport) => {
     const container = mountPreview();
-    const participant = container.querySelector<HTMLElement>(".call-grid__tile--remote");
+    click(container, viewport);
+    const participant = viewport === "Mobile"
+      ? container.querySelector<HTMLElement>('[data-stage-role="remote-primary"]')
+      : container.querySelector<HTMLElement>(".call-grid__tile--remote");
     expect(participant).not.toBeNull();
     act(() => participant!.click());
-    expect(container.querySelector('[role="dialog"][aria-label="Fullscreen: Alex Morgan"]')).not.toBeNull();
-    act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+
+    const main = container.querySelector('[data-focus-main="Alex Morgan"]');
+    expect(main).not.toBeNull();
+    expect(main?.closest(".call-preview-panel")).not.toBeNull();
     expect(container.querySelector('[role="dialog"][aria-label^="Fullscreen:"]')).toBeNull();
+    expect(container.querySelector(".call-preview-fullscreen-backdrop")).toBeNull();
+    expect(main?.querySelector(".call-preview-avatar")?.textContent?.trim()).toBe("A");
+    expect(main?.querySelector("video")).toBeNull();
+    const compactParticipants = Array.from(container.querySelectorAll<HTMLElement>(".call-preview-focus-participant"));
+    expect(compactParticipants.length).toBeGreaterThan(0);
+    expect(compactParticipants.every((tile) => tile.style.aspectRatio === "1 / 1")).toBe(true);
+  });
+
+  it("switches focused participants and returns to the full grid with Back", () => {
+    const container = mountPreview();
+    click(container, "Mobile");
+    act(() => container.querySelector<HTMLElement>('[data-stage-role="remote-primary"]')?.click());
+    expect(container.querySelector('[data-focus-main="Alex Morgan"]')).not.toBeNull();
+
+    const maya = container.querySelector<HTMLButtonElement>('[data-focus-participant="Maya Chen"]');
+    expect(maya).not.toBeNull();
+    act(() => maya?.click());
+    expect(container.querySelector('[data-focus-main="Maya Chen"]')).not.toBeNull();
+    expect(container.querySelector('[data-focus-main="Alex Morgan"]')).toBeNull();
+
+    const back = container.querySelector<HTMLButtonElement>('button[aria-label="Close participant focus"]');
+    expect(back).not.toBeNull();
+    act(() => back?.click());
+    expect(container.querySelector("[data-focus-main]")).toBeNull();
+    expect(container.querySelectorAll(".call-grid__tile")).toHaveLength(3);
+  });
+
+  it("keeps desktop controls visible after 15 seconds and pointer interactions", () => {
+    vi.useFakeTimers();
+    const container = mountPreview();
+    click(container, "Desktop");
+    const controls = container.querySelector(".call-preview-control-rows") as HTMLDivElement;
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+    act(() => vi.advanceTimersByTime(20_000));
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+    const stage = container.querySelector(".shared-call-stage") as HTMLElement;
+    act(() => stage.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })));
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
+    act(() => container.querySelector<HTMLButtonElement>('[aria-label="Toggle Microphone"]')?.click());
+    expect(controls.getAttribute("aria-hidden")).toBe("false");
   });
 
   it("shows a share scene on desktop and mobile and opens the shared content in full view", () => {
@@ -96,7 +151,8 @@ describe("call UI preview interactions", () => {
     click(container, "Close fullscreen");
     click(container, "Stop sharing");
     click(container, "Mobile");
-    click(container, "Share screen");
+    click(container, "More options");
+    clickMenuItem(container, "Screen Share");
     expect(container.querySelector('[data-preview-screen-share="true"]')).not.toBeNull();
   });
 
@@ -261,7 +317,12 @@ describe("call UI preview interactions", () => {
     for (const viewport of ["Desktop", "Mobile"]) {
       const container = mountPreview();
       click(container, viewport);
-      click(container, "Share screen");
+      if (viewport === "Mobile") {
+        click(container, "More options");
+        clickMenuItem(container, "Screen Share");
+      } else {
+        click(container, "Share screen");
+      }
       const cards = Array.from(container.querySelectorAll<HTMLElement>(".call-preview-share-participant"));
       expect(cards.length).toBeGreaterThan(1);
       expect(cards.every((card) => card.style.aspectRatio === "1 / 1")).toBe(true);
@@ -273,7 +334,8 @@ describe("call UI preview interactions", () => {
     const container = mountPreview();
     click(container, "Mobile");
     expect(container.querySelector('[aria-label="Flip camera"]')).toBeNull();
-    click(container, "Share screen");
+    click(container, "More options");
+    clickMenuItem(container, "Screen Share");
     expect(container.querySelector('[data-preview-screen-share="true"]')).not.toBeNull();
     expect(container.querySelector('[data-stage-role="local-pip"]')).toBeNull();
     const cards = Array.from(container.querySelectorAll<HTMLElement>(".call-preview-share-participant"));
@@ -296,6 +358,7 @@ describe("call UI preview interactions", () => {
   it("auto-hides call controls after 15 seconds and reveals them after tapping the stage", () => {
     vi.useFakeTimers();
     const container = mountPreview();
+    click(container, "Mobile");
     const controls = container.querySelector(".call-preview-control-rows") as HTMLDivElement;
     expect(controls.getAttribute("aria-hidden")).toBe("false");
     act(() => vi.advanceTimersByTime(15_000));

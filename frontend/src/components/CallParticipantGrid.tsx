@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { RemoteMedia } from "../realtime/call/types";
 import { SpeakingWaveBadge } from "../features/chats/calling/SpeakingWaveBadge";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
+import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
 
 type CallParticipantGridProps = {
   localStream: MediaStream | null;
@@ -236,6 +237,7 @@ export default function CallParticipantGrid({
   isCallConnected = true,
 }: CallParticipantGridProps) {
   const [isPresenterPortrait, setIsPresenterPortrait] = useState(false);
+  const [focusedParticipantId, setFocusedParticipantId] = useState<string | null>(null);
   // Voice channels may keep their audio call type while a local camera track
   // is live. The presentation/PiP grid must follow the actual track, otherwise
   // it replaces the user's camera with an avatar during a screen share.
@@ -287,11 +289,13 @@ export default function CallParticipantGrid({
       localVideoPlaceholder={localVideoPlaceholder}
       mobilePrimary={mobileSingleRemote && isLocalPrimary}
       mobilePip={mobileSingleRemote && !isLocalPrimary}
-      onClick={mobileSingleRemote ? onToggleMobileStage : undefined}
+      onClick={() => { if (mobileSingleRemote) onToggleMobileStage?.(); else setFocusedParticipantId(localUserLabel); }}
     />
   );
 
-  return (
+  const stageContent = focusedParticipantId ? (
+    <CallParticipantFocusStage participantId={focusedParticipantId} localUserLabel={localUserLabel} localStream={localStream} localHasVideo={localHasVideo} localMuted={isLocalMuted} localPlaceholder={localVideoPlaceholder} remoteMedia={remoteMedia} onSelect={setFocusedParticipantId} onClose={() => setFocusedParticipantId(null)} />
+  ) : (
     <div
       className={`call-grid${isPresenting ? " call-grid--presenting" : ""}${mobileSingleRemote ? " call-grid--mobile-single" : ""}`}
       style={{
@@ -372,18 +376,23 @@ export default function CallParticipantGrid({
               isConnected={isCallConnected}
               mobilePrimary={mobileSingleRemote && !isLocalPrimary}
               mobilePip={mobileSingleRemote && isLocalPrimary}
-              onClick={mobileSingleRemote ? onToggleMobileStage : undefined}
+              onClick={() => { if (mobileSingleRemote) onToggleMobileStage?.(); else setFocusedParticipantId(remote.userId); }}
             />
-            {!showVideo && remote.hasAudio ? (
-              <audio
-                className="call-grid__audio"
-                autoPlay
-                ref={(el) => bindStream(el, remote.stream)}
-              />
-            ) : null}
           </div>
         );
       })}
+    </div>
+  );
+
+  return (
+    <div className="call-grid-shell">
+      {stageContent}
+      <div className="call-grid__audio-pool" aria-hidden="true">
+        {remoteMedia.map((remote) => {
+          const hasLiveCamera = Boolean(remote.hasVideo && remote.stream?.getVideoTracks().some((track) => track.readyState !== "ended"));
+          return remote.hasAudio && !hasLiveCamera ? <audio key={remote.userId} className="call-grid__audio" autoPlay ref={(element) => bindStream(element, remote.stream)} /> : null;
+        })}
+      </div>
     </div>
   );
 }

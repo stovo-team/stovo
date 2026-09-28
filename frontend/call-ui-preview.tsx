@@ -51,6 +51,8 @@ export function CallUiPreview() {
   const [participantCount, setParticipantCount] = useState(3);
   const [screenSharing, setScreenSharing] = useState(false);
   const [focusedContent, setFocusedContent] = useState<string | null>(null);
+  const [focusedParticipant, setFocusedParticipant] = useState<string | null>(null);
+  const [showParticipantGrid, setShowParticipantGrid] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -64,10 +66,10 @@ export function CallUiPreview() {
   const remoteMedia = createRemoteParticipants(participantCount);
 
   useEffect(() => {
-    if (!controlsVisible || minimized) return;
+    if (!controlsVisible || minimized || !mobile) return;
     const timer = window.setTimeout(() => setControlsVisible(false), 15_000);
     return () => window.clearTimeout(timer);
-  }, [controlsVisible, minimized]);
+  }, [controlsVisible, minimized, mobile]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -101,8 +103,15 @@ export function CallUiPreview() {
   function openParticipant(event: React.MouseEvent<HTMLDivElement>) {
     const tile = (event.target as HTMLElement).closest<HTMLElement>(".call-grid__tile");
     const label = tile?.querySelector(".call-grid__label")?.textContent?.trim();
-    if (label) setFocusedContent(label.replace(/ · Screen$/, ""));
+    if (label) setFocusedParticipant(label.replace(/ · Screen$/, ""));
   }
+
+  const focusParticipants = [{ userId: "You", isMuted: settings.micMuted }, ...remoteMedia];
+  const focusedPerson = focusParticipants.find((person) => person.userId === focusedParticipant);
+  const focusedHasVideo = focusedPerson?.userId === "You"
+    ? settings.cameraEnabled
+    : Boolean(focusedPerson?.hasVideo && focusedPerson.stream?.getVideoTracks().some((track) => track.readyState !== "ended"));
+  const showFocusedCall = Boolean(focusedPerson) && !screenSharing;
 
   const microphoneControl = <CallDeviceControl action="microphone" controlClassName="call-ctrl-btn" label="Microphone" active={!settings.micMuted} deviceKind="audioinput" selectedDeviceId={settings.inputDeviceId} devices={devices} onToggle={() => patchSettings({ micMuted: !settings.micMuted })} onDeviceChange={(inputDeviceId) => patchSettings({ inputDeviceId })} />;
   const speakerControl = <CallDeviceControl action="audio-output" controlClassName="call-ctrl-btn" label="Speaker" active={!settings.soundDisabled} deviceKind="audiooutput" selectedDeviceId={settings.outputDeviceId} devices={devices} onToggle={() => patchSettings({ soundDisabled: !settings.soundDisabled })} onDeviceChange={(outputDeviceId) => patchSettings({ outputDeviceId })} />;
@@ -145,7 +154,23 @@ export function CallUiPreview() {
               {moreOpen && !mobile && <div className="call-preview-more-menu" role="menu"><button type="button" role="menuitem" aria-label="Minimize call" onClick={() => { setMoreOpen(false); setMinimized(true); }}>Minimize call</button></div>}
             </div>
           </header>
-          {screenSharing ? (
+          {showFocusedCall && focusedPerson ? (
+            <div className="call-preview-focus-stage" aria-label="Focused participant">
+              <div className="call-preview-focus-main" data-focus-main={focusedPerson.userId}>
+                {focusedHasVideo ? <div className="call-preview-camera-feed" aria-label={`${focusedPerson.userId} video`} /> : <div className="call-preview-avatar call-preview-focus-avatar" aria-label={`${focusedPerson.userId} avatar`}>{focusedPerson.userId.slice(0, 1).toUpperCase()}</div>}
+                <strong>{focusedPerson.userId}</strong>
+                <span>{focusedPerson.isMuted ? "Muted" : "Connected"}</span>
+              </div>
+              <div className="call-preview-focus-participants" aria-label="Other participants">
+                {focusParticipants.filter((person) => person.userId !== focusedPerson.userId).map((person) => (
+                  <button type="button" className="call-preview-focus-participant" style={{ aspectRatio: "1 / 1" }} data-focus-participant={person.userId} key={person.userId} onClick={() => setFocusedParticipant(person.userId)}>
+                    <span>{person.userId.slice(0, 1).toUpperCase()}</span><strong>{person.userId}</strong>
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="call-preview-focus-close" aria-label="Close participant focus" onClick={() => { setFocusedParticipant(null); setShowParticipantGrid(true); }}>Back to participants</button>
+            </div>
+          ) : screenSharing ? (
             <div className="call-preview-share-stage">
               <button type="button" className="call-preview-share-content" aria-label="Focus shared screen" data-preview-screen-share="true" onClick={() => setFocusedContent("Shared screen")}>
                 <span>LIVE SCREEN SHARE</span><strong>Product roadmap</strong><small>Q4 planning · Milestones and owners</small>
@@ -161,14 +186,14 @@ export function CallUiPreview() {
                 </div>)}
               </div>
             </div>
-          ) : mobile ? (
+          ) : mobile && !showParticipantGrid ? (
             <div className="call-preview-mobile-stage call-popup-video-area" onPointerDown={() => setControlsVisible((visible) => !visible)}>
               {!selfViewFullscreen ? (
-                <button type="button" className="call-preview-stage-primary" aria-label="Remote participant" data-stage-role="remote-primary">
+                <button type="button" className="call-preview-stage-primary" aria-label="Remote participant" data-stage-role="remote-primary" onClick={() => setFocusedParticipant("Alex Morgan")}>
                   <div className="call-preview-avatar call-preview-remote-avatar">A</div><strong>Alex Morgan</strong><span>Connected</span>
                 </button>
               ) : (
-                <button type="button" className="call-preview-stage-primary" aria-label="Your camera" data-stage-role="local-primary">
+                <button type="button" className="call-preview-stage-primary" aria-label="Your camera" data-stage-role="local-primary" onClick={() => setFocusedParticipant("You")}>
                   <div className={`call-preview-camera-feed${settings.cameraFacingMode === "environment" ? " is-back-camera" : ""}`}><span>Camera preview</span></div>
                 </button>
               )}
@@ -199,7 +224,7 @@ export function CallUiPreview() {
               )}
             </div>
           ) : (
-            <CallParticipantStage className="shared-call-stage call-popup-video-area" onClick={openParticipant} onPointerDown={() => setControlsVisible((visible) => !visible)}>
+            <CallParticipantStage className="shared-call-stage call-popup-video-area" onClick={openParticipant} onPointerDown={() => mobile && setControlsVisible((visible) => !visible)}>
               <CallParticipantGrid
                 localStream={null}
                 remoteMedia={remoteMedia}
@@ -211,11 +236,12 @@ export function CallUiPreview() {
               />
             </CallParticipantStage>
           )}
-          <div ref={panelRef} className={`call-preview-control-rows shared-call-controls guest-call-controls${controlsVisible ? "" : " is-hidden"}`} aria-hidden={!controlsVisible} data-layout={mobile ? "mobile-two-row" : "desktop-one-row"} onPointerDown={(event) => event.stopPropagation()}>
+          <div ref={panelRef} className={`call-preview-control-rows shared-call-controls guest-call-controls${mobile && !controlsVisible ? " is-hidden" : ""}`} aria-hidden={mobile && !controlsVisible} data-layout={mobile ? "mobile-one-row" : "desktop-one-row"} data-no-wrap={mobile ? "true" : undefined} onPointerDown={(event) => event.stopPropagation()}>
             {mobile ? (
-              <>
-                <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}</div>
-                <div className="call-preview-control-row">
+              <div className="call-preview-control-row" data-no-wrap="true">
+                  <CallControlButton action="microphone" className="call-ctrl-btn" label={settings.micMuted ? "Unmute" : "Toggle Microphone"} aria-label="Toggle Microphone" toggle state={settings.micMuted ? "muted" : "active"} onClick={() => patchSettings({ micMuted: !settings.micMuted })} />
+                  <CallControlButton action="audio-output" className="call-ctrl-btn" label="Toggle Speaker" aria-label="Toggle Speaker" toggle state={settings.soundDisabled ? "muted" : "active"} onClick={() => patchSettings({ soundDisabled: !settings.soundDisabled })} />
+                  <CallControlButton action="camera" className="call-ctrl-btn" label="Toggle Camera" aria-label="Toggle Camera" toggle state={settings.cameraEnabled ? "active" : "muted"} onClick={() => patchSettings({ cameraEnabled: !settings.cameraEnabled })} />
                   <div className="call-ctrl-wrap call-preview-more-anchor">
                     <button ref={mobileMoreTriggerRef} type="button" className="call-ctrl-btn" aria-label="More options" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)}><MoreVertical size={20} aria-hidden="true" /></button><span>More</span>
                     {moreOpen && <div className="call-preview-mobile-menu" role="group" aria-label="More call options">
@@ -225,10 +251,7 @@ export function CallUiPreview() {
                     </div>}
                   </div>
                   {endCallControl}
-                  {/* Kept as a direct action for preview scenarios; its primary mobile location is More. */}
-                  <span className="call-preview-legacy-action">{screenShareControl}</span>
-                </div>
-              </>
+              </div>
             ) : (
               <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}{settingsControl}{screenShareControl}{endCallControl}</div>
             )}

@@ -62,6 +62,16 @@ describe("mobile call UI unification", () => {
     expect(container.querySelector('[role="status"]')).toBeNull();
   });
 
+  it("exposes mic, speaker, camera, More and End in one mobile control row", () => {
+    const container = renderScreen(baseProps);
+    const controls = container.querySelector<HTMLElement>(".mobile-active-controls");
+    expect(controls?.getAttribute("data-layout")).toBe("mobile-one-row");
+    expect(controls?.getAttribute("data-no-wrap")).toBe("true");
+    const actionLabels = Array.from(controls?.querySelectorAll<HTMLButtonElement>("button[aria-label]") ?? [])
+      .map((button) => button.getAttribute("aria-label"));
+    expect(actionLabels).toEqual(["Mute", "Audio output", "Turn on camera", "More options", "End call"]);
+  });
+
   it("keeps mobile audio routing and camera flip actions without desktop device menus", async () => {
     const onOpenSpeakerSheet = vi.fn();
     const onToggleFlip = vi.fn();

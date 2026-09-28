@@ -585,6 +585,8 @@ export function MobileActiveScreen({
       {/* Bottom control bar */}
       <div
         className={`mobile-active-controls shared-call-controls${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
+        data-layout="mobile-one-row"
+        data-no-wrap="true"
         aria-hidden={!areControlsVisible}
         inert={!areControlsVisible}
         onPointerDown={(event) => event.stopPropagation()}

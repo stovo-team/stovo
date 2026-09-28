@@ -30037,6 +30037,117 @@ button.checklist-add-item-btn:hover,
   gap: 26px;
 }
 
+/* Keep the mobile primary actions and More/End affordances on one compact row. */
+.mobile-active-controls {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%;
+  box-sizing: border-box;
+  column-gap: clamp(2px, 2vw, 12px);
+  row-gap: 0;
+  flex-wrap: nowrap;
+}
+
+.mobile-active-controls > .mobile-active-secondary-controls {
+  display: contents;
+}
+
+.mobile-active-controls .mobile-active-ctrl {
+  min-width: 0;
+}
+
+.mobile-active-controls .mobile-active-ctrl-lbl {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.call-grid--focus {
+  width: 100%;
+  height: 100%;
+  gap: 10px;
+  align-content: stretch;
+}
+
+.call-grid-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.call-grid__audio-pool {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.call-grid__focus-main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  border-radius: 18px;
+  background: #080808;
+}
+
+.call-grid__focus-main > .call-grid__label,
+.call-grid__focus-main > .call-grid__participant-status {
+  position: absolute;
+  z-index: 4;
+  left: 10px;
+  bottom: 10px;
+}
+
+.call-grid__focus-main > .call-grid__participant-status {
+  left: auto;
+  right: 10px;
+  top: 10px;
+  bottom: auto;
+}
+
+.call-grid__focus-participants {
+  min-width: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.call-grid__focus-participant {
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--border-default, #343b48);
+  border-radius: 10px;
+  background: #080808;
+  color: inherit;
+  cursor: pointer;
+}
+
+.call-grid__focus-participant .call-grid__label {
+  z-index: 2;
+}
+
+.call-grid__focus-close {
+  grid-column: 1 / -1;
+  justify-self: center;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--border-default, #465166);
+  border-radius: 999px;
+  background: var(--surface-raised, #232b37);
+  color: inherit;
+  cursor: pointer;
+}
+
 .mobile-active-more-anchor {
   position: relative;
 }
