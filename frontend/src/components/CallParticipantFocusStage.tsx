@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { ArrowLeft } from "lucide-react";
 import type { RemoteMedia } from "../realtime/call/types";
 
 const videoStyle: CSSProperties = { width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#000" };
@@ -23,6 +24,7 @@ export function CallParticipantFocusStage({
   remoteMedia,
   onSelect,
   onClose,
+  showCloseControl,
 }: {
   participantId: string;
   localUserLabel: string;
@@ -33,6 +35,7 @@ export function CallParticipantFocusStage({
   remoteMedia: RemoteMedia[];
   onSelect: (participantId: string) => void;
   onClose: () => void;
+  showCloseControl: boolean;
 }) {
   const isLocal = participantId === localUserLabel;
   const focusedRemote = remoteMedia.find((media) => media.userId === participantId);
@@ -66,7 +69,7 @@ export function CallParticipantFocusStage({
           </button>
         ))}
       </div>
-      <button type="button" className="call-grid__focus-close" aria-label="Close participant focus" onClick={onClose}>Back to participants</button>
+      {showCloseControl && <button type="button" className="call-grid__focus-close" aria-label="Close participant focus" onClick={onClose}><ArrowLeft size={18} aria-hidden="true" /></button>}
     </div>
   );
 }

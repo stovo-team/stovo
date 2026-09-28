@@ -4,7 +4,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
-  createGuestMeetingSession: vi.fn(async () => ({ id: "session-1", state: "waiting" as const })),
+  createGuestMeetingSession: vi.fn(async (): Promise<{ id: string; state: "waiting" | "admitted" }> => ({ id: "session-1", state: "waiting" })),
+  getGuestMeetingToken: vi.fn(async () => ({ url: "wss://meeting.example.test", token: "room-token", roomName: "guest-room" })),
   leaveGuestMeetingSession: vi.fn(async () => undefined),
   previewGuestMeeting: vi.fn(async () => ({
     title: "Daily standup",
@@ -28,9 +29,32 @@ vi.mock("../api/guestMeetings", () => ({
   createGuestMeetingSession: api.createGuestMeetingSession,
   leaveGuestMeetingSession: api.leaveGuestMeetingSession,
   getGuestMeetingStatus: vi.fn(),
-  getGuestMeetingToken: vi.fn(),
+  getGuestMeetingToken: api.getGuestMeetingToken,
   getGuestMeetingIntelligence: vi.fn(async () => ({ notesState: "idle", recordingState: "idle" })),
   GuestMeetingLinkError,
+}));
+
+vi.mock("livekit-client", () => ({
+  Room: class {
+    name = "guest-room";
+    remoteParticipants = new Map();
+    localParticipant = { trackPublications: new Map(), publishTrack: vi.fn(async () => undefined) };
+    on = vi.fn();
+    connect = vi.fn(async () => undefined);
+    disconnect = vi.fn(async () => undefined);
+  },
+  RoomEvent: {
+    ActiveSpeakersChanged: "activeSpeakersChanged",
+    TrackMuted: "trackMuted",
+    TrackUnmuted: "trackUnmuted",
+    Disconnected: "disconnected",
+    TrackSubscribed: "trackSubscribed",
+    TrackUnsubscribed: "trackUnsubscribed",
+    ParticipantConnected: "participantConnected",
+    ParticipantDisconnected: "participantDisconnected",
+  },
+  Track: { Source: { Microphone: "microphone", Camera: "camera", ScreenShare: "screen_share", ScreenShareAudio: "screen_share_audio" } },
+  VideoPreset: class { constructor(readonly width: number, readonly height: number, readonly bitrate: number, readonly framerate: number) {} },
 }));
 
 vi.mock("../auth/AuthContext", () => ({
@@ -98,6 +122,28 @@ afterEach(async () => {
 });
 
 describe("GuestMeetingPage pre-join controls", () => {
+  it("keeps the real GuestMeeting in-call header free of minimize/shrink controls", async () => {
+    api.createGuestMeetingSession.mockResolvedValueOnce({ id: "session-joined", state: "admitted" });
+    await renderPage();
+    await act(async () => {
+      const nameInput = host?.querySelector<HTMLInputElement>('input[placeholder="Enter your name"]');
+      if (nameInput) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        setter?.call(nameInput, "Guest tester");
+        nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      host?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const header = host?.querySelector<HTMLElement>(".guest-call-header");
+    expect(header).not.toBeNull();
+    expect(header?.querySelector('button[aria-label*="Minimize"], button[title*="Minimize"], .call-preview-minimize')).toBeNull();
+    expect(host?.querySelector('[aria-label="Minimize call"], [aria-label="Shrink call"]')).toBeNull();
+  });
+
   it("passes the signed-in account token when creating a meeting session", async () => {
     auth.accessToken = "host-access-token";
     auth.currentUser = { displayName: "Meeting Host", username: "host", profilePhoto: null };

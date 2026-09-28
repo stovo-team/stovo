@@ -1,4 +1,5 @@
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CALL_SETTINGS, type CallCapabilities } from "../../../realtime/call/types";
@@ -24,6 +25,40 @@ const capabilities: CallCapabilities = {
 };
 
 describe("desktop call device selection", () => {
+  it("uses the theme accent for audio sliders and a fixed fully-rounded bordered close control", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+    act(() => root.render(
+      <CallAudioSettingsPopup
+        popupRef={{ current: null }}
+        isMobile={false}
+        settings={DEFAULT_CALL_SETTINGS}
+        capabilities={capabilities}
+        devices={[]}
+        trackStatus={null}
+        warning={null}
+        onPatch={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    ));
+
+    const slider = container.querySelector<HTMLInputElement>('.call-audio-slider-row input[type="range"]');
+    const close = container.querySelector<HTMLButtonElement>(".call-audio-popup-close");
+    expect(slider).not.toBeNull();
+    expect(close).not.toBeNull();
+    expect(css).toMatch(/\.call-audio-slider-row input\[type="range"\]\s*\{[^}]*accent-color:\s*var\(--accent-primary\)/s);
+    const closeRule = css.match(/\.call-audio-popup-close\s*\{([^}]*)\}/s)?.[1] ?? "";
+    expect(closeRule).toMatch(/background:\s*var\(--(?:surface-hover|background-secondary)\)/);
+    expect(closeRule).toMatch(/border:\s*1px solid var\(--border-default\)/);
+    expect(closeRule).toMatch(/border-radius:\s*999px/);
+    expect(closeRule).toMatch(/width:\s*36px/);
+    expect(closeRule).toMatch(/height:\s*36px/);
+    expect(closeRule).toMatch(/(?:flex:\s*0\s+0\s+36px|flex-shrink:\s*0)/);
+  });
+
   it("uses the shared device dropdowns and applies the selected devices", () => {
     const onPatch = vi.fn();
     const container = document.createElement("div");

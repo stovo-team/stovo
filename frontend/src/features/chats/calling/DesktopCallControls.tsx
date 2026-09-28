@@ -1,5 +1,6 @@
 import {
   Captions,
+  ArrowLeft,
   Maximize2,
   Mic,
   MicOff,
@@ -22,7 +23,7 @@ import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
 import { MeetingBackgroundToast, MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -109,9 +110,8 @@ export function DesktopCallControls() {
     enabled: true,
   });
 
-  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
-  const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
-
+  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false); const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
+  const [isParticipantFocused, setIsParticipantFocused] = useState(false); const closeParticipantFocusRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     if (!isAiNotesQueuedToastVisible) return;
     const timer = window.setTimeout(() => setIsAiNotesQueuedToastVisible(false), 5_000);
@@ -195,7 +195,10 @@ export function DesktopCallControls() {
             {callNotice && <span className="call-popup-notice">{callNotice}</span>}
           </>
         <div className="call-popup-header-actions">
-          {callPhase !== "incoming" && !isCallMinimized && (session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
+          {isParticipantFocused && !isCallMinimized && (
+            <button type="button" className="icon-button subtle call-participant-focus-back" aria-label="Back to participants" onClick={() => closeParticipantFocusRef.current()}><ArrowLeft aria-hidden="true" size={16} /></button>
+          )}
+          {callPhase !== "incoming" && !isCallMinimized && (isParticipantFocused || session.callParticipantIds.length > 2 || (session.activeCallChatId && session.activeGroupCalls[session.activeCallChatId])) && (
             <button
               type="button"
               className="icon-button subtle"
@@ -230,6 +233,7 @@ export function DesktopCallControls() {
             isLocalMuted={callAudioSettings.micMuted}
             isPeerSpeaking={isPeerSpeaking}
             speakingUserIds={speakingUserIds}
+            onFocusChange={(focused, closeFocus) => { setIsParticipantFocused(focused); closeParticipantFocusRef.current = closeFocus; }}
           />
         ) : (
           <>

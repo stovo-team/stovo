@@ -1,4 +1,5 @@
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CallUiPreview } from "./call-ui-preview";
@@ -36,6 +37,13 @@ function clickMenuItem(container: ParentNode, label: string) {
   return item;
 }
 
+function previewCssRules(selector: string) {
+  const html = readFileSync("call-ui-preview.html", "utf8");
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? "";
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g")), (match) => match[1]).join("\n");
+}
+
 describe("call UI preview interactions", () => {
   it("shows camera flip only while camera is enabled and flips its facing mode", () => {
     const container = mountPreview();
@@ -66,10 +74,10 @@ describe("call UI preview interactions", () => {
     expect(container.querySelector(".call-preview-control-rows")?.getAttribute("data-layout")).toBe("desktop-one-row");
   });
 
-  it("opens the vertical more menu and minimizes the call from it", () => {
+  it("minimizes from the standalone header control without a desktop More trigger", () => {
     const container = mountPreview();
-    click(container, "More options");
-    expect(container.querySelector('[role="menu"]')).not.toBeNull();
+    expect(container.querySelector('.call-preview-header button[aria-label="More options"]')).toBeNull();
+    expect(container.querySelector('[role="menu"]')).toBeNull();
     click(container, "Minimize call");
     expect(container.querySelector(".call-preview-restore")).not.toBeNull();
   });
@@ -119,11 +127,50 @@ describe("call UI preview interactions", () => {
     expect(container.querySelector('[data-focus-main="Maya Chen"]')).not.toBeNull();
     expect(container.querySelector('[data-focus-main="Alex Morgan"]')).toBeNull();
 
-    const back = container.querySelector<HTMLButtonElement>('button[aria-label="Close participant focus"]');
+    const back = container.querySelector<HTMLButtonElement>('button[aria-label="Back to participants"]');
     expect(back).not.toBeNull();
     act(() => back?.click());
     expect(container.querySelector("[data-focus-main]")).toBeNull();
     expect(container.querySelectorAll(".call-grid__tile")).toHaveLength(3);
+  });
+
+  it("keeps the focused header compact: no speaking/status decoration and adjacent SVG back/minimize controls", () => {
+    const container = mountPreview();
+    click(container, "Mobile");
+    act(() => container.querySelector<HTMLElement>('[data-stage-role="remote-primary"]')?.click());
+
+    const header = container.querySelector<HTMLElement>(".call-preview-focus-header");
+    expect(header).not.toBeNull();
+    expect(header?.querySelector(".speaking-ring, .speaking-ellipsis, [data-speaking], [aria-label*=Speaking]")).toBeNull();
+    expect(container.querySelector(".call-grid__tile.is-speaking")).toBeNull();
+    expect(header?.querySelector("[data-participant-status]")).toBeNull();
+    expect(header?.querySelector("[aria-label='Back to participants'] svg")).not.toBeNull();
+    expect(container.querySelector(".call-preview-focus-close")).toBeNull();
+    expect(container.querySelectorAll("[aria-label='Back to participants']")).toHaveLength(1);
+    expect(header?.querySelector("[aria-label='Minimize call'] svg")).not.toBeNull();
+    const back = header?.querySelector("[aria-label='Back to participants']");
+    const minimize = header?.querySelector("[aria-label='Minimize call']");
+    expect(back?.parentElement).toBe(minimize?.parentElement);
+    expect(header?.getAttribute("data-narrow-layout")).toBe("compact");
+  });
+
+  it("keeps participant status while omitting speaking rings from focused content", () => {
+    const container = mountPreview();
+    click(container, "Mobile");
+    act(() => container.querySelector<HTMLElement>('[data-stage-role="remote-primary"]')?.click());
+    const main = container.querySelector<HTMLElement>(".call-preview-focus-main");
+    expect(main).not.toBeNull();
+    expect(main?.querySelector(".call-grid__tile.is-speaking, .speaking-ring, .speaking-ellipsis")).toBeNull();
+    expect(main?.querySelector(":scope > span")?.textContent).toBe("Connected");
+  });
+
+  it("does not expose call minimization in the Guest meeting surface", () => {
+    const container = mountPreview();
+    const guestMeeting = Array.from(container.querySelectorAll<HTMLButtonElement>(".call-preview-switches button"))
+      .find((button) => button.textContent?.trim() === "Guest meeting");
+    act(() => guestMeeting?.click());
+    expect(container.querySelector('[aria-label="Minimize call"]')).toBeNull();
+    expect(container.querySelector('.call-preview-header button[title="Minimize call"]')).toBeNull();
   });
 
   it("keeps desktop controls visible after 15 seconds and pointer interactions", () => {
@@ -154,6 +201,53 @@ describe("call UI preview interactions", () => {
     click(container, "More options");
     clickMenuItem(container, "Screen Share");
     expect(container.querySelector('[data-preview-screen-share="true"]')).not.toBeNull();
+  });
+
+  it.each(["Desktop", "Mobile"])('%s screen sharing stops only through the standard share toggle', (viewport) => {
+    const container = mountPreview();
+    click(container, viewport);
+    if (viewport === "Mobile") {
+      click(container, "More options");
+      clickMenuItem(container, "Screen Share");
+    } else {
+      click(container, "Share screen");
+    }
+    expect(container.querySelector('[data-preview-screen-share="true"]')).not.toBeNull();
+    expect(container.querySelector('.call-preview-stop-sharing, [aria-label="Stop sharing"].call-preview-stop-sharing')).toBeNull();
+
+    if (viewport === "Desktop") {
+      click(container.querySelector(".call-preview-control-row")!, "Stop sharing");
+    } else {
+      const more = container.querySelector<HTMLButtonElement>('.call-preview-control-rows [aria-label="More options"]');
+      act(() => more?.click());
+      clickMenuItem(container, "Stop screen share");
+    }
+    expect(container.querySelector('[data-preview-screen-share="true"]')).toBeNull();
+  });
+
+  it.each([320, 360])("keeps mobile controls circular, fixed-size and equally spaced at %ipx", (width) => {
+    const container = mountPreview();
+    click(container, "Mobile");
+    const panel = container.querySelector<HTMLElement>(".call-preview-panel")!;
+    panel.style.width = `${width}px`;
+    const row = container.querySelector<HTMLElement>(".call-preview-control-row")!;
+    const controls = Array.from(row.querySelectorAll<HTMLElement>(".call-ctrl-btn"));
+    expect(controls).toHaveLength(5);
+    expect(controls.every((control) => control.dataset.shape === "circle")).toBe(true);
+    expect(controls.every((control) => control.dataset.fixedSize === "true")).toBe(true);
+    expect(row.dataset.equalGap).toBe("true");
+    expect(row.dataset.noWrap).toBe("true");
+
+    const panelRule = previewCssRules(".call-preview-mobile .call-preview-control-rows");
+    const rowRule = previewCssRules(".call-preview-mobile .call-preview-control-row");
+    const firstMobileRowRule = previewCssRules(".call-preview-mobile .call-preview-control-row:first-child");
+    const buttonRule = previewCssRules(".call-preview-mobile .call-preview-control-row .call-ctrl-btn");
+    expect(panelRule).toMatch(/border-radius:\s*999px/);
+    expect(rowRule).toMatch(/flex-wrap:\s*nowrap/);
+    expect(rowRule).toMatch(/grid-template-columns:\s*repeat\(5,\s*48px\)/);
+    expect(firstMobileRowRule).toMatch(/justify-content:\s*space-between/);
+    expect(buttonRule).toMatch(/width:\s*48px/);
+    expect(buttonRule).toMatch(/height:\s*48px/);
   });
 
   it("updates the selected device from the settings panel", () => {
@@ -330,12 +424,16 @@ describe("call UI preview interactions", () => {
     }
   });
 
-  it("keeps square avatar fallbacks visible in screen-share-only mode with camera disabled", () => {
+  it.each(["Desktop", "Mobile"]) ("keeps square avatar fallbacks in screen-share-only mode with camera disabled on %s", (viewport) => {
     const container = mountPreview();
-    click(container, "Mobile");
+    click(container, viewport);
     expect(container.querySelector('[aria-label="Flip camera"]')).toBeNull();
-    click(container, "More options");
-    clickMenuItem(container, "Screen Share");
+    if (viewport === "Mobile") {
+      click(container, "More options");
+      clickMenuItem(container, "Screen Share");
+    } else {
+      click(container, "Share screen");
+    }
     expect(container.querySelector('[data-preview-screen-share="true"]')).not.toBeNull();
     expect(container.querySelector('[data-stage-role="local-pip"]')).toBeNull();
     const cards = Array.from(container.querySelectorAll<HTMLElement>(".call-preview-share-participant"));

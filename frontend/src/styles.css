@@ -252,6 +252,12 @@
   margin-left: auto;
 }
 
+.call-popup-header-actions > .icon-button {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+}
+
 .call-popup-peer-name {
   font-size: 0.88rem;
   color: var(--text-secondary);
@@ -631,6 +637,47 @@
   align-content: stretch;
 }
 
+.call-grid--screen-share {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 22%);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.call-grid--screen-share > .call-grid__tile--screen {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+.call-grid__participant-rail {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: center;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.call-grid__participant-rail > [data-participant-id] {
+  position: relative;
+  width: 100%;
+  height: auto !important;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+}
+
+.call-grid__participant-rail .call-grid__tile {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+}
+
 .call-grid--presenting .call-grid__tile--screen {
   max-height: min(52vh, 420px);
 }
@@ -969,13 +1016,18 @@
   padding: 11px 14px;
 }
 .call-audio-popup-close {
-  background: transparent;
-  border: none;
-  border-radius: 5px;
+  align-items: center;
+  background: var(--background-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
   color: var(--text-tertiary);
   cursor: pointer;
   display: flex;
-  padding: 3px;
+  flex: 0 0 36px;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  width: 36px;
 }
 .call-audio-popup-close:hover {
   background: var(--surface-hover);
@@ -14435,6 +14487,7 @@ span.message-spoiler.is-revealed {
 }
 
 .mobile-active-shrink-btn {
+  flex: 0 0 40px;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -24958,11 +25011,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.22);
 }
 
-.voice-participant-card.is-speaking {
-  border-color: #22c55e;
-  box-shadow: 0 0 22px rgba(34, 197, 94, 0.28);
-}
-
 /* Avatar Wrappers & Sizing Tiers */
 .voice-participant-avatar-wrapper {
   position: relative;
@@ -25037,29 +25085,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   display: block;
 }
 
-.voice-speaking-ring {
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-  border: 3px solid #22c55e;
-  animation: voice-ring-pulse 1.5s infinite;
-}
-
-@keyframes voice-ring-pulse {
-  0% {
-    transform: scale(0.95);
-    opacity: 0.9;
-  }
-  50% {
-    transform: scale(1.08);
-    opacity: 0.4;
-  }
-  100% {
-    transform: scale(0.95);
-    opacity: 0.9;
-  }
-}
-
 .voice-card-muted-badge {
   position: absolute;
   bottom: 0;
@@ -25104,16 +25129,6 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 .voice-participant-video-feed.is-mirrored {
   transform: scaleX(-1);
-}
-
-.voice-video-speaking-border {
-  position: absolute;
-  inset: 0;
-  border-radius: 18px;
-  border: 3px solid #22c55e;
-  box-shadow: inset 0 0 16px rgba(34, 197, 94, 0.35);
-  pointer-events: none;
-  z-index: 3;
 }
 
 .voice-participant-card.has-video {
@@ -25202,11 +25217,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.voice-participant-list-row.is-speaking {
-  border-color: #22c55e;
-  box-shadow: 0 0 14px rgba(34, 197, 94, 0.2);
-}
-
 .voice-list-row-left {
   display: flex;
   align-items: center;
@@ -25244,11 +25254,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   display: block;
 }
 
-.voice-list-avatar-wrap .voice-speaking-ring {
-  inset: -3px;
-  border-width: 2px;
-}
-
 .voice-list-row-name {
   font-size: 0.92rem;
   font-weight: 600;
@@ -25274,6 +25279,12 @@ button.chat-info-title-edit:active:not(:disabled) {
 .voice-list-row-state {
   font-size: 0.78rem;
   opacity: 0.65;
+}
+
+.voice-participant-card.is-speaking .voice-participant-state,
+.voice-participant-list-row.is-speaking .voice-list-row-state {
+  color: #22c55e;
+  opacity: 1;
 }
 
 /* Empty State */
@@ -25373,11 +25384,8 @@ button.chat-info-title-edit:active:not(:disabled) {
   transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
 }
 
-.shared-call-stage .voice-participant-card.is-speaking,
-.shared-call-stage .call-grid__tile.is-speaking {
-  border-color: #22c55e;
-  box-shadow: 0 0 22px rgba(34, 197, 94, .28);
-}
+.shared-call-stage .voice-participant-card,
+.shared-call-stage .call-grid__tile { transition: background .2s ease; }
 
 .shared-call-controls {
   align-items: center;
@@ -25713,9 +25721,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.call-grid__tile.is-speaking {
-  box-shadow: 0 0 0 2px #22c55e, 0 0 16px rgba(34, 197, 94, 0.35);
-}
 
 .call-grid__participant-status {
   position: absolute;
@@ -25931,9 +25936,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.call-grid__tile.is-speaking {
-  box-shadow: 0 0 0 2px #22c55e, 0 0 16px rgba(34, 197, 94, 0.35);
-}
 
 .call-grid__avatar-wrap {
   position: relative;
@@ -30226,8 +30228,6 @@ button.checklist-add-item-btn:hover,
 .guest-call-avatar-halo { height: 140px; width: 140px; }
 .guest-mobile-output-control, .guest-mobile-flip-control { display: none; }
 .guest-preview-avatar { font-size: 1.35rem; height: 82px; width: 82px; }
-.guest-preview-avatar-halo.is-speaking::before, .guest-preview-avatar-halo.is-settling::before { background: transparent; border: 2px solid #22c55e; border-radius: 50%; box-shadow: 0 0 0 5px rgba(34, 197, 94, .16), 0 0 24px rgba(34, 197, 94, .64); content: ""; inset: -7px; position: absolute; z-index: -1; }
-.guest-preview-avatar-halo.is-speaking::before { border-color: #22c55e; box-shadow: 0 0 0 5px rgba(34, 197, 94, .16), 0 0 24px rgba(34, 197, 94, .64); }
 @media (max-width: 720px) { .guest-stovo-brand { left: 1rem; right: auto; top: .9rem; } .guest-meeting-page { padding-top: 4rem; } .guest-preview-controls { justify-content: center; } .guest-preview-controls .guest-device-select { display: none; } .guest-preview-controls .guest-mobile-output-control, .guest-preview-controls .guest-mobile-flip-control { display: inline-flex; } .guest-call-controls .guest-mobile-output-control, .guest-call-controls .guest-mobile-flip-control { display: inline-flex; } .guest-device-select select { max-width: 96px; } .guest-settings-popover { position: fixed; right: 1rem; top: 4.25rem; } }
 
 /* Guest meetings use the same stage, participant tiles, and control dock as group calls. */
@@ -30397,11 +30397,6 @@ button.checklist-add-item-btn:hover,
   width: 1px;
 }
 
-/* Keep the speaking state visible over a camera or screen share without motion. */
-.guest-call-room .guest-video-speaking-border {
-  border-color: color-mix(in srgb, var(--accent-primary) 86%, #ffffff);
-  box-shadow: inset 0 0 16px color-mix(in srgb, var(--accent-primary) 34%, transparent), 0 0 18px color-mix(in srgb, var(--accent-primary) 30%, transparent);
-}
 
 .guest-call-avatar-placeholder {
   align-items: center;

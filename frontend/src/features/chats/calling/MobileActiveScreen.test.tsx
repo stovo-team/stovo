@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import React, { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, Root } from "react-dom/client";
 import { MobileActiveScreen } from "./MobileActiveScreen";
 
@@ -24,6 +25,11 @@ function renderComponent(ui: React.ReactElement) {
     root.render(ui);
   });
   return container;
+}
+
+function styleRules(css: string, selector: string) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g")), (match) => match[1]).join("\n");
 }
 
 describe("MobileActiveScreen", () => {
@@ -71,25 +77,76 @@ describe("MobileActiveScreen", () => {
     expect(defaultProps.onToggleScreenShare).toHaveBeenCalled();
   });
 
-  it("renders active state and screen share banner when isScreenSharing is true", () => {
+  it.each([320, 360])("keeps real mobile controls fixed, circular, evenly spaced and in one row at %ipx", (width) => {
+    const container = renderComponent(<MobileActiveScreen {...defaultProps} />);
+    container.style.width = `${width}px`;
+    const controls = container.querySelector<HTMLElement>(".mobile-active-controls");
+    expect(controls?.dataset.layout).toBe("mobile-one-row");
+    expect(controls?.dataset.noWrap).toBe("true");
+    expect(controls?.querySelectorAll("button")).toHaveLength(5);
+
+    const css = readFileSync("src/styles.css", "utf8");
+    const controlsRule = styleRules(css, ".mobile-active-controls");
+    const buttonRule = styleRules(css, ".mobile-active-ctrl-btn");
+    expect(controlsRule).toMatch(/grid-template-columns:\s*repeat\(5,/);
+    expect(controlsRule).toMatch(/width:\s*100%/);
+    expect(controlsRule).toMatch(/column-gap:\s*clamp\(/);
+    expect(controlsRule).toMatch(/row-gap:\s*0/);
+    expect(controlsRule).toMatch(/flex-wrap:\s*nowrap/);
+    expect(buttonRule).toMatch(/width:\s*40px/);
+    expect(buttonRule).toMatch(/height:\s*40px/);
+    expect(buttonRule).toMatch(/border-radius:\s*50%/);
+  });
+
+  it("keeps screen sharing in the standard More toggle without a separate Stop banner button", () => {
+    const onToggleScreenShare = vi.fn();
     const container = renderComponent(
-      <MobileActiveScreen {...defaultProps} isScreenSharing={true} />
+      <MobileActiveScreen {...defaultProps} isScreenSharing={true} onToggleScreenShare={onToggleScreenShare} />
     );
 
+    expect(container.querySelector("button[aria-label='Stop screen share']")).toBeNull();
     const moreBtn = container.querySelector("button[aria-label='More options']") as HTMLButtonElement;
     act(() => moreBtn.click());
     const shareBtn = container.querySelector("[role='group'] button[aria-label='Share screen']") as HTMLButtonElement;
     expect(shareBtn).not.toBeNull();
     expect(shareBtn.textContent).toContain("Stop screen share");
+    act(() => shareBtn.click());
+    expect(onToggleScreenShare).toHaveBeenCalledTimes(1);
+    expect(container.querySelector("button[aria-label='Stop screen share']")).toBeNull();
+  });
 
-    const bannerStopBtn = container.querySelector("button[aria-label='Stop screen share']") as HTMLButtonElement;
-    expect(bannerStopBtn).toBeDefined();
-    expect(bannerStopBtn).not.toBeNull();
+  it("shows a compact SVG Back beside Shrink during participant focus and restores the grid", () => {
+    const track = { readyState: "live", kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const stream = { getVideoTracks: () => [track], getTracks: () => [track] } as unknown as MediaStream;
+    const remoteMedia = ["Alice", "Bob"].map((userId) => ({
+      userId,
+      stream,
+      screenStream: null,
+      hasVideo: true,
+      hasAudio: true,
+      hasScreenShare: false,
+    }));
+    const container = renderComponent(
+      <MobileActiveScreen
+        {...defaultProps}
+        callType="video"
+        hasRemoteVideo
+        remoteVideoStream={stream}
+        remoteMedia={remoteMedia}
+      />,
+    );
+    act(() => container.querySelector<HTMLElement>(".call-grid__tile--remote .call-grid__label")?.click());
+    expect(container.querySelector(".call-grid--focus")).not.toBeNull();
 
-    act(() => {
-      bannerStopBtn.click();
-    });
-    expect(defaultProps.onToggleScreenShare).toHaveBeenCalled();
+    const topBar = container.querySelector<HTMLElement>(".mobile-active-top-bar");
+    const actions = Array.from(topBar?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+    expect(actions.map((button) => button.getAttribute("aria-label"))).toEqual(["Close participant focus", "Shrink call"]);
+    expect(actions[0].querySelector("svg")).not.toBeNull();
+    expect(actions[0].textContent?.trim()).toBe("");
+    act(() => actions[0].click());
+    expect(container.querySelector(".call-grid--focus")).toBeNull();
+    expect(Array.from(topBar?.querySelectorAll<HTMLButtonElement>("button") ?? []).map((button) => button.getAttribute("aria-label"))).toEqual(["Shrink call"]);
+    expect(container.querySelectorAll(".call-grid__tile").length).toBeGreaterThan(1);
   });
 
   it("renders video stage when localScreenStream is present", () => {

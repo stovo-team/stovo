@@ -643,7 +643,7 @@ describe("VoiceChannelStage", () => {
       .toContain("Transcription service is not configured");
   });
 
-  it("renders voice speaking ring around avatar when peer is speaking in voice room", () => {
+  it("keeps the Speaking status without a ring around the participant avatar", () => {
     const mockSession = {
       callPhase: "in-call",
       activeCallChatId: "voice-chat-1",
@@ -676,7 +676,8 @@ describe("VoiceChannelStage", () => {
     );
 
     const speakingRings = container.querySelectorAll(".voice-speaking-ring");
-    expect(speakingRings.length).toBeGreaterThan(0);
+    expect(speakingRings).toHaveLength(0);
+    expect(container.textContent?.toLowerCase()).toContain("speaking");
   });
 
   it("renders wave animation badge in top-right corner of active video feed in voice room when speaking", () => {

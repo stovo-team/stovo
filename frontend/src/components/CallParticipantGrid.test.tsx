@@ -1,4 +1,5 @@
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import CallParticipantGrid from "./CallParticipantGrid";
@@ -23,7 +24,41 @@ function renderGrid(props: React.ComponentProps<typeof CallParticipantGrid>) {
 
 const emptyStream = {} as MediaStream;
 
+function styleRules(css: string, selector: string) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g")), (match) => match[1]).join("\n");
+}
+
 describe("shared call participant presentation", () => {
+  it("places square avatar/video participants in a desktop screen-share side rail", () => {
+    const screenTrack = { readyState: "live", kind: "video", getSettings: () => ({ width: 1920, height: 1080 }), addEventListener() {}, removeEventListener() {} };
+    const screenStream = { getVideoTracks: () => [screenTrack] } as unknown as MediaStream;
+    const container = renderGrid({
+      localStream: null,
+      localScreenStream: screenStream,
+      localUserLabel: "You",
+      callType: "video",
+      remoteMedia: [
+        { userId: "Alex Morgan", stream: null as unknown as MediaStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false },
+      ],
+    });
+
+    const grid = container.querySelector<HTMLElement>(".call-grid");
+    const presenterTile = grid?.querySelector<HTMLElement>(".call-grid__tile--screen");
+    expect(presenterTile).not.toBeNull();
+    expect(presenterTile?.style.gridColumn).not.toBe("1 / -1");
+    expect(grid?.classList.contains("call-grid--screen-share")).toBe(true);
+    const rail = grid?.querySelector<HTMLElement>(".call-grid__participant-rail");
+    expect(rail).not.toBeNull();
+    const remote = rail?.querySelector<HTMLElement>('[data-participant-id="Alex Morgan"]');
+    expect(remote?.style.aspectRatio).toBe("1 / 1");
+    expect(remote?.querySelector(".call-grid__avatar")).not.toBeNull();
+
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(styleRules(css, ".call-grid--screen-share")).toMatch(/grid-template-columns:/);
+    expect(styleRules(css, ".call-grid__participant-rail")).toMatch(/grid-auto-rows:/);
+  });
+
   it("shows the same speaking status on local and remote participants", () => {
     const container = renderGrid({
       localStream: null,
@@ -63,7 +98,30 @@ describe("shared call participant presentation", () => {
     const status = tile?.querySelector("[role=\"status\"]");
     expect(status).not.toBeNull();
     expect(status?.textContent).toContain("Speaking");
-    expect(tile?.querySelector(".speaking-wave-badge, .voice-video-speaking-border")).not.toBeNull();
+    expect(tile?.querySelector(".speaking-wave-badge")).not.toBeNull();
+  });
+
+  it("keeps speaking status and wave indicators without drawing active tile/avatar/video outlines", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    for (const selector of [
+      ".call-grid__tile.is-speaking",
+      ".shared-call-stage .call-grid__tile.is-speaking",
+      ".voice-speaking-ring",
+      ".voice-video-speaking-border",
+    ]) {
+      expect(styleRules(css, selector)).not.toMatch(/(?:border|outline|box-shadow|animation)\s*:/);
+    }
+
+    const container = renderGrid({
+      localStream: null,
+      remoteMedia: [{ userId: "wave-speaker", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+      localUserLabel: "You",
+      callType: "audio",
+      speakingUserIds: ["wave-speaker"],
+    });
+    const speakingTile = container.querySelector(".call-grid__tile--remote.is-speaking");
+    expect(speakingTile?.querySelector('[role="status"]')?.textContent).toBe("Speaking");
+    expect(speakingTile?.querySelector(".speaking-wave-badge")).not.toBeNull();
   });
 
   it("does not show the local participant as speaking while the microphone is muted", () => {
@@ -129,6 +187,7 @@ describe("shared call participant presentation", () => {
   it("focuses participants inline, switches focus, and returns to the grid with avatar fallbacks", () => {
     const endedTrack = { readyState: "ended", kind: "video" };
     const liveTrack = { readyState: "live", kind: "video", addEventListener() {}, removeEventListener() {} };
+    let closeFocus: (() => void) | undefined;
     const container = renderGrid({
       localStream: null,
       localUserLabel: "You",
@@ -138,6 +197,7 @@ describe("shared call participant presentation", () => {
         { userId: "Maya Chen", stream: { getVideoTracks: () => [endedTrack] } as unknown as MediaStream, screenStream: null, hasVideo: true, hasAudio: true, hasScreenShare: false },
         { userId: "Sam Rivera", stream: { getVideoTracks: () => [liveTrack] } as unknown as MediaStream, screenStream: null, hasVideo: true, hasAudio: true, hasScreenShare: false },
       ],
+      onFocusChange: (focused, close) => { if (focused) closeFocus = close; },
     });
 
     expect(container.querySelectorAll(".call-grid__tile")).toHaveLength(4);
@@ -160,9 +220,9 @@ describe("shared call participant presentation", () => {
     expect(main?.querySelector(".call-grid__avatar")).not.toBeNull();
     expect(main?.querySelector("video")).toBeNull();
 
-    const back = container.querySelector<HTMLButtonElement>('button[aria-label="Close participant focus"]');
-    expect(back).not.toBeNull();
-    act(() => back?.click());
+    expect(container.querySelector('button[aria-label="Close participant focus"]')).toBeNull();
+    expect(closeFocus).toBeTypeOf("function");
+    act(() => closeFocus?.());
     expect(container.querySelector("[data-focus-main]")).toBeNull();
     expect(container.querySelectorAll(".call-grid__tile")).toHaveLength(4);
   });

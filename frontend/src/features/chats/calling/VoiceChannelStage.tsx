@@ -366,7 +366,6 @@ export function VoiceChannelStage({
                           file={info.profilePhoto}
                           label={info.rawDisplayName}
                         />
-                        {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
                       </div>
                       <span className="voice-list-row-name">{info.displayName}</span>
                       {hasVideo && <span className="voice-list-video-pill" title={hasScreenShare ? "Screen Sharing" : "Camera Active"}><Video size={12} /></span>}
@@ -430,7 +429,6 @@ export function VoiceChannelStage({
                           className={`voice-participant-video-feed${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
                         />
                         {isSpeaking && <SpeakingWaveBadge />}
-                        {isSpeaking && <span className="voice-video-speaking-border" aria-hidden="true" />}
                         {isMuted && (
                           <span className="voice-card-muted-badge voice-card-muted-badge--video" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                             <MicOff size={14} aria-hidden="true" />
@@ -445,7 +443,6 @@ export function VoiceChannelStage({
                           file={info.profilePhoto}
                           label={info.rawDisplayName}
                         />
-                        {isSpeaking && <span className="voice-speaking-ring" aria-hidden="true" />}
                         {isMuted && (
                           <span className="voice-card-muted-badge" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                             <MicOff size={14} aria-hidden="true" />

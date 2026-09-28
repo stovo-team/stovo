@@ -48,6 +48,8 @@ export function MobileCallMoreMenu({
         type="button"
         className={`mobile-active-ctrl-btn${isOpen || isIntelligenceActive ? " active" : ""}`}
         aria-label="More options"
+        data-shape="circle"
+        data-fixed-size="true"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((open) => !open)}
       >

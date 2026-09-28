@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import type { FamilyFile } from "../../../api/files";
 import type { RemoteMedia } from "../../../realtime/call/types";
+import { ArrowLeft } from "lucide-react";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
@@ -119,6 +120,8 @@ export function MobileActiveScreen({
   const mobileScreenRef = useRef<HTMLVideoElement>(null);
 
   const [areControlsVisible, setAreControlsVisible] = useState(true);
+  const [isParticipantFocused, setIsParticipantFocused] = useState(false);
+  const closeParticipantFocusRef = useRef<() => void>(() => undefined);
   const [isSelfViewFullscreen, setIsSelfViewFullscreen] = useState(false);
   const [selfViewSide, setSelfViewSide] = useState<"left" | "right">("right");
 
@@ -312,6 +315,7 @@ export function MobileActiveScreen({
     >
       {/* Top right shrink button */}
       <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}>
+        {isParticipantFocused && <button type="button" className="mobile-active-shrink-btn mobile-active-focus-back" aria-label="Close participant focus" onClick={(event) => { event.stopPropagation(); closeParticipantFocusRef.current(); }}><ArrowLeft size={20} aria-hidden="true" /></button>}
         <button
           type="button"
           className="mobile-active-shrink-btn"
@@ -331,7 +335,7 @@ export function MobileActiveScreen({
         </button>
       </div>
 
-      {/* Screen sharing indicator banner with direct Stop button */}
+      {/* Screen sharing state stays visible; stopping uses the Share action in More. */}
       {isSharingLocalScreen && (
         <div
           className={`mobile-active-screenshare-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}
@@ -339,17 +343,6 @@ export function MobileActiveScreen({
         >
           <span className="mobile-active-screenshare-dot" aria-hidden="true" />
           <span>Sharing screen</span>
-          <button
-            type="button"
-            className="mobile-active-screenshare-stop-btn"
-            aria-label="Stop screen share"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleScreenShare();
-            }}
-          >
-            Stop
-          </button>
         </div>
       )}
 
@@ -384,6 +377,8 @@ export function MobileActiveScreen({
               isLocalPrimary={isSelfViewFullscreen}
               onToggleMobileStage={() => setIsSelfViewFullscreen((isFullscreen) => !isFullscreen)}
               isCallConnected={callPhase === "in-call"}
+              isMobileLayout
+              onFocusChange={(focused, closeFocus) => { setIsParticipantFocused(focused); closeParticipantFocusRef.current = closeFocus; }}
             />
           ) : (
             <>
@@ -593,19 +588,19 @@ export function MobileActiveScreen({
       >
         {/* Mic */}
         <div className="mobile-active-ctrl">
-          <CallControlButton action="microphone" state={isMicMuted ? "muted" : "active"} className={`mobile-active-ctrl-btn${isMicMuted ? " muted" : " active"}`} label={isMicMuted ? "Unmute" : "Mute"} onClick={onToggleMic} />
+          <CallControlButton action="microphone" state={isMicMuted ? "muted" : "active"} className={`mobile-active-ctrl-btn${isMicMuted ? " muted" : " active"}`} label={isMicMuted ? "Unmute" : "Mute"} data-shape="circle" data-fixed-size="true" onClick={onToggleMic} />
           <span className="mobile-active-ctrl-lbl">{isMicMuted ? "Unmute" : "Mute"}</span>
         </div>
 
         {/* Speaker */}
         <div className="mobile-active-ctrl">
-          <CallControlButton action="audio-output" toggle state={speakerMode === "large" ? "active" : "idle"} className={`mobile-active-ctrl-btn${speakerMode === "large" ? " active" : ""}`} label="Audio output" onClick={onOpenSpeakerSheet} />
+          <CallControlButton action="audio-output" toggle state={speakerMode === "large" ? "active" : "idle"} className={`mobile-active-ctrl-btn${speakerMode === "large" ? " active" : ""}`} label="Audio output" data-shape="circle" data-fixed-size="true" onClick={onOpenSpeakerSheet} />
           <span className="mobile-active-ctrl-lbl">{speakerMode === "large" ? "Speaker" : "Earpiece"}</span>
         </div>
 
         {/* Camera */}
         <div className="mobile-active-ctrl">
-          <CallControlButton action="camera" state={isCameraEnabled ? "active" : "muted"} className={`mobile-active-ctrl-btn${isCameraEnabled ? " active" : " muted"}`} label={isCameraEnabled ? "Turn off camera" : "Turn on camera"} onClick={onToggleCamera} />
+          <CallControlButton action="camera" state={isCameraEnabled ? "active" : "muted"} className={`mobile-active-ctrl-btn${isCameraEnabled ? " active" : " muted"}`} label={isCameraEnabled ? "Turn off camera" : "Turn on camera"} data-shape="circle" data-fixed-size="true" onClick={onToggleCamera} />
           <span className="mobile-active-ctrl-lbl">{isCameraEnabled ? "Camera" : "Camera off"}</span>
         </div>
 
@@ -651,7 +646,7 @@ export function MobileActiveScreen({
 
           {/* End call remains directly reachable beside More. */}
           <div className="mobile-active-ctrl">
-            <CallControlButton action="end-call" state="idle" className="mobile-active-ctrl-btn end" label="End call" onClick={onEnd} />
+          <CallControlButton action="end-call" state="idle" className="mobile-active-ctrl-btn end" label="End call" data-shape="circle" data-fixed-size="true" onClick={onEnd} />
             <span className="mobile-active-ctrl-lbl">End</span>
           </div>
         </div>

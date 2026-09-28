@@ -25,18 +25,24 @@ describe("call speaking-indicator CSS contract", () => {
     expect(sharedRules).toContain("gap: 12px");
   });
 
-  it("declares the same green color for voice-channel and call-grid speaking rings", () => {
-    const voiceRing = rule(".voice-speaking-ring");
-    const callTile = rule(".call-grid__tile.is-speaking");
+  it("keeps the green speaking status while removing active tile outlines", () => {
+    const voiceCard = rulesFor(".voice-participant-card.is-speaking");
+    const voiceList = rulesFor(".voice-participant-list-row.is-speaking");
+    const callTile = rulesFor(".call-grid__tile.is-speaking");
+    const status = styles.match(/\.call-grid__tile\.is-speaking \.call-grid__participant-status,[^{]*\{([^{}]*)\}/)?.[1] ?? "";
+    const voiceStatus = styles.match(/\.voice-participant-card\.is-speaking \.voice-participant-state,[^{]*\{([^{}]*)\}/)?.[1] ?? "";
 
-    expect(voiceRing).toContain("#22c55e");
-    expect(callTile).toContain("#22c55e");
+    for (const activeTile of [voiceCard, voiceList, callTile]) {
+      expect(activeTile).not.toMatch(/(?:border|outline|box-shadow|animation)\s*:/);
+    }
+    expect(status).toContain("#22c55e");
+    expect(voiceStatus).toContain("#22c55e");
   });
 
-  it("declares the guest meeting ring color to match the other call surfaces", () => {
+  it("does not draw an active halo around a guest meeting avatar", () => {
     const guestRing = styles.match(/\.guest-preview-avatar-halo\.is-speaking::before[^{}]*\{([^{}]*)\}/)?.[1] ?? "";
 
-    expect(guestRing.includes("#22c55e")).toBe(true);
+    expect(guestRing).toBe("");
   });
 });
 
@@ -46,4 +52,9 @@ function rule(selector: string) {
   const opening = styles.indexOf("{", start);
   const closing = styles.indexOf("}", opening);
   return closing < 0 ? "" : styles.slice(opening + 1, closing);
+}
+
+function rulesFor(selector: string) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(styles.matchAll(new RegExp(`(?:^|,\\s*)${escaped}(?=\\s|[.#:[,{])[^{}]*\\{([^{}]*)\\}`, "gm")), (match) => match[1]).join("\n");
 }

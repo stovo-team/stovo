@@ -64,6 +64,8 @@
       .call-preview-control-rows.is-hidden { opacity:0; pointer-events:none; }
       .call-preview-control-rows { flex-wrap:nowrap; }
       .call-preview-focus-stage { flex:1; min-height:390px; display:grid; grid-template-columns:minmax(0,1fr) minmax(120px,22%); grid-template-rows:minmax(0,1fr) auto; gap:10px; padding:8px; background:#05070b; border-radius:14px; }
+      .call-preview-focus-header { gap:8px; }
+      .call-preview-focus-header [aria-label="Back to participants"],.call-preview-focus-header [aria-label="Minimize call"] { display:grid; place-items:center; width:36px; height:36px; border:1px solid var(--border-default,#444); border-radius:999px; background:var(--surface-raised,#222); color:inherit; padding:0; cursor:pointer; }
       .call-preview-focus-main { position:relative; min-height:0; overflow:hidden; display:grid; place-items:center; align-content:center; gap:12px; border-radius:14px; background:linear-gradient(145deg,#1a2633,#090c12 68%); color:#fff; }
       .call-preview-focus-main .call-preview-camera-feed { position:absolute; inset:0; }
       .call-preview-focus-main > strong,.call-preview-focus-main > span { position:relative; z-index:2; }
@@ -82,8 +84,8 @@
       .call-preview-stage-pip { position:absolute; inset:0; width:100%; height:100%; padding:0 !important; overflow:hidden; border:0 !important; border-radius:0 !important; background:transparent !important; cursor:pointer; }
       .call-preview-stage-pip .call-preview-camera-feed,.call-preview-stage-pip .call-preview-avatar { width:100%; height:100%; }
       .call-preview-stage-pip-wrap .call-ctrl-btn.call-preview-flip { position:absolute; top:6px; right:6px; z-index:3; width:32px; height:32px; padding:0; border-radius:50%; background:#0009; }
-      .call-preview-mobile .call-preview-control-rows { align-items:center; gap:10px; }
-      .call-preview-mobile .call-preview-control-row { align-items:flex-start; flex-wrap:nowrap; gap:24px; }
+      .call-preview-mobile .call-preview-control-rows { align-items:center; gap:10px; border-radius:999px; }
+      .call-preview-mobile .call-preview-control-row { align-items:flex-start; flex-wrap:nowrap; gap:12px; }
       .call-preview-mobile .call-preview-control-row:first-child { justify-content:center; }
       .call-preview-mobile .call-preview-control-row:last-child { justify-content:center; }
       .call-preview-mobile .call-preview-control-row:first-child .call-ctrl-btn { width:54px; height:54px; }
@@ -99,9 +101,12 @@
       .call-preview-mobile .call-preview-panel .call-grid__tile { min-height:160px; }
       .call-preview-mobile .call-preview-panel .call-ctrl-row { gap:10px; }
       .call-preview-mobile .call-preview-control-rows { flex-direction:row; flex-wrap:nowrap; width:100%; overflow:visible; gap:4px; }
-      .call-preview-mobile .call-preview-control-row { width:100%; flex:1 1 auto; gap:clamp(2px,1.4vw,10px); justify-content:space-between; }
-      .call-preview-mobile .call-preview-control-row > .call-ctrl-wrap { min-width:0; flex:1 1 0; }
-      .call-preview-mobile .call-preview-control-row .call-ctrl-btn { width:clamp(42px,13vw,54px) !important; height:clamp(42px,13vw,54px) !important; }
+      .call-preview-mobile .call-preview-control-row { display:grid; grid-template-columns:repeat(5,48px); width:100%; flex:1 1 auto; gap:0; justify-content:space-between; }
+      .call-preview-mobile .call-preview-control-row:first-child { justify-content:space-between; }
+      .call-preview-mobile .call-preview-control-row:last-child { justify-content:space-between; }
+      .call-preview-mobile .call-preview-control-row > .call-ctrl-wrap { min-width:48px; }
+      .call-preview-mobile .call-preview-more-anchor > span { position:absolute; top:50px; left:50%; transform:translateX(-50%); white-space:nowrap; }
+      .call-preview-mobile .call-preview-control-row .call-ctrl-btn { width:48px !important; height:48px !important; min-width:48px; min-height:48px; border-radius:50%; }
       .call-preview-mobile .call-preview-focus-stage { min-height:360px; grid-template-columns:minmax(0,1fr) minmax(76px,25%); gap:6px; padding:4px; }
       .call-preview-mobile .call-preview-focus-participant { font-size:10px; }
       .call-preview-mobile .call-preview-share-stage { grid-template-columns:1fr; grid-template-rows:minmax(260px,1fr) auto; }
