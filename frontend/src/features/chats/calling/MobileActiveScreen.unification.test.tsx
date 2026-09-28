@@ -1,4 +1,5 @@
 import { act, useState } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MobileActiveScreen } from "./MobileActiveScreen";
@@ -14,6 +15,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
+function styleRules(css: string, selector: string) {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return Array.from(css.matchAll(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "g")), (match) => match[1]).join("\n");
+}
+
 function renderScreen(props: React.ComponentProps<typeof MobileActiveScreen>) {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -360,6 +366,30 @@ describe("mobile call UI unification", () => {
     }
   });
 
+  it("clears participant focus when rotating an active screen share to landscape", () => {
+    const screenTrack = { readyState: "live", kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const screenStream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
+    const remoteStream = { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream;
+    const container = renderScreen({
+      ...baseProps,
+      isScreenSharing: true,
+      localScreenStream: screenStream,
+      remoteMedia: [{ userId: "Alex", stream: remoteStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+    });
+
+    act(() => container.querySelector<HTMLElement>(".call-grid__tile--remote")?.click());
+    expect(container.querySelector('[data-focus-main="Alex"]')).not.toBeNull();
+    const rotate = container.querySelector<HTMLButtonElement>('[aria-label="Rotate landscape"]');
+    expect(rotate).not.toBeNull();
+    act(() => rotate?.click());
+
+    expect(container.querySelector('[data-mobile-orientation="landscape"]')).not.toBeNull();
+    expect(container.querySelector(".call-grid__focus-main, .call-grid__focus-participants, [data-focus-main]")).toBeNull();
+    expect(container.querySelector(".call-grid__tile--screen")).not.toBeNull();
+    expect(container.querySelector(".call-grid__tile--remote")).toBeNull();
+    expect(container.querySelector(".mobile-active-controls")).not.toBeNull();
+  });
+
   it("makes hidden mobile controls inert after timeout and restores interaction when the stage is tapped", () => {
     vi.useFakeTimers();
     const container = renderScreen(baseProps);
@@ -400,4 +430,156 @@ describe("mobile call UI unification", () => {
     });
     expect(activeContainer.querySelector(".call-grid__tile--remote [role='status']")?.textContent).toContain("Speaking");
   });
+
+  it("keeps the mobile camera PiP rectangular, with Flip available only while camera video is shown", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const pipRule = styleRules(css, ".mobile-active-pip");
+    expect(pipRule).toMatch(/border-radius:\s*(?:8|9)px/);
+    expect(pipRule).not.toMatch(/border-radius:\s*50%/);
+
+    const cameraOff = renderScreen(baseProps);
+    expect(cameraOff.querySelector(".mobile-active-pip")).toBeNull();
+    expect(cameraOff.querySelector('[aria-label="Flip camera"]')).toBeNull();
+  });
+
+  it("left-aligns the More menu to its trigger and keeps its three actions in the viewport", () => {
+    const container = renderScreen(baseProps);
+    act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
+    const menu = container.querySelector<HTMLElement>('[role="group"][aria-label="More call options"]');
+    expect(menu).not.toBeNull();
+    expect(menu?.closest(".mobile-active-more-anchor")).not.toBeNull();
+    const css = readFileSync("src/styles.css", "utf8");
+    const rule = styleRules(css, ".mobile-active-more-menu");
+    expect(rule).toMatch(/left:\s*0/);
+    expect(rule).toMatch(/right:\s*auto/);
+    expect(rule).toMatch(/max-width:/);
+  });
+
+  it("clamps the real More menu before the right viewport edge while keeping it anchored to the trigger", () => {
+    const originalWidth = Object.getOwnPropertyDescriptor(window, "innerWidth");
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 320 });
+    const anchorLeft = 278;
+    const anchorWidth = 40;
+    const menuWidth = 240;
+    const rect = (left: number, width: number) => ({
+      x: left, y: 0, left, top: 0, right: left + width, bottom: 180, width, height: 180,
+      toJSON: () => ({}),
+    }) as DOMRect;
+    const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("mobile-active-more-anchor")) return rect(anchorLeft, anchorWidth);
+      if (this.classList.contains("mobile-active-more-menu")) {
+        const leftOffset = Number.parseFloat(this.style.left) || 0;
+        const rightOffset = Number.parseFloat(this.style.right);
+        let left = anchorLeft + leftOffset;
+        if (this.style.position === "fixed") left = leftOffset;
+        if (Number.isFinite(rightOffset)) {
+          left = (this.style.position === "fixed" ? window.innerWidth : anchorLeft + anchorWidth) - rightOffset - menuWidth;
+        }
+        return rect(left, menuWidth);
+      }
+      return rect(0, 0);
+    });
+
+    try {
+      const container = renderScreen(baseProps);
+      act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
+      const anchor = container.querySelector<HTMLElement>(".mobile-active-more-anchor");
+      const menu = container.querySelector<HTMLElement>(".mobile-active-more-menu");
+      expect(anchor).not.toBeNull();
+      expect(menu).not.toBeNull();
+      const anchorRect = anchor!.getBoundingClientRect();
+      const menuRect = menu!.getBoundingClientRect();
+      expect(menuRect.right).toBeLessThanOrEqual(window.innerWidth - 8);
+      expect(menuRect.left).toBeGreaterThanOrEqual(8);
+      expect(menuRect.left).toBeLessThan(anchorRect.left);
+    } finally {
+      bounds.mockRestore();
+      if (originalWidth) Object.defineProperty(window, "innerWidth", originalWidth);
+      else delete (window as Partial<Window>).innerWidth;
+    }
+  });
+
+  it("resets the More-menu x offset in landscape and constrains width to the rotated viewport", () => {
+    const originalWidth = Object.getOwnPropertyDescriptor(window, "innerWidth");
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 320 });
+    const rect = (left: number, width: number) => ({
+      x: left, y: 0, left, top: 0, right: left + width, bottom: 180, width, height: 180,
+      toJSON: () => ({}),
+    }) as DOMRect;
+    const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("mobile-active-more-anchor")) return rect(278, 40);
+      if (this.classList.contains("mobile-active-more-menu")) {
+        const offset = Number.parseFloat(this.style.left) || 0;
+        return rect(278 + offset, 240);
+      }
+      return rect(0, 0);
+    });
+
+    try {
+      const screenTrack = { readyState: "live", kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+      const stream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
+      const container = renderScreen({ ...baseProps, isScreenSharing: true, localScreenStream: stream });
+      const more = container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]');
+      const rotate = container.querySelector<HTMLButtonElement>('[aria-label="Rotate landscape"]');
+      expect(more).not.toBeNull();
+      expect(rotate).not.toBeNull();
+
+      act(() => more?.click());
+      const portraitMenu = container.querySelector<HTMLElement>(".mobile-active-more-menu");
+      expect(Number.parseFloat(portraitMenu?.style.left ?? "0")).toBeLessThan(0);
+      act(() => rotate?.click());
+
+      const landscape = container.querySelector<HTMLElement>('[data-mobile-orientation="landscape"]');
+      const landscapeMenu = container.querySelector<HTMLElement>(".mobile-active-more-menu");
+      expect(landscape).not.toBeNull();
+      expect(landscapeMenu?.style.left).toBe("0px");
+      const css = readFileSync("src/styles.css", "utf8");
+      const rule = styleRules(css, ".mobile-active-screen--landscape .mobile-active-more-menu");
+      expect(rule).toMatch(/width:\s*min\(336px,\s*calc\(100dvh\s*-\s*32px\)\)/);
+      expect(rule).toMatch(/max-width:\s*min\(336px,\s*calc\(100dvh\s*-\s*32px\)\)/);
+    } finally {
+      bounds.mockRestore();
+      if (originalWidth) Object.defineProperty(window, "innerWidth", originalWidth);
+      else delete (window as Partial<Window>).innerWidth;
+    }
+  });
+
+  it("shows AI Notes, Recording and Live Captions together in the Stovo Intelligence box", () => {
+    const container = renderScreen(baseProps);
+    act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
+    act(() => container.querySelector<HTMLButtonElement>('[role="group"] button[aria-label="Stovo Intelligence"]')?.click());
+    const intelligence = container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]');
+    expect(intelligence).not.toBeNull();
+    expect(intelligence?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
+    expect(intelligence?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
+    expect(intelligence?.querySelector('[aria-label="Toggle Live Captions"]')).not.toBeNull();
+  });
+
+  it("uses a landscape screen-share stage without participant tiles, keeps controls, and closes back to portrait", () => {
+    const screenTrack = { readyState: "live", kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const stream = { getVideoTracks: () => [screenTrack], getTracks: () => [screenTrack] } as unknown as MediaStream;
+    const container = renderScreen({
+      ...baseProps,
+      isScreenSharing: true,
+      localScreenStream: stream,
+      remoteMedia: [{ userId: "Alex", stream: { getVideoTracks: () => [], getTracks: () => [] } as unknown as MediaStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+    });
+    expect(container.querySelector('[data-mobile-orientation="portrait"]')).not.toBeNull();
+    expect(container.querySelector(".call-grid__tile--remote")).not.toBeNull();
+    const rotate = container.querySelector<HTMLButtonElement>('[aria-label="Rotate landscape"]');
+    expect(rotate).not.toBeNull();
+    act(() => rotate?.click());
+
+    const landscape = container.querySelector('[data-mobile-orientation="landscape"]');
+    expect(landscape).not.toBeNull();
+    expect(landscape?.querySelector(".call-grid__participant-rail, .call-grid__tile--remote")).toBeNull();
+    expect(landscape?.querySelector(".mobile-active-controls")).not.toBeNull();
+    const close = container.querySelector<HTMLButtonElement>('[aria-label="Close landscape view"]');
+    expect(close).not.toBeNull();
+    act(() => close?.click());
+    expect(container.querySelector('[data-mobile-orientation="portrait"]')).not.toBeNull();
+    expect(container.querySelector(".mobile-active-controls")).not.toBeNull();
+    expect(container.querySelector(".call-grid__tile--remote")).not.toBeNull();
+  });
+
 });

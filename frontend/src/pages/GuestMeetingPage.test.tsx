@@ -1,4 +1,5 @@
 import { act } from "react";
+import { readFileSync } from "node:fs";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -309,4 +310,17 @@ describe("GuestMeetingPage pre-join controls", () => {
     await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
     expect(host?.querySelector('[role="dialog"][aria-label="Device settings"]')).toBeNull();
   });
+
+  it("renders device actions as joined segments rather than separate circular camera buttons", async () => {
+    await renderPage();
+    const camera = host?.querySelector<HTMLButtonElement>('[aria-label="Toggle Camera"]');
+    expect(camera).not.toBeNull();
+    expect(camera?.closest(".guest-device-control")).not.toBeNull();
+
+    const css = readFileSync("src/styles.css", "utf8");
+    const rule = css.match(/\.guest-call-controls \.guest-device-control > button\s*\{([^}]*)\}/s)?.[1] ?? "";
+    expect(rule).toMatch(/border-radius:\s*999px\s+0\s+0\s+999px/);
+    expect(rule).not.toMatch(/border-radius:\s*50%/);
+  });
+
 });

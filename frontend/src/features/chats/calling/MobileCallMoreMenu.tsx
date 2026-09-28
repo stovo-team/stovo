@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MoreVertical, Settings2, Share2 } from "lucide-react";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 
 export function MobileCallMoreMenu({
   isSharing,
+  isLandscape = false,
   isIntelligenceActive = false,
   onOpenSettings,
   onToggleScreenShare,
@@ -11,6 +12,7 @@ export function MobileCallMoreMenu({
   children,
 }: {
   isSharing: boolean;
+  isLandscape?: boolean;
   isIntelligenceActive?: boolean;
   onOpenSettings?: () => void;
   onToggleScreenShare: () => void;
@@ -18,8 +20,32 @@ export function MobileCallMoreMenu({
   children?: ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuOffset, setMenuOffset] = useState(0);
   const anchorRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const alignWithinViewport = () => {
+      const anchor = anchorRef.current?.getBoundingClientRect();
+      const menu = menuRef.current;
+      if (!anchor || !menu) return;
+      if (isLandscape || anchorRef.current?.closest(".mobile-active-screen--landscape")) {
+        setMenuOffset(0);
+        return;
+      }
+      const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+      const menuWidth = menu.getBoundingClientRect().width || Math.min(336, viewportWidth - 32);
+      const minLeft = 16;
+      const maxLeft = Math.max(minLeft, viewportWidth - menuWidth - 16);
+      const targetLeft = Math.min(maxLeft, Math.max(minLeft, anchor.left));
+      setMenuOffset(Math.max(0, anchor.left - targetLeft));
+    };
+    alignWithinViewport();
+    window.addEventListener("resize", alignWithinViewport);
+    return () => window.removeEventListener("resize", alignWithinViewport);
+  }, [isOpen, isLandscape]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -57,7 +83,7 @@ export function MobileCallMoreMenu({
       </button>
       <span className="mobile-active-ctrl-lbl">More</span>
       {isOpen && (
-        <div className="mobile-active-more-menu" role="group" aria-label="More call options">
+        <div ref={menuRef} className="mobile-active-more-menu" style={{ left: `${-menuOffset}px` }} role="group" aria-label="More call options">
           <button type="button" aria-label="Settings" onClick={() => { setIsOpen(false); onOpenSettings?.(); }}>
             <Settings2 size={17} aria-hidden="true" /><span>Settings</span>
           </button>

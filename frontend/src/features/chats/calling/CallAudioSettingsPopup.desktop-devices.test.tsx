@@ -137,4 +137,48 @@ describe("desktop call device selection", () => {
     act(() => document.dispatchEvent(new MouseEvent("mousedown", { bubbles: true })));
     expect(document.body.querySelector('[role="listbox"]')).toBeNull();
   });
+
+  it("separates microphone processing from speaker output controls without extra boxed rows or browser tags", () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    mountedRoots.push(root);
+    act(() => root.render(
+      <CallAudioSettingsPopup
+        popupRef={{ current: null }}
+        isMobile
+        settings={DEFAULT_CALL_SETTINGS}
+        capabilities={capabilities}
+        devices={[
+          { deviceId: "mic-1", kind: "audioinput", label: "Desk microphone" },
+          { deviceId: "speaker-1", kind: "audiooutput", label: "Desk speakers" },
+        ]}
+        trackStatus={null}
+        warning={null}
+        onPatch={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    ));
+
+    const microphone = container.querySelector<HTMLElement>('.call-audio-popup-section[aria-label="Microphone"]');
+    const speaker = container.querySelector<HTMLElement>('.call-audio-popup-section[aria-label="Speaker"]');
+    expect(microphone).not.toBeNull();
+    expect(speaker).not.toBeNull();
+    expect(microphone?.textContent).toContain("Input gain");
+    expect(microphone?.textContent).toContain("Noise suppression");
+    expect(microphone?.textContent).toContain("Echo cancellation");
+    expect(microphone?.textContent).toContain("Auto gain control");
+    expect(microphone?.textContent).toContain("Voice enhancement");
+    expect(speaker?.textContent).toContain("Output volume");
+    expect(speaker?.querySelector('[role="group"][aria-label="Speaker mode"]')).not.toBeNull();
+    expect(speaker?.textContent).not.toContain("Noise suppression");
+    expect(container.querySelectorAll(".call-audio-badge, .call-audio-status-chip")).toHaveLength(0);
+
+    const css = readFileSync("src/styles.css", "utf8");
+    const toggleRule = css.match(/\.call-audio-toggle-row\s*\{([^}]*)\}/s)?.[1] ?? "";
+    expect(toggleRule).toMatch(/border:\s*0(?:\s|;)/);
+    expect(toggleRule).toMatch(/background:\s*transparent/);
+    expect(css).not.toMatch(/\.call-audio-popup-divider\s*\{/);
+  });
+
 });

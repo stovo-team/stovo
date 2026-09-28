@@ -24,6 +24,7 @@ type CallParticipantGridProps = {
   onFocusChange?: (focused: boolean, closeFocus: () => void) => void;
   isMobileLayout?: boolean;
   isCallConnected?: boolean;
+  hideParticipants?: boolean;
 };
 
 const gridStyle: CSSProperties = {
@@ -149,7 +150,7 @@ function ParticipantTile({
       className={`${className}${isSpeaking ? " is-speaking" : ""}${mobilePrimary ? " call-grid__mobile-primary" : ""}${mobilePip ? " call-grid__mobile-pip mobile-active-pip" : ""}`}
       style={style}
       role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
+      tabIndex={onClick ? 0 : isScreen ? -1 : undefined}
       aria-label={onClick ? `${label} video tile` : undefined}
       onClick={onClick}
       onKeyDown={(event) => {
@@ -238,6 +239,7 @@ export default function CallParticipantGrid({
   onFocusChange,
   isMobileLayout = false,
   isCallConnected = true,
+  hideParticipants = false,
 }: CallParticipantGridProps) {
   const [isPresenterPortrait, setIsPresenterPortrait] = useState(false);
   const [focusedParticipantId, setFocusedParticipantId] = useState<string | null>(null);
@@ -355,7 +357,7 @@ export default function CallParticipantGrid({
         />
       ) : null}
 
-      {useScreenShareRail ? (
+      {hideParticipants ? null : useScreenShareRail ? (
         <div className="call-grid__participant-rail">
           <div data-participant-id={localUserLabel} style={{ aspectRatio: "1 / 1" }}>{localTile}</div>
           {remoteTiles}
@@ -378,7 +380,7 @@ export default function CallParticipantGrid({
         </div>
       ) : localTile}
 
-      {!useScreenShareRail ? remoteTiles : null}
+      {!hideParticipants && !useScreenShareRail ? remoteTiles : null}
     </div>
   );
 

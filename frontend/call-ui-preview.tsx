@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { ArrowLeft, Minimize2, MoreVertical, RotateCcw, Settings2, Share2, X } from "lucide-react";
 import CallParticipantGrid from "./src/components/CallParticipantGrid";
@@ -50,6 +50,7 @@ export function CallUiPreview() {
   const [settings, setSettings] = useState(DEFAULT_CALL_SETTINGS);
   const [participantCount, setParticipantCount] = useState(3);
   const [screenSharing, setScreenSharing] = useState(false);
+  const [mobileLandscape, setMobileLandscape] = useState(false);
   const [focusedContent, setFocusedContent] = useState<string | null>(null);
   const [focusedParticipant, setFocusedParticipant] = useState<string | null>(null);
   const [showParticipantGrid, setShowParticipantGrid] = useState(false);
@@ -58,9 +59,11 @@ export function CallUiPreview() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [selfViewFullscreen, setSelfViewFullscreen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [mobileMenuOffset, setMobileMenuOffset] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const mobileMoreTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
   const patchSettings = (patch: Partial<typeof settings>) => setSettings((previous) => ({ ...previous, ...patch }));
   const remoteMedia = createRemoteParticipants(participantCount);
 
@@ -98,6 +101,27 @@ export function CallUiPreview() {
     document.addEventListener("keydown", closeOnEscape);
     return () => document.removeEventListener("keydown", closeOnEscape);
   }, [focusedContent]);
+
+  useLayoutEffect(() => {
+    if (!mobile || !moreOpen) return;
+    const alignWithinViewport = () => {
+      const anchor = mobileMoreTriggerRef.current?.parentElement?.getBoundingClientRect();
+      const menu = mobileMenuRef.current;
+      if (!anchor || !menu) return;
+      if (mobileMoreTriggerRef.current?.closest(".call-preview-panel.is-landscape-mobile")) {
+        setMobileMenuOffset(0);
+        return;
+      }
+      const width = document.documentElement.clientWidth || window.innerWidth;
+      const menuWidth = menu.getBoundingClientRect().width || Math.min(336, width - 32);
+      const minLeft = 16;
+      const maxLeft = Math.max(minLeft, width - menuWidth - 16);
+      setMobileMenuOffset(Math.max(0, anchor.left - Math.min(maxLeft, Math.max(minLeft, anchor.left))));
+    };
+    alignWithinViewport();
+    window.addEventListener("resize", alignWithinViewport);
+    return () => window.removeEventListener("resize", alignWithinViewport);
+  }, [mobile, moreOpen, mobileLandscape]);
 
   function openParticipant(event: React.MouseEvent<HTMLDivElement>) {
     const tile = (event.target as HTMLElement).closest<HTMLElement>(".call-grid__tile");
@@ -145,10 +169,11 @@ export function CallUiPreview() {
       {minimized ? (
         <button type="button" className="call-preview-restore" aria-label="Restore call" onClick={() => setMinimized(false)}>Restore call</button>
       ) : (
-        <section className={`call-preview-panel${screenSharing ? " is-sharing" : ""}`} aria-label={`${kind} preview`}>
+        <section className={`call-preview-panel${screenSharing ? " is-sharing" : ""}${mobileLandscape ? " is-landscape-mobile" : ""}`} aria-label={`${kind} preview`} data-mobile-orientation={mobileLandscape ? "landscape" : "portrait"}>
           <header className="call-preview-header">
             <div className="call-preview-header-title"><strong>{kind}</strong></div>
             <div className={`call-preview-header-actions${showFocusedCall ? " call-preview-focus-header" : ""}`} data-narrow-layout={showFocusedCall ? "compact" : undefined}>
+              {mobileLandscape && <button type="button" className="call-preview-minimize" aria-label="Close landscape view" onClick={() => setMobileLandscape(false)}><ArrowLeft size={18} aria-hidden="true" /></button>}
               {showFocusedCall && <button type="button" className="call-preview-focus-back" aria-label="Back to participants" onClick={() => { setFocusedParticipant(null); setShowParticipantGrid(true); }}><ArrowLeft size={18} aria-hidden="true" /></button>}
               {!isGuestMeeting && <button type="button" className="call-preview-minimize" aria-label="Minimize call" title="Minimize call" onClick={() => { setMoreOpen(false); setMinimized(true); }}><Minimize2 size={18} aria-hidden="true" /></button>}
             </div>
@@ -170,18 +195,19 @@ export function CallUiPreview() {
             </div>
           ) : screenSharing ? (
             <div className="call-preview-share-stage">
-              <button type="button" className="call-preview-share-content" aria-label="Focus shared screen" data-preview-screen-share="true" onClick={() => setFocusedContent("Shared screen")}>
+              {mobile && !mobileLandscape && <button type="button" className="call-preview-landscape-toggle" aria-label="Rotate landscape" onClick={() => setMobileLandscape(true)}><RotateCcw size={17} aria-hidden="true" /></button>}
+              <div className="call-preview-share-content" data-preview-screen-share="true">
                 <span>LIVE SCREEN SHARE</span><strong>Product roadmap</strong><small>Q4 planning · Milestones and owners</small>
                 <div className="call-preview-share-columns"><i /><i /><i /></div>
-              </button>
-              <div className="call-preview-share-participants" aria-label="Participants while sharing">
+              </div>
+              {!(mobile && mobileLandscape) && <div className="call-preview-share-participants" aria-label="Participants while sharing">
                 <div className="call-preview-share-participant" style={{ aspectRatio: "1 / 1" }}>
                   {settings.cameraEnabled ? <div className="call-preview-camera-feed" aria-label="Your camera preview" /> : <div className="call-preview-avatar">Y</div>}
                   <strong>You</strong><span>Connected</span>
                 </div>{remoteMedia.slice(0, 3).map((person) => <div className="call-preview-share-participant" style={{ aspectRatio: "1 / 1" }} key={person.userId}>
                   <div className="call-preview-avatar">{person.userId.slice(0, 1)}</div><strong>{person.userId}</strong><span>{person.isMuted ? "Muted" : "Connected"}</span>
                 </div>)}
-              </div>
+              </div>}
             </div>
           ) : mobile && !showParticipantGrid ? (
             <div className="call-preview-mobile-stage call-popup-video-area" onPointerDown={() => setControlsVisible((visible) => !visible)}>
@@ -241,7 +267,7 @@ export function CallUiPreview() {
                   <CallControlButton action="camera" className="call-ctrl-btn" label="Toggle Camera" aria-label="Toggle Camera" toggle state={settings.cameraEnabled ? "active" : "muted"} data-shape="circle" data-fixed-size="true" onClick={() => patchSettings({ cameraEnabled: !settings.cameraEnabled })} />
                   <div className="call-ctrl-wrap call-preview-more-anchor">
                     <button ref={mobileMoreTriggerRef} type="button" className="call-ctrl-btn" aria-label="More options" aria-expanded={moreOpen} data-shape="circle" data-fixed-size="true" onClick={() => setMoreOpen((open) => screenSharing ? true : !open)}><MoreVertical size={20} aria-hidden="true" /></button><span>More</span>
-                    {moreOpen && <div className="call-preview-mobile-menu" role="group" aria-label="More call options">
+                    {moreOpen && <div ref={mobileMenuRef} className="call-preview-mobile-menu" style={{ left: `${-mobileMenuOffset}px` }} role="group" aria-label="More call options">
                       <button type="button" aria-label="Settings" onClick={() => { setMoreOpen(false); setSettingsOpen(true); }}><Settings2 size={17} aria-hidden="true" /><span>Settings</span></button>
                       <button type="button" aria-label={screenSharing ? "Stop sharing" : "Screen Share"} onClick={() => setScreenSharing((sharing) => !sharing)}><Share2 size={17} aria-hidden="true" /><span>{screenSharing ? "Stop screen share" : "Screen Share"}</span></button>
                       <button type="button" aria-label="Stovo Intelligence" onClick={() => { setMoreOpen(false); setIntelligenceOpen((open) => !open); }}><IconIntelligence size={17} /><span>Stovo Intelligence</span></button>
@@ -250,7 +276,7 @@ export function CallUiPreview() {
                   {endCallControl}
               </div>
             ) : (
-              <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}{settingsControl}{screenShareControl}{endCallControl}</div>
+              <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}{settingsControl}<div className="call-ctrl-wrap call-preview-intelligence-anchor"><button type="button" className={`call-ctrl-btn${intelligenceOpen ? " is-active" : ""}`} aria-label="Stovo Intelligence" title="Stovo Intelligence" onClick={() => setIntelligenceOpen((open) => !open)}><IconIntelligence size={20} /></button><span>Intelligence</span></div>{screenShareControl}{endCallControl}</div>
             )}
           </div>
           <MeetingIntelligencePopover

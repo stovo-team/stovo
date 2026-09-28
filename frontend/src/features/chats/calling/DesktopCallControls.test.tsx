@@ -137,4 +137,12 @@ describe("DesktopCallControls visibility", () => {
     expect(controls?.getAttribute("aria-hidden")).toBeNull();
     expect(controls?.classList.contains("is-hidden")).toBe(false);
   });
+
+  it("keeps Stovo Intelligence directly available in the desktop call controls", () => {
+    const container = renderDesktopControls();
+    const intelligence = container.querySelector<HTMLButtonElement>('.call-ctrl-row [aria-label="Stovo Intelligence"]');
+    expect(intelligence).not.toBeNull();
+    expect(intelligence?.closest(".call-ctrl-wrap")).not.toBeNull();
+  });
+
 });

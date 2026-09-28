@@ -308,4 +308,22 @@ describe("shared call participant presentation", () => {
     expect(selectedAudioAfterFocus?.isConnected).toBe(true);
     expect(container.querySelectorAll("audio")).toHaveLength(1);
   });
+
+  it("renders the shared screen as a passive full-view surface rather than a clickable participant", () => {
+    const screenTrack = { readyState: "live", kind: "video", getSettings: () => ({ width: 1920, height: 1080 }), addEventListener() {}, removeEventListener() {} };
+    const screenStream = { getVideoTracks: () => [screenTrack] } as unknown as MediaStream;
+    const container = renderGrid({
+      localStream: null,
+      localScreenStream: screenStream,
+      callType: "video",
+      remoteMedia: [{ userId: "Alex", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+    });
+
+    const screenTile = container.querySelector<HTMLElement>(".call-grid__tile--screen");
+    expect(screenTile).not.toBeNull();
+    expect(screenTile?.tagName).not.toBe("BUTTON");
+    expect(screenTile?.getAttribute("role")).not.toBe("button");
+    expect(screenTile?.tabIndex).toBeLessThan(0);
+  });
+
 });

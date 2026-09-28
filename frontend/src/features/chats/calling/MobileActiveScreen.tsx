@@ -88,7 +88,7 @@ export function MobileActiveScreen({
   currentUserId?: string | null;
   socketRef?: React.RefObject<Socket | null>;
 }) {
-  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false); const [isLandscapeView, setIsLandscapeView] = useState(false);
 
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
@@ -292,6 +292,7 @@ export function MobileActiveScreen({
 
   const showRemoteVideo = Boolean(hasRemoteVideo || remoteVideoStream !== null);
   const isSharingLocalScreen = Boolean(isScreenSharing || localScreenStream);
+  useEffect(() => { if (!isSharingLocalScreen) setIsLandscapeView(false); }, [isSharingLocalScreen]);
   const hasRemoteScreenShare = remoteMedia.some(
     (media) => media.hasScreenShare && media.screenStream?.getVideoTracks().some((track) => track.readyState !== "ended"),
   );
@@ -310,11 +311,13 @@ export function MobileActiveScreen({
 
   return (
     <div
-      className={`mobile-active-screen${showAnyVideo ? " mobile-active-screen--video" : ""}`}
+      className={`mobile-active-screen${showAnyVideo ? " mobile-active-screen--video" : ""}${isLandscapeView ? " mobile-active-screen--landscape" : ""}`}
+      data-mobile-orientation={isLandscapeView ? "landscape" : "portrait"}
       onPointerDown={toggleControls}
     >
       {/* Top right shrink button */}
       <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}>
+        {isLandscapeView && <button type="button" className="mobile-active-shrink-btn mobile-active-landscape-close" aria-label="Close landscape view" onClick={(event) => { event.stopPropagation(); setIsLandscapeView(false); }}><ArrowLeft size={20} aria-hidden="true" /></button>}
         {isParticipantFocused && <button type="button" className="mobile-active-shrink-btn mobile-active-focus-back" aria-label="Close participant focus" onClick={(event) => { event.stopPropagation(); closeParticipantFocusRef.current(); }}><ArrowLeft size={20} aria-hidden="true" /></button>}
         <button
           type="button"
@@ -345,6 +348,7 @@ export function MobileActiveScreen({
           <span>Sharing screen</span>
         </div>
       )}
+      {isSharingLocalScreen && !isLandscapeView && <button type="button" className="mobile-active-landscape-open" aria-label="Rotate landscape" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); closeParticipantFocusRef.current(); setIsParticipantFocused(false); setIsLandscapeView(true); }}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M7 21 3 17l4-4"/><path d="m17 3 4 4-4 4"/><rect x="8" y="7" width="8" height="10" rx="1" transform="rotate(90 12 12)"/></svg></button>}
 
       {notice && (
         <div className="mobile-active-notice-banner" role="status" aria-live="polite">
@@ -378,6 +382,7 @@ export function MobileActiveScreen({
               onToggleMobileStage={() => setIsSelfViewFullscreen((isFullscreen) => !isFullscreen)}
               isCallConnected={callPhase === "in-call"}
               isMobileLayout
+              hideParticipants={isLandscapeView}
               onFocusChange={(focused, closeFocus) => { setIsParticipantFocused(focused); closeParticipantFocusRef.current = closeFocus; }}
             />
           ) : (
@@ -607,6 +612,7 @@ export function MobileActiveScreen({
         <div className="mobile-active-secondary-controls">
           <MobileCallMoreMenu
             isSharing={isSharingLocalScreen}
+            isLandscape={isLandscapeView}
             isIntelligenceActive={recording?.isRecordingActive || transcription?.transcriptState === "recording"}
             onOpenSettings={onOpenSettings}
             onToggleScreenShare={onToggleScreenShare}

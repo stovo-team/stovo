@@ -188,15 +188,25 @@ describe("call UI preview interactions", () => {
     expect(controls.getAttribute("aria-hidden")).toBe("false");
   });
 
-  it("shows a share scene on desktop and mobile and opens the shared content in full view", () => {
+  it("shows screen sharing as the full-view surface and does not make it a focus action", () => {
     const container = mountPreview();
     click(container, "Share screen");
-    expect(container.querySelector('[data-preview-screen-share="true"]')).not.toBeNull();
-    click(container, "Focus shared screen");
-    expect(container.querySelector('[role="dialog"][aria-label="Fullscreen: Shared screen"]')).not.toBeNull();
+    const screen = container.querySelector<HTMLElement>('[data-preview-screen-share="true"]');
+    expect(screen).not.toBeNull();
+    expect(screen?.closest("button")).toBeNull();
+    expect(screen?.getAttribute("role")).not.toBe("button");
+    expect(container.querySelector('[aria-label="Focus shared screen"]')).toBeNull();
+    expect(container.querySelector('[role="dialog"][aria-label="Fullscreen: Shared screen"]')).toBeNull();
+    const initialContent = screen?.textContent;
+    const initialParticipants = container.querySelectorAll(".call-preview-share-participant").length;
+    act(() => screen?.click());
+    expect(container.querySelector('[data-preview-screen-share="true"]')).toBe(screen);
+    expect(container.querySelector('[aria-label="Focus shared screen"]')).toBeNull();
+    expect(container.querySelector('[role="dialog"][aria-label="Fullscreen: Shared screen"], .call-preview-focus-stage, [data-focus-main]')).toBeNull();
+    expect(screen?.textContent).toBe(initialContent);
+    expect(container.querySelectorAll(".call-preview-share-participant")).toHaveLength(initialParticipants);
 
-    click(container, "Close fullscreen");
-    click(container, "Stop sharing");
+    click(container.querySelector(".call-preview-control-row")!, "Stop sharing");
     click(container, "Mobile");
     click(container, "More options");
     clickMenuItem(container, "Screen Share");
@@ -319,7 +329,47 @@ describe("call UI preview interactions", () => {
     act(() => container.querySelector<HTMLButtonElement>('.call-preview-control-rows [aria-label="More options"]')?.click());
     clickMenuItem(container, "Stovo Intelligence");
 
-    expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).not.toBeNull();
+    const intelligence = container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]');
+    expect(intelligence).not.toBeNull();
+    expect(intelligence?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
+    expect(intelligence?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
+    expect(intelligence?.querySelector('[aria-label="Toggle Live Captions"]')).not.toBeNull();
+    expect(container.querySelector('[role="group"][aria-label="More call options"]')).toBeNull();
+  });
+
+  it("anchors the mobile More menu to the left edge of its control and keeps it within the viewport", () => {
+    const container = mountPreview();
+    click(container, "Mobile");
+    click(container, "More options");
+    const menu = container.querySelector<HTMLElement>('[role="group"][aria-label="More call options"]');
+    expect(menu).not.toBeNull();
+    expect(menu?.closest(".call-preview-more-anchor")).not.toBeNull();
+    const rule = previewCssRules(".call-preview-mobile-menu");
+    expect(rule).toMatch(/left:\s*0/);
+    expect(rule).toMatch(/right:\s*auto/);
+    expect(rule).toMatch(/max-width:\s*min\(/);
+  });
+
+  it("enters mobile landscape for a screen share, hides participant tiles, keeps controls, and closes back to portrait", () => {
+    const container = mountPreview();
+    click(container, "Mobile");
+    click(container, "More options");
+    clickMenuItem(container, "Screen Share");
+    expect(container.querySelector('[data-mobile-orientation="portrait"]')).not.toBeNull();
+    expect(container.querySelector('.call-preview-share-participants')).not.toBeNull();
+    const rotate = container.querySelector<HTMLButtonElement>('[aria-label="Rotate landscape"]');
+    expect(rotate).not.toBeNull();
+    act(() => rotate?.click());
+
+    expect(container.querySelector('[data-mobile-orientation="landscape"]')).not.toBeNull();
+    expect(container.querySelector('[data-mobile-orientation="landscape"] .call-preview-share-participants')).toBeNull();
+    expect(container.querySelector('[data-mobile-orientation="landscape"] .call-preview-control-rows')).not.toBeNull();
+    const close = container.querySelector<HTMLButtonElement>('[aria-label="Close landscape view"]');
+    expect(close).not.toBeNull();
+    act(() => close?.click());
+    expect(container.querySelector('[data-mobile-orientation="portrait"]')).not.toBeNull();
+    expect(container.querySelector('.call-preview-control-rows [aria-label="More options"]')).not.toBeNull();
+    expect(container.querySelector('.call-preview-share-participants')).not.toBeNull();
   });
 
   it("minimizes from a standalone SVG control in the call header", () => {
@@ -343,6 +393,9 @@ describe("call UI preview interactions", () => {
     expect(remote).not.toBeNull();
     expect(pip).not.toBeNull();
     expect(pip?.classList.contains("bottom-right")).toBe(true);
+    const pipRule = previewCssRules(".call-preview-stage-pip-wrap");
+    expect(pipRule).toMatch(/border-radius:\s*(?:8|9)px/);
+    expect(pipRule).not.toMatch(/border-radius:\s*50%/);
     const stageToggle = pip?.querySelector<HTMLButtonElement>('button[data-stage-role="local-pip"]');
     expect(stageToggle?.getAttribute("role")).toBe("button");
     expect(stageToggle?.tabIndex).toBe(0);
