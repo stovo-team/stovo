@@ -6,7 +6,8 @@
  *  2. Meeting Recording (record/stop, REC timer, uploading badge)
  *  3. Live Captions & Real-Time AI Translation (toggle, target language dropdown/pills)
  */
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, Circle, FileText, Globe, LoaderCircle, Sparkles, Square, Video } from "lucide-react";
 import { SUPPORTED_LANGUAGES } from "./useLiveCaptions";
 import type { RecordingState } from "./useCallRecording";
@@ -69,12 +70,58 @@ export function MeetingIntelligencePopover({
   inlineMenu = false,
 }: MeetingIntelligencePopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLElement | null>(null);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const [anchoredPosition, setAnchoredPosition] = useState<{ left: number; top: number } | null>(null);
   const languageMenuId = useId();
 
   useEffect(() => {
     if (!isOpen) setIsLanguageMenuOpen(false);
   }, [isOpen]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || inlineMenu) {
+      setAnchoredPosition(null);
+      return;
+    }
+
+    const placePopover = () => {
+      const popover = popoverRef.current;
+      const anchor = anchorRef.current ?? popover?.parentElement;
+      if (!popover || !anchor) return;
+      anchorRef.current = anchor;
+
+      const anchorRect = anchor.getBoundingClientRect();
+      const popoverRect = popover.getBoundingClientRect();
+      const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+      const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+      const gutter = 16;
+      const width = popoverRect.width || Math.min(336, Math.max(0, viewportWidth - gutter * 2));
+      const height = popoverRect.height || 300;
+      const maxLeft = Math.max(gutter, viewportWidth - width - gutter);
+      const left = Math.min(maxLeft, Math.max(gutter, anchorRect.left + (anchorRect.width - width) / 2));
+      const above = anchorRect.top - height - 12;
+      const below = anchorRect.bottom + 12;
+      const top = above >= gutter
+        ? above
+        : Math.min(Math.max(gutter, below), Math.max(gutter, viewportHeight - height - gutter));
+
+      setAnchoredPosition((previous) => previous?.left === left && previous.top === top ? previous : { left, top });
+    };
+
+    placePopover();
+    window.addEventListener("resize", placePopover);
+    window.addEventListener("scroll", placePopover, true);
+    const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(placePopover) : null;
+    if (popoverRef.current) resizeObserver?.observe(popoverRef.current);
+    if (anchorRef.current) resizeObserver?.observe(anchorRef.current);
+
+    return () => {
+      window.removeEventListener("resize", placePopover);
+      window.removeEventListener("scroll", placePopover, true);
+      resizeObserver?.disconnect();
+    };
+  }, [inlineMenu, isCaptionsEnabled, isLanguageMenuOpen, isMobile, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -111,10 +158,11 @@ export function MeetingIntelligencePopover({
   const isRecStopping = recordingState === "stopping" || recordingState === "uploading";
   const selectedLanguage = SUPPORTED_LANGUAGES.find((language) => language.code === targetLanguage);
 
-  return (
+  const popover = (
     <div
       ref={popoverRef}
-      className={`meeting-intel-popover ${isMobile ? "meeting-intel-popover--mobile" : ""}${inlineMenu ? " meeting-intel-popover--inline-menu" : ""}`}
+      className={`meeting-intel-popover ${isMobile ? "meeting-intel-popover--mobile" : ""}${inlineMenu ? " meeting-intel-popover--inline-menu" : ""}${anchoredPosition ? " meeting-intel-popover--anchored" : ""}`}
+      style={anchoredPosition ? { position: "fixed", left: anchoredPosition.left, top: anchoredPosition.top, transform: "none" } : undefined}
       role={inlineMenu ? "group" : "dialog"}
       aria-label={inlineMenu ? "Meeting features" : "Meeting Intelligence Controls"}
     >
@@ -281,5 +329,7 @@ export function MeetingIntelligencePopover({
       </div>
     </div>
   );
+
+  return anchoredPosition && !inlineMenu ? createPortal(popover, document.body) : popover;
 }
 export default MeetingIntelligencePopover;

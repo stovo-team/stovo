@@ -1,6 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import type { RemoteMedia } from "../realtime/call/types";
-import { SpeakingWaveBadge } from "../features/chats/calling/SpeakingWaveBadge";
 import { CallControlButton } from "../features/chats/calling/CallControlButton";
 import { CallParticipantFocusStage } from "./CallParticipantFocusStage";
 
@@ -184,7 +183,6 @@ function ParticipantTile({
               onVideoDimensions?.(event.currentTarget.videoWidth, event.currentTarget.videoHeight);
             }}
           />
-          {isSpeaking && <SpeakingWaveBadge />}
         </>
       ) : localVideoPlaceholder ? (
         localVideoPlaceholder
@@ -195,7 +193,6 @@ function ParticipantTile({
               {initial(label)}
             </div>
           </div>
-          {isSpeaking && <SpeakingWaveBadge />}
         </div>
       )}
       {onFlipCamera && showVideo && (

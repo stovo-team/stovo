@@ -3,6 +3,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { Volume2, VolumeX } from "lucide-react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { CallControlButton } from "./CallControlButton";
 
 const roots: Root[] = [];
@@ -78,7 +80,8 @@ describe("shared call control button", () => {
     expect(mutedRules).not.toMatch(/(?:220\s*,\s*38\s*,\s*38|#dc2626|#f87171|#ff0000)/i);
     expect(speakerOnButton.getAttribute("aria-pressed")).toBe("true");
     expect(speakerOffButton.getAttribute("aria-pressed")).toBe("false");
-    expect(speakerOnButton.querySelector("svg")?.outerHTML).toBe(speakerOffButton.querySelector("svg")?.outerHTML);
+    expect(speakerOnButton.querySelector("svg")?.outerHTML).toBe(renderToStaticMarkup(<Volume2 aria-hidden="true" size={20} />));
+    expect(speakerOffButton.querySelector("svg")?.outerHTML).toBe(renderToStaticMarkup(<VolumeX aria-hidden="true" size={20} />));
     expect(speakerOnButton.classList.contains("is-active")).toBe(true);
     expect(speakerOffButton.classList.contains("is-muted")).toBe(true);
     expect(activeColor).toBeTruthy();

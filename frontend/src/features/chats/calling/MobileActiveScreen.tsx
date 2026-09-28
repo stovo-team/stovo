@@ -5,7 +5,6 @@ import type { RemoteMedia } from "../../../realtime/call/types";
 import { ArrowLeft } from "lucide-react";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { RealAvatar } from "../sidebar/RealAvatar";
-import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useTranscription } from "./useTranscription";
@@ -399,8 +398,6 @@ export function MobileActiveScreen({
                   muted
                   onClick={isSelfViewFullscreen ? cycleSelfViewSide : undefined}
                 />
-                {!isSelfViewFullscreen && isPeerSpeaking && <SpeakingWaveBadge />}
-                {isSelfViewFullscreen && isLocalSpeaking && <SpeakingWaveBadge />}
               </div>
               {/* Local Screen Share in PiP or Fullscreen */}
               {isSharingLocalScreen && localScreenStream && (
@@ -413,7 +410,6 @@ export function MobileActiveScreen({
                       playsInline
                       muted
                     />
-                    {isPeerSpeaking && <SpeakingWaveBadge />}
                   </div>
                 ) : (
                   <div className={compactPipClassName} onClick={cycleSelfViewSide}>
@@ -440,7 +436,6 @@ export function MobileActiveScreen({
                       muted
                       style={localVideoSwitchStyle}
                     />
-                    {isPeerSpeaking && <SpeakingWaveBadge />}
                   </div>
                 ) : (
                   <div className={compactPipClassName} onClick={cycleSelfViewSide}>
@@ -451,7 +446,6 @@ export function MobileActiveScreen({
                       muted
                       style={localVideoSwitchStyle}
                     />
-                    {isLocalSpeaking && <SpeakingWaveBadge className="speaking-wave-badge--pip" />}
                     <CallControlButton
                       action="flip-camera"
                       state="idle"
@@ -493,7 +487,6 @@ export function MobileActiveScreen({
                     muted
                     style={localVideoSwitchStyle}
                   />
-                  {isLocalSpeaking && <SpeakingWaveBadge className="speaking-wave-badge--pip" />}
                   <CallControlButton
                     action="flip-camera"
                     state="idle"
@@ -527,7 +520,6 @@ export function MobileActiveScreen({
                   ...localVideoSwitchStyle,
                 }}
               />
-              {isLocalSpeaking && <SpeakingWaveBadge />}
               <CallControlButton
                 action="flip-camera"
                 state="idle"

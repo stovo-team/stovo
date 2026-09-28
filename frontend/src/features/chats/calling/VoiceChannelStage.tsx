@@ -25,7 +25,6 @@ import type { User } from "../../../api/auth";
 import type { Chat } from "../../../api/chats";
 import type { CallSessionApi } from "./useCallSession";
 import { RealAvatar } from "../sidebar/RealAvatar";
-import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 import { CallControlButton } from "./CallControlButton";
 import { CallDeviceControls } from "./CallDeviceControls";
 import { CallParticipantStage } from "./CallParticipantStage";
@@ -428,7 +427,6 @@ export function VoiceChannelStage({
                           muted={info.isSelf}
                           className={`voice-participant-video-feed${info.isSelf && !hasScreenShare && callAudioSettings.mirrorLocalVideo ? " is-mirrored" : ""}`}
                         />
-                        {isSpeaking && <SpeakingWaveBadge />}
                         {isMuted && (
                           <span className="voice-card-muted-badge voice-card-muted-badge--video" title={voiceStrings?.muted ?? "Muted"} aria-label={voiceStrings?.muted ?? "Muted"}>
                             <MicOff size={14} aria-hidden="true" />

@@ -302,7 +302,7 @@ describe("call UI preview interactions", () => {
     const container = mountPreview();
     click(container, "Desktop");
     click(container, "Stovo Intelligence");
-    const intelligence = container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]');
+    const intelligence = document.body.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]');
     expect(intelligence).not.toBeNull();
     for (const label of ["Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
       expect(intelligence?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();

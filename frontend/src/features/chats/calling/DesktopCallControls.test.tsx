@@ -51,8 +51,18 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function renderDesktopControls() {
+function renderDesktopControls({ isPeerSpeaking = false, isLocalSpeaking = false, withRemoteVideo = false } = {}) {
   const noop = vi.fn();
+  const mockTrack = {
+    readyState: "live",
+    kind: "video",
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  };
+  const mockRemoteStream = {
+    getVideoTracks: () => [mockTrack],
+    getTracks: () => [mockTrack],
+  } as unknown as MediaStream;
   const session = {
     callPhase: "in-call",
     callType: "video",
@@ -60,8 +70,15 @@ function renderDesktopControls() {
     callNotice: null,
     isCallMinimized: false,
     setIsCallMinimized: noop,
-    hasRemoteVideo: false,
-    callRemoteMedia: [],
+    hasRemoteVideo: withRemoteVideo,
+    callRemoteMedia: withRemoteVideo ? [{
+      userId: "peer",
+      stream: mockRemoteStream,
+      screenStream: null,
+      hasVideo: true,
+      hasAudio: true,
+      hasScreenShare: false,
+    }] : [],
     localVideoStream: null,
     localScreenStream: null,
     remoteVideoStream: null,
@@ -88,9 +105,9 @@ function renderDesktopControls() {
     sendCallInvites: noop,
     callPeerDisplayName: "Alex Morgan",
     activeCallPeerName: "Alex Morgan",
-    isPeerSpeaking: false,
-    isLocalSpeaking: false,
-    speakingUserIds: [],
+    isPeerSpeaking,
+    isLocalSpeaking,
+    speakingUserIds: isPeerSpeaking ? ["peer"] : [],
     callSettingsButtonRef: { current: null },
     isCallSettingsMenuOpen: false,
     isCallAudioPopupOpen: false,
@@ -122,6 +139,16 @@ function renderDesktopControls() {
 }
 
 describe("DesktopCallControls visibility", () => {
+  it("does not overlay a top-right audio wave badge on the remote video when speaking", () => {
+    const container = renderDesktopControls({ isPeerSpeaking: true, withRemoteVideo: true });
+    const speakingTile = container.querySelector<HTMLElement>(".call-grid__tile--remote.is-speaking");
+
+    expect(speakingTile).not.toBeNull();
+    expect(speakingTile?.querySelector("[role='status']")?.textContent).toContain("Speaking");
+    expect(speakingTile?.querySelector("video")?.srcObject).not.toBeNull();
+    expect(speakingTile?.querySelector(".speaking-wave-badge")).toBeNull();
+  });
+
   it("keeps desktop controls visible after 15 seconds and pointer interactions", () => {
     vi.useFakeTimers();
     const container = renderDesktopControls();

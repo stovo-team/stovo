@@ -8,6 +8,7 @@ import {
   Video,
   VideoOff,
   Volume2,
+  VolumeX,
 } from "lucide-react";
 import type { ButtonHTMLAttributes } from "react";
 
@@ -18,7 +19,7 @@ const actionIcons = {
   microphone: { active: Mic, muted: MicOff, idle: MicOff },
   camera: { active: Video, muted: VideoOff, idle: VideoOff },
   "screen-share": { active: ScreenShareOff, muted: ScreenShare, idle: ScreenShare },
-  "audio-output": { active: Volume2, muted: Volume2, idle: Volume2 },
+  "audio-output": { active: Volume2, muted: VolumeX, idle: Volume2 },
   "flip-camera": { active: RotateCcw, muted: RotateCcw, idle: RotateCcw },
   "end-call": { active: PhoneOff, muted: PhoneOff, idle: PhoneOff },
 } as const;

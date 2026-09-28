@@ -98,13 +98,14 @@ describe("shared call participant presentation", () => {
     const status = tile?.querySelector("[role=\"status\"]");
     expect(status).not.toBeNull();
     expect(status?.textContent).toContain("Speaking");
-    expect(tile?.querySelector(".speaking-wave-badge")).not.toBeNull();
+    expect(tile?.querySelector(".speaking-wave-badge")).toBeNull();
   });
 
   it("adds the speaking halo around avatars and an outline around speaking tiles", () => {
     const css = readFileSync("src/styles.css", "utf8");
-    expect(styleRules(css, ".call-grid__tile.is-speaking")).toMatch(/(?:border|outline|box-shadow)\s*:/);
-    expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/(?:border|outline|box-shadow)\s*:/);
+    expect(styleRules(css, ".call-grid__tile.is-speaking")).toMatch(/outline:\s*1px\s+solid\s+#22c55e/);
+    expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/box-shadow:\s*0\s+0\s+0\s+2px\s+rgba\(34,\s*197,\s*94,\s*\.82\)/);
+    expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).not.toMatch(/(?:4px|7px)/);
 
     const container = renderGrid({
       localStream: null,
@@ -115,7 +116,7 @@ describe("shared call participant presentation", () => {
     });
     const speakingTile = container.querySelector(".call-grid__tile--remote.is-speaking");
     expect(speakingTile?.querySelector('[role="status"]')?.textContent).toBe("Speaking");
-    expect(speakingTile?.querySelector(".speaking-wave-badge")).not.toBeNull();
+    expect(speakingTile?.querySelector(".speaking-wave-badge")).toBeNull();
     expect(speakingTile?.querySelector(".call-grid__avatar-circle")).not.toBeNull();
   });
 

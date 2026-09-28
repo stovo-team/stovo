@@ -16,7 +16,6 @@ import {
 import { RealAvatar } from "../sidebar/RealAvatar";
 import { TranscriptPanel } from "./TranscriptPanel";
 import { useTranscription } from "./useTranscription";
-import { SpeakingWaveBadge } from "./SpeakingWaveBadge";
 import { GuestMeetingLinkControl } from "./GuestMeetingLinkControl";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { useCallRecording } from "./useCallRecording";
@@ -244,9 +243,6 @@ export function DesktopCallControls() {
                 autoPlay
                 playsInline
               />
-              {isPeerSpeaking && (callType === "video" || hasRemoteVideo || callRemoteMedia.some((m) => m.hasScreenShare)) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport && (
-                <SpeakingWaveBadge />
-              )}
             </div>
             <div className="call-popup-local-video-wrap">
               <video
@@ -260,9 +256,6 @@ export function DesktopCallControls() {
                 playsInline
                 muted
               />
-              {isLocalSpeaking && (callType === "video" || callAudioSettings.screenSharing) && callPhase === "in-call" && !isCallMinimized && !isMobileViewport && (
-                <SpeakingWaveBadge className="speaking-wave-badge--pip" />
-              )}
             </div>
           </>
         )}

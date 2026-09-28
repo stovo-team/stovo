@@ -246,7 +246,7 @@ describe("MobileActiveScreen", () => {
     expect(avatar).not.toBeNull();
   });
 
-  it("renders wave animation badge in top-right corner of remote video when peer is speaking", () => {
+  it("does not render the top-right audio wave badge over remote video when peer is speaking", () => {
     const mockTrack = {
       readyState: "live",
       kind: "video",
@@ -261,15 +261,16 @@ describe("MobileActiveScreen", () => {
     const container = renderComponent(
       <MobileActiveScreen
         {...defaultProps}
+        callType="video"
         hasRemoteVideo={true}
         remoteVideoStream={mockRemoteStream}
         isPeerSpeaking={true}
       />
     );
 
-    const waveBadge = container.querySelector(".speaking-wave-badge");
-    expect(waveBadge).not.toBeNull();
-    const bars = container.querySelectorAll(".speaking-wave-bar");
-    expect(bars.length).toBe(4);
+    const remoteVideo = container.querySelector<HTMLVideoElement>(".call-grid__video");
+    expect(remoteVideo).not.toBeNull();
+    expect(remoteVideo?.srcObject).toBe(mockRemoteStream);
+    expect(container.querySelector(".speaking-wave-badge")).toBeNull();
   });
 });

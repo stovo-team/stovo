@@ -35,8 +35,8 @@ describe("call speaking-indicator CSS contract", () => {
     for (const activeTile of [voiceCard, voiceList]) {
       expect(activeTile).not.toMatch(/(?:border|outline|box-shadow|animation)\s*:/);
     }
-    expect(callTile).toMatch(/outline:\s*2px solid #22c55e/);
-    expect(rulesFor(".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/box-shadow:\s*0 0 0 4px rgba\(34, 197, 94, .2\), 0 0 0 7px #22c55e/);
+    expect(callTile).toMatch(/outline:\s*1px solid #22c55e/);
+    expect(rulesFor(".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/box-shadow:\s*0 0 0 2px rgba\(34, 197, 94, \.82\)/);
     expect(status).toContain("#22c55e");
     expect(voiceStatus).toContain("#22c55e");
   });

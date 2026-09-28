@@ -680,7 +680,7 @@ describe("VoiceChannelStage", () => {
     expect(container.textContent?.toLowerCase()).toContain("speaking");
   });
 
-  it("renders wave animation badge in top-right corner of active video feed in voice room when speaking", () => {
+  it("keeps the Speaking status without a top-right wave badge over active video in a voice room", () => {
     const mockTrack = {
       readyState: "live",
       kind: "video",
@@ -735,7 +735,8 @@ describe("VoiceChannelStage", () => {
     const videoContainer = container.querySelector(".voice-participant-video-container");
     expect(videoContainer).not.toBeNull();
     const waveBadge = videoContainer?.querySelector(".speaking-wave-badge");
-    expect(waveBadge).not.toBeNull();
+    expect(waveBadge).toBeNull();
+    expect(container.textContent?.toLowerCase()).toContain("speaking");
   });
 
   it("shows the shared screen above the voice channel camera tiles", () => {
