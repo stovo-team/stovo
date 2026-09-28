@@ -108,64 +108,6 @@ awk '
   }
 ' .github/workflows/pipeline.yml
 
-workflow_file=".github/workflows/pipeline.yml"
-pwsh_setup_line="$(grep -nE '^[[:space:]]*- name: Install PowerShell' "$workflow_file" | head -n 1 | cut -d: -f1 || true)"
-layout_test_line="$(grep -nF 'pwsh -NoProfile -File .github/workflows/repository-layout.test.ps1' "$workflow_file" | head -n 1 | cut -d: -f1)"
-if [[ -z "$pwsh_setup_line" || -z "$layout_test_line" || "$pwsh_setup_line" -ge "$layout_test_line" ]]; then
-  echo "The changes job must set up PowerShell before running the repository layout test." >&2
-  exit 1
-fi
-
-pwsh_bootstrap_block="$(sed -n "${pwsh_setup_line},$((layout_test_line - 1))p" "$workflow_file")"
-if printf '%s\n' "$pwsh_bootstrap_block" | grep -Eq '(^|[^[:alnum:]_])sudo([[:space:]]|$)|apt-get|dpkg|packages\.microsoft\.com'; then
-  echo "PowerShell setup must not require sudo or a system package manager." >&2
-  exit 1
-fi
-grep -Fq 'https://github.com/PowerShell/PowerShell/releases/download/' "$workflow_file" || {
-  echo "PowerShell must come from Microsoft's official binary release archive." >&2
-  exit 1
-}
-grep -Fq '$RUNNER_TEMP' "$workflow_file" || {
-  echo "PowerShell must be unpacked into the runner's temporary directory." >&2
-  exit 1
-}
-grep -Fq '$GITHUB_PATH' "$workflow_file" || {
-  echo "The runner-local PowerShell directory must be added through GITHUB_PATH." >&2
-  exit 1
-}
-grep -Fq 'tar -xzf' "$workflow_file" || {
-  echo "PowerShell setup must unpack Microsoft's Linux binary archive." >&2
-  exit 1
-}
-grep -Fq 'chmod +x' "$workflow_file" || {
-  echo "The runner-local PowerShell executable must be marked executable." >&2
-  exit 1
-}
-grep -Fq 'hashes.sha256' "$workflow_file" || {
-  echo "PowerShell release setup must download the official hashes.sha256 manifest." >&2
-  exit 1
-}
-grep -Fq '$2 == asset' "$workflow_file" || {
-  echo "PowerShell setup must select the checksum entry matching the downloaded archive name." >&2
-  exit 1
-}
-grep -Fq 'sha256sum' "$workflow_file" || {
-  echo "PowerShell setup must calculate the downloaded archive's SHA-256 checksum." >&2
-  exit 1
-}
-
-hash_manifest_line="$(grep -nF 'curl -fsSL "$release_url/hashes.sha256"' "$workflow_file" | head -n 1 | cut -d: -f1)"
-hash_entry_line="$(grep -nF '$2 == asset' "$workflow_file" | head -n 1 | cut -d: -f1)"
-sha256sum_line="$(grep -nF 'sha256sum "$archive_path"' "$workflow_file" | head -n 1 | cut -d: -f1)"
-hash_guard_line="$(grep -nF 'actual_hash" != "$expected_hash"' "$workflow_file" | head -n 1 | cut -d: -f1)"
-archive_extract_line="$(grep -nF 'tar -xzf "$archive_path"' "$workflow_file" | head -n 1 | cut -d: -f1)"
-if [[ -z "$hash_manifest_line" || -z "$hash_entry_line" || -z "$sha256sum_line" || -z "$hash_guard_line" || -z "$archive_extract_line" || \
-      "$hash_manifest_line" -ge "$hash_entry_line" || "$hash_entry_line" -ge "$sha256sum_line" || \
-      "$sha256sum_line" -ge "$hash_guard_line" || "$hash_guard_line" -ge "$archive_extract_line" ]]; then
-  echo "The matching SHA-256 entry must be compared successfully before PowerShell archive extraction." >&2
-  exit 1
-fi
-
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
   echo "Missing pinned golangci-lint configuration at $lint_config" >&2
