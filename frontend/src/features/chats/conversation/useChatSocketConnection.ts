@@ -136,10 +136,9 @@ export function useChatSocketConnection({
       auth: { token },
       query: { token },
       transports,
-      // On native Android/iOS, prevent the polling→WebSocket upgrade. The upgrade
-      // causes a brief disconnect window on every app launch — any call:start emitted
-      // during that window lands on an unstable server session, causing the first call
-      // to fail while subsequent calls (on the stable WebSocket) succeed.
+      // Native clients keep polling because the backend's WebSocket upgrade does not
+      // preserve the authenticated handshake URL. Browsers can use the normal
+      // polling-to-WebSocket upgrade path.
       upgrade: !isNative,
       withCredentials: true,
       reconnection: true,
@@ -148,6 +147,41 @@ export function useChatSocketConnection({
     socketRef.current = socket;
     const detachMessageListeners = bindMessageListenersRef.current(socket);
     const detachCallSession = attachToSocketRef.current(socket, token);
+
+    const logSocketConnectError = (error: Error) => {
+      console.warn("[realtime] Socket.IO connection rejected", {
+        message: error.message,
+        transport: socket.io.engine?.transport?.name ?? "unknown",
+      });
+    };
+    socket.on("connect_error", logSocketConnectError);
+
+    const observeEnginePacket = (state: "queued" | "received", packet: { type: string; data?: unknown }) => {
+      if (packet.type !== "message" || typeof packet.data !== "string") return;
+      const data = packet.data;
+      const kind = data.startsWith("0")
+        ? "namespace-connect"
+        : data.startsWith("4")
+          ? "namespace-connect-error"
+          : null;
+      if (kind) {
+        console.info("[realtime] Socket.IO namespace packet", {
+          state,
+          kind,
+          transport: socket.io.engine?.transport?.name ?? "unknown",
+        });
+      }
+    };
+    let observedEngine: typeof socket.io.engine;
+    const attachEnginePacketObservers = () => {
+      const engine = socket.io.engine;
+      if (!engine || engine === observedEngine) return;
+      observedEngine = engine;
+      engine.on("packetCreate", (packet) => observeEnginePacket("queued", packet));
+      engine.on("packet", (packet) => observeEnginePacket("received", packet));
+    };
+    socket.io.on("open", attachEnginePacketObservers);
+    attachEnginePacketObservers();
 
     // Track foreground/background state on Android so the backend can decide
     // whether to suppress ntfy push notifications (only suppress when in foreground).
@@ -233,14 +267,15 @@ export function useChatSocketConnection({
     socket.on("connect", syncAfterSocketResume);
     socket.io.on("reconnect", syncAfterSocketResume);
     socket.on("sync:needed", syncAfterSocketResume);
-
     return () => {
       appStateCancelled = true;
       void appStateListener?.remove();
       removePictureInPictureActionListener?.();
       socket.off("connect", syncAfterSocketResume);
       socket.io.off("reconnect", syncAfterSocketResume);
+      socket.io.off("open", attachEnginePacketObservers);
       socket.off("sync:needed", syncAfterSocketResume);
+      socket.off("connect_error", logSocketConnectError);
       detachMessageListeners();
       detachCallSession();
       socket.disconnect();

@@ -4,10 +4,10 @@ WORKDIR /app
 
 RUN apk add --no-cache git gcc musl-dev
 
-COPY backend/go.mod backend/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY backend/ ./
+COPY ./ ./
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /orchestrator ./cmd/orchestrator
 

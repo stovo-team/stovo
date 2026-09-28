@@ -1,0 +1,12 @@
+apiVersion: v2
+name: stovo
+description: Stovo web application for Kubernetes; database, Redis, S3 storage, LiveKit, TURN and ntfy are external services.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/left-try/Stovo
+sources:
+  - https://github.com/left-try/Stovo
+keywords:
+  - stovo
+  - self-hosted

@@ -191,7 +191,7 @@ export function DesktopCallControls() {
                 : "Audio call"}
             </strong>
             )}
-            {callNotice && <span className="call-popup-notice">{callNotice}</span>}
+            {callNotice && (!isVoiceChannel || /failed|failure|error|denied|unsupported|not supported|timed out|offline|could not|unable|not available/i.test(callNotice)) && <span className="call-popup-notice">{callNotice}</span>}
           </>
         <div className="call-popup-header-actions">
           {isParticipantFocused && !isCallMinimized && (

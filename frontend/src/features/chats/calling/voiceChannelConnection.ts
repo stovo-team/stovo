@@ -6,8 +6,9 @@ export function waitForVoiceChannelConnection(
   onAttempt: (attempt: number, totalAttempts: number) => void,
 ) {
   return waitForSocketConnection(socket, {
-    // Cover Socket.IO's exponential backoff after a temporary disconnect.
-    attempts: 8,
+    // Recover a live Engine.IO transport with a wedged Socket.IO namespace
+    // promptly; the helper resets that namespace once on its second attempt.
+    attempts: 3,
     attemptTimeoutMs: 5_000,
     retryDelayMs: 500,
     onAttempt,

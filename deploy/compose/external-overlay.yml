@@ -1,4 +1,4 @@
-# Use with: docker compose -f docker-compose.yml -f docker-compose.external.yml up -d --build
+# Use with: docker compose --project-directory . -f deploy/compose/production-bluegreen.yml -f deploy/compose/external-overlay.yml up -d --build
 #
 # This override keeps Redis, ntfy, the application, and Caddy local, but removes
 # the bundled PostgreSQL and MinIO services from the running stack. Set

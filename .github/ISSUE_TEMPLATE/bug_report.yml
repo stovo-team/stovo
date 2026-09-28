@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible problem in Stovo.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a suspected security vulnerability, stop here and use [private vulnerability reporting](https://github.com/left-try/Stovo/security/advisories/new). Do not post credentials, encryption keys, private messages, personal data, or unredacted logs.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+      placeholder: A short, specific description.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest sequence that reproduces the problem. Redact hostnames or values that identify private systems.
+      placeholder: |
+        1. Open ...
+        2. Choose ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Stovo version or commit
+      description: Include the version, image tag, or commit if known.
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Docker Compose
+        - Kubernetes / Helm
+        - Local development
+        - Other / not sure
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Relevant environment details
+      description: Operating system, browser or client, and relevant service versions. Do not include secrets or personal data.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or screenshots
+      description: Optional. Remove credentials, tokens, message contents, personal data, and private host details before attaching.

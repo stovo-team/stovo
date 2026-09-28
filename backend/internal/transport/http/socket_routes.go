@@ -2,9 +2,30 @@ package http
 
 import (
 	stdhttp "net/http"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 )
+
+// NormalizeWebSocketUpgrade adapts valid comma-separated Connection headers for
+// Socket.IO handlers that expect the Upgrade token as the entire header value.
+func NormalizeWebSocketUpgrade(next stdhttp.Handler) stdhttp.Handler {
+	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+		if strings.EqualFold(strings.TrimSpace(r.Header.Get("Upgrade")), "websocket") {
+			for _, token := range strings.Split(r.Header.Get("Connection"), ",") {
+				if strings.EqualFold(strings.TrimSpace(token), "upgrade") {
+					request := r.Clone(r.Context())
+					request.Header = r.Header.Clone()
+					request.Header.Set("Connection", "Upgrade")
+					request.Header.Set("Upgrade", "websocket")
+					next.ServeHTTP(w, request)
+					return
+				}
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 // RegisterSocketRoutes installs the Socket.IO HTTP handshake and polling
 // endpoints. Socket.IO itself remains an inbound transport implementation;

@@ -41,10 +41,10 @@ jobs:
             fi
 
             echo "Caddy HTTPS probe failed; restarting only the reverse proxy."
-            if [ -f docker-compose.master.yml ] && sudo docker ps --format '{{.Names}}' | grep -q 'stovo-caddy-gateway'; then
-              sudo docker compose -f docker-compose.master.yml restart caddy
+            if [ -f deploy/compose/production-multiserver.yml ] && sudo docker ps --format '{{.Names}}' | grep -q 'stovo-caddy-gateway'; then
+              sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml restart caddy
             else
-              sudo docker compose restart caddy
+              sudo docker compose --project-directory . -f deploy/compose/production-bluegreen.yml restart caddy
             fi
 
             for _ in $(seq 1 15); do
@@ -55,11 +55,11 @@ jobs:
               sleep 2
             done
 
-            if [ -f docker-compose.master.yml ] && sudo docker ps --format '{{.Names}}' | grep -q 'stovo-caddy-gateway'; then
-              sudo docker compose -f docker-compose.master.yml ps
-              sudo docker compose -f docker-compose.master.yml logs --tail=150 caddy frontend orchestrator
+            if [ -f deploy/compose/production-multiserver.yml ] && sudo docker ps --format '{{.Names}}' | grep -q 'stovo-caddy-gateway'; then
+              sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml ps
+              sudo docker compose --project-directory . -f deploy/compose/production-multiserver.yml logs --tail=150 caddy frontend orchestrator
             else
-              sudo docker compose ps
-              sudo docker compose logs --tail=150 caddy frontend backend-blue backend-green
+              sudo docker compose --project-directory . -f deploy/compose/production-bluegreen.yml ps
+              sudo docker compose --project-directory . -f deploy/compose/production-bluegreen.yml logs --tail=150 caddy frontend backend-blue backend-green
             fi
             exit 1

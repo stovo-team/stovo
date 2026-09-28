@@ -1,0 +1,98 @@
+nameOverride: ""
+fullnameOverride: ""
+imagePullSecrets: []
+
+backend:
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    # Unbenchmarked starting values; size against observed workload.
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env:
+    APP_ENV: production
+    LOG_LEVEL: INFO
+    STORAGE_PROVIDER: local
+    MINIO_FILES_BUCKET: stovo-files
+    MINIO_LOGS_BUCKET: stovo-logs
+    MINIO_CALLS_BUCKET: stovo-calls
+    MAX_UPLOAD_SIZE_MB: "100"
+
+frontend:
+  image:
+    repository: ""
+    tag: ""
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+# Create this Secret outside Helm. It supplies DATABASE_URL, REDIS_URL,
+# REDIS_JOBS_URL, JWT_SECRET, REFRESH_TOKEN_SECRET, INVITE_TOKEN_SECRET,
+# MESSAGE_ENCRYPTION_KEY, MINIO_ACCESS_KEY, MINIO_SECRET_KEY and optional keys.
+existingSecret: stovo-secrets
+secrets:
+  additionalKeys: []
+
+app:
+  domain: stovo.example.com
+  url: https://stovo.example.com
+  corsAllowedOrigins: https://stovo.example.com
+  frontendOrigin: https://stovo.example.com
+  livekitUrl: ""
+  turnHost: ""
+  turnEnabled: false
+  turnPort: "3478"
+  ntfyBaseUrl: ""
+
+service:
+  backend:
+    type: ClusterIP
+    port: 8000
+  frontend:
+    type: ClusterIP
+    port: 8080
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  tls: []
+
+migrations:
+  enabled: true
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+
+uploads:
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    storageClassName: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL

@@ -196,7 +196,7 @@ func (s *Server) onSocketDisconnect(socket *socketio.Socket, user userPublic) {
 		if s.sessions.IsOnline(userID) {
 			return
 		}
-		if ended, ok := s.endCallForUser(userID); ok {
+		if ended, ok := s.endCallForUser(userID, true); ok {
 			s.recordCallHistory(ended, "disconnected")
 			payload := ended.ActionPayload(map[string]any{
 				"reason":  "disconnected",
@@ -1234,19 +1234,13 @@ func (s *Server) leaveCallSession(chatID, userID string) (*callSession, bool, bo
 	return session, true, ended
 }
 
-func (s *Server) endCallForUser(userID string) (*callSession, bool) {
-	s.calls.Lock()
-	defer s.calls.Unlock()
-	roomID, ok := s.calls.ActiveRoomLocked(userID)
-	if !ok {
+func (s *Server) endCallForUser(userID string, afterGrace ...bool) (*callSession, bool) {
+	session := s.getActiveCallSessionForUser(userID)
+	if session == nil || len(afterGrace) == 0 || !afterGrace[0] {
 		return nil, false
 	}
-	_, exists := s.calls.ByRoomLocked(roomID)
-	if !exists {
-		s.calls.ClearActiveLocked(userID)
-		return nil, false
-	}
-	return nil, false
+	left, ok, ended := s.leaveCallSession(session.ChatID, userID)
+	return left, ok && ended
 }
 
 func (s *Server) userHasActiveCall(userID string) bool {

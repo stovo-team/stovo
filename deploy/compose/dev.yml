@@ -163,7 +163,7 @@ services:
       APP_DOMAIN: 10.29.106.221
       ACTIVE_BACKEND: ${ACTIVE_BACKEND:-backend-proxy}
     volumes:
-      - ./Caddyfile.internal:/etc/caddy/Caddyfile:ro
+      - ./deploy/caddy/Caddyfile.internal:/etc/caddy/Caddyfile:ro
 
 volumes:
   postgres-dev-data:

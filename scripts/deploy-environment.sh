@@ -9,13 +9,13 @@ ENVIRONMENT="${1:?Usage: deploy-environment.sh <dev|stage>}"
 case "$ENVIRONMENT" in
   dev)
     DEPLOY_PATH="${DEV_PATH:-/opt/stovo/dev}"
-    COMPOSE_FILE="docker-compose.dev.yml"
+    COMPOSE_FILE="deploy/compose/dev.yml"
     PROJECT_NAME="stovo-dev"
     HEALTH_URL="${DEV_URL:-http://10.29.106.221:9080}"
     ;;
   stage)
     DEPLOY_PATH="${STAGE_PATH:-/opt/stovo/stage}"
-    COMPOSE_FILE="docker-compose.stage.yml"
+    COMPOSE_FILE="deploy/compose/stage.yml"
     PROJECT_NAME="stovo-stage"
     HEALTH_URL="${STAGE_URL:-http://10.29.106.221:9081}"
     ;;
@@ -51,19 +51,39 @@ rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
   --exclude '.env' \
   --exclude 'node_modules/' \
   --exclude 'playwright-report/' \
+  --exclude 'AGENTS.md' \
+  --exclude '.cursor/' \
+  --exclude '.worktrees/' \
+  --exclude '.claude/' \
+  --exclude '.agents/' \
+  --exclude '.codex/' \
+  --exclude '.codex-remote-attachments/' \
+  --exclude '.autoforge/' \
+  --exclude '.superpowers/' \
+  --exclude '.idea/' \
+  --exclude '.playwright-cli/' \
+  --exclude '.obsidian/' \
+  --exclude '.planning/' \
+  --exclude '.playwright/' \
+  --exclude '.playwright-daemon/' \
+  --exclude '.cache/' \
+  --exclude 'Stovo/' \
+  --exclude 'scratch/' \
+  --exclude 'uploads/' \
+  --exclude 'logs/' \
   ./ "$SSH_TARGET:$DEPLOY_PATH/"
 
 ssh "${SSH_OPTS[@]}" "$SSH_TARGET" \
   "cd '$DEPLOY_PATH' && \
-    docker compose -p '$PROJECT_NAME' -f '$COMPOSE_FILE' up -d postgres && \
+    docker compose -p '$PROJECT_NAME' --project-directory '$DEPLOY_PATH' -f '$COMPOSE_FILE' up -d postgres && \
     for attempt in \$(seq 1 30); do \
-      if docker compose -p '$PROJECT_NAME' -f '$COMPOSE_FILE' exec -T postgres sh -ec 'pg_isready -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'; then break; fi; \
+      if docker compose -p '$PROJECT_NAME' --project-directory '$DEPLOY_PATH' -f '$COMPOSE_FILE' exec -T postgres sh -ec 'pg_isready -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\"'; then break; fi; \
       if [ \"\$attempt\" -eq 30 ]; then echo 'PostgreSQL did not become ready for migrations.' >&2; exit 1; fi; \
       sleep 2; \
     done && \
-    docker compose -p '$PROJECT_NAME' -f '$COMPOSE_FILE' build backend && \
-    docker compose -p '$PROJECT_NAME' -f '$COMPOSE_FILE' run --rm --no-deps backend sh -ec 'database_url=\"\$(stovo-database-url)\"; atlas migrate apply --dir file:///app/migrations --url \"\$database_url\"' && \
-    docker compose -p '$PROJECT_NAME' -f '$COMPOSE_FILE' up -d --build"
+    docker compose -p '$PROJECT_NAME' --project-directory '$DEPLOY_PATH' -f '$COMPOSE_FILE' build backend && \
+    docker compose -p '$PROJECT_NAME' --project-directory '$DEPLOY_PATH' -f '$COMPOSE_FILE' run --rm --no-deps backend sh -ec 'database_url=\"\$(stovo-database-url)\"; atlas migrate apply --dir file:///app/migrations --url \"\$database_url\"' && \
+    docker compose -p '$PROJECT_NAME' --project-directory '$DEPLOY_PATH' -f '$COMPOSE_FILE' up -d --build"
 
 echo "Waiting for $ENVIRONMENT health check at $HEALTH_URL/api/health"
 for attempt in $(seq 1 45); do

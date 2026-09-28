@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const caddyfile = readFileSync("../Caddyfile", "utf8");
+const caddyfile = readFileSync("../deploy/caddy/Caddyfile", "utf8");
 const nginxConfig = readFileSync("nginx.conf", "utf8");
 
 function cspDirective(name: string): string {
