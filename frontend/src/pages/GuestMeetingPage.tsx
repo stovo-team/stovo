@@ -174,6 +174,7 @@ export default function GuestMeetingPage() {
   const isOrgMemberOrHost = Boolean(accessToken && currentUser);
   const [meetingRoomId, setMeetingRoomId] = useState<string | null>(null);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+  const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
   const [guestIntelStatus, setGuestIntelStatus] = useState<GuestMeetingIntelligenceStatus | null>(null);
 
   emptyRoomTimeoutCallbacksRef.current = {
@@ -713,6 +714,7 @@ export default function GuestMeetingPage() {
             {/* Stovo Intelligence Button */}
             <div className="voice-more-menu-anchor">
               <button
+                ref={intelligenceButtonRef}
                 className={`voice-dock-btn voice-dock-btn--intel${
                   isIntelligenceOpen ||
                   effectiveRecordingState === "recording" ||
@@ -736,6 +738,7 @@ export default function GuestMeetingPage() {
               <MeetingIntelligencePopover
                 isOpen={isIntelligenceOpen}
                 onClose={() => setIsIntelligenceOpen(false)}
+                anchorElement={intelligenceButtonRef.current}
                 notesState={effectiveNotesState}
                 onToggleNotes={() => {
                   if (!isOrgMemberOrHost) return;

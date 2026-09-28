@@ -110,6 +110,7 @@ export function DesktopCallControls() {
   });
 
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false); const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
+  const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
   const [isParticipantFocused, setIsParticipantFocused] = useState(false); const closeParticipantFocusRef = useRef<() => void>(() => undefined);
   useEffect(() => {
     if (!isAiNotesQueuedToastVisible) return;
@@ -461,6 +462,7 @@ export function DesktopCallControls() {
               {/* ── Stovo Intelligence button (AI Notes, Video Recording, Live Captions) ── */}
               <div className="call-ctrl-wrap" style={{ position: "relative" }}>
                 <button
+                  ref={intelligenceButtonRef}
                   id="call-ctrl-intelligence"
                   type="button"
                   className={`call-ctrl-btn call-ctrl-btn--intel${
@@ -477,6 +479,7 @@ export function DesktopCallControls() {
                 <MeetingIntelligencePopover
                   isOpen={isIntelligenceOpen}
                   onClose={() => setIsIntelligenceOpen(false)}
+                  anchorElement={intelligenceButtonRef.current}
                   notesState={transcriptState}
                   onToggleNotes={handleToggleAiNotes}
                   isNotesAllowed={true}

@@ -34,8 +34,8 @@ function renderPopover(anchorRect: DOMRect, isMobile = false) {
   button.setAttribute("aria-label", "Stovo Intelligence");
   button.getBoundingClientRect = () => anchorRect;
   const mountPoint = document.createElement("div");
-  anchor.append(button, mountPoint);
-  callPopup.append(anchor);
+  anchor.append(button);
+  callPopup.append(anchor, mountPoint);
   document.body.append(callPopup);
 
   const root = createRoot(mountPoint);
@@ -45,6 +45,7 @@ function renderPopover(anchorRect: DOMRect, isMobile = false) {
       <MeetingIntelligencePopover
         isOpen
         isMobile={isMobile}
+        anchorElement={button}
         onClose={() => {}}
         notesState="idle"
         onToggleNotes={() => {}}

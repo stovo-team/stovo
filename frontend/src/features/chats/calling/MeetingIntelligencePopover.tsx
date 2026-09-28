@@ -16,6 +16,7 @@ import type { TranscriptState } from "./useTranscription";
 export type MeetingIntelligencePopoverProps = {
   isOpen: boolean;
   onClose: () => void;
+  anchorElement?: HTMLElement | null;
   // AI Notes
   notesState: TranscriptState;
   onToggleNotes: () => void;
@@ -52,6 +53,7 @@ export function MeetingBackgroundToast({ visible }: { visible: boolean }) {
 export function MeetingIntelligencePopover({
   isOpen,
   onClose,
+  anchorElement,
   notesState,
   onToggleNotes,
   isNotesAllowed = true,
@@ -88,7 +90,7 @@ export function MeetingIntelligencePopover({
     const placePopover = () => {
       const popover = popoverRef.current;
       const anchorContainer = popover?.closest<HTMLElement>(".call-ctrl-wrap, .voice-more-menu-anchor");
-      const anchor = anchorRef.current ??
+      const anchor = anchorElement ?? anchorRef.current ??
         anchorContainer?.querySelector<HTMLElement>(":scope > button") ??
         popover?.parentElement;
       if (!popover || !anchor) return;
@@ -126,7 +128,7 @@ export function MeetingIntelligencePopover({
       window.removeEventListener("scroll", placePopover, true);
       resizeObserver?.disconnect();
     };
-  }, [inlineMenu, isCaptionsEnabled, isLanguageMenuOpen, isMobile, isOpen]);
+  }, [anchorElement, inlineMenu, isCaptionsEnabled, isLanguageMenuOpen, isMobile, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;

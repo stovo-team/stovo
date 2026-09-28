@@ -87,6 +87,7 @@ export function VoiceChannelStage({
 
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
+  const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
   const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -516,6 +517,7 @@ export function VoiceChannelStage({
             {/* Stovo Intelligence Popover Button */}
             <div className="voice-more-menu-anchor">
               <button
+                ref={intelligenceButtonRef}
                 type="button"
                 className={`voice-dock-btn voice-dock-btn--intel${
                   isIntelligenceOpen || recording.isRecordingActive || transcriptState === "recording" ? " is-active" : ""
@@ -535,6 +537,7 @@ export function VoiceChannelStage({
               <MeetingIntelligencePopover
                 isOpen={isIntelligenceOpen}
                 onClose={() => setIsIntelligenceOpen(false)}
+                anchorElement={intelligenceButtonRef.current}
                 notesState={transcriptState}
                 onToggleNotes={() => {
                   if (transcriptState === "idle" || transcriptState === "failed") {

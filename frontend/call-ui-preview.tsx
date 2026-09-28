@@ -59,6 +59,7 @@ export function CallUiPreview() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [selfViewFullscreen, setSelfViewFullscreen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [mobileMenuOffset, setMobileMenuOffset] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -277,12 +278,13 @@ export function CallUiPreview() {
                   {endCallControl}
               </div>
             ) : (
-              <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}{settingsControl}<div className="call-ctrl-wrap call-preview-intelligence-anchor"><button type="button" className={`call-ctrl-btn${intelligenceOpen ? " is-active" : ""}`} aria-label="Stovo Intelligence" title="Stovo Intelligence" onClick={() => setIntelligenceOpen((open) => !open)}><IconIntelligence size={20} /></button></div>{screenShareControl}{endCallControl}</div>
+              <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}{settingsControl}<div className="call-ctrl-wrap call-preview-intelligence-anchor"><button ref={intelligenceButtonRef} type="button" className={`call-ctrl-btn${intelligenceOpen ? " is-active" : ""}`} aria-label="Stovo Intelligence" title="Stovo Intelligence" onClick={() => setIntelligenceOpen((open) => !open)}><IconIntelligence size={20} /></button></div>{screenShareControl}{endCallControl}</div>
             )}
           </div>
           <MeetingIntelligencePopover
             isOpen={!mobile && intelligenceOpen}
             onClose={() => setIntelligenceOpen(false)}
+            anchorElement={intelligenceButtonRef.current}
             notesState="idle"
             onToggleNotes={() => undefined}
             recordingState="idle"
