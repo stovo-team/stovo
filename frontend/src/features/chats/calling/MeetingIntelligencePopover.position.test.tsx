@@ -30,11 +30,15 @@ function renderPopover(anchorRect: DOMRect, isMobile = false) {
   callPopup.className = "call-popup";
   const anchor = document.createElement("div");
   anchor.className = "call-ctrl-wrap";
-  anchor.getBoundingClientRect = () => anchorRect;
+  const button = document.createElement("button");
+  button.setAttribute("aria-label", "Stovo Intelligence");
+  button.getBoundingClientRect = () => anchorRect;
+  const mountPoint = document.createElement("div");
+  anchor.append(button, mountPoint);
   callPopup.append(anchor);
   document.body.append(callPopup);
 
-  const root = createRoot(anchor);
+  const root = createRoot(mountPoint);
   roots.push(root);
   act(() => {
     root.render(

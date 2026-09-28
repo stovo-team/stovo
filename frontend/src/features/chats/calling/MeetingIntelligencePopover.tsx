@@ -87,7 +87,10 @@ export function MeetingIntelligencePopover({
 
     const placePopover = () => {
       const popover = popoverRef.current;
-      const anchor = anchorRef.current ?? popover?.parentElement;
+      const anchorContainer = popover?.closest<HTMLElement>(".call-ctrl-wrap, .voice-more-menu-anchor");
+      const anchor = anchorRef.current ??
+        anchorContainer?.querySelector<HTMLElement>(":scope > button") ??
+        popover?.parentElement;
       if (!popover || !anchor) return;
       anchorRef.current = anchor;
 
