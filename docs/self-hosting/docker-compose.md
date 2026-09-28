@@ -1,6 +1,6 @@
 # Self-host with Docker Compose
 
-This guide covers the production single-host stack in `docker-compose.yml`. It builds the Go backend and React frontend locally, runs a PostgreSQL database and Redis Streams service, initializes MinIO buckets, and serves the application through Caddy. A domain with DNS pointing to the host is required for automatic HTTPS. Do not use the development or staging Compose files as production deployment instructions.
+This guide covers the production single-host stack in `deploy/compose/production-bluegreen.yml`. It builds the Go backend and React frontend locally, runs a PostgreSQL database and Redis Streams service, initializes MinIO buckets, and serves the application through Caddy. A domain with DNS pointing to the host is required for automatic HTTPS. Do not use the development or staging Compose files as production deployment instructions.
 
 ## Requirements and network
 
@@ -37,27 +37,27 @@ The full set of supported Compose variables and example values is in `.env.examp
 Validate interpolation before startup and launch:
 
 ```sh
-docker compose --profile disabled --env-file .env config --quiet
-docker compose --profile disabled --env-file .env up -d --build
-docker compose ps
-docker compose logs --tail=100 backend-migrate backend-blue caddy
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --profile disabled --env-file .env config --quiet
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --profile disabled --env-file .env up -d --build
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml ps
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml logs --tail=100 backend-migrate backend-blue caddy
 ```
 
 Visit `https://<APP_DOMAIN>` and finish the one-time owner setup. Registration after first setup is invite-based. `backend-migrate` applies versioned Atlas migrations. In the bundled production Compose file, the backend is configured to wait for that one-shot service and required dependencies.
 
 ### Redis services
 
-Production Compose starts `redis-jobs` for durable worker streams with append-only persistence and a `noeviction` policy. The separate `redis` cache/presence service is assigned to Compose's `disabled` profile and is omitted by plain `docker compose up`. The backend's `REDIS_URL` falls back to the `redis` service name unless configured otherwise, so either enable the bundled cache service as shown above or configure `REDIS_URL` to a reachable external Redis instance. The `/api/health/redis` endpoint checks this cache/presence connection. Do not confuse `redis` with `redis-jobs`, and do not point the durable jobs URL at an eviction-prone cache.
+Production Compose starts `redis-jobs` for durable worker streams with append-only persistence and a `noeviction` policy. The separate `redis` cache/presence service is assigned to Compose's `disabled` profile and is omitted by plain `docker compose --project-directory . -f deploy/compose/production-bluegreen.yml up`. The backend's `REDIS_URL` falls back to the `redis` service name unless configured otherwise, so either enable the bundled cache service as shown above or configure `REDIS_URL` to a reachable external Redis instance. The `/api/health/redis` endpoint checks this cache/presence connection. Do not confuse `redis` with `redis-jobs`, and do not point the durable jobs URL at an eviction-prone cache.
 
 ### Optional external PostgreSQL and S3 storage
 
-`docker-compose.external.yml` disables the bundled PostgreSQL and MinIO services while keeping Redis, Redis Streams, ntfy, the application, and Caddy local. Set `DATABASE_URL` to the external PostgreSQL URL, including the provider's required TLS mode. The startup command below enables the `disabled` profile, which activates bundled cache/presence Redis even though it is disabled in a plain Compose invocation. To use external cache Redis instead, set `REDIS_URL` to its reachable URL; the local Redis container will still start with this profile but will not be used by the backend. Set `STORAGE_PROVIDER=s3`, `S3_ENDPOINT`, `S3_SECURE`, S3 credentials in `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY`, and the target bucket names. The buckets must already exist and credentials must allow the required object operations. For generated presigned upload/download URLs, `MINIO_PUBLIC_ENDPOINT` must be reachable by clients; it is distinct from the private backend endpoint.
+`deploy/compose/external-overlay.yml` disables the bundled PostgreSQL and MinIO services while keeping Redis, Redis Streams, ntfy, the application, and Caddy local. Set `DATABASE_URL` to the external PostgreSQL URL, including the provider's required TLS mode. The startup command below enables the `disabled` profile, which activates bundled cache/presence Redis even though it is disabled in a plain Compose invocation. To use external cache Redis instead, set `REDIS_URL` to its reachable URL; the local Redis container will still start with this profile but will not be used by the backend. Set `STORAGE_PROVIDER=s3`, `S3_ENDPOINT`, `S3_SECURE`, S3 credentials in `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY`, and the target bucket names. The buckets must already exist and credentials must allow the required object operations. For generated presigned upload/download URLs, `MINIO_PUBLIC_ENDPOINT` must be reachable by clients; it is distinct from the private backend endpoint.
 
 Validate and start the overlay with:
 
 ```sh
-docker compose --profile disabled --env-file .env -f docker-compose.yml -f docker-compose.external.yml config --quiet
-docker compose --profile disabled --env-file .env -f docker-compose.yml -f docker-compose.external.yml up -d --build
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml -f deploy/compose/external-overlay.yml --profile disabled --env-file .env config --quiet
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml -f deploy/compose/external-overlay.yml --profile disabled --env-file .env up -d --build
 ```
 
 The external overlay removes the bundled database and MinIO; `redis-jobs` remains bundled. When the `disabled` profile is active, the cache Redis service is also started. External database and cache Redis endpoints must be reachable from the Compose network. Back them up using the provider procedures.
@@ -87,7 +87,7 @@ The backend also bind-mounts `./uploads` and `./logs` for legacy local files and
 Take a consistent database dump and object/volume backup before upgrades. Example logical PostgreSQL backup:
 
 ```sh
-docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > stovo-postgres.dump
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > stovo-postgres.dump
 ```
 
 Store the dump outside the host and test restoring it to a disposable database. Back up MinIO using an S3 client or a quiesced volume-level snapshot; include all configured buckets, especially the files and calls buckets. Also preserve the encryption key, secrets, and deployment configuration in a secure secrets backup separate from the data backup.
@@ -101,11 +101,11 @@ For a restore, stop writes by stopping the application first, restore PostgreSQL
 3. Pull the intended code/tag or checkout and rebuild images with Compose:
 
    ```sh
-   docker compose --env-file .env pull
-   docker compose --env-file .env build
-   docker compose --env-file .env up -d
-   docker compose ps
-   docker compose logs --tail=200 backend-migrate backend-blue
+   docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --env-file .env pull
+   docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --env-file .env build
+   docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --env-file .env up -d
+   docker compose --project-directory . -f deploy/compose/production-bluegreen.yml ps
+   docker compose --project-directory . -f deploy/compose/production-bluegreen.yml logs --tail=200 backend-migrate backend-blue
    ```
 
    The Compose services for backend and frontend use local build contexts, so `pull` refreshes pinned infrastructure images; rebuild application images from the checked-out revision. If your deployment process uses an explicit image tag or CI-built images, use that process instead.
@@ -123,13 +123,13 @@ The HTTP health endpoints are:
 - `/api/health/db` — database connectivity.
 - `/api/health/redis` — Redis connectivity.
 
-Production Compose defines health checks for PostgreSQL, `redis-jobs`, ntfy, MinIO, and Caddy. It does **not** define Compose health checks for the backend or frontend. Use the HTTP endpoints to inspect backend dependencies; `docker compose ps` alone does not prove those app processes are healthy.
+Production Compose defines health checks for PostgreSQL, `redis-jobs`, ntfy, MinIO, and Caddy. It does **not** define Compose health checks for the backend or frontend. Use the HTTP endpoints to inspect backend dependencies; `docker compose --project-directory . -f deploy/compose/production-bluegreen.yml ps` alone does not prove those app processes are healthy.
 
 Useful diagnostics:
 
 ```sh
-docker compose ps
-docker compose logs --tail=200 backend-migrate backend-blue frontend caddy postgres redis-jobs minio
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml ps
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml logs --tail=200 backend-migrate backend-blue frontend caddy postgres redis-jobs minio
 curl -fsS "https://${APP_DOMAIN}/api/health"
 curl -fsS "https://${APP_DOMAIN}/api/health/db"
 curl -fsS "https://${APP_DOMAIN}/api/health/redis"
@@ -137,7 +137,7 @@ curl -fsS "https://${APP_DOMAIN}/api/health/redis"
 
 | Symptom | Checks |
 | --- | --- |
-| Compose exits during config | Confirm required values in `.env`; run `docker compose --env-file .env config --quiet` to validate without printing interpolated secrets. |
+| Compose exits during config | Confirm required values in `.env`; run `docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --env-file .env config --quiet` to validate without printing interpolated secrets. |
 | TLS certificate unavailable | Verify DNS points to the host, inbound TCP 80/443 are open, and Caddy can write its named state volumes. |
 | Backend does not start | Inspect `backend-migrate` and `backend-blue` logs; confirm PostgreSQL, `redis-jobs`, ntfy and MinIO initialization completed. |
 | DB health fails | Check the database URL/credentials, managed database network access and TLS mode, or the bundled `postgres` health check. |
@@ -151,7 +151,7 @@ curl -fsS "https://${APP_DOMAIN}/api/health/redis"
 For an installation that still has local files in `./uploads`, take a backup and stop writes first. Configure and initialize the target MinIO/S3 endpoint and buckets, verify the backend can access both source files and target, then run the bundled migration executable against the same Compose environment:
 
 ```sh
-docker compose --profile disabled --env-file .env run --rm backend-blue /usr/local/bin/storage-migrate
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml --profile disabled --env-file .env run --rm backend-blue /usr/local/bin/storage-migrate
 ```
 
 The tool checks existing checksums where present, copies each file object, updates its storage provider metadata, and writes a migration manifest to the logs bucket. Review the command's exit status and manifest for failures before removing or unmounting the original `uploads` directory. This operation is for local-to-MinIO/S3 migration; do not use it as a general database migration command.

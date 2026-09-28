@@ -58,36 +58,39 @@ jobs:
         run: bash .github/workflows/pipeline.test.sh
       - name: Verify rsync is available for the deployment layout fixture
         run: command -v rsync
-      - name: Install PowerShell from Microsoft packages when missing
+      - name: Install PowerShell from official release archive when missing
         run: |
           if command -v pwsh >/dev/null 2>&1; then
             exit 0
           fi
 
-          . /etc/os-release
-          case "${ID:-}" in
-            ubuntu|debian) ;;
-            *)
-              echo "PowerShell is missing and automatic installation is supported only on Ubuntu/Debian runners (found: ${ID:-unknown})." >&2
-              exit 1
-              ;;
+          case "$(uname -m)" in
+            x86_64|amd64) asset_arch=x64 ;;
+            aarch64|arm64) asset_arch=arm64 ;;
+            *) echo "Unsupported runner architecture: $(uname -m)" >&2; exit 1 ;;
           esac
 
-          if [ "$(id -u)" -eq 0 ]; then
-            SUDO=()
-          else
-            SUDO=(sudo)
+          version=7.6.6
+          archive="powershell-${version}-linux-${asset_arch}.tar.gz"
+          release_url="https://github.com/PowerShell/PowerShell/releases/download/v${version}"
+          install_dir="$RUNNER_TEMP/pwsh-${version}-${asset_arch}"
+          archive_path="$RUNNER_TEMP/$archive"
+          hashes_path="$RUNNER_TEMP/powershell-${version}-hashes.sha256"
+
+          mkdir -p "$install_dir"
+          curl -fsSL "$release_url/$archive" -o "$archive_path"
+          curl -fsSL "$release_url/hashes.sha256" -o "$hashes_path"
+
+          expected_hash="$(awk -v asset="$archive" '$2 == asset || $2 == "*" asset { print tolower($1) }' "$hashes_path")"
+          actual_hash="$(sha256sum "$archive_path" | awk '{ print $1 }')"
+          if [ -z "$expected_hash" ] || [ "$actual_hash" != "$expected_hash" ]; then
+            echo "PowerShell archive SHA256 verification failed for $archive." >&2
+            exit 1
           fi
 
-          package_dir="$(mktemp -d)"
-          trap 'rm -rf "$package_dir"' EXIT
-          "${SUDO[@]}" apt-get update
-          "${SUDO[@]}" apt-get install -y wget apt-transport-https software-properties-common
-          wget -q "https://packages.microsoft.com/config/$ID/$VERSION_ID/packages-microsoft-prod.deb" -O "$package_dir/packages-microsoft-prod.deb"
-          "${SUDO[@]}" dpkg -i "$package_dir/packages-microsoft-prod.deb"
-          "${SUDO[@]}" apt-get update
-          "${SUDO[@]}" apt-get install -y powershell
-          command -v pwsh
+          tar -xzf "$archive_path" -C "$install_dir"
+          chmod +x "$install_dir/pwsh"
+          echo "$install_dir" >> "$GITHUB_PATH"
       - name: Verify repository layout
         run: |
           pwsh -NoProfile -File .github/workflows/repository-layout.test.ps1

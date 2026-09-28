@@ -11,7 +11,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/docs-validation.test.mjs'
       - '.github/workflows/docs-validation.yml'
-      - 'docker-compose*.yml'
+      - 'deploy/compose/**'
       - '.env.example'
   push:
     branches: [master]
@@ -24,7 +24,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/docs-validation.test.mjs'
       - '.github/workflows/docs-validation.yml'
-      - 'docker-compose*.yml'
+      - 'deploy/compose/**'
       - '.env.example'
 
 jobs:

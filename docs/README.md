@@ -19,7 +19,7 @@
 
 ## Scope and accuracy
 
-Deployment instructions in this directory describe the repository's production Compose stack and its Helm chart. `docker-compose.dev.yml`, `docker-compose.stage.yml`, `docker-compose.master.yml`, and `deploy/livekit.yaml` are for development, staging, orchestration, or local reference use; they are not drop-in production manifests. Check the chart's own defaults before applying chart-specific settings:
+Deployment instructions in this directory describe the repository's production Compose stack and its Helm chart. `deploy/compose/dev.yml`, `deploy/compose/stage.yml`, `deploy/compose/production-multiserver.yml`, and `deploy/livekit.yaml` are for development, staging, orchestration, or local reference use; they are not drop-in production manifests. Check the chart's own defaults before applying chart-specific settings:
 
 ```sh
 helm show values charts/stovo
