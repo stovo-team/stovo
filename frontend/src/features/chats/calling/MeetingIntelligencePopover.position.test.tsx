@@ -16,7 +16,7 @@ afterEach(() => {
   HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
 });
 
-function renderPopover(anchorRect: DOMRect) {
+function renderPopover(anchorRect: DOMRect, isMobile = false) {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: 1000 });
   Object.defineProperty(window, "innerHeight", { configurable: true, value: 700 });
   HTMLElement.prototype.getBoundingClientRect = function () {
@@ -40,6 +40,7 @@ function renderPopover(anchorRect: DOMRect) {
     root.render(
       <MeetingIntelligencePopover
         isOpen
+        isMobile={isMobile}
         onClose={() => {}}
         notesState="idle"
         onToggleNotes={() => {}}
@@ -70,7 +71,7 @@ describe("meeting intelligence popover placement", () => {
     expect(Number.parseFloat(popover?.style.top ?? "NaN")).toBe(168);
   });
 
-  it("opens below its control when there is not enough room above", () => {
+  it("keeps the desktop popover above its control when the control is near the top", () => {
     const popover = renderPopover({
       x: 400, y: 20, top: 20, right: 450, bottom: 60, left: 400, width: 50, height: 40,
       toJSON: () => ({}),
@@ -79,6 +80,15 @@ describe("meeting intelligence popover placement", () => {
     expect(popover?.parentElement).toBe(document.body);
     expect(popover?.style.position).toBe("fixed");
     expect(Number.parseFloat(popover?.style.left ?? "NaN")).toBe(257);
+    expect(Number.parseFloat(popover?.style.top ?? "NaN")).toBe(16);
+  });
+
+  it("allows the mobile popover to open below when there is not enough room above", () => {
+    const popover = renderPopover({
+      x: 400, y: 20, top: 20, right: 450, bottom: 60, left: 400, width: 50, height: 40,
+      toJSON: () => ({}),
+    } as DOMRect, true);
+
     expect(Number.parseFloat(popover?.style.top ?? "NaN")).toBe(72);
   });
 });

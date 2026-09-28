@@ -102,9 +102,11 @@ export function MeetingIntelligencePopover({
       const left = Math.min(maxLeft, Math.max(gutter, anchorRect.left + (anchorRect.width - width) / 2));
       const above = anchorRect.top - height - 12;
       const below = anchorRect.bottom + 12;
-      const top = above >= gutter
-        ? above
-        : Math.min(Math.max(gutter, below), Math.max(gutter, viewportHeight - height - gutter));
+      const top = !isMobile
+        ? Math.max(gutter, above)
+        : above >= gutter
+          ? above
+          : Math.min(Math.max(gutter, below), Math.max(gutter, viewportHeight - height - gutter));
 
       setAnchoredPosition((previous) => previous?.left === left && previous.top === top ? previous : { left, top });
     };
