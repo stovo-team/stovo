@@ -108,6 +108,18 @@ awk '
   }
 ' .github/workflows/pipeline.yml
 
+workflow_file=".github/workflows/pipeline.yml"
+pwsh_install_line="$(grep -nF 'apt-get install -y powershell' "$workflow_file" | head -n 1 | cut -d: -f1 || true)"
+layout_test_line="$(grep -nF 'pwsh -NoProfile -File .github/workflows/repository-layout.test.ps1' "$workflow_file" | head -n 1 | cut -d: -f1)"
+if [[ -z "$pwsh_install_line" || -z "$layout_test_line" || "$pwsh_install_line" -ge "$layout_test_line" ]]; then
+  echo "The changes job must install PowerShell before running the repository layout test." >&2
+  exit 1
+fi
+grep -Fq 'packages.microsoft.com/config/$ID/$VERSION_ID/packages-microsoft-prod.deb' "$workflow_file" || {
+  echo "PowerShell must be installed from Microsoft's official Linux package repository." >&2
+  exit 1
+}
+
 lint_config="backend/.golangci.yml"
 if [[ ! -f "$lint_config" ]]; then
   echo "Missing pinned golangci-lint configuration at $lint_config" >&2
