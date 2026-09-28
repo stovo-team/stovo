@@ -1,8 +1,4 @@
 .env
-!AGENTS.md
-!.cursor/
-!.cursor/rules/
-!.cursor/rules/tdd-orchestration.mdc
 .venv/
 venv/
 __pycache__/
@@ -70,3 +66,24 @@ features.db
 !/scripts/update-solid-baselines.sh
 !/scripts/check-solid.cjs
 /docker-compose.test.ps1
+
+# Local agent tooling, generated worktrees, and copied input
+AGENTS.md
+.cursor/
+.worktrees/
+clean_input.txt
+.codex-remote-attachments/
+.autoforge/
+.superpowers/
+.idea/
+.obsidian/
+.planning/
+.playwright-cli/
+.playwright/
+.playwright-daemon/
+.claude/
+.agents/
+.cache/
+.codex/
+/Stovo/
+/scratch/

@@ -47,7 +47,7 @@ services:
 
   orchestrator:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile.orchestrator
     image: stovo-orchestrator:latest
     container_name: stovo-orchestrator
@@ -126,7 +126,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

@@ -8,7 +8,7 @@ const path = require('path');
 
 const LIMIT = 400;
 const ROOT = path.resolve(__dirname, '..');
-const BASELINE_FILE = path.join(ROOT, '.architecture', 'size-baseline.tsv');
+const BASELINE_FILE = path.join(ROOT, 'docs', 'engineering', 'size-baseline.tsv');
 
 const args = process.argv.slice(2);
 const isUpdate = args.includes('--update') || args.includes('-u');

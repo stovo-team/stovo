@@ -190,7 +190,7 @@ Review `.env` and configure your required secrets:
 Launch the production-grade stack from the repository root:
 
 ```bash
-docker compose up --build -d
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml up --build -d
 ```
 
 #### Startup Orchestration Flow
@@ -221,15 +221,15 @@ If you override `BACKEND_UPSTREAMS` in `.env` or deployment configuration, use t
 If upgrading from an earlier version that used local filesystem storage (`uploads/`), run the verified migration tool while uploads are idle:
 
 ```bash
-docker compose run --rm backend /usr/local/bin/storage-migrate
+docker compose --project-directory . -f deploy/compose/production-bluegreen.yml run --rm backend /usr/local/bin/storage-migrate
 ```
 This utility copies objects to MinIO, calculates SHA-256 checksums, logs an audit manifest to `stovo-logs/migrations/`, and ensures zero data loss before local files are unmounted.
 
 ### Troubleshooting & Database Baselining
 - **Resetting Disposable Data:** To wipe local test databases and start clean:
   ```bash
-  docker compose down -v
-  docker compose up --build
+  docker compose --project-directory . -f deploy/compose/production-bluegreen.yml down -v
+  docker compose --project-directory . -f deploy/compose/production-bluegreen.yml up --build
   ```
 - **Atlas Migration Checksum Mismatch:** If working with an existing database volume created across divergent branches, follow the [Atlas Baseline Procedure](backend/migrations/BASELINE.md) to inspect drift and baseline schema versions.
 
