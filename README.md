@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/public/stovo-brain.png" alt="Stovo mark" width="112" />
+  <img src="frontend/public/Logo.svg" alt="Stovo logo" width="96" />
 </div>
 
 <h1 align="center">Stovo</h1>
@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://stovo.ru"><img alt="Website" src="https://img.shields.io/badge/website-stovo.ru-ff7a18?style=for-the-badge"></a>
-  <img alt="Self-hosted" src="https://img.shields.io/badge/deploy-self--hosted-222222?style=for-the-badge">
-  <img alt="Go backend" src="https://img.shields.io/badge/backend-Go-00ADD8?style=for-the-badge&logo=go&logoColor=white">
-  <img alt="React and TypeScript frontend" src="https://img.shields.io/badge/frontend-React%20%2B%20TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
-  <a href="https://github.com/stovo-team/stovo-messenger/actions/workflows/docs-validation.yml"><img alt="Documentation and deployment validation" src="https://img.shields.io/github/actions/workflow/status/stovo-team/stovo-messenger/docs-validation.yml?branch=master&label=docs%20%26%20deployment&style=for-the-badge"></a>
+  <a href="https://stovo.ru"><img alt="Website" src="https://img.shields.io/badge/website-stovo.ru-ff7a18?style=flat"></a>
+  <img alt="Self-hosted" src="https://img.shields.io/badge/deploy-self--hosted-222222?style=flat">
+  <img alt="Go backend" src="https://img.shields.io/badge/backend-Go-00ADD8?style=flat&logo=go&logoColor=white">
+  <img alt="React and TypeScript frontend" src="https://img.shields.io/badge/frontend-React%20%2B%20TypeScript-3178C6?style=flat&logo=typescript&logoColor=white">
+  <a href="https://github.com/stovo-team/stovo-messenger/actions/workflows/docs-validation.yml"><img alt="Documentation and deployment validation" src="https://img.shields.io/github/actions/workflow/status/stovo-team/stovo-messenger/docs-validation.yml?branch=master&label=docs%20%26%20deployment&style=flat"></a>
 </p>
 
 <p align="center">
@@ -26,8 +26,6 @@
   <a href="docs/README.md">Read the docs</a> ·
   <a href="https://stovo.ru">Visit stovo.ru</a>
 </p>
-
----
 
 ## Product at a glance
 
