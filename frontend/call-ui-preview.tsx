@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { ArrowLeft, Minimize2, MoreVertical, RotateCcw, Settings2, Share2, X } from "lucide-react";
+import { ArrowLeft, Minimize2, MoreVertical, RotateCcw, Settings2, X } from "lucide-react";
 import CallParticipantGrid from "./src/components/CallParticipantGrid";
 import { CallControlButton } from "./src/features/chats/calling/CallControlButton";
 import { CallDeviceControl } from "./src/features/chats/calling/CallDeviceControl";
@@ -59,6 +59,7 @@ export function CallUiPreview() {
   const [controlsVisible, setControlsVisible] = useState(true);
   const [selfViewFullscreen, setSelfViewFullscreen] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [mobileMenuOffset, setMobileMenuOffset] = useState(0);
   const popupRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -141,7 +142,7 @@ export function CallUiPreview() {
   const cameraControl = <CallDeviceControl action="camera" controlClassName="call-ctrl-btn" label="Camera" active={settings.cameraEnabled} deviceKind="videoinput" selectedDeviceId={settings.videoDeviceId} devices={devices} onToggle={() => patchSettings({ cameraEnabled: !settings.cameraEnabled })} onDeviceChange={(videoDeviceId) => patchSettings({ videoDeviceId })} />;
   const flipControl = mobile && settings.cameraEnabled && <button type="button" className="call-ctrl-btn call-preview-flip" aria-label="Flip camera" aria-pressed={settings.cameraFacingMode === "environment"} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); patchSettings({ cameraFacingMode: settings.cameraFacingMode === "user" ? "environment" : "user" }); }}><RotateCcw size={18} aria-hidden="true" /></button>;
   const settingsControl = <div className="call-ctrl-wrap call-preview-settings-anchor"><button type="button" className={`call-ctrl-btn${settingsOpen ? " is-active" : ""}`} aria-label="Audio settings" onClick={() => setSettingsOpen((open) => !open)}><Settings2 aria-hidden="true" size={20} /></button><span>Settings</span></div>;
-  const screenShareControl = <CallControlButton action="screen-share" className="call-ctrl-btn" label={screenSharing ? "Stop sharing" : "Share screen"} onClick={() => setScreenSharing((sharing) => !sharing)} />;
+  const screenShareControl = <CallControlButton action="screen-share" className="call-ctrl-btn" label={screenSharing ? "Stop sharing" : "Share screen"} state={screenSharing ? "active" : "idle"} onClick={() => setScreenSharing((sharing) => !sharing)} />;
   const endCallControl = <CallControlButton action="end-call" className="call-ctrl-btn end-btn" label="End call" data-shape="circle" data-fixed-size="true" />;
   const isGuestMeeting = kind === "Guest meeting";
 
@@ -266,21 +267,21 @@ export function CallUiPreview() {
                   <CallControlButton action="audio-output" className="call-ctrl-btn" label="Toggle Speaker" aria-label="Toggle Speaker" toggle state={settings.soundDisabled ? "muted" : "active"} data-shape="circle" data-fixed-size="true" onClick={() => patchSettings({ soundDisabled: !settings.soundDisabled })} />
                   <CallControlButton action="camera" className="call-ctrl-btn" label="Toggle Camera" aria-label="Toggle Camera" toggle state={settings.cameraEnabled ? "active" : "muted"} data-shape="circle" data-fixed-size="true" onClick={() => patchSettings({ cameraEnabled: !settings.cameraEnabled })} />
                   <div className="call-ctrl-wrap call-preview-more-anchor">
-                    <button ref={mobileMoreTriggerRef} type="button" className="call-ctrl-btn" aria-label="More options" aria-expanded={moreOpen} data-shape="circle" data-fixed-size="true" onClick={() => setMoreOpen((open) => screenSharing ? true : !open)}><MoreVertical size={20} aria-hidden="true" /></button><span>More</span>
+                    <button ref={mobileMoreTriggerRef} type="button" className="call-ctrl-btn" aria-label="More options" aria-expanded={moreOpen} data-shape="circle" data-fixed-size="true" onClick={() => setMoreOpen((open) => screenSharing ? true : !open)}><MoreVertical size={20} aria-hidden="true" /></button>
                     {moreOpen && <div ref={mobileMenuRef} className="call-preview-mobile-menu" style={{ left: `${-mobileMenuOffset}px` }} role="group" aria-label="More call options">
                       <button type="button" aria-label="Settings" onClick={() => { setMoreOpen(false); setSettingsOpen(true); }}><Settings2 size={17} aria-hidden="true" /><span>Settings</span></button>
-                      <button type="button" aria-label={screenSharing ? "Stop sharing" : "Screen Share"} onClick={() => setScreenSharing((sharing) => !sharing)}><Share2 size={17} aria-hidden="true" /><span>{screenSharing ? "Stop screen share" : "Screen Share"}</span></button>
-                      <button type="button" aria-label="Stovo Intelligence" onClick={() => { setMoreOpen(false); setIntelligenceOpen((open) => !open); }}><IconIntelligence size={17} /><span>Stovo Intelligence</span></button>
+                      <CallControlButton action="screen-share" label={screenSharing ? "Stop sharing" : "Screen Share"} state={screenSharing ? "active" : "idle"} onClick={() => setScreenSharing((sharing) => !sharing)}><span>{screenSharing ? "Stop sharing" : "Screen Share"}</span></CallControlButton>
+                      <MeetingIntelligencePopover isOpen={moreOpen} onClose={() => undefined} notesState="idle" onToggleNotes={() => undefined} recordingState="idle" recordingTimer="00:00" onToggleRecording={() => undefined} isCaptionsEnabled={captionsEnabled} onToggleCaptions={() => setCaptionsEnabled((enabled) => !enabled)} targetLanguage="en" onChangeTargetLanguage={() => undefined} isMobile inlineMenu />
                     </div>}
                   </div>
                   {endCallControl}
               </div>
             ) : (
-              <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}{settingsControl}<div className="call-ctrl-wrap call-preview-intelligence-anchor"><button type="button" className={`call-ctrl-btn${intelligenceOpen ? " is-active" : ""}`} aria-label="Stovo Intelligence" title="Stovo Intelligence" onClick={() => setIntelligenceOpen((open) => !open)}><IconIntelligence size={20} /></button><span>Intelligence</span></div>{screenShareControl}{endCallControl}</div>
+              <div className="call-preview-control-row">{microphoneControl}{speakerControl}{cameraControl}{settingsControl}<div className="call-ctrl-wrap call-preview-intelligence-anchor"><button type="button" className={`call-ctrl-btn${intelligenceOpen ? " is-active" : ""}`} aria-label="Stovo Intelligence" title="Stovo Intelligence" onClick={() => setIntelligenceOpen((open) => !open)}><IconIntelligence size={20} /></button></div>{screenShareControl}{endCallControl}</div>
             )}
           </div>
           <MeetingIntelligencePopover
-            isOpen={intelligenceOpen}
+            isOpen={!mobile && intelligenceOpen}
             onClose={() => setIntelligenceOpen(false)}
             notesState="idle"
             onToggleNotes={() => undefined}

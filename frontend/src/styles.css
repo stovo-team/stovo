@@ -25394,10 +25394,13 @@ button.chat-info-title-edit:active:not(:disabled) {
 .shared-call-controls .voice-dock-btn.is-muted,
 .shared-call-controls .mobile-active-ctrl-btn.muted,
 .shared-call-controls .guest-device-control > button:not(.active) {
-  background: rgba(220, 38, 38, .18);
-  border-color: rgba(220, 38, 38, .4);
-  color: #f87171;
+  background: var(--surface-raised, #292a2d);
+  border-color: var(--border-default, #41434a);
+  color: var(--text-secondary, #a1a1aa);
 }
+
+.shared-call-controls .call-ctrl-btn.is-muted:has(svg.lucide-volume-2),
+.shared-call-controls .mobile-active-ctrl-btn.muted:has(svg.lucide-volume-2) { color: var(--text-secondary, #a1a1aa); }
 
 .shared-call-controls .call-ctrl-btn.end-btn,
 .shared-call-controls .mobile-active-ctrl-btn.end,
@@ -25708,6 +25711,15 @@ button.chat-info-title-edit:active:not(:disabled) {
 .call-grid__tile.is-speaking .call-grid__participant-status,
 .mobile-active-speaking-status.is-speaking {
   color: #22c55e;
+}
+
+.call-grid__tile.is-speaking {
+  outline: 2px solid #22c55e;
+  outline-offset: -2px;
+}
+
+.call-grid__tile.is-speaking .call-grid__avatar-circle {
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, .2), 0 0 0 7px #22c55e;
 }
 
 .mobile-active-speaking-status {
@@ -30146,6 +30158,7 @@ button.checklist-add-item-btn:hover,
 
 .mobile-active-more-menu button {
   display: flex;
+  justify-content: flex-start;
   align-items: center;
   gap: 11px;
   min-height: 44px;
@@ -30157,6 +30170,31 @@ button.checklist-add-item-btn:hover,
   text-align: left;
   cursor: pointer;
 }
+
+.meeting-intel-popover--inline-menu {
+  position: static;
+  inset: auto;
+  width: auto;
+  max-width: none;
+  transform: none;
+  animation: none;
+  padding: 4px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.meeting-intel-popover--inline-menu .meeting-intel-content { padding: 0; display: grid; gap: 2px; }
+.meeting-intel-popover--inline-menu .meeting-intel-header { padding: 6px 10px 4px; border: 0; background: transparent; }
+.meeting-intel-popover--inline-menu .meeting-intel-title-row { gap: 7px; }
+.meeting-intel-popover--inline-menu .meeting-intel-logo { width: 16px; height: 16px; }
+.meeting-intel-popover--inline-menu .meeting-intel-name { color: var(--text-secondary); font-size: 11px; font-weight: 650; }
+.meeting-intel-popover--inline-menu .meeting-intel-card { padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; }
+.meeting-intel-popover--inline-menu .meeting-intel-card:hover { background: color-mix(in srgb, var(--accent-primary) 14%, transparent); }
+.meeting-intel-popover--inline-menu .meeting-intel-card-head { min-height: 30px; }
+.meeting-intel-popover--inline-menu .meeting-intel-card-icon { width: 20px; height: 20px; }
 
 .mobile-active-more-menu button:hover,
 .mobile-active-more-menu button:focus-visible {

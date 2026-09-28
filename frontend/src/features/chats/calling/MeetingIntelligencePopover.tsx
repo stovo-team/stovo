@@ -34,6 +34,7 @@ export type MeetingIntelligencePopoverProps = {
   onChangeTargetLanguage: (lang: string) => void;
   // Orientation / Viewport
   isMobile?: boolean;
+  inlineMenu?: boolean;
 };
 
 /** A transient, call-level confirmation for work that continues server-side. */
@@ -65,6 +66,7 @@ export function MeetingIntelligencePopover({
   targetLanguage,
   onChangeTargetLanguage,
   isMobile = false,
+  inlineMenu = false,
 }: MeetingIntelligencePopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
@@ -76,6 +78,7 @@ export function MeetingIntelligencePopover({
 
   useEffect(() => {
     if (!isOpen) return;
+    if (inlineMenu) return;
     const handleOutsideClick = (e: MouseEvent) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
         onClose();
@@ -96,7 +99,7 @@ export function MeetingIntelligencePopover({
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isLanguageMenuOpen, isOpen, onClose]);
+  }, [inlineMenu, isLanguageMenuOpen, isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -111,9 +114,9 @@ export function MeetingIntelligencePopover({
   return (
     <div
       ref={popoverRef}
-      className={`meeting-intel-popover ${isMobile ? "meeting-intel-popover--mobile" : ""}`}
-      role="dialog"
-      aria-label="Meeting Intelligence Controls"
+      className={`meeting-intel-popover ${isMobile ? "meeting-intel-popover--mobile" : ""}${inlineMenu ? " meeting-intel-popover--inline-menu" : ""}`}
+      role={inlineMenu ? "group" : "dialog"}
+      aria-label={inlineMenu ? "Meeting features" : "Meeting Intelligence Controls"}
     >
       {/* Header */}
       <div className="meeting-intel-header">

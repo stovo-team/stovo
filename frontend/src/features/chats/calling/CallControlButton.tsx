@@ -37,6 +37,7 @@ export function CallControlButton({
   state = "idle",
   iconSize = 20,
   toggle,
+  children,
   className = "",
   type = "button",
   ...buttonProps
@@ -53,6 +54,7 @@ export function CallControlButton({
       {...(isToggleAction ? { "aria-pressed": state === "active" } : {})}
     >
       <Icon aria-hidden="true" size={iconSize} />
+      {children}
     </button>
   );
 }

@@ -107,12 +107,12 @@ describe("MobileActiveScreen", () => {
     expect(container.querySelector("button[aria-label='Stop screen share']")).toBeNull();
     const moreBtn = container.querySelector("button[aria-label='More options']") as HTMLButtonElement;
     act(() => moreBtn.click());
-    const shareBtn = container.querySelector("[role='group'] button[aria-label='Share screen']") as HTMLButtonElement;
+    const shareBtn = container.querySelector("[role='group'] button[aria-label='Stop sharing']") as HTMLButtonElement;
     expect(shareBtn).not.toBeNull();
-    expect(shareBtn.textContent).toContain("Stop screen share");
+    expect(shareBtn.textContent).toContain("Stop sharing");
     act(() => shareBtn.click());
     expect(onToggleScreenShare).toHaveBeenCalledTimes(1);
-    expect(container.querySelector("button[aria-label='Stop screen share']")).toBeNull();
+    expect(container.querySelector("button[aria-label='Stop sharing']")).toBeNull();
   });
 
   it("shows a compact SVG Back beside Shrink during participant focus and restores the grid", () => {

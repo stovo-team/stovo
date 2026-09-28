@@ -230,9 +230,83 @@ describe("call UI preview interactions", () => {
     } else {
       const more = container.querySelector<HTMLButtonElement>('.call-preview-control-rows [aria-label="More options"]');
       act(() => more?.click());
-      clickMenuItem(container, "Stop screen share");
+      clickMenuItem(container, "Stop sharing");
     }
     expect(container.querySelector('[data-preview-screen-share="true"]')).toBeNull();
+  });
+
+  it("uses matching Share/Stop SVG control states on desktop and mobile through a complete toggle cycle", () => {
+    const rendered: Record<string, string> = {};
+    for (const viewport of ["Desktop", "Mobile"]) {
+      const container = mountPreview();
+      click(container, viewport);
+      let start: HTMLButtonElement | null;
+      if (viewport === "Mobile") {
+        click(container, "More options");
+        start = container.querySelector<HTMLButtonElement>('[role="group"][aria-label="More call options"] [aria-label="Screen Share"]');
+      } else {
+        start = container.querySelector<HTMLButtonElement>('.call-preview-control-row [aria-label="Share screen"]');
+      }
+      expect(start).not.toBeNull();
+      rendered[`${viewport}-share`] = start?.querySelector("svg")?.outerHTML ?? "";
+      act(() => start?.click());
+      expect(container.querySelector('[data-preview-screen-share="true"]')).not.toBeNull();
+      const stop = viewport === "Mobile"
+        ? container.querySelector<HTMLButtonElement>('[role="group"][aria-label="More call options"] [aria-label="Stop sharing"]')
+        : container.querySelector<HTMLButtonElement>('.call-preview-control-row [aria-label="Stop sharing"]');
+      expect(stop).not.toBeNull();
+      rendered[`${viewport}-stop`] = stop?.querySelector("svg")?.outerHTML ?? "";
+      act(() => stop?.click());
+      expect(container.querySelector('[data-preview-screen-share="true"]')).toBeNull();
+      const shareAgain = viewport === "Mobile"
+        ? container.querySelector<HTMLButtonElement>('[role="group"][aria-label="More call options"] [aria-label="Screen Share"]')
+        : container.querySelector<HTMLButtonElement>('.call-preview-control-row [aria-label="Share screen"]');
+      expect(shareAgain).not.toBeNull();
+      rendered[`${viewport}-share-again`] = shareAgain?.querySelector("svg")?.outerHTML ?? "";
+    }
+    expect(rendered["Desktop-share"]).toBe(rendered["Mobile-share"]);
+    expect(rendered["Desktop-stop"]).toBe(rendered["Mobile-stop"]);
+    expect(rendered["Desktop-share-again"]).toBe(rendered["Desktop-share"]);
+    expect(rendered["Mobile-share-again"]).toBe(rendered["Mobile-share"]);
+    expect(rendered["Desktop-stop"]).not.toBe(rendered["Desktop-share"]);
+  });
+
+  it("omits captions under More and desktop Stovo Intelligence controls", () => {
+    const container = mountPreview();
+    const more = container.querySelector<HTMLButtonElement>('.call-preview-control-rows [aria-label="More options"]');
+    expect(more?.nextElementSibling?.textContent?.trim()).not.toBe("More");
+    click(container, "Desktop");
+    const intelligence = container.querySelector<HTMLButtonElement>('.call-preview-control-row [aria-label="Stovo Intelligence"]');
+    expect(intelligence?.nextElementSibling?.textContent?.trim()).not.toBe("Intelligence");
+  });
+
+  it("shows all Stovo Intelligence actions directly inside More and lets them run without opening a nested panel", () => {
+    const container = mountPreview();
+    click(container, "Mobile");
+    click(container, "More options");
+    const menu = container.querySelector<HTMLElement>('[role="group"][aria-label="More call options"]');
+    expect(menu).not.toBeNull();
+    for (const label of ["Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+      expect(menu?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
+    }
+    expect(menu?.querySelector('[aria-label="Stovo Intelligence"]')).toBeNull();
+    const captionsToggle = menu?.querySelector<HTMLInputElement>('[aria-label="Toggle Live Captions"]');
+    expect(captionsToggle?.checked).toBe(false);
+    act(() => captionsToggle?.click());
+    expect(captionsToggle?.checked).toBe(true);
+    expect(container.querySelector('[role="group"][aria-label="More call options"]')).not.toBeNull();
+    expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
+  });
+
+  it("keeps all three Stovo Intelligence actions available from the desktop control", () => {
+    const container = mountPreview();
+    click(container, "Desktop");
+    click(container, "Stovo Intelligence");
+    const intelligence = container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]');
+    expect(intelligence).not.toBeNull();
+    for (const label of ["Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+      expect(intelligence?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
+    }
   });
 
   it.each([320, 360])("keeps mobile controls circular, fixed-size and equally spaced at %ipx", (width) => {
@@ -284,10 +358,10 @@ describe("call UI preview interactions", () => {
     act(() => more?.click());
     const menu = container.querySelector('[role="group"][aria-label="More call options"]');
     expect(menu).not.toBeNull();
-    for (const label of ["Settings", "Screen Share", "Stovo Intelligence"]) {
-      const action = Array.from(menu?.querySelectorAll<HTMLButtonElement>("button") ?? [])
-        .find((candidate) => candidate.textContent?.includes(label));
-      expect(action).toBeDefined();
+    for (const label of ["Settings", "Screen Share", "Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+      const action = menu?.querySelector<HTMLElement>(`[aria-label="${label}"]`)
+        ?? Array.from(menu?.querySelectorAll<HTMLButtonElement>("button") ?? []).find((candidate) => candidate.textContent?.includes(label));
+      expect(action, `expected mobile More action ${label}`).toBeDefined();
       expect(action?.getAttribute("role")).toBeNull();
       expect(action?.tabIndex).toBe(0);
     }
@@ -323,18 +397,16 @@ describe("call UI preview interactions", () => {
     expect(container.querySelector('[aria-label="Stop sharing"]')).not.toBeNull();
   });
 
-  it("opens the Stovo Intelligence popover when selected from the mobile More menu", () => {
+  it("shows the Stovo Intelligence actions directly in the mobile More menu", () => {
     const container = mountPreview();
     click(container, "Mobile");
     act(() => container.querySelector<HTMLButtonElement>('.call-preview-control-rows [aria-label="More options"]')?.click());
-    clickMenuItem(container, "Stovo Intelligence");
-
-    const intelligence = container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]');
-    expect(intelligence).not.toBeNull();
-    expect(intelligence?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
-    expect(intelligence?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
-    expect(intelligence?.querySelector('[aria-label="Toggle Live Captions"]')).not.toBeNull();
-    expect(container.querySelector('[role="group"][aria-label="More call options"]')).toBeNull();
+    const menu = container.querySelector('[role="group"][aria-label="More call options"]');
+    expect(menu?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Stovo Intelligence"]')).toBeNull();
+    expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
 
   it("anchors the mobile More menu to the left edge of its control and keeps it within the viewport", () => {

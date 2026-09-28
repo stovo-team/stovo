@@ -88,7 +88,7 @@ export function MobileActiveScreen({
   currentUserId?: string | null;
   socketRef?: React.RefObject<Socket | null>;
 }) {
-  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false); const [isLandscapeView, setIsLandscapeView] = useState(false);
+  const [isLandscapeView, setIsLandscapeView] = useState(false);
 
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
@@ -377,7 +377,7 @@ export function MobileActiveScreen({
               speakingUserIds={speakingUserIds}
               onFlipLocalCamera={() => void handleFlipCamera()}
               isFlippingCamera={isCameraFlipping}
-              mobileSingleRemote={callType === "video" && showRemoteVideo && !showPresentationGrid && gridRemoteMedia.length === 1}
+              mobileSingleRemote={callType === "video" && showRemoteVideo && !showPresentationGrid && gridRemoteMedia.length === 1 && isCameraEnabled && Boolean(localVideoStream?.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false)) && Boolean(gridRemoteMedia[0]?.hasVideo && gridRemoteMedia[0].stream.getVideoTracks().some((track) => track.readyState !== "ended" && track.enabled !== false))}
               isLocalPrimary={isSelfViewFullscreen}
               onToggleMobileStage={() => setIsSelfViewFullscreen((isFullscreen) => !isFullscreen)}
               isCallConnected={callPhase === "in-call"}
@@ -613,15 +613,13 @@ export function MobileActiveScreen({
           <MobileCallMoreMenu
             isSharing={isSharingLocalScreen}
             isLandscape={isLandscapeView}
-            isIntelligenceActive={recording?.isRecordingActive || transcription?.transcriptState === "recording"}
             onOpenSettings={onOpenSettings}
             onToggleScreenShare={onToggleScreenShare}
-            onToggleIntelligence={() => setIsIntelligenceOpen((open) => !open)}
           >
             {transcription && recording && liveCaptions && (
             <MeetingIntelligencePopover
-              isOpen={isIntelligenceOpen}
-              onClose={() => setIsIntelligenceOpen(false)}
+              isOpen={true}
+              onClose={() => undefined}
               notesState={transcription.transcriptState}
               onToggleNotes={() => {
                 if (transcription.transcriptState === "idle" || transcription.transcriptState === "failed") {
@@ -646,6 +644,7 @@ export function MobileActiveScreen({
               targetLanguage={liveCaptions.targetLanguage}
               onChangeTargetLanguage={liveCaptions.setTargetLanguage}
               isMobile={true}
+              inlineMenu
             />
             )}
           </MobileCallMoreMenu>

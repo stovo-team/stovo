@@ -191,9 +191,9 @@ describe("mobile call UI unification", () => {
 
     const menu = container.querySelector('[role="group"][aria-label="More call options"]');
     expect(menu).not.toBeNull();
-    for (const label of ["Settings", "Share screen", "Stovo Intelligence"]) {
-      const action = menu?.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
-      expect(action).not.toBeNull();
+    for (const label of ["Settings", "Share screen", "Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+      const action = menu?.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+      expect(action, `expected mobile More action ${label}`).not.toBeNull();
       expect(action?.getAttribute("role")).toBeNull();
       expect(action?.tabIndex).toBe(0);
     }
@@ -203,6 +203,61 @@ describe("mobile call UI unification", () => {
     act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(container.querySelector('[role="group"][aria-label="More call options"]')).toBeNull();
     expect(document.activeElement).toBe(more);
+  });
+
+  it("shows the three Stovo Intelligence actions directly in More and runs them without a nested Intelligence step", () => {
+    const container = renderScreen(baseProps);
+    act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
+    const menu = container.querySelector<HTMLElement>('[role="group"][aria-label="More call options"]');
+    expect(menu).not.toBeNull();
+    for (const label of ["Start AI Notes", "Start Recording", "Toggle Live Captions"]) {
+      expect(menu?.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
+    }
+    expect(menu?.querySelector('[aria-label="Stovo Intelligence"]')).toBeNull();
+    expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
+    const captionsToggle = menu?.querySelector<HTMLInputElement>('[aria-label="Toggle Live Captions"]');
+    expect(captionsToggle?.checked).toBe(false);
+    act(() => captionsToggle?.click());
+    expect(captionsToggle?.checked).toBe(true);
+    expect(container.querySelector('[role="group"][aria-label="More call options"]')).not.toBeNull();
+    expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
+  });
+
+  it.each([
+    { localCamera: false, remoteCamera: false },
+    { localCamera: true, remoteCamera: false },
+    { localCamera: false, remoteCamera: true },
+  ])("does not expose the two-person main-view switch unless both cameras are enabled ($localCamera/$remoteCamera)", ({ localCamera, remoteCamera }) => {
+    const localTrack = { readyState: "live", enabled: true, kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const remoteTrack = { readyState: "live", enabled: true, kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const localStream = { getVideoTracks: () => [localTrack], getTracks: () => [localTrack] } as unknown as MediaStream;
+    const remoteStream = { getVideoTracks: () => [remoteTrack], getTracks: () => [remoteTrack] } as unknown as MediaStream;
+    const container = renderScreen({
+      ...baseProps,
+      callType: "video",
+      isCameraEnabled: localCamera,
+      hasRemoteVideo: remoteCamera,
+      localVideoStream: localCamera ? localStream : null,
+      remoteVideoStream: remoteCamera ? remoteStream : null,
+    });
+    expect(container.querySelector(".call-grid--mobile-single")).toBeNull();
+    expect(container.querySelector(".call-grid__mobile-primary, .call-grid__mobile-pip")).toBeNull();
+  });
+
+  it("swaps the mobile two-person main view only when both local and remote cameras are enabled", () => {
+    const localTrack = { readyState: "live", enabled: true, kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const remoteTrack = { readyState: "live", enabled: true, kind: "video", addEventListener: vi.fn(), removeEventListener: vi.fn() };
+    const localStream = { getVideoTracks: () => [localTrack], getTracks: () => [localTrack] } as unknown as MediaStream;
+    const remoteStream = { getVideoTracks: () => [remoteTrack], getTracks: () => [remoteTrack] } as unknown as MediaStream;
+    const container = renderScreen({ ...baseProps, callType: "video", isCameraEnabled: true, hasRemoteVideo: true, localVideoStream: localStream, remoteVideoStream: remoteStream });
+    expect(container.querySelector(".call-grid--mobile-single")).not.toBeNull();
+    expect(container.querySelector<HTMLVideoElement>(".call-grid__tile--remote video")?.srcObject).toBe(remoteStream);
+    expect(container.querySelector<HTMLVideoElement>(".call-grid__tile--local video")?.srcObject).toBe(localStream);
+    act(() => container.querySelector<HTMLElement>(".call-grid__mobile-pip")?.click());
+    expect(container.querySelector(".call-grid__tile--local")?.classList.contains("call-grid__mobile-primary")).toBe(true);
+    expect(container.querySelector(".call-grid__tile--remote")?.classList.contains("call-grid__mobile-pip")).toBe(true);
+    expect(container.querySelector<HTMLVideoElement>(".call-grid__tile--local video")?.srcObject).toBe(localStream);
+    expect(container.querySelector<HTMLVideoElement>(".call-grid__tile--remote video")?.srcObject).toBe(remoteStream);
   });
 
   it("closes the lower More menu when the user clicks outside it", () => {
@@ -248,12 +303,14 @@ describe("mobile call UI unification", () => {
     expect(container.querySelector('[role="group"][aria-label="More call options"]')).toBeNull();
   });
 
-  it("opens the Meeting Intelligence popover from More", () => {
+  it("shows the Meeting Intelligence actions in More without a nested popover", () => {
     const container = renderScreen(baseProps);
     act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
-    act(() => container.querySelector<HTMLButtonElement>('[role="group"] button[aria-label="Stovo Intelligence"]')?.click());
-
-    expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).not.toBeNull();
+    const menu = container.querySelector('[role="group"][aria-label="More call options"]');
+    expect(menu?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();
+    expect(menu?.querySelector('[aria-label="Toggle Live Captions"]')).not.toBeNull();
+    expect(container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]')).toBeNull();
   });
 
   it("keeps the remote full-screen and local PiP swapped on one-to-one video calls", async () => {
@@ -544,11 +601,10 @@ describe("mobile call UI unification", () => {
     }
   });
 
-  it("shows AI Notes, Recording and Live Captions together in the Stovo Intelligence box", () => {
+  it("shows AI Notes, Recording and Live Captions together in the More menu", () => {
     const container = renderScreen(baseProps);
     act(() => container.querySelector<HTMLButtonElement>('.mobile-active-controls [aria-label="More options"]')?.click());
-    act(() => container.querySelector<HTMLButtonElement>('[role="group"] button[aria-label="Stovo Intelligence"]')?.click());
-    const intelligence = container.querySelector('[role="dialog"][aria-label="Meeting Intelligence Controls"]');
+    const intelligence = container.querySelector('[role="group"][aria-label="Meeting features"]');
     expect(intelligence).not.toBeNull();
     expect(intelligence?.querySelector('[aria-label="Start AI Notes"]')).not.toBeNull();
     expect(intelligence?.querySelector('[aria-label="Start Recording"]')).not.toBeNull();

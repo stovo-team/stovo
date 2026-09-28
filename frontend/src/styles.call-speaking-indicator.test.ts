@@ -25,16 +25,18 @@ describe("call speaking-indicator CSS contract", () => {
     expect(sharedRules).toContain("gap: 12px");
   });
 
-  it("keeps the green speaking status while removing active tile outlines", () => {
+  it("keeps voice rows clean and restores the green outline and avatar halo on call tiles", () => {
     const voiceCard = rulesFor(".voice-participant-card.is-speaking");
     const voiceList = rulesFor(".voice-participant-list-row.is-speaking");
     const callTile = rulesFor(".call-grid__tile.is-speaking");
     const status = styles.match(/\.call-grid__tile\.is-speaking \.call-grid__participant-status,[^{]*\{([^{}]*)\}/)?.[1] ?? "";
     const voiceStatus = styles.match(/\.voice-participant-card\.is-speaking \.voice-participant-state,[^{]*\{([^{}]*)\}/)?.[1] ?? "";
 
-    for (const activeTile of [voiceCard, voiceList, callTile]) {
+    for (const activeTile of [voiceCard, voiceList]) {
       expect(activeTile).not.toMatch(/(?:border|outline|box-shadow|animation)\s*:/);
     }
+    expect(callTile).toMatch(/outline:\s*2px solid #22c55e/);
+    expect(rulesFor(".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/box-shadow:\s*0 0 0 4px rgba\(34, 197, 94, .2\), 0 0 0 7px #22c55e/);
     expect(status).toContain("#22c55e");
     expect(voiceStatus).toContain("#22c55e");
   });

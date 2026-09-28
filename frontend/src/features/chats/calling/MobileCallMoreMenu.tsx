@@ -1,22 +1,18 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { MoreVertical, Settings2, Share2 } from "lucide-react";
-import IconIntelligence from "../../../components/icons/IconIntelligence";
+import { MoreVertical, Settings2 } from "lucide-react";
+import { CallControlButton } from "./CallControlButton";
 
 export function MobileCallMoreMenu({
   isSharing,
   isLandscape = false,
-  isIntelligenceActive = false,
   onOpenSettings,
   onToggleScreenShare,
-  onToggleIntelligence,
   children,
 }: {
   isSharing: boolean;
   isLandscape?: boolean;
-  isIntelligenceActive?: boolean;
   onOpenSettings?: () => void;
   onToggleScreenShare: () => void;
-  onToggleIntelligence: () => void;
   children?: ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -72,7 +68,7 @@ export function MobileCallMoreMenu({
       <button
         ref={triggerRef}
         type="button"
-        className={`mobile-active-ctrl-btn${isOpen || isIntelligenceActive ? " active" : ""}`}
+        className={`mobile-active-ctrl-btn${isOpen ? " active" : ""}`}
         aria-label="More options"
         data-shape="circle"
         data-fixed-size="true"
@@ -81,21 +77,15 @@ export function MobileCallMoreMenu({
       >
         <MoreVertical size={20} aria-hidden="true" />
       </button>
-      <span className="mobile-active-ctrl-lbl">More</span>
       {isOpen && (
         <div ref={menuRef} className="mobile-active-more-menu" style={{ left: `${-menuOffset}px` }} role="group" aria-label="More call options">
           <button type="button" aria-label="Settings" onClick={() => { setIsOpen(false); onOpenSettings?.(); }}>
             <Settings2 size={17} aria-hidden="true" /><span>Settings</span>
           </button>
-          <button type="button" aria-label="Share screen" onClick={() => { setIsOpen(false); onToggleScreenShare(); }}>
-            <Share2 size={17} aria-hidden="true" /><span>{isSharing ? "Stop screen share" : "Share screen"}</span>
-          </button>
-          <button type="button" aria-label="Stovo Intelligence" onClick={() => { setIsOpen(false); onToggleIntelligence(); }}>
-            <IconIntelligence size={17} /><span>Stovo Intelligence</span>
-          </button>
+          <CallControlButton action="screen-share" label={isSharing ? "Stop sharing" : "Share screen"} state={isSharing ? "active" : "idle"} onClick={() => { setIsOpen(false); onToggleScreenShare(); }}><span>{isSharing ? "Stop sharing" : "Share screen"}</span></CallControlButton>
+          {children}
         </div>
       )}
-      {children}
     </div>
   );
 }

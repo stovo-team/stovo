@@ -60,6 +60,32 @@ describe("shared call control button", () => {
     expect(onClick).toHaveBeenCalledOnce();
   });
 
+  it("keeps disabled microphone and speaker controls neutral while the speaker icon reflects its state", () => {
+    const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+    const micMuted = renderControl({ action: "microphone", label: "Unmute", state: "muted", onClick: vi.fn() });
+    const speakerOn = renderControl({ action: "audio-output", label: "Mute speaker", state: "active", onClick: vi.fn(), toggle: true });
+    const speakerOff = renderControl({ action: "audio-output", label: "Unmute speaker", state: "muted", onClick: vi.fn(), toggle: true });
+    const mutedMicButton = micMuted.querySelector("button")!;
+    const speakerOnButton = speakerOn.querySelector("button")!;
+    const speakerOffButton = speakerOff.querySelector("button")!;
+    const mutedRules = css.match(/\.shared-call-controls\s+\.call-ctrl-btn\.is-muted,[\s\S]*?\{([^}]*)\}/)?.[1] ?? "";
+    const activeRules = css.match(/\.shared-call-controls\s+\.call-ctrl-btn\.is-active,[\s\S]*?\{([^}]*)\}/)?.[1] ?? "";
+    const mutedColor = mutedRules.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i)?.[1]?.trim();
+    const activeColor = activeRules.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i)?.[1]?.trim();
+
+    expect(mutedMicButton.classList.contains("is-muted")).toBe(true);
+    expect(mutedRules).toMatch(/background(?:-color)?\s*:/i);
+    expect(mutedRules).not.toMatch(/(?:220\s*,\s*38\s*,\s*38|#dc2626|#f87171|#ff0000)/i);
+    expect(speakerOnButton.getAttribute("aria-pressed")).toBe("true");
+    expect(speakerOffButton.getAttribute("aria-pressed")).toBe("false");
+    expect(speakerOnButton.querySelector("svg")?.outerHTML).toBe(speakerOffButton.querySelector("svg")?.outerHTML);
+    expect(speakerOnButton.classList.contains("is-active")).toBe(true);
+    expect(speakerOffButton.classList.contains("is-muted")).toBe(true);
+    expect(activeColor).toBeTruthy();
+    expect(mutedColor).toBeTruthy();
+    expect(mutedColor).not.toBe(activeColor);
+  });
+
   it("switches camera and screen-share icons with their states", () => {
     const cameraOn = renderControl({ action: "camera", label: "Turn off camera", state: "active", onClick: vi.fn() });
     const cameraOff = renderControl({ action: "camera", label: "Turn on camera", state: "muted", onClick: vi.fn() });

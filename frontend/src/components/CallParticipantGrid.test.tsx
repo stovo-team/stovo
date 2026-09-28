@@ -101,16 +101,10 @@ describe("shared call participant presentation", () => {
     expect(tile?.querySelector(".speaking-wave-badge")).not.toBeNull();
   });
 
-  it("keeps speaking status and wave indicators without drawing active tile/avatar/video outlines", () => {
+  it("adds the speaking halo around avatars and an outline around speaking tiles", () => {
     const css = readFileSync("src/styles.css", "utf8");
-    for (const selector of [
-      ".call-grid__tile.is-speaking",
-      ".shared-call-stage .call-grid__tile.is-speaking",
-      ".voice-speaking-ring",
-      ".voice-video-speaking-border",
-    ]) {
-      expect(styleRules(css, selector)).not.toMatch(/(?:border|outline|box-shadow|animation)\s*:/);
-    }
+    expect(styleRules(css, ".call-grid__tile.is-speaking")).toMatch(/(?:border|outline|box-shadow)\s*:/);
+    expect(styleRules(css, ".call-grid__tile.is-speaking .call-grid__avatar-circle")).toMatch(/(?:border|outline|box-shadow)\s*:/);
 
     const container = renderGrid({
       localStream: null,
@@ -122,6 +116,35 @@ describe("shared call participant presentation", () => {
     const speakingTile = container.querySelector(".call-grid__tile--remote.is-speaking");
     expect(speakingTile?.querySelector('[role="status"]')?.textContent).toBe("Speaking");
     expect(speakingTile?.querySelector(".speaking-wave-badge")).not.toBeNull();
+    expect(speakingTile?.querySelector(".call-grid__avatar-circle")).not.toBeNull();
+  });
+
+  it("does not show the speaking halo while connected but quiet or before the call connects", () => {
+    const connected = renderGrid({
+      localStream: null,
+      localUserLabel: "You",
+      remoteMedia: [{ userId: "quiet-peer", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+      callType: "audio",
+      speakingUserIds: [],
+      isCallConnected: true,
+    });
+    const connectedTile = connected.querySelector(".call-grid__tile--remote");
+    expect(connectedTile?.querySelector('[role="status"]')?.textContent).toBe("Connected");
+    expect(connectedTile?.classList.contains("is-speaking")).toBe(false);
+    expect(connectedTile?.querySelector(".speaking-wave-badge")).toBeNull();
+
+    const preCall = renderGrid({
+      localStream: null,
+      localUserLabel: "You",
+      remoteMedia: [{ userId: "joining-peer", stream: emptyStream, screenStream: null, hasVideo: false, hasAudio: true, hasScreenShare: false }],
+      callType: "audio",
+      speakingUserIds: ["joining-peer"],
+      isCallConnected: false,
+    });
+    const preCallTile = preCall.querySelector(".call-grid__tile--remote");
+    expect(preCallTile?.classList.contains("is-speaking")).toBe(false);
+    expect(preCallTile?.querySelector("[role=status]")).toBeNull();
+    expect(preCallTile?.querySelector(".speaking-wave-badge")).toBeNull();
   });
 
   it("does not show the local participant as speaking while the microphone is muted", () => {
@@ -136,6 +159,7 @@ describe("shared call participant presentation", () => {
     const localTile = container.querySelector(".call-grid__tile--local");
     expect(localTile?.classList.contains("is-speaking")).toBe(false);
     expect(localTile?.querySelector('[role="status"]')?.textContent).toBe("Muted");
+    expect(localTile?.querySelector(".speaking-wave-badge")).toBeNull();
   });
 
   it("does not show the only remote participant as speaking through the peer fallback when muted", () => {
