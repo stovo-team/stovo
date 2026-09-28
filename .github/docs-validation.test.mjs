@@ -54,6 +54,92 @@ test('README links to the maintained deployment and contributor guides', () => {
   }
 });
 
+test('README opens with the approved corporate positioning and tagline', () => {
+  const readme = read('README.md');
+  const opening = readme.slice(0, readme.search(/^## /m));
+  assert.match(opening, /Self-hosted corporate messenger/i);
+  assert.match(opening, /Your company's private workspace\. On your terms\./);
+  assert.match(opening, /^>\s*Your company's private workspace\. On your terms\./m, 'tagline should appear as the short lead line');
+});
+
+test('README has the required product, deployment, development, status, and docs sections', () => {
+  const readme = read('README.md');
+  const headings = markdownHeadings(readme);
+  for (const heading of [
+    'Product at a glance',
+    'What teams can do',
+    'Designed for your infrastructure',
+    'Architecture',
+    'Get started',
+    'Choose your deployment',
+    'Development',
+    'Project status',
+    'Documentation',
+  ]) assert.ok(headings.has(slugHeading(heading)), `missing README section: ${heading}`);
+
+  const statusStart = readme.search(/^## Project status\s*$/m);
+  const statusEnd = readme.slice(statusStart + 1).search(/^## /m);
+  const status = statusStart >= 0 ? readme.slice(statusStart, statusEnd >= 0 ? statusStart + 1 + statusEnd : undefined) : '';
+  assert.match(status, /license.{0,40}pending|pending.{0,40}license/i, 'status must clearly say that the license is pending');
+});
+
+test('README architecture includes a connected Mermaid service flow with verified services', () => {
+  const readme = read('README.md');
+  const mermaidBlocks = [...readme.matchAll(/```mermaid\s*\n([\s\S]*?)```/gi)].map((match) => match[1]);
+  assert.ok(mermaidBlocks.length > 0, 'README must include a fenced Mermaid diagram');
+  const architecture = mermaidBlocks.find((block) => /^\s*(?:flowchart|graph)\s+/im.test(block));
+  assert.ok(architecture, 'Mermaid architecture must declare a flowchart or graph');
+  for (const [name, pattern] of [
+    ['client or browser', /client|browser/i],
+    ['Caddy', /\bCaddy\b/i],
+    ['React frontend', /React/i],
+    ['Go backend', /\bGo\b/i],
+    ['PostgreSQL', /PostgreSQL|Postgres/i],
+    ['Redis', /\bRedis\b/i],
+    ['object storage', /S3|MinIO|object storage/i],
+    ['LiveKit', /LiveKit/i],
+    ['Coturn', /Coturn/i],
+  ]) assert.match(architecture, pattern, `architecture flow must identify ${name}`);
+  assert.ok((architecture.match(/-->|-\.->|==>/g) || []).length >= 6, 'architecture flow must show service connections');
+
+  const requiredEdges = [
+    ['Team', 'Caddy'],
+    ['Caddy', 'Frontend'],
+    ['Caddy', 'Backend'],
+    ['Backend', 'Postgres'],
+    ['Backend', 'Cache'],
+    ['Backend', 'Jobs'],
+    ['Backend', 'Objects'],
+    ['Team', 'LiveKit'],
+    ['Team', 'Coturn'],
+  ];
+  for (const [from, to] of requiredEdges) {
+    // Mermaid's labeled dotted arrows use `-. label .->`, so match the source
+    // arrow marker while preserving direction instead of requiring one spelling.
+    const edge = new RegExp(`\\b${from}\\b[^\\n]*?(?:-->|-\\.|==>)[^\\n]*?\\b${to}\\b`);
+    assert.match(architecture, edge, `architecture must show ${from} to ${to}`);
+  }
+
+  const compose = read('docker-compose.yml').toLowerCase();
+  for (const service of ['caddy', 'frontend', 'backend-blue', 'postgres', 'redis', 'minio', 'livekit', 'coturn']) {
+    assert.match(compose, new RegExp(`^  ${service}:`, 'm'), `diagram service name ${service} must match Compose`);
+  }
+});
+
+test('README public call setup documents client-reachable LIVEKIT_URL and rejects localhost defaults', () => {
+  const readme = read('README.md');
+  const start = readme.search(/^## Get started\s*$/m);
+  assert.ok(start >= 0, 'Get started section is required');
+  const remainder = readme.slice(start);
+  const nextSection = remainder.slice(1).search(/^## /m);
+  const setup = remainder.slice(0, nextSection >= 0 ? nextSection + 1 : undefined);
+  const livekitAt = setup.indexOf('LIVEKIT_URL');
+  assert.ok(livekitAt >= 0, 'public call setup must name LIVEKIT_URL');
+  const context = setup.slice(Math.max(0, livekitAt - 220), livekitAt + 360);
+  assert.match(context, /LIVEKIT_URL[\s\S]{0,120}wss:\/\/[\s\S]{0,80}endpoint reachable by those clients/i, 'LIVEKIT_URL must use a wss endpoint reachable by remote clients');
+  assert.match(context, /ws:\/\/localhost:7880[\s\S]{0,120}only works for a local client and will fail for users connecting from another device/i, 'README must explicitly say the localhost sample fails for remote clients');
+});
+
 test('README follows the production Compose topology and encryption key format', () => {
   const readme = read('README.md');
   const compose = read('docker-compose.yml');

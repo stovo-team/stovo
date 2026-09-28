@@ -1,16 +1,127 @@
-# Stovo
+<div align="center">
+  <img src="frontend/public/stovo-brain.png" alt="Stovo mark" width="112" />
+</div>
 
-Stovo is a self-hosted communication and collaboration app for families and other trusted groups. It brings messaging, voice and video calls, private file sharing, shared plans, checklists, collaborative canvas, notifications, and administration into one private instance.
+<h1 align="center">Stovo</h1>
+
+<p align="center"><strong>Self-hosted corporate messenger</strong></p>
+
+> Your company's private workspace. On your terms.
+
+<p align="center">
+  Messaging, meetings, files, and team coordination — on infrastructure you control.
+</p>
+
+<p align="center">
+  <a href="https://stovo.ru"><img alt="Website" src="https://img.shields.io/badge/website-stovo.ru-ff7a18?style=for-the-badge"></a>
+  <img alt="Self-hosted" src="https://img.shields.io/badge/deploy-self--hosted-222222?style=for-the-badge">
+  <img alt="Go backend" src="https://img.shields.io/badge/backend-Go-00ADD8?style=for-the-badge&logo=go&logoColor=white">
+  <img alt="React and TypeScript frontend" src="https://img.shields.io/badge/frontend-React%20%2B%20TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white">
+  <a href="https://github.com/stovo-team/stovo-messenger/actions/workflows/docs-validation.yml"><img alt="Documentation and deployment validation" src="https://img.shields.io/github/actions/workflow/status/stovo-team/stovo-messenger/docs-validation.yml?branch=master&label=docs%20%26%20deployment&style=for-the-badge"></a>
+</p>
+
+<p align="center">
+  <a href="#get-started">Get started</a> ·
+  <a href="#what-teams-can-do">Explore features</a> ·
+  <a href="docs/README.md">Read the docs</a> ·
+  <a href="https://stovo.ru">Visit stovo.ru</a>
+</p>
+
+---
+
+## Product at a glance
+
+Stovo is a **self-hosted corporate messenger and shared workspace** for teams that want everyday communication and coordination in one place, while choosing where the application and its data run.
+
+Use it for the conversations that keep work moving, the calls that unblock decisions, and the plans and files that teams need to find again later. Deploy one Stovo instance for your organization and manage its application, database, storage, and backups on infrastructure you operate.
+
+| 💬 Communicate | 🗂️ Coordinate | 🎙️ Meet |
+| --- | --- | --- |
+| Direct and group chats, message search, replies, reactions, attachments, scheduled messages, and reminders. | Shared plans, checklists, polls, and collaborative Canvas documents alongside conversations. | Voice and video calls, guest meeting links, call history, live captions, and optional AI call transcription. |
+
+> Stovo can also work for families and other trusted groups, but its primary positioning is a corporate team workspace.
+
+## What teams can do
+
+### Keep conversations useful
+
+- Organize direct and group conversations around the people and projects that need them.
+- Find previous messages, reply in context, react, and share files without losing the conversation thread.
+- Schedule messages and reminders so follow-ups arrive when they are useful.
+- Use real-time updates to keep the web client in sync with chat activity.
+
+### Move from chat to shared work
+
+- Put plans, checklists, and polls in the context of team conversations.
+- Create collaborative Canvas documents for information the team needs to maintain together.
+- Share files and revisit shared content from the relevant chat.
+
+### Meet without switching tools
+
+- Start voice or video calls from conversations, including group calls.
+- Invite guests with meeting links where enabled by the instance administrator.
+- Use LiveKit and Coturn for media and network relay when configured by the operator.
+- Enable call transcription features with an external provider when configured; AI transcription is optional.
+
+## Designed for your infrastructure
+
+Stovo is self-hosted: your team can run the application in an environment your organization manages. That gives operators control over deployment choices, service credentials, network exposure, storage, and backup procedures.
+
+- **Your deployment:** run the bundled Docker Compose stack or use the repository's Helm chart with external services.
+- **Your data services:** the application uses PostgreSQL, Redis, and S3-compatible object storage; you choose bundled or external services where supported by the deployment.
+- **Your secrets:** keep database credentials, tokens, and the message-encryption key in protected environment or secret-manager configuration.
+- **Your operations:** configure DNS, TLS, user access, retention, monitoring, and backups for your environment.
+
+Message encryption behavior depends on the configured protocol. Self-hosting does not by itself mean end-to-end encryption. Protect `MESSAGE_ENCRYPTION_KEY` as critical data: it must be a Base64 encoding of exactly 32 random bytes, and losing it can make encrypted message data unreadable. See the [security policy](SECURITY.md) and the deployment guides before production use.
+
+## Architecture
+
+The backend is one Go modular monolith. The web client is a React and TypeScript application served through Caddy. Supporting services are separated by role: PostgreSQL stores relational state, Redis handles cache/presence and worker streams, and S3-compatible storage holds uploaded objects. LiveKit and Coturn support calls; Groq can be configured for optional transcription.
+
+```mermaid
+flowchart LR
+    Team["Team member<br/>Browser or mobile app"] -->|HTTPS| Caddy["Caddy<br/>TLS and routing"]
+    Caddy -->|Web app| Frontend["React + TypeScript<br/>frontend"]
+    Caddy -->|HTTP and Socket.IO| Backend["Go modular monolith<br/>backend-blue"]
+    Backend --> Postgres[("PostgreSQL<br/>application data")]
+    Backend --> Cache[("Redis<br/>cache and presence")]
+    Backend --> Jobs[("Redis Streams<br/>redis-jobs")]
+    Backend --> Objects[("S3-compatible object storage<br/>MinIO in Compose")]
+    Team -. "voice and video" .-> LiveKit["LiveKit<br/>media server"]
+    Team -. "network relay when needed" .-> Coturn["Coturn<br/>STUN/TURN"]
+    Backend -. "optional transcription" .-> Groq["Groq API"]
+```
+
+The chart and Compose stack do not make every supporting service mandatory for every deployment. For example, the Kubernetes chart expects database, Redis, object storage, and optional media services to be operated separately. See [the architecture map](docs/architecture/subsystems.md) for code ownership and [deployment guides](docs/README.md) for the exact service contracts.
 
 ## Get started
 
-The quickest supported deployment path is Docker Compose on a Linux host. You need Docker Engine with the Compose plugin, a domain pointed at the host, and TCP ports 80 and 443 reachable. For calls through TURN, UDP 3478 and UDP 49160–49200 must also be reachable. See the [Compose self-hosting guide](docs/self-hosting/docker-compose.md) before exposing an instance to the internet.
+The quickest documented path is the production Docker Compose deployment on a Linux host. It builds the backend and frontend locally and starts the application with PostgreSQL, Redis Streams, MinIO, Caddy, and supporting services. A public domain is needed for Caddy to provision HTTPS.
+
+### What you need
+
+- Docker Engine and Docker Compose plugin **2.24.4 or newer**.
+- A domain with DNS pointing to the host; TCP ports 80 and 443 available for the web entry point.
+- For public calls through TURN, UDP 3478 and UDP 49160–49200 available and a correct public IP/hostname configuration.
+- Disk space and backups for the database, uploaded objects, and encryption key.
+
+### Prepare configuration
+
+From the repository root, copy the sample environment file:
 
 ```sh
 cp .env.example .env
 ```
 
-Edit `.env` before starting: set the public domain and matching application URLs, replace every example credential, generate `MESSAGE_ENCRYPTION_KEY` as 32 random bytes encoded in base64 (`openssl rand -base64 32`), and set the public IP and TURN hostname for a public server. Keep `.env` private.
+Edit `.env` before starting. Set your public hostname and matching application URLs, replace example credentials, and configure `PUBLIC_IP` and `TURN_HOST` when enabling public calls. Generate a fresh 32-byte message-encryption key encoded as Base64:
+
+```sh
+openssl rand -base64 32
+```
+
+Copy the generated value into `MESSAGE_ENCRYPTION_KEY` in `.env`. Never commit `.env` or paste real credentials into issues, chat, or logs. For calls from remote browsers, set `LIVEKIT_URL` to a `wss://` endpoint reachable by those clients; the sample `ws://localhost:7880` only works for a local client and will fail for users connecting from another device. Use a TLS-enabled endpoint or reverse proxy in production, and follow the [Compose guide](docs/self-hosting/docker-compose.md) for media ports and network configuration.
+
+### Start Stovo
 
 ```sh
 docker compose --profile disabled --env-file .env config --quiet
@@ -18,26 +129,64 @@ docker compose --profile disabled --env-file .env up -d --build
 docker compose ps
 ```
 
-Open `https://<APP_DOMAIN>` and complete the one-time initial owner setup. Compose runs the `backend-migrate` one-shot service before the `backend-blue` application service. The production topology uses `redis-jobs` for durable worker streams. The separate `redis` cache/presence service is in Compose's `disabled` profile, so the command above explicitly enables it; for an external cache Redis, configure `REDIS_URL` instead. Caddy publishes ports 80 and 443. The backend and frontend are internal services and do not publish host ports.
+Open `https://<APP_DOMAIN>` and complete the initial owner setup. Registration becomes invite-based after the first owner is created.
 
-## Deployment guides
+The `disabled` profile is enabled here to start the bundled cache/presence Redis service. The durable worker stream service is separate (`redis-jobs`). If you use an external cache Redis, set `REDIS_URL` accordingly. Caddy publishes the web ports; backend, frontend, database, and Redis service ports are internal to the Compose network.
 
-- [Documentation index](docs/README.md) — guides, subsystem map, and project references.
-- [Docker Compose self-hosting](docs/self-hosting/docker-compose.md) — configuration, external PostgreSQL/S3, operations, upgrades, backup and restore, and troubleshooting.
-- [Kubernetes and Helm](docs/self-hosting/kubernetes.md) — chart installation, secrets, storage, ingress, media networking, upgrades, and chart validation.
-- [Backend and frontend subsystem map](docs/architecture/subsystems.md) — what each major package and frontend feature owns.
-- [Contributing](CONTRIBUTING.md) · [Security policy](SECURITY.md) · [Issue templates](.github/ISSUE_TEMPLATE/)
+For external PostgreSQL or object storage, service ports, upgrades, backup/restore, and troubleshooting, use the full [Docker Compose guide](docs/self-hosting/docker-compose.md).
 
-## Architecture at a glance
+## Choose your deployment
 
-The backend is a Go modular monolith with HTTP and Socket.IO transports, PostgreSQL persistence, Redis for cache/presence and a separate Redis Streams worker outbox, and S3-compatible object storage. The web client is a React and TypeScript single-page app served behind Caddy. LiveKit provides SFU media for group calls; Coturn provides STUN/TURN relay. Optional AI transcription uses the configured Groq API.
+| Option | Best for | What it provides | Guide |
+| --- | --- | --- | --- |
+| **Docker Compose** | A single host and the fastest self-hosted start. | Builds the app and can run PostgreSQL, Redis Streams, MinIO, Caddy, LiveKit, Coturn, and supporting services together. | [Compose deployment](docs/self-hosting/docker-compose.md) |
+| **Kubernetes + Helm** | Teams operating an existing cluster. | Backend and frontend workloads, Services, migration Job, optional Ingress, and uploads PVC. Database, Redis, object storage, notifications, and media services are external. | [Kubernetes deployment](docs/self-hosting/kubernetes.md) |
 
-See the [subsystem map](docs/architecture/subsystems.md) for package ownership and [self-hosting documentation](docs/README.md) for supported deployment and operating procedures.
+The chart requires you to build or obtain backend and frontend images and push them to a registry accessible by your cluster. It does not package PostgreSQL, Redis, MinIO/S3, LiveKit, or Coturn. The Compose and Helm guides explain the dependencies, configuration, data persistence, and upgrade model for each path.
 
 ## Development
 
-- Backend: Go `1.25.5`; see [backend/Makefile](backend/Makefile) for available development and test targets.
-- Frontend: Node.js `22` as pinned by [frontend/Dockerfile](frontend/Dockerfile); run `npm ci` and `npm run` from `frontend/` to see package scripts.
-- Local development stack: `docker compose -f docker-compose.dev.yml up -d --build`.
+Stovo is developed as a Go backend and a React/TypeScript web client. The production backend is one application, not a collection of separately deployed feature services.
 
-See [Contributing](CONTRIBUTING.md) for the contribution workflow. This repository does not yet state a software license; do not assume reuse or redistribution rights from the presence of source code.
+```sh
+# Start the local development stack
+docker compose -f docker-compose.dev.yml up -d --build
+
+# Backend tests
+cd backend
+go test ./...
+
+# Frontend checks
+cd ../frontend
+npm ci
+npm test
+npm run lint
+npm run build
+```
+
+Some backend integration tests need disposable PostgreSQL and Redis services. E2E tests need a running test instance. See [CONTRIBUTING.md](CONTRIBUTING.md) for integration-test environment variables, E2E setup, deployment validation, and pull-request expectations.
+
+## Project status
+
+Stovo is under active development. Features, configuration, and deployment contracts can change between revisions; review the guides and release notes for the version you deploy. Resource values in the Helm chart are starting estimates, not benchmark-backed capacity guarantees.
+
+**License pending:** the project has not selected a software license yet. Do not assume that viewing the public source grants rights to use, modify, or redistribute it.
+
+## Documentation
+
+| Guide | What it covers |
+| --- | --- |
+| [Documentation index](docs/README.md) | Entry point to the maintained documentation. |
+| [Docker Compose self-hosting](docs/self-hosting/docker-compose.md) | Installation, external services, network exposure, backups, upgrades, and troubleshooting. |
+| [Kubernetes and Helm](docs/self-hosting/kubernetes.md) | Chart values, Secret references, storage, ingress, media networking, resource estimates, and upgrades. |
+| [Subsystem map](docs/architecture/subsystems.md) | Backend package boundaries, frontend areas, transports, and infrastructure. |
+| [Contributing](CONTRIBUTING.md) | Development workflow and pull-request guidance. |
+| [Security policy](SECURITY.md) | Private vulnerability reporting and deployment security practices. |
+| [Issue templates](.github/ISSUE_TEMPLATE/) | Structured bug reports and feature requests. |
+
+---
+
+<p align="center">
+  <strong>Bring your team. Choose your infrastructure. Make the workspace yours.</strong><br>
+  <a href="https://stovo.ru">stovo.ru</a> · <a href="docs/README.md">Documentation</a> · <a href="CONTRIBUTING.md">Contribute</a>
+</p>
