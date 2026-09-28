@@ -1,0 +1,63 @@
+name: Documentation and deployment validation
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'docs/**'
+      - 'charts/stovo/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/docs-validation.test.mjs'
+      - '.github/workflows/docs-validation.yml'
+      - 'docker-compose*.yml'
+      - '.env.example'
+  push:
+    branches: [master]
+    paths:
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'docs/**'
+      - 'charts/stovo/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/docs-validation.test.mjs'
+      - '.github/workflows/docs-validation.yml'
+      - 'docker-compose*.yml'
+      - '.env.example'
+
+jobs:
+  docs-and-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: azure/setup-helm@v5
+        with:
+          version: v3.18.4
+      - name: Validate docs, Compose, and Helm chart
+        run: node --test .github/docs-validation.test.mjs
+      - name: Validate rendered Helm manifests against Kubernetes 1.30 schemas
+        shell: bash
+        run: |
+          set -o pipefail
+          helm template stovo charts/stovo \
+            --set backend.image.repository=registry.example.test/stovo/backend \
+            --set backend.image.tag=v1.2.3 \
+            --set frontend.image.repository=registry.example.test/stovo/frontend \
+            --set frontend.image.tag=v1.2.3 \
+            | docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -kubernetes-version 1.30.0 -
+          helm template stovo charts/stovo \
+            --set app.domain=chat.example.test \
+            --set backend.image.repository=registry.example.test/stovo/backend \
+            --set backend.image.tag=release-42 \
+            --set frontend.image.repository=registry.example.test/stovo/frontend \
+            --set frontend.image.tag=release-42 \
+            --set backend.resources.requests.memory=768Mi \
+            --set uploads.persistence.size=37Gi \
+            --set service.backend.port=18000 \
+            --set existingSecret=stovo-test-secret \
+            | docker run --rm -i ghcr.io/yannh/kubeconform:v0.6.7 -strict -summary -kubernetes-version 1.30.0 -
