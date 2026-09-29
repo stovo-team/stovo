@@ -106,7 +106,7 @@ func (s *Server) acceptInviteWithPasskey(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var familyChatID string
-	familyChatID, err := s.authMethods.FamilyChatID(r.Context(), family.ID)
+	familyChatID, err = s.authMethods.FamilyChatID(r.Context(), family.ID)
 	if err != nil {
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not load family chat")
 		return
