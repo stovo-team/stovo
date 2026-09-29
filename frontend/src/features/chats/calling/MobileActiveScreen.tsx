@@ -10,7 +10,7 @@ import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { useTranscription } from "./useTranscription";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
-import { MeetingBackgroundToast, MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 
 export function MobileActiveScreen({
   peerName,
@@ -84,7 +84,6 @@ export function MobileActiveScreen({
   socketRef?: React.RefObject<Socket | null>;
 }) {
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
-  const [backgroundToastMessage, setBackgroundToastMessage] = useState<string | null>(null);
 
   const transcription = useTranscription({
     accessToken: accessToken ?? null,
@@ -302,7 +301,6 @@ export function MobileActiveScreen({
       className={`mobile-active-screen${showAnyVideo ? " mobile-active-screen--video" : ""}`}
       onPointerDown={toggleControls}
     >
-      <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />
       {/* Top right shrink button */}
       <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}>
         <button
@@ -707,8 +705,6 @@ export function MobileActiveScreen({
                 if (transcription.transcriptState === "idle" || transcription.transcriptState === "failed") {
                   void transcription.startTranscription();
                 } else if (transcription.transcriptState === "recording") {
-                  setIsIntelligenceOpen(false);
-                  setBackgroundToastMessage("AI Notes are being prepared");
                   void transcription.stopTranscription();
                 }
               }}
@@ -719,8 +715,6 @@ export function MobileActiveScreen({
                 if (recording.recordingState === "idle" || recording.recordingState === "completed" || recording.recordingState === "failed") {
                   void recording.startRecording();
                 } else if (recording.recordingState === "recording") {
-                  setIsIntelligenceOpen(false);
-                  setBackgroundToastMessage("Recording is being processed");
                   void recording.stopRecording();
                 }
               }}

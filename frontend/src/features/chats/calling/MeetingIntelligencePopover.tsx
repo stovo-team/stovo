@@ -83,7 +83,25 @@ export function MeetingIntelligencePopover({
 }: MeetingIntelligencePopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
+  const [backgroundToastMessage, setBackgroundToastMessage] = useState<string | null>(null);
   const languageMenuId = useId();
+  const backgroundToast = <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />;
+
+  const handleToggleNotes = () => {
+    if (notesState === "recording") {
+      setBackgroundToastMessage("AI Notes are being prepared");
+      onClose();
+    }
+    onToggleNotes();
+  };
+
+  const handleToggleRecording = () => {
+    if (recordingState === "recording") {
+      setBackgroundToastMessage("Recording is being processed");
+      onClose();
+    }
+    onToggleRecording();
+  };
 
   useEffect(() => {
     if (!isOpen) setIsLanguageMenuOpen(false);
@@ -113,7 +131,7 @@ export function MeetingIntelligencePopover({
     };
   }, [isLanguageMenuOpen, isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen) return backgroundToast;
 
   const isNotesActive = notesState === "recording" || notesState === "starting";
   const isNotesProcessing = notesState === "stopping" || notesState === "processing";
@@ -124,6 +142,8 @@ export function MeetingIntelligencePopover({
   const selectedLanguage = SUPPORTED_LANGUAGES.find((language) => language.code === targetLanguage);
 
   return (
+    <>
+    {backgroundToast}
     <div
       ref={popoverRef}
       className={`meeting-intel-popover ${isMobile ? "meeting-intel-popover--mobile" : ""}`}
@@ -157,7 +177,7 @@ export function MeetingIntelligencePopover({
                   className={`meeting-intel-toggle-btn ${
                     isNotesActive ? "is-recording" : isNotesProcessing ? "is-processing" : ""
                   }`}
-                  onClick={onToggleNotes}
+                  onClick={handleToggleNotes}
                   disabled={isNotesProcessing}
                   aria-label={isNotesActive ? "Stop AI Notes" : isNotesProcessing ? "AI Notes processing" : "Start AI Notes"}
                 >
@@ -207,7 +227,7 @@ export function MeetingIntelligencePopover({
                   className={`meeting-intel-toggle-btn ${
                     isRecActive ? "is-recording" : isRecStopping ? "is-processing" : ""
                   }`}
-                  onClick={onToggleRecording}
+                  onClick={handleToggleRecording}
                   disabled={isRecStopping}
                   aria-label={isRecActive ? "Stop Recording" : isRecStopping ? "Saving recording" : "Start Recording"}
                 >
@@ -292,6 +312,7 @@ export function MeetingIntelligencePopover({
         </div>
       </div>
     </div>
+    </>
   );
 }
 export default MeetingIntelligencePopover;

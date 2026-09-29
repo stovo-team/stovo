@@ -28,7 +28,7 @@ import { useTranscription } from "./useTranscription";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
-import { MeetingBackgroundToast, MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
@@ -82,7 +82,6 @@ export function VoiceChannelStage({
 
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
-  const [backgroundToastMessage, setBackgroundToastMessage] = useState<string | null>(null);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
   const fallbackSocketRef = useRef(null);
@@ -218,8 +217,6 @@ export function VoiceChannelStage({
     if (transcriptState === "idle" || transcriptState === "failed") {
       void startTranscription();
     } else if (transcriptState === "recording") {
-      setIsIntelligenceOpen(false);
-      setBackgroundToastMessage("AI Notes are being prepared");
       void stopTranscription();
     }
   };
@@ -228,8 +225,6 @@ export function VoiceChannelStage({
     if (["idle", "completed", "failed"].includes(recording.recordingState)) {
       void recording.startRecording();
     } else if (recording.recordingState === "recording") {
-      setIsIntelligenceOpen(false);
-      setBackgroundToastMessage("Recording is being processed");
       void recording.stopRecording();
     }
   };
@@ -288,7 +283,6 @@ export function VoiceChannelStage({
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
-      <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}
