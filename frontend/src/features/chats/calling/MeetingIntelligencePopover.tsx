@@ -37,12 +37,27 @@ export type MeetingIntelligencePopoverProps = {
 };
 
 /** A transient, call-level confirmation for work that continues server-side. */
-export function MeetingBackgroundToast({ visible, message }: { visible: boolean; message?: string }) {
-  if (!visible) return null;
+export function MeetingBackgroundToast({ message, onDismiss }: { message: string | null; onDismiss: (message: null) => void }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!message) {
+      setVisible(false);
+      return;
+    }
+    setVisible(true);
+    const timer = window.setTimeout(() => {
+      setVisible(false);
+      onDismiss(null);
+    }, 5_000);
+    return () => window.clearTimeout(timer);
+  }, [message, onDismiss]);
+
+  if (!visible || !message) return null;
   return (
     <div className="meeting-intel-background-toast" role="status" aria-live="polite">
       <span className="meeting-intel-background-toast-icon"><Sparkles size={17} aria-hidden="true" /></span>
-      <span><strong>{message ?? "AI Notes are being prepared"}</strong><small>The result will appear in this chat when ready.</small></span>
+      <span><strong>{message}</strong><small>The result will appear in this chat when ready.</small></span>
     </div>
   );
 }

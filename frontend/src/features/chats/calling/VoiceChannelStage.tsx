@@ -106,12 +106,6 @@ export function VoiceChannelStage({
     stopTranscription,
   } = transcription;
 
-  useEffect(() => {
-    if (!backgroundToastMessage) return;
-    const timer = window.setTimeout(() => setBackgroundToastMessage(null), 5_000);
-    return () => window.clearTimeout(timer);
-  }, [backgroundToastMessage]);
-
   const recording = useCallRecording({
     accessToken: effectiveAccessToken,
     roomId: effectiveRoomId,
@@ -294,7 +288,7 @@ export function VoiceChannelStage({
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
-      <MeetingBackgroundToast visible={Boolean(backgroundToastMessage)} message={backgroundToastMessage ?? undefined} />
+      <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}

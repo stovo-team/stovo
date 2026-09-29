@@ -188,12 +188,6 @@ export function MobileActiveScreen({
     return () => window.clearTimeout(timerId);
   }, [areControlsVisible]);
 
-  useEffect(() => {
-    if (!backgroundToastMessage) return;
-    const timerId = window.setTimeout(() => setBackgroundToastMessage(null), 5_000);
-    return () => window.clearTimeout(timerId);
-  }, [backgroundToastMessage]);
-
   // Attach remote video stream
   useEffect(() => {
     const dst = mobileRemoteRef.current;
@@ -308,7 +302,7 @@ export function MobileActiveScreen({
       className={`mobile-active-screen${showAnyVideo ? " mobile-active-screen--video" : ""}`}
       onPointerDown={toggleControls}
     >
-      <MeetingBackgroundToast visible={Boolean(backgroundToastMessage)} message={backgroundToastMessage ?? undefined} />
+      <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />
       {/* Top right shrink button */}
       <div className={`mobile-active-top-bar${areControlsVisible ? "" : " mobile-active-controls--hidden"}`}>
         <button

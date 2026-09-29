@@ -105,12 +105,6 @@ export function DesktopCallControls() {
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
   const [backgroundToastMessage, setBackgroundToastMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!backgroundToastMessage) return;
-    const timer = window.setTimeout(() => setBackgroundToastMessage(null), 5_000);
-    return () => window.clearTimeout(timer);
-  }, [backgroundToastMessage]);
-
   const recording = useCallRecording({
     accessToken: accessToken ?? null,
     roomId: callRoomId,
@@ -151,7 +145,7 @@ export function DesktopCallControls() {
 
   return (
     <>
-      <MeetingBackgroundToast visible={Boolean(backgroundToastMessage)} message={backgroundToastMessage ?? undefined} />
+      <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}

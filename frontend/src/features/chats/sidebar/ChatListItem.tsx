@@ -16,6 +16,11 @@ import {
 } from "../shared/chatPresentation";
 import { RealAvatar } from "./RealAvatar";
 
+type VoiceMember = Chat["members"][number] & {
+  directMessagePermission?: "family" | "selected" | "nobody";
+  invitePermissionUserIds?: string[];
+};
+
 type ChatListItemProps = {
   chat: Chat;
   isActive: boolean;
@@ -169,12 +174,13 @@ export function ChatListItem({
             <span className="chat-list-voice-participants" aria-label={`${voiceParticipantIds.length} active voice channel members`}>
               {voiceParticipantIds.slice(0, 4).map((userId) => {
                 const member = chat.members.find((item) => item.id === userId);
+                const memberPolicy = member as VoiceMember | undefined;
                 const joinedAt = voiceParticipants.find((participant) => participant.userId === userId)?.joinedAt;
                 const canMessage = Boolean(
                   member &&
                   userId !== currentUserId &&
-                  member.directMessagePermission !== "nobody" &&
-                  (member.directMessagePermission !== "selected" || member.invitePermissionUserIds?.includes(currentUserId ?? ""))
+                  memberPolicy?.directMessagePermission !== "nobody" &&
+                  (memberPolicy?.directMessagePermission !== "selected" || memberPolicy.invitePermissionUserIds?.includes(currentUserId ?? ""))
                 );
                 return (
                   <span key={userId} className="chat-list-voice-member">
