@@ -3,7 +3,7 @@
 ## Isolated work for every task
 
 - Never develop directly on `master` or on a user's unrelated feature/PR branch. This rule applies to every task, including hotfixes and small fixes.
-- Before editing, create a dedicated branch from the appropriate base and a separate Git worktree for that branch. Use a descriptive `codex/<short-task-name>` branch unless the user specifies another naming convention. Keep the primary checkout clean and do not move the user's unrelated changes.
+- Before editing, create a dedicated branch from the appropriate base and a separate Git worktree for that branch. Name task branches in Gitflow style: `feature/<short-task-name>` for new capabilities, `hotfix/<short-task-name>` for urgent fixes, and `release/<version>` for release preparation. Keep the primary checkout clean and do not move the user's unrelated changes.
 - Complete the requested work and verification in that worktree. When the work is ready for review, create a PR from the task branch and report its link/status.
 - After the PR is confirmed merged, remove the task worktree and its local branch. Never delete an unmerged branch or worktree containing uncommitted changes.
 - Worktree lifetime (TTL): target cleanup immediately after merge. Treat 30 days without activity as stale and inspect/report it; do not automatically discard unmerged work or data. If a task is intentionally kept open longer, retain its worktree and branch.
