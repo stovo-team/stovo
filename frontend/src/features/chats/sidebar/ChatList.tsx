@@ -53,7 +53,7 @@ export type ChatListProps = {
   familyId: string;
   canManageFolders: boolean;
   accessToken: string | null;
-  currentUserId?: string;
+  currentUserId?: string; activeVoiceCallChatId?: string | null; activeVoiceCallParticipantIds?: string[];
   selectedChatId?: string;
   activeChatId?: string;
   minimizedChatLayout?: boolean;
@@ -75,7 +75,7 @@ export function ChatList({
   familyId,
   canManageFolders,
   accessToken,
-  currentUserId,
+  currentUserId, activeVoiceCallChatId, activeVoiceCallParticipantIds,
   selectedChatId,
   activeChatId,
   minimizedChatLayout,
@@ -650,7 +650,7 @@ export function ChatList({
                         isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}
                         isTransitionSource={selectedChatId === chat.id}
                         accessToken={accessToken}
-                        currentUserId={currentUserId}
+                        currentUserId={currentUserId} activeVoiceCallChatId={activeVoiceCallChatId} activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}
                         minimizedChatLayout={minimizedChatLayout}
                         isDragging={activeDraggedChat?.id === chat.id}
                         onSelect={onSelectChat}
@@ -741,7 +741,7 @@ export function ChatList({
                     isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}
                     isTransitionSource={selectedChatId === chat.id}
                     accessToken={accessToken}
-                    currentUserId={currentUserId}
+                    currentUserId={currentUserId} activeVoiceCallChatId={activeVoiceCallChatId} activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}
                     minimizedChatLayout={minimizedChatLayout}
                     isDragging={activeDraggedChat?.id === chat.id}
                     onSelect={onSelectChat}

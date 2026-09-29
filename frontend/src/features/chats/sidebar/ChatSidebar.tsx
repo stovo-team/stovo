@@ -20,6 +20,8 @@ export function ChatSidebar({
   hasLoadedOverview,
   accessToken,
   currentUserId,
+  activeVoiceCallChatId,
+  activeVoiceCallParticipantIds,
   minimizedChatLayout,
   selectedChatId,
   mobileCallStrip,
@@ -254,6 +256,8 @@ export function ChatSidebar({
         canManageFolders={canManageFolders}
         accessToken={accessToken}
         currentUserId={currentUserId}
+        activeVoiceCallChatId={activeVoiceCallChatId}
+        activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}
         selectedChatId={selectedChatId}
         activeChatId={activeChatId}
         minimizedChatLayout={minimizedChatLayout}

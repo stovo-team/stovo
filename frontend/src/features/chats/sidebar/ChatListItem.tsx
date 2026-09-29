@@ -22,6 +22,8 @@ type ChatListItemProps = {
   isTransitionSource: boolean;
   accessToken: string | null;
   currentUserId?: string;
+  activeVoiceCallChatId?: string | null;
+  activeVoiceCallParticipantIds?: string[];
   minimizedChatLayout?: boolean;
   isDragging?: boolean;
   onSelect: (chat: Chat) => void;
@@ -37,6 +39,8 @@ export function ChatListItem({
   isTransitionSource,
   accessToken,
   currentUserId,
+  activeVoiceCallChatId,
+  activeVoiceCallParticipantIds = [],
   minimizedChatLayout,
   isDragging,
   onSelect,
@@ -48,6 +52,14 @@ export function ChatListItem({
   const strings = useStrings();
   const chatName = displayChatName(chat, currentUserId, strings);
   const preview = chatPreview(chat, strings);
+  const voiceParticipantIds = chat.type === "voice"
+    ? Array.from(new Set([
+        ...((chat.activeCall?.participants as Array<{ userId?: string; state?: string }> | undefined) ?? [])
+          .filter((participant) => participant.userId && ["connected", "connecting", "in-call"].includes(participant.state ?? ""))
+          .map((participant) => participant.userId as string),
+        ...(activeVoiceCallChatId === chat.id ? [...activeVoiceCallParticipantIds, ...(currentUserId ? [currentUserId] : [])] : []),
+      ]))
+    : [];
   const hasUnread = chat.unreadCount > 0;
   const compactLeadingVisual = compactChatListLeadingVisual(chat.type);
   const chatListLeadingVisual = minimizedChatLayout || chat.type === "archive"
@@ -138,6 +150,22 @@ export function ChatListItem({
             <span className="chat-list-preview">
               <span className="chat-list-draft-label">Draft:</span>{" "}
               {draftText.slice(0, 40)}{draftText.length > 40 ? "…" : ""}
+            </span>
+          ) : chat.type === "voice" && voiceParticipantIds.length > 0 ? (
+            <span className="chat-list-voice-participants" aria-label={`${voiceParticipantIds.length} active voice channel members`}>
+              {voiceParticipantIds.slice(0, 4).map((userId) => {
+                const member = chat.members.find((item) => item.id === userId);
+                return (
+                  <RealAvatar
+                    key={userId}
+                    accessToken={accessToken}
+                    className="avatar chat-list-voice-avatar"
+                    file={member?.profilePhoto}
+                    label={member?.displayName ?? "Member"}
+                  />
+                );
+              })}
+              {voiceParticipantIds.length > 4 && <span className="chat-list-voice-overflow">+{voiceParticipantIds.length - 4}</span>}
             </span>
           ) : preview ? <span className="chat-list-preview">{preview}</span> : null;
         })()}

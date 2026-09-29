@@ -787,12 +787,6 @@ export function useCallSession({
     callPhaseRef.current = "connecting";
 
     try {
-      await applyCallAudioPatch({
-        micMuted: Boolean(settings.micMuted),
-        cameraEnabled: Boolean(settings.cameraEnabled),
-        speakerMode: "small",
-      });
-
       if (currentUser?.id) {
         audioCallRef.current?.setLocalUserId(currentUser.id);
       }
@@ -810,6 +804,11 @@ export function useCallSession({
         throw new Error("Realtime connection is still unavailable. Please try joining again.");
       }
 
+      await applyCallAudioPatch({
+        micMuted: Boolean(settings.micMuted),
+        cameraEnabled: Boolean(settings.cameraEnabled),
+        speakerMode: "small",
+      });
       socket.emit("call:join", { chatId: targetChat.id, callType: "audio" });
     } catch (err) {
       console.error("[CALL] Voice channel join failed before signaling", {
@@ -818,8 +817,7 @@ export function useCallSession({
         transport: socket.io.engine?.transport?.name ?? "unknown",
       });
       await audioCallRef.current?.cleanup(true).catch(() => undefined);
-      void resetCallState("Could not join voice channel", true, false);
-      setError(err instanceof Error ? err.message : "Could not join voice channel");
+      void resetCallState(null, true, false);
     }
   }
 

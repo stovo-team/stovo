@@ -63,8 +63,8 @@ export async function waitForSocketConnection(
     // A Socket.IO manager can keep its Engine.IO polling transport alive while
     // the namespace handshake is wedged. In that state `active` is true, so
     // connect() is normally a no-op and the call event is never emitted. Give
-    // the normal reconnect one window, then reset the namespace once.
-    const restartNamespace = attempt === 2 && socket.active === true;
+    // the normal reconnect a window, then periodically reset the namespace.
+    const restartNamespace = attempt > 1 && attempt % 2 === 0 && socket.active === true;
     if (await waitForSingleConnection(socket, attemptTimeoutMs, restartNamespace)) return true;
     if (attempt < attempts) await delay(retryDelayMs);
   }

@@ -3740,6 +3740,24 @@ h2 {
   font-size: 0.75rem;
 }
 
+.chat-list-copy .chat-list-voice-participants {
+  align-items: center;
+  display: flex;
+  min-height: 20px;
+  overflow: visible;
+}
+
+.chat-list-voice-avatar {
+  border: 1.5px solid var(--surface-raised, #111827);
+  flex: 0 0 20px;
+  height: 20px;
+  margin-left: -5px;
+  width: 20px;
+}
+
+.chat-list-voice-avatar:first-child { margin-left: 0; }
+.chat-list-voice-overflow { color: var(--text-secondary); font-size: 0.72rem; margin-left: 5px; }
+
 .chat-list-preview,
 .chat-list-copy > span:not(.chat-list-topline),
 .member-row strong,
