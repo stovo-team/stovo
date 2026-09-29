@@ -49,9 +49,7 @@ import {
   useAppearance
 } from "../appearance/AppearanceContext";
 import { ApiError, getApiUrl } from "../api/client";
-import { beginPasskeyRegistration, changePassword, finishPasskeyRegistration, User } from "../api/auth";
-import { startRegistration } from "@simplewebauthn/browser";
-import { Capacitor } from "@capacitor/core";
+import { changePassword, User } from "../api/auth";
 import { createConnectionLink } from "../connectionLink";
 import { Family, getMembers } from "../api/family";
 import { FamilyFile, uploadFile } from "../api/files";
@@ -429,25 +427,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleRegisterPasskey() {
-    if (!accessToken) return;
-    setError(null);
-    setNotice(null);
-    setIsSaving(true);
-    try {
-      const ceremony = await beginPasskeyRegistration(accessToken);
-      const credential = await startRegistration({ optionsJSON: ceremony.publicKey as never });
-      await finishPasskeyRegistration(accessToken, ceremony.ceremonyId, credential);
-      setNotice("Passkey added. You can now use it to sign in on the web.");
-    } catch (err) {
-      if (!(err instanceof Error && ["NotAllowedError", "AbortError"].includes(err.name))) {
-        setError(err instanceof ApiError ? String(err.message) : "Could not add passkey. Try again over HTTPS.");
-      }
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   const connectionLink = currentUser ? createConnectionLink({ serverUrl: currentServerUrl, username: currentUser.username }) : "";
 
   async function copyConnectionCredentials() {
@@ -555,8 +534,6 @@ export default function SettingsPage() {
                     notificationPreferences={devicePreferences}
                     onProfileSubmit={handleProfileSubmit}
                     onPasswordSubmit={handlePasswordSubmit}
-                    onRegisterPasskey={() => void handleRegisterPasskey()}
-                    passkeyUnavailable={Capacitor.isNativePlatform() || !window.isSecureContext || typeof window.PublicKeyCredential === "undefined"}
                     onCopyConnection={() => void copyConnectionCredentials()}
                     onNotificationPreferencesUpdate={updateDevicePreferences}
                     profilePhotoControl={

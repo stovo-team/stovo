@@ -134,7 +134,7 @@ func (s *Server) acceptInviteWithPasskey(w http.ResponseWriter, r *http.Request)
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not accept invite")
 		return
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 	_, err = tx.ExecContext(r.Context(), `INSERT INTO users (id, family_id, username, password_hash, display_name, role, profile_visibility, last_seen_visibility, read_receipts_enabled, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,1,$10)`, ceremony.UserID, family.ID, registration.Username, passwordHash, registration.DisplayName, invite.Role, defaults.ProfileVisibility, defaults.LastSeenVisibility, defaults.ReadReceiptsEnabled, createdAt)
 	if err == nil {
 		var result sql.Result

@@ -101,7 +101,7 @@ func (s *Server) loadPasskeyUser(ctx context.Context, id, familyID string) (user
 	if err != nil {
 		return userPublic{}, passkeyUser{}, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	credentials := make([]webauthnlib.Credential, 0)
 	for rows.Next() {
 		var raw []byte

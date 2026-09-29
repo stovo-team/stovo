@@ -39,7 +39,7 @@ func TestPasskeyAndQRAuthRoutesAreMounted(t *testing.T) {
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
-			defer response.Body.Close()
+			defer func() { _ = response.Body.Close() }()
 			if response.StatusCode != tc.wantStatus {
 				t.Fatalf("status = %d, want %d", response.StatusCode, tc.wantStatus)
 			}
@@ -67,7 +67,7 @@ func TestPasskeyAndQRAuthRoutesRejectWrongMethods(t *testing.T) {
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
-			defer response.Body.Close()
+			defer func() { _ = response.Body.Close() }()
 			if response.StatusCode != http.StatusMethodNotAllowed {
 				t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusMethodNotAllowed)
 			}

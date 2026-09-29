@@ -1,5 +1,10 @@
 import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
-import { BellOff, Clock3, LockKeyhole, Mail, Server, UserRound } from "lucide-react";
+import { useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { startRegistration } from "@simplewebauthn/browser";
+import { BellOff, Clock3, KeyRound, LockKeyhole, Mail, Server, UserRound } from "lucide-react";
+import { ApiError } from "../../api/client";
+import { beginPasskeyRegistration, finishPasskeyRegistration } from "../../api/auth";
 import type { AppStrings } from "../../config/strings";
 import type { DevicePreferences } from "../../settings/devicePreferences";
 
@@ -32,14 +37,32 @@ type Props = {
   notificationPreferences: Pick<DevicePreferences, "quietHoursEnabled" | "quietHoursStart" | "quietHoursEnd">;
   onProfileSubmit: (event: FormEvent) => void;
   onPasswordSubmit: (event: FormEvent) => void;
-  onRegisterPasskey: () => void;
-  passkeyUnavailable: boolean;
   onCopyConnection: () => void;
   onNotificationPreferencesUpdate: (updates: Partial<DevicePreferences>) => void;
 };
 
 export function ProfileSettingsTab(props: Props) {
-  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onRegisterPasskey, passkeyUnavailable, onCopyConnection, onNotificationPreferencesUpdate } = props;
+  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [passkeyMessage, setPasskeyMessage] = useState("");
+  const passkeyUnavailable = Capacitor.isNativePlatform() || !window.isSecureContext || typeof window.PublicKeyCredential === "undefined";
+  async function addPasskey() {
+    if (!accessToken) return;
+    setPasskeyBusy(true);
+    setPasskeyMessage("");
+    try {
+      const ceremony = await beginPasskeyRegistration(accessToken);
+      const credential = await startRegistration({ optionsJSON: ceremony.publicKey as never });
+      await finishPasskeyRegistration(accessToken, ceremony.ceremonyId, credential);
+      setPasskeyMessage("Passkey added. You can now use it to sign in on the web.");
+    } catch (err) {
+      if (!(err instanceof Error && ["NotAllowedError", "AbortError"].includes(err.name))) {
+        setPasskeyMessage(err instanceof ApiError ? String(err.message) : "Could not add passkey. Try again over HTTPS.");
+      }
+    } finally {
+      setPasskeyBusy(false);
+    }
+  }
   return (
     <div className="profile-detail-screen">
       <section className="profile-detail-hero">
@@ -61,10 +84,11 @@ export function ProfileSettingsTab(props: Props) {
         <button type="submit" className="save-button primary-button" disabled={isSaving || !accessToken}>{isSaving ? strings.settings.changing : strings.settings.changePassword}</button>
       </form>
       <section className="profile-detail-form">
-        <h3>Passkeys</h3>
+        <h3><KeyRound aria-hidden="true" size={20} /> Passkeys</h3>
         <p className="muted-copy">Use your device screen lock or password manager to sign in without remembering a password.</p>
-        <button type="button" className="save-button primary-button" onClick={onRegisterPasskey} disabled={!accessToken || passkeyUnavailable || isSaving}>Add a passkey</button>
+        <button type="button" className="save-button primary-button" onClick={() => void addPasskey()} disabled={!accessToken || passkeyUnavailable || passkeyBusy || isSaving}>{passkeyBusy ? "Adding…" : "Add a passkey"}</button>
         {passkeyUnavailable && <p className="muted-copy">Passkeys require HTTPS and a supported browser.</p>}
+        {passkeyMessage && <p role="status" className="muted-copy">{passkeyMessage}</p>}
       </section>
       <section className="profile-detail-form profile-notification-schedule">
         <h3>{strings.notifications.quietHours}</h3>
