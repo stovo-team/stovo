@@ -3,7 +3,6 @@ package app
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -97,31 +96,23 @@ func (s *Server) loadPasskeyUser(ctx context.Context, id, familyID string) (user
 	if err != nil || !account.IsActive || (familyID != "" && account.FamilyID != familyID) {
 		return userPublic{}, passkeyUser{}, errUnauthorized
 	}
-	rows, err := s.sqlDB.QueryContext(ctx, `SELECT credential_data FROM passkey_credentials WHERE user_id = $1 AND family_id = $2 AND revoked_at IS NULL`, id, account.FamilyID)
+	rows, err := s.authMethods.ListPasskeyCredentials(ctx, id, account.FamilyID)
 	if err != nil {
 		return userPublic{}, passkeyUser{}, err
 	}
-	defer func() { _ = rows.Close() }()
-	credentials := make([]webauthnlib.Credential, 0)
-	for rows.Next() {
-		var raw []byte
-		if err := rows.Scan(&raw); err != nil {
-			return userPublic{}, passkeyUser{}, err
-		}
+	credentials := make([]webauthnlib.Credential, 0, len(rows))
+	for _, raw := range rows {
 		var credential webauthnlib.Credential
 		if err := json.Unmarshal(raw, &credential); err != nil {
 			return userPublic{}, passkeyUser{}, err
 		}
 		credentials = append(credentials, credential)
 	}
-	if err := rows.Err(); err != nil {
-		return userPublic{}, passkeyUser{}, err
-	}
 	return s.userPublicFromAccount(account), passkeyUser{ID: account.ID, Username: account.Username, DisplayName: account.DisplayName, Credentials: credentials}, nil
 }
 
 func (s *Server) storePasskeyCeremony(ctx context.Context, ceremony storedPasskeyCeremony) (string, error) {
-	_, _ = s.sqlDB.ExecContext(ctx, `DELETE FROM passkey_ceremonies WHERE expires_at < now() - interval '1 day'`)
+	_ = s.authMethods.CleanupExpiredAuthRequests(ctx)
 	rawID, err := randomToken()
 	if err != nil {
 		return "", err
@@ -130,7 +121,7 @@ func (s *Server) storePasskeyCeremony(ctx context.Context, ceremony storedPasske
 	if err != nil {
 		return "", err
 	}
-	_, err = s.sqlDB.ExecContext(ctx, `INSERT INTO passkey_ceremonies (id_hash, purpose, family_id, user_id, invite_token_hash, session_data, expires_at) VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''), $6, $7)`, tokenHash(s.cfg.RefreshTokenSecret, rawID), ceremony.Purpose, ceremony.FamilyID, ceremony.UserID, ceremony.InviteTokenHash, encoded, time.Now().Add(passkeyCeremonyTTL))
+	err = s.authMethods.SavePasskeyCeremony(ctx, tokenHash(s.cfg.RefreshTokenSecret, rawID), ceremony.Purpose, ceremony.FamilyID, ceremony.UserID, ceremony.InviteTokenHash, encoded, time.Now().Add(passkeyCeremonyTTL))
 	if err != nil {
 		return "", err
 	}
@@ -139,18 +130,16 @@ func (s *Server) storePasskeyCeremony(ctx context.Context, ceremony storedPasske
 
 func (s *Server) consumePasskeyCeremony(ctx context.Context, rawID, purpose string) (storedPasskeyCeremony, error) {
 	var ceremony storedPasskeyCeremony
-	var familyID, userID, inviteTokenHash sql.NullString
-	var encoded []byte
-	err := s.sqlDB.QueryRowContext(ctx, `UPDATE passkey_ceremonies SET consumed_at = now() WHERE id_hash = $1 AND purpose = $2 AND consumed_at IS NULL AND expires_at > now() RETURNING family_id, user_id, invite_token_hash, session_data`, tokenHash(s.cfg.RefreshTokenSecret, rawID), purpose).Scan(&familyID, &userID, &inviteTokenHash, &encoded)
+	stored, err := s.authMethods.ConsumePasskeyCeremony(ctx, tokenHash(s.cfg.RefreshTokenSecret, rawID), purpose)
 	if err != nil {
 		return storedPasskeyCeremony{}, err
 	}
-	if err := json.Unmarshal(encoded, &ceremony.Session); err != nil {
+	if err := json.Unmarshal(stored.SessionData, &ceremony.Session); err != nil {
 		return storedPasskeyCeremony{}, err
 	}
 	ceremony.ID, ceremony.Purpose = rawID, purpose
-	ceremony.FamilyID, ceremony.UserID = familyID.String, userID.String
-	ceremony.InviteTokenHash = inviteTokenHash.String
+	ceremony.FamilyID, ceremony.UserID = stored.FamilyID, stored.UserID
+	ceremony.InviteTokenHash = stored.InviteTokenHash
 	return ceremony, nil
 }
 
@@ -213,7 +202,7 @@ func (s *Server) passkeyRegistrationVerify(w http.ResponseWriter, r *http.Reques
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not store passkey")
 		return
 	}
-	_, err = s.sqlDB.ExecContext(r.Context(), `INSERT INTO passkey_credentials (id, user_id, family_id, credential_id, credential_data) VALUES ($1, $2, $3, $4, $5)`, uuid.NewString(), actor.ID, actor.FamilyID, base64.RawURLEncoding.EncodeToString(credential.ID), encoded)
+	err = s.authMethods.SavePasskeyCredential(r.Context(), uuid.NewString(), actor.ID, actor.FamilyID, base64.RawURLEncoding.EncodeToString(credential.ID), encoded)
 	if err != nil {
 		writeMessageDetail(w, http.StatusConflict, "Passkey is already registered")
 		return
@@ -271,8 +260,8 @@ func (s *Server) passkeyAuthenticationVerify(w http.ResponseWriter, r *http.Requ
 	var accountID string
 	user, credential, err := wa.FinishPasskeyLogin(func(rawID, _ []byte) (webauthnlib.User, error) {
 		credentialID := base64.RawURLEncoding.EncodeToString(rawID)
-		var id string
-		if queryErr := s.sqlDB.QueryRowContext(r.Context(), `SELECT user_id FROM passkey_credentials WHERE credential_id = $1 AND revoked_at IS NULL`, credentialID).Scan(&id); queryErr != nil {
+		id, queryErr := s.authMethods.PasskeyOwner(r.Context(), credentialID)
+		if queryErr != nil {
 			return nil, queryErr
 		}
 		_, candidate, loadErr := s.loadPasskeyUser(r.Context(), id, "")
@@ -291,7 +280,7 @@ func (s *Server) passkeyAuthenticationVerify(w http.ResponseWriter, r *http.Requ
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not update passkey")
 		return
 	}
-	_, _ = s.sqlDB.ExecContext(r.Context(), `UPDATE passkey_credentials SET credential_data = $1, last_used_at = now() WHERE credential_id = $2 AND revoked_at IS NULL`, credentialJSON, base64.RawURLEncoding.EncodeToString(credential.ID))
+	_ = s.authMethods.UpdatePasskeyCredential(r.Context(), base64.RawURLEncoding.EncodeToString(credential.ID), credentialJSON)
 	publicUser, err := s.getUserByID(accountID)
 	if err != nil || !publicUser.IsActive {
 		writeMessageDetail(w, http.StatusUnauthorized, "Invalid passkey sign-in")

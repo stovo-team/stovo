@@ -1,7 +1,6 @@
 package app
 
 import (
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -107,7 +106,8 @@ func (s *Server) acceptInviteWithPasskey(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var familyChatID string
-	if err := s.sqlDB.QueryRowContext(r.Context(), `SELECT id FROM chats WHERE family_id = $1 AND type = 'family' LIMIT 1`, family.ID).Scan(&familyChatID); err != nil {
+	familyChatID, err := s.authMethods.FamilyChatID(r.Context(), family.ID)
+	if err != nil {
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not load family chat")
 		return
 	}
@@ -129,46 +129,20 @@ func (s *Server) acceptInviteWithPasskey(w http.ResponseWriter, r *http.Request)
 	createdAt := nowString()
 	credentialID := base64.RawURLEncoding.EncodeToString(credential.ID)
 	ip := s.getClientIP(r)
-	tx, err := s.sqlDB.BeginTx(r.Context(), nil)
-	if err != nil {
-		writeMessageDetail(w, http.StatusInternalServerError, "Could not accept invite")
-		return
-	}
-	defer func() { _ = tx.Rollback() }()
-	_, err = tx.ExecContext(r.Context(), `INSERT INTO users (id, family_id, username, password_hash, display_name, role, profile_visibility, last_seen_visibility, read_receipts_enabled, is_active, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,1,$10)`, ceremony.UserID, family.ID, registration.Username, passwordHash, registration.DisplayName, invite.Role, defaults.ProfileVisibility, defaults.LastSeenVisibility, defaults.ReadReceiptsEnabled, createdAt)
-	if err == nil {
-		var result sql.Result
-		result, err = tx.ExecContext(r.Context(), `UPDATE invites SET used_count = used_count + 1 WHERE id = $1 AND revoked_at IS NULL AND expires_at > $2 AND used_count < max_uses`, invite.ID, createdAt)
-		if err == nil {
-			var changed int64
-			changed, err = result.RowsAffected()
-			if err == nil && changed != 1 {
-				err = sql.ErrNoRows
-			}
-		}
-	}
-	if err == nil {
-		_, err = tx.ExecContext(r.Context(), `INSERT INTO passkey_credentials (id, user_id, family_id, credential_id, credential_data) VALUES ($1,$2,$3,$4,$5::jsonb)`, uuid.NewString(), ceremony.UserID, family.ID, credentialID, string(credentialJSON))
-	}
-	if err == nil {
-		_, err = tx.ExecContext(r.Context(), `INSERT INTO chat_members (chat_id,user_id,created_at) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING`, familyChatID, ceremony.UserID, createdAt)
-	}
-	if err == nil {
-		_, err = tx.ExecContext(r.Context(), `INSERT INTO chat_preferences (chat_id,user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, familyChatID, ceremony.UserID)
-	}
-	if err == nil {
-		_, err = tx.ExecContext(r.Context(), `INSERT INTO refresh_tokens (id,user_id,token_hash,expires_at,created_at,ip_address) VALUES ($1,$2,$3,$4,$5,$6)`, uuid.NewString(), ceremony.UserID, refreshHash, refreshExpires, createdAt, ip)
-	}
+	err = s.authMethods.AcceptPasskeyInvite(r.Context(), featureidentity.PasskeyInviteAcceptance{
+		UserID: ceremony.UserID, FamilyID: family.ID, Username: registration.Username, PasswordHash: passwordHash,
+		DisplayName: registration.DisplayName, Role: invite.Role, InviteID: invite.ID, FamilyChatID: familyChatID,
+		CredentialRecordID: uuid.NewString(), CredentialID: credentialID, CredentialData: string(credentialJSON),
+		RefreshTokenID: uuid.NewString(), RefreshTokenHash: refreshHash, RefreshExpiresAt: refreshExpires,
+		CreatedAt: createdAt, IPAddress: ip, ProfileVisibility: defaults.ProfileVisibility,
+		LastSeenVisibility: defaults.LastSeenVisibility, ReadReceiptsEnabled: defaults.ReadReceiptsEnabled,
+	})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "unique") {
 			writeMessageDetail(w, http.StatusConflict, "Username or passkey already exists")
 		} else {
 			writeMessageDetail(w, http.StatusConflict, "Invite is no longer available")
 		}
-		return
-	}
-	if err := tx.Commit(); err != nil {
-		writeMessageDetail(w, http.StatusInternalServerError, "Could not accept invite")
 		return
 	}
 	newUser, err := s.getUserByID(ceremony.UserID)

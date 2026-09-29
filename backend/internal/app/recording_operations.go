@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path"
 	"strings"
 	"time"
@@ -350,7 +351,8 @@ func (s *Server) handleUploadRecording(w http.ResponseWriter, r *http.Request, u
 	}
 	markRecordingFailed := func(recordingID, message string) {
 		if strings.TrimSpace(recordingID) == "" {
-			recordingID = r.URL.Query().Get("recordingId")
+			query, _ := url.ParseQuery(r.URL.RawQuery)
+			recordingID = query.Get("recordingId")
 		}
 		if strings.TrimSpace(recordingID) == "" {
 			return

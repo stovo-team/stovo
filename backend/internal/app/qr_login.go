@@ -21,14 +21,14 @@ func (s *Server) createQRLogin(w http.ResponseWriter, r *http.Request) {
 		writeMessageDetail(w, http.StatusTooManyRequests, "Please wait before requesting another sign-in code")
 		return
 	}
-	_, _ = s.sqlDB.ExecContext(r.Context(), `DELETE FROM qr_login_requests WHERE expires_at < now() - interval '1 day'`)
+	_ = s.authMethods.CleanupExpiredAuthRequests(r.Context())
 	rawID, err := randomToken()
 	if err != nil {
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not start QR sign-in")
 		return
 	}
 	expiresAt := time.Now().Add(qrLoginTTL)
-	_, err = s.sqlDB.ExecContext(r.Context(), `INSERT INTO qr_login_requests (request_hash, status, browser_ip, expires_at) VALUES ($1, 'pending', $2, $3)`, tokenHash(s.cfg.RefreshTokenSecret, rawID), s.getClientIP(r), expiresAt)
+	err = s.authMethods.CreateQRLogin(r.Context(), tokenHash(s.cfg.RefreshTokenSecret, rawID), s.getClientIP(r), expiresAt)
 	if err != nil {
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not start QR sign-in")
 		return
@@ -44,10 +44,7 @@ func (s *Server) qrLoginStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hash := tokenHash(s.cfg.RefreshTokenSecret, rawID)
-	var status string
-	var userID sql.NullString
-	var expiresAt time.Time
-	err := s.sqlDB.QueryRowContext(r.Context(), `SELECT status, approved_user_id, expires_at FROM qr_login_requests WHERE request_hash = $1`, hash).Scan(&status, &userID, &expiresAt)
+	request, err := s.authMethods.QRLogin(r.Context(), hash)
 	if err == sql.ErrNoRows {
 		writeMessageDetail(w, http.StatusNotFound, "QR sign-in request not found")
 		return
@@ -56,21 +53,20 @@ func (s *Server) qrLoginStatus(w http.ResponseWriter, r *http.Request) {
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not check QR sign-in")
 		return
 	}
-	if status == "pending" && !expiresAt.After(time.Now()) {
+	if request.Status == "pending" && !request.ExpiresAt.After(time.Now()) {
 		writeMessageValue(w, http.StatusOK, map[string]string{"status": "expired"})
 		return
 	}
-	if status != "approved" {
-		writeMessageValue(w, http.StatusOK, map[string]string{"status": status})
+	if request.Status != "approved" {
+		writeMessageValue(w, http.StatusOK, map[string]string{"status": request.Status})
 		return
 	}
-	var claimedUserID string
-	err = s.sqlDB.QueryRowContext(r.Context(), `UPDATE qr_login_requests SET status = 'completed', completed_at = now() WHERE request_hash = $1 AND status = 'approved' AND expires_at > now() RETURNING approved_user_id`, hash).Scan(&claimedUserID)
+	claimedUserID, err := s.authMethods.ClaimQRLogin(r.Context(), hash)
 	if err == sql.ErrNoRows {
 		writeMessageValue(w, http.StatusOK, map[string]string{"status": "completed"})
 		return
 	}
-	if err != nil || !userID.Valid || claimedUserID != userID.String {
+	if err != nil || claimedUserID != request.ApprovedUserID {
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not complete QR sign-in")
 		return
 	}
@@ -79,7 +75,7 @@ func (s *Server) qrLoginStatus(w http.ResponseWriter, r *http.Request) {
 		writeMessageDetail(w, http.StatusUnauthorized, "QR sign-in is no longer available")
 		return
 	}
-	if !expiresAt.After(time.Now()) {
+	if !request.ExpiresAt.After(time.Now()) {
 		writeMessageDetail(w, http.StatusGone, "QR sign-in request expired")
 		return
 	}
@@ -131,13 +127,12 @@ func (s *Server) transitionQRLogin(w http.ResponseWriter, r *http.Request, actor
 		writeMessageDetail(w, http.StatusNotFound, "QR sign-in request not found")
 		return
 	}
-	result, err := s.sqlDB.ExecContext(r.Context(), `UPDATE qr_login_requests SET status = $1, family_id = $2, approved_user_id = CASE WHEN $1 = 'approved' THEN $3 ELSE NULL END WHERE request_hash = $4 AND status = 'pending' AND expires_at > now() AND (family_id IS NULL OR family_id = $2)`, next, actor.FamilyID, actor.ID, tokenHash(s.cfg.RefreshTokenSecret, rawID))
+	changed, err := s.authMethods.TransitionQRLogin(r.Context(), tokenHash(s.cfg.RefreshTokenSecret, rawID), next, actor.FamilyID, actor.ID)
 	if err != nil {
 		writeMessageDetail(w, http.StatusInternalServerError, "Could not update QR sign-in request")
 		return
 	}
-	changed, err := result.RowsAffected()
-	if err != nil || changed != 1 {
+	if err != nil || !changed {
 		writeMessageDetail(w, http.StatusConflict, "QR sign-in request has expired or already received a response")
 		return
 	}
