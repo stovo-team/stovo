@@ -817,7 +817,7 @@ export function useCallSession({
         transport: socket.io.engine?.transport?.name ?? "unknown",
       });
       await audioCallRef.current?.cleanup(true).catch(() => undefined);
-      void resetCallState(null, true, false);
+      void resetCallState(undefined, true, false);
     }
   }
 
