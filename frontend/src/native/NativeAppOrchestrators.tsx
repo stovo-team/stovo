@@ -13,6 +13,7 @@ import { navigateWithMotion } from "../motion/navigation";
 import {
   getAudioPlaybackAppLinkPath,
   getInviteAppLinkPath,
+  getQRLoginApprovalPath,
   getNotificationAppLink
 } from "../appLinks";
 import { parseConnectionLink } from "../connectionLink";
@@ -135,7 +136,7 @@ export function NativeAppLinkRouter() {
               ? `?notificationAction=${notificationLink.action}&notificationActionId=${Date.now()}`
               : ""
           }`
-        : getAudioPlaybackAppLinkPath(url) ?? getInviteAppLinkPath(url);
+        : getQRLoginApprovalPath(url) ?? getAudioPlaybackAppLinkPath(url) ?? getInviteAppLinkPath(url);
       if (path) {
         navigate(path);
       }

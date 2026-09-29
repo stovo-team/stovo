@@ -63,7 +63,8 @@ func TestRegisterInviteRoutesPreservesPathsAndAuthenticationComposition(t *testi
 	}
 	RegisterInviteRoutes(router, InviteRoutes{
 		CreateInvite: handler("create"), PreviewInvite: handler("preview"),
-		AcceptInvite: handler("accept"), DeleteInvite: handler("delete"),
+		AcceptInvite: handler("accept"), PasskeyOptions: handler("passkey-options"),
+		AcceptPasskey: handler("accept-passkey"), DeleteInvite: handler("delete"),
 	})
 
 	for _, request := range []struct {
@@ -72,6 +73,8 @@ func TestRegisterInviteRoutesPreservesPathsAndAuthenticationComposition(t *testi
 		{stdhttp.MethodPost, "/api/invites", "create"},
 		{stdhttp.MethodGet, "/api/invites/token-1", "preview"},
 		{stdhttp.MethodPost, "/api/invites/token-1/accept", "accept"},
+		{stdhttp.MethodPost, "/api/invites/token-1/passkey/options", "passkey-options"},
+		{stdhttp.MethodPost, "/api/invites/token-1/accept-passkey", "accept-passkey"},
 		{stdhttp.MethodDelete, "/api/invites/invite-1", "delete"},
 	} {
 		t.Run(request.method+request.path, func(t *testing.T) {

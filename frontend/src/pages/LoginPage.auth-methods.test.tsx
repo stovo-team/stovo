@@ -8,6 +8,12 @@ const mocks = vi.hoisted(() => ({
   login: vi.fn(),
   acceptAuthResponse: vi.fn(),
   fetchSetupStatus: vi.fn(),
+  beginPasskeyAuthentication: vi.fn(),
+  finishPasskeyAuthentication: vi.fn(),
+  createBrowserQRLogin: vi.fn(),
+  getBrowserQRLoginStatus: vi.fn(),
+  qrToDataURL: vi.fn(),
+  startAuthentication: vi.fn(),
 }));
 
 vi.mock("../auth/AuthContext", () => ({
@@ -15,9 +21,15 @@ vi.mock("../auth/AuthContext", () => ({
 }));
 vi.mock("../api/auth", () => ({
   fetchSetupStatus: mocks.fetchSetupStatus,
+  beginPasskeyAuthentication: mocks.beginPasskeyAuthentication,
+  finishPasskeyAuthentication: mocks.finishPasskeyAuthentication,
+  createBrowserQRLogin: mocks.createBrowserQRLogin,
+  getBrowserQRLoginStatus: mocks.getBrowserQRLoginStatus,
   requestDeviceLoginCode: vi.fn(),
   verifyDeviceLoginCode: vi.fn(),
 }));
+vi.mock("qrcode", () => ({ default: { toDataURL: mocks.qrToDataURL } }));
+vi.mock("@simplewebauthn/browser", () => ({ startAuthentication: mocks.startAuthentication }));
 
 import LoginPage from "./LoginPage";
 
@@ -32,6 +44,14 @@ describe("LoginPage authentication methods", () => {
     mocks.login.mockReset();
     mocks.acceptAuthResponse.mockReset();
     mocks.fetchSetupStatus.mockResolvedValue({ setupRequired: false });
+    mocks.beginPasskeyAuthentication.mockReset().mockResolvedValue({ ceremonyId: "ceremony-1", publicKey: { challenge: "challenge" } });
+    mocks.finishPasskeyAuthentication.mockReset().mockResolvedValue({ accessToken: "access" });
+    mocks.createBrowserQRLogin.mockReset().mockResolvedValue({ requestId: "request-1", scanUrl: "stovo://auth/qr/request-1", expiresAt: "2030-01-01T00:00:00Z" });
+    mocks.getBrowserQRLoginStatus.mockReset().mockResolvedValue({ status: "pending" });
+    mocks.qrToDataURL.mockReset().mockResolvedValue("data:image/png;base64,ZmFrZQ==");
+    mocks.startAuthentication.mockReset().mockResolvedValue({ id: "credential-1", response: {} });
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window, "PublicKeyCredential", { configurable: true, value: class PublicKeyCredential {} });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -42,6 +62,7 @@ describe("LoginPage authentication methods", () => {
     container.remove();
     document.body.innerHTML = "";
     delete (window as Window & { isSecureContext?: boolean }).isSecureContext;
+    delete (window as Window & { PublicKeyCredential?: unknown }).PublicKeyCredential;
   });
 
   async function renderPage() {
@@ -79,6 +100,18 @@ describe("LoginPage authentication methods", () => {
     expect(container.textContent).toContain("Scan this code with Stovo");
     expect(container.textContent).toContain("Waiting for approval");
     expect(container.querySelector('input[autocomplete="current-password"]')).not.toBeNull();
+  });
+
+  it("completes a passkey assertion and accepts the normal Stovo auth response", async () => {
+    await renderPage();
+    const passkeyAction = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Passkey"));
+
+    await act(async () => passkeyAction?.click());
+
+    expect(mocks.beginPasskeyAuthentication).toHaveBeenCalledOnce();
+    expect(mocks.startAuthentication).toHaveBeenCalledOnce();
+    expect(mocks.finishPasskeyAuthentication).toHaveBeenCalledWith("ceremony-1", { id: "credential-1", response: {} });
+    expect(mocks.acceptAuthResponse).toHaveBeenCalledWith({ accessToken: "access" });
   });
 
 });

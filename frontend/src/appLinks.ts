@@ -145,3 +145,14 @@ export function getInviteAppLinkPath(rawUrl: string): string | null {
     return null;
   }
 }
+
+export function getQRLoginApprovalPath(rawUrl: string): string | null {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "stovo:" || url.hostname !== "auth" || url.search || url.hash || url.port || url.username || url.password) return null;
+    const match = url.pathname.match(/^\/qr-approve\/([A-Za-z0-9_-]{32,128})$/);
+    return match ? `/app/qr-login/${encodeURIComponent(match[1])}` : null;
+  } catch {
+    return null;
+  }
+}

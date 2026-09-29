@@ -32,12 +32,14 @@ type Props = {
   notificationPreferences: Pick<DevicePreferences, "quietHoursEnabled" | "quietHoursStart" | "quietHoursEnd">;
   onProfileSubmit: (event: FormEvent) => void;
   onPasswordSubmit: (event: FormEvent) => void;
+  onRegisterPasskey: () => void;
+  passkeyUnavailable: boolean;
   onCopyConnection: () => void;
   onNotificationPreferencesUpdate: (updates: Partial<DevicePreferences>) => void;
 };
 
 export function ProfileSettingsTab(props: Props) {
-  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onCopyConnection, onNotificationPreferencesUpdate } = props;
+  const { strings, profileForm, setProfileForm, passwordForm, setPasswordForm, isSaving, accessToken, role, username, currentServerUrl, connectionLink, profilePhotoControl, notificationPreferences, onProfileSubmit, onPasswordSubmit, onRegisterPasskey, passkeyUnavailable, onCopyConnection, onNotificationPreferencesUpdate } = props;
   return (
     <div className="profile-detail-screen">
       <section className="profile-detail-hero">
@@ -58,6 +60,12 @@ export function ProfileSettingsTab(props: Props) {
         <label><span><LockKeyhole aria-hidden="true" size={21} />{strings.settings.confirmNewPassword}</span><input type="password" autoComplete="new-password" minLength={8} value={passwordForm.confirmation} onChange={(event) => setPasswordForm((current) => ({ ...current, confirmation: event.target.value }))} required /></label>
         <button type="submit" className="save-button primary-button" disabled={isSaving || !accessToken}>{isSaving ? strings.settings.changing : strings.settings.changePassword}</button>
       </form>
+      <section className="profile-detail-form">
+        <h3>Passkeys</h3>
+        <p className="muted-copy">Use your device screen lock or password manager to sign in without remembering a password.</p>
+        <button type="button" className="save-button primary-button" onClick={onRegisterPasskey} disabled={!accessToken || passkeyUnavailable || isSaving}>Add a passkey</button>
+        {passkeyUnavailable && <p className="muted-copy">Passkeys require HTTPS and a supported browser.</p>}
+      </section>
       <section className="profile-detail-form profile-notification-schedule">
         <h3>{strings.notifications.quietHours}</h3>
         <label className="profile-notification-toggle">

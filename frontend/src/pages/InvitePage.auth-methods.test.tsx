@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   acceptAuthResponse: vi.fn(),
   acceptInvite: vi.fn(),
   previewInvite: vi.fn(),
+  beginInvitePasskeyRegistration: vi.fn(),
+  acceptInviteWithPasskey: vi.fn(),
+  startRegistration: vi.fn(),
 }));
 
 vi.mock("../auth/AuthContext", () => ({
@@ -15,8 +18,11 @@ vi.mock("../auth/AuthContext", () => ({
 }));
 vi.mock("../api/family", () => ({
   acceptInvite: mocks.acceptInvite,
+  beginInvitePasskeyRegistration: mocks.beginInvitePasskeyRegistration,
+  acceptInviteWithPasskey: mocks.acceptInviteWithPasskey,
   previewInvite: mocks.previewInvite,
 }));
+vi.mock("@simplewebauthn/browser", () => ({ startRegistration: mocks.startRegistration }));
 
 import InvitePage from "./InvitePage";
 
@@ -30,6 +36,11 @@ describe("InvitePage authentication method choice", () => {
     mocks.currentUser = null;
     mocks.acceptAuthResponse.mockReset();
     mocks.acceptInvite.mockReset().mockResolvedValue({ accessToken: "access" });
+    mocks.beginInvitePasskeyRegistration.mockReset().mockResolvedValue({ ceremonyId: "ceremony-1", publicKey: { challenge: "challenge" } });
+    mocks.acceptInviteWithPasskey.mockReset().mockResolvedValue({ accessToken: "passkey-access" });
+    mocks.startRegistration.mockReset().mockResolvedValue({ id: "credential-1", response: {} });
+    Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
+    Object.defineProperty(window, "PublicKeyCredential", { configurable: true, value: class PublicKeyCredential {} });
     mocks.previewInvite.mockReset().mockResolvedValue({
       familyName: "Test space", role: "member", expiresAt: "2030-01-01T00:00:00Z", usesRemaining: 1,
     });
@@ -42,6 +53,8 @@ describe("InvitePage authentication method choice", () => {
     act(() => root.unmount());
     container.remove();
     document.body.innerHTML = "";
+    delete (window as Window & { isSecureContext?: boolean }).isSecureContext;
+    delete (window as Window & { PublicKeyCredential?: unknown }).PublicKeyCredential;
   });
 
   async function renderPage() {
@@ -81,5 +94,29 @@ describe("InvitePage authentication method choice", () => {
     expect(password).not.toBeNull();
     expect(password?.required).toBe(true);
     expect(password?.minLength).toBe(8);
+  });
+
+  it("registers the selected passkey and submits the invite without a password", async () => {
+    await renderPage();
+    const nickname = container.querySelector<HTMLInputElement>('input[autocomplete="username"]')!;
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+      setter?.call(nickname, "new-member");
+      nickname.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const passkeyChoice = [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Create a passkey"));
+    await act(async () => passkeyChoice?.click());
+    const submit = [...container.querySelectorAll("button")].find((button) => button.type === "submit");
+    await act(async () => submit?.click());
+
+    expect(mocks.beginInvitePasskeyRegistration).toHaveBeenCalledWith("invite-token", "new-member");
+    expect(mocks.startRegistration).toHaveBeenCalledOnce();
+    expect(mocks.acceptInviteWithPasskey).toHaveBeenCalledWith("invite-token", {
+      nickname: "new-member",
+      ceremonyId: "ceremony-1",
+      response: { id: "credential-1", response: {} },
+    });
+    expect(mocks.acceptInvite).not.toHaveBeenCalled();
+    expect(mocks.acceptAuthResponse).toHaveBeenCalledWith({ accessToken: "passkey-access" });
   });
 });

@@ -52,10 +52,12 @@ func RegisterFamilyRoutes(router chi.Router, routes FamilyRoutes) {
 // and accept handlers deliberately remain unwrapped because their existing
 // contracts authenticate through invite-specific request data.
 type InviteRoutes struct {
-	CreateInvite  stdhttp.Handler
-	PreviewInvite stdhttp.Handler
-	AcceptInvite  stdhttp.Handler
-	DeleteInvite  stdhttp.Handler
+	CreateInvite   stdhttp.Handler
+	PreviewInvite  stdhttp.Handler
+	AcceptInvite   stdhttp.Handler
+	PasskeyOptions stdhttp.Handler
+	AcceptPasskey  stdhttp.Handler
+	DeleteInvite   stdhttp.Handler
 }
 
 // RegisterInviteRoutes installs the stable REST paths for invitations.
@@ -63,5 +65,7 @@ func RegisterInviteRoutes(router chi.Router, routes InviteRoutes) {
 	router.Method(stdhttp.MethodPost, "/api/invites", routes.CreateInvite)
 	router.Method(stdhttp.MethodGet, "/api/invites/{token}", routes.PreviewInvite)
 	router.Method(stdhttp.MethodPost, "/api/invites/{token}/accept", routes.AcceptInvite)
+	router.Method(stdhttp.MethodPost, "/api/invites/{token}/passkey/options", routes.PasskeyOptions)
+	router.Method(stdhttp.MethodPost, "/api/invites/{token}/accept-passkey", routes.AcceptPasskey)
 	router.Method(stdhttp.MethodDelete, "/api/invites/{inviteId}", routes.DeleteInvite)
 }

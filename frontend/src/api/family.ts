@@ -86,6 +86,25 @@ export interface AcceptInvitePayload {
   password: string;
 }
 
+export interface InvitePasskeyOptions {
+  ceremonyId: string;
+  publicKey: Record<string, unknown>;
+}
+
+export function beginInvitePasskeyRegistration(token: string, nickname: string) {
+  return apiRequest<InvitePasskeyOptions>(`/api/invites/${encodeURIComponent(token)}/passkey/options`, {
+    method: "POST",
+    body: { nickname },
+  });
+}
+
+export function acceptInviteWithPasskey(token: string, payload: { nickname: string; ceremonyId: string; response: object }) {
+  return apiRequest<import("./auth").AuthResponse>(`/api/invites/${encodeURIComponent(token)}/accept-passkey`, {
+    method: "POST",
+    body: payload,
+  });
+}
+
 export function getFamily(accessToken: string) {
   return apiRequest<Family>("/api/family", { accessToken });
 }
