@@ -9,6 +9,11 @@
 - Worktree lifetime (TTL): target cleanup immediately after merge. Treat 30 days without activity as stale and inspect/report it; do not automatically discard unmerged work or data. If a task is intentionally kept open longer, retain its worktree and branch.
 - If a task has no remote PR or the user asks to keep the result locally, retain the branch/worktree until they confirm it is no longer needed; do not push or publish without authorization.
 
+## Pull request naming
+
+- Use Gitflow-style prefixes in PR titles: `feature: <user-visible capability>`, `hotfix: <corrected behavior>`, or `release: <version or release scope>`.
+- Name the outcome, not the work phase. Avoid titles such as `test: plan ...` or `implementation: ...`; planning and test work belong in the PR description.
+
 ## New features: test-driven development
 
 For a new feature or a materially new user-visible capability, work in this order:
