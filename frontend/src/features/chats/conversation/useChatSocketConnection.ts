@@ -15,7 +15,6 @@ import { audioPlaybackSession } from "../../../audioPlaybackSession";
 import { videoPlaybackSession } from "../../../videoPlaybackSession";
 import type { CallSessionApi } from "../calling/useCallSession";
 import { activeSessionVideoElement, androidAppStatePayload } from "../shared/callLifecycle";
-import { preferPollingFirst } from "../shared/socketPolling";
 
 export type UseChatSocketConnectionParams = {
   socketRef: RefObject<Socket | null>;
@@ -120,7 +119,11 @@ export function useChatSocketConnection({
     }
 
     const isNative = Capacitor.isNativePlatform();
-    const transports: Array<"polling" | "websocket"> = preferPollingFirst(window.location.hostname)
+    // Browsers should start with WebSocket so the realtime session is ready
+    // without waiting for a polling handshake and upgrade. Native clients keep
+    // polling first because their authenticated WebSocket handshake is not
+    // preserved by the current backend transport.
+    const transports: Array<"polling" | "websocket"> = isNative
       ? ["polling", "websocket"]
       : ["websocket", "polling"];
 
@@ -137,9 +140,12 @@ export function useChatSocketConnection({
       query: { token },
       transports,
       // Native clients keep polling because the backend's WebSocket upgrade does not
-      // preserve the authenticated handshake URL. Browsers can use the normal
-      // polling-to-WebSocket upgrade path.
+      // preserve the authenticated handshake URL. Browser clients try WebSocket
+      // first and fall back to polling if the transport itself is unavailable.
       upgrade: !isNative,
+      timeout: 8_000,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3_000,
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity

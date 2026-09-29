@@ -18,6 +18,8 @@ export interface ChatMember {
   isOnline?: boolean;
   lastSeenAt?: string | null;
   lastSeenVisibility?: "family" | "nobody";
+  directMessagePermission?: "family" | "selected" | "nobody";
+  invitePermissionUserIds?: string[];
 }
 
 export interface Chat {

@@ -532,9 +532,7 @@ describe("VoiceChannelStage", () => {
       />
     );
 
-    const banner = container.querySelector(".voice-room-notice-banner");
-    expect(banner).toBeDefined();
-    expect(banner?.textContent).toContain("Screen demonstration is not supported on this browser or device");
+    expect(container.querySelector(".voice-room-notice-banner")).toBeNull();
   });
 
   it("renders screen share button in voice channel controls", () => {

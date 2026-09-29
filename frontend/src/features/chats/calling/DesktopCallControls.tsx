@@ -103,13 +103,13 @@ export function DesktopCallControls() {
   });
 
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
-  const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
+  const [backgroundToastMessage, setBackgroundToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAiNotesQueuedToastVisible) return;
-    const timer = window.setTimeout(() => setIsAiNotesQueuedToastVisible(false), 5_000);
+    if (!backgroundToastMessage) return;
+    const timer = window.setTimeout(() => setBackgroundToastMessage(null), 5_000);
     return () => window.clearTimeout(timer);
-  }, [isAiNotesQueuedToastVisible]);
+  }, [backgroundToastMessage]);
 
   const recording = useCallRecording({
     accessToken: accessToken ?? null,
@@ -144,14 +144,14 @@ export function DesktopCallControls() {
       // The recorder flush and server-side transcription continue independently
       // of this popover, so release the user back to the call immediately.
       setIsIntelligenceOpen(false);
-      setIsAiNotesQueuedToastVisible(true);
+      setBackgroundToastMessage("AI Notes are being prepared");
       void stopTranscription();
     }
   };
 
   return (
     <>
-      <MeetingBackgroundToast visible={isAiNotesQueuedToastVisible} />
+      <MeetingBackgroundToast visible={Boolean(backgroundToastMessage)} message={backgroundToastMessage ?? undefined} />
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}
@@ -543,6 +543,8 @@ export function DesktopCallControls() {
                     if (recording.recordingState === "idle" || recording.recordingState === "completed" || recording.recordingState === "failed") {
                       void recording.startRecording();
                     } else if (recording.recordingState === "recording") {
+                      setIsIntelligenceOpen(false);
+                      setBackgroundToastMessage("Recording is being processed");
                       void recording.stopRecording();
                     }
                   }}

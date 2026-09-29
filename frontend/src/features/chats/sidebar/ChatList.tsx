@@ -59,6 +59,7 @@ export type ChatListProps = {
   minimizedChatLayout?: boolean;
   onSelectChat: (chat: Chat) => void;
   onOpenChat: (chat: Chat) => void;
+  onOpenMemberDm?: (userId: string) => void;
   onOpenDraftsAndScheduled: () => void;
   isDraftsAndScheduledActive?: boolean;
   onOpenMessageArchive: () => void;
@@ -81,6 +82,7 @@ export function ChatList({
   minimizedChatLayout,
   onSelectChat,
   onOpenChat,
+  onOpenMemberDm,
   onOpenDraftsAndScheduled,
   isDraftsAndScheduledActive,
   onOpenMessageArchive,
@@ -655,6 +657,7 @@ export function ChatList({
                         isDragging={activeDraggedChat?.id === chat.id}
                         onSelect={onSelectChat}
                         onOpen={onOpenChat}
+                        onOpenMemberDm={onOpenMemberDm}
                         onDragStart={(_e, c) => {
                           draggedChatRef.current = c;
                           requestAnimationFrame(() => {
@@ -746,6 +749,7 @@ export function ChatList({
                     isDragging={activeDraggedChat?.id === chat.id}
                     onSelect={onSelectChat}
                     onOpen={onOpenChat}
+                    onOpenMemberDm={onOpenMemberDm}
                     onDragStart={(_e, c) => {
                       draggedChatRef.current = c;
                       requestAnimationFrame(() => {

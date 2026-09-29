@@ -24,6 +24,7 @@ type ChatListItemProps = {
   currentUserId?: string;
   activeVoiceCallChatId?: string | null;
   activeVoiceCallParticipantIds?: string[];
+  onOpenMemberDm?: (userId: string) => void;
   minimizedChatLayout?: boolean;
   isDragging?: boolean;
   onSelect: (chat: Chat) => void;
@@ -41,6 +42,7 @@ export function ChatListItem({
   currentUserId,
   activeVoiceCallChatId,
   activeVoiceCallParticipantIds = [],
+  onOpenMemberDm,
   minimizedChatLayout,
   isDragging,
   onSelect,
@@ -73,6 +75,18 @@ export function ChatListItem({
   );
 
   const canDrag = Boolean(onDragStart);
+  const voiceParticipants = (chat.activeCall?.participants as Array<{ userId?: string; state?: string; joinedAt?: string }> | undefined) ?? [];
+
+  const voiceDuration = (joinedAt?: string) => {
+    if (!joinedAt) return "In voice channel";
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(joinedAt).getTime()) / 60_000));
+    if (!Number.isFinite(elapsedMinutes)) return "In voice channel";
+    if (elapsedMinutes < 1) return "Joined just now";
+    if (elapsedMinutes < 60) return `In voice for ${elapsedMinutes}m`;
+    const hours = Math.floor(elapsedMinutes / 60);
+    const minutes = elapsedMinutes % 60;
+    return `In voice for ${hours}h${minutes ? ` ${minutes}m` : ""}`;
+  };
 
   return (
     <div
@@ -155,14 +169,40 @@ export function ChatListItem({
             <span className="chat-list-voice-participants" aria-label={`${voiceParticipantIds.length} active voice channel members`}>
               {voiceParticipantIds.slice(0, 4).map((userId) => {
                 const member = chat.members.find((item) => item.id === userId);
+                const joinedAt = voiceParticipants.find((participant) => participant.userId === userId)?.joinedAt;
+                const canMessage = Boolean(
+                  member &&
+                  userId !== currentUserId &&
+                  member.directMessagePermission !== "nobody" &&
+                  (member.directMessagePermission !== "selected" || member.invitePermissionUserIds?.includes(currentUserId ?? ""))
+                );
                 return (
-                  <RealAvatar
-                    key={userId}
-                    accessToken={accessToken}
-                    className="avatar chat-list-voice-avatar"
-                    file={member?.profilePhoto}
-                    label={member?.displayName ?? "Member"}
-                  />
+                  <span key={userId} className="chat-list-voice-member">
+                    <button
+                      type="button"
+                      className="chat-list-voice-member-trigger"
+                      aria-label={`${member?.displayName ?? "Member"}${canMessage ? ", open direct message" : ""}`}
+                      disabled={!canMessage || !onOpenMemberDm}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (canMessage) onOpenMemberDm?.(userId);
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      <RealAvatar
+                        accessToken={accessToken}
+                        className="avatar chat-list-voice-avatar"
+                        file={member?.profilePhoto}
+                        label={member?.displayName ?? "Member"}
+                      />
+                    </button>
+                    <span className="chat-list-voice-member-tooltip" role="tooltip">
+                      <strong>{member?.displayName ?? "Member"}</strong>
+                      <small>{voiceDuration(joinedAt)}</small>
+                      {!canMessage && userId !== currentUserId && <small>Direct messages are restricted</small>}
+                      {userId === currentUserId && <small>You</small>}
+                    </span>
+                  </span>
                 );
               })}
               {voiceParticipantIds.length > 4 && <span className="chat-list-voice-overflow">+{voiceParticipantIds.length - 4}</span>}

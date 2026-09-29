@@ -263,6 +263,7 @@ export function ChatSidebar({
         minimizedChatLayout={minimizedChatLayout}
         onSelectChat={onSelectChat}
         onOpenChat={onOpenChat}
+        onOpenMemberDm={(userId) => void overview.startDirectChatWith(userId)}
         onOpenDraftsAndScheduled={onOpenDraftsAndScheduled}
         isDraftsAndScheduledActive={isDraftsAndScheduledActive}
         onOpenMessageArchive={onOpenMessageArchive}
