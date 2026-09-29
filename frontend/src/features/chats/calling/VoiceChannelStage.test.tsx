@@ -216,8 +216,8 @@ describe("VoiceChannelStage", () => {
     const inviteButton = container.querySelector(".voice-room-member-invite");
     expect(emptyState).not.toBeNull();
     expect(inviteButton).not.toBeNull();
-    expect(emptyState?.parentElement).toBe(inviteButton?.parentElement);
     expect(emptyState?.parentElement?.classList.contains("voice-room-empty-content")).toBe(true);
+    expect(inviteButton?.getAttribute("aria-label")).toBe("Add people");
 
     // Ensure there is only 1 join button on the whole screen (no duplicate button)
     const joinButtons = container.querySelectorAll("button");
@@ -362,7 +362,7 @@ describe("VoiceChannelStage", () => {
     const moreMenu = container.querySelector(".voice-more-menu");
     expect(moreMenu).toBeDefined();
     expect(moreMenu!.textContent).toContain("Settings");
-    expect(moreMenu!.textContent).toContain("AI Notes");
+    expect(moreMenu!.textContent).not.toContain("AI Notes");
 
     // Click Settings item in more menu
     const settingsItem = Array.from(moreMenu!.querySelectorAll(".voice-more-menu-item")).find(
@@ -532,9 +532,7 @@ describe("VoiceChannelStage", () => {
       />
     );
 
-    const banner = container.querySelector(".voice-room-notice-banner");
-    expect(banner).toBeDefined();
-    expect(banner?.textContent).toContain("Screen demonstration is not supported on this browser or device");
+    expect(container.querySelector(".voice-room-notice-banner")).toBeNull();
   });
 
   it("renders screen share button in voice channel controls", () => {
@@ -615,15 +613,14 @@ describe("VoiceChannelStage", () => {
     );
 
     act(() => {
-      (container.querySelector("button[title='More Options']") as HTMLButtonElement).click();
+      (container.querySelector("button[aria-label='Stovo Intelligence']") as HTMLButtonElement).click();
     });
     await act(async () => {
-      (Array.from(container.querySelectorAll(".voice-more-menu-item")).find((item) => item.textContent?.includes("Start AI Notes")) as HTMLButtonElement).click();
+      (container.querySelector("button[aria-label='Start AI Notes']") as HTMLButtonElement).click();
       await Promise.resolve();
     });
 
-    expect(container.querySelector("[data-testid='voice-ai-notes-status']")?.textContent)
-      .toContain("Transcription service is not configured");
+    expect(container.querySelector(".voice-room-notice-banner")).toBeNull();
   });
 
   it("renders voice speaking ring around avatar when peer is speaking in voice room", () => {

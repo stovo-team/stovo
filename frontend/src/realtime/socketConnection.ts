@@ -19,7 +19,6 @@ const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 function waitForSingleConnection(
   socket: SocketConnection,
   timeoutMs: number,
-  restartNamespace = false,
 ): Promise<boolean> {
   if (socket.connected) return Promise.resolve(true);
 
@@ -33,14 +32,10 @@ function waitForSingleConnection(
     };
 
     socket.on("connect", onConnect);
-    // Socket.IO's connect() is not idempotent while the namespace handshake is
-    // pending; calling it on each retry queues duplicate CONNECT packets. The
-    // active socket already has its own reconnection loop, so only start sockets
-    // that are not active.
-    if (restartNamespace && socket.disconnect) {
-      socket.disconnect();
-      socket.connect();
-    } else if (!socket.active) {
+    // Let Socket.IO's manager finish or retry an in-flight handshake. Forcing a
+    // namespace disconnect here can abandon a slow first session and create a
+    // second one, which is both slower and can leave duplicate CONNECT packets.
+    if (!socket.active) {
       socket.connect();
     }
   });
@@ -60,12 +55,9 @@ export async function waitForSocketConnection(
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     onAttempt?.(attempt, attempts);
-    // A Socket.IO manager can keep its Engine.IO polling transport alive while
-    // the namespace handshake is wedged. In that state `active` is true, so
-    // connect() is normally a no-op and the call event is never emitted. Give
-    // the normal reconnect a window, then periodically reset the namespace.
-    const restartNamespace = attempt > 1 && attempt % 2 === 0 && socket.active === true;
-    if (await waitForSingleConnection(socket, attemptTimeoutMs, restartNamespace)) return true;
+    // Socket.IO owns transport recovery; wait for its connection event without
+    // tearing down a namespace handshake that may still be completing.
+    if (await waitForSingleConnection(socket, attemptTimeoutMs)) return true;
     if (attempt < attempts) await delay(retryDelayMs);
   }
 
