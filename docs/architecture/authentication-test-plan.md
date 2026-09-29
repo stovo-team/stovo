@@ -2,6 +2,8 @@
 
 This document defines the acceptance and security test marker for adding passkeys and QR sign-in to Stovo web authentication, and passkey registration during guest-invite acceptance. It is a plan, not an implementation. The intended UI keeps username/password as the default login form, with passkey and QR as secondary options. Google sign-in is out of scope.
 
+The first executable tests live in `frontend/src/pages/LoginPage.auth-methods.test.tsx`, `frontend/src/pages/InvitePage.auth-methods.test.tsx`, `e2e/tests/auth-methods.spec.ts`, and `backend/internal/app/auth_methods_contract_test.go`. The login/invite component and E2E cases define currently missing UI behavior; the backend tests define the first route/status contract. The remaining IDs below are the complete acceptance backlog and should be added before implementing each corresponding backend capability, in accordance with the test-first workflow in the repository `AGENTS.md`.
+
 ## Product and security contract
 
 - Authentication is scoped to the currently selected Stovo space/server. A credential or pending login request from one space must not authenticate into another.
@@ -22,6 +24,21 @@ This document defines the acceptance and security test marker for adding passkey
 4. Define QR protocol state location and lifetime, polling/notification behavior, rate limits, and whether code fallback is enabled for app-only or browser scanning.
 5. Define behavior for self-hosted HTTP clearly: hide or disable passkey with a reason, while preserving password and QR where the client capabilities allow them.
 6. Confirm session duration/rotation policy separately; this feature must not accidentally extend session lifetime or change refresh-token semantics.
+
+### Initial HTTP route contract used by the executable backend tests
+
+The initial route test file uses this proposed surface so backend work can begin test-first. Request/response DTO details remain to be designed with the handlers; do not treat an endpoint returning a validation error as proof that its ceremony is secure.
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/auth/passkeys/registration/options` | Start authenticated enrollment |
+| POST | `/api/auth/passkeys/registration/verify` | Complete authenticated enrollment |
+| POST | `/api/auth/passkeys/authentication/options` | Start public passkey authentication |
+| POST | `/api/auth/passkeys/authentication/verify` | Verify assertion and issue session |
+| POST | `/api/auth/qr-login` | Create short-lived browser request |
+| GET | `/api/auth/qr-login/{requestID}` | Read status using opaque request locator |
+| POST | `/api/auth/qr-login/{requestID}/approve` | Authenticated phone approval |
+| POST | `/api/auth/qr-login/{requestID}/reject` | Authenticated phone rejection |
 
 ## Scenario matrix
 
