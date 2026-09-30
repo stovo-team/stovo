@@ -147,7 +147,6 @@ export default function GuestMeetingPage() {
     localAudioStream: localStreamRef.current,
     displayName: guestDisplayName,
     room: roomRef.current,
-    defaultLanguage: "en",
   });
   useEffect(() => {
     if (state !== "joined" || !token || isOrgMemberOrHost) return;

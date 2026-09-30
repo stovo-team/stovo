@@ -4,11 +4,10 @@
  * Houses the three core meeting capabilities:
  *  1. AI Notes (start/stop, status chip, view notes)
  *  2. Meeting Recording (record/stop, REC timer, uploading badge)
- *  3. Live Captions & Real-Time AI Translation (toggle, target language dropdown/pills)
+ *  3. Live Captions, with translation marked as a Premium feature
  */
-import React, { useEffect, useId, useRef, useState } from "react";
-import { Check, ChevronDown, Circle, FileText, Globe, Sparkles, Square, Video } from "lucide-react";
-import { SUPPORTED_LANGUAGES } from "./useLiveCaptions";
+import React, { useEffect, useRef, useState } from "react";
+import { Check, Circle, FileText, Globe, Sparkles, Square, Video } from "lucide-react";
 import type { RecordingState } from "./useCallRecording";
 import type { TranscriptState } from "./useTranscription";
 
@@ -78,6 +77,24 @@ export function MeetingIntelligencePopover({
   isMobile = false,
 }: MeetingIntelligencePopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
+  const [backgroundToastMessage, setBackgroundToastMessage] = useState<string | null>(null);
+  const backgroundToast = <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />;
+
+  const handleToggleNotes = () => {
+    if (notesState === "recording") {
+      setBackgroundToastMessage("AI Notes are being prepared");
+      onClose();
+    }
+    onToggleNotes();
+  };
+
+  const handleToggleRecording = () => {
+    if (recordingState === "recording") {
+      setBackgroundToastMessage("Recording is being processed");
+      onClose();
+    }
+    onToggleRecording();
+  };
 
   useEffect(() => {
     if (!isOpen) return;
