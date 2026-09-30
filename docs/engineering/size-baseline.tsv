@@ -10,9 +10,9 @@ backend/internal/app/guest_meetings.go	404
 backend/internal/app/helpers.go	437
 backend/internal/app/mcp_operations.go	1068
 backend/internal/app/recording_operations.go	567
-backend/internal/app/routes.go	1325
+backend/internal/app/routes.go	1339
 backend/internal/app/server.go	596
-backend/internal/app/transcription_operations.go	529
+backend/internal/app/transcription_operations.go	609
 backend/internal/app/types.go	509
 backend/internal/config/config.go	434
 backend/internal/orchestrator/routes.go	721
@@ -39,12 +39,12 @@ frontend/src/config/strings/russian.ts	967
 frontend/src/features/chats/calling/DesktopCallControls.tsx	670
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	754
 frontend/src/features/chats/calling/useCallSession.ts	1056
-frontend/src/features/chats/calling/useTranscription.ts	554
+frontend/src/features/chats/calling/useTranscription.ts	605
 frontend/src/features/chats/calling/VoiceChannelStage.tsx	667
 frontend/src/features/chats/composer/Composer.tsx	963
 frontend/src/features/chats/composer/useMessageComposer.ts	898
 frontend/src/features/chats/conversation/ConversationPanel.tsx	766
-frontend/src/features/chats/conversation/MessageBubble.tsx	598
+frontend/src/features/chats/conversation/MessageBubble.tsx	646
 frontend/src/features/chats/conversation/useMessageThread.ts	910
 frontend/src/features/chats/details/ChatDetailsPanel.tsx	1411
 frontend/src/features/chats/outbox/messageOutboxProcessor.ts	482
