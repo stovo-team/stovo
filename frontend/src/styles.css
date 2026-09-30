@@ -124,7 +124,7 @@
   --chat-list-bottom-inset: calc(
     var(--fab-size) + 16px + var(--nav-pill-height) + var(--nav-pill-inset-bottom) + 16px
   );
-  --nav-rail-width: 88px;
+  --nav-rail-width: 72px;
   --surface-elevated: var(--surface-card);
   --text-tertiary: var(--text-muted);
   --surface-raised: var(--background-tertiary);
@@ -1961,7 +1961,7 @@ h2 {
   }
 
   .app-frame > .app-nav {
-    --nav-rail-width: 84px;
+    --nav-rail-width: 72px;
     gap: 10px;
     padding: 14px 8px;
     width: var(--nav-rail-width);
@@ -3028,13 +3028,13 @@ h2 {
   display: grid;
   flex: 1;
   gap: var(--float-panel-gap);
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   min-height: 0;
   overflow: hidden;
 }
 
 .chat-layout.details-open {
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr) minmax(340px, 420px);
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr) minmax(340px, 420px);
 }
 
 .chat-sidebar,
@@ -11240,6 +11240,18 @@ span.message-spoiler.is-revealed {
   .settings-page.settings-appearance-view .range-field { grid-template-columns: 1fr; }
 }
 
+@media (min-width: 961px) and (max-width: 1280px),
+  (min-width: 961px) and (max-height: 800px) {
+  .messenger-shell.chat-list-view {
+    --fab-size: 48px;
+  }
+
+  .messenger-shell.chat-list-view .compose-fab svg {
+    height: 20px;
+    width: 20px;
+  }
+}
+
 @media (max-width: 960px) {
   /* The overview is a stack of tiles, never a tile stack inside another card. */
   .settings-page:not(.settings-detail-view) .settings-groups,
@@ -13610,7 +13622,7 @@ span.message-spoiler.is-revealed {
     border-radius: 0;
     box-shadow: none;
     gap: var(--chat-list-chrome-gap, 16px);
-    margin: max(12px, env(safe-area-inset-top)) var(--mobile-edge-inset-x) 0;
+    margin: max(12px, env(safe-area-inset-top)) 10px 0;
     padding: 0;
     position: relative;
     isolation: isolate;
@@ -13679,7 +13691,7 @@ span.message-spoiler.is-revealed {
   .messenger-shell.chat-list-view .chat-list {
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12px);
     mask-image: linear-gradient(to bottom, transparent 0%, #000 12px);
-    padding: var(--chat-list-chrome-gap, 16px) var(--mobile-page-inset) var(--chat-list-bottom-inset);
+    padding: var(--chat-list-chrome-gap, 16px) 10px var(--chat-list-bottom-inset);
   }
 
   .messenger-shell.chat-list-view .chat-list-item {
