@@ -65,12 +65,16 @@ type UploadChunkResult struct {
 
 // TranscriptSegmentForLLM is a simplified view passed to the LLM for post-processing.
 type TranscriptSegmentForLLM struct {
-	ID              string `json:"id"`
-	ParticipantName string `json:"participantName"`
-	StartMs         int64  `json:"startMs"`
-	EndMs           int64  `json:"endMs"`
-	Text            string `json:"text"`
-	Language        string `json:"language,omitempty"`
+	ID              string  `json:"id"`
+	CallID          string  `json:"callId"`
+	SessionID       string  `json:"sessionId"`
+	ParticipantID   string  `json:"participantId"`
+	ParticipantName string  `json:"participantName"`
+	StartMs         int64   `json:"startMs"`
+	EndMs           int64   `json:"endMs"`
+	Text            string  `json:"text"`
+	Language        string  `json:"language,omitempty"`
+	Confidence      float64 `json:"confidence"`
 }
 
 // DecisionItem is a structured decision extracted from the transcript.

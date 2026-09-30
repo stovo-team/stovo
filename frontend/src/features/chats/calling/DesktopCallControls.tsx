@@ -126,7 +126,6 @@ export function DesktopCallControls() {
     roomId: callRoomId,
     localAudioStream: audioCallRef.current?.getLocalStream?.() ?? localVideoStream,
     displayName: currentUser?.displayName ?? "You",
-    defaultLanguage: "en",
   });
   const {
     transcriptState,
@@ -156,7 +155,6 @@ export function DesktopCallControls() {
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}
         currentInterimCaption={liveCaptions.currentInterimCaption}
-        targetLanguage={liveCaptions.targetLanguage}
         speakerDisplayName={currentUser?.displayName ?? "You"}
       />
       {/* ── Header row ── */}
@@ -549,9 +547,7 @@ export function DesktopCallControls() {
                   isRecordingAllowed={true}
                   isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
                   onToggleCaptions={liveCaptions.toggleCaptions}
-                  targetLanguage={liveCaptions.targetLanguage}
-                  onChangeTargetLanguage={liveCaptions.setTargetLanguage}
-                />
+                    />
               </div>
               <div className="call-ctrl-wrap">
                 <button

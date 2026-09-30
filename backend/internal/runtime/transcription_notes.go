@@ -11,9 +11,13 @@ import (
 // operational presentation with the worker prevents the app compatibility host
 // from owning post-processing completion semantics.
 func FormatTranscriptionNotes(summary featuretranscription.Summary) string {
-	sections := make([]string, 0, 4)
+	sections := make([]string, 0, 5)
 	if text := strings.TrimSpace(summary.Summary); text != "" {
 		sections = append(sections, "AI call notes\n\n"+text)
+	} else {
+		// Keep a stable message marker so the chat UI can offer its linked
+		// transcript even when the model returned only structured sections.
+		sections = append(sections, "AI call notes")
 	}
 	if len(summary.Decisions) > 0 {
 		items := make([]string, 0, len(summary.Decisions))

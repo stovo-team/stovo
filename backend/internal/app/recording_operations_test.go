@@ -1,9 +1,6 @@
 package app
 
-import (
-	"fmt"
-	"testing"
-)
+import "testing"
 
 func TestFormatRecordingDuration(t *testing.T) {
 	tests := []struct {
@@ -45,52 +42,5 @@ func TestRecordingMessageContent(t *testing.T) {
 				t.Errorf("recordingMessageContent(%q, %d) = %q, want %q", tt.meeting, tt.durationMs, got, tt.expected)
 			}
 		})
-	}
-}
-
-func TestTargetLangDisplayName(t *testing.T) {
-	tests := []struct {
-		code     string
-		expected string
-	}{
-		{"en", "English"},
-		{"es", "Spanish"},
-		{"ru", "Russian"},
-		{"de", "German"},
-		{"fr", "French"},
-		{"zh", "Chinese"},
-		{"ja", "Japanese"},
-		{"ky", "Kyrgyz"},
-		{"kk", "Kazakh"},
-		{"uz", "Uzbek"},
-		{"custom", "custom"},
-	}
-
-	for _, tt := range tests {
-		got := targetLangDisplayName(tt.code)
-		if got != tt.expected {
-			t.Errorf("targetLangDisplayName(%s) = %s, want %s", tt.code, got, tt.expected)
-		}
-	}
-}
-
-func TestCaptionCache(t *testing.T) {
-	key := "test:hello"
-	val := "Hola"
-
-	setCachedCaption(key, val)
-	cached, ok := getCachedCaption(key)
-	if !ok || cached != val {
-		t.Fatalf("expected %s, got %s (ok=%v)", val, cached, ok)
-	}
-
-	// Test cache capacity limit
-	for i := 0; i < 5050; i++ {
-		setCachedCaption(fmt.Sprintf("key:%d", i), fmt.Sprintf("val:%d", i))
-	}
-	// Oldest key should have been evicted
-	_, stillExists := getCachedCaption(key)
-	if stillExists {
-		t.Errorf("expected key to be evicted after max capacity reached")
 	}
 }

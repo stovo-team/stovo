@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 
 	"stovo-messenger/backend/internal/adapters/groq"
 	featuretranscription "stovo-messenger/backend/internal/features/transcription"
+	"stovo-messenger/backend/internal/ports"
 	"stovo-messenger/backend/internal/runtime"
 	"stovo-messenger/backend/internal/transcription"
 	transporthttp "stovo-messenger/backend/internal/transport/http"
@@ -44,16 +46,24 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 				meetingID := strings.TrimPrefix(roomID, "guest-meeting:")
 				var m guestMeeting
 				err := s.guestDB.QueryRowContext(context.Background(), `SELECT id,chat_id,creator_id,title,admission_mode,expires_at,scheduled_at,revoked_at,ended_at FROM guest_meetings WHERE id=$1`, meetingID).Scan(&m.ID, &m.ChatID, &m.CreatorID, &m.Title, &m.AdmissionMode, &m.ExpiresAt, &m.ScheduledAt, &m.RevokedAt, &m.EndedAt)
-				if err != nil || m.RevokedAt != nil || m.EndedAt != nil || time.Now().After(m.ExpiresAt) {
-					return transporthttp.TranscriptionCall{}, false
+				if err == nil {
+					return transporthttp.TranscriptionCall{ID: roomID, ChatID: m.ChatID, CallerID: m.CreatorID}, true
 				}
-				return transporthttp.TranscriptionCall{ID: roomID, ChatID: m.ChatID, CallerID: m.CreatorID}, true
-			}
-			call, ok := s.getCallSessionByRoom(roomID)
-			if !ok {
+				var chatID, initiator string
+				if s.db.QueryRowContext(context.Background(), `SELECT chat_id,initiated_by FROM call_transcription_sessions WHERE call_id=$1 ORDER BY created_at DESC LIMIT 1`, roomID).Scan(&chatID, &initiator) == nil && chatID != "" {
+					return transporthttp.TranscriptionCall{ID: roomID, ChatID: chatID, CallerID: initiator}, true
+				}
 				return transporthttp.TranscriptionCall{}, false
 			}
-			return transporthttp.TranscriptionCall{ID: call.ID, ChatID: call.ChatID, CallerID: call.CallerUserID}, true
+			call, ok := s.getCallSessionByRoom(roomID)
+			if ok {
+				return transporthttp.TranscriptionCall{ID: call.ID, ChatID: call.ChatID, CallerID: call.CallerUserID}, true
+			}
+			var chatID, initiator string
+			if s.db.QueryRowContext(context.Background(), `SELECT chat_id,initiated_by FROM call_transcription_sessions WHERE call_id=$1 ORDER BY created_at DESC LIMIT 1`, roomID).Scan(&chatID, &initiator) != nil || chatID == "" {
+				return transporthttp.TranscriptionCall{}, false
+			}
+			return transporthttp.TranscriptionCall{ID: roomID, ChatID: chatID, CallerID: initiator}, true
 		},
 		IsParticipant: func(call transporthttp.TranscriptionCall, userID string) bool {
 			if strings.HasPrefix(call.ID, "guest-meeting:") {
@@ -73,6 +83,13 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 			session, ok := s.getCallSessionByRoom(call.ID)
 			return ok && isCallParticipant(session, userID)
 		},
+		CanAccessChat: func(chatID, userID string) bool {
+			if s.chatQueries == nil || chatID == "" || userID == "" {
+				return false
+			}
+			_, err := s.chatQueries.GetForMember(context.Background(), chatID, userID)
+			return err == nil
+		},
 		IsAdministrator: isAdmin,
 		Latest: func(ctx context.Context, callID string) (any, error) {
 			value, err := s.transcriptionQueries.Latest(ctx, callID)
@@ -80,7 +97,60 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 		},
 		Transcript: func(ctx context.Context, roomID string) (any, error) {
 			value, err := s.transcriptionQueries.Transcript(ctx, roomID)
-			return transcriptPublicFromFeature(value), err
+			if err != nil {
+				return nil, err
+			}
+			artifactRef, artifactErr := s.transcriptionQueries.Artifact(ctx, roomID, "exact")
+			if artifactErr == nil && artifactRef.ObjectKey != "" {
+				artifactStore, ok := s.storage.(ports.BucketObjectReader)
+				if !ok {
+					return nil, fmt.Errorf("object storage cannot read exact transcript artifacts")
+				}
+				payload, readErr := artifactStore.ReadFromBucket(ctx, s.cfg.MinIOCallsBucket, artifactRef.ObjectKey)
+				if readErr != nil {
+					return nil, fmt.Errorf("read exact transcript artifact: %w", readErr)
+				}
+				var source struct {
+					Segments []transcription.TranscriptSegmentForLLM `json:"segments"`
+				}
+				if err := json.Unmarshal(payload, &source); err != nil {
+					return nil, fmt.Errorf("decode exact transcript artifact: %w", err)
+				}
+				cleanedByID := make(map[string]*string, len(value.Segments))
+				for _, segment := range value.Segments {
+					cleanedByID[segment.ID] = segment.CleanedText
+				}
+				value.Segments = make([]featuretranscription.Segment, 0, len(source.Segments))
+				for _, segment := range source.Segments {
+					language := segment.Language
+					var detectedLanguage *string
+					if language != "" {
+						detectedLanguage = &language
+					}
+					confidence := segment.Confidence
+					value.Segments = append(value.Segments, featuretranscription.Segment{
+						ID: segment.ID, CallID: segment.CallID, SessionID: segment.SessionID,
+						ParticipantID: segment.ParticipantID, ParticipantName: segment.ParticipantName,
+						StartMs: segment.StartMs, EndMs: segment.EndMs, ExactText: segment.Text,
+						CleanedText: cleanedByID[segment.ID], DetectedLanguage: detectedLanguage, Confidence: &confidence,
+					})
+				}
+			}
+			result := transcriptPublicFromFeature(value)
+			participantNames := make(map[string]string)
+			for index := range result.Segments {
+				participantID := result.Segments[index].ParticipantID
+				name, lookedUp := participantNames[participantID]
+				if !lookedUp {
+					name = participantID
+					if user, lookupErr := s.getUserByID(participantID); lookupErr == nil && user.DisplayName != "" {
+						name = user.DisplayName
+					}
+					participantNames[participantID] = name
+				}
+				result.Segments[index].ParticipantName = name
+			}
+			return result, nil
 		},
 		UpdateSegment: s.transcriptionQueries.UpdateCleanedText,
 		ArtifactDownload: func(ctx context.Context, roomID, artifactType string) (string, int, error) {
@@ -282,7 +352,10 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 			if container == "mp4" {
 				codec = "aac"
 			}
-			chunk, err := s.transcriptionChunks.Reserve(ctx, featuretranscription.AudioChunk{ID: uuid.NewString(), SessionID: req.SessionID, ParticipantID: actor.ID, ObjectKey: objectKey, Sequence: req.Sequence, Container: container, Codec: codec, CallStartMs: req.CallStartMs, CallEndMs: req.CallEndMs, DurationMs: req.DurationMs})
+			if req.ClientVADScore <= 0 || req.ClientVADScore > 1 {
+				return nil, http.StatusBadRequest, "Audio chunk did not pass voice activity detection"
+			}
+			chunk, err := s.transcriptionChunks.Reserve(ctx, featuretranscription.AudioChunk{ID: uuid.NewString(), SessionID: req.SessionID, ParticipantID: actor.ID, ObjectKey: objectKey, Sequence: req.Sequence, Container: container, Codec: codec, CallStartMs: req.CallStartMs, CallEndMs: req.CallEndMs, DurationMs: req.DurationMs, ClientVADScore: req.ClientVADScore})
 			if err != nil {
 				s.logger.Warnf("transcription", "reserve chunk failed session_id=%s error=%v", req.SessionID, err)
 				return nil, http.StatusInternalServerError, "Failed to register upload"
@@ -448,6 +521,13 @@ func (s *Server) processTranscription(ctx context.Context, sessionID, callID, ch
 		Sessions: s.transcriptionSessions, Chunks: s.transcriptionChunks, Segments: s.transcriptionSegments,
 		Storage: s.storage, CallsBucket: s.cfg.MinIOCallsBucket, Logger: s.logger,
 		Provider: runtime.TranscriptionProviderOptions{APIKey: provider.APIKey, BaseURL: provider.BaseURL, STTModel: provider.STTModel, ChatModel: provider.ChatModel, CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD},
+		ParticipantName: func(userID string) string {
+			user, err := s.getUserByID(userID)
+			if err != nil {
+				return userID
+			}
+			return user.DisplayName
+		},
 		Broadcast: func(chatID, callID, sessionID, status, failure string) {
 			s.broadcastTranscriptionStatus(chatID, callID, sessionID, status, failure)
 		},

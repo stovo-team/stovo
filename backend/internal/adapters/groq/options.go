@@ -34,10 +34,16 @@ func Resolve(cfg *config.Config, logger Logger) Options {
 	chatModel := strings.TrimSpace(cfg.GroqChatModel)
 	if chatModel == "" {
 		chatModel = first("GROQ_CHAT_MODEL")
-		if chatModel != "" {
-			cfg.GroqChatModel = chatModel
+	}
+	if chatModel == "" {
+		base := strings.ToLower(baseURL)
+		if strings.Contains(base, "dashscope") || strings.Contains(base, "aliyuncs.com") || strings.Contains(base, "maas") {
+			chatModel = "qwen-plus"
+		} else {
+			chatModel = "qwen/qwen3.8-27b"
 		}
 	}
+	cfg.GroqChatModel = chatModel
 	sttModel := first("GROQ_STT_MODEL")
 	if sttModel == "" {
 		sttModel = strings.TrimSpace(cfg.GroqSTTModel)
