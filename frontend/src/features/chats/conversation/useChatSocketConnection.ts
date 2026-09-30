@@ -119,14 +119,6 @@ export function useChatSocketConnection({
     }
 
     const isNative = Capacitor.isNativePlatform();
-    // Browsers should start with WebSocket so the realtime session is ready
-    // without waiting for a polling handshake and upgrade. Native clients keep
-    // polling first because their authenticated WebSocket handshake is not
-    // preserved by the current backend transport.
-    const transports: Array<"polling" | "websocket"> = isNative
-      ? ["polling", "websocket"]
-      : ["websocket", "polling"];
-
     const apiUrl = getApiUrl();
     const socketConfig = getSocketConfigForUrl(apiUrl);
 
@@ -138,11 +130,12 @@ export function useChatSocketConnection({
       path: socketConfig.path,
       auth: { token },
       query: { token },
-      transports,
-      // Native clients keep polling because the backend's WebSocket upgrade does not
-      // preserve the authenticated handshake URL. Browser clients try WebSocket
-      // first and fall back to polling if the transport itself is unavailable.
-      upgrade: !isNative,
+      // Keep the authenticated Socket.IO session on polling. The backend reads
+      // the token from the handshake URL, which its current WebSocket upgrade
+      // path does not preserve; upgrading can disconnect the namespace just as
+      // call signaling starts.
+      transports: ["polling"],
+      upgrade: false,
       timeout: 8_000,
       reconnectionDelay: 500,
       reconnectionDelayMax: 3_000,
