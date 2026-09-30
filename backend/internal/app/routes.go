@@ -240,6 +240,22 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 				s.writeAuthSuccess(w, r, http.StatusOK, response.(httptransport.AuthSuccess[userPublic]))
 			},
 		}.VerifyCode),
+		PasskeyRegistrationOptions: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.passkeyRegistrationOptions(w, r, user)
+		}),
+		PasskeyRegistrationVerify: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.passkeyRegistrationVerify(w, r, user)
+		}),
+		PasskeyAuthenticationOptions: http.HandlerFunc(s.passkeyAuthenticationOptions),
+		PasskeyAuthenticationVerify:  http.HandlerFunc(s.passkeyAuthenticationVerify),
+		QRLoginCreate:                http.HandlerFunc(s.createQRLogin),
+		QRLoginStatus:                http.HandlerFunc(s.qrLoginStatus),
+		QRLoginApprove: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.approveQRLogin(w, r, user)
+		}),
+		QRLoginReject: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.rejectQRLogin(w, r, user)
+		}),
 		Refresh: httptransport.NewRefreshHandler(httptransport.RefreshOperations{
 			RefreshCookieName: s.cfg.RefreshCookieName,
 			ClientIP:          s.getClientIP,
@@ -696,8 +712,10 @@ func (s *Server) inviteRoutes() httptransport.InviteRoutes {
 				},
 			}.CreateInvite(w, r)
 		}),
-		PreviewInvite: http.HandlerFunc(previewHandler.ServeHTTP),
-		AcceptInvite:  http.HandlerFunc(acceptHandler.AcceptInvite),
+		PreviewInvite:  http.HandlerFunc(previewHandler.ServeHTTP),
+		AcceptInvite:   http.HandlerFunc(acceptHandler.AcceptInvite),
+		PasskeyOptions: http.HandlerFunc(s.invitePasskeyOptions),
+		AcceptPasskey:  http.HandlerFunc(s.acceptInviteWithPasskey),
 		DeleteInvite: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.InviteDeleteHandler{
 				IsAdmin: func() bool { return hasPermission(user, permissionManageMembers) },

@@ -40,6 +40,35 @@ export interface AuthResponse {
   refreshToken?: string; // returned in body for cross-origin (Capacitor) clients
 }
 
+export type PasskeyAuthenticationResponse = object;
+
+export interface PasskeyAuthenticationCeremony {
+  ceremonyId: string;
+  publicKey: Record<string, unknown>;
+}
+
+export interface BrowserQRLoginRequest {
+  requestId: string;
+  scanUrl: string;
+  expiresAt: string;
+}
+
+export interface BrowserQRLoginStatus {
+  status?: "pending" | "approved" | "rejected" | "expired" | "completed";
+  auth?: AuthResponse;
+  accessToken?: string;
+  tokenType?: "Bearer";
+  expiresInSeconds?: number;
+  user?: User;
+}
+
+export function respondToBrowserQRLogin(requestId: string, decision: "approve" | "reject", accessToken: string) {
+  return apiRequest<{ status: string }>(`/api/auth/qr-login/${encodeURIComponent(requestId)}/${decision}`, {
+    method: "POST",
+    accessToken,
+  });
+}
+
 export interface SetupStatus {
   setupRequired: boolean;
   setupComplete: boolean;
@@ -93,6 +122,41 @@ export function requestDeviceLoginCode(username: string) {
 
 export function verifyDeviceLoginCode(username: string, code: string) {
   return apiRequest<AuthResponse>("/api/auth/device-login/verify", { method: "POST", body: { username, code } });
+}
+
+export function beginPasskeyAuthentication() {
+  return apiRequest<PasskeyAuthenticationCeremony>("/api/auth/passkeys/authentication/options", {
+    method: "POST",
+    body: {},
+  });
+}
+
+export function finishPasskeyAuthentication(ceremonyId: string, response: PasskeyAuthenticationResponse) {
+  return apiRequest<AuthResponse>("/api/auth/passkeys/authentication/verify", {
+    method: "POST",
+    body: { ceremonyId, response },
+  });
+}
+
+export function beginPasskeyRegistration(accessToken: string) {
+  return apiRequest<PasskeyAuthenticationCeremony>("/api/auth/passkeys/registration/options", { method: "POST", accessToken });
+}
+
+export function finishPasskeyRegistration(accessToken: string, ceremonyId: string, response: object) {
+  return apiRequest<{ status: "registered" }>("/api/auth/passkeys/registration/verify", {
+    method: "POST", accessToken, body: { ceremonyId, response },
+  });
+}
+
+export function createBrowserQRLogin() {
+  return apiRequest<BrowserQRLoginRequest>("/api/auth/qr-login", {
+    method: "POST",
+    body: {},
+  });
+}
+
+export function getBrowserQRLoginStatus(requestId: string) {
+  return apiRequest<BrowserQRLoginStatus>(`/api/auth/qr-login/${encodeURIComponent(requestId)}`);
 }
 
 export function changePassword(accessToken: string, payload: ChangePasswordPayload) {

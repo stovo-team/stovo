@@ -10,9 +10,10 @@ backend/internal/app/guest_meetings.go	404
 backend/internal/app/helpers.go	437
 backend/internal/app/mcp_operations.go	1068
 backend/internal/app/recording_operations.go	567
-backend/internal/app/routes.go	1339
-backend/internal/app/server.go	596
 backend/internal/app/transcription_operations.go	609
+backend/internal/app/routes.go	1343
+backend/internal/app/server.go	598
+backend/internal/app/transcription_operations.go	529
 backend/internal/app/types.go	509
 backend/internal/config/config.go	434
 backend/internal/orchestrator/routes.go	721

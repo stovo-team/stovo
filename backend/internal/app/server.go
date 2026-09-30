@@ -94,6 +94,7 @@ type Server struct {
 	fileAccess             *featurefiles.AccessService
 	fileListing            *featurefiles.ListingService
 	sessionWriter          featureidentity.RefreshSessionWriter
+	authMethods            featureidentity.AuthMethodsStore
 	loginAccounts          *featureidentity.LoginAccountService
 	profile                *featureidentity.ProfileService
 	setup                  *featureidentity.SetupService
@@ -178,6 +179,7 @@ func NewWithDependencies(deps Dependencies) (*Server, error) {
 		fileAccess:             deps.FileAccess,
 		fileListing:            deps.FileListing,
 		sessionWriter:          deps.SessionWriter,
+		authMethods:            deps.AuthMethods,
 		loginAccounts:          deps.LoginAccounts,
 		profile:                deps.Profile,
 		setup:                  deps.Setup,

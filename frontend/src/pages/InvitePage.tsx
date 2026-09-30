@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
+import { startRegistration } from "@simplewebauthn/browser";
 import { ExternalLink, Smartphone } from "lucide-react";
 
-import { acceptInvite, previewInvite, InvitePreview } from "../api/family";
+import { acceptInvite, acceptInviteWithPasskey, beginInvitePasskeyRegistration, previewInvite, InvitePreview } from "../api/family";
 import { ApiError, getClusterPrefix, storeApiUrlFromInviteLink } from "../api/client";
 import { getInviteApiUrl } from "../appLinks";
 import { useAuth } from "../auth/AuthContext";
@@ -17,6 +18,8 @@ export default function InvitePage() {
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authMethod, setAuthMethod] = useState<"password" | "passkey" | null>(null);
+  const [isSecureContext] = useState(() => typeof window !== "undefined" && window.isSecureContext);
   const [form, setForm] = useState({
     nickname: "",
     password: ""
@@ -69,14 +72,30 @@ export default function InvitePage() {
     if (!token) {
       return;
     }
+    if (!authMethod) {
+      setError("Choose a sign-in method");
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
-      const response = await acceptInvite(token, form);
+      let response;
+      if (authMethod === "password") {
+        response = await acceptInvite(token, form);
+      } else {
+        if (!isSecureContext || typeof window.PublicKeyCredential === "undefined") {
+          throw new Error("Passkeys require a secure connection and a supported browser");
+        }
+        const ceremony = await beginInvitePasskeyRegistration(token, form.nickname);
+        const credential = await startRegistration({ optionsJSON: ceremony.publicKey as never });
+        response = await acceptInviteWithPasskey(token, { nickname: form.nickname, ceremonyId: ceremony.ceremonyId, response: credential });
+      }
       acceptAuthResponse(response);
       navigate(`${prefix}/app/chats`, { replace: true });
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Invite acceptance failed");
+      if (!(err instanceof Error && ["NotAllowedError", "AbortError"].includes(err.name))) {
+        setError(err instanceof ApiError ? String(err.message) : err instanceof Error ? err.message : "Invite acceptance failed");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -139,7 +158,13 @@ export default function InvitePage() {
               onChange={(event) => setForm({ ...form, nickname: event.target.value })}
             />
           </label>
-          <label>
+          <fieldset className="invite-auth-methods">
+            <legend>Choose how you will sign in</legend>
+            <button type="button" aria-pressed={authMethod === "password"} onClick={() => setAuthMethod("password")}>Create a password</button>
+            <button type="button" aria-pressed={authMethod === "passkey"} disabled={!isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => setAuthMethod("passkey")}>Create a passkey</button>
+            {(!isSecureContext || typeof window.PublicKeyCredential === "undefined") && <p className="muted-copy">Passkeys require a secure connection (HTTPS) and a supported browser.</p>}
+          </fieldset>
+          {authMethod === "password" && <label>
             Password
             <input
               required
@@ -149,9 +174,10 @@ export default function InvitePage() {
               value={form.password}
               onChange={(event) => setForm({ ...form, password: event.target.value })}
             />
-          </label>
+          </label>}
+          {authMethod === "passkey" && <p data-auth-method="passkey-registration" className="muted-copy">A passkey will be created with your device's screen lock or authenticator.</p>}
           {error && <p className="error-text">{error}</p>}
-          <button type="submit" disabled={isSubmitting}>
+          <button type="submit" disabled={isSubmitting || !authMethod}>
             {isSubmitting ? "Joining" : "Join family"}
           </button>
         </form>

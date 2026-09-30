@@ -8,6 +8,7 @@
 ## Architecture
 
 - [Backend and frontend subsystem map](architecture/subsystems.md): ownership and entry points for backend features, adapters, transports, and the web client.
+- [Authentication feature test plan](architecture/authentication-test-plan.md): scenarios and test layers for web passkey, QR sign-in, and guest-invite registration.
 
 ## Project references
 
