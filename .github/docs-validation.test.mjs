@@ -120,7 +120,7 @@ test('README architecture includes a connected Mermaid service flow with verifie
     assert.match(architecture, edge, `architecture must show ${from} to ${to}`);
   }
 
-  const compose = read('docker-compose.yml').toLowerCase();
+  const compose = read('deploy/compose/production-bluegreen.yml').toLowerCase();
   for (const service of ['caddy', 'frontend', 'backend-blue', 'postgres', 'redis', 'minio', 'livekit', 'coturn']) {
     assert.match(compose, new RegExp(`^  ${service}:`, 'm'), `diagram service name ${service} must match Compose`);
   }

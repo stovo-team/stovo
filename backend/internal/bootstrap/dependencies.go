@@ -12,6 +12,7 @@ import (
 
 	"stovo-messenger/backend/ent"
 	"stovo-messenger/backend/internal/adapters/adminencryption"
+	"stovo-messenger/backend/internal/adapters/authmethods"
 	"stovo-messenger/backend/internal/adapters/callsessions"
 	"stovo-messenger/backend/internal/adapters/chatarchives"
 	"stovo-messenger/backend/internal/adapters/chatcreation"
@@ -177,6 +178,7 @@ func BuildDependencies(cfg config.Config) (app.Dependencies, error) {
 		FileAccess:            featurefiles.NewAccessService(fileaccess.NewStore(store)),
 		FileListing:           featurefiles.NewListingService(filelisting.NewStore(store)),
 		SessionWriter:         identitysessions.NewWriter(store),
+		AuthMethods:           authmethods.NewPostgresStore(db),
 		LoginAccounts:         featureidentity.NewLoginAccountService(identitylogin.NewStore(store)),
 		Profile:               featureidentity.NewProfileService(identityprofiles.NewStore(store)),
 		Setup:                 featureidentity.NewSetupService(identitysetup.NewStore(store)),

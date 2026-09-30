@@ -26,6 +26,7 @@ import FilesPage from "./pages/FilesPage";
 import InvitePage from "./pages/InvitePage";
 import GuestMeetingPage from "./pages/GuestMeetingPage";
 import LoginPage from "./pages/LoginPage";
+import QRLoginApprovalPage from "./pages/QRLoginApprovalPage";
 import PlansPage from "./pages/PlansPage";
 import RootRedirect from "./pages/RootRedirect";
 import ServerSetupPage from "./pages/ServerSetupPage";
@@ -100,6 +101,7 @@ function ClusterRoutes() {
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/invite/:token" element={<InvitePage />} />
+      <Route path="/app/qr-login/:requestId" element={<RequireAuth><QRLoginApprovalPage /></RequireAuth>} />
       <Route path="/meet/:token" element={<GuestMeetingPage />} />
       <Route path="/legal/:document?" element={<LegalDocumentsPage />} />
       <Route path="/privacy" element={<Navigate to="/legal/privacy" replace />} />
