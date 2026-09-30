@@ -23,7 +23,7 @@ import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
-import { MeetingBackgroundToast, MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import { useEffect, useState } from "react";
 
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
@@ -103,13 +103,6 @@ export function DesktopCallControls() {
   });
 
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
-  const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
-
-  useEffect(() => {
-    if (!isAiNotesQueuedToastVisible) return;
-    const timer = window.setTimeout(() => setIsAiNotesQueuedToastVisible(false), 5_000);
-    return () => window.clearTimeout(timer);
-  }, [isAiNotesQueuedToastVisible]);
 
   const recording = useCallRecording({
     accessToken: accessToken ?? null,
@@ -140,17 +133,12 @@ export function DesktopCallControls() {
     if (transcriptState === "idle" || transcriptState === "failed") {
       void startTranscription();
     } else if (transcriptState === "recording") {
-      // The recorder flush and server-side transcription continue independently
-      // of this popover, so release the user back to the call immediately.
-      setIsIntelligenceOpen(false);
-      setIsAiNotesQueuedToastVisible(true);
       void stopTranscription();
     }
   };
 
   return (
     <>
-      <MeetingBackgroundToast visible={isAiNotesQueuedToastVisible} />
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}

@@ -6,8 +6,9 @@
  *  2. Meeting Recording (record/stop, REC timer, uploading badge)
  *  3. Live Captions & Real-Time AI Translation (toggle, target language dropdown/pills)
  */
-import React, { useEffect, useRef } from "react";
-import { Circle, FileText, Globe, LoaderCircle, Sparkles, Square, Video } from "lucide-react";
+import React, { useEffect, useId, useRef, useState } from "react";
+import { Check, ChevronDown, Circle, FileText, Globe, Sparkles, Square, Video } from "lucide-react";
+import { SUPPORTED_LANGUAGES } from "./useLiveCaptions";
 import type { RecordingState } from "./useCallRecording";
 import type { TranscriptState } from "./useTranscription";
 
@@ -34,12 +35,27 @@ export type MeetingIntelligencePopoverProps = {
 };
 
 /** A transient, call-level confirmation for work that continues server-side. */
-export function MeetingBackgroundToast({ visible }: { visible: boolean }) {
-  if (!visible) return null;
+export function MeetingBackgroundToast({ message, onDismiss }: { message: string | null; onDismiss: (message: null) => void }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!message) {
+      setVisible(false);
+      return;
+    }
+    setVisible(true);
+    const timer = window.setTimeout(() => {
+      setVisible(false);
+      onDismiss(null);
+    }, 5_000);
+    return () => window.clearTimeout(timer);
+  }, [message, onDismiss]);
+
+  if (!visible || !message) return null;
   return (
     <div className="meeting-intel-background-toast" role="status" aria-live="polite">
       <span className="meeting-intel-background-toast-icon"><Sparkles size={17} aria-hidden="true" /></span>
-      <span><strong>AI Notes are being prepared</strong><small>They’ll appear in this chat once ready.</small></span>
+      <span><strong>{message}</strong><small>The result will appear in this chat when ready.</small></span>
     </div>
   );
 }
@@ -83,7 +99,7 @@ export function MeetingIntelligencePopover({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen) return backgroundToast;
 
   const isNotesActive = notesState === "recording" || notesState === "starting";
   const isNotesProcessing = notesState === "stopping" || notesState === "processing";
@@ -93,6 +109,8 @@ export function MeetingIntelligencePopover({
   const isRecStopping = recordingState === "stopping" || recordingState === "uploading";
 
   return (
+    <>
+    {backgroundToast}
     <div
       ref={popoverRef}
       className={`meeting-intel-popover ${isMobile ? "meeting-intel-popover--mobile" : ""}`}
@@ -126,11 +144,11 @@ export function MeetingIntelligencePopover({
                   className={`meeting-intel-toggle-btn ${
                     isNotesActive ? "is-recording" : isNotesProcessing ? "is-processing" : ""
                   }`}
-                  onClick={onToggleNotes}
+                  onClick={handleToggleNotes}
                   disabled={isNotesProcessing}
                   aria-label={isNotesActive ? "Stop AI Notes" : isNotesProcessing ? "AI Notes processing" : "Start AI Notes"}
                 >
-                  {isNotesActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <LoaderCircle size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
+                  {isNotesActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
@@ -176,11 +194,11 @@ export function MeetingIntelligencePopover({
                   className={`meeting-intel-toggle-btn ${
                     isRecActive ? "is-recording" : isRecStopping ? "is-processing" : ""
                   }`}
-                  onClick={onToggleRecording}
+                  onClick={handleToggleRecording}
                   disabled={isRecStopping}
                   aria-label={isRecActive ? "Stop Recording" : isRecStopping ? "Saving recording" : "Start Recording"}
                 >
-                  {isRecActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <LoaderCircle size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
+                  {isRecActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <Check size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
@@ -223,6 +241,7 @@ export function MeetingIntelligencePopover({
         </div>
       </div>
     </div>
+    </>
   );
 }
 export default MeetingIntelligencePopover;
