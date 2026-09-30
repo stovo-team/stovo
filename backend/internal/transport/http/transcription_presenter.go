@@ -58,6 +58,7 @@ type UploadAudioChunkRequest struct {
 	CallStartMs   int64  `json:"callStartMs"`
 	CallEndMs     int64  `json:"callEndMs"`
 	DurationMs    int64  `json:"durationMs"`
+	ClientVADScore float64 `json:"clientVadScore"`
 }
 type UploadAudioChunkResponse struct {
 	ChunkID   string `json:"chunkId"`
@@ -76,7 +77,7 @@ func TranscriptionSessionFromFeature(session featuretranscription.SessionView) T
 func TranscriptFromFeature(value featuretranscription.Transcript) TranscriptResponse {
 	result := TranscriptResponse{Session: TranscriptionSessionFromFeature(value.Session), Segments: make([]TranscriptSegmentResponse, 0, len(value.Segments))}
 	for _, segment := range value.Segments {
-		result.Segments = append(result.Segments, TranscriptSegmentResponse{ID: segment.ID, CallID: segment.CallID, SessionID: segment.SessionID, ParticipantID: segment.ParticipantID, StartMs: segment.StartMs, EndMs: segment.EndMs, ExactText: segment.ExactText, CleanedText: segment.CleanedText, DetectedLanguage: segment.DetectedLanguage, Confidence: segment.Confidence})
+		result.Segments = append(result.Segments, TranscriptSegmentResponse{ID: segment.ID, CallID: segment.CallID, SessionID: segment.SessionID, ParticipantID: segment.ParticipantID, ParticipantName: segment.ParticipantName, StartMs: segment.StartMs, EndMs: segment.EndMs, ExactText: segment.ExactText, CleanedText: segment.CleanedText, DetectedLanguage: segment.DetectedLanguage, Confidence: segment.Confidence})
 	}
 	if value.Summary != nil {
 		summary := &TranscriptSummaryResponse{Summary: value.Summary.Summary, Decisions: make([]transcription.DecisionItem, 0, len(value.Summary.Decisions)), ActionItems: make([]transcription.ActionItem, 0, len(value.Summary.ActionItems)), OpenQuestions: make([]transcription.OpenQuestion, 0, len(value.Summary.OpenQuestions))}

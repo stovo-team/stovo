@@ -120,7 +120,6 @@ export function VoiceChannelStage({
     roomId: effectiveRoomId,
     localAudioStream: audioCallRef?.current?.getLocalStream?.() ?? localVideoStream ?? session.localVideoStream,
     displayName: currentUser?.displayName ?? "You",
-    defaultLanguage: "en",
   });
   // Close more menu when clicking outside
   useEffect(() => {
@@ -287,7 +286,6 @@ export function VoiceChannelStage({
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}
         currentInterimCaption={liveCaptions.currentInterimCaption}
-        targetLanguage={liveCaptions.targetLanguage}
         speakerDisplayName={currentUser?.displayName ?? "You"}
       />
       {/* Main Stage / Participant Grid or List */}
@@ -545,8 +543,6 @@ export function VoiceChannelStage({
                 isRecordingAllowed={true}
                 isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
                 onToggleCaptions={liveCaptions.toggleCaptions}
-                targetLanguage={liveCaptions.targetLanguage}
-                onChangeTargetLanguage={liveCaptions.setTargetLanguage}
               />
             </div>
 

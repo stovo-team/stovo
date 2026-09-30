@@ -15,7 +15,9 @@ import { ChecklistCardBubble } from "./ChecklistCardBubble";
 import { CanvasCardBubble } from "./CanvasCardBubble";
 import type { Poll } from "../../../api/polls";
 import type { ChecklistCard } from "../../../api/checklist";
-import { getClusterPrefix } from "../../../api/client";
+import { getApiUrl, getClusterPrefix } from "../../../api/client";
+
+type NotesTranscript = { segments: Array<{ id: string; participantName?: string; participantId: string; startMs: number; exactText: string }> };
 
 type GuestMeetingCardData = {
   title: string;
@@ -201,6 +203,10 @@ export function MessageBubble({
   const mine = message.senderId === currentUserId;
   const [inlineContent, setInlineContent] = useState(message.content ?? "");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [notesTranscript, setNotesTranscript] = useState<NotesTranscript | null>(null);
+  const [isTranscriptOpen, setIsTranscriptOpen] = useState(false);
+  const [isLoadingTranscript, setIsLoadingTranscript] = useState(false);
+  const [transcriptError, setTranscriptError] = useState("");
 
   useEffect(() => {
     if (isEditing) {
@@ -243,6 +249,30 @@ export function MessageBubble({
   const mediaOnlyMessage = messageHasOnlyMediaAttachments(message);
   const hasCaption = Boolean(message.content?.trim());
   const meetingInvitation = guestMeetingCard(message.content);
+  const isAICallNotes = Boolean(message.content?.startsWith("AI call notes"));
+  const loadNotesTranscript = async () => {
+    if (notesTranscript) {
+      setIsTranscriptOpen((open) => !open);
+      return;
+    }
+    if (!accessToken || isLoadingTranscript) return;
+    setIsLoadingTranscript(true);
+    setTranscriptError("");
+    try {
+      const headers = { Authorization: `Bearer ${accessToken}` };
+      const linkResponse = await fetch(`${getApiUrl()}/api/chats/${encodeURIComponent(selectedChat.id)}/messages/${encodeURIComponent(message.id)}/transcript`, { headers });
+      if (!linkResponse.ok) throw new Error("Transcript is unavailable");
+      const { callId } = await linkResponse.json() as { callId: string };
+      const transcriptResponse = await fetch(`${getApiUrl()}/api/calls/${encodeURIComponent(callId)}/transcript`, { headers });
+      if (!transcriptResponse.ok) throw new Error("Could not load transcript");
+      setNotesTranscript(await transcriptResponse.json() as NotesTranscript);
+      setIsTranscriptOpen(true);
+    } catch (error) {
+      setTranscriptError(error instanceof Error ? error.message : "Could not load transcript");
+    } finally {
+      setIsLoadingTranscript(false);
+    }
+  };
   const swipeStateForMessage = swipeReplyState?.messageId === message.id ? swipeReplyState : null;
   const swipeProgress = swipeStateForMessage
     ? Math.min(swipeStateForMessage.offset / SWIPE_REPLY_TRIGGER_OFFSET, 1)
@@ -536,6 +566,24 @@ export function MessageBubble({
                     const firstUrl = extractFirstUrl(message.content);
                     return firstUrl ? <LinkUnfurlCard url={firstUrl} accessToken={accessToken} /> : null;
                   })()}
+                  {isAICallNotes && (
+                    <div className="ai-notes-transcript-entry">
+                      <button type="button" onClick={(event) => { event.stopPropagation(); void loadNotesTranscript(); }} disabled={isLoadingTranscript}>
+                        {isLoadingTranscript ? "Loading transcript…" : isTranscriptOpen ? "Hide transcript" : "View transcript"}
+                      </button>
+                      {transcriptError && <span role="alert">{transcriptError}</span>}
+                      {isTranscriptOpen && notesTranscript && (
+                        <div className="ai-notes-transcript-segments">
+                          {notesTranscript.segments.map((segment) => (
+                            <p key={segment.id}>
+                              <time>{`${Math.floor(segment.startMs / 60_000).toString().padStart(2, "0")}:${Math.floor(segment.startMs / 1000 % 60).toString().padStart(2, "0")}`}</time>{" "}
+                              <strong>{segment.participantName || segment.participantId}</strong> {segment.exactText}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : null}
               {message.deliveryError ? <p className="encrypted-message-unavailable">{message.deliveryError}</p> : null}

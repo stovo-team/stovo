@@ -45,7 +45,6 @@ func (s *Server) guestMeetingRoutes() http.Handler {
 	r.Get("/public/{token}/status", s.guestMeetingStatus)
 	r.Post("/public/{token}/token", s.createGuestMeetingGuestToken)
 	r.Get("/public/{token}/intelligence", s.guestMeetingIntelligenceStatus)
-	r.Post("/public/{token}/captions/translate", s.guestMeetingTranslateCaptions)
 	r.Post("/public/{token}/captions/transcribe", s.guestMeetingTranscribeCaptions)
 	return r
 }

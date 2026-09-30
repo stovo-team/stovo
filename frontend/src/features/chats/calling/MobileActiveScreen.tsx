@@ -107,7 +107,6 @@ export function MobileActiveScreen({
     roomId: roomId ?? null,
     localAudioStream: localVideoStream,
     displayName: localUserLabel,
-    defaultLanguage: "en",
   });
   // Video elements for mobile
   const mobileRemoteRef = useRef<HTMLVideoElement>(null);
@@ -721,8 +720,6 @@ export function MobileActiveScreen({
               isRecordingAllowed={true}
               isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
               onToggleCaptions={liveCaptions.toggleCaptions}
-              targetLanguage={liveCaptions.targetLanguage}
-              onChangeTargetLanguage={liveCaptions.setTargetLanguage}
               isMobile={true}
             />
           )}
@@ -745,8 +742,7 @@ export function MobileActiveScreen({
           isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
           recentCaptions={liveCaptions.recentCaptions}
           currentInterimCaption={liveCaptions.currentInterimCaption}
-          targetLanguage={liveCaptions.targetLanguage}
-          speakerDisplayName={localUserLabel}
+            speakerDisplayName={localUserLabel}
         />
       )}
     </div>

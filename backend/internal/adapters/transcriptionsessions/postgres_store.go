@@ -81,6 +81,11 @@ func (s *PostgresStore) SaveSummary(ctx context.Context, sessionID string, summa
 	_, err = s.db.ExecContext(ctx, `UPDATE call_transcription_sessions SET summary_json=$1, updated_at=now() WHERE id=$2`, string(payload), sessionID)
 	return err
 }
+
+func (s *PostgresStore) SaveExactArtifact(ctx context.Context, sessionID, objectKey string) error {
+	_, err := s.db.ExecContext(ctx, `UPDATE call_transcription_sessions SET artifact_exact_key=$1, updated_at=now() WHERE id=$2`, objectKey, sessionID)
+	return err
+}
 func (s *PostgresStore) Fail(ctx context.Context, failure featuretranscription.Failure) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE call_transcription_sessions SET status='failed', failure_code=$1, failure_message=$2, updated_at=now() WHERE id=$3`, failure.Code, failure.Message, failure.SessionID)
 	return err
@@ -159,11 +164,11 @@ func (s *PostgresStore) Chunk(ctx context.Context, chunkID string) (featuretrans
 func (s *PostgresStore) ReserveChunk(ctx context.Context, chunk featuretranscription.AudioChunk) (featuretranscription.AudioChunk, error) {
 	row := s.db.QueryRowContext(ctx, `
 		INSERT INTO call_audio_chunks
-			(id, session_id, participant_id, sequence_number, object_key, container, codec, call_start_ms, call_end_ms, duration_ms, upload_status, created_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending',now())
+			(id, session_id, participant_id, sequence_number, object_key, container, codec, call_start_ms, call_end_ms, duration_ms, client_vad_score, upload_status, created_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',now())
 		ON CONFLICT (session_id, participant_id, sequence_number) DO UPDATE SET session_id=EXCLUDED.session_id
 		RETURNING id, session_id, participant_id, object_key, sequence_number, container, codec, call_start_ms, call_end_ms, duration_ms`,
-		chunk.ID, chunk.SessionID, chunk.ParticipantID, chunk.Sequence, chunk.ObjectKey, chunk.Container, chunk.Codec, chunk.CallStartMs, chunk.CallEndMs, chunk.DurationMs)
+		chunk.ID, chunk.SessionID, chunk.ParticipantID, chunk.Sequence, chunk.ObjectKey, chunk.Container, chunk.Codec, chunk.CallStartMs, chunk.CallEndMs, chunk.DurationMs, chunk.ClientVADScore)
 	reserved, err := scanChunk(row)
 	if err != nil {
 		return featuretranscription.AudioChunk{}, err
