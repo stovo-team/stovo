@@ -12,12 +12,10 @@ import (
 // from owning post-processing completion semantics.
 func FormatTranscriptionNotes(summary featuretranscription.Summary) string {
 	sections := make([]string, 0, 5)
+	hasSummary := false
 	if text := strings.TrimSpace(summary.Summary); text != "" {
 		sections = append(sections, "AI call notes\n\n"+text)
-	} else {
-		// Keep a stable message marker so the chat UI can offer its linked
-		// transcript even when the model returned only structured sections.
-		sections = append(sections, "AI call notes")
+		hasSummary = true
 	}
 	if len(summary.Decisions) > 0 {
 		items := make([]string, 0, len(summary.Decisions))
@@ -51,6 +49,14 @@ func FormatTranscriptionNotes(summary featuretranscription.Summary) string {
 		if len(items) > 0 {
 			sections = append(sections, "Open questions\n"+strings.Join(items, "\n"))
 		}
+	}
+	if len(sections) == 0 {
+		return ""
+	}
+	if !hasSummary {
+		// Keep a stable marker for structured-only summaries without creating
+		// a chat message when the model returned no usable content at all.
+		sections = append([]string{"AI call notes"}, sections...)
 	}
 	content := strings.Join(sections, "\n\n")
 	if len(content) > 4000 {

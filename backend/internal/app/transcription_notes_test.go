@@ -25,9 +25,9 @@ func TestFormatAICallNotes(t *testing.T) {
 	}
 }
 
-func TestFormatAICallNotesKeepsTranscriptMarkerAndCapsMessageLength(t *testing.T) {
-	if got := workruntime.FormatTranscriptionNotes(featuretranscription.Summary{}); got != "AI call notes" {
-		t.Fatalf("formatAICallNotes(empty) = %q, want transcript marker", got)
+func TestFormatAICallNotesOmitsEmptySectionsAndCapsMessageLength(t *testing.T) {
+	if got := workruntime.FormatTranscriptionNotes(featuretranscription.Summary{}); got != "" {
+		t.Fatalf("formatAICallNotes(empty) = %q, want empty", got)
 	}
 
 	got := workruntime.FormatTranscriptionNotes(featuretranscription.Summary{Summary: strings.Repeat("a", 5000)})

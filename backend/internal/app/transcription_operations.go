@@ -565,6 +565,9 @@ func (s *Server) publishAICallNotes(ctx context.Context, sessionID string) {
 
 	content := runtime.FormatTranscriptionNotes(claim.Summary)
 	if content == "" {
+		if err := s.transcriptionSessions.ReleaseAICallNotesClaim(ctx, sessionID); err != nil {
+			s.logger.Warnf("transcription", "release empty AI call notes claim failed session_id=%s error=%v", sessionID, err)
+		}
 		return
 	}
 	initiator, err := s.getUserByID(claim.InitiatedBy)
