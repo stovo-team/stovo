@@ -804,7 +804,7 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 				return
 			}
 			var callID string
-			err := s.db.QueryRowContext(r.Context(), `SELECT call_id FROM call_transcription_sessions WHERE chat_id=$1 AND notes_message_id=$2 ORDER BY created_at DESC LIMIT 1`, chatID, messageID).Scan(&callID)
+			err := s.guestDB.QueryRowContext(r.Context(), `SELECT call_id FROM call_transcription_sessions WHERE chat_id=$1 AND notes_message_id=$2 ORDER BY created_at DESC LIMIT 1`, chatID, messageID).Scan(&callID)
 			if err != nil || callID == "" {
 				s.json(w, http.StatusNotFound, map[string]string{"message": "Transcript not found"})
 				return

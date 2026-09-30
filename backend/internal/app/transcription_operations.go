@@ -50,7 +50,7 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 					return transporthttp.TranscriptionCall{ID: roomID, ChatID: m.ChatID, CallerID: m.CreatorID}, true
 				}
 				var chatID, initiator string
-				if s.db.QueryRowContext(context.Background(), `SELECT chat_id,initiated_by FROM call_transcription_sessions WHERE call_id=$1 ORDER BY created_at DESC LIMIT 1`, roomID).Scan(&chatID, &initiator) == nil && chatID != "" {
+				if s.guestDB.QueryRowContext(context.Background(), `SELECT chat_id,initiated_by FROM call_transcription_sessions WHERE call_id=$1 ORDER BY created_at DESC LIMIT 1`, roomID).Scan(&chatID, &initiator) == nil && chatID != "" {
 					return transporthttp.TranscriptionCall{ID: roomID, ChatID: chatID, CallerID: initiator}, true
 				}
 				return transporthttp.TranscriptionCall{}, false
@@ -60,7 +60,7 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 				return transporthttp.TranscriptionCall{ID: call.ID, ChatID: call.ChatID, CallerID: call.CallerUserID}, true
 			}
 			var chatID, initiator string
-			if s.db.QueryRowContext(context.Background(), `SELECT chat_id,initiated_by FROM call_transcription_sessions WHERE call_id=$1 ORDER BY created_at DESC LIMIT 1`, roomID).Scan(&chatID, &initiator) != nil || chatID == "" {
+			if s.guestDB.QueryRowContext(context.Background(), `SELECT chat_id,initiated_by FROM call_transcription_sessions WHERE call_id=$1 ORDER BY created_at DESC LIMIT 1`, roomID).Scan(&chatID, &initiator) != nil || chatID == "" {
 				return transporthttp.TranscriptionCall{}, false
 			}
 			return transporthttp.TranscriptionCall{ID: roomID, ChatID: chatID, CallerID: initiator}, true
