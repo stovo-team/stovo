@@ -81,8 +81,8 @@ awk '
   (job == "frontend-ci" || job == "deploy-android") && /^[[:space:]]+cache:[[:space:]]+npm$/ { npm_remote_cache_enabled = 1 }
   job == "frontend-ci" && /actions\/upload-artifact@v4/ { frontend_artifact_uploaded = 1 }
   job == "deploy-android" && /actions\/download-artifact@v4/ { frontend_artifact_downloaded = 1 }
-  job == "deploy-android" && /^      - name: Build frontend$/ { android_rebuilds_frontend = 1 }
-  index($0, "name: frontend-dist-${{ github.sha }}") > 0 { artifact_name_count++ }
+  job == "deploy-android" && /^      - name: Build frontend for Android release$/ { android_builds_frontend = 1 }
+  job == "deploy-android" && /git fetch --tags/ { android_fetches_tags = 1 }
   /dorny\/paths-filter@v4/ { paths_filter_v4 = 1 }
   /ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION/ { insecure_node_override = 1 }
 
@@ -112,11 +112,11 @@ awk '
     }
     if (!go_cache_disabled) fail("Backend CI must avoid the oversized remote Go cache on persistent self-hosted runners.")
     if (npm_remote_cache_enabled) fail("Frontend and Android jobs must use the runner-local npm cache, not restore the oversized remote archive.")
-    if (!frontend_artifact_uploaded || !frontend_artifact_downloaded || android_rebuilds_frontend) {
-      fail("Android release must reuse the frontend build artifact from the same workflow run.")
+    if (frontend_artifact_uploaded || frontend_artifact_downloaded || !android_builds_frontend) {
+      fail("Android release must build frontend assets locally instead of transferring a workflow artifact.")
     }
-    if (artifact_name_count != 2) {
-      fail("Frontend build upload and Android download must use the same commit-scoped artifact name.")
+    if (android_fetches_tags) {
+      fail("Android release must use tags already fetched by checkout instead of fetching them again.")
     }
 
     expected_frontend = "github.ref == '\''refs/heads/master'\'' && github.event_name != '\''pull_request'\'' && needs.changes.outputs.frontend == '\''true'\''"

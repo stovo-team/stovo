@@ -101,14 +101,6 @@ jobs:
       - name: Build
         working-directory: frontend
         run: npm run build
-      - name: Upload frontend build for Android release
-        if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist-${{ github.sha }}
-          path: frontend/dist/
-          if-no-files-found: error
-          retention-days: 1
 
   backend-ci:
     name: Backend CI
@@ -731,11 +723,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Download frontend build
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist-${{ github.sha }}
-          path: frontend/dist/
+      - name: Build frontend for Android release
+        working-directory: frontend
+        run: npm run build
 
       - name: Sync Capacitor Android project
         working-directory: frontend
@@ -757,7 +747,6 @@ jobs:
       - name: Compute patch version
         id: patch
         run: |
-          git fetch --tags || echo "Fetch tags from remote failed, using local tags"
           LATEST=$(git tag --list 'v1.4.*' --sort=-v:refname | head -1)
           if [ -z "$LATEST" ]; then
             PATCH=0
