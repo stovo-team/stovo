@@ -32,6 +32,7 @@ import { isMobileCallViewport } from "./shared/callLifecycle";
 import type { SharedContentTab } from "./shared/types";
 import { canPostToChannel, computeSharedContentItems, displayChatName, isSuppressedUserError } from "./shared/chatPresentation";
 import { loadCachedChatListFromLocalStorage, loadLastActiveChatId, loadRecentChatHistoryFromLocalStorage, saveLastActiveChatId } from "../../chatHistoryCache";
+import { getClusterPath } from "../../api/client";
 
 export type UseChatsPageControllerParams = {
   chatId: string | undefined;
@@ -330,11 +331,11 @@ export function useChatsPageController({
   }
 
   function navigateToChat(chat: Chat, replace = false) {
-    navigateWithMotion(navigate, `/app/chats/${chat.id}`, { replace, reducedMotion: prefersReducedMotion });
+    navigateWithMotion(navigate, getClusterPath(`/app/chats/${encodeURIComponent(chat.id)}`), { replace, reducedMotion: prefersReducedMotion });
   }
 
   function navigateToChatList(replace = false) {
-    navigateWithMotion(navigate, "/app/chats", { replace, reducedMotion: prefersReducedMotion });
+    navigateWithMotion(navigate, getClusterPath("/app/chats"), { replace, reducedMotion: prefersReducedMotion });
   }
 
   function openChat(chat: Chat) {
