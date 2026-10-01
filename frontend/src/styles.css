@@ -13528,21 +13528,14 @@ span.message-spoiler.is-revealed {
     stroke-width: 2;
   }
 
-  .app-frame > .app-nav a.active .app-nav-icon--plans path[d="M3 10h18"] {
-    fill: none;
-    stroke: var(--app-nav-icon-cutout);
-    stroke-width: 2;
-  }
-
   .app-frame > .app-nav a.active .app-nav-icon--settings circle {
     fill: var(--app-nav-icon-cutout);
-    r: 5.5px;
   }
 
   .app-frame > .app-nav a.active .app-nav-icon--admin path:last-of-type {
     fill: none;
     stroke: var(--app-nav-icon-cutout);
-    stroke-width: 2;
+    stroke-width: 3;
   }
 
   .app-frame > .app-nav .app-brand,
@@ -20156,7 +20149,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .app-frame > .app-nav a:is(.active, :not(.active):hover)::before {
-    border-radius: 999px;
+    border-radius: var(--float-radius-panel);
     content: "";
     inset: 0;
     pointer-events: none;
@@ -20191,21 +20184,14 @@ button.chat-info-title-edit:active:not(:disabled) {
     stroke-width: 2;
   }
 
-  .app-frame > .app-nav a.active .app-nav-icon--plans path[d="M3 10h18"] {
-    fill: none;
-    stroke: var(--app-nav-icon-cutout);
-    stroke-width: 2;
-  }
-
   .app-frame > .app-nav a.active .app-nav-icon--settings circle {
     fill: var(--app-nav-icon-cutout);
-    r: 5.5px;
   }
 
   .app-frame > .app-nav a.active .app-nav-icon--admin path:last-of-type {
     fill: none;
     stroke: var(--app-nav-icon-cutout);
-    stroke-width: 2;
+    stroke-width: 3;
   }
 
   .chat-sidebar-header {
