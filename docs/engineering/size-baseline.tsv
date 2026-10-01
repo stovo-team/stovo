@@ -2,7 +2,7 @@ backend/internal/adapters/statsstore/postgres_store.go	893
 backend/internal/app/admin_operations.go	535
 backend/internal/app/call_operations.go	1501
 backend/internal/app/canvas_operations.go	608
-backend/internal/app/chat_operations.go	1800
+backend/internal/app/chat_operations.go	1809
 backend/internal/app/checklist_operations.go	1016
 backend/internal/app/collection_operations.go	557
 backend/internal/app/file_operations.go	594
@@ -15,7 +15,7 @@ backend/internal/app/server.go	606
 backend/internal/app/transcription_operations.go	638
 backend/internal/app/types.go	513
 backend/internal/config/config.go	434
-backend/internal/orchestrator/routes.go	721
+backend/internal/orchestrator/routes.go	774
 backend/internal/repository/auth.go	435
 backend/internal/repository/chats.go	527
 backend/internal/repository/messages.go	619
@@ -34,8 +34,8 @@ frontend/src/components/RealStovoDemo.tsx	1278
 frontend/src/components/RichCanvasPreview.tsx	792
 frontend/src/components/StovoFeaturePreviews.tsx	693
 frontend/src/components/VideoPlayer.tsx	506
-frontend/src/config/strings/english.ts	1156
-frontend/src/config/strings/russian.ts	1185
+frontend/src/config/strings/english.ts	1159
+frontend/src/config/strings/russian.ts	1188
 frontend/src/features/chats/calling/DesktopCallControls.tsx	670
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	754
 frontend/src/features/chats/calling/useCallSession.ts	1056
