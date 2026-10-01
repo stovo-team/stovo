@@ -8,7 +8,7 @@ vi.mock("@capacitor/core", () => ({
   registerPlugin: () => ({})
 }));
 
-import { getApiUrl, getClusterPrefix, isServerUrlConfigured, setApiUrlOverride, storeApiUrlFromInviteLink } from "./client";
+import { getApiUrl, getClusterPath, getClusterPrefix, isServerUrlConfigured, setApiUrlOverride, storeApiUrlFromInviteLink } from "./client";
 import { getActiveServer } from "./serverRegistry";
 
 describe("getApiUrl", () => {
@@ -96,7 +96,14 @@ describe("isServerUrlConfigured", () => {
     window.history.replaceState({}, "", "/s/5ae8bb18");
 
     expect(getClusterPrefix()).toBe("/s/5ae8bb18");
+    expect(getClusterPath("/app/chats/chat-123")).toBe("/s/5ae8bb18/app/chats/chat-123");
     expect(isServerUrlConfigured()).toBe(true);
+  });
+
+  it("preserves the active cluster when building a chat path from the root app route", () => {
+    setApiUrlOverride("https://stovo-cloud.stovo.ru/s/5ae8bb18", "Stakhov Family");
+
+    expect(getClusterPath("/app/chats/chat-123")).toBe("/s/5ae8bb18/app/chats/chat-123");
   });
 
   it("returns false for root without active server", () => {
