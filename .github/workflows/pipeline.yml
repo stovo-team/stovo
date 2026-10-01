@@ -168,6 +168,7 @@ jobs:
           version: v2.14.0
           working-directory: backend
           verify: true
+          skip-cache: true
           args: --timeout=5m
       - name: Unit and integration tests with coverage
         run: |
