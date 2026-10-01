@@ -13,7 +13,7 @@ describe("desktop app navigation active state", () => {
   it("fills the complete desktop link cell with a rounded rectangular highlight", () => {
     expect(desktopNavigationStyles).toContain(".app-frame > .app-nav a:is(.active, :not(.active):hover)::before");
     expect(desktopNavigationStyles).toContain("inset: 0;");
-    expect(desktopNavigationStyles).toContain("border-radius: var(--float-radius-panel);");
+    expect(desktopNavigationStyles).toContain("border-radius: 999px;");
     expect(styles).toContain("padding: 6px 8px 14px;");
     expect(desktopNavigationStyles).not.toContain("--app-nav-state-circle-size");
     expect(desktopNavigationStyles).not.toContain(".app-nav .app-nav-logout:hover:not(:disabled)::before");
@@ -40,6 +40,9 @@ describe("navigation icon and touch states", () => {
     expect(styles).toContain(".app-nav-icon--settings circle");
     expect(styles).toContain(".app-nav-icon--admin path:last-of-type");
     expect(styles).toContain("fill: var(--app-nav-icon-cutout);");
+    expect(styles).toContain('.app-nav-icon--plans path[d="M3 10h18"]');
+    expect(styles).toContain("r: 5.5px;");
+    expect(styles).toContain("stroke-width: 2;");
   });
 
   it("does not apply hover appearance to nav links on touch devices", () => {
