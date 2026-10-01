@@ -104,7 +104,7 @@ export default function AppNav({
       <div className="app-nav-links">
         {showChats && (
           <NavLink to={`${prefix}/app/chats`} title={strings.nav.chats} aria-label={strings.nav.chats} onClick={preventActiveTabNavigation}>
-            <MessageCircle aria-hidden={true} />
+            <MessageCircle className="app-nav-icon--chats" aria-hidden={true} />
             <span>{strings.nav.chats}</span>
             {unreadTotal > 0 && (
               <small className="nav-badge" aria-label={strings.nav.unreadMessages(unreadTotal)}>
@@ -115,19 +115,19 @@ export default function AppNav({
         )}
         {showStorage && (
           <NavLink to={`${prefix}/app/files`} title={strings.nav.storage} aria-label={strings.nav.storage} onClick={preventActiveTabNavigation}>
-            <Folder aria-hidden={true} />
+            <Folder className="app-nav-icon--storage" aria-hidden={true} />
             <span>{strings.nav.storage}</span>
           </NavLink>
         )}
         {showPlans && (
           <NavLink to={`${prefix}/app/plans`} title={strings.nav.plans} aria-label={strings.nav.plans} onClick={preventActiveTabNavigation}>
-            <CalendarDays aria-hidden={true} />
+            <CalendarDays className="app-nav-icon--plans" aria-hidden={true} />
             <span>{strings.nav.plans}</span>
           </NavLink>
         )}
         {showSettings && (
           <NavLink to={`${prefix}/app/settings`} title={strings.nav.settings} aria-label={strings.nav.settings} onClick={preventActiveTabNavigation}>
-            <Settings aria-hidden={true} />
+            <Settings className="app-nav-icon--settings" aria-hidden={true} />
             <span>{strings.nav.settings}</span>
           </NavLink>
         )}
@@ -143,7 +143,7 @@ export default function AppNav({
                 : ""
             }
           >
-            <ShieldCheck aria-hidden={true} />
+            <ShieldCheck className="app-nav-icon--admin" aria-hidden={true} />
             <span>{strings.nav.admin}</span>
           </NavLink>
         )}
@@ -156,4 +156,3 @@ export default function AppNav({
     </nav>
   );
 }
-
