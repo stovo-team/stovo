@@ -13689,9 +13689,10 @@ span.message-spoiler.is-revealed {
   }
 
   .messenger-shell.chat-list-view .chat-list {
+    --mobile-page-inset: 10px;
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12px);
     mask-image: linear-gradient(to bottom, transparent 0%, #000 12px);
-    padding: var(--chat-list-chrome-gap, 16px) 10px var(--chat-list-bottom-inset);
+    padding: var(--chat-list-chrome-gap, 16px) var(--mobile-page-inset) var(--chat-list-bottom-inset);
   }
 
   .messenger-shell.chat-list-view .chat-list-item {
