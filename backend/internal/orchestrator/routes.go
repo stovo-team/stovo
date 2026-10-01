@@ -42,6 +42,17 @@ func defaultNavTabs() NavTabsConfig {
 	}
 }
 
+type ChatTypesConfig struct {
+	Direct  bool `json:"direct"`
+	Group   bool `json:"group"`
+	Channel bool `json:"channel"`
+	Voice   bool `json:"voice"`
+}
+
+func defaultChatTypes() ChatTypesConfig {
+	return ChatTypesConfig{Direct: true, Group: true, Channel: true, Voice: true}
+}
+
 type ServerRecord struct {
 	ID        int           `json:"id"`
 	Slug      string        `json:"slug"`
@@ -49,6 +60,7 @@ type ServerRecord struct {
 	CreatedAt time.Time     `json:"created_at"`
 	Status    string        `json:"status"`
 	NavTabs   NavTabsConfig `json:"nav_tabs"`
+	ChatTypes ChatTypesConfig `json:"chat_types"`
 }
 
 func getMasterSecret() []byte {
@@ -128,6 +140,7 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		AdminUser     string         `json:"admin_user"`
 		AdminPassword string         `json:"admin_password"`
 		NavTabs       *NavTabsConfig `json:"nav_tabs,omitempty"`
+		ChatTypes     *ChatTypesConfig `json:"chat_types,omitempty"`
 	}
 	var req createReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
@@ -148,11 +161,16 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 	if req.NavTabs != nil {
 		navTabs = *req.NavTabs
 	}
+	chatTypes := defaultChatTypes()
+	if req.ChatTypes != nil {
+		chatTypes = *req.ChatTypes
+	}
 	navTabsJSON, _ := json.Marshal(navTabs)
+	chatTypesJSON, _ := json.Marshal(chatTypes)
 
 	// Insert server record
 	var id int
-	err := o.masterDB.QueryRow(`INSERT INTO servers (slug, name, status, nav_tabs) VALUES ($1, $2, $3, $4) RETURNING id`, req.Slug, req.Name, "created", string(navTabsJSON)).Scan(&id)
+	err := o.masterDB.QueryRow(`INSERT INTO servers (slug, name, status, nav_tabs, chat_types) VALUES ($1, $2, $3, $4, $5) RETURNING id`, req.Slug, req.Name, "created", string(navTabsJSON), string(chatTypesJSON)).Scan(&id)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -241,12 +259,13 @@ func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request
 		"cluster_url":    fmt.Sprintf("%s://%s/s/%s/login", scheme, host, req.Slug),
 		"invite_url":     inviteURL,
 		"nav_tabs":       navTabs,
+		"chat_types":     chatTypes,
 	})
 }
 
 // handleListServers returns all server records.
 func (o *Orchestrator) handleListServers(w http.ResponseWriter, r *http.Request) {
-	rows, err := o.masterDB.Query(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, '') FROM servers ORDER BY id`)
+	rows, err := o.masterDB.Query(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, '') FROM servers ORDER BY id`)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -255,13 +274,17 @@ func (o *Orchestrator) handleListServers(w http.ResponseWriter, r *http.Request)
 	var list []ServerRecord
 	for rows.Next() {
 		var rec ServerRecord
-		var navTabsStr string
+		var navTabsStr, chatTypesStr string
 		rec.NavTabs = defaultNavTabs()
-		if err := rows.Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr); err != nil {
+		rec.ChatTypes = defaultChatTypes()
+		if err := rows.Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr); err != nil {
 			continue
 		}
 		if navTabsStr != "" {
 			_ = json.Unmarshal([]byte(navTabsStr), &rec.NavTabs)
+		}
+		if chatTypesStr != "" {
+			_ = json.Unmarshal([]byte(chatTypesStr), &rec.ChatTypes)
 		}
 		list = append(list, rec)
 	}
@@ -272,16 +295,20 @@ func (o *Orchestrator) handleListServers(w http.ResponseWriter, r *http.Request)
 func (o *Orchestrator) handleGetServerSettings(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "id")
 	var rec ServerRecord
-	var navTabsStr string
+	var navTabsStr, chatTypesStr string
 	rec.NavTabs = defaultNavTabs()
-	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, '') FROM servers WHERE slug=$1`, slug).
-		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr)
+	rec.ChatTypes = defaultChatTypes()
+	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, '') FROM servers WHERE slug=$1`, slug).
+		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "server not found"})
 		return
 	}
 	if navTabsStr != "" {
 		_ = json.Unmarshal([]byte(navTabsStr), &rec.NavTabs)
+	}
+	if chatTypesStr != "" {
+		_ = json.Unmarshal([]byte(chatTypesStr), &rec.ChatTypes)
 	}
 	writeJSON(w, http.StatusOK, rec)
 }
@@ -290,8 +317,9 @@ func (o *Orchestrator) handleGetServerSettings(w http.ResponseWriter, r *http.Re
 func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "id")
 	type updateSettingsReq struct {
-		Name    *string        `json:"name,omitempty"`
-		NavTabs *NavTabsConfig `json:"nav_tabs,omitempty"`
+		Name      *string          `json:"name,omitempty"`
+		NavTabs   *NavTabsConfig   `json:"nav_tabs,omitempty"`
+		ChatTypes *ChatTypesConfig `json:"chat_types,omitempty"`
 	}
 	var req updateSettingsReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -300,16 +328,20 @@ func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http
 	}
 
 	var rec ServerRecord
-	var navTabsStr string
+	var navTabsStr, chatTypesStr string
 	rec.NavTabs = defaultNavTabs()
-	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, '') FROM servers WHERE slug=$1`, slug).
-		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr)
+	rec.ChatTypes = defaultChatTypes()
+	err := o.masterDB.QueryRow(`SELECT id, slug, name, created_at, status, COALESCE(nav_tabs::text, ''), COALESCE(chat_types::text, '') FROM servers WHERE slug=$1`, slug).
+		Scan(&rec.ID, &rec.Slug, &rec.Name, &rec.CreatedAt, &rec.Status, &navTabsStr, &chatTypesStr)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "server not found"})
 		return
 	}
 	if navTabsStr != "" {
 		_ = json.Unmarshal([]byte(navTabsStr), &rec.NavTabs)
+	}
+	if chatTypesStr != "" {
+		_ = json.Unmarshal([]byte(chatTypesStr), &rec.ChatTypes)
 	}
 
 	if req.Name != nil && strings.TrimSpace(*req.Name) != "" {
@@ -318,9 +350,13 @@ func (o *Orchestrator) handleUpdateServerSettings(w http.ResponseWriter, r *http
 	if req.NavTabs != nil {
 		rec.NavTabs = *req.NavTabs
 	}
+	if req.ChatTypes != nil {
+		rec.ChatTypes = *req.ChatTypes
+	}
 
 	navTabsJSON, _ := json.Marshal(rec.NavTabs)
-	_, err = o.masterDB.Exec(`UPDATE servers SET name=$1, nav_tabs=$2 WHERE slug=$3`, rec.Name, string(navTabsJSON), slug)
+	chatTypesJSON, _ := json.Marshal(rec.ChatTypes)
+	_, err = o.masterDB.Exec(`UPDATE servers SET name=$1, nav_tabs=$2, chat_types=$3 WHERE slug=$4`, rec.Name, string(navTabsJSON), string(chatTypesJSON), slug)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -439,6 +475,18 @@ func (o *Orchestrator) getNavTabsForServer(slug string) string {
 	return navTabsStr
 }
 
+func (o *Orchestrator) getChatTypesForServer(slug string) string {
+	if o.masterDB == nil {
+		return `{"direct":true,"group":true,"channel":true,"voice":true}`
+	}
+	var chatTypesStr string
+	err := o.masterDB.QueryRow(`SELECT COALESCE(chat_types::text, '') FROM servers WHERE slug=$1`, slug).Scan(&chatTypesStr)
+	if err != nil || chatTypesStr == "" {
+		return `{"direct":true,"group":true,"channel":true,"voice":true}`
+	}
+	return chatTypesStr
+}
+
 // startBackendContainer starts a child Go backend container for a server cluster on the shared docker network.
 func (o *Orchestrator) startBackendContainer(slug string) error {
 	// Existing tenant databases must be upgraded too. Previously migrations ran
@@ -457,8 +505,11 @@ func (o *Orchestrator) startBackendContainer(slug string) error {
 	}
 
 	desiredEnv := backendContainerEnv(slug, func(key, fallback string) string {
-		if key == "NAV_TABS" {
+		switch key {
+		case "NAV_TABS":
 			return o.getNavTabsForServer(slug)
+		case "CHAT_TYPES":
+			return o.getChatTypesForServer(slug)
 		}
 		if value := config.GetOrReloadEnv(key); value != "" && !config.IsPlaceholderKey(value) {
 			return value
@@ -576,6 +627,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 
 	groqKey := get("GROQ_API_KEY", get("groq_api_key", get("GROQ_KEY", get("GROQ_API_TOKEN", ""))))
 	navTabs := get("NAV_TABS", `{"chats":true,"storage":true,"plans":true,"settings":true}`)
+	chatTypes := get("CHAT_TYPES", `{"direct":true,"group":true,"channel":true,"voice":true}`)
 	databaseURL := strings.TrimSpace(get("DATABASE_URL", ""))
 	if databaseURL == "" {
 		databaseURL = fmt.Sprintf("postgres://%s:%s@postgres:5432/stovo_db_%s?sslmode=disable", pgUser, pgPass, slug)
@@ -624,6 +676,7 @@ func backendContainerEnv(slug string, get func(key, fallback string) string) []s
 		fmt.Sprintf("LIVEKIT_API_KEY=%s", get("LIVEKIT_API_KEY", "")),
 		fmt.Sprintf("LIVEKIT_API_SECRET=%s", get("LIVEKIT_API_SECRET", "")),
 		fmt.Sprintf("NAV_TABS=%s", navTabs),
+		fmt.Sprintf("CHAT_TYPES=%s", chatTypes),
 		fmt.Sprintf("TRUSTED_PROXY_CIDRS=%s", get("TRUSTED_PROXY_CIDRS", "172.33.0.2/32")),
 	}
 }

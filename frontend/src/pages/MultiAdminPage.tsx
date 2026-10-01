@@ -1,18 +1,25 @@
 import React, { useEffect, useState } from "react";
+import { MoreVertical, Settings2, UserPlus, X, RefreshCw, ExternalLink, KeyRound, Trash2 } from "lucide-react";
 import {
   createInviteLink,
   createServer,
   deleteServer,
   fetchServers,
+  fetchTenantAiSettings,
   getGhostToken,
   masterLogin,
   updateServerSettings,
+  updateTenantAiSettings,
+  ChatTypesConfig,
+  TenantAiSettings,
   ServerRecord,
 } from "../api/masterAdmin";
 import { useStrings } from "../i18n/LanguageContext";
+import "./MultiAdminPage.css";
 
 export default function MultiAdminPage() {
   const strings = useStrings();
+  const copy = strings.admin.supervisorConsole;
   const [token, setToken] = useState<string | null>(
     localStorage.getItem("master_admin_token")
   );
@@ -40,6 +47,10 @@ export default function MultiAdminPage() {
   const [editingServer, setEditingServer] = useState<ServerRecord | null>(null);
   const [editName, setEditName] = useState("");
   const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"general" | "ai" | "chats" | "premium">("general");
+  const [chatTypes, setChatTypes] = useState<ChatTypesConfig>({ direct: true, group: true, channel: true, voice: true });
+  const [aiSettings, setAiSettings] = useState<TenantAiSettings>({ translationEnabled: true, callRecordingEnabled: true, aiNotesEnabled: true, voiceTranscriptionEnabled: true });
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   // Notification / Toast info
   const [toast, setToast] = useState<string | null>(null);
@@ -64,6 +75,22 @@ export default function MultiAdminPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [editingServer, savingSettings]);
 
+  useEffect(() => {
+    if (!openMenu) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest(".space-actions-menu-wrap")) setOpenMenu(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenu(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [openMenu]);
+
   const loadServers = async () => {
     if (!token) return;
     setLoading(true);
@@ -72,7 +99,7 @@ export default function MultiAdminPage() {
       const data = await fetchServers(token);
       setServers(data || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load spaces");
+      setError(err.message || copy.saveError);
       if (err.message?.includes("token") || err.message?.includes("Unauthorized")) {
         handleLogout();
       }
@@ -129,6 +156,21 @@ export default function MultiAdminPage() {
   const handleOpenSettings = async (s: ServerRecord) => {
     setEditingServer(s);
     setEditName(s.name);
+    setSettingsTab("general");
+    setChatTypes(s.chat_types ?? { direct: true, group: true, channel: true, voice: true });
+    if (token) {
+      try {
+        const settings = await fetchTenantAiSettings(token, s.slug);
+        setAiSettings({
+          translationEnabled: settings.translationEnabled ?? true,
+          callRecordingEnabled: settings.callRecordingEnabled ?? true,
+          aiNotesEnabled: settings.aiNotesEnabled ?? true,
+          voiceTranscriptionEnabled: settings.voiceTranscriptionEnabled ?? true,
+        });
+      } catch (err: any) {
+        showToast(err.message || "Failed to load AI settings");
+      }
+    }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -136,16 +178,18 @@ export default function MultiAdminPage() {
     if (!token || !editingServer) return;
     setSavingSettings(true);
     try {
+      await updateTenantAiSettings(token, editingServer.slug, aiSettings);
       const updated = await updateServerSettings(token, editingServer.slug, {
         name: editName.trim(),
+        chat_types: chatTypes,
       });
       setServers((prev) =>
         prev.map((s) => (s.slug === editingServer.slug ? { ...s, ...updated } : s))
       );
-      showToast(`Space settings for "${updated.name || editingServer.name}" saved!`);
+      showToast(copy.settingsSaved(updated.name || editingServer.name));
       setEditingServer(null);
     } catch (err: any) {
-      alert(err.message || "Failed to update space settings");
+      alert(err.message || copy.saveError);
     } finally {
       setSavingSettings(false);
     }
@@ -153,12 +197,12 @@ export default function MultiAdminPage() {
 
   const handleDelete = async (slug: string) => {
     if (!token) return;
-    if (!confirm(`Are you sure you want to delete space "${slug}"? This will drop its database and stop its container.`)) {
+    if (!confirm(copy.confirmDelete(slug))) {
       return;
     }
     try {
       await deleteServer(token, slug);
-      showToast(`Space "${slug}" deleted.`);
+      showToast(copy.delete);
       loadServers();
     } catch (err: any) {
       alert(err.message || "Failed to delete space");
@@ -170,7 +214,7 @@ export default function MultiAdminPage() {
     try {
       const ghostToken = await getGhostToken(token, slug);
       await navigator.clipboard.writeText(ghostToken);
-      showToast(`Ghost Superadmin token for "${slug}" copied to clipboard!`);
+      showToast(copy.ghostCopied(slug));
     } catch (err: any) {
       alert(err.message || "Failed to get Ghost Token");
     }
@@ -183,7 +227,7 @@ export default function MultiAdminPage() {
       const url = new URL(inviteUrl, window.location.origin);
       const fullUrl = `${window.location.origin}${url.pathname}${url.search}`;
       await navigator.clipboard.writeText(fullUrl);
-      showToast(`Single-use invite link for "${slug}" copied to clipboard!`);
+      showToast(copy.inviteCopied(slug));
     } catch (err: any) {
       alert(err.message || "Failed to generate invite link");
     }
@@ -193,15 +237,15 @@ export default function MultiAdminPage() {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={styles.badgePill}>CLUSTER SUPERVISOR</div>
+          <div style={styles.badgePill}>{copy.supervisor}</div>
           <h1 style={styles.title}>Stovo Supervisor</h1>
-          <p style={styles.subtitle}>Sign in to manage spaces and root infrastructure</p>
+          <p style={styles.subtitle}>{copy.login}</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
 
           <form onSubmit={handleLogin} style={styles.form}>
             <label style={styles.label}>
-              Username
+              {copy.username}
               <input
                 type="text"
                 value={username}
@@ -211,7 +255,7 @@ export default function MultiAdminPage() {
               />
             </label>
             <label style={styles.label}>
-              Password
+              {copy.password}
               <input
                 type="password"
                 value={password}
@@ -221,7 +265,7 @@ export default function MultiAdminPage() {
               />
             </label>
             <button type="submit" style={styles.primaryPillButton}>
-              Login to Master Console
+              {copy.loginButton}
             </button>
           </form>
         </div>
@@ -230,89 +274,87 @@ export default function MultiAdminPage() {
   }
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="supervisor-admin-page">
       {toast && <div style={styles.toast}>{toast}</div>}
 
-      <header style={styles.header}>
+      <header style={styles.header} className="header">
         <div style={styles.headerTitleGroup}>
-          <div style={styles.badgePill}>CLUSTER SUPERVISOR</div>
-          <h1 style={styles.headerTitle}>Stovo Spaces</h1>
+          <div style={styles.badgePill}>{copy.supervisor}</div>
+          <h1 style={styles.headerTitle}>{copy.title}</h1>
         </div>
         <div style={styles.headerActions}>
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            style={styles.primaryPillButton}
+            <button
+              onClick={() => setIsCreateOpen(true)}
+            style={styles.secondaryPillButton}
           >
-            + Create New Space
+            {copy.createSpace}
           </button>
           <button onClick={handleLogout} style={styles.secondaryPillButton}>
-            Logout
+            {copy.logout}
           </button>
         </div>
       </header>
 
-      <main style={styles.main}>
+      <main style={styles.main} className="main">
         {/* Stats Row */}
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>Active Spaces</div>
-            <div style={styles.statValue}>{servers.length}</div>
+        <div style={styles.statsGrid} className="statsGrid">
+          <div style={styles.statCard} className="statCard">
+            <div style={styles.statLabel} className="statLabel">{copy.activeSpaces}</div>
+            <div style={styles.statValue} className="statValue">{servers.length}</div>
           </div>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>System Status</div>
-            <div style={{ ...styles.statValue, color: "#34d399" }}>Operational</div>
+          <div style={styles.statCard} className="statCard">
+            <div style={styles.statLabel} className="statLabel">{copy.systemStatus}</div>
+            <div style={{ ...styles.statValue, color: "#34d399" }} className="statValue">{copy.operational}</div>
           </div>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>Advanced Monitoring</div>
-            <div style={styles.monitoringStatus}>
-              <button type="button" style={styles.monitoringDisabledButton} disabled>Monitoring disabled</button>
+          <div style={styles.statCard} className="statCard">
+            <div style={styles.statLabel} className="statLabel">{copy.advancedMonitoring}</div>
+            <div style={styles.monitoringStatus} className="monitoringStatus">
+              <span style={styles.monitoringDisabledButton}>{copy.monitoringDisabled}</span>
               <span className="premium-feature-badge">Premium</span>
             </div>
           </div>
         </div>
 
         {/* Server List */}
-        <div style={styles.panelCard}>
-          <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>Provisioned Spaces</h2>
+        <div style={styles.panelCard} className="panelCard">
+          <div style={styles.sectionHeader} className="sectionHeader">
+            <h2 style={styles.sectionTitle} className="sectionTitle">{copy.yourSpaces}</h2>
             <button
               onClick={loadServers}
-              title="Refresh Spaces"
+              title={copy.refreshSpaces}
               style={styles.iconOnlyButton}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-              </svg>
+              <RefreshCw size={18} aria-hidden="true" />
             </button>
           </div>
 
           {loading ? (
-            <div style={styles.emptyState}>Loading spaces from orchestrator...</div>
+            <div style={styles.emptyState}>{copy.loadingSpaces}</div>
           ) : error ? (
             <div style={styles.errorBox}>{error}</div>
           ) : servers.length === 0 ? (
             <div style={styles.emptyState}>
-              No spaces created yet. Click <strong style={{ color: "#60a5fa" }}>+ Create New Space</strong> to provision one.
+              {copy.noSpaces} <strong style={{ color: "#60a5fa" }}>{copy.createSpace}</strong>
             </div>
           ) : (
-            <div style={styles.tableWrapper}>
-              <table style={styles.table}>
+            <div style={styles.tableWrapper} className="tableWrapper">
+              <table style={styles.table} className="table">
                 <thead>
                   <tr>
-                    <th style={styles.th}>ID</th>
-                    <th style={styles.th}>Name</th>
-                    <th style={styles.th}>Space Link</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Created At</th>
-                    <th style={styles.th}>Actions</th>
+                    <th style={styles.th} className="th">{copy.id}</th>
+                    <th style={styles.th} className="th">{copy.name}</th>
+                    <th style={styles.th} className="th">{copy.spaceLink}</th>
+                    <th style={styles.th} className="th">{copy.status}</th>
+                    <th style={styles.th} className="th">{copy.createdAt}</th>
+                    <th style={styles.th} className="th">{copy.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {servers.map((s: ServerRecord) => (
-                    <tr key={s.id} style={styles.tr}>
-                      <td style={styles.td}>#{s.id}</td>
-                      <td style={{ ...styles.td, fontWeight: 700, color: "#ffffff" }}>{s.name}</td>
-                      <td style={styles.td}>
+                    <tr key={s.id} style={styles.tr} className="supervisor-space-row">
+                      <td style={styles.td} className="td">#{s.id}</td>
+                      <td style={{ ...styles.td, fontWeight: 700, color: "#ffffff" }} className="td">{s.name}</td>
+                      <td style={styles.td} className="td">
                         <a
                           href={`/s/${s.slug}`}
                           target="_blank"
@@ -321,55 +363,42 @@ export default function MultiAdminPage() {
                           title={`Open ${s.name} space in new tab`}
                         >
                           /s/{s.slug}
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                          </svg>
+                          <ExternalLink size={13} aria-hidden="true" style={{ marginLeft: 6 }} />
                         </a>
                       </td>
-                      <td style={styles.td}>
+                      <td style={styles.td} className="td">
                         <span style={styles.statusPill}>{s.status || "running"}</span>
                       </td>
-                      <td style={styles.td}>
+                      <td style={styles.td} className="td">
                         {new Date(s.created_at).toLocaleDateString()} {new Date(s.created_at).toLocaleTimeString()}
                       </td>
-                      <td style={styles.td}>
-                        <div style={styles.actionGroup}>
+                      <td style={styles.td} className="td">
+                        <div style={styles.actionGroup} className="actionGroup">
                           <button
                             onClick={() => handleOpenSettings(s)}
-                            title={`Configure ${s.name}`}
-                            style={styles.settingsPillButton}
+                            title={`${copy.settings}: ${s.name}`}
+                            style={styles.iconActionButton}
+                            className="iconActionButton"
+                            aria-label={`${copy.settings}: ${s.name}`}
                           >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 2Z"/></svg>
-                            Settings
+                            <Settings2 size={19} aria-hidden="true" />
                           </button>
                           <button
                             onClick={() => handleCopyInvite(s.slug)}
-                            title="Generate and copy fresh single-use invite link"
-                            style={styles.invitePillButton}
+                            title={`${copy.invite}: ${s.name}`}
+                            style={styles.iconActionButton}
+                            className="iconActionButton"
+                            aria-label={`${copy.invite}: ${s.name}`}
                           >
-                            + Invite
+                            <UserPlus size={19} aria-hidden="true" />
                           </button>
-                          <button
-                            onClick={() => handleCopyGhostToken(s.slug)}
-                            title="Copy short-lived Ghost Superadmin JWT"
-                            style={styles.ghostPillButton}
-                          >
-                            Ghost Token
-                          </button>
-                          <button
-                            onClick={() => handleDelete(s.slug)}
-                            title={`Delete space ${s.name}`}
-                            style={styles.dangerIconButton}
-                          >
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6"></polyline>
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                              <line x1="10" y1="11" x2="10" y2="17"></line>
-                              <line x1="14" y1="11" x2="14" y2="17"></line>
-                            </svg>
-                          </button>
+                          <div className="space-actions-menu-wrap">
+                            <button type="button" style={styles.iconActionButton} className="iconActionButton" aria-label={`${copy.moreActions}: ${s.name}`} aria-haspopup="menu" aria-expanded={openMenu === s.slug} onClick={() => setOpenMenu(openMenu === s.slug ? null : s.slug)}><MoreVertical size={20} aria-hidden="true" /></button>
+                            {openMenu === s.slug && <div className="space-actions-menu" role="menu">
+                              <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); void handleCopyGhostToken(s.slug); }}><KeyRound size={16} />{copy.ghostToken}</button>
+                              <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenu(null); void handleDelete(s.slug); }}><Trash2 size={16} />{copy.delete}</button>
+                            </div>}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -383,55 +412,59 @@ export default function MultiAdminPage() {
 
       {/* Server Settings Modal */}
       {editingServer && (
-        <div style={styles.modalOverlay} onMouseDown={(event) => { if (event.target === event.currentTarget && !savingSettings) setEditingServer(null); }}>
-          <div style={styles.modalCard} role="dialog" aria-modal="true" aria-labelledby="space-settings-title">
-            <button type="button" style={styles.modalCloseButton} aria-label="Close settings" onClick={() => setEditingServer(null)} disabled={savingSettings}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12"/></svg></button>
-            <div style={styles.badgePill}>SPACE SETTINGS</div>
-            <h3 id="space-settings-title" style={styles.modalTitle}>{editingServer.name}</h3>
-            <p style={styles.modalSubtitle}>
-              Manage this space.
-            </p>
+        <div style={styles.modalOverlay} className="modalOverlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !savingSettings) setEditingServer(null); }}>
+          <div style={styles.modalCard} className="modalCard" role="dialog" aria-modal="true" aria-labelledby="space-settings-title">
+            <button type="button" style={styles.modalCloseButton} className="modalCloseButton" aria-label="Close settings" onClick={() => setEditingServer(null)} disabled={savingSettings}><X size={23} strokeWidth={1.8} aria-hidden="true" /></button>
+            <div style={styles.badgePill} className="badgePill">{copy.spaceSettings}</div>
+            <h3 id="space-settings-title" style={styles.modalTitle} className="modalTitle">{editingServer.name}</h3>
+            <p style={styles.modalSubtitle} className="modalSubtitle">{copy.manageSpace}</p>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
-              <label style={styles.label}>
-                Space Name
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  style={styles.inputPill}
-                  required
-                />
-              </label>
+              <div className="supervisor-settings-tabs" role="tablist" aria-label="Space settings">
+                {([['general', copy.generalTab], ['ai', strings.admin.serverSettings.aiFunctions], ['chats', strings.admin.rbac.supervisorChatTypes], ['premium', strings.admin.encryption.premium]] as const).map(([id, label]) => <button type="button" role="tab" aria-selected={settingsTab === id} className={settingsTab === id ? "active" : ""} key={id} onClick={() => setSettingsTab(id)}>{label}</button>)}
+              </div>
 
-              <section style={{ marginTop: 8 }} aria-labelledby="supervisor-chat-types-title">
-                <div style={{ ...styles.label, marginBottom: 10 }}>
-                  <span id="supervisor-chat-types-title">{strings.admin.rbac.supervisorChatTypes}</span>
-                  <span style={styles.tabToggleDesc}>{strings.admin.rbac.supervisorChatTypesDesc}</span>
-                </div>
-                <div style={styles.tabsConfigCard}>
-                  {[strings.admin.rbac.directMessages, strings.admin.rbac.groupChats, strings.admin.rbac.textChannels, strings.admin.rbac.voiceChats].map((chatType) => <div key={chatType} style={styles.tabToggleRow}>
-                    <span style={styles.tabToggleTitle}>{chatType}</span>
-                    <span className="premium-feature-badge">{strings.admin.encryption.premium}</span>
-                  </div>)}
-                </div>
-              </section>
+              <div className="supervisor-settings-tab-panel" role="tabpanel">
+                {settingsTab === "general" && <label style={styles.label}>{copy.spaceName}<input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={styles.inputPill} required /></label>}
+                {settingsTab === "ai" && <section aria-label={strings.admin.serverSettings.aiFunctions}>
+                  <p className="supervisor-settings-help">{copy.aiHelp}</p>
+                  {([
+                    ["translationEnabled", strings.admin.serverSettings.translation, copy.translationHelp],
+                    ["callRecordingEnabled", strings.admin.serverSettings.callRecording, copy.recordingHelp],
+                    ["aiNotesEnabled", strings.admin.serverSettings.aiNotes, copy.notesHelp],
+                    ["voiceTranscriptionEnabled", strings.admin.serverSettings.voiceTranscription, copy.transcriptionHelp],
+                  ] as const).map(([key, label, description]) => <label className="supervisor-setting-row" key={key}><span><strong>{label}</strong><small>{description}</small></span><input type="checkbox" checked={aiSettings[key]} onChange={(event) => setAiSettings((current) => ({ ...current, [key]: event.target.checked }))} /></label>)}
+                </section>}
+                {settingsTab === "chats" && <section aria-labelledby="supervisor-chat-types-title">
+                  <p className="supervisor-settings-help" id="supervisor-chat-types-title">{copy.chatsHelp}</p>
+                  {([
+                    ["direct", strings.admin.rbac.directMessages],
+                    ["group", strings.admin.rbac.groupChats],
+                    ["channel", strings.admin.rbac.textChannels],
+                    ["voice", strings.admin.rbac.voiceChats],
+                  ] as const).map(([key, label]) => <label className="supervisor-setting-row" key={key}><span><strong>{label}</strong><small>{strings.admin.rbac.supervisorChatTypes}</small></span><input type="checkbox" checked={chatTypes[key]} onChange={(event) => setChatTypes((current) => ({ ...current, [key]: event.target.checked }))} /></label>)}
+                </section>}
+                {settingsTab === "premium" && <section>
+                  <p className="supervisor-settings-help">{copy.premiumDescription}</p>
+                  {[[copy.roleLimits, copy.roleLimitsHelp], [copy.roleRestrictions, copy.roleRestrictionsHelp], [copy.advancedMonitoring, copy.monitoringHelp], [copy.antispam, copy.antispamHelp]].map(([title, desc]) => <div className="supervisor-setting-row is-locked" key={title}><span><strong>{title}</strong><small>{desc}</small></span><span className="premium-feature-badge">{strings.admin.encryption.premium}</span></div>)}
+                </section>}
+              </div>
 
-              <div style={styles.modalActions}>
+              <div style={styles.modalActions} className="modalActions">
                 <button
                   type="button"
                   onClick={() => setEditingServer(null)}
                   style={styles.secondaryPillButton}
                   disabled={savingSettings}
                 >
-                  Cancel
+                  {copy.cancel}
                 </button>
                 <button
                   type="submit"
                   style={styles.primaryPillButton}
                   disabled={savingSettings}
                 >
-                  {savingSettings ? "Saving..." : "Save Settings"}
+                  {savingSettings ? copy.saving : copy.save}
                 </button>
               </div>
             </form>
@@ -441,9 +474,9 @@ export default function MultiAdminPage() {
 
       {/* Create Modal */}
       {isCreateOpen && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
-            <h3 style={styles.modalTitle}>Provision New Space</h3>
+        <div style={styles.modalOverlay} className="modalOverlay">
+          <div style={styles.modalCard} className="modalCard">
+            <h3 style={styles.modalTitle} className="modalTitle">{copy.createSpaceTitle}</h3>
             <p style={styles.modalSubtitle}>
               Spins up a dedicated space environment with isolated backend, database, and storage.
             </p>
@@ -492,7 +525,7 @@ export default function MultiAdminPage() {
             ) : (
               <form onSubmit={handleCreate} style={styles.form}>
                 <label style={styles.label}>
-                  Space Name
+                  {copy.spaceName}
                   <input
                     type="text"
                     placeholder="e.g. Awesome Corp"
@@ -504,7 +537,7 @@ export default function MultiAdminPage() {
                   />
                 </label>
                 <label style={styles.label}>
-                  Admin Nickname
+                  {copy.adminNickname}
                   <input
                     type="text"
                     value={adminUser}
@@ -514,7 +547,7 @@ export default function MultiAdminPage() {
                   />
                 </label>
                 <label style={styles.label}>
-                  Admin Password
+                  {copy.adminPassword}
                   <input
                     type="password"
                     value={adminPassword}
@@ -619,14 +652,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   primaryPillButton: {
     padding: "12px 24px",
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#c66b24",
     color: "#ffffff",
     border: "none",
     borderRadius: 999,
     fontWeight: 700,
     fontSize: 14,
     cursor: "pointer",
-    boxShadow: "0 4px 14px rgba(59, 130, 246, 0.4)",
+    boxShadow: "none",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   secondaryPillButton: {
@@ -667,7 +700,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "24px 40px",
+    padding: "16px 28px",
     borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
     backgroundColor: "#050505",
   },
@@ -688,8 +721,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
   },
   main: {
-    padding: "40px",
-    maxWidth: 1200,
+    padding: "28px",
+    maxWidth: 1320,
     margin: "0 auto",
   },
   statsGrid: {
@@ -724,14 +757,14 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 10,
   },
   monitoringDisabledButton: {
-    padding: "8px 14px",
+    padding: "6px 10px",
     border: "1px solid rgba(255,255,255,.12)",
-    borderRadius: 999,
+    borderRadius: 10,
     background: "rgba(255,255,255,.05)",
     color: "#9ca3af",
     fontSize: 13,
     fontWeight: 650,
-    cursor: "not-allowed",
+    cursor: "default",
   },
   panelCard: {
     backgroundColor: "#1c1c1e",
@@ -807,6 +840,19 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     alignItems: "center",
     gap: 10,
+  },
+  iconActionButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
+    padding: 0,
+    border: "1px solid #45464a",
+    borderRadius: "50%",
+    backgroundColor: "#252629",
+    color: "#d5d9e0",
+    cursor: "pointer",
   },
   invitePillButton: {
     padding: "8px 18px",
@@ -886,8 +932,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,.12)",
     background: "#2c2c2e",

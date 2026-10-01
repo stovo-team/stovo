@@ -86,8 +86,8 @@ export const DENSITY_OPTIONS: Array<{ label: string; value: DensityChoice }> = [
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
   themeMode: "system",
-  accent: "blue",
-  customAccent: "#2aabee",
+  accent: "amber",
+  customAccent: "#d97706",
   density: "comfortable",
   wallpaper: "dots",
   customWallpaperFileId: null,
