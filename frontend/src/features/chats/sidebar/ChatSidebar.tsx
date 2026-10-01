@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Paperclip, Plus, Server, Trash2, UserPlus } from "lucide-react";
+import { ChevronDown, Paperclip, Pencil, Plus, Server, Trash2, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import StovoLogo from "../../../components/StovoLogo";
@@ -277,7 +277,7 @@ export function ChatSidebar({
         title="Start a chat"
         onClick={openNewChatScreen}
       >
-        <Plus aria-hidden={true} size={20} />
+        <Pencil aria-hidden={true} size={24} />
       </button>
     </aside>
   );
