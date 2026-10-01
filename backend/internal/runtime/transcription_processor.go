@@ -40,6 +40,7 @@ type TranscriptionProcessor struct {
 	Storage     ports.ObjectStore
 	CallsBucket string
 	Provider    TranscriptionProviderOptions
+	DisableNotes bool
 	ParticipantName func(string) string
 	Logger      TranscriptionProcessorLogger
 	Broadcast   func(chatID, callID, sessionID, status string, failureMessage string)
@@ -112,7 +113,9 @@ func (p TranscriptionProcessor) Process(ctx context.Context, job TranscriptionPr
 		p.fail(ctx, job, "transcript_persistence_failed", "Transcript artifact reference could not be saved")
 		return
 	}
-	p.postProcess(ctx, job.SessionID, all)
+	if !p.DisableNotes {
+		p.postProcess(ctx, job.SessionID, all)
+	}
 	completedAt := time.Now().UTC()
 	if err := p.Sessions.UpdateStatus(ctx, featuretranscription.StatusUpdate{SessionID: job.SessionID, Status: string(transcription.SessionStatusReady), CompletedAt: &completedAt}); err != nil {
 		p.warn("final status update failed session_id=%s error=%v", job.SessionID, err)

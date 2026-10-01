@@ -12378,14 +12378,14 @@ span.message-spoiler.is-revealed {
   --focus-shadow-light: rgba(217, 119, 6, 0.16);
   --outline-soft-light: rgba(217, 119, 6, 0.12);
   --accent-ring-light: rgba(217, 119, 6, 0.24);
-  --accent-primary-dark: #fbbf24;
-  --accent-primary-hover-dark: #fde68a;
-  --accent-soft-dark: #3a2a0c;
-  --accent-border-soft-dark: #fbbf24;
-  --focus-ring-dark: rgba(251, 191, 36, 0.34);
-  --focus-shadow-dark: rgba(251, 191, 36, 0.22);
-  --outline-soft-dark: rgba(251, 191, 36, 0.18);
-  --accent-ring-dark: rgba(251, 191, 36, 0.34);
+  --accent-primary-dark: #f08a24;
+  --accent-primary-hover-dark: #ff9c3c;
+  --accent-soft-dark: #3a2514;
+  --accent-border-soft-dark: #c66b24;
+  --focus-ring-dark: rgba(240, 138, 36, 0.34);
+  --focus-shadow-dark: rgba(240, 138, 36, 0.22);
+  --outline-soft-dark: rgba(240, 138, 36, 0.18);
+  --accent-ring-dark: rgba(240, 138, 36, 0.34);
 }
 
 .encryption-settings-form {
@@ -25979,6 +25979,24 @@ button.chat-info-title-edit:active:not(:disabled) {
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
+.admin-role-premium-group {
+  background: color-mix(in oklab, #343943 18%, transparent);
+  border-top: 1px solid #333740;
+  filter: grayscale(1);
+  opacity: .62;
+  padding: 0 12px 12px;
+  pointer-events: none;
+}
+.admin-role-premium-group .admin-role-permission-group-heading { color: #a0a4ac; }
+.admin-role-premium-group .admin-role-permission-group-heading small,
+.admin-role-premium-group .admin-role-permission-options small,
+.admin-role-premium-group .admin-role-premium-all small { color: #777d87; }
+.admin-role-premium-group input[type="checkbox"]:disabled {
+  background: #282b31;
+  border-color: #565b64;
+  cursor: not-allowed;
+}
+.admin-role-premium-all { display: flex; align-items: center; gap: 10px; }
 @media (max-width: 700px) { .admin-roles-layout { display: block; } .admin-role-list { margin-bottom: 16px; } }
 .admin-defaults-notification-settings {
   display: grid;

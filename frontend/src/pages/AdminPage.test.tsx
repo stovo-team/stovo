@@ -22,13 +22,17 @@ vi.mock("../i18n/LanguageContext", () => ({
       hub: {
         memberDefaults: "Member defaults",
         memberDefaultsDesc: "Default member settings",
-        serverSettings: "Space Settings",
+        serverSettings: "Space settings",
         serverSettingsDesc: "Server-level settings",
         appearance: "Appearance",
         appearanceDesc: "Server appearance",
         encryption: "Encryption",
         premium: "Premium",
         mcp: "MCP connectors",
+        roles: "Roles",
+        rolesDesc: "Permissions and member roles",
+        plugins: "Plugin store",
+        pluginsDesc: "Enable or disable optional Space features",
         members: "Members"
       },
       encryption: { premium: "Premium" }
@@ -69,6 +73,7 @@ describe("AdminPage defaults navigation", () => {
 
   it("shows server settings, but not owner-only member defaults, to a member with manage_server", async () => {
     await renderPage();
+    expect(container?.querySelector(".admin-hub-category-tabs")).toBeNull();
     expect(container?.querySelector('a[href$="/app/admin/defaults"]')).toBeNull();
     expect(container?.querySelector('a[href$="/app/admin/server-settings"]')).toBeTruthy();
   });
@@ -87,7 +92,7 @@ describe("AdminPage defaults navigation", () => {
     expect(container?.querySelector('a[href$="/app/admin/server-settings"]')).toBeTruthy();
   });
 
-  it("shows the owner admin tabs in the requested order with Space Settings first", async () => {
+  it("shows all owner admin destinations together with Space settings first", async () => {
     mocks.currentUser = { role: "owner", permissions: [] };
     await renderPage();
     const tabs = [...(container?.querySelectorAll<HTMLElement>(".admin-hub-tab") ?? [])];
@@ -101,7 +106,7 @@ describe("AdminPage defaults navigation", () => {
       "true",
       "/app/admin/plugins"
     ]);
-    expect(tabs[0]?.querySelector("strong")?.textContent).toBe("Space Settings");
+    expect(tabs[0]?.querySelector("strong")?.textContent).toBe("Space settings");
   });
 
   it("preserves the requested relative order for permission-filtered members", async () => {

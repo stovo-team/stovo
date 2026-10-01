@@ -28,6 +28,7 @@ vi.mock("../i18n/LanguageContext", () => ({
       notifications: "Notifications", notificationProvider: "Notification delivery provider", firebaseProvider: "Firebase", ntfyProvider: "ntfy"
     }, serverSettings: {
       title: "Server settings", ownerRequired: "Owner required", guestMeetingQuality: "Guest meeting quality",
+      aiFunctions: "AI functions", translation: "Translation", callRecording: "Call recording", aiNotes: "AI notes", voiceTranscription: "Voice message transcription",
       spaceName: "Space Name",
       screenShareBitrate: "Screen-share bitrate (kbps)", cameraBitrate: "Camera bitrate (kbps)",
       groupCallsQuality: "Group calls & voice chats", dmCallsQuality: "DM calls",
@@ -52,7 +53,7 @@ describe("AdminServerSettingsPage", () => {
 
   beforeEach(() => {
     mocks.currentUser = { role: "owner" };
-    mocks.authRequest.mockResolvedValue({ name: "Stakhov Family", screenShareBitrateKbps: 5000 });
+    mocks.authRequest.mockResolvedValue({ name: "Stakhov Family", cameraBitrateKbps: 4500, groupCallCameraBitrateKbps: 6000, dmCallCameraBitrateKbps: 7500 });
     mocks.getNotificationProviderSettings.mockResolvedValue({ notificationProvider: "firebase" });
     mocks.updateNotificationProviderSettings.mockResolvedValue({ notificationProvider: "ntfy" });
     container = document.createElement("div");
@@ -151,22 +152,10 @@ describe("AdminServerSettingsPage", () => {
     expect(document.querySelector('[role="listbox"]')).toBeNull();
   });
 
-  it("keeps guest meeting quality editable and saves a valid bitrate", async () => {
+  it("does not expose screen-share bitrate controls", async () => {
     await renderPage();
-    const input = document.querySelector<HTMLInputElement>('input[aria-label="Screen-share bitrate (kbps)"]')!;
-    expect(input.value).toBe("5000");
-    const setNativeValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    await act(async () => {
-      setNativeValue?.call(input, "6000");
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      await Promise.resolve();
-    });
-    expect(input.value).toBe("6000");
-    await act(async () => {
-      input.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
-      await Promise.resolve();
-    });
-    expect(mocks.authRequest).toHaveBeenCalledWith("/api/family", { method: "PATCH", body: { screenShareBitrateKbps: 6000 } });
+    expect(document.body.textContent).not.toContain("Screen-share bitrate");
+    expect(document.querySelector('input[aria-label="Screen-share bitrate (kbps)"]')).toBeNull();
   });
 
   it("edits and saves the space name from server settings", async () => {
@@ -206,22 +195,22 @@ describe("AdminServerSettingsPage", () => {
     expect(input.value).toBe("Stakhov Family");
   });
 
-  it("shows camera bitrate alongside screen-share bitrate for guest meetings", async () => {
+  it("shows only the camera bitrate control for guest meetings", async () => {
     await renderPage();
-    expect(document.querySelector<HTMLInputElement>('input[aria-label="Screen-share bitrate (kbps)"]')).toBeTruthy();
+    expect(document.querySelector<HTMLInputElement>('input[aria-label="Screen-share bitrate (kbps)"]')).toBeNull();
     expect(document.querySelector<HTMLInputElement>('input[aria-label="Camera bitrate (kbps)"]')).toBeTruthy();
   });
 
-  it("initializes all six independent bitrate controls from the family settings response", async () => {
-    mocks.authRequest.mockResolvedValue(initialBitrateSettings);
+  it("initializes camera bitrate controls from the family settings response", async () => {
+    mocks.authRequest.mockResolvedValue({ name: "Stakhov Family", ...initialBitrateSettings });
     await renderPage();
-    for (const setting of bitrateSettings) {
+    for (const setting of bitrateSettings.filter(({ field }) => field.toLowerCase().includes("camera"))) {
       expect(sectionInput(setting.section, setting.label)?.value).toBe(String(setting.initial));
     }
   });
 
-  it.each(bitrateSettings)("saves only $field when its bitrate control changes", async (setting) => {
-    mocks.authRequest.mockResolvedValue(initialBitrateSettings);
+  it.each(bitrateSettings.filter(({ field }) => field.toLowerCase().includes("camera")))("saves only $field when its bitrate control changes", async (setting) => {
+    mocks.authRequest.mockResolvedValue({ name: "Stakhov Family", ...initialBitrateSettings });
     await renderPage();
     const input = sectionInput(setting.section, setting.label);
     expect(input).toBeTruthy();
@@ -232,7 +221,7 @@ describe("AdminServerSettingsPage", () => {
       target.dispatchEvent(new Event("input", { bubbles: true }));
       await Promise.resolve();
     });
-    for (const otherSetting of bitrateSettings.filter((candidate) => candidate.field !== setting.field)) {
+    for (const otherSetting of bitrateSettings.filter((candidate) => candidate.field.toLowerCase().includes("camera") && candidate.field !== setting.field)) {
       expect(sectionInput(otherSetting.section, otherSetting.label)?.value).toBe(String(otherSetting.initial));
     }
     await act(async () => {
@@ -245,8 +234,8 @@ describe("AdminServerSettingsPage", () => {
     });
   });
 
-  it.each(bitrateSettings)("does not save invalid $field values and restores its current value", async (setting) => {
-    mocks.authRequest.mockResolvedValue(initialBitrateSettings);
+  it.each(bitrateSettings.filter(({ field }) => field.toLowerCase().includes("camera")))("does not save invalid $field values and restores its current value", async (setting) => {
+    mocks.authRequest.mockResolvedValue({ name: "Stakhov Family", ...initialBitrateSettings });
     await renderPage();
     const input = sectionInput(setting.section, setting.label)!;
     const startingCallCount = mocks.authRequest.mock.calls.length;
@@ -265,7 +254,7 @@ describe("AdminServerSettingsPage", () => {
       const heading = [...document.querySelectorAll("h2")].find((candidate) => candidate.textContent?.trim() === sectionName);
       expect(heading, `missing ${sectionName} section`).toBeTruthy();
       const section = heading?.closest("section");
-      expect(section?.querySelector('input[aria-label="Screen-share bitrate (kbps)"]')).toBeTruthy();
+      expect(section?.querySelector('input[aria-label="Screen-share bitrate (kbps)"]')).toBeNull();
       expect(section?.querySelector('input[aria-label="Camera bitrate (kbps)"]')).toBeTruthy();
     }
   });
@@ -331,7 +320,7 @@ describe("AdminServerSettingsPage", () => {
     expect(document.querySelector('input[aria-label="Space Name"]')).toBeNull();
     expect(document.body.textContent).not.toContain("Guest meeting quality");
     expect(document.body.textContent).toContain("Safety & moderation");
-    expect(mocks.authRequest).not.toHaveBeenCalled();
+    expect(mocks.authRequest).toHaveBeenCalledWith("/api/family");
     await chooseOption("Notification delivery provider", "ntfy");
     expect(mocks.updateNotificationProviderSettings).toHaveBeenCalledWith("owner-token", "ntfy");
   });

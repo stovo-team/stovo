@@ -23,26 +23,26 @@ export default function AdminPage() {
       to: "/app/admin/members",
       icon: "group",
       title: strings.admin.hub.members,
-      description: strings.admin.hub.membersDesc
+      description: strings.admin.hub.membersDesc,
     }] : []),
     ...(isOwner ? [{ to: "/app/admin/defaults", icon: "tune", title: strings.admin.hub.memberDefaults, description: strings.admin.hub.memberDefaultsDesc }] : []),
     ...(can("manage_roles") ? [{
       to: "/app/admin/roles",
       icon: "admin_panel_settings",
-      title: "Roles",
-      description: "Permissions and member roles"
+      title: strings.admin.hub.roles,
+      description: strings.admin.hub.rolesDesc,
     }] : []),
     ...(can("manage_server") ? [{
       to: "/app/admin/appearance",
       icon: "palette",
       title: strings.admin.hub.appearance,
-      description: strings.admin.hub.appearanceDesc
+      description: strings.admin.hub.appearanceDesc,
     }] : []),
     ...(can("manage_integrations") ? [{
       to: "/app/admin/mcp",
       icon: "smart_toy",
       title: strings.admin.hub.mcp,
-      description: strings.admin.hub.mcpDesc
+      description: strings.admin.hub.mcpDesc,
     }] : []),
     ...(can("manage_server") ? [{
       to: "/app/admin/encryption",
@@ -50,13 +50,13 @@ export default function AdminPage() {
       title: strings.admin.hub.encryption,
       description: strings.admin.hub.encryptionDesc,
       premium: true,
-      disabled: true
+      disabled: true,
     }] : []),
     ...(can("manage_server") ? [{
       to: "/app/admin/plugins",
       icon: "extension",
-      title: "Plugin store",
-      description: "Enable optional server features and experiences"
+      title: strings.admin.hub.plugins,
+      description: strings.admin.hub.pluginsDesc,
     }] : []),
   ];
 

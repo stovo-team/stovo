@@ -168,6 +168,10 @@ export function getClusterPrefix(): string {
   return match ? `/s/${match[1]}` : "";
 }
 
+export function getClusterPath(path: string): string {
+  return `${getClusterPrefix()}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 export function isServerUrlConfigured(): boolean {
   if (typeof window === "undefined") {
     return true;

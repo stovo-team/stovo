@@ -1,19 +1,25 @@
 import React, { useEffect, useState } from "react";
+import { MoreVertical, Settings2, UserPlus, X, RefreshCw, ExternalLink, KeyRound, Trash2 } from "lucide-react";
 import {
   createInviteLink,
   createServer,
   deleteServer,
-  fetchTenantCallQuality,
   fetchServers,
+  fetchTenantAiSettings,
   getGhostToken,
   masterLogin,
   updateServerSettings,
-  updateTenantCallQuality,
-  NavTabsConfig,
+  updateTenantAiSettings,
+  ChatTypesConfig,
+  TenantAiSettings,
   ServerRecord,
 } from "../api/masterAdmin";
+import { useStrings } from "../i18n/LanguageContext";
+import "./MultiAdminPage.css";
 
 export default function MultiAdminPage() {
+  const strings = useStrings();
+  const copy = strings.admin.supervisorConsole;
   const [token, setToken] = useState<string | null>(
     localStorage.getItem("master_admin_token")
   );
@@ -30,12 +36,6 @@ export default function MultiAdminPage() {
   const [newName, setNewName] = useState("");
   const [adminUser, setAdminUser] = useState("admin");
   const [adminPassword, setAdminPassword] = useState("admin12345");
-  const [createNavTabs, setCreateNavTabs] = useState<NavTabsConfig>({
-    chats: true,
-    storage: true,
-    plans: true,
-    settings: true,
-  });
   const [createResult, setCreateResult] = useState<{
     inviteUrl: string;
     clusterUrl: string;
@@ -46,14 +46,11 @@ export default function MultiAdminPage() {
   // Settings Modal State
   const [editingServer, setEditingServer] = useState<ServerRecord | null>(null);
   const [editName, setEditName] = useState("");
-  const [editNavTabs, setEditNavTabs] = useState<NavTabsConfig>({
-    chats: true,
-    storage: true,
-    plans: true,
-    settings: true,
-  });
-  const [editScreenShareBitrateKbps, setEditScreenShareBitrateKbps] = useState(5000);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<"general" | "ai" | "chats" | "premium">("general");
+  const [chatTypes, setChatTypes] = useState<ChatTypesConfig>({ direct: true, group: true, channel: true, voice: true });
+  const [aiSettings, setAiSettings] = useState<TenantAiSettings>({ translationEnabled: true, callRecordingEnabled: true, aiNotesEnabled: true, voiceTranscriptionEnabled: true });
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
   // Notification / Toast info
   const [toast, setToast] = useState<string | null>(null);
@@ -69,6 +66,31 @@ export default function MultiAdminPage() {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (!editingServer) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !savingSettings) setEditingServer(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editingServer, savingSettings]);
+
+  useEffect(() => {
+    if (!openMenu) return;
+    const closeOnOutside = (event: PointerEvent) => {
+      if (!(event.target instanceof Element) || !event.target.closest(".space-actions-menu-wrap")) setOpenMenu(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenu(null);
+    };
+    document.addEventListener("pointerdown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [openMenu]);
+
   const loadServers = async () => {
     if (!token) return;
     setLoading(true);
@@ -77,7 +99,7 @@ export default function MultiAdminPage() {
       const data = await fetchServers(token);
       setServers(data || []);
     } catch (err: any) {
-      setError(err.message || "Failed to load spaces");
+      setError(err.message || copy.saveError);
       if (err.message?.includes("token") || err.message?.includes("Unauthorized")) {
         handleLogout();
       }
@@ -114,7 +136,6 @@ export default function MultiAdminPage() {
         newName.trim(),
         adminUser.trim(),
         adminPassword.trim(),
-        createNavTabs
       );
       const originClusterUrl = `${window.location.origin}/s/${res.slug}/login`;
       const originInviteUrl = `${window.location.origin}/s/${res.slug}/setup?token=${new URL(res.invite_url).searchParams.get("token") || ""}`;
@@ -125,7 +146,6 @@ export default function MultiAdminPage() {
         adminPassword: res.admin_password || adminPassword,
       });
       setNewName("");
-      setCreateNavTabs({ chats: true, storage: true, plans: true, settings: true });
       loadServers();
       showToast(`Space "${res.name}" provisioned cleanly!`);
     } catch (err: any) {
@@ -136,21 +156,21 @@ export default function MultiAdminPage() {
   const handleOpenSettings = async (s: ServerRecord) => {
     setEditingServer(s);
     setEditName(s.name);
-    setEditNavTabs({
-      chats: s.nav_tabs?.chats ?? true,
-      storage: s.nav_tabs?.storage ?? true,
-      plans: s.nav_tabs?.plans ?? true,
-      settings: s.nav_tabs?.settings ?? true,
-    });
-	  setEditScreenShareBitrateKbps(5000);
-	  if (token) {
-		  try {
-			  const quality = await fetchTenantCallQuality(token, s.slug);
-			  setEditScreenShareBitrateKbps(quality.screenShareBitrateKbps ?? 5000);
-		  } catch (err: any) {
-			  showToast(err.message || "Could not load the guest meeting quality setting.");
-		  }
-	  }
+    setSettingsTab("general");
+    setChatTypes(s.chat_types ?? { direct: true, group: true, channel: true, voice: true });
+    if (token) {
+      try {
+        const settings = await fetchTenantAiSettings(token, s.slug);
+        setAiSettings({
+          translationEnabled: settings.translationEnabled ?? true,
+          callRecordingEnabled: settings.callRecordingEnabled ?? true,
+          aiNotesEnabled: settings.aiNotesEnabled ?? true,
+          voiceTranscriptionEnabled: settings.voiceTranscriptionEnabled ?? true,
+        });
+      } catch (err: any) {
+        showToast(err.message || "Failed to load AI settings");
+      }
+    }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -158,18 +178,18 @@ export default function MultiAdminPage() {
     if (!token || !editingServer) return;
     setSavingSettings(true);
     try {
-	  await updateTenantCallQuality(token, editingServer.slug, editScreenShareBitrateKbps);
+      await updateTenantAiSettings(token, editingServer.slug, aiSettings);
       const updated = await updateServerSettings(token, editingServer.slug, {
         name: editName.trim(),
-        nav_tabs: editNavTabs,
+        chat_types: chatTypes,
       });
       setServers((prev) =>
         prev.map((s) => (s.slug === editingServer.slug ? { ...s, ...updated } : s))
       );
-      showToast(`Space settings for "${updated.name || editingServer.name}" saved!`);
+      showToast(copy.settingsSaved(updated.name || editingServer.name));
       setEditingServer(null);
     } catch (err: any) {
-      alert(err.message || "Failed to update space settings");
+      alert(err.message || copy.saveError);
     } finally {
       setSavingSettings(false);
     }
@@ -177,12 +197,12 @@ export default function MultiAdminPage() {
 
   const handleDelete = async (slug: string) => {
     if (!token) return;
-    if (!confirm(`Are you sure you want to delete space "${slug}"? This will drop its database and stop its container.`)) {
+    if (!confirm(copy.confirmDelete(slug))) {
       return;
     }
     try {
       await deleteServer(token, slug);
-      showToast(`Space "${slug}" deleted.`);
+      showToast(copy.delete);
       loadServers();
     } catch (err: any) {
       alert(err.message || "Failed to delete space");
@@ -194,7 +214,7 @@ export default function MultiAdminPage() {
     try {
       const ghostToken = await getGhostToken(token, slug);
       await navigator.clipboard.writeText(ghostToken);
-      showToast(`Ghost Superadmin token for "${slug}" copied to clipboard!`);
+      showToast(copy.ghostCopied(slug));
     } catch (err: any) {
       alert(err.message || "Failed to get Ghost Token");
     }
@@ -207,7 +227,7 @@ export default function MultiAdminPage() {
       const url = new URL(inviteUrl, window.location.origin);
       const fullUrl = `${window.location.origin}${url.pathname}${url.search}`;
       await navigator.clipboard.writeText(fullUrl);
-      showToast(`Single-use invite link for "${slug}" copied to clipboard!`);
+      showToast(copy.inviteCopied(slug));
     } catch (err: any) {
       alert(err.message || "Failed to generate invite link");
     }
@@ -217,15 +237,15 @@ export default function MultiAdminPage() {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={styles.badgePill}>MULTI-SPACE ORCHESTRATOR</div>
-          <h1 style={styles.title}>Stovo Master</h1>
-          <p style={styles.subtitle}>Sign in to manage spaces and root infrastructure</p>
+          <div style={styles.badgePill}>{copy.supervisor}</div>
+          <h1 style={styles.title}>Stovo Supervisor</h1>
+          <p style={styles.subtitle}>{copy.login}</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
 
           <form onSubmit={handleLogin} style={styles.form}>
             <label style={styles.label}>
-              Username
+              {copy.username}
               <input
                 type="text"
                 value={username}
@@ -235,7 +255,7 @@ export default function MultiAdminPage() {
               />
             </label>
             <label style={styles.label}>
-              Password
+              {copy.password}
               <input
                 type="password"
                 value={password}
@@ -245,7 +265,7 @@ export default function MultiAdminPage() {
               />
             </label>
             <button type="submit" style={styles.primaryPillButton}>
-              Login to Master Console
+              {copy.loginButton}
             </button>
           </form>
         </div>
@@ -254,87 +274,87 @@ export default function MultiAdminPage() {
   }
 
   return (
-    <div style={styles.page}>
+    <div style={styles.page} className="supervisor-admin-page">
       {toast && <div style={styles.toast}>{toast}</div>}
 
-      <header style={styles.header}>
+      <header style={styles.header} className="header">
         <div style={styles.headerTitleGroup}>
-          <div style={styles.badgePill}>MULTI-SPACE CONTROL</div>
-          <h1 style={styles.headerTitle}>Stovo Spaces</h1>
+          <div style={styles.badgePill}>{copy.supervisor}</div>
+          <h1 style={styles.headerTitle}>{copy.title}</h1>
         </div>
         <div style={styles.headerActions}>
-          <button
-            onClick={() => setIsCreateOpen(true)}
-            style={styles.primaryPillButton}
+            <button
+              onClick={() => setIsCreateOpen(true)}
+            style={styles.secondaryPillButton}
           >
-            + Create New Space
+            {copy.createSpace}
           </button>
           <button onClick={handleLogout} style={styles.secondaryPillButton}>
-            Logout
+            {copy.logout}
           </button>
         </div>
       </header>
 
-      <main style={styles.main}>
+      <main style={styles.main} className="main">
         {/* Stats Row */}
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>Active Spaces</div>
-            <div style={styles.statValue}>{servers.length}</div>
+        <div style={styles.statsGrid} className="statsGrid">
+          <div style={styles.statCard} className="statCard">
+            <div style={styles.statLabel} className="statLabel">{copy.activeSpaces}</div>
+            <div style={styles.statValue} className="statValue">{servers.length}</div>
           </div>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>System Status</div>
-            <div style={{ ...styles.statValue, color: "#34d399" }}>Operational</div>
+          <div style={styles.statCard} className="statCard">
+            <div style={styles.statLabel} className="statLabel">{copy.systemStatus}</div>
+            <div style={{ ...styles.statValue, color: "#34d399" }} className="statValue">{copy.operational}</div>
           </div>
-          <div style={styles.statCard}>
-            <div style={styles.statLabel}>Gateway Isolation</div>
-            <div style={styles.statValue}>Path Router (/s/:hash)</div>
+          <div style={styles.statCard} className="statCard">
+            <div style={styles.statLabel} className="statLabel">{copy.advancedMonitoring}</div>
+            <div style={styles.monitoringStatus} className="monitoringStatus">
+              <span style={styles.monitoringDisabledButton}>{copy.monitoringDisabled}</span>
+              <span className="premium-feature-badge">Premium</span>
+            </div>
           </div>
         </div>
 
         {/* Server List */}
-        <div style={styles.panelCard}>
-          <div style={styles.sectionHeader}>
-            <h2 style={styles.sectionTitle}>Provisioned Spaces</h2>
+        <div style={styles.panelCard} className="panelCard">
+          <div style={styles.sectionHeader} className="sectionHeader">
+            <h2 style={styles.sectionTitle} className="sectionTitle">{copy.yourSpaces}</h2>
             <button
               onClick={loadServers}
-              title="Refresh Spaces"
+              title={copy.refreshSpaces}
               style={styles.iconOnlyButton}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-              </svg>
+              <RefreshCw size={18} aria-hidden="true" />
             </button>
           </div>
 
           {loading ? (
-            <div style={styles.emptyState}>Loading spaces from orchestrator...</div>
+            <div style={styles.emptyState}>{copy.loadingSpaces}</div>
           ) : error ? (
             <div style={styles.errorBox}>{error}</div>
           ) : servers.length === 0 ? (
             <div style={styles.emptyState}>
-              No spaces created yet. Click <strong style={{ color: "#60a5fa" }}>+ Create New Space</strong> to provision one.
+              {copy.noSpaces} <strong style={{ color: "#60a5fa" }}>{copy.createSpace}</strong>
             </div>
           ) : (
-            <div style={styles.tableWrapper}>
-              <table style={styles.table}>
+            <div style={styles.tableWrapper} className="tableWrapper">
+              <table style={styles.table} className="table">
                 <thead>
                   <tr>
-                    <th style={styles.th}>ID</th>
-                    <th style={styles.th}>Name</th>
-                    <th style={styles.th}>Space Link</th>
-                    <th style={styles.th}>Nav Tabs</th>
-                    <th style={styles.th}>Status</th>
-                    <th style={styles.th}>Created At</th>
-                    <th style={styles.th}>Actions</th>
+                    <th style={styles.th} className="th">{copy.id}</th>
+                    <th style={styles.th} className="th">{copy.name}</th>
+                    <th style={styles.th} className="th">{copy.spaceLink}</th>
+                    <th style={styles.th} className="th">{copy.status}</th>
+                    <th style={styles.th} className="th">{copy.createdAt}</th>
+                    <th style={styles.th} className="th">{copy.actions}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {servers.map((s: ServerRecord) => (
-                    <tr key={s.id} style={styles.tr}>
-                      <td style={styles.td}>#{s.id}</td>
-                      <td style={{ ...styles.td, fontWeight: 700, color: "#ffffff" }}>{s.name}</td>
-                      <td style={styles.td}>
+                    <tr key={s.id} style={styles.tr} className="supervisor-space-row">
+                      <td style={styles.td} className="td">#{s.id}</td>
+                      <td style={{ ...styles.td, fontWeight: 700, color: "#ffffff" }} className="td">{s.name}</td>
+                      <td style={styles.td} className="td">
                         <a
                           href={`/s/${s.slug}`}
                           target="_blank"
@@ -343,70 +363,42 @@ export default function MultiAdminPage() {
                           title={`Open ${s.name} space in new tab`}
                         >
                           /s/{s.slug}
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6 }}>
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                            <polyline points="15 3 21 3 21 9"></polyline>
-                            <line x1="10" y1="14" x2="21" y2="3"></line>
-                          </svg>
+                          <ExternalLink size={13} aria-hidden="true" style={{ marginLeft: 6 }} />
                         </a>
                       </td>
-                      <td style={styles.td}>
-                        <div style={styles.tabBadgeGroup}>
-                          <span style={s.nav_tabs?.chats !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Chats Tab">
-                            Chats
-                          </span>
-                          <span style={s.nav_tabs?.storage !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Storage Tab">
-                            Storage
-                          </span>
-                          <span style={s.nav_tabs?.plans !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Plans Tab">
-                            Plans
-                          </span>
-                          <span style={s.nav_tabs?.settings !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Settings Tab">
-                            Settings
-                          </span>
-                        </div>
-                      </td>
-                      <td style={styles.td}>
+                      <td style={styles.td} className="td">
                         <span style={styles.statusPill}>{s.status || "running"}</span>
                       </td>
-                      <td style={styles.td}>
+                      <td style={styles.td} className="td">
                         {new Date(s.created_at).toLocaleDateString()} {new Date(s.created_at).toLocaleTimeString()}
                       </td>
-                      <td style={styles.td}>
-                        <div style={styles.actionGroup}>
+                      <td style={styles.td} className="td">
+                        <div style={styles.actionGroup} className="actionGroup">
                           <button
                             onClick={() => handleOpenSettings(s)}
-                            title={`Configure space settings and navigation tabs for ${s.name}`}
-                            style={styles.settingsPillButton}
+                            title={`${copy.settings}: ${s.name}`}
+                            style={styles.iconActionButton}
+                            className="iconActionButton"
+                            aria-label={`${copy.settings}: ${s.name}`}
                           >
-                            ⚙️ Settings
+                            <Settings2 size={19} aria-hidden="true" />
                           </button>
                           <button
                             onClick={() => handleCopyInvite(s.slug)}
-                            title="Generate and copy fresh single-use invite link"
-                            style={styles.invitePillButton}
+                            title={`${copy.invite}: ${s.name}`}
+                            style={styles.iconActionButton}
+                            className="iconActionButton"
+                            aria-label={`${copy.invite}: ${s.name}`}
                           >
-                            + Invite
+                            <UserPlus size={19} aria-hidden="true" />
                           </button>
-                          <button
-                            onClick={() => handleCopyGhostToken(s.slug)}
-                            title="Copy short-lived Ghost Superadmin JWT"
-                            style={styles.ghostPillButton}
-                          >
-                            Ghost Token
-                          </button>
-                          <button
-                            onClick={() => handleDelete(s.slug)}
-                            title={`Delete space ${s.name}`}
-                            style={styles.dangerIconButton}
-                          >
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6"></polyline>
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                              <line x1="10" y1="11" x2="10" y2="17"></line>
-                              <line x1="14" y1="11" x2="14" y2="17"></line>
-                            </svg>
-                          </button>
+                          <div className="space-actions-menu-wrap">
+                            <button type="button" style={styles.iconActionButton} className="iconActionButton" aria-label={`${copy.moreActions}: ${s.name}`} aria-haspopup="menu" aria-expanded={openMenu === s.slug} onClick={() => setOpenMenu(openMenu === s.slug ? null : s.slug)}><MoreVertical size={20} aria-hidden="true" /></button>
+                            {openMenu === s.slug && <div className="space-actions-menu" role="menu">
+                              <button type="button" role="menuitem" onClick={() => { setOpenMenu(null); void handleCopyGhostToken(s.slug); }}><KeyRound size={16} />{copy.ghostToken}</button>
+                              <button type="button" role="menuitem" className="danger" onClick={() => { setOpenMenu(null); void handleDelete(s.slug); }}><Trash2 size={16} />{copy.delete}</button>
+                            </div>}
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -420,123 +412,59 @@ export default function MultiAdminPage() {
 
       {/* Server Settings Modal */}
       {editingServer && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
-            <div style={styles.badgePill}>SPACE SETTINGS</div>
-            <h3 style={styles.modalTitle}>{editingServer.name}</h3>
-            <p style={styles.modalSubtitle}>
-              Configure space properties, guest meeting quality, and the navigation panel.
-            </p>
+        <div style={styles.modalOverlay} className="modalOverlay" onMouseDown={(event) => { if (event.target === event.currentTarget && !savingSettings) setEditingServer(null); }}>
+          <div style={styles.modalCard} className="modalCard" role="dialog" aria-modal="true" aria-labelledby="space-settings-title">
+            <button type="button" style={styles.modalCloseButton} className="modalCloseButton" aria-label="Close settings" onClick={() => setEditingServer(null)} disabled={savingSettings}><X size={23} strokeWidth={1.8} aria-hidden="true" /></button>
+            <div style={styles.badgePill} className="badgePill">{copy.spaceSettings}</div>
+            <h3 id="space-settings-title" style={styles.modalTitle} className="modalTitle">{editingServer.name}</h3>
+            <p style={styles.modalSubtitle} className="modalSubtitle">{copy.manageSpace}</p>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
-              <label style={styles.label}>
-                Space Name
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  style={styles.inputPill}
-                  required
-                />
-              </label>
-
-			  <label style={styles.label}>
-				Screen-share bitrate (kbps)
-				<input
-				  type="number"
-				  min="1000"
-				  max="20000"
-				  step="500"
-				  value={editScreenShareBitrateKbps}
-				  onChange={(e) => setEditScreenShareBitrateKbps(Number(e.target.value))}
-				  style={styles.inputPill}
-				  required
-				/>
-				<span style={styles.tabToggleDesc}>5,000 kbps is the recommended cap for 1080p screen shares.</span>
-			  </label>
-
-              <div style={{ marginTop: 8 }}>
-                <div style={{ ...styles.label, marginBottom: 12 }}>
-                  Navigation Panel Tabs
-                </div>
-                <div style={styles.tabsConfigCard}>
-                  <label style={styles.tabToggleRow}>
-                    <div>
-                      <div style={styles.tabToggleTitle}>💬 Chats</div>
-                      <div style={styles.tabToggleDesc}>Direct, group, and voice messaging</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editNavTabs.chats}
-                      onChange={(e) =>
-                        setEditNavTabs((prev) => ({ ...prev, chats: e.target.checked }))
-                      }
-                      style={styles.checkbox}
-                    />
-                  </label>
-
-                  <label style={styles.tabToggleRow}>
-                    <div>
-                      <div style={styles.tabToggleTitle}>📁 Storage</div>
-                      <div style={styles.tabToggleDesc}>File library, media, and shared documents</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editNavTabs.storage}
-                      onChange={(e) =>
-                        setEditNavTabs((prev) => ({ ...prev, storage: e.target.checked }))
-                      }
-                      style={styles.checkbox}
-                    />
-                  </label>
-
-                  <label style={styles.tabToggleRow}>
-                    <div>
-                      <div style={styles.tabToggleTitle}>📅 Plans</div>
-                      <div style={styles.tabToggleDesc}>Family events, calendar, and schedule</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editNavTabs.plans}
-                      onChange={(e) =>
-                        setEditNavTabs((prev) => ({ ...prev, plans: e.target.checked }))
-                      }
-                      style={styles.checkbox}
-                    />
-                  </label>
-
-                  <label style={styles.tabToggleRow}>
-                    <div>
-                      <div style={styles.tabToggleTitle}>⚙️ Settings</div>
-                      <div style={styles.tabToggleDesc}>User profile, theme, audio, and device settings</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editNavTabs.settings}
-                      onChange={(e) =>
-                        setEditNavTabs((prev) => ({ ...prev, settings: e.target.checked }))
-                      }
-                      style={styles.checkbox}
-                    />
-                  </label>
-                </div>
+              <div className="supervisor-settings-tabs" role="tablist" aria-label="Space settings">
+                {([['general', copy.generalTab], ['ai', strings.admin.serverSettings.aiFunctions], ['chats', strings.admin.rbac.supervisorChatTypes], ['premium', strings.admin.encryption.premium]] as const).map(([id, label]) => <button type="button" role="tab" aria-selected={settingsTab === id} className={settingsTab === id ? "active" : ""} key={id} onClick={() => setSettingsTab(id)}>{label}</button>)}
               </div>
 
-              <div style={styles.modalActions}>
+              <div className="supervisor-settings-tab-panel" role="tabpanel">
+                {settingsTab === "general" && <label style={styles.label}>{copy.spaceName}<input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} style={styles.inputPill} required /></label>}
+                {settingsTab === "ai" && <section aria-label={strings.admin.serverSettings.aiFunctions}>
+                  <p className="supervisor-settings-help">{copy.aiHelp}</p>
+                  {([
+                    ["translationEnabled", strings.admin.serverSettings.translation, copy.translationHelp],
+                    ["callRecordingEnabled", strings.admin.serverSettings.callRecording, copy.recordingHelp],
+                    ["aiNotesEnabled", strings.admin.serverSettings.aiNotes, copy.notesHelp],
+                    ["voiceTranscriptionEnabled", strings.admin.serverSettings.voiceTranscription, copy.transcriptionHelp],
+                  ] as const).map(([key, label, description]) => <label className="supervisor-setting-row" key={key}><span><strong>{label}</strong><small>{description}</small></span><input type="checkbox" checked={aiSettings[key]} onChange={(event) => setAiSettings((current) => ({ ...current, [key]: event.target.checked }))} /></label>)}
+                </section>}
+                {settingsTab === "chats" && <section aria-labelledby="supervisor-chat-types-title">
+                  <p className="supervisor-settings-help" id="supervisor-chat-types-title">{copy.chatsHelp}</p>
+                  {([
+                    ["direct", strings.admin.rbac.directMessages],
+                    ["group", strings.admin.rbac.groupChats],
+                    ["channel", strings.admin.rbac.textChannels],
+                    ["voice", strings.admin.rbac.voiceChats],
+                  ] as const).map(([key, label]) => <label className="supervisor-setting-row" key={key}><span><strong>{label}</strong><small>{strings.admin.rbac.supervisorChatTypes}</small></span><input type="checkbox" checked={chatTypes[key]} onChange={(event) => setChatTypes((current) => ({ ...current, [key]: event.target.checked }))} /></label>)}
+                </section>}
+                {settingsTab === "premium" && <section>
+                  <p className="supervisor-settings-help">{copy.premiumDescription}</p>
+                  {[[copy.roleLimits, copy.roleLimitsHelp], [copy.roleRestrictions, copy.roleRestrictionsHelp], [copy.advancedMonitoring, copy.monitoringHelp], [copy.antispam, copy.antispamHelp]].map(([title, desc]) => <div className="supervisor-setting-row is-locked" key={title}><span><strong>{title}</strong><small>{desc}</small></span><span className="premium-feature-badge">{strings.admin.encryption.premium}</span></div>)}
+                </section>}
+              </div>
+
+              <div style={styles.modalActions} className="modalActions">
                 <button
                   type="button"
                   onClick={() => setEditingServer(null)}
                   style={styles.secondaryPillButton}
                   disabled={savingSettings}
                 >
-                  Cancel
+                  {copy.cancel}
                 </button>
                 <button
                   type="submit"
                   style={styles.primaryPillButton}
-                  disabled={savingSettings || !Number.isInteger(editScreenShareBitrateKbps) || editScreenShareBitrateKbps < 1000 || editScreenShareBitrateKbps > 20000}
+                  disabled={savingSettings}
                 >
-                  {savingSettings ? "Saving..." : "Save Settings"}
+                  {savingSettings ? copy.saving : copy.save}
                 </button>
               </div>
             </form>
@@ -546,9 +474,9 @@ export default function MultiAdminPage() {
 
       {/* Create Modal */}
       {isCreateOpen && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
-            <h3 style={styles.modalTitle}>Provision New Space</h3>
+        <div style={styles.modalOverlay} className="modalOverlay">
+          <div style={styles.modalCard} className="modalCard">
+            <h3 style={styles.modalTitle} className="modalTitle">{copy.createSpaceTitle}</h3>
             <p style={styles.modalSubtitle}>
               Spins up a dedicated space environment with isolated backend, database, and storage.
             </p>
@@ -556,7 +484,7 @@ export default function MultiAdminPage() {
             {createResult ? (
               <div style={styles.resultBox}>
                 <div style={{ fontWeight: 700, color: "#34d399", marginBottom: 8, fontSize: 15 }}>
-                  ✅ Space Provisioned!
+                  Space Provisioned
                 </div>
                 <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>
                   Admin account created. You can log in directly or share the invite link:
@@ -572,7 +500,7 @@ export default function MultiAdminPage() {
                     rel="noreferrer"
                     style={{ ...styles.primaryPillButton, textDecoration: "none", textAlign: "center" }}
                   >
-                    🚀 Open Space Login
+                    Open Space Login
                   </a>
                   <button
                     onClick={() => {
@@ -597,7 +525,7 @@ export default function MultiAdminPage() {
             ) : (
               <form onSubmit={handleCreate} style={styles.form}>
                 <label style={styles.label}>
-                  Space Name
+                  {copy.spaceName}
                   <input
                     type="text"
                     placeholder="e.g. Awesome Corp"
@@ -609,7 +537,7 @@ export default function MultiAdminPage() {
                   />
                 </label>
                 <label style={styles.label}>
-                  Admin Nickname
+                  {copy.adminNickname}
                   <input
                     type="text"
                     value={adminUser}
@@ -619,7 +547,7 @@ export default function MultiAdminPage() {
                   />
                 </label>
                 <label style={styles.label}>
-                  Admin Password
+                  {copy.adminPassword}
                   <input
                     type="password"
                     value={adminPassword}
@@ -628,58 +556,6 @@ export default function MultiAdminPage() {
                     required
                   />
                 </label>
-
-                <div style={{ marginTop: 4 }}>
-                  <div style={{ ...styles.label, marginBottom: 10 }}>
-                    Enabled Navigation Tabs
-                  </div>
-                  <div style={styles.tabsConfigCard}>
-                    <label style={styles.tabToggleRow}>
-                      <span style={styles.tabToggleTitle}>💬 Chats</span>
-                      <input
-                        type="checkbox"
-                        checked={createNavTabs.chats}
-                        onChange={(e) =>
-                          setCreateNavTabs((prev) => ({ ...prev, chats: e.target.checked }))
-                        }
-                        style={styles.checkbox}
-                      />
-                    </label>
-                    <label style={styles.tabToggleRow}>
-                      <span style={styles.tabToggleTitle}>📁 Storage</span>
-                      <input
-                        type="checkbox"
-                        checked={createNavTabs.storage}
-                        onChange={(e) =>
-                          setCreateNavTabs((prev) => ({ ...prev, storage: e.target.checked }))
-                        }
-                        style={styles.checkbox}
-                      />
-                    </label>
-                    <label style={styles.tabToggleRow}>
-                      <span style={styles.tabToggleTitle}>📅 Plans</span>
-                      <input
-                        type="checkbox"
-                        checked={createNavTabs.plans}
-                        onChange={(e) =>
-                          setCreateNavTabs((prev) => ({ ...prev, plans: e.target.checked }))
-                        }
-                        style={styles.checkbox}
-                      />
-                    </label>
-                    <label style={styles.tabToggleRow}>
-                      <span style={styles.tabToggleTitle}>⚙️ Settings</span>
-                      <input
-                        type="checkbox"
-                        checked={createNavTabs.settings}
-                        onChange={(e) =>
-                          setCreateNavTabs((prev) => ({ ...prev, settings: e.target.checked }))
-                        }
-                        style={styles.checkbox}
-                      />
-                    </label>
-                  </div>
-                </div>
 
                 <div style={styles.modalActions}>
                   <button
@@ -776,14 +652,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   primaryPillButton: {
     padding: "12px 24px",
-    backgroundColor: "#3b82f6",
+    backgroundColor: "#c66b24",
     color: "#ffffff",
     border: "none",
     borderRadius: 999,
     fontWeight: 700,
     fontSize: 14,
     cursor: "pointer",
-    boxShadow: "0 4px 14px rgba(59, 130, 246, 0.4)",
+    boxShadow: "none",
     transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   secondaryPillButton: {
@@ -824,7 +700,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: "24px 40px",
+    padding: "16px 28px",
     borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
     backgroundColor: "#050505",
   },
@@ -845,8 +721,8 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
   },
   main: {
-    padding: "40px",
-    maxWidth: 1200,
+    padding: "28px",
+    maxWidth: 1320,
     margin: "0 auto",
   },
   statsGrid: {
@@ -873,6 +749,22 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 26,
     fontWeight: 800,
     color: "#ffffff",
+  },
+  monitoringStatus: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  monitoringDisabledButton: {
+    padding: "6px 10px",
+    border: "1px solid rgba(255,255,255,.12)",
+    borderRadius: 10,
+    background: "rgba(255,255,255,.05)",
+    color: "#9ca3af",
+    fontSize: 13,
+    fontWeight: 650,
+    cursor: "default",
   },
   panelCard: {
     backgroundColor: "#1c1c1e",
@@ -949,6 +841,19 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     gap: 10,
   },
+  iconActionButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
+    padding: 0,
+    border: "1px solid #45464a",
+    borderRadius: "50%",
+    backgroundColor: "#252629",
+    color: "#d5d9e0",
+    cursor: "pointer",
+  },
   invitePillButton: {
     padding: "8px 18px",
     backgroundColor: "rgba(52, 211, 153, 0.15)",
@@ -1005,6 +910,7 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 1000,
   },
   modalCard: {
+    position: "relative",
     width: "100%",
     maxWidth: 440,
     backgroundColor: "#1c1c1e",
@@ -1018,6 +924,21 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     margin: "0 0 8px 0",
     color: "#ffffff",
+  },
+  modalCloseButton: {
+    position: "absolute",
+    top: 18,
+    right: 18,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.12)",
+    background: "#2c2c2e",
+    color: "#d1d5db",
+    cursor: "pointer",
   },
   modalSubtitle: {
     fontSize: 14,
@@ -1038,6 +959,10 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 24,
   },
   settingsPillButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     padding: "8px 18px",
     backgroundColor: "rgba(96, 165, 250, 0.15)",
     color: "#60a5fa",

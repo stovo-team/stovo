@@ -42,10 +42,12 @@ func (o *Orchestrator) initSchema() error {
 		name VARCHAR(255) NOT NULL,
 		status VARCHAR(64) NOT NULL DEFAULT 'running',
 		nav_tabs JSONB,
+		chat_types JSONB NOT NULL DEFAULT '{"direct":true,"group":true,"channel":true,"voice":true}'::jsonb,
 		created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 	);
 	CREATE INDEX IF NOT EXISTS idx_servers_slug ON servers(slug);
 	ALTER TABLE servers ADD COLUMN IF NOT EXISTS nav_tabs JSONB DEFAULT '{"chats":true,"storage":true,"plans":true,"settings":true}'::jsonb;
+	ALTER TABLE servers ADD COLUMN IF NOT EXISTS chat_types JSONB NOT NULL DEFAULT '{"direct":true,"group":true,"channel":true,"voice":true}'::jsonb;
 	`
 	_, err := o.masterDB.Exec(schema)
 	return err

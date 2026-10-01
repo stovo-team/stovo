@@ -33,6 +33,9 @@ type messageForwardSource struct {
 // createChat is the application/use-case adapter behind the HTTP transport's
 // ChatMutationHandler. It has no HTTP request or response dependency.
 func (s *Server) createChat(ctx context.Context, user userPublic, kind string, request httptransport.ChatCreateRequest) (any, int, error) {
+	if kind != "direct" && !supervisorAllowsChatType(kind) {
+		return nil, 0, newStatusError(http.StatusForbidden, "This chat type is disabled by the supervisor")
+	}
 	if kind == "direct" {
 		target, err := s.getUserByID(request.UserID)
 		if err != nil || target.FamilyID != user.FamilyID || !target.IsActive {
@@ -58,6 +61,9 @@ func (s *Server) createChat(ctx context.Context, user userPublic, kind string, r
 			}
 			return chat, http.StatusCreated, nil
 		}
+		if !supervisorAllowsChatType(kind) {
+			return nil, 0, newStatusError(http.StatusForbidden, "This chat type is disabled by the supervisor")
+		}
 		chatID := uuid.NewString()
 		if err := s.chatCreation.Create(ctx, featurechats.CreateChat{ID: chatID, FamilyID: user.FamilyID, Type: "direct", CreatedBy: user.ID, MediaVisibility: "members", EncryptionProtocol: s.defaultMessageEncryptionProtocol(user.FamilyID), CreatedAt: nowString(), MemberIDs: []string{user.ID, target.ID}, CreatePreferences: true}); err != nil {
 			return nil, 0, newStatusError(http.StatusInternalServerError, "Could not create direct chat")
@@ -80,6 +86,9 @@ func (s *Server) createChat(ctx context.Context, user userPublic, kind string, r
 	}
 	if err := s.validateInvitePermissions(user, members, kind); err != nil {
 		return nil, 0, newStatusError(http.StatusForbidden, err.Error())
+	}
+	if !supervisorAllowsChatType(kind) {
+		return nil, 0, newStatusError(http.StatusForbidden, "This chat type is disabled by the supervisor")
 	}
 	chatID, title := uuid.NewString(), request.Title
 	create := featurechats.CreateChat{ID: chatID, FamilyID: user.FamilyID, Type: kind, Title: &title, CreatedBy: user.ID, EncryptionProtocol: s.defaultMessageEncryptionProtocol(user.FamilyID), CreatedAt: nowString(), MemberIDs: members, CreatePreferences: true}

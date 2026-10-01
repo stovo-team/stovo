@@ -5,6 +5,20 @@ export interface NavTabsConfig {
   settings: boolean;
 }
 
+export interface ChatTypesConfig {
+  direct: boolean;
+  group: boolean;
+  channel: boolean;
+  voice: boolean;
+}
+
+export interface TenantAiSettings {
+  translationEnabled: boolean;
+  callRecordingEnabled: boolean;
+  aiNotesEnabled: boolean;
+  voiceTranscriptionEnabled: boolean;
+}
+
 export interface ServerRecord {
   id: number;
   slug: string;
@@ -12,6 +26,7 @@ export interface ServerRecord {
   created_at: string;
   status: string;
   nav_tabs?: NavTabsConfig;
+  chat_types?: ChatTypesConfig;
 }
 
 export interface TenantCallQualitySettings {
@@ -78,7 +93,7 @@ export async function fetchServerSettings(token: string, slug: string): Promise<
 export async function updateServerSettings(
   token: string,
   slug: string,
-  updates: { name?: string; nav_tabs?: Partial<NavTabsConfig> }
+  updates: { name?: string; nav_tabs?: Partial<NavTabsConfig>; chat_types?: ChatTypesConfig }
 ): Promise<ServerRecord> {
   const masterUrl = getMasterApiUrl();
   const res = await fetch(`${masterUrl}/api/v1/master/servers/${slug}/settings`, {
@@ -154,6 +169,30 @@ export async function getGhostToken(token: string, slug: string): Promise<string
 
 function tenantApiPath(slug: string) {
   return `${window.location.origin}/s/${encodeURIComponent(slug)}/api/family`;
+}
+
+export async function fetchTenantAiSettings(token: string, slug: string): Promise<TenantAiSettings> {
+  const ghostToken = await getGhostToken(token, slug);
+  const res = await fetch(tenantApiPath(slug), { headers: { Authorization: `Bearer ${ghostToken}` } });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || err.message || "Failed to fetch AI settings");
+  }
+  return res.json();
+}
+
+export async function updateTenantAiSettings(token: string, slug: string, settings: TenantAiSettings): Promise<TenantAiSettings> {
+  const ghostToken = await getGhostToken(token, slug);
+  const res = await fetch(tenantApiPath(slug), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ghostToken}` },
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || err.error || err.message || "Failed to save AI settings");
+  }
+  return res.json();
 }
 
 export async function fetchTenantCallQuality(token: string, slug: string): Promise<TenantCallQualitySettings> {

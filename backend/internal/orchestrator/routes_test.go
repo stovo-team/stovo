@@ -82,6 +82,20 @@ func TestBackendContainerEnvIncludesNavTabsConfiguration(t *testing.T) {
 	}
 }
 
+func TestBackendContainerEnvIncludesSupervisorChatTypes(t *testing.T) {
+	env := backendContainerEnv("family", func(key, fallback string) string {
+		if key == "CHAT_TYPES" {
+			return `{"direct":true,"group":false,"channel":true,"voice":false}`
+		}
+		return fallback
+	})
+	joined := "\n" + strings.Join(env, "\n") + "\n"
+	want := "\nCHAT_TYPES={\"direct\":true,\"group\":false,\"channel\":true,\"voice\":false}\n"
+	if !strings.Contains(joined, want) {
+		t.Fatalf("CHAT_TYPES should be in tenant environment, got: %q", joined)
+	}
+}
+
 func TestBackendContainerEnvUsesExplicitTrustedProxyCIDR(t *testing.T) {
 	env := backendContainerEnv("family", func(key, fallback string) string {
 		if key == "TRUSTED_PROXY_CIDRS" {

@@ -3,6 +3,7 @@ import { Settings, X } from "lucide-react";
 
 import { ApiError, ApiRequestOptions } from "../api/client";
 import { Chat } from "../api/chats";
+import { useStrings } from "../i18n/LanguageContext";
 import {
   MCP_PERMISSION_KEYS,
   MCPConnector,
@@ -13,7 +14,6 @@ import {
   defaultMCPAlias,
   defaultMCPPermissions,
   listMCPConnectors,
-  mcpUiSetupSteps,
   regenerateMCPConnectorToken,
   revokeMCPConnector,
   updateMCPConnector
@@ -28,59 +28,6 @@ type SecretReveal = {
   connectorId: string;
   provider: string;
 };
-
-const PERMISSION_LABELS: Record<MCPPermissionKey, string> = {
-  "chats.list": "List chats",
-  "messages.read": "Read history",
-  "messages.search": "Search messages",
-  "messages.send": "Send messages",
-  "messages.edit": "Edit own",
-  "messages.delete": "Delete own",
-  "messages.react": "React",
-  "messages.forward": "Forward",
-  "messages.pin": "Pin",
-  "messages.unpin": "Unpin",
-  "files.list": "List files",
-  "files.download": "Download files"
-};
-
-const PERMISSION_GROUPS: Array<{ id: string; label: string; keys: MCPPermissionKey[] }> = [
-  {
-    id: "chats",
-    label: "Chats",
-    keys: ["chats.list"]
-  },
-  {
-    id: "messages",
-    label: "Messages",
-    keys: ["messages.read", "messages.search", "messages.send"]
-  },
-  {
-    id: "actions",
-    label: "Message actions",
-    keys: ["messages.edit", "messages.delete", "messages.react", "messages.forward"]
-  },
-  {
-    id: "pins",
-    label: "Pins",
-    keys: ["messages.pin", "messages.unpin"]
-  },
-  {
-    id: "files",
-    label: "Files",
-    keys: ["files.list", "files.download"]
-  }
-];
-
-const CHAT_TYPE_GROUPS: Array<{
-  id: Chat["type"];
-  label: string;
-}> = [
-  { id: "family", label: "Family" },
-  { id: "group", label: "Groups" },
-  { id: "channel", label: "Channels" },
-  { id: "direct", label: "Direct messages" }
-];
 
 async function copyText(value: string) {
   try {
@@ -97,13 +44,13 @@ async function copyText(value: string) {
   }
 }
 
-function chatLabel(chat: Chat) {
+function chatLabel(chat: Chat, labels: Record<Chat["type"], string>, directFallback: string) {
   if (chat.title) return chat.title;
   if (chat.type === "direct") {
     const other = chat.members.find((member) => member.displayName);
-    return other?.displayName ?? "Direct chat";
+    return other?.displayName ?? directFallback;
   }
-  return `${chat.type} chat`;
+  return labels[chat.type];
 }
 
 // A connection without this capability appears healthy in Codex but cannot
@@ -166,6 +113,30 @@ export default function MCPConnectorsPanel({
   onError: (message: string | null) => void;
   onNotice: (message: string | null) => void;
 }) {
+  const strings = useStrings();
+  const copy = strings.admin.mcp;
+  const chatTypeLabels: Record<Chat["type"], string> = copy.chatGroups;
+  const permissionLabels: Record<MCPPermissionKey, string> = {
+    "chats.list": copy.permissionLabels.listChats,
+    "messages.read": copy.permissionLabels.readHistory,
+    "messages.search": copy.permissionLabels.searchMessages,
+    "messages.send": copy.permissionLabels.sendMessages,
+    "messages.edit": copy.permissionLabels.editOwn,
+    "messages.delete": copy.permissionLabels.deleteOwn,
+    "messages.react": copy.permissionLabels.react,
+    "messages.forward": copy.permissionLabels.forward,
+    "messages.pin": copy.permissionLabels.pin,
+    "messages.unpin": copy.permissionLabels.unpin,
+    "files.list": copy.permissionLabels.listFiles,
+    "files.download": copy.permissionLabels.downloadFiles,
+  };
+  const permissionGroups: Array<{ id: string; label: string; keys: MCPPermissionKey[] }> = [
+    { id: "chats", label: copy.permissionGroups.chats, keys: ["chats.list"] },
+    { id: "messages", label: copy.permissionGroups.messages, keys: ["messages.read", "messages.search", "messages.send"] },
+    { id: "actions", label: copy.permissionGroups.actions, keys: ["messages.edit", "messages.delete", "messages.react", "messages.forward"] },
+    { id: "pins", label: copy.permissionGroups.pins, keys: ["messages.pin", "messages.unpin"] },
+    { id: "files", label: copy.permissionGroups.files, keys: ["files.list", "files.download"] },
+  ];
   const [connectors, setConnectors] = useState<MCPConnector[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -246,11 +217,12 @@ export default function MCPConnectorsPanel({
 
   const chatGroups = useMemo(
     () =>
-      CHAT_TYPE_GROUPS.map((group) => ({
-        ...group,
-        chats: chats.filter((chat) => chat.type === group.id)
+      (["family", "group", "channel", "direct"] as const).map((id) => ({
+        id,
+        label: chatTypeLabels[id],
+        chats: chats.filter((chat) => chat.type === id)
       })).filter((group) => group.chats.length > 0),
-    [chats]
+    [chats, chatTypeLabels]
   );
 
   function toggleAllChats() {
@@ -337,9 +309,9 @@ export default function MCPConnectorsPanel({
       setPermissions(defaultWorkingMCPPermissions());
       setAllowedChatIds([]);
       setMaxHistory(50);
-      onNotice("Connection created. Copy the setup details below to connect your agent.");
+      onNotice(copy.connectionCreated);
     } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not create connection");
+      onError(err instanceof ApiError ? String(err.message) : copy.createFailed);
     } finally {
       setIsSaving(false);
     }
@@ -348,7 +320,7 @@ export default function MCPConnectorsPanel({
   async function handleCopy(kind: "token" | "prompt" | "url" | "cli", value: string) {
     const ok = await copyText(value);
     if (!ok) {
-      onError("Could not copy to clipboard");
+      onError(copy.copyFailed);
       return;
     }
     setCopied(kind);
@@ -362,7 +334,7 @@ export default function MCPConnectorsPanel({
       setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       // Success notice removed per user request
     } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not update connection");
+      onError(err instanceof ApiError ? String(err.message) : copy.updateFailed);
     }
   }
 
@@ -373,22 +345,22 @@ export default function MCPConnectorsPanel({
       const result = await regenerateMCPConnectorToken(accessToken, connector.id);
       setConnectors((current) => current.map((item) => (item.id === result.connector.id ? result.connector : item)));
       applySecret(result);
-      onNotice("Token regenerated. Copy the setup details now.");
+      onNotice(copy.tokenRegenerated);
     } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not regenerate token");
+      onError(err instanceof ApiError ? String(err.message) : copy.regenerateFailed);
     }
   }
 
   async function handleRevoke(connector: MCPConnector) {
-    if (!window.confirm(`Revoke “${connector.name}”? This cannot be undone.`)) return;
+    if (!window.confirm(copy.revokeConfirmation(connector.name))) return;
     onError(null);
     try {
       const updated = await revokeMCPConnector(accessToken, connector.id);
       setConnectors((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       if (secret?.connectorId === connector.id) setSecret(null);
-      onNotice("Connection revoked");
+      onNotice(copy.connectionRevoked);
     } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not revoke connection");
+      onError(err instanceof ApiError ? String(err.message) : copy.revokeFailed);
     }
   }
 
@@ -422,39 +394,40 @@ export default function MCPConnectorsPanel({
       });
       setConnectors((current) => current.map((item) => item.id === updated.id ? updated : item));
       setEditing(null);
-      onNotice("Connection settings updated. The next MCP call uses the new scope and permissions.");
+      onNotice(copy.settingsUpdated);
     } catch (err) {
-      onError(err instanceof ApiError ? String(err.message) : "Could not update connection settings");
+      onError(err instanceof ApiError ? String(err.message) : copy.updateFailed);
     } finally {
       setIsSaving(false);
     }
   }
 
-  const setupSteps = mcpUiSetupSteps(secret?.provider);
+  const setupSteps = secret?.provider === "openclaw" ? copy.setupSteps.openclaw
+    : secret?.provider === "hermes" ? copy.setupSteps.hermes
+    : secret?.provider === "claude" ? copy.setupSteps.claude
+    : copy.setupSteps.codex;
 
   return (
     <section className="mcp-connectors-panel">
-      <section className="mcp-connection-modes" aria-label="Agent connection modes">
+      <section className="mcp-connection-modes" aria-label={copy.modesLabel}>
         <article className="mcp-connection-mode is-active">
           <div>
-            <span className="mcp-mode-kicker">Available now</span>
-            <h3>Connect Stovo to agent</h3>
+            <span className="mcp-mode-kicker">{copy.availableNow}</span>
+            <h3>{copy.connectStovoToAgent}</h3>
             <p>
-              Secure MCP connection for AI agents with scoped chat and action access.
+              {copy.secureConnectionDescription}
             </p>
           </div>
-          <small>Connection session · MCP</small>
+          <small>{copy.connectionSession}</small>
         </article>
         <article className="mcp-connection-mode is-unavailable" aria-describedby="local-bridge-note">
           <div>
-            <span className="mcp-mode-kicker">Stovo Desktop</span>
-            <h3>Local agent bridge</h3>
-            <p id="local-bridge-note">
-              Device-level bridge for paired desktop environments. Requires Stovo Desktop.
-            </p>
+            <span className="mcp-mode-kicker">{copy.desktop}</span>
+            <h3>{copy.localAgentBridge}</h3>
+            <p id="local-bridge-note">{copy.desktopBridgeDescription}</p>
           </div>
           <button type="button" className="secondary-button" disabled aria-disabled="true">
-            Available in Stovo Desktop
+            {copy.availableInDesktop}
           </button>
         </article>
       </section>
@@ -463,38 +436,36 @@ export default function MCPConnectorsPanel({
         <article className="invite-link-card mcp-secret-card">
           <div className="mcp-secret-header">
             <div>
-              <strong>Connect an AI agent to Stovo</strong>
+              <strong>{copy.connectAgentToStovo}</strong>
               <p>
-                Connection session for <strong>{secret.connectorName}</strong>. Copy the details below into your agent.
+                {copy.connectionFor(secret.connectorName)}
               </p>
             </div>
             <span className={`mcp-status-pill ${isSecretConnected ? "is-connected" : "is-waiting"}`}>
-              {isSecretConnected ? "Connected" : "Waiting for connection"}
+              {isSecretConnected ? copy.connected : copy.waitingForConnection}
             </span>
           </div>
 
           <div className={`mcp-connection-status ${isSecretConnected ? "is-connected" : "is-waiting"}`}>
             <span className={`mcp-status-dot ${isSecretConnected ? "is-connected" : "is-waiting"}`} />
             <div>
-              <strong>{isSecretConnected ? "Connected successfully" : "Waiting for agent to connect…"}</strong>
+              <strong>{isSecretConnected ? copy.connectedSuccessfully : copy.waitingForAgent}</strong>
               <p>
-                {isSecretConnected
-                  ? "Stovo confirmed the active connection session. The agent has connected and is ready to work with allowed chats."
-                  : "Start or configure your agent with the prompt or command below. Once the agent connects to Stovo, this status will update automatically."}
+                {isSecretConnected ? copy.connectedDescription : copy.waitingDescription}
               </p>
             </div>
           </div>
 
           <div className="mcp-copy-field">
-            <div className="mcp-copy-field-label"><span>Setup prompt</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("prompt", secret.setupPrompt)} aria-label="Copy setup prompt"><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "prompt" ? "Copied" : "Copy"}</button></div>
+            <div className="mcp-copy-field-label"><span>{copy.setupPrompt}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("prompt", secret.setupPrompt)} aria-label={copy.copySetupPrompt}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "prompt" ? copy.copied : copy.copy}</button></div>
             <textarea className="mcp-setup-prompt" readOnly rows={5} value={secret.setupPrompt} />
           </div>
 
-          <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>MCP URL</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("url", secret.mcpUrl)} aria-label="Copy MCP URL"><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "url" ? "Copied" : "Copy"}</button></div><code>{secret.mcpUrl}</code></div>
-          <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>Bearer token</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("token", secret.token)} aria-label="Copy bearer token"><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "token" ? "Copied" : "Copy"}</button></div><code>{secret.token}</code></div>
+          <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>{copy.mcpUrl}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("url", secret.mcpUrl)} aria-label={copy.copyMcpUrl}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "url" ? copy.copied : copy.copy}</button></div><code>{secret.mcpUrl}</code></div>
+          <div className="mcp-copy-field"><div className="mcp-copy-field-label"><span>{copy.bearerToken}</span><button type="button" className="mcp-inline-copy" onClick={() => void handleCopy("token", secret.token)} aria-label={copy.copyBearerToken}><span className="ms-icon ms-icon--18" aria-hidden>content_copy</span>{copied === "token" ? copy.copied : copy.copy}</button></div><code>{secret.token}</code></div>
 
           <div className="mcp-setup-block">
-            <strong>Native Codex / agent setup</strong>
+            <strong>{copy.nativeAgentSetup}</strong>
             <ol className="mcp-setup-steps">
               {setupSteps.map((step) => (
                 <li key={step}>{step}</li>
@@ -506,15 +477,15 @@ export default function MCPConnectorsPanel({
 
           <div className="public-access-actions">
             <button type="button" className="secondary-button" onClick={() => setShowCli((current) => !current)}>
-              {showCli ? "Hide CLI alternative" : "Show CLI alternative"}
+              {showCli ? copy.hideCliAlternative : copy.showCliAlternative}
             </button>
             {showCli && (
               <button type="button" onClick={() => void handleCopy("cli", secret.cliCommand)}>
-                {copied === "cli" ? "Command copied" : "Copy CLI command"}
+                {copied === "cli" ? copy.commandCopied : copy.copyCliCommand}
               </button>
             )}
             <button type="button" className="secondary-button" onClick={() => setSecret(null)}>
-              Dismiss
+              {copy.dismiss}
             </button>
           </div>
         </article>
@@ -523,28 +494,26 @@ export default function MCPConnectorsPanel({
       <form className="mcp-connector-form mcp-section-box" onSubmit={handleCreate}>
         <div className="mcp-form-heading">
           <div>
-            <h3>Create agent connection</h3>
+            <h3>{copy.createAgentConnection}</h3>
             <p className="muted-text">
-              This connection is bound to <strong>{spaceName}</strong>. All chats in this Space are selected initially;
-              narrow the scope below if the agent should work in fewer chats. Chat discovery is enabled so Codex can
-              show a clear scope rather than an empty list.
+              {copy.boundToSpace(spaceName)}
             </p>
           </div>
         </div>
 
         <label>
-          Connection name
+          {copy.connectionName}
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Research assistant"
+            placeholder={copy.connectionNamePlaceholder}
             required
             maxLength={120}
           />
         </label>
 
         <label>
-          Max history messages
+          {copy.maxHistoryMessages}
           <input
             type="number"
             min={1}
@@ -555,7 +524,7 @@ export default function MCPConnectorsPanel({
         </label>
         <fieldset className="mcp-tag-fieldset">
           <legend>
-            <span>Chat scope in this Space</span>
+            <span>{copy.chatScope}</span>
             <label className="mcp-select-all">
               <input
                 type="checkbox"
@@ -563,10 +532,10 @@ export default function MCPConnectorsPanel({
                 disabled={chats.length === 0}
                 onChange={toggleAllChats}
               />
-              <span>Select all</span>
+              <span>{copy.selectAll}</span>
             </label>
           </legend>
-          {chats.length === 0 && <span className="muted-text">No chats available</span>}
+          {chats.length === 0 && <span className="muted-text">{copy.noChatsAvailable}</span>}
           <div className="mcp-option-groups">
             {chatGroups.map((group) => {
               const groupSelected =
@@ -584,7 +553,7 @@ export default function MCPConnectorsPanel({
                         checked={groupSelected}
                         onChange={() => toggleChatGroup(group.chats)}
                       />
-                      <span>All</span>
+                      <span>{copy.all}</span>
                     </label>
                   </div>
                   <div className="mcp-tag-list">
@@ -594,7 +563,7 @@ export default function MCPConnectorsPanel({
                         <label key={chat.id} className={`mcp-tag${selected ? " is-selected" : ""}`}>
                           <input type="checkbox" checked={selected} onChange={() => toggleChat(chat.id)} />
                           <ChatTypeIcon type={chat.type} />
-                          <strong>{chatLabel(chat)}</strong>
+                          <strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong>
                         </label>
                       );
                     })}
@@ -606,14 +575,14 @@ export default function MCPConnectorsPanel({
         </fieldset>
         <fieldset className="mcp-tag-fieldset">
           <legend>
-            <span>Permissions (all off by default)</span>
+            <span>{copy.permissionsAllOff}</span>
             <label className="mcp-select-all">
               <input type="checkbox" checked={allPermissionsSelected} onChange={toggleAllPermissions} />
-              <span>Select all</span>
+              <span>{copy.selectAll}</span>
             </label>
           </legend>
           <div className="mcp-option-groups">
-            {PERMISSION_GROUPS.map((group) => {
+            {permissionGroups.map((group) => {
               const groupSelected = group.keys.every((key) => permissions[key]);
               return (
                 <div key={group.id} className="mcp-option-group">
@@ -625,7 +594,7 @@ export default function MCPConnectorsPanel({
                         checked={groupSelected}
                         onChange={() => togglePermissionGroup(group.keys)}
                       />
-                      <span>All</span>
+                      <span>{copy.all}</span>
                     </label>
                   </div>
                   <div className="mcp-tag-list">
@@ -634,7 +603,7 @@ export default function MCPConnectorsPanel({
                       return (
                         <label key={key} className={`mcp-tag${selected ? " is-selected" : ""}`}>
                           <input type="checkbox" checked={selected} onChange={() => togglePermission(key)} />
-                          <strong>{PERMISSION_LABELS[key]}</strong>
+                          <strong>{permissionLabels[key]}</strong>
                         </label>
                       );
                     })}
@@ -645,14 +614,14 @@ export default function MCPConnectorsPanel({
           </div>
         </fieldset>
         <button type="submit" disabled={isSaving || !name.trim() || !allowedChatIds.length}>
-          {isSaving ? "Connecting…" : "Create connection"}
+          {isSaving ? copy.connecting : copy.createConnection}
         </button>
       </form>
 
       <div className="mcp-connector-list mcp-section-box">
-        <h3>Existing connections</h3>
-        {isLoading && <p className="muted-text">Loading…</p>}
-        {!isLoading && connectors.length === 0 && <p className="muted-text">No connections yet.</p>}
+        <h3>{copy.existingConnections}</h3>
+        {isLoading && <p className="muted-text">{copy.loading}</p>}
+        {!isLoading && connectors.length === 0 && <p className="muted-text">{copy.noConnections}</p>}
         {connectors.map((connector) => {
           const isConnected = Boolean(connector.lastUsedAt);
           return (
@@ -673,31 +642,31 @@ export default function MCPConnectorsPanel({
                       }`}
                     >
                       {connector.revoked
-                        ? "Revoked"
+                          ? copy.revoked
                         : !connector.enabled
-                        ? "Disabled"
+                          ? copy.disabled
                         : isConnected
-                        ? "Connected"
-                        : "Waiting for connection"}
+                          ? copy.connected
+                        : copy.waitingForConnection}
                     </span>
                   </div>
                   <small>
-                    {connector.allowedChatIds.length} {connector.allowedChatIds.length === 1 ? "chat" : "chats"} allowed · history limit{" "}
+                    {copy.allowedChats(connector.allowedChatIds.length)} · {copy.historyLimit}{" "}
                     {connector.maxHistoryMessages}
                     {connector.lastUsedAt &&
-                      ` · active ${new Date(connector.lastUsedAt).toLocaleDateString()}`}
+                      ` · ${copy.active} ${new Date(connector.lastUsedAt).toLocaleDateString()}`}
                   </small>
                 </div>
               </div>
               <p className="muted-text">
-                Permissions:{" "}
-                {MCP_PERMISSION_KEYS.filter((key) => connector.permissions[key]).join(", ") || "none"}
+                {copy.permissions}:{" "}
+                {MCP_PERMISSION_KEYS.filter((key) => connector.permissions[key]).map((key) => permissionLabels[key]).join(", ") || copy.none}
               </p>
               {!connector.permissions["chats.list"] && !connector.revoked && (
-                <p className="error-text">Chat discovery is off — Codex will receive a configuration instruction instead of a chat list.</p>
+                <p className="error-text">{copy.chatDiscoveryOff}</p>
               )}
               {!connector.allowedChatIds.length && !connector.revoked && (
-                <p className="error-text">No chats are in this connector’s Space scope.</p>
+                <p className="error-text">{copy.noChatsInScope}</p>
               )}
               {!connector.revoked && (
                 <div className="public-access-actions">
@@ -705,19 +674,19 @@ export default function MCPConnectorsPanel({
                     type="button"
                     className="icon-button mcp-icon-button"
                     onClick={() => beginEdit(connector)}
-                    title="Configure"
-                    aria-label="Configure connection"
+                    title={copy.configure}
+                    aria-label={copy.configureConnection}
                   >
                     <Settings size={16} />
                   </button>
                   <button type="button" onClick={() => void handleToggleEnabled(connector)}>
-                    {connector.enabled ? "Disable" : "Enable"}
+                    {connector.enabled ? copy.disable : copy.enable}
                   </button>
                   <button type="button" onClick={() => void handleRegenerate(connector)}>
-                    Regenerate token
+                    {copy.regenerateToken}
                   </button>
                   <button type="button" className="danger-button" onClick={() => void handleRevoke(connector)}>
-                    Revoke
+                    {copy.revoke}
                   </button>
                 </div>
               )}
@@ -737,25 +706,25 @@ export default function MCPConnectorsPanel({
           <div className="modal-card mcp-edit-modal" role="dialog" aria-modal="true" aria-labelledby="mcp-modal-title">
             <header className="modal-header">
               <div>
-                <h3 id="mcp-modal-title">Configure {editing.name}</h3>
-                <p className="muted-text">Changes apply to the next MCP tool call; reconnecting Codex is not required.</p>
+                <h3 id="mcp-modal-title">{copy.configureNamed(editing.name)}</h3>
+                <p className="muted-text">{copy.changesApplyNextCall}</p>
               </div>
               <button
                 type="button"
                 className="icon-button modal-close-button"
                 onClick={() => setEditing(null)}
                 disabled={isSaving}
-                aria-label="Close"
+                aria-label={copy.close}
               >
                 <X size={18} />
               </button>
             </header>
             <form className="mcp-connector-form" onSubmit={saveEdit}>
-              <label>Connection name<input value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} /></label>
-              <label>Max history messages<input type="number" min={1} max={500} value={editHistory} onChange={(event) => setEditHistory(Number(event.target.value) || 50)} disabled={isSaving} /></label>
-              <fieldset className="mcp-tag-fieldset"><legend>Chat scope in this Space</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat)}</strong></label>)}</div></fieldset>
-              <fieldset className="mcp-tag-fieldset"><legend>Permissions</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{PERMISSION_LABELS[key]}</strong></label>)}</div></fieldset>
-              <div className="public-access-actions"><button type="submit" disabled={isSaving || !editName.trim()}>{isSaving ? "Saving…" : "Save settings"}</button><button type="button" className="secondary-button" disabled={isSaving} onClick={() => setEditing(null)}>Cancel</button></div>
+              <label>{copy.connectionName}<input value={editName} maxLength={120} onChange={(event) => setEditName(event.target.value)} required disabled={isSaving} /></label>
+              <label>{copy.maxHistoryMessages}<input type="number" min={1} max={500} value={editHistory} onChange={(event) => setEditHistory(Number(event.target.value) || 50)} disabled={isSaving} /></label>
+              <fieldset className="mcp-tag-fieldset"><legend>{copy.chatScope}</legend><div className="mcp-tag-list">{chats.map((chat) => <label key={chat.id} className={`mcp-tag${editChatIds.includes(chat.id) ? " is-selected" : ""}`}><input type="checkbox" checked={editChatIds.includes(chat.id)} onChange={() => toggleEditChat(chat.id)} disabled={isSaving} /><ChatTypeIcon type={chat.type} /><strong>{chatLabel(chat, chatTypeLabels, copy.directChatFallback)}</strong></label>)}</div></fieldset>
+              <fieldset className="mcp-tag-fieldset"><legend>{copy.permissions}</legend><div className="mcp-tag-list">{MCP_PERMISSION_KEYS.map((key) => <label key={key} className={`mcp-tag${editPermissions[key] ? " is-selected" : ""}`}><input type="checkbox" checked={editPermissions[key]} onChange={() => toggleEditPermission(key)} disabled={isSaving} /><strong>{permissionLabels[key]}</strong></label>)}</div></fieldset>
+              <div className="public-access-actions"><button type="submit" disabled={isSaving || !editName.trim()}>{isSaving ? copy.saving : copy.saveSettings}</button><button type="button" className="secondary-button" disabled={isSaving} onClick={() => setEditing(null)}>{copy.cancel}</button></div>
             </form>
           </div>
         </div>
