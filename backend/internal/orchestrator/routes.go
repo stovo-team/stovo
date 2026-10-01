@@ -135,11 +135,11 @@ func (o *Orchestrator) masterAuth(next http.Handler) http.Handler {
 // handleCreateServer provisions a new child server and auto-provisions its admin user.
 func (o *Orchestrator) handleCreateServer(w http.ResponseWriter, r *http.Request) {
 	type createReq struct {
-		Slug          string         `json:"slug"`
-		Name          string         `json:"name"`
-		AdminUser     string         `json:"admin_user"`
-		AdminPassword string         `json:"admin_password"`
-		NavTabs       *NavTabsConfig `json:"nav_tabs,omitempty"`
+		Slug          string           `json:"slug"`
+		Name          string           `json:"name"`
+		AdminUser     string           `json:"admin_user"`
+		AdminPassword string           `json:"admin_password"`
+		NavTabs       *NavTabsConfig   `json:"nav_tabs,omitempty"`
 		ChatTypes     *ChatTypesConfig `json:"chat_types,omitempty"`
 	}
 	var req createReq
