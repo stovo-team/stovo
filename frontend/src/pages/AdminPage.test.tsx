@@ -20,6 +20,8 @@ vi.mock("../i18n/LanguageContext", () => ({
       adminAccessRequired: "Admin access required",
       title: "Admin",
       hub: {
+        categoriesLabel: "Admin sections",
+        categories: { overview: "Overview", access: "Access", features: "Features", integrations: "Integrations" },
         memberDefaults: "Member defaults",
         memberDefaultsDesc: "Default member settings",
         serverSettings: "Space Settings",

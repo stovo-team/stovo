@@ -1,4 +1,4 @@
-h1:kbeEkQ6Jr5N55ET7ZKrMnH7rECmiW1Ea6WV94NO2iVw=
+h1:A2ADrWUdfH/UU8odzrLFMZZBNAZFnPxURAoVsBOILGU=
 20260804120000_baseline.sql h1:5amBpgQilfynYGKRhWWLRWS+esk62IjJoRFDaZh8M+g=
 20260804170000_add_mcp_connectors.sql h1:qjTSn8BaDRvV8bYJTZIWvZsxmz01O8EHyE2px4XR01o=
 20260804180000_add_mcp_connector_provider.sql h1:21cb0JxA/W0llo2Q4R5vuu2MIh5W7eGEKR1ZzgSL87Y=
@@ -36,3 +36,4 @@ h1:kbeEkQ6Jr5N55ET7ZKrMnH7rECmiW1Ea6WV94NO2iVw=
 20260925140000_add_call_media_quality_settings.sql h1:ZskVvgNYwmshLBLaByKjiY9Btl394O+UXChPx5Vy+bc=
 20260929110000_add_passkey_authentication.sql h1:tsn7C+VfwZeijNCi7VkuVmQXlaI5XhsyyUfp5BI6lLE=
 20260930120000_add_transcription_chat_scope.sql h1:udacrtM7ZZItnV4maoyXbF81FvkbuYoLdBNywoMDffk=
+20261001120000_add_family_ai_feature_settings.sql h1:+Mhr3N6xrAs+hZldP4VOkCg8qTkq9g/pr2jTRK1L57I=
