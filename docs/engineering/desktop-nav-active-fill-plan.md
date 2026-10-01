@@ -8,6 +8,7 @@
 - Constraints: logout remains outside the destination highlight; respect reduced-motion and existing routing behavior.
 - Design: use the existing per-link pseudo-element for desktop highlight; scope touch suppression to navigation links and rely on `aria-current`/`.active` for persistent selection.
 - Icon treatment: use filled silhouettes for active destinations while preserving the Settings center, the Plans markers, and the Admin check as background-colored cutouts.
+- Icon refinements: use a fully pill-shaped active surface, enlarge the Settings hole, slim the Admin check cutout, and cut the Plans header divider through the filled body.
 - Desktop spacing: match the active item corner radius to `--float-radius-panel` and reduce the rail's top inset.
 
 ## Test plan
