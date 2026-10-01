@@ -598,7 +598,7 @@ describe("VoiceChannelStage", () => {
     expect(mockToggleScreenShare).toHaveBeenCalled();
   });
 
-  it("shows the server error when AI Notes cannot start", async () => {
+  it("does not render a notice banner when AI Notes cannot start", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ detail: "Transcription service is not configured" }),
       { status: 503, headers: { "Content-Type": "application/json" } },
@@ -633,7 +633,7 @@ describe("VoiceChannelStage", () => {
       (container.querySelector("button[aria-label='Stovo Intelligence']") as HTMLButtonElement).click();
     });
     await act(async () => {
-      (container.querySelector("button[aria-label='Start AI Notes']") as HTMLButtonElement).click();
+      (document.body.querySelector("button[aria-label='Start AI Notes']") as HTMLButtonElement).click();
       await Promise.resolve();
     });
 
