@@ -6,8 +6,11 @@ import { useAuth } from "../auth/AuthContext";
 import MCPConnectorsPanel from "../components/MCPConnectorsPanel";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
+import { useStrings } from "../i18n/LanguageContext";
 
 export default function AdminMcpPage() {
+  const strings = useStrings();
+  const copy = strings.admin.mcp;
   const { accessToken, authRequest, currentUser } = useAuth();
   const [family, setFamily] = useState<Family | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,9 +24,9 @@ export default function AdminMcpPage() {
       const familyResult = await authRequest<Family>("/api/family");
       setFamily(familyResult);
     } catch (err) {
-      setError(err instanceof ApiError ? String(err.message) : "Could not load admin");
+      setError(err instanceof ApiError ? String(err.message) : copy.couldNotLoad);
     }
-  }, [accessToken, authRequest, canViewAdmin]);
+  }, [accessToken, authRequest, canViewAdmin, copy.couldNotLoad]);
 
   useEffect(() => {
     void load();
@@ -34,13 +37,13 @@ export default function AdminMcpPage() {
       <AppNav />
       <section className="page-surface admin-surface">
         <div className="admin-detail-header">
-          <BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to Admin" />
+          <BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={strings.admin.backToAdmin} />
           <div>
-            <h1>MCP connectors</h1>
+            <h1>{copy.title}</h1>
           </div>
         </div>
 
-        {!canViewAdmin && <p className="error-text">Admin access required.</p>}
+        {!canViewAdmin && <p className="error-text">{copy.adminAccessRequired}</p>}
         {error && <p className="error-text">{error}</p>}
         {notice && <p className="success-text">{notice}</p>}
 
@@ -49,7 +52,7 @@ export default function AdminMcpPage() {
             <MCPConnectorsPanel
               accessToken={accessToken}
               authRequest={authRequest}
-              spaceName={family?.name ?? "this Space"}
+              spaceName={family?.name ?? copy.thisSpace}
               onError={setError}
               onNotice={setNotice}
             />

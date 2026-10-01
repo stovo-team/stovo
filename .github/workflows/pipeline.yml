@@ -146,6 +146,7 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
+          cache: false
       - name: Download modules
         run: go mod download
       - name: Ent generation drift
@@ -162,6 +163,7 @@ jobs:
           version: v2.14.0
           working-directory: backend
           verify: true
+          skip-cache: true
           args: --timeout=5m
       - name: Unit and integration tests with coverage
         run: |

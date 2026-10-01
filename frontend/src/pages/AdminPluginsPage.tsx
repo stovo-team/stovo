@@ -4,14 +4,17 @@ import { ApiError, getClusterPrefix } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import AppNav from "./AppNav";
 import { BackButton } from "../components/BackButton";
+import { useStrings } from "../i18n/LanguageContext";
+import type { AppStrings } from "../config/strings";
 
 type PluginStatus = { id: string; name: string; enabled: boolean };
-type PluginDetail = { description: string; icon: typeof BarChart3; eyebrow: string; preview: "statistics" | "canvas" | "diagrams" | "checklist" | "generic" };
+type PluginStrings = AppStrings["admin"]["plugins"];
+type PluginDetail = { name: "statistics" | "canvas" | "checklist"; description: "statisticsDescription" | "canvasDescription" | "checklistDescription"; icon: typeof BarChart3; eyebrow: "analytics" | "collaboration" | "tasks"; preview: "statistics" | "canvas" | "diagrams" | "checklist" | "generic" };
 
 const pluginDetails: Record<string, PluginDetail> = {
-  "plugin-rich-stats": { description: "Understand messages, reply time, conversation momentum, and the spaces your community uses most.", icon: BarChart3, eyebrow: "Analytics", preview: "statistics" },
-  "plugin-canvas": { description: "Give everyone a shared, live canvas for notes, ideas, and visual collaboration.", icon: Layers3, eyebrow: "Collaboration", preview: "canvas" },
-  "plugin-checklist": { description: "Interactive grocery and errand checklists in chat with live checkbox synchronization and Notion-style editing.", icon: CheckSquare, eyebrow: "Tasks", preview: "checklist" }
+  "plugin-rich-stats": { name: "statistics", description: "statisticsDescription", icon: BarChart3, eyebrow: "analytics", preview: "statistics" },
+  "plugin-canvas": { name: "canvas", description: "canvasDescription", icon: Layers3, eyebrow: "collaboration", preview: "canvas" },
+  "plugin-checklist": { name: "checklist", description: "checklistDescription", icon: CheckSquare, eyebrow: "tasks", preview: "checklist" }
 };
 
 function SharedCanvasPreview() {
@@ -78,7 +81,7 @@ function SharedCanvasPreview() {
   );
 }
 
-function HandDrawnDiagramPreview() {
+function HandDrawnDiagramPreview({ copy }: { copy: PluginStrings }) {
   return (
     <div className="plugin-preview plugin-preview--diagrams" aria-hidden="true">
       <svg className="plugin-diagram-svg" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -96,7 +99,7 @@ function HandDrawnDiagramPreview() {
         {/* Client Box */}
         <path d="M 32 62 Q 30 92 33 122 Q 62 120 94 122 Q 95 90 92 60 Q 60 63 32 62 Z" stroke="#38bdf8" strokeWidth="2" fill="rgba(56, 189, 248, 0.08)" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M 34 64 L 90 64 L 92 120 L 34 118 Z" stroke="#38bdf8" strokeWidth="1" opacity="0.35" strokeLinecap="round" strokeLinejoin="round" />
-        <text x="44" y="96" fill="#e0f2fe" fontSize="11" fontWeight="600" fontFamily="system-ui, sans-serif">Client</text>
+        <text x="44" y="96" fill="#e0f2fe" fontSize="11" fontWeight="600" fontFamily="system-ui, sans-serif">{copy.client}</text>
 
         {/* Hand-drawn Arrow 1 */}
         <path d="M 98 88 Q 120 84 142 88" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
@@ -106,7 +109,7 @@ function HandDrawnDiagramPreview() {
         <path d="M 148 50 Q 146 95 150 136 Q 180 134 212 136 Q 214 92 210 52 Q 180 50 148 50 Z" stroke="#818cf8" strokeWidth="2" fill="rgba(129, 140, 248, 0.08)" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M 150 53 L 208 51 L 210 133 L 152 134 Z" stroke="#818cf8" strokeWidth="1" opacity="0.35" strokeLinecap="round" strokeLinejoin="round" />
         <text x="162" y="88" fill="#e0e7ff" fontSize="11" fontWeight="600" fontFamily="system-ui, sans-serif">API</text>
-        <text x="157" y="104" fill="#a5b4fc" fontSize="9" fontFamily="system-ui, sans-serif">Server</text>
+        <text x="157" y="104" fill="#a5b4fc" fontSize="9" fontFamily="system-ui, sans-serif">{copy.server}</text>
 
         {/* Hand-drawn Arrow 2 */}
         <path d="M 218 88 Q 236 85 252 88" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" />
@@ -123,25 +126,27 @@ function HandDrawnDiagramPreview() {
   );
 }
 
-function PluginPreview({ kind }: { kind: PluginDetail["preview"] }) {
+function PluginPreview({ kind, copy }: { kind: PluginDetail["preview"]; copy: PluginStrings }) {
   if (kind === "statistics") return <div className="plugin-preview plugin-preview--stats" aria-hidden="true">
-    <div className="plugin-preview-top"><span /><span /><span /><small>LIVE PULSE</small></div>
-    <div className="plugin-preview-stat"><small>Messages this week</small><strong>128</strong><b>↗ 24%</b></div>
+    <div className="plugin-preview-top"><span /><span /><span /><small>{copy.previewPulse}</small></div>
+    <div className="plugin-preview-stat"><small>{copy.messagesThisWeek}</small><strong>128</strong><b>↗ 24%</b></div>
     <div className="plugin-preview-curve"><i /><i /><i /><i /><i /><i /></div>
     <div className="plugin-preview-bars"><i /><i /><i /><i /><i /><i /><i /><i /></div>
-    <div className="plugin-preview-legend"><span>Mon</span><span>Wed</span><span>Sun</span></div>
+    <div className="plugin-preview-legend"><span>{copy.monday}</span><span>{copy.wednesday}</span><span>{copy.sunday}</span></div>
   </div>;
   if (kind === "canvas") return <SharedCanvasPreview />;
-  if (kind === "diagrams") return <HandDrawnDiagramPreview />;
+  if (kind === "diagrams") return <HandDrawnDiagramPreview copy={copy} />;
   if (kind === "checklist") return <div className="plugin-preview plugin-preview--checklist" aria-hidden="true">
-    <div className="plugin-checklist-label">TODAY <b>3 / 5</b></div>
-    <div className="plugin-checklist-sheet"><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>Groceries</span></div><div className="plugin-checklist-line"><span className="plugin-check-box" /><span>Errands</span></div><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>Tasks</span></div></div>
+    <div className="plugin-checklist-label">{copy.today} <b>3 / 5</b></div>
+    <div className="plugin-checklist-sheet"><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>{copy.groceries}</span></div><div className="plugin-checklist-line"><span className="plugin-check-box" /><span>{copy.errands}</span></div><div className="plugin-checklist-line is-checked"><span className="plugin-check-box" /><span>{copy.checklistTasks}</span></div></div>
     <span className="plugin-checklist-sticker">✓</span>
   </div>;
   return <div className="plugin-preview plugin-preview--generic" aria-hidden="true"><Puzzle size={42} /></div>;
 }
 
 export default function AdminPluginsPage() {
+  const strings = useStrings();
+  const copy = strings.admin.plugins;
   const { accessToken, authRequest, currentUser } = useAuth();
   const prefix = getClusterPrefix();
   const [plugins, setPlugins] = useState<PluginStatus[]>([]);
@@ -152,8 +157,8 @@ export default function AdminPluginsPage() {
   const load = useCallback(async () => {
     if (!accessToken || !canManagePlugins) return;
     try { setPlugins(await authRequest<PluginStatus[]>("/api/admin/plugins")); setError(null); }
-    catch (reason) { setError(reason instanceof ApiError ? reason.message : "Could not load plugins"); }
-  }, [accessToken, authRequest, canManagePlugins]);
+    catch (reason) { setError(reason instanceof ApiError ? reason.message : copy.loadFailed); }
+  }, [accessToken, authRequest, canManagePlugins, copy.loadFailed]);
   useEffect(() => { void load(); }, [load]);
 
   async function togglePlugin(plugin: PluginStatus) {
@@ -161,19 +166,21 @@ export default function AdminPluginsPage() {
     try {
       const updated = await authRequest<PluginStatus>(`/api/admin/plugins/${plugin.id}`, { method: "PATCH", body: { enabled: !plugin.enabled } });
       setPlugins((current) => current.map((item) => item.id === updated.id ? updated : item));
-    } catch (reason) { setError(reason instanceof ApiError ? reason.message : "Could not update plugin"); }
+    } catch (reason) { setError(reason instanceof ApiError ? reason.message : copy.updateFailed); }
     finally { setSavingId(null); }
   }
 
   return <main className="app-shell app-frame admin-page admin-detail-page plugins-page"><AppNav /><section className="page-surface admin-surface plugins-surface">
-    <header className="admin-detail-header plugins-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel="Back to admin" /><div><h1>Plugin store</h1></div></header>
-    {!canManagePlugins && <p className="error-text">Admin access required.</p>}{error && <p className="error-text">{error}</p>}
-    {canManagePlugins && <><section className="plugin-store-grid" aria-label="Available plugins">{plugins.map((plugin) => {
-        const detail = pluginDetails[plugin.id] ?? { description: "An optional server extension.", icon: Layers3, eyebrow: "Extension", preview: "generic" as const };
-        const Icon = detail.icon;
-        return <article className="plugin-showcase-card" key={plugin.id}><PluginPreview kind={detail.preview} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Icon size={20} /></span><span><small>{detail.eyebrow}</small><h2>{plugin.name}</h2></span></div><p>{detail.description}</p></div><footer className="plugin-showcase-footer"><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? "Active" : "Paused"}</span><label className="plugin-switch"><input type="checkbox" checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">Enable {plugin.name}</em></label></footer></article>;
-      })}<article className="plugin-showcase-card is-development" aria-label="Canvas hand-drawn diagrams plugin is in development"><PluginPreview kind="diagrams" /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Layers3 size={20} /></span><span><small>Canvas</small><h2>Hand-drawn diagrams</h2></span></div><p>Create freehand diagrams together on a shared canvas. This plugin is currently in development.</p></div><footer className="plugin-showcase-footer"><span className="plugin-status">In development</span></footer></article><article className="plugin-add-card is-development" aria-label="Server plugins are in development"><span><Puzzle size={26} /></span><strong>Server plugins</strong><p>Adding server plugins is currently in development.</p><small>In development</small></article></section>
-      {!plugins.length && !error && <p className="stats-state">Loading available plugins…</p>}</>}
+    <header className="admin-detail-header plugins-header"><BackButton to={`${prefix}/app/admin`} className="mobile-back-button" ariaLabel={copy.backToAdmin} /><div><h1>{copy.title}</h1></div></header>
+    {!canManagePlugins && <p className="error-text">{copy.adminAccessRequired}</p>}{error && <p className="error-text">{error}</p>}
+    {canManagePlugins && <><section className="plugin-store-grid" aria-label={copy.availablePlugins}>{plugins.map((plugin) => {
+        const detail = pluginDetails[plugin.id];
+        const pluginName = detail ? copy[detail.name] : plugin.name;
+        const pluginDescription = detail ? copy[detail.description] : copy.optionalExtension;
+        const Icon = detail?.icon ?? Layers3;
+        return <article className="plugin-showcase-card" key={plugin.id}><PluginPreview kind={detail?.preview ?? "generic"} copy={copy} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Icon size={20} /></span><span><small>{detail ? copy[detail.eyebrow] : copy.extension}</small><h2>{pluginName}</h2></span></div><p>{pluginDescription}</p></div><footer className="plugin-showcase-footer"><span className={plugin.enabled ? "plugin-status is-on" : "plugin-status"}>{plugin.enabled ? copy.active : copy.paused}</span><label className="plugin-switch"><input type="checkbox" aria-label={copy.enablePlugin(pluginName)} checked={plugin.enabled} disabled={savingId === plugin.id} onChange={() => void togglePlugin(plugin)} /><span /><em className="visually-hidden">{copy.enablePlugin(pluginName)}</em></label></footer></article>;
+      })}<article className="plugin-showcase-card is-development" aria-label={`${copy.diagrams}: ${copy.development}`}><PluginPreview kind="diagrams" copy={copy} /><div className="plugin-showcase-content"><div className="plugin-showcase-title"><span className="plugin-icon"><Layers3 size={20} /></span><span><small>{copy.canvas}</small><h2>{copy.diagrams}</h2></span></div><p>{copy.diagramsDescription}</p></div><footer className="plugin-showcase-footer"><span className="plugin-status">{copy.development}</span></footer></article><article className="plugin-add-card is-development" aria-label={`${copy.serverPlugins}: ${copy.development}`}><span><Puzzle size={26} /></span><strong>{copy.serverPlugins}</strong><p>{copy.serverPluginsDescription}</p><small>{copy.development}</small></article></section>
+      {!plugins.length && !error && <p className="stats-state">{copy.loading}</p>}</>}
   </section>
   </main>;
 }

@@ -34,8 +34,8 @@ frontend/src/components/RealStovoDemo.tsx	1278
 frontend/src/components/RichCanvasPreview.tsx	792
 frontend/src/components/StovoFeaturePreviews.tsx	693
 frontend/src/components/VideoPlayer.tsx	506
-frontend/src/config/strings/english.ts	966
-frontend/src/config/strings/russian.ts	995
+frontend/src/config/strings/english.ts	1156
+frontend/src/config/strings/russian.ts	1185
 frontend/src/features/chats/calling/DesktopCallControls.tsx	670
 frontend/src/features/chats/calling/MobileActiveScreen.tsx	754
 frontend/src/features/chats/calling/useCallSession.ts	1056
