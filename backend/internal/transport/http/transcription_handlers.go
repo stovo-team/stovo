@@ -32,6 +32,7 @@ type TranscriptionCall struct {
 type TranscriptionOperations struct {
 	CallByRoom       func(string) (TranscriptionCall, bool)
 	IsParticipant    func(TranscriptionCall, string) bool
+	CanAccessChat    func(string, string) bool
 	IsAdministrator  func(string) bool
 	Latest           func(context.Context, string) (any, error)
 	Transcript       func(context.Context, string) (any, error)
@@ -218,10 +219,15 @@ func (h TranscriptionHandler) Status(w stdhttp.ResponseWriter, r *stdhttp.Reques
 
 // Transcript preserves the historical contract: transcript availability is
 // determined by the feature query, rather than a live-call membership check.
-func (h TranscriptionHandler) Transcript(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+func (h TranscriptionHandler) Transcript(w stdhttp.ResponseWriter, r *stdhttp.Request, actor TranscriptionActor) {
 	roomID := strings.TrimSpace(chi.URLParam(r, "roomId"))
 	if roomID == "" {
 		writeTranscriptionDetail(w, stdhttp.StatusBadRequest, "roomId required")
+		return
+	}
+	call, exists := h.operations.CallByRoom(roomID)
+	if !exists || h.operations.CanAccessChat == nil || !h.operations.CanAccessChat(call.ChatID, actor.ID) {
+		writeTranscriptionDetail(w, stdhttp.StatusForbidden, "You do not have access to this chat transcript")
 		return
 	}
 	value, err := h.operations.Transcript(r.Context(), roomID)
@@ -256,11 +262,16 @@ func (h TranscriptionHandler) UpdateSegment(w stdhttp.ResponseWriter, r *stdhttp
 	writeTranscriptionJSON(w, stdhttp.StatusOK, map[string]any{"segmentId": segmentID, "updated": true})
 }
 
-func (h TranscriptionHandler) Artifact(w stdhttp.ResponseWriter, r *stdhttp.Request) {
+func (h TranscriptionHandler) Artifact(w stdhttp.ResponseWriter, r *stdhttp.Request, actor TranscriptionActor) {
 	roomID := strings.TrimSpace(chi.URLParam(r, "roomId"))
 	artifactType := strings.TrimSpace(chi.URLParam(r, "artifactType"))
 	if roomID == "" || artifactType == "" {
 		writeTranscriptionDetail(w, stdhttp.StatusBadRequest, "roomId and artifactType required")
+		return
+	}
+	call, exists := h.operations.CallByRoom(roomID)
+	if !exists || h.operations.CanAccessChat == nil || !h.operations.CanAccessChat(call.ChatID, actor.ID) {
+		writeTranscriptionDetail(w, stdhttp.StatusForbidden, "You do not have access to this chat transcript")
 		return
 	}
 	url, status, err := h.operations.ArtifactDownload(r.Context(), roomID, artifactType)

@@ -1,7 +1,7 @@
 /**
  * LiveCaptionsOverlay — Subtitle overlay rendered over active call/meeting video.
  *
- * Shows real-time speech transcription and live translated subtitles with high
+ * Shows real-time speech transcription with high
  * contrast, frosted glass backdrop, and speaker attribution.
  */
 import React from "react";
@@ -11,7 +11,6 @@ export type LiveCaptionsOverlayProps = {
   isCaptionsEnabled: boolean;
   recentCaptions: LiveCaptionItem[];
   currentInterimCaption: string | null;
-  targetLanguage: string;
   speakerDisplayName?: string;
   className?: string;
 };
@@ -20,7 +19,6 @@ export function LiveCaptionsOverlay({
   isCaptionsEnabled,
   recentCaptions,
   currentInterimCaption,
-  targetLanguage,
   speakerDisplayName = "You",
   className = "",
 }: LiveCaptionsOverlayProps) {
@@ -38,7 +36,7 @@ export function LiveCaptionsOverlay({
         {recentCaptions.slice(-2).map((item) => (
           <div key={item.id} className="live-caption-bubble">
             <span className="live-caption-speaker">{item.speakerName}</span>
-            <span className="live-caption-text">{item.translatedText}</span>
+            <span className="live-caption-text">{item.originalText}</span>
           </div>
         ))}
         {currentInterimCaption && (

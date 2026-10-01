@@ -84,8 +84,8 @@ func (s *Server) callRoutes() httptransport.CallRoutes {
 		GetTranscriptionStatus: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			transcription.Status(w, r, httptransport.TranscriptionActor{ID: user.ID, Role: user.Role, DisplayName: user.DisplayName})
 		}),
-		GetTranscript: s.authenticated(func(w http.ResponseWriter, r *http.Request, _ userPublic) {
-			transcription.Transcript(w, r)
+		GetTranscript: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			transcription.Transcript(w, r, httptransport.TranscriptionActor{ID: user.ID, Role: user.Role, DisplayName: user.DisplayName})
 		}),
 		RequestTranscriptionUpload: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			transcription.RequestUpload(w, r, httptransport.TranscriptionActor{ID: user.ID, Role: user.Role, DisplayName: user.DisplayName})
@@ -99,15 +99,14 @@ func (s *Server) callRoutes() httptransport.CallRoutes {
 		UpdateTranscriptSegment: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			transcription.UpdateSegment(w, r, httptransport.TranscriptionActor{ID: user.ID, Role: user.Role, DisplayName: user.DisplayName})
 		}),
-		GetTranscriptArtifact: s.authenticated(func(w http.ResponseWriter, r *http.Request, _ userPublic) {
-			transcription.Artifact(w, r)
+		GetTranscriptArtifact: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			transcription.Artifact(w, r, httptransport.TranscriptionActor{ID: user.ID, Role: user.Role, DisplayName: user.DisplayName})
 		}),
 		StartRecording:     s.authenticated(s.handleStartRecording),
 		StopRecording:      s.authenticated(s.handleStopRecording),
 		GetRecordingStatus: s.authenticated(s.handleGetRecordingStatus),
 		UploadRecording:    s.authenticated(s.handleUploadRecording),
 		FailRecording:      s.authenticated(s.handleFailRecording),
-		TranslateCaptions:  s.authenticated(s.handleTranslateCaptions),
 		TranscribeCaptions: s.authenticated(s.handleTranscribeCaptions),
 	}
 }
@@ -241,6 +240,22 @@ func (s *Server) authRoutes() httptransport.AuthRoutes {
 				s.writeAuthSuccess(w, r, http.StatusOK, response.(httptransport.AuthSuccess[userPublic]))
 			},
 		}.VerifyCode),
+		PasskeyRegistrationOptions: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.passkeyRegistrationOptions(w, r, user)
+		}),
+		PasskeyRegistrationVerify: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.passkeyRegistrationVerify(w, r, user)
+		}),
+		PasskeyAuthenticationOptions: http.HandlerFunc(s.passkeyAuthenticationOptions),
+		PasskeyAuthenticationVerify:  http.HandlerFunc(s.passkeyAuthenticationVerify),
+		QRLoginCreate:                http.HandlerFunc(s.createQRLogin),
+		QRLoginStatus:                http.HandlerFunc(s.qrLoginStatus),
+		QRLoginApprove: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.approveQRLogin(w, r, user)
+		}),
+		QRLoginReject: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			s.rejectQRLogin(w, r, user)
+		}),
 		Refresh: httptransport.NewRefreshHandler(httptransport.RefreshOperations{
 			RefreshCookieName: s.cfg.RefreshCookieName,
 			ClientIP:          s.getClientIP,
@@ -697,8 +712,10 @@ func (s *Server) inviteRoutes() httptransport.InviteRoutes {
 				},
 			}.CreateInvite(w, r)
 		}),
-		PreviewInvite: http.HandlerFunc(previewHandler.ServeHTTP),
-		AcceptInvite:  http.HandlerFunc(acceptHandler.AcceptInvite),
+		PreviewInvite:  http.HandlerFunc(previewHandler.ServeHTTP),
+		AcceptInvite:   http.HandlerFunc(acceptHandler.AcceptInvite),
+		PasskeyOptions: http.HandlerFunc(s.invitePasskeyOptions),
+		AcceptPasskey:  http.HandlerFunc(s.acceptInviteWithPasskey),
 		DeleteInvite: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.InviteDeleteHandler{
 				IsAdmin: func() bool { return hasPermission(user, permissionManageMembers) },
@@ -796,6 +813,21 @@ func (s *Server) chatRoutes() httptransport.ChatRoutes {
 				},
 				StatusFor: domainErrorStatus,
 			}).Get(w, r)
+		}),
+		GetTranscriptForNotes: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
+			chatID := chi.URLParam(r, "chatId")
+			messageID := chi.URLParam(r, "messageId")
+			if _, err := s.chatQueries.GetForMember(r.Context(), chatID, user.ID); err != nil {
+				s.json(w, http.StatusForbidden, map[string]string{"message": "You do not have access to this chat"})
+				return
+			}
+			var callID string
+			err := s.guestDB.QueryRowContext(r.Context(), `SELECT call_id FROM call_transcription_sessions WHERE chat_id=$1 AND notes_message_id=$2 ORDER BY created_at DESC LIMIT 1`, chatID, messageID).Scan(&callID)
+			if err != nil || callID == "" {
+				s.json(w, http.StatusNotFound, map[string]string{"message": "Transcript not found"})
+				return
+			}
+			s.json(w, http.StatusOK, map[string]string{"callId": callID})
 		}),
 		SendMessage: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.NewMessageSendHandler(httptransport.MessageSendOperations{

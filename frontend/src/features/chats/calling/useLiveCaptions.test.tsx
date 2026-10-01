@@ -29,8 +29,8 @@ class FakeSpeechRecognition extends EventTarget {
 const roots: Root[] = [];
 
 function CaptionProbe({ localAudioStream }: { localAudioStream?: MediaStream | null }) {
-  const captions = useLiveCaptions({ roomId: "room-1", defaultLanguage: "en", localAudioStream });
-  return <><button type="button" onClick={captions.toggleCaptions}>Toggle captions</button><output>{captions.recentCaptions.map((item) => item.translatedText).join(" ")}</output></>;
+  const captions = useLiveCaptions({ roomId: "room-1", localAudioStream });
+  return <><button type="button" onClick={captions.toggleCaptions}>Toggle captions</button><output>{captions.recentCaptions.map((item) => item.originalText).join(" ")}</output></>;
 }
 
 afterEach(() => {
@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 describe("useLiveCaptions", () => {
-  it("submits captured local microphone audio for automatic source detection and target translation", async () => {
+  it("submits captured local microphone audio for source-language captions", async () => {
     Object.defineProperty(navigator, "language", { configurable: true, value: "en-US" });
     const stream = { getAudioTracks: () => [{ readyState: "live", stop: vi.fn() }] } as unknown as MediaStream;
     vi.stubGlobal("MediaStream", class { constructor() { return stream; } });
@@ -55,7 +55,7 @@ describe("useLiveCaptions", () => {
       static isTypeSupported() { return true; }
     });
     const fetchMock = vi.fn().mockResolvedValue(new Response(
-      JSON.stringify({ text: "Привет", sourceLang: "ru", translatedText: "Hello", targetLang: "en" }),
+      JSON.stringify({ text: "Привет", sourceLang: "ru" }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     ));
     vi.stubGlobal("fetch", fetchMock);
@@ -79,9 +79,9 @@ describe("useLiveCaptions", () => {
     expect(request.method).toBe("POST");
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe("https://api.example.test/api/calls/room-1/captions/transcribe");
     expect(request.body).toBeInstanceOf(FormData);
-    expect((request.body as FormData).get("targetLang")).toBe("en");
+    expect((request.body as FormData).get("targetLang")).toBeNull();
     expect((request.body as FormData).get("audio")).toBeInstanceOf(Blob);
-    expect(container.textContent).toContain("Hello");
+    expect(container.textContent).toContain("Привет");
   });
 
   it("ignores empty recorder chunks and stops capture when captions are disabled", async () => {

@@ -21,8 +21,8 @@ import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
-import { MeetingBackgroundToast, MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
-import { useEffect, useRef, useState } from "react";
+import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { useRef, useState } from "react";
 
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
@@ -109,14 +109,9 @@ export function DesktopCallControls() {
     enabled: true,
   });
 
-  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false); const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
+  const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
   const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
   const [isParticipantFocused, setIsParticipantFocused] = useState(false); const closeParticipantFocusRef = useRef<() => void>(() => undefined);
-  useEffect(() => {
-    if (!isAiNotesQueuedToastVisible) return;
-    const timer = window.setTimeout(() => setIsAiNotesQueuedToastVisible(false), 5_000);
-    return () => window.clearTimeout(timer);
-  }, [isAiNotesQueuedToastVisible]);
 
   const recording = useCallRecording({
     accessToken: accessToken ?? null,
@@ -133,7 +128,6 @@ export function DesktopCallControls() {
     roomId: callRoomId,
     localAudioStream: audioCallRef.current?.getLocalStream?.() ?? localVideoStream,
     displayName: currentUser?.displayName ?? "You",
-    defaultLanguage: "en",
   });
   const {
     transcriptState,
@@ -148,22 +142,16 @@ export function DesktopCallControls() {
     if (transcriptState === "idle" || transcriptState === "failed") {
       void startTranscription();
     } else if (transcriptState === "recording") {
-      // The recorder flush and server-side transcription continue independently
-      // of this popover, so release the user back to the call immediately.
-      setIsIntelligenceOpen(false);
-      setIsAiNotesQueuedToastVisible(true);
       void stopTranscription();
     }
   };
 
   return (
     <>
-      <MeetingBackgroundToast visible={isAiNotesQueuedToastVisible} />
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}
         currentInterimCaption={liveCaptions.currentInterimCaption}
-        targetLanguage={liveCaptions.targetLanguage}
         speakerDisplayName={currentUser?.displayName ?? "You"}
       />
       {/* ── Header row ── */}
@@ -496,9 +484,7 @@ export function DesktopCallControls() {
                   isRecordingAllowed={true}
                   isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
                   onToggleCaptions={liveCaptions.toggleCaptions}
-                  targetLanguage={liveCaptions.targetLanguage}
-                  onChangeTargetLanguage={liveCaptions.setTargetLanguage}
-                />
+                    />
               </div>
               <div className="call-ctrl-wrap">
                 <CallControlButton action="end-call" state="idle" className="call-ctrl-btn end-btn" label="End call" onClick={() => void endActiveCall()} />

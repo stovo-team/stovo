@@ -238,7 +238,7 @@ export default function ChatsPage() {
             isLoading={isLoading}
             hasLoadedOverview={hasLoadedOverview}
             accessToken={accessToken}
-            currentUserId={currentUser?.id}
+            currentUserId={currentUser?.id} activeVoiceCallChatId={callPhase !== "idle" && chats.find((chat) => chat.id === activeCallChatId)?.type === "voice" ? activeCallChatId : null} activeVoiceCallParticipantIds={callSession.callParticipantIds}
             minimizedChatLayout={family?.minimizedChatLayout}
             selectedChatId={selectedChat?.id}
             overview={chatOverview}

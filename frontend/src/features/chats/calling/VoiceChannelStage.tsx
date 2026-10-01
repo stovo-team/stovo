@@ -4,7 +4,6 @@ import {
   useState
 } from "react";
 import {
-  FileText,
   Mic,
   MicOff,
   Minimize2,
@@ -13,7 +12,6 @@ import {
   Settings,
   ScreenShare,
   ScreenShareOff,
-  Square,
   UserPlus,
   Video,
   VideoOff,
@@ -32,7 +30,7 @@ import { useTranscription } from "./useTranscription";
 import { useCallRecording } from "./useCallRecording";
 import { useLiveCaptions } from "./useLiveCaptions";
 import { LiveCaptionsOverlay } from "./LiveCaptionsOverlay";
-import { MeetingBackgroundToast, MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
+import { MeetingIntelligencePopover } from "./MeetingIntelligencePopover";
 import IconIntelligence from "../../../components/icons/IconIntelligence";
 import { hasLiveLocalVideo } from "../shared/callLifecycle";
 import CallParticipantGrid from "../../../components/CallParticipantGrid";
@@ -63,7 +61,6 @@ export function VoiceChannelStage({
     callType,
     setCallType,
     activeCallChatId,
-    callNotice,
     callAudioSettings,
     callAudioCapabilities, callAudioDevices,
     callRemoteMedia,
@@ -88,7 +85,6 @@ export function VoiceChannelStage({
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isIntelligenceOpen, setIsIntelligenceOpen] = useState(false);
   const intelligenceButtonRef = useRef<HTMLButtonElement>(null);
-  const [isAiNotesQueuedToastVisible, setIsAiNotesQueuedToastVisible] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
   const fallbackSocketRef = useRef(null);
@@ -108,16 +104,9 @@ export function VoiceChannelStage({
 
   const {
     transcriptState,
-    transcriptError,
     startTranscription,
     stopTranscription,
   } = transcription;
-
-  useEffect(() => {
-    if (!isAiNotesQueuedToastVisible) return;
-    const timer = window.setTimeout(() => setIsAiNotesQueuedToastVisible(false), 5_000);
-    return () => window.clearTimeout(timer);
-  }, [isAiNotesQueuedToastVisible]);
 
   const recording = useCallRecording({
     accessToken: effectiveAccessToken,
@@ -134,7 +123,6 @@ export function VoiceChannelStage({
     roomId: effectiveRoomId,
     localAudioStream: audioCallRef?.current?.getLocalStream?.() ?? localVideoStream ?? session.localVideoStream,
     displayName: currentUser?.displayName ?? "You",
-    defaultLanguage: "en",
   });
   // Close more menu when clicking outside
   useEffect(() => {
@@ -227,8 +215,7 @@ export function VoiceChannelStage({
     }
   };
 
-  const handleToggleAiNotes = () => {
-    setIsMoreMenuOpen(false);
+  const handleToggleNotes = () => {
     if (transcriptState === "idle" || transcriptState === "failed") {
       void startTranscription();
     } else if (transcriptState === "recording") {
@@ -236,14 +223,13 @@ export function VoiceChannelStage({
     }
   };
 
-  const aiNotesStatus = transcriptError
-    ? `AI Notes failed: ${transcriptError}`
-    : transcriptState === "starting"
-      ? "Starting AI Notes…"
-      : transcriptState === "recording"
-        ? "AI Notes is on. It will stop automatically when the call ends."
-        : null;
-  const visibleNotice = transcriptError ? aiNotesStatus : callNotice && /failed|failure|error|denied|unsupported|not supported|timed out|offline|could not|unable|not available/i.test(callNotice) ? callNotice : null;
+  const handleToggleRecording = () => {
+    if (["idle", "completed", "failed"].includes(recording.recordingState)) {
+      void recording.startRecording();
+    } else if (recording.recordingState === "recording") {
+      void recording.stopRecording();
+    }
+  };
 
   const resolveMemberInfo = (userId: string) => {
     if (currentUser && userId === currentUser.id) {
@@ -299,25 +285,12 @@ export function VoiceChannelStage({
 
   return (
     <div className={`voice-channel-room${isCurrentChannelActive ? " is-connected" : ""}`} role="region" aria-label="Voice Channel Room">
-      <MeetingBackgroundToast visible={isAiNotesQueuedToastVisible} />
       <LiveCaptionsOverlay
         isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
         recentCaptions={liveCaptions.recentCaptions}
         currentInterimCaption={liveCaptions.currentInterimCaption}
-        targetLanguage={liveCaptions.targetLanguage}
         speakerDisplayName={currentUser?.displayName ?? "You"}
       />
-      {/* Notice Banner */}
-      {visibleNotice && (
-        <div
-          className="voice-room-notice-banner"
-          role={transcriptError ? "alert" : "status"}
-          aria-live="polite"
-          data-testid="voice-ai-notes-status"
-        >
-          <span>{visibleNotice}</span>
-        </div>
-      )}
       {/* Main Stage / Participant Grid or List */}
       <CallParticipantStage className="shared-call-stage voice-room-stage">
         <div className={participantCount === 0 ? "voice-room-empty-content" : "voice-room-participant-content"}>
@@ -476,18 +449,20 @@ export function VoiceChannelStage({
           </div>
         )}
 
-        {canAddPeople && onOpenAddPeople && (
-          <button
-            type="button"
-            className="voice-room-member-invite"
-            onClick={onOpenAddPeople}
-          >
-            <UserPlus aria-hidden="true" size={18} />
-            <span>{strings.chats.details.addPeople}</span>
-          </button>
-        )}
         </div>
       </CallParticipantStage>
+
+      {canAddPeople && onOpenAddPeople && (
+        <button
+          type="button"
+          className="voice-room-member-invite"
+          onClick={onOpenAddPeople}
+          aria-label={strings.chats.details.addPeople}
+          title={strings.chats.details.addPeople}
+        >
+          <UserPlus aria-hidden="true" size={18} />
+        </button>
+      )}
 
       {/* Bottom Floating/Docked Control Bar */}
       <div className="voice-room-bottom-bar">
@@ -539,34 +514,18 @@ export function VoiceChannelStage({
                 onClose={() => setIsIntelligenceOpen(false)}
                 anchorElement={intelligenceButtonRef.current}
                 notesState={transcriptState}
-                onToggleNotes={() => {
-                  if (transcriptState === "idle" || transcriptState === "failed") {
-                    void startTranscription();
-                  } else if (transcriptState === "recording") {
-                    setIsIntelligenceOpen(false);
-                    setIsAiNotesQueuedToastVisible(true);
-                    void stopTranscription();
-                  }
-                }}
+                onToggleNotes={handleToggleNotes}
                 isNotesAllowed={true}
                 recordingState={recording.recordingState}
                 recordingTimer={recording.recordingTimer}
-                onToggleRecording={() => {
-                  if (recording.recordingState === "idle" || recording.recordingState === "completed" || recording.recordingState === "failed") {
-                    void recording.startRecording();
-                  } else if (recording.recordingState === "recording") {
-                    void recording.stopRecording();
-                  }
-                }}
+                onToggleRecording={handleToggleRecording}
                 isRecordingAllowed={true}
                 isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
                 onToggleCaptions={liveCaptions.toggleCaptions}
-                targetLanguage={liveCaptions.targetLanguage}
-                onChangeTargetLanguage={liveCaptions.setTargetLanguage}
               />
             </div>
 
-            {/* 3 Dots Menu Button for Settings & AI Notes */}
+            {/* 3 Dots Menu Button for Settings */}
             <div className="voice-more-menu-anchor">
               <button
                 ref={moreButtonRef}
@@ -601,30 +560,6 @@ export function VoiceChannelStage({
                     <span>{voiceStrings?.settings ?? "Settings"}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={`voice-more-menu-item${transcriptState === "recording" ? " is-recording" : ""}`}
-                    onClick={handleToggleAiNotes}
-                    disabled={transcriptState === "starting" || transcriptState === "stopping" || transcriptState === "processing" || transcriptState === "ready"}
-                  >
-                    {transcriptState === "recording" ? (
-                      <Square size={16} aria-hidden="true" fill="currentColor" />
-                    ) : (
-                      <FileText size={16} aria-hidden="true" />
-                    )}
-                    <span>
-                      {transcriptState === "recording"
-                        ? "Stop AI Notes"
-                        : transcriptState === "processing" || transcriptState === "stopping"
-                          ? "AI Notes (Processing…)"
-                          : transcriptState === "ready"
-                            ? "AI Notes (Will post in chat)"
-                            : transcriptState === "failed"
-                              ? "Retry AI Notes"
-                              : "Start AI Notes"}
-                    </span>
-                  </button>
                 </div>
               )}
             </div>

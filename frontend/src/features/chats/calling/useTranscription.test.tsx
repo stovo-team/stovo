@@ -44,6 +44,25 @@ class FakeMediaRecorder {
   }
 }
 
+class FakeAudioContext {
+  createMediaStreamSource() {
+    return { connect: vi.fn() };
+  }
+
+  createAnalyser() {
+    return {
+      fftSize: 512,
+      getFloatTimeDomainData(samples: Float32Array) {
+        samples.fill(0.02);
+      },
+    };
+  }
+
+  close() {
+    return Promise.resolve();
+  }
+}
+
 function TranscriptionProbe({ localAudioStream }: { localAudioStream: MediaStream }) {
   const { startTranscription, stopTranscription } = useTranscription({
     accessToken: "test-token",
@@ -79,6 +98,7 @@ describe("useTranscription", () => {
 
     vi.stubGlobal("MediaStream", FakeMediaStream);
     vi.stubGlobal("MediaRecorder", recorderConstructor);
+    vi.stubGlobal("AudioContext", FakeAudioContext);
     const fetchMock = vi.fn().mockResolvedValue(new Response(
       JSON.stringify({ id: "transcript-1", status: "recording" }),
       { status: 201, headers: { "Content-Type": "application/json" } },
@@ -93,7 +113,7 @@ describe("useTranscription", () => {
 
     await act(async () => {
       (container.querySelector("button") as HTMLButtonElement).click();
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 60));
     });
 
     expect(recorderConstructor).toHaveBeenCalledWith(expect.objectContaining({ getAudioTracks: expect.any(Function) }), expect.anything());
@@ -112,6 +132,7 @@ describe("useTranscription", () => {
     Object.assign(recorderConstructor, { isTypeSupported: FakeMediaRecorder.isTypeSupported });
     vi.stubGlobal("MediaStream", FakeMediaStream);
     vi.stubGlobal("MediaRecorder", recorderConstructor);
+    vi.stubGlobal("AudioContext", FakeAudioContext);
 
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith("/transcription/start")) {
@@ -133,6 +154,11 @@ describe("useTranscription", () => {
     await act(async () => {
       (container.querySelectorAll("button")[0] as HTMLButtonElement).click();
       await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    // React starts the recorder in the effect after the start request resolves.
+    // Give VAD several samples so this test exercises a valid voice chunk.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
     });
     await act(async () => {
       (container.querySelectorAll("button")[1] as HTMLButtonElement).click();

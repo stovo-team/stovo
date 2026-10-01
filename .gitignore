@@ -68,7 +68,6 @@ features.db
 /docker-compose.test.ps1
 
 # Local agent tooling, generated worktrees, and copied input
-AGENTS.md
 .cursor/
 .worktrees/
 clean_input.txt

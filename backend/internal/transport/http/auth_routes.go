@@ -11,24 +11,32 @@ import (
 // concern: protected entries must be wrapped before they are supplied here.
 // This keeps the transport responsible only for HTTP method/path dispatch.
 type AuthRoutes struct {
-	SetupStatus          stdhttp.Handler
-	Setup                stdhttp.Handler
-	Login                stdhttp.Handler
-	DeviceLoginRequest   stdhttp.Handler
-	DeviceLoginVerify    stdhttp.Handler
-	Refresh              stdhttp.Handler
-	Logout               stdhttp.Handler
-	Me                   stdhttp.Handler
-	UpdateMe             stdhttp.Handler
-	ChangePassword       stdhttp.Handler
-	ListBlocks           stdhttp.Handler
-	BlockUser            stdhttp.Handler
-	UnblockUser          stdhttp.Handler
-	GetAudioSettings     stdhttp.Handler
-	PutAudioSettings     stdhttp.Handler
-	GetNotificationTopic stdhttp.Handler
-	RegisterDeviceToken  stdhttp.Handler
-	UnregisterDeviceToken stdhttp.Handler
+	SetupStatus                  stdhttp.Handler
+	Setup                        stdhttp.Handler
+	Login                        stdhttp.Handler
+	DeviceLoginRequest           stdhttp.Handler
+	DeviceLoginVerify            stdhttp.Handler
+	PasskeyRegistrationOptions   stdhttp.Handler
+	PasskeyRegistrationVerify    stdhttp.Handler
+	PasskeyAuthenticationOptions stdhttp.Handler
+	PasskeyAuthenticationVerify  stdhttp.Handler
+	QRLoginCreate                stdhttp.Handler
+	QRLoginStatus                stdhttp.Handler
+	QRLoginApprove               stdhttp.Handler
+	QRLoginReject                stdhttp.Handler
+	Refresh                      stdhttp.Handler
+	Logout                       stdhttp.Handler
+	Me                           stdhttp.Handler
+	UpdateMe                     stdhttp.Handler
+	ChangePassword               stdhttp.Handler
+	ListBlocks                   stdhttp.Handler
+	BlockUser                    stdhttp.Handler
+	UnblockUser                  stdhttp.Handler
+	GetAudioSettings             stdhttp.Handler
+	PutAudioSettings             stdhttp.Handler
+	GetNotificationTopic         stdhttp.Handler
+	RegisterDeviceToken          stdhttp.Handler
+	UnregisterDeviceToken        stdhttp.Handler
 }
 
 // RegisterAuthRoutes installs the stable REST contract for authentication and
@@ -39,6 +47,14 @@ func RegisterAuthRoutes(router chi.Router, routes AuthRoutes) {
 	router.Post("/api/auth/login", routes.Login.ServeHTTP)
 	router.Post("/api/auth/device-login/request", routes.DeviceLoginRequest.ServeHTTP)
 	router.Post("/api/auth/device-login/verify", routes.DeviceLoginVerify.ServeHTTP)
+	router.Post("/api/auth/passkeys/registration/options", routes.PasskeyRegistrationOptions.ServeHTTP)
+	router.Post("/api/auth/passkeys/registration/verify", routes.PasskeyRegistrationVerify.ServeHTTP)
+	router.Post("/api/auth/passkeys/authentication/options", routes.PasskeyAuthenticationOptions.ServeHTTP)
+	router.Post("/api/auth/passkeys/authentication/verify", routes.PasskeyAuthenticationVerify.ServeHTTP)
+	router.Post("/api/auth/qr-login", routes.QRLoginCreate.ServeHTTP)
+	router.Get("/api/auth/qr-login/{requestID}", routes.QRLoginStatus.ServeHTTP)
+	router.Post("/api/auth/qr-login/{requestID}/approve", routes.QRLoginApprove.ServeHTTP)
+	router.Post("/api/auth/qr-login/{requestID}/reject", routes.QRLoginReject.ServeHTTP)
 	router.Post("/api/auth/refresh", routes.Refresh.ServeHTTP)
 	router.Post("/api/auth/logout", routes.Logout.ServeHTTP)
 	router.Get("/api/auth/me", routes.Me.ServeHTTP)

@@ -15,7 +15,6 @@ import { audioPlaybackSession } from "../../../audioPlaybackSession";
 import { videoPlaybackSession } from "../../../videoPlaybackSession";
 import type { CallSessionApi } from "../calling/useCallSession";
 import { activeSessionVideoElement, androidAppStatePayload } from "../shared/callLifecycle";
-import { preferPollingFirst } from "../shared/socketPolling";
 
 export type UseChatSocketConnectionParams = {
   socketRef: RefObject<Socket | null>;
@@ -120,10 +119,6 @@ export function useChatSocketConnection({
     }
 
     const isNative = Capacitor.isNativePlatform();
-    const transports: Array<"polling" | "websocket"> = preferPollingFirst(window.location.hostname)
-      ? ["polling", "websocket"]
-      : ["websocket", "polling"];
-
     const apiUrl = getApiUrl();
     const socketConfig = getSocketConfigForUrl(apiUrl);
 
@@ -135,11 +130,15 @@ export function useChatSocketConnection({
       path: socketConfig.path,
       auth: { token },
       query: { token },
-      transports,
-      // Native clients keep polling because the backend's WebSocket upgrade does not
-      // preserve the authenticated handshake URL. Browsers can use the normal
-      // polling-to-WebSocket upgrade path.
-      upgrade: !isNative,
+      // Keep the authenticated Socket.IO session on polling. The backend reads
+      // the token from the handshake URL, which its current WebSocket upgrade
+      // path does not preserve; upgrading can disconnect the namespace just as
+      // call signaling starts.
+      transports: ["polling"],
+      upgrade: false,
+      timeout: 8_000,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 3_000,
       withCredentials: true,
       reconnection: true,
       reconnectionAttempts: Infinity

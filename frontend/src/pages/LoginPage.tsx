@@ -1,9 +1,19 @@
 import { Capacitor } from "@capacitor/core";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, KeyRound, QrCode } from "lucide-react";
+import { startAuthentication } from "@simplewebauthn/browser";
+import QRCode from "qrcode";
 import { FormEvent, useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
-import { fetchSetupStatus, requestDeviceLoginCode, verifyDeviceLoginCode } from "../api/auth";
+import {
+  beginPasskeyAuthentication,
+  createBrowserQRLogin,
+  fetchSetupStatus,
+  finishPasskeyAuthentication,
+  getBrowserQRLoginStatus,
+  requestDeviceLoginCode,
+  verifyDeviceLoginCode,
+} from "../api/auth";
 import { ApiError, getApiUrl, getClusterPrefix, setApiUrlOverride } from "../api/client";
 import { deriveServerNameFromUrl, getActiveServer } from "../api/serverRegistry";
 import { useAuth } from "../auth/AuthContext";
@@ -34,10 +44,13 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [setupRequired, setSetupRequired] = useState<boolean | null>(null);
+  const [qrLogin, setQrLogin] = useState<{ requestId: string; image: string; expiresAt: string; status: string } | null>(null);
+  const [isSecureContext, setIsSecureContext] = useState(() => typeof window !== "undefined" && window.isSecureContext);
 
   const activeServer = getActiveServer();
   const currentUrl = getApiUrl();
   const serverName = activeServer?.name || deriveServerNameFromUrl(currentUrl);
+  const prefix = getClusterPrefix();
   const isDeviceLogin = new URLSearchParams(location.search).get("deviceLogin") === "1";
 
   useEffect(() => {
@@ -69,7 +82,28 @@ export default function LoginPage() {
     };
   }, [currentUrl]);
 
-  const prefix = getClusterPrefix();
+  useEffect(() => {
+    if (!qrLogin || qrLogin.status !== "pending") return;
+    let active = true;
+    const timer = window.setInterval(() => {
+      void getBrowserQRLoginStatus(qrLogin.requestId).then((result) => {
+        if (!active) return;
+        if (result.accessToken && result.user) {
+          acceptAuthResponse({ accessToken: result.accessToken, tokenType: "Bearer", expiresInSeconds: result.expiresInSeconds ?? 900, user: result.user, refreshToken: result.auth?.refreshToken });
+          navigate(`${prefix}/app/chats`, { replace: true });
+          setQrLogin((current) => current?.requestId === qrLogin.requestId ? { ...current, status: "approved" } : current);
+        } else if (result.status && result.status !== "pending") {
+          setQrLogin((current) => current?.requestId === qrLogin.requestId ? { ...current, status: result.status ?? "expired" } : current);
+        }
+      }).catch(() => {
+        // Keep polling through transient network errors until the request expires.
+      });
+    }, 1500);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [qrLogin?.requestId, qrLogin?.status, acceptAuthResponse, navigate, prefix]);
 
   if (currentUser) {
     return <Navigate to={`${prefix}/app/chats`} replace />;
@@ -114,6 +148,41 @@ export default function LoginPage() {
     } finally { setIsSubmitting(false); }
   }
 
+  async function handlePasskeyLogin() {
+    setError(null);
+    if (!isSecureContext || typeof window.PublicKeyCredential === "undefined") {
+      setError("Passkeys require a secure connection and a supported browser");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const options = await beginPasskeyAuthentication();
+      const response = await startAuthentication({ optionsJSON: options.publicKey as never });
+      acceptAuthResponse(await finishPasskeyAuthentication(options.ceremonyId, response));
+      navigate(`${prefix}/app/chats`, { replace: true });
+    } catch (err) {
+      if (!(err instanceof Error && ["NotAllowedError", "AbortError"].includes(err.name))) {
+        setError(err instanceof ApiError ? String(err.message) : "Passkey sign-in failed. Try again or use your password.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleStartQRLogin() {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const request = await createBrowserQRLogin();
+      const image = await QRCode.toDataURL(request.scanUrl, { width: 240, margin: 1 });
+      setQrLogin({ requestId: request.requestId, image, expiresAt: request.expiresAt, status: "pending" });
+    } catch (err) {
+      setError(err instanceof ApiError ? String(err.message) : "Could not start QR sign-in");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="auth-panel">
@@ -150,6 +219,25 @@ export default function LoginPage() {
           ) : <button type="submit" disabled={isSubmitting}>{isSubmitting ? "Signing in" : "Log in"}</button>}
         </form>
         {isDeviceLogin && <p className="muted-copy">Open Message Archive on a device where you are already signed in. The code is valid for 10 minutes.</p>}
+        {!isDeviceLogin && !Capacitor.isNativePlatform() && <div className="auth-method-options">
+          <div className="auth-divider"><span>or</span></div>
+          <button type="button" className="secondary-button" data-auth-method="passkey" disabled={isSubmitting || !isSecureContext || typeof window.PublicKeyCredential === "undefined"} onClick={() => void handlePasskeyLogin()}>
+            <KeyRound aria-hidden="true" size={17} /> Sign in with Passkey
+          </button>
+          {!isSecureContext && <p className="muted-copy">Passkeys require a secure connection (HTTPS).</p>}
+          <button type="button" className="secondary-button" data-auth-method="qr" disabled={isSubmitting} onClick={() => void handleStartQRLogin()}>
+            <QrCode aria-hidden="true" size={17} /> Sign in with QR code
+          </button>
+          {qrLogin && <div className="qr-login-panel" aria-live="polite">
+            {qrLogin.status === "pending" ? <>
+              <img src={qrLogin.image} alt="QR code to approve this browser sign-in with Stovo" />
+              <p>Scan this code with Stovo</p>
+              <p>Waiting for approval</p>
+              <p className="muted-copy">Expires {new Date(qrLogin.expiresAt).toLocaleTimeString()}</p>
+            </> : <p>{qrLogin.status === "approved" ? "Signed in" : qrLogin.status === "rejected" ? "Sign-in request rejected" : "QR code expired"}</p>}
+            {qrLogin.status !== "pending" && <button type="button" className="secondary-button" onClick={() => setQrLogin(null)}>Close</button>}
+          </div>}
+        </div>}
         <OwnerSetupPrompt setupRequired={setupRequired} />
         {Capacitor.isNativePlatform() && (
           <p className="secondary-link">

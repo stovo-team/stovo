@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { getInviteApiUrl, getInviteAppLinkPath, getNotificationAppLink } from "./appLinks";
+import { getInviteApiUrl, getInviteAppLinkPath, getNotificationAppLink, getQRLoginApprovalPath } from "./appLinks";
 
 const androidManifest = readFileSync(
   resolve(process.cwd(), "android/app/src/main/AndroidManifest.xml"),
@@ -74,6 +74,21 @@ describe("getInviteAppLinkPath", () => {
     expect(getInviteAppLinkPath("stovo://chat/chat-a")).toBeNull();
     expect(getInviteAppLinkPath("ftp://example.com/invite/inv-123")).toBeNull();
     expect(getInviteAppLinkPath("invalid-url")).toBeNull();
+  });
+});
+
+describe("getQRLoginApprovalPath", () => {
+  it("routes an opaque Stovo QR approval link to the confirmation page", () => {
+    expect(getQRLoginApprovalPath(`stovo://auth/qr-approve/${"a".repeat(48)}`)).toBe(`/app/qr-login/${"a".repeat(48)}`);
+  });
+
+  it.each([
+    "https://example.test/auth/qr-approve/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "stovo://auth/qr-approve/short",
+    `stovo://auth/qr-approve/${"a".repeat(48)}?server=https://evil.test`,
+    `stovo://evil/qr-approve/${"a".repeat(48)}`,
+  ])("rejects malformed or untrusted approval links: %s", (url) => {
+    expect(getQRLoginApprovalPath(url)).toBeNull();
   });
 });
 

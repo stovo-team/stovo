@@ -8,7 +8,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -17,8 +16,8 @@ import (
 	"stovo-messenger/backend/internal/config"
 )
 
-func TestHandleTranscribeCaptionsUsesDetectedRussianAndSelectedTarget(t *testing.T) {
-	var asrModel, chatModel, chatPrompt, uploadedAudio string
+func TestHandleTranscribeCaptionsReturnsSourceLanguageWithoutTranslation(t *testing.T) {
+	var asrModel, uploadedAudio string
 	var forcedLanguage bool
 	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -41,24 +40,6 @@ func TestHandleTranscribeCaptionsUsesDetectedRussianAndSelectedTarget(t *testing
 			content, _ := io.ReadAll(file)
 			uploadedAudio = string(content)
 			_, _ = io.WriteString(w, `{"text":"Привет, как дела?","language":"ru"}`)
-		case "/v1/chat/completions":
-			var request struct {
-				Model    string `json:"model"`
-				Messages []struct {
-					Role    string `json:"role"`
-					Content string `json:"content"`
-				} `json:"messages"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-				t.Errorf("decode chat request: %v", err)
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			chatModel = request.Model
-			if len(request.Messages) > 0 {
-				chatPrompt = request.Messages[0].Content
-			}
-			_, _ = io.WriteString(w, `{"choices":[{"message":{"content":"Hello, how are you?"}}]}`)
 		default:
 			t.Errorf("unexpected provider path %q", r.URL.Path)
 			http.NotFound(w, r)
@@ -70,7 +51,7 @@ func TestHandleTranscribeCaptionsUsesDetectedRussianAndSelectedTarget(t *testing
 		GroqAPIKey: "test-key", GroqBaseURL: provider.URL,
 		GroqSTTModel: "qwen3-asr-flash-2025-09-08", GroqChatModel: "qwen/qwen3.8-27b",
 	}}
-	body, contentType := captionAudioMultipart(t, "Привет аудио", "en")
+	body, contentType := captionAudioMultipart(t, "Привет аудио")
 	request := httptest.NewRequest(http.MethodPost, "/api/calls/room-1/captions/transcribe", body)
 	request.Header.Set("Content-Type", contentType)
 	routeContext := chi.NewRouteContext()
@@ -85,26 +66,21 @@ func TestHandleTranscribeCaptionsUsesDetectedRussianAndSelectedTarget(t *testing
 	var result struct {
 		Text           string `json:"text"`
 		SourceLang     string `json:"sourceLang"`
-		TranslatedText string `json:"translatedText"`
-		TargetLang     string `json:"targetLang"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
 		t.Fatalf("decode caption response: %v", err)
 	}
-	if result.Text != "Привет, как дела?" || result.SourceLang != "ru" || result.TranslatedText != "Hello, how are you?" || result.TargetLang != "en" {
-		t.Errorf("caption response = %+v, want Russian source and English translation", result)
+	if result.Text != "Привет, как дела?" || result.SourceLang != "ru" {
+		t.Errorf("caption response = %+v, want Russian source caption", result)
 	}
-	if asrModel != "qwen3-asr-flash-2025-09-08" || chatModel != "qwen/qwen3.8-27b" {
-		t.Errorf("models = ASR %q, chat %q", asrModel, chatModel)
+	if asrModel != "qwen3-asr-flash-2025-09-08" {
+		t.Errorf("ASR model = %q", asrModel)
 	}
 	if forcedLanguage {
 		t.Error("ASR request forced a language instead of detecting the speech language")
 	}
 	if uploadedAudio != "Привет аудио" {
 		t.Errorf("ASR audio = %q, want uploaded audio bytes", uploadedAudio)
-	}
-	if !strings.Contains(chatPrompt, "Russian") || !strings.Contains(chatPrompt, "English") {
-		t.Errorf("translation prompt = %q, want detected Russian source and English target", chatPrompt)
 	}
 }
 
@@ -115,7 +91,7 @@ func TestHandleTranscribeCaptionsRejectsMissingOrMalformedAudio(t *testing.T) {
 		body        *bytes.Buffer
 		contentType string
 	}{
-		{name: "missing audio", body: func() *bytes.Buffer { body, _ := captionAudioMultipart(t, "", "en"); return body }(), contentType: "multipart/form-data"},
+		{name: "missing audio", body: func() *bytes.Buffer { body, _ := captionAudioMultipart(t, ""); return body }(), contentType: "multipart/form-data"},
 		{name: "malformed multipart", body: bytes.NewBufferString("broken"), contentType: "multipart/form-data; boundary=broken"},
 	}
 	for _, test := range tests {
@@ -141,7 +117,7 @@ func TestHandleTranscribeCaptionsSurfacesProviderFailure(t *testing.T) {
 	}))
 	defer provider.Close()
 	app := &Server{cfg: config.Config{GroqAPIKey: "test-key", GroqBaseURL: provider.URL, GroqSTTModel: "qwen3-asr-flash"}}
-	body, contentType := captionAudioMultipart(t, "audio", "en")
+	body, contentType := captionAudioMultipart(t, "audio")
 	request := httptest.NewRequest(http.MethodPost, "/api/calls/room-1/captions/transcribe", body)
 	request.Header.Set("Content-Type", contentType)
 	routeContext := chi.NewRouteContext()
@@ -233,15 +209,10 @@ func TestGuestTranscribeCaptionsValidatesMeetingLifecycle(t *testing.T) {
 	}
 }
 
-func captionAudioMultipart(t *testing.T, audio, target string) (*bytes.Buffer, string) {
+func captionAudioMultipart(t *testing.T, audio string) (*bytes.Buffer, string) {
 	t.Helper()
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
-	if target != "" {
-		if err := writer.WriteField("targetLang", target); err != nil {
-			t.Fatal(err)
-		}
-	}
 	if audio != "" {
 		file, err := writer.CreateFormFile("audio", "caption.webm")
 		if err != nil {

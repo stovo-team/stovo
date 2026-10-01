@@ -16,12 +16,20 @@ import {
 } from "../shared/chatPresentation";
 import { RealAvatar } from "./RealAvatar";
 
+type VoiceMember = Chat["members"][number] & {
+  directMessagePermission?: "family" | "selected" | "nobody";
+  invitePermissionUserIds?: string[];
+};
+
 type ChatListItemProps = {
   chat: Chat;
   isActive: boolean;
   isTransitionSource: boolean;
   accessToken: string | null;
   currentUserId?: string;
+  activeVoiceCallChatId?: string | null;
+  activeVoiceCallParticipantIds?: string[];
+  onOpenMemberDm?: (userId: string) => void;
   minimizedChatLayout?: boolean;
   isDragging?: boolean;
   onSelect: (chat: Chat) => void;
@@ -37,6 +45,9 @@ export function ChatListItem({
   isTransitionSource,
   accessToken,
   currentUserId,
+  activeVoiceCallChatId,
+  activeVoiceCallParticipantIds = [],
+  onOpenMemberDm,
   minimizedChatLayout,
   isDragging,
   onSelect,
@@ -48,6 +59,14 @@ export function ChatListItem({
   const strings = useStrings();
   const chatName = displayChatName(chat, currentUserId, strings);
   const preview = chatPreview(chat, strings);
+  const voiceParticipantIds = chat.type === "voice"
+    ? Array.from(new Set([
+        ...((chat.activeCall?.participants as Array<{ userId?: string; state?: string }> | undefined) ?? [])
+          .filter((participant) => participant.userId && ["connected", "connecting", "in-call"].includes(participant.state ?? ""))
+          .map((participant) => participant.userId as string),
+        ...(activeVoiceCallChatId === chat.id ? [...activeVoiceCallParticipantIds, ...(currentUserId ? [currentUserId] : [])] : []),
+      ]))
+    : [];
   const hasUnread = chat.unreadCount > 0;
   const compactLeadingVisual = compactChatListLeadingVisual(chat.type);
   const chatListLeadingVisual = minimizedChatLayout || chat.type === "archive"
@@ -61,6 +80,18 @@ export function ChatListItem({
   );
 
   const canDrag = Boolean(onDragStart);
+  const voiceParticipants = (chat.activeCall?.participants as Array<{ userId?: string; state?: string; joinedAt?: string }> | undefined) ?? [];
+
+  const voiceDuration = (joinedAt?: string) => {
+    if (!joinedAt) return "In voice channel";
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(joinedAt).getTime()) / 60_000));
+    if (!Number.isFinite(elapsedMinutes)) return "In voice channel";
+    if (elapsedMinutes < 1) return "Joined just now";
+    if (elapsedMinutes < 60) return `In voice for ${elapsedMinutes}m`;
+    const hours = Math.floor(elapsedMinutes / 60);
+    const minutes = elapsedMinutes % 60;
+    return `In voice for ${hours}h${minutes ? ` ${minutes}m` : ""}`;
+  };
 
   return (
     <div
@@ -138,6 +169,49 @@ export function ChatListItem({
             <span className="chat-list-preview">
               <span className="chat-list-draft-label">Draft:</span>{" "}
               {draftText.slice(0, 40)}{draftText.length > 40 ? "…" : ""}
+            </span>
+          ) : chat.type === "voice" && voiceParticipantIds.length > 0 ? (
+            <span className="chat-list-voice-participants" aria-label={`${voiceParticipantIds.length} active voice channel members`}>
+              {voiceParticipantIds.slice(0, 4).map((userId) => {
+                const member = chat.members.find((item) => item.id === userId);
+                const memberPolicy = member as VoiceMember | undefined;
+                const joinedAt = voiceParticipants.find((participant) => participant.userId === userId)?.joinedAt;
+                const canMessage = Boolean(
+                  member &&
+                  userId !== currentUserId &&
+                  memberPolicy?.directMessagePermission !== "nobody" &&
+                  (memberPolicy?.directMessagePermission !== "selected" || memberPolicy.invitePermissionUserIds?.includes(currentUserId ?? ""))
+                );
+                return (
+                  <span key={userId} className="chat-list-voice-member">
+                    <button
+                      type="button"
+                      className="chat-list-voice-member-trigger"
+                      aria-label={`${member?.displayName ?? "Member"}${canMessage ? ", open direct message" : ""}`}
+                      disabled={!canMessage || !onOpenMemberDm}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (canMessage) onOpenMemberDm?.(userId);
+                      }}
+                      onKeyDown={(event) => event.stopPropagation()}
+                    >
+                      <RealAvatar
+                        accessToken={accessToken}
+                        className="avatar chat-list-voice-avatar"
+                        file={member?.profilePhoto}
+                        label={member?.displayName ?? "Member"}
+                      />
+                    </button>
+                    <span className="chat-list-voice-member-tooltip" role="tooltip">
+                      <strong>{member?.displayName ?? "Member"}</strong>
+                      <small>{voiceDuration(joinedAt)}</small>
+                      {!canMessage && userId !== currentUserId && <small>Direct messages are restricted</small>}
+                      {userId === currentUserId && <small>You</small>}
+                    </span>
+                  </span>
+                );
+              })}
+              {voiceParticipantIds.length > 4 && <span className="chat-list-voice-overflow">+{voiceParticipantIds.length - 4}</span>}
             </span>
           ) : preview ? <span className="chat-list-preview">{preview}</span> : null;
         })()}

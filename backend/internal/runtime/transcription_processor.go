@@ -2,6 +2,8 @@ package runtime
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -38,6 +40,7 @@ type TranscriptionProcessor struct {
 	Storage     ports.ObjectStore
 	CallsBucket string
 	Provider    TranscriptionProviderOptions
+	ParticipantName func(string) string
 	Logger      TranscriptionProcessorLogger
 	Broadcast   func(chatID, callID, sessionID, status string, failureMessage string)
 	Publish     func(context.Context, string)
@@ -80,6 +83,35 @@ func (p TranscriptionProcessor) Process(ctx context.Context, job TranscriptionPr
 		return
 	}
 	p.updateMetadata(ctx, job.SessionID, totalAudioMs, languages, client)
+	// The exact transcript artifact is the durable source for later export and
+	// audit; PostgreSQL segments remain the indexed/queryable projection.
+	artifactStore, ok := p.Storage.(ports.BucketObjectStore)
+	if !ok {
+		p.fail(ctx, job, "transcript_persistence_failed", "Transcript object storage is unavailable")
+		return
+	}
+	artifactKey := fmt.Sprintf("calls/%s/%s/transcript/exact.json", job.ChatID, job.SessionID)
+	artifact, err := json.Marshal(struct {
+		Version   int                                     `json:"version"`
+		CallID    string                                  `json:"callId"`
+		SessionID string                                  `json:"sessionId"`
+		Model     string                                  `json:"model"`
+		Segments  []transcription.TranscriptSegmentForLLM `json:"segments"`
+	}{Version: 1, CallID: job.CallID, SessionID: job.SessionID, Model: p.Provider.STTModel, Segments: all})
+	if err != nil {
+		p.fail(ctx, job, "transcript_persistence_failed", "Transcript artifact could not be serialized")
+		return
+	}
+	if err := artifactStore.SaveToBucket(ctx, p.CallsBucket, artifactKey, artifact, "application/json"); err != nil {
+		p.warn("exact transcript artifact write failed session_id=%s error=%v", job.SessionID, err)
+		p.fail(ctx, job, "transcript_persistence_failed", "Transcript could not be saved to object storage")
+		return
+	}
+	if err := p.Sessions.SaveExactArtifact(ctx, job.SessionID, artifactKey); err != nil {
+		p.warn("exact transcript artifact link failed session_id=%s error=%v", job.SessionID, err)
+		p.fail(ctx, job, "transcript_persistence_failed", "Transcript artifact reference could not be saved")
+		return
+	}
 	p.postProcess(ctx, job.SessionID, all)
 	completedAt := time.Now().UTC()
 	if err := p.Sessions.UpdateStatus(ctx, featuretranscription.StatusUpdate{SessionID: job.SessionID, Status: string(transcription.SessionStatusReady), CompletedAt: &completedAt}); err != nil {
@@ -95,6 +127,14 @@ func (p TranscriptionProcessor) Process(ctx context.Context, job TranscriptionPr
 func (p TranscriptionProcessor) transcribeParticipant(ctx context.Context, callID, sessionID, participantID string, chunks []featuretranscription.AudioChunk, client *transcription.GroqSTTClient) ([]transcription.TranscriptSegmentForLLM, map[string]bool) {
 	segments := make([]transcription.TranscriptSegmentForLLM, 0)
 	languages := make(map[string]bool)
+	// Each authenticated client uploads its own microphone track, so the track
+	// participant is the speaker label; Qwen is only responsible for ASR.
+	participantName := participantID
+	if p.ParticipantName != nil {
+		if resolved := strings.TrimSpace(p.ParticipantName(participantID)); resolved != "" {
+			participantName = resolved
+		}
+	}
 	for _, chunk := range chunks {
 		bucketStore, ok := p.Storage.(ports.BucketObjectReader)
 		if !ok {
@@ -142,7 +182,7 @@ func (p TranscriptionProcessor) transcribeParticipant(ctx context.Context, callI
 			if err := p.Segments.Insert(ctx, featuretranscription.SegmentWrite{ID: id, CallID: callID, SessionID: sessionID, ParticipantID: participantID, StartMs: start, EndMs: end, ExactText: text, Language: language, Confidence: confidence, ProviderIndex: index}); err != nil {
 				p.warn("insert segment failed seg_id=%s error=%v", id, err)
 			}
-			segments = append(segments, transcription.TranscriptSegmentForLLM{ID: id, ParticipantName: participantID, StartMs: start, EndMs: end, Text: text, Language: language})
+			segments = append(segments, transcription.TranscriptSegmentForLLM{ID: id, CallID: callID, SessionID: sessionID, ParticipantID: participantID, ParticipantName: participantName, StartMs: start, EndMs: end, Text: text, Language: language, Confidence: confidence})
 		}
 	}
 	return segments, languages

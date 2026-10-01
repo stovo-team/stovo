@@ -6,9 +6,9 @@ export function waitForVoiceChannelConnection(
   onAttempt: (attempt: number, totalAttempts: number) => void,
 ) {
   return waitForSocketConnection(socket, {
-    // Recover a live Engine.IO transport with a wedged Socket.IO namespace
-    // promptly; the helper resets that namespace once on its second attempt.
-    attempts: 3,
+    // Keep retrying a slow initial namespace connection; the helper periodically
+    // resets Engine.IO when its polling transport is alive but the namespace is wedged.
+    attempts: 10,
     attemptTimeoutMs: 5_000,
     retryDelayMs: 500,
     onAttempt,

@@ -64,6 +64,17 @@ func (s *SessionService) UpdateMetadata(ctx context.Context, update MetadataUpda
 func (s *SessionService) SaveSummary(ctx context.Context, sessionID string, summary Summary) error {
 	return s.store.SaveSummary(ctx, sessionID, summary)
 }
+// SaveExactArtifact records the object-store key for the authoritative exact
+// transcript artifact when the backing store supports artifact metadata.
+func (s *SessionService) SaveExactArtifact(ctx context.Context, sessionID, objectKey string) error {
+	store, ok := s.store.(interface {
+		SaveExactArtifact(context.Context, string, string) error
+	})
+	if !ok {
+		return nil
+	}
+	return store.SaveExactArtifact(ctx, sessionID, objectKey)
+}
 func (s *SessionService) Fail(ctx context.Context, failure Failure) error {
 	return s.store.Fail(ctx, failure)
 }
@@ -87,6 +98,7 @@ type AudioChunk struct {
 	ID, SessionID, ParticipantID, ObjectKey, Container, Codec string
 	Sequence                                                  int
 	CallStartMs, CallEndMs, DurationMs                        int64
+	ClientVADScore                                            float64
 }
 
 type ChunkStore interface {
@@ -127,6 +139,7 @@ type SessionView struct {
 }
 type Segment struct {
 	ID, CallID, SessionID, ParticipantID, ExactText string
+	ParticipantName                                 string
 	StartMs, EndMs                                  int64
 	CleanedText, DetectedLanguage                   *string
 	Confidence                                      *float64

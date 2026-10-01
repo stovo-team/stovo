@@ -206,7 +206,6 @@ export default function GuestMeetingPage() {
     localAudioStream: localStreamRef.current,
     displayName: guestDisplayName,
     room: roomRef.current,
-    defaultLanguage: "en",
   });
   useEffect(() => {
     if (state !== "joined" || !token || isOrgMemberOrHost) return;
@@ -680,7 +679,6 @@ export default function GuestMeetingPage() {
           isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
           recentCaptions={liveCaptions.recentCaptions}
           currentInterimCaption={liveCaptions.currentInterimCaption}
-          targetLanguage={liveCaptions.targetLanguage}
           speakerDisplayName={guestDisplayName}
         />
         <header className="guest-call-header">
@@ -764,8 +762,6 @@ export default function GuestMeetingPage() {
                 recordingDisabledReason={!isOrgMemberOrHost ? "Only authenticated hosts / members can record this meeting" : undefined}
                 isCaptionsEnabled={liveCaptions.isCaptionsEnabled}
                 onToggleCaptions={liveCaptions.toggleCaptions}
-                targetLanguage={liveCaptions.targetLanguage}
-                onChangeTargetLanguage={liveCaptions.setTargetLanguage}
               />
             </div>
 

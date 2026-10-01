@@ -84,6 +84,7 @@ export type AudioChunkUploadParams = {
   callStartMs: number;
   callEndMs: number;
   durationMs: number;
+  clientVadScore: number;
   blob: Blob;
 };
 
@@ -104,6 +105,7 @@ export async function uploadAudioChunk(params: AudioChunkUploadParams): Promise<
       callStartMs: params.callStartMs,
       callEndMs: params.callEndMs,
       durationMs: params.durationMs,
+      clientVadScore: params.clientVadScore,
     }),
   });
   if (!urlResponse.ok) {
@@ -207,10 +209,18 @@ export function useTranscription({
     let recorder: MediaRecorder | null = null;
     let sequence = 0;
     const recordingStartMs = Date.now();
-    let lastChunkEndMs = 0;
+    let clipStartMs = 0;
+    let lastSpeechMs = 0;
+    let clipVoicedSamples = 0;
+    let clipTotalSamples = 0;
     let activeStream: MediaStream | null = null;
+    let vadContext: AudioContext | null = null;
+    let vadTimer: number | undefined;
+    let voicedSamples = 0;
+    let totalSamples = 0;
     let stopStreamOnCleanup = false;
     let isActive = true;
+    let isRecordingEnabled = true;
     let flushRecorder: (() => Promise<void>) | null = null;
     let resolveRecorderStopped: (() => void) | null = null;
     const recorderStopped = new Promise<void>((resolve) => {
@@ -244,6 +254,37 @@ export function useTranscription({
         }
         activeStream = stream;
 
+        // Lightweight client VAD gates whole recorder intervals before they
+        // leave the device. A brief hangover keeps word endings from clipping.
+        vadContext = new AudioContext();
+        const vadSource = vadContext.createMediaStreamSource(stream);
+        const vadAnalyser = vadContext.createAnalyser();
+        vadAnalyser.fftSize = 512;
+        vadSource.connect(vadAnalyser);
+        const vadSamples = new Float32Array(vadAnalyser.fftSize);
+        vadTimer = window.setInterval(() => {
+          if (!isRecordingEnabled) return;
+          vadAnalyser.getFloatTimeDomainData(vadSamples);
+          let energy = 0;
+          for (const sample of vadSamples) energy += sample * sample;
+          const rms = Math.sqrt(energy / vadSamples.length);
+          const callTimeMs = Date.now() - recordingStartMs;
+          if (rms >= 0.012) {
+            if (recorder?.state === "inactive") {
+              clipStartMs = Math.max(0, callTimeMs - 50);
+              clipVoicedSamples = 0;
+              clipTotalSamples = 0;
+              recorder.start();
+            }
+            lastSpeechMs = callTimeMs;
+            clipVoicedSamples += 1;
+          }
+          if (recorder?.state === "recording") {
+            clipTotalSamples += 1;
+            if (callTimeMs - lastSpeechMs >= 600) recorder.stop();
+          }
+        }, 50);
+
         if (typeof MediaRecorder === "undefined") {
           throw new Error("AI Notes recording is not supported in this browser");
         }
@@ -257,11 +298,16 @@ export function useTranscription({
         recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 64000 });
         recorder.ondataavailable = async (e: BlobEvent) => {
           if (e.data && e.data.size > 0) {
+            const clientVadScore = clipTotalSamples > 0 ? clipVoicedSamples / clipTotalSamples : 0;
+            const voicedDurationMs = clipVoicedSamples * 50;
             const seq = sequence++;
-            const callStartMs = lastChunkEndMs;
-            const nowOffsetMs = Date.now() - recordingStartMs;
-            const durationMs = Math.max(1000, nowOffsetMs - callStartMs);
-            lastChunkEndMs = nowOffsetMs;
+            const callStartMs = clipStartMs;
+            const callEndMs = Date.now() - recordingStartMs;
+            const durationMs = Math.max(1, callEndMs - callStartMs);
+            clipVoicedSamples = 0;
+            clipTotalSamples = 0;
+
+            if (clientVadScore < 0.04 || voicedDurationMs < 200) return;
 
             let upload: Promise<void>;
             upload = uploadAudioChunk({
@@ -272,8 +318,9 @@ export function useTranscription({
                 sequence: seq,
                 container,
                 callStartMs,
-                callEndMs: nowOffsetMs,
+                callEndMs,
                 durationMs,
+                clientVadScore,
                 blob: e.data,
               })
               .catch((uploadErr) => {
@@ -285,10 +332,12 @@ export function useTranscription({
           }
         };
 
-        // Slice audio into 5-second chunks
+        // Recording starts and stops around detected speech; silence never
+        // becomes an upload. The hangover above preserves trailing phonemes.
         recorder.onerror = () => failRecording("AI Notes recording failed in this browser");
         recorder.onstop = () => resolveRecorderStopped?.();
         flushRecorder = async () => {
+          isRecordingEnabled = false;
           if (recorder && recorder.state !== "inactive") {
             recorder.stop();
           }
@@ -306,7 +355,6 @@ export function useTranscription({
           ]);
         };
         flushRecorderRef.current = flushRecorder;
-        recorder.start(5000);
       } catch (err) {
         console.error("[useTranscription] MediaRecorder init failed:", err);
         failRecording(err instanceof Error ? err.message : "AI Notes recording could not start");
@@ -317,9 +365,12 @@ export function useTranscription({
 
     return () => {
       isActive = false;
+      isRecordingEnabled = false;
       if (recorder && recorder.state !== "inactive") {
         recorder.stop();
       }
+      if (vadTimer !== undefined) window.clearInterval(vadTimer);
+      void vadContext?.close();
       if (flushRecorderRef.current === flushRecorder) {
         flushRecorderRef.current = null;
       }

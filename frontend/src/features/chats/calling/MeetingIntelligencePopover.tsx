@@ -4,12 +4,11 @@
  * Houses the three core meeting capabilities:
  *  1. AI Notes (start/stop, status chip, view notes)
  *  2. Meeting Recording (record/stop, REC timer, uploading badge)
- *  3. Live Captions & Real-Time AI Translation (toggle, target language dropdown/pills)
+ *  3. Live Captions, with translation marked as a Premium feature
  */
-import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, Circle, FileText, Globe, LoaderCircle, Sparkles, Square, Video } from "lucide-react";
-import { SUPPORTED_LANGUAGES } from "./useLiveCaptions";
+import { Check, Circle, FileText, Globe, Sparkles, Square, Video } from "lucide-react";
 import type { RecordingState } from "./useCallRecording";
 import type { TranscriptState } from "./useTranscription";
 
@@ -32,20 +31,33 @@ export type MeetingIntelligencePopoverProps = {
   // Live Captions
   isCaptionsEnabled: boolean;
   onToggleCaptions: () => void;
-  targetLanguage: string;
-  onChangeTargetLanguage: (lang: string) => void;
   // Orientation / Viewport
   isMobile?: boolean;
   inlineMenu?: boolean;
 };
 
 /** A transient, call-level confirmation for work that continues server-side. */
-export function MeetingBackgroundToast({ visible }: { visible: boolean }) {
-  if (!visible) return null;
+export function MeetingBackgroundToast({ message, onDismiss }: { message: string | null; onDismiss: (message: null) => void }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (!message) {
+      setVisible(false);
+      return;
+    }
+    setVisible(true);
+    const timer = window.setTimeout(() => {
+      setVisible(false);
+      onDismiss(null);
+    }, 5_000);
+    return () => window.clearTimeout(timer);
+  }, [message, onDismiss]);
+
+  if (!visible || !message) return null;
   return (
     <div className="meeting-intel-background-toast" role="status" aria-live="polite">
       <span className="meeting-intel-background-toast-icon"><Sparkles size={17} aria-hidden="true" /></span>
-      <span><strong>AI Notes are being prepared</strong><small>They’ll appear in this chat once ready.</small></span>
+      <span><strong>{message}</strong><small>The result will appear in this chat when ready.</small></span>
     </div>
   );
 }
@@ -66,20 +78,30 @@ export function MeetingIntelligencePopover({
   recordingDisabledReason,
   isCaptionsEnabled,
   onToggleCaptions,
-  targetLanguage,
-  onChangeTargetLanguage,
   isMobile = false,
   inlineMenu = false,
 }: MeetingIntelligencePopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
   const anchorRef = useRef<HTMLElement | null>(null);
-  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
   const [anchoredPosition, setAnchoredPosition] = useState<{ left: number; top: number } | null>(null);
-  const languageMenuId = useId();
+  const [backgroundToastMessage, setBackgroundToastMessage] = useState<string | null>(null);
+  const backgroundToast = <MeetingBackgroundToast message={backgroundToastMessage} onDismiss={setBackgroundToastMessage} />;
 
-  useEffect(() => {
-    if (!isOpen) setIsLanguageMenuOpen(false);
-  }, [isOpen]);
+  const handleToggleNotes = () => {
+    if (notesState === "recording") {
+      setBackgroundToastMessage("AI Notes are being prepared");
+      onClose();
+    }
+    onToggleNotes();
+  };
+
+  const handleToggleRecording = () => {
+    if (recordingState === "recording") {
+      setBackgroundToastMessage("Recording is being processed");
+      onClose();
+    }
+    onToggleRecording();
+  };
 
   useLayoutEffect(() => {
     if (!isOpen || inlineMenu) {
@@ -128,7 +150,7 @@ export function MeetingIntelligencePopover({
       window.removeEventListener("scroll", placePopover, true);
       resizeObserver?.disconnect();
     };
-  }, [anchorElement, inlineMenu, isCaptionsEnabled, isLanguageMenuOpen, isMobile, isOpen]);
+  }, [anchorElement, inlineMenu, isCaptionsEnabled, isMobile, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -140,10 +162,6 @@ export function MeetingIntelligencePopover({
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (isLanguageMenuOpen) {
-          setIsLanguageMenuOpen(false);
-          return;
-        }
         onClose();
       }
     };
@@ -153,9 +171,9 @@ export function MeetingIntelligencePopover({
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [inlineMenu, isLanguageMenuOpen, isOpen, onClose]);
+  }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen) return backgroundToast;
 
   const isNotesActive = notesState === "recording" || notesState === "starting";
   const isNotesProcessing = notesState === "stopping" || notesState === "processing";
@@ -163,7 +181,6 @@ export function MeetingIntelligencePopover({
 
   const isRecActive = recordingState === "recording" || recordingState === "starting";
   const isRecStopping = recordingState === "stopping" || recordingState === "uploading";
-  const selectedLanguage = SUPPORTED_LANGUAGES.find((language) => language.code === targetLanguage);
 
   const popover = (
     <div
@@ -200,11 +217,11 @@ export function MeetingIntelligencePopover({
                   className={`meeting-intel-toggle-btn ${
                     isNotesActive ? "is-recording" : isNotesProcessing ? "is-processing" : ""
                   }`}
-                  onClick={onToggleNotes}
+                  onClick={handleToggleNotes}
                   disabled={isNotesProcessing}
                   aria-label={isNotesActive ? "Stop AI Notes" : isNotesProcessing ? "AI Notes processing" : "Start AI Notes"}
                 >
-                  {isNotesActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <LoaderCircle size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
+                  {isNotesActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isNotesProcessing ? <Check size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
@@ -250,11 +267,11 @@ export function MeetingIntelligencePopover({
                   className={`meeting-intel-toggle-btn ${
                     isRecActive ? "is-recording" : isRecStopping ? "is-processing" : ""
                   }`}
-                  onClick={onToggleRecording}
+                  onClick={handleToggleRecording}
                   disabled={isRecStopping}
                   aria-label={isRecActive ? "Stop Recording" : isRecStopping ? "Saving recording" : "Start Recording"}
                 >
-                  {isRecActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <LoaderCircle size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
+                  {isRecActive ? <Square size={13} fill="currentColor" aria-hidden="true" /> : isRecStopping ? <Check size={16} aria-hidden="true" /> : <Circle size={14} fill="currentColor" aria-hidden="true" />}
                 </button>
               ) : (
                 <span
@@ -268,14 +285,14 @@ export function MeetingIntelligencePopover({
           </div>
         </div>
 
-        {/* 3. Live Captions & Real-Time AI Translation Section */}
-        <div className={`meeting-intel-card ${isCaptionsEnabled ? "is-active" : ""}`}>
+        {/* Live captions stay in their recognized source language. Translation is a locked Premium feature. */}
+        <div className="meeting-intel-card">
           <div className="meeting-intel-card-head">
             <div className="meeting-intel-card-icon meeting-intel-card-icon--captions">
               <Globe size={18} />
             </div>
             <div className="meeting-intel-card-info">
-              <div className="meeting-intel-card-title">Live Captions & AI Translation</div>
+              <div className="meeting-intel-card-title">Live Captions</div>
             </div>
             <div className="meeting-intel-card-action">
               <label className="meeting-intel-switch">
@@ -290,53 +307,20 @@ export function MeetingIntelligencePopover({
             </div>
           </div>
 
-          {isCaptionsEnabled && (
-            <div className="meeting-intel-card-lang-selector">
-              <div className="meeting-intel-lang-label">
-                <span>Translate to:</span>
-              </div>
-              <div className="meeting-intel-lang-select-wrap">
-                <button
-                  type="button"
-                  className="meeting-intel-lang-select"
-                  aria-label="Select target caption language"
-                  aria-controls={languageMenuId}
-                  aria-expanded={isLanguageMenuOpen}
-                  aria-haspopup="listbox"
-                  onClick={() => setIsLanguageMenuOpen((open) => !open)}
-                >
-                  <span>{selectedLanguage?.label ?? "Choose language"}</span>
-                  <ChevronDown size={14} className={`meeting-intel-lang-arrow${isLanguageMenuOpen ? " is-open" : ""}`} />
-                </button>
-                {isLanguageMenuOpen && (
-                  <div id={languageMenuId} className="meeting-intel-lang-menu" role="listbox" aria-label="Target caption language">
-                    <span className="meeting-intel-lang-menu-heading">Translate captions to</span>
-                    {SUPPORTED_LANGUAGES.map((language) => (
-                      <button
-                        type="button"
-                        key={language.code}
-                        role="option"
-                        aria-selected={language.code === targetLanguage}
-                        className={language.code === targetLanguage ? "selected" : ""}
-                        onClick={() => {
-                          onChangeTargetLanguage(language.code);
-                          setIsLanguageMenuOpen(false);
-                        }}
-                      >
-                        <span>{language.label}</span>
-                        {language.code === targetLanguage && <Check size={15} aria-hidden="true" />}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <div className="meeting-intel-card-subbar meeting-intel-premium-lock">
+            <span>Caption translation</span>
+            <span className="meeting-intel-restricted-badge" aria-label="Premium feature">Premium</span>
+          </div>
         </div>
       </div>
     </div>
   );
 
-  return anchoredPosition && !inlineMenu ? createPortal(popover, document.body) : popover;
+  return (
+    <>
+      {backgroundToast}
+      {anchoredPosition && !inlineMenu ? createPortal(popover, document.body) : popover}
+    </>
+  );
 }
 export default MeetingIntelligencePopover;

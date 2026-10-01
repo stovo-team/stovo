@@ -53,12 +53,12 @@ export type ChatListProps = {
   familyId: string;
   canManageFolders: boolean;
   accessToken: string | null;
-  currentUserId?: string;
+  currentUserId?: string; activeVoiceCallChatId?: string | null; activeVoiceCallParticipantIds?: string[];
   selectedChatId?: string;
   activeChatId?: string;
   minimizedChatLayout?: boolean;
   onSelectChat: (chat: Chat) => void;
-  onOpenChat: (chat: Chat) => void;
+  onOpenChat: (chat: Chat) => void; onOpenMemberDm?: (userId: string) => void;
   onOpenDraftsAndScheduled: () => void;
   isDraftsAndScheduledActive?: boolean;
   onOpenMessageArchive: () => void;
@@ -75,12 +75,12 @@ export function ChatList({
   familyId,
   canManageFolders,
   accessToken,
-  currentUserId,
+  currentUserId, activeVoiceCallChatId, activeVoiceCallParticipantIds,
   selectedChatId,
   activeChatId,
   minimizedChatLayout,
   onSelectChat,
-  onOpenChat,
+  onOpenChat, onOpenMemberDm,
   onOpenDraftsAndScheduled,
   isDraftsAndScheduledActive,
   onOpenMessageArchive,
@@ -650,11 +650,11 @@ export function ChatList({
                         isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}
                         isTransitionSource={selectedChatId === chat.id}
                         accessToken={accessToken}
-                        currentUserId={currentUserId}
+                        currentUserId={currentUserId} activeVoiceCallChatId={activeVoiceCallChatId} activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}
                         minimizedChatLayout={minimizedChatLayout}
                         isDragging={activeDraggedChat?.id === chat.id}
                         onSelect={onSelectChat}
-                        onOpen={onOpenChat}
+                        onOpen={onOpenChat} onOpenMemberDm={onOpenMemberDm}
                         onDragStart={(_e, c) => {
                           draggedChatRef.current = c;
                           requestAnimationFrame(() => {
@@ -741,11 +741,11 @@ export function ChatList({
                     isActive={!isDraftsAndScheduledActive && chat.id === activeChatId}
                     isTransitionSource={selectedChatId === chat.id}
                     accessToken={accessToken}
-                    currentUserId={currentUserId}
+                    currentUserId={currentUserId} activeVoiceCallChatId={activeVoiceCallChatId} activeVoiceCallParticipantIds={activeVoiceCallParticipantIds}
                     minimizedChatLayout={minimizedChatLayout}
                     isDragging={activeDraggedChat?.id === chat.id}
                     onSelect={onSelectChat}
-                    onOpen={onOpenChat}
+                    onOpen={onOpenChat} onOpenMemberDm={onOpenMemberDm}
                     onDragStart={(_e, c) => {
                       draggedChatRef.current = c;
                       requestAnimationFrame(() => {

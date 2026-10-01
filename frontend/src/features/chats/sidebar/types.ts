@@ -42,6 +42,8 @@ export type ChatSidebarProps = {
   hasLoadedOverview?: boolean;
   accessToken: string | null;
   currentUserId?: string;
+  activeVoiceCallChatId?: string | null;
+  activeVoiceCallParticipantIds?: string[];
   minimizedChatLayout?: boolean;
   selectedChatId?: string;
   mobileCallStrip?: ReactNode;
