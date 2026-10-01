@@ -76,7 +76,7 @@ func (s *Server) callRoutes() httptransport.CallRoutes {
 			sfu.CreateToken(w, r, httptransport.SFUTokenActor{ID: user.ID, DisplayName: user.DisplayName})
 		}),
 		StartTranscription: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
-			transcription.Start(w, r, httptransport.TranscriptionActor{ID: user.ID, Role: user.Role, DisplayName: user.DisplayName})
+			transcription.Start(w, r, httptransport.TranscriptionActor{ID: user.ID, FamilyID: user.FamilyID, Role: user.Role, DisplayName: user.DisplayName})
 		}),
 		StopTranscription: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			transcription.Stop(w, r, httptransport.TranscriptionActor{ID: user.ID, Role: user.Role, DisplayName: user.DisplayName})
@@ -368,11 +368,17 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 			if err != nil {
 				return httptransport.Family{}, err
 			}
+			aiFeatures, err := s.familyAIFeatureSettings(ctx, familyID)
+			if err != nil {
+				return httptransport.Family{}, err
+			}
 			return httptransport.Family{
 				ID: family.ID, Name: family.Name, StorageLimitMB: family.StorageLimitMB, MinimizedChatLayout: family.MinimizedChatLayout,
 				DefaultMessageEncryptionProtocol: family.DefaultMessageEncryptionProtocol,
 				DefaultProfileVisibility:         defaults.ProfileVisibility, DefaultLastSeenVisibility: defaults.LastSeenVisibility,
 				DefaultReadReceiptsEnabled: defaults.ReadReceiptsEnabled, DefaultNotificationSettings: defaults.NotificationSettings,
+				TranslationEnabled: aiFeatures.Translation, CallRecordingEnabled: aiFeatures.CallRecording,
+				AINotesEnabled: aiFeatures.AINotes, VoiceTranscriptionEnabled: aiFeatures.VoiceTranscription,
 				ScreenShareBitrateKbps:          quality.ScreenShareBitrateKbps,
 				CameraBitrateKbps:               quality.CameraBitrateKbps,
 				GroupCallScreenShareBitrateKbps: quality.GroupCallScreenShareBitrateKbps,
@@ -387,7 +393,7 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 	})
 	familyUpdate := httptransport.NewFamilyUpdateHandler(httptransport.FamilyUpdateOperations{
 		IsAdmin: func(actor httptransport.FamilyUpdateActor) bool {
-			return actor.Role == ownerRole || actor.Role == adminRole
+			return actor.Role == adminRole || hasPermission(userPublic{Role: actor.Role, Permissions: actor.Permissions}, permissionManageServer)
 		},
 		IsOwner: func(actor httptransport.FamilyUpdateActor) bool { return actor.Role == ownerRole },
 		ValidVisibility: func(profile, lastSeen *string) bool {
@@ -400,6 +406,14 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 			}
 			if payload.DefaultProfileVisibility != nil || payload.DefaultLastSeenVisibility != nil || payload.DefaultReadReceiptsEnabled != nil || payload.DefaultNotificationSettings != nil {
 				if _, err := s.familyDefaults.Update(ctx, familyID, featurefamily.MemberDefaultsPatch{ProfileVisibility: payload.DefaultProfileVisibility, LastSeenVisibility: payload.DefaultLastSeenVisibility, ReadReceiptsEnabled: payload.DefaultReadReceiptsEnabled, NotificationSettings: payload.DefaultNotificationSettings}); err != nil {
+					return nil, err
+				}
+			}
+			if payload.TranslationEnabled != nil || payload.CallRecordingEnabled != nil || payload.AINotesEnabled != nil || payload.VoiceTranscriptionEnabled != nil {
+				if err := s.updateFamilyAIFeatureSettings(ctx, familyID, familyAIFeaturePatch{
+					Translation: payload.TranslationEnabled, CallRecording: payload.CallRecordingEnabled,
+					AINotes: payload.AINotesEnabled, VoiceTranscription: payload.VoiceTranscriptionEnabled,
+				}); err != nil {
 					return nil, err
 				}
 			}
@@ -435,7 +449,7 @@ func (s *Server) familyRoutes() httptransport.FamilyRoutes {
 			familyRead.GetFamily(w, r, user.FamilyID)
 		}),
 		UpdateFamily: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
-			familyUpdate.Update(w, r, httptransport.FamilyUpdateActor{FamilyID: user.FamilyID, Role: user.Role})
+			familyUpdate.Update(w, r, httptransport.FamilyUpdateActor{FamilyID: user.FamilyID, Role: user.Role, Permissions: user.Permissions})
 		}),
 		GetMembers: s.authenticated(func(w http.ResponseWriter, r *http.Request, user userPublic) {
 			httptransport.FamilyMemberHandler{List: func(ctx context.Context) (any, error) {

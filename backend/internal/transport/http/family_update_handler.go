@@ -17,6 +17,10 @@ type FamilyUpdateRequest struct {
 	DefaultLastSeenVisibility       *string `json:"defaultLastSeenVisibility"`
 	DefaultReadReceiptsEnabled      *bool   `json:"defaultReadReceiptsEnabled"`
 	DefaultNotificationSettings     *string `json:"defaultNotificationSettings"`
+	TranslationEnabled              *bool   `json:"translationEnabled"`
+	CallRecordingEnabled            *bool   `json:"callRecordingEnabled"`
+	AINotesEnabled                  *bool   `json:"aiNotesEnabled"`
+	VoiceTranscriptionEnabled       *bool   `json:"voiceTranscriptionEnabled"`
 	ScreenShareBitrateKbps          *int    `json:"screenShareBitrateKbps"`
 	CameraBitrateKbps               *int    `json:"cameraBitrateKbps"`
 	GroupCallScreenShareBitrateKbps *int    `json:"groupCallScreenShareBitrateKbps"`
@@ -25,7 +29,11 @@ type FamilyUpdateRequest struct {
 	DMCallCameraBitrateKbps         *int    `json:"dmCallCameraBitrateKbps"`
 }
 
-type FamilyUpdateActor struct{ FamilyID, Role string }
+type FamilyUpdateActor struct {
+	FamilyID    string
+	Role        string
+	Permissions []string
+}
 
 // FamilyUpdateOperations contains only use-case-facing callbacks supplied by
 // composition. Authorization and HTTP decoding stay at this transport edge.

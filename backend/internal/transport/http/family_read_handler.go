@@ -18,6 +18,10 @@ type Family struct {
 	DefaultLastSeenVisibility        string  `json:"defaultLastSeenVisibility"`
 	DefaultReadReceiptsEnabled       bool    `json:"defaultReadReceiptsEnabled"`
 	DefaultNotificationSettings      string  `json:"defaultNotificationSettings"`
+	TranslationEnabled               bool    `json:"translationEnabled"`
+	CallRecordingEnabled             bool    `json:"callRecordingEnabled"`
+	AINotesEnabled                   bool    `json:"aiNotesEnabled"`
+	VoiceTranscriptionEnabled        bool    `json:"voiceTranscriptionEnabled"`
 	ScreenShareBitrateKbps           int     `json:"screenShareBitrateKbps"`
 	CameraBitrateKbps                int     `json:"cameraBitrateKbps"`
 	GroupCallScreenShareBitrateKbps  int     `json:"groupCallScreenShareBitrateKbps"`

@@ -14,6 +14,7 @@ import (
 // need. It keeps the transport independent from the legacy app user model.
 type TranscriptionActor struct {
 	ID          string
+	FamilyID    string
 	Role        string
 	DisplayName string
 }

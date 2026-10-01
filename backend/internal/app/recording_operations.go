@@ -125,6 +125,16 @@ func (s *Server) emitCallEventToChat(ctx context.Context, chatID, event string, 
 }
 
 func (s *Server) handleStartRecording(w http.ResponseWriter, r *http.Request, user userPublic) {
+	featureSettings, err := s.familyAIFeatureSettings(r.Context(), user.FamilyID)
+	if err != nil {
+		s.logger.Warnf("recording", "load family feature settings failed family=%s error=%v", user.FamilyID, err)
+		s.json(w, http.StatusInternalServerError, map[string]string{"message": "Could not load server feature settings"})
+		return
+	}
+	if !featureSettings.CallRecording {
+		s.json(w, http.StatusForbidden, map[string]string{"message": "Call recording is disabled by your server administrator"})
+		return
+	}
 	roomID := chi.URLParam(r, "roomId")
 	if roomID == "" {
 		s.json(w, http.StatusBadRequest, map[string]string{"message": "roomId is required"})
