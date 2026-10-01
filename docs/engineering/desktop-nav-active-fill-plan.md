@@ -7,8 +7,6 @@
 - Observable behavior: selected/hovered desktop links show a rounded rectangular accent surface across their full cell; selected destination icons are filled. Mobile navigation dimensions, active backdrop, and layout stay as they are, tapping a link does not leave a hover square, and the chat creation button is a smaller circle on desktop and mobile.
 - Constraints: logout remains outside the destination highlight; respect reduced-motion and existing routing behavior.
 - Design: use the existing per-link pseudo-element for desktop highlight; scope touch suppression to navigation links and rely on `aria-current`/`.active` for persistent selection.
-- Icon treatment: use filled silhouettes for active destinations while preserving the Settings center, the Plans markers, and the Admin check as background-colored cutouts.
-- Desktop spacing: match the active item corner radius to `--float-radius-panel` and reduce the rail's top inset.
 
 ## Test plan
 

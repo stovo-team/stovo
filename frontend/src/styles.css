@@ -1962,9 +1962,8 @@ h2 {
 
   .app-frame > .app-nav {
     --nav-rail-width: 72px;
-    --app-nav-icon-cutout: var(--island-surface);
     gap: 10px;
-    padding: 6px 8px 14px;
+    padding: 14px 8px;
     width: var(--nav-rail-width);
   }
 
@@ -13399,7 +13398,6 @@ span.message-spoiler.is-revealed {
 
   .app-frame > .app-nav {
     align-items: center;
-    --app-nav-icon-cutout: var(--mobile-glass-surface-strong);
     background: transparent;
     border: 0;
     border-radius: var(--float-radius-pill);
@@ -13514,28 +13512,8 @@ span.message-spoiler.is-revealed {
     width: 24px;
   }
 
-  .app-frame > .app-nav a.active .app-nav-icon--chats,
-  .app-frame > .app-nav a.active .app-nav-icon--storage,
-  .app-frame > .app-nav a.active .app-nav-icon--plans,
-  .app-frame > .app-nav a.active .app-nav-icon--settings,
-  .app-frame > .app-nav a.active .app-nav-icon--admin {
+  .app-frame > .app-nav a.active svg {
     fill: currentColor;
-  }
-
-  .app-frame > .app-nav a.active .app-nav-icon--plans path[d*=".01"] {
-    fill: var(--app-nav-icon-cutout);
-    stroke: var(--app-nav-icon-cutout);
-    stroke-width: 2;
-  }
-
-  .app-frame > .app-nav a.active .app-nav-icon--settings circle {
-    fill: var(--app-nav-icon-cutout);
-  }
-
-  .app-frame > .app-nav a.active .app-nav-icon--admin path:last-of-type {
-    fill: none;
-    stroke: var(--app-nav-icon-cutout);
-    stroke-width: 3;
   }
 
   .app-frame > .app-nav .app-brand,
@@ -20149,7 +20127,7 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .app-frame > .app-nav a:is(.active, :not(.active):hover)::before {
-    border-radius: var(--float-radius-panel);
+    border-radius: 12px;
     content: "";
     inset: 0;
     pointer-events: none;
@@ -20170,28 +20148,8 @@ button.chat-info-title-edit:active:not(:disabled) {
     z-index: 1;
   }
 
-  .app-frame > .app-nav a.active .app-nav-icon--chats,
-  .app-frame > .app-nav a.active .app-nav-icon--storage,
-  .app-frame > .app-nav a.active .app-nav-icon--plans,
-  .app-frame > .app-nav a.active .app-nav-icon--settings,
-  .app-frame > .app-nav a.active .app-nav-icon--admin {
+  .app-frame > .app-nav a.active svg {
     fill: currentColor;
-  }
-
-  .app-frame > .app-nav a.active .app-nav-icon--plans path[d*=".01"] {
-    fill: var(--app-nav-icon-cutout);
-    stroke: var(--app-nav-icon-cutout);
-    stroke-width: 2;
-  }
-
-  .app-frame > .app-nav a.active .app-nav-icon--settings circle {
-    fill: var(--app-nav-icon-cutout);
-  }
-
-  .app-frame > .app-nav a.active .app-nav-icon--admin path:last-of-type {
-    fill: none;
-    stroke: var(--app-nav-icon-cutout);
-    stroke-width: 3;
   }
 
   .chat-sidebar-header {
