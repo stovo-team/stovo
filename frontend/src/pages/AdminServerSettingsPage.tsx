@@ -40,13 +40,13 @@ export default function AdminServerSettingsPage() {
   const [notificationProvider, setNotificationProvider] = useState<NotificationProvider>("firebase");
 
   const loadFamily = useCallback(async () => {
-    if (!accessToken || !canManageSpaceName) return;
+    if (!accessToken || !canManageServer) return;
     try {
       setFamily(await authRequest<Family>("/api/family"));
     } catch (err) {
       setError(err instanceof ApiError ? String(err.message) : strings.admin.serverSettings.loadError);
     }
-  }, [accessToken, authRequest, canManageSpaceName, strings.admin.serverSettings.loadError]);
+  }, [accessToken, authRequest, canManageServer, strings.admin.serverSettings.loadError]);
 
   useEffect(() => void loadFamily(), [loadFamily]);
   useEffect(() => {
@@ -153,17 +153,25 @@ export default function AdminServerSettingsPage() {
             />
           </label>
         </section>
+        <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.aiFunctions}</h2>
+          {([
+            ["translationEnabled", strings.admin.serverSettings.translation],
+            ["callRecordingEnabled", strings.admin.serverSettings.callRecording],
+            ["aiNotesEnabled", strings.admin.serverSettings.aiNotes],
+            ["voiceTranscriptionEnabled", strings.admin.serverSettings.voiceTranscription],
+          ] as const).map(([field, label]) => <label className="appearance-setting-row" key={field}>
+            <span><strong>{label}</strong></span>
+            <input type="checkbox" aria-label={label} checked={family?.[field] ?? true} disabled={!family || isSaving || !canManageServer} onChange={(event) => void save({ [field]: event.target.checked })} />
+          </label>)}
+        </section>
         {isOwner && <>
           <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.guestMeetingQuality}</h2>
-            {qualityControl("screenShareBitrateKbps", strings.admin.serverSettings.screenShareBitrate)}
             {qualityControl("cameraBitrateKbps", strings.admin.serverSettings.cameraBitrate)}
           </section>
           <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.groupCallsQuality}</h2>
-            {qualityControl("groupCallScreenShareBitrateKbps", strings.admin.serverSettings.screenShareBitrate)}
             {qualityControl("groupCallCameraBitrateKbps", strings.admin.serverSettings.cameraBitrate)}
           </section>
           <section className="admin-defaults-call-quality-settings"><h2>{strings.admin.serverSettings.dmCallsQuality}</h2>
-            {qualityControl("dmCallScreenShareBitrateKbps", strings.admin.serverSettings.screenShareBitrate)}
             {qualityControl("dmCallCameraBitrateKbps", strings.admin.serverSettings.cameraBitrate)}
           </section>
         </>}

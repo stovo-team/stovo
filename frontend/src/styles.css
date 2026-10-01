@@ -22740,6 +22740,34 @@ button.chat-info-title-edit:active:not(:disabled) {
   text-align: left;
 }
 
+.admin-hub-category-tabs {
+  display: flex;
+  gap: 6px;
+  max-width: 760px;
+  width: 100%;
+  overflow-x: auto;
+  border-bottom: 1px solid #2a2a2a;
+  scrollbar-width: none;
+}
+
+.admin-hub-category-tabs::-webkit-scrollbar { display: none; }
+.admin-hub-category-tabs button {
+  flex: 0 0 auto;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 11px 13px;
+  background: transparent;
+  color: #9298a3;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.admin-hub-category-tabs button:hover,
+.admin-hub-category-tabs button.is-active { color: var(--text-primary); }
+.admin-hub-category-tabs button.is-active { border-bottom-color: var(--accent-primary); }
+.admin-hub-category-tabs button:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: -2px; }
+
 .admin-page.admin-detail-page > .page-surface,
 .admin-page.admin-detail-page .admin-surface {
   max-width: 820px;
@@ -23560,13 +23588,15 @@ button.chat-info-title-edit:active:not(:disabled) {
   }
 
   .admin-page.admin-hub-page .masthead,
-  .admin-page.admin-hub-page .admin-hub-tabs {
+  .admin-page.admin-hub-page .admin-hub-tabs,
+  .admin-page.admin-hub-page .admin-hub-category-tabs {
     max-width: none;
   }
 
   .admin-hub-tabs {
     max-width: none;
   }
+  .admin-hub-category-tabs { max-width: none; }
 }
 
 /* --- Group Call Active Banner & Pre-Join Modal Styles --- */

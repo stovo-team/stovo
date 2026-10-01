@@ -25,6 +25,10 @@ export interface Family {
   defaultLastSeenVisibility: "everyone" | "nobody";
   defaultReadReceiptsEnabled: boolean;
   defaultNotificationSettings: string;
+  translationEnabled?: boolean;
+  callRecordingEnabled?: boolean;
+  aiNotesEnabled?: boolean;
+  voiceTranscriptionEnabled?: boolean;
   screenShareBitrateKbps: number;
   cameraBitrateKbps?: number;
   groupCallScreenShareBitrateKbps?: number;

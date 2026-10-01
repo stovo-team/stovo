@@ -487,6 +487,14 @@ func (s *Server) fileVisibleToUser(ctx context.Context, file filePublic, user us
 type fileTranscriptResponse = transporthttp.FileTranscriptResponse
 
 func (s *Server) transcribeFile(ctx context.Context, user userPublic, fileID string) (any, int, string) {
+	featureSettings, settingsErr := s.familyAIFeatureSettings(ctx, user.FamilyID)
+	if settingsErr != nil {
+		s.logger.Warnf("transcription", "load family feature settings failed family=%s error=%v", user.FamilyID, settingsErr)
+		return nil, http.StatusInternalServerError, "Could not load server feature settings"
+	}
+	if !featureSettings.VoiceTranscription {
+		return nil, http.StatusForbidden, "Voice transcription is disabled by your server administrator"
+	}
 	provider := groq.Resolve(&s.cfg, s.logger)
 	if provider.APIKey == "" {
 		return nil, http.StatusServiceUnavailable, "Transcription service is not configured (GROQ_API_KEY missing)"

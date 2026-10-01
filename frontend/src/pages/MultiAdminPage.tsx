@@ -3,17 +3,16 @@ import {
   createInviteLink,
   createServer,
   deleteServer,
-  fetchTenantCallQuality,
   fetchServers,
   getGhostToken,
   masterLogin,
   updateServerSettings,
-  updateTenantCallQuality,
-  NavTabsConfig,
   ServerRecord,
 } from "../api/masterAdmin";
+import { useStrings } from "../i18n/LanguageContext";
 
 export default function MultiAdminPage() {
+  const strings = useStrings();
   const [token, setToken] = useState<string | null>(
     localStorage.getItem("master_admin_token")
   );
@@ -30,12 +29,6 @@ export default function MultiAdminPage() {
   const [newName, setNewName] = useState("");
   const [adminUser, setAdminUser] = useState("admin");
   const [adminPassword, setAdminPassword] = useState("admin12345");
-  const [createNavTabs, setCreateNavTabs] = useState<NavTabsConfig>({
-    chats: true,
-    storage: true,
-    plans: true,
-    settings: true,
-  });
   const [createResult, setCreateResult] = useState<{
     inviteUrl: string;
     clusterUrl: string;
@@ -46,13 +39,6 @@ export default function MultiAdminPage() {
   // Settings Modal State
   const [editingServer, setEditingServer] = useState<ServerRecord | null>(null);
   const [editName, setEditName] = useState("");
-  const [editNavTabs, setEditNavTabs] = useState<NavTabsConfig>({
-    chats: true,
-    storage: true,
-    plans: true,
-    settings: true,
-  });
-  const [editScreenShareBitrateKbps, setEditScreenShareBitrateKbps] = useState(5000);
   const [savingSettings, setSavingSettings] = useState(false);
 
   // Notification / Toast info
@@ -68,6 +54,15 @@ export default function MultiAdminPage() {
       loadServers();
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!editingServer) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !savingSettings) setEditingServer(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editingServer, savingSettings]);
 
   const loadServers = async () => {
     if (!token) return;
@@ -114,7 +109,6 @@ export default function MultiAdminPage() {
         newName.trim(),
         adminUser.trim(),
         adminPassword.trim(),
-        createNavTabs
       );
       const originClusterUrl = `${window.location.origin}/s/${res.slug}/login`;
       const originInviteUrl = `${window.location.origin}/s/${res.slug}/setup?token=${new URL(res.invite_url).searchParams.get("token") || ""}`;
@@ -125,7 +119,6 @@ export default function MultiAdminPage() {
         adminPassword: res.admin_password || adminPassword,
       });
       setNewName("");
-      setCreateNavTabs({ chats: true, storage: true, plans: true, settings: true });
       loadServers();
       showToast(`Space "${res.name}" provisioned cleanly!`);
     } catch (err: any) {
@@ -136,21 +129,6 @@ export default function MultiAdminPage() {
   const handleOpenSettings = async (s: ServerRecord) => {
     setEditingServer(s);
     setEditName(s.name);
-    setEditNavTabs({
-      chats: s.nav_tabs?.chats ?? true,
-      storage: s.nav_tabs?.storage ?? true,
-      plans: s.nav_tabs?.plans ?? true,
-      settings: s.nav_tabs?.settings ?? true,
-    });
-	  setEditScreenShareBitrateKbps(5000);
-	  if (token) {
-		  try {
-			  const quality = await fetchTenantCallQuality(token, s.slug);
-			  setEditScreenShareBitrateKbps(quality.screenShareBitrateKbps ?? 5000);
-		  } catch (err: any) {
-			  showToast(err.message || "Could not load the guest meeting quality setting.");
-		  }
-	  }
   };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -158,10 +136,8 @@ export default function MultiAdminPage() {
     if (!token || !editingServer) return;
     setSavingSettings(true);
     try {
-	  await updateTenantCallQuality(token, editingServer.slug, editScreenShareBitrateKbps);
       const updated = await updateServerSettings(token, editingServer.slug, {
         name: editName.trim(),
-        nav_tabs: editNavTabs,
       });
       setServers((prev) =>
         prev.map((s) => (s.slug === editingServer.slug ? { ...s, ...updated } : s))
@@ -217,8 +193,8 @@ export default function MultiAdminPage() {
     return (
       <div style={styles.loginContainer}>
         <div style={styles.loginCard}>
-          <div style={styles.badgePill}>MULTI-SPACE ORCHESTRATOR</div>
-          <h1 style={styles.title}>Stovo Master</h1>
+          <div style={styles.badgePill}>CLUSTER SUPERVISOR</div>
+          <h1 style={styles.title}>Stovo Supervisor</h1>
           <p style={styles.subtitle}>Sign in to manage spaces and root infrastructure</p>
 
           {loginError && <div style={styles.errorBox}>{loginError}</div>}
@@ -259,7 +235,7 @@ export default function MultiAdminPage() {
 
       <header style={styles.header}>
         <div style={styles.headerTitleGroup}>
-          <div style={styles.badgePill}>MULTI-SPACE CONTROL</div>
+          <div style={styles.badgePill}>CLUSTER SUPERVISOR</div>
           <h1 style={styles.headerTitle}>Stovo Spaces</h1>
         </div>
         <div style={styles.headerActions}>
@@ -287,8 +263,11 @@ export default function MultiAdminPage() {
             <div style={{ ...styles.statValue, color: "#34d399" }}>Operational</div>
           </div>
           <div style={styles.statCard}>
-            <div style={styles.statLabel}>Gateway Isolation</div>
-            <div style={styles.statValue}>Path Router (/s/:hash)</div>
+            <div style={styles.statLabel}>Advanced Monitoring</div>
+            <div style={styles.monitoringStatus}>
+              <button type="button" style={styles.monitoringDisabledButton} disabled>Monitoring disabled</button>
+              <span className="premium-feature-badge">Premium</span>
+            </div>
           </div>
         </div>
 
@@ -323,7 +302,6 @@ export default function MultiAdminPage() {
                     <th style={styles.th}>ID</th>
                     <th style={styles.th}>Name</th>
                     <th style={styles.th}>Space Link</th>
-                    <th style={styles.th}>Nav Tabs</th>
                     <th style={styles.th}>Status</th>
                     <th style={styles.th}>Created At</th>
                     <th style={styles.th}>Actions</th>
@@ -351,22 +329,6 @@ export default function MultiAdminPage() {
                         </a>
                       </td>
                       <td style={styles.td}>
-                        <div style={styles.tabBadgeGroup}>
-                          <span style={s.nav_tabs?.chats !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Chats Tab">
-                            Chats
-                          </span>
-                          <span style={s.nav_tabs?.storage !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Storage Tab">
-                            Storage
-                          </span>
-                          <span style={s.nav_tabs?.plans !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Plans Tab">
-                            Plans
-                          </span>
-                          <span style={s.nav_tabs?.settings !== false ? styles.tabBadgeActive : styles.tabBadgeInactive} title="Settings Tab">
-                            Settings
-                          </span>
-                        </div>
-                      </td>
-                      <td style={styles.td}>
                         <span style={styles.statusPill}>{s.status || "running"}</span>
                       </td>
                       <td style={styles.td}>
@@ -376,10 +338,11 @@ export default function MultiAdminPage() {
                         <div style={styles.actionGroup}>
                           <button
                             onClick={() => handleOpenSettings(s)}
-                            title={`Configure space settings and navigation tabs for ${s.name}`}
+                            title={`Configure ${s.name}`}
                             style={styles.settingsPillButton}
                           >
-                            ⚙️ Settings
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.7a8 8 0 0 1-1.7 1l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.7-1l-1.7.7-1.4-2.4 1.4-1.1a7 7 0 0 1 0-2l-1.4-1.1 1.4-2.4 1.7.7a8 8 0 0 1 1.7-1l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.7 1l1.7-.7 1.4 2.4-1.4 1.1a7 7 0 0 1 0 2Z"/></svg>
+                            Settings
                           </button>
                           <button
                             onClick={() => handleCopyInvite(s.slug)}
@@ -420,12 +383,13 @@ export default function MultiAdminPage() {
 
       {/* Server Settings Modal */}
       {editingServer && (
-        <div style={styles.modalOverlay}>
-          <div style={styles.modalCard}>
+        <div style={styles.modalOverlay} onMouseDown={(event) => { if (event.target === event.currentTarget && !savingSettings) setEditingServer(null); }}>
+          <div style={styles.modalCard} role="dialog" aria-modal="true" aria-labelledby="space-settings-title">
+            <button type="button" style={styles.modalCloseButton} aria-label="Close settings" onClick={() => setEditingServer(null)} disabled={savingSettings}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m18 6-12 12M6 6l12 12"/></svg></button>
             <div style={styles.badgePill}>SPACE SETTINGS</div>
-            <h3 style={styles.modalTitle}>{editingServer.name}</h3>
+            <h3 id="space-settings-title" style={styles.modalTitle}>{editingServer.name}</h3>
             <p style={styles.modalSubtitle}>
-              Configure space properties, guest meeting quality, and the navigation panel.
+              Manage this space.
             </p>
 
             <form onSubmit={handleSaveSettings} style={styles.form}>
@@ -440,87 +404,18 @@ export default function MultiAdminPage() {
                 />
               </label>
 
-			  <label style={styles.label}>
-				Screen-share bitrate (kbps)
-				<input
-				  type="number"
-				  min="1000"
-				  max="20000"
-				  step="500"
-				  value={editScreenShareBitrateKbps}
-				  onChange={(e) => setEditScreenShareBitrateKbps(Number(e.target.value))}
-				  style={styles.inputPill}
-				  required
-				/>
-				<span style={styles.tabToggleDesc}>5,000 kbps is the recommended cap for 1080p screen shares.</span>
-			  </label>
-
-              <div style={{ marginTop: 8 }}>
-                <div style={{ ...styles.label, marginBottom: 12 }}>
-                  Navigation Panel Tabs
+              <section style={{ marginTop: 8 }} aria-labelledby="supervisor-chat-types-title">
+                <div style={{ ...styles.label, marginBottom: 10 }}>
+                  <span id="supervisor-chat-types-title">{strings.admin.rbac.supervisorChatTypes}</span>
+                  <span style={styles.tabToggleDesc}>{strings.admin.rbac.supervisorChatTypesDesc}</span>
                 </div>
                 <div style={styles.tabsConfigCard}>
-                  <label style={styles.tabToggleRow}>
-                    <div>
-                      <div style={styles.tabToggleTitle}>💬 Chats</div>
-                      <div style={styles.tabToggleDesc}>Direct, group, and voice messaging</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editNavTabs.chats}
-                      onChange={(e) =>
-                        setEditNavTabs((prev) => ({ ...prev, chats: e.target.checked }))
-                      }
-                      style={styles.checkbox}
-                    />
-                  </label>
-
-                  <label style={styles.tabToggleRow}>
-                    <div>
-                      <div style={styles.tabToggleTitle}>📁 Storage</div>
-                      <div style={styles.tabToggleDesc}>File library, media, and shared documents</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editNavTabs.storage}
-                      onChange={(e) =>
-                        setEditNavTabs((prev) => ({ ...prev, storage: e.target.checked }))
-                      }
-                      style={styles.checkbox}
-                    />
-                  </label>
-
-                  <label style={styles.tabToggleRow}>
-                    <div>
-                      <div style={styles.tabToggleTitle}>📅 Plans</div>
-                      <div style={styles.tabToggleDesc}>Family events, calendar, and schedule</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editNavTabs.plans}
-                      onChange={(e) =>
-                        setEditNavTabs((prev) => ({ ...prev, plans: e.target.checked }))
-                      }
-                      style={styles.checkbox}
-                    />
-                  </label>
-
-                  <label style={styles.tabToggleRow}>
-                    <div>
-                      <div style={styles.tabToggleTitle}>⚙️ Settings</div>
-                      <div style={styles.tabToggleDesc}>User profile, theme, audio, and device settings</div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={editNavTabs.settings}
-                      onChange={(e) =>
-                        setEditNavTabs((prev) => ({ ...prev, settings: e.target.checked }))
-                      }
-                      style={styles.checkbox}
-                    />
-                  </label>
+                  {[strings.admin.rbac.directMessages, strings.admin.rbac.groupChats, strings.admin.rbac.textChannels, strings.admin.rbac.voiceChats].map((chatType) => <div key={chatType} style={styles.tabToggleRow}>
+                    <span style={styles.tabToggleTitle}>{chatType}</span>
+                    <span className="premium-feature-badge">{strings.admin.encryption.premium}</span>
+                  </div>)}
                 </div>
-              </div>
+              </section>
 
               <div style={styles.modalActions}>
                 <button
@@ -534,7 +429,7 @@ export default function MultiAdminPage() {
                 <button
                   type="submit"
                   style={styles.primaryPillButton}
-                  disabled={savingSettings || !Number.isInteger(editScreenShareBitrateKbps) || editScreenShareBitrateKbps < 1000 || editScreenShareBitrateKbps > 20000}
+                  disabled={savingSettings}
                 >
                   {savingSettings ? "Saving..." : "Save Settings"}
                 </button>
@@ -556,7 +451,7 @@ export default function MultiAdminPage() {
             {createResult ? (
               <div style={styles.resultBox}>
                 <div style={{ fontWeight: 700, color: "#34d399", marginBottom: 8, fontSize: 15 }}>
-                  ✅ Space Provisioned!
+                  Space Provisioned
                 </div>
                 <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>
                   Admin account created. You can log in directly or share the invite link:
@@ -572,7 +467,7 @@ export default function MultiAdminPage() {
                     rel="noreferrer"
                     style={{ ...styles.primaryPillButton, textDecoration: "none", textAlign: "center" }}
                   >
-                    🚀 Open Space Login
+                    Open Space Login
                   </a>
                   <button
                     onClick={() => {
@@ -628,58 +523,6 @@ export default function MultiAdminPage() {
                     required
                   />
                 </label>
-
-                <div style={{ marginTop: 4 }}>
-                  <div style={{ ...styles.label, marginBottom: 10 }}>
-                    Enabled Navigation Tabs
-                  </div>
-                  <div style={styles.tabsConfigCard}>
-                    <label style={styles.tabToggleRow}>
-                      <span style={styles.tabToggleTitle}>💬 Chats</span>
-                      <input
-                        type="checkbox"
-                        checked={createNavTabs.chats}
-                        onChange={(e) =>
-                          setCreateNavTabs((prev) => ({ ...prev, chats: e.target.checked }))
-                        }
-                        style={styles.checkbox}
-                      />
-                    </label>
-                    <label style={styles.tabToggleRow}>
-                      <span style={styles.tabToggleTitle}>📁 Storage</span>
-                      <input
-                        type="checkbox"
-                        checked={createNavTabs.storage}
-                        onChange={(e) =>
-                          setCreateNavTabs((prev) => ({ ...prev, storage: e.target.checked }))
-                        }
-                        style={styles.checkbox}
-                      />
-                    </label>
-                    <label style={styles.tabToggleRow}>
-                      <span style={styles.tabToggleTitle}>📅 Plans</span>
-                      <input
-                        type="checkbox"
-                        checked={createNavTabs.plans}
-                        onChange={(e) =>
-                          setCreateNavTabs((prev) => ({ ...prev, plans: e.target.checked }))
-                        }
-                        style={styles.checkbox}
-                      />
-                    </label>
-                    <label style={styles.tabToggleRow}>
-                      <span style={styles.tabToggleTitle}>⚙️ Settings</span>
-                      <input
-                        type="checkbox"
-                        checked={createNavTabs.settings}
-                        onChange={(e) =>
-                          setCreateNavTabs((prev) => ({ ...prev, settings: e.target.checked }))
-                        }
-                        style={styles.checkbox}
-                      />
-                    </label>
-                  </div>
-                </div>
 
                 <div style={styles.modalActions}>
                   <button
@@ -874,6 +717,22 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     color: "#ffffff",
   },
+  monitoringStatus: {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  monitoringDisabledButton: {
+    padding: "8px 14px",
+    border: "1px solid rgba(255,255,255,.12)",
+    borderRadius: 999,
+    background: "rgba(255,255,255,.05)",
+    color: "#9ca3af",
+    fontSize: 13,
+    fontWeight: 650,
+    cursor: "not-allowed",
+  },
   panelCard: {
     backgroundColor: "#1c1c1e",
     border: "1px solid rgba(255, 255, 255, 0.08)",
@@ -1005,6 +864,7 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 1000,
   },
   modalCard: {
+    position: "relative",
     width: "100%",
     maxWidth: 440,
     backgroundColor: "#1c1c1e",
@@ -1018,6 +878,21 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 800,
     margin: "0 0 8px 0",
     color: "#ffffff",
+  },
+  modalCloseButton: {
+    position: "absolute",
+    top: 18,
+    right: 18,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,.12)",
+    background: "#2c2c2e",
+    color: "#d1d5db",
+    cursor: "pointer",
   },
   modalSubtitle: {
     fontSize: 14,
@@ -1038,6 +913,10 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 24,
   },
   settingsPillButton: {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
     padding: "8px 18px",
     backgroundColor: "rgba(96, 165, 250, 0.15)",
     color: "#60a5fa",

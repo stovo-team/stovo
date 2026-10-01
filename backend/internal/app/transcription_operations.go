@@ -172,6 +172,14 @@ func (s *Server) transcriptionHTTPHandler() transporthttp.TranscriptionHandler {
 			if !s.cfg.AICallTranscriptionEnabled {
 				return nil, http.StatusServiceUnavailable, "AI call transcription is not enabled"
 			}
+			featureSettings, settingsErr := s.familyAIFeatureSettings(ctx, actor.FamilyID)
+			if settingsErr != nil {
+				s.logger.Warnf("transcription", "load family feature settings failed family=%s error=%v", actor.FamilyID, settingsErr)
+				return nil, http.StatusInternalServerError, "Could not load server feature settings"
+			}
+			if !featureSettings.VoiceTranscription {
+				return nil, http.StatusForbidden, "Voice transcription is disabled by your server administrator"
+			}
 			provider := groq.Resolve(&s.cfg, s.logger)
 			if provider.APIKey == "" {
 				return nil, http.StatusServiceUnavailable, "Transcription service is not configured (GROQ_API_KEY missing)"
@@ -517,10 +525,18 @@ func computeETagChecksum(etag string) string {
 
 func (s *Server) processTranscription(ctx context.Context, sessionID, callID, chatID string) {
 	provider := groq.Resolve(&s.cfg, s.logger)
+	var familyID string
+	notesEnabled := false
+	if err := s.guestDB.QueryRowContext(ctx, `SELECT family_id FROM chats WHERE id=$1`, chatID).Scan(&familyID); err == nil {
+		if settings, settingsErr := s.familyAIFeatureSettings(ctx, familyID); settingsErr == nil {
+			notesEnabled = settings.AINotes
+		}
+	}
 	processor := runtime.TranscriptionProcessor{
 		Sessions: s.transcriptionSessions, Chunks: s.transcriptionChunks, Segments: s.transcriptionSegments,
 		Storage: s.storage, CallsBucket: s.cfg.MinIOCallsBucket, Logger: s.logger,
 		Provider: runtime.TranscriptionProviderOptions{APIKey: provider.APIKey, BaseURL: provider.BaseURL, STTModel: provider.STTModel, ChatModel: provider.ChatModel, CostPerAudioHour: s.cfg.GroqSTTCostPerHourUSD},
+		DisableNotes: !notesEnabled,
 		ParticipantName: func(userID string) string {
 			user, err := s.getUserByID(userID)
 			if err != nil {
@@ -560,6 +576,16 @@ func (s *Server) publishAICallNotes(ctx context.Context, sessionID string) {
 		if err != nil {
 			s.logger.Warnf("transcription", "claim AI call notes failed session_id=%s error=%v", sessionID, err)
 		}
+		return
+	}
+	initiatingUser, userErr := s.getUserByID(claim.InitiatedBy)
+	if userErr != nil {
+		_ = s.transcriptionSessions.ReleaseAICallNotesClaim(ctx, sessionID)
+		return
+	}
+	featureSettings, settingsErr := s.familyAIFeatureSettings(ctx, initiatingUser.FamilyID)
+	if settingsErr != nil || !featureSettings.AINotes {
+		_ = s.transcriptionSessions.ReleaseAICallNotesClaim(ctx, sessionID)
 		return
 	}
 

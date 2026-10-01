@@ -490,6 +490,14 @@ func (s *Server) getFamily(familyID string) (familyPublic, error) {
 	family.GroupCallCameraBitrateKbps = quality.GroupCallCameraBitrateKbps
 	family.DMCallScreenShareBitrateKbps = quality.DMCallScreenShareBitrateKbps
 	family.DMCallCameraBitrateKbps = quality.DMCallCameraBitrateKbps
+	aiFeatures, err := s.familyAIFeatureSettings(context.Background(), familyID)
+	if err != nil {
+		return familyPublic{}, err
+	}
+	family.TranslationEnabled = aiFeatures.Translation
+	family.CallRecordingEnabled = aiFeatures.CallRecording
+	family.AINotesEnabled = aiFeatures.AINotes
+	family.VoiceTranscriptionEnabled = aiFeatures.VoiceTranscription
 	return family, nil
 }
 
