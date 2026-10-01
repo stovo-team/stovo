@@ -16,3 +16,11 @@
 - Plugins: verify title, plugin names, descriptions, status, and toggle accessible labels use the selected language.
 - MCP: verify page title, setup form, permissions, connector actions/statuses, and edit dialog labels use the selected language.
 - Validation: run focused frontend tests, frontend CI test/build commands, and the repository size boundary check.
+
+## Follow-up visual and settings corrections
+
+- **User problem:** The supervisor space list and its settings dialog still have oversized styling, text actions, square rows, no settings tabs, and mark basic space chat availability as Premium. The modal also omits the space AI controls.
+- **Scope:** Use icon-only Settings and Invite actions; move Ghost Token and Delete into an accessible overflow menu; round space rows; rename the list “Your Spaces”; restore General, AI functions, Chats, and Premium tabs in the settings dialog; persist supervisor chat-type limits and AI switches; show only actual Premium restrictions as disabled; compact and responsively size statistics, monitoring, controls, and dialogs; use the brand orange as the default accent.
+- **Observable behavior:** Each tab is selectable and keyboard-accessible. AI switches save through the tenant feature settings endpoint, chat-type switches save through master space settings, and backend chat creation rejects types disabled by the supervisor. Role-based limits remain Premium and inactive; basic supervisor chat availability stays editable. Ghost Token and Delete appear only in the row menu. At narrow widths, cards and dialogs fit the viewport and table rows scroll without losing their rounded corners.
+- **Constraints:** Preserve existing routes, tenant feature enforcement, row actions, and localization. Do not expose screen-share bitrate controls. Premium rows remain unavailable, grey, and non-interactive.
+- **Test plan:** Add regression coverage for disabled chat creation in the backend; extend orchestrator settings tests for persisted chat-type configuration and container environment; verify settings tabs, icon-only actions, overflow actions, enabled chat controls, disabled Premium controls, and modal close behavior in frontend component tests; run focused frontend/backend checks and the required architecture checks.

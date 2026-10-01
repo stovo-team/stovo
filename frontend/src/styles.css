@@ -12355,14 +12355,14 @@ span.message-spoiler.is-revealed {
   --focus-shadow-light: rgba(217, 119, 6, 0.16);
   --outline-soft-light: rgba(217, 119, 6, 0.12);
   --accent-ring-light: rgba(217, 119, 6, 0.24);
-  --accent-primary-dark: #fbbf24;
-  --accent-primary-hover-dark: #fde68a;
-  --accent-soft-dark: #3a2a0c;
-  --accent-border-soft-dark: #fbbf24;
-  --focus-ring-dark: rgba(251, 191, 36, 0.34);
-  --focus-shadow-dark: rgba(251, 191, 36, 0.22);
-  --outline-soft-dark: rgba(251, 191, 36, 0.18);
-  --accent-ring-dark: rgba(251, 191, 36, 0.34);
+  --accent-primary-dark: #f08a24;
+  --accent-primary-hover-dark: #ff9c3c;
+  --accent-soft-dark: #3a2514;
+  --accent-border-soft-dark: #c66b24;
+  --focus-ring-dark: rgba(240, 138, 36, 0.34);
+  --focus-shadow-dark: rgba(240, 138, 36, 0.22);
+  --outline-soft-dark: rgba(240, 138, 36, 0.18);
+  --accent-ring-dark: rgba(240, 138, 36, 0.34);
 }
 
 .encryption-settings-form {
