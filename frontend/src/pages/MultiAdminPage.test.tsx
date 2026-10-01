@@ -59,7 +59,7 @@ describe("supervisor space management", () => {
     await act(async () => { container.querySelector<HTMLButtonElement>('[aria-label="Настройки: Alpha"]')?.click(); });
     expect(container.querySelector('[role="tablist"]')).toBeTruthy();
     await act(async () => { container.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="false"]:nth-child(3)')?.click(); });
-    const groupToggle = container.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    const groupToggle = [...container.querySelectorAll<HTMLElement>(".supervisor-setting-row")].find((row) => row.textContent?.includes("Групповые чаты"))?.querySelector<HTMLInputElement>('input[type="checkbox"]');
     expect(groupToggle?.disabled).toBe(false);
     if (groupToggle) await act(async () => { groupToggle.click(); });
     await act(async () => { container.querySelector<HTMLButtonElement>('[role="tab"][aria-selected="false"]:nth-child(2)')?.click(); });
