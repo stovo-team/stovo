@@ -811,7 +811,7 @@ export const strings = {
       connectionRevoked: "Connection revoked",
       revokeFailed: "Could not revoke connection",
       settingsUpdated: "Connection settings updated. The next MCP call uses the new scope and permissions.",
-      chatGroups: { family: "Family", group: "Groups", channel: "Channels", direct: "Direct messages" },
+      chatGroups: { family: "Family", group: "Groups", channel: "Channels", direct: "Direct messages", voice: "Voice channels", archive: "Message archive" },
       directChatFallback: "Direct chat",
       permissionGroups: { chats: "Chats", messages: "Messages", actions: "Message actions", pins: "Pins", files: "Files" },
       setupSteps: {

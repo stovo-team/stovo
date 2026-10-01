@@ -840,7 +840,7 @@ export const strings = {
       connectionRevoked: "Подключение отозвано",
       revokeFailed: "Не удалось отозвать подключение",
       settingsUpdated: "Настройки подключения обновлены. Новая область доступа и права вступят в силу при следующем вызове MCP.",
-      chatGroups: { family: "Семья", group: "Группы", channel: "Каналы", direct: "Личные сообщения" },
+      chatGroups: { family: "Семья", group: "Группы", channel: "Каналы", direct: "Личные сообщения", voice: "Голосовые каналы", archive: "Архив сообщений" },
       directChatFallback: "Личный чат",
       permissionGroups: { chats: "Чаты", messages: "Сообщения", actions: "Действия с сообщениями", pins: "Закреплённое", files: "Файлы" },
       setupSteps: {
