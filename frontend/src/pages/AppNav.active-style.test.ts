@@ -10,12 +10,12 @@ const desktopNavigationStyles = styles.slice(
 );
 
 describe("desktop app navigation active state", () => {
-  it("fills the complete desktop link cell with a rounded rectangular highlight", () => {
-    expect(desktopNavigationStyles).toContain(".app-frame > .app-nav a:is(.active, :not(.active):hover)::before");
-    expect(desktopNavigationStyles).toContain("inset: 0;");
-    expect(desktopNavigationStyles).toContain("border-radius: 12px;");
-    expect(desktopNavigationStyles).not.toContain("--app-nav-state-circle-size");
-    expect(desktopNavigationStyles).not.toContain(".app-nav .app-nav-logout:hover:not(:disabled)::before");
+  it("centers one 60px circular highlight behind the navigation icon", () => {
+    expect(desktopNavigationStyles).toContain("--app-nav-state-circle-size: 60px;");
+
+    expect(desktopNavigationStyles).toContain(
+      ".app-frame > .app-nav a:is(.active, :not(.active):hover)::before,"
+    );
   });
 
   it("uses rounded outline Lucide icons for all nav destinations", () => {
@@ -28,18 +28,5 @@ describe("desktop app navigation active state", () => {
     expect(appNav).toContain("<Settings aria-hidden={true} />");
     expect(appNav).toContain("<ShieldCheck aria-hidden={true} />");
     expect(appNav).not.toContain("ms-icon");
-  });
-});
-
-describe("navigation icon and touch states", () => {
-  it("fills selected SVG navigation icons", () => {
-    expect(styles).toContain(".app-frame > .app-nav a.active svg");
-    expect(styles).toContain("fill: currentColor;");
-  });
-
-  it("does not apply hover appearance to nav links on touch devices", () => {
-    expect(styles).toContain("@media (hover: none)");
-    expect(styles).toContain(".app-frame > .app-nav a:hover");
-    expect(styles).toContain("background: transparent !important;");
   });
 });

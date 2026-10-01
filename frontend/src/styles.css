@@ -102,7 +102,7 @@
   --nav-pill-inset-x: 16px;
   --nav-pill-inset-bottom: max(16px, env(safe-area-inset-bottom));
   --nav-pill-height: 64px;
-  --fab-size: 48px;
+  --fab-size: 56px;
   --fab-offset-right: 20px;
   --fab-offset-bottom: calc(var(--nav-pill-inset-bottom) + var(--nav-pill-height) + 16px);
   --stovo-primary: var(--accent-primary);
@@ -13512,10 +13512,6 @@ span.message-spoiler.is-revealed {
     width: 24px;
   }
 
-  .app-frame > .app-nav a.active svg {
-    fill: currentColor;
-  }
-
   .app-frame > .app-nav .app-brand,
   .app-frame > .app-nav .app-nav-logout {
     display: none;
@@ -20112,6 +20108,10 @@ button.chat-info-title-edit:active:not(:disabled) {
 
 /* Desktop conversation chrome: keep the sidebar header fixed over its own list. */
 @media (min-width: 961px) {
+  .app-frame > .app-nav {
+    --app-nav-state-circle-size: 60px;
+  }
+
   .app-frame > .app-nav a:not(.active):hover,
   .app-frame > .app-nav .app-nav-logout:hover:not(:disabled) {
     background: transparent;
@@ -20126,30 +20126,23 @@ button.chat-info-title-edit:active:not(:disabled) {
     background: transparent;
   }
 
-  .app-frame > .app-nav a:is(.active, :not(.active):hover)::before {
-    border-radius: 12px;
+  .app-frame > .app-nav a:is(.active, :not(.active):hover)::before,
+  .app-frame > .app-nav .app-nav-logout:hover:not(:disabled)::before {
+    background: color-mix(in oklab, var(--stovo-primary) 10%, transparent);
+    border-radius: 50%;
     content: "";
-    inset: 0;
+    height: var(--app-nav-state-circle-size);
+    left: 50%;
     pointer-events: none;
     position: absolute;
-    z-index: 0;
-  }
-
-  .app-frame > .app-nav a.active::before {
-    background: color-mix(in oklab, var(--stovo-primary) 16%, transparent);
-  }
-
-  .app-frame > .app-nav a:not(.active):hover::before {
-    background: color-mix(in oklab, var(--stovo-primary) 10%, transparent);
+    top: 1px;
+    transform: translateX(-50%);
+    width: var(--app-nav-state-circle-size);
   }
 
   .app-frame > .app-nav a.active .ms-icon {
     position: relative;
     z-index: 1;
-  }
-
-  .app-frame > .app-nav a.active svg {
-    fill: currentColor;
   }
 
   .chat-sidebar-header {
@@ -20182,17 +20175,6 @@ button.chat-info-title-edit:active:not(:disabled) {
   .app-frame > .app-nav.app-nav--active-variant-a a.active {
     border: 0;
     opacity: 1;
-  }
-}
-
-@media (max-width: 960px) and (hover: none) {
-  .app-frame > .app-nav a {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .app-frame > .app-nav a:not(.active):hover {
-    background: transparent !important;
-    color: var(--text-secondary) !important;
   }
 }
 
